@@ -210,8 +210,8 @@ embedding API, не расширение сообщений 9P; Client/Styxops �
 
 This is the first file-only bridge, not a general directory publication server,
 authenticated network service or mount client. Runtime0.143 adds per-connection native preparation and pending owner review
-through [PEER.md](vfs/PEER.md). Deferred Rattach and verified remote credential
-routing remain separate work. The test's local grant is explicitly
+through [PEER.md](vfs/PEER.md). Runtime0.144 adds deferred Rattach; verified remote credential
+routing remains separate work. The test's local grant is explicitly
 approved by its native owner before serving synthetic data. See the bridge guide
 for explicit build inputs and API ownership/offset limits.
 
@@ -247,4 +247,12 @@ conformance and general production service admission remain separate work.
 host provenance and a fixed rights ceiling. Submit-only endpoints safely outlive
 joined publication close; granted providers and opens retain ordinary lifetimes.
 TCP acceptance uses different prepared roots for equal wire usernames/Qids.
-Deferred native review is supported; deferred Rattach remains unimplemented.
+Deferred native review and Rattach are supported; see runtime0.144 below.
+
+## Deferred attach / Отложенный attach (runtime0.144)
+
+[Native deferred Rattach](vfs/DEFERRED.md) now preserves pending tag/fid until a
+reviewer signals the socket owner. Flush/reset/disconnect/shutdown retire the
+request before any later reply; no client retry or guest suspension is required.
+The original Inferno implementation and VFS TCP tests cover dedicated native
+review, pipe wakeup, cancellation, denied publication close and shutdown.

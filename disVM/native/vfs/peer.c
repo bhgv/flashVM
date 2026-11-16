@@ -119,6 +119,18 @@ int styxpeerattach(StyxPeer *peer, const char *name, unsigned kind, StyxBacking 
 }
 
 
+/* EN/RU: See peer.h; unlink admission before the connection can retry.
+ * См. peer.h; убрать admission до повторного запроса соединения. */
+void styxpeercancel(StyxPeer *peer)
+{
+    if (peer)
+    {
+        dvm_export_release(peer->ticket);
+        peer->ticket = NULL;
+    }
+}
+
+
 /* EN/RU: See peer.h; cancellation precedes endpoint release, no managed execution.
  * См. peer.h; отмена до release endpoint, без managed execution. */
 void styxpeerfree(StyxPeer *peer)

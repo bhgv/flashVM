@@ -33,9 +33,16 @@ add_test(NAME vfs-tree-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOUR
     "$<TARGET_FILE:vfs-tree-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-tree-wire PROPERTIES TIMEOUT 30)
 
-add_executable(vfs-peer-wire-test ../tests/peer/backend.c ../tests/peer/wire.c)
+add_executable(vfs-peer-wire-test ../tests/peer/backend.c ../tests/peer/wire.c ../tests/peer/review.c)
 set_source_files_properties(../tests/peer/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
 target_link_libraries(vfs-peer-wire-test PRIVATE styx_vfs infernostyx)
 add_test(NAME vfs-peer-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/peer/wire.py"
     "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-peer-wire PROPERTIES TIMEOUT 30)
+
+add_test(NAME vfs-peer-deferred-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/peer/deferred.py"
+    "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
+set_tests_properties(vfs-peer-deferred-wire PROPERTIES TIMEOUT 30)
+add_test(NAME vfs-peer-deferred-stop-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/peer/deferred.py"
+    "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" shutdown)
+set_tests_properties(vfs-peer-deferred-stop-wire PROPERTIES TIMEOUT 30)

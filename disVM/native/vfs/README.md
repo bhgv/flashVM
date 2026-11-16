@@ -102,8 +102,9 @@ service API. Packet usernames do not authenticate a peer. The publication reques
 is local, explicitly authorized before TCP starts; remote provenance bits are
 never taken from network input. Per-connection native admission and pending owner review are now covered in
 [PEER.md](PEER.md); live directory serving is covered in [TREE.md](TREE.md).
-Transport authentication, deferred Rattach, full metadata mapping, protocol flush
-and the mount client remain future integration work. These interfaces do not
+Runtime0.144 adds [deferred Rattach and attach flush](DEFERRED.md). Transport
+authentication, full metadata mapping and a general mount client are outside
+this bridge change. These interfaces do not
 freeze that design or a prepared tree.
 
 Графики, FreeType и альтернативного wire-кодека в адаптере нет. Новые
@@ -123,3 +124,11 @@ policy/mode/name masking; составные виртуальные родите
 [PEER.md](PEER.md) documents submit-only publication endpoints and per-connection
 root selection, ownership, native preparation and current synchronous libstyx
 attach limits. `vfs-peer-wire` verifies isolation with equal wire users and Qids.
+
+## Deferred attach / Отложенный attach (runtime0.144)
+
+[Native deferred Rattach](DEFERRED.md) now preserves pending tag/fid until a
+reviewer signals the socket owner. Flush/reset/disconnect/shutdown retire the
+request before any later reply; no client retry or guest suspension is required.
+The original Inferno implementation and VFS TCP tests cover dedicated native
+review, pipe wakeup, cancellation, denied publication close and shutdown.

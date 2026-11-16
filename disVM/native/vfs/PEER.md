@@ -76,18 +76,20 @@ in `newclient`, admits a directory publication in `attach`, and releases it in
 per client, even if different providers return equal Qids. Each open still has
 its own `styxsetaux`/`styxgetaux` context.
 
-The current original `Styxops.attach` callback is synchronous and returns a
-directory Qroot. This fixture tests synchronous native preparation over TCP.
-The peer API also supports deferred owner review without waiting, running a
-guest or pausing a guest. Its pending result is not yet a deferred Rattach:
-a service using the current callback must return a bounded pending error and
-arrange native completion/retry handling. No Limbo polling loop is required by
-this API. Seamless asynchronous Rattach, transport authentication, a complete
-mount/client service and a per-file protocol root remain separate work.
+Runtime0.144 adds [deferred Rattach and native readiness integration](DEFERRED.md).
+An attach callback can now explicitly defer with a native request handle. A separate
+native reviewer signals the socket owner, which sends the original-tag response
+without a client retry. Flush/reset/disconnect/shutdown cancel it first. Legacy
+callbacks remain synchronous; authentication and a general mount service are not
+provided by this adapter. The callback still returns a directory Qroot; projecting
+a single file as the protocol root remains separate work.
 
-Исходный `attach` libstyx синхронен и выдаёт каталог Qroot. Native API уже умеет
-сохранять pending-запрос без ожидания, но отложенный Rattach здесь ещё не реализован.
-Ни выполнение, ни остановка гостевого потока для подготовки не требуются.
+Native `styxpeercancel(peer)` cancels only its outstanding publication ticket,
+without generating a wire reply or dropping a previously selected root. The
+libstyx retirement callback uses it when the transaction is cancelled.
+
+Отложенный Rattach и native fd уведомления описаны в [DEFERRED.md](DEFERRED.md).
+Продвижение не зависит от Limbo polling и не приостанавливает guest-потоки.
 
 ## Acceptance / Проверки
 

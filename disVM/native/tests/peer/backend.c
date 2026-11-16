@@ -4,6 +4,7 @@
  */
 #include "peer_provider.h"
 #include "tree.h"
+#include "review.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,7 @@ struct Open
 };
 static DVM_Publication *publisher; /* Live fixture owner, consumed explicitly. */
 static DVM_Provider *sources[2]; /* Owned native roots, with deliberately equal IDs. */
+static int deferred; /* Test mode: prepare second native peer on a dedicated reviewer. */
 static int opens, closes, destroys, gates, notices; /* Serialized fixture counters. */
 extern int peerwire(void);
 static int authorize(void *, const DVM_ExportRequest *);
@@ -150,6 +152,10 @@ static int authorize(void *state, const DVM_ExportRequest *request)
 static int prepare(void *state, const DVM_ExportRequest *request, DVM_Provider **chosen)
 {
     (void)state;
+    if (deferred && !strcmp(request->peer, "slot-b"))
+    {
+        return 0;
+    }
     *chosen = sources[!strcmp(request->peer, "slot-b")];
     return dvm_provider_retain(*chosen) ? 1 : -1;
 }
@@ -277,29 +283,35 @@ StyxPeer *newpeer(unsigned slot)
  * Поглотить owner один раз; выданные roots/opens остаются доступны. */
 void closepublisher(void)
 {
+    reviewstop();
     dvm_publication_close(publisher);
     publisher = NULL;
+    reviewwake();
 }
 
 
 /* EN/RU: Run native oracle then real TCP attach against the same library bridge.
  * Выполнить native-проверки и настоящий TCP attach через тот же library bridge. */
-int main(void)
+int main(int argc, char **argv)
 {
     sources[0] = dvm_provider_create(&factory, "alpha");
     sources[1] = dvm_provider_create(&factory, "bravo");
     check(sources[0] && sources[1], "two factories");
     admissiontests();
     filetests();
+    deferred = argc > 1 && !strcmp(argv[1], "deferred");
     DVM_ExportOptions options = {0};
     options.limit = 8;
     options.flags = DVM_EXPORT_PREPARE;
     options.authorize = authorize;
     options.prepare = prepare;
+    options.notify = deferred ? reviewnotify : NULL;
     publisher = dvm_publication_create(&options);
     check(publisher != NULL, "TCP publication");
+    check(!deferred || reviewstart(publisher, sources[1]) == 0, "native reviewer");
     check(peerwire() == 0, "TCP server");
     closepublisher();
+    reviewend();
     dvm_provider_release(sources[0]);
     dvm_provider_release(sources[1]);
     check(opens == closes && opens >= 3 && destroys == 2, "all cursors/factories retired once");

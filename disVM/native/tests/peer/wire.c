@@ -13,6 +13,8 @@
 typedef struct Session Session;
 struct Session
 {
+    StyxAttach *request; /* Caller-owned delayed transaction until retirement callback. */
+    char *logical; /* Owned requested publication name while deferred. */
     StyxPeer *peer; /* Owned native admission, no packet credentials. */
     StyxBacking *root; /* Owned selected root. */
     StyxBacking *file; /* Owned visited fixture node; same Qid in every session. */
@@ -22,6 +24,9 @@ static unsigned serial; /* Test-only local slot selection, never authentication.
 static int stopping;
 extern StyxPeer *newpeer(unsigned slot);
 extern void closepublisher(void);
+extern int reviewfd(void);
+extern int reviewdrain(void);
+extern void reviewpermit(void);
 
 
 /* EN/RU: Borrow only the currently dispatched connection state.
@@ -60,6 +65,41 @@ static char *freeclient(Client *client)
 }
 
 
+/* EN/RU: Retire native admission before session destruction or fid/tag reuse.
+ * Убрать native admission до уничтожения session или повторного fid/tag. */
+static void endattach(void *aux)
+{
+    Session *state = aux;
+    styxpeercancel(state->peer);
+    styxattachfree(state->request);
+    state->request = nil;
+    free(state->logical);
+    state->logical = nil;
+}
+
+
+/* EN/RU: Complete ready native results only on pipe notification, without guest calls.
+ * Завершить готовые native results по pipe notification, без guest calls. */
+static void completepending(void)
+{
+    Client *client;
+    for(client = server.clients; client != nil; client = client->next){
+        Session *state = client->u;
+        StyxBacking *root;
+        int status;
+        if(!state || !state->request) continue;
+        status = styxpeerattach(state->peer, state->logical, 2, &root);
+        if(status == 0) continue;
+        if(status == 1){
+            styxbackingfree(state->root);
+            state->root = root;
+        }
+        /* endattach consumes the caller handle while the dispatcher still pins it. */
+        styxattachreply(state->request, status == 1 ? nil : Eperm);
+    }
+}
+
+
 /* EN/RU: uname is an untrusted hint; only the native peer can request a root.
  * uname — недоверенная подсказка; корень запрашивает только native peer. */
 static char *attach(char *uname, char *aname)
@@ -69,7 +109,18 @@ static char *attach(char *uname, char *aname)
     int status;
     USED(uname);
     status = styxpeerattach(state->peer, aname, 2, &root);
-    if(status != 1) return status == 0 ? "publication pending" : Eperm;
+    if(status == 0){
+        state->logical = strdup(aname);
+        if(state->logical) state->request = styxdeferattach(&server, state, endattach);
+        if(!state->request){
+            free(state->logical);
+            state->logical = nil;
+            styxpeercancel(state->peer);
+            return Enomem;
+        }
+        return nil;
+    }
+    if(status != 1) return Eperm;
     styxbackingfree(state->root);
     state->root = root;
     return nil;
@@ -130,7 +181,8 @@ static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 static char *writefile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
     if(qid.path != 3 || offset != 0) return Eperm;
-    if(*n == 5 && !memcmp(bytes, "close", 5)) closepublisher();
+    if(*n == 5 && !memcmp(bytes, "grant", 5)) reviewpermit();
+    else if(*n == 5 && !memcmp(bytes, "close", 5)) closepublisher();
     else if(*n == 4 && !memcmp(bytes, "stop", 4)) stopping = 1;
     else return Ebadarg;
     return nil;
@@ -155,7 +207,11 @@ int peerwire(void)
     ops.freefid = styxfileclose;
     if(styxinit(&server, &ops, "0", 0555, 0) != nil) return 1;
     if(getsockname(server.connfd, (struct sockaddr*)&address, &size) < 0) return 2;
+    if(reviewfd() >= 0 && styxnotifyfd(&server, reviewfd()) < 0) return 5;
     print("%d\n", ntohs(address.sin_port));
-    while(!stopping) if(styxwait(&server) != nil || styxprocess(&server) != nil) return 3;
+    while(!stopping){
+        if(styxwait(&server) != nil || styxprocess(&server) != nil) return 3;
+        if(reviewdrain()) completepending();
+    }
     return styxend(&server) == nil ? 0 : 4;
 }

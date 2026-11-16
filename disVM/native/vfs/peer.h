@@ -17,6 +17,12 @@ typedef struct StyxPeer StyxPeer; /* Exclusive native connection admission state
 int styxpeerattach(StyxPeer *peer, const char *name, unsigned kind, StyxBacking **root);
 
 
+/* EN/RU: Cancel only the outstanding admission ticket; keep an existing bound root.
+ * Owner-thread serialized; late owner reply refuses; no wire response is generated.
+ * Отменить только pending ticket; выбранный корень сохранить, wire-ответ не посылать. */
+void styxpeercancel(StyxPeer *peer);
+
+
 /* EN/RU: Consume peer, cancel pending request and release selected provider/endpoint.
  * Existing independently owned nodes/opens survive. NULL allowed; callers retired.
  * Поглотить peer и pending request; выданные nodes/opens живут дальше. */

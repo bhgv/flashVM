@@ -683,3 +683,11 @@ Runtime0.143 adds [per-connection native publication admission](../native/vfs/PE
 submit-only endpoints that safely outlive joined owner close, fixed trusted peer
 provenance and separately selected live roots. Native/TCP tests cover cancellation,
 file/directory kind checks, equal Qid isolation, reset and owner-close lifetime.
+
+## Deferred attach / Отложенный attach (runtime0.144)
+
+[Native deferred Rattach](../native/vfs/DEFERRED.md) now preserves pending tag/fid until a
+reviewer signals the socket owner. Flush/reset/disconnect/shutdown retire the
+request before any later reply; no client retry or guest suspension is required.
+The original Inferno implementation and VFS TCP tests cover dedicated native
+review, pipe wakeup, cancellation, denied publication close and shutdown.
