@@ -31,4 +31,19 @@ void styxmountcancelend(StyxMountCancel *binding);
 /* EN/RU: Diagnostic stat respects current cancellation; failed output stays untouched.
  * Diagnostic stat учитывает current cancellation; output при отказе не меняется. */
 int styxmountstat(StyxClient *client, StyxFid *fid, StyxMeta *output);
+
+/* EN/RU: Walk one pinned root-relative path under current native scope; owned fid/NULL.
+ * Пройти root-relative path под current native scope; свой fid/NULL, base optional/unopened. */
+StyxFid *styxmountwalkcancel(StyxClient *client, StyxFid *base, const char *path);
+
+
+/* EN/RU: Open borrowed serialized fid; original acknowledgement1/0, no implicit retry.
+ * Открыть borrowed serialized fid; original acknowledgement1/0, без retry. */
+int styxmountopen(StyxClient *client, StyxFid *fid, int mode);
+
+
+/* EN/RU: Consume owned fid under scope; setup refusal uses independent native cleanup.
+ * Поглотить fid под scope; setup refusal использует independent native cleanup. */
+void styxmountclunk(StyxClient *client, StyxFid *fid);
+
 #endif

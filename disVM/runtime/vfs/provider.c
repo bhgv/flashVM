@@ -19,10 +19,10 @@ typedef struct ProviderHandle
 
 /* EN/RU: See provider.h; ownership transfer occurs only after full allocation.
  * См. provider.h; владение передаётся после полного выделения. */
-DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root)
+DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root, unsigned native_flags)
 {
     DVM_Provider *provider;
-    if ((fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
+    if ((native_flags & ~DVM_PROVIDER_CANCEL_PATH) || (fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
     {
         return NULL;
     }
@@ -49,7 +49,24 @@ DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *stat
     provider->state = state;
     provider->capture = capture;
     provider->anchored = fixed_root;
+    provider->native_flags = native_flags;
     return provider;
+}
+
+
+/* EN/RU: See provider.h; old constructors do not infer new cancellation promises.
+ * См. provider.h; старые constructors не выводят новые cancellation promises. */
+DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root)
+{
+    return dvm_provider_create_native(ops, state, capture, fixed_root, 0);
+}
+
+
+/* EN/RU: See provider.h; immutable and safe under a borrowed live factory pin.
+ * См. provider.h; immutable под borrowed live factory pin. */
+unsigned dvm_provider_native_flags(DVM_Provider *provider)
+{
+    return provider ? provider->native_flags : 0;
 }
 
 
@@ -263,7 +280,7 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     handle->ops.list = handle->inner.ops->list ? wrapped_list : NULL;
     handle->ops.close = wrapped_close;
     handle->ops.abort_list = handle->inner.ops->abort_list ? wrapped_abort : NULL;
-    output->native_flags = handle->inner.native_flags & DVM_VFS_CANCEL_DATA;
+    output->native_flags = handle->inner.native_flags & DVM_VFS_CANCEL_MASK;
     output->ops = &handle->ops;
     output->state = handle;
     return FVM_OK;

@@ -397,23 +397,29 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
     static const DVM_ProviderOps stable = {info, open_view, destroy, DVM_PROVIDER_STABLE_BIND, access_check};
     static const DVM_ProviderOps dynamic = {info, open_view, destroy, 0, access_check};
     int identity = 1;
+    unsigned native_flags = DVM_PROVIDER_CANCEL_PATH;
     if (!view)
     {
         return NULL;
     }
     for (DVM_ViewRule *rule = view->rules; rule; rule = rule->next)
     {
+        if (rule->source)
+        {
+            native_flags &= dvm_provider_native_flags(rule->source);
+        }
         if (rule->source && !dvm_provider_bindable(rule->source))
         {
             identity = 0;
         }
     }
-    DVM_Provider *provider = dvm_provider_create_capture(identity ? &stable : &dynamic, view, dvm_view_capture, 0);
+    DVM_Provider *provider = dvm_provider_create_native(identity ? &stable : &dynamic, view, dvm_view_capture, 0, native_flags);
     if (!provider)
     {
         dvm_view_discard(view);
         return NULL;
     }
+    view->native_flags = native_flags;
     view->journal = dvm_provider_changes(provider);
     for (DVM_ViewRule *rule = view->rules; rule; rule = rule->next)
     {

@@ -34,6 +34,7 @@ struct DVM_View
     DVM_Changes *journal; /* Borrowed from live factory, cleared before factory destruction. */
     DVM_ViewRule *rules; /* Owned mappings. */
     size_t count; /* Number of mapping nodes, bounded by RULE_LIMIT. */
+    unsigned native_flags; /* Frozen conservative factory control-cancellation capabilities. */
     DVM_ViewPolicy policy; /* Optional per-operation policy, no VM callbacks. */
     void *context; /* Policy state owned until release. */
     void (*release)(void *); /* Final context cleanup outside namespace/provider locks. */

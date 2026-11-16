@@ -3,6 +3,7 @@
  * RU: Удерживаемые remote root fids для ordinary mount и native per-node bind capture.
  */
 #include "mount_internal.h"
+#include "mount_cancel.h"
 #include <string.h>
 
 
@@ -10,7 +11,7 @@
  * См. mount_internal.h; rooted mounts не возвращаются к client attach fid1. */
 StyxFid *styxmountwalk(struct Mount *mount, const char *relative)
 {
-    return mount->root ? styxclientwalkfrom(mount->root, relative) : styxclientwalk(mount->client, relative);
+    return styxmountwalkcancel(mount->client, mount->root, relative);
 }
 
 
@@ -19,9 +20,9 @@ StyxFid *styxmountwalk(struct Mount *mount, const char *relative)
 static DVM_Provider *create(StyxClient *client, StyxFid *root, unsigned access, int watch)
 {
     StyxMeta meta;
-    if (!root || !styxclientstat(root, &meta))
+    if (!root || !styxmountstat(client, root, &meta))
     {
-        styxclientclunk(root);
+        styxmountclunk(client, root);
         styxclientfree(client);
         return NULL;
     }
@@ -51,5 +52,5 @@ DVM_Provider *styxmountproviderat(StyxClient *client, const char *relative, unsi
         styxclientfree(client);
         return NULL;
     }
-    return create(client, styxclientwalk(client, relative), access, 1);
+    return create(client, styxmountwalkcancel(client, NULL, relative), access, 1);
 }

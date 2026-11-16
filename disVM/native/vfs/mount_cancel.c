@@ -72,3 +72,63 @@ int styxmountstat(StyxClient *client, StyxFid *fid, StyxMeta *output)
     styxmountcancelend(&binding);
     return success;
 }
+
+
+/* EN/RU: See mount_cancel.h; each logical walk uses one fresh token across fragments.
+ * См. mount_cancel.h; logical walk использует fresh token на все fragments. */
+StyxFid *styxmountwalkcancel(StyxClient *client, StyxFid *base, const char *path)
+{
+    StyxMountCancel binding;
+    if (!styxmountcancel(client, &binding))
+    {
+        return NULL;
+    }
+    StyxTransfer result;
+    StyxFid *fid = binding.token ?
+        (base ? styxclientwalkfromcancel(base, path, binding.token, &result) : styxclientwalkcancel(client, path, binding.token, &result)) :
+        (base ? styxclientwalkfrom(base, path) : styxclientwalk(client, path));
+    styxmountcancelend(&binding);
+    return fid;
+}
+
+
+/* EN/RU: See mount_cancel.h; acknowledged Ropen remains authoritative during cancellation races.
+ * См. mount_cancel.h; acknowledged Ropen приоритетен при cancellation races. */
+int styxmountopen(StyxClient *client, StyxFid *fid, int mode)
+{
+    StyxMountCancel binding;
+    if (!styxmountcancel(client, &binding))
+    {
+        return 0;
+    }
+    StyxTransfer result;
+    int success = binding.token ? styxclientopencancel(fid, mode, binding.token, &result) : styxclientopen(fid, mode);
+    styxmountcancelend(&binding);
+    return success;
+}
+
+
+/* EN/RU: See mount_cancel.h; late cancellation cannot force an uninterruptible cleanup RPC.
+ * См. mount_cancel.h; late cancellation не вызывает uninterruptible cleanup RPC. */
+void styxmountclunk(StyxClient *client, StyxFid *fid)
+{
+    if (!fid)
+    {
+        return;
+    }
+    StyxMountCancel binding;
+    if (!styxmountcancel(client, &binding))
+    {
+        styxclientclunklater(fid);
+        return;
+    }
+    if (binding.token)
+    {
+        styxclientclunkcancel(fid, binding.token);
+    }
+    else
+    {
+        styxclientclunk(fid);
+    }
+    styxmountcancelend(&binding);
+}

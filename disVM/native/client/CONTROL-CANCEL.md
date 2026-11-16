@@ -130,3 +130,8 @@ amd64. These results do not claim guest cancellation wiring or other platforms.
 Runtime0.157 connects [provider data I/O cancellation](../vfs/DATA-CANCEL.md) to
 guest cancelwait/killwait through native operation scopes. Guest open/stat/bind
 acquisition remains separate; failure-probe Tstat inside a data scope is cancellable.
+
+
+Runtime0.158 adds [mounted-provider control scopes](../vfs/CONTROL-WAITS.md) and
+consuming `styxclientclunkcancel`/`styxclientclunklater` cleanup. Guest path/open
+and held-fid metadata/seek now opt in explicitly; directory enumeration remains separate.

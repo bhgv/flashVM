@@ -12,6 +12,7 @@
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "file_gate.h"
+#include "vfs/native_wait.h"
 #include "file_port.h"
 #include "io_buffer.h"
 #include "file_slots.h"
@@ -67,7 +68,9 @@ void Sys_seek(void *frame)
             ptradd(D2H(call.fd));
             Setmark(D2H(call.fd));
             dvm_managed_workers_file_call();
-            released = dvm_file_gate_try_release(gate, &ticket);
+            DVM_VfsWait *operation = NULL;
+            released = resource->native_flags & DVM_VFS_CANCEL_SEEK ?
+                dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
             if (released < 0)
             {
                 ptrdel(D2H(call.fd));
@@ -81,6 +84,7 @@ void Sys_seek(void *frame)
                 fprintf(stderr, "disvm: native seek admission lost\n");
                 exit(1);
             }
+            int cancelled = dvm_vfs_wait_end(operation);
             dvm_runtime_gc_native_enter(released);
             ptrdel(D2H(call.fd));
             if (status == FVM_OK)
@@ -89,7 +93,7 @@ void Sys_seek(void *frame)
             }
             else
             {
-                kwerrstr("file seek failed");
+                kwerrstr(cancelled ? "native seek cancelled" : "file seek failed");
             }
         }
     }

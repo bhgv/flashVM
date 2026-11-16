@@ -18,6 +18,7 @@ struct DVM_Provider
     void *state; /* Owned native factory state. */
     DVM_Changes *changes; /* Owned local invalidation journal. */
     DVM_ProviderCapture capture; /* Optional immutable native node-capture callback. */
+    unsigned native_flags; /* Immutable native control-operation cancellation promises. */
     int anchored; /* Dot names a fixed captured root; descendants still require capture. */
     DVM_Provider *origin; /* Owned source keeps its feed/policy alive, never a child backlink. */
     DVM_NoticeTap *origin_tap; /* Owned invalidation bridge, detached before source release. */

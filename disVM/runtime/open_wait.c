@@ -7,7 +7,10 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "kernel.h"
 #include "open_wait.h"
+#include "vfs/path_cancel.h"
+#include "vfs/native_wait.h"
 #include "runtime_gc.h"
 #include "channel_sync.h"
 #include "vfs/guest.h"
@@ -83,7 +86,9 @@ static FVM_Result open_result(const char *path,
         peak = staging;
     }
     fvm_port_registry_unlock();
-    released = asynchronous ? dvm_runtime_gc_native_try_leave() : 0;
+    DVM_VfsWait *operation = NULL;
+    released = !asynchronous ? 0 : dvm_path_cancellable(selected) ?
+        dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
     if (released < 0)
     {
         fvm_port_registry_lock();
@@ -94,7 +99,8 @@ static FVM_Result open_result(const char *path,
         {
             dvm_resource_close(&local);
         }
-        return FVM_OUT_OF_MEMORY;
+        kwerrstr(released == -2 ? "native open cancelled" : "native open admission unavailable");
+        return FVM_ERROR;
     }
     if (selected)
     {
@@ -130,6 +136,7 @@ static FVM_Result open_result(const char *path,
     {
         status = fvm_port_file_open(snapshot, mode, file);
     }
+    int cancelled = dvm_vfs_wait_end(operation);
     if (asynchronous)
     {
         dvm_runtime_gc_native_enter(released);
@@ -143,6 +150,10 @@ static FVM_Result open_result(const char *path,
     if (owns)
     {
         dvm_resource_close(&local);
+    }
+    if (status != FVM_OK && cancelled)
+    {
+        kwerrstr("native open cancelled");
     }
     return status;
 }

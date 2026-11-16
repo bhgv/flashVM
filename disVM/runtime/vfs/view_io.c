@@ -257,7 +257,12 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
             dvm_vfs_close(&stream->inner);
         }
     }
-    output->native_flags = directory ? 0 : stream->inner.native_flags & DVM_VFS_CANCEL_DATA;
+    output->native_flags = stream->inner.native_flags & (directory ? DVM_VFS_CANCEL_INFO : DVM_VFS_CANCEL_MASK);
+    if (stream->projected)
+    {
+        output->native_flags = (output->native_flags & ~DVM_VFS_CANCEL_INFO) |
+            (view->native_flags & DVM_PROVIDER_CANCEL_PATH ? DVM_VFS_CANCEL_INFO : 0);
+    }
     output->ops = &ops;
     output->state = stream;
     return FVM_OK;

@@ -381,3 +381,12 @@ Guest cancelwait/killwait reaches Tflush without guest callbacks or debug pauses
 Acknowledged prefixes survive; readn never starts a fresh chunk after cancellation.
 Legacy providers retain their boundary. SDK handle consumers must rebuild.
 Guest open/directory/control cancellation remains separate integration.
+
+
+## Cancellable provider open/metadata / Отмена open/metadata (runtime0.158)
+
+[Control-operation scopes and API](vfs/CONTROL-WAITS.md) extend guest cancelwait/killwait to
+opt-in path/open, held-fid fstat and seek. Native Styx walk/stat/open/clunk chains
+use fresh tokens under one source scope. Acknowledgements survive; cancelled
+union/MAUTORWX lookup never probes lower providers. Callback tables and guest
+Sys ABI stay unchanged. Directory enumeration/bind/capture remain separate.

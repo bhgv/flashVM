@@ -127,3 +127,8 @@ remain regressions. A private relink removing only the readn cancellation stop
 issues a second provider chunk; the independent fixture counter rejects it.
 Production objects are unchanged by this negative control. Native ASan/UBSan uses `detect_leaks=0` on Linux amd64;
 these tests do not claim execution on other platforms.
+
+
+Runtime0.158 adds [guest open/stat/fstat/seek cancellation](CONTROL-WAITS.md),
+including source-scoped temporary-fid cleanup and stopped union fallback.
+Directory enumeration and capture/bind acquisition remain separate.

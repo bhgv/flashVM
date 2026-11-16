@@ -7,6 +7,8 @@
 #include "handle.h"
 #include "anchor_port.h"
 #include "changes.h"
+
+#define DVM_PROVIDER_CANCEL_PATH 1U /* Native factory info/open/access consume current cancellation scope. */
 #define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
@@ -45,6 +47,17 @@ DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state);
  * Existing ProviderOps layout/flag values are unchanged; callback code lives through destroy.
  * Как create с optional capture callback; state принят только при успехе, ProviderOps ABI прежний. */
 DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root);
+
+
+/* EN/RU: Like create_capture, with immutable native_flags (DVM_PROVIDER_CANCEL_PATH).
+ * Adopt state only on success; existing callback-table layout stays unchanged.
+ * Как create_capture с immutable native_flags; state принят только при успехе. */
+DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root, unsigned native_flags);
+
+
+/* EN/RU: Borrow retained factory; immutable native capabilities/0, no I/O or authority.
+ * Заимствовать retained factory; immutable native capabilities/0, без I/O/authority. */
+unsigned dvm_provider_native_flags(DVM_Provider *provider);
 
 
 /* EN/RU: Does this retained provider support per-node capture? No I/O or authority grant.

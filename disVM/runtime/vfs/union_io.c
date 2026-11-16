@@ -3,6 +3,7 @@
  * RU: Выбор union ветви и независимые объединённые directory cursors.
  */
 #include "internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,22 +33,29 @@ void dvm_union_choose(DVM_ResourcePlan *root, DVM_ResourcePlan *choice)
 }
 
 
-/* EN/RU: See resource.h; metadata lookup precedes open, never retry failed writes.
- * См. resource.h; metadata lookup до open; failed write не повторяется ниже. */
-FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
+/* EN/RU: Select one route, optionally returning its acknowledged metadata without a second lookup.
+ * Borrow plan/output, preserve output on failure; creating may select only a live uncancelled candidate.
+ * Выбрать route и optional acknowledged metadata без повторного lookup; plan/output borrowed;
+ * failure сохраняет output, creating выбирает только uncancelled candidate. */
+static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInfo *output)
 {
     DVM_ResourcePlan *choice, *create = NULL;
     FVM_FileInfo info;
     if (plan->selected)
     {
-        return FVM_OK;
+        return output ? dvm_resource_raw_info(plan, output) : FVM_OK;
     }
     if ((plan->policy & DVM_NS_AUTORWX) && plan->requested_access)
     {
-        return dvm_union_auto_select(plan, creating);
+        FVM_Result status = dvm_union_auto_select(plan, creating);
+        return status == FVM_OK && output ? dvm_resource_raw_info(plan, output) : status;
     }
     for (choice = plan; choice; choice = choice->layers)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            return FVM_ERROR;
+        }
         if (!create && (!choice->layer_id || (choice->mount_flags & DVM_NS_CREATE)))
         {
             create = choice;
@@ -60,8 +68,16 @@ FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
             {
                 plan->union_root = 0;
             }
+            if (output)
+            {
+                *output = info;
+            }
             return FVM_OK;
         }
+    }
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
     }
     if (creating && create)
     {
@@ -72,12 +88,19 @@ FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
 }
 
 
+/* EN/RU: See resource.h; ordinary selection performs no extra metadata query after an acknowledgement.
+ * См. resource.h; ordinary selection не повторяет metadata query после acknowledgement. */
+FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
+{
+    return select_entry(plan, creating, NULL);
+}
+
+
 /* EN/RU: Preserve output on lookup refusal; selected metadata belongs to one branch.
  * Сохранить output при отказе; metadata относится к одной selected ветви. */
 FVM_Result dvm_union_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
 {
-    FVM_Result status = dvm_union_select(plan, 0);
-    return status == FVM_OK ? dvm_resource_raw_info(plan, output) : status;
+    return output ? select_entry(plan, 0, output) : FVM_INVALID_ARGUMENT;
 }
 
 
@@ -239,6 +262,7 @@ FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
         union_close(cursor);
         return status;
     }
+    output->native_flags = cursor->header.native_flags & DVM_VFS_CANCEL_INFO;
     output->ops = &union_ops;
     output->state = cursor;
     return FVM_OK;

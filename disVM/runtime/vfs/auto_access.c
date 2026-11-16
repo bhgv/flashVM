@@ -3,6 +3,7 @@
  * RU: Явный MAUTORWX selection по effective backend permissions операции.
  */
 #include "internal.h"
+#include "cancel.h"
 #include <string.h>
 
 
@@ -12,6 +13,10 @@
  * Native blocking outside managed admission and namespace locks; return port status. */
 static FVM_Result permitted(DVM_ResourcePlan *choice, const char *relative, unsigned access)
 {
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
     if (choice->provider)
     {
         return dvm_provider_access(choice->provider, relative, access);
@@ -71,7 +76,15 @@ FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating)
     }
     for (choice = plan; choice; choice = choice->layers)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            return FVM_ERROR;
+        }
         int exists = dvm_resource_raw_info(choice, &info) == FVM_OK;
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            return FVM_ERROR;
+        }
         if (creating)
         {
             if (!creatable(choice) || (exists && info.directory))

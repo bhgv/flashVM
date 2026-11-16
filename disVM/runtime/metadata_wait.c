@@ -12,6 +12,8 @@
 #include "kernel.h"
 #include "raise.h"
 #include "metadata_wait.h"
+#include "vfs/path_cancel.h"
+#include "vfs/native_wait.h"
 #include "filesystem_sys.h"
 #include "io_buffer.h"
 #include "file_slots.h"
@@ -80,7 +82,8 @@ static FVM_Result selected_info(const char *path, DVM_ResourcePlan *plan, FVM_Fi
         peak_staging = staging;
     }
     fvm_port_registry_unlock();
-    released = dvm_runtime_gc_native_try_leave();
+    DVM_VfsWait *operation = NULL;
+    released = dvm_path_cancellable(plan) ? dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
     if (released < 0)
     {
         fvm_port_registry_lock();
@@ -90,6 +93,7 @@ static FVM_Result selected_info(const char *path, DVM_ResourcePlan *plan, FVM_Fi
         return admission_failure(released, "native path metadata");
     }
     status = plan ? dvm_resource_info(plan, output) : fvm_port_path_info(snapshot, output);
+    int cancelled = dvm_vfs_wait_end(operation);
     dvm_runtime_gc_native_enter(released);
     fvm_port_registry_lock();
     paths++;
@@ -99,7 +103,7 @@ static FVM_Result selected_info(const char *path, DVM_ResourcePlan *plan, FVM_Fi
     free(snapshot);
     if (status != FVM_OK)
     {
-        kwerrstr(status == FVM_UNSUPPORTED ? "unsupported filesystem path or metadata" : "file stat failed");
+        kwerrstr(cancelled ? "native path metadata cancelled" : status == FVM_UNSUPPORTED ? "unsupported filesystem path or metadata" : "file stat failed");
     }
     return status;
 }
@@ -159,7 +163,9 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
     fvm_port_registry_unlock();
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
-    released = dvm_file_gate_try_release(gate, &ticket);
+    DVM_VfsWait *operation = NULL;
+    released = resource->native_flags & DVM_VFS_CANCEL_INFO ?
+        dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
     if (released < 0)
     {
         ptrdel(D2H(fd));
@@ -174,6 +180,7 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
         fprintf(stderr, "disvm: native metadata admission lost\n");
         exit(1);
     }
+    int cancelled = dvm_vfs_wait_end(operation);
     dvm_runtime_gc_native_enter(released);
     fvm_port_registry_lock();
     descriptors++;
@@ -185,7 +192,7 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
     fvm_port_registry_unlock();
     if (status != FVM_OK)
     {
-        kwerrstr("fstat requires a live ordinary file or directory");
+        kwerrstr(cancelled ? "native fstat cancelled" : "fstat requires a live ordinary file or directory");
     }
     return status;
 }

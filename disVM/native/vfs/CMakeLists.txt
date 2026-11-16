@@ -253,3 +253,13 @@ foreach(operation read write)
         "$<TARGET_FILE:vfs-cancel-mount>" "$<TARGET_FILE:control-cancel-server>" "${operation}" cancel)
     set_tests_properties(vfs-cancel-${operation}-raw PROPERTIES TIMEOUT 30 ENVIRONMENT "STYX_VFS_RAW=1")
 endforeach()
+
+add_executable(vfs-cancel-control ../tests/cancel/control.c)
+target_link_libraries(vfs-cancel-control PRIVATE styx_vfs)
+foreach(operation pathstat pathopen fdstat seek cleanup)
+    foreach(mode success cancel race racefail precancel timeout)
+        add_test(NAME vfs-control-${operation}-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+            "$<TARGET_FILE:vfs-cancel-control>" "$<TARGET_FILE:control-cancel-server>" "${operation}" "${mode}")
+        set_tests_properties(vfs-control-${operation}-${mode} PROPERTIES TIMEOUT 30)
+    endforeach()
+endforeach()

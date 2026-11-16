@@ -238,6 +238,7 @@ FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
         close_directory(cursor);
         return status;
     }
+    out->native_flags = cursor->inner.native_flags & DVM_VFS_CANCEL_INFO;
     out->ops = &operations;
     out->state = cursor;
     return FVM_OK;

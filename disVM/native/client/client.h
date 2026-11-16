@@ -240,4 +240,18 @@ int styxclientrecord(const void *bytes, size_t size, StyxMeta *output, size_t *c
 /* EN/RU: Consume one fid, clunk if transport usable, then drop its connection pin.
  * Поглотить fid, clunk если transport пригоден; NULL допустим. */
 void styxclientclunk(StyxFid *fid);
+
+/* EN/RU: Consume owned fid always; cancellable Tclunk on fd-owner, async cleanup on legacy.
+ * An unacknowledged request schedules one independent best-effort cleanup; never reuses fid numbers.
+ * Caller serializes/pins fid before transfer. Token is borrowed single-use, NULL keeps deadline.
+ * Поглотить fid всегда; fd-owner Tclunk отменяем, legacy cleanup async; без Rclunk
+ * один independent best-effort cleanup. Token borrowed single-use, NULL оставляет deadline. */
+void styxclientclunkcancel(StyxFid *fid, StyxCancel *cancel);
+
+
+/* EN/RU: Consume fid without RPC wait; native worker owns client/number only.
+ * Setup failure fails the connection, never leaks caller ownership or waits for a guest.
+ * Поглотить fid без RPC wait; worker владеет client/number; setup failure завершает connection. */
+void styxclientclunklater(StyxFid *fid);
+
 #endif

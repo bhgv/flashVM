@@ -3,6 +3,7 @@
  * RU: Обычная VFS mount factory над удержанными native client capabilities.
  */
 #include "mount_internal.h"
+#include "mount_cancel.h"
 #include "control/internal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -48,8 +49,8 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     }
     StyxFid *fid = styxmountwalk(mount, path);
     StyxMeta meta;
-    int success = fid && styxclientstat(fid, &meta) && (!mount->file_root || !meta.directory);
-    styxclientclunk(fid);
+    int success = fid && styxmountstat(mount->client, fid, &meta) && (!mount->file_root || !meta.directory);
+    styxmountclunk(mount->client, fid);
     if (success)
     {
         styxmountmeta(mount, &meta, out);
@@ -83,7 +84,7 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
     opened->mount = mount;
     opened->fid = styxmountwalk(mount, path);
     StyxMeta meta;
-    if (!opened->fid || !styxclientstat(opened->fid, &meta) || (mount->file_root && meta.directory))
+    if (!opened->fid || !styxmountstat(mount->client, opened->fid, &meta) || (mount->file_root && meta.directory))
     {
         goto failed;
     }
@@ -100,16 +101,17 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
             goto failed;
         }
     }
-    if (!styxclientopen(opened->fid, how))
+    if (!styxmountopen(mount->client, opened->fid, how))
     {
         goto failed;
     }
-    out->native_flags = !meta.directory && styxclientcancellable(mount->client) ? DVM_VFS_CANCEL_DATA : 0;
+    out->native_flags = styxclientcancellable(mount->client) ?
+        DVM_VFS_CANCEL_INFO | (meta.directory ? 0 : DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK) : 0;
     out->ops = &styxmountedops;
     out->state = opened;
     return FVM_OK;
 failed:
-    styxclientclunk(opened->fid);
+    styxmountclunk(mount->client, opened->fid);
     free(opened->records);
     free(opened);
     return FVM_ERROR;
@@ -150,14 +152,14 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
     }
     if (!client || !access || (access & ~FVM_ACCESS_MASK) || (config && !(access & FVM_ACCESS_READ)))
     {
-        styxclientclunk(root);
+        styxmountclunk(client, root);
         styxclientfree(client);
         return NULL;
     }
     struct Mount *mount = calloc(1, sizeof(*mount));
     if (!mount)
     {
-        styxclientclunk(root);
+        styxmountclunk(client, root);
         styxclientfree(client);
         return NULL;
     }
@@ -166,7 +168,7 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
         mount->rootlife = styxmountrootlife(root);
         if (!mount->rootlife)
         {
-            styxclientclunk(root);
+            styxmountclunk(client, root);
             styxclientfree(client);
             free(mount);
             return NULL;
@@ -176,7 +178,8 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
     mount->client = client;
     mount->access = access;
     mount->file_root = root ? !directory : styxclientrootdirectory(client) == 0;
-    DVM_Provider *provider = dvm_provider_create_capture(mount->file_root ? &fileoperations : &operations, mount, styxmountcapture, root != NULL);
+    DVM_Provider *provider = dvm_provider_create_native(mount->file_root ? &fileoperations : &operations, mount, styxmountcapture, root != NULL,
+        styxclientcancellable(client) ? DVM_PROVIDER_CANCEL_PATH : 0);
     if (!provider)
     {
         destroy(mount);

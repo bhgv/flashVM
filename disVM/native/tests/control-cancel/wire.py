@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118}[operation]
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120}[operation]
     required = 2 if operation == 'walk' and mode != 'first' else 1
     shared = {}
     lock = threading.Lock()
@@ -159,7 +159,7 @@ def main():
         active = [(kind, packet) for kind, packet, phase in requests if phase]
         walks = [struct.unpack_from('<H', packet, 15)[0] for kind, packet in active if kind == 110]
         expected = [] if mode == 'precancel' or operation != 'walk' else [2] if mode == 'partial' else [16] if mode in ('first', 'stepfail', 'between') else [16, 1 if mode.startswith('from-') else 2]
-        if walks != expected:
+        if operation in ('walk', 'open', 'stat', 'read', 'write') and walks != expected:
             raise RuntimeError(f'logical walk fragments/replay mismatch: {walks} != {expected}')
         if operation == 'open':
             opens = sum(kind == 112 for kind, _ in active)
