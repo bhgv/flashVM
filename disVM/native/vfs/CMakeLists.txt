@@ -3,14 +3,14 @@
 # RU: Явные неграфические VFS/FlashVM ports; без второй библиотеки lib9.
 set(vfs "${INFERNO_VFS_SUPPORT}/disVM/runtime/vfs")
 set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
-if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
+if(NOT EXISTS "${vfs}/cancel.c" OR NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
-add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_capture.c mount_root.c mount_io.c mount_notice.c
+add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_capture.c mount_root.c mount_cancel.c mount_io.c mount_notice.c
     feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
     subscriptions/lifetime.c subscriptions/open.c
-    "${vfs}/provider.c" "${vfs}/provider_capture.c" "${vfs}/handle.c" "${vfs}/io_result.c"
+    "${vfs}/cancel.c" "${vfs}/provider.c" "${vfs}/provider_capture.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
     "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_capture.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
     "${ports}/file_port.c" "${ports}/linux/filesystem.c" "${ports}/linux/channel_sync.c")
@@ -236,3 +236,20 @@ add_test(NAME vfs-subroot-retire COMMAND vfs-subroot-retire)
 set_tests_properties(vfs-subroot-retire PROPERTIES TIMEOUT 10)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/cases.cmake")
+
+add_executable(vfs-cancel-scope ../tests/cancel/scope.c)
+target_link_libraries(vfs-cancel-scope PRIVATE styx_vfs)
+add_test(NAME vfs-cancel-scope COMMAND vfs-cancel-scope)
+set_tests_properties(vfs-cancel-scope PROPERTIES TIMEOUT 15)
+add_executable(vfs-cancel-mount ../tests/cancel/mount.c)
+target_link_libraries(vfs-cancel-mount PRIVATE styx_vfs)
+foreach(operation read write)
+    foreach(mode success cancel race racefail precancel timeout)
+        add_test(NAME vfs-cancel-${operation}-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+            "$<TARGET_FILE:vfs-cancel-mount>" "$<TARGET_FILE:control-cancel-server>" "${operation}" "${mode}")
+        set_tests_properties(vfs-cancel-${operation}-${mode} PROPERTIES TIMEOUT 30)
+    endforeach()
+    add_test(NAME vfs-cancel-${operation}-raw COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+        "$<TARGET_FILE:vfs-cancel-mount>" "$<TARGET_FILE:control-cancel-server>" "${operation}" cancel)
+    set_tests_properties(vfs-cancel-${operation}-raw PROPERTIES TIMEOUT 30 ENVIRONMENT "STYX_VFS_RAW=1")
+endforeach()

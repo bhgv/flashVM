@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between')
-    kind = {'walk': 110, 'open': 112, 'stat': 124}[operation]
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118}[operation]
     required = 2 if operation == 'walk' and mode != 'first' else 1
     shared = {}
     lock = threading.Lock()
@@ -167,6 +167,14 @@ def main():
                 raise RuntimeError(f'Topen replay/missing safe retry: {opens}')
         if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between') and not any(kind == 108 for kind, _ in active):
             raise RuntimeError('control cancellation did not use Tflush')
+        if operation in ('read', 'write'):
+            data_kind = 116 if operation == 'read' else 118
+            count = sum(kind == data_kind for kind, _ in active)
+            if count != (0 if mode == 'precancel' else 1):
+                raise RuntimeError(f'provider data replay/missing acknowledgement: {count}')
+            probes = sum(kind == 124 for kind, _ in active)
+            if probes != (1 if mode == 'timeout' else 0):
+                raise RuntimeError(f'provider failure-only Tstat mismatch: {probes}')
         print(f'PASS real original-codec control cancellation: {operation} {mode}')
     finally:
         for child in (client, server):

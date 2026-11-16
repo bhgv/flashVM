@@ -91,6 +91,7 @@ int dvm_vfs_adopt(DVM_VfsHandle *out, FVM_PortFile *file, FVM_PortDirectory *dir
     }
     memset(&out->last_io, 0, sizeof(out->last_io));
     out->io_valid = 0;
+    out->native_flags = 0;
     out->ops = file ? &file_ops : directory ? &directory_ops : NULL;
     out->state = file ? (void *)file : (void *)directory;
     return 1;

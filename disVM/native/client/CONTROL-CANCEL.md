@@ -125,3 +125,8 @@ the independent wire counter rejects that replay even when the server returns an
 error. The production objects are unchanged by this negative control.
 The native suites run normally and with ASan/UBSan (`detect_leaks=0`) on Linux
 amd64. These results do not claim guest cancellation wiring or other platforms.
+
+
+Runtime0.157 connects [provider data I/O cancellation](../vfs/DATA-CANCEL.md) to
+guest cancelwait/killwait through native operation scopes. Guest open/stat/bind
+acquisition remains separate; failure-probe Tstat inside a data scope is cancellable.

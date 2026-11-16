@@ -224,11 +224,12 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
         return FVM_UNSUPPORTED;
     }
     FVM_Result status = dvm_view_info(view, path, &metadata);
-    if (status == FVM_OK && metadata.directory)
+    int directory = status == FVM_OK && metadata.directory;
+    if (directory)
     {
         access |= FVM_ACCESS_EXEC;
     }
-    int virtual_parent = status == FVM_OK && metadata.directory && dvm_view_children(view, path);
+    int virtual_parent = directory && dvm_view_children(view, path);
     int route = dvm_view_route(view, path, access, &rule, relative);
     if (!route)
     {
@@ -256,6 +257,7 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
             dvm_vfs_close(&stream->inner);
         }
     }
+    output->native_flags = directory ? 0 : stream->inner.native_flags & DVM_VFS_CANCEL_DATA;
     output->ops = &ops;
     output->state = stream;
     return FVM_OK;

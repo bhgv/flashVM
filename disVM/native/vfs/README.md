@@ -200,3 +200,13 @@ publishes into the mount journal without guest progress. Health and remote sourc
 generations are independently rebased with atomic local append. Watch admission
 keeps ordinary RPC capacity; provider destruction stops without waiting for Rflush
 or decoder return. Discovery and a standard record codec remain separate work.
+
+
+## Provider data cancellation / Отмена provider I/O (runtime0.157)
+
+[FD-to-Styx data cancellation](DATA-CANCEL.md) keeps an opt-in native operation
+registered through admitted read/write, including prepared views and zero writes.
+Guest cancelwait/killwait reaches Tflush without guest callbacks or debug pauses.
+Acknowledged prefixes survive; readn never starts a fresh chunk after cancellation.
+Legacy providers retain their boundary. SDK handle consumers must rebuild.
+Guest open/directory/control cancellation remains separate integration.

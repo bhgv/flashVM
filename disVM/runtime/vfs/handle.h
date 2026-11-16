@@ -8,6 +8,8 @@
 #include "filesystem_port.h"
 #include "io_result.h"
 
+#define DVM_VFS_CANCEL_DATA 1U /* Native read/write consumes current cancel scope; not directory/control I/O. */
+
 
 /* EN/RU: Trusted immutable native callbacks. State is borrowed for each serialized
  * call; close consumes it. No managed access or guest callbacks are allowed.
@@ -37,6 +39,7 @@ typedef struct DVM_VfsHandle
     void *state; /* Exclusive native ownership, provider-defined; never a VM pointer. */
     DVM_IoResult last_io; /* Last synchronous chunk outcome under the existing caller FIFO. */
     int io_valid; /* Last outcome exists; clear with handle retirement/move source. */
+    unsigned native_flags; /* Immutable owned-handle capabilities; known mask DVM_VFS_CANCEL_DATA. */
 } DVM_VfsHandle;
 
 

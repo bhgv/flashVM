@@ -27,6 +27,8 @@
 #include "vmchannel.h"
 #include "file_port.h"
 #include "file_gate.h"
+#include "vfs/cancel.h"
+#include "vfs/native_wait.h"
 #include "file_slots.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"

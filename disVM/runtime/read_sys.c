@@ -17,6 +17,7 @@
 #include "channel_sync.h"
 #include "managed_workers.h"
 #include "file_gate.h"
+#include "vfs/native_wait.h"
 #include "io_buffer.h"
 #include "file_slots.h"
 #include <stddef.h>
@@ -152,6 +153,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         int released;
         int terminal = 0;
         int temporary = 0;
+        int cancelled = 0;
         DVM_FileTicket ticket;
         DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
         if (fragment > capacity)
@@ -174,7 +176,9 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         }
         else
         {
-            released = dvm_file_gate_try_release(gate, &ticket);
+            DVM_VfsWait *operation = NULL;
+            released = resource && (resource->native_flags & DVM_VFS_CANCEL_DATA) ?
+                dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
             if (released < 0)
             {
                 kwerrstr(released == -2 ? "native input cancelled" : "native input needs an executor");
@@ -188,12 +192,14 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
             status = outcome.status;
             terminal = outcome.stop == DVM_IO_EOF || (outcome.flags & DVM_IO_RECORD);
             temporary = outcome.stop == DVM_IO_AGAIN;
+            cancelled = outcome.stop == DVM_IO_CANCELLED;
             received = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
             if (!dvm_file_gate_leave(gate, &ticket))
             {
                 fprintf(stderr, "disvm: native file admission lost\n");
                 exit(1);
             }
+            cancelled |= dvm_vfs_wait_end(operation);
             dvm_runtime_gc_native_enter(released);
         }
         fvm_port_registry_lock();
@@ -201,7 +207,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         fvm_port_registry_unlock();
         if (status != FVM_OK && !received)
         {
-            kwerrstr(temporary ? "native input temporarily unavailable" : "native input failed");
+            kwerrstr(cancelled ? "native input cancelled" : temporary ? "native input temporarily unavailable" : "native input failed");
             if (!result)
             {
                 result = -1;
@@ -238,10 +244,10 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         }
         if (status != FVM_OK)
         {
-            kwerrstr("native input stopped after partial progress");
+            kwerrstr(cancelled ? "native input cancelled after partial progress" : "native input stopped after partial progress");
             break;
         }
-        if (!complete || terminal)
+        if (!complete || terminal || cancelled)
         {
             break;
         }

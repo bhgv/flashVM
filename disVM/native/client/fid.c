@@ -27,3 +27,11 @@ int styxclientrootdirectory(StyxClient *client)
 {
     return !client || (client->root.type & QTAUTH) ? -1 : (client->root.type & QTDIR) != 0;
 }
+
+
+/* EN/RU: See client.h; construction fixes transport kind for the client lifetime.
+ * См. client.h; construction фиксирует transport kind до конца client lifetime. */
+int styxclientcancellable(StyxClient *client)
+{
+    return client && client->mux != NULL;
+}

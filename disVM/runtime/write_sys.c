@@ -16,6 +16,7 @@
 #include "channel_sync.h"
 #include "managed_workers.h"
 #include "file_gate.h"
+#include "vfs/native_wait.h"
 #include "io_buffer.h"
 #include "file_slots.h"
 extern int dvm_runtime_stdio_duplex(int descriptor);
@@ -72,6 +73,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     FVM_Result status;
     WORD result = 0;
     int released;
+    int cancelled = 0;
     DVM_FileTicket ticket;
     DVM_FileGate *gate;
     volatile int fd_pinned = 0;
@@ -103,7 +105,9 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         }
         ptradd(D2H(fd));
         Setmark(D2H(fd));
-        released = dvm_file_gate_try_release(gate, &ticket);
+        DVM_VfsWait *operation = NULL;
+        released = resource && (resource->native_flags & DVM_VFS_CANCEL_DATA) ?
+            dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
         if (released < 0)
         {
             ptrdel(D2H(fd));
@@ -116,8 +120,13 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             fprintf(stderr, "disvm: zero-write file admission lost\n");
             exit(1);
         }
+        dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
         ptrdel(D2H(fd));
+        if (status != FVM_OK && outcome.stop == DVM_IO_CANCELLED)
+        {
+            kwerrstr("native output cancelled");
+        }
         return status == FVM_OK ? 0 : -1;
     }
     capacity = (size_t)extent < WRITE_STAGE_BYTES ? (size_t)extent : WRITE_STAGE_BYTES;
@@ -180,7 +189,9 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     }
     else
     {
-        released = dvm_file_gate_try_release(gate, &ticket);
+        DVM_VfsWait *operation = NULL;
+        released = resource && (resource->native_flags & DVM_VFS_CANCEL_DATA) ?
+            dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
         if (released < 0)
         {
             kwerrstr(released == -2 ? "native output cancelled" : "native output needs an executor");
@@ -190,11 +201,13 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         DVM_IoResult outcome = dvm_vfs_write_chunk(resource, stage, capacity);
         status = outcome.status;
         written = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
+        cancelled = outcome.stop == DVM_IO_CANCELLED;
         if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: native file admission lost\n");
             exit(1);
         }
+        dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
     }
     fvm_port_registry_lock();
@@ -202,7 +215,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     fvm_port_registry_unlock();
     if (status != FVM_OK)
     {
-        kwerrstr("native output failed%s", written ? " after partial progress" : "");
+        kwerrstr("native output %s%s", cancelled ? "cancelled" : "failed", written ? " after partial progress" : "");
     }
     if (status != FVM_OK && !written)
     {

@@ -59,10 +59,13 @@ static DVM_FileGate *stdio_gates[3];          /* Output aliases share an admissi
 static uint64_t channel_generation;           /* Queue/readiness epoch protected by the same mutex. */
 
 
+/* EN/RU: Native wait links only copied PID and source-owned native capabilities.
+ * Native wait связывает только copied PID и source-owned native capabilities. */
 typedef struct NativeGuestWait
 {
     int pid;                      /* Copied from the current guest before releasing NativeWorld. */
     int cancelled;                /* Protected by the queue mutex. */
+    DVM_Cancel *operation; /* Borrowed native data-cancel source through wait retirement. */
     DVM_FileGate *file_gate;      /* Borrowed through descriptor pin, or NULL. */
     int wake_fd;                  /* Owned by a pipe reader until it unlinks this record. */
     DVM_FileTicket *file_ticket;  /* Live caller storage through queue admission. */
@@ -75,14 +78,18 @@ static NativeGuestWait *native_guest_waits; /* Protected by the queue mutex. */
 static int cancel_guest_wait(NativeGuestWait *wait);
 
 
-/* Register the current guest before suspension and consume any pending cancellation. */
-static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
+/* EN/RU: Register copied current PID before release; gate/ticket/wake_fd and optional
+ * operation are borrowed through unlink. Consume pending cancel/kill before I/O.
+ * Зарегистрировать copied PID до release; native arguments borrowed до unlink;
+ * принять pending cancel/kill до I/O. Only source owner reads its Prog here. */
+static void native_guest_wait_begin_operation(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd, DVM_Cancel *operation)
 {
     Prog *process = dvm_native_context_process(dvm_native_context_current());
     size_t request;
 
     wait->pid = process ? process->pid : 0;
     wait->cancelled = 0;
+    wait->operation = operation;
     wait->file_gate = gate;
     wait->file_ticket = ticket;
     wait->wake_fd = wake_fd;
@@ -101,11 +108,26 @@ static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, D
     {
         cancel_guest_wait(wait);
     }
-    if (native_waits_stopping && gate && !wait->cancelled)
+    if (native_waits_stopping && !wait->cancelled)
     {
-        wait->cancelled = dvm_file_gate_cancel(gate, ticket);
+        if (operation)
+        {
+            cancel_guest_wait(wait);
+        }
+        else if (gate)
+        {
+            wait->cancelled = dvm_file_gate_cancel(gate, ticket);
+        }
     }
     fvm_port_sync_unlock(channel_queue_mutex);
+}
+
+
+/* EN/RU: Legacy queue/stream waits preserve their existing cancellation boundary.
+ * Legacy queue/stream waits сохраняют прежнюю cancellation boundary. */
+static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
+{
+    native_guest_wait_begin_operation(wait, gate, ticket, wake_fd, NULL);
 }
 
 
@@ -149,19 +171,25 @@ static int native_guest_wait_end(NativeGuestWait *wait, int released)
 }
 
 
-/* With the ledger locked, cancel only operations still queued for I/O.
- * File gates never call into the ledger while holding their own mutex. */
+/* EN/RU: Under ledger lock cancel queued tickets or opt-in admitted provider data.
+ * File gates/cancel callbacks must not reenter this ledger while holding native locks.
+ * Под ledger lock отменить queued tickets либо opt-in provider data;
+ * file gates/callbacks не входят повторно в ledger под своими native locks. */
 static int cancel_guest_wait(NativeGuestWait *wait)
 {
     if (wait->cancelled)
     {
         return 1;
     }
-    if (wait->file_gate && !dvm_file_gate_cancel(wait->file_gate, wait->file_ticket) && wait->wake_fd < 0)
+    if (wait->file_gate && !dvm_file_gate_cancel(wait->file_gate, wait->file_ticket) && wait->wake_fd < 0 && !wait->operation)
     {
         return 0;
     }
     wait->cancelled = 1;
+    if (wait->operation)
+    {
+        dvm_cancel_request(wait->operation);
+    }
     if (wait->wake_fd >= 0)
     {
         int status;

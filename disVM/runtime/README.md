@@ -806,3 +806,13 @@ with original-reply/Tflush fences. A long walk uses one logical token across
 fragments; abandoned fid cleanup never delays its cancelled caller. Unknown
 sent Topen state forbids open/data replay on that fid. Tstat output remains
 untouched on failure. This is native client API integration, not guest kill wiring.
+
+
+## Provider data cancellation / Отмена provider I/O (runtime0.157)
+
+[FD-to-Styx data cancellation](../native/vfs/DATA-CANCEL.md) keeps an opt-in native operation
+registered through admitted read/write, including prepared views and zero writes.
+Guest cancelwait/killwait reaches Tflush without guest callbacks or debug pauses.
+Acknowledged prefixes survive; readn never starts a fresh chunk after cancellation.
+Legacy providers retain their boundary. SDK handle consumers must rebuild.
+Guest open/directory/control cancellation remains separate integration.

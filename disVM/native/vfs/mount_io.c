@@ -3,6 +3,7 @@
  * RU: Remote opened-object I/O, directory batches и явное native cursor ownership.
  */
 #include "mount_internal.h"
+#include "mount_cancel.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ static FVM_Result info(void *state, FVM_FileInfo *out)
 {
     struct Mounted *opened = state;
     StyxMeta meta;
-    if (!styxclientstat(opened->fid, &meta))
+    if (!styxmountstat(opened->mount->client, opened->fid, &meta))
     {
         return FVM_ERROR;
     }
@@ -37,7 +38,24 @@ static void transfer(void *state, void *bytes, size_t size, int writing, DVM_IoR
     {
         return;
     }
-    if (writing)
+    StyxMountCancel cancel;
+    if (!styxmountcancel(opened->mount->client, &cancel))
+    {
+        out->status = FVM_OUT_OF_MEMORY;
+        return;
+    }
+    if (cancel.token)
+    {
+        if (writing)
+        {
+            styxclientwritecancel(opened->fid, opened->position, bytes, size, cancel.token, &result);
+        }
+        else
+        {
+            styxclientreadcancel(opened->fid, opened->position, bytes, size, cancel.token, &result);
+        }
+    }
+    else if (writing)
     {
         styxclientwrite(opened->fid, opened->position, bytes, size, &result);
     }
@@ -45,6 +63,7 @@ static void transfer(void *state, void *bytes, size_t size, int writing, DVM_IoR
     {
         styxclientread(opened->fid, opened->position, bytes, size, &result);
     }
+    styxmountcancelend(&cancel);
     out->count = result.count;
     out->flags = (result.confirmed ? DVM_IO_PREFIX : 0) | (result.uncertain ? DVM_IO_UNCERTAIN : 0);
     out->status = result.success ? FVM_OK : FVM_ERROR;
@@ -91,7 +110,7 @@ static FVM_Result seekfile(void *state, long offset, int origin, long *position)
     if (origin == FVM_FILE_SEEK_END)
     {
         StyxMeta meta;
-        if (!styxclientstat(opened->fid, &meta))
+        if (!styxmountstat(opened->mount->client, opened->fid, &meta))
         {
             return FVM_ERROR;
         }

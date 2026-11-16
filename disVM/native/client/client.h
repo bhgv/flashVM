@@ -214,6 +214,11 @@ void styxclientreadcancel(StyxFid *fid, unsigned long long offset, void *bytes, 
 void styxclientwritecancel(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxCancel *cancel, StyxTransfer *result);
 
 
+/* EN/RU: Immutable explicit-cancel capability,1 for fd-owner,0 for NULL/legacy; no I/O.
+ * Immutable explicit-cancel capability:1 fd-owner,0 NULL/legacy; без I/O/прав. */
+int styxclientcancellable(StyxClient *client);
+
+
 /* EN/RU: Local capability snapshot;1 if live fd owner has at least two RPC slots,0 otherwise.
  * Local capability snapshot;1 для live fd owner минимум с двумя RPC slots. */
 int styxclientwatchable(StyxClient *client);

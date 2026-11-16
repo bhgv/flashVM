@@ -18,6 +18,11 @@ static int clients; /* Client backend retirement count. */
  * По одному component: семнадцать каталогов, затем файл. */
 static char *walk(Qid *qid, char *name)
 {
+    if (qid->path == 0 && !strcmp(name, "data"))
+    {
+        *qid = styxqid(99, 0);
+        return nil;
+    }
     if (qid->path == 0 && !strcmp(name, "ctl"))
     {
         *qid = styxqid(100, 0);
@@ -41,7 +46,7 @@ static char *walk(Qid *qid, char *name)
  * Разрешить только явные file/control open modes теста. */
 static char *openfile(Qid *qid, int mode)
 {
-    return (qid->path == 18 && mode == OREAD) || (qid->path == 100 && mode == OWRITE) ? nil : Eperm;
+    return (qid->path == 18 && mode == OREAD) || (qid->path == 100 && mode == OWRITE) || (qid->path == 99 && (mode == OREAD || mode == OWRITE)) ? nil : Eperm;
 }
 
 
@@ -51,10 +56,10 @@ static char *statfile(Qid qid, Dir *out)
 {
     memset(out, 0, sizeof(*out));
     out->qid = qid;
-    out->name = qid.path == 18 ? "file" : qid.path == 100 ? "ctl" : "d";
+    out->name = qid.path == 18 ? "file" : qid.path == 100 ? "ctl" : qid.path == 99 ? "data" : "d";
     out->uid = out->gid = out->muid = "fixture";
-    out->length = qid.path == 18 ? 5 : 0;
-    out->mode = qid.path < 18 ? DMDIR|0555 : qid.path == 18 ? 0444 : 0222;
+    out->length = qid.path == 18 || qid.path == 99 ? 5 : 0;
+    out->mode = qid.path < 18 ? DMDIR|0555 : qid.path == 18 ? 0444 : qid.path == 99 ? 0666 : 0222;
     return nil;
 }
 
@@ -63,7 +68,7 @@ static char *statfile(Qid qid, Dir *out)
  * Настоящий Tread использует удержанный fid и explicit64-bit offset. */
 static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
-    if (qid.path != 18 || offset < 0)
+    if ((qid.path != 18 && qid.path != 99) || offset < 0)
     {
         return Eperm;
     }
@@ -76,6 +81,10 @@ static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
  * Явное управление тестом, не production publication command. */
 static char *writefile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
+    if (qid.path == 99 && offset == 0 && *n == 6 && !memcmp(bytes, "change", 6))
+    {
+        return nil;
+    }
     if (qid.path != 100 || offset != 0 || *n != 4 || memcmp(bytes, "stop", 4))
     {
         return Eperm;
