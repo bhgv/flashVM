@@ -403,3 +403,10 @@ remain live; unsupported late routes fail before callbacks. Cancellable Tclunk
 covers intermediate enumeration cleanup, while guest close integration remains
 separate. Native acceptance now has248 cases plus real interpreter/JIT guest
 coverage for cancellation, managed publication and late-bind rejection.
+
+[Capture/bind cancellation](vfs/ACQUIRE-CANCEL.md), runtime0.161, adds the native
+CAPTURE promise and guest capture/info/mount/standard/indexed bind scopes.
+Preparation stops before further callbacks, staged roots retire, and commit
+checks cancellation under the namespace mutex. Successful committed results
+survive late cancellation. The native suite has261 cases plus actual
+interpreter/JIT guest acquisition and commit-race coverage.

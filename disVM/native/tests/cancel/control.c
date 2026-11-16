@@ -20,6 +20,7 @@ typedef struct Work
     DVM_Cancel *cancel; /* Borrowed sticky source, independently pinned by scope. */
     DVM_Provider *provider; /* Borrowed prepared/native provider. */
     DVM_VfsHandle *held; /* Borrowed already-open file with caller FIFO ownership. */
+    DVM_Provider *captured; /* Owned acknowledged rooted provider or NULL. */
     DVM_VfsHandle output; /* Owned newly opened result, transferred to main. */
     FVM_FileInfo metadata; /* Copied only on acknowledged metadata success. */
     FVM_Result status; /* Actual provider operation result. */
@@ -59,6 +60,11 @@ static void *run(void *opaque)
     if (!strcmp(work->operation, "pathopen"))
     {
         work->status = dvm_provider_open(work->provider, "data", "r", &work->output);
+    }
+    else if (!strncmp(work->operation, "capture", 7))
+    {
+        work->captured = dvm_provider_capture(work->provider, "d");
+        work->status = work->captured ? FVM_OK : FVM_ERROR;
     }
     else if (!strcmp(work->operation, "dirclose"))
     {
@@ -105,6 +111,7 @@ int main(int argc, char **argv)
     check(provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH), "view lost path promise");
     DVM_VfsHandle held = {0};
     int closing = !strcmp(operation, "dirclose");
+    int capturing = !strncmp(operation, "capture", 7);
     check(dvm_provider_open(provider, closing ? "." : "data", "r", &held) == FVM_OK &&
           (closing ? (held.native_flags & DVM_VFS_CANCEL_LIST) :
           (held.native_flags & (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK)) == (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK)),
@@ -136,8 +143,17 @@ int main(int argc, char **argv)
     check(!pthread_join(worker, NULL), "native completion");
     int success = closing || !strcmp(mode, "success") || !strcmp(mode, "race") || !strcmp(mode, "racefail") ||
         (!strcmp(operation, "cleanup") && strcmp(mode, "precancel"));
+    if (!strcmp(operation, "capturewalk") && (!strcmp(mode, "race") || !strcmp(mode, "racefail")))
+    {
+        success = 0;
+    }
     check((work.status == FVM_OK) == success, "method acknowledgement lost/fabricated");
-    if (closing)
+    if (capturing)
+    {
+        check(!!work.captured == success && (!work.captured ||
+              (dvm_provider_native_flags(work.captured) & DVM_PROVIDER_CANCEL_PATH)), "captured root contract");
+    }
+    else if (closing)
     {
         check(!held.ops && !held.state, "close did not consume held directory");
     }
@@ -165,6 +181,7 @@ int main(int argc, char **argv)
     puts("progress");
     fflush(stdout);
     checkpoint();
+    dvm_provider_release(work.captured);
     dvm_vfs_close(&work.output);
     dvm_vfs_close(&held);
     dvm_cancel_release(cancel);

@@ -4,6 +4,8 @@
  */
 #include "internal.h"
 #include "stack.h"
+#include "cancel.h"
+#include "path_cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -62,6 +64,13 @@ static DVM_NamespaceBinding *capture(DVM_ResourcePlan *choice, const char *on, u
 {
     DVM_NamespaceBinding *entry;
     FVM_FileInfo info;
+    DVM_ResourcePlan single = *choice;
+    single.layers = NULL;
+    if (dvm_cancel_requested(dvm_cancel_current()) ||
+        (dvm_cancel_current() && !dvm_capture_cancellable(&single)))
+    {
+        return NULL;
+    }
     if ((choice->provider && !dvm_provider_bindable_at(choice->provider, choice->relative) &&
          !dvm_provider_capturable(choice->provider)) || (!choice->provider && !choice->anchor))
     {
@@ -184,7 +193,11 @@ static int publish(DVM_ResourcePlan *target, DVM_NamespaceBinding *head)
         fresh += entry->identity == 0;
     }
     fvm_port_sync_lock(group->lock);
-    if (group->version == target->names.version)
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        result = -1;
+    }
+    else if (group->version == target->names.version)
     {
         result = -1;
         if (group->version != UINT64_MAX && fresh <= UINT64_MAX - group->next_binding)
@@ -242,6 +255,11 @@ static int kind(DVM_ResourcePlan *plan, int *directory)
     FVM_FileInfo info;
     for (DVM_ResourcePlan *choice = plan; choice; choice = choice->layers)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()) ||
+            (dvm_cancel_current() && !(dvm_provider_native_flags(choice->provider) & DVM_PROVIDER_CANCEL_PATH)))
+        {
+            return 0;
+        }
         if (dvm_resource_raw_info(choice, &info) == FVM_OK)
         {
             *directory = info.directory;
@@ -261,6 +279,11 @@ static int samekind(DVM_NamespaceBinding *head, int expected)
 {
     for (DVM_NamespaceBinding *entry = head; entry; entry = entry->next)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()) ||
+            (dvm_cancel_current() && !(dvm_provider_native_flags(entry->provider) & DVM_PROVIDER_CANCEL_PATH)))
+        {
+            return 0;
+        }
         FVM_FileInfo info;
         const char *relative = *entry->component ? entry->component : ".";
         FVM_Result status = entry->provider ? dvm_provider_info(entry->provider, relative, &info) :

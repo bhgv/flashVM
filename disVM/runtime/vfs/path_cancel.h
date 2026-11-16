@@ -26,4 +26,25 @@ static inline int dvm_path_cancellable(const DVM_ResourcePlan *plan)
     }
     return 1;
 }
+
+/* EN/RU: Require PATH for every candidate and CAPTURE where acquiring a fresh node can call back.
+ * Borrow plans; immutable checks only, no I/O. Stable aliases need no capture callback.
+ * Требовать PATH в каждой ветви и CAPTURE при fresh callback; plans borrowed,
+ * без I/O. Stable aliases не вызывают capture callback. Return1/0. */
+static inline int dvm_capture_cancellable(const DVM_ResourcePlan *plan)
+{
+    if (!dvm_path_cancellable(plan))
+    {
+        return 0;
+    }
+    for (; plan; plan = plan->layers)
+    {
+        if (!dvm_provider_bindable_at(plan->provider, plan->relative) &&
+            !(dvm_provider_native_flags(plan->provider) & DVM_PROVIDER_CANCEL_CAPTURE))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
 #endif

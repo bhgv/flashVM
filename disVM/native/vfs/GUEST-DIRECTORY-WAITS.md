@@ -117,6 +117,7 @@ eligibility after reopen and no lower-provider fallback. The complete native
 suite now has248 cases and runs normally and under ASan/UBSan.
 
 Guest transport installation still uses embedding APIs; this does not add a
-Sys.mount transport builtin or authentication. Guest close itself and bind/capture
-acquisition remain separate cancellation integration. Other host platforms are
+Sys.mount transport builtin or authentication. Guest close itself remains separate cancellation integration.
+[Capture and bind cancellation](ACQUIRE-CANCEL.md) now covers eligible acquisition
+and transactional publication in runtime0.161. Other host platforms are
 not claimed by Linux amd64 acceptance.

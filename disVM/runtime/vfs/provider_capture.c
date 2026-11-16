@@ -3,6 +3,7 @@
  * RU: Native captured-root capabilities с source-pinned forwarding invalidations.
  */
 #include "provider_internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -64,7 +65,7 @@ void dvm_provider_capture_detach(DVM_Provider *provider)
  * См. provider.h; source callback не выполняется под lifetime mutex factory. */
 DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative)
 {
-    if (!provider || !relative)
+    if (!provider || !relative || dvm_cancel_requested(dvm_cancel_current()))
     {
         return NULL;
     }
@@ -72,7 +73,7 @@ DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative)
     {
         return dvm_provider_retain(provider) ? provider : NULL;
     }
-    if (!provider->capture)
+    if (!provider->capture || (dvm_cancel_current() && !(provider->native_flags & DVM_PROVIDER_CANCEL_CAPTURE)))
     {
         return NULL;
     }
@@ -84,7 +85,7 @@ DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative)
     fvm_port_sync_lock(captured->lock);
     int fresh = captured != provider && captured->references == 1 && !captured->origin && !captured->origin_tap;
     fvm_port_sync_unlock(captured->lock);
-    if (!fresh)
+    if (!fresh || (dvm_cancel_current() && !(captured->native_flags & DVM_PROVIDER_CANCEL_PATH)))
     {
         dvm_provider_release(captured);
         return NULL;

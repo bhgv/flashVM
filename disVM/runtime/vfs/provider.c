@@ -22,8 +22,8 @@ typedef struct ProviderHandle
 DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root, unsigned native_flags)
 {
     DVM_Provider *provider;
-    if ((native_flags & ~(DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST)) ||
-        ((native_flags & DVM_PROVIDER_CANCEL_LIST) && !(native_flags & DVM_PROVIDER_CANCEL_PATH)) || (fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
+    if ((native_flags & ~(DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE)) ||
+        ((native_flags & (DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE)) && !(native_flags & DVM_PROVIDER_CANCEL_PATH)) || (fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
     {
         return NULL;
     }

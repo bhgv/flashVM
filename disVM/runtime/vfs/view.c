@@ -402,7 +402,7 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
     static const DVM_ProviderOps stable = {info, open_view, destroy, DVM_PROVIDER_STABLE_BIND, access_check};
     static const DVM_ProviderOps dynamic = {info, open_view, destroy, 0, access_check};
     int identity = 1;
-    unsigned native_flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST;
+    unsigned native_flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE;
     if (!view)
     {
         return NULL;

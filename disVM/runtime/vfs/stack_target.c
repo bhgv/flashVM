@@ -3,6 +3,8 @@
  * RU: Проверка отсутствующей явной file mount point внутри существующего видимого каталога.
  */
 #include "stack.h"
+#include "cancel.h"
+#include "path_cancel.h"
 #include <string.h>
 
 
@@ -13,7 +15,9 @@ int dvm_stack_file_target(DVM_ResourcePlan *target)
     FVM_FileInfo info;
     for (DVM_ResourcePlan *choice = target; choice; choice = choice->layers)
     {
-        if (dvm_resource_raw_info(choice, &info) != FVM_NOT_FOUND)
+        if (dvm_cancel_requested(dvm_cancel_current()) ||
+            (dvm_cancel_current() && !(dvm_provider_native_flags(choice->provider) & DVM_PROVIDER_CANCEL_PATH)) ||
+            dvm_resource_raw_info(choice, &info) != FVM_NOT_FOUND)
         {
             return -1;
         }
@@ -38,7 +42,8 @@ int dvm_stack_file_target(DVM_ResourcePlan *target)
     {
         return -1;
     }
-    int result = plan.names.version != target->names.version ? 0 :
+    int result = dvm_cancel_requested(dvm_cancel_current()) ||
+        (dvm_cancel_current() && !dvm_path_cancellable(&plan)) ? -1 : plan.names.version != target->names.version ? 0 :
         dvm_resource_info(&plan, &info) == FVM_OK && info.directory ? 1 : -1;
     dvm_resource_close(&plan);
     return result;

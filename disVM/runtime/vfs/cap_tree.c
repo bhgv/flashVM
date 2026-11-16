@@ -3,6 +3,11 @@
  * RU: Guest-owned immutable tree capture/composition и indexed mount/bind.
  */
 #include "cap_internal.h"
+#include "native_wait.h"
+#include "path_cancel.h"
+#include "cancel.h"
+#include "bind_wait.h"
+#include <string.h>
 #include <limits.h>
 
 
@@ -26,7 +31,7 @@ static DVM_Provider *capture(DVM_ResourcePlan *plan, int64_t index, unsigned acc
         entry = entry->layers;
     }
     FVM_FileInfo info;
-    if (dvm_resource_raw_info(entry, &info) != FVM_OK)
+    if (dvm_cancel_requested(dvm_cancel_current()) || dvm_resource_raw_info(entry, &info) != FVM_OK)
     {
         return NULL;
     }
@@ -41,8 +46,9 @@ static DVM_Provider *capture(DVM_ResourcePlan *plan, int64_t index, unsigned acc
     {
         return NULL;
     }
-    if (!source)
+    if (!source || dvm_cancel_requested(dvm_cancel_current()))
     {
+        dvm_provider_release(source);
         return NULL;
     }
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
@@ -80,11 +86,17 @@ void Vfsexport_capture(void *frame)
     }
     if (state && dvm_resource_plan(dvm_namespace_current_group(), path, 0, &plan))
     {
-        int released = dvm_runtime_gc_native_try_leave();
+        DVM_VfsWait *operation = NULL;
+        int released = dvm_capture_cancellable(&plan) ? dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
         if (released >= 0)
         {
             state->root = capture(&plan, call.index, call.rights);
+            int cancelled = dvm_vfs_wait_end(operation);
             dvm_runtime_gc_native_enter(released);
+            if (!state->root && cancelled)
+            {
+                kwerrstr("native VFS capture cancelled");
+            }
         }
         dvm_resource_close(&plan);
     }
@@ -160,7 +172,9 @@ void Vfsexport_info(void *frame)
     DVM_CapState *state = dvm_cap_get(call.root, DVM_CAP_ROOT);
     if (state)
     {
-        int released = dvm_runtime_gc_native_try_leave();
+        DVM_VfsWait *operation = NULL;
+        int released = dvm_provider_native_flags(state->root) & DVM_PROVIDER_CANCEL_PATH ?
+            dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
         if (released >= 0)
         {
             FVM_FileInfo metadata;
@@ -171,7 +185,12 @@ void Vfsexport_info(void *frame)
                 result[1] = metadata.mode & 0777;
                 result[2] = metadata.directory;
             }
+            int cancelled = dvm_vfs_wait_end(operation);
             dvm_runtime_gc_native_enter(released);
+            if (status != FVM_OK && cancelled)
+            {
+                kwerrstr("native VFS root info cancelled");
+            }
         }
     }
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
@@ -189,13 +208,24 @@ void Vfsexport_mount(void *frame)
     DVM_CapState *state = dvm_cap_get(call.root, DVM_CAP_ROOT);
     if (state && call.flags >= 0 && call.flags <= UINT_MAX && dvm_cap_text(call.target, path, sizeof(path)))
     {
+        DVM_ResourcePlan target, source = {0};
         DVM_Namespace *group = dvm_namespace_current_group();
-        int released = dvm_runtime_gc_native_try_leave();
-        if (released >= 0)
+        if (dvm_resource_plan(group, path, 0, &target))
         {
-            int outcome = dvm_stack_mount(group, state->root, path, call.flags, call.index);
-            dvm_runtime_gc_native_enter(released);
-            result = outcome == 1 ? 0 : outcome == 0 ? -2 : -1;
+            source.group = group;
+            source.names.version = target.names.version;
+            source.provider = state->root;
+            strcpy(source.names.path, "/");
+            strcpy(source.names.native, "/export-capability");
+            strcpy(source.relative, ".");
+            int cancelled;
+            int outcome = dvm_bind_wait(&source, &target, call.flags, call.index, &cancelled);
+            result = outcome == 1 ? 0 : outcome == 0 && !cancelled ? -2 : -1;
+            dvm_resource_close(&target);
+            if (outcome != 1 && cancelled)
+            {
+                kwerrstr("native capability mount cancelled");
+            }
         }
     }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));

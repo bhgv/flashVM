@@ -18,6 +18,7 @@
 #include "resource_wait.h"
 #include "sysevents.h"
 #include "stack.h"
+#include "bind_wait.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -204,7 +205,18 @@ void Sys_bind(void *frame)
             if (source.names.version == target.names.version)
             {
                 committed = -1;
-                if (dvm_metadata_selected(&source, &a) == FVM_OK && (!a.directory ||
+                FVM_Result source_status = FVM_ERROR;
+                if (dvm_capture_cancellable(&source) && dvm_capture_cancellable(&target))
+                {
+                    int cancelled;
+                    committed = dvm_bind_wait(&source, &target, call.flags, 0, &cancelled);
+                    if (committed != 1 && cancelled)
+                    {
+                        committed = -1;
+                        kwerrstr("native bind cancelled");
+                    }
+                }
+                else if ((source_status = dvm_metadata_selected(&source, &a)) == FVM_OK && (!a.directory ||
                     dvm_provider_capturable(source.provider) || dvm_provider_capturable(target.provider)))
                 {
                     int released = dvm_runtime_gc_native_try_leave();
@@ -218,7 +230,7 @@ void Sys_bind(void *frame)
                         kwerrstr("captured bind target/stack refused");
                     }
                 }
-                else if (dvm_metadata_selected(&source, &a) == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)
+                else if (source_status == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)
                 {
                     if (a.directory != b.directory)
                     {

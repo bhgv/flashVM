@@ -842,3 +842,12 @@ reject a late legacy bind before its callback; reopen refreshes eligibility.
 Acknowledged batches and checked prefixes survive nested views. Native scopes
 retire before managed reentry, while the FD FIFO remains held through protected
 batch publication. No cooperative guest polling, debug pause or global stop.
+
+## Capture/bind cancellation / Отмена захвата и bind (runtime0.161)
+
+[Acquisition scopes and commit rules](../native/vfs/ACQUIRE-CANCEL.md) cover eligible
+Vfsexport capture/info/mount, Sys.bind and Vfsctl.bind. The native CAPTURE promise
+requires PATH; stable aliases can avoid fresh callbacks. Cancelled preparation
+releases staged roots and preserves the prior target/revision. The final check
+is under the namespace mutex; successful commits and acknowledged metadata win
+later cancellation. Mixed/native-host routes keep their legacy admission boundary.

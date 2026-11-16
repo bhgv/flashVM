@@ -179,7 +179,7 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
     mount->access = access;
     mount->file_root = root ? !directory : styxclientrootdirectory(client) == 0;
     DVM_Provider *provider = dvm_provider_create_native(mount->file_root ? &fileoperations : &operations, mount, styxmountcapture, root != NULL,
-        styxclientcancellable(client) ? DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST : 0);
+        styxclientcancellable(client) ? DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE : 0);
     if (!provider)
     {
         destroy(mount);

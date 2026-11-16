@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120}[operation]
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120, 'capturewalk': 110, 'capturestat': 124}[operation]
     required = 2 if (operation == 'walk' and mode != 'first') or operation == 'listprefix' else 1
     shared = {}
     lock = threading.Lock()
@@ -181,6 +181,12 @@ def main():
             probes = sum(kind == 124 for kind, _ in active)
             if probes != (1 if mode == 'timeout' else 0):
                 raise RuntimeError(f'provider failure-only Tstat mismatch: {probes}')
+        if operation in ('capturewalk', 'capturestat'):
+            expected_walks = [] if mode == 'precancel' else [1]
+            probes = sum(kind == 124 for kind, _ in active)
+            expected_probes = 0 if mode == 'precancel' or (operation == 'capturewalk' and mode != 'success') else 1
+            if walks != expected_walks or probes != expected_probes:
+                raise RuntimeError(f'capture continued/replayed: walks={walks}, stats={probes}/{expected_probes}')
         if operation in ('list', 'liststat', 'listprefix'):
             reads = sum(kind == 116 for kind, _ in active)
             expected_reads = 0 if mode == 'precancel' else 2 if mode == 'success' else 1

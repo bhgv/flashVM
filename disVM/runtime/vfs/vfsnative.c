@@ -15,6 +15,7 @@
 #include "guest.h"
 #include "internal.h"
 #include "stack.h"
+#include "bind_wait.h"
 #include "vfsnative_decl.h"
 #include "vfsnative_table.h"
 #include <limits.h>
@@ -267,12 +268,12 @@ void Vfsnative_bind(void *frame)
         {
             if (dvm_resource_plan(source.group, on, 0, &target))
             {
-                int released = dvm_runtime_gc_native_try_leave();
-                if (released >= 0)
+                int cancelled;
+                int outcome = dvm_bind_wait(&source, &target, (unsigned)call.flags, call.index, &cancelled);
+                result = outcome == 1 ? 0 : outcome == 0 && !cancelled ? -2 : -1;
+                if (outcome != 1 && cancelled)
                 {
-                    int outcome = dvm_stack_bind(&source, &target, (unsigned)call.flags, call.index);
-                    dvm_runtime_gc_native_enter(released);
-                    result = outcome == 1 ? 0 : outcome == 0 ? -2 : -1;
+                    kwerrstr("native indexed bind cancelled");
                 }
                 dvm_resource_close(&target);
             }
