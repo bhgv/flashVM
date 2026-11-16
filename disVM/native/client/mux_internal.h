@@ -8,6 +8,7 @@
 #include <lib9.h>
 #include <styx.h>
 #include "mux.h"
+#include "life.h"
 #include <pthread.h>
 #include <poll.h>
 #include <sys/socket.h>
@@ -46,6 +47,9 @@ struct StyxFlight
  * Один autonomous native owner, без VM/client pointers и foreign callbacks. */
 struct StyxMux
 {
+    StyxLife *life; /* Owned terminal source, independent of Client lifetime. */
+    int localstop; /* Explicit shutdown reports CLOSED; normal owner drop stays quiet. */
+    int terminal; /* Immutable first terminal cause. */
     pthread_mutex_t lock; /* Protect admission, table, completion and references. */
     pthread_cond_t ended; /* Explicit native shutdown completion. */
     int fd; /* Consumed connected stream, closed by native owner. */

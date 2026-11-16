@@ -9,11 +9,14 @@
 #include <pthread.h>
 #include "client.h"
 #include "mux.h"
+#include "life.h"
 
 /* EN/RU: One connection owns codecs/buffers and serializes bounded native RPCs.
  * Одно соединение владеет buffers и сериализует bounded native RPCs. */
 struct StyxClient
 {
+    StyxLife *life; /* Owned sticky terminal source; no provider/guest pointers. */
+    int terminal; /* First legacy terminal reason, serialized by client lock. */
     StyxMux *mux; /* Optional independent native owner; no Client pointers retained by it. */
     int transportclosed; /* Legacy transport close already consumed by explicit shutdown. */
     int cancelled; /* Current returned RPC cancelled, under client lock. */
@@ -51,6 +54,12 @@ int styxrpc(StyxClient *client, Fcall *request, Fcall *reply);
 int styxrpccancel(StyxClient *, Fcall *, Fcall *, StyxCancel *);
 void styxrpcbad(StyxClient *); /* Client lock held; terminal failure wakes all multiplexed work. */
 StyxClient *styxclientstart(const StyxTransport *, StyxMux *, unsigned, const char *, const char *);
+
+
+/* EN/RU: Borrow pinned client under its lock; publish first legacy reason outside that lock.
+ * Temporarily unlocks/relocks client; failed exchange has no usable borrowed reply.
+ * Под client lock опубликовать первый legacy reason вне lock; client удержан caller. */
+void styxclientemit(StyxClient *client, int reason);
 
 
 /* EN/RU: Under client lock, consume remote fid when the stream remains usable.

@@ -12,10 +12,8 @@
 struct Mount
 {
     StyxClient *client; /* Owned connection; provider wrappers pin this factory. */
-    DVM_Changes *changes; /* Borrowed provider journal until destroy. */
-    FVM_PortSync *lock; /* Protect loss notification deduplication, not RPC waiting. */
+    StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
     unsigned access; /* Fixed native host ceiling. */
-    int lost; /* Terminal transport/framing loss reported once. */
 };
 
 
@@ -37,11 +35,6 @@ struct Mounted
 /* EN/RU: Copy scalar metadata, mask the host ceiling; never infer effective access.
  * Скопировать scalar metadata с host ceiling, без вывода effective access. */
 void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out);
-
-
-/* EN/RU: Publish one observed terminal connection failure after the RPC lock retired.
- * Сообщить один observed terminal failure после выхода из RPC lock. */
-void styxmountloss(struct Mount *mount);
 
 
 /* EN/RU: Independent opened cursor callbacks, used only through provider lifetime pins.

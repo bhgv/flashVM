@@ -315,6 +315,13 @@ void *styxmuxrun(void *argument)
     mux->fd = -1;
     mux->finished = 1;
     pthread_cond_broadcast(&mux->ended);
+    int reason = mux->terminal;
+    pthread_mutex_unlock(&mux->lock);
+    if (reason)
+    {
+        styxlifeemit(mux->life, reason);
+    }
+    pthread_mutex_lock(&mux->lock);
     int last = --mux->references == 0;
     pthread_mutex_unlock(&mux->lock);
     if (last)

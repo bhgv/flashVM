@@ -27,7 +27,9 @@ typedef struct Stream
     unsigned budget; /* Explicit native test deadline in milliseconds. */
     unsigned calls; /* Send callback count, serialized by native client. */
 } Stream;
-static unsigned lost; /* Native notice count, only the test owner publishes failures. */
+static unsigned lost; /* Protected native terminal count, published by either transport. */
+static pthread_mutex_t notices = PTHREAD_MUTEX_INITIALIZER; /* Test event lock. */
+static pthread_cond_t arrived = PTHREAD_COND_INITIALIZER; /* Independent native delivery gate. */
 
 
 /* EN/RU: Keep checks active in all build modes.
@@ -132,7 +134,28 @@ static void notice(void *state, const DVM_ChangeEvent *event)
 {
     (void)state;
     check(event->kinds == (DVM_CHANGE_CONNECTION|DVM_CHANGE_NETWORK), "loss event class");
+    pthread_mutex_lock(&notices);
     lost++;
+    pthread_cond_broadcast(&arrived);
+    pthread_mutex_unlock(&notices);
+}
+
+
+/* EN/RU: Await only the native fixture event; never make guest/I/O progress to obtain it.
+ * Ожидать только native fixture event, без guest/I/O progress. */
+static unsigned losses(void)
+{
+    struct timespec deadline;
+    check(clock_gettime(CLOCK_REALTIME, &deadline) == 0, "event clock");
+    deadline.tv_sec += 3;
+    pthread_mutex_lock(&notices);
+    while (!lost)
+    {
+        check(pthread_cond_timedwait(&arrived, &notices, &deadline) == 0, "native event deadline");
+    }
+    unsigned count = lost;
+    pthread_mutex_unlock(&notices);
+    return count;
 }
 
 
@@ -249,8 +272,8 @@ static void exceptional(DVM_Provider *provider, const char *mode)
     if (!strcmp(mode, "badtag") || !strcmp(mode, "badwalk"))
     {
         FVM_FileInfo meta;
-        check(dvm_provider_info(provider, ".", &meta) != FVM_OK && lost == 1, "malformed tag invalidates provider");
-        check(dvm_provider_info(provider, ".", &meta) != FVM_OK && lost == 1, "loss event duplicated");
+        check(dvm_provider_info(provider, ".", &meta) != FVM_OK && losses() == 1, "malformed tag invalidates provider");
+        check(dvm_provider_info(provider, ".", &meta) != FVM_OK && losses() == 1, "loss event duplicated");
     }
     else
     {
@@ -294,7 +317,7 @@ static void exceptional(DVM_Provider *provider, const char *mode)
                 check(result.status != FVM_OK && (result.flags & DVM_IO_UNCERTAIN), "malformed read count accepted");
             }
             result = dvm_vfs_read_chunk(&file, bytes, sizeof(bytes));
-            check(result.status != FVM_OK && lost == 1, "broken session revived/fake EOF or duplicate event");
+            check(result.status != FVM_OK && losses() == 1, "broken session revived/fake EOF or duplicate event");
             dvm_vfs_close(&control);
         }
         dvm_vfs_close(&file);

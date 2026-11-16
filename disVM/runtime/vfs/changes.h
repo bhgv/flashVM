@@ -55,8 +55,14 @@ typedef struct DVM_ChangeBatch
 DVM_Changes *dvm_changes_create(void);
 
 
-/* EN/RU: Consume journal only after all callers retire; NULL allowed.
- * Поглотить журнал после завершения callers; NULL допустим. No callbacks. */
+/* EN/RU: Retain borrowed journal for native async producer lifetime;1/0, NULL refuses.
+ * No provider/guest ownership and no callbacks. Release with dvm_changes_destroy.
+ * Удержать journal для native async producer;1/0, NULL отказ; без provider/guest refs. */
+int changesretain(DVM_Changes *changes);
+
+
+/* EN/RU: Consume one owned journal ref; last ref requires retired borrowers/subscriptions.
+ * NULL allowed, no callbacks. Поглотить ref; последняя требует retired borrowers/taps. */
 void dvm_changes_destroy(DVM_Changes *changes);
 
 

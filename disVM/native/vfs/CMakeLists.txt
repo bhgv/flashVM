@@ -92,3 +92,11 @@ endforeach()
 add_test(NAME vfs-mux-provider-prepared COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mount/prepared.py"
     "$<TARGET_FILE:vfs-mount-test>" "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-mux-provider-prepared PROPERTIES TIMEOUT 25 ENVIRONMENT "STYX_NATIVE_MUX=1")
+
+add_executable(vfs-idle-events-test ../tests/events/client.c)
+target_link_libraries(vfs-idle-events-test PRIVATE styx_vfs)
+foreach(scenario idle shared shared-detach shutdown detached drop inflight late)
+    add_test(NAME vfs-idle-events-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/events/wire.py"
+        "$<TARGET_FILE:vfs-idle-events-test>" "$<TARGET_FILE:server-loopback-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-idle-events-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()

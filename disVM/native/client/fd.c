@@ -55,6 +55,7 @@ void styxclientshutdown(StyxClient *client)
             client->transportclosed = 1;
             client->transport.close(client->transport.state);
         }
+        styxclientemit(client, STYX_LINK_CLOSED);
         pthread_mutex_unlock(&client->lock);
     }
 }

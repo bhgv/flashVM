@@ -124,14 +124,14 @@ closing their transport once, after any serialized native exchange retires.
 Engine failure fans out to every pending native caller. Known replies remain
 known; unsent requests do not invent effects; sent unacknowledged operations
 remain uncertain. No reconnection, request replay or remote-fid restoration is
-implicit. Provider journal notifications remain operation-observed as described
-in [MOUNT.md](../vfs/MOUNT.md): idle engine EOF changes client liveness, while
-asynchronous provider-journal wiring and heartbeat/change-source integration
-remain separate work.
+implicit. Runtime0.147 wires idle terminal state automatically into mounted
+provider journals; see [EVENTS.md](EVENTS.md). Heartbeat/change-source protocols
+remain separate extensions. Explicit shutdown waits for fd retirement, not
+completion of all native notification callbacks.
 
 ## Acceptance / Проверки
 
-The opt-in native suite now has60 tests. Original C libstyx servers sit behind
+The opt-in native suite now has69 tests. Original C libstyx servers sit behind
 independent deterministic response/flush gates. Coverage includes simultaneous
 native callers, reversed responses, full quota plus cancellation, pre-admission
 cancel, read/write cancel, original-response/Rflush races, failed flush after a

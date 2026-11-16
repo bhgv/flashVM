@@ -72,3 +72,13 @@ independent native ownership, concurrent tag-routed RPCs, bounded admission,
 cancellation/Tflush and autonomous nonwaiting final retirement. The original
 callback transport above keeps its serialized policy. Rebuild native consumers
 for the new `StyxTransfer.cancelled` field; wire9P is unchanged.
+
+
+## Native terminal events / Native terminal events (runtime0.147)
+
+[Automatic connection notifications](EVENTS.md) now connect idle fd-owner EOF and
+terminal failures to each mounted provider journal without another RPC or guest
+execution. Native subscriptions retain journals independently; unmount does not
+wait for callbacks. Shared clients keep independent mount subscriptions. Explicit
+shutdown differs from network failure; normal final release is quiet. Heartbeat
+and provider-side content/rights/load reports remain separate extensions.

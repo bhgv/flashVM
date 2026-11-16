@@ -49,18 +49,45 @@ DVM_Changes *dvm_changes_create(void)
         free(changes);
         return NULL;
     }
+    changes->references = 1;
     changes->session = 1;
     reset(changes);
     return changes;
 }
 
 
-/* EN/RU: See changes.h; caller excludes every other borrower before destroy.
+/* EN/RU: See changes.h; keep the journal independent of any provider/VM pointer.
+ * См. changes.h; удержать journal независимо от provider/VM pointer. */
+int changesretain(DVM_Changes *changes)
+{
+    if (!changes)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(changes->lock);
+    int retained = changes->references != (size_t)-1;
+    if (retained)
+    {
+        changes->references++;
+    }
+    fvm_port_sync_unlock(changes->lock);
+    return retained;
+}
+
+
+/* EN/RU: See changes.h; last reference excludes all borrowers/subscriptions before final destruction.
  * См. changes.h; caller исключает остальных borrowers до destroy. */
 void dvm_changes_destroy(DVM_Changes *changes)
 {
     if (changes)
     {
+        fvm_port_sync_lock(changes->lock);
+        int last = --changes->references == 0;
+        fvm_port_sync_unlock(changes->lock);
+        if (!last)
+        {
+            return;
+        }
         if (!dvm_notice_destroy(changes->notices))
         {
             abort();

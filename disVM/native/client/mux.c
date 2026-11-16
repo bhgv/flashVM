@@ -14,6 +14,7 @@ void styxmuxdestroy(StyxMux *mux)
     free(mux->receive);
     free(mux->decode);
     free(mux->slots);
+    styxlifedrop(mux->life);
     pthread_cond_destroy(&mux->ended);
     pthread_mutex_destroy(&mux->lock);
     free(mux);
@@ -56,6 +57,10 @@ void styxmuxfinish(StyxMux *mux, StyxFlight *flight)
  * См. mux_internal.h; known acknowledgement сохраняется даже при отказе flush. */
 void styxmuxbroken(StyxMux *mux)
 {
+    if (!mux->terminal)
+    {
+        mux->terminal = mux->stopping ? (mux->localstop ? STYX_LINK_CLOSED : 0) : STYX_LINK_FAILED;
+    }
     mux->failed = 1;
     for (unsigned i = 0; i < mux->limit; i++)
     {
@@ -170,6 +175,7 @@ StyxAnswer styxmuxcollect(StyxFlight *flight)
 void styxmuxshutdown(StyxMux *mux)
 {
     pthread_mutex_lock(&mux->lock);
+    mux->localstop = 1;
     mux->stopping = 1;
     styxmuxwake(mux);
     while (!mux->finished)
@@ -259,11 +265,12 @@ StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned lim
     mux->receive = malloc(capacity);
     mux->decode = malloc(capacity);
     mux->slots = calloc(limit, sizeof(*mux->slots));
+    mux->life = styxlifecreate();
     pthread_t thread;
     pthread_attr_t attributes;
     int initialized = pthread_attr_init(&attributes) == 0;
     int good = initialized && !pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_DETACHED);
-    if (!mux->receive || !mux->decode || !mux->slots || !good || pthread_create(&thread, &attributes, styxmuxrun, mux))
+    if (!mux->receive || !mux->decode || !mux->slots || !mux->life || !good || pthread_create(&thread, &attributes, styxmuxrun, mux))
     {
         if (initialized)
         {
@@ -275,4 +282,12 @@ StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned lim
     }
     pthread_attr_destroy(&attributes);
     return mux;
+}
+
+
+/* EN/RU: See mux.h; caller retains engine owner through any source retain.
+ * См. mux.h; caller удерживает engine owner во время source retain. */
+StyxLife *styxmuxlife(StyxMux *mux)
+{
+    return mux->life;
 }

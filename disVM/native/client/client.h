@@ -72,6 +72,29 @@ void styxcancelfree(StyxCancel *cancel);
 int styxclientalive(StyxClient *client);
 
 
+#define STYX_LINK_FAILED 1 /* Terminal transport/framing failure. */
+#define STYX_LINK_CLOSED 2 /* Explicit native shutdown, not normal final owner drop. */
+typedef struct StyxWatch StyxWatch; /* Owned native terminal subscription. */
+
+
+/* EN/RU: Nonwaiting native terminal delivery outside source/client/engine locks.
+ * May copy an event/unsubscribe, never perform I/O, guest calls or wait for a target.
+ * Native terminal callback вне locks; без I/O/guest calls/target wait. */
+typedef void (*StyxTerminal)(void *state, int reason);
+
+
+/* EN/RU: Adopt state only on success, owned watch/NULL; terminal state replays once.
+ * At most256 live watcher nodes/client. Retain client while registering. State
+ * outlives already admitted callbacks; release runs after final unsubscribe/flight.
+ * Принять state только при успехе; свой watch/NULL, sticky terminal replay. */
+StyxWatch *styxclientwatch(StyxClient *client, StyxTerminal notify, void *state, void (*release)(void *));
+
+
+/* EN/RU: Consume watch without waiting; an already admitted callback may finish.
+ * Поглотить watch без ожидания; admitted callback может завершиться позже. */
+void styxclientunwatch(StyxWatch *watch);
+
+
 /* EN/RU: Drop connection reference after callers retire; live fids pin transport.
  * Final release closes transport once; server retires root on disconnect. NULL allowed.
  * Поглотить ссылку; live fids удерживают transport; NULL допустим. */

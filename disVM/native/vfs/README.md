@@ -149,3 +149,13 @@ outstanding RPCs, unique/paired flush tags and cancellation/deadline fences.
 Original acknowledgements survive cancellation races and flush failure. Final
 owner drop does not join; explicit native shutdown can await fd retirement.
 The same VFS provider works with this client; no guest execution/pause is used.
+
+
+## Native terminal events / Native terminal events (runtime0.147)
+
+[Automatic connection notifications](../client/EVENTS.md) now connect idle fd-owner EOF and
+terminal failures to each mounted provider journal without another RPC or guest
+execution. Native subscriptions retain journals independently; unmount does not
+wait for callbacks. Shared clients keep independent mount subscriptions. Explicit
+shutdown differs from network failure; normal final release is quiet. Heartbeat
+and provider-side content/rights/load reports remain separate extensions.

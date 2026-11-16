@@ -66,7 +66,7 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
 int dvm_provider_bindable(DVM_Provider *provider);
 
 /* EN/RU: Borrow provider-scoped native event journal while holding a provider ref.
- * No authority or ownership transfer; journal survives all retained open handles.
- * Заимствовать event journal при удержанном provider ref; без передачи владения. */
+ * No authority or ownership transfer; changesretain can pin the journal independently.
+ * Заимствовать journal под provider ref; changesretain удерживает его независимо. */
 DVM_Changes *dvm_provider_changes(DVM_Provider *provider);
 #endif

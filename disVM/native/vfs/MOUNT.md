@@ -82,19 +82,17 @@ live and server-defined. This first provider has no create/remove/wstat support.
 
 ## Loss notifications / Уведомления о потере соединения
 
-The first operation observing terminal transport/framing failure publishes one
-provider-wide CONNECTION|NETWORK event through the existing provider journal,
-with its session and generation2. Callbacks run after the RPC/loss locks retire.
-Existing native subscriptions/namespace watchers can route it to their thread
-inboxes without Limbo polling, guest execution or guest suspension. Repeated
-failures do not duplicate the event. Explicit normal final close performs no
-failure probe or event publication.
+Runtime0.147 replaces operation-observed mount loss with an automatic native
+terminal subscription. With the fd-owner client, idle EOF/failure publishes
+CONNECTION|NETWORK without another RPC; explicit shutdown publishes CONNECTION.
+Normal final owner release is quiet. Each mount owns its journal subscription;
+in-flight notifications safely outlive provider destruction without making
+unmount wait. Existing namespace watchers route events to native thread inboxes.
+[API, ownership, replay, transport limits and checks](../client/EVENTS.md).
 
-This is operation-observed loss, not idle connection monitoring. Plain9P2000 has
-no unsolicited heartbeat/change messages in this client. A native heartbeat,
-provider-specific change source and typed changed/generation reports can extend
-the same journal later. Idle disconnect detection, reconnect epochs and restoring
-remote fids are not claimed here; no replay/reconnection assumption is frozen.
+The legacy callback transport still observes loss during an exchange. No new
+heartbeat wire message, periodic Tstat, reconnect or remote-fid restoration is
+introduced. A silent network partition requires a future heartbeat policy.
 
 ## Acceptance / Проверки
 
@@ -110,16 +108,17 @@ Real original C libstyx servers and an independent byte relay exercise:
 - more than MAXWELEM components and immediate cleanup of a partial walk;
 - prepared per-connection publication via a dedicated reviewer and native wakeup.
 
-The complete opt-in native suite has30 tests, including ASan/UBSan on Linux amd64.
+The complete opt-in native suite has69 tests, including ASan/UBSan on Linux amd64.
 LeakSanitizer is disabled on this host. No physical ARM64/Android/Windows claim is
-made. The current client is single-flight; multiplexer/Tflush, remote authentication,
-stable subroot binds, richer metadata and guest builtin wiring remain follow-up work.
+made. The callback client is single-flight; the fd-owner client supports multiplexing
+and Tflush. Remote authentication, stable subroot binds, richer metadata and guest
+builtin wiring remain follow-up work.
 
 Это обычный native provider поверх исходных lib9-кодеков. Каждый open удерживает
 свой remote fid; операции не подменяют права metadata. Частичные подтверждения
 сохраняются, неизвестные effects не повторяются. Обнаруженный разрыв автоматически
-даёт native-событие, но мониторинга простоя/heartbeat здесь пока нет. Подготовленное
-дерево остаётся живым; дальнейшие режимы union/balancing и migration не ограничены.
+даёт native-событие; fd-owner обнаруживает EOF даже в простое. Heartbeat для молча
+пропавшей сети пока не добавлен. Подготовленное дерево остаётся живым; дальнейшие режимы union/balancing и migration не ограничены.
 
 ## Concurrent fd-owner client / Concurrent fd-owner (runtime0.146)
 

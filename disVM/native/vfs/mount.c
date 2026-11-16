@@ -36,24 +36,22 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 }
 
 
-/* EN/RU: See mount_internal.h; observed failure pushes existing provider notices.
- * См. mount_internal.h; observed failure немедленно сообщает provider notices. */
-void styxmountloss(struct Mount *mount)
+/* EN/RU: Native terminal source owns a journal reference, never a provider pointer.
+ * Native terminal source владеет journal ref, не provider pointer. */
+static void terminal(void *state, int reason)
 {
-    if (styxclientalive(mount->client))
-    {
-        return;
-    }
-    fvm_port_sync_lock(mount->lock);
-    int report = !mount->lost;
-    mount->lost = 1;
-    fvm_port_sync_unlock(mount->lock);
-    if (report)
-    {
-        DVM_ChangeEvent event = {dvm_changes_session(mount->changes), 2,
-            DVM_CHANGE_CONNECTION|DVM_CHANGE_NETWORK, 0, 0};
-        dvm_changes_notify(mount->changes, &event);
-    }
+    DVM_Changes *changes = state;
+    DVM_ChangeEvent event = {dvm_changes_session(changes), 2,
+        DVM_CHANGE_CONNECTION | (reason == STYX_LINK_FAILED ? DVM_CHANGE_NETWORK : 0), 0, 0};
+    dvm_changes_notify(changes, &event);
+}
+
+
+/* EN/RU: Drop only the retained journal after unsubscribe and all admitted callbacks.
+ * Поглотить journal ref после unsubscribe и всех admitted callbacks. */
+static void releasewatch(void *state)
+{
+    dvm_changes_destroy(state);
 }
 
 
@@ -69,10 +67,6 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     if (success)
     {
         styxmountmeta(mount, &meta, out);
-    }
-    else
-    {
-        styxmountloss(mount);
     }
     return success ? FVM_OK : FVM_ERROR;
 }
@@ -127,18 +121,17 @@ failed:
     styxclientclunk(opened->fid);
     free(opened->records);
     free(opened);
-    styxmountloss(mount);
     return FVM_ERROR;
 }
 
 
-/* EN/RU: Final provider/handle reference consumes connection and local notification lock.
- * Последняя provider/handle ссылка поглощает connection и local notification lock. */
+/* EN/RU: Final provider/handle reference detaches watch and consumes connection without callback wait.
+ * Последняя provider/handle ссылка отсоединяет watch и поглощает connection без callback wait. */
 static void destroy(void *state)
 {
     struct Mount *mount = state;
+    styxclientunwatch(mount->watch);
     styxclientfree(mount->client);
-    fvm_port_sync_destroy(mount->lock);
     free(mount);
 }
 static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL};
@@ -161,13 +154,24 @@ DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
     }
     mount->client = client;
     mount->access = access;
-    mount->lock = fvm_port_sync_create();
-    DVM_Provider *provider = mount->lock ? dvm_provider_create(&operations, mount) : NULL;
+    DVM_Provider *provider = dvm_provider_create(&operations, mount);
     if (!provider)
     {
         destroy(mount);
         return NULL;
     }
-    mount->changes = dvm_provider_changes(provider);
+    DVM_Changes *changes = dvm_provider_changes(provider);
+    if (!changesretain(changes))
+    {
+        dvm_provider_release(provider);
+        return NULL;
+    }
+    mount->watch = styxclientwatch(client, terminal, changes, releasewatch);
+    if (!mount->watch)
+    {
+        dvm_changes_destroy(changes);
+        dvm_provider_release(provider);
+        return NULL;
+    }
     return provider;
 }

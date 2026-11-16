@@ -64,6 +64,10 @@ static int serialrpc(StyxClient *client, Fcall *request, Fcall *reply)
     return reply->type == Rerror ? 0 : 1;
 failed:
     client->failed = 1;
+    if (!client->terminal)
+    {
+        client->terminal = STYX_LINK_FAILED;
+    }
     return -1;
 }
 
@@ -80,7 +84,12 @@ int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *
     }
     if (!client->mux)
     {
-        return cancel ? -1 : serialrpc(client, request, reply);
+        int status = cancel ? -1 : serialrpc(client, request, reply);
+        if (client->failed)
+        {
+            styxclientemit(client, STYX_LINK_FAILED);
+        }
+        return status;
     }
     if (styxcancelled(cancel))
     {
@@ -138,6 +147,10 @@ void styxrpcbad(StyxClient *client)
     {
         styxmuxfail(client->mux);
     }
+    else
+    {
+        styxclientemit(client, STYX_LINK_FAILED);
+    }
 }
 
 
@@ -181,6 +194,7 @@ void styxclientfree(StyxClient *client)
     pthread_mutex_unlock(&client->lock);
     if (last)
     {
+        styxlifequiet(client->life);
         if (client->mux)
         {
             styxmuxfree(client->mux);
@@ -189,6 +203,7 @@ void styxclientfree(StyxClient *client)
         {
             client->transport.close(client->transport.state);
         }
+        styxlifedrop(client->life);
         pthread_mutex_destroy(&client->lock);
         free(client->send);
         free(client->receive);
@@ -242,6 +257,16 @@ StyxClient *styxclientstart(const StyxTransport *transport, StyxMux *mux, unsign
         startfailed(transport, mux);
         return NULL;
     }
+    client->life = mux ? styxmuxlife(mux) : styxlifecreate();
+    if (!client->life || (mux && !styxliferetain(client->life)))
+    {
+        pthread_mutex_destroy(&client->lock);
+        free(client->send);
+        free(client->receive);
+        free(client);
+        startfailed(transport, mux);
+        return NULL;
+    }
     client->mux = mux;
     if (transport)
     {
@@ -288,4 +313,27 @@ StyxClient *styxclientstart(const StyxTransport *transport, StyxMux *mux, unsign
 StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name)
 {
     return styxclientstart(transport, NULL, msize, user, name);
+}
+
+
+/* EN/RU: See internal.h; preserve first legacy cause and admit callbacks outside client lock.
+ * См. internal.h; сохранить first legacy cause и вызвать callbacks вне client lock. */
+void styxclientemit(StyxClient *client, int reason)
+{
+    if (!client->terminal)
+    {
+        client->terminal = reason;
+    }
+    reason = client->terminal;
+    pthread_mutex_unlock(&client->lock);
+    styxlifeemit(client->life, reason);
+    pthread_mutex_lock(&client->lock);
+}
+
+
+/* EN/RU: See client.h; source lifetime is retained by accepted watcher nodes.
+ * См. client.h; source lifetime удерживается принятыми watcher nodes. */
+StyxWatch *styxclientwatch(StyxClient *client, StyxTerminal notify, void *state, void (*release)(void *))
+{
+    return client ? styxlifewatch(client->life, notify, state, release) : NULL;
 }

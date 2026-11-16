@@ -16,7 +16,6 @@ static FVM_Result info(void *state, FVM_FileInfo *out)
     StyxMeta meta;
     if (!styxclientstat(opened->fid, &meta))
     {
-        styxmountloss(opened->mount);
         return FVM_ERROR;
     }
     styxmountmeta(opened->mount, &meta, out);
@@ -60,10 +59,6 @@ static void transfer(void *state, void *bytes, size_t size, int writing, DVM_IoR
         out->flags |= DVM_IO_UNCERTAIN;
         opened->failed = 1;
     }
-    if (!result.success)
-    {
-        styxmountloss(opened->mount);
-    }
 }
 
 
@@ -98,7 +93,6 @@ static FVM_Result seekfile(void *state, long offset, int origin, long *position)
         StyxMeta meta;
         if (!styxclientstat(opened->fid, &meta))
         {
-            styxmountloss(opened->mount);
             return FVM_ERROR;
         }
         base = meta.length;
@@ -137,7 +131,6 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
         styxclientread(opened->fid, opened->position, opened->records, 65536, &result);
         if (!result.success || result.uncertain)
         {
-            styxmountloss(opened->mount);
             goto failed;
         }
         opened->position += result.count;

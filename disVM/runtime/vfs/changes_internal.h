@@ -13,6 +13,7 @@
 struct DVM_Changes
 {
     DVM_NoticeHub *notices; /* Owned direct-push subscriptions; callbacks outside journal lock. */
+    size_t references; /* Native owners and detached asynchronous producers. */
     FVM_PortSync *lock; /* Protects journal, current epoch and class versions. */
     uint64_t session; /* Monotonic local connection epoch, initially one. */
     uint64_t generation; /* Highest source generation in the current epoch. */

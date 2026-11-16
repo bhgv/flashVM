@@ -5,6 +5,7 @@
 #ifndef STYX_MUX_H
 #define STYX_MUX_H
 #include "client.h"
+#include "life.h"
 typedef struct StyxMux StyxMux; /* Refcounted autonomous native socket owner. */
 typedef struct StyxFlight StyxFlight; /* One bounded admitted transaction. */
 typedef struct StyxAnswer
@@ -19,6 +20,12 @@ typedef struct StyxAnswer
 /* EN/RU: Consume connected fd always; owned native engine/NULL. POSIX only.
  * Принять connected fd всегда; свой native engine/NULL. */
 StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned limit);
+
+
+/* EN/RU: Borrow terminal source while retaining engine owner. Без передачи владения. */
+StyxLife *styxmuxlife(StyxMux *mux);
+
+
 /* EN/RU: Admit copied frame within quota; caller owns flight/NULL. Client lock held.
  * Принять copied frame в quota; свой flight/NULL, client lock удержан. */
 StyxFlight *styxmuxsubmit(StyxMux *, const void *, unsigned, unsigned, StyxCancel *);
