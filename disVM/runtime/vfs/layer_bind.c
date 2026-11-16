@@ -25,7 +25,7 @@ static void release(DVM_NamespaceBinding *entry)
 /* EN/RU: Capture one validated retained source into an independent binding.
  * Root directory choices own their directory anchor, file source owns parent.
  * Захватить validated source в binding; root dirs удерживают каталог, files parent.
- * No callbacks; NULL on allocation/reference overflow. */
+ * Native capture I/O outside group lock; NULL on failure. */
 static DVM_NamespaceBinding *capture(DVM_ResourcePlan *source, const char *target,
                                      unsigned flags, int directory, const char *component)
 {
@@ -42,12 +42,25 @@ static DVM_NamespaceBinding *capture(DVM_ResourcePlan *source, const char *targe
         return NULL;
     }
     entry->anchor = anchor;
-    if (!dvm_provider_retain(source->provider))
+    if (source->provider && !dvm_provider_bindable_at(source->provider, source->relative))
     {
-        release(entry);
-        return NULL;
+        entry->provider = dvm_provider_capture(source->provider, source->relative);
+        if (!entry->provider)
+        {
+            release(entry);
+            return NULL;
+        }
+        part = "";
     }
-    entry->provider = source->provider;
+    else
+    {
+        if (!dvm_provider_retain(source->provider))
+        {
+            release(entry);
+            return NULL;
+        }
+        entry->provider = source->provider;
+    }
     entry->flags = flags;
     strcpy(entry->on, target);
     strcpy(entry->source, source->names.native);
@@ -76,7 +89,8 @@ int dvm_namespace_bind_layers(DVM_Namespace *group, DVM_ResourcePlan *source,
     }
     for (choice = source; choice; choice = source->union_root ? choice->layers : NULL)
     {
-        if (choice->provider && !dvm_provider_bindable(choice->provider))
+        if (choice->provider && !dvm_provider_bindable_at(choice->provider, choice->relative) &&
+            !dvm_provider_capturable(choice->provider))
         {
             release(head);
             return -1;

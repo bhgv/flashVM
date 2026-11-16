@@ -204,7 +204,8 @@ void Sys_bind(void *frame)
             if (source.names.version == target.names.version)
             {
                 committed = -1;
-                if (dvm_metadata_selected(&source, &a) == FVM_OK && !a.directory)
+                if (dvm_metadata_selected(&source, &a) == FVM_OK && (!a.directory ||
+                    dvm_provider_capturable(source.provider) || dvm_provider_capturable(target.provider)))
                 {
                     int released = dvm_runtime_gc_native_try_leave();
                     if (released >= 0)
@@ -214,7 +215,7 @@ void Sys_bind(void *frame)
                     }
                     if (committed < 0)
                     {
-                        kwerrstr("file bind target/stack refused");
+                        kwerrstr("captured bind target/stack refused");
                     }
                 }
                 else if (dvm_metadata_selected(&source, &a) == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)

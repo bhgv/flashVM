@@ -11,6 +11,13 @@
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
 
+/* EN/RU: Capture one live relative node into an owned fresh root provider/NULL.
+ * Root dot must stay anchored; preserve access policy, never reopen an old absolute path.
+ * Native I/O permitted outside namespace/lifetime locks; caller pins source through return.
+ * Захватить relative node в свой fresh root provider/NULL; сохранить policy, native I/O вне locks. */
+typedef DVM_Provider *(*DVM_ProviderCapture)(void *state, const char *relative);
+
+
 /* EN/RU: Immutable trusted callbacks, code alive through destroy. Relative paths
  * are normalized namespace suffixes. Open transfers one independent valid handle
  * only on success; failure leaves it empty. Destroy is nonblocking native cleanup.
@@ -31,6 +38,30 @@ typedef struct DVM_ProviderOps
  * Return owned reference or NULL/OOM; no callbacks. Создать factory, принять
  * state только при успехе. Своя ссылка либо NULL; callbacks не вызываются. */
 DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state);
+
+
+/* EN/RU: Like create, with immutable optional capture callback; state adopted only on success.
+ * fixed_root1 promises immutable dot identity only,0 leaves root capture to the callback.
+ * Existing ProviderOps layout/flag values are unchanged; callback code lives through destroy.
+ * Как create с optional capture callback; state принят только при успехе, ProviderOps ABI прежний. */
+DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root);
+
+
+/* EN/RU: Does this retained provider support per-node capture? No I/O or authority grant.
+ * Поддерживает ли retained provider per-node capture? Без I/O/выдачи authority. */
+int dvm_provider_capturable(DVM_Provider *provider);
+
+
+/* EN/RU: Test stable route or already anchored dot; no callback or I/O.
+ * Проверить stable route либо уже anchored dot; без callback/I/O. */
+int dvm_provider_bindable_at(DVM_Provider *provider, const char *relative);
+
+
+/* EN/RU: Owned anchored root/NULL; may perform native I/O. Source stays borrowed/pinned.
+ * Fixed dot may return another owner of the same provider. Otherwise callback must return
+ * a fresh unshared factory. Source invalidations forward provider-wide; source remains pinned.
+ * Свой anchored root/NULL; native I/O. Fixed dot может вернуть owner того же provider. */
+DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative);
 
 
 /* EN/RU: Retain live borrowed provider; NULL succeeds; zero on ref overflow.

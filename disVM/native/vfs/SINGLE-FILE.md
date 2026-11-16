@@ -100,7 +100,8 @@ A true single-file remote mount declares stable binding for dot only: its
 attached root fid anchors that object for the connection's lifetime. The client
 copies the immutable attach kind without an extra RPC, and the provider rejects
 all descendant paths locally. Directory-root providers retain their conservative
-no-stable-bind declaration until a separate retained-subroot-fid adapter exists.
+no-stable-bind declaration; runtime0.155 supplies a separate
+[per-node retained-fid capture adapter](CAPTURE.md) for directory/file aliases.
 There is no path-based reconnect or substitution of a new attach root. Binding
 retains that provider/connection; opened fids retain their own cursors. Remote file bytes/permissions remain live.
 

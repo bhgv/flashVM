@@ -18,7 +18,8 @@ Vfsctl: module
     Execute: con 1; # Effective execute/search access bit.
     Write: con 2; # Effective write access bit.
     Read: con 4; # Effective read access bit; known query bits live at <<8.
-    Stablebind: con 1; # Provider promises stable capability-relative identities.
+    Stablebind: con 1; # Observed route is stable or already captured dot.
+    Capturebind: con 2; # Provider supports explicit per-node capture; actual capture may refuse.
 
 
     # EN/RU: Copied configuration and live observations, no native pointers/host source paths.

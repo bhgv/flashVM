@@ -2,21 +2,9 @@
  * EN: Native factory references and factory-pinning open handles.
  * RU: Native factory references и удержание factory открытыми handles.
  */
-#include "provider.h"
+#include "provider_internal.h"
 #include "channel_sync.h"
 #include <stdlib.h>
-
-
-/* EN/RU: Refcount mutex protects only lifetime, never provider callbacks.
- * Refcount mutex защищает только lifetime, но не callbacks. */
-struct DVM_Provider
-{
-    FVM_PortSync *lock; /* Native lifetime lock, destroyed after last reference. */
-    size_t references; /* Group/plan/open-handle owners, protected by lock. */
-    const DVM_ProviderOps *ops; /* Immutable callbacks, valid through destroy. */
-    void *state; /* Exclusively owned native factory state. */
-    DVM_Changes *changes; /* Owned event journal, borrowed only through retained factory refs. */
-};
 
 
 /* EN/RU: One open resource owns its inner handle and one factory reference.
@@ -31,10 +19,10 @@ typedef struct ProviderHandle
 
 /* EN/RU: See provider.h; ownership transfer occurs only after full allocation.
  * См. provider.h; владение передаётся после полного выделения. */
-DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state)
+DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root)
 {
     DVM_Provider *provider;
-    if (!ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
+    if ((fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
     {
         return NULL;
     }
@@ -59,7 +47,17 @@ DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state)
     provider->references = 1;
     provider->ops = ops;
     provider->state = state;
+    provider->capture = capture;
+    provider->anchored = fixed_root;
     return provider;
+}
+
+
+/* EN/RU: See provider.h; legacy creation retains its existing callback-table ABI.
+ * См. provider.h; legacy creation сохраняет прежний ABI callback table. */
+DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state)
+{
+    return dvm_provider_create_capture(ops, state, NULL, 0);
 }
 
 
@@ -96,7 +94,9 @@ void dvm_provider_release(DVM_Provider *provider)
     fvm_port_sync_unlock(provider->lock);
     if (last)
     {
+        dvm_provider_capture_detach(provider);
         provider->ops->destroy(provider->state);
+        dvm_provider_release(provider->origin);
         dvm_changes_destroy(provider->changes);
         fvm_port_sync_destroy(provider->lock);
         free(provider);

@@ -156,6 +156,13 @@ void styxclientfree(StyxClient *client);
 StyxFid *styxclientwalk(StyxClient *client, const char *relative);
 
 
+/* EN/RU: Walk from a borrowed pinned unopened fid; dot clones, owned independent result/NULL.
+ * Serialize base open/clunk against this call; concurrent walks are allowed. File descendants
+ * and unsafe paths refuse before wire effects. No fallback to the original attach pathname.
+ * Пройти от pinned unopened fid; dot клонирует, свой result/NULL; без fallback к attach pathname. */
+StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative);
+
+
 /* EN/RU: Open unopened fid in mode0/1/2 without create/truncate;1/0.
  * Caller serializes a fid's data calls. Ropen iounit limits every later chunk.
  * Открыть fid без create/truncate;1/0, iounit ограничивает chunk. */

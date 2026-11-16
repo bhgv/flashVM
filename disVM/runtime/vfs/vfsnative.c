@@ -236,7 +236,8 @@ void Vfsnative_state(void *frame)
                 {
                     result[1] = batch.event.session;
                     result[2] = batch.event.generation;
-                    result[3] = dvm_provider_bindable(entry->provider) ? DVM_PROVIDER_STABLE_BIND : 0;
+                    result[3] = (dvm_provider_bindable_at(entry->provider, entry->relative) ? DVM_PROVIDER_STABLE_BIND : 0) |
+                        (dvm_provider_capturable(entry->provider) ? 2 : 0);
                 }
             }
             if (!dvm_stack_current(plan.group, plan.names.version))

@@ -31,12 +31,22 @@ static DVM_Provider *capture(DVM_ResourcePlan *plan, int64_t index, unsigned acc
         return NULL;
     }
     DVM_Provider *source = entry->provider;
-    if (source ? !dvm_provider_retain(source) : !(source = dvm_export_native(entry, info.directory)))
+    const char *relative = entry->provider ? entry->relative : ".";
+    if (source && !dvm_provider_bindable_at(source, relative))
+    {
+        source = dvm_provider_capture(source, relative);
+        relative = ".";
+    }
+    else if (source ? !dvm_provider_retain(source) : !(source = dvm_export_native(entry, info.directory)))
+    {
+        return NULL;
+    }
+    if (!source)
     {
         return NULL;
     }
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
-    if (!view || !dvm_view_map(view, "/", source, entry->provider ? entry->relative : ".", access,
+    if (!view || !dvm_view_map(view, "/", source, relative, access,
                                info.directory ? DVM_VIEW_TREE : 0))
     {
         dvm_view_discard(view);

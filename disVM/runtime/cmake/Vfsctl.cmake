@@ -15,7 +15,7 @@ list(APPEND module_sources "${root}/disVM/limbo/vfsctl.b" "${root}/disVM/limbo/v
 
 # EN/RU: Native embedding SDK; separate from standard Styx/Sys interfaces.
 # Native embedding SDK, отдельно от standard Styx/Sys interfaces.
-target_sources(disvm PRIVATE vfs/view.c vfs/view_io.c vfs/view_list.c vfs/export_native.c vfs/publication.c)
+target_sources(disvm PRIVATE vfs/view.c vfs/view_capture.c vfs/view_io.c vfs/view_list.c vfs/export_native.c vfs/publication.c)
 
 add_custom_command(OUTPUT "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${view}"

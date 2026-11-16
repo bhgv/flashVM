@@ -75,4 +75,14 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
  * Построить filtered directory batch с explicit mapped children; native owned entries. */
 FVM_Result dvm_view_list(DVM_View *view, const char *path, DVM_VfsHandle *inner, int explicit_done,
                          FVM_FileInfo **entries, size_t *count);
+
+
+/* EN/RU: Drop one native view-state reference; no provider pointer required by policy proxy.
+ * Поглотить native view-state reference; policy proxy не требует provider pointer. */
+void dvm_view_drop(void *state);
+
+
+/* EN/RU: Capture callback rebases a subtree, anchors its selected source and preserves explicit rules/policy.
+ * Capture callback переносит subtree, удерживает selected source и сохраняет explicit rules/policy. */
+DVM_Provider *dvm_view_capture(void *state, const char *relative);
 #endif

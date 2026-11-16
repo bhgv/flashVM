@@ -30,4 +30,11 @@ DVM_Provider *styxmountproviderfeed(StyxClient *client, unsigned access, const S
  * Принять client всегда; свой provider/NULL и обязательный native control; initial policy optional. */
 DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
                                       const StyxFeedConfig *initial, StyxMountCtl **output);
+
+
+/* EN/RU: Native I/O captures one relative root fid before publication; consume client always.
+ * Return owned provider/NULL; later opens/walks stay relative to that fid after rename/rebind.
+ * No prepared tree snapshot, implicit reconnect or guessed event endpoint is introduced.
+ * Native I/O захватывает relative root fid; client принят всегда, свой provider/NULL. */
+DVM_Provider *styxmountproviderat(StyxClient *client, const char *relative, unsigned access);
 #endif

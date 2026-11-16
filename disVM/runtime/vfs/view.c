@@ -306,7 +306,7 @@ static FVM_Result open_view(void *state, const char *relative, const char *mode,
 
 /* EN/RU: Drop a native state ref; final cleanup follows all detached callbacks.
  * Поглотить state ref; final cleanup после всех detached callbacks. */
-static void drop(void *state)
+void dvm_view_drop(void *state)
 {
     DVM_View *view = state;
     fvm_port_sync_lock(view->lock);
@@ -378,7 +378,7 @@ void dvm_view_discard(DVM_View *view)
         rule->tap = NULL;
         dvm_notice_unsubscribe(tap);
     }
-    drop(view);
+    dvm_view_drop(view);
 }
 
 
@@ -408,7 +408,7 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
             identity = 0;
         }
     }
-    DVM_Provider *provider = dvm_provider_create(identity ? &stable : &dynamic, view);
+    DVM_Provider *provider = dvm_provider_create_capture(identity ? &stable : &dynamic, view, dvm_view_capture, 0);
     if (!provider)
     {
         dvm_view_discard(view);
@@ -433,10 +433,10 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
         fvm_port_sync_lock(view->lock);
         view->references++;
         fvm_port_sync_unlock(view->lock);
-        rule->tap = dvm_notice_subscribe(dvm_changes_notices(dvm_provider_changes(rule->source)), changed, view, drop);
+        rule->tap = dvm_notice_subscribe(dvm_changes_notices(dvm_provider_changes(rule->source)), changed, view, dvm_view_drop);
         if (!rule->tap)
         {
-            drop(view);
+            dvm_view_drop(view);
             dvm_provider_release(provider);
             return NULL;
         }

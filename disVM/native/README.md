@@ -353,3 +353,12 @@ direct/prepared publication and explicit missing leaves in populated directories
 Sys.bind, Vfsexport.mount and Vfsctl share file-stack ordering; directory reads
 show graft names beside existing siblings. No host placeholders, tree freeze or
 wire-format extension is required. Original Inferno changes are pinned byte-for-byte.
+
+
+## Captured live roots / Захват живых корней (runtime0.155)
+
+[Directory/file capture APIs and examples](vfs/CAPTURE.md) anchor a selected remote
+fid for Sys.bind, Vfsctl and Vfsexport.capture. Original-path replacement does
+not redirect the bound root; directory membership, policy and rights stay live.
+Captured origins retain source feeds and forward invalidations automatically.
+Native cleanup never waits on the guest thread. No Styx wire extension is added.

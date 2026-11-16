@@ -3,16 +3,16 @@
 # RU: Явные неграфические VFS/FlashVM ports; без второй библиотеки lib9.
 set(vfs "${INFERNO_VFS_SUPPORT}/disVM/runtime/vfs")
 set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
-if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
+if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
-add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c mount_notice.c
+add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_capture.c mount_root.c mount_io.c mount_notice.c
     feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
     subscriptions/lifetime.c subscriptions/open.c
-    "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
+    "${vfs}/provider.c" "${vfs}/provider_capture.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
-    "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
+    "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_capture.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
     "${ports}/file_port.c" "${ports}/linux/filesystem.c" "${ports}/linux/channel_sync.c")
 target_include_directories(styx_vfs PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${vfs}"
     "${ports}" "${INFERNO_VFS_SUPPORT}/flashVM/include" "${INFERNO_VFS_SUPPORT}/disVM/include")
@@ -215,3 +215,22 @@ foreach(scenario direct prepare)
         "$<TARGET_FILE:vfs-file-root-client>" "$<TARGET_FILE:vfs-file-root-server>" "${scenario}")
     set_tests_properties(vfs-file-root-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()
+
+add_executable(vfs-provider-capture ../tests/subroot/capture.c ../tests/file-root/context.c)
+target_link_libraries(vfs-provider-capture PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-provider-capture COMMAND vfs-provider-capture)
+set_tests_properties(vfs-provider-capture PROPERTIES TIMEOUT 10)
+add_executable(vfs-subroot-server ../tests/subroot/server.c)
+set_source_files_properties(../tests/subroot/server.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
+target_link_libraries(vfs-subroot-server PRIVATE infernostyx)
+add_executable(vfs-subroot-client ../tests/subroot/client.c ../tests/file-root/context.c)
+target_link_libraries(vfs-subroot-client PRIVATE styx_namespace_fixture)
+foreach(scenario bind at)
+    add_test(NAME vfs-subroot-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/subroot/wire.py"
+        "$<TARGET_FILE:vfs-subroot-client>" "$<TARGET_FILE:vfs-subroot-server>" "${scenario}")
+    set_tests_properties(vfs-subroot-${scenario} PROPERTIES TIMEOUT 30)
+endforeach()
+add_executable(vfs-subroot-retire ../tests/subroot/retire.c mount_root.c)
+target_link_libraries(vfs-subroot-retire PRIVATE styx_vfs)
+add_test(NAME vfs-subroot-retire COMMAND vfs-subroot-retire)
+set_tests_properties(vfs-subroot-retire PROPERTIES TIMEOUT 10)

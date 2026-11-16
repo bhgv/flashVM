@@ -46,7 +46,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     {
         return FVM_NOT_FOUND;
     }
-    StyxFid *fid = styxclientwalk(mount->client, path);
+    StyxFid *fid = styxmountwalk(mount, path);
     StyxMeta meta;
     int success = fid && styxclientstat(fid, &meta) && (!mount->file_root || !meta.directory);
     styxclientclunk(fid);
@@ -81,7 +81,7 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
         return FVM_OUT_OF_MEMORY;
     }
     opened->mount = mount;
-    opened->fid = styxclientwalk(mount->client, path);
+    opened->fid = styxmountwalk(mount, path);
     StyxMeta meta;
     if (!opened->fid || !styxclientstat(opened->fid, &meta) || (mount->file_root && meta.directory))
     {
@@ -123,6 +123,7 @@ static void destroy(void *state)
     styxmountctlclose(mount->control);
     styxmountctlfree(mount->control);
     styxclientunwatch(mount->watch);
+    styxmountrootretire(mount->rootlife);
     styxclientfree(mount->client);
     free(mount);
 }
@@ -133,8 +134,10 @@ static const DVM_ProviderOps fileoperations = {info, openfile, destroy, DVM_PROV
 /* EN/RU: Consume client; create factory/health watch and optional configured native feed.
  * Clear optional control before fallible setup; event policy adopts state only on success.
  * Принять client; создать factory/health и optional feed; control очистить до setup.
- * Transport authority выбрана native host; config.state принимается только при успехе. */
-static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control, StyxMountCtl **authority)
+ * Transport authority выбрана native host; config.state принимается только при успехе.
+ * root is consumed always; directory names its kind; ownwatch selects a local health tap.
+ * root принят всегда; directory задаёт тип, ownwatch включает свой health tap. */
+static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control, StyxMountCtl **authority, StyxFid *root, int directory, int ownwatch)
 {
     if (authority)
     {
@@ -146,27 +149,41 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
     }
     if (!client || !access || (access & ~FVM_ACCESS_MASK) || (config && !(access & FVM_ACCESS_READ)))
     {
+        styxclientclunk(root);
         styxclientfree(client);
         return NULL;
     }
     struct Mount *mount = calloc(1, sizeof(*mount));
     if (!mount)
     {
+        styxclientclunk(root);
         styxclientfree(client);
         return NULL;
     }
+    if (root)
+    {
+        mount->rootlife = styxmountrootlife(root);
+        if (!mount->rootlife)
+        {
+            styxclientclunk(root);
+            styxclientfree(client);
+            free(mount);
+            return NULL;
+        }
+    }
+    mount->root = root;
     mount->client = client;
     mount->access = access;
-    mount->file_root = styxclientrootdirectory(client) == 0;
-    DVM_Provider *provider = dvm_provider_create(mount->file_root ? &fileoperations : &operations, mount);
+    mount->file_root = root ? !directory : styxclientrootdirectory(client) == 0;
+    DVM_Provider *provider = dvm_provider_create_capture(mount->file_root ? &fileoperations : &operations, mount, styxmountcapture, root != NULL);
     if (!provider)
     {
         destroy(mount);
         return NULL;
     }
     DVM_Changes *changes = dvm_provider_changes(provider);
-    mount->watch = styxmountwatch(client, changes);
-    if (!mount->watch)
+    mount->watch = ownwatch ? styxmountwatch(client, changes) : NULL;
+    if (ownwatch && !mount->watch)
     {
         dvm_provider_release(provider);
         return NULL;
@@ -205,7 +222,7 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
  * См. mount.h; ordinary mount сохраняет автоматическое connection-health observation. */
 DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
 {
-    return create(client, access, NULL, NULL, NULL);
+    return create(client, access, NULL, NULL, NULL, NULL, 0, 1);
 }
 
 
@@ -222,7 +239,7 @@ DVM_Provider *styxmountproviderfeed(StyxClient *client, unsigned access, const S
         styxclientfree(client);
         return NULL;
     }
-    return create(client, access, config, control, NULL);
+    return create(client, access, config, control, NULL, NULL, 0, 1);
 }
 
 
@@ -236,5 +253,13 @@ DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
         styxclientfree(client);
         return NULL;
     }
-    return create(client, access, initial, NULL, output);
+    return create(client, access, initial, NULL, output, NULL, 0, 1);
+}
+
+
+/* EN/RU: See mount_internal.h; capture providers inherit health/content via source journal bridge.
+ * См. mount_internal.h; capture providers наследуют health/content через source journal bridge. */
+DVM_Provider *styxmountroot(StyxClient *client, StyxFid *root, unsigned access, int directory, int watch)
+{
+    return create(client, access, NULL, NULL, NULL, root, directory, watch);
 }

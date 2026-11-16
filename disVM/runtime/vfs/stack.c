@@ -57,12 +57,13 @@ static void release(DVM_NamespaceBinding *entry)
 /* EN/RU: Copy one retained route; pin existing native directories by identity.
  * Missing/file branches keep parent+relative name. No namespace locks/managed access.
  * Скопировать route; native directory закрепить по identity, files/missing — parent+name.
- * Return owned binding/NULL; provider must promise stable relative identity. */
+ * Return owned binding/NULL; provider needs stable routing or native node capture. */
 static DVM_NamespaceBinding *capture(DVM_ResourcePlan *choice, const char *on, unsigned flags, int preserve)
 {
     DVM_NamespaceBinding *entry;
     FVM_FileInfo info;
-    if ((choice->provider && !dvm_provider_bindable(choice->provider)) || (!choice->provider && !choice->anchor))
+    if ((choice->provider && !dvm_provider_bindable_at(choice->provider, choice->relative) &&
+         !dvm_provider_capturable(choice->provider)) || (!choice->provider && !choice->anchor))
     {
         return NULL;
     }
@@ -95,12 +96,25 @@ static DVM_NamespaceBinding *capture(DVM_ResourcePlan *choice, const char *on, u
         }
         entry->anchor = choice->anchor;
     }
-    if (!dvm_provider_retain(choice->provider))
+    if (choice->provider && !dvm_provider_bindable_at(choice->provider, choice->relative))
     {
-        release(entry);
-        return NULL;
+        entry->provider = dvm_provider_capture(choice->provider, choice->relative);
+        if (!entry->provider)
+        {
+            release(entry);
+            return NULL;
+        }
+        entry->component[0] = 0;
     }
-    entry->provider = choice->provider;
+    else
+    {
+        if (!dvm_provider_retain(choice->provider))
+        {
+            release(entry);
+            return NULL;
+        }
+        entry->provider = choice->provider;
+    }
     return entry;
 }
 
@@ -238,6 +252,29 @@ static int kind(DVM_ResourcePlan *plan, int *directory)
 }
 
 
+/* EN/RU: Check actual staged roots after capture, before namespace publication.
+ * Compare the first existing candidate to expected file/directory kind; zero on
+ * disappearance or replacement with a different kind. Native metadata outside locks.
+ * Проверить actual staged roots после capture: первый existing kind должен совпасть
+ * с expected; исчезновение/замена типа дают ноль. Native metadata вне locks. */
+static int samekind(DVM_NamespaceBinding *head, int expected)
+{
+    for (DVM_NamespaceBinding *entry = head; entry; entry = entry->next)
+    {
+        FVM_FileInfo info;
+        const char *relative = *entry->component ? entry->component : ".";
+        FVM_Result status = entry->provider ? dvm_provider_info(entry->provider, relative, &info) :
+            entry->anchor ? fvm_port_anchor_info_at(dvm_anchor_port(entry->anchor), relative, &info) :
+            fvm_port_path_info(entry->source, &info);
+        if (status == FVM_OK)
+        {
+            return info.directory == expected;
+        }
+    }
+    return 0;
+}
+
+
 /* EN/RU: See stack.h; insert flattened source block, never expose native pointers.
  * См. stack.h; вставить source block целиком, без публикации native pointers. */
 int dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned flags, int64_t index)
@@ -245,7 +282,7 @@ int dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned 
     unsigned order = flags & (DVM_NS_ORDER | DVM_NS_INSERT);
     DVM_NamespaceBinding *head = NULL, *added;
     size_t position = 0;
-    int a, b;
+    int a, b, target_exists;
     if (source->group != target->group || source->names.version != target->names.version)
     {
         return 0;
@@ -258,7 +295,8 @@ int dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned 
     {
         return -1;
     }
-    if (kind(target, &b))
+    target_exists = kind(target, &b);
+    if (target_exists)
     {
         if (a != b)
         {
@@ -274,14 +312,16 @@ int dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned 
         }
     }
     added = clone(source, target->names.path, 0, flags, 1);
-    if (!added)
+    if (!added || !samekind(added, a))
     {
+        release(added);
         return -1;
     }
     if (order)
     {
         head = clone(target, target->names.path, target->mount_root, 0, 0);
-        if (!head || (order == DVM_NS_INSERT && !dvm_stack_position(index, count(head), 1, &position)))
+        if (!head || (target_exists && !samekind(head, a)) ||
+            (order == DVM_NS_INSERT && !dvm_stack_position(index, count(head), 1, &position)))
         {
             release(head);
             release(added);

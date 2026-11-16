@@ -42,7 +42,7 @@ static int components(const char *path, char *copy, char **names)
 
 /* EN/RU: See client.h; a partial walk is refused and any new remote fid clunked.
  * См. client.h; partial walk отклонить, новый remote fid поглотить clunk. */
-StyxFid *styxclientwalk(StyxClient *client, const char *relative)
+static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative)
 {
     char copy[STYX_NAME_MAX];
     char *names[STYX_NAME_MAX];
@@ -57,19 +57,21 @@ StyxFid *styxclientwalk(StyxClient *client, const char *relative)
         return NULL;
     }
     pthread_mutex_lock(&client->lock);
-    if (client->failed || client->lastfid == NOFID-1 || client->references == (size_t)-1)
+    if ((base && (base->opened || base->poisoned)) ||
+        (count && !((base ? base->qid : client->root).type & QTDIR)) ||
+        client->failed || client->lastfid == NOFID-1 || client->references == (size_t)-1)
     {
         goto failed;
     }
     fid->number = ++client->lastfid;
-    fid->qid = client->root;
+    fid->qid = base ? base->qid : client->root;
     unsigned index = 0;
     do
     {
         Fcall request, reply;
         memset(&request, 0, sizeof(request));
         request.type = Twalk;
-        request.fid = index ? fid->number : 1;
+        request.fid = index ? fid->number : base ? base->number : 1;
         request.newfid = fid->number;
         request.nwname = count-index > MAXWELEM ? MAXWELEM : count-index;
         for (unsigned i = 0; i < request.nwname; i++)
@@ -101,6 +103,22 @@ failed:
     pthread_mutex_unlock(&client->lock);
     free(fid);
     return NULL;
+}
+
+
+/* EN/RU: See client.h; legacy walks stay confined to the original attached root.
+ * См. client.h; legacy walks остаются внутри исходного attach root. */
+StyxFid *styxclientwalk(StyxClient *client, const char *relative)
+{
+    return walk(client, NULL, relative);
+}
+
+
+/* EN/RU: See client.h; caller pins unopened base across all fragmented walk RPCs.
+ * См. client.h; caller удерживает unopened base на время всех walk RPC fragments. */
+StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative)
+{
+    return base ? walk(base->client, base, relative) : NULL;
 }
 
 

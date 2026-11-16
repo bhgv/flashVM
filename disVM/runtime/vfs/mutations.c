@@ -207,10 +207,21 @@ int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *
 int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *source,
                                 const DVM_NamespacePlan *target)
 {
-    if (!group || !source || !target || !dvm_provider_bindable(source->provider))
+    if (!group || !source || !target)
     {
         return -1;
     }
-    return bind_selection(group, &source->names, target, source->provider, NULL,
-                          !strcmp(source->relative, ".") ? "" : source->relative);
+    if (dvm_provider_bindable_at(source->provider, source->relative))
+    {
+        return bind_selection(group, &source->names, target, source->provider, NULL,
+                              !strcmp(source->relative, ".") ? "" : source->relative);
+    }
+    DVM_Provider *root = dvm_provider_capture(source->provider, source->relative);
+    if (!root)
+    {
+        return -1;
+    }
+    int result = bind_selection(group, &source->names, target, root, NULL, "");
+    dvm_provider_release(root);
+    return result;
 }

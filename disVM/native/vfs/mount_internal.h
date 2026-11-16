@@ -7,10 +7,15 @@
 #include "mount.h"
 #include "channel_sync.h"
 
+typedef struct StyxRootLife StyxRootLife; /* Owned detached native root-fid cleanup context. */
+
+
 /* EN/RU: Provider factory lifetime pins one connection and its native event source.
  * Lifetime provider factory удерживает connection и native event source. */
 struct Mount
 {
+    StyxRootLife *rootlife; /* Owned nonwaiting cleanup authority; worker owns captured root fid. */
+    StyxFid *root; /* Borrowed immutable unopened root under rootlife; NULL for attach fid1. */
     StyxClient *client; /* Owned connection; provider wrappers pin this factory. */
     StyxMountCtl *control; /* Owned subscription authority, permanently closed on factory retirement. */
     StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
@@ -47,4 +52,29 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 /* EN/RU: Independent opened cursor callbacks, used only through provider lifetime pins.
  * Callbacks открытого cursor только под provider lifetime pins. */
 extern const DVM_VfsOps styxmountedops;
+
+
+/* EN/RU: Walk relative to this mount's captured root, never a retired original path.
+ * Пройти относительно captured root этого mount, не по прежнему pathname. */
+StyxFid *styxmountwalk(struct Mount *mount, const char *relative);
+
+
+/* EN/RU: Capture callback returns fresh independently rooted provider, preserving fixed access.
+ * Capture callback возвращает fresh independently rooted provider с прежним access ceiling. */
+DVM_Provider *styxmountcapture(void *state, const char *relative);
+
+
+/* EN/RU: Consume root/client owners always; construct fresh provider with optional own health watch.
+ * Поглотить root/client owners всегда; fresh provider с optional own health watch. */
+DVM_Provider *styxmountroot(StyxClient *client, StyxFid *root, unsigned access, int directory, int watch);
+
+
+/* EN/RU: Adopt root on success only; detached native worker owns cleanup, owned control/NULL.
+ * Принять root только при успехе; detached native worker владеет cleanup, свой control/NULL. */
+StyxRootLife *styxmountrootlife(StyxFid *root);
+
+
+/* EN/RU: Consume cleanup control nonwaiting; native worker clunks fid and frees its own context.
+ * Поглотить cleanup control без ожидания; native worker clunk fid и освобождает context. */
+void styxmountrootretire(StyxRootLife *life);
 #endif
