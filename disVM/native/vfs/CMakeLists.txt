@@ -6,7 +6,8 @@ set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
 if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
-add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c
+add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c mount_notice.c
+    feed/control.c feed/worker.c
     events/source.c events/read.c events/provider.c
     "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
@@ -146,4 +147,22 @@ foreach(scenario deliver cancel)
     add_test(NAME vfs-event-resource-client-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/event-resource/client.py"
         "$<TARGET_FILE:vfs-event-resource-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-event-resource-client-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()
+
+add_executable(vfs-feed-journal ../tests/feed/journal.c)
+target_link_libraries(vfs-feed-journal PRIVATE styx_vfs)
+add_test(NAME vfs-feed-journal COMMAND vfs-feed-journal)
+set_tests_properties(vfs-feed-journal PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-feed-parser ../tests/feed/parser.c)
+target_link_libraries(vfs-feed-parser PRIVATE styx_vfs)
+add_test(NAME vfs-feed-parser COMMAND vfs-feed-parser)
+set_tests_properties(vfs-feed-parser PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-feed-client ../tests/feed/client.c)
+target_link_libraries(vfs-feed-client PRIVATE styx_vfs)
+foreach(scenario normal stop inflight shutdown bad progress partial badpath noslots writeonly)
+    add_test(NAME vfs-feed-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/feed/wire.py"
+        "$<TARGET_FILE:vfs-feed-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-feed-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()

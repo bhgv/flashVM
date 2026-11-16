@@ -176,6 +176,18 @@ void styxclientreadcancel(StyxFid *fid, unsigned long long offset, void *bytes, 
 void styxclientwritecancel(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxCancel *cancel, StyxTransfer *result);
 
 
+/* EN/RU: Local capability snapshot;1 if live fd owner has at least two RPC slots,0 otherwise.
+ * Local capability snapshot;1 для live fd owner минимум с двумя RPC slots. */
+int styxclientwatchable(StyxClient *client);
+
+
+/* EN/RU: Long-lived native read without ordinary request deadline; explicit token required.
+ * Same precision/flush fences as readcancel. Heartbeat/terminal/cancel still operate.
+ * Caller pins/serializes fid and token; requires watchable client, uses one RPC slot.
+ * Долгий native read без обычного deadline; explicit token, heartbeat/cancel сохраняются. */
+void styxclientreadwatch(StyxFid *, unsigned long long, void *, size_t, StyxCancel *, StyxTransfer *);
+
+
 /* EN/RU: Decode one complete original stat record; bytes borrowed,1/0 and consumed.
  * Reject malformed/truncated records and unsafe basename, no partial output.
  * Разобрать одну полную stat-запись;1/0 и consumed, без unsafe basename. */

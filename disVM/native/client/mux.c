@@ -94,16 +94,23 @@ int styxmuxalive(StyxMux *mux)
 }
 
 
-/* EN/RU: See mux.h; admission rejects quota/OOM/token reuse before wire effects.
- * См. mux.h; quota/OOM/token reuse отклоняются до wire effects. */
-StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsigned bound, StyxCancel *cancel)
+/* EN/RU: See mux.h; reject quota/OOM/token reuse before effects. Watching reads reserve
+ * no more than limit-1 slots, retaining ordinary RPC capacity. Request bytes are copied.
+ * См. mux.h; refusal до effects; watching занимает максимум limit-1 slots, bytes copied. */
+StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsigned bound, StyxCancel *cancel, int watching)
 {
     pthread_mutex_lock(&mux->lock);
     unsigned index;
     for (index = 0; index < mux->limit && mux->slots[index]; index++)
     {
     }
-    if (mux->failed || mux->stopping || index == mux->limit || length < 7 || length > bound || bound > mux->capacity)
+    unsigned watches = 0;
+    for (unsigned i = 0; i < mux->limit; i++)
+    {
+        watches += mux->slots[i] && mux->slots[i]->watching;
+    }
+    if (mux->failed || mux->stopping || index == mux->limit || length < 7 || length > bound || bound > mux->capacity ||
+        (watching && (mux->limit < 2 || watches >= mux->limit-1 || ((const uchar *)bytes)[4] != Tread)))
     {
         pthread_mutex_unlock(&mux->lock);
         return NULL;
@@ -133,6 +140,7 @@ StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsi
         pthread_mutex_unlock(&mux->lock);
         return NULL;
     }
+    flight->watching = watching;
     flight->cancel = cancel;
     flight->mux = mux;
     flight->slot = index;
@@ -290,4 +298,15 @@ StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned lim
 StyxLife *styxmuxlife(StyxMux *mux)
 {
     return mux->life;
+}
+
+
+/* EN/RU: See mux.h; native state snapshot only, no wire request/admission reservation.
+ * См. mux.h; только native snapshot без wire request/reservation. */
+int styxmuxwatchable(StyxMux *mux)
+{
+    pthread_mutex_lock(&mux->lock);
+    int valid = !mux->failed && !mux->stopping && mux->limit >= 2;
+    pthread_mutex_unlock(&mux->lock);
+    return valid;
 }

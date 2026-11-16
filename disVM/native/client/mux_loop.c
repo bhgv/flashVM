@@ -31,8 +31,7 @@ static int deadlines(StyxMux *mux, double now)
         {
             continue;
         }
-        active = 1;
-        if (!flight->flushing && (now >= flight->deadline || styxcancelled(flight->cancel)))
+        if (!flight->flushing && ((!flight->watching && now >= flight->deadline) || styxcancelled(flight->cancel)))
         {
             if (flight->request[4] == Tversion)
             {
@@ -57,6 +56,11 @@ static int deadlines(StyxMux *mux, double now)
                 return 0;
             }
         }
+        if (flight->watching && !flight->flushing)
+        {
+            continue;
+        }
+        active = 1;
         double until = (flight->flushing ? flight->flushdeadline : flight->deadline)-now;
         if (until <= 0)
         {

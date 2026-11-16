@@ -139,13 +139,36 @@ uint64_t dvm_changes_reconnect(DVM_Changes *changes, uint64_t expected)
 }
 
 
+/* EN/RU: Under journal lock, append one validated local event and bounded history.
+ * Под journal lock записать validated local event и bounded history. */
+static void append(DVM_Changes *changes, const DVM_ChangeEvent *event)
+{
+    size_t index;
+    changes->generation = event->generation;
+    for (index = 0; index < DVM_CHANGE_KINDS; index++)
+    {
+        if (event->kinds & (1U << index))
+        {
+            changes->versions[index] = event->generation;
+        }
+    }
+    if (changes->count == DVM_CHANGE_HISTORY)
+    {
+        changes->floor = changes->history[changes->first].generation;
+        changes->first = (changes->first + 1) % DVM_CHANGE_HISTORY;
+        changes->count--;
+    }
+    index = (changes->first + changes->count++) % DVM_CHANGE_HISTORY;
+    changes->history[index] = *event;
+}
+
+
 /* EN/RU: See changes.h; an immutable generation includes its entire kind mask.
  * Dropped/out-of-order reports cannot hide classes: any gap invalidates ALL.
  * См. changes.h; generation включает весь kind mask. Gap инвалидирует ALL. */
 int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event)
 {
     DVM_ChangeEvent accepted;
-    size_t index;
     int result = 0;
     if (!changes || !event || !event->session || !event->generation ||
         (event->kinds & ~DVM_CHANGE_ALL) || (event->flags & ~DVM_CHANGE_RESOURCE) ||
@@ -168,22 +191,7 @@ int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event)
             accepted.flags = 0;
             accepted.resource = 0;
         }
-        changes->generation = accepted.generation;
-        for (index = 0; index < DVM_CHANGE_KINDS; index++)
-        {
-            if (accepted.kinds & (1U << index))
-            {
-                changes->versions[index] = accepted.generation;
-            }
-        }
-        if (changes->count == DVM_CHANGE_HISTORY)
-        {
-            changes->floor = changes->history[changes->first].generation;
-            changes->first = (changes->first + 1) % DVM_CHANGE_HISTORY;
-            changes->count--;
-        }
-        index = (changes->first + changes->count++) % DVM_CHANGE_HISTORY;
-        changes->history[index] = accepted;
+        append(changes, &accepted);
         result = 1;
     }
     fvm_port_sync_unlock(changes->lock);
@@ -200,4 +208,33 @@ int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event)
 DVM_NoticeHub *dvm_changes_notices(DVM_Changes *changes)
 {
     return changes ? changes->notices : NULL;
+}
+
+
+/* EN/RU: See changes.h; allocate a local generation atomically across independent producers.
+ * См. changes.h; атомарно выделить local generation для независимых producers. */
+uint64_t changespost(DVM_Changes *changes, unsigned kinds, unsigned flags, uint64_t resource)
+{
+    if (!changes || (kinds & ~DVM_CHANGE_ALL) || (flags & ~DVM_CHANGE_RESOURCE) ||
+        ((flags & DVM_CHANGE_RESOURCE) && (!kinds ||
+         (kinds & (DVM_CHANGE_CONNECTION|DVM_CHANGE_LOAD|DVM_CHANGE_NETWORK)))))
+    {
+        return 0;
+    }
+    DVM_ChangeEvent event;
+    fvm_port_sync_lock(changes->lock);
+    if (changes->generation == UINT64_MAX)
+    {
+        fvm_port_sync_unlock(changes->lock);
+        return 0;
+    }
+    event.session = changes->session;
+    event.generation = changes->generation+1;
+    event.kinds = kinds ? kinds : DVM_CHANGE_ALL;
+    event.flags = flags;
+    event.resource = flags ? resource : 0;
+    append(changes, &event);
+    fvm_port_sync_unlock(changes->lock);
+    dvm_notice_publish(changes->notices, &event);
+    return event.generation;
 }

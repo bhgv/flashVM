@@ -81,6 +81,7 @@ int main(void)
     memset(&mux, 0, sizeof(mux));
     memset(&flight, 0, sizeof(flight));
     mux.limit = 1;
+    mux.timeout = 1000;
     mux.slots = slots;
     mux.receive = receive;
     mux.decode = decode;
@@ -132,6 +133,15 @@ int main(void)
         sendframe(&mux);
     }
     check(flight.sent == flight.length && !memcmp(bytes+9, request, flight.length), "ordinary frame bytes");
+    flight.watching = 1;
+    check(deadlines(&mux, 1000000) == -1 && !flight.flushing && !flight.done, "watch read hit ordinary deadline");
+    StyxCancel *cancel = styxcancelcreate();
+    check(cancel != nil, "watch cancellation token");
+    styxcancelrequest(cancel);
+    flight.cancel = cancel;
+    check(deadlines(&mux, 1000000) == 1001 && flight.flushing && !flight.done && !mux.failed, "watch cancellation lost bounded flush grace");
+    flight.cancel = nil;
+    styxcancelfree(cancel);
     mux.beat.idle = 0;
     check(styxbeattick(&mux, 1000) == -1, "disabled new probe");
     mux.beat.idle = 10;

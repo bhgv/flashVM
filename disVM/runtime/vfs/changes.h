@@ -84,6 +84,13 @@ uint64_t dvm_changes_reconnect(DVM_Changes *changes, uint64_t expected);
 int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event);
 
 
+/* EN/RU: Append a native invalidation with atomically assigned local generation;0 invalid/exhausted.
+ * For independent producers whose remote generations/epochs cannot be compared. No wrap,
+ * callbacks outside journal lock; caller pins journal. kinds0 means ALL, no resource scope.
+ * Записать invalidation с атомарной local generation;0 invalid/exhausted, без wrap. */
+uint64_t changespost(DVM_Changes *changes, unsigned kinds, unsigned flags, uint64_t resource);
+
+
 /* EN/RU: Capture pending selected classes without acknowledging; 1 dirty, 0 clean,
  * -1 invalid. Output changes on nonnegative result only; cursor stays borrowed.
  * Захватить pending classes без ack; 1 dirty, 0 clean, -1 invalid. No I/O. */

@@ -15,7 +15,7 @@ from wire import line
 
 # EN/RU: Forward complete original frames; a control socket releases held responses.
 # Пересылать полные original frames; control socket освобождает held responses.
-def relay(listener, port, control, mode, probed, healthy, requests, errors):
+def relay(listener, port, control, mode, probed, healthy, requests, errors, minimum=2, heldready=None):
     try:
         peer, _ = listener.accept()
         with peer, socket.create_connection(('127.0.0.1', port), timeout=5) as server:
@@ -59,22 +59,27 @@ def relay(listener, port, control, mode, probed, healthy, requests, errors):
                                         if struct.unpack_from('<H', packet, 7)[0] != 18:
                                             raise RuntimeError('probe collided with ordinary/flush tag leases')
                                         probed.set()
-                                    elif mode != 'deferred':
+                                    elif mode not in ('deferred', 'feed-stop'):
                                         raise RuntimeError('unexpected cancellation flush')
                             elif kind == 109 and tag == 17:
                                 probes += 1
-                                if probes >= 2 and (mode != 'pending' or read_pending):
+                                if probes >= minimum and (mode != 'pending' or read_pending):
                                     healthy.set()
-                                if mode not in ('healthy', 'pending', 'deferred') and probes == 1:
+                                if mode not in ('healthy', 'pending', 'deferred', 'feed-stop') and probes == 1:
                                     if mode == 'badreply':
                                         message = b'bad flush'
                                         peer.sendall(struct.pack('<IBHH', 9+len(message), 107, tag, len(message))+message)
                                     else:
                                         held.append(packet)
                                     continue
+                            elif kind == 109 and mode == 'feed-stop':
+                                held.append(packet)
+                                if heldready is not None:
+                                    heldready.set()
+                                continue
                             elif kind == 117 and mode == 'pending':
                                 read_pending = True
-                                if probes >= 2:
+                                if probes >= minimum:
                                     healthy.set()
                                 held.append(packet)
                                 continue

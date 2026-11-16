@@ -12,6 +12,7 @@
 struct Mount
 {
     StyxClient *client; /* Owned connection; provider wrappers pin this factory. */
+    StyxFeed *feed; /* Owned optional remote event worker/control, stopped on factory retirement. */
     StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
     unsigned access; /* Fixed native host ceiling. */
 };
@@ -30,6 +31,11 @@ struct Mounted
     size_t size; /* Confirmed buffered directory bytes. */
     size_t used; /* Already published complete record bytes. */
 };
+
+
+/* EN/RU: Subscribe native connection health with an independent source cursor and retained journal.
+ * Подписаться на native connection health с независимым cursor и retained journal. */
+StyxWatch *styxmountwatch(StyxClient *client, DVM_Changes *journal);
 
 
 /* EN/RU: Copy scalar metadata, mask the host ceiling; never infer effective access.

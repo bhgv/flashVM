@@ -28,7 +28,7 @@ StyxLife *styxmuxlife(StyxMux *mux);
 
 /* EN/RU: Admit copied frame within quota; caller owns flight/NULL. Client lock held.
  * Принять copied frame в quota; свой flight/NULL, client lock удержан. */
-StyxFlight *styxmuxsubmit(StyxMux *, const void *, unsigned, unsigned, StyxCancel *);
+StyxFlight *styxmuxsubmit(StyxMux *, const void *, unsigned, unsigned, StyxCancel *, int);
 /* EN/RU: Collect owned raw response after native completion; consumes flight.
  * Получить свой raw response после native completion; поглощает flight. */
 StyxAnswer styxmuxcollect(StyxFlight *);
@@ -57,4 +57,9 @@ void styxcancelunbind(StyxCancel *);
 /* EN/RU: Configure borrowed live engine heartbeat without waiting;1/0.
  * Настроить heartbeat удержанного engine без ожидания;1/0. */
 int styxmuxkeepalive(StyxMux *, unsigned, unsigned, unsigned);
+
+
+/* EN/RU: Local streaming capability requires live fd owner with at least two RPC slots.
+ * Local streaming capability требует live fd owner минимум с двумя RPC slots. */
+int styxmuxwatchable(StyxMux *mux);
 #endif

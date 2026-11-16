@@ -749,3 +749,13 @@ guest execution. Cached heads survive short buffers and recheck access at delive
 Queues are bounded, overflow broadens invalidation, and finish drains before EOF.
 No default public wire format/global path is installed; remote client decoding
 and subscription discovery remain separate integration work.
+
+
+## Remote native event feed / Удалённая native-подписка (runtime0.151)
+
+[Configured remote event feeds](../native/vfs/FEED.md) attach a host-selected endpoint/decoder
+to an ordinary mount. A native worker holds a cancellable long-lived read and
+publishes into the mount journal without guest progress. Health and remote source
+generations are independently rebased with atomic local append. Watch admission
+keeps ordinary RPC capacity; provider destruction stops without waiting for Rflush
+or decoder return. Discovery and a standard record codec remain separate work.

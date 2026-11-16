@@ -83,3 +83,11 @@ int styxclientlink(StyxClient *client, StyxLinkEvent *output)
 {
     return client ? styxlifesnapshot(client->life, output) : 0;
 }
+
+
+/* EN/RU: See client.h; native capability snapshot, not a quota reservation.
+ * См. client.h; native capability snapshot, не quota reservation. */
+int styxclientwatchable(StyxClient *client)
+{
+    return client && client->mux ? styxmuxwatchable(client->mux) : 0;
+}

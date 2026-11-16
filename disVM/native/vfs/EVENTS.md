@@ -144,9 +144,8 @@ source finish/drain and server end. Actual native client tests combine the real
 provider source, automatic heartbeat and explicit cancellation/fresh reads.
 ASan/UBSan use `detect_leaks=0`; no LeakSanitizer or physical-platform claim is made.
 
-This provides the configurable server-side event resource. Automatic client-side
-subscription discovery, a standard event record codec, load-value schemas and
-remote-to-local event decoding remain open integration work. Existing local
+This provides the configurable server-side event resource. Runtime0.151 adds [configured native remote-to-local feeds](FEED.md). Automatic
+subscription discovery, a standard record codec and load-value schemas remain open. Existing local
 per-thread system inbox format remains unchanged. Original Inferno libstyx/lib9
 sources and 9P messages are unchanged in this step; no graphics are added.
 

@@ -3,6 +3,7 @@
  * RU: Обычная VFS mount factory над удержанными native client capabilities.
  */
 #include "mount_internal.h"
+#include "feed/internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,25 +34,6 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
     {
         out->mode &= ~0111UL;
     }
-}
-
-
-/* EN/RU: Native health source owns a journal reference; generations fence delayed snapshot replay.
- * Native health source удерживает journal ref; generations ограждают delayed replay. */
-static void terminal(void *state, const StyxLinkEvent *link)
-{
-    DVM_Changes *changes = state;
-    DVM_ChangeEvent event = {dvm_changes_session(changes), link->generation,
-        DVM_CHANGE_CONNECTION | (link->state != STYX_LINK_CLOSED ? DVM_CHANGE_NETWORK : 0), 0, 0};
-    dvm_changes_notify(changes, &event);
-}
-
-
-/* EN/RU: Drop only the retained journal after unsubscribe and all admitted callbacks.
- * Поглотить journal ref после unsubscribe и всех admitted callbacks. */
-static void releasewatch(void *state)
-{
-    dvm_changes_destroy(state);
 }
 
 
@@ -130,6 +112,8 @@ failed:
 static void destroy(void *state)
 {
     struct Mount *mount = state;
+    styxfeedstop(mount->feed);
+    styxfeedfree(mount->feed);
     styxclientunwatch(mount->watch);
     styxclientfree(mount->client);
     free(mount);
@@ -137,11 +121,17 @@ static void destroy(void *state)
 static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL};
 
 
-/* EN/RU: See mount.h; transport authority was chosen by the native host, not a pathname.
- * См. mount.h; transport authority выбрана native host, не путём файла. */
-DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
+/* EN/RU: Consume client; create factory/health watch and optional configured native feed.
+ * Clear optional control before fallible setup; event policy adopts state only on success.
+ * Принять client; создать factory/health и optional feed; control очистить до setup.
+ * Transport authority выбрана native host; config.state принимается только при успехе. */
+static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control)
 {
-    if (!client || !access || (access & ~FVM_ACCESS_MASK))
+    if (control)
+    {
+        *control = NULL;
+    }
+    if (!client || !access || (access & ~FVM_ACCESS_MASK) || (config && !(access & FVM_ACCESS_READ)))
     {
         styxclientfree(client);
         return NULL;
@@ -161,17 +151,50 @@ DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
         return NULL;
     }
     DVM_Changes *changes = dvm_provider_changes(provider);
-    if (!changesretain(changes))
-    {
-        dvm_provider_release(provider);
-        return NULL;
-    }
-    mount->watch = styxclientobserve(client, terminal, changes, releasewatch);
+    mount->watch = styxmountwatch(client, changes);
     if (!mount->watch)
     {
-        dvm_changes_destroy(changes);
         dvm_provider_release(provider);
         return NULL;
     }
+    if (config)
+    {
+        mount->feed = styxfeedcreate(client, changes, config);
+        if (!mount->feed)
+        {
+            dvm_provider_release(provider);
+            return NULL;
+        }
+        if (control)
+        {
+            styxfeedretain(mount->feed);
+            *control = mount->feed;
+        }
+    }
     return provider;
+}
+
+
+/* EN/RU: See mount.h; ordinary mount keeps automatic connection-health observation only.
+ * См. mount.h; ordinary mount сохраняет автоматическое connection-health observation. */
+DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
+{
+    return create(client, access, NULL, NULL);
+}
+
+
+/* EN/RU: See mount.h; event endpoint/codec are explicit trusted host choices.
+ * См. mount.h; event endpoint/codec явно выбирает trusted host. */
+DVM_Provider *styxmountproviderfeed(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control)
+{
+    if (!config)
+    {
+        if (control)
+        {
+            *control = NULL;
+        }
+        styxclientfree(client);
+        return NULL;
+    }
+    return create(client, access, config, control);
 }

@@ -52,6 +52,9 @@ struct StyxFid
  * Под lock обменять frame;1 reply,0 Rerror,-1 fatal; pointers заимствованы. */
 int styxrpc(StyxClient *client, Fcall *request, Fcall *reply);
 int styxrpccancel(StyxClient *, Fcall *, Fcall *, StyxCancel *);
+/* EN/RU: Borrow client under lock for untimed native read; cancel/terminal still retires it.
+ * Под client lock выполнить untimed read; cancel/terminal завершают его. */
+int styxrpcwatch(StyxClient *, Fcall *, Fcall *, StyxCancel *);
 void styxrpcbad(StyxClient *); /* Client lock held; terminal failure wakes all multiplexed work. */
 StyxClient *styxclientstart(const StyxTransport *, StyxMux *, unsigned, const char *, const char *);
 

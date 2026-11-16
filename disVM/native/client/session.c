@@ -72,9 +72,11 @@ failed:
 }
 
 
-/* EN/RU: See internal.h; release caller serialization only while independent native work waits.
- * См. internal.h; снять caller serialization только на время independent native wait. */
-int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *cancel)
+/* EN/RU: Borrow client/request/reply/cancel under client lock; watching disables ordinary
+ * deadline only. Return1 reply,0 Rerror,-1 failure; reply borrows client receive storage.
+ * Под client lock заимствовать inputs; watching снимает обычный deadline, но не flush grace.
+ * Вернуть1 reply,0 Rerror,-1 failure; reply заимствует client receive storage. */
+static int exchange(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *cancel, int watching)
 {
     client->attempted = 0;
     client->cancelled = 0;
@@ -84,7 +86,7 @@ int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *
     }
     if (!client->mux)
     {
-        int status = cancel ? -1 : serialrpc(client, request, reply);
+        int status = (cancel || watching) ? -1 : serialrpc(client, request, reply);
         if (client->failed)
         {
             styxclientemit(client, STYX_LINK_FAILED);
@@ -97,7 +99,7 @@ int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *
         return -1;
     }
     unsigned length = convS2M(request, client->send, client->msize);
-    StyxFlight *flight = length ? styxmuxsubmit(client->mux, client->send, length, client->msize, cancel) : NULL;
+    StyxFlight *flight = length ? styxmuxsubmit(client->mux, client->send, length, client->msize, cancel, watching) : NULL;
     if (!flight)
     {
         if (!styxmuxalive(client->mux))
@@ -127,6 +129,22 @@ int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *
         client->failed = 1;
     }
     return status;
+}
+
+
+/* EN/RU: See internal.h; ordinary native RPC retains its normal deadline.
+ * См. internal.h; ordinary native RPC сохраняет обычный deadline. */
+int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *cancel)
+{
+    return exchange(client, request, reply, cancel, 0);
+}
+
+
+/* EN/RU: See internal.h; long-lived read still uses ordinary tag/flush fences.
+ * См. internal.h; long-lived read использует обычные tag/flush fences. */
+int styxrpcwatch(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *cancel)
+{
+    return exchange(client, request, reply, cancel, 1);
 }
 
 

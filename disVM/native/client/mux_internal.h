@@ -36,6 +36,7 @@ struct StyxFlight
     unsigned flushsent; /* Tflush frame bytes sent. */
     double deadline; /* Absolute original deadline in monotonic milliseconds. */
     double flushdeadline; /* One nonrenewable cancellation grace deadline. */
+    int watching; /* Long-lived read has no ordinary RPC deadline; cancellation grace remains bounded. */
     int flushing; /* Cancellation/deadline requested; do not restart grace. */
     int original; /* Complete validated original reply is preserved. */
     int done; /* Removed from table; caller may collect/free. */
