@@ -105,6 +105,10 @@ static FVM_Result open_result(const char *path,
     {
         status = FVM_ERROR;
     }
+    else if (selected && selected->directory && !strcmp(mode, "r"))
+    {
+        status = provider_output && asynchronous ? dvm_namespace_directory(selected, provider_output) : FVM_UNSUPPORTED;
+    }
     else if (selected && selected->union_root && !strcmp(mode, "r"))
     {
         status = provider_output && asynchronous ? dvm_union_directory(selected, provider_output) : FVM_UNSUPPORTED;

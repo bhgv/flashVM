@@ -150,3 +150,11 @@ void styxclientclunk(StyxFid *fid)
         styxclientfree(client);
     }
 }
+
+
+/* EN/RU: See client.h; root Qid is immutable after successful connection construction.
+ * См. client.h; root Qid immutable после успешного создания connection. */
+int styxclientrootdirectory(StyxClient *client)
+{
+    return !client || (client->root.type & QTAUTH) ? -1 : (client->root.type & QTDIR) != 0;
+}

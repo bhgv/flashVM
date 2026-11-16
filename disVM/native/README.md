@@ -344,3 +344,12 @@ Quota includes setup and retiring callbacks; close/free never joins a publisher.
 Original C Styx TCP fixtures verify per-fid readiness, independent short/flush/reopen
 behavior and two real native mounts receiving one publication independently.
 Shared-inbox APIs remain available; wire encoding and endpoint discovery stay explicit.
+
+
+## Single-file publication and leaf bind / Публикация файла и точечный bind (runtime0.154)
+
+[Single-file mount/bind and examples](vfs/SINGLE-FILE.md) support true file Styx attach roots,
+direct/prepared publication and explicit missing leaves in populated directories.
+Sys.bind, Vfsexport.mount and Vfsctl share file-stack ordering; directory reads
+show graft names beside existing siblings. No host placeholders, tree freeze or
+wire-format extension is required. Original Inferno changes are pinned byte-for-byte.

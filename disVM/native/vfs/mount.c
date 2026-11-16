@@ -42,9 +42,13 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 {
     struct Mount *mount = state;
+    if (mount->file_root && strcmp(path, "."))
+    {
+        return FVM_NOT_FOUND;
+    }
     StyxFid *fid = styxclientwalk(mount->client, path);
     StyxMeta meta;
-    int success = fid && styxclientstat(fid, &meta);
+    int success = fid && styxclientstat(fid, &meta) && (!mount->file_root || !meta.directory);
     styxclientclunk(fid);
     if (success)
     {
@@ -59,6 +63,10 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     struct Mount *mount = state;
+    if (mount->file_root && strcmp(path, "."))
+    {
+        return FVM_NOT_FOUND;
+    }
     int how = !strcmp(mode, "r") ? 0 : !strcmp(mode, "wo") ? 1 :
         (!strcmp(mode, "rw") || !strcmp(mode, "rwo")) ? 2 : -1;
     unsigned required = how == 0 ? FVM_ACCESS_READ : how == 1 ? FVM_ACCESS_WRITE :
@@ -75,7 +83,7 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
     opened->mount = mount;
     opened->fid = styxclientwalk(mount->client, path);
     StyxMeta meta;
-    if (!opened->fid || !styxclientstat(opened->fid, &meta))
+    if (!opened->fid || !styxclientstat(opened->fid, &meta) || (mount->file_root && meta.directory))
     {
         goto failed;
     }
@@ -118,7 +126,8 @@ static void destroy(void *state)
     styxclientfree(mount->client);
     free(mount);
 }
-static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL};
+static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL}; /* Directory subroot aliases need distinct retained-fid capabilities. */
+static const DVM_ProviderOps fileoperations = {info, openfile, destroy, DVM_PROVIDER_STABLE_BIND, NULL}; /* Only dot maps to the immutable attached file fid. */
 
 
 /* EN/RU: Consume client; create factory/health watch and optional configured native feed.
@@ -148,7 +157,8 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
     }
     mount->client = client;
     mount->access = access;
-    DVM_Provider *provider = dvm_provider_create(&operations, mount);
+    mount->file_root = styxclientrootdirectory(client) == 0;
+    DVM_Provider *provider = dvm_provider_create(mount->file_root ? &fileoperations : &operations, mount);
     if (!provider)
     {
         destroy(mount);

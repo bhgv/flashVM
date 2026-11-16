@@ -49,9 +49,10 @@ this factory's `access` callback is unsupported; it does not substitute stat mod
 or a probe Topen with possible device effects for an access decision. Direct
 provider opens work through actual operations. MAUTORWX preselection and a
 re-export bridge requiring effective EXEC cannot yet use this factory as an
-access oracle. Native relative-name stable-bind capability is also undeclared;
-ordinary mount works, but identity-preserving alias bind needs a future retained
-remote-fid subroot adapter. A changing remote tree is not a snapshot.
+access oracle. Directory relative-name stable-bind capability remains undeclared; ordinary
+directory mount works, but directory subroot aliases need a retained remote-fid
+adapter. Runtime0.154 declares stable bind for a true single-file attach root
+only, locally rejecting every descendant and anchoring dot to that root fid. A changing remote tree is not a snapshot.
 
 Wire Rerror contains a string, not portable typed errno/effect acknowledgements.
 The adapter returns generic FVM_ERROR rather than pretending every failure is
@@ -112,7 +113,7 @@ Real original C libstyx servers and an independent byte relay exercise:
 The complete opt-in native suite has78 tests, including ASan/UBSan on Linux amd64.
 LeakSanitizer is disabled on this host. No physical ARM64/Android/Windows claim is
 made. The callback client is single-flight; the fd-owner client supports multiplexing
-and Tflush. Remote authentication, stable subroot binds, richer metadata and guest
+and Tflush. Remote authentication, stable directory subroot binds, richer metadata and guest
 builtin wiring remain follow-up work.
 
 Это обычный native provider поверх исходных lib9-кодеков. Каждый open удерживает
@@ -128,3 +129,9 @@ Tflush, and cancelled outcomes map to the ordinary SDK CANCELLED cause. Final
 provider destruction signals native owner retirement without joining it.
 Explicit per-operation cancel tokens are available in the native client API;
 binding them to guest FD/broker requests is a separate integration step.
+
+
+Runtime0.154 adds [single-file roots and stable leaf binding](SINGLE-FILE.md).
+The attached file root fid anchors exact file namespace bindings; normal remote
+contents and permissions stay live. Missing explicit leaf names can be mounted
+inside existing directories without hiding siblings or creating host files.

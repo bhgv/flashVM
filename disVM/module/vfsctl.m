@@ -55,7 +55,8 @@ Vfsctl: module
 
     # EN/RU: Bind source stack: standard top/bottom/replace plus MINS with signed slot.
     # Index0 otherwise. 0 success,-2 stale,-1 failure; use Sys.bind for standard ABI.
-    # Bind source stack: MINS signed slot, иначе index0; return0/-2/-1.
+    # Exact file targets may be absent under existing directories; parent/siblings remain visible.
+    # Bind source stack: MINS signed slot, иначе index0; file target — полное имя, return0/-2/-1.
     bind: fn(source, target: string, flags, index: int): int;
 
 

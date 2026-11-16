@@ -196,3 +196,22 @@ endforeach()
 add_test(NAME vfs-subscriptions-mounted COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/subscriptions/mounted.py"
     "$<TARGET_FILE:vfs-feed-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
+
+# EN/RU: Standalone native namespace SDK fixture; explicit repository sources, no sibling build dependency.
+# Standalone native namespace SDK fixture; явные sources репозитория, без sibling build dependency.
+add_library(styx_namespace_fixture STATIC
+    "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
+    "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
+    "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
+target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
+add_executable(vfs-file-root-server ../tests/file-root/backend.c ../tests/file-root/wire.c ../tests/peer/review.c)
+set_source_files_properties(../tests/file-root/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
+target_link_libraries(vfs-file-root-server PRIVATE styx_vfs infernostyx)
+add_executable(vfs-file-root-client ../tests/file-root/client.c ../tests/file-root/context.c)
+target_link_libraries(vfs-file-root-client PRIVATE styx_namespace_fixture)
+foreach(scenario direct prepare)
+    add_test(NAME vfs-file-root-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/file-root/wire.py"
+        "$<TARGET_FILE:vfs-file-root-client>" "$<TARGET_FILE:vfs-file-root-server>" "${scenario}")
+    set_tests_properties(vfs-file-root-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()

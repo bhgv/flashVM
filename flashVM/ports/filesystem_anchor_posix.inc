@@ -181,7 +181,7 @@ FVM_Result fvm_port_anchor_info_at(FVM_PortAnchor *parent, const char *relative,
 {
     struct stat native;
     char leaf[FVM_ANCHOR_PATH_BYTES];
-    int directory, result;
+    int directory, result, failure;
     if (!parent || !output || !fs_relative(relative))
     {
         return FVM_INVALID_ARGUMENT;
@@ -192,13 +192,14 @@ FVM_Result fvm_port_anchor_info_at(FVM_PortAnchor *parent, const char *relative,
         return FVM_ERROR;
     }
     result = fstatat(directory, parent->confined ? leaf : relative, &native, parent->confined ? AT_SYMLINK_NOFOLLOW : 0);
+    failure = result ? errno : 0;
     if (parent->confined)
     {
         close(directory);
     }
     if (result || (parent->confined && S_ISLNK(native.st_mode)))
     {
-        return FVM_ERROR;
+        return failure == ENOENT ? FVM_NOT_FOUND : FVM_ERROR;
     }
     return fs_stat_info(&native, fs_basename(relative), output);
 }

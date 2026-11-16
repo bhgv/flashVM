@@ -14,6 +14,7 @@ struct Mount
     StyxClient *client; /* Owned connection; provider wrappers pin this factory. */
     StyxMountCtl *control; /* Owned subscription authority, permanently closed on factory retirement. */
     StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
+    int file_root; /* Immutable attached file root forbids every descendant, even with a misbehaving peer. */
     unsigned access; /* Fixed native host ceiling. */
 };
 

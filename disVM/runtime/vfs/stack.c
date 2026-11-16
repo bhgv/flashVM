@@ -254,9 +254,24 @@ int dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned 
         (order != 0 && order != DVM_NS_BEFORE && order != DVM_NS_AFTER && order != DVM_NS_INSERT) ||
         ((flags & DVM_NS_CREATE) && source->mount_root &&
          (source->layers || !(source->mount_flags & DVM_NS_CREATE))) ||
-        (order != DVM_NS_INSERT && index) || !kind(source, &a) || !kind(target, &b) || a != b)
+        (order != DVM_NS_INSERT && index) || !kind(source, &a))
     {
         return -1;
+    }
+    if (kind(target, &b))
+    {
+        if (a != b)
+        {
+            return -1;
+        }
+    }
+    else
+    {
+        int valid = a ? -1 : dvm_stack_file_target(target);
+        if (valid != 1)
+        {
+            return valid;
+        }
     }
     added = clone(source, target->names.path, 0, flags, 1);
     if (!added)

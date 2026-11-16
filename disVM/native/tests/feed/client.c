@@ -201,7 +201,8 @@ int main(int argc, char **argv)
         puts("PASS native remote feed rejected setup");
         return 0;
     }
-    check(provider && feed, "mount with automatic event feed");
+    check(provider && feed && styxclientrootdirectory(client) == 1 &&
+          !dvm_provider_bindable(provider), "directory mount did not preserve conservative bind capability");
     DVM_Changes *journal = dvm_provider_changes(provider);
     check(changesretain(journal), "independent fixture journal pin");
     DVM_NoticeTap *tap = dvm_notice_subscribe(dvm_changes_notices(journal), noticed, &test, tapreleased);

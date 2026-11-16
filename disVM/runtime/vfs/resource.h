@@ -22,6 +22,7 @@ typedef struct DVM_ResourcePlan
     DVM_Namespace *group; /* Borrowed while plan lives; cursor retains independently. */
     uint64_t head_id; /* Retained mount-head identity for directory union enumeration. */
     uint64_t layer_id; /* Exact selected binding identity; zero for unmounted path. */
+    int directory; /* Kind observed during branch selection; avoids an extra metadata probe before open. */
     int selected; /* Once selected, open must not fall through on permission errors. */
     int mount_root; /* Exact mounted root, including a single branch. */
     int union_root; /* Exact multi-layer directory root; enables merged enumeration. */
@@ -174,4 +175,10 @@ FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output);
 /* EN/RU: Query one branch only, without selecting lower layers; native-only.
  * Проверить одну ветвь без выбора нижних слоёв; native-only. */
 FVM_Result dvm_resource_raw_info(DVM_ResourcePlan *plan, FVM_FileInfo *output);
+
+
+/* EN/RU: Open owned directory cursor projecting exact child bindings beside existing entries.
+ * Borrow plan/group through setup; native I/O, no guest execution. Original directory pins remain.
+ * Открыть свой directory cursor с child bindings рядом с existing entries; plan borrowed, native I/O. */
+FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out);
 #endif

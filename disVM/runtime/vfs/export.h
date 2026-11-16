@@ -53,7 +53,8 @@ DVM_Provider *dvm_export_native(DVM_ResourcePlan *plan, int directory);
 
 
 /* EN/RU: Mount and bind an owned-provider capability into current chosen group with
- * the same indexed-stack semantics. Provider remains borrowed; 1/0/-1 success/stale/error.
+ * the same indexed-stack semantics. A file may target an absent leaf in an existing directory.
+ * Provider remains borrowed; 1/0/-1 success/stale/error.
  * Смонтировать и bind provider capability по indexed-stack rules; provider borrowed. */
 int dvm_stack_mount(DVM_Namespace *group, DVM_Provider *provider, const char *target, unsigned flags, int64_t index);
 

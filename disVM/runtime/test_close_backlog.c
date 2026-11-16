@@ -7,6 +7,7 @@
 #include "interp.h"
 #include "runtime_gc.h"
 #include "close_worker.h"
+#include "vfs/directory_internal.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -54,6 +55,10 @@ void __wrap_dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource
 {
     FVM_PortFile *file = dvm_vfs_file(resource);
     FVM_PortDirectory *directory = dvm_vfs_directory(resource);
+    if (!directory)
+    {
+        directory = dvm_directory_native(resource);
+    }
     pthread_mutex_lock(&sync);
     if (!armed)
     {

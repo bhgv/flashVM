@@ -141,6 +141,9 @@ init()
     check(missing == -1, "MREPL retained old lower layers");
     check(sys->unmount(nil, "replace") == 0, "replace cleanup");
     check(sys->unmount(nil, "mirror") == 0, "remove copied union");
-    check(sys->bind("a/token", "view/token", Sys->MBEFORE) == -1, "file union incorrectly accepted");
+    check(sys->bind("a/token", "view/token", Sys->MBEFORE) == 0 && read("view/token") == int 'T',
+          "explicit file union top layer");
+    check(sys->unmount(nil, "view/token") == 0 && read("view/token") == int 'V',
+          "file union unmount changed containing directory");
     sys->print("PASS union order/create/readonly/copy/unmount/dynamic-mode/retained-FD-directory\n");
 }

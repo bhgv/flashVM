@@ -33,4 +33,10 @@ int dvm_stack_move(DVM_ResourcePlan *target, uint64_t revision, uint64_t layer, 
 /* EN/RU: Check config revision under its namespace mutex, no I/O or allocation.
  * Проверить config revision под namespace mutex, без I/O/allocation. */
 int dvm_stack_current(DVM_Namespace *group, uint64_t revision);
+
+
+/* EN/RU: Validate genuinely absent leaf under a visible existing directory;1/0/-1 allowed/stale/refused.
+ * Native metadata I/O outside namespace lock; borrowed target remains unchanged.
+ * Проверить отсутствующий leaf под visible directory;1/0/-1 allowed/stale/refused, target borrowed. */
+int dvm_stack_file_target(DVM_ResourcePlan *target);
 #endif

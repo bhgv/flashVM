@@ -81,8 +81,9 @@ An attach callback can now explicitly defer with a native request handle. A sepa
 native reviewer signals the socket owner, which sends the original-tag response
 without a client retry. Flush/reset/disconnect/shutdown cancel it first. Legacy
 callbacks remain synchronous; authentication and a general mount service are not
-provided by this adapter. The callback still returns a directory Qroot; projecting
-a single file as the protocol root remains separate work.
+provided by this adapter. Legacy callbacks still return directory Qroot. Runtime0.154 adds
+[explicit native file attach roots](SINGLE-FILE.md) through styxattachroot,
+including deferred preparation, without changing wire messages.
 
 Native `styxpeercancel(peer)` cancels only its outstanding publication ticket,
 without generating a wire reply or dropping a previously selected root. The

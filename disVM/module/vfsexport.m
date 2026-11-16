@@ -35,7 +35,8 @@ Vfsexport: module
     info: fn(root: ref Root): (int,int,int);
 
     # EN/RU: Combined mount/bind in caller namespace;0 success,-2 stale,-1 refusal.
-    # Mount/bind capability своего namespace; signed MINS index as in Vfsctl.
+    # File targets may be absent leaves under existing directories; siblings remain visible.
+    # Mount/bind capability своего namespace; для файла указать полное имя, siblings сохраняются.
     mount: fn(root: ref Root, target: string, flags, index: int): int;
 
     # EN/RU: Create bounded publication; Prepare requires owner reply, direct requires root.

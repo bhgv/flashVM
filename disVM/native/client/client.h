@@ -79,6 +79,12 @@ void styxcancelfree(StyxCancel *cancel);
 int styxclientalive(StyxClient *client);
 
 
+/* EN/RU: Copy immutable attached root kind,1 directory/0 file/-1 NULL or auth root.
+ * Caller retains client; no protocol request or mutable server metadata query.
+ * Копировать immutable attach root kind:1 directory/0 file/-1 invalid; без protocol request. */
+int styxclientrootdirectory(StyxClient *client);
+
+
 #define STYX_LINK_FAILED 1 /* Terminal transport/framing failure. */
 #define STYX_LINK_CLOSED 2 /* Explicit native shutdown, not normal final owner drop. */
 typedef struct StyxWatch StyxWatch; /* Owned native terminal subscription. */

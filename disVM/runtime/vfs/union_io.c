@@ -55,6 +55,7 @@ FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
         if (dvm_resource_raw_info(choice, &info) == FVM_OK)
         {
             dvm_union_choose(plan, choice);
+            plan->directory = info.directory;
             if (!info.directory)
             {
                 plan->union_root = 0;

@@ -11,11 +11,13 @@
 #include "kernel.h"
 #include "runqueue.h"
 #include "sys_capture.h"
+#include "runtime_gc.h"
 #include "metadata_wait.h"
 #include "guest.h"
 #include "boot.h"
 #include "resource_wait.h"
 #include "sysevents.h"
+#include "stack.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -202,7 +204,20 @@ void Sys_bind(void *frame)
             if (source.names.version == target.names.version)
             {
                 committed = -1;
-                if (dvm_metadata_selected(&source, &a) == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)
+                if (dvm_metadata_selected(&source, &a) == FVM_OK && !a.directory)
+                {
+                    int released = dvm_runtime_gc_native_try_leave();
+                    if (released >= 0)
+                    {
+                        committed = dvm_stack_bind(&source, &target, call.flags, 0);
+                        dvm_runtime_gc_native_enter(released);
+                    }
+                    if (committed < 0)
+                    {
+                        kwerrstr("file bind target/stack refused");
+                    }
+                }
+                else if (dvm_metadata_selected(&source, &a) == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)
                 {
                     if (a.directory != b.directory)
                     {

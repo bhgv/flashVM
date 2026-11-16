@@ -81,6 +81,7 @@ FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating)
             if (!exists || permitted(choice, choice->relative, requested) == FVM_OK)
             {
                 dvm_union_choose(plan, choice);
+                plan->directory = 0;
                 plan->union_root = 0;
                 return FVM_OK;
             }
@@ -89,6 +90,7 @@ FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating)
                  permitted(choice, choice->relative, requested | (info.directory ? FVM_ACCESS_EXEC : 0)) == FVM_OK)
         {
             dvm_union_choose(plan, choice);
+            plan->directory = info.directory;
             if (!info.directory)
             {
                 plan->union_root = 0;
