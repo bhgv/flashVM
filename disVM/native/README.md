@@ -71,12 +71,11 @@ VFS listener or `Sys.mount` client. The kernel-bound client in `emu/port/devmnt.
 needs a separate Chan/Mnt/RPC host adapter. Do not link the new lib9 alongside the
 bootstrap's other lib9 archive in one executable: unify those dependencies first.
 
-Полная проверка C-сервера ещё не завершена. Остаются настоящий socket transport,
-провайдер проверенных credentials/auth-fid, выдача целых записей каталога,
-живой каталог через callbacks и полное освобождение listener/platform при закрытии.
-Текущие тесты не подтверждают готовность этих частей. Подготовленный корень
-соединения должен оставаться живым обычным каталогом с независимыми правами;
-сериализация или фиксация всего дерева не нужна.
+Полная проверка C-сервера ещё не завершена. Реальный POSIX TCP уже проверен на
+синтетических данных. Остаются соединение с DisVM VFS/публикациями, native
+mount-клиент, провайдер проверенных credentials/auth-fid, полная семантика walk
+и проверки на других платформах. Подготовленный корень соединения остаётся
+живым обычным каталогом с независимыми правами; снимок дерева не нужен.
 
 See [native Styx integration](../runtime/STYX-NATIVE.md) and the
 [live connection-root contract](../runtime/STYX-SERVING.md).
@@ -151,3 +150,45 @@ releases partial initialization. / Отказ backend в newclient отключ�
 Walking through an ordinary file now returns Rerror and releases the temporary
 fid instead of terminating the server. / Попытка пройти Twalk через обычный файл
 возвращает Rerror и освобождает временный fid, не завершая сервер.
+
+## Live directories and teardown / Живые каталоги и закрытие (runtime0.140)
+
+In needfile=0 provider mode, root directory reads use the live read callback even
+when a library root entry exists. Callbacks receive actual 64-bit wire offsets;
+replies must contain complete valid stat records. A provider walk denial never
+falls back to hidden cached children. Use this mode for authority-filtered live
+views, supplying both walk and read callbacks for that view; filtering a listing
+alone does not deny guessed paths. Providers enforce access at the final operation.
+needfile=1 retains the original library-tree behavior for compatibility.
+
+Внутренний каталог выдаёт только целые stat-записи. Маленький ненулевой буфер
+возвращает ошибку без продвижения курсора и ложного EOF. Продолжение требует
+байтового смещения предыдущего ответа; offset=0 начинает чтение текущего дерева
+заново. Изменения видны без reattach. Дерево не фиксируется: при изменении между
+порциями обычны пропуски/повторы; клиент может перечитать каталог с нуля.
+
+POSIX styxend closes client fids before backend release, frees the library tree,
+closes client/listener descriptors and frees readiness state. Repeated end and
+reinitialization after end are covered, as are announce/socket-init failure paths.
+Backend-owned private payloads remain the backend's responsibility. Shutdown
+runs on the owning native service thread and must not race dispatch.
+
+Проверка lifecycle использует реальные native fd с подменой только announce.
+Отдельный настоящий TCP loopback-тест связывает полные libstyx/lib9 и исходный
+POSIX transport: два клиента с разными msize и приватными представлениями проходят
+Tversion/attach/walk/open/read/write/stat. Сохранённые fid видят новые имена,
+mode и данные; второй клиент остаётся независимым. При завершении проверяются
+четыре backend-close и два freeclient. Имена пользователей здесь маршрутизируют
+синтетические представления и не являются аутентификацией.
+
+Public styxend is implemented by each transport port; its signature is unchanged.
+The new private styxendserver helper owns common cleanup. Nt has the corresponding
+teardown code but no Windows acceptance here. The retained Plan9 helper-process
+port returns an explicit unsupported shutdown error instead of false success:
+shared state cannot safely be freed until those helpers have a join protocol.
+That process model is not imported into the dedicated-native-thread VM.
+
+Исходники и ограничения: [upstream tests](src/tools/libstyx/tests/README.directories-lifecycle.md).
+Все восемь native-проверок, включая TCP, проходят также под ASan/UBSan на amd64.
+Это не сертификация других архитектур, готовый mount-клиент или production-служба
+VFS с проверкой credentials. Графические библиотеки в этот пакет не добавлены.
