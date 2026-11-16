@@ -1,16 +1,18 @@
 /* Copyright (c) 2026 bhgv
- * EN: Scalar C boundary between Inferno callbacks and owned VFS file capabilities.
- * RU: Скалярная C-граница callbacks Inferno и владеющих VFS-capabilities файла.
+ * EN: Scalar C boundary between Inferno callbacks and owned VFS node capabilities.
+ * RU: Скалярная C-граница callbacks Inferno и владеющих VFS node-capabilities.
  */
 #ifndef STYX_FILE_H
 #define STYX_FILE_H
 #include <stddef.h>
-typedef struct StyxBacking StyxBacking; /* Owned prepared file capability. */
+#define STYX_NAME_MAX 4096U /* Complete UTF-8 component capacity, including NUL. */
+typedef struct StyxBacking StyxBacking; /* Owned prepared node capability. */
 typedef struct StyxOpen StyxOpen; /* One exclusive open, never shared between fids. */
 typedef struct StyxMeta {
-	unsigned long long identity, length; /* Full-width native identity and length. */
+	unsigned long long identity, device, length; /* Full-width native identity and length. */
 	unsigned long mode; /* Display permissions, never an authority grant. */
-	int directory; /* Directory capabilities are refused by this first file bridge. */
+	int directory; /* Opened directories use tree.h cursor APIs. */
+	char name[STYX_NAME_MAX]; /* Complete displayed basename, never a host path. */
 } StyxMeta;
 typedef struct StyxTransfer {
 	size_t count; /* Confirmed prefix only. */
@@ -23,8 +25,8 @@ void styxbackingfree(StyxBacking *backing);
 /* EN/RU: Query live backing metadata; borrowed arguments, 1/0 success/failure.
  * Получить живые metadata backing; аргументы заимствованы, 1/0. */
 int styxbackinginfo(StyxBacking *backing, StyxMeta *output);
-/* EN/RU: Open provider r/wo/rw (0/1/2), without requesting create/truncate; owned result or NULL.
- * Открыть provider r/wo/rw (0/1/2) без create/truncate; свой результат либо NULL. */
+/* EN/RU: Open provider r/wo/rw (0/1/2), without create/truncate; tree directories allow only r.
+ * Открыть provider r/wo/rw (0/1/2) без create/truncate; для каталогов только r. */
 StyxOpen *styxfileopen(StyxBacking *backing, int mode);
 /* EN/RU: Consume one open after all serialized borrowers retire; NULL allowed.
  * Поглотить open после завершения заёмщиков; NULL допустим. */

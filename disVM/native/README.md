@@ -217,3 +217,25 @@ for explicit build inputs and API ownership/offset limits.
 With the explicit VFS option enabled, 12 native tests pass locally and under
 ASan/UBSan on amd64. / С явной опцией VFS локально проходят 12 native-проверок,
 также под ASan/UBSan на amd64.
+
+## Directory grants / Каталоговые grants (runtime0.142)
+
+The [directory/node bridge](vfs/TREE.md) extends the file bridge without importing
+a namespace tree. It walks one component inside a retained prepared provider,
+publishes one pending directory entry at a time and commits only complete encoded
+records. Offset zero reopens a checked cursor through the same provider capability;
+a changed object identity is refused. Pending records recheck visibility/metadata.
+
+Исправлены metadata обычных удерживаемых view-handles: они запрашиваются у
+открытого объекта, затем маскируются текущей политикой и виртуальным именем.
+Синтетические/составные виртуальные родители сохраняют прежнюю view-семантику.
+Байтовые endpoints без handle-stat продолжают работать; для них нельзя выдавать
+factory/path metadata за stat уже открытого объекта.
+
+Actual TCP acceptance now includes a local directory publication grant, hidden
+nodes and live revocation, whole-record pagination, invalid offsets, nested walks,
+root-clamped parent traversal, newly added entries, rejected escaping components,
+held opens after unpublish and refusal to rebind a replaced directory. Native
+checks include malformed provider names and captured metadata after replacement.
+The optional suite has 13 tests; authenticated remote attach/mount, complete walk
+conformance and general production service admission remain separate work.

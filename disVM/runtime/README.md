@@ -676,3 +676,5 @@ Runtime0.139 adds original C Styx per-connection msize/session negotiation, atta
 Runtime0.140 adds live C Styx directory callbacks, whole-record cached pagination, provider-denial confinement and POSIX shutdown ownership. Real two-client TCP read/write/stat/live-view and cleanup acceptance joins the native/sanitizer suite. [Scope](../native/README.md).
 
 Runtime0.141 adds per-fid native context ownership in original libstyx and a scalar [VFS file-grant bridge](../native/vfs/README.md), with TCP tests for separate opens, partial/refused/uncertain writes, read-only publication ceilings and retained handles after unpublish. General directory service, authenticated attach and mount client remain separate.
+
+Runtime0.142 extends the native bridge with confined [directory/node capabilities](../native/vfs/TREE.md), live peek/commit directory records and identity-checked rewind. Retained view handles use captured-object metadata; virtual/composed parents preserve view-defined semantics. Actual TCP tests cover hidden/pending nodes, nested paths, permissions, unpublish and replacement.

@@ -56,8 +56,13 @@ int dvm_view_route(DVM_View *view, const char *path, unsigned access, DVM_ViewRu
 int dvm_view_children(DVM_View *view, const char *path);
 
 
+/* EN/RU: Mask captured metadata without resolving its old source path again.
+ * Маскировать захваченные metadata без повторного разрешения source path. */
+int viewmask(DVM_View *view, const char *path, FVM_FileInfo *output);
+
+
 /* EN/RU: Query mapped/synthetic metadata with live policy and masked mode.
- * Запросить metadata по live policy, маскируя mode; native I/O outside locks. */
+ * Запросить metadata через live policy, маскируя mode; native I/O вне locks. */
 FVM_Result dvm_view_info(DVM_View *view, const char *path, FVM_FileInfo *output);
 
 

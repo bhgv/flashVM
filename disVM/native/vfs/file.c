@@ -2,22 +2,32 @@
  * EN: Owned VFS file opens, precise chunks and metadata across a scalar C boundary.
  * RU: Владеющие VFS открытия, точные чанки и metadata через скалярную C-границу.
  */
-#include "file_provider.h"
+#include "file_internal.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct StyxBacking { DVM_Provider *provider; }; /* One retained prepared capability. */
-struct StyxOpen { DVM_VfsHandle handle; unsigned long long position; int poisoned; unsigned access; }; /* Exclusive owner FIFO. */
-
 /* EN/RU: Copy scalar metadata without interpreting permissions as authority.
  * Скопировать скалярные metadata, не превращая mode в полномочия. */
-static void metadata(const FVM_FileInfo *info, StyxMeta *output)
+int styxmeta(const FVM_FileInfo *info, StyxMeta *output)
 {
+	if(!memchr(info->name, 0, sizeof(info->name)))
+		return 0;
+	memset(output, 0, sizeof(*output));
+	strcpy(output->name, info->name);
+	output->device = ((unsigned long long)(info->device.high&0xffffffffUL)<<32) | (info->device.low&0xffffffffUL);
 	output->identity = ((unsigned long long)(info->identity.high&0xffffffffUL)<<32) | (info->identity.low&0xffffffffUL);
 	output->length = ((unsigned long long)(info->length.high&0xffffffffUL)<<32) | (info->length.low&0xffffffffUL);
 	output->mode = info->mode;
-	output->directory = info->directory;
+	output->directory = info->directory != 0;
+	return 1;
+}
+
+/* EN/RU: Identity checks bind metadata to one object, not its mutable attributes.
+ * Identity связывает metadata с объектом, а не его изменяемыми атрибутами. */
+int styxsame(const StyxMeta *left, const StyxMeta *right)
+{
+	return left->identity == right->identity && left->device == right->device && left->directory == right->directory;
 }
 
 /* EN/RU: See file_provider.h; retain only after metadata confirms a file.
@@ -36,6 +46,7 @@ StyxBacking *styxbacking(DVM_Provider *provider)
 		return NULL;
 	}
 	backing->provider = provider;
+	strcpy(backing->path, ".");
 	return backing;
 }
 
@@ -54,9 +65,12 @@ void styxbackingfree(StyxBacking *backing)
 int styxbackinginfo(StyxBacking *backing, StyxMeta *output)
 {
 	FVM_FileInfo info;
-	if(!backing || !output || dvm_provider_info(backing->provider, ".", &info) != FVM_OK)
+	if(!backing || !output || dvm_provider_info(backing->provider, backing->path, &info) != FVM_OK)
 		return 0;
-	metadata(&info, output);
+	StyxMeta current;
+	if(!styxmeta(&info, &current) || (backing->bound && !styxsame(&backing->captured, &current)))
+		return 0;
+	*output = current;
 	return 1;
 }
 
@@ -67,19 +81,40 @@ StyxOpen *styxfileopen(StyxBacking *backing, int mode)
 	static const char *modes[] = {"r", "wo", "rw"};
 	StyxOpen *opened;
 	FVM_FileInfo info;
+	StyxMeta current;
+	FVM_Result status;
+	int opaque;
 	if(!backing || mode < 0 || mode > 2)
 		return NULL;
 	opened = calloc(1, sizeof(*opened));
 	if(!opened)
 		return NULL;
-	if(dvm_provider_open(backing->provider, ".", modes[mode], &opened->handle) != FVM_OK){
+	if(dvm_provider_open(backing->provider, backing->path, modes[mode], &opened->handle) != FVM_OK){
 		free(opened);
 		return NULL;
 	}
-	if(dvm_vfs_info(&opened->handle, &info) != FVM_OK || info.directory){
+	status = dvm_vfs_info(&opened->handle, &info);
+	opaque = status == FVM_UNSUPPORTED;
+	/* Opaque byte endpoints may omit handle stat; their factory still declares type. */
+	if(opaque)
+		status = dvm_provider_info(backing->provider, backing->path, &info);
+	if(status != FVM_OK || !styxmeta(&info, &current) || (opaque && info.directory) ||
+		(info.directory && (!backing->bound || mode != 0)) ||
+		(backing->bound && !styxsame(&backing->captured, &current))){
 		dvm_vfs_close(&opened->handle);
 		free(opened);
 		return NULL;
+	}
+	if(info.directory){
+		if(!dvm_provider_retain(backing->provider)){
+			dvm_vfs_close(&opened->handle);
+			free(opened);
+			return NULL;
+		}
+		opened->provider = backing->provider;
+		strcpy(opened->path, backing->path);
+		opened->captured = current;
+		opened->directory = 1;
 	}
 	opened->access = mode == 0 ? 1U : mode == 1 ? 2U : 3U;
 	return opened;
@@ -91,7 +126,9 @@ void styxfileclose(void *value)
 {
 	StyxOpen *opened = value;
 	if(opened){
+		fvm_port_directory_entries_free(opened->batch);
 		dvm_vfs_close(&opened->handle);
+		dvm_provider_release(opened->provider);
 		free(opened);
 	}
 }
@@ -103,8 +140,7 @@ int styxfileinfo(StyxOpen *opened, StyxMeta *output)
 	FVM_FileInfo info;
 	if(!opened || !output || dvm_vfs_info(&opened->handle, &info) != FVM_OK)
 		return 0;
-	metadata(&info, output);
-	return 1;
+	return styxmeta(&info, output);
 }
 
 /* EN/RU: Position before I/O; nonseekable streams permit only sequential offsets.
@@ -151,7 +187,7 @@ void styxfileread(StyxOpen *opened, unsigned long long offset, void *bytes, size
 		return;
 	memset(output, 0, sizeof(*output));
 	output->stop = DVM_IO_INVALID;
-	if(opened && !(opened->access&1U)){
+	if(opened && (opened->directory || !(opened->access&1U))){
 		output->confirmed = 1;
 		output->stop = DVM_IO_DENIED;
 		return;
@@ -168,7 +204,7 @@ void styxfilewrite(StyxOpen *opened, unsigned long long offset, const void *byte
 		return;
 	memset(output, 0, sizeof(*output));
 	output->stop = DVM_IO_INVALID;
-	if(opened && !(opened->access&2U)){
+	if(opened && (opened->directory || !(opened->access&2U))){
 		output->confirmed = 1;
 		output->stop = DVM_IO_DENIED;
 		return;

@@ -222,6 +222,23 @@ FVM_Result dvm_view_info(DVM_View *view, const char *path, FVM_FileInfo *output)
             return status;
         }
     }
+    return viewmask(view, path, output) ? FVM_OK : FVM_NOT_FOUND;
+}
+
+
+/* EN/RU: Apply current visibility/rights and virtual basename to captured metadata.
+ * No source lookup; return zero if visibility was revoked during the query.
+ * Применить текущую видимость/права и виртуальное имя к захваченным metadata.
+ * Без source lookup; ноль при отзыве видимости во время запроса. */
+int viewmask(DVM_View *view, const char *path, FVM_FileInfo *output)
+{
+    DVM_ViewRule *rule;
+    char relative[DVM_NS_PATH_LIMIT];
+    int route = dvm_view_route(view, path, 0, &rule, relative);
+    if (!route)
+    {
+        return 0;
+    }
     unsigned mask = route == 2 ? FVM_ACCESS_READ | FVM_ACCESS_EXEC : rule->access;
     for (unsigned bit = 1; bit <= FVM_ACCESS_READ; bit <<= 1)
     {
@@ -233,7 +250,7 @@ FVM_Result dvm_view_info(DVM_View *view, const char *path, FVM_FileInfo *output)
     output->mode &= ~0777UL | (mask << 6) | (mask << 3) | mask;
     const char *name = strrchr(path, '/');
     strcpy(output->name, name && name[1] ? name + 1 : ".");
-    return FVM_OK;
+    return 1;
 }
 
 

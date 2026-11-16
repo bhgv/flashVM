@@ -5,10 +5,12 @@ Copyright (c) 2026 bhgv
 This first adapter connects a **prepared provider's root file** to independent
 native opens usable by libstyx callbacks. It uses the existing VFS publication,
 view, provider and precise-chunk implementations. It does not reopen host paths,
-copy a namespace tree or execute/pause guest code. Directory roots are refused.
+copy a namespace tree or execute/pause guest code. The original file-only constructor still refuses directory roots; the
+[directory/node extension](TREE.md) accepts prepared directory capabilities.
 
 Первый слой обслуживает **корневой файл уже выданного provider-capability**.
-Каталоги, универсальный сервер публикаций и mount-клиент сюда пока не входят.
+Каталоги теперь обслуживает [отдельный node/cursor-слой](TREE.md). Универсальный
+сервер публикаций и mount-клиент сюда пока не входят.
 VFS сохраняет решение по правам за самой операцией; mode — только metadata.
 
 ## Build / Сборка
@@ -106,3 +108,11 @@ freeze that design or a prepared tree.
 Графики, FreeType и альтернативного wire-кодека в адаптере нет. Новые
 `styxgetaux`/`styxsetaux`/`Styxops.freefid` — расширение native C API Inferno;
 сообщения Styx/9P2000 неизменны. Пересобрать потребителей с новым Client/Styxops.
+
+
+Opaque byte endpoints may omit handle info. Their factory metadata is used only
+for the initial file-type check, not fabricated as fstat; `styxfileinfo` remains
+unsupported. Directory opens require handle metadata for identity validation.
+Обычные view-handles теперь получают metadata удержанного объекта с текущим
+policy/mode/name masking; составные виртуальные родители сохраняют view-defined
+семантику. [Каталоговые API и ограничения](TREE.md).

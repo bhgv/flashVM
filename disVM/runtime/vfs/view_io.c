@@ -15,6 +15,7 @@ typedef struct ViewStream
     DVM_VfsHandle inner; /* Owned delegated stream; empty for synthetic directory. */
     char path[DVM_NS_PATH_LIMIT]; /* Copied virtual identity, no source host path. */
     unsigned access; /* Open-time required rights, rechecked before seek. */
+    int projected; /* Composed virtual parents retain their view-defined metadata semantics. */
     int listed; /* Explicit directory overlay names already emitted. */
     int failed; /* List publication failure forbids silently skipping a batch. */
 } ViewStream;
@@ -35,7 +36,26 @@ static int allowed(ViewStream *stream, unsigned access)
 static FVM_Result info(void *state, FVM_FileInfo *output)
 {
     ViewStream *stream = state;
-    return dvm_view_info(stream->view, stream->path, output);
+    FVM_FileInfo captured;
+    if (!allowed(stream, 0))
+    {
+        return FVM_NOT_FOUND;
+    }
+    if (!stream->inner.ops || stream->projected)
+    {
+        return dvm_view_info(stream->view, stream->path, output);
+    }
+    FVM_Result status = dvm_vfs_info(&stream->inner, &captured);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    if (!viewmask(stream->view, stream->path, &captured))
+    {
+        return FVM_NOT_FOUND;
+    }
+    *output = captured;
+    return FVM_OK;
 }
 
 
@@ -221,6 +241,7 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
     }
     stream->view = view;
     stream->access = access;
+    stream->projected = virtual_parent;
     strcpy(stream->path, path);
     if (route == 1)
     {
