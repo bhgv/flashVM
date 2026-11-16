@@ -3,6 +3,7 @@
  * RU: Immutable explicit export trees, hidden prefixes и live per-peer policy gates.
  */
 #include "view_internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -211,6 +212,10 @@ FVM_Result dvm_view_info(DVM_View *view, const char *path, FVM_FileInfo *output)
     else
     {
         FVM_Result status = dvm_provider_info(rule->source, relative, output);
+        if (status != FVM_OK && dvm_cancel_requested(dvm_cancel_current()))
+        {
+            return status;
+        }
         if ((status != FVM_OK || !output->directory) && strcmp(path, rule->path) && dvm_view_children(view, path))
         {
             memset(output, 0, sizeof(*output));

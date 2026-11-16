@@ -3,6 +3,7 @@
  * RU: Per-operation export policy gates вокруг retained provider streams.
  */
 #include "view_internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -181,6 +182,10 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
     if (status == FVM_OK)
     {
         stream->listed = 1;
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            stream->failed = 1;
+        }
     }
     else
     {
@@ -262,6 +267,11 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
     {
         output->native_flags = (output->native_flags & ~DVM_VFS_CANCEL_INFO) |
             (view->native_flags & DVM_PROVIDER_CANCEL_PATH ? DVM_VFS_CANCEL_INFO : 0);
+    }
+    if (directory && (view->native_flags & DVM_PROVIDER_CANCEL_PATH) &&
+        (!stream->inner.ops || (stream->inner.native_flags & DVM_VFS_CANCEL_LIST)))
+    {
+        output->native_flags |= DVM_VFS_CANCEL_LIST;
     }
     output->ops = &ops;
     output->state = stream;

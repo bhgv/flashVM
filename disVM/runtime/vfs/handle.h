@@ -10,7 +10,8 @@
 
 #define DVM_VFS_CANCEL_INFO 2U /* Held-fid metadata consumes current cancellation scope. */
 #define DVM_VFS_CANCEL_SEEK 4U /* Seek, including metadata query, consumes current cancellation scope. */
-#define DVM_VFS_CANCEL_MASK 7U /* Known immutable handle cancellation capabilities. */
+#define DVM_VFS_CANCEL_LIST 8U /* Directory enumeration consumes current cancellation scope. */
+#define DVM_VFS_CANCEL_MASK 15U /* Known immutable handle cancellation capabilities. */
 #define DVM_VFS_CANCEL_DATA 1U /* Native read/write consumes current cancel scope; not directory/control I/O. */
 
 

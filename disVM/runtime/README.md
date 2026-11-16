@@ -825,3 +825,11 @@ opt-in path/open, held-fid fstat and seek. Native Styx walk/stat/open/clunk chai
 use fresh tokens under one source scope. Acknowledgements survive; cancelled
 union/MAUTORWX lookup never probes lower providers. Callback tables and guest
 Sys ABI stay unchanged. Directory enumeration/bind/capture remain separate.
+
+## Native directory cancellation / Отмена native-каталогов (runtime0.159)
+
+[Directory scopes and limits](../native/vfs/DIRECTORY-CANCEL.md) add cancellable
+Styx enumeration and policy-checked prepared-view prefixes. Cancelled union
+branches stop before lower providers; malformed records fail instead of EOF.
+Dynamic namespace cursors do not advertise LIST yet, so admitted guest `dirread`
+integration remains pending. No cooperative guest polling or debug pause is used.

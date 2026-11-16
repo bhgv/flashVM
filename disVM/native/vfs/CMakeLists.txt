@@ -263,3 +263,30 @@ foreach(operation pathstat pathopen fdstat seek cleanup)
         set_tests_properties(vfs-control-${operation}-${mode} PROPERTIES TIMEOUT 30)
     endforeach()
 endforeach()
+
+add_executable(vfs-cancel-directory ../tests/cancel/directory.c)
+target_link_libraries(vfs-cancel-directory PRIVATE styx_vfs)
+foreach(operation list liststat listprefix)
+    foreach(mode success cancel race racefail precancel timeout)
+        add_test(NAME vfs-directory-${operation}-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+            "$<TARGET_FILE:vfs-cancel-directory>" "$<TARGET_FILE:control-cancel-server>" "${operation}" "${mode}")
+        set_tests_properties(vfs-directory-${operation}-${mode} PROPERTIES TIMEOUT 30)
+    endforeach()
+endforeach()
+foreach(mode success cancel race racefail precancel timeout)
+    add_test(NAME vfs-directory-raw-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+        "$<TARGET_FILE:vfs-cancel-directory>" "$<TARGET_FILE:control-cancel-server>" list "${mode}")
+    set_tests_properties(vfs-directory-raw-${mode} PROPERTIES TIMEOUT 30 ENVIRONMENT "STYX_VFS_RAW=1")
+endforeach()
+
+add_executable(vfs-cancel-union ../tests/cancel/union.c ../tests/file-root/context.c)
+target_link_libraries(vfs-cancel-union PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-directory-union-boundary COMMAND vfs-cancel-union)
+set_tests_properties(vfs-directory-union-boundary PROPERTIES TIMEOUT 10)
+
+foreach(scenario raw prepare)
+    add_test(NAME vfs-directory-truncated-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+        "$<TARGET_FILE:vfs-cancel-directory>" "$<TARGET_FILE:control-cancel-server>" list truncated)
+    set_tests_properties(vfs-directory-truncated-${scenario} PROPERTIES TIMEOUT 30)
+endforeach()
+set_tests_properties(vfs-directory-truncated-raw PROPERTIES ENVIRONMENT "STYX_VFS_RAW=1")

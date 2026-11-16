@@ -171,8 +171,18 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
     }
     *entries = NULL;
     *count = 0;
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        cursor->failed = 1;
+        return FVM_ERROR;
+    }
     while (cursor->index < limit)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            cursor->failed = 1;
+            return FVM_ERROR;
+        }
         DVM_ResourcePlan choice = {0};
         FVM_Result status;
         if (!dvm_namespace_layer_at(cursor->group, cursor->on, cursor->head_id, cursor->index, &choice))
@@ -188,6 +198,14 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
             {
                 return FVM_OK;
             }
+        }
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            fvm_port_directory_entries_free(*entries);
+            *entries = NULL;
+            *count = 0;
+            cursor->failed = 1;
+            return FVM_ERROR;
         }
         fvm_port_directory_entries_free(*entries);
         *entries = NULL;

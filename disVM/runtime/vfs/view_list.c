@@ -3,6 +3,7 @@
  * RU: Directory projection накладывает explicit nodes и фильтрует каждый delegated child.
  */
 #include "view_internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,7 +55,7 @@ static int explicit_name(DVM_View *view, const char *path, const char *name)
 static void append(DVM_View *view, const char *parent, const char *name, FVM_FileInfo *entries, size_t *count)
 {
     char path[DVM_NS_PATH_LIMIT];
-    if (!*name || strchr(name, '/') || !strcmp(name, ".") || !strcmp(name, "..") ||
+    if (dvm_cancel_requested(dvm_cancel_current()) || !*name || strchr(name, '/') || !strcmp(name, ".") || !strcmp(name, "..") ||
         strlen(parent) + strlen(name) + 2 > sizeof(path))
     {
         return;
@@ -76,8 +77,10 @@ static void append(DVM_View *view, const char *parent, const char *name, FVM_Fil
 }
 
 
-/* EN/RU: See internal header; allocation failure returns no partial batch.
- * См. internal header; allocation failure не возвращает partial batch. */
+/* EN/RU: Borrow frozen view/path/inner; return an owned policy-checked prefix.
+ * Cancellation stops new probes; an empty cancelled batch is failure, never EOF.
+ * View/path/inner borrowed; вернуть свой проверенный prefix. Отмена прекращает
+ * новые probes; пустой отменённый batch означает failure, не EOF. */
 static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, int explicit_done,
                          FVM_FileInfo **entries, size_t *count, int *progress)
 {
@@ -103,7 +106,7 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
     if (!capacity)
     {
         fvm_port_directory_entries_free(base);
-        return FVM_OK;
+        return dvm_cancel_requested(dvm_cancel_current()) ? FVM_ERROR : FVM_OK;
     }
     output = calloc(capacity, sizeof(*output));
     if (!output)
@@ -114,7 +117,7 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
     if (!explicit_done)
     {
         char name[DVM_NS_PATH_LIMIT];
-        for (DVM_ViewRule *rule = view->rules; rule; rule = rule->next)
+        for (DVM_ViewRule *rule = view->rules; rule && !dvm_cancel_requested(dvm_cancel_current()); rule = rule->next)
         {
             if (child(path, rule->path, name))
             {
@@ -122,7 +125,7 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
             }
         }
     }
-    for (size_t index = 0; index < base_count; index++)
+    for (size_t index = 0; index < base_count && !dvm_cancel_requested(dvm_cancel_current()); index++)
     {
         if (!explicit_name(view, path, base[index].name))
         {
@@ -138,7 +141,7 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
     {
         free(output);
     }
-    return FVM_OK;
+    return !*count && dvm_cancel_requested(dvm_cancel_current()) ? FVM_ERROR : FVM_OK;
 }
 
 
@@ -149,6 +152,12 @@ FVM_Result dvm_view_list(DVM_View *view, const char *path, DVM_VfsHandle *inner,
 {
     for (unsigned attempt = 0; attempt < 256; attempt++)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            *entries = NULL;
+            *count = 0;
+            return FVM_ERROR;
+        }
         int progress = 0;
         FVM_Result status = batch(view, path, inner, explicit_done, entries, count, &progress);
         if (status != FVM_OK || *count || !progress)

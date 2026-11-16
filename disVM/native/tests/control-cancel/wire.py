@@ -33,9 +33,9 @@ def line(stream):
 # EN/RU: Preserve original codecs/server; gate only selected replies, never fabricate success.
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
-    immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120}[operation]
-    required = 2 if operation == 'walk' and mode != 'first' else 1
+    immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated')
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124}[operation]
+    required = 2 if (operation == 'walk' and mode != 'first') or operation == 'listprefix' else 1
     shared = {}
     lock = threading.Lock()
     held = None
@@ -74,6 +74,10 @@ def relay(listener, port, operation, mode, armed, seen, clunk, release, requests
                     packet_kind, tag = struct.unpack_from('<BH', packet, 4)
                     with lock:
                         original_kind, original, active = shared[tag]
+                    if mode == 'truncated' and original_kind == 116 and active and packet_kind == 117:
+                        packet = bytearray(packet[:-1])
+                        struct.pack_into('<I', packet, 0, len(packet))
+                        struct.pack_into('<I', packet, 7, len(packet)-11)
                     if original_kind == kind and active and not completed:
                         count += 1
                         if not immediate and count == required:
@@ -134,7 +138,7 @@ def main():
             armed.set()
             client.stdin.write('start\n')
             client.stdin.flush()
-            if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'timeout'):
+            if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'timeout', 'truncated'):
                 if not seen.wait(6):
                     raise RuntimeError('selected real control reply never arrived')
                 client.stdin.write('cancel\n')
@@ -150,7 +154,9 @@ def main():
             output, failure = client.communicate(timeout=10)
             if client.returncode or f'PASS native control cancellation {operation} {mode}' not in output:
                 raise RuntimeError(f'client {client.returncode}: {output} {failure}')
-            worker.join(6)
+            # EN/RU: Allow the relay's six-second socket timeout to retire its final reader.
+            # Дать six-second socket timeout завершить последний reader до проверки join.
+            worker.join(10)
             if worker.is_alive() or errors:
                 raise RuntimeError(f'relay did not retire: {errors}')
         output, failure = server.communicate(timeout=6)
@@ -165,7 +171,7 @@ def main():
             opens = sum(kind == 112 for kind, _ in active)
             if opens != (2 if mode == 'error' else 1):
                 raise RuntimeError(f'Topen replay/missing safe retry: {opens}')
-        if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between') and not any(kind == 108 for kind, _ in active):
+        if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated') and not any(kind == 108 for kind, _ in active):
             raise RuntimeError('control cancellation did not use Tflush')
         if operation in ('read', 'write'):
             data_kind = 116 if operation == 'read' else 118
@@ -175,6 +181,15 @@ def main():
             probes = sum(kind == 124 for kind, _ in active)
             if probes != (1 if mode == 'timeout' else 0):
                 raise RuntimeError(f'provider failure-only Tstat mismatch: {probes}')
+        if operation in ('list', 'liststat', 'listprefix'):
+            reads = sum(kind == 116 for kind, _ in active)
+            expected_reads = 0 if mode == 'precancel' else 2 if mode == 'success' else 1
+            probes = sum(kind == 124 for kind, _ in active)
+            expected_probes = 0 if mode == 'precancel' or operation == 'list' else 1 if operation == 'liststat' and mode in ('cancel', 'race', 'racefail') else 2
+            if operation == 'list' and mode == 'success' and not os.environ.get('STYX_VFS_RAW'):
+                expected_probes = 2
+            if reads != expected_reads or probes != expected_probes:
+                raise RuntimeError(f'directory replay/extra metadata: reads={reads}/{expected_reads}, stats={probes}/{expected_probes}')
         print(f'PASS real original-codec control cancellation: {operation} {mode}')
     finally:
         for child in (client, server):

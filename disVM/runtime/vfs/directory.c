@@ -3,6 +3,7 @@
  * RU: Обычный directory cursor с точными child namespace bindings, сохраняющий соседние файлы.
  */
 #include "directory_internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -75,6 +76,12 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
     {
         for (size_t i = 0; i < cursor->count; i++)
         {
+            if (dvm_cancel_requested(dvm_cancel_current()))
+            {
+                free(out);
+                fvm_port_directory_entries_free(base);
+                return FVM_ERROR;
+            }
             DVM_ResourcePlan child;
             if (dvm_resource_plan(cursor->group, cursor->names[i].path, 0, &child))
             {
@@ -85,6 +92,12 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
                 dvm_resource_close(&child);
             }
         }
+    }
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        free(out);
+        fvm_port_directory_entries_free(base);
+        return FVM_ERROR;
     }
     for (size_t i = 0; i < base_count; i++)
     {
@@ -129,6 +142,11 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
     }
     for (unsigned i = 0; i < 256; i++)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            cursor->failed = 1;
+            return FVM_ERROR;
+        }
         int progress = 0;
         FVM_Result status = batch(cursor, entries, count, &progress);
         if (status != FVM_OK)

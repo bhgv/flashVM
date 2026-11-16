@@ -134,7 +134,7 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
     struct Mounted *opened = state;
     *entries = NULL;
     *count = 0;
-    if (!opened->directory || opened->failed)
+    if (!opened->directory || opened->failed || dvm_cancel_requested(dvm_cancel_current()))
     {
         return FVM_ERROR;
     }
@@ -147,7 +147,21 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
     if (opened->used == opened->size)
     {
         StyxTransfer result;
-        styxclientread(opened->fid, opened->position, opened->records, 65536, &result);
+        StyxMountCancel cancel;
+        if (!styxmountcancel(opened->mount->client, &cancel))
+        {
+            free(batch);
+            return FVM_OUT_OF_MEMORY;
+        }
+        if (cancel.token)
+        {
+            styxclientreadcancel(opened->fid, opened->position, opened->records, 65536, cancel.token, &result);
+        }
+        else
+        {
+            styxclientread(opened->fid, opened->position, opened->records, 65536, &result);
+        }
+        styxmountcancelend(&cancel);
         if (!result.success || result.uncertain)
         {
             goto failed;

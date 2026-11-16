@@ -46,7 +46,7 @@ static char *walk(Qid *qid, char *name)
  * Разрешить только явные file/control open modes теста. */
 static char *openfile(Qid *qid, int mode)
 {
-    return (qid->path == 18 && mode == OREAD) || (qid->path == 100 && mode == OWRITE) || (qid->path == 99 && (mode == OREAD || mode == OWRITE)) ? nil : Eperm;
+    return (qid->path == 0 && mode == OREAD) || (qid->path == 18 && mode == OREAD) || (qid->path == 100 && mode == OWRITE) || (qid->path == 99 && (mode == OREAD || mode == OWRITE)) ? nil : Eperm;
 }
 
 
@@ -64,10 +64,52 @@ static char *statfile(Qid qid, Dir *out)
 }
 
 
+/* EN/RU: Encode two ordinary complete directory records at exact protocol offsets.
+ * bytes/n are borrowed output capacity; no partial record and no frozen tree.
+ * Выдать две complete directory records по protocol offsets; bytes/n borrowed,
+ * partial record не выдаётся; дерево не замораживается. */
+static char *directory(char *bytes, ulong *n, vlong offset)
+{
+    ulong used = 0;
+    vlong position = 0;
+    for (int id = 99; id <= 100; id++)
+    {
+        Dir meta;
+        uchar record[512];
+        statfile(styxqid(id, 0), &meta);
+        int size = convD2M(&meta, record, sizeof(record));
+        if (size <= BIT16SZ)
+        {
+            return Ebadarg;
+        }
+        if (position >= offset)
+        {
+            if ((ulong)size > *n-used)
+            {
+                if (!used)
+                {
+                    return Ebadarg;
+                }
+                break;
+            }
+            memmove(bytes+used, record, size);
+            used += size;
+        }
+        position += size;
+    }
+    *n = used;
+    return nil;
+}
+
+
 /* EN/RU: Real Tread uses retained fid identity and an explicit64-bit offset.
  * Настоящий Tread использует удержанный fid и explicit64-bit offset. */
 static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
+    if (qid.path == 0 && offset >= 0)
+    {
+        return directory(bytes, n, offset);
+    }
     if ((qid.path != 18 && qid.path != 99) || offset < 0)
     {
         return Eperm;

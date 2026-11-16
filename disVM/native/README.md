@@ -390,3 +390,9 @@ opt-in path/open, held-fid fstat and seek. Native Styx walk/stat/open/clunk chai
 use fresh tokens under one source scope. Acknowledgements survive; cancelled
 union/MAUTORWX lookup never probes lower providers. Callback tables and guest
 Sys ABI stay unchanged. Directory enumeration/bind/capture remain separate.
+
+[Directory cancellation](vfs/DIRECTORY-CANCEL.md) adds native LIST capability,
+original Tread/Tflush cancellation and checked prepared-view prefixes. Raw
+acknowledged records survive; interrupted views stop probing and invalidate their
+cursor. Dynamic namespace guest-dirread admission remains separate. The native
+suite has239 cases, including27 directory cases and a union negative control.
