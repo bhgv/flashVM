@@ -7,14 +7,29 @@
 #include "file.h"
 
 
-/* EN/RU: Construct one explicitly filtered/formatted source and ordinary backing; owned by fixture.
- * Создать filtered/formatted source и ordinary backing под fixture ownership. */
-StyxBacking *eventfixturecreate(void);
+/* EN/RU: Construct shared source for independent=0, otherwise a bounded factory; fixture owns policy.
+ * Создать shared source при independent=0, иначе bounded factory под fixture ownership. */
+void eventfixturecreate(int independent);
 
 
-/* EN/RU: Borrow source readiness fd while fixture is alive; never drain/close it.
- * Заимствовать source readiness fd до fixture cleanup; не читать/закрывать. */
-int eventfixturefd(void);
+/* EN/RU: Return owned native fid context/NULL; readonly opens get shared or independent inbox.
+ * Вернуть свой native fid context/NULL; readonly open получает shared/independent inbox. */
+void *eventfixtureopen(int mode);
+
+
+/* EN/RU: Borrow this live fid context's inbox readiness fd; no read/close.
+ * Заимствовать readiness fd inbox живого fid context; без read/close. */
+int eventfixtureopenfd(void *context);
+
+
+/* EN/RU: Read one chunk from retained ordinary open at explicit offset; initializes result.
+ * Прочитать chunk удержанного ordinary open по offset; result инициализируется. */
+void eventfixtureread(void *context, unsigned long long offset, void *bytes, size_t size, StyxTransfer *result);
+
+
+/* EN/RU: Consume owned fid context after pending request retirement, outside producer callbacks.
+ * Поглотить fid context после pending request retirement, вне producer callbacks. */
+void eventfixtureclose(void *context);
 
 
 /* EN/RU: Native producer publishes scalar test changes or finishes source; no Client/guest pointers.

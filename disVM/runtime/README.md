@@ -769,3 +769,13 @@ state only on success. Clear/retirement can invalidate an admitted preparation.
 Native predecessor fences preserve two-slot watch capacity through delayed Rflush
 and rapid replacements. Cutover posts conservative invalidation; no guest progress,
 pause, transport reconnect or event-codec discovery is required.
+
+
+## Independent native subscriptions / Независимые native-подписки (runtime0.153)
+
+[Bounded subscription factories](../native/vfs/SUBSCRIPTIONS.md) create separate event queues, caches
+and readiness descriptors for independent subscribers under one explicit host policy.
+Quota includes setup and retiring callbacks; close/free never joins a publisher.
+Original C Styx TCP fixtures verify per-fid readiness, independent short/flush/reopen
+behavior and two real native mounts receiving one publication independently.
+Shared-inbox APIs remain available; wire encoding and endpoint discovery stay explicit.

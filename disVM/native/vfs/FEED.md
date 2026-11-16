@@ -29,6 +29,8 @@ I/O and must not be run as a blocking guest callback. Keep the subscription
 endpoint private from competing ordinary readers with the prepared namespace/view,
 or provide independent server-side subscription queues. This constructor does
 not automatically hide a path or split a shared publication inbox.
+[Native subscription factories](SUBSCRIPTIONS.md) let the server supply separate
+queues per authorized open/prepared connection.
 
 ```c
 /* Host already owns a connected client and trusted decode policy/context. */

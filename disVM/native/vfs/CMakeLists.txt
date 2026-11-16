@@ -9,6 +9,7 @@ endif()
 add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c mount_notice.c
     feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
+    subscriptions/lifetime.c subscriptions/open.c
     "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
     "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
@@ -174,3 +175,24 @@ foreach(scenario replace chain clear setrace closerace inflight empty ceiling)
         "$<TARGET_FILE:vfs-mount-control>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-mount-control-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()
+
+add_executable(vfs-subscriptions-queue ../tests/subscriptions/queue.c)
+target_link_libraries(vfs-subscriptions-queue PRIVATE styx_vfs)
+foreach(scenario cache overflow quota close rollback empty)
+    add_test(NAME vfs-subscriptions-${scenario} COMMAND vfs-subscriptions-queue "${scenario}")
+    set_tests_properties(vfs-subscriptions-${scenario} PROPERTIES TIMEOUT 10)
+endforeach()
+add_executable(vfs-subscriptions-race ../tests/subscriptions/race.c)
+target_link_libraries(vfs-subscriptions-race PRIVATE styx_vfs)
+foreach(scenario setup retirement quota)
+    add_test(NAME vfs-subscriptions-race-${scenario} COMMAND vfs-subscriptions-race "${scenario}")
+    set_tests_properties(vfs-subscriptions-race-${scenario} PROPERTIES TIMEOUT 10)
+endforeach()
+foreach(scenario normal short flush reopen)
+    add_test(NAME vfs-subscriptions-wire-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/subscriptions/wire.py"
+        "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-subscriptions-wire-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()
+add_test(NAME vfs-subscriptions-mounted COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/subscriptions/mounted.py"
+    "$<TARGET_FILE:vfs-feed-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests")
+set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)

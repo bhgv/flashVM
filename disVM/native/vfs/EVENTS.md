@@ -7,6 +7,9 @@ readiness happen immediately, without a Limbo loop, guest execution, scheduler
 poll or guest suspension. The embedding host supplies explicit access filtering
 and record encoding. No default public wire format or global path is installed.
 
+Since runtime0.153, [subscription factories](SUBSCRIPTIONS.md) create bounded
+independent queues for subscribers that must each receive their own events.
+
 ## Construction and ownership / Создание и владение
 
 `styxeventsource(journal, &policy)` retains a borrowed live journal independently

@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
+#include <sys/epoll.h>
 
 
 /* EN/RU: Native socket owner exclusively owns pending wire request references.
@@ -18,9 +19,10 @@ typedef struct Pending
 {
     struct Pending *next; /* Owner's pending chain. */
     StyxRead *request; /* Owned caller reference through library retirement. */
+    int readiness; /* Borrowed inbox descriptor, pinned by pending fid context. */
 } Pending;
 static Styxserver server; /* Original POSIX transport and dispatch. */
-static StyxBacking *backing; /* Borrowed fixture prepared file capability. */
+static int readiness; /* Owned native readiness aggregator for pending inbox descriptors. */
 static Pending *head; /* Owner-only pending event reads. */
 static int stopping; /* Owner-only fixture control; no public event protocol. */
 
@@ -49,6 +51,15 @@ static void retired(void *state)
             *link = pending->next;
             break;
         }
+    }
+    int shared = 0;
+    for (Pending *other = head; other; other = other->next)
+    {
+        shared |= other->readiness == pending->readiness;
+    }
+    if (!shared)
+    {
+        check(!epoll_ctl(readiness, EPOLL_CTL_DEL, pending->readiness, nil), "remove inbox readiness");
     }
     styxreadfree(pending->request);
     free(pending);
@@ -89,14 +100,14 @@ static char *openfile(Qid *qid, int mode)
 {
     if (qid->path == 1)
     {
-        StyxOpen *opened = styxfileopen(backing, mode);
+        void *opened = eventfixtureopen(mode);
         if (!opened)
         {
             return "provider open failed";
         }
         if (styxsetaux(&server, opened) < 0)
         {
-            styxfileclose(opened);
+            eventfixtureclose(opened);
             return "fid context refused";
         }
         return nil;
@@ -119,7 +130,7 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
         return Eperm;
     }
     StyxTransfer result;
-    styxfileread(styxgetaux(&server), offset, bytes, *count, &result);
+    eventfixtureread(styxgetaux(&server), offset, bytes, *count, &result);
     if (result.again)
     {
         Pending *pending = calloc(1, sizeof(*pending));
@@ -133,6 +144,11 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
             free(pending);
             return Eperm;
         }
+        pending->readiness = eventfixtureopenfd(styxgetaux(&server));
+        struct epoll_event watch = {0};
+        watch.events = EPOLLIN;
+        watch.data.fd = pending->readiness;
+        check(!epoll_ctl(readiness, EPOLL_CTL_ADD, pending->readiness, &watch) || errno == EEXIST, "register inbox readiness");
         pending->next = head;
         head = pending;
         *count = 0;
@@ -158,7 +174,7 @@ static void complete(void)
     {
         next = pending->next;
         StyxTransfer result;
-        styxfileread(styxreadaux(pending->request), styxreadoffset(pending->request),
+        eventfixtureread(styxreadaux(pending->request), styxreadoffset(pending->request),
                      bytes, styxreadlimit(pending->request), &result);
         if (result.again)
         {
@@ -167,6 +183,20 @@ static void complete(void)
         check(styxreadreply(pending->request, bytes, result.success ? result.count : 0,
                            result.success ? nil : "event resource read failed"), "deferred response");
     }
+}
+
+
+/* EN/RU: Refresh level readiness after reads; fixture has at most two distinct subscribed inboxes.
+ * Обновить level readiness после reads; fixture имеет максимум два distinct subscribed inboxes. */
+static void refresh(void)
+{
+    struct epoll_event ready[2];
+    int count;
+    do
+    {
+        count = epoll_wait(readiness, ready, 2, 0);
+    } while (count < 0 && errno == EINTR);
+    check(count >= 0, "refresh native readiness");
 }
 
 
@@ -220,7 +250,7 @@ static void *producer(void *unused)
 
 /* EN/RU: Native readiness is registered only while reads wait, preventing level-trigger busy loops.
  * Native readiness регистрируется только для ожидающих reads, без level-trigger busy loops. */
-int main(void)
+int main(int argc, char **argv)
 {
     Styxops ops;
     pthread_t worker;
@@ -232,8 +262,11 @@ int main(void)
     ops.read = readfile;
     ops.stat = statfile;
     ops.write = writefile;
-    ops.freefid = styxfileclose;
-    backing = eventfixturecreate();
+    (void)argv;
+    ops.freefid = eventfixtureclose;
+    eventfixturecreate(argc > 1);
+    readiness = epoll_create1(EPOLL_CLOEXEC);
+    check(readiness >= 0, "native readiness aggregator");
     check(styxinit(&server, &ops, "0", 0555, 0) == nil, "server init");
     check(!pthread_create(&worker, nil, producer, nil), "native producer");
     check(!getsockname(server.connfd, (struct sockaddr *)&address, &size), "port");
@@ -242,9 +275,11 @@ int main(void)
     {
         check(styxwait(&server) == nil && styxprocess(&server) == nil, "event loop");
         complete();
-        check(!styxnotifyfd(&server, head ? eventfixturefd() : -1), "native readiness registration");
+        refresh();
+        check(!styxnotifyfd(&server, head ? readiness : -1), "native readiness registration");
     }
     check(styxend(&server) == nil && !pthread_join(worker, nil) && !head, "native teardown");
+    check(!close(readiness), "close readiness aggregator");
     eventfixturefree();
     print("PASS real event resource/ordinary provider/native producer\n");
     return 0;
