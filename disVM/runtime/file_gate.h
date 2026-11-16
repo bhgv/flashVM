@@ -48,7 +48,8 @@ int dvm_file_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket);
 int dvm_file_gate_enter_now(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
-/* Complete the admitted ticket before heap reentry. Return zero for an
+/* Complete the admitted ticket after native work or protected directory publication.
+ * Directory publication may retain admission across heap reentry. Return zero for an
  * invalid ticket or owner. NULL gate succeeds for stdio. */
 int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket);
 

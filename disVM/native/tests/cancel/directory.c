@@ -59,6 +59,17 @@ static void *run(void *opaque)
 }
 
 
+/* EN/RU: Revoke data visibility dynamically on cancellation; context is pinned native source.
+ * Access/path borrowed; no provider I/O or guest callbacks,1 permit/0 deny.
+ * Отозвать visibility data при отмене; context — удержанный native source,
+ * access/path borrowed, без provider I/O/guest callbacks,1/0. */
+static int policy(void *context, const char *path, unsigned access)
+{
+    (void)access;
+    return strcmp(path, "/data") || !dvm_cancel_requested(context);
+}
+
+
 /* EN/RU: Connect to the original server; compare owned entries with real reply/flush order.
  * Main joins the scope owner before inspecting cursor/results or consuming providers.
  * Подключиться к original server; сверить entries с real reply/flush order;
@@ -78,20 +89,24 @@ int main(int argc, char **argv)
     check(client && styxclientretain(client), "client");
     DVM_Provider *source = styxmountprovider(client, 7);
     check(source && (dvm_provider_native_flags(source) & DVM_PROVIDER_CANCEL_PATH), "native path promise");
+    DVM_Cancel *cancel = dvm_cancel_create();
+    check(cancel != NULL, "source");
     int raw = getenv("STYX_VFS_RAW") != NULL;
     DVM_Provider *provider = source;
     if (!raw)
     {
-        DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+        DVM_View *view = dvm_view_create(getenv("STYX_VFS_POLICY") ? policy : NULL, cancel, NULL);
         check(view && dvm_view_map(view, "/", source, ".", 7, DVM_VIEW_TREE), "prepared mapping");
+        if (getenv("STYX_VFS_HIDE"))
+        {
+            check(dvm_view_map(view, "/ctl", NULL, ".", 0, DVM_VIEW_TREE), "hidden entry");
+        }
         provider = dvm_view_freeze(view);
         check(provider != NULL, "prepared provider");
     }
     DVM_VfsHandle held = {0};
     check(dvm_provider_open(provider, ".", "r", &held) == FVM_OK &&
           (held.native_flags & DVM_VFS_CANCEL_LIST), "directory cancellation promise lost");
-    DVM_Cancel *cancel = dvm_cancel_create();
-    check(cancel != NULL, "source");
     Work work = {0};
     work.cancel = cancel;
     work.held = &held;
@@ -113,15 +128,20 @@ int main(int argc, char **argv)
     int race = !strcmp(mode, "race") || !strcmp(mode, "racefail");
     int metadata = strcmp(operation, "list") != 0;
     int metadata_timeout = metadata && !strcmp(mode, "timeout");
-    int success = metadata_timeout || !strcmp(mode, "success") || (race && (raw || metadata)) ||
+    int success = metadata_timeout || !strcmp(mode, "success") || race ||
         (!strcmp(operation, "listprefix") && !strcmp(mode, "cancel"));
-    size_t expected = !strcmp(mode, "success") || (raw && race) ? 2 :
+    size_t expected = !strcmp(mode, "success") || (race && !metadata) ? 2 :
         race && !strcmp(operation, "listprefix") ? 2 : success ? 1 : 0;
+    int revoked = getenv("STYX_VFS_POLICY") && race;
+    if (expected == 2 && (getenv("STYX_VFS_HIDE") || revoked))
+    {
+        expected = 1;
+    }
     check((work.status == FVM_OK) == success && work.count == expected &&
           !!work.entries == !!expected, "directory acknowledgement/prefix/EOF mismatch");
     if (expected)
     {
-        check(!strcmp(work.entries[0].name, metadata_timeout && !strcmp(operation, "liststat") ? "ctl" : "data"), "first complete record");
+        check(!strcmp(work.entries[0].name, (metadata_timeout && !strcmp(operation, "liststat")) || revoked ? "ctl" : "data"), "first complete record");
         if (expected == 2)
         {
             check(!strcmp(work.entries[1].name, "ctl"), "second complete record");
@@ -148,12 +168,12 @@ int main(int argc, char **argv)
     fflush(stdout);
     checkpoint();
     dvm_vfs_close(&held);
-    dvm_cancel_release(cancel);
     if (provider != source)
     {
         dvm_provider_release(provider);
     }
     dvm_provider_release(source);
+    dvm_cancel_release(cancel);
     styxclientshutdown(client);
     styxclientfree(client);
     printf("PASS native control cancellation %s %s\n", operation, mode);

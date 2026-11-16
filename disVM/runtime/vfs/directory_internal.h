@@ -25,4 +25,10 @@ int dvm_directory_names(DVM_Namespace *group, const char *parent, DirectoryName 
  * NULL for other handles/provider/union bases; no I/O, no ownership transfer, never close it.
  * Заимствовать direct native directory для lifetime diagnostics под exclusive pin; NULL иначе. */
 FVM_PortDirectory *dvm_directory_native(DVM_VfsHandle *handle);
+
+/* EN/RU: Borrow group/parent; check current child routes without provider I/O.
+ * Return1 only if every captured child candidate promises cancellable path calls.
+ * Group/parent borrowed; проверить current child routes без provider I/O;1 только
+ * при поддержке отмены всеми candidates. Later mutations require per-call guards. */
+int dvm_directory_cancel_ready(DVM_Namespace *group, const char *parent);
 #endif

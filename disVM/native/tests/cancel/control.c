@@ -60,6 +60,11 @@ static void *run(void *opaque)
     {
         work->status = dvm_provider_open(work->provider, "data", "r", &work->output);
     }
+    else if (!strcmp(work->operation, "dirclose"))
+    {
+        dvm_vfs_close(work->held);
+        work->status = FVM_OK;
+    }
     else if (!strcmp(work->operation, "fdstat"))
     {
         work->status = dvm_vfs_info(work->held, &work->metadata);
@@ -99,8 +104,10 @@ int main(int argc, char **argv)
     DVM_Provider *provider = dvm_view_freeze(view);
     check(provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH), "view lost path promise");
     DVM_VfsHandle held = {0};
-    check(dvm_provider_open(provider, "data", "r", &held) == FVM_OK &&
-          (held.native_flags & (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK)) == (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK),
+    int closing = !strcmp(operation, "dirclose");
+    check(dvm_provider_open(provider, closing ? "." : "data", "r", &held) == FVM_OK &&
+          (closing ? (held.native_flags & DVM_VFS_CANCEL_LIST) :
+          (held.native_flags & (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK)) == (DVM_VFS_CANCEL_INFO|DVM_VFS_CANCEL_SEEK)),
           "view lost held control capabilities");
     DVM_Cancel *cancel = dvm_cancel_create();
     check(cancel != NULL, "source");
@@ -127,10 +134,14 @@ int main(int argc, char **argv)
         dvm_cancel_request(cancel);
     }
     check(!pthread_join(worker, NULL), "native completion");
-    int success = !strcmp(mode, "success") || !strcmp(mode, "race") || !strcmp(mode, "racefail") ||
+    int success = closing || !strcmp(mode, "success") || !strcmp(mode, "race") || !strcmp(mode, "racefail") ||
         (!strcmp(operation, "cleanup") && strcmp(mode, "precancel"));
     check((work.status == FVM_OK) == success, "method acknowledgement lost/fabricated");
-    if (!strcmp(operation, "pathopen"))
+    if (closing)
+    {
+        check(!held.ops && !held.state, "close did not consume held directory");
+    }
+    else if (!strcmp(operation, "pathopen"))
     {
         check(!!work.output.ops == success, "open ownership contract");
     }

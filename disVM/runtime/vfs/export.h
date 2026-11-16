@@ -18,7 +18,8 @@ typedef struct DVM_ExportTicket DVM_ExportTicket; /* Requester's native capabili
 
 
 /* EN/RU: Return1 to permit current virtual operation; access0 is metadata visibility.
- * Native-only, no managed callbacks/namespace reentry. Context lives until release.
+ * Native-only bounded local decisions, no managed callbacks/namespace reentry.
+ * Provider I/O belongs to source callbacks. Context lives until release.
  * Разрешить virtual operation:1; access0 — metadata. Context живёт до release. */
 typedef int (*DVM_ViewPolicy)(void *context, const char *path, unsigned access);
 

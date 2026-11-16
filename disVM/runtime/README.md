@@ -833,3 +833,12 @@ Styx enumeration and policy-checked prepared-view prefixes. Cancelled union
 branches stop before lower providers; malformed records fail instead of EOF.
 Dynamic namespace cursors do not advertise LIST yet, so admitted guest `dirread`
 integration remains pending. No cooperative guest polling or debug pause is used.
+
+## Guest directory cancellation / Отмена гостевого dirread (runtime0.160)
+
+[Guest directory waits](../native/vfs/GUEST-DIRECTORY-WAITS.md) connect admitted
+cancelwait/killwait to eligible provider/view/union enumeration. Live route guards
+reject a late legacy bind before its callback; reopen refreshes eligibility.
+Acknowledged batches and checked prefixes survive nested views. Native scopes
+retire before managed reentry, while the FD FIFO remains held through protected
+batch publication. No cooperative guest polling, debug pause or global stop.

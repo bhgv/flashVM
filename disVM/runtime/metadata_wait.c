@@ -222,7 +222,9 @@ FVM_Result dvm_metadata_directory_read(
     fvm_port_registry_unlock();
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
-    released = dvm_file_gate_try_release(gate, &ticket);
+    DVM_VfsWait *operation = NULL;
+    released = resource->native_flags & DVM_VFS_CANCEL_LIST ?
+        dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
     if (released < 0)
     {
         ptrdel(D2H(fd));
@@ -232,6 +234,11 @@ FVM_Result dvm_metadata_directory_read(
         return admission_failure(released, "native directory read");
     }
     status = dvm_vfs_list(resource, entries, count);
+    int cancelled = dvm_vfs_wait_end(operation);
+    if (cancelled)
+    {
+        dvm_vfs_abort_list(resource);
+    }
     dvm_runtime_gc_native_enter(released);
     fvm_port_registry_lock();
     batches++;
@@ -262,7 +269,8 @@ FVM_Result dvm_metadata_directory_read(
     }
     if (status != FVM_OK)
     {
-        kwerrstr("directory read failed");
+        kwerrstr(cancelled ? "native directory read cancelled" : status == FVM_UNSUPPORTED ?
+            "directory provider lacks cancellation support; reopen directory" : "directory read failed");
     }
     return status;
 }

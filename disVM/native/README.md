@@ -396,3 +396,10 @@ original Tread/Tflush cancellation and checked prepared-view prefixes. Raw
 acknowledged records survive; interrupted views stop probing and invalidate their
 cursor. Dynamic namespace guest-dirread admission remains separate. The native
 suite has239 cases, including27 directory cases and a union negative control.
+
+[Guest directory waits](vfs/GUEST-DIRECTORY-WAITS.md), runtime0.160, add a native
+factory LIST-chain promise and admitted guest dirread cancellation. Dynamic binds
+remain live; unsupported late routes fail before callbacks. Cancellable Tclunk
+covers intermediate enumeration cleanup, while guest close integration remains
+separate. Native acceptance now has248 cases plus real interpreter/JIT guest
+coverage for cancellation, managed publication and late-bind rejection.

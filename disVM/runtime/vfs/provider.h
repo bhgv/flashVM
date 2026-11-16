@@ -8,6 +8,7 @@
 #include "anchor_port.h"
 #include "changes.h"
 
+#define DVM_PROVIDER_CANCEL_LIST 2U /* Requires PATH; directory open/list and all returned stream closes consume scope. */
 #define DVM_PROVIDER_CANCEL_PATH 1U /* Native factory info/open/access consume current cancellation scope. */
 #define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */

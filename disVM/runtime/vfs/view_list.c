@@ -77,6 +77,40 @@ static void append(DVM_View *view, const char *parent, const char *name, FVM_Fil
 }
 
 
+/* EN/RU: Apply only local outer policy to an acknowledged inner batch after cancellation.
+ * Borrow view/parent/captured/entries/count; append unique checked metadata, return1/0, no I/O.
+ * Применить только local outer policy к подтверждённому inner batch после отмены;
+ * view/parent/captured/entries/count borrowed; добавить unique checked metadata,1/0 без I/O. */
+static int acknowledged(DVM_View *view, const char *parent, const FVM_FileInfo *captured,
+                        FVM_FileInfo *entries, size_t *count)
+{
+    const char *name = captured->name;
+    char path[DVM_NS_PATH_LIMIT];
+    if (!*name || strchr(name, '/') || !strcmp(name, ".") || !strcmp(name, "..") ||
+        strlen(parent)+strlen(name)+2 > sizeof(path))
+    {
+        return 0;
+    }
+    strcpy(path, !strcmp(parent, "/") ? "" : parent);
+    strcat(path, "/");
+    strcat(path, name);
+    for (size_t i = 0; i < *count; i++)
+    {
+        if (!strcmp(entries[i].name, name))
+        {
+            return 0;
+        }
+    }
+    FVM_FileInfo output = *captured;
+    if (!viewmask(view, path, &output))
+    {
+        return 0;
+    }
+    entries[(*count)++] = output;
+    return 1;
+}
+
+
 /* EN/RU: Borrow frozen view/path/inner; return an owned policy-checked prefix.
  * Cancellation stops new probes; an empty cancelled batch is failure, never EOF.
  * View/path/inner borrowed; вернуть свой проверенный prefix. Отмена прекращает
@@ -101,6 +135,7 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
         fvm_port_directory_entries_free(base);
         return FVM_OUT_OF_MEMORY;
     }
+    int cancelled_batch = dvm_cancel_requested(dvm_cancel_current());
     *progress = base_count != 0;
     capacity = base_count + (explicit_done ? 0 : view->count);
     if (!capacity)
@@ -125,11 +160,18 @@ static FVM_Result batch(DVM_View *view, const char *path, DVM_VfsHandle *inner, 
             }
         }
     }
-    for (size_t index = 0; index < base_count && !dvm_cancel_requested(dvm_cancel_current()); index++)
+    for (size_t index = 0; index < base_count && (cancelled_batch || !dvm_cancel_requested(dvm_cancel_current())); index++)
     {
         if (!explicit_name(view, path, base[index].name))
         {
-            append(view, path, base[index].name, output, count);
+            if (cancelled_batch)
+            {
+                acknowledged(view, path, &base[index], output, count);
+            }
+            else
+            {
+                append(view, path, base[index].name, output, count);
+            }
         }
     }
     fvm_port_directory_entries_free(base);

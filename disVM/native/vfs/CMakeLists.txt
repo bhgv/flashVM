@@ -256,7 +256,7 @@ endforeach()
 
 add_executable(vfs-cancel-control ../tests/cancel/control.c)
 target_link_libraries(vfs-cancel-control PRIVATE styx_vfs)
-foreach(operation pathstat pathopen fdstat seek cleanup)
+foreach(operation pathstat pathopen fdstat seek cleanup dirclose)
     foreach(mode success cancel race racefail precancel timeout)
         add_test(NAME vfs-control-${operation}-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
             "$<TARGET_FILE:vfs-cancel-control>" "$<TARGET_FILE:control-cancel-server>" "${operation}" "${mode}")
@@ -290,3 +290,12 @@ foreach(scenario raw prepare)
     set_tests_properties(vfs-directory-truncated-${scenario} PROPERTIES TIMEOUT 30)
 endforeach()
 set_tests_properties(vfs-directory-truncated-raw PROPERTIES ENVIRONMENT "STYX_VFS_RAW=1")
+
+foreach(mode success race)
+    add_test(NAME vfs-directory-hidden-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+        "$<TARGET_FILE:vfs-cancel-directory>" "$<TARGET_FILE:control-cancel-server>" list "${mode}")
+    set_tests_properties(vfs-directory-hidden-${mode} PROPERTIES TIMEOUT 30 ENVIRONMENT "STYX_VFS_HIDE=1")
+endforeach()
+add_test(NAME vfs-directory-policy-race COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+    "$<TARGET_FILE:vfs-cancel-directory>" "$<TARGET_FILE:control-cancel-server>" list race)
+set_tests_properties(vfs-directory-policy-race PROPERTIES TIMEOUT 30 ENVIRONMENT "STYX_VFS_POLICY=1")

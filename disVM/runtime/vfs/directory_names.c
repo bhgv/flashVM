@@ -3,6 +3,7 @@
  * RU: Защищённые revision snapshots имён непосредственных child bindings namespace.
  */
 #include "directory_internal.h"
+#include "path_cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -85,4 +86,31 @@ int dvm_directory_names(DVM_Namespace *group, const char *parent, DirectoryName 
         free(copied);
     }
     return 0;
+}
+
+
+/* EN/RU: See directory_internal.h; discard the eligibility snapshot, never freeze bindings.
+ * См. directory_internal.h; snapshot eligibility освобождается, bindings не фиксируются. */
+int dvm_directory_cancel_ready(DVM_Namespace *group, const char *parent)
+{
+    DirectoryName *names = NULL;
+    size_t count = 0;
+    if (!dvm_directory_names(group, parent, &names, &count))
+    {
+        return 0;
+    }
+    int ready = 1;
+    for (size_t i = 0; ready && i < count; i++)
+    {
+        DVM_ResourcePlan plan;
+        if (!dvm_resource_plan(group, names[i].path, 0, &plan))
+        {
+            ready = 0;
+            break;
+        }
+        ready = dvm_path_cancellable(&plan);
+        dvm_resource_close(&plan);
+    }
+    free(names);
+    return ready;
 }

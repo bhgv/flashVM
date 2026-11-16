@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124}[operation]
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120}[operation]
     required = 2 if (operation == 'walk' and mode != 'first') or operation == 'listprefix' else 1
     shared = {}
     lock = threading.Lock()
@@ -187,7 +187,7 @@ def main():
             probes = sum(kind == 124 for kind, _ in active)
             expected_probes = 0 if mode == 'precancel' or operation == 'list' else 1 if operation == 'liststat' and mode in ('cancel', 'race', 'racefail') else 2
             if operation == 'list' and mode == 'success' and not os.environ.get('STYX_VFS_RAW'):
-                expected_probes = 2
+                expected_probes = 1 if os.environ.get('STYX_VFS_HIDE') else 2
             if reads != expected_reads or probes != expected_probes:
                 raise RuntimeError(f'directory replay/extra metadata: reads={reads}/{expected_reads}, stats={probes}/{expected_probes}')
         print(f'PASS real original-codec control cancellation: {operation} {mode}')

@@ -124,7 +124,8 @@ a lower provider; the independent fixture counter rejects it. Production objects
 are unchanged by this negative control. The native suites also run with ASan/UBSan (`detect_leaks=0`) on Linux amd64.
 
 [Native directory enumeration](DIRECTORY-CANCEL.md) now consumes explicit scopes;
-dynamic namespace guest-dirread admission, capture/bind acquisition and close remain
+[Guest directory waits](GUEST-DIRECTORY-WAITS.md) now cover eligible live namespace cursors.
+Capture/bind acquisition and guest close remain
 separate integration. Enumeration must preserve complete stat records and not
 convert a cancelled branch to EOF or continue into another dynamically selected
 provider. A guest Sys.mount transport builtin and network authentication are

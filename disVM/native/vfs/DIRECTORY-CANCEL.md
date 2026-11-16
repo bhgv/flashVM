@@ -1,4 +1,4 @@
-# Directory cancellation / Отмена перечисления каталогов (runtime0.159)
+# Directory cancellation / Отмена перечисления каталогов (runtime0.159–0.160)
 
 The native Styx mount adapter now consumes the caller's `DVM_CancelScope` during
 `dvm_vfs_list`. It uses the original 9P `Tread`, directory stat records and
@@ -26,7 +26,7 @@ namespace, guest or cursor pointer. See [source lifetime/API](DATA-CANCEL.md).
   EOF or skipping records. Reopen to start an independent enumeration.
 - A prepared view additionally checks each child's current visibility, metadata
   and rights. It advertises LIST only when every explicit source promises
-  cancellable path operations and its delegated stream advertises LIST (or the
+  cancellable path and directory-chain operations and its delegated stream advertises LIST (or the
   directory is purely synthetic). Mutable source contents are still live.
 - Once the source is cancelled, the view starts no new child metadata probes and
   no next hidden batch. It returns any already checked complete prefix; with no
@@ -51,17 +51,15 @@ batch or open the next provider. Namespace child projection also stops before
 another child query or fully shadowed batch. These guards apply whenever an
 embedding caller supplies a scope; they do not require guest cooperation.
 
-Dynamic namespace directory handles deliberately **do not advertise LIST yet**.
-A new bind can introduce a legacy, noncancellable provider after open. Therefore
-guest `Sys.dirread` still uses its existing admission path: this change does not
-claim admitted guest directory cancellation. A future bridge must check each
-newly selected provider and its cleanup boundary without freezing the tree or
-holding a namespace mutex across I/O. Capture/bind acquisition and guest close
-integration also remain separate.
+Runtime0.160 adds [guest directory waits](GUEST-DIRECTORY-WAITS.md). Eligible
+namespace/union handles now advertise LIST after conservative open-time checks.
+Every newly selected route is guarded again. A late legacy bind fails before
+its callback and requires reopening, instead of breaking the cancellation promise.
+The tree remains live and normal legacy enumeration remains available after reopen.
 
-Динамический bind может добавить провайдер без поддержки отмены. Поэтому общий
-namespace-каталог пока не обещает LIST, а гостевой `dirread` не переключён на новый
-режим. Проверки прекращения обхода уже действуют под явно заданным native scope.
+Runtime0.160 подключает гостевой dirread для подходящих namespace/union handles.
+Поздний legacy bind вызывает отказ до callback; требуется переоткрытие каталога.
+Дерево остаётся живым, прежнее перечисление legacy-каталогов сохраняется.
 
 ## Verification / Проверки
 
@@ -75,4 +73,4 @@ A native namespace/union test covers failure and apparent EOF after a branch
 requests cancellation. Independent counters require zero lower-provider opens
 and reads. A private relink removing the union guards makes that test fail on
 lower-provider entry. Production objects stay unchanged by the negative control.
-The complete native suite now has239 cases; run both normal and ASan/UBSan builds.
+The complete native suite now has248 cases (including scoped directory-close coverage); run both normal and ASan/UBSan builds.

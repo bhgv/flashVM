@@ -24,10 +24,12 @@ int dvm_vfs_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket, DVM_VfsWait *
 int dvm_vfs_path_enter(DVM_VfsWait **wait);
 
 
-/* EN/RU: Finish after actual I/O and FIFO leave, before managed reentry; consume wait.
+/* EN/RU: Finish after actual I/O, before managed reentry; consume wait.
+ * Ordinary calls leave FIFO first; directories retain it through protected publication.
  * Return1 if cancellation/shutdown won before unlink,0 otherwise/NULL. Preserve
  * acknowledged effects; caller must not start another readn chunk after cancellation.
- * Завершить после I/O и FIFO leave, до managed reentry; поглотить wait;
+ * Завершить после I/O до managed reentry; поглотить wait. Directory FIFO
+ * удерживается до protected publication, обычные calls освобождают FIFO раньше;
  * сохранить acknowledged effects при гонке; вернуть1 при cancellation,0 иначе/NULL. */
 int dvm_vfs_wait_end(DVM_VfsWait *wait);
 #endif

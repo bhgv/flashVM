@@ -268,7 +268,7 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
         output->native_flags = (output->native_flags & ~DVM_VFS_CANCEL_INFO) |
             (view->native_flags & DVM_PROVIDER_CANCEL_PATH ? DVM_VFS_CANCEL_INFO : 0);
     }
-    if (directory && (view->native_flags & DVM_PROVIDER_CANCEL_PATH) &&
+    if (directory && (view->native_flags & DVM_PROVIDER_CANCEL_LIST) &&
         (!stream->inner.ops || (stream->inner.native_flags & DVM_VFS_CANCEL_LIST)))
     {
         output->native_flags |= DVM_VFS_CANCEL_LIST;

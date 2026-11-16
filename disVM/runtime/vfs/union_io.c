@@ -189,6 +189,14 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
         {
             return FVM_OK;
         }
+        if (dvm_cancel_current() &&
+            (cursor->current.ops ? !(cursor->current.native_flags & DVM_VFS_CANCEL_LIST) :
+             !(dvm_provider_native_flags(choice.provider) & DVM_PROVIDER_CANCEL_LIST)))
+        {
+            dvm_resource_close(&choice);
+            cursor->failed = 1;
+            return FVM_UNSUPPORTED;
+        }
         status = cursor->current.ops ? FVM_OK : open_directory(&choice, &cursor->current);
         dvm_resource_close(&choice);
         if (status == FVM_OK)
@@ -199,7 +207,8 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
                 return FVM_OK;
             }
         }
-        if (dvm_cancel_requested(dvm_cancel_current()))
+        if (dvm_cancel_requested(dvm_cancel_current()) ||
+            (dvm_cancel_current() && cursor->current.ops && status != FVM_OK))
         {
             fvm_port_directory_entries_free(*entries);
             *entries = NULL;
@@ -281,6 +290,15 @@ FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
         return status;
     }
     output->native_flags = cursor->header.native_flags & DVM_VFS_CANCEL_INFO;
+    int cancellable = (cursor->header.native_flags & DVM_VFS_CANCEL_LIST) != 0;
+    for (DVM_ResourcePlan *choice = plan; choice; choice = choice->layers)
+    {
+        cancellable &= (dvm_provider_native_flags(choice->provider) & DVM_PROVIDER_CANCEL_LIST) != 0;
+    }
+    if (cancellable)
+    {
+        output->native_flags |= DVM_VFS_CANCEL_LIST;
+    }
     output->ops = &union_ops;
     output->state = cursor;
     return FVM_OK;

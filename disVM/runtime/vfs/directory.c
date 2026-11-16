@@ -4,6 +4,7 @@
  */
 #include "directory_internal.h"
 #include "cancel.h"
+#include "path_cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,13 +79,18 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
         {
             if (dvm_cancel_requested(dvm_cancel_current()))
             {
-                free(out);
-                fvm_port_directory_entries_free(base);
-                return FVM_ERROR;
+                break;
             }
             DVM_ResourcePlan child;
             if (dvm_resource_plan(cursor->group, cursor->names[i].path, 0, &child))
             {
+                if (dvm_cancel_current() && !dvm_path_cancellable(&child))
+                {
+                    dvm_resource_close(&child);
+                    free(out);
+                    fvm_port_directory_entries_free(base);
+                    return FVM_UNSUPPORTED;
+                }
                 if (dvm_resource_info(&child, &out[used]) == FVM_OK)
                 {
                     strcpy(out[used++].name, strrchr(cursor->names[i].path, '/')+1);
@@ -92,12 +98,6 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
                 dvm_resource_close(&child);
             }
         }
-    }
-    if (dvm_cancel_requested(dvm_cancel_current()))
-    {
-        free(out);
-        fvm_port_directory_entries_free(base);
-        return FVM_ERROR;
     }
     for (size_t i = 0; i < base_count; i++)
     {
@@ -117,7 +117,7 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
     {
         free(out);
     }
-    return FVM_OK;
+    return !used && dvm_cancel_requested(dvm_cancel_current()) ? FVM_ERROR : FVM_OK;
 }
 
 
@@ -153,6 +153,11 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
         {
             cursor->failed = 1;
             return status;
+        }
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            cursor->failed = 1;
+            dvm_vfs_abort_list(&cursor->inner);
         }
         if (*count || !progress)
         {
@@ -257,6 +262,11 @@ FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
         return status;
     }
     out->native_flags = cursor->inner.native_flags & DVM_VFS_CANCEL_INFO;
+    if ((cursor->inner.native_flags & DVM_VFS_CANCEL_LIST) &&
+        dvm_directory_cancel_ready(cursor->group, cursor->parent))
+    {
+        out->native_flags |= DVM_VFS_CANCEL_LIST;
+    }
     out->ops = &operations;
     out->state = cursor;
     return FVM_OK;

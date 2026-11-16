@@ -213,7 +213,7 @@ static void abortlist(void *state)
 static void closefile(void *state)
 {
     struct Mounted *opened = state;
-    styxclientclunk(opened->fid);
+    styxmountclunk(opened->mount->client, opened->fid);
     free(opened->records);
     free(opened);
 }
