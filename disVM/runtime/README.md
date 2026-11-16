@@ -691,3 +691,12 @@ reviewer signals the socket owner. Flush/reset/disconnect/shutdown retire the
 request before any later reply; no client retry or guest suspension is required.
 The original Inferno implementation and VFS TCP tests cover dedicated native
 review, pipe wakeup, cancellation, denied publication close and shutdown.
+
+## Native mounted client / Native mount-клиент (runtime0.145)
+
+[Native client/provider API and example](../native/vfs/MOUNT.md) use original Inferno lib9 codecs,
+independent remote fids, precise chunks and ordinary provider lifetime. Real TCP
+tests cover prepared publication, partial writes, lost acknowledgements, bounded
+framing/deadlines, directory records and native loss notifications. The first
+client serializes one RPC per connection; multiplexer/Tflush, authenticated
+transport, stable subroot bind and guest Sys builtin wiring are separate work.

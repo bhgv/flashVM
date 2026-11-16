@@ -176,6 +176,25 @@ static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 }
 
 
+/* EN/RU: Metadata follows the selected root or retained fid, never another client.
+ * Metadata следуют выбранному root/retained fid, не другому client. */
+static char *statfile(Qid qid, Dir *out)
+{
+    static StyxMeta meta; /* Fixture socket-owner storage through reply encoding. */
+    Session *state = session();
+    StyxOpen *opened = styxgetaux(&server);
+    StyxBacking *node = qid.path == Qroot ? state->root : state->file;
+    if(!(opened ? styxfileinfo(opened, &meta) : styxbackinginfo(node, &meta))) return Enonexist;
+    memset(out, 0, sizeof(*out));
+    out->qid = qid;
+    out->mode = meta.mode | (meta.directory ? DMDIR : 0);
+    out->length = meta.length;
+    out->name = meta.name;
+    out->uid = out->gid = out->muid = "fixture";
+    return nil;
+}
+
+
 /* EN/RU: Native fixture controls are not part of the exported admission API.
  * Native-управление тестом не является частью exported admission API. */
 static char *writefile(Qid qid, char *bytes, ulong *n, vlong offset)
@@ -203,6 +222,7 @@ int peerwire(void)
     ops.walk = walk;
     ops.open = openfile;
     ops.read = readfile;
+    ops.stat = statfile;
     ops.write = writefile;
     ops.freefid = styxfileclose;
     if(styxinit(&server, &ops, "0", 0555, 0) != nil) return 1;
