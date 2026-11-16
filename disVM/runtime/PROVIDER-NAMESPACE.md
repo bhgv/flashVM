@@ -70,7 +70,8 @@ this host adapter does not import whole-OS scheduling or stopped-world sections.
 | Open resource survives unmount / Открытый ресурс переживает unmount | Preserved and tested / Сохранено и проверено |
 | Shared namespace; FORKNS detaches copy / Shared namespace и отдельная копия | Provider references inherit/copy with the group / References наследуются и копируются |
 | MREPL native bind / Native bind MREPL | Existing supported subset retained / Прежнее подмножество сохранено |
-| Provider chdir, NEWNS inside provider / Provider directory operations | Explicitly unsupported; no host fallback / Явный отказ без fallback |
+| Single-provider chdir / Одиночный provider cwd | [Retained cwd, runtime0.164](../native/vfs/PROVIDER-CWD.md); no host fallback / Удержанный cwd без fallback |
+| Union cwd, NEWNS inside provider | Explicitly unsupported / Явный отказ |
 | Directory unions / Union каталогов | [Runtime 0.126 supported subset](UNION-NAMESPACE.md) / Подмножество с явными границами |
 | Sys.mount, Chan walk, Styx serving | Not implemented by this host API / Не реализованы этим host API |
 | User/group/rwx / Права пользователя | Native host credentials and provider factory policy; no guest credential groups / Host credentials и factory policy; guest groups отсутствуют |

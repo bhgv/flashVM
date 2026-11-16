@@ -202,7 +202,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 add_library(styx_namespace_fixture STATIC
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
-    "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
 add_executable(vfs-file-root-server ../tests/file-root/backend.c ../tests/file-root/wire.c ../tests/peer/review.c)
@@ -304,6 +304,11 @@ add_executable(vfs-cancel-bind ../tests/cancel/bind.c ../tests/file-root/context
 target_link_libraries(vfs-cancel-bind PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-bind-cancel-transaction COMMAND vfs-cancel-bind)
 set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-provider-cwd ../tests/cancel/cwd.c ../tests/file-root/context.c)
+target_link_libraries(vfs-provider-cwd PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-provider-cwd COMMAND vfs-provider-cwd)
+set_tests_properties(vfs-provider-cwd PROPERTIES TIMEOUT 10)
 
 add_executable(vfs-cancel-move ../tests/cancel/move.c ../tests/file-root/context.c)
 target_link_libraries(vfs-cancel-move PRIVATE styx_namespace_fixture)

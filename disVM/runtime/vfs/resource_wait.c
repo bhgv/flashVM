@@ -9,6 +9,8 @@
 #include "kernel.h"
 #include "runtime_gc.h"
 #include "resource_wait.h"
+#include "native_wait.h"
+#include "path_cancel.h"
 #include <string.h>
 
 
@@ -63,4 +65,33 @@ int dvm_resource_anchor_wait(DVM_ResourcePlan *plan, int directory, char *compon
         return 0;
     }
     return 1;
+}
+
+
+
+/* EN/RU: See resource_wait.h; staged owners remain registered through managed reentry.
+ * См. resource_wait.h; staged owners защищены cleanup до managed reentry. */
+int dvm_resource_chdir_wait(DVM_ResourcePlan *plan)
+{
+    DVM_VfsWait *operation = NULL;
+    int released = dvm_capture_cancellable(plan) ?
+        dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
+    if (released < 0)
+    {
+        kwerrstr("directory acquisition cancelled or unavailable");
+        return -1;
+    }
+    int outcome = dvm_resource_directory_acquire(plan) ? dvm_namespace_chdir_resource(plan->group, plan) : -1;
+    int cancelled = dvm_vfs_wait_end(operation);
+    dvm_runtime_gc_native_enter(released);
+    if (outcome != 1 && cancelled)
+    {
+        kwerrstr("native directory acquisition cancelled");
+        return -1;
+    }
+    if (outcome < 0)
+    {
+        kwerrstr("cannot acquire directory resource");
+    }
+    return outcome;
 }

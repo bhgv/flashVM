@@ -49,6 +49,8 @@ void dvm_resource_close(DVM_ResourcePlan *plan)
         dvm_resource_close(choice);
         free(choice);
     }
+    dvm_provider_release(plan->created_provider);
+    plan->created_provider = NULL;
     dvm_provider_release(plan->provider);
     plan->provider = NULL;
     dvm_anchor_release(plan->anchor);

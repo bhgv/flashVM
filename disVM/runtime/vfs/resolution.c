@@ -76,15 +76,17 @@ static int resolve(
 {
     DVM_NamespaceBinding *binding, *best = NULL;
     DVM_Anchor *anchor;
+    DVM_Provider *selected_provider; /* Borrowed under group lock until retained. */
     const char *context, *source, *suffix, *component = "";
     size_t longest = 0;
     int sticky, result = 0;
     fvm_port_sync_lock(group->lock);
     context = module ? group->load_directory : group->cwd;
     anchor = module ? group->load_anchor : group->cwd_anchor;
+    selected_provider = module ? group->load_provider : group->cwd_provider;
     if (dvm_namespace_normalize(context, path, names->path))
     {
-        sticky = anchor && *path != '/' && covers(context, names->path);
+        sticky = (anchor || selected_provider) && *path != '/' && covers(context, names->path);
         for (binding = group->bindings; binding; binding = binding->next)
         {
             size_t length = strlen(binding->on);
@@ -101,18 +103,21 @@ static int resolve(
         if (best)
         {
             anchor = best->anchor;
+            selected_provider = best->provider;
             source = best->source;
             suffix = names->path + (longest == 1 ? 0 : longest);
             component = best->component;
         }
         else if (sticky)
         {
+            component = module ? group->load_component : group->cwd_component;
             source = module ? group->load_source : group->cwd_source;
             suffix = names->path + (strlen(context) == 1 ? 0 : strlen(context));
         }
         else
         {
             anchor = group->root_anchor;
+            selected_provider = NULL;
             source = group->root;
             suffix = names->path;
         }
@@ -120,13 +125,13 @@ static int resolve(
         names->version = group->version;
         if (result && retained)
         {
-            result = relative_join(component, suffix, relative);
-            if (result && best && best->provider)
+            result = relative_join(!strcmp(component, ".") ? "" : component, suffix, relative);
+            if (result && selected_provider)
             {
-                result = provider && dvm_provider_retain(best->provider);
+                result = provider && dvm_provider_retain(selected_provider);
                 if (result)
                 {
-                    *provider = best->provider;
+                    *provider = selected_provider;
                 }
             }
             else if (result)

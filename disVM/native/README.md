@@ -425,3 +425,10 @@ moves. Cancelled inspection discards partial cards and does not retry Stale;
 pre-commit cancellation preserves the stack, committed moves retain success.
 The native suite has268 cases, including projected move cancellation/retirement.
 Actual guest interpreter/JIT fixtures also exercise cancelwait/killwait and races.
+
+
+[Retained provider cwd](vfs/PROVIDER-CWD.md), runtime0.164, supports single-provider
+Sys.chdir with native acquisition/commit cancellation, sticky relative lookup,
+namespace copies and automatic cwd-source events after unmount. The native suite
+has269 cases. Union cwd, provider-root NEWNS and provider module byte loading
+remain explicit refusals; no native-path fallback is added.

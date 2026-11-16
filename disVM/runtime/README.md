@@ -872,3 +872,15 @@ polling or debugger pause is required. Provider/union cwd remains separate work.
 Отмена охватывает просмотр metadata/прав и захват слоёв при move. До commit стек
 не меняется; после commit возвращается успех. Проверены реальные interpreter/JIT,
 включая kill/cancel, конфликты revision и освобождение native ресурсов.
+
+
+## Retained provider cwd / Provider cwd (runtime0.164)
+
+[Provider cwd ownership, cancellation and limits](../native/vfs/PROVIDER-CWD.md)
+adds single-provider `Sys.chdir`, sticky relative resolution, copied cwd/import
+references and automatic cwd-provider events after source unmount. Eligible native
+acquisition/commit waits support cancelwait/killwait without guest cooperation.
+Union cwd, provider-root NEWNS and provider module byte loading remain unsupported.
+
+Одиночный provider cwd сохраняется после covering bind/unmount и при FORKNS.
+Подписка `/dev/sysevents` удерживается автоматически до ухода из этого cwd.

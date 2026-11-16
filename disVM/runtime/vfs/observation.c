@@ -80,8 +80,8 @@ int dvm_namespace_observe(DVM_Namespace *group,
     output->version = group->version;
     output->references = group->references;
     output->root_held = group->root_anchor != NULL;
-    output->cwd_held = group->cwd_anchor != NULL;
-    output->import_held = group->load_anchor != NULL;
+    output->cwd_held = (group->cwd_anchor != NULL || group->cwd_provider != NULL);
+    output->import_held = (group->load_anchor != NULL || group->load_provider != NULL);
     for (binding = group->bindings; binding; binding = binding->next)
     {
         output->bindings++;

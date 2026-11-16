@@ -30,6 +30,8 @@ typedef struct DVM_ResourcePlan
     char relative[DVM_NS_PATH_LIMIT]; /* Selected path relative to anchor, or empty for native fallback. */
     DVM_Provider *provider; /* Owned provider selection, alternative to native anchor. */
     DVM_Anchor *anchor;               /* Owned selection retained under the group lock. */
+    DVM_Provider *created_provider; /* Owned staged cwd provider until commit/cleanup. */
+    char created_component[DVM_NS_PATH_LIMIT]; /* Staged stable provider route or captured dot. */
     DVM_Anchor *created;              /* Owned new directory until commit retains it. */
     DVM_NativeCleanup cleanup;        /* Current native owner's unwind registration. */
 } DVM_ResourcePlan;
@@ -98,9 +100,17 @@ FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan);
 int dvm_namespace_pin(DVM_Namespace *group);
 
 
-/* EN/RU: Commit borrowed plan.created as cwd; 1 success, 0 stale, -1 error.
- * Применить plan.created как cwd; 1 успех, 0 stale, -1 ошибка. Retains refs; no I/O. */
+/* EN/RU: Commit borrowed plan.created or created_provider/component as cwd; 1 success, 0 stale, -1 error.
+ * Применить staged anchor/provider как cwd; 1 успех, 0 stale, -1 ошибка. Retains refs; no I/O. */
 int dvm_namespace_chdir_resource(DVM_Namespace *group, DVM_ResourcePlan *plan);
+
+
+/* EN/RU: Acquire a single directory capability in borrowed plan; one/zero.
+ * Provider metadata/search/capture may block; no namespace lock or managed access.
+ * Own staged resource in plan until close. Union provider cwd remains refused.
+ * Захватить каталог в borrowed plan; один/ноль, native blocking без namespace lock.
+ * Staged resource принадлежит plan до close; provider union cwd отклоняется. */
+int dvm_resource_directory_acquire(DVM_ResourcePlan *plan);
 
 
 /* EN/RU: Bind source/target revision and borrowed anchor/component; retain on success.

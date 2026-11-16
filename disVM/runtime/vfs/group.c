@@ -88,6 +88,8 @@ void dvm_namespace_release(DVM_Namespace *group)
         dvm_anchor_release(group->root_anchor);
         dvm_anchor_release(group->cwd_anchor);
         dvm_anchor_release(group->load_anchor);
+        dvm_provider_release(group->cwd_provider);
+        dvm_provider_release(group->load_provider);
         free(group);
     }
 }
@@ -104,8 +106,11 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     if (copy)
     {
         copy->next_binding = group->next_binding;
+        copy->cwd_identity = group->cwd_identity;
         memcpy(copy->cwd_source, group->cwd_source, sizeof(copy->cwd_source));
         memcpy(copy->load_source, group->load_source, sizeof(copy->load_source));
+        memcpy(copy->cwd_component, group->cwd_component, sizeof(copy->cwd_component));
+        memcpy(copy->load_component, group->load_component, sizeof(copy->load_component));
         DVM_Anchor *anchors[] = {group->root_anchor, group->cwd_anchor, group->load_anchor};
         DVM_Anchor **destinations[] = {&copy->root_anchor, &copy->cwd_anchor, &copy->load_anchor};
         size_t index;
@@ -118,6 +123,27 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
                 break;
             }
             *destinations[index] = anchors[index];
+        }
+    }
+    if (copy)
+    {
+        if (dvm_provider_retain(group->cwd_provider))
+        {
+            copy->cwd_provider = group->cwd_provider;
+            if (dvm_provider_retain(group->load_provider))
+            {
+                copy->load_provider = group->load_provider;
+            }
+            else
+            {
+                dvm_namespace_release(copy);
+                copy = NULL;
+            }
+        }
+        else
+        {
+            dvm_namespace_release(copy);
+            copy = NULL;
         }
     }
     if (copy)

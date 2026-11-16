@@ -14,4 +14,12 @@
  * basename в component. Результат удерживает plan.created. Один/ноль с guest
  * error; root frame/plan принадлежат source до конца I/O. */
 int dvm_resource_anchor_wait(DVM_ResourcePlan *plan, int directory, char *component);
+
+
+/* EN/RU: ACTIVE caller borrows retained plan through native acquire and commit.
+ * Return1 committed,0 stale,-1 refused/cancelled. Register eligible waits before
+ * heap release, retire scope before reentry; preserve committed result after cancel.
+ * ACTIVE caller заимствует plan для native acquire/commit. Вернуть1/0/-1;
+ * scope до heap release и снять до reentry, поздняя отмена не отменяет commit. */
+int dvm_resource_chdir_wait(DVM_ResourcePlan *plan);
 #endif

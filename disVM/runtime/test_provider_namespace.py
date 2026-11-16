@@ -26,7 +26,7 @@ def main():
         source = source.replace('    input :=', '    check(sys->pctl(Sys->FORKNS, nil) > 0, "copy provider namespace");\n    input :=', 1)
         source = source.replace('    sys->print("PASS provider FD', r'''    retained := sys->open("view/provider-read", Sys->OREAD);
     check(retained != nil, "retained provider open");
-    check(sys->chdir("view") == -1, "unsupported provider chdir");
+    check(sys->chdir("view") == 0 && sys->chdir("..") == 0, "provider cwd and native parent restore");
     check(sys->bind("view/provider-read", "host-target", Sys->MREPL) == 0, "provider file bind");
     alias := sys->open("host-target", Sys->OREAD);
     data := array[5] of byte;

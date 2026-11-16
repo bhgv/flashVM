@@ -42,6 +42,11 @@ struct DVM_Namespace
     DVM_Anchor *root_anchor;                /* Owned root directory identity. */
     DVM_Anchor *cwd_anchor;                 /* Owned current directory, independent of covering rebinds. */
     DVM_Anchor *load_anchor;                /* Owned import directory, initially entry package. */
+    uint64_t cwd_identity; /* Reserved group-local identity for held cwd event subscription. */
+    DVM_Provider *cwd_provider; /* Owned provider cwd, alternative to cwd_anchor. */
+    DVM_Provider *load_provider; /* Owned import provider, follows successful chdir. */
+    char cwd_component[DVM_NS_PATH_LIMIT]; /* Stable route prefix or dot in captured provider. */
+    char load_component[DVM_NS_PATH_LIMIT]; /* Import route prefix paired with load_provider. */
     char cwd_source[DVM_NS_PATH_LIMIT];     /* Captured display spelling for cwd. */
     char load_source[DVM_NS_PATH_LIMIT];    /* Captured display spelling for import directory. */
 };

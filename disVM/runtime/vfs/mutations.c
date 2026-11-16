@@ -3,16 +3,22 @@
  * RU: Изменения namespace со сверкой версии; проверочный I/O вне mutex.
  */
 #include "internal.h"
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
 
-/* EN/RU: See namespace.h. Revisions never wrap, so stale plans cannot reappear.
- * См. namespace.h. Версии не переполняются; устаревшие планы не оживают. */
-static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan, DVM_Anchor *anchor)
+/* EN/RU: Borrow group/validated plan and mutually exclusive anchor/provider plus bounded component.
+ * Retain separate cwd/import owners before locking. Return1 commit,0 stale,-1 refusal;
+ * cancellation/revision/identity exhaustion prevents commit; displaced owners retire unlocked.
+ * Заимствовать group/plan и anchor/provider с bounded component. Удержать cwd/import до lock;
+ * вернуть1/0/-1, отмена/исчерпание не меняет состояние, старые owners освободить вне lock. */
+static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan, DVM_Anchor *anchor,
+                            DVM_Provider *provider, const char *component)
 {
     int result = 0;
     DVM_Anchor *old_cwd = NULL, *old_load = NULL;
+    DVM_Provider *old_cwd_provider = NULL, *old_load_provider = NULL;
     if (!dvm_anchor_retain(anchor))
     {
         return -1;
@@ -22,11 +28,25 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
         dvm_anchor_release(anchor);
         return -1;
     }
+    if (!dvm_provider_retain(provider))
+    {
+        dvm_anchor_release(anchor);
+        dvm_anchor_release(anchor);
+        return -1;
+    }
+    if (!dvm_provider_retain(provider))
+    {
+        dvm_provider_release(provider);
+        dvm_anchor_release(anchor);
+        dvm_anchor_release(anchor);
+        return -1;
+    }
     fvm_port_sync_lock(group->lock);
     if (group->version == plan->version)
     {
         result = -1;
-        if (group->version != UINT64_MAX)
+        if (group->version != UINT64_MAX && (!provider || group->next_binding != UINT64_MAX) &&
+            !dvm_cancel_requested(dvm_cancel_current()))
         {
             memcpy(group->cwd, plan->path, strlen(plan->path) + 1);
             memcpy(group->load_directory, plan->path, strlen(plan->path) + 1);
@@ -34,6 +54,13 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
             memcpy(group->load_source, plan->native, strlen(plan->native) + 1);
             old_cwd = group->cwd_anchor;
             old_load = group->load_anchor;
+            old_cwd_provider = group->cwd_provider;
+            old_load_provider = group->load_provider;
+            group->cwd_identity = provider ? ++group->next_binding : 0;
+            group->cwd_provider = provider;
+            group->load_provider = provider;
+            strcpy(group->cwd_component, component);
+            strcpy(group->load_component, component);
             group->cwd_anchor = anchor;
             group->load_anchor = anchor;
             group->version++;
@@ -45,9 +72,13 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
     {
         dvm_anchor_release(old_cwd);
         dvm_anchor_release(old_load);
+        dvm_provider_release(old_cwd_provider);
+        dvm_provider_release(old_load_provider);
     }
     else
     {
+        dvm_provider_release(provider);
+        dvm_provider_release(provider);
         dvm_anchor_release(anchor);
         dvm_anchor_release(anchor);
     }
@@ -63,7 +94,7 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
  * Чистый path commit для native unit clients; см. namespace.h. */
 int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
 {
-    return change_directory(group, plan, NULL);
+    return change_directory(group, plan, NULL, NULL, "");
 }
 
 
@@ -71,7 +102,9 @@ int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
  * Применить проверенную identity каталога; см. resource.h. */
 int dvm_namespace_chdir_resource(DVM_Namespace *group, DVM_ResourcePlan *plan)
 {
-    return plan->created ? change_directory(group, &plan->names, plan->created) : -1;
+    return plan->created || plan->created_provider ?
+        change_directory(group, &plan->names, plan->created, plan->created_provider,
+                         plan->created_provider ? plan->created_component : "") : -1;
 }
 
 

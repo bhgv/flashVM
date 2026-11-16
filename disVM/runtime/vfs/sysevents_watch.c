@@ -144,6 +144,7 @@ void dvm_sysevents_namespace(void *state, const DVM_ChangeEvent *event)
     DVM_SysEvents *events = state;
     DVM_SysWatch *head = NULL, **tail = &head, *old;
     DVM_NamespaceBinding *binding;
+    DVM_NamespaceBinding cwd = {0}; /* Temporary native description; no ownership escapes. */
     uint64_t version;
     int complete = 1;
     (void)event;
@@ -176,7 +177,11 @@ void dvm_sysevents_namespace(void *state, const DVM_ChangeEvent *event)
     }
     events->epoch++;
     dvm_sysevents_post(events, DVM_SYSEVENT_NAMESPACE, 0, DVM_CHANGE_ALL, 0, version, "/");
-    for (binding = events->group->bindings; binding; binding = binding->next)
+    cwd.provider = events->group->cwd_provider;
+    cwd.identity = events->group->cwd_identity;
+    strcpy(cwd.on, events->group->cwd);
+    cwd.next = events->group->bindings;
+    for (binding = cwd.provider ? &cwd : cwd.next; binding; binding = binding->next)
     {
         DVM_SysWatch *watch;
         if (!binding->provider || dvm_sysevents_is_device(binding->provider))

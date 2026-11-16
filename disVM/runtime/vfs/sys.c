@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Standard Sys namespace subset on native path plans, with explicit refusals.
- * RU: Подмножество стандартного Sys namespace на native-планах; явные отказы.
+ * EN: Standard Sys namespace operations on retained native/provider resources.
+ * RU: Операции Sys namespace на удержанных native/provider ресурсах.
  */
 #include "lib9.h"
 #include "dat.h"
@@ -131,7 +131,7 @@ void Sys_pctl(void *frame)
 void Sys_chdir(void *frame)
 {
     F_Sys_chdir call;
-    char path[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT];
+    char path[DVM_NS_PATH_LIMIT];
     int result = -1, attempt;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_chdir, ret), sizeof(*call.ret));
     if (copy_path(call.path, path))
@@ -144,14 +144,7 @@ void Sys_chdir(void *frame)
                 kwerrstr("invalid namespace directory path");
                 break;
             }
-            FVM_FileInfo metadata;
-            int acquired = !plan.union_root && dvm_metadata_selected(&plan, &metadata) == FVM_OK && metadata.directory &&
-                dvm_resource_anchor_wait(&plan, 1, component);
-            if (plan.union_root)
-            {
-                kwerrstr("chdir into union root needs retained Chan cwd");
-            }
-            int committed = acquired ? dvm_namespace_chdir_resource(dvm_namespace_current_group(), &plan) : -1;
+            int committed = dvm_resource_chdir_wait(&plan);
             dvm_resource_close(&plan);
             if (committed)
             {

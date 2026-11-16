@@ -756,3 +756,12 @@ host. / RU: Список63; исправлена маска socket до0600, д�
 QEMU. New list64 adds jit-fp (base FP/SIMD kernel copies, REAL RX faults and fenv
 restoration); new matrix completion remains a separate observation. / Предыдущая
 матрица прошла; новый FP-блок требует собственной архитектурной проверки.
+
+
+## Retained single-provider cwd (runtime0.164)
+
+[Ownership and remaining scope](../native/vfs/PROVIDER-CWD.md): Sys.chdir now
+retains a single provider directory through covering bind/unmount, namespace
+copies and automatic source events. Native cancellation covers metadata/search,
+fresh capture and commit. Union cwd, provider-root NEWNS and provider byte-module
+loading remain unsupported. No guest polling, debugger pause or global stop.
