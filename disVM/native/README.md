@@ -72,8 +72,8 @@ needs a separate Chan/Mnt/RPC host adapter. Do not link the new lib9 alongside t
 bootstrap's other lib9 archive in one executable: unify those dependencies first.
 
 Полная проверка C-сервера ещё не завершена. Реальный POSIX TCP уже проверен на
-синтетических данных. Остаются соединение с DisVM VFS/публикациями, native
-mount-клиент, провайдер проверенных credentials/auth-fid, полная семантика walk
+синтетических данных. Первый файловый grant-адаптер подключён к DisVM VFS.
+Остаются полный сервер публикаций каталогов и native mount-клиент, провайдер проверенных credentials/auth-fid, полная семантика walk
 и проверки на других платформах. Подготовленный корень соединения остаётся
 живым обычным каталогом с независимыми правами; снимок дерева не нужен.
 
@@ -192,3 +192,28 @@ That process model is not imported into the dedicated-native-thread VM.
 Все восемь native-проверок, включая TCP, проходят также под ASan/UBSan на amd64.
 Это не сертификация других архитектур, готовый mount-клиент или production-служба
 VFS с проверкой credentials. Графические библиотеки в этот пакет не добавлены.
+
+## File-grant bridge / Адаптер файлового grant (runtime0.141)
+
+The optional [VFS file-capability bridge](vfs/README.md) consumes prepared VFS
+provider capabilities through a scalar C boundary. It links the existing native
+publication/provider/handle implementations and non-graphical FlashVM ports,
+without a second lib9 archive. An original-C TCP fixture uses actual publication
+tickets and proves independent equal-Qid opens, precise partial acknowledgements,
+read-only ceilings, uncertainty refusal and open lifetime after unpublishing.
+
+Расширение C API libstyx: `styxgetaux`, `styxsetaux` и consuming callback
+`Styxops.freefid` дают отдельный native-контекст каждому fid. Контекст заимствуется
+только во время dispatch и освобождается до backend клиента. Нельзя заменять
+неосвобождённый контекст; клонирование unopened fid не копирует handle. Это
+embedding API, не расширение сообщений 9P; Client/Styxops требуют пересборки.
+
+This is the first file-only bridge, not a general directory publication server,
+authenticated network service or mount client. Pending owner-review/remote
+credential routing is not wired into Tattach. The test's local grant is explicitly
+approved by its native owner before serving synthetic data. See the bridge guide
+for explicit build inputs and API ownership/offset limits.
+
+With the explicit VFS option enabled, 12 native tests pass locally and under
+ASan/UBSan on amd64. / С явной опцией VFS локально проходят 12 native-проверок,
+также под ASan/UBSan на amd64.

@@ -674,3 +674,5 @@ Runtime0.138 refreshes original libstyx stream/stat handling: fragmented/coalesc
 Runtime0.139 adds original C Styx per-connection msize/session negotiation, attach rollback/identity protection and ordered fid cleanup, including malformed-frame dispatch retirement. [Scope and checks](../native/README.md).
 
 Runtime0.140 adds live C Styx directory callbacks, whole-record cached pagination, provider-denial confinement and POSIX shutdown ownership. Real two-client TCP read/write/stat/live-view and cleanup acceptance joins the native/sanitizer suite. [Scope](../native/README.md).
+
+Runtime0.141 adds per-fid native context ownership in original libstyx and a scalar [VFS file-grant bridge](../native/vfs/README.md), with TCP tests for separate opens, partial/refused/uncertain writes, read-only publication ceilings and retained handles after unpublish. General directory service, authenticated attach and mount client remain separate.
