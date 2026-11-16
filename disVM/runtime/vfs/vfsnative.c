@@ -16,6 +16,7 @@
 #include "internal.h"
 #include "stack.h"
 #include "bind_wait.h"
+#include "cancel.h"
 #include "vfsnative_decl.h"
 #include "vfsnative_table.h"
 #include <limits.h>
@@ -69,8 +70,16 @@ static unsigned rights(DVM_ResourcePlan *entry)
     unsigned result = 0;
     for (unsigned bit = 1; bit <= FVM_ACCESS_READ; bit <<= 1)
     {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            break;
+        }
         FVM_Result status = entry->provider ? dvm_provider_access(entry->provider, entry->relative, bit) :
             entry->anchor ? fvm_port_anchor_access_at(dvm_anchor_port(entry->anchor), entry->relative, bit) : FVM_UNSUPPORTED;
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            break;
+        }
         if (status != FVM_UNSUPPORTED)
         {
             result |= bit << 8;
@@ -106,16 +115,20 @@ void Vfsnative_layer(void *frame)
         }
         else
         {
+            int cancelled = 0;
             entry = choice(&plan, call.index, &count, &position);
             result[0] = entry ? -1 : 0;
             if (entry && count <= INT_MAX && plan.head_id <= LLONG_MAX && entry->layer_id <= LLONG_MAX)
             {
                 FVM_FileInfo info;
-                int released = dvm_runtime_gc_native_try_leave();
+                DVM_VfsWait *operation = NULL;
+                int released = dvm_provider_native_flags(entry->provider) & DVM_PROVIDER_CANCEL_PATH ?
+                    dvm_vfs_path_enter(&operation) : dvm_runtime_gc_native_try_leave();
                 if (released >= 0)
                 {
                     FVM_Result status = dvm_resource_raw_info(entry, &info);
                     unsigned access = rights(entry);
+                    cancelled = dvm_vfs_wait_end(operation);
                     dvm_runtime_gc_native_enter(released);
                     result[0] = 1;
                     result[1] = plan.names.version;
@@ -132,13 +145,18 @@ void Vfsnative_layer(void *frame)
                 }
                 else
                 {
+                    cancelled = released == -2;
                     result[0] = -1;
                 }
             }
-            if (!dvm_stack_current(plan.group, plan.names.version))
+            if (cancelled || !dvm_stack_current(plan.group, plan.names.version))
             {
                 memset(result, 0, sizeof(result));
-                result[0] = -2;
+                result[0] = cancelled ? -1 : -2;
+                if (cancelled)
+                {
+                    kwerrstr("native layer inspection cancelled");
+                }
             }
         }
         dvm_resource_close(&plan);
@@ -296,12 +314,12 @@ void Vfsnative_move(void *frame)
     if (call.revision >= 0 && call.id >= 0 && path(call.path, name) &&
         dvm_resource_plan(dvm_namespace_current_group(), name, 0, &target))
     {
-        int released = dvm_runtime_gc_native_try_leave();
-        if (released >= 0)
+        int cancelled;
+        int outcome = dvm_move_wait(&target, call.revision, call.id, call.index, &cancelled);
+        result = outcome == 1 ? 0 : outcome == 0 && !cancelled ? -2 : -1;
+        if (outcome != 1 && cancelled)
         {
-            int outcome = dvm_stack_move(&target, call.revision, call.id, call.index);
-            dvm_runtime_gc_native_enter(released);
-            result = outcome == 1 ? 0 : outcome == 0 ? -2 : -1;
+            kwerrstr("native layer move cancelled");
         }
         dvm_resource_close(&target);
     }

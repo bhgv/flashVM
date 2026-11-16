@@ -366,6 +366,10 @@ int dvm_stack_move(DVM_ResourcePlan *target, uint64_t revision, uint64_t layer, 
 {
     size_t length = 0, selected = (size_t)-1, position;
     DVM_NamespaceBinding *head, **link, *entry;
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return -1;
+    }
     if (revision != target->names.version)
     {
         return 0;

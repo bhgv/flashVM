@@ -418,3 +418,10 @@ stays unchanged. Inferno FD reference release remains asynchronous, with no new
 Sys.close. The native suite has267 cases, including actual Tclunk/Tflush through
 the runtime close FIFO, and dedicated guest tests prove64 file/directory jobs
 drain once while descriptor slots are reused before backend completion.
+
+[Layer inspection/move cancellation](vfs/INSPECTION-CANCEL.md), runtime0.163,
+adds guest native scopes for eligible metadata/rwx inspection and transactional
+moves. Cancelled inspection discards partial cards and does not retry Stale;
+pre-commit cancellation preserves the stack, committed moves retain success.
+The native suite has268 cases, including projected move cancellation/retirement.
+Actual guest interpreter/JIT fixtures also exercise cancelwait/killwait and races.

@@ -305,6 +305,11 @@ target_link_libraries(vfs-cancel-bind PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-bind-cancel-transaction COMMAND vfs-cancel-bind)
 set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
 
+add_executable(vfs-cancel-move ../tests/cancel/move.c ../tests/file-root/context.c)
+target_link_libraries(vfs-cancel-move PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-move-cancel-transaction COMMAND vfs-cancel-move)
+set_tests_properties(vfs-move-cancel-transaction PROPERTIES TIMEOUT 10)
+
 add_executable(vfs-cancel-close ../tests/cancel/close.c
     "${INFERNO_VFS_SUPPORT}/disVM/runtime/close_worker.c" "${ports}/linux/thread.c")
 target_include_directories(vfs-cancel-close PRIVATE "${INFERNO_VFS_SUPPORT}/disVM/runtime")

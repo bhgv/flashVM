@@ -860,3 +860,15 @@ there is no new guest close syscall. Eligible detached callbacks receive a nativ
 service source, requested outside the queue mutex before shutdown join. Dynamic
 close queries inspect actual owned streams; legacy callbacks keep their previous
 boundary. The native handle layout grows, so SDK consumers must rebuild.
+
+## Layer inspection and moves / Просмотр слоёв и move (runtime0.163)
+
+[Inspection cancellation and transaction rules](../native/vfs/INSPECTION-CANCEL.md)
+cover `Vfsctl.layer/layers` metadata/rwx probes and eligible layer moves. Cancelled
+inspection returns no partial card/list and cannot trigger a stale retry. Moves
+preserve the stack before commit and preserve success after commit. No guest
+polling or debugger pause is required. Provider/union cwd remains separate work.
+
+Отмена охватывает просмотр metadata/прав и захват слоёв при move. До commit стек
+не меняется; после commit возвращается успех. Проверены реальные interpreter/JIT,
+включая kill/cancel, конфликты revision и освобождение native ресурсов.
