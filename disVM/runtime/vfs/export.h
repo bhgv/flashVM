@@ -13,6 +13,7 @@
 #define DVM_EXPORT_LIMIT 256U /* Maximum outstanding native tickets per publication. */
 typedef struct DVM_View DVM_View; /* Mutable builder, consumed by freeze on every outcome. */
 typedef struct DVM_Publication DVM_Publication; /* Owner capability; no global registry. */
+typedef struct ExportEndpoint ExportEndpoint; /* Submit-only capability; pins closed publisher storage. */
 typedef struct DVM_ExportTicket DVM_ExportTicket; /* Requester's native capability, not a guessable integer. */
 
 
@@ -114,6 +115,23 @@ DVM_Publication *dvm_publication_create(const DVM_ExportOptions *options);
 DVM_ExportTicket *dvm_publication_request(DVM_Publication *publication, const DVM_ExportRequest *request);
 
 
+/* EN/RU: Create submit-only endpoint from a live borrowed owner; owned result/NULL.
+ * Serialize creation against owner close. No reply/next/close authority is exported.
+ * Создать submit-only endpoint; свой результат/NULL, создание до owner close. */
+ExportEndpoint *exportendpoint(DVM_Publication *publication);
+
+
+/* EN/RU: Submit through borrowed endpoint; owned ticket/NULL, same admission rules.
+ * Endpoint can outlive joined owner close; closed publishers refuse without callbacks.
+ * Запросить через endpoint; свой ticket/NULL, после close отказ без callbacks. */
+DVM_ExportTicket *exportrequest(ExportEndpoint *endpoint, const DVM_ExportRequest *request);
+
+
+/* EN/RU: Consume endpoint after its callers retire; NULL allowed. No owner close.
+ * Поглотить endpoint после завершения вызовов; NULL допустим, owner не закрывать. */
+void exportendpointfree(ExportEndpoint *endpoint);
+
+
 /* EN/RU: Take exactly one pending request for owner review;1/0, copied output.
  * Получить ровно один pending request для owner review;1/0. Native nonwaiting. */
 int dvm_publication_next(DVM_Publication *publication, DVM_ExportRequest *output);
@@ -137,7 +155,9 @@ void dvm_export_release(DVM_ExportTicket *ticket);
 
 
 /* EN/RU: Close publisher, deny unanswered requests, consume owner reference. Stop
- * and join its submitters/owner calls before close; tickets/grants can outlive it.
+ * and join active submitter/owner calls before close; idle endpoints, tickets and
+ * grants can outlive it. Endpoint calls after close safely refuse; free callback
+ * context only after active calls retire.
  * Закрыть publisher, deny pending, поглотить owner ref; tickets/grants живут дальше. */
 void dvm_publication_close(DVM_Publication *publication);
 #endif

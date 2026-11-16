@@ -678,3 +678,8 @@ Runtime0.140 adds live C Styx directory callbacks, whole-record cached paginatio
 Runtime0.141 adds per-fid native context ownership in original libstyx and a scalar [VFS file-grant bridge](../native/vfs/README.md), with TCP tests for separate opens, partial/refused/uncertain writes, read-only publication ceilings and retained handles after unpublish. General directory service, authenticated attach and mount client remain separate.
 
 Runtime0.142 extends the native bridge with confined [directory/node capabilities](../native/vfs/TREE.md), live peek/commit directory records and identity-checked rewind. Retained view handles use captured-object metadata; virtual/composed parents preserve view-defined semantics. Actual TCP tests cover hidden/pending nodes, nested paths, permissions, unpublish and replacement.
+
+Runtime0.143 adds [per-connection native publication admission](../native/vfs/PEER.md),
+submit-only endpoints that safely outlive joined owner close, fixed trusted peer
+provenance and separately selected live roots. Native/TCP tests cover cancellation,
+file/directory kind checks, equal Qid isolation, reset and owner-close lifetime.

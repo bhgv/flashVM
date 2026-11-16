@@ -209,8 +209,9 @@ read-only ceilings, uncertainty refusal and open lifetime after unpublishing.
 embedding API, не расширение сообщений 9P; Client/Styxops требуют пересборки.
 
 This is the first file-only bridge, not a general directory publication server,
-authenticated network service or mount client. Pending owner-review/remote
-credential routing is not wired into Tattach. The test's local grant is explicitly
+authenticated network service or mount client. Runtime0.143 adds per-connection native preparation and pending owner review
+through [PEER.md](vfs/PEER.md). Deferred Rattach and verified remote credential
+routing remain separate work. The test's local grant is explicitly
 approved by its native owner before serving synthetic data. See the bridge guide
 for explicit build inputs and API ownership/offset limits.
 
@@ -239,3 +240,11 @@ held opens after unpublish and refusal to rebind a replaced directory. Native
 checks include malformed provider names and captured metadata after replacement.
 The optional suite has 13 tests; authenticated remote attach/mount, complete walk
 conformance and general production service admission remain separate work.
+
+## Connection roots / Корни соединений (runtime0.143)
+
+[Native admission API and example](vfs/PEER.md) bind a publication request to trusted
+host provenance and a fixed rights ceiling. Submit-only endpoints safely outlive
+joined publication close; granted providers and opens retain ordinary lifetimes.
+TCP acceptance uses different prepared roots for equal wire usernames/Qids.
+Deferred native review is supported; deferred Rattach remains unimplemented.

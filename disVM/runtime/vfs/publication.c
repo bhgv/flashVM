@@ -31,7 +31,7 @@ struct DVM_ExportTicket
 struct DVM_Publication
 {
     FVM_PortSync *lock; /* Protects refs, request index, counter and state. */
-    size_t references; /* Owner plus each caller-owned ticket. */
+    size_t references; /* Owner plus tickets and submit-only endpoints. */
     size_t count; /* Outstanding indexed tickets, including reviewed/granted. */
     uint64_t last; /* Monotonic review identity; no wrap. */
     int closed; /* New requests/replies refused; already granted capabilities remain valid. */
@@ -52,6 +52,64 @@ static void drop(DVM_Publication *publication)
         dvm_provider_release(publication->options.direct);
         fvm_port_sync_destroy(publication->lock);
         free(publication);
+    }
+}
+
+
+/* EN/RU: Submit authority retains storage, but never grants owner operations.
+ * Право подачи запроса удерживает storage, но не выдаёт owner operations. */
+struct ExportEndpoint
+{
+    DVM_Publication *publication; /* Retained until endpoint retirement. */
+};
+
+
+/* EN/RU: See export.h; caller serializes creation with owner shutdown.
+ * См. export.h; caller сериализует создание с закрытием владельца. */
+ExportEndpoint *exportendpoint(DVM_Publication *publication)
+{
+    if (!publication)
+    {
+        return NULL;
+    }
+    ExportEndpoint *endpoint = malloc(sizeof(*endpoint));
+    if (!endpoint)
+    {
+        return NULL;
+    }
+    fvm_port_sync_lock(publication->lock);
+    int allowed = !publication->closed && publication->references != (size_t)-1;
+    if (allowed)
+    {
+        publication->references++;
+    }
+    fvm_port_sync_unlock(publication->lock);
+    if (!allowed)
+    {
+        free(endpoint);
+        return NULL;
+    }
+    endpoint->publication = publication;
+    return endpoint;
+}
+
+
+/* EN/RU: See export.h; existing request gate checks closure before callback use.
+ * См. export.h; request gate проверяет closed до обращения к callbacks. */
+DVM_ExportTicket *exportrequest(ExportEndpoint *endpoint, const DVM_ExportRequest *request)
+{
+    return endpoint ? dvm_publication_request(endpoint->publication, request) : NULL;
+}
+
+
+/* EN/RU: See export.h; last reference releases storage outside the mutex.
+ * См. export.h; последняя ссылка освобождает storage вне mutex. */
+void exportendpointfree(ExportEndpoint *endpoint)
+{
+    if (endpoint)
+    {
+        drop(endpoint->publication);
+        free(endpoint);
     }
 }
 

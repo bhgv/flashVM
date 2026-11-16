@@ -100,8 +100,9 @@ Each scenario checks exact open/close counts and final factory destruction. The
 control endpoint and static alias belong only to the test fixture, not a public
 service API. Packet usernames do not authenticate a peer. The publication request
 is local, explicitly authorized before TCP starts; remote provenance bits are
-never taken from network input. Authenticated/per-connection attach selection,
-pending owner review, directory serving, full metadata mapping, flush/cancellation
+never taken from network input. Per-connection native admission and pending owner review are now covered in
+[PEER.md](PEER.md); live directory serving is covered in [TREE.md](TREE.md).
+Transport authentication, deferred Rattach, full metadata mapping, protocol flush
 and the mount client remain future integration work. These interfaces do not
 freeze that design or a prepared tree.
 
@@ -116,3 +117,9 @@ unsupported. Directory opens require handle metadata for identity validation.
 Обычные view-handles теперь получают metadata удержанного объекта с текущим
 policy/mode/name masking; составные виртуальные родители сохраняют view-defined
 семантику. [Каталоговые API и ограничения](TREE.md).
+
+## Connection admission / Admission соединения (runtime0.143)
+
+[PEER.md](PEER.md) documents submit-only publication endpoints and per-connection
+root selection, ownership, native preparation and current synchronous libstyx
+attach limits. `vfs-peer-wire` verifies isolation with equal wire users and Qids.

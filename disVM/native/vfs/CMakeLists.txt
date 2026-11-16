@@ -6,7 +6,7 @@ set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
 if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
-add_library(styx_vfs STATIC file.c tree.c
+add_library(styx_vfs STATIC file.c tree.c peer.c
     "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
     "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
@@ -32,3 +32,10 @@ target_link_libraries(vfs-tree-wire-test PRIVATE styx_vfs infernostyx)
 add_test(NAME vfs-tree-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/tree/wire.py"
     "$<TARGET_FILE:vfs-tree-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-tree-wire PROPERTIES TIMEOUT 30)
+
+add_executable(vfs-peer-wire-test ../tests/peer/backend.c ../tests/peer/wire.c)
+set_source_files_properties(../tests/peer/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
+target_link_libraries(vfs-peer-wire-test PRIVATE styx_vfs infernostyx)
+add_test(NAME vfs-peer-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/peer/wire.py"
+    "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
+set_tests_properties(vfs-peer-wire PROPERTIES TIMEOUT 30)
