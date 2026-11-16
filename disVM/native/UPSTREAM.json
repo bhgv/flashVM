@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "36400c7310e77173246a5a43520956cc3a47ff23",
+  "revision": "88d783a920c862b519001698df679f3a920fe368",
   "destination": "src",
   "include": [
     "NOTICE",
@@ -40,7 +40,7 @@
     "src/include/host64-fp.h": "cc2f0f53206cd032a1eedd0719040fb98e206dc5a2815babaab903caa6497784",
     "src/include/mathi.h": "edb6274113645001a4ea3f68ecaf261b88f35169e440c715e23007a6b18dcce2",
     "src/include/styx.h": "3d3ee67a0c6beb7be8cbf9d25bbefb01f1fea51ef5470d7e6e410cad7da3057f",
-    "src/include/styxserver.h": "17dbd4bd0aee5dc656e1deda0bcad91818242333d734774dbd6440f9bcd8b8f8",
+    "src/include/styxserver.h": "dc0ecc5ca606ba1f9a14affa02f4fe8a92a2b8c333d2839a0a0c9aabcd56b4d2",
     "src/lib/legal/GPL": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
     "src/lib/legal/LGPL": "04ff402deb2f11cffd906bf851ad8b2c7178eab005833f641a4b6127212f8b3d",
     "src/lib/legal/NOTICE.app": "45f42468f03a634a5fb186302d6ec1ce77d83c65362d675dc2dafc88f1cc7048",
@@ -248,9 +248,11 @@
     "src/tools/libstyx/Posix.c": "defdcdb8c3f0806caacb5f3a9155d5aee429af441bb898896c1a3dd966064c1d",
     "src/tools/libstyx/mkfile": "a6b3f8987dbe0c1e5413112b2adf730315c4f81a9171992bf9dea12d635d0dcc",
     "src/tools/libstyx/styxaux.h": "35c3fde91eb4c71cec1d34f78bcd80dbb60e45c4b8fd4caae5501830a1df2a25",
-    "src/tools/libstyx/styxserver.c": "095f8ddd1eb77a1632198bfb46c37b1cf88b9652614f8617953499816e2bb133",
+    "src/tools/libstyx/styxserver.c": "3b78c716866089eabc061111638715e878b77fb77a672b1381a953168dbda170",
     "src/tools/libstyx/tests/README.native64.md": "b856536e52d3506064bffac4cfc559a98dfc5858212fc89e22895575645bdb0a",
-    "src/tools/libstyx/tests/native64.c": "0aa7f47f5e337e5fb0e87bb190642989c14ef2d15c7453785ac6c1ee22b08bf2",
+    "src/tools/libstyx/tests/README.session.md": "77cac6288f30ed26e8b6b8b9d979cebee1795bd4f8fcc3780586753b4c5867d8",
+    "src/tools/libstyx/tests/native64.c": "a1be8d8595ce8133bfb785b9c86c143bac26fa6e96e4a430ecfcb914e015a982",
+    "src/tools/libstyx/tests/session.c": "7292ffe3789787ce55d99c4b26ee084431399078802cb56d4a1f27a5467db879",
     "src/tools/libstyx/tests/stream.c": "a5acd05093dc8a1e0fecabec0ead61d1226c82dcb73284e32de3cc45b783f9a6"
   }
 }

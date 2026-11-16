@@ -670,3 +670,5 @@ archives and original dispatcher/codec/thread-isolation acceptance are available
 production VFS transport and kernel-client adaptation remain in progress.
 
 Runtime0.138 refreshes original libstyx stream/stat handling: fragmented/coalesced frames, short writes/EINTR, bounded long stat/wstat records and native sanitizer acceptance. See [native library checks](../native/README.md).
+
+Runtime0.139 adds original C Styx per-connection msize/session negotiation, attach rollback/identity protection and ordered fid cleanup, including malformed-frame dispatch retirement. [Scope and checks](../native/README.md).

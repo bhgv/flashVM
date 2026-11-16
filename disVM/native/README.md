@@ -71,9 +71,9 @@ VFS listener or `Sys.mount` client. The kernel-bound client in `emu/port/devmnt.
 needs a separate Chan/Mnt/RPC host adapter. Do not link the new lib9 alongside the
 bootstrap's other lib9 archive in one executable: unify those dependencies first.
 
-Полная проверка C-сервера ещё не завершена. Следующий этап должен проверить реальный socket transport, согласование msize и сброс сессии,
-Tauth/attach и откат отказанного attach, строгую проверку stat/wstat и выдачу целых записей
-каталога, живой каталог через callbacks и освобождение ресурсов при закрытии.
+Полная проверка C-сервера ещё не завершена. Остаются настоящий socket transport,
+провайдер проверенных credentials/auth-fid, выдача целых записей каталога,
+живой каталог через callbacks и полное освобождение listener/platform при закрытии.
 Текущие тесты не подтверждают готовность этих частей. Подготовленный корень
 соединения должен оставаться живым обычным каталогом с независимыми правами;
 сериализация или фиксация всего дерева не нужна.
@@ -113,3 +113,41 @@ A 1200-byte name passes both stat and wstat through the original dispatcher.
 короткие ответы с обработкой EINTR. Проверены все разрезы запроса, очередь кадров,
 неверный размер кадра и stat/wstat с именем длиной 1200 байт. Проверки проходят
 под ASan/UBSan; это не заменяет испытание настоящего TCP-соединения.
+
+## Session acceptance / Проверки сессии (runtime0.139)
+
+New clients must negotiate Tversion first. Each connection has an independent
+full-packet msize, capped at MSGMAX; this implementation refuses values below
+256. Read capacity, stat packing and outgoing replies respect that bound.
+Incoming oversized frames disconnect the client. A new valid version request
+clunks all fids and closes open backend handles before starting the new session.
+Dot-suffixed 9P2000 variants negotiate base 9P2000; other versions return
+Rversion `unknown` and cannot attach until renegotiated.
+
+Новые соединения начинают с Tversion. Ошибочный tag или слишком маленький msize
+не заменяют прежнюю сессию. Отказанный attach не публикует fid и восстанавливает
+имя пользователя/attach-name; при живых fid менять эти имена нельзя. Close
+выполняется до освобождения backend клиента. Ошибочный кадр больше не зацикливает
+styxprocess: клиент освобождается сразу, без висячего current-client указателя.
+
+Tauth and attaches using auth-fids explicitly fail until an authentication
+provider exists. Packet names do not authenticate a peer. Attach callbacks own
+rollback of any private backend state they change; the library rolls back only
+its own identity/fid state. The Client layout changed: rebuild embedding callers.
+Callbacks run synchronously on their owning native server thread and must not
+recursively dispatch requests or stop guest workers globally. Ordinary native
+metadata helpers remain available to construct and update a live served view.
+
+Проверка исходного dispatcher покрывает согласование лимитов, сброс сессии,
+read/stat в пределах msize, отказанный attach, запрет смены полномочий при живых
+fid и закрытие handles до backend. Ошибочный кадр проверяется через styxprocess
+с ограничением времени теста. Это детерминированный транспортный стенд, а не
+испытание реального TCP listener или криптографической аутентификации.
+
+Backend newclient rejection is honored before requests are served; freeclient
+releases partial initialization. / Отказ backend в newclient отключает клиента
+до обработки запросов; freeclient освобождает частичную инициализацию.
+
+Walking through an ordinary file now returns Rerror and releases the temporary
+fid instead of terminating the server. / Попытка пройти Twalk через обычный файл
+возвращает Rerror и освобождает временный fid, не завершая сервер.
