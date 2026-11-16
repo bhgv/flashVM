@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Sticky native terminal events with detached callback pins and nonwaiting unsubscribe.
- * RU: Sticky native terminal events с detached callback pins и nonwaiting unsubscribe.
+ * EN: Native terminal and health observations with detached callback pins and nonwaiting unsubscribe.
+ * RU: Native terminal/health observations с detached callback pins и nonwaiting unsubscribe.
  */
 #include "life.h"
 #include <pthread.h>
@@ -15,6 +15,7 @@ struct StyxWatch
     struct StyxWatch *next; /* Borrowed attached chain, immutable after source detach. */
     size_t references; /* Caller plus attached/in-flight callback. */
     int active; /* A new callback may be admitted. */
+    StyxLinkReceive observe; /* Optional persistent snapshot recipient. */
     StyxTerminal notify; /* Nonwaiting native recipient. */
     void (*release)(void *); /* Consumes state after last reference, outside source lock. */
     void *state; /* Owned native recipient state. */
@@ -28,6 +29,8 @@ struct StyxLife
     pthread_mutex_t lock; /* Protect source state, node admission and references. */
     size_t references; /* Native owners, nodes and active emission. */
     unsigned watchers; /* All live caller/detached watcher nodes, bounded256. */
+    StyxLinkEvent event; /* Latest persistent observation. */
+    StyxWatch *observers; /* Attached persistent subscriptions. */
     StyxWatch *head; /* Attached chain owns one reference to each member. */
     int reason; /* First immutable terminal reason,0 live. */
     int quiet; /* Final owner retired; no new subscription/callback admission. */
@@ -47,6 +50,8 @@ StyxLife *styxlifecreate(void)
     if (life)
     {
         life->references = 1;
+        life->event.generation = 1;
+        life->event.state = STYX_LINK_READY;
     }
     return life;
 }
@@ -124,7 +129,7 @@ void styxclientunwatch(StyxWatch *watch)
     StyxLife *life = watch->life;
     int attached = 0;
     pthread_mutex_lock(&life->lock);
-    for (StyxWatch **link = &life->head; *link; link = &(*link)->next)
+    for (StyxWatch **link = watch->observe ? &life->observers : &life->head; *link; link = &(*link)->next)
     {
         if (*link == watch)
         {
@@ -147,7 +152,7 @@ void styxclientunwatch(StyxWatch *watch)
  * См. life.h; первый event отделяет chain, concurrent detach не освобождает links. */
 void styxlifeemit(StyxLife *life, int reason)
 {
-    if (!life || (reason != STYX_LINK_FAILED && reason != STYX_LINK_CLOSED))
+    if (!life || (reason != STYX_LINK_FAILED && reason != STYX_LINK_CLOSED && reason != STYX_LINK_TIMEOUT))
     {
         return;
     }
@@ -162,6 +167,7 @@ void styxlifeemit(StyxLife *life, int reason)
     StyxWatch *watch = life->head;
     life->head = NULL;
     pthread_mutex_unlock(&life->lock);
+    styxlifechange(life, reason);
     while (watch)
     {
         StyxWatch *next = watch->next;
@@ -190,7 +196,21 @@ void styxlifequiet(StyxLife *life)
     pthread_mutex_lock(&life->lock);
     life->quiet = 1;
     StyxWatch *watch = life->head;
+    if (!watch)
+    {
+        watch = life->observers;
+    }
+    else
+    {
+        StyxWatch *tail = watch;
+        while (tail->next)
+        {
+            tail = tail->next;
+        }
+        tail->next = life->observers;
+    }
     life->head = NULL;
+    life->observers = NULL;
     for (StyxWatch *node = watch; node; node = node->next)
     {
         node->active = 0;
@@ -252,4 +272,96 @@ StyxWatch *styxlifewatch(StyxLife *life, StyxTerminal notify, void *state, void 
         drop(watch);
     }
     return watch;
+}
+
+
+/* EN/RU: See life.h; callback snapshot pins every selected node before leaving lock.
+ * См. life.h; snapshot удерживает каждый selected node до выхода из lock. */
+void styxlifechange(StyxLife *life, int state)
+{
+    StyxWatch *selected[256];
+    unsigned count = 0;
+    pthread_mutex_lock(&life->lock);
+    if (life->quiet || life->event.state == state ||
+        (life->reason && life->reason != state) || life->event.generation == ~0ULL)
+    {
+        pthread_mutex_unlock(&life->lock);
+        return;
+    }
+    life->event.state = state;
+    life->event.generation++;
+    StyxLinkEvent event = life->event;
+    life->references++;
+    for (StyxWatch *node = life->observers; node; node = node->next)
+    {
+        node->references++;
+        selected[count++] = node;
+    }
+    pthread_mutex_unlock(&life->lock);
+    for (unsigned i = 0; i < count; i++)
+    {
+        StyxWatch *watch = selected[i];
+        pthread_mutex_lock(&life->lock);
+        int active = watch->active && !life->quiet;
+        pthread_mutex_unlock(&life->lock);
+        if (active)
+        {
+            watch->observe(watch->state, &event);
+        }
+        drop(watch);
+    }
+    styxlifedrop(life);
+}
+
+
+/* EN/RU: See life.h; caller already pins source, replay owns independent callback reference.
+ * См. life.h; caller удерживает source, replay имеет независимую callback reference. */
+StyxWatch *styxlifeobserve(StyxLife *life, StyxLinkReceive receive, void *state, void (*release)(void *))
+{
+    if (!life || !receive)
+    {
+        return NULL;
+    }
+    StyxWatch *watch = calloc(1, sizeof(*watch));
+    if (!watch)
+    {
+        return NULL;
+    }
+    pthread_mutex_lock(&life->lock);
+    if (life->quiet || life->watchers == 256 || life->references == (size_t)-1)
+    {
+        pthread_mutex_unlock(&life->lock);
+        free(watch);
+        return NULL;
+    }
+    watch->life = life;
+    watch->observe = receive;
+    watch->state = state;
+    watch->release = release;
+    watch->active = 1;
+    watch->references = 3;
+    watch->next = life->observers;
+    life->observers = watch;
+    life->references++;
+    life->watchers++;
+    StyxLinkEvent event = life->event;
+    pthread_mutex_unlock(&life->lock);
+    receive(state, &event);
+    drop(watch);
+    return watch;
+}
+
+
+/* EN/RU: See life.h; local copy only, no remote capability or transport access.
+ * См. life.h; только local copy без transport access. */
+int styxlifesnapshot(StyxLife *life, StyxLinkEvent *output)
+{
+    if (!life || !output)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&life->lock);
+    *output = life->event;
+    pthread_mutex_unlock(&life->lock);
+    return 1;
 }

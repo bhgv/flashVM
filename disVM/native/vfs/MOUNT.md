@@ -92,7 +92,8 @@ unmount wait. Existing namespace watchers route events to native thread inboxes.
 
 The legacy callback transport still observes loss during an exchange. No new
 heartbeat wire message, periodic Tstat, reconnect or remote-fid restoration is
-introduced. A silent network partition requires a future heartbeat policy.
+introduced. Runtime0.148 adds an optional [native heartbeat policy](../client/HEARTBEAT.md)
+for silent connections.
 
 ## Acceptance / Проверки
 
@@ -108,7 +109,7 @@ Real original C libstyx servers and an independent byte relay exercise:
 - more than MAXWELEM components and immediate cleanup of a partial walk;
 - prepared per-connection publication via a dedicated reviewer and native wakeup.
 
-The complete opt-in native suite has69 tests, including ASan/UBSan on Linux amd64.
+The complete opt-in native suite has78 tests, including ASan/UBSan on Linux amd64.
 LeakSanitizer is disabled on this host. No physical ARM64/Android/Windows claim is
 made. The callback client is single-flight; the fd-owner client supports multiplexing
 and Tflush. Remote authentication, stable subroot binds, richer metadata and guest
@@ -117,8 +118,7 @@ builtin wiring remain follow-up work.
 Это обычный native provider поверх исходных lib9-кодеков. Каждый open удерживает
 свой remote fid; операции не подменяют права metadata. Частичные подтверждения
 сохраняются, неизвестные effects не повторяются. Обнаруженный разрыв автоматически
-даёт native-событие; fd-owner обнаруживает EOF даже в простое. Heartbeat для молча
-пропавшей сети пока не добавлен. Подготовленное дерево остаётся живым; дальнейшие режимы union/balancing и migration не ограничены.
+даёт native-событие; fd-owner обнаруживает EOF даже в простое. Для молча пропавшей сети runtime0.148 добавляет optional heartbeat. Подготовленное дерево остаётся живым; дальнейшие режимы union/balancing и migration не ограничены.
 
 ## Concurrent fd-owner client / Concurrent fd-owner (runtime0.146)
 

@@ -100,3 +100,11 @@ foreach(scenario idle shared shared-detach shutdown detached drop inflight late)
         "$<TARGET_FILE:vfs-idle-events-test>" "$<TARGET_FILE:server-loopback-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-idle-events-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()
+
+add_executable(vfs-heartbeat-test ../tests/events/heartbeat.c)
+target_link_libraries(vfs-heartbeat-test PRIVATE styx_vfs)
+foreach(scenario healthy pending recover traffic timeout disable reconfigure badreply)
+    add_test(NAME vfs-heartbeat-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/events/heartbeat.py"
+        "$<TARGET_FILE:vfs-heartbeat-test>" "$<TARGET_FILE:server-loopback-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-heartbeat-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()

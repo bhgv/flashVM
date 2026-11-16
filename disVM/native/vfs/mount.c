@@ -36,13 +36,13 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 }
 
 
-/* EN/RU: Native terminal source owns a journal reference, never a provider pointer.
- * Native terminal source владеет journal ref, не provider pointer. */
-static void terminal(void *state, int reason)
+/* EN/RU: Native health source owns a journal reference; generations fence delayed snapshot replay.
+ * Native health source удерживает journal ref; generations ограждают delayed replay. */
+static void terminal(void *state, const StyxLinkEvent *link)
 {
     DVM_Changes *changes = state;
-    DVM_ChangeEvent event = {dvm_changes_session(changes), 2,
-        DVM_CHANGE_CONNECTION | (reason == STYX_LINK_FAILED ? DVM_CHANGE_NETWORK : 0), 0, 0};
+    DVM_ChangeEvent event = {dvm_changes_session(changes), link->generation,
+        DVM_CHANGE_CONNECTION | (link->state != STYX_LINK_CLOSED ? DVM_CHANGE_NETWORK : 0), 0, 0};
     dvm_changes_notify(changes, &event);
 }
 
@@ -166,7 +166,7 @@ DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
         dvm_provider_release(provider);
         return NULL;
     }
-    mount->watch = styxclientwatch(client, terminal, changes, releasewatch);
+    mount->watch = styxclientobserve(client, terminal, changes, releasewatch);
     if (!mount->watch)
     {
         dvm_changes_destroy(changes);

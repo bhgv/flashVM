@@ -76,7 +76,7 @@ static int deadlines(StyxMux *mux, double now)
  * Не смешивать frames; flush priority только после полной отправки original bytes. */
 static void selectframe(StyxMux *mux)
 {
-    if (mux->sending)
+    if (mux->sending || (mux->beat.active && mux->beat.sent && mux->beat.sent < sizeof(mux->beat.bytes)))
     {
         return;
     }
@@ -89,6 +89,10 @@ static void selectframe(StyxMux *mux)
             mux->sendflush = 1;
             return;
         }
+    }
+    if (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))
+    {
+        return;
     }
     for (unsigned ordinal = 0; ordinal < mux->limit; ordinal++)
     {
@@ -113,6 +117,10 @@ static void sendframe(StyxMux *mux)
     StyxFlight *flight = mux->sending;
     if (!flight)
     {
+        if (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))
+        {
+            styxbeatsend(mux);
+        }
         return;
     }
     unsigned *position = mux->sendflush ? &flight->flushsent : &flight->sent;
@@ -144,6 +152,11 @@ static void sendframe(StyxMux *mux)
  * Маршрутизировать только leased tags и точные kinds; Rerror для Tflush недопустим. */
 static int dispatch(StyxMux *mux)
 {
+    int probe = styxbeatreply(mux);
+    if (probe >= 0)
+    {
+        return probe;
+    }
     ushort tag = GBIT16(mux->receive+5);
     StyxFlight *flight = NULL;
     int flush = 0;
@@ -178,6 +191,7 @@ static int dispatch(StyxMux *mux)
             return 0;
         }
         styxmuxfinish(mux, flight);
+        styxbeattraffic(mux);
         return 1;
     }
     if (flight->sent != flight->length || flight->original ||
@@ -198,6 +212,7 @@ static int dispatch(StyxMux *mux)
     {
         styxmuxfinish(mux, flight);
     }
+    styxbeattraffic(mux);
     return 1;
 }
 
@@ -261,12 +276,18 @@ void *styxmuxrun(void *argument)
             break;
         }
         int timeout = deadlines(mux, now);
+        int heartbeat = styxbeattick(mux, now);
+        if (heartbeat >= 0 && (timeout < 0 || heartbeat < timeout))
+        {
+            timeout = heartbeat;
+        }
+        styxbeatreport(mux);
         selectframe(mux);
         if (mux->failed)
         {
             break;
         }
-        struct pollfd ready[2] = {{mux->fd, POLLIN|(mux->sending ? POLLOUT : 0), 0}, {mux->wake[0], POLLIN, 0}};
+        struct pollfd ready[2] = {{mux->fd, POLLIN|((mux->sending || (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))) ? POLLOUT : 0), 0}, {mux->wake[0], POLLIN, 0}};
         pthread_mutex_unlock(&mux->lock);
         int status = poll(ready, 2, timeout);
         pthread_mutex_lock(&mux->lock);
@@ -291,6 +312,7 @@ void *styxmuxrun(void *argument)
         if (ready[0].revents & (POLLIN|POLLHUP|POLLERR))
         {
             receiveframes(mux);
+            styxbeatreport(mux);
         }
         if (mux->stopping || mux->failed)
         {
@@ -303,7 +325,9 @@ void *styxmuxrun(void *argument)
             break;
         }
         deadlines(mux, now);
-        if (!mux->failed)
+        styxbeattick(mux, now);
+        styxbeatreport(mux);
+        if (!mux->failed && !mux->stopping)
         {
             sendframe(mux);
         }

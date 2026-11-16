@@ -43,10 +43,31 @@ struct StyxFlight
 };
 
 
+/* EN/RU: One bounded no-fid probe; both tags are permanently outside RPC leases.
+ * Один bounded probe без fid; оба tag постоянно вне RPC leases. */
+typedef struct StyxBeat
+{
+    unsigned idle; /* Future idle interval, zero disables new probes. */
+    unsigned reply; /* Future probe window in monotonic milliseconds. */
+    unsigned misses; /* Future terminal threshold2..16. */
+    unsigned budget; /* Captured current window, immutable after admission. */
+    unsigned limit; /* Captured current threshold. */
+    unsigned sent; /* Bytes of current nine-byte probe accepted by send. */
+    unsigned missed; /* Already observed elapsed windows. */
+    uchar bytes[9]; /* Original-codec Tflush to unused oldtag. */
+    double due; /* Next idle probe time. */
+    double deadline; /* Send/response phase deadline; partial progress never renews it. */
+    int active; /* Current tags retained until response or terminal close. */
+    int notice; /* State transition to publish after engine unlock. */
+    int suspect; /* An observation requires a recovery notification. */
+} StyxBeat;
+
+
 /* EN/RU: One autonomous native owner, no VM/client pointers or foreign callbacks.
  * Один autonomous native owner, без VM/client pointers и foreign callbacks. */
 struct StyxMux
 {
+    StyxBeat beat; /* Native heartbeat policy and fixed probe storage. */
     StyxLife *life; /* Owned terminal source, independent of Client lifetime. */
     int localstop; /* Explicit shutdown reports CLOSED; normal owner drop stays quiet. */
     int terminal; /* Immutable first terminal cause. */
@@ -68,7 +89,7 @@ struct StyxMux
     size_t references; /* Client owner plus detached native thread. */
     int failed; /* Terminal transport/protocol failure. */
     int stopping; /* Explicit shutdown/final owner-drop request. */
-    int finished; /* Socket closed; thread reference retired. */
+    int finished; /* Socket closed; notification fanout/thread reference may still be live. */
 };
 
 
@@ -87,4 +108,29 @@ void styxmuxdestroy(StyxMux *);
 /* EN/RU: Detached native fd owner; argument is its retained engine reference.
  * Detached native fd owner; argument — удержанная engine reference. */
 void *styxmuxrun(void *);
+
+
+/* EN/RU: Under engine lock, heartbeat timer timeout/-1; expired policy breaks engine.
+ * Под engine lock heartbeat timer timeout/-1; истёкшая policy завершает engine. */
+int styxbeattick(StyxMux *, double);
+
+
+/* EN/RU: Under engine lock, send pending probe without interleaving frames.
+ * Под engine lock отправить probe без interleaving frames. */
+void styxbeatsend(StyxMux *);
+
+
+/* EN/RU: Under engine lock, validate leased probe response;1 valid,0 fatal,-1 ordinary tag.
+ * Под engine lock проверить probe response;1 valid,0 fatal,-1 ordinary tag. */
+int styxbeatreply(StyxMux *);
+
+
+/* EN/RU: Under engine lock, valid response refreshes idle/reply windows but never releases a probe lease.
+ * Под engine lock response обновляет idle/reply windows, не освобождая probe lease. */
+void styxbeattraffic(StyxMux *);
+
+
+/* EN/RU: Under engine lock, publish pending native observation by temporarily releasing it.
+ * Под engine lock опубликовать observation с временным освобождением lock. */
+void styxbeatreport(StyxMux *);
 #endif

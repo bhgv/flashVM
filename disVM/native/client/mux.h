@@ -52,4 +52,9 @@ void styxmuxwake(StyxMux *);
 int styxcancelbind(StyxCancel *, StyxMux *);
 int styxcancelled(StyxCancel *);
 void styxcancelunbind(StyxCancel *);
+
+
+/* EN/RU: Configure borrowed live engine heartbeat without waiting;1/0.
+ * Настроить heartbeat удержанного engine без ожидания;1/0. */
+int styxmuxkeepalive(StyxMux *, unsigned, unsigned, unsigned);
 #endif

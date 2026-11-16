@@ -39,6 +39,13 @@ StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, cons
 StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const char *name, unsigned timeout, unsigned limit);
 
 
+/* EN/RU: Configure fd-owner heartbeat without protocol wait;1/0. All zeros disables.
+ * idle/reply1..120000ms, misses2..16; NULL/legacy/terminal/invalid refuses unchanged.
+ * One probe retains its tags/deadline through reconfiguration or disabling.
+ * Настроить fd-owner heartbeat без ожидания;1/0, три нуля отключают будущие probes. */
+int styxclientkeepalive(StyxClient *client, unsigned idle, unsigned reply, unsigned misses);
+
+
 /* EN/RU: Retain borrowed live client;1/0 overflow. Drop with clientfree.
  * Удержать borrowed live client;1/0 overflow, release через clientfree. */
 int styxclientretain(StyxClient *client);
@@ -75,6 +82,37 @@ int styxclientalive(StyxClient *client);
 #define STYX_LINK_FAILED 1 /* Terminal transport/framing failure. */
 #define STYX_LINK_CLOSED 2 /* Explicit native shutdown, not normal final owner drop. */
 typedef struct StyxWatch StyxWatch; /* Owned native terminal subscription. */
+
+#define STYX_LINK_READY 3 /* Responsive/initial source; heartbeat success after suspicion. */
+#define STYX_LINK_SUSPECT 4 /* Sent probe has missed a response window, connection retained. */
+#define STYX_LINK_STALLED 5 /* Probe cannot finish sending within a send window. */
+#define STYX_LINK_TIMEOUT 6 /* Heartbeat policy exhausted; does not prove remote death. */
+
+
+/* EN/RU: Copied local connection observation, no permission or remote object identity.
+ * Копия local observation соединения, без permissions/remote object identity. */
+typedef struct StyxLinkEvent
+{
+    unsigned long long generation; /* Monotonic local observation version, initially1. */
+    int state; /* STYX_LINK_*; timeout is policy failure rather than proof of death. */
+} StyxLinkEvent;
+
+
+/* EN/RU: Native nonwaiting observation outside all source/client/engine locks.
+ * Native observation без ожидания, вне source/client/engine locks. */
+typedef void (*StyxLinkReceive)(void *state, const StyxLinkEvent *event);
+
+
+/* EN/RU: Own state only on success; persistent watch/NULL, immediate current snapshot.
+ * Caller pins client; ordered generations fence replay racing with native delivery.
+ * Detach with clientunwatch; release follows all admitted callbacks, no guest calls.
+ * Persistent watch/NULL принимает state при успехе; snapshot немедленно, generations ordered. */
+StyxWatch *styxclientobserve(StyxClient *client, StyxLinkReceive receive, void *state, void (*release)(void *));
+
+
+/* EN/RU: Copy local latest observation without I/O;1/0, output untouched on invalid input.
+ * Копировать latest local observation без I/O;1/0, invalid не меняет output. */
+int styxclientlink(StyxClient *client, StyxLinkEvent *output);
 
 
 /* EN/RU: Nonwaiting native terminal delivery outside source/client/engine locks.

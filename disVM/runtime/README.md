@@ -718,3 +718,13 @@ execution. Native subscriptions retain journals independently; unmount does not
 wait for callbacks. Shared clients keep independent mount subscriptions. Explicit
 shutdown differs from network failure; normal final release is quiet. Heartbeat
 and provider-side content/rights/load reports remain separate extensions.
+
+
+## Native heartbeat / Native heartbeat (runtime0.148)
+
+[Standard Styx heartbeat policy](../native/client/HEARTBEAT.md) optionally detects silent connections
+using a reserved no-fid Tflush/Rflush exchange. Native state snapshots distinguish
+send stalls, missed replies, recovery and terminal policy timeout. Each mounted
+provider observes transitions automatically through its existing journal, without
+guest execution or wire-format extensions. An admitted probe retains its tags and
+captured deadlines through disable/reconfiguration. Pending reads remain independent.

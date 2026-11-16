@@ -97,3 +97,8 @@ target_include_directories(client-life-test PRIVATE client)
 target_link_libraries(client-life-test PRIVATE styx_client)
 add_test(NAME native-client-terminal-life COMMAND client-life-test)
 set_tests_properties(native-client-terminal-life PROPERTIES TIMEOUT 10)
+
+add_executable(client-heartbeat-frames-test tests/events/frames.c)
+target_link_libraries(client-heartbeat-frames-test PRIVATE styx_client)
+add_test(NAME native-client-heartbeat-frames COMMAND client-heartbeat-frames-test)
+set_tests_properties(native-client-heartbeat-frames PROPERTIES TIMEOUT 10)

@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Private one-shot native terminal source, independent of Client/VM/provider lifetime.
- * RU: Private one-shot terminal source независимо от Client/VM/provider lifetime.
+ * EN: Private native terminal/health source independent of Client/VM/provider lifetime.
+ * RU: Private native terminal/health source независимо от Client/VM/provider lifetime.
  */
 #ifndef STYX_LIFE_H
 #define STYX_LIFE_H
@@ -34,4 +34,19 @@ void styxlifequiet(StyxLife *life);
 /* EN/RU: Subscribe with owned callback state on success; sticky terminal replay outside lock.
  * Subscribe принимает callback state при успехе; sticky replay вне lock. */
 StyxWatch *styxlifewatch(StyxLife *life, StyxTerminal notify, void *state, void (*release)(void *));
+
+
+/* EN/RU: Persistent native observer adopts state on success, immediate snapshot outside lock.
+ * Persistent observer принимает state при успехе, snapshot вне lock. */
+StyxWatch *styxlifeobserve(StyxLife *, StyxLinkReceive, void *, void (*)(void *));
+
+
+/* EN/RU: Publish changed observation including first terminal state; engine serializes publications.
+ * Опубликовать changed observation; engine caller сериализует publications. */
+void styxlifechange(StyxLife *, int);
+
+
+/* EN/RU: Copy latest state under source lock; output borrowed,1/0.
+ * Копировать latest state под source lock; output borrowed,1/0. */
+int styxlifesnapshot(StyxLife *, StyxLinkEvent *);
 #endif

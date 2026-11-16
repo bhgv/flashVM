@@ -25,7 +25,7 @@ recipient, execute guest code or retain cross-heap pointers. Registration replay
 runs on its caller; fd-owner terminal delivery runs on the native socket owner.
 Legacy callback transports publish on the native caller observing the failure.
 
-| First observed transition | Client reason | Mounted journal generation2 |
+| First observed transition | Client reason | Mounted journal (next observation generation) |
 |---|---|---|
 | EOF, transport failure, invalid frame/response or terminal flush failure | `STYX_LINK_FAILED` | `CONNECTION \| NETWORK` |
 | Explicit `styxclientshutdown` while otherwise live | `STYX_LINK_CLOSED` | `CONNECTION` |
@@ -67,17 +67,17 @@ Idle monitoring applies to the connected-fd owner. The legacy arbitrary
 callback-transport API has no independent readiness primitive; it still detects
 loss during an exchange or explicit shutdown. Standard9P2000 wire messages and
 the original Inferno codecs are unchanged. No unsolicited heartbeat message,
-periodic Tstat, reconnect or remote-fid restoration is introduced. A silent
-network partition without observable EOF/error or active transaction timeout
-still needs a future heartbeat policy. Provider content/rights/load changes
+periodic Tstat, reconnect or remote-fid restoration is introduced. Runtime0.148 adds an optional [standard Styx heartbeat policy](HEARTBEAT.md)
+for silent connections. Provider content/rights/load changes
 remain separate typed change sources using the existing journal machinery.
 
-The native suite has69 tests, including source replay/quiet/capacity,
+The native suite has78 tests, including source replay/quiet/capacity,
 self-unsubscribe, detached chain cancellation, last-owner retirement during an
 in-flight callback, real idle EOF, explicit shutdown, late mount replay, shared
-clients, independent unmount and provider destruction during delivery. The TCP
-fixture uses the original C Styx server and verifies that the tested client
-sends only Tversion/Tattach: notification itself generates no wire traffic.
+clients, independent unmount and provider destruction during delivery. The idle-EOF
+fixture with heartbeat disabled verifies that the tested client sends only
+Tversion/Tattach: terminal notification itself generates no wire traffic.
+Heartbeat-enabled fixtures are described separately in HEARTBEAT.md.
 ASan/UBSan use `detect_leaks=0` on this host; no LeakSanitizer certification is claimed.
 
 При `mountfd` разрыв обнаруживает native socket-owner даже на простаивающем
@@ -86,5 +86,11 @@ ASan/UBSan use `detect_leaks=0` on this host; no LeakSanitizer certification is 
 формат не менялся. У каждого mount свой журнал, удаление одного не отключает
 другие. Callback удерживает журнал независимо от provider и завершается безопасно
 после unmount; удаление подписки не ждёт callback. Обычное освобождение ресурса
-не выдаётся за сетевую ошибку. Heartbeat для молча пропавшей сети и сообщения об
-изменении прав, файлов или нагрузки этим шагом не добавлены.
+не выдаётся за сетевую ошибку. В runtime0.148 добавлен optional [heartbeat](HEARTBEAT.md); сообщения об изменении
+прав, файлов или нагрузки остаются следующим уровнем.
+
+
+Runtime0.148 adds `styxclientobserve` for persistent suspicion/recovery/terminal
+snapshots; mounts now use this observer automatically. `styxclientwatch` retains
+its one-shot contract and additionally accepts terminal TIMEOUT. See
+[HEARTBEAT.md](HEARTBEAT.md) for states, ordering and native configuration.

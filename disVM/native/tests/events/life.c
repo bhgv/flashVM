@@ -89,6 +89,14 @@ static void receive(void *opaque, int reason)
 }
 
 
+/* EN/RU: Reuse the native fixture for persistent observation snapshots.
+ * Переиспользовать native fixture для persistent observation snapshots. */
+static void observe(void *opaque, const StyxLinkEvent *event)
+{
+    receive(opaque, event->state);
+}
+
+
 /* EN/RU: Publish on an independent native worker; source owner pins entry.
  * Публиковать на отдельном native worker; source owner удерживает entry. */
 static void *emit(void *opaque)
@@ -140,6 +148,7 @@ static void limits(void)
             watches[i] = watch;
         }
     }
+    check(!styxlifeobserve(life, observe, &states[256], release), "combined watcher limit");
     styxlifequiet(life);
     styxlifeemit(life, STYX_LINK_FAILED);
     styxlifedrop(life);
@@ -157,16 +166,19 @@ static void limits(void)
 
 /* EN/RU: Detached publication pins links/state after unsubscribe, quiet and owner drop.
  * Detached publication удерживает links/state после unsubscribe, quiet и owner drop. */
-static void inflight(void)
+static void inflight(int persistent)
 {
     State held, pending;
     init(&held);
     init(&pending);
-    held.block = 1;
     StyxLife *life = styxlifecreate();
     check(life != NULL, "inflight source");
-    StyxWatch *next = styxlifewatch(life, receive, &pending, release);
-    StyxWatch *first = styxlifewatch(life, receive, &held, release);
+    StyxWatch *next = persistent ? styxlifeobserve(life, observe, &pending, release) : styxlifewatch(life, receive, &pending, release);
+    StyxWatch *first = persistent ? styxlifeobserve(life, observe, &held, release) : styxlifewatch(life, receive, &held, release);
+    held.block = 1;
+    held.entered = 0;
+    held.calls = 0;
+    pending.calls = 0;
     check(first && next, "inflight watches");
     pthread_t worker;
     check(!pthread_create(&worker, NULL, emit, life), "emit thread");
@@ -192,13 +204,46 @@ static void inflight(void)
 }
 
 
+/* EN/RU: Persistent observations retain monotonic snapshots, suppress duplicate states and detach.
+ * Persistent observations сохраняют monotonic snapshots, подавляют дубликаты и detach. */
+static void persistent(void)
+{
+    State state, terminal;
+    init(&state);
+    init(&terminal);
+    StyxLife *life = styxlifecreate();
+    check(life != NULL, "persistent source");
+    StyxWatch *once = styxlifewatch(life, receive, &terminal, release);
+    StyxWatch *watch = styxlifeobserve(life, observe, &state, release);
+    check(watch && state.calls == 1 && state.reason == STYX_LINK_READY, "initial health replay");
+    styxlifechange(life, STYX_LINK_SUSPECT);
+    styxlifechange(life, STYX_LINK_SUSPECT);
+    styxlifechange(life, STYX_LINK_READY);
+    check(state.calls == 3, "health transition duplication");
+    styxlifeemit(life, STYX_LINK_TIMEOUT);
+    check(once && terminal.calls == 1 && terminal.reason == STYX_LINK_TIMEOUT, "one-shot timeout event");
+    styxclientunwatch(once);
+    done(&terminal);
+    StyxLinkEvent event;
+    check(styxlifesnapshot(life, &event) && event.generation == 4 && event.state == STYX_LINK_TIMEOUT && state.calls == 4, "terminal health snapshot");
+    styxlifechange(life, STYX_LINK_READY);
+    check(state.calls == 4, "terminal health revived");
+    styxclientunwatch(watch);
+    styxlifequiet(life);
+    styxlifedrop(life);
+    done(&state);
+}
+
+
 /* EN/RU: Execute deterministic native-only ownership fixtures; no network or guest waits.
  * Запустить native-only ownership fixtures; без network/guest waits. */
 int main(void)
 {
     replay();
     limits();
-    inflight();
+    inflight(0);
+    inflight(1);
+    persistent();
     puts("PASS native terminal source lifetime");
     return 0;
 }

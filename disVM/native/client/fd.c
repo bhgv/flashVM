@@ -59,3 +59,27 @@ void styxclientshutdown(StyxClient *client)
         pthread_mutex_unlock(&client->lock);
     }
 }
+
+
+/* EN/RU: See client.h; native configuration never performs protocol work on caller.
+ * См. client.h; configuration не выполняет protocol work на caller. */
+int styxclientkeepalive(StyxClient *client, unsigned idle, unsigned reply, unsigned misses)
+{
+    return client && client->mux ? styxmuxkeepalive(client->mux, idle, reply, misses) : 0;
+}
+
+
+/* EN/RU: See client.h; subscription context owns only explicitly retained native data.
+ * См. client.h; context владеет только явно удержанными native data. */
+StyxWatch *styxclientobserve(StyxClient *client, StyxLinkReceive receive, void *state, void (*release)(void *))
+{
+    return client ? styxlifeobserve(client->life, receive, state, release) : NULL;
+}
+
+
+/* EN/RU: See client.h; copy independent native source state, without transport access.
+ * См. client.h; копировать independent native state без transport access. */
+int styxclientlink(StyxClient *client, StyxLinkEvent *output)
+{
+    return client ? styxlifesnapshot(client->life, output) : 0;
+}

@@ -390,6 +390,10 @@ int main(int argc, char **argv)
     StyxClient *client = multiplex ? styxclientmountfd(stream.fd, 1024, "alice",
         !strcmp(argv[2], "prepared") ? "service" : "", stream.budget, 8) :
         styxclientmount(&transport, 1024, "alice", !strcmp(argv[2], "prepared") ? "service" : "");
+    if (!multiplex && client)
+    {
+        check(!styxclientkeepalive(client, 10, 10, 2), "legacy heartbeat falsely accepted");
+    }
     if (multiplex && client)
     {
         check(styxclientretain(client), "native monitor pin");
