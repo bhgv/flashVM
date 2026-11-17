@@ -26,7 +26,7 @@ init()
     app := load Terminalcmd "app.dis";
     check(api != nil && term != nil && app != nil, "provider interfaces");
     term->init();
-    check(term->current() == nil && api->terminal() == nil && api->terminalpath(0) == nil,
+    check(term->current() == nil && api->terminal() == nil && api->terminalmovie() == nil && api->terminalpath(0) == nil,
         "ordinary startup invented a launch grant");
     check(sys->pctl(Sys->NEWNS, nil) > 0, "prepare environment before application init");
     root := api->capture("/link", 0, 7);
@@ -39,7 +39,7 @@ init()
     check(api->open(readonly, "tx", Sys->OWRITE) == nil && term->connect(readonly, "rx", "tx") == nil,
         "channel grant rights bypass");
     duplex := term->connect(root, "ctl", "ctl");
-    check(duplex != nil && duplex.receive == duplex.send, "duplex opened twice");
+    check(duplex != nil && duplex.receive == duplex.send && duplex.movie == nil && term->movies(duplex) == nil, "duplex opened twice");
     check(sys->write(duplex.send, array of byte "x", 1) == 1, "duplex write");
     bytebuf := array[1] of byte;
     check(sys->read(duplex.receive, bytebuf, 1) == 1 && string bytebuf == "x", "duplex read");

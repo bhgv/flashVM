@@ -9,6 +9,7 @@
 #include "runqueue.h"
 #include "runtime.h"
 #include "../sysevents.h"
+#include "../../../native/movie/service.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,6 +31,14 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
         return 0;
     }
     *copy = *source;
+    DVM_Provider *movie = styxmovieservice(owner->namespace_group);
+    if (!movie)
+    {
+        dvm_provider_release(copy->provider);
+        free(copy);
+        return 0;
+    }
+    owner->movie_provider = movie;
     owner->terminal_channels = copy;
     return 1;
 }
@@ -43,7 +52,10 @@ void dvm_launch_process_release(Prog *process)
     {
         DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
         DVM_TerminalChannels *channels = owner->terminal_channels;
+        DVM_Provider *movie = owner->movie_provider;
+        owner->movie_provider = NULL;
         owner->terminal_channels = NULL;
+        dvm_provider_release(movie);
         if (channels)
         {
             dvm_provider_release(channels->provider);
@@ -85,12 +97,20 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         free(channels);
         return 0;
     }
+    DVM_Provider *movie = channels ? styxmovieservice(handoff->group) : NULL;
+    if (channels && !movie)
+    {
+        dvm_sysevents_release(events);
+        free(channels);
+        return 0;
+    }
     DVM_Namespace *previous = owner->namespace_group;
     DVM_SysEvents *previous_events = owner->system_events;
     dvm_launch_process_release(process);
     owner->namespace_group = handoff->group;
     owner->system_events = events;
     owner->terminal_channels = channels;
+    owner->movie_provider = movie;
     owner->launch_adopted = 1;
     handoff->group = NULL;
     memset(&handoff->flashvm, 0, sizeof(handoff->flashvm));

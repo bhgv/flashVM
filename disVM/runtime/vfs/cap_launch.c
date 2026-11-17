@@ -43,6 +43,35 @@ void Vfsexport_terminal(void *frame)
 }
 
 
+/* [GC:] EN/RU: Publish the current owner's separately retained job-VFS service capability.
+ * No namespace lookup or source I/O; absence returns nil, grant never depends on mount order.
+ * Выдать retained capability job-VFS service своего owner; без namespace lookup/source I/O. */
+void Vfsexport_terminalmovie(void *frame)
+{
+    F_Vfsexport_terminalmovie call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsexport_terminalmovie, ret), sizeof(*call.ret));
+    Prog *process = currun();
+    DVM_Provider *source = process ? ((DVM_RuntimeProcess *)process)->movie_provider : NULL;
+    if (!source)
+    {
+        dvm_cap_publish(H, call.ret);
+        return;
+    }
+    DVM_CapState *state;
+    void *value = dvm_cap_new(DVM_CAP_ROOT, &state);
+    if (!state || !dvm_provider_retain(source))
+    {
+        dvm_cap_abandon(value);
+        value = H;
+    }
+    else
+    {
+        state->root = source;
+    }
+    dvm_cap_publish(value, call.ret);
+}
+
+
 /* [GC:] EN/RU: Copy native channel name as managed string, safely replacing a prior result owner.
  * Скопировать native имя в managed string с guarded заменой предыдущего result owner. */
 void Vfsexport_terminalpath(void *frame)

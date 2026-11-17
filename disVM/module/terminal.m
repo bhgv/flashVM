@@ -15,6 +15,7 @@ Terminal: module
         root: ref Vfsexport->Root; # Grant for additional named channels, retained independently of mounts.
         receive: ref Sys->FD; # Bytes from FlashVM to the executing module.
         send: ref Sys->FD; # Bytes from the module to FlashVM; may alias receive for duplex.
+        movie: ref Vfsexport->Root; # Separate read-only job-VFS acquisition service; nil for explicit connect.
     };
 
 
@@ -36,4 +37,7 @@ Terminal: module
     # EN/RU: Open additional live channel with Sys OREAD/OWRITE/ORDWR; owned FD/nil.
     # Открыть дополнительный live channel в session.root; права решает provider, FD/nil.
     open: fn(session: ref Session, name: string, mode: int): ref Sys->FD;
+    # EN/RU: Open one independent acquisition stream on session.movie; FD/nil, no guessed paths.
+    # Открыть independent stream загрузки на session.movie; FD/nil, без угадывания путей.
+    movies: fn(session: ref Session): ref Sys->FD;
 };

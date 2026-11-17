@@ -4,6 +4,7 @@
  */
 #include "service.h"
 #include "protocol.h"
+#include "cancel.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +68,22 @@ int main(void)
             "independent fragmented response");
     }
     check(!memcmp(received, binding, size), "response mutated or zero read consumed data");
+    DVM_VfsHandle alias = {0};
+    check(dvm_provider_open(provider, ".", "rwo", &alias) == FVM_OK &&
+        dvm_vfs_close_cancellable(&alias) && !(alias.native_flags & DVM_VFS_CANCEL_DATA),
+        "ordinary Sys ORDWR or conservative data capability");
+    DVM_Cancel *cancel = dvm_cancel_create();
+    DVM_CancelScope scope = {0};
+    DVM_VfsHandle refused = {0};
+    FVM_FileInfo info;
+    check(cancel && dvm_cancel_enter(&scope, cancel), "cancel scope");
+    dvm_cancel_request(cancel);
+    check(dvm_provider_open(provider, ".", "rwo", &refused) != FVM_OK && !refused.ops &&
+        dvm_provider_info(provider, ".", &info) != FVM_OK &&
+        dvm_vfs_read(&alias, received, 1, &count) != FVM_OK, "pre-cancel consumed operation");
+    check(dvm_cancel_leave(&scope), "leave cancellation scope");
+    dvm_cancel_release(cancel);
+    dvm_vfs_close(&alias);
     unsigned char invalid[] = {99, 1, 0, 0, 0, 'x'};
     check(movie_record(buffer, &size, MOVIE_REQUEST, invalid, sizeof(invalid)), "invalid purpose frame");
     check(dvm_vfs_write(&first, buffer, size) != FVM_OK, "unknown purpose accepted");

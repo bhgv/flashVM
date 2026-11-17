@@ -28,3 +28,12 @@ add_dependencies(disvm disvm_vfsexport_sources)
 target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
 target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/cap_launch.c)
 target_sources(disvm PRIVATE vfs/intent.c)
+
+# EN/RU: Automatic job movie endpoint uses scalar VFS/S-record code only, not a second lib9/GUI.
+# Автоматический movie endpoint использует только VFS/S-record code, без второй lib9/GUI.
+target_sources(disvm PRIVATE
+    "${root}/disVM/native/movie/service.c" "${root}/disVM/native/movie/request.c"
+    "${root}/disVM/native/movie/protocol.c"
+    "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/srecord.c"
+    "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/sbindings.c")
+target_include_directories(disvm PRIVATE "${root}/disVM/native/movie" "${CMAKE_CURRENT_SOURCE_DIR}/vfs" "${DVM_FLASHVM_SOURCE_ROOT}/include")

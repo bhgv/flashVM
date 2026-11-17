@@ -34,6 +34,11 @@ Vfsexport: module
     # Copied имя receive0/send1 своего launch; nil при отсутствии/неверном direction.
     terminalpath: fn(direction: int): string;
 
+    # EN/RU: Current launch's read-only code/data service, scoped to this process namespace; root/nil.
+    # Read-only code/data service своего launch и текущего namespace process; root/nil.
+    terminalmovie: fn(): ref Root;
+
+
     # EN/RU: Capture one effective signed layer from own namespace; rights1..7; nil on refusal.
     # Захватить один effective layer по signed index; не весь набор descendant bind.
     capture: fn(path: string, index, rights: int): ref Root;

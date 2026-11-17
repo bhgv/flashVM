@@ -12,6 +12,8 @@
 #include "vfs/boot.h"
 #include "owner_messages.h"
 static int fail_context; /* One selected native channel-descriptor allocation refusal. */
+static int fail_movie; /* Deliberate pre-publication service factory OOM. */
+static int fail_fork_movie; /* Refuse one child namespace replacement without changing its scope. */
 static int fail_events; /* One selected unpublished namespace inbox refusal. */
 static int fail_publication; /* One message endpoint registration refusal after adoption. */
 static DVM_LaunchHandoff *publication_handoff; /* Borrowed through one synchronous publication attempt. */
@@ -27,6 +29,27 @@ void __real_newstack(Prog *process);
 DVM_SysEvents *__real_dvm_sysevents_create(DVM_Namespace *group);
 Prog *__real_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *handoff);
 DVM_MessageEndpoint *__real_dvm_messages_register(DVM_MessageRouter *router, uintptr_t id);
+
+
+DVM_Provider *__real_styxmovieservice(DVM_Namespace *group);
+
+
+/* EN/RU: Refuse only selected staging allocation; neither an endpoint nor a namespace is adopted.
+ * Отказать выбранной staging allocation; endpoint/namespace не принимаются. */
+DVM_Provider *__wrap_styxmovieservice(DVM_Namespace *group)
+{
+    if (fail_movie && group == adopting)
+    {
+        fail_movie = 0;
+        return NULL;
+    }
+    if (fail_fork_movie && group != adopting)
+    {
+        fail_fork_movie = 0;
+        return NULL;
+    }
+    return __real_styxmovieservice(group);
+}
 
 
 /* EN/RU: Refuse one process-publication endpoint after private environment adoption.
@@ -156,6 +179,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
 {
     (void)unused;
     terminal.terminal = 1;
+    terminal.value = 'T';
     execution.value = 'P';
     DVM_LaunchOptions options = launch_options(&terminal, &execution);
     DVM_TerminalChannels channels = {0};
@@ -192,6 +216,12 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     fail_events = 1;
     launch_check(refused(module, handoff) && !fail_events && handoff->group == adopting &&
         handoff->flashvm.provider == channels.provider, "inbox OOM consumed handoff");
+    if (CONTROL != 2)
+    {
+        fail_movie = 1;
+        launch_check(refused(module, handoff) && !fail_movie && handoff->group == adopting &&
+            handoff->flashvm.provider == channels.provider, "movie allocation consumed handoff");
+    }
     DVM_LaunchHandoff *later = calloc(1, sizeof(*later));
     launch_check(later != NULL, "publication failure fixture allocation");
     later->description = handoff->description;
@@ -206,6 +236,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     launch_check(!later->group && !later->flashvm.provider, "post-adoption failure restored moved ownership");
     publication_handoff = NULL;
     dvm_launch_handoff_free(later);
+    fail_fork_movie = CONTROL != 2;
     Prog *process = __real_dvm_runtime_launch_module(module, handoff);
     launch_check(!handoff->group && !handoff->flashvm.provider && !dvm_launch_process_adopt(process, handoff),
         "import did not move owners once");
@@ -224,7 +255,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
 void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
-    launch_check(opened == closed && retired == (CONTROL == 2 ? 0U : 1U) &&
+    launch_check(!fail_movie && !fail_fork_movie && opened == closed && retired == (CONTROL == 2 ? 0U : 1U) &&
         terminal.destroyed == 1 && execution.destroyed == 1, "imported process/root/FD lifetime leak");
     puts("PASS launch import constructor rollback and native lifetimes");
 }

@@ -26,7 +26,7 @@ struct Prog *dvm_runtime_launch_module(struct Module *module, DVM_LaunchHandoff 
 int dvm_launch_process_adopt(struct Prog *process, DVM_LaunchHandoff *handoff);
 
 
-/* EN/RU: Copy inherited channel descriptor, retaining provider;1/0, native allocation only.
+/* EN/RU: Copy inherited channel descriptor and prepare child movie service;1/0, native allocation only.
  * Fresh child/borrowed parent are constructor-owned; failure leaves child empty.
  * Скопировать inherited descriptor с provider pin;1/0, fresh child/parent принадлежат constructor. */
 int dvm_launch_process_inherit(struct Prog *process, struct Prog *parent);

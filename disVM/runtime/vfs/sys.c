@@ -19,6 +19,7 @@
 #include "sysevents.h"
 #include "stack.h"
 #include "bind_wait.h"
+#include "../../native/movie/service.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -111,15 +112,27 @@ void Sys_pctl(void *frame)
         publish(call.ret, -1);
         return;
     }
+    DVM_Provider *movie = owner->terminal_channels ? styxmovieservice(replacement) : NULL;
+    if (owner->terminal_channels && !movie)
+    {
+        dvm_namespace_release(replacement);
+        kwerrstr("cannot prepare movie namespace scope");
+        publish(call.ret, -1);
+        return;
+    }
     if (!dvm_sysevents_group(owner->system_events, replacement))
     {
         dvm_namespace_release(replacement);
+        dvm_provider_release(movie);
         kwerrstr("cannot replace system-event namespace scope");
         publish(call.ret, -1);
         return;
     }
     DVM_Namespace *previous = owner->namespace_group;
+    DVM_Provider *previous_movie = owner->movie_provider;
     owner->namespace_group = replacement;
+    owner->movie_provider = movie;
+    dvm_provider_release(previous_movie);
     dvm_namespace_release(previous);
     publish(call.ret, process->pid);
 }

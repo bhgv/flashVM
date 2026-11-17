@@ -1,5 +1,8 @@
 # Native launch import / Принятие native launch (runtime0.170)
 
+Runtime0.172 adds [automatic Session.movie acquisition grants](TERMINAL-MOVIES.md),
+including child inheritance, namespace replacement and ordinary Sys.ORDWR streams.
+
 The runtime can now adopt a prepared launch handoff **before publishing the first
 process or executing its bootstrap**. The namespace and FlashVM channel grant
 move into the new process. `Terminal.current()` opens the inherited connection

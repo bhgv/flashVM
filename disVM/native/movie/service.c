@@ -3,6 +3,7 @@
  * RU: Per-open S-record streams загрузки с bounded memory и native resource ownership.
  */
 #include "service_internal.h"
+#include "cancel.h"
 
 
 /* EN/RU: Describe only the granted service file; borrowed output, no resource-path lookup.
@@ -10,6 +11,10 @@
 static FVM_Result metadata(void *state, const char *path, FVM_FileInfo *out)
 {
     (void)state;
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
     if (!path || strcmp(path, "."))
     {
         return FVM_NOT_FOUND;
@@ -48,7 +53,7 @@ static FVM_Result writeopen(void *state, const void *bytes, size_t size)
     FVM_SRecord record;
     size_t consumed;
     FVM_SResult status;
-    if (opened->failed || opened->requested || size > sizeof(opened->input)-opened->used)
+    if (dvm_cancel_requested(dvm_cancel_current()) || opened->failed || opened->requested || size > sizeof(opened->input)-opened->used)
     {
         opened->failed = 1;
         return FVM_ERROR;
@@ -145,7 +150,7 @@ static FVM_Result readopen(void *state, void *bytes, size_t capacity, size_t *re
 {
     MovieOpen *opened = state;
     *received = 0;
-    if (opened->failed)
+    if (dvm_cancel_requested(dvm_cancel_current()) || opened->failed)
     {
         return FVM_ERROR;
     }
@@ -173,17 +178,29 @@ static FVM_Result readopen(void *state, void *bytes, size_t capacity, size_t *re
 }
 
 
+/* EN/RU: Closing may run under a cancel scope only if the retained resource supports it.
+ * Закрывать под cancel scope можно только если retained resource это поддерживает. */
+static int closeready(void *state)
+{
+    return dvm_vfs_close_cancellable(&((MovieOpen *)state)->resource);
+}
+
+
 static const DVM_VfsOps operations = {
     openinfo, readopen, writeopen, NULL, NULL, closeopen, NULL, NULL, NULL
 }; /* Immutable native per-open dispatch; no seek, directory or managed callbacks. */
 
 
 /* EN/RU: Open independent duplex session; borrowed namespace pinned by provider wrapper.
- * Output adopted only on success; mode rw is required, no creation/truncation.
- * Открыть независимую duplex session; output принят только при успехе, mode rw обязателен. */
+ * Output adopted only on success; mode rw/rwo is required, no creation/truncation.
+ * Открыть независимую duplex session; output принят только при успехе, mode rw/rwo обязателен. */
 static FVM_Result openservice(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    if (strcmp(path, ".") || strcmp(mode, "rw"))
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
+    if (strcmp(path, ".") || (strcmp(mode, "rw") && strcmp(mode, "rwo")))
     {
         return FVM_UNSUPPORTED;
     }
@@ -201,6 +218,8 @@ static FVM_Result openservice(void *state, const char *path, const char *mode, D
     }
     out->ops = &operations;
     out->state = opened;
+    out->native_flags = DVM_VFS_CANCEL_INFO;
+    out->close_ready = closeready;
     return FVM_OK;
 }
 
@@ -226,7 +245,7 @@ DVM_Provider *styxmovieservice(DVM_Namespace *group)
     {
         return NULL;
     }
-    DVM_Provider *provider = dvm_provider_create_capture(&factory, group, NULL, 1);
+    DVM_Provider *provider = dvm_provider_create_native(&factory, group, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
     if (!provider)
     {
         dvm_namespace_release(group);

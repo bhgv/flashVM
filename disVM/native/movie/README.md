@@ -16,7 +16,7 @@ SDK соединяет настоящий managed player FlashVM с подгот
 
 | API | Contract / Контракт |
 | --- | --- |
-| [`styxmovieservice(group)`](service.h) | Retain the host-authorized prepared namespace and return an owned provider, or NULL. Its fixed root can be captured/bound as one file and accepts duplex `rw` opens; every open owns one independent acquisition. / Удержать подготовленный namespace, вернуть свой provider либо NULL; независимая загрузка на каждый duplex open. |
+| [`styxmovieservice(group)`](service.h) | Retain the host-authorized prepared namespace and return an owned provider, or NULL. Its fixed root can be captured/bound as one file and accepts duplex `rw`/`rwo` opens; every open owns one independent acquisition. / Удержать подготовленный namespace, вернуть свой provider либо NULL; независимая загрузка на каждый duplex open. |
 | [`styxmoviefetch(...)`](client.h) | Install directly as `FVM_DesktopManagedFetch`, with a borrowed retained `StyxClient` as userdata. Return FVM_OK only after explicit successful END; propagate sink refusal, otherwise fail acquisition. / Установить общим callback загрузчика; успех только после END, отказ sink сохраняется. |
 | [`styxbacking(provider)`](../vfs/file_provider.h) | Adapt the granted service file to the existing original-libstyx server/publication integration. The backing owns its provider reference. / Адаптировать выданный файл к существующему серверу/publication; backing удерживает provider. |
 
@@ -50,8 +50,8 @@ alive through the synchronous run. Each fetch clones a fresh fid, opens ORDWR,
 negotiates directional bindings, requests one resource, consumes its reply and
 clunks on every outcome. Never serialize native sink/userdata pointers.
 Client and source callbacks perform native I/O without VM/SDL entry or guest
-suspension. The surrounding player remains owner-thread/synchronous; automatic
-launcher wiring and an asynchronous player entry are separate integration work.
+suspension. The surrounding player remains owner-thread/synchronous; [runtime0.172](../../runtime/TERMINAL-MOVIES.md) now prepares the job grant before
+init; remote endpoint announcement and an asynchronous player entry remain separate work.
 
 `granted_client` удерживается до возврата player. Каждый fetch владеет отдельным
 fid и независимо освобождает его при успехе, отказе, EOF или ошибке checksum.
@@ -133,6 +133,7 @@ refusal. Both tests pass normally and under ASan/UBSan (LeakSanitizer disabled).
 Проверки выполняют настоящий player и исходный C-сервер libstyx по TCP; здесь нет
 mock-функции, возвращающей SWF вместо сети. SDL dummy-video проверяет исполнение
 и загрузку, а не физический дисплей. Поддержанная платформа этого native SDK —
-Linux64. Автоматический запуск FlashVM из guest init, привязка служебного stream
-к Terminal Session, общие файловые записи/сокеты, input filtering и динамическое
-добавление media/bulk channels этим изменением не реализуются.
+Linux64. Runtime теперь автоматически выдаёт movie grant через Terminal Session
+([контракт](../../runtime/TERMINAL-MOVIES.md)). Автоматическое сетевое объявление и
+запуск внешнего FlashVM, общие файловые записи/сокеты, input filtering и
+динамическое добавление media/bulk channels остаются отдельными этапами.

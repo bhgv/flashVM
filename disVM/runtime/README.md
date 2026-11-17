@@ -943,4 +943,13 @@ provider-first visible union candidates while ordinary data keeps its existing
 stack order. Native intent classes also describe `.m`, future native modules and
 initial/nested SWF without fixing new wire tags or module formats.
 [FlashVM independent/DisVM-managed I/O and selective input](FLASHVM-IO-MODES.md)
-records the accepted integration model; that FlashVM adapter remains future work.
+records the accepted integration model; the [native SDK](../native/movie/README.md) now supplies actual Styx/S-record acquisition.
+
+
+## Automatic movie grant / Автоматический movie grant (runtime0.172)
+
+[Terminal.Session.movie and pre-init scope](TERMINAL-MOVIES.md) automatically prepare
+one code/data endpoint for a terminal-bearing launch. Children and namespace
+replacement receive scoped services; ordinary startup remains without the grant.
+Matched Limbo interfaces expose the existing S-record service through ordinary
+Sys FDs, without an application-specific loader or guest monitoring loop.

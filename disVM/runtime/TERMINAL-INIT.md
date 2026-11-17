@@ -1,5 +1,8 @@
 # Typed terminal init / Типизированный terminal init (runtime0.169)
 
+Runtime0.172 adds [automatic Session.movie acquisition grants](TERMINAL-MOVIES.md),
+including child inheritance, namespace replacement and ordinary Sys.ORDWR streams.
+
 Runtime0.170 adds [native constructor adoption and Terminal.current](LAUNCH-IMPORT.md),
 superseding the native-to-managed import limitation below. The original executable
 mount/capture example remains a separate capability-open regression test.

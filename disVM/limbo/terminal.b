@@ -25,7 +25,14 @@ current(): ref Session
     if (root == nil) {
         return nil;
     }
-    return connect(root, api->terminalpath(0), api->terminalpath(1));
+    session := connect(root, api->terminalpath(0), api->terminalpath(1));
+    if (session != nil) {
+        session.movie = api->terminalmovie();
+        if (session.movie == nil) {
+            return nil;
+        }
+    }
+    return session;
 }
 
 
@@ -41,7 +48,7 @@ connect(root: ref Vfsexport->Root, receive, send: string): ref Session
         if (fd == nil) {
             return nil;
         }
-        return ref Session(root, fd, fd);
+        return ref Session(root, fd, fd, nil);
     }
     input := api->open(root, receive, Sys->OREAD);
     if (input == nil) {
@@ -51,7 +58,7 @@ connect(root: ref Vfsexport->Root, receive, send: string): ref Session
     if (output == nil) {
         return nil;
     }
-    return ref Session(root, input, output);
+    return ref Session(root, input, output, nil);
 }
 
 
@@ -63,4 +70,15 @@ open(session: ref Session, name: string, mode: int): ref Sys->FD
         return nil;
     }
     return api->open(session.root, name, mode);
+}
+
+
+# EN/RU: Borrow the session, return an independent owned duplex protocol FD or nil.
+# Session borrowed; вернуть independent owned duplex protocol FD либо nil.
+movies(session: ref Session): ref Sys->FD
+{
+    if (session == nil || session.movie == nil) {
+        return nil;
+    }
+    return api->open(session.movie, ".", Sys->ORDWR);
 }
