@@ -76,6 +76,11 @@ static int runtime_execute_inner(void *argument)
     {
         error(owner_error());
     }
+    if (waserror())
+    {
+        unload(module);
+        nexterror();
+    }
     if (native_spawn)
     {
         guest_messages = dvm_messages_create();
@@ -85,7 +90,9 @@ static int runtime_execute_inner(void *argument)
         }
         dvm_runqueue_enable_direct();
     }
-    process = start_module(module);
+    process = dvm_runtime_launch_module(module, NULL);
+    poperror();
+    unload(module);
     initial_guest = process;
     if (inspect_requested)
     {

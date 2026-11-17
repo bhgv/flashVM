@@ -926,3 +926,12 @@ authenticated network capability transfer and provider execution remain pending.
 duplex or paired FlashVM streams and live extra channels after source unmount.
 Native mode conversion uses existing Inferno provider modes without truncation.
 Network launch and automatic host handoff import remain separate integration.
+
+## Native handoff adoption / Принятие handoff до запуска (runtime0.170)
+
+[Launch import, constructor ownership and Terminal.current](LAUNCH-IMPORT.md)
+adopts the prepared namespace and FlashVM channel grant before process publication.
+Children inherit independent native channel pins; typed application init uses
+the current Session without channel mount/capture. Constructor refusals preserve
+uncommitted handoffs and release temporary frames; failures after adoption retire
+consumed owners. Authenticated network admission remains separate work.

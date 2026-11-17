@@ -10,6 +10,7 @@
 #include "runt.h"
 #include "runqueue.h"
 #include "process_environment.h"
+#include "vfs/launch/runtime.h"
 #include "sys_capture.h"
 #include "vfs/boot.h"
 #include "vfs/sysevents.h"
@@ -20,10 +21,10 @@
 
 
 /* EN: Initialize private process before publication; parent is borrowed from
- * the calling owner. Share namespace reference, copy error bytes and FP state.
+ * the calling owner. Share namespace reference, copy error/FP state and retain inherited terminal grant.
  * Initial resident retains startup group; zero on missing/overflowed reference.
  * RU: Инициализировать приватный process до публикации; parent заимствован
- * своим owner. Разделить namespace, скопировать error bytes и FP state.
+ * своим owner. Разделить namespace, скопировать error/FP state и удержать inherited terminal grant.
  * Начальный resident удерживает startup group; ноль при missing/overflowed
  * reference, без публикации. */
 int dvm_process_environment_init(Prog *process, Prog *parent)
@@ -55,6 +56,11 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     }
     owner->namespace_group = group;
     process->osenv = environment;
+    if (!dvm_launch_process_inherit(process, parent))
+    {
+        dvm_process_environment_destroy(process);
+        return 0;
+    }
     if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
     {
         abort();
@@ -72,6 +78,7 @@ void dvm_process_environment_destroy(Prog *process)
     if (process)
     {
         DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+        dvm_launch_process_release(process);
         dvm_sysevents_retire(owner->system_events);
         dvm_sysevents_release(owner->system_events);
         owner->system_events = NULL;

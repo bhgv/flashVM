@@ -1,5 +1,9 @@
 # Typed terminal init / Типизированный terminal init (runtime0.169)
 
+Runtime0.170 adds [native constructor adoption and Terminal.current](LAUNCH-IMPORT.md),
+superseding the native-to-managed import limitation below. The original executable
+mount/capture example remains a separate capability-open regression test.
+
 The optional [Terminalcmd interface](../module/terminalcmd.m) accepts the existing
 FlashVM communication endpoint explicitly:
 

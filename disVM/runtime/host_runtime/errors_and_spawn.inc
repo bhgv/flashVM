@@ -250,9 +250,12 @@ int dvm_runtime_prepare_resident(Prog *process)
 }
 
 
-/* EN: Register a prepared resident and start its owner. Consumes prepared storage.
- * RU: Зарегистрировать готовый процесс и запустить его владельца. Поглощает prepared. */
-static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared)
+/* EN: Borrow parent/module/registers, consume optional prepared storage, then publish its owner.
+ * Optional handoff is adopted privately before publication; no guest instruction executes here.
+ * Raise on setup failure after disposing private process; caller owns its initial frame/link.
+ * RU: Parent/module/registers borrowed; prepared поглощается, optional handoff принят до publication.
+ * При отказе private process освобождается; caller владеет исходным frame/link. */
+static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared, DVM_LaunchHandoff *handoff)
 {
     Prog *process = prepared;
     if (!process)
@@ -268,6 +271,12 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
             free(process);
             error("cannot initialize process namespace");
         }
+    }
+    if (handoff && !dvm_launch_process_adopt(process, handoff))
+    {
+        dvm_process_environment_destroy(process);
+        free(process);
+        error("cannot adopt launch handoff");
     }
     if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
     {
@@ -325,11 +334,19 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
 }
 
 
+/* [GC:] EN/RU: See launch/startup_internal.h; no guest instruction executes during construction.
+ * См. launch/startup_internal.h; при construction guest instructions не выполняются. */
+Prog *dvm_runtime_create_initial(Modlink *link, const REG *initial, DVM_LaunchHandoff *handoff)
+{
+    return create_process(nil, link, initial, NULL, handoff);
+}
+
+
 /* EN: Retained entry for callers without a prepared register image.
  * RU: Вход для вызывающих без подготовленного образа регистров. */
 Prog *newprog(Prog *parent, Modlink *module)
 {
-    return create_process(parent, module, NULL, NULL);
+    return create_process(parent, module, NULL, NULL, NULL);
 }
 
 
@@ -413,5 +430,5 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
         free(request.storage);
         krethrow();
     }
-    (void)create_process(parent, module, NULL, request.storage);
+    (void)create_process(parent, module, NULL, request.storage, NULL);
 }

@@ -28,6 +28,8 @@
 #include "file_port.h"
 #include "file_gate.h"
 #include "vfs/cancel.h"
+#include "vfs/launch/runtime.h"
+#include "vfs/launch/startup_internal.h"
 #include "vfs/native_wait.h"
 #include "file_slots.h"
 #include "filesystem_sys.h"

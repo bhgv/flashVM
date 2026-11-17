@@ -1,0 +1,101 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Stage and move launch namespace/channel ownership before process publication.
+ * RU: Подготовить и перенести namespace/channel ownership до публикации process.
+ */
+#include "lib9.h"
+#include "dat.h"
+#include "fns.h"
+#include "interp.h"
+#include "runqueue.h"
+#include "runtime.h"
+#include "../sysevents.h"
+#include <stdlib.h>
+#include <string.h>
+
+
+/* EN/RU: See runtime.h; immutable parent metadata is pinned by the spawning owner.
+ * См. runtime.h; immutable parent metadata удерживается spawning owner. */
+int dvm_launch_process_inherit(Prog *process, Prog *parent)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    DVM_TerminalChannels *source = parent ? ((DVM_RuntimeProcess *)parent)->terminal_channels : NULL;
+    if (!source)
+    {
+        return 1;
+    }
+    DVM_TerminalChannels *copy = malloc(sizeof(*copy));
+    if (!copy || !dvm_provider_retain(source->provider))
+    {
+        free(copy);
+        return 0;
+    }
+    *copy = *source;
+    owner->terminal_channels = copy;
+    return 1;
+}
+
+
+/* EN/RU: See runtime.h; provider destruction stays native and outside process/namespace locks.
+ * См. runtime.h; provider destruction native и вне process/namespace locks. */
+void dvm_launch_process_release(Prog *process)
+{
+    if (process)
+    {
+        DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+        DVM_TerminalChannels *channels = owner->terminal_channels;
+        owner->terminal_channels = NULL;
+        if (channels)
+        {
+            dvm_provider_release(channels->provider);
+            free(channels);
+        }
+    }
+}
+
+
+/* EN/RU: See runtime.h; no fallible setup remains after committing the two ownership moves.
+ * См. runtime.h; после commit двух ownership moves fallible setup больше нет. */
+int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
+{
+    if (!process || !handoff || !handoff->group)
+    {
+        return 0;
+    }
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (owner->launch_adopted || owner->messages || owner->dedicated || owner->dispatch_owner ||
+        owner->native_owner || process->osenv != &owner->environment || !owner->namespace_group ||
+        (!!handoff->description.terminal_channels != !!handoff->flashvm.provider) ||
+        (handoff->flashvm.provider && !dvm_terminal_channels_valid(&handoff->flashvm)))
+    {
+        return 0;
+    }
+    DVM_TerminalChannels *channels = NULL;
+    if (handoff->flashvm.provider)
+    {
+        channels = malloc(sizeof(*channels));
+        if (!channels)
+        {
+            return 0;
+        }
+        *channels = handoff->flashvm;
+    }
+    DVM_SysEvents *events = dvm_sysevents_create(handoff->group);
+    if (!events)
+    {
+        free(channels);
+        return 0;
+    }
+    DVM_Namespace *previous = owner->namespace_group;
+    DVM_SysEvents *previous_events = owner->system_events;
+    dvm_launch_process_release(process);
+    owner->namespace_group = handoff->group;
+    owner->system_events = events;
+    owner->terminal_channels = channels;
+    owner->launch_adopted = 1;
+    handoff->group = NULL;
+    memset(&handoff->flashvm, 0, sizeof(handoff->flashvm));
+    dvm_sysevents_retire(previous_events);
+    dvm_sysevents_release(previous_events);
+    dvm_namespace_release(previous);
+    return 1;
+}

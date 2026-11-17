@@ -67,6 +67,8 @@ typedef struct DVM_RuntimeProcess
     fenv_t floating_environment; /* Guest FP environment retained on its permanent OS owner. */
     struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
     DVM_Namespace *namespace_group; /* Owning native reference; shared at spawn, detached by pctl. */
+    struct DVM_TerminalChannels *terminal_channels; /* Optional owned immutable launch grant, copied/pinned at spawn. */
+    int launch_adopted; /* One handoff consumed before publication; never changed by a running guest. */
 } DVM_RuntimeProcess;
 
 

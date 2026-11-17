@@ -26,6 +26,14 @@ Vfsexport: module
     # Открыть relative name без namespace lookup; owned FD/nil, без create/truncate/fallback.
     open: fn(root: ref Root, path: string, mode: int): ref Sys->FD;
 
+    # EN/RU: Current process's inherited native launch channel grant; owned root/nil, no mount/lookup.
+    # Grant своего process из native handoff; owned root/nil, без mount/namespace lookup.
+    terminal: fn(): ref Root;
+
+    # EN/RU: Copied immutable receive0/send1 name from that same launch; nil if absent/invalid direction.
+    # Copied имя receive0/send1 своего launch; nil при отсутствии/неверном direction.
+    terminalpath: fn(direction: int): string;
+
     # EN/RU: Capture one effective signed layer from own namespace; rights1..7; nil on refusal.
     # Захватить один effective layer по signed index; не весь набор descendant bind.
     capture: fn(path: string, index, rights: int): ref Root;

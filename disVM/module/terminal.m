@@ -23,6 +23,11 @@ Terminal: module
     init: fn();
 
 
+    # EN/RU: Open this process's inherited launch channels directly; owned session/nil, native wait rules.
+    # Открыть inherited каналы своего launch без namespace lookup; owned session/nil, native wait rules.
+    current: fn(): ref Session;
+
+
     # EN/RU: Open duplex same-name or receive/send pair on explicit grant; owned session/nil.
     # Открыть duplex либо pair на grant; owned session/nil, без mount/create/truncate/fallback.
     connect: fn(root: ref Vfsexport->Root, receive, send: string): ref Session;

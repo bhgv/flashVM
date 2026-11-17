@@ -26,6 +26,8 @@ init()
     app := load Terminalcmd "app.dis";
     check(api != nil && term != nil && app != nil, "provider interfaces");
     term->init();
+    check(term->current() == nil && api->terminal() == nil && api->terminalpath(0) == nil,
+        "ordinary startup invented a launch grant");
     check(sys->pctl(Sys->NEWNS, nil) > 0, "prepare environment before application init");
     root := api->capture("/link", 0, 7);
     readonly := api->capture("/link", 0, 4);

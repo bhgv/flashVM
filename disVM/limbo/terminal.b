@@ -17,6 +17,18 @@ init()
 }
 
 
+# EN/RU: Obtain the current process's immutable launch association and open its control channel(s).
+# Получить immutable launch association своего process и открыть control channel(s); session/nil.
+current(): ref Session
+{
+    root := api->terminal();
+    if (root == nil) {
+        return nil;
+    }
+    return connect(root, api->terminalpath(0), api->terminalpath(1));
+}
+
+
 # EN/RU: Borrow root/names; return owned session/nil. Same name opens one duplex FD.
 # Root/names borrowed; owned session/nil, одинаковое имя открывает один duplex FD.
 connect(root: ref Vfsexport->Root, receive, send: string): ref Session
