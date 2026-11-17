@@ -58,6 +58,18 @@ static void terminal(void *state, int reason)
 }
 
 
+/* EN/RU: Observe authoritative local link state before taking receiver lock; no RPC or notice wait.
+ * Sticky native notifications may still be queued after shutdown has already completed.
+ * Проверить local link state до receiver lock без RPC/ожидания notice; shutdown уже мог завершиться. */
+static void observe_link(StyxMovieSession *session)
+{
+    if (!styxclientalive(session->client))
+    {
+        terminal(session, 0);
+    }
+}
+
+
 /* EN/RU: See receiver.h; callback state owns a separate pin across unsubscribe races.
  * См. receiver.h; callback state имеет отдельный pin на время unsubscribe races. */
 StyxMovieSession *styxmoviesession(StyxClient *client)
@@ -221,6 +233,7 @@ FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, cons
     {
         return FVM_INVALID_ARGUMENT;
     }
+    observe_link(session);
     fvm_port_sync_lock(session->lock);
     unsigned long long generation = session->generation;
     int ready = session->ready && !session->closed;
@@ -242,6 +255,7 @@ FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, cons
         return FVM_ERROR;
     }
     FVM_Result result = movie_fetch_fid(fid, purpose, reference, base, write, state, resolved, capacity);
+    observe_link(session);
     fvm_port_sync_lock(session->lock);
     if (session->closed || !session->ready || session->generation != generation)
     {
@@ -260,6 +274,7 @@ int styxmovieavailable(StyxMovieSession *session, unsigned long long *generation
     {
         return -1;
     }
+    observe_link(session);
     fvm_port_sync_lock(session->lock);
     int result = session->closed ? -1 : session->ready;
     if (generation)

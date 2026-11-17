@@ -61,6 +61,15 @@ fid и независимо освобождает его при успехе, �
 TLS/authentication и deadlines предоставляет существующий host transport;
 стандартный fd-client поддерживает свой native I/O owner и ограниченные RPC.
 
+## Automatic outgoing control / Автоматическая исходящая отправка
+
+[Native outbox and prefix-preserving writer](OUTBOX.md) subscribe to runtime movie
+source notices, signal the existing I/O owner and retain partial record tails.
+No application callback or manual announcement encoding is required. Native
+source publication alone wakes a pending control read; unrelated RPC and Tflush
+continue through original libstyx. Host admission, transport scheduling and shared
+control-tag reservation remain explicit.
+
 ## Byte-stream schema / Схема byte stream
 
 Definitions: [`protocol.h`](protocol.h), codecs: [`protocol.c`](protocol.c).
@@ -114,7 +123,7 @@ cmake -S disVM/native -B build/native \
   -DINFERNO_HOST_SUPPORT="$PWD/tools/limbo-bootstrap" \
   -DINFERNO_VFS_SUPPORT="$PWD" \
   -DINFERNO_MOVIE_PLAYER_BUILD="$PWD/build/flashvm-managed"
-cmake --build build/native --target movie-server movie-player movie-protocol-test movie-offers-test --parallel
+cmake --build build/native --target movie-server movie-player movie-protocol-test movie-offers-test movie-writer-test --parallel
 ctest --test-dir build/native -R '^managed-movie-' --output-on-failure
 ```
 
@@ -132,7 +141,9 @@ replay, generation change during fetch, control EOF, disconnect and bad offer CR
 native entries. The protocol unit checks independent opens, one-byte framing,
 coalesced declarations, zero reads, bad CRC, unbound requests and size/purpose
 refusal. The offer unit additionally checks unpublished reservation rollback, two pthread
-CAS contenders, live directory projection and held-open identity. All three tests pass normally and under ASan/UBSan (LeakSanitizer disabled).
+CAS contenders, live directory projection and held-open identity. The [outbox acceptance](OUTBOX.md#acceptance--проверки) additionally checks partial
+acknowledgements, queue overflow, concurrent detach and genuine deferred TCP reads.
+All five suites pass normally and under ASan/UBSan (LeakSanitizer disabled).
 
 Проверки выполняют настоящий player и исходный C-сервер libstyx по TCP; здесь нет
 mock-функции, возвращающей SWF вместо сети. SDL dummy-video проверяет исполнение

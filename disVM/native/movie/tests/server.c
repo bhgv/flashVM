@@ -11,6 +11,9 @@
 #include "tree.h"
 #include "../offer_ids.h"
 extern int movie_test_end(const void *bytes, size_t size); /* Scalar test-only codec boundary. */
+extern void movie_test_defer(Styxserver *, ulong *); /* Owner-thread deferred control admission. */
+extern void movie_test_complete(Styxserver *); /* Native readiness completion, no guest polling. */
+extern void movie_test_deferred_end(void); /* Cleanup after original libstyx retires request owners. */
 static Styxserver server; /* Socket-owner state, no guest VM execution. */
 static StyxBacking *backing; /* Borrowed through movieserve. */
 static int fault_reads; /* Number of native reads used by deliberate framing faults. */
@@ -140,6 +143,11 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     ulong capacity = *count;
     styxfileread(styxgetaux(&server), offset, bytes, *count, &transfer);
+    if (transfer.again && qid.path == STYX_MOVIE_CONTROL_ID)
+    {
+        movie_test_defer(&server, count);
+        return nil;
+    }
     char *error = result(transfer, count);
     if (!error && fault && *count)
     {
@@ -221,6 +229,9 @@ int movieserve(StyxBacking *root)
         {
             return 3;
         }
+        movie_test_complete(&server);
     }
-    return styxend(&server) ? 4 : 0;
+    int result = styxend(&server) ? 4 : 0;
+    movie_test_deferred_end();
+    return result;
 }

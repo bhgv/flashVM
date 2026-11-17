@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 
 typedef struct Root
@@ -21,6 +22,28 @@ extern DVM_MovieOffer *movie_test_offers; /* Native job registry held through fi
 extern DVM_Namespace *movie_test_group; /* Private prepared namespace, not a wire pointer. */
 extern DVM_Provider *movie_test_controlprovider(void); /* Exact native control grant. */
 extern int movieserve(StyxBacking *root); /* Original libstyx translation unit. */
+
+
+extern FVM_Result movie_test_change(const void *, size_t); /* Native fixture-only source mutations. */
+
+
+/* EN/RU: External pipe gates native source changes after real pending-read admission.
+ * No guest or transport/server request pointers cross into this producer.
+ * Внешний pipe запускает native source changes после pending-read admission, без guest/request pointers. */
+static void *produce(void *unused)
+{
+    (void)unused;
+    int command;
+    while ((command = getchar()) != EOF && command != 'q')
+    {
+        const char *change = command == 'p' ? "replace" : command == 'c' ? "close" : NULL;
+        if (change && movie_test_change(change, strlen(change)) != FVM_OK)
+        {
+            return (void *)1;
+        }
+    }
+    return NULL;
+}
 
 
 /* EN/RU: Inspect only a retained confined directory; borrow output, actual errors propagate.
@@ -204,7 +227,21 @@ int main(int argc, char **argv)
         dvm_provider_release(folder);
         dvm_provider_release(control);
     }
+    pthread_t producer;
+    int automatic = getenv("MOVIE_TEST_AUTOMATIC") != NULL;
+    if (automatic && pthread_create(&producer, NULL, produce, NULL))
+    {
+        return 5;
+    }
     int result = backing ? movieserve(backing) : 3;
+    if (automatic)
+    {
+        void *status = NULL;
+        if (pthread_join(producer, &status) || status)
+        {
+            result = 6;
+        }
+    }
     dvm_movie_offer_release(movie_test_offers);
     styxbackingfree(backing);
     dvm_provider_release(service);

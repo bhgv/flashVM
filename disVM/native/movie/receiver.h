@@ -32,6 +32,7 @@ FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, cons
 
 
 /* EN/RU: Copy generation optionally;1 ready,0 pending,-1 retired/invalid, no I/O.
+ * Query current local link state as well as native notices; shutdown needs no callback wait.
  * Копировать optional generation;1 ready/0 pending/-1 retired, без I/O. */
 int styxmovieavailable(StyxMovieSession *session, unsigned long long *generation);
 

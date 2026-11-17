@@ -93,6 +93,15 @@ is idempotent; conflicting state, invalid version/CRC/integer, unbound data,
 control EOF or a terminal connection notice closes the receiver. CLOSED is sticky.
 It never authorizes reconnecting or looking for another provider.
 
+## Automatic native output / Автоматическая native-отправка
+
+The SDK's [outbox/writer](../native/movie/OUTBOX.md) now supplies subscription,
+native descriptor readiness, latest-state encoding and exact partial-write staging.
+Use `styxmoviewriter(source, reserved_tag)` instead of implementing a movie-specific
+notice callback and encoder loop. Existing native I/O ownership, authentication,
+control-tag allocation and arbitration with other outgoing types remain with the
+host. CLOSED drains completely before this writer returns EOF.
+
 ## Generic terminal receiver / Общий приёмник терминала
 
 ```c

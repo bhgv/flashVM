@@ -2,7 +2,7 @@
  * EN: Real Styx control-file fixture exposes automatic announcements and explicit test scope changes.
  * RU: Настоящий Styx control-file fixture выдаёт объявления и явные test scope changes.
  */
-#include "offer.h"
+#include "writer.h"
 #include "service.h"
 #include "resource.h"
 #include <stdlib.h>
@@ -13,10 +13,30 @@ DVM_Namespace *movie_test_group; /* Borrowed through backend main, never a guest
 
 typedef struct Control
 {
-    unsigned char bytes[MOVIE_OFFER_FRAME*2]; /* One latest complete declaration/state pair. */
-    size_t size; /* Complete pending extent. */
-    size_t sent; /* Confirmed prefix. */
+    StyxMovieWriter *writer; /* Owned production serializer over autonomous source notices. */
 } Control;
+static Control *active; /* Borrowed fixture control, pinned by pending fid ownership. */
+
+
+typedef struct Output
+{
+    void *bytes; /* Borrowed Tread buffer until copy callback returns. */
+    size_t size; /* Actual client-requested capacity. */
+} Output;
+
+
+/* EN/RU: Copy confirmed bytes into one real Tread response, preserving arbitrary fragmentation.
+ * Копировать confirmed bytes в настоящий Tread response с произвольной fragmentation. */
+static void copy(void *state, const void *bytes, size_t size, DVM_IoResult *out)
+{
+    Output *output = state;
+    size_t count = size < output->size ? size : output->size;
+    memcpy(output->bytes, bytes, count);
+    memset(out, 0, sizeof(*out));
+    out->flags = DVM_IO_PREFIX;
+    out->status = FVM_OK;
+    out->count = count;
+}
 
 
 /* EN/RU: Describe the test's granted control stream, never a host file.
@@ -34,26 +54,25 @@ static FVM_Result info(void *state, FVM_FileInfo *out)
 
 /* EN/RU: Read arbitrary native prefixes, allowing the receiver to exercise record fragmentation.
  * Читать произвольные native prefixes для проверки record fragmentation. */
-static FVM_Result readcontrol(void *state, void *bytes, size_t size, size_t *received)
+static void readcontrol(void *state, void *bytes, size_t size, DVM_IoResult *out)
 {
     Control *control = state;
-    size_t count = control->size-control->sent;
-    if (count > size)
+    if (!size)
     {
-        count = size;
+        memset(out, 0, sizeof(*out));
+        out->flags = DVM_IO_PREFIX;
+        out->status = FVM_OK;
+        return;
     }
-    memcpy(bytes, control->bytes+control->sent, count);
-    control->sent += count;
-    *received = count;
-    return FVM_OK;
+    Output output = {bytes, size};
+    *out = styxmoviewriterstep(control->writer, copy, &output);
 }
 
 
 /* EN/RU: Fixture-only authenticated host commands change scope or retire it; never SWF requests.
  * Только fixture host commands меняют scope/retire; это не SWF requests. */
-static FVM_Result writecontrol(void *state, const void *bytes, size_t size)
+FVM_Result movie_test_change(const void *bytes, size_t size)
 {
-    Control *control = state;
     DVM_MovieOfferInfo current;
     dvm_movie_offer_info(movie_test_offers, &current);
     if (size == 7 && !memcmp(bytes, "replace", 7))
@@ -79,8 +98,24 @@ static FVM_Result writecontrol(void *state, const void *bytes, size_t size)
     {
         return FVM_ERROR;
     }
-    control->sent = 0;
-    return styxmovieofferframe(movie_test_offers, 7, control->bytes, sizeof(control->bytes), &control->size);
+    return FVM_OK;
+}
+
+
+/* EN/RU: Fixture command stream delegates only source mutation, never announcement encoding.
+ * Fixture command stream меняет только source, не кодирует announcement. */
+static FVM_Result writecontrol(void *state, const void *bytes, size_t size)
+{
+    (void)state;
+    return movie_test_change(bytes, size);
+}
+
+
+/* EN/RU: Borrow source readiness while the pending fid pins its control writer; fixture-only.
+ * Borrow readiness под pin pending fid; только fixture owner, не native producer. */
+int movie_test_readyfd(void)
+{
+    return active ? styxmoviewriterfd(active->writer) : -1;
 }
 
 
@@ -88,10 +123,16 @@ static FVM_Result writecontrol(void *state, const void *bytes, size_t size)
  * Поглотить independent fixture stream после завершения fid borrowers. */
 static void closecontrol(void *state)
 {
-    free(state);
+    Control *control = state;
+    if (active == control)
+    {
+        active = NULL;
+    }
+    styxmoviewriterfree(control->writer);
+    free(control);
 }
 static const DVM_VfsOps operations = {
-    info, readcontrol, writecontrol, NULL, NULL, closecontrol, NULL, NULL, NULL
+    info, NULL, writecontrol, NULL, NULL, closecontrol, NULL, readcontrol, NULL
 }; /* Native fixture byte stream; no VM/SDL state. */
 
 
@@ -117,13 +158,13 @@ static FVM_Result opencontrol(void *state, const char *path, const char *mode, D
     {
         return FVM_OUT_OF_MEMORY;
     }
-    FVM_Result result = styxmovieofferframe(movie_test_offers, 7,
-        control->bytes, sizeof(control->bytes), &control->size);
-    if (result != FVM_OK)
+    control->writer = styxmoviewriter(movie_test_offers, 7);
+    if (!control->writer)
     {
         free(control);
-        return result;
+        return FVM_OUT_OF_MEMORY;
     }
+    active = control;
     out->ops = &operations;
     out->state = control;
     return FVM_OK;
