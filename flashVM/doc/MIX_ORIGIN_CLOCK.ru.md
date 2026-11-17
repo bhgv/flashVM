@@ -79,9 +79,9 @@ dequeue до render; недостаток места даёт NOT_FOUND без �
 ## Desktop и C89
 
 Desktop root composition рассчитывает и включает ID/origins до запуска worker.
-Bitmap 32 KiB входит в FVM_DESKTOP_AUDIO_MIX_BYTES; source/voice/device/VM/allocator учитываются
+Bitmap 32 KiB входит в [FVM_DESKTOP_AUDIO_MIX_BYTES](../frontend/common/audio_memory.h#L13); source/voice/device/VM/allocator учитываются
 отдельно. Недостаточный общий бюджет отклоняется до SDL, включая случай, когда
-старый ID-only бюджет помещался. `fvm_desktop_audio_origin_info` копирует свежий
+старый ID-only бюджет помещался. [`fvm_desktop_audio_origin_info`](../frontend/common/audio.h#L166) копирует свежий
 снимок под worker mutex, требует initialized composition и сохраняет out при
 ошибках; главный поток не производит PCM.
 
@@ -124,6 +124,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_MIX_BYTES` | macro / define | [frontend/common/audio_memory.h:13](../frontend/common/audio_memory.h#L13) |
+| `fvm_desktop_audio_origin_info` | function | [frontend/common/audio.h:166](../frontend/common/audio.h#L166) |
 | `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:67](../include/flashvm/swf_sound_mix_queue.h#L67) |
 | `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:112](../include/flashvm/swf_sound_mix_queue.h#L112) |
 | `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:103](../include/flashvm/swf_sound_mix_queue.h#L103) |

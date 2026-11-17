@@ -24,9 +24,9 @@ directory for cross compilation as described in the frontend guide.
 
 | API | Purpose |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Shared defaults; caller owns structure |
-| [fvm_desktop_run_memory](../../../frontend/common/player.h#L47) | Borrow binary bytes/name until synchronous return; exact sizeof, no strlen |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Standalone host ends its own complete SDL session after player resources are released |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Shared defaults; caller owns structure |
+| [fvm_desktop_run_memory](../../../frontend/common/player.h#L56) | Borrow binary bytes/name until synchronous return; exact sizeof, no strlen |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Standalone host ends its own complete SDL session after player resources are released |
 
 [main.c](main.c) selects mute because the fixture includes root stream controls.
 [movie.h](movie.h) remains owned by the executable; never free it. [GC:] The runner
@@ -45,7 +45,7 @@ The same directory now contains [module.h](module.h), [module.c](module.c) and
 [module_host.c](module_host.c), each explained line by line. The module owns its
 linked movie and exports the C89/C++98 embedded_movie_play entrypoint. The host
 needs neither a movie filename nor internal VM headers. It calls on the UI thread
-and owns final [fvm_desktop_shutdown](../../../frontend/common/player.h#L54); the library must not terminate another application's SDL.
+and owns final [fvm_desktop_shutdown](../../../frontend/common/player.h#L65); the library must not terminate another application's SDL.
 No caller pointer or managed object survives return. The exported function returns
 the normal player status. It is an example interface, not a stable general VM ABI.
 
@@ -70,3 +70,17 @@ The latter finishes the same SDK instance used by the library; module_host.c has
 no SDL/VM includes. Active subsystem owners are preserved and make cleanup return
 an error. Explicit cleanup may clear session hints/TLS, so it belongs at the end
 of the application's use of that library's SDL session.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../../../frontend/common/player.h#L56) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+<!-- source-links:end -->

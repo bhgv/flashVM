@@ -6,9 +6,11 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Development version: **0.1702** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1703** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
+
+[Managed source acquisition — startup/nested SWF and data through an explicit bridge](doc/MANAGED_SOURCE.md) · [Русский](doc/MANAGED_SOURCE.ru.md)
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;

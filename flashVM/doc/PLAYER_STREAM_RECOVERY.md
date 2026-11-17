@@ -72,7 +72,7 @@ acceptance. All nine roadmap stages remain open.
 | --- | --- |
 | `stream_authorized` | [frontend/common/audio.c:168](../frontend/common/audio.c#L168) |
 | `refill_stream` | [frontend/common/audio.c:198](../frontend/common/audio.c#L198) |
-| `fvm_desktop_audio_stream_pending` | [frontend/common/audio.c:625](../frontend/common/audio.c#L625) |
+| [`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) | [frontend/common/audio.c:625](../frontend/common/audio.c#L625) |
 
 ## Revision validation
 
@@ -90,3 +90,15 @@ ELF CPU identity was checked. ARM64 execution and physical devices remain untest
 Instrumented actual CLI checks also passed exact FWS/CWS PCM and format changes,
 all supported whole-packet ADPCM code widths/channels in interpreter/native JIT,
 finite completion and the bundled tutorial against an independent FFmpeg oracle.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+<!-- source-links:end -->

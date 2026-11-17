@@ -1,7 +1,7 @@
 # Владение SDL при встраивании
 
 Начиная с v0.670 [fvm_desktop_window_open](../frontend/common/window.h#L53) отдельно получает ссылки TIMER и VIDEO.
-[fvm_desktop_window_close](../frontend/common/window.h#L88) уничтожает только ресурсы своего окна и освобождает
+[fvm_desktop_window_close](../frontend/common/window.h#L114) уничтожает только ресурсы своего окна и освобождает
 только успешно полученные ссылки подсистем. Закрытие null безопасно. Глобальный
 SDL_Quit не вызывается ни при обычном закрытии, ни при ошибке запуска.
 Окна и ранее полученные ссылки приложения сохраняются. Несколько окон плеера
@@ -43,6 +43,20 @@ ctest --test-dir build-player -R frontend_sdl_ownership --output-on-failure
 проверяет подавление повторного ввода. Сохранение и восстановление глобальных
 hint не используется: оно могло бы затереть обновление приложения.
 
-С v0.713 живые native-ящики команд также защищают fvm_desktop_shutdown: сначала
+С v0.713 живые native-ящики команд также защищают [fvm_desktop_shutdown](../frontend/common/player.h#L65): сначала
 завершите runner/контролирующие потоки и освободите каждый ящик.
 [Контракт](PLAYBACK_MAILBOX.ru.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `fvm_desktop_window_close` | function | [frontend/common/window.h:114](../frontend/common/window.h#L114) |
+| `fvm_desktop_window_open` | function | [frontend/common/window.h:53](../frontend/common/window.h#L53) |
+<!-- source-links:end -->

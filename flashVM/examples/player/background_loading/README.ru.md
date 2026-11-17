@@ -38,7 +38,7 @@ OpenSSL, включая SSL_CERT_FILE, либо явные native options. Дл�
 SOCKET_HTTP/TLS и включите FVM_PLAYER_HTTP; нужен linked SDK с CURL_VERSION_THREADSAFE.
 Static SDK и cross-build OS/CPU описаны в руководстве транспорта; link не равен run.
 
-[fvm_desktop_background_supported](../../../frontend/common/background.h#L49)() проверяет штатную worker-поддержку до старта.
+[fvm_desktop_background_supported](../../../frontend/common/background.h#L58)() проверяет штатную worker-поддержку до старта.
 Асинхронный вариант: [пример](../async_loading/README.ru.md).
 
 В [main.c](main.c) объяснена каждая строка. Options, URL и loader заимствованы до
@@ -48,12 +48,30 @@ bytes; импорт/setters выполняет owner. VM-объекты не п�
 
 | API | Назначение, владение и блокирование |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация scalar options вызывающей программы без startup. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Инициализация caller policy без запуска worker. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker provider с borrowed options/cancel; DNS может блокировать. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker adapter libcurl; SDK без thread-safe global APIs отклоняется. |
-| [fvm_desktop_run_source_background](../../../frontend/common/background.h#L28) | Синхронный owner loop с native events во время ожидания; импорт только готовых байтов. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершение соответствующего SDK после join/очистки окна; живые jobs запрещают его. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация scalar options вызывающей программы без startup. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Инициализация caller policy без запуска worker. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker provider с borrowed options/cancel; DNS может блокировать. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Worker adapter libcurl; SDK без thread-safe global APIs отклоняется. |
+| [fvm_desktop_run_source_background](../../../frontend/common/background.h#L31) | Синхронный owner loop с native events во время ожидания; импорт только готовых байтов. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершение соответствующего SDK после join/очистки окна; живые jobs запрещают его. |
 
 [Контракт C API](../../../doc/BACKGROUND_TRANSFER.ru.md) описывает аргументы/ошибки/
 время жизни и нижние begin/poll/cancel/release для IDE с собственным event loop.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_background` | function | [frontend/common/background.h:31](../../../frontend/common/background.h#L31) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

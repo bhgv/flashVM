@@ -31,7 +31,7 @@ SDL_FINGERUP или потери фокуса/ухода в фон. Дополн
 
 ## Общая очередь и доставка
 
-FVM_DESKTOP_PENDING_EVENTS ограничивает FIFO 128 событиями. В ней нет managed
+[FVM_DESKTOP_PENDING_EVENTS](../frontend/common/window.h#L9) ограничивает FIFO 128 событиями. В ней нет managed
 указателей VM или заимствованных event buffers. Каждое событие хранит свою
 позицию и нужный снимок клавиатуры либо pointer type. Движения не объединяются
 молча. Переполнение фиксирует [FVM_ERROR](../include/flashvm/flashvm.h#L45); плеер сообщает сбой вместо успешной
@@ -58,7 +58,7 @@ OOM подготовки, расходует его, оставляя поздн
 Зафиксированная ошибка сбора запрещает pump до уничтожения окна. Reentry flag
 снимается на всех обычных возвратах статуса. Callback не должен уничтожать или
 повторно входить в presentation lifecycle либо бросать исключение через C.
-`fvm_desktop_window_pump_keyboard` остаётся внутренней совместимой обёрткой
+[`fvm_desktop_window_pump_keyboard`](../frontend/common/window.h#L96) остаётся внутренней совместимой обёрткой
 над общей FIFO с нулевым stage origin.
 
 Плеер явно устанавливает Mouse cursor namespace для SWF5–8, listeners — SWF6–8;
@@ -78,7 +78,7 @@ v0.597 исправляет найденный при запуске готов�
 очереди PCM, worker и открытия аудиоустройства. Обычный режим со звуком и его
 ошибки не меняются. Прочие неподдержанные scene tags/actions по прежнему отклоняются.
 
-Userdata callback заимствованы из живого FVM_DesktopAudio плеера; очистка всегда
+Userdata callback заимствованы из живого [FVM_DesktopAudio](../frontend/common/audio.h#L39) плеера; очистка всегда
 снимает callback до обнуления этой памяти. sound_events учитывает и намеренно
 пропущенные звуковые уведомления, audio_device остаётся нулём. StopSounds успешен
 по существующему контракту пустого контекста: фиктивный output/stop binding не создаётся.
@@ -118,6 +118,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_PENDING_EVENTS` | macro / define | [frontend/common/window.h:9](../frontend/common/window.h#L9) |
+| `fvm_desktop_window_pump_input` | function | [frontend/common/window.h:92](../frontend/common/window.h#L92) |
+| `fvm_desktop_window_pump_keyboard` | function | [frontend/common/window.h:96](../frontend/common/window.h#L96) |
+| `FVM_DesktopAudio` | struct | [frontend/common/audio.h:39](../frontend/common/audio.h#L39) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

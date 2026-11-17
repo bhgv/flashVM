@@ -3,7 +3,7 @@
 [Русский](README.ru.md) · [Catalog](../../README.md#example-player-async_loading) ·
 [Contracts](../../../doc/BACKGROUND_TRANSFER.md) · [Sources](../../../doc/PLAYER_SOURCES.md).
 
-The C89 host selects [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40). Network child/form requests
+The C89 host selects [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46). Network child/form requests
 run on one FIFO worker at a time while the parent's frames, timers, input and GC
 safe points continue. Completed bytes are imported/decoded only on the owner.
 Startup and whole-root replacement still use the background runner's lifecycle;
@@ -54,13 +54,13 @@ in the transport guide. This example uses no mutable global provider setter.
 
 | API | Purpose, ownership and blocking |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Query default provider worker capability without network/display startup; custom callbacks are separate. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned scalar playback settings. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize caller-owned worker policy without starting a job. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter, immutable borrowed options and cooperative cancellation. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker adapter; rejects older unsafe global initialization. |
-| fvm_desktop_run_source_async | Synchronous whole-player call with nonblocking child/form delivery at owner safe points. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | End this SDK session only after joined jobs and window/audio cleanup. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Query default provider worker capability without network/display startup; custom callbacks are separate. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller-owned scalar playback settings. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize caller-owned worker policy without starting a job. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker adapter, immutable borrowed options and cooperative cancellation. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Curl worker adapter; rejects older unsafe global initialization. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Synchronous whole-player call with nonblocking child/form delivery at owner safe points. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | End this SDK session only after joined jobs and window/audio cleanup. |
 
 All stack descriptors and nested provider userdata remain live/immutable until
 return. No VM object crosses a worker boundary. Each active target stays pinned
@@ -68,3 +68,21 @@ until delivery or joined cancellation. Byte storage belongs to the job until
 owner import finishes, then release frees it. DNS can delay final join; no worker
 is forcibly killed or detached. Errors retain the strict player behavior rather
 than inventing unimplemented MovieClipLoader progress/failure events.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

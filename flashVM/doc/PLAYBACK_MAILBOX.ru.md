@@ -5,7 +5,7 @@
 
 ## Нативная основа с v0.713
 
-[FVM_DesktopPlaybackMailbox](../frontend/common/playback_mailbox.h#L12) хранит один mutex, последний запрос и копию скаляров/
+[FVM_DesktopPlaybackMailbox](../frontend/common/playback_mailbox.c#L14) хранит один mutex, последний запрос и копию скаляров/
 текста. Он не хранит context/root, управляемые значения, SDL-окно или callback
 вызывающего. Это интерфейс для контролирующего потока IDE: только владелец
 плеера входит в VM. Основа и её native-тесты добавлены в v0.713; адаптеры запуска
@@ -20,42 +20,42 @@
 
 ## API и ошибки
 
-[fvm_desktop_playback_snapshot_init](../frontend/common/playback_mailbox.h#L32)(out)` заполняет точный struct_size и нули;
+[fvm_desktop_playback_snapshot_init](../frontend/common/playback_mailbox.h#L34)(out)` заполняет точный struct_size и нули;
 возвращает 1 для ненулевого out, 0 для null. Не выделяет память и не запускает SDK.
-[FVM_DesktopPlaybackSnapshot](../frontend/common/playback_mailbox.h#L14) — полностью независимая копия, включая source с NUL.
+[FVM_DesktopPlaybackSnapshot](../frontend/common/playback_mailbox.h#L16) — полностью независимая копия, включая source с NUL.
 Её можно хранить после возврата/освобождения запуска и самого ящика. В ней нет
 скрытых указателей VM. paused/step_pending описывают последнее наблюдение владельца
 до применения возвращённой команды; pending/stop_requested читаются при poll.
 Это не мгновенное подтверждение применения post и не заморозка VM.
 
-[fvm_desktop_playback_mailbox_create](../frontend/common/playback_mailbox.h#L38)(out)` требует адрес выходного указателя,
+[fvm_desktop_playback_mailbox_create](../frontend/common/playback_mailbox.h#L41)(out)` требует адрес выходного указателя,
 возвращает OK, INVALID_ARGUMENT, OUT_OF_MEMORY или ERROR при отказе native mutex/
 квоты. При ошибке *out не меняется. Создаёт только native-память и mutex: без VM,
 окна, звукового устройства, сетевого запроса или worker. Одновременно разрешено
-не более [FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES](../frontend/common/playback_mailbox.h#L5) объектов. Резерв квоты
+не более [FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES](../frontend/common/playback_mailbox.h#L6) объектов. Резерв квоты
 откатывается при любом отказе. Один ящик предназначен для одного запуска.
 
-[fvm_desktop_playback_mailbox_post](../frontend/common/playback_mailbox.h#L47)(mailbox, command)` потокобезопасно заменяет
+[fvm_desktop_playback_mailbox_post](../frontend/common/playback_mailbox.h#L53)(mailbox, command)` потокобезопасно заменяет
 ожидающее намерение. Возвращает OK, INVALID_ARGUMENT для null/неизвестной команды
 или ERROR при отказе lock и для любой команды кроме STOP после STOP. Повторный
 STOP успешен. Память не выделяется, VM и callbacks не вызываются под mutex.
 
-[fvm_desktop_playback_mailbox_poll](../frontend/common/playback_mailbox.h#L52)(mailbox, out)` требует точный struct_size.
+[fvm_desktop_playback_mailbox_poll](../frontend/common/playback_mailbox.h#L60)(mailbox, out)` требует точный struct_size.
 Возвращает OK с согласованной копией; NOT_FOUND до первого наблюдения владельца;
 INVALID_ARGUMENT для null/неверного размера; ERROR при отказе lock. При любой
 ошибке весь out, включая padding, остаётся прежним. Блокируется только на коротком
 native mutex, не ждёт кадра/сети и не входит в VM. Скалярные счётчики сохраняют
 обычные правила текущего корня и всего запуска из PLAYBACK_CONTROL.ru.md.
 
-[fvm_desktop_playback_mailbox_stop_requested](../frontend/common/playback_mailbox.h#L57)(mailbox)` читает окончательную отмену
+[fvm_desktop_playback_mailbox_stop_requested](../frontend/common/playback_mailbox.h#L66)(mailbox)` читает окончательную отмену
 без потребления команды. Возвращает 1 для STOP, null или ошибки mutex; иначе 0.
 Доступен до появления первого снимка, в том числе при начальной загрузке.
 
-[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` возвращает число живых native-объектов без
-запуска SDK. [fvm_desktop_shutdown](../frontend/common/player.h#L54)()` возвращает ERROR, пока остаётся хотя бы один
+[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L83)()` возвращает число живых native-объектов без
+запуска SDK. [fvm_desktop_shutdown](../frontend/common/player.h#L65)()` возвращает ERROR, пока остаётся хотя бы один
 ящик, даже без открытого окна/задания; активный SDK при этом не изменяется.
 
-[fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L42)(mailbox)` возвращает OK, null тоже допустим.
+[fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L46)(mailbox)` возвращает OK, null тоже допустим.
 До вызова обязаны завершиться runner и все потоки post/poll/прочих обращений.
 Функция не дожидается чужих потоков. Одновременное использование/освобождение,
 повторное освобождение и гонка create/release с общим shutdown запрещены.
@@ -72,13 +72,13 @@ native mutex, не ждёт кадра/сети и не входит в VM. Ск
 
 ## Адаптеры запуска с v0.714
 
-[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L62)(state, userdata)` — callback владельца для
+[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L72)(state, userdata)` — callback владельца для
 control.notify; userdata равен ящику. Копирует наблюдение и возвращает намерение,
 не сохраняя и не разыменовывая заимствованные context/root. Неверный снимок/
 handle/source приводит к STOP. Без ожидающей команды возвращается KEEP.
 Публикация потребляет неокончательную команду; STOP остаётся для следующих вызовов.
 
-[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L66)(event, userdata)` — callback владельца
+[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L79)(event, userdata)` — callback владельца
 для load monitor. Возвращает ту же непотребляемую отмену, включая время до READY
 и блокирующее ожидание provider; null event/userdata или ошибка lock останавливают.
 PAUSE/RESUME/STEP ждут playback-уведомления и не приостанавливают provider.
@@ -120,3 +120,29 @@ endurance и полного отладчика остаётся открытой
 
 [Исполняемый C89/AS/SWF пример](../examples/player/playback_mailbox/README.ru.md):
 подтверждённые шаги из отдельного OS-потока, ранние ошибки, native/cross сборка.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../frontend/common/playback.h#L68) |
+| `fvm_desktop_playback_mailbox_active` | function | [frontend/common/playback_mailbox.h:83](../frontend/common/playback_mailbox.h#L83) |
+| `fvm_desktop_playback_mailbox_create` | function | [frontend/common/playback_mailbox.h:41](../frontend/common/playback_mailbox.h#L41) |
+| `fvm_desktop_playback_mailbox_load_notify` | function | [frontend/common/playback_mailbox.h:79](../frontend/common/playback_mailbox.h#L79) |
+| `FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES` | macro / define | [frontend/common/playback_mailbox.h:6](../frontend/common/playback_mailbox.h#L6) |
+| `fvm_desktop_playback_mailbox_notify` | function | [frontend/common/playback_mailbox.h:72](../frontend/common/playback_mailbox.h#L72) |
+| `fvm_desktop_playback_mailbox_poll` | function | [frontend/common/playback_mailbox.h:60](../frontend/common/playback_mailbox.h#L60) |
+| `fvm_desktop_playback_mailbox_post` | function | [frontend/common/playback_mailbox.h:53](../frontend/common/playback_mailbox.h#L53) |
+| `fvm_desktop_playback_mailbox_release` | function | [frontend/common/playback_mailbox.h:46](../frontend/common/playback_mailbox.h#L46) |
+| `fvm_desktop_playback_mailbox_stop_requested` | function | [frontend/common/playback_mailbox.h:66](../frontend/common/playback_mailbox.h#L66) |
+| `fvm_desktop_playback_snapshot_init` | function | [frontend/common/playback_mailbox.h:34](../frontend/common/playback_mailbox.h#L34) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `FVM_DesktopPlaybackMailbox` | struct | [frontend/common/playback_mailbox.c:14](../frontend/common/playback_mailbox.c#L14) |
+| `FVM_DesktopPlaybackSnapshot` | struct | [frontend/common/playback_mailbox.h:16](../frontend/common/playback_mailbox.h#L16) |
+<!-- source-links:end -->

@@ -38,13 +38,13 @@ UI, VM, доставка и очистка выполняются в поток�
 
 | C API | Назначение, владение и блокирование; руководство |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Проверка worker без I/O; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация структуры владельца; PLAYER_CONFIGURATION.md. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Подготовка структуры провайдера без запуска worker; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native adapter с заимствованной неизменной политикой и cooperative stop; SOCKET_TRANSPORT.md. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный curl adapter с проверкой безопасной global initialization; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Заимствует структуры до синхронного возврата; доставка child/form в безопасных точках; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершает SDK после возврата плеера и join; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Проверка worker без I/O; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация структуры владельца; PLAYER_CONFIGURATION.md. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Подготовка структуры провайдера без запуска worker; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native adapter с заимствованной неизменной политикой и cooperative stop; SOCKET_TRANSPORT.md. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Альтернативный curl adapter с проверкой безопасной global initialization; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Заимствует структуры до синхронного возврата; доставка child/form в безопасных точках; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершает SDK после возврата плеера и join; PLAYER_HOST_OWNERSHIP.md. |
 
 Контракты: [worker](../../../doc/BACKGROUND_TRANSFER.ru.md),
 [параметры](../../../doc/PLAYER_CONFIGURATION.ru.md),
@@ -74,7 +74,7 @@ close/error выполняется join, принудительного унич
 ```
 
 Генератор также создаёт [movie.inc](movie.inc), неизменяемый массив SWF, линкуемый
-с C-программой. Источник [FVM_DESKTOP_SOURCE_MEMORY](../../../frontend/common/source.h#L5) заимствует массив; размер берётся
+с C-программой. Источник [FVM_DESKTOP_SOURCE_MEMORY](../../../frontend/common/source.h#L6) заимствует массив; размер берётся
 через sizeof, не strlen. URL задаёт происхождение, стартовый ресурс не скачивается.
 Относительные slow/peer/fresh используют его сетевой каталог, в том числе после
 очистки содержимого. Явно заданный origin не подменяется cwd. Временный SWF-файл
@@ -109,3 +109,22 @@ child/root × URL/embedded. `--root` выбирает встроенный root 
 корень через loadMovieNum(..., "0", "GET") и ждёт относительный fresh.txt.
 Ожидаются только numbered_start.swf, numbered_next.swf, fresh.txt; never.txt и
 never.swf не запрашиваются. Остальные уровни и POST не поддерживаются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+| `FVM_DESKTOP_SOURCE_MEMORY` | macro / define | [frontend/common/source.h:6](../../../frontend/common/source.h#L6) |
+<!-- source-links:end -->

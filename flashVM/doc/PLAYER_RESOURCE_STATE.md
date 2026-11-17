@@ -9,14 +9,14 @@ SUBSCRIBE queues under a host-chosen path, for example `/timeline/state`.
 
 ## Snapshot and event contract
 
-[FVM_DesktopResourceSnapshot](../frontend/common/resource_state.h#L21) owns its source byte prefix and scalar fields. It
+[FVM_DesktopResourceSnapshot](../frontend/common/resource_state.h#L22) owns its source byte prefix and scalar fields. It
 contains no VM/context/root/value pointer. It remains usable after runner return
 and SDK teardown. Epoch starts at one at the first READY, increases for each new
 root READY (including whole-root navigation), never wraps, and is scoped to the
 adapter lifetime. TURN or TICK before READY returns BUSY. Source is copied up to
-[FVM_DESKTOP_STATE_SOURCE](../frontend/common/resource_state.h#L11) bytes with native NUL termination and explicit
-[FVM_DESKTOP_STATE_SOURCE_TRUNCATED](../frontend/common/resource_state.h#L12). Truncation is bytewise, not a promise of complete UTF-8 code
-points. Counters greater than Uint32 saturate with [FVM_DESKTOP_STATE_COUNTERS_TRUNCATED](../frontend/common/resource_state.h#L13); a value
+[FVM_DESKTOP_STATE_SOURCE](../frontend/common/resource_state.h#L12) bytes with native NUL termination and explicit
+[FVM_DESKTOP_STATE_SOURCE_TRUNCATED](../frontend/common/resource_state.h#L13). Truncation is bytewise, not a promise of complete UTF-8 code
+points. Counters greater than Uint32 saturate with [FVM_DESKTOP_STATE_COUNTERS_TRUNCATED](../frontend/common/resource_state.h#L14); a value
 exactly at Uint32 max is exact. The adapter reports received native counter
 values; it cannot reconstruct overflow that already occurred in the host.
 
@@ -56,18 +56,18 @@ The resource handler only reads the owner cache and never queries the VM.
 
 | Function | Contract |
 | --- | --- |
-| [fvm_desktop_resource_state_create](../frontend/common/resource_state.h#L41) | Dispatcher, canonical path, adapter output and target output. Allocates one fixed native object, registers one READ snapshot operation and borrows dispatcher until destroy. Outputs change only on OK. Invalid path/duplicate/registration limit propagate; allocation NOMEM. No SDK startup, grant or notify installation. Keep output storage separate and stable. |
-| [fvm_desktop_resource_state_observe](../frontend/common/resource_state.h#L50) | Adapter and borrowed legitimate playback notification. Copies scalars/source synchronously and never retains context/root. Requires exact descriptor size, non-NULL source, defined phase and 0/1 pause/step. READY increments epoch; TURN/TICK before READY BUSY. Publish READY/TICK or changed TURN policy, then commit cache. Errors leave cache intact; publication failure propagates. No allocation, pump, I/O, console or player policy change. |
-| [fvm_desktop_resource_state_read](../frontend/common/resource_state.h#L55) | Counted payload and native snapshot output. Decode complete versioned canonical integers and exact source extent. Unknown schema/flags, malformed integers, bad booleans/phase, embedded NUL, invalid truncation extent or trailing bytes INVALID and preserve output. No VM calls, borrowed result or allocation; suitable for a client with its own copied bytes. |
-| [fvm_desktop_resource_state_destroy](../frontend/common/resource_state.h#L61) | Pointer to adapter after notification/consumer users quiesce. Owner unregisters the exact generation, discards watches and frees only adapter storage, nulling pointer. BUSY during its resource callback; owner/registration errors preserve pointer. Queued old jobs later complete UNKNOWN and must still be taken/disconnected by the host. Dispatcher/session/SDK remain owned by host. |
+| [fvm_desktop_resource_state_create](../frontend/common/resource_state.h#L40) | Dispatcher, canonical path, adapter output and target output. Allocates one fixed native object, registers one READ snapshot operation and borrows dispatcher until destroy. Outputs change only on OK. Invalid path/duplicate/registration limit propagate; allocation NOMEM. No SDK startup, grant or notify installation. Keep output storage separate and stable. |
+| [fvm_desktop_resource_state_observe](../frontend/common/resource_state.h#L52) | Adapter and borrowed legitimate playback notification. Copies scalars/source synchronously and never retains context/root. Requires exact descriptor size, non-NULL source, defined phase and 0/1 pause/step. READY increments epoch; TURN/TICK before READY BUSY. Publish READY/TICK or changed TURN policy, then commit cache. Errors leave cache intact; publication failure propagates. No allocation, pump, I/O, console or player policy change. |
+| [fvm_desktop_resource_state_read](../frontend/common/resource_state.h#L59) | Counted payload and native snapshot output. Decode complete versioned canonical integers and exact source extent. Unknown schema/flags, malformed integers, bad booleans/phase, embedded NUL, invalid truncation extent or trailing bytes INVALID and preserve output. No VM calls, borrowed result or allocation; suitable for a client with its own copied bytes. |
+| [fvm_desktop_resource_state_destroy](../frontend/common/resource_state.h#L66) | Pointer to adapter after notification/consumer users quiesce. Owner unregisters the exact generation, discards watches and frees only adapter storage, nulling pointer. BUSY during its resource callback; owner/registration errors preserve pointer. Queued old jobs later complete UNKNOWN and must still be taken/disconnected by the host. Dispatcher/session/SDK remain owned by host. |
 
-The [FVM_DESKTOP_STATE_SNAPSHOT](../frontend/common/resource_state.h#L7) operation requires READ and an empty request. Before the first
+The [FVM_DESKTOP_STATE_SNAPSHOT](../frontend/common/resource_state.h#L8) operation requires READ and an empty request. Before the first
 successful observation it returns terminal BUSY; nonempty payload INVALID.
 The host grants READ and/or SUBSCRIBE explicitly and decides whether the source
 prefix is suitable for that session. SUBSCRIBE alone permits copied events.
 No session ID is accepted from a wire claim and no ambient filesystem is opened.
 
-Call observe before fvm_desktop_resource_control_notify in the same host notify.
+Call observe before [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L42) in the same host notify.
 That copies the state before returning the next command. Do not pump control
 operations outside their control notify: they retain the existing BUSY rule.
 Observation itself never pumps, so the control adapter's one-job-per-boundary
@@ -167,3 +167,24 @@ SDL2_DIR and player-jit.defs, then build flashvm_player_host and
 flashvm_example_frame_capture on desktop. Android requires its separately
 documented Activity/surface integration. Native target execution and acceptance
 remain separate work.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../frontend/common/resource_control.h#L42) |
+| `fvm_desktop_resource_state_create` | function | [frontend/common/resource_state.h:40](../frontend/common/resource_state.h#L40) |
+| `fvm_desktop_resource_state_destroy` | function | [frontend/common/resource_state.h:66](../frontend/common/resource_state.h#L66) |
+| `fvm_desktop_resource_state_observe` | function | [frontend/common/resource_state.h:52](../frontend/common/resource_state.h#L52) |
+| `fvm_desktop_resource_state_read` | function | [frontend/common/resource_state.h:59](../frontend/common/resource_state.h#L59) |
+| `FVM_DESKTOP_STATE_COUNTERS_TRUNCATED` | macro / define | [frontend/common/resource_state.h:14](../frontend/common/resource_state.h#L14) |
+| `FVM_DESKTOP_STATE_SNAPSHOT` | macro / define | [frontend/common/resource_state.h:8](../frontend/common/resource_state.h#L8) |
+| `FVM_DESKTOP_STATE_SOURCE` | macro / define | [frontend/common/resource_state.h:12](../frontend/common/resource_state.h#L12) |
+| `FVM_DESKTOP_STATE_SOURCE_TRUNCATED` | macro / define | [frontend/common/resource_state.h:13](../frontend/common/resource_state.h#L13) |
+| `FVM_DesktopResourceSnapshot` | struct | [frontend/common/resource_state.h:22](../frontend/common/resource_state.h#L22) |
+<!-- source-links:end -->

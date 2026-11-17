@@ -32,9 +32,9 @@ cmake --build build-player --target flashvm_example_configured_host --parallel
 
 | API | Назначение и владение |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализирует структуру [FVM_DesktopOptions](../../../frontend/common/options.h#L29) приложения, включая 100 процентов авторской частоты. Null возвращает 0; ресурсы не создаются |
-| [fvm_desktop_run](../../../frontend/common/player.h#L39) | Проверяет весь плейлист, затем синхронно загружает, играет и освобождает ресурсы. Массив и неизменные пути заимствуются до возврата. Коды 0/1/2 описаны в контракте |
-| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L17) | Ошибка аргументов/конфигурации до запуска |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализирует структуру [FVM_DesktopOptions](../../../frontend/common/options.h#L30) приложения, включая 100 процентов авторской частоты. Null возвращает 0; ресурсы не создаются |
+| [fvm_desktop_run](../../../frontend/common/player.h#L46) | Проверяет весь плейлист, затем синхронно загружает, играет и освобождает ресурсы. Массив и неизменные пути заимствуются до возврата. Коды 0/1/2 описаны в контракте |
+| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L18) | Ошибка аргументов/конфигурации до запуска |
 
 Пример выбирает interpreter, mute, два tick и явный FPS, оставляя percent по
 умолчанию. Он линкует flashvm_player_host — ту же статическую реализацию, что
@@ -42,7 +42,7 @@ cmake --build build-player --target flashvm_example_configured_host --parallel
 OS entrypoint в библиотеку не включён. Структура и строки принадлежат приложению.
 Runner владеет временной VM, [GC:] корнями и native-ресурсами; управляемые объекты
 наружу не выходят. Статический текст ошибки освобождать нельзя. Запуск — на
-основном UI-потоке, без рекурсии и параллельных вызовов. Финальный [fvm_desktop_shutdown](../../../frontend/common/player.h#L54)
+основном UI-потоке, без рекурсии и параллельных вызовов. Финальный [fvm_desktop_shutdown](../../../frontend/common/player.h#L65)
 принадлежит встраивающему приложению.
 
 Ограничения: синхронное воспроизведение, текущая диагностика через стандартные
@@ -54,3 +54,19 @@ Runner владеет временной VM, [GC:] корнями и native-ре
 [Параметры](../../../frontend/common/options.h) ·
 [Реализация](../../../frontend/common/player.c) ·
 [Тестовый фильм](../muted_stream/README.ru.md)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_DESKTOP_EXIT_ARGUMENT` | macro / define | [frontend/common/player.h:18](../../../frontend/common/player.h#L18) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run` | function | [frontend/common/player.h:46](../../../frontend/common/player.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../../../frontend/common/options.h#L30) |
+<!-- source-links:end -->

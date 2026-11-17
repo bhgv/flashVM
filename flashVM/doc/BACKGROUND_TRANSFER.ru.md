@@ -10,12 +10,12 @@ Null callback отключает отмену, ненулевой результ
 callback/состояние до возврата. Callback выполняется на потоке загрузки: он должен
 быть коротким, thread-safe, без исключений, VM/SDL UI и удаления провайдера.
 
-FVM_SocketHTTPRequest в [socket_http.h](../frontend/common/socket_http.h)
+[FVM_SocketHTTPRequest](../frontend/common/socket_http.h#L61) в [socket_http.h](../frontend/common/socket_http.h)
 содержит неизменённые socket options и control.
-[fvm_desktop_socket_request_init](../frontend/common/socket_http.h#L56) инициализирует все поля без startup: 1 — успех,
-0 — null. [fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L60) имеет обычную сигнатуру fetch;
+[fvm_desktop_socket_request_init](../frontend/common/socket_http.h#L69) инициализирует все поля без startup: 1 — успех,
+0 — null. [fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L75) имеет обычную сигнатуру fetch;
 userdata — null для defaults либо указатель request.
-[fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L30) из [http.h](../frontend/common/http.h)
+[fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L41) из [http.h](../frontend/common/http.h)
 принимает null либо [FVM_NetControl](../ports/network/socket.h#L23). Прежний libcurl callback по-прежнему
 отклоняет ненулевой userdata.
 
@@ -34,20 +34,20 @@ Loopback-тесты отменяют запрос до connect, молчащий
 ## Фоновые задания C89 с v0.681
 
 [transfer.h](../frontend/common/transfer.h) предоставляет opaque
-[FVM_DesktopTransfer](../frontend/common/transfer.h#L37) и структуры [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L30)/View.
-[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L50) задаёт max_bytes=64MiB без провайдера: 1 — успех,
-0 — null. Нужен worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L24) и необязательный immutable
+[FVM_DesktopTransfer](../frontend/common/transfer.c#L14) и структуры [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L39)/View.
+[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L63) задаёт max_bytes=64MiB без провайдера: 1 — успех,
+0 — null. Нужен worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L27) и необязательный immutable
 userdata; callback расширяет обычный fetch явным cancellation control. VM-объекты,
 managed strings и UI-объекты не передаются потоку. Импорт байтов выполняет owner.
 
-[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L54)(reference,base,options,out) копирует ограниченные строки
+[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L69)(reference,base,options,out) копирует ограниченные строки
 и options, резервирует один из 64 живых handles этого SDK и запускает SDL worker.
 Userdata и вложенные строки/CA заимствованы до release. max_bytes: 1..64MiB.
 Ошибки: INVALID_ARGUMENT, ERROR при квоте, OUT_OF_MEMORY при allocation/thread.
 *out при ошибке не меняется. Video/audio не инициализируются; provider/network
 не выполняются на вызывающем потоке.
 
-[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L66) копирует view под mutex: OK либо INVALID_ARGUMENT для
+[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L88) копирует view под mutex: OK либо INVALID_ARGUMENT для
 null. PENDING: result=NOT_FOUND, изменяемые байты/адрес не выдаются. DONE:
 immutable counted bytes (допустимо пустое тело) и непустой provenance, заимствованы
 до release. FAILED: точная первая ошибка sink/provider без payload. CANCELLED:
@@ -55,20 +55,20 @@ ERROR без payload. received сохраняет накопленный progres
 ошибочного/отменённого буфера. Игнорирование ошибки sink провайдером не превращается
 в успех. Пустой/неограниченный NUL provenance — ошибка.
 
-[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L75) возвращает 1 для pending, 0 для terminal/null;
+[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L100) возвращает 1 для pending, 0 для terminal/null;
 не блокирует, не освобождает storage и не отзывает готовый view. Отмена до
 terminal publication побеждает поздний успех provider.
-[fvm_desktop_transfer_release](../frontend/common/transfer.h#L79) отменяет, join и освобождает на создавшем потоке:
+[fvm_desktop_transfer_release](../frontend/common/transfer.h#L106) отменяет, join и освобождает на создавшем потоке:
 OK, null также OK, другой поток INVALID_ARGUMENT. Некоперативный provider/DNS
 может задержать join. Нет detach/forced kill. Нельзя одновременно release и
 poll/cancel или выгружать библиотеку с активным worker. Все borrowed данные
 сохраняются до возврата release.
 
-[fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) считает живые handles, включая готовые до release.
-[fvm_desktop_shutdown](../frontend/common/player.h#L54) отказывает, пока хотя бы один жив, даже без video/audio.
+[fvm_desktop_transfer_active](../frontend/common/transfer.h#L110) считает живые handles, включая готовые до release.
+[fvm_desktop_shutdown](../frontend/common/player.h#L65) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
-провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L65) принимает native options либо
-null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L35) требует null userdata и libcurl с флагом
+провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L86) принимает native options либо
+null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L52) требует null userdata и libcurl с флагом
 CURL_VERSION_THREADSAFE; старые global init/cleanup возвращают UNSUPPORTED.
 Синхронный API сохраняет прежние SDK и правила координации.
 
@@ -81,16 +81,16 @@ pending view, поздняя отмена, ошибки sink/provider, игно�
 Явный режим: `--background-loads` либо новые C API из
 [background.h](../frontend/common/background.h). Прежние синхронные API и layout
 options/source/loader сохраняются. Старые callbacks не переносятся в другой поток
-неявно. CLI переводит флаг в [fvm_desktop_run_background](../frontend/common/background.h#L34); прежний scalar-options
+неявно. CLI переводит флаг в [fvm_desktop_run_background](../frontend/common/background.h#L39); прежний scalar-options
 parser не имеет поля для него. IDE вызывает background runner либо job API.
 
 ```sh
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L13):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L22) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L14):
 transfer defaults без провайдера, одну загрузку, 1 — успех, 0 — null, без startup.
-[fvm_desktop_run_source_background](../frontend/common/background.h#L28) принимает обычные options/source, обязательный
+[fvm_desktop_run_source_background](../frontend/common/background.h#L31) принимает обычные options/source, обязательный
 background loader и необязательный static error out. Нужны worker-safe fetch,
 max_bytes=1..64MiB, max_loads=1..1024. Loader, URL/options/memory input и вложенный
 immutable userdata заимствованы до синхронного возврата. Коды: 0 — успех/закрытие,
@@ -98,7 +98,7 @@ immutable userdata заимствованы до синхронного возв
 до worker/VM/window. Частичные ошибочные данные не импортируются. Import/setters/GC
 остаются на основном потоке.
 
-[fvm_desktop_run_background](../frontend/common/background.h#L34) обслуживает playlist с выбранным native/thread-safe
+[fvm_desktop_run_background](../frontend/common/background.h#L39) обслуживает playlist с выбранным native/thread-safe
 libcurl provider. Без провайдера local playback использует обычный runner, URL
 остаётся unsupported. Дубликат CLI-флага отклоняется; после `--` он становится
 буквальным именем файла. Help/version не запускают network/file/VM/display.
@@ -136,10 +136,10 @@ consumers/transfer fixtures слинкованы, без запуска. Пол�
 
 ## Асинхронная доставка дочерних SWF и форм (v0.683)
 
-`--async-loads --loads 8`, [fvm_desktop_run_source_async](../frontend/common/background.h#L40) и
-[fvm_desktop_run_async](../frontend/common/background.h#L45) продолжают кадры, таймеры, ввод и GC во время сетевой
+`--async-loads --loads 8`, [fvm_desktop_run_source_async](../frontend/common/background.h#L46) и
+[fvm_desktop_run_async](../frontend/common/background.h#L53) продолжают кадры, таймеры, ввод и GC во время сетевой
 загрузки дочернего SWF или ответа loadVariables. Тот же
-`FVM_DesktopBackgroundLoader` задаёт безопасный для worker провайдер и бюджеты.
+[`FVM_DesktopBackgroundLoader`](../frontend/common/background.h#L14) задаёт безопасный для worker провайдер и бюджеты.
 Прежние структуры options/source/loader и синхронные API сохранены.
 Одновременно выполняется один сетевой запрос; остальные сохраняют FIFO и
 собственные базы адресов. Цель ожидающего запроса удерживается явным GC pin.
@@ -158,7 +158,7 @@ Worker публикует неизменяемые байты только по�
 MovieClipLoader пока отсутствуют; сетевые ошибки/ошибки импорта завершают playback.
 DNS и несотрудничающий провайдер могут задержать итоговый join.
 
-[fvm_desktop_background_supported](../frontend/common/background.h#L49)() и `background_provider=yes/no` в `--version`
+[fvm_desktop_background_supported](../frontend/common/background.h#L58)() и `background_provider=yes/no` в `--version`
 проверяют штатный worker-провайдер без запуска VM/окна/сети. Пользовательский
 callback имеет отдельный контракт. Небезопасная старая глобальная инициализация
 libcurl запрещена для worker; при отсутствии поддержки тесты явно пропускаются
@@ -179,15 +179,15 @@ C-код player/transfer прошёл UBSan на настоящем async HTTP �
 
 ## Общий кооперативный дедлайн задания (v0.684)
 
-[fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L62) добавляет общий бюджет в миллисекундах без
+[fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L80) добавляет общий бюджет в миллисекундах без
 изменения существующих options/view и прежнего begin без дедлайна. Ноль отключает
-бюджет; максимум — [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L13). Неверный бюджет сохраняет
+бюджет; максимум — [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L14). Неверный бюджет сохраняет
 *out и не запускает worker. Беззнаковое вычитание SDL ticks учитывает переполнение.
 Бюджет включает работу провайдера со старта, а не только отдельные socket операции.
 
 Истечение запрашивает кооперативную отмену: проверяется poll, sink, cancellation
 callback и итоговая публикация. Поздний успешный ответ не публикует байты.
-[FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L12) содержит [FVM_ERROR](../include/flashvm/flashvm.h#L45), без данных/адреса, с сохранением
+[FVM_DESKTOP_TRANSFER_TIMED_OUT](../frontend/common/transfer.h#L13) содержит [FVM_ERROR](../include/flashvm/flashvm.h#L45), без данных/адреса, с сохранением
 received. Побеждает первая зафиксированная причина cancel/deadline; готовый view
 не меняется. Pending может сохраняться после дедлайна, пока DNS или пользовательский
 код не вернулся. Release всегда делает join: это не принудительное прерывание
@@ -208,6 +208,32 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../frontend/common/background.h#L58) |
+| `fvm_desktop_http_fetch_controlled` | function | [frontend/common/http.h:41](../frontend/common/http.h#L41) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../frontend/common/http.h#L52) |
+| `fvm_desktop_run_async` | function | [frontend/common/background.h:53](../frontend/common/background.h#L53) |
+| `fvm_desktop_run_background` | function | [frontend/common/background.h:39](../frontend/common/background.h#L39) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../frontend/common/background.h#L46) |
+| `fvm_desktop_run_source_background` | function | [frontend/common/background.h:31](../frontend/common/background.h#L31) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_fetch_controlled` | function | [frontend/common/socket_http.h:75](../frontend/common/socket_http.h#L75) |
+| `fvm_desktop_socket_request_init` | function | [frontend/common/socket_http.h:69](../frontend/common/socket_http.h#L69) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../frontend/common/socket_http.h#L86) |
+| `fvm_desktop_transfer_active` | function | [frontend/common/transfer.h:110](../frontend/common/transfer.h#L110) |
+| `fvm_desktop_transfer_begin` | function | [frontend/common/transfer.h:69](../frontend/common/transfer.h#L69) |
+| `fvm_desktop_transfer_begin_timed` | function | [frontend/common/transfer.h:80](../frontend/common/transfer.h#L80) |
+| `fvm_desktop_transfer_cancel` | function | [frontend/common/transfer.h:100](../frontend/common/transfer.h#L100) |
+| `FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS` | macro / define | [frontend/common/transfer.h:14](../frontend/common/transfer.h#L14) |
+| `fvm_desktop_transfer_options_init` | function | [frontend/common/transfer.h:63](../frontend/common/transfer.h#L63) |
+| `fvm_desktop_transfer_poll` | function | [frontend/common/transfer.h:88](../frontend/common/transfer.h#L88) |
+| `fvm_desktop_transfer_release` | function | [frontend/common/transfer.h:106](../frontend/common/transfer.h#L106) |
+| `FVM_DESKTOP_TRANSFER_TIMED_OUT` | macro / define | [frontend/common/transfer.h:13](../frontend/common/transfer.h#L13) |
+| `FVM_DesktopBackgroundLoader` | struct | [frontend/common/background.h:14](../frontend/common/background.h#L14) |
+| `FVM_DesktopTransfer` | struct | [frontend/common/transfer.c:14](../frontend/common/transfer.c#L14) |
+| `FVM_DesktopTransferFetch` | callback typedef | [frontend/common/transfer.h:27](../frontend/common/transfer.h#L27) |
+| `FVM_DesktopTransferOptions` | struct | [frontend/common/transfer.h:39](../frontend/common/transfer.h#L39) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
+| `FVM_SocketHTTPRequest` | struct | [frontend/common/socket_http.h:61](../frontend/common/socket_http.h#L61) |
 <!-- source-links:end -->

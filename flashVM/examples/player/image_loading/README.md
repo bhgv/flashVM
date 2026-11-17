@@ -55,13 +55,13 @@ until import; decoded bitmap pixels belong to the clip graph afterwards.
 
 | C API | Purpose, ownership and blocking; guide |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Query worker support without I/O; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Fill caller scalar descriptor; PLAYER_CONFIGURATION.md. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Fill caller provider descriptor without job creation; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter with borrowed policy and cooperative stop; SOCKET_TRANSPORT.md. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate curl worker adapter with global-safety check; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Borrow descriptors through synchronous owner playback; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | End SDK after joined jobs/window cleanup; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Query worker support without I/O; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Fill caller scalar descriptor; PLAYER_CONFIGURATION.md. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Fill caller provider descriptor without job creation; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker adapter with borrowed policy and cooperative stop; SOCKET_TRANSPORT.md. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Alternate curl worker adapter with global-safety check; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Borrow descriptors through synchronous owner playback; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | End SDK after joined jobs/window cleanup; PLAYER_HOST_OWNERSHIP.md. |
 
 Limits: static full-canvas GIF89a only; GIF87a/animation and root image startup
 remain unsupported. Source SWF profiles and byte/dimension bounds apply. No synthetic
@@ -106,3 +106,21 @@ same regenerated payload.
 [Full counter/version contract](../../../doc/MOVIECLIP_CONTENT_INFO.md) /
 [RU](../../../doc/MOVIECLIP_CONTENT_INFO.ru.md). Unknown internal-symbol counts and
 progressive loader/event acceptance remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

@@ -40,7 +40,7 @@ the common epoch, including category totals from preceding source segments.
 
 ## Desktop and example
 
-`fvm_desktop_audio_mix_info` holds the producer mutex and applies sequence EOF
+[`fvm_desktop_audio_mix_info`](../frontend/common/audio.h#L159) holds the producer mutex and applies sequence EOF
 policy (a later prepared header means sequence EOF is false). Mixed worker refill,
 resume/completion and public stream diagnostics use the same paired observation.
 Player --stats reads origin categories from this result. The existing standalone
@@ -111,6 +111,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_mix_info` | function | [frontend/common/audio.h:159](../frontend/common/audio.h#L159) |
 | `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:162](../include/flashvm/swf_stream_output.h#L162) |
 | `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:28](../include/flashvm/swf_stream_output.h#L28) |
 <!-- source-links:end -->

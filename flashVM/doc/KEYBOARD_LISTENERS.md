@@ -116,11 +116,11 @@ receiving context. Serializing the native Key namespace remains unsupported.
 ## SDL event queue
 
 The main-thread window adapter copies supported key transitions into a native
-shared key/pointer FIFO of `FVM_DESKTOP_PENDING_EVENTS` (128) copied events. It retains presses,
+shared key/pointer FIFO of [`FVM_DESKTOP_PENDING_EVENTS`](../frontend/common/window.h#L9) (128) copied events. It retains presses,
 releases and repeats even when all occur between movie ticks. Unsupported SDL
 key symbols do not enqueue notifications. No VM code runs in SDL event collection.
 
-`fvm_desktop_window_pump_input` runs on the owning thread before the next tick,
+[`fvm_desktop_window_pump_input`](../frontend/common/window.h#L92) runs on the owning thread before the next tick,
 then the player publishes final HostInput/polling state and advances the movie.
 The pump processes only its entry batch; recursively pumping is invalid. Focus
 loss/background cancels pending transitions and clears held/codes/toggles without
@@ -166,6 +166,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_PENDING_EVENTS` | macro / define | [frontend/common/window.h:9](../frontend/common/window.h#L9) |
+| `fvm_desktop_window_pump_input` | function | [frontend/common/window.h:92](../frontend/common/window.h#L92) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |

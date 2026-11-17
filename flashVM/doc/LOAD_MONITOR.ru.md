@@ -3,10 +3,10 @@
 [English](LOAD_MONITOR.md) · [Фоновые задания](BACKGROUND_TRANSFER.ru.md) ·
 [Пояснённый пример](../examples/player/monitored_loading/README.ru.md).
 
-[fvm_desktop_load_monitor_init](../frontend/common/load_monitor.h#L49) инициализирует [FVM_DesktopLoadMonitor](../frontend/common/load_monitor.h#L39): async child/form,
-без дедлайна и callback. [fvm_desktop_run_source_monitored](../frontend/common/load_monitor.h#L57) принимает прежние options,
+[fvm_desktop_load_monitor_init](../frontend/common/load_monitor.h#L53) инициализирует [FVM_DesktopLoadMonitor](../frontend/common/load_monitor.h#L43): async child/form,
+без дедлайна и callback. [fvm_desktop_run_source_monitored](../frontend/common/load_monitor.h#L63) принимает прежние options,
 source, background loader и эту новую политику. Старые структуры/API сохранены.
-asynchronous: 0 или 1; timeout_ms: 0 (без лимита) либо до [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L13).
+asynchronous: 0 или 1; timeout_ms: 0 (без лимита) либо до [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L14).
 Проверка предшествует notify/worker/device. Статусы: 0 успех/остановка, 1 playback error,
 2 неверный ввод.
 
@@ -16,14 +16,14 @@ asynchronous: 0 или 1; timeout_ms: 0 (без лимита) либо до [FVM
 старт и полную root-замену. Встроенный буфер не создаёт сетевого события; сетевые
 потомки создают. FIFO/бюджет загрузок общие.
 
-[FVM_DesktopLoadEvent](../frontend/common/load_monitor.h#L21) заимствован только на время notify. reference/base — копии
+[FVM_DesktopLoadEvent](../frontend/common/load_monitor.h#L22) заимствован только на время notify. reference/base — копии
 запроса, location ненулевой только для FETCHED. received — байты тела провайдера,
 не total/wire size. BEGIN/WAIT дают NOT_FOUND. FETCHED означает полный успех fetch/sink
 до импорта VM: ошибки импорта/скрипта ещё могут завершить playback без второго
 transport события. VM-указателей нет. Это уведомления C-хосту, не события Flash
 MovieClipLoader или script lifecycle.
 
-[FVM_DesktopLoadNotify](../frontend/common/load_monitor.h#L37) выполняется на потоке runner вне VM callbacks, включая
+[FVM_DesktopLoadNotify](../frontend/common/load_monitor.h#L39) выполняется на потоке runner вне VM callbacks, включая
 старт до появления SDL окна. Разрешён собственный progress UI хоста. Нельзя входить
 в VM, рекурсивно запускать runner, уничтожать SDK/provider state, бросать исключения
 через C или перехватывать SDL события активного окна плеера. WAIT зависит от работы
@@ -45,7 +45,7 @@ runtime/device acceptance остаются открытыми.
 
 ## Адаптеры playlist и консоли (v0.686)
 
-[fvm_desktop_run_monitored](../frontend/common/load_monitor.h#L64)(options, monitor, error)` выбирает штатный worker-провайдер
+[fvm_desktop_run_monitored](../frontend/common/load_monitor.h#L71)(options, monitor, error)` выбирает штатный worker-провайдер
 для playlist. ID начинаются заново для каждого source; stop завершает весь playlist.
 Без сетевого провайдера локальные файлы воспроизводятся, URL не поддерживается.
 Source API сохраняет явное подключение собственного провайдера.
@@ -69,7 +69,7 @@ FAILED, CANCELLED, TIMED_OUT; виды 1..3: ROOT, CHILD, VARIABLES. Result — 
 по-прежнему могут называть URL фильма. Help/version работают без устройств, включая
 корректные monitor options. Отдельной реализации сети/планировщика в CLI нет.
 
-Owner проверяет [fvm_desktop_transfer_stop_requested](../frontend/common/transfer.h#L72), даже если job ещё PENDING.
+Owner проверяет [fvm_desktop_transfer_stop_requested](../frontend/common/transfer.h#L95), даже если job ещё PENDING.
 После дедлайна новые VM turns прекращаются, затем выполняется join: медленное
 подтверждение отмены провайдером больше не продлевает исполнение скрипта. Публичный
 view остаётся PENDING до выхода worker, изменяемые байты не публикуются. Уведомление
@@ -97,5 +97,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_run_monitored` | function | [frontend/common/load_monitor.h:71](../frontend/common/load_monitor.h#L71) |
+| `fvm_desktop_run_source_monitored` | function | [frontend/common/load_monitor.h:63](../frontend/common/load_monitor.h#L63) |
+| `FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS` | macro / define | [frontend/common/transfer.h:14](../frontend/common/transfer.h#L14) |
+| `fvm_desktop_transfer_stop_requested` | function | [frontend/common/transfer.h:95](../frontend/common/transfer.h#L95) |
+| `FVM_DesktopLoadEvent` | struct | [frontend/common/load_monitor.h:22](../frontend/common/load_monitor.h#L22) |
+| `FVM_DesktopLoadMonitor` | struct | [frontend/common/load_monitor.h:43](../frontend/common/load_monitor.h#L43) |
+| `FVM_DesktopLoadNotify` | callback typedef | [frontend/common/load_monitor.h:39](../frontend/common/load_monitor.h#L39) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

@@ -52,12 +52,12 @@ policy.ca_file для явного PEM trust. Static/shared SDK, target CPU/tool
 
 | API | Purpose / Назначение |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Default worker capability, no network/window startup. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller playback settings. |
-| [fvm_desktop_network_policy_init](../../../frontend/common/network_loader.h#L13) | Initialize redirect/deadline/trust policy, including provider-less SDKs. |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Async delivery and caller-owned observer policy. |
-| [fvm_desktop_run_source_network](../../../frontend/common/network_loader.h#L22) | Whole-player source call; default provider honors HTTP policy on every logical resource. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Cleanup after workers join and owner disposes the active view. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Default worker capability, no network/window startup. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller playback settings. |
+| [fvm_desktop_network_policy_init](../../../frontend/common/network_loader.h#L16) | Initialize redirect/deadline/trust policy, including provider-less SDKs. |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Async delivery and caller-owned observer policy. |
+| [fvm_desktop_run_source_network](../../../frontend/common/network_loader.h#L27) | Whole-player source call; default provider honors HTTP policy on every logical resource. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Cleanup after workers join and owner disposes the active view. |
 
 Для внешнего HTTPS сервера пример принимает явный PEM через FLASHVM_CA_FILE:
 это настройка example host, не глобальная настройка SDK.
@@ -69,3 +69,20 @@ FLASHVM_CA_FILE=/path/to/ca.pem ./build-redirect/frontend/flashvm_example_redire
 CLI использует --http-ca-file PATH, C/IDE — policy.ca_file. Локальный serve.py намеренно
 plain HTTP, TLS termination в нём нет. Trust settings неизменны/заимствованы до возврата;
 каждый новый redirect destination проверяет сертификат заново.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_network_policy_init` | function | [frontend/common/network_loader.h:16](../../../frontend/common/network_loader.h#L16) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_network` | function | [frontend/common/network_loader.h:27](../../../frontend/common/network_loader.h#L27) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+<!-- source-links:end -->

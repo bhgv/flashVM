@@ -20,8 +20,8 @@ video/events, не читает очередь SDL приложения, не з
 
 | Функция | Аргументы и назначение |
 | --- | --- |
-| [fvm_desktop_run_source_offscreen](../frontend/common/frame.h#L95) | Обязательны options, source и frame observer; loader/control и error необязательны. Нулевой loader сохраняет обычный бюджет только стартовой загрузки; дочерним запросам нужен явный loader. |
-| [fvm_desktop_run_source_background_offscreen](../frontend/common/frame.h#L100) | Обязательны options, source, background provider, load monitor и frame observer; control/error необязательны. Monitor выбирает асинхронные проходы владельца либо блокирующее ожидание ресурсов; явный provider поставляет стартовые и дочерние байты. |
+| [fvm_desktop_run_source_offscreen](../frontend/common/frame.h#L106) | Обязательны options, source и frame observer; loader/control и error необязательны. Нулевой loader сохраняет обычный бюджет только стартовой загрузки; дочерним запросам нужен явный loader. |
+| [fvm_desktop_run_source_background_offscreen](../frontend/common/frame.h#L116) | Обязательны options, source, background provider, load monitor и frame observer; control/error необязательны. Monitor выбирает асинхронные проходы владельца либо блокирующее ожидание ресурсов; явный provider поставляет стартовые и дочерние байты. |
 
 Выполнение синхронное на потоке владельца VM. Сохраняются FILE/MEMORY/URL,
 разрешение origin, смена корня, таймеры, GC safe points, дедлайны/отмена и
@@ -91,3 +91,16 @@ interpreter/JIT проверяют белый начальный растр, ш�
 корня, файлы/linked-буфер/HTTP и отмену загрузки при ошибке observer. Прежние
 native-window тесты с dummy video проверяются отдельно. Эти результаты не
 являются приёмкой native устройств Windows/macOS/Android.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_run_source_background_offscreen` | function | [frontend/common/frame.h:116](../frontend/common/frame.h#L116) |
+| `fvm_desktop_run_source_offscreen` | function | [frontend/common/frame.h:106](../frontend/common/frame.h#L106) |
+<!-- source-links:end -->

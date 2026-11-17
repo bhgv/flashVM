@@ -1,7 +1,7 @@
 # Ограниченная обработка событий SDL
 
 [English](PLAYER_EVENT_FAIRNESS.md). С v0.658 один вызов
-[`fvm_desktop_window_events`](../frontend/common/window.h#L59) обрабатывает не более 64 записей SDL. При достижении
+[`fvm_desktop_window_events`](../frontend/common/window.h#L68) обрабатывает не более 64 записей SDL. При достижении
 предела он возвращается без ожидания, оставляя остальную очередь. Проигрыватель
 может доставить ввод, опросить таймеры, выполнить безопасный шаг GC и продолжить
 кадры. Поток window/expose/user events не удерживает хост в бесконечном drain.
@@ -63,3 +63,15 @@ Linux RISC-V64 и Windows x64 прежней документированной 
 программы не запускались. [Происхождение SDK](PLAYER_RECOVERY.ru.md#проверки-серии).
 Физический ввод/курсор, Android/macOS, GPU-loss, длительная нагрузка, полный core
 и новый sanitizer-прогон не заявляются. Все девять стадий остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_window_events` | function | [frontend/common/window.h:68](../frontend/common/window.h#L68) |
+<!-- source-links:end -->

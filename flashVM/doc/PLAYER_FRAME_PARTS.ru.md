@@ -7,7 +7,7 @@ RGBA-байты с текущими правами сессии и committed bou
 
 ## API и владение
 
-[`fvm_desktop_resource_frame_write_part`](../frontend/common/resource_frame.h#L110) принимает adapter, доверенную session,
+[`fvm_desktop_resource_frame_write_part`](../frontend/common/resource_frame.h#L116) принимает adapter, доверенную session,
 lease, exchange, режим FILE/LIVE, относительный Uint32 time_ms, номер части,
 буфер/ёмкость/used. Сначала проверяются текущие READ-права ресурса и точные
 поколение/владелец lease. Одного номера недостаточно. Все вызовы сериализует
@@ -132,5 +132,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_resource_frame_write_part` | function | [frontend/common/resource_frame.h:116](../frontend/common/resource_frame.h#L116) |
 | `fvm_scontrol_active` | function | [include/flashvm/scontrol.h:132](../include/flashvm/scontrol.h#L132) |
 <!-- source-links:end -->

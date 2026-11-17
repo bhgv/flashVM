@@ -45,13 +45,32 @@ Cross-compilation is not target execution. Dummy SDL is protocol coverage only.
 
 | API | Ownership / Владение |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Default worker capability, no network/window startup. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller playback scalars. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize caller worker/byte/load policy. |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Initialize async delivery, zero deadline and no callback. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Worker-safe native provider; nested userdata borrowed through return. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker-safe curl alternative, requires thread-safe global SDK. |
-| [fvm_desktop_run_source_monitored](../../../frontend/common/load_monitor.h#L57) | Whole-player call; notify runs on owner, provider on worker. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Cleanup only after joined workers/window/audio disposal. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Default worker capability, no network/window startup. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller playback scalars. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize caller worker/byte/load policy. |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Initialize async delivery, zero deadline and no callback. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Worker-safe native provider; nested userdata borrowed through return. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Worker-safe curl alternative, requires thread-safe global SDK. |
+| [fvm_desktop_run_source_monitored](../../../frontend/common/load_monitor.h#L63) | Whole-player call; notify runs on owner, provider on worker. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Cleanup only after joined workers/window/audio disposal. |
 
 The same policy is available through the [CLI/playlist adapter](../../../doc/LOAD_MONITOR.md#playlist-and-console-adapters-v0686).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_monitored` | function | [frontend/common/load_monitor.h:63](../../../frontend/common/load_monitor.h#L63) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

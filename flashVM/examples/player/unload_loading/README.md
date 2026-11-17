@@ -52,18 +52,18 @@ All calls use the native UI/VM owner thread. The synchronous player call borrows
 stack descriptors, URL and provider userdata until return. Workers only manipulate
 native bytes; the owner pins managed targets and joins workers before unpinning.
 The script only queues unloading; the owner commits it after leaving VM execution.
-No script value or VM pointer enters the network worker. [fvm_desktop_shutdown](../../../frontend/common/player.h#L54)
+No script value or VM pointer enters the network worker. [fvm_desktop_shutdown](../../../frontend/common/player.h#L65)
 ends the SDK session after all request and window cleanup.
 
 | C API | Purpose, ownership and blocking; guide |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Query worker capability without starting I/O; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned scalar settings; PLAYER_CONFIGURATION.md. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize caller-owned provider policy without a worker; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter with borrowed immutable policy and cooperative stop; SOCKET_TRANSPORT.md. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate worker adapter; checks safe curl global initialization; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Borrow descriptors throughout synchronous playback; child/form delivery occurs at owner safe points; BACKGROUND_TRANSFER.md. |
-| `fvm_desktop_shutdown` | End native SDK ownership only after synchronous return and joined jobs; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Query worker capability without starting I/O; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller-owned scalar settings; PLAYER_CONFIGURATION.md. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize caller-owned provider policy without a worker; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker adapter with borrowed immutable policy and cooperative stop; SOCKET_TRANSPORT.md. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Alternate worker adapter; checks safe curl global initialization; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Borrow descriptors throughout synchronous playback; child/form delivery occurs at owner safe points; BACKGROUND_TRANSFER.md. |
+| [`fvm_desktop_shutdown`](../../../frontend/common/player.h#L65) | End native SDK ownership only after synchronous return and joined jobs; PLAYER_HOST_OWNERSHIP.md. |
 
 Detailed [background policy](../../../doc/BACKGROUND_TRANSFER.md),
 [scalar settings](../../../doc/PLAYER_CONFIGURATION.md),
@@ -94,7 +94,7 @@ The same executable can skip fetching its startup SWF:
 ```
 
 The generator also emits [movie.inc](movie.inc): immutable counted SWF bytes linked
-into the C program. `source.kind` selects [FVM_DESKTOP_SOURCE_MEMORY](../../../frontend/common/source.h#L5), `source.bytes`
+into the C program. `source.kind` selects [FVM_DESKTOP_SOURCE_MEMORY](../../../frontend/common/source.h#L6), `source.bytes`
 borrows that array, and `source.size` uses sizeof rather than strlen. The supplied
 URL is provenance, not a fetched startup resource. Relative slow/peer/fresh URLs
 still resolve under its network directory, including after content unloading.
@@ -137,3 +137,22 @@ It cancels earlier child/root requests through unloadMovieNum(0), loads the new
 root with loadMovieNum(..., "0", "GET"), and waits for relative fresh.txt data.
 Expected requests: numbered_start.swf, numbered_next.swf, fresh.txt; neither
 never.txt nor never.swf is fetched. Other levels and POST remain unsupported.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+| `FVM_DESKTOP_SOURCE_MEMORY` | macro / define | [frontend/common/source.h:6](../../../frontend/common/source.h#L6) |
+<!-- source-links:end -->

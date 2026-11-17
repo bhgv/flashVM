@@ -5,20 +5,20 @@
 
 ## Контракт и копирование с v0.716
 
-[FVM_DesktopFrame](../frontend/common/frame.h#L18) описывает заимствованное owner-thread наблюдение native-растра:
+[FVM_DesktopFrame](../frontend/common/frame.h#L16) описывает заимствованное owner-thread наблюдение native-растра:
 RGBA8, width/height, stride, byte_count, pixels/source и счётчики тактов/показов.
-[FVM_DESKTOP_FRAME_RGBA8](../frontend/common/frame.h#L5) означает байты R,G,B,A с прямой альфой, слева направо,
+[FVM_DESKTOP_FRAME_RGBA8](../frontend/common/frame.h#L6) означает байты R,G,B,A с прямой альфой, слева направо,
 строки сверху вниз; это не endian-зависимое целое. Видимая строка содержит
 width * [FVM_DESKTOP_FRAME_PIXEL_BYTES](../frontend/common/frame.h#L7) байт. Размеры ограничены
 [FVM_DESKTOP_FRAME_MAX_DIMENSION](../frontend/common/frame.h#L8), то есть текущим пределом stage/raster.
 
 Это логическая сцена, а не screenshot окна: window chrome, DPI/letterboxing и
 повторные native swaps при resize в неё не входят. Причины наблюдения —
-[FVM_DESKTOP_FRAME_TICK](../frontend/common/frame.h#L10) после host advance и [FVM_DESKTOP_FRAME_REFRESH](../frontend/common/frame.h#L11) для
+[FVM_DESKTOP_FRAME_TICK](../frontend/common/frame.h#L9) после host advance и [FVM_DESKTOP_FRAME_REFRESH](../frontend/common/frame.h#L10) для
 начального/dirty redraw без host tick. Счётчики презентаций начинаются с одного;
 movie_ticks/presentations относятся к текущему корню, total_* — ко всему запуску.
 
-[FVM_DesktopFrameNotify](../frontend/common/frame.h#L44)(frame, userdata)` — callback владельца после успешного
+[FVM_DesktopFrameNotify](../frontend/common/frame.h#L39)(frame, userdata)` — callback владельца после успешного
 растра и native-показа, вне рендеринга VM. Возвращает [FVM_OK](../include/flashvm/flashvm.h#L44) для продолжения;
 другая ошибка завершает playback после уже совершённых действий/рисования.
 Заимствованные frame/pixels/source действительны только до возврата. Не меняйте
@@ -27,8 +27,8 @@ pixels, не сохраняйте указатели, не входите в VM/
 сначала скопируйте пиксели в свою память. [GC:] Здесь нет управляемого владельца
 или pin: сохранение frame не сохраняет ни native buffer, ни прежнюю VM.
 
-[FVM_DesktopFrameObserver](../frontend/common/frame.h#L47) — отдельный callback-дескриптор; прежние раскладки
-source/options/loader/control не меняются. [fvm_desktop_frame_observer_init](../frontend/common/frame.h#L57)(out)`
+[FVM_DesktopFrameObserver](../frontend/common/frame.h#L44) — отдельный callback-дескриптор; прежние раскладки
+source/options/loader/control не меняются. [fvm_desktop_frame_observer_init](../frontend/common/frame.h#L55)(out)`
 заполняет точный struct_size и нулевые notify/userdata, возвращает 1/0 для обычного/
 null указателя, без выделения памяти и старта SDK. Для наблюдаемого запуска notify
 обязателен. Сам дескриптор и userdata живут до синхронного возврата runner.
@@ -57,14 +57,14 @@ null указателя, без выделения памяти и старта 
 Это не windowless widget, не новое управление GPU и не завершение стадий плана.
 ## Наблюдаемые запуски с v0.717
 
-[fvm_desktop_run_source_observed](../frontend/common/frame.h#L76)(options, source, loader, control, observer, error)`
+[fvm_desktop_run_source_observed](../frontend/common/frame.h#L78)(options, source, loader, control, observer, error)`
 требует options/source/observer. loader необязателен и подчиняется прежней политике
 ресурсов (по умолчанию разрешён только старт); control необязателен, default —
 непрерывный запуск. Явный initially_paused control позволяет сочетать наблюдение
 с шагами владельца или ящиком контроллера. Политики/байты/строки/userdata живут
 до синхронного возврата; observer-дескриптор копируется поверхностно.
 
-[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L83)(options, source, loader, monitor,
+[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L90)(options, source, loader, monitor,
 control, observer, error)` дополнительно требует явный background provider и
 monitor. monitor.asynchronous выбирает продолжающиеся owner-такты или блокирующее
 ожидание ресурсов. Обе функции возвращают 0 при завершении/закрытии окна/STOP,
@@ -112,6 +112,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_frame_copy` | function | [frontend/common/frame.h:65](../frontend/common/frame.h#L65) |
+| `FVM_DESKTOP_FRAME_MAX_DIMENSION` | macro / define | [frontend/common/frame.h:8](../frontend/common/frame.h#L8) |
+| `fvm_desktop_frame_observer_init` | function | [frontend/common/frame.h:55](../frontend/common/frame.h#L55) |
+| `FVM_DESKTOP_FRAME_PIXEL_BYTES` | macro / define | [frontend/common/frame.h:7](../frontend/common/frame.h#L7) |
+| `FVM_DESKTOP_FRAME_REFRESH` | macro / define | [frontend/common/frame.h:10](../frontend/common/frame.h#L10) |
+| `FVM_DESKTOP_FRAME_RGBA8` | macro / define | [frontend/common/frame.h:6](../frontend/common/frame.h#L6) |
+| `FVM_DESKTOP_FRAME_TICK` | macro / define | [frontend/common/frame.h:9](../frontend/common/frame.h#L9) |
+| `fvm_desktop_run_source_background_observed` | function | [frontend/common/frame.h:90](../frontend/common/frame.h#L90) |
+| `fvm_desktop_run_source_observed` | function | [frontend/common/frame.h:78](../frontend/common/frame.h#L78) |
+| `FVM_DesktopFrame` | struct | [frontend/common/frame.h:16](../frontend/common/frame.h#L16) |
+| `FVM_DesktopFrameNotify` | callback typedef | [frontend/common/frame.h:39](../frontend/common/frame.h#L39) |
+| `FVM_DesktopFrameObserver` | struct | [frontend/common/frame.h:44](../frontend/common/frame.h#L44) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1703: the shared player exposes an explicit managed acquisition bridge for startup/root/child movie code and variable data, with purpose-aware raw VFS names and no native file/HTTP fallback. Real nested SWFs run in interpreter/JIT; Styx/S-record binding, streaming/input policy and physical acceptance remain open. [EN](MANAGED_SOURCE.md) / [RU](MANAGED_SOURCE.ru.md). No complete Flash compatibility stage closes.
+
 Checkpoint v0.1702: opt-in confined directory anchors reject dot-dot and component/final symlink traversal for exported native resources. Ordinary anchors keep native semantics; Windows returns UNSUPPORTED. [Export SDK and boundaries](../../disVM/runtime/VFS-EXPORT.md). No full filesystem sandbox/Flash compatibility stage closes.
 
 Checkpoint v0.1701: existing read/write opens use an explicit noncreating, nontruncating rwo mode with one shared cursor, supporting DisVM Sys.open(ORDWR). Legacy rw append-channel semantics remain separate. [EN/RU contract](../../disVM/runtime/PROVIDER-EVENT-FILES.md). No full VFS or Flash compatibility stage closes.

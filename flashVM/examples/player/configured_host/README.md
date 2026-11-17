@@ -32,9 +32,9 @@ metadata must not be reused across targets. No foreign runtime is implied.
 
 | API | Purpose and ownership |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned [FVM_DesktopOptions](../../../frontend/common/options.h#L29), including 100-percent authored timing. Null returns zero; no resources are acquired |
-| [fvm_desktop_run](../../../frontend/common/player.h#L39) | Validate the complete playlist, then synchronously load/play/clean up. Borrow the immutable paths and array until return. Return 0, 1 or 2 as documented in the contract |
-| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L17) | Return a usage/configuration failure before starting playback |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller-owned [FVM_DesktopOptions](../../../frontend/common/options.h#L30), including 100-percent authored timing. Null returns zero; no resources are acquired |
+| [fvm_desktop_run](../../../frontend/common/player.h#L46) | Validate the complete playlist, then synchronously load/play/clean up. Borrow the immutable paths and array until return. Return 0, 1 or 2 as documented in the contract |
+| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L18) | Return a usage/configuration failure before starting playback |
 
 The program selects interpreter, mute, two ticks and explicit FPS, leaving the
 percentage at its required default. It links flashvm_player_host, the same static
@@ -53,3 +53,18 @@ complete SWF8 compatibility claim. See [SDL ownership](../../../doc/PLAYER_HOST_
 [Options](../../../frontend/common/options.h) ·
 [Implementation](../../../frontend/common/player.c) ·
 [Movie fixture](../muted_stream/README.md)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_DESKTOP_EXIT_ARGUMENT` | macro / define | [frontend/common/player.h:18](../../../frontend/common/player.h#L18) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run` | function | [frontend/common/player.h:46](../../../frontend/common/player.h#L46) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../../../frontend/common/options.h#L30) |
+<!-- source-links:end -->

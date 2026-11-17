@@ -44,12 +44,12 @@ The worker switches exhausted stream segments before synthesizing event-only wor
 for a successor's gate, and never switches away from a retained TAIL retry. A
 completed-frame flag is separate from base authorization: while VM callbacks
 prepare all frame events, both producers remain held. After frame completion,
-`fvm_desktop_audio_timeline` publishes readiness. Authored root Stop then sets only
+[`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) publishes readiness. Authored root Stop then sets only
 the base gate to zero; event voices may prime, resume and drain the real queue.
 Host/session pause still suspends the complete output, and NoMultiple includes
 accepted/pending ID time until dequeue.
 
-`fvm_desktop_audio_stream_pending` includes authorized source work, accepted FIFO,
+[`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) includes authorized source work, accepted FIFO,
 live events and processable mixed retry even under authored Stop. A retained BASE
 whose original frame is held cannot progress; once accepted lead drains it does
 not keep finite completion waiting forever. Resume or acknowledged seek/clear is
@@ -135,6 +135,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:148](../include/flashvm/swf_stream_output.h#L148) |

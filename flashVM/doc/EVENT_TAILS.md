@@ -60,12 +60,12 @@ epoch; wall-time silence is not synthesized or added to these queue clocks.
 `flashvm_player --finite-audio-tails movie.swf` enables finite event-only and root
 stream/event tails. Existing `--finite-mixed-tails` stays mixed-only; both defaults
 remain unchanged. Stream-only playback keeps its existing policy, and --mute opens
-no device. `fvm_desktop_audio_open_policy` validates three Boolean startup flags
+no device. [`fvm_desktop_audio_open_policy`](../frontend/common/audio.h#L118) validates three Boolean startup flags
 and publishes immutable policy before creating the worker. Previous acquisition
 functions retain their established behavior.
 
 For finite event-only mode, each owner callback withholds production before source
-preparation outside the mutex. `fvm_desktop_audio_timeline` publishes readiness only
+preparation outside the mutex. [`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) publishes readiness only
 after complete frame delivery, so same-frame voices share one composition grid.
 Embedding hosts must perform this publication after delivery even under authored
 root Stop. Host pause still holds the entire output. Previously accepted FIFO can
@@ -73,7 +73,7 @@ drain while future production is withheld; it cannot be selectively recalled.
 
 The worker pumps finite blocks, resumes a short queue that cannot reach the normal
 driver reserve and treats expected end/idle as completion rather than an underrun.
-The existing serialized `fvm_desktop_audio_stream_pending` also observes finite
+The existing serialized [`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) also observes finite
 event-only work, including pending release with no mixer voices. Suspended hosts
 report no processable completion work; this is not cancellation or a drain claim.
 The player's bounded tail loop waits for current voices/retry/FIFO, while retaining
@@ -116,6 +116,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_open_policy` | function | [frontend/common/audio.h:118](../frontend/common/audio.h#L118) |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
 | `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:170](../include/flashvm/swf_sound_output.h#L170) |
 | `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:159](../include/flashvm/swf_sound_output.h#L159) |
 <!-- source-links:end -->

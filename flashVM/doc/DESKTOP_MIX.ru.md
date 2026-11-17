@@ -10,14 +10,14 @@ S16. Event-only и stream-only пути сохраняются. Это огра�
 
 ## Владение и публикация кадра
 
-`fvm_desktop_audio_open_paused` готовит bounded root-snapshots на VM-потоке,
+[`fvm_desktop_audio_open_paused`](../frontend/common/audio.h#L131) готовит bounded root-snapshots на VM-потоке,
 создаёт микшер и optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L14), начинает пустую общую эпоху,
 включает ID и подключает stream-producer к адаптеру. Worker читает только native
 копии и не хранит VM/GC-указателей. Операции микшера, producer и controls используют
 общий SDL mutex.
 
-`fvm_desktop_audio_validate` и open используют один predictor отдельного потолка
-`FVM_DESKTOP_AUDIO_MIX_BYTES` (по умолчанию 1 MiB). Включены owner адаптера, оба
+[`fvm_desktop_audio_validate`](../frontend/common/audio.h#L93) и open используют один predictor отдельного потолка
+[`FVM_DESKTOP_AUDIO_MIX_BYTES`](../frontend/common/audio_memory.h#L13) (по умолчанию 1 MiB). Включены owner адаптера, оба
 PCM-буфера и ID-таблица; allocator, mixer/voices, snapshots, trace и device считаются
 отдельно. Прежние event/source-бюджеты независимы. Недостаточный composition-бюджет
 отвергается preflight до окна/устройства. Partial-владение освобождает обычный cleanup.
@@ -26,7 +26,7 @@ Root-callback готовит временный голос вне mutex, зат�
 NoMultiple и stop по ID учитывают pending/FIFO даже после удаления голоса из микшера.
 Навигация сбрасывается до принятия событий нового кадра. Пока callbacks готовят
 голоса, разрешённый кадр равен нулю: worker не подаёт ни base, ни tail. После полного
-кадра владелец вызывает `fvm_desktop_audio_timeline` и публикует реальное разрешение.
+кадра владелец вызывает [`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) и публикует реальное разрешение.
 Быстрый worker не может записать новый base раньше всего пакета событий кадра.
 Нельзя заменять разрешение tick-счётчиком или публиковать его посреди delivery.
 
@@ -51,7 +51,7 @@ EOF источника, converter и последний source chunk не мен
 | API | Статусы, владение и исполнение |
 | --- | --- |
 | [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) | Живые stream/mix обязательны; optional accepted обнуляется сразу. Null/reentry, ненаблюдённый EOF, base retry, иной backend или разные эпохи: INVALID_ARGUMENT. Общий clock выключен: NOT_FOUND. Нет голосов/headroom: NOT_FOUND. Прочие backend/mixer статусы передаются; исключения callbacks: ERROR. Без выделений/VM/GC, передачи владения и неявных pause/clear. Нужна внешняя сериализация всех зависимостей. |
-| `fvm_desktop_audio_stream_pending` | Учитывает разрешённый source, FIFO, mixed voices и сохранённый mix retry. Host suspension и авторский stop возвращают ноль; после StopSounds новые события могут продлить completion, не включая отменённый base. Без pump/decode/VM; mutex, выход сохраняется при ошибке. |
+| [`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) | Учитывает разрешённый source, FIFO, mixed voices и сохранённый mix retry. Host suspension и авторский stop возвращают ноль; после StopSounds новые события могут продлить completion, не включая отменённый base. Без pump/decode/VM; mutex, выход сохраняется при ошибке. |
 
 При failed tail write микшер продвигается один раз, точный TAIL retry хранит mix queue.
 Base-буфер producer не используется под хвост; `FVM_SWFStreamOutputInfo.pending_frames`
@@ -136,6 +136,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_MIX_BYTES` | macro / define | [frontend/common/audio_memory.h:13](../frontend/common/audio_memory.h#L13) |
+| `fvm_desktop_audio_open_paused` | function | [frontend/common/audio.h:131](../frontend/common/audio.h#L131) |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
+| `fvm_desktop_audio_validate` | function | [frontend/common/audio.h:93](../frontend/common/audio.h#L93) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
 | `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:186](../include/flashvm/swf_stream_output.h#L186) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |

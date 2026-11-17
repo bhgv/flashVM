@@ -64,7 +64,7 @@ ctest --test-dir build-player --output-on-failure -R 'flashvm_frontend_stream_(r
 | --- | --- |
 | `stream_authorized` | [frontend/common/audio.c:168](../frontend/common/audio.c#L168) |
 | `refill_stream` | [frontend/common/audio.c:198](../frontend/common/audio.c#L198) |
-| `fvm_desktop_audio_stream_pending` | [frontend/common/audio.c:625](../frontend/common/audio.c#L625) |
+| [`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) | [frontend/common/audio.c:625](../frontend/common/audio.c#L625) |
 
 ## Проверка ревизии
 
@@ -81,3 +81,15 @@ Linux/musl player с целевыми статическими SDL/AGG слин�
 Инструментированный CLI также прошёл точные PCM FWS/CWS и смену форматов,
 все поддержанные ширины ADPCM/каналы в interpreter/native JIT, конечный запуск
 и сравнение приложенного примера с независимым FFmpeg oracle.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+<!-- source-links:end -->

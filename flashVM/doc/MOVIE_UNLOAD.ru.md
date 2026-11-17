@@ -113,7 +113,7 @@ onEnterFrame продолжает вызываться: это не закрыт
 старых PCM worker, mixer, queue и device до потенциально долгого join сети.
 Счётчики events/stops/underruns остаются накопительными. Обычный close затем
 безопасен. При mute аудиоустройство не нужно. Приватный helper
-[fvm_desktop_audio_clear](../frontend/common/audio.h#L105) не меняет экспортируемый ABI
+[fvm_desktop_audio_clear](../frontend/common/audio.h#L183) не меняет экспортируемый ABI
 хоста и самостоятельный C API очистки.
 
 Отказ памяти до публикации сохраняет содержимое и native producers. Ошибка после
@@ -169,6 +169,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_clear` | function | [frontend/common/audio.h:183](../frontend/common/audio.h#L183) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:274](../include/flashvm/movieclip.h#L274) |

@@ -3,7 +3,11 @@
 This records the user's accepted model and the integration boundary after
 runtime0.171. **Implemented here:** [purpose-aware code lookup](CODE-LOOKUP.md),
 native launch import, typed terminal sessions and existing S-record byte channels.
-**Still to implement:** the FlashVM managed I/O adapter, channel-count lifecycle
+FlashVM v0.1703 now exposes the [managed player acquisition boundary](../../flashVM/doc/MANAGED_SOURCE.md)
+([RU](../../flashVM/doc/MANAGED_SOURCE.ru.md)): purpose-aware startup/root/child SWF and
+variable reads, with no native file/HTTP fallback. Its actual Styx/S-record binding
+and DisVM service are still pending.
+**Still to implement:** the remaining FlashVM managed I/O adapter, channel-count lifecycle
 messages/policy and per-kind input routing below. No wire schema for these new
 commands is assigned by this document, and no FlashVM sandbox switch is changed
 before its operations are routed through DisVM.

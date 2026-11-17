@@ -32,7 +32,7 @@ The per-snapshot-only statements in older checkpoints below are historical.
 
 Finite `--frames`/`--once` playback now retains final-frame visibility and then
 waits for already-authorized stream blocks and accepted queued PCM to finish.
-[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L102) copies this condition under the producer mutex;
+[fvm_desktop_audio_stream_pending](../frontend/common/audio.h#L178) copies this condition under the producer mutex;
 it never pumps PCM, allocates, decodes, advances a movie or authorizes a future
 frame. Empty inactive headers are skipped in a bounded scan; later sources are
 inspected at block zero because the worker re-primes them when reached.
@@ -44,7 +44,7 @@ stream block beyond the current movie gate does not keep a finite run alive.
 Normal stream completion includes FIFO drain, not merely source EOF/submission;
 this software observation is still not a DAC/speaker clock.
 
-The additional deadline is [FVM_DESKTOP_AUDIO_TAIL_MS](../frontend/common/audio.h#L20) (2000 ms), starting after
+The additional deadline is [FVM_DESKTOP_AUDIO_TAIL_MS](../frontend/common/audio.h#L21) (2000 ms), starting after
 the later of the scheduled final-frame deadline and entry to tail processing.
 This cooperative deadline cannot preempt a blocked SDK/host callback.
 Pending work at expiry fails playback with `stream completion deadline exceeded`
@@ -78,7 +78,7 @@ source rates use the [explicit whole-packet contract](STREAM_ADPCM.md). Partial
 packets/other codecs remain unsupported. Raw/muted stream inspection stays opaque;
 muted ADPCM does not acquire snapshots or decode compressed payloads.
 
-Before opening a window/device, [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) temporarily prepares
+Before opening a window/device, [fvm_desktop_audio_validate](../frontend/common/audio.h#L93) temporarily prepares
 and closes ADPCM snapshots. It can now allocate/decode and return OUT_OF_MEMORY;
 malformed padding and unsupported packet geometry propagate. Later audio acquisition
 checks header policy and prepares each retained snapshot once, before opening its
@@ -118,7 +118,7 @@ window/device acquisition. Muting still validates arbitrary indexed root segment
 without creating snapshots or opening audio. The current limit bounds startup
 preparation and navigation scans, not the 9P packet size or media channel geometry.
 
-The owner allocates a zero-initialized array of [FVM_DesktopStreamSegment](../frontend/common/audio.h#L26) and
+The owner allocates a zero-initialized array of [FVM_DesktopStreamSegment](../frontend/common/audio.h#L31) and
 prepares all snapshots/converters before starting a worker. Each entry owns its
 snapshot and independent phase grid. On partial preparation failure, close joins
 any worker first, closes every nonnull entry once and frees the array; the old
@@ -133,7 +133,7 @@ change per header. Phase carries across blocks within one header and restarts at
 zero for a new header. Before activating an inactive successor, its cursor resets
 to block zero so earlier loops/seeks cannot leave stale EOF positions. Header
 transitions, empty/skipped markers and PCM preparation each consume one of the
-same [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) steps per worker iteration. A chain of 64 empty
+same [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L19) steps per worker iteration. A chain of 64 empty
 headers cannot become an unbounded tight loop. stream_info reports aggregate EOF
 only when the active source is the last header and is exhausted; FIFO drain and
 StopSounds cancellation remain separate concepts.
@@ -177,7 +177,7 @@ build/player/frontend/flashvm_player --jit --once flashVM/examples/player/pcm_st
 
 Use JIT only on an available backend. The [reproducible example](../examples/player/pcm_stream/README.md) changes its background and tone after one
 second. It is a runnable Python-generated SWF, not a compiler implementation. The
-structured [fvm_desktop_run](../frontend/common/player.h#L39) and [fvm_desktop_run_memory](../frontend/common/player.h#L47) entry points use the same player path; no CLI-only state or ABI
+structured [fvm_desktop_run](../frontend/common/player.h#L46) and [fvm_desktop_run_memory](../frontend/common/player.h#L56) entry points use the same player path; no CLI-only state or ABI
 fields were added. Existing source-base and load policy is unchanged. Replacement/unload
 still uses the strict existing import policy; child/sprite streams are unsupported.
 
@@ -187,7 +187,7 @@ The owner imports/pins the root and calls [fvm_movieclip_get_playback_info](../i
 Selected-but-not-entered frames authorize nothing. The scalar entered frame and local play
 flag are published under the audio mutex; no context, clip or managed value is read by the
 worker. The worker owns the prepared snapshot, converter position and retry buffer, and
-calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L86) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L18) times per service iteration. The SDL backend copies accepted PCM; it
+calls [fvm_swf_stream_output_pump_until](../include/flashvm/swf_stream_output.h#L86) at most [FVM_DESKTOP_AUDIO_PUMPS](../frontend/common/audio.h#L19) times per service iteration. The SDL backend copies accepted PCM; it
 never calls into VM/GC. Queue targets use the actual obtained driver quantum. Short
 authorized blocks and EOF resume with a nonempty queue even below the usual reserve,
 avoiding a startup deadlock when a frame contains little audio.
@@ -240,14 +240,14 @@ new stable plugin ABI. The existing public player C entry points retain their si
 
 | Operation | Contract |
 | --- | --- |
-| [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
-| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L85) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
-| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L81) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
-| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L97) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L12) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
-| [fvm_desktop_audio_pause](../frontend/common/audio.h#L92) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L90) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
-| [fvm_desktop_audio_clear](../frontend/common/audio.h#L105) / [fvm_desktop_audio_close](../frontend/common/audio.h#L107) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
+| [fvm_desktop_audio_validate](../frontend/common/audio.h#L93) | Owner-thread root count/format/event policy; OK for no streams, UNSUPPORTED for unsupported combinations or excess header count, malformed stream status propagates. No native device or retained ownership is acquired; ADPCM preflight may temporarily allocate/decode. |
+| [fvm_desktop_audio_open_paused](../frontend/common/audio.h#L131) | Acquire snapshot/converter/FIFO/device/mutex/worker and stop binding only for actual audio. Supplied pause is 0/1. Errors propagate; caller must close even after partial acquisition. Snapshot is independent of VM lifetime, but owner unregisters stop binding before context destruction. |
+| [fvm_desktop_audio_timeline](../frontend/common/audio.h#L101) | Owner reads retained same-context clip/playback/navigation token and publishes copied policy under mutex. VM query, seek and backend errors propagate. Navigation clear/pause has staged external effects; it is not rollback. No worker VM call. |
+| [fvm_desktop_audio_stream_info](../frontend/common/audio.h#L153) | Stream-only copied [FVM_SWFStreamOutputInfo](../include/flashvm/swf_stream_output.h#L12) under mutex; invalid input/error preserves descriptor. May wait for worker lock/backend observation. It reports FIFO dequeue position, not DAC/movie synchronization. |
+| [fvm_desktop_audio_pause](../frontend/common/audio.h#L144) / [fvm_desktop_audio_tick_paused](../frontend/common/audio.h#L140) | Preserve host pause independently of local play; pause never clears bytes, tick polls latched worker error. Both require serial host use; worker is internally serialized. |
+| [fvm_desktop_audio_clear](../frontend/common/audio.h#L183) / [fvm_desktop_audio_close](../frontend/common/audio.h#L187) | Owner detaches binding/callback, joins worker, closes snapshot and real device, then destroys mutex. Clear retains cumulative diagnostics. Never destroy a context or free userdata before detachment/quiescence. |
 
-The [memory_movie.c](../frontend/tests/memory_movie.c) regression also plays a copied mutable `char buf[]` PCM movie through [fvm_desktop_run_memory](../frontend/common/player.h#L47) with a
+The [memory_movie.c](../frontend/tests/memory_movie.c) regression also plays a copied mutable `char buf[]` PCM movie through [fvm_desktop_run_memory](../frontend/common/player.h#L56) with a
 deliberately non-file source label and verifies the borrowed bytes are unchanged. It uses
 dummy audio when SDL audio is enabled.
 
@@ -314,6 +314,21 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_clear` | function | [frontend/common/audio.h:183](../frontend/common/audio.h#L183) |
+| `fvm_desktop_audio_close` | function | [frontend/common/audio.h:187](../frontend/common/audio.h#L187) |
+| `FVM_DESKTOP_AUDIO_MAX_SEGMENTS` | macro / define | [frontend/common/audio.h:22](../frontend/common/audio.h#L22) |
+| `fvm_desktop_audio_open_paused` | function | [frontend/common/audio.h:131](../frontend/common/audio.h#L131) |
+| `fvm_desktop_audio_pause` | function | [frontend/common/audio.h:144](../frontend/common/audio.h#L144) |
+| `FVM_DESKTOP_AUDIO_PUMPS` | macro / define | [frontend/common/audio.h:19](../frontend/common/audio.h#L19) |
+| `fvm_desktop_audio_stream_info` | function | [frontend/common/audio.h:153](../frontend/common/audio.h#L153) |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `FVM_DESKTOP_AUDIO_TAIL_MS` | macro / define | [frontend/common/audio.h:21](../frontend/common/audio.h#L21) |
+| `fvm_desktop_audio_tick_paused` | function | [frontend/common/audio.h:140](../frontend/common/audio.h#L140) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
+| `fvm_desktop_audio_validate` | function | [frontend/common/audio.h:93](../frontend/common/audio.h#L93) |
+| `fvm_desktop_run` | function | [frontend/common/player.h:46](../frontend/common/player.h#L46) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../frontend/common/player.h#L56) |
+| `FVM_DesktopStreamSegment` | struct | [frontend/common/audio.h:31](../frontend/common/audio.h#L31) |
 | `fvm_movieclip_get_navigation` | function | [include/flashvm/movieclip.h:116](../include/flashvm/movieclip.h#L116) |
 | `fvm_movieclip_get_playback_info` | function | [include/flashvm/movieclip.h:104](../include/flashvm/movieclip.h#L104) |
 | `FVM_MOVIECLIP_NAVIGATION_MAX` | macro / define | [include/flashvm/movieclip.h:106](../include/flashvm/movieclip.h#L106) |

@@ -114,11 +114,11 @@ Key их не удаляют: устаревшие подписки нужно �
 ## Очередь SDL
 
 Оконный переходник копирует поддерживаемые переходы в native FIFO из
-`FVM_DESKTOP_PENDING_EVENTS` (128) полных снимков. Нажатия, отпускания и повторы
+[`FVM_DESKTOP_PENDING_EVENTS`](../frontend/common/window.h#L9) (128) полных снимков. Нажатия, отпускания и повторы
 сохраняются даже между movie ticks. Неподдерживаемые SDL-символы события не
 добавляют. Сбор SDL-событий не исполняет VM-код.
 
-`fvm_desktop_window_pump_input` работает на потоке владельца до следующего
+[`fvm_desktop_window_pump_input`](../frontend/common/window.h#L92) работает на потоке владельца до следующего
 кадра; затем плеер публикует окончательный HostInput/снимок опроса и продвигает
 ролик. Pump обрабатывает только входную порцию; повторный вход запрещён.
 Потеря фокуса/фон отменяют накопленные переходы и сбрасывают удержания/коды/
@@ -164,6 +164,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_PENDING_EVENTS` | macro / define | [frontend/common/window.h:9](../frontend/common/window.h#L9) |
+| `fvm_desktop_window_pump_input` | function | [frontend/common/window.h:92](../frontend/common/window.h#L92) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:108](../include/flashvm/keyboard.h#L108) |

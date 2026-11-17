@@ -85,15 +85,15 @@ cmake --build build-control-target --target flashvm_example_playback_control --p
 
 | C API | Назначение, время жизни и блокирование; руководство |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Заполняет скалярные настройки вызывающего без I/O. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Заполняет скалярные настройки вызывающего без I/O. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Заполняет размер ABI управления, режим работы и нулевые callback/userdata без I/O. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Заполняет заимствованную политику provider без запуска workers. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Заполняет defaults асинхронной доставки/срока без создания заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
-| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Синхронный запуск с необязательным loader и обязательным control; заимствует память до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Синхронно владеет запуском; требует provider/monitor/control; дожидается workers до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Освобождает SDK после завершения окон/заданий запуска; временем жизни процесса управляет вызывающий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Выбранный нативный worker adapter: кооперативно получает неизменяемые байты, без VM/SDL. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный curl worker adapter: проверяет потоковую безопасность SDK перед загрузкой. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Заполняет заимствованную политику provider без запуска workers. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Заполняет defaults асинхронной доставки/срока без создания заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
+| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L79) | Синхронный запуск с необязательным loader и обязательным control; заимствует память до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
+| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L89) | Синхронно владеет запуском; требует provider/monitor/control; дожидается workers до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Освобождает SDK после завершения окон/заданий запуска; временем жизни процесса управляет вызывающий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Выбранный нативный worker adapter: кооперативно получает неизменяемые байты, без VM/SDL. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Альтернативный curl worker adapter: проверяет потоковую безопасность SDK перед загрузкой. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
 
 Callback observe заимствует снимок только до возврата и сохраняет лишь скаляры.
 Он возвращает ровно одну команду; KEEP не снимает паузу. [GC:] Корень закрепляет
@@ -109,3 +109,23 @@ userdata живут до синхронного возврата; workers к VM 
 observe: отмена там задаётся monitor. Пример без звука; PCM-пауза проверяется
 отдельными dummy-audio fixtures. Полная SWF8/эталонная и аппаратная приёмка всех
 ОС остаётся открытой. Это продвижение плана, не завершение пункта 9.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../../../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../../../frontend/common/playback.h#L79) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

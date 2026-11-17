@@ -6,9 +6,12 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1702** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1703** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
+
+[Управляемая загрузка SWF/данных через explicit bridge](doc/MANAGED_SOURCE.ru.md) · [English](doc/MANAGED_SOURCE.md)
+
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
 изменения проверяются в рабочей ветке и сохраняются в format-patch. Пользователь
 разрешил прямую публикацию в github.com/bhgv/flashVM; перед обновлением master

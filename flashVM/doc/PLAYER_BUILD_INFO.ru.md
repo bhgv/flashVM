@@ -11,7 +11,7 @@ SDL-аудиомоста и версии заголовков/связанной
 успешное выделение исполняемой памяти позже. Наличие аудиомоста не гарантирует
 драйвер, декодер, устройство или воспроизведение потокового звука.
 
-Для C-хоста `fvm_desktop_build_info` заполняет `FVM_DesktopBuildInfo` без выделений
+Для C-хоста [`fvm_desktop_build_info`](../frontend/common/player.h#L37) заполняет [`FVM_DesktopBuildInfo`](../frontend/common/player.h#L22) без выделений
 памяти; нулевой out возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47). Строка версии статическая,
 её нельзя освобождать. Интерфейс расположен в frontend/common/player.h и является
 внутренним интерфейсом хоста, не новым стабильным ABI библиотеки VM. Заголовок
@@ -65,5 +65,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_build_info` | function | [frontend/common/player.h:37](../frontend/common/player.h#L37) |
+| `FVM_DesktopBuildInfo` | struct | [frontend/common/player.h:22](../frontend/common/player.h#L22) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 <!-- source-links:end -->

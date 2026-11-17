@@ -81,10 +81,10 @@ multiple polls. A later backend consumption becomes visible on the next observat
 ## Desktop and C89 use
 
 Root desktop composition budgets/enables IDs and origins before native worker
-publication. The 32 KiB bitmap is inside the existing FVM_DESKTOP_AUDIO_MIX_BYTES budget; source,
+publication. The 32 KiB bitmap is inside the existing [FVM_DESKTOP_AUDIO_MIX_BYTES](../frontend/common/audio_memory.h#L13) budget; source,
 voice, device, VM and allocator memory stay separate. Insufficient combined budget
 is rejected during preflight before opening SDL, including when the older ID-only
-requirement would fit. `fvm_desktop_audio_origin_info` copies a fresh native snapshot
+requirement would fit. [`fvm_desktop_audio_origin_info`](../frontend/common/audio.h#L166) copies a fresh native snapshot
 under the worker mutex; it requires initialized composition and preserves output
 on errors. The main thread performs no PCM production in this diagnostic call.
 
@@ -129,6 +129,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_MIX_BYTES` | macro / define | [frontend/common/audio_memory.h:13](../frontend/common/audio_memory.h#L13) |
+| `fvm_desktop_audio_origin_info` | function | [frontend/common/audio.h:166](../frontend/common/audio.h#L166) |
 | `FVM_SWF_SOUND_MIX_QUEUE_ORIGIN_FRAMES` | macro / define | [include/flashvm/swf_sound_mix_queue.h:67](../include/flashvm/swf_sound_mix_queue.h#L67) |
 | `fvm_swf_sound_mix_queue_origin_info` | function | [include/flashvm/swf_sound_mix_queue.h:112](../include/flashvm/swf_sound_mix_queue.h#L112) |
 | `fvm_swf_sound_mix_queue_set_origin_tracking` | function | [include/flashvm/swf_sound_mix_queue.h:103](../include/flashvm/swf_sound_mix_queue.h#L103) |

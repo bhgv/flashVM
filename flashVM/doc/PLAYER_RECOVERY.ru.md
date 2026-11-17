@@ -2,7 +2,7 @@
 
 [English](PLAYER_RECOVERY.md). Необязательный SDL-проигрыватель владеет одной
 плотной RGBA-копией последнего успешно загруженного кадра. Исходная поверхность
-заимствуется только на время [`fvm_desktop_window_present`](../frontend/common/window.h#L56); после возврата её
+заимствуется только на время [`fvm_desktop_window_present`](../frontend/common/window.h#L63); после возврата её
 можно изменять или освобождать. Межстрочный padding не копируется. В адаптере
 окна нет VM-значений и корней GC. Снимок освобождается перед завершением SDL.
 Ошибка выделения памяти сообщается явно, указатель вызывающей стороны не сохраняется.
@@ -27,8 +27,8 @@ SDL_RENDER_TARGETS_RESET только перерисовывает: исполь
 неинициализированных пикселей. Нет шага timeline, вызовов скрипта/таймера или
 нового VM-render. Exposure/resize также повторно выводят готовую текстуру.
 
-[`fvm_desktop_window_status`](../frontend/common/window.h#L64) отделяет постоянную ошибку представления/ввода от
-обычного закрытия в [`fvm_desktop_window_events`](../frontend/common/window.h#L59). Проигрыватель проверяет статус
+[`fvm_desktop_window_status`](../frontend/common/window.h#L77) отделяет постоянную ошибку представления/ввода от
+обычного закрытия в [`fvm_desktop_window_events`](../frontend/common/window.h#L68). Проигрыватель проверяет статус
 в активном, фоновом и финальном ожидании; отказ восстановления не считается
 успешной отменой пользователем. Ошибки перерисовки также сохраняются.
 SDL-тест посылает оба события и читает настоящие восстановленные пиксели
@@ -131,3 +131,17 @@ Cross SDK использует прежнюю хостовую адаптаци�
 Полный player/AGG/JIT и целевой SDL собраны и слинкованы для Linux ARM64,
 Linux RISC-V64 и Windows x64. Проверены ELF/PE machine headers; чужие программы
 не запускались. SDL-аудиовывод в этих проверках сборки не включён.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_window_events` | function | [frontend/common/window.h:68](../frontend/common/window.h#L68) |
+| `fvm_desktop_window_present` | function | [frontend/common/window.h:63](../frontend/common/window.h#L63) |
+| `fvm_desktop_window_status` | function | [frontend/common/window.h:77](../frontend/common/window.h#L77) |
+<!-- source-links:end -->

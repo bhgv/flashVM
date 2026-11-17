@@ -142,8 +142,8 @@ synchronous runner return. No native window, VM or worker starts during init.
 
 | Player API | Contract |
 | --- | --- |
-| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L29) | Owner registers a copied path/operation table and borrows caller adapter storage; publish adapter only on success. Caller unregisters adapter.target before releasing storage. |
-| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L39) | Existing playback notify signature. Validate READY/TURN/TICK, pump at most one FIFO job, return native command intent. Invalid state or failed pump returns STOP. Never retains/serializes context/root. |
+| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L31) | Owner registers a copied path/operation table and borrows caller adapter storage; publish adapter only on success. Caller unregisters adapter.target before releasing storage. |
+| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L42) | Existing playback notify signature. Validate READY/TURN/TICK, pump at most one FIFO job, return native command intent. Invalid state or failed pump returns STOP. Never retains/serializes context/root. |
 
 Only this notify may deliver the adapter's operations. External direct pumping
 finishes those requests BUSY without changing player policy. Empty command
@@ -209,6 +209,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_resource_control_init` | function | [frontend/common/resource_control.h:31](../frontend/common/resource_control.h#L31) |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../frontend/common/resource_control.h#L42) |
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../include/flashvm/rdispatch.h#L149) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../include/flashvm/rdispatch.h#L109) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../include/flashvm/rdispatch.h#L163) |

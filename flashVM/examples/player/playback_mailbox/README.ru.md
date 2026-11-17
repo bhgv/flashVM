@@ -95,22 +95,22 @@ DLL/shared-library search path задавайте по [правилам SDK](..
 
 | C API | Назначение, владение и блокирование |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Заполняет скалярные defaults вызывающего без выделения памяти/старта. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Заполняет скалярные defaults вызывающего без выделения памяти/старта. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Заполняет дескриптор команд владельца и точный размер ABI без старта. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_playback_snapshot_init](../../../frontend/common/playback_mailbox.h#L32) | Заполняет размер копии/нули без получения ресурсов. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_create](../../../frontend/common/playback_mailbox.h#L38) | Создаёт native mutex/ограниченную запись; при ошибке out прежний, без VM/потока. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_post](../../../frontend/common/playback_mailbox.h#L47) | Потокобезопасное последнее намерение; принятый STEP не означает завершённый такт, STOP окончателен. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_poll](../../../frontend/common/playback_mailbox.h#L52) | Короткая копия под mutex; NOT_FOUND до READY, без доступа к VM. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_release](../../../frontend/common/playback_mailbox.h#L42) | Освобождает native запись после runner/контроллера, не дожидается их самостоятельно. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_notify](../../../frontend/common/playback_mailbox.h#L62) | Callback владельца копирует наблюдение/потребляет намерение, не сохраняет VM-указатель. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_playback_mailbox_load_notify](../../../frontend/common/playback_mailbox.h#L66) | Load callback владельца читает непотребляемую отмену до/при ожидании fetch. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Заполняет provider policy без workers/I/O. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Заполняет async/deadline defaults наблюдения без заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
-| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Синхронно заимствует provider/monitor/control/source до joined-очистки владельца, статус 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Локальный/буферный управляемый запуск с необязательным loader; вход заимствован до возврата, статус 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Настроенный native worker provider байтов; кооперативная отмена, без VM/SDL-событий. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный worker-safe curl provider с проверкой SDK globals. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Явное завершение SDK после всех native mailbox/worker/окон/заданий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
+| [fvm_desktop_playback_snapshot_init](../../../frontend/common/playback_mailbox.h#L34) | Заполняет размер копии/нули без получения ресурсов. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_create](../../../frontend/common/playback_mailbox.h#L41) | Создаёт native mutex/ограниченную запись; при ошибке out прежний, без VM/потока. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_post](../../../frontend/common/playback_mailbox.h#L53) | Потокобезопасное последнее намерение; принятый STEP не означает завершённый такт, STOP окончателен. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_poll](../../../frontend/common/playback_mailbox.h#L60) | Короткая копия под mutex; NOT_FOUND до READY, без доступа к VM. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_release](../../../frontend/common/playback_mailbox.h#L46) | Освобождает native запись после runner/контроллера, не дожидается их самостоятельно. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_notify](../../../frontend/common/playback_mailbox.h#L72) | Callback владельца копирует наблюдение/потребляет намерение, не сохраняет VM-указатель. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_playback_mailbox_load_notify](../../../frontend/common/playback_mailbox.h#L79) | Load callback владельца читает непотребляемую отмену до/при ожидании fetch. [PLAYBACK_MAILBOX.ru.md](../../../doc/PLAYBACK_MAILBOX.ru.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Заполняет provider policy без workers/I/O. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Заполняет async/deadline defaults наблюдения без заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
+| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L89) | Синхронно заимствует provider/monitor/control/source до joined-очистки владельца, статус 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
+| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L79) | Локальный/буферный управляемый запуск с необязательным loader; вход заимствован до возврата, статус 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Настроенный native worker provider байтов; кооперативная отмена, без VM/SDL-событий. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Альтернативный worker-safe curl provider с проверкой SDK globals. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Явное завершение SDK после всех native mailbox/worker/окон/заданий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
 
 Native-адаптер примера использует: [SDL_CreateThread](https://wiki.libsdl.org/SDL2/SDL_CreateThread), [SDL_WaitThread](https://wiki.libsdl.org/SDL2/SDL_WaitThread), [SDL_AtomicGet](https://wiki.libsdl.org/SDL2/SDL_AtomicGet), [SDL_AtomicSet](https://wiki.libsdl.org/SDL2/SDL_AtomicSet), [SDL_GetTicks](https://wiki.libsdl.org/SDL2/SDL_GetTicks), [SDL_Delay](https://wiki.libsdl.org/SDL2/SDL_Delay).
 
@@ -127,3 +127,30 @@ native callback/DNS. Idle-ошибка контроллера после пят�
 возвращает код 1, не обещая hard deadline для provider join. Пример без звука;
 нет GUI IDE, отладки инструкций или доказательства полной Flash/SWF8-совместимости.
 Нативная/аппаратная приёмка остальных ОС и пункт 9 остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_playback_mailbox_create` | function | [frontend/common/playback_mailbox.h:41](../../../frontend/common/playback_mailbox.h#L41) |
+| `fvm_desktop_playback_mailbox_load_notify` | function | [frontend/common/playback_mailbox.h:79](../../../frontend/common/playback_mailbox.h#L79) |
+| `fvm_desktop_playback_mailbox_notify` | function | [frontend/common/playback_mailbox.h:72](../../../frontend/common/playback_mailbox.h#L72) |
+| `fvm_desktop_playback_mailbox_poll` | function | [frontend/common/playback_mailbox.h:60](../../../frontend/common/playback_mailbox.h#L60) |
+| `fvm_desktop_playback_mailbox_post` | function | [frontend/common/playback_mailbox.h:53](../../../frontend/common/playback_mailbox.h#L53) |
+| `fvm_desktop_playback_mailbox_release` | function | [frontend/common/playback_mailbox.h:46](../../../frontend/common/playback_mailbox.h#L46) |
+| `fvm_desktop_playback_snapshot_init` | function | [frontend/common/playback_mailbox.h:34](../../../frontend/common/playback_mailbox.h#L34) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../../../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../../../frontend/common/playback.h#L79) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

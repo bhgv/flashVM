@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Deterministic tail-pause protocol with explicit fake audio ownership and policy limits.
+ * RU: Детерминированный tail-pause protocol с явным владением fake audio и границами policy.
+ */
 /* Protocol host: real player/VM/raster, deterministic clock and observed audio policy.
  * No native audio device, Activity or GPU acceptance is claimed. */
 #define fvm_desktop_window_active capture_base_active
@@ -103,4 +107,29 @@ FVM_Result fvm_desktop_audio_stream_pending(FVM_DesktopAudio *audio, int *pendin
     }
     *pending = 0;
     return FVM_OK;
+}
+
+
+/* EN: Forward the legacy padded policy; reject finite tails this fake device cannot model.
+ * Inputs are borrowed on the owner thread; no real device/mixer is opened or retained.
+ * RU: Передать legacy padded policy; finite tails явно отклоняются, реальных устройств нет. */
+FVM_Result fvm_desktop_audio_open_policy(FVM_Context *context, FVM_Object *clip,
+    FVM_DesktopAudio *audio, int paused, int finite_mixed_tails, int finite_event_tails)
+{
+    if (finite_mixed_tails || finite_event_tails)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    return fvm_desktop_audio_open_paused(context, clip, audio, paused);
+}
+
+
+/* EN: No mixed composition exists in this fixture; reject observation without changing output.
+ * Borrowed audio/out are unused; no locking, VM entry or real-device acceptance is implied.
+ * RU: Mixed composition здесь нет; вернуть UNSUPPORTED, не меняя borrowed out. */
+FVM_Result fvm_desktop_audio_mix_info(FVM_DesktopAudio *audio, FVM_SWFStreamMixInfo *out)
+{
+    (void)audio;
+    (void)out;
+    return FVM_UNSUPPORTED;
 }

@@ -3,7 +3,7 @@
 [English](README.md) · [Каталог](../../README.md#example-player-async_loading) ·
 [Контракты](../../../doc/BACKGROUND_TRANSFER.ru.md) · [Источники](../../../doc/PLAYER_SOURCES.ru.md).
 
-C89-хост выбирает [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40). Сетевые child/form запросы идут
+C89-хост выбирает [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46). Сетевые child/form запросы идут
 по FIFO, один worker за раз, пока родительские кадры, таймеры, ввод и GC safe points
 продолжаются. Готовые байты импортируются/декодируются только owner. Startup и
 полная root-замена сохраняют background lifecycle: это ограниченная async loading,
@@ -52,16 +52,34 @@ mutable setter провайдера нет.
 
 | API | Назначение, владение и блокирование |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Проверка default worker capability без network/display; custom callback отдельно. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация scalar options вызывающей программы. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Инициализация caller policy без worker. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter с immutable borrowed options/cancel. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker adapter, отклоняющий старый unsafe global init. |
-| fvm_desktop_run_source_async | Синхронный whole-player call с неблокирующей доставкой child/form на owner safe points. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершение SDK после joined jobs и очистки window/audio. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Проверка default worker capability без network/display; custom callback отдельно. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация scalar options вызывающей программы. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Инициализация caller policy без worker. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker adapter с immutable borrowed options/cancel. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Curl worker adapter, отклоняющий старый unsafe global init. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Синхронный whole-player call с неблокирующей доставкой child/form на owner safe points. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершение SDK после joined jobs и очистки window/audio. |
 
 Стековые дескрипторы и вложенный userdata живут неизменными до возврата. Worker
 не получает VM-объектов. Target удерживается pin до доставки либо joined cancel.
 Job хранит байты до окончания owner import, затем release освобождает их. DNS
 может задержать join; worker не убивается и не detach. Сохраняются строгие player
 ошибки; отсутствующие MovieClipLoader progress/failure events не имитируются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

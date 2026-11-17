@@ -94,22 +94,22 @@ Each row describes its individual function and links to the full contract.
 
 | C API | Purpose, ownership and blocking |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Fill caller scalar defaults without allocation or startup. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Fill caller scalar defaults without allocation or startup. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Fill the owner command descriptor and exact ABI size without startup. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_playback_snapshot_init](../../../frontend/common/playback_mailbox.h#L32) | Fill exact copy size/zero fields; no resource acquisition. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_create](../../../frontend/common/playback_mailbox.h#L38) | Allocate one native mutex/bounded record; out unchanged on failure, no VM/thread. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_post](../../../frontend/common/playback_mailbox.h#L47) | Thread-safe latest intent; accepted STEP is not a completed tick, STOP terminal. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_poll](../../../frontend/common/playback_mailbox.h#L52) | Brief mutex-protected value copy; NOT_FOUND before READY, no VM access. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_release](../../../frontend/common/playback_mailbox.h#L42) | Dispose native record after runner/controller have finished; never joins them itself. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_notify](../../../frontend/common/playback_mailbox.h#L62) | Owner callback copies observations/consumes pending intent; retains no VM pointer. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_playback_mailbox_load_notify](../../../frontend/common/playback_mailbox.h#L66) | Owner load callback reads nonconsuming stop latch before/during fetch waits. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize provider policy without workers/I/O. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Initialize async/deadline observation defaults without jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
-| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Synchronously borrow provider/monitor/control/source until joined owner cleanup, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Local/memory controlled runner with optional loader; borrows input until return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Configured native worker byte provider; cooperative cancellation, no VM/SDL events. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate worker-safe curl provider with SDK global-safety check. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Explicit SDK session teardown after every native mailbox/worker/window/transfer is gone. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
+| [fvm_desktop_playback_snapshot_init](../../../frontend/common/playback_mailbox.h#L34) | Fill exact copy size/zero fields; no resource acquisition. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_create](../../../frontend/common/playback_mailbox.h#L41) | Allocate one native mutex/bounded record; out unchanged on failure, no VM/thread. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_post](../../../frontend/common/playback_mailbox.h#L53) | Thread-safe latest intent; accepted STEP is not a completed tick, STOP terminal. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_poll](../../../frontend/common/playback_mailbox.h#L60) | Brief mutex-protected value copy; NOT_FOUND before READY, no VM access. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_release](../../../frontend/common/playback_mailbox.h#L46) | Dispose native record after runner/controller have finished; never joins them itself. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_notify](../../../frontend/common/playback_mailbox.h#L72) | Owner callback copies observations/consumes pending intent; retains no VM pointer. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_playback_mailbox_load_notify](../../../frontend/common/playback_mailbox.h#L79) | Owner load callback reads nonconsuming stop latch before/during fetch waits. [PLAYBACK_MAILBOX.md](../../../doc/PLAYBACK_MAILBOX.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize provider policy without workers/I/O. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Initialize async/deadline observation defaults without jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
+| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L89) | Synchronously borrow provider/monitor/control/source until joined owner cleanup, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
+| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L79) | Local/memory controlled runner with optional loader; borrows input until return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Configured native worker byte provider; cooperative cancellation, no VM/SDL events. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Alternate worker-safe curl provider with SDK global-safety check. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Explicit SDK session teardown after every native mailbox/worker/window/transfer is gone. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
 
 The example native adapter uses: [SDL_CreateThread](https://wiki.libsdl.org/SDL2/SDL_CreateThread), [SDL_WaitThread](https://wiki.libsdl.org/SDL2/SDL_WaitThread), [SDL_AtomicGet](https://wiki.libsdl.org/SDL2/SDL_AtomicGet), [SDL_AtomicSet](https://wiki.libsdl.org/SDL2/SDL_AtomicSet), [SDL_GetTicks](https://wiki.libsdl.org/SDL2/SDL_GetTicks), [SDL_Delay](https://wiki.libsdl.org/SDL2/SDL_Delay).
 
@@ -126,3 +126,30 @@ native callback/DNS. A five-second idle controller failure returns status 1; thi
 is not a hard provider-join deadline. The tutorial is muted, with no IDE GUI,
 instruction debugger or complete Flash/SWF8 compatibility claim. Native/hardware
 acceptance on other OSes and roadmap stage 9 remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_playback_mailbox_create` | function | [frontend/common/playback_mailbox.h:41](../../../frontend/common/playback_mailbox.h#L41) |
+| `fvm_desktop_playback_mailbox_load_notify` | function | [frontend/common/playback_mailbox.h:79](../../../frontend/common/playback_mailbox.h#L79) |
+| `fvm_desktop_playback_mailbox_notify` | function | [frontend/common/playback_mailbox.h:72](../../../frontend/common/playback_mailbox.h#L72) |
+| `fvm_desktop_playback_mailbox_poll` | function | [frontend/common/playback_mailbox.h:60](../../../frontend/common/playback_mailbox.h#L60) |
+| `fvm_desktop_playback_mailbox_post` | function | [frontend/common/playback_mailbox.h:53](../../../frontend/common/playback_mailbox.h#L53) |
+| `fvm_desktop_playback_mailbox_release` | function | [frontend/common/playback_mailbox.h:46](../../../frontend/common/playback_mailbox.h#L46) |
+| `fvm_desktop_playback_snapshot_init` | function | [frontend/common/playback_mailbox.h:34](../../../frontend/common/playback_mailbox.h#L34) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../../../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../../../frontend/common/playback.h#L79) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

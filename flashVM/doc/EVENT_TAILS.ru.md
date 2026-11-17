@@ -57,18 +57,18 @@ Finite pump использует прежние буферы и бюджет. Н
 `flashvm_player --finite-audio-tails movie.swf` включает конечные event-only и root
 stream/event хвосты. Прежний --finite-mixed-tails остаётся mixed-only; defaults не
 изменены. Stream-only путь сохраняет свою политику, --mute не открывает устройство.
-`fvm_desktop_audio_open_policy` проверяет три Boolean-флага и записывает неизменную
+[`fvm_desktop_audio_open_policy`](../frontend/common/audio.h#L118) проверяет три Boolean-флага и записывает неизменную
 политику до запуска worker. Старые acquisition-функции сохраняют поведение.
 
 В finite event-only режиме callback владельца удерживает вывод до подготовки
-источника вне mutex. `fvm_desktop_audio_timeline` публикует разрешение только после
+источника вне mutex. [`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) публикует разрешение только после
 полной доставки кадра: однокадровые события получают общую сетку. Embedding-хост
 обязан публиковать кадр и при authored root Stop. Host pause удерживает весь вывод.
 Ранее принятый FIFO может потребляться во время удержания новых блоков и не может
 быть выборочно отозван. Worker подаёт конечные блоки, возобновляет короткий FIFO
 ниже driver reserve и отличает ожидаемый конец/idle от underrun.
 
-`fvm_desktop_audio_stream_pending` теперь также сериализованно наблюдает finite
+[`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) теперь также сериализованно наблюдает finite
 event-only голоса/retry/FIFO, включая release без голосов. При suspended хосте
 возвращается отсутствие обрабатываемой работы, не подтверждение drain или отмены.
 Существующий ограниченный tail loop плеера ждёт завершения с прежними STOP/pause/
@@ -108,6 +108,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_open_policy` | function | [frontend/common/audio.h:118](../frontend/common/audio.h#L118) |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
 | `fvm_swf_sound_output_pending` | function | [include/flashvm/swf_sound_output.h:170](../include/flashvm/swf_sound_output.h#L170) |
 | `fvm_swf_sound_output_pump_finite` | function | [include/flashvm/swf_sound_output.h:159](../include/flashvm/swf_sound_output.h#L159) |
 <!-- source-links:end -->

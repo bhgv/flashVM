@@ -82,7 +82,7 @@ input scope сохраняется. Никакого показа пикселе
 
 ## SDL player
 
-Плеер передаёт pinned root в fvm_desktop_window_pump_clip_input. Для каждого FIFO
+Плеер передаёт pinned root в [fvm_desktop_window_pump_clip_input](../frontend/common/window.h#L89). Для каждого FIFO
 transition сначала восстанавливает authored world coordinates и публикует copied
 input state, затем исполняет Mouse/Key namespace handlers. С v0.627 маршрут с root
 не вызывает focused clip отдельно: его метод доставит сцена без дубля; pump без
@@ -91,7 +91,7 @@ root сохраняет прежнюю focus-first доставку. Если э
 именованные методы через [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L93), затем переходит к следующему
 transition ([контракт методов](CLIP_INPUT_METHODS.ru.md)).
 
-Старый fvm_desktop_window_pump_input и keyboard wrapper остаются namespace-only.
+Старый [fvm_desktop_window_pump_input](../frontend/common/window.h#L92) и keyboard wrapper остаются namespace-only.
 Новый API заимствует root на время синхронного main-thread pump. Namespace error/reset
 пропускает tree-stage данного события. Tree error сохраняет state/callback effects,
 потребляет текущее событие, оставляя последующие в очереди. Recursive pump запрещён,
@@ -149,6 +149,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_CLIP_INPUT_MAX_DEPTH` | macro / define | [src/standard/clip_input_constants.h:8](../src/standard/clip_input_constants.h#L8) |
 | `FVM_CLIP_INPUT_MAX_NODES` | macro / define | [src/standard/clip_input_constants.h:9](../src/standard/clip_input_constants.h#L9) |
 | `FVM_CLIP_INPUT_MAX_RECIPIENTS` | macro / define | [src/standard/clip_input_constants.h:11](../src/standard/clip_input_constants.h#L11) |
+| `fvm_desktop_window_pump_clip_input` | function | [frontend/common/window.h:89](../frontend/common/window.h#L89) |
+| `fvm_desktop_window_pump_input` | function | [frontend/common/window.h:92](../frontend/common/window.h#L92) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:11](../src/core/execution_work_scope.hpp#L11) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |

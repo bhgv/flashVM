@@ -62,10 +62,10 @@ worker starts. The shared native mutex serializes all capture operations with
 submit/pump/clear/pause. No VM pointers are retained and no GC roots are added.
 Allocation failure disables capture with a log rather than altering sound.
 
-[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L12) copies geometry/path and returns an optional owned trace.
-[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L16) appends a bounded static-name operation record;
-[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L19) copies accepted frames, marking truncation when full.
-[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L22) writes portable WAV/report and releases ownership after
+[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L16) copies geometry/path and returns an optional owned trace.
+[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L21) appends a bounded static-name operation record;
+[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L25) copies accepted frames, marking truncation when full.
+[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L30) writes portable WAV/report and releases ownership after
 the producer worker has been joined. All functions are internally serialized;
 none is independently thread-safe. PCM capture and event recording perform no
 file I/O or allocation. This extra copying still has a diagnostic overhead and
@@ -213,4 +213,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:228](../include/flashvm/swf_sound_output.h#L228) |
+| `fvm_desktop_trace_close` | function | [frontend/common/audio_trace.h:30](../frontend/common/audio_trace.h#L30) |
+| `fvm_desktop_trace_event` | function | [frontend/common/audio_trace.h:21](../frontend/common/audio_trace.h#L21) |
+| `fvm_desktop_trace_open` | function | [frontend/common/audio_trace.h:16](../frontend/common/audio_trace.h#L16) |
+| `fvm_desktop_trace_pcm` | function | [frontend/common/audio_trace.h:25](../frontend/common/audio_trace.h#L25) |
 <!-- source-links:end -->

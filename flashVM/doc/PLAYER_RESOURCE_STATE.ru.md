@@ -8,14 +8,14 @@ owner safe points и предоставляет READ snapshot и независ�
 
 ## Снимок и события
 
-[FVM_DesktopResourceSnapshot](../frontend/common/resource_state.h#L21) владеет копией префикса source и скалярными полями.
+[FVM_DesktopResourceSnapshot](../frontend/common/resource_state.h#L22) владеет копией префикса source и скалярными полями.
 Указателей VM/context/root/value нет; копия пригодна после возврата runner и
 завершения SDK. Epoch начинается с единицы на первом READY, увеличивается на
 каждом READY нового корня, включая навигацию, и не оборачивается. Он действует
 только в жизни адаптера. TURN/TICK до READY даёт BUSY. Source копируется до
-[FVM_DESKTOP_STATE_SOURCE](../frontend/common/resource_state.h#L11) байт с NUL и [FVM_DESKTOP_STATE_SOURCE_TRUNCATED](../frontend/common/resource_state.h#L12). Усечение побайтовое,
+[FVM_DESKTOP_STATE_SOURCE](../frontend/common/resource_state.h#L12) байт с NUL и [FVM_DESKTOP_STATE_SOURCE_TRUNCATED](../frontend/common/resource_state.h#L13). Усечение побайтовое,
 не гарантирует целый UTF-8 code point. Счётчики больше Uint32 насыщаются с
-[FVM_DESKTOP_STATE_COUNTERS_TRUNCATED](../frontend/common/resource_state.h#L13); ровно Uint32 max — точное значение. Адаптер не восстанавливает
+[FVM_DESKTOP_STATE_COUNTERS_TRUNCATED](../frontend/common/resource_state.h#L14); ровно Uint32 max — точное значение. Адаптер не восстанавливает
 переполнение, которое уже произошло в самом native host counter.
 
 READY и TICK всегда публикуются. TURN публикует POLICY только при изменении
@@ -50,17 +50,17 @@ opaque storage. Handler читает только owner cache, VM не опра�
 
 | Функция | Контракт |
 | --- | --- |
-| [fvm_desktop_resource_state_create](../frontend/common/resource_state.h#L41) | Диспетчер, canonical path, выход adapter и target. Одно fixed native allocation, регистрация READ snapshot, заимствование диспетчера до destroy. Выходы только на OK. Неверный путь/дубликат/лимит регистрации возвращаются явно; NOMEM при allocation. Нет startup SDK, grant и установки notify. Выходы должны иметь отдельную стабильную память. |
-| [fvm_desktop_resource_state_observe](../frontend/common/resource_state.h#L50) | Адаптер и заимствованный настоящий playback notify. Копирует скаляры/source без удержания context/root. Exact struct_size, ненулевой source, известный phase, paused/step 0/1. READY увеличивает epoch; TURN/TICK до READY BUSY. Публикует READY/TICK либо изменённый TURN policy, затем cache. Ошибка сохраняет cache; статус publish передаётся. Без allocation/pump/I/O/консоли и изменения policy. |
-| [fvm_desktop_resource_state_read](../frontend/common/resource_state.h#L55) | Counted payload и native snapshot output. Полная проверка versioned canonical integers и точной длины source. Неизвестные schema/flags, неверные целые/booleans/phase, внутренний NUL, неверный truncation extent и хвост дают INVALID без изменения выхода. Без VM, заимствованного результата и allocation; подходит клиенту с собственной копией байт. |
-| [fvm_desktop_resource_state_destroy](../frontend/common/resource_state.h#L61) | Указатель на адаптер после остановки notify/consumers. Owner снимает точное поколение регистрации, отбрасывает watches, освобождает только адаптер и обнуляет указатель. BUSY внутри resource callback; ошибки owner/регистрации сохраняют указатель. Старые queued jobs затем дают UNKNOWN; хост должен их take/disconnect. Диспетчер/сессия/SDK остаются хосту. |
+| [fvm_desktop_resource_state_create](../frontend/common/resource_state.h#L40) | Диспетчер, canonical path, выход adapter и target. Одно fixed native allocation, регистрация READ snapshot, заимствование диспетчера до destroy. Выходы только на OK. Неверный путь/дубликат/лимит регистрации возвращаются явно; NOMEM при allocation. Нет startup SDK, grant и установки notify. Выходы должны иметь отдельную стабильную память. |
+| [fvm_desktop_resource_state_observe](../frontend/common/resource_state.h#L52) | Адаптер и заимствованный настоящий playback notify. Копирует скаляры/source без удержания context/root. Exact struct_size, ненулевой source, известный phase, paused/step 0/1. READY увеличивает epoch; TURN/TICK до READY BUSY. Публикует READY/TICK либо изменённый TURN policy, затем cache. Ошибка сохраняет cache; статус publish передаётся. Без allocation/pump/I/O/консоли и изменения policy. |
+| [fvm_desktop_resource_state_read](../frontend/common/resource_state.h#L59) | Counted payload и native snapshot output. Полная проверка versioned canonical integers и точной длины source. Неизвестные schema/flags, неверные целые/booleans/phase, внутренний NUL, неверный truncation extent и хвост дают INVALID без изменения выхода. Без VM, заимствованного результата и allocation; подходит клиенту с собственной копией байт. |
+| [fvm_desktop_resource_state_destroy](../frontend/common/resource_state.h#L66) | Указатель на адаптер после остановки notify/consumers. Owner снимает точное поколение регистрации, отбрасывает watches, освобождает только адаптер и обнуляет указатель. BUSY внутри resource callback; ошибки owner/регистрации сохраняют указатель. Старые queued jobs затем дают UNKNOWN; хост должен их take/disconnect. Диспетчер/сессия/SDK остаются хосту. |
 
-[FVM_DESKTOP_STATE_SNAPSHOT](../frontend/common/resource_state.h#L7) требует READ и пустой request. До первого успешного observe — terminal
+[FVM_DESKTOP_STATE_SNAPSHOT](../frontend/common/resource_state.h#L8) требует READ и пустой request. До первого успешного observe — terminal
 BUSY; непустой payload INVALID. Хост явно выдаёт READ и/или SUBSCRIBE и решает,
 можно ли сообщать source этой аудитории. SUBSCRIBE без READ допускает события.
 Сессия не берётся из wire claim, OS filesystem не открывается.
 
-Вызывайте observe перед fvm_desktop_resource_control_notify в том же host notify:
+Вызывайте observe перед [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L42) в том же host notify:
 состояние копируется до применения возвращаемой команды. Нельзя pump control
 снаружи control notify — прежний BUSY контракт остаётся. Observe не pump-ит,
 сохраняя FIFO с одним job на границу. При STOP после ошибки наблюдения обычная
@@ -156,3 +156,24 @@ Fixture включает настоящий resource_state.c с управляе
 SDL2_DIR и профилем player-jit.defs, затем соберите flashvm_player_host и
 flashvm_example_frame_capture (desktop). Android требует описанной отдельно
 Activity/surface интеграции. Реальные target запуск и приёмка остаются отдельными.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../frontend/common/resource_control.h#L42) |
+| `fvm_desktop_resource_state_create` | function | [frontend/common/resource_state.h:40](../frontend/common/resource_state.h#L40) |
+| `fvm_desktop_resource_state_destroy` | function | [frontend/common/resource_state.h:66](../frontend/common/resource_state.h#L66) |
+| `fvm_desktop_resource_state_observe` | function | [frontend/common/resource_state.h:52](../frontend/common/resource_state.h#L52) |
+| `fvm_desktop_resource_state_read` | function | [frontend/common/resource_state.h:59](../frontend/common/resource_state.h#L59) |
+| `FVM_DESKTOP_STATE_COUNTERS_TRUNCATED` | macro / define | [frontend/common/resource_state.h:14](../frontend/common/resource_state.h#L14) |
+| `FVM_DESKTOP_STATE_SNAPSHOT` | macro / define | [frontend/common/resource_state.h:8](../frontend/common/resource_state.h#L8) |
+| `FVM_DESKTOP_STATE_SOURCE` | macro / define | [frontend/common/resource_state.h:12](../frontend/common/resource_state.h#L12) |
+| `FVM_DESKTOP_STATE_SOURCE_TRUNCATED` | macro / define | [frontend/common/resource_state.h:13](../frontend/common/resource_state.h#L13) |
+| `FVM_DesktopResourceSnapshot` | struct | [frontend/common/resource_state.h:22](../frontend/common/resource_state.h#L22) |
+<!-- source-links:end -->

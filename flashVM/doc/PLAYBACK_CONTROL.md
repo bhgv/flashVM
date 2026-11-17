@@ -6,7 +6,7 @@
 ## Command policy since v0.710
 
 [fvm_desktop_playback_control_init](../frontend/common/playback.h#L68)(out) initializes caller-owned
-[FVM_DesktopPlaybackControl](../frontend/common/playback.h#L57): exact struct_size, initially running, no callback or
+[FVM_DesktopPlaybackControl](../frontend/common/playback.h#L56): exact struct_size, initially running, no callback or
 userdata. It returns one on success, zero for null, without allocating or opening
 VM/window/audio/network resources. This descriptor is separate from existing
 source/options/loader structures; their ABI layouts are unchanged.
@@ -25,12 +25,12 @@ is the host's scheduling decision, not an implicit timeout.
 | STEP | Pause and permit one host tick; repeated requests coalesce to one permit. |
 | STOP | Successfully terminate this entire source run, including whole-root navigation. |
 
-Commands use [FVM_DesktopPlaybackCommand](../frontend/common/playback.h#L11). Unknown values fail instead of silently
+Commands use [FVM_DesktopPlaybackCommand](../frontend/common/playback.h#L12). Unknown values fail instead of silently
 resuming. Stop is terminal. A step means one ordinary root advance, including its
 existing descendant/EnterFrame semantics; it is not an AVM1 instruction step, a
 seek, or an override of script play/stop state.
 
-[FVM_DesktopPlaybackState](../frontend/common/playback.h#L33) is a stack snapshot. Its context/root/source are borrowed
+[FVM_DesktopPlaybackState](../frontend/common/playback.h#L32) is a stack snapshot. Its context/root/source are borrowed
 only during notify; the root is already pinned by the runner. Scalar counters can
 be copied. Do not retain context/root/managed pointers beyond notify: pinning cannot extend
 the runner-owned context lifetime. Copy scalars/text or serialize during notify.
@@ -46,14 +46,14 @@ Owner-loop integration is an additive layer over this policy, not a new VM debug
 
 ## Controlled runners since v0.711
 
-[fvm_desktop_run_source_controlled](../frontend/common/playback.h#L77)(options, source, loader, control, error)`
+[fvm_desktop_run_source_controlled](../frontend/common/playback.h#L79)(options, source, loader, control, error)`
 executes a FILE, MEMORY or URL source with ordinary loader policy. options, source
 and control are required; loader is optional. All pointed-to strings, input bytes,
 callbacks and userdata remain borrowed until return. Memory sources retain their
 explicit origin for relative child clips and loadVariables requests. Without an
 explicit origin the existing executable-directory policy applies.
 
-[fvm_desktop_run_source_background_controlled](../frontend/common/playback.h#L86)(options, source, loader, monitor,
+[fvm_desktop_run_source_background_controlled](../frontend/common/playback.h#L89)(options, source, loader, monitor,
 control, error)` requires a background provider and load monitor in addition to
 the same options/source/control. monitor.asynchronous chooses continuing owner
 turns or blocking safe-point waits. Initialize every descriptor with its own init
@@ -116,3 +116,20 @@ Since v0.712, TURN also runs during final bounded-frame visibility waits.
 With notify installed, timer-free slow-frame waits are capped at a 10 ms polling
 interval. This is a polling policy, not a real-time guarantee: VM/provider/platform
 work may postpone delivery.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../frontend/common/playback.h#L68) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../frontend/common/playback.h#L79) |
+| `FVM_DesktopPlaybackCommand` | enum | [frontend/common/playback.h:12](../frontend/common/playback.h#L12) |
+| `FVM_DesktopPlaybackControl` | struct | [frontend/common/playback.h:56](../frontend/common/playback.h#L56) |
+| `FVM_DesktopPlaybackState` | struct | [frontend/common/playback.h:32](../frontend/common/playback.h#L32) |
+<!-- source-links:end -->

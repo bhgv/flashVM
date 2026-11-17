@@ -3,13 +3,13 @@
 [Русский](HTTP_REDIRECTS.ru.md) · [Socket transport](SOCKET_TRANSPORT.md) ·
 [Load monitoring](LOAD_MONITOR.md).
 
-[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) initializes [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L21): no redirects,
+[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L33) initializes [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L22): no redirects,
 10s connect/30s total budget, default trust. Explicit native callbacks
-[fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L72) and [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L76) take this
+[fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L99) and [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L109) take this
 policy as required userdata. The worker adapter additionally borrows [FVM_NetControl](../ports/network/socket.h#L23).
 Existing socket options, controlled requests and callbacks keep their ABI/behavior.
 
-Choose max_redirects=0..[FVM_HTTP_REDIRECT_MAX](../frontend/common/http_policy.h#L6) (8), connect_ms>0 and <=total_ms,
+Choose max_redirects=0..[FVM_HTTP_REDIRECT_MAX](../frontend/common/http_policy.h#L7) (8), connect_ms>0 and <=total_ms,
 total_ms<=[FVM_NET_MAX_MS](../ports/network/socket.h#L9) (120s), optional ca_file. Invalid policy starts no I/O.
 The total budget spans every connection/header/body, including elapsed DNS, with
 monotonic rollover-safe samples. DNS/CA/user callbacks remain non-preemptible.
@@ -40,7 +40,7 @@ Protocol reference: [RFC9110, Location and redirection](https://www.rfc-editor.o
 
 ## Matching libcurl profile and verified TLS (v0.688)
 
-[fvm_desktop_http_fetch_policy](../frontend/common/http.h#L43) and [fvm_desktop_http_transfer_policy](../frontend/common/http.h#L47) use the same
+[fvm_desktop_http_fetch_policy](../frontend/common/http.h#L68) and [fvm_desktop_http_transfer_policy](../frontend/common/http.h#L78) use the same
 policy/URI/chain loop as the socket provider. Worker calls retain the linked SDK's
 thread-safe-global prerequisite. libcurl does not auto-follow: bounded header
 callbacks abort before intermediate bodies; each next hop is explicitly validated.
@@ -57,8 +57,8 @@ no hard preemption or full Flash/browser policy is claimed.
 
 ## Player/IDE and console integration (v0.689)
 
-[fvm_desktop_network_policy_init](../frontend/common/network_loader.h#L13) is the always-linkable host initializer, even in a
-provider-less SDK. [fvm_desktop_run_source_network](../frontend/common/network_loader.h#L22) and [fvm_desktop_run_network](../frontend/common/network_loader.h#L28)
+[fvm_desktop_network_policy_init](../frontend/common/network_loader.h#L16) is the always-linkable host initializer, even in a
+provider-less SDK. [fvm_desktop_run_source_network](../frontend/common/network_loader.h#L27) and [fvm_desktop_run_network](../frontend/common/network_loader.h#L35)
 combine required HTTP policy and load monitor with the compiled default worker
 provider. Old source/options/loader/monitor layouts remain unchanged. Invalid
 policy/monitor fails before I/O/callback/window. Provider-less local/memory playback
@@ -125,6 +125,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_http_fetch_policy` | function | [frontend/common/http.h:68](../frontend/common/http.h#L68) |
+| `fvm_desktop_http_policy_init` | function | [frontend/common/http_policy.h:33](../frontend/common/http_policy.h#L33) |
+| `fvm_desktop_http_transfer_policy` | function | [frontend/common/http.h:78](../frontend/common/http.h#L78) |
+| `fvm_desktop_network_policy_init` | function | [frontend/common/network_loader.h:16](../frontend/common/network_loader.h#L16) |
+| `fvm_desktop_run_network` | function | [frontend/common/network_loader.h:35](../frontend/common/network_loader.h#L35) |
+| `fvm_desktop_run_source_network` | function | [frontend/common/network_loader.h:27](../frontend/common/network_loader.h#L27) |
+| `fvm_desktop_socket_fetch_policy` | function | [frontend/common/socket_http.h:99](../frontend/common/socket_http.h#L99) |
+| `fvm_desktop_socket_transfer_policy` | function | [frontend/common/socket_http.h:109](../frontend/common/socket_http.h#L109) |
+| `FVM_DesktopHTTPPolicy` | struct | [frontend/common/http_policy.h:22](../frontend/common/http_policy.h#L22) |
+| `FVM_HTTP_REDIRECT_MAX` | macro / define | [frontend/common/http_policy.h:7](../frontend/common/http_policy.h#L7) |
 | `FVM_NET_MAX_MS` | macro / define | [ports/network/socket.h:9](../ports/network/socket.h#L9) |
 | `FVM_NetControl` | struct | [ports/network/socket.h:23](../ports/network/socket.h#L23) |
 <!-- source-links:end -->

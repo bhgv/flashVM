@@ -2,7 +2,7 @@
 
 [Русский](PLAYER_RECOVERY.ru.md). The optional SDL player keeps one owned packed
 RGBA copy of the last successfully uploaded frame. The source surface is borrowed
-only during [`fvm_desktop_window_present`](../frontend/common/window.h#L56); it may be reused or freed immediately
+only during [`fvm_desktop_window_present`](../frontend/common/window.h#L63); it may be reused or freed immediately
 on return. Row padding is excluded from the retained copy. No VM value or GC root
 is stored in the window adapter. Closing the window frees the snapshot before
 SDL shutdown. Allocation failures are reported, rather than retaining caller data.
@@ -27,8 +27,8 @@ before the first frame creates empty storage without presenting undefined pixels
 No timeline advance, script/timer callback or additional VM rendering occurs.
 Exposure/resize also redraw the uploaded texture.
 
-[`fvm_desktop_window_status`](../frontend/common/window.h#L64) reports persistent presentation/input failures
-separately from the normal close result of [`fvm_desktop_window_events`](../frontend/common/window.h#L59). The player
+[`fvm_desktop_window_status`](../frontend/common/window.h#L77) reports persistent presentation/input failures
+separately from the normal close result of [`fvm_desktop_window_events`](../frontend/common/window.h#L68). The player
 checks it in active, background and final-frame waits; failed restoration is not
 reported as successful user cancellation. Repaint errors are latched as well.
 The SDL test injects both reset events and reads actual restored texture pixels
@@ -133,3 +133,17 @@ physical devices, endurance and all nine roadmap stages remain open.
 Full player/AGG/JIT plus target SDL cross-builds link for Linux ARM64, Linux
 RISC-V64 and Windows x64. ELF/PE machine headers were checked; no foreign
 executable was run. SDL audio output is not enabled in these build checks.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_window_events` | function | [frontend/common/window.h:68](../frontend/common/window.h#L68) |
+| `fvm_desktop_window_present` | function | [frontend/common/window.h:63](../frontend/common/window.h#L63) |
+| `fvm_desktop_window_status` | function | [frontend/common/window.h:77](../frontend/common/window.h#L77) |
+<!-- source-links:end -->

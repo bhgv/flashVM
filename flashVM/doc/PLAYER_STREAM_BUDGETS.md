@@ -10,7 +10,7 @@ whole root header sequence. The default is 64 MiB (67108864 bytes), declared as
 header, rather than an unrelated hard-coded description. Public player-host and
 VM structure layouts remain unchanged; there is no new command-line option.
 
-The charged group includes the allocated [FVM_DesktopStreamSegment](../frontend/common/audio.h#L26) table, every
+The charged group includes the allocated [FVM_DesktopStreamSegment](../frontend/common/audio.h#L31) table, every
 retained snapshot object/index/payload, and the temporary encoded-plus-decoded
 ownership of the next ADPCM snapshot. Before preparing source `i`, the driver
 requires `table + retained(previous sources) + peak(source i) <= ceiling`.
@@ -21,7 +21,7 @@ per-snapshot part before allocation; runtime payload limits remain independent.
 
 ## Preflight, acquisition and cleanup
 
-[fvm_desktop_audio_validate](../frontend/common/audio.h#L76) performs the same arithmetic in source order before
+[fvm_desktop_audio_validate](../frontend/common/audio.h#L93) performs the same arithmetic in source order before
 window/device acquisition. It temporarily prepares **PCM as well as ADPCM**, queries
 charges, closes each temporary and virtually retains its charge in the remaining
 budget. Thus a sequence whose completed snapshots fit, but whose later temporary
@@ -106,3 +106,17 @@ storage, allocation and C89 tests and complete C tutorial actually ran on this
 host, including the independent PCM oracle. No ARM64/RISC-V64 execution or physical
 speaker/window acceptance is claimed. Platform acceptance and all roadmap stages
 remain open; generated logs/SDKs/caches stay outside tracked source.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_PREPARED_BYTES` | macro / define | [frontend/common/audio_memory.h:5](../frontend/common/audio_memory.h#L5) |
+| `fvm_desktop_audio_validate` | function | [frontend/common/audio.h:93](../frontend/common/audio.h#L93) |
+| `FVM_DesktopStreamSegment` | struct | [frontend/common/audio.h:31](../frontend/common/audio.h#L31) |
+<!-- source-links:end -->

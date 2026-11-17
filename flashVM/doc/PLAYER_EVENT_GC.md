@@ -32,7 +32,7 @@ ctest --test-dir build-player -R player_event_gc --output-on-failure
 [Roadmap status](ROADMAP_STATUS.md)
 ## C entry and arguments (v0.668)
 
-`fvm_desktop_main` validates positive argc, non-null argv and every argc pointer,
+[`fvm_desktop_main`](../frontend/common/player.h#L74) validates positive argc, non-null argv and every argc pointer,
 and guards the path-array allocation size. Invalid vectors return 2 before the
 array allocation, file reads or SDL/VM startup. Null option operands and null
 entries after `--help` also fail. No `argv[argc]` sentinel is read. On failure,
@@ -50,5 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_main` | function | [frontend/common/player.h:74](../frontend/common/player.h#L74) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
 <!-- source-links:end -->

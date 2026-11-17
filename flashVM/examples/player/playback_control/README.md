@@ -85,15 +85,15 @@ output pointers without allocation or native service startup.
 
 | C API | Purpose, lifetime and blocking; guide |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Fill caller-owned scalar playback defaults; no I/O. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Fill caller-owned scalar playback defaults; no I/O. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Fill exact control ABI size, running state and null callback/userdata; no I/O. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Fill borrowed provider policy without starting workers. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Fill asynchronous observation/deadline defaults without creating jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
-| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Synchronously run source with optional loader and required control; borrow all storage until return; status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Synchronously own playback; require provider/monitor/control; join workers before return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Release SDK session after runner-owned windows/jobs are gone; caller controls process lifetime. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Selected native worker adapter; cooperatively fetch immutable bytes without VM/SDL calls. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate curl worker adapter; checks SDK global thread safety before fetching. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Fill borrowed provider policy without starting workers. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Fill asynchronous observation/deadline defaults without creating jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
+| [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L79) | Synchronously run source with optional loader and required control; borrow all storage until return; status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
+| [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L89) | Synchronously own playback; require provider/monitor/control; join workers before return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Release SDK session after runner-owned windows/jobs are gone; caller controls process lifetime. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Selected native worker adapter; cooperatively fetch immutable bytes without VM/SDL calls. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Alternate curl worker adapter; checks SDK global thread safety before fetching. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
 
 observe borrows its snapshot only until return and retains scalars alone. It
 returns exactly one command; KEEP does not resume. [GC:] The runner pins root;
@@ -109,3 +109,23 @@ Startup fetching/blocking waits do not call observe: use a monitor for cancellat
 there. The tutorial is muted; separate dummy-audio fixtures check PCM suspension.
 Full SWF8/reference and hardware acceptance on every OS remain open. This advances
 the roadmap without completing stage 9.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../../../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../../../frontend/common/playback.h#L79) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

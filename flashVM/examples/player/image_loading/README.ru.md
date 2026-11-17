@@ -33,13 +33,13 @@ bytes; pin, декодирование и публикация выполняю�
 
 | C API | Назначение, владение и блокирование; руководство |
 | --- | --- |
-| [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Проверяет worker без I/O; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация структуры вызывающего; PLAYER_CONFIGURATION.md. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Descriptor провайдера без job; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker, заимствованная policy, cooperative stop; SOCKET_TRANSPORT.md. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker с проверкой global initialization; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Заимствует descriptors до синхронного возврата; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершает SDK после join/cleanup; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_background_supported](../../../frontend/common/background.h#L58) | Проверяет worker без I/O; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация структуры вызывающего; PLAYER_CONFIGURATION.md. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Descriptor провайдера без job; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Native worker, заимствованная policy, cooperative stop; SOCKET_TRANSPORT.md. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Curl worker с проверкой global initialization; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_run_source_async](../../../frontend/common/background.h#L46) | Заимствует descriptors до синхронного возврата; BACKGROUND_TRANSFER.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершает SDK после join/cleanup; PLAYER_HOST_OWNERSHIP.md. |
 
 Только static full-canvas GIF89a; GIF87a/animation, root image startup и synthetic
 loader/unload events не реализованы. Действуют source profiles и пределы bytes/
@@ -85,3 +85,21 @@ getSWFVersion=-1, сохранение счётчиков сразу после 
 [Полный контракт](../../../doc/MOVIECLIP_CONTENT_INFO.ru.md) /
 [EN](../../../doc/MOVIECLIP_CONTENT_INFO.md). Учёт внутренних символов,
 прогрессивная загрузка и полная приёмка событий остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_async` | function | [frontend/common/background.h:46](../../../frontend/common/background.h#L46) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

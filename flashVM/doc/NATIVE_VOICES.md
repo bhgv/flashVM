@@ -92,7 +92,7 @@ run concurrently; during preparation only the worker can retire old voices, so
 the observed remaining byte allowance is conservative. SyncNoMultiple checks
 activity before expensive preparation and is rechecked on actual adoption.
 
-FVM_DESKTOP_AUDIO_EVENT_BYTES defaults to 64 MiB, independently overridable from
+[FVM_DESKTOP_AUDIO_EVENT_BYTES](../frontend/common/audio_memory.h#L9) defaults to 64 MiB, independently overridable from
 the streaming preparation budget. It charges fixed mixer/slots plus all retained
 and incoming voice owners. Mixer construction and its fixed-byte check occur
 before SDL audio device open. VM, queue/history/trace buffers and allocator
@@ -196,6 +196,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_EVENT_BYTES` | macro / define | [frontend/common/audio_memory.h:9](../frontend/common/audio_memory.h#L9) |
 | `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
 | `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:143](../include/flashvm/swf_sound_mixer.h#L143) |
 | `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:135](../include/flashvm/swf_sound_mixer.h#L135) |

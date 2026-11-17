@@ -32,7 +32,7 @@ multitouch recognition. SDL's own viewport edge clamping remains in force.
 
 ## Shared FIFO and delivery
 
-FVM_DESKTOP_PENDING_EVENTS bounds the copied key/pointer FIFO to 128 events.
+[FVM_DESKTOP_PENDING_EVENTS](../frontend/common/window.h#L9) bounds the copied key/pointer FIFO to 128 events.
 There are no managed VM pointers or borrowed event buffers in it. Each event
 retains the pointer position at that transition, plus its relevant key snapshot
 or pointer type. Repeated motion is not silently coalesced. Overflow latches
@@ -60,7 +60,7 @@ VM effects follow the core dispatch contracts. The regular player reports the
 error and closes the movie. A latched collection error prevents pumping until
 window teardown. The pump restores its reentry flag on every normal status path.
 Callbacks must not destroy/reenter the host presentation lifecycle or throw
-across C. `fvm_desktop_window_pump_keyboard` remains an internal compatibility
+across C. [`fvm_desktop_window_pump_keyboard`](../frontend/common/window.h#L96) remains an internal compatibility
 wrapper over the same shared FIFO with zero stage origin.
 
 Mouse cursor namespace installation is explicit for SWF5–8; listeners remain
@@ -82,7 +82,7 @@ validated root sound notifications without decoding/queueing PCM, starting a
 worker or opening an audio device. Normal non-muted device/error behavior is unchanged.
 Other unsupported scene tags/actions still fail through their existing checks.
 
-The context borrows callback userdata from the player's live FVM_DesktopAudio
+The context borrows callback userdata from the player's live [FVM_DesktopAudio](../frontend/common/audio.h#L39)
 storage; cleanup clears the callback before clearing that storage on every exit.
 The stats sound_events counter includes intentionally muted notifications;
 audio_device stays zero. StopSounds succeeds through the existing empty-context
@@ -124,6 +124,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_PENDING_EVENTS` | macro / define | [frontend/common/window.h:9](../frontend/common/window.h#L9) |
+| `fvm_desktop_window_pump_input` | function | [frontend/common/window.h:92](../frontend/common/window.h#L92) |
+| `fvm_desktop_window_pump_keyboard` | function | [frontend/common/window.h:96](../frontend/common/window.h#L96) |
+| `FVM_DesktopAudio` | struct | [frontend/common/audio.h:39](../frontend/common/audio.h#L39) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

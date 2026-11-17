@@ -5,7 +5,7 @@
 
 ## Native foundation since v0.713
 
-[FVM_DesktopPlaybackMailbox](../frontend/common/playback_mailbox.h#L12) owns one mutex, latest intent and scalar/text copies.
+[FVM_DesktopPlaybackMailbox](../frontend/common/playback_mailbox.c#L14) owns one mutex, latest intent and scalar/text copies.
 It retains no context/root, managed values, SDL window or caller callback. It is
 for an IDE controller thread; only the player owner enters VM. v0.713 introduces
 the foundation and native tests; runner adapters are documented as they are added.
@@ -19,42 +19,42 @@ a burst of N post(STEP) calls does not promise N advances.
 
 ## API and errors
 
-[fvm_desktop_playback_snapshot_init](../frontend/common/playback_mailbox.h#L32)(out)` fills exact struct_size and zero fields;
+[fvm_desktop_playback_snapshot_init](../frontend/common/playback_mailbox.h#L34)(out)` fills exact struct_size and zero fields;
 returns 1 for nonnull out, 0 for null. No allocation or SDK startup.
-[FVM_DesktopPlaybackSnapshot](../frontend/common/playback_mailbox.h#L14) is an independent value including NUL-terminated
+[FVM_DesktopPlaybackSnapshot](../frontend/common/playback_mailbox.h#L16) is an independent value including NUL-terminated
 source. It survives runner/mailbox release and contains no hidden VM pointers.
 paused/step_pending describe the last owner observation before applying its
 returned command; pending/stop_requested are sampled during poll. Posting is not
 immediate acknowledgement of application or a frozen VM snapshot.
 
-[fvm_desktop_playback_mailbox_create](../frontend/common/playback_mailbox.h#L38)(out)` requires an output-pointer address and
+[fvm_desktop_playback_mailbox_create](../frontend/common/playback_mailbox.h#L41)(out)` requires an output-pointer address and
 returns OK, INVALID_ARGUMENT, OUT_OF_MEMORY, or ERROR for native mutex/quota failure.
 *out is unchanged on failure. It allocates native memory/mutex only, without a VM,
 window, audio device, network request or worker. At most
-[FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES](../frontend/common/playback_mailbox.h#L5) may coexist. Every failed allocation
+[FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES](../frontend/common/playback_mailbox.h#L6) may coexist. Every failed allocation
 rolls back reserved quota. Use one mailbox per source run.
 
-[fvm_desktop_playback_mailbox_post](../frontend/common/playback_mailbox.h#L47)(mailbox, command)` atomically replaces pending
+[fvm_desktop_playback_mailbox_post](../frontend/common/playback_mailbox.h#L53)(mailbox, command)` atomically replaces pending
 intent. Returns OK, INVALID_ARGUMENT for null/unknown command, or ERROR for mutex
 failure and any non-STOP command after STOP. Repeated STOP succeeds. No allocation,
 VM entry or user callback occurs under its mutex.
 
-[fvm_desktop_playback_mailbox_poll](../frontend/common/playback_mailbox.h#L52)(mailbox, out)` requires exact struct_size.
+[fvm_desktop_playback_mailbox_poll](../frontend/common/playback_mailbox.h#L60)(mailbox, out)` requires exact struct_size.
 Returns OK with a consistent copy; NOT_FOUND before the first owner observation;
 INVALID_ARGUMENT for null/size mismatch; ERROR on lock failure. All output bytes,
 including padding, stay unchanged on failure. It waits only for a short native
 mutex, never a frame or network request, and never enters VM. Scalar counts keep
 the per-root/per-run meanings from PLAYBACK_CONTROL.md.
 
-[fvm_desktop_playback_mailbox_stop_requested](../frontend/common/playback_mailbox.h#L57)(mailbox)` reads terminal cancellation
+[fvm_desktop_playback_mailbox_stop_requested](../frontend/common/playback_mailbox.h#L66)(mailbox)` reads terminal cancellation
 without consuming intent. Returns 1 for STOP, null or mutex failure, otherwise 0.
 It works before the first snapshot, including during startup fetching.
 
-[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` returns the live native-handle count without
-SDK startup. [fvm_desktop_shutdown](../frontend/common/player.h#L54)()` returns ERROR while any mailbox remains, even
+[fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L83)()` returns the live native-handle count without
+SDK startup. [fvm_desktop_shutdown](../frontend/common/player.h#L65)()` returns ERROR while any mailbox remains, even
 without a window/transfer, leaving the active SDK untouched.
 
-[fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L42)(mailbox)` returns OK; null is accepted.
+[fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L46)(mailbox)` returns OK; null is accepted.
 The runner and every post/poll/other caller thread must finish first. It does not
 join external threads. Concurrent use/release, double release and racing
 create/release against process-wide shutdown are forbidden. [GC:] No managed root
@@ -71,14 +71,14 @@ acceptance. Foreign OS/device execution and all nine roadmap stages remain open.
 
 ## Runner adapters since v0.714
 
-[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L62)(state, userdata)` is an owner callback for
+[fvm_desktop_playback_mailbox_notify](../frontend/common/playback_mailbox.h#L72)(state, userdata)` is an owner callback for
 control.notify, with userdata equal to the mailbox. It publishes the copied
 observation and returns pending intent without storing or dereferencing the
 borrowed context/root pointers. Invalid snapshot/handle/source fails closed with
 STOP. Normal callbacks return KEEP when no command is waiting. Owner publication
 consumes nonterminal intent; STOP remains latched for subsequent observations.
 
-[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L66)(event, userdata)` is the owner-only load
+[fvm_desktop_playback_mailbox_load_notify](../frontend/common/playback_mailbox.h#L79)(event, userdata)` is the owner-only load
 monitor callback. It returns the same nonconsuming terminal latch, including
 before READY and during blocking safe-point fetch waits; null event/userdata or
 lock failure stops. PAUSE/RESUME/STEP wait for playback notification and do not
@@ -122,3 +122,29 @@ open; no additional roadmap stage is declared complete.
 
 [Executable C89/AS/SWF tutorial](../examples/player/playback_mailbox/README.md):
 confirmed steps from a separate OS thread, early errors, native/cross builds.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../frontend/common/playback.h#L68) |
+| `fvm_desktop_playback_mailbox_active` | function | [frontend/common/playback_mailbox.h:83](../frontend/common/playback_mailbox.h#L83) |
+| `fvm_desktop_playback_mailbox_create` | function | [frontend/common/playback_mailbox.h:41](../frontend/common/playback_mailbox.h#L41) |
+| `fvm_desktop_playback_mailbox_load_notify` | function | [frontend/common/playback_mailbox.h:79](../frontend/common/playback_mailbox.h#L79) |
+| `FVM_DESKTOP_PLAYBACK_MAILBOX_MAX_HANDLES` | macro / define | [frontend/common/playback_mailbox.h:6](../frontend/common/playback_mailbox.h#L6) |
+| `fvm_desktop_playback_mailbox_notify` | function | [frontend/common/playback_mailbox.h:72](../frontend/common/playback_mailbox.h#L72) |
+| `fvm_desktop_playback_mailbox_poll` | function | [frontend/common/playback_mailbox.h:60](../frontend/common/playback_mailbox.h#L60) |
+| `fvm_desktop_playback_mailbox_post` | function | [frontend/common/playback_mailbox.h:53](../frontend/common/playback_mailbox.h#L53) |
+| `fvm_desktop_playback_mailbox_release` | function | [frontend/common/playback_mailbox.h:46](../frontend/common/playback_mailbox.h#L46) |
+| `fvm_desktop_playback_mailbox_stop_requested` | function | [frontend/common/playback_mailbox.h:66](../frontend/common/playback_mailbox.h#L66) |
+| `fvm_desktop_playback_snapshot_init` | function | [frontend/common/playback_mailbox.h:34](../frontend/common/playback_mailbox.h#L34) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `FVM_DesktopPlaybackMailbox` | struct | [frontend/common/playback_mailbox.c:14](../frontend/common/playback_mailbox.c#L14) |
+| `FVM_DesktopPlaybackSnapshot` | struct | [frontend/common/playback_mailbox.h:16](../frontend/common/playback_mailbox.h#L16) |
+<!-- source-links:end -->

@@ -63,10 +63,10 @@ worker выделяются буфер на 20 секунд (3,84 МБ при т
 Управляемых VM-указателей и дополнительных GC roots нет. При нехватке памяти
 capture отключается с сообщением в log, не меняя звук.
 
-[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L12) копирует геометрию/путь и возвращает владеющий trace либо null.
-[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L16) добавляет ограниченную запись со статическим именем;
-[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L19) копирует принятые frames, отмечая усечение при переполнении.
-[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L22) записывает переносимый WAV/отчёт и освобождает память
+[`fvm_desktop_trace_open`](../frontend/common/audio_trace.h#L16) копирует геометрию/путь и возвращает владеющий trace либо null.
+[`fvm_desktop_trace_event`](../frontend/common/audio_trace.h#L21) добавляет ограниченную запись со статическим именем;
+[`fvm_desktop_trace_pcm`](../frontend/common/audio_trace.h#L25) копирует принятые frames, отмечая усечение при переполнении.
+[`fvm_desktop_trace_close`](../frontend/common/audio_trace.h#L30) записывает переносимый WAV/отчёт и освобождает память
 после join worker. Все вызовы сериализует host; сами функции не потокобезопасны.
 Копирование PCM и регистрация событий не выделяют память и не пишут файлы.
 Дополнительное копирование всё же имеет диагностические накладные расходы,
@@ -209,4 +209,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:228](../include/flashvm/swf_sound_output.h#L228) |
+| `fvm_desktop_trace_close` | function | [frontend/common/audio_trace.h:30](../frontend/common/audio_trace.h#L30) |
+| `fvm_desktop_trace_event` | function | [frontend/common/audio_trace.h:21](../frontend/common/audio_trace.h#L21) |
+| `fvm_desktop_trace_open` | function | [frontend/common/audio_trace.h:16](../frontend/common/audio_trace.h#L16) |
+| `fvm_desktop_trace_pcm` | function | [frontend/common/audio_trace.h:25](../frontend/common/audio_trace.h#L25) |
 <!-- source-links:end -->

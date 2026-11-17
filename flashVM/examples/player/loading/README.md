@@ -61,11 +61,11 @@ acceptance. Dummy tests use SDL_VIDEODRIVER=dummy and SDL_RENDER_DRIVER=software
 
 | API | Purpose |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned scalar settings |
-| [fvm_desktop_run_memory](../../../frontend/common/player.h#L47) | Borrow exact startup bytes/name until synchronous return |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller-owned scalar settings |
+| [fvm_desktop_run_memory](../../../frontend/common/player.h#L56) | Borrow exact startup bytes/name until synchronous return |
 | [FVM_DesktopOptions.max_loads](../../../frontend/common/options.h#L35) | Bound startup plus all deferred movie/form requests |
 | loadMovie / MovieClip.loadVariables | Queue copied requests; do not fetch from the active callback |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | End this standalone application's global session after all player cleanup |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | End this standalone application's global session after all player cleanup |
 
 [GC:] The runner pins queued targets until delivery, preserves child identity and
 placement during replacement, and releases request roots on error/close. No managed
@@ -79,3 +79,18 @@ loading and child root streaming sound remain outside this tested subset.
 [Core loading APIs](../../../include/flashvm/movieclip.h) ·
 [Implementation](../../../frontend/common/player.c) ·
 [Core implementation](../../../src/standard/movieclip_loading.cpp)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../../../frontend/common/player.h#L56) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../../../frontend/common/options.h#L30) |
+<!-- source-links:end -->

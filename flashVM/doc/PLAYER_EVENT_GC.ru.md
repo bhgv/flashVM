@@ -31,7 +31,7 @@ ctest --test-dir build-player -R player_event_gc --output-on-failure
 [Roadmap status](ROADMAP_STATUS.md)
 ## Вызов из C и аргументы (v0.668)
 
-`fvm_desktop_main` проверяет положительный argc, ненулевой argv и каждый из
+[`fvm_desktop_main`](../frontend/common/player.h#L74) проверяет положительный argc, ненулевой argv и каждый из
 argc указателей, а также переполнение размера массива путей. Ошибка возвращает
 2 до выделения массива, чтения файлов и запуска SDL/VM. Нулевой операнд опции
 и нулевой указатель после `--help` также отклоняются. `argv[argc]` не читается.
@@ -49,5 +49,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_main` | function | [frontend/common/player.h:74](../frontend/common/player.h#L74) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:116](../include/flashvm/gc.h#L116) |
 <!-- source-links:end -->

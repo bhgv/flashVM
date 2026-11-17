@@ -129,8 +129,8 @@ adapter/dispatcher до возврата runner. Init не запускает VM
 
 | Player API | Контракт |
 | --- | --- |
-| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L29) | Владелец копирует путь/операции, заимствует storage adapter, публикует его только при успехе. Перед освобождением storage нужен unregister adapter.target. |
-| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L39) | Сигнатура обычного playback notify. Проверяет READY/TURN/TICK, pump-ит максимум один FIFO job и возвращает native intent. Неверное состояние/ошибка pump даёт STOP. Context/root не сохраняет/не сериализует. |
+| [fvm_desktop_resource_control_init](../frontend/common/resource_control.h#L31) | Владелец копирует путь/операции, заимствует storage adapter, публикует его только при успехе. Перед освобождением storage нужен unregister adapter.target. |
+| [fvm_desktop_resource_control_notify](../frontend/common/resource_control.h#L42) | Сигнатура обычного playback notify. Проверяет READY/TURN/TICK, pump-ит максимум один FIFO job и возвращает native intent. Неверное состояние/ошибка pump даёт STOP. Context/root не сохраняет/не сериализует. |
 
 Доставлять операции адаптера разрешено только внутри этого notify. Внешний pump
 завершает их BUSY без изменения player policy. Payload команды пуст; неверный
@@ -192,6 +192,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_resource_control_init` | function | [frontend/common/resource_control.h:31](../frontend/common/resource_control.h#L31) |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../frontend/common/resource_control.h#L42) |
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../include/flashvm/rdispatch.h#L149) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../include/flashvm/rdispatch.h#L109) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../include/flashvm/rdispatch.h#L163) |

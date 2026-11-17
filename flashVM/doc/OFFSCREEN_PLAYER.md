@@ -20,8 +20,8 @@ and behavior. Include `player.h` or `frame.h`; no SDL types cross these APIs.
 
 | Function | Arguments and behavior |
 | --- | --- |
-| [fvm_desktop_run_source_offscreen](../frontend/common/frame.h#L95) | Required options, source and frame observer; optional ordinary loader and playback control; optional error output. A null loader retains the ordinary startup-only resource budget. Use an explicit loader for child requests. |
-| [fvm_desktop_run_source_background_offscreen](../frontend/common/frame.h#L100) | Required options, source, background provider, load monitor and frame observer; optional control and error output. The monitor selects asynchronous owner turns or blocking resource waits. The explicit provider supplies startup/child bytes. |
+| [fvm_desktop_run_source_offscreen](../frontend/common/frame.h#L106) | Required options, source and frame observer; optional ordinary loader and playback control; optional error output. A null loader retains the ordinary startup-only resource budget. Use an explicit loader for child requests. |
+| [fvm_desktop_run_source_background_offscreen](../frontend/common/frame.h#L116) | Required options, source, background provider, load monitor and frame observer; optional control and error output. The monitor selects asynchronous owner turns or blocking resource waits. The explicit provider supplies startup/child bytes. |
 
 Both run synchronously on the VM owner thread. They preserve FILE/MEMORY/URL
 origin resolution, whole-root navigation, timers, GC safe points, deadline/cancel
@@ -93,3 +93,16 @@ JIT fixtures exercise white initial raster, step/paused redraw, root navigation,
 file/linked bytes and HTTP, including cancellation on observer failure. Dummy-video
 native-window regressions remain separate from windowless assertions. Neither is
 native Windows/macOS/Android display/device certification.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_run_source_background_offscreen` | function | [frontend/common/frame.h:116](../frontend/common/frame.h#L116) |
+| `fvm_desktop_run_source_offscreen` | function | [frontend/common/frame.h:106](../frontend/common/frame.h#L106) |
+<!-- source-links:end -->

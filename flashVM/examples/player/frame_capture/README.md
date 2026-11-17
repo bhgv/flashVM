@@ -99,18 +99,18 @@ STOP. After runner return the SDK is cleaned, and the encoder uses owned memory 
 
 | C API | Purpose, ownership and blocking |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Fill scalar defaults without startup. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Fill scalar defaults without startup. [PLAYER_CONFIGURATION.md](../../../doc/PLAYER_CONFIGURATION.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Initialize owner command policy without allocation; callback may successfully STOP after copying. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_frame_observer_init](../../../frontend/common/frame.h#L57) | Initialize exact observer ABI size and null fields without startup. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
+| [fvm_desktop_frame_observer_init](../../../frontend/common/frame.h#L55) | Initialize exact observer ABI size and null fields without startup. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
 | [fvm_desktop_frame_copy](../../../frontend/common/frame.h#L65) | Validate both complete row extents before writing independent visible RGBA rows; padding untouched, no allocation. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize explicit native-byte provider policy without workers/I/O. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Initialize async/deadline owner observation without creating jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
-| [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Initialize ordinary resource policy; explicitly increase local resource budget before running. [PLAYER_SOURCES.md](../../../doc/PLAYER_SOURCES.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Selected native worker HTTP/TLS provider with cooperative stop; never receives pixels/VM. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate worker-safe curl provider with SDK global-safety check. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_run_source_observed](../../../frontend/common/frame.h#L76) | Synchronous local/memory/URL run with optional loader/control and required observer; borrows descriptors to return, status 0/1/2. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
-| [fvm_desktop_run_source_background_observed](../../../frontend/common/frame.h#L83) | Require provider/monitor and observer; callbacks remain owner-only, jobs joined before buffer/root disposal. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Explicit session teardown after runner-owned resources are gone; output copy remains native-owned. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize explicit native-byte provider policy without workers/I/O. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Initialize async/deadline owner observation without creating jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
+| [fvm_desktop_loader_init](../../../frontend/common/source.h#L64) | Initialize ordinary resource policy; explicitly increase local resource budget before running. [PLAYER_SOURCES.md](../../../doc/PLAYER_SOURCES.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Selected native worker HTTP/TLS provider with cooperative stop; never receives pixels/VM. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Alternate worker-safe curl provider with SDK global-safety check. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
+| [fvm_desktop_run_source_observed](../../../frontend/common/frame.h#L78) | Synchronous local/memory/URL run with optional loader/control and required observer; borrows descriptors to return, status 0/1/2. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
+| [fvm_desktop_run_source_background_observed](../../../frontend/common/frame.h#L90) | Require provider/monitor and observer; callbacks remain owner-only, jobs joined before buffer/root disposal. [FRAME_CAPTURE.md](../../../doc/FRAME_CAPTURE.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Explicit session teardown after runner-owned resources are gone; output copy remains native-owned. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
 
 Argument errors return 2; source/render/observer/encoding/I/O errors return 1;
 a completed copy and full write return 0. Invalid source never opens output. User
@@ -148,8 +148,8 @@ injection or native OS/widget certification is implied.
 
 | C API | Purpose / Назначение и владение |
 | --- | --- |
-| [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L95) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
-| [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L100) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+| [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L106) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+| [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L116) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
 
 ## Resource control / Ресурсное управление (v0.728)
 
@@ -170,10 +170,10 @@ fail before startup. [Contract](../../../doc/RESOURCE_DISPATCH.md).
 | C API | Purpose and ownership |
 | --- | --- |
 | [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L109) | Own a bounded native queue in single-owner mode; no VM/SDK startup. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L29) | Register the CONTROL endpoint and borrow Capture adapter storage until unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L31) | Register the CONTROL endpoint and borrow Capture adapter storage until unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L128) | Grant only the trusted local session CONTROL, not arbitrary remote authority. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L139) | Copy one empty STOP request; acceptance is not execution. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L39) | Deliver queued command at the player owner boundary; return native intent, retaining no VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L42) | Deliver queued command at the player owner boundary; return native intent, retaining no VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L156) | Copy/acknowledge the delivery result and release its identity/capacity. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L149) | On failure cancel a queued STOP before taking the retained result. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L123) | After runner return release callback registration before Capture disposal. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
@@ -188,10 +188,10 @@ registration and dispatcher. This example creates no network client.
 
 | API | Ownership / execution |
 | --- | --- |
-| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L41) | Own native cached state, borrowing dispatcher without starting SDK. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L50) | Owner copies the current safe point before returning the next command. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L55) | Decode owned event bytes into a standalone scalar/source snapshot. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
-| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L40) | Own native cached state, borrowing dispatcher without starting SDK. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L52) | Owner copies the current safe point before returning the next command. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L59) | Decode owned event bytes into a standalone scalar/source snapshot. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
+| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L66) | Unregister watches and free state before ending dispatcher lifetime. [doc/PLAYER_RESOURCE_STATE.md](../../../doc/PLAYER_RESOURCE_STATE.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L63) | Own one independent copied queue for the trusted local session. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L79) | Consume only this reader; quiet-turn PENDING is not failure. [doc/RESOURCE_EVENTS.md](../../../doc/RESOURCE_EVENTS.md). |
 ## Frame export v0.736
@@ -213,11 +213,11 @@ guide and separate client fixtures cover CHUNK/leases.
 
 | API | Ownership / execution |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L70) | Own three explicit-capacity pixel slots, borrowing dispatcher. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L79) | Owner copies visible rows and publishes metadata without retaining borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L89) | Decode copied event metadata into independent native storage. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L94) | Remove local rights/watches and release all session pins before teardown. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
-| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L100) | Unregister before freeing native pixel buffers; dispatcher remains host-owned. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L69) | Own three explicit-capacity pixel slots, borrowing dispatcher. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L78) | Owner copies visible rows and publishes metadata without retaining borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L91) | Decode copied event metadata into independent native storage. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L97) | Remove local rights/watches and release all session pins before teardown. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L104) | Unregister before freeing native pixel buffers; dispatcher remains host-owned. [doc/PLAYER_RESOURCE_FRAMES.md](../../../doc/PLAYER_RESOURCE_FRAMES.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -228,6 +228,31 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_frame_copy` | function | [frontend/common/frame.h:65](../../../frontend/common/frame.h#L65) |
+| `fvm_desktop_frame_observer_init` | function | [frontend/common/frame.h:55](../../../frontend/common/frame.h#L55) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_loader_init` | function | [frontend/common/source.h:64](../../../frontend/common/source.h#L64) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_resource_control_init` | function | [frontend/common/resource_control.h:31](../../../frontend/common/resource_control.h#L31) |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../../../frontend/common/resource_control.h#L42) |
+| `fvm_desktop_resource_frame_capture` | function | [frontend/common/resource_frame.h:78](../../../frontend/common/resource_frame.h#L78) |
+| `fvm_desktop_resource_frame_create` | function | [frontend/common/resource_frame.h:69](../../../frontend/common/resource_frame.h#L69) |
+| `fvm_desktop_resource_frame_destroy` | function | [frontend/common/resource_frame.h:104](../../../frontend/common/resource_frame.h#L104) |
+| `fvm_desktop_resource_frame_read` | function | [frontend/common/resource_frame.h:91](../../../frontend/common/resource_frame.h#L91) |
+| `fvm_desktop_resource_frame_revoke` | function | [frontend/common/resource_frame.h:97](../../../frontend/common/resource_frame.h#L97) |
+| `fvm_desktop_resource_state_create` | function | [frontend/common/resource_state.h:40](../../../frontend/common/resource_state.h#L40) |
+| `fvm_desktop_resource_state_destroy` | function | [frontend/common/resource_state.h:66](../../../frontend/common/resource_state.h#L66) |
+| `fvm_desktop_resource_state_observe` | function | [frontend/common/resource_state.h:52](../../../frontend/common/resource_state.h#L52) |
+| `fvm_desktop_resource_state_read` | function | [frontend/common/resource_state.h:59](../../../frontend/common/resource_state.h#L59) |
+| `fvm_desktop_run_source_background_observed` | function | [frontend/common/frame.h:90](../../../frontend/common/frame.h#L90) |
+| `fvm_desktop_run_source_background_offscreen` | function | [frontend/common/frame.h:116](../../../frontend/common/frame.h#L116) |
+| `fvm_desktop_run_source_observed` | function | [frontend/common/frame.h:78](../../../frontend/common/frame.h#L78) |
+| `fvm_desktop_run_source_offscreen` | function | [frontend/common/frame.h:106](../../../frontend/common/frame.h#L106) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../../../include/flashvm/rdispatch.h#L149) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../../../include/flashvm/rdispatch.h#L109) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../../../include/flashvm/rdispatch.h#L163) |

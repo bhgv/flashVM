@@ -6,7 +6,7 @@
 ## Команды с v0.710
 
 [fvm_desktop_playback_control_init](../frontend/common/playback.h#L68)(out) заполняет структуру вызывающего
-[FVM_DesktopPlaybackControl](../frontend/common/playback.h#L57): точный struct_size, режим воспроизведения, нулевые
+[FVM_DesktopPlaybackControl](../frontend/common/playback.h#L56): точный struct_size, режим воспроизведения, нулевые
 callback и userdata. Возвращает один при успехе, ноль для null, без выделения памяти
 и запуска VM/окна/звука/сети. Прежние структуры source/options/loader и их ABI
 не меняются: управление задаётся отдельным дескриптором.
@@ -25,12 +25,12 @@ callback и userdata. Возвращает один при успехе, нол�
 | STEP | Включает паузу и разрешает один такт; повторные запросы объединяются в один допуск. |
 | STOP | Штатно завершает весь запуск источника, включая последующую смену корня. |
 
-Тип команд — [FVM_DesktopPlaybackCommand](../frontend/common/playback.h#L11). Неизвестное значение приводит к ошибке,
+Тип команд — [FVM_DesktopPlaybackCommand](../frontend/common/playback.h#L12). Неизвестное значение приводит к ошибке,
 а не молчаливому продолжению. Остановка окончательна. Шаг — обычный такт корня
 с прежними правилами потомков/EnterFrame, а не инструкция AVM1, переход на кадр
 или отмена скриптового play/stop.
 
-[FVM_DesktopPlaybackState](../frontend/common/playback.h#L33) — временный снимок на стеке. context/root/source
+[FVM_DesktopPlaybackState](../frontend/common/playback.h#L32) — временный снимок на стеке. context/root/source
 заимствованы только на время notify; корень уже закреплён плеером. Скалярные
 счётчики можно копировать. Не сохраняйте context/root/управляемые указатели после
 notify: pin не продлевает жизнь контекста, которым владеет запуск. Копируйте
@@ -48,14 +48,14 @@ notify: pin не продлевает жизнь контекста, котор�
 
 ## Управляемые запуски с v0.711
 
-[fvm_desktop_run_source_controlled](../frontend/common/playback.h#L77)(options, source, loader, control, error)`
+[fvm_desktop_run_source_controlled](../frontend/common/playback.h#L79)(options, source, loader, control, error)`
 запускает источник FILE, MEMORY или URL с обычной политикой загрузчика. options,
 source и control обязательны; loader необязателен. Строки, входной буфер, callbacks
 и userdata заимствуются до возврата. Явный origin буфера сохраняется для
 относительных дочерних клипов и loadVariables; без него действует прежняя
 политика каталога исполняемого файла.
 
-[fvm_desktop_run_source_background_controlled](../frontend/common/playback.h#L86)(options, source, loader, monitor,
+[fvm_desktop_run_source_background_controlled](../frontend/common/playback.h#L89)(options, source, loader, monitor,
 control, error)` дополнительно требует фоновый provider и monitor.
 monitor.asynchronous выбирает продолжающиеся такты владельца или блокирующее
 ожидание в безопасной точке. Каждый дескриптор сначала заполняйте своей init-
@@ -118,3 +118,20 @@ SWF8 в интерпретаторе/JIT из файлов, буфера и HTTP
 ограниченного кадра. При установленном notify ожидания медленного фильма без
 таймеров ограничены интервалом опроса 10 мс. Это целевая частота опроса,
 не гарантия реального времени: работа VM/provider/платформы может её задерживать.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../frontend/common/playback.h#L68) |
+| `fvm_desktop_run_source_background_controlled` | function | [frontend/common/playback.h:89](../frontend/common/playback.h#L89) |
+| `fvm_desktop_run_source_controlled` | function | [frontend/common/playback.h:79](../frontend/common/playback.h#L79) |
+| `FVM_DesktopPlaybackCommand` | enum | [frontend/common/playback.h:12](../frontend/common/playback.h#L12) |
+| `FVM_DesktopPlaybackControl` | struct | [frontend/common/playback.h:56](../frontend/common/playback.h#L56) |
+| `FVM_DesktopPlaybackState` | struct | [frontend/common/playback.h:32](../frontend/common/playback.h#L32) |
+<!-- source-links:end -->

@@ -10,14 +10,14 @@ remain separate. This is bounded root integration, not complete SWF multimedia a
 
 ## Ownership and frame publication
 
-`fvm_desktop_audio_open_paused` snapshots bounded root sources on the VM owner,
+[`fvm_desktop_audio_open_paused`](../frontend/common/audio.h#L131) snapshots bounded root sources on the VM owner,
 creates the mixer and the optional [`FVM_SWFSoundMixQueue`](../src/swf/sound_mix_queue.cpp#L14), begins its empty shared
 epoch, enables ID tracking, then initializes the stream producer against that
 adapter. Only the native worker renders copied sources; it retains no VM/GC pointer.
 Every mixer/producer/control operation shares the existing SDL mutex.
 
-`fvm_desktop_audio_validate` and acquisition use the same checked predictor for the
-separate `FVM_DESKTOP_AUDIO_MIX_BYTES` ceiling (default 1 MiB). It includes adapter
+[`fvm_desktop_audio_validate`](../frontend/common/audio.h#L93) and acquisition use the same checked predictor for the
+separate [`FVM_DESKTOP_AUDIO_MIX_BYTES`](../frontend/common/audio_memory.h#L13) ceiling (default 1 MiB). It includes adapter
 owner, both PCM buffers and ID deadlines, excluding allocator overhead, mixer/voices,
 source snapshots, trace and device. The existing event and prepared-source budgets
 remain independent. A deficient composition ceiling fails preflight before native
@@ -28,7 +28,7 @@ adopts them under it. NoMultiple and per-ID stop use the tracked queue, includin
 pending/accepted time after mixer voice retirement. A navigation reset is staged
 before new frame events are admitted. While callbacks are preparing those events,
 base and tail production are held at frame zero. The owner calls
-`fvm_desktop_audio_timeline` after the complete frame to publish actual authorization.
+[`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) after the complete frame to publish actual authorization.
 Thus a fast worker cannot render the new base before the frame's event batch arrives.
 Do not substitute a tick count or call this publication midway through delivery.
 
@@ -54,7 +54,7 @@ counted as submitted PCM, not source samples or physical DAC playback.
 | API | Status, ownership and execution contract |
 | --- | --- |
 | [`fvm_swf_stream_output_pump_mix_tail`](../include/flashvm/swf_stream_output.h#L106) | Required live stream/mix owners; optional accepted is cleared first. Null, reentry, no observed EOF, base retry, different backend or inconsistent epoch: INVALID_ARGUMENT. Inactive shared clock: NOT_FOUND. No voice or queue headroom: NOT_FOUND. Other backend/mixer statuses propagate; callback exceptions are ERROR. No allocation/VM/GC, ownership transfer or implicit pause/clear. Externally serialize all borrowed dependencies. |
-| `fvm_desktop_audio_stream_pending` | Include authorized source work, accepted FIFO, live mixed voices and retained mix retry. Host suspension or authored stop returns zero; after StopSounds, a newly delivered event may keep completion alive while the base remains cancelled. No pumping, decoding or VM access; mutex-serialized and output preserved on failure. |
+| [`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) | Include authorized source work, accepted FIFO, live mixed voices and retained mix retry. Host suspension or authored stop returns zero; after StopSounds, a newly delivered event may keep completion alive while the base remains cancelled. No pumping, decoding or VM access; mutex-serialized and output preserved on failure. |
 
 A rejected tail write advances the mixer once and remains an exact TAIL retry in
 the mix queue. The producer's base buffer is not repurposed;
@@ -140,6 +140,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_MIX_BYTES` | macro / define | [frontend/common/audio_memory.h:13](../frontend/common/audio_memory.h#L13) |
+| `fvm_desktop_audio_open_paused` | function | [frontend/common/audio.h:131](../frontend/common/audio.h#L131) |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
+| `fvm_desktop_audio_validate` | function | [frontend/common/audio.h:93](../frontend/common/audio.h#L93) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
 | `fvm_swf_stream_output_continue` | function | [include/flashvm/swf_stream_output.h:186](../include/flashvm/swf_stream_output.h#L186) |
 | `fvm_swf_stream_output_pump_mix_tail` | function | [include/flashvm/swf_stream_output.h:106](../include/flashvm/swf_stream_output.h#L106) |

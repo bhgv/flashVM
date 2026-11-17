@@ -41,12 +41,12 @@ snapshot, mixer, mix queue и exclusive backend. Передачи владени
 Worker переключает исчерпанные сегменты до event-only работы на gate следующего
 источника и не переключается при сохранённом TAIL retry. Признак завершённого
 кадра отделён от разрешения base: пока VM callbacks готовят все события кадра,
-оба producer удерживаются. После кадра `fvm_desktop_audio_timeline` публикует
+оба producer удерживаются. После кадра [`fvm_desktop_audio_timeline`](../frontend/common/audio.h#L101) публикует
 готовность. Авторский root Stop задаёт только base gate=0: события могут prime,
 resume и drain настоящую очередь. Host/session pause по-прежнему останавливает
 весь output. NoMultiple включает accepted/pending ID до dequeue.
 
-`fvm_desktop_audio_stream_pending` учитывает source, FIFO, события и processable
+[`fvm_desktop_audio_stream_pending`](../frontend/common/audio.h#L178) учитывает source, FIFO, события и processable
 mix retry также при authored Stop. BASE с запрещённым исходным кадром не может
 продвинуться; после drain принятого lead он не заставляет finite completion ждать
 бесконечно. Для разрешения нужны resume или подтверждённый seek/clear. Уже принятый
@@ -129,6 +129,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_stream_pending` | function | [frontend/common/audio.h:178](../frontend/common/audio.h#L178) |
+| `fvm_desktop_audio_timeline` | function | [frontend/common/audio.h:101](../frontend/common/audio.h#L101) |
 | `fvm_swf_sound_mix_queue_pending` | function | [include/flashvm/swf_sound_mix_queue.h:38](../include/flashvm/swf_sound_mix_queue.h#L38) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
 | `fvm_swf_stream_output_info` | function | [include/flashvm/swf_stream_output.h:148](../include/flashvm/swf_stream_output.h#L148) |

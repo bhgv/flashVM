@@ -38,12 +38,12 @@ runner освобождает временные байты и GC pins. Зате
 
 | API | Назначение, владение и блокирование |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация настроек вызывающей программы без открытия display/аллокаций. |
-| [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Начальная callback-политика без транспорта, с одним разрешённым запросом. |
-| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L36) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
-| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L43) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
-| [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Работа UI/VM-потока с заимствованными дескрипторами до возврата; запросы на безопасных границах. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация настроек вызывающей программы без открытия display/аллокаций. |
+| [fvm_desktop_loader_init](../../../frontend/common/source.h#L64) | Начальная callback-политика без транспорта, с одним разрешённым запросом. |
+| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L38) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
+| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L47) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
+| [fvm_desktop_run_source](../../../frontend/common/source.h#L75) | Работа UI/VM-потока с заимствованными дескрипторами до возврата; запросы на безопасных границах. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
 
 Подробные аргументы/коды/время жизни каждого API — в [контракте транспорта](../../../doc/SOCKET_TRANSPORT.ru.md#c-api)
 и [руководстве источников](../../../doc/PLAYER_SOURCES.ru.md). Пример задаёт 2 с
@@ -56,4 +56,22 @@ HTTPS требует отдельной сборки с проверяемым T
 
 Для проверяемого HTTPS включите FVM_PLAYER_SOCKET_TLS и SDK OpenSSL. Второй необязательный аргумент задаёт PEM CA; без него используется default trust OpenSSL. См. [TLS-контракт](../../../doc/SOCKET_TRANSPORT.ru.md#проверяемый-https-с-v0678).
 
-IDE может заранее вызвать [fvm_desktop_network_capabilities](../../../frontend/common/network.h#L19) из [network.h](../../../frontend/common/network.h), чтобы узнать default provider без запуска сети/display. Сам пример явно выбирает свой callback.
+IDE может заранее вызвать [fvm_desktop_network_capabilities](../../../frontend/common/network.h#L22) из [network.h](../../../frontend/common/network.h), чтобы узнать default provider без запуска сети/display. Сам пример явно выбирает свой callback.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_loader_init` | function | [frontend/common/source.h:64](../../../frontend/common/source.h#L64) |
+| `fvm_desktop_network_capabilities` | function | [frontend/common/network.h:22](../../../frontend/common/network.h#L22) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source` | function | [frontend/common/source.h:75](../../../frontend/common/source.h#L75) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_fetch` | function | [frontend/common/socket_http.h:47](../../../frontend/common/socket_http.h#L47) |
+| `fvm_desktop_socket_options_init` | function | [frontend/common/socket_http.h:38](../../../frontend/common/socket_http.h#L38) |
+<!-- source-links:end -->

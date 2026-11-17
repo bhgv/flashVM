@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Real source transfer, managed acquisition and deferred URL replacement acceptance.
+ * RU: Настоящие source transfer, managed acquisition и deferred URL replacement.
+ */
 /* Real source transfer and deferred GetURL2 replacement; no socket/device assumption. */
 #define SDL_MAIN_HANDLED
 #include <stdio.h>
@@ -115,6 +119,9 @@ static FVM_Result fetch(const char *ref,
 }
 
 
+#include "managed_source_cases.h"
+
+
 /* Run both VM modes against the actual importer and shared SDL presentation. */
 int main(int argc, char **argv)
 {
@@ -221,6 +228,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
+    managed_source_cases(&options);
     SDL_Quit();
     return 0;
 }

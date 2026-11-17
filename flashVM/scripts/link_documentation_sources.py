@@ -31,17 +31,19 @@ def index_sources():
     index = {}
     SOURCE_LOCATIONS.clear()
     files = []
-    for folder in ("include/flashvm", "src", "ports"):
+    for folder in ("include/flashvm", "src", "ports", "frontend/common"):
         files.extend(
             p
             for p in (ROOT / folder).rglob("*")
-            if p.suffix in (".h", ".hpp", ".c", ".cpp", ".mm") and p.is_file()
+            if p.suffix in (".h", ".hpp", ".c", ".cpp", ".mm", ".inc") and p.is_file()
         )
     for path in sorted(files):
         original = path.read_text(encoding="utf-8")
         text = without_comments(original)
         starts = [0] + [m.end() for m in re.finditer("\n", text)]
-        public = path.is_relative_to(ROOT / "include/flashvm")
+        public = path.is_relative_to(ROOT / "include/flashvm") or (
+            path.is_relative_to(ROOT / "frontend/common") and path.suffix == ".h"
+        )
 
         def add(name, offset, kind, rank):
             """Store a deterministic, line-addressable declaration from this source file."""

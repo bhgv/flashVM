@@ -66,7 +66,7 @@ Legacy paired/exact/adaptive functions keep their prior behavior and ABI.
 Run `flashvm_player --finite-mixed-tails movie.swf` to select finite root mixed
 event tails. This flag affects only stream-plus-event composition: event-only and
 stream-only paths retain their existing policies. With `--mute` no device is opened.
-`fvm_desktop_audio_open_mixed_policy` validates both Boolean flags and initializes
+[`fvm_desktop_audio_open_mixed_policy`](../frontend/common/audio.h#L126) validates both Boolean flags and initializes
 policy before publishing the native worker; old open functions select padded tails.
 The policy stays immutable while the worker runs. Completed-frame publication,
 authored root Stop, host pause, StopSounds, seek and common queued identities retain
@@ -107,6 +107,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_open_mixed_policy` | function | [frontend/common/audio.h:126](../frontend/common/audio.h#L126) |
 | `fvm_swf_sound_mix_queue_pump_tail_finite` | function | [include/flashvm/swf_sound_mix_queue.h:326](../include/flashvm/swf_sound_mix_queue.h#L326) |
 | `fvm_swf_sound_mix_queue_pump_tail_up_to` | function | [include/flashvm/swf_sound_mix_queue.h:315](../include/flashvm/swf_sound_mix_queue.h#L315) |
 | `fvm_swf_sound_mixer_active_frames` | function | [include/flashvm/swf_sound_mixer.h:63](../include/flashvm/swf_sound_mixer.h#L63) |

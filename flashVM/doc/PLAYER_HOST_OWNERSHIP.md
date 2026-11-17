@@ -1,7 +1,7 @@
 # SDL ownership in an embedding host
 
 Since v0.670, [fvm_desktop_window_open](../frontend/common/window.h#L53) acquires TIMER and VIDEO subsystem
-references independently. [fvm_desktop_window_close](../frontend/common/window.h#L88) destroys only its own native
+references independently. [fvm_desktop_window_close](../frontend/common/window.h#L114) destroys only its own native
 resources and releases references actually acquired by that view. Null close is
 harmless. Neither normal cleanup nor failed startup calls global SDL_Quit.
 A host's windows and preexisting subsystem references remain alive. Multiple
@@ -44,6 +44,20 @@ fixture checks normal-priority hint values and their protection against later
 lower-priority writes; the pointer fixture checks duplicate input suppression.
 The player does not save/restore hints, which could overwrite a host update.
 
-Since v0.713, live native command mailboxes also protect fvm_desktop_shutdown:
+Since v0.713, live native command mailboxes also protect [fvm_desktop_shutdown](../frontend/common/player.h#L65):
 finish the runner/controller threads and release each mailbox first.
 [Contract](PLAYBACK_MAILBOX.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `fvm_desktop_window_close` | function | [frontend/common/window.h:114](../frontend/common/window.h#L114) |
+| `fvm_desktop_window_open` | function | [frontend/common/window.h:53](../frontend/common/window.h#L53) |
+<!-- source-links:end -->

@@ -8,8 +8,8 @@
 
 ## Вход из памяти с v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L47) из [player.h](../frontend/common/player.h) принимает
-скалярные [FVM_DesktopOptions](../frontend/common/options.h#L29), const void указатель, точное число байтов size_t,
+[fvm_desktop_run_memory](../frontend/common/player.h#L56) из [player.h](../frontend/common/player.h) принимает
+скалярные [FVM_DesktopOptions](../frontend/common/options.h#L30), const void указатель, точное число байтов size_t,
 непустое имя источника и необязательный указатель на статическую ошибку.
 Подходят char buf[] и read-only массивы в исполняемом файле. NUL — обычный байт,
 не конец данных. Нет временного файла, strlen(data), изменения источника или
@@ -45,10 +45,10 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Этапы](ROADMAP_STATUS.md)
 ## Транспорт хоста и корневая загрузка с v0.674
 
-[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/source.h#L27) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L35)
-и [FVM_DesktopFetch](../frontend/common/source.h#L40). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
-max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
+[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/source.h#L28) (kind, bytes,
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L55) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L38)
+и [FVM_DesktopFetch](../frontend/common/source.h#L45). [fvm_desktop_loader_init](../frontend/common/source.h#L64) задаёт отсутствие транспорта и
+max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L75) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают
 с memory run. Для FILE/URL bytes=null и size=0. Имя — 1..4096 байтов;
 max_loads — 1..1024 с учётом стартового фильма. Структуры и данные заимствуются
@@ -89,8 +89,8 @@ GetURL2 LOAD_TARGET к _root или _level0 с GET/без метода копи�
 
 FVM_PLAYER_HTTP=ON подключает отдельный SDK libcurl 7.62+ только к необязательному
 frontend. По умолчанию OFF: память, файлы и пользовательский транспорт остаются
-доступны без curl. [fvm_desktop_http_fetch](../frontend/common/http.h#L22) из [http.h](../frontend/common/http.h)
-соответствует [FVM_DesktopFetch](../frontend/common/source.h#L40): присвойте loader.fetch, userdata оставьте null.
+доступны без curl. [fvm_desktop_http_fetch](../frontend/common/http.h#L25) из [http.h](../frontend/common/http.h)
+соответствует [FVM_DesktopFetch](../frontend/common/source.h#L45): присвойте loader.fetch, userdata оставьте null.
 URL API curl разрешает reference/base и возвращает canonical provenance.
 HTTP(S) GET проверяет TLS peer/hostname, полное завершение передачи и код 2xx.
 Редиректы отклоняются. POST, настройка авторизации, progressive loading и отмена
@@ -105,7 +105,7 @@ CLI и структурированный плейлист распознают 
 --loads N задаёт бюджет корневых загрузок для каждого стартового фильма,
 включая сам старт: 1..1024, по умолчанию 1. Поле [FVM_DesktopOptions.max_loads](../frontend/common/options.h#L35)
 задаёт ту же политику CLI/плейлиста; прямой run_source использует явный
-[FVM_DesktopLoader](../frontend/common/source.h#L44). Закрытие заканчивает весь плейлист. Несколько файлов по
+[FVM_DesktopLoader](../frontend/common/source.h#L55). Закрытие заканчивает весь плейлист. Несколько файлов по
 умолчанию играются по одному авторскому проходу. Неподдержанные targets/POST
 дают ошибку, не превращаются молча в корневую навигацию.
 
@@ -116,8 +116,8 @@ cmake --build build-player --target flashvm_player
 ```
 
 При встраивании C/C++ подключите player.h и http.h, инициализируйте options/loader,
-задайте source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0, location=URL;
-loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L22), затем [fvm_desktop_run_source](../frontend/common/source.h#L60). Для стартового
+задайте source.kind=[FVM_DESKTOP_SOURCE_URL](../frontend/common/source.h#L10), bytes=null, size=0, location=URL;
+loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L25), затем [fvm_desktop_run_source](../frontend/common/source.h#L75). Для стартового
 ресурса в программе выберите MEMORY и точный sizeof массива; тот же loader
 может обслуживать запросы из встроенного фильма. Относительная ссылка разрешается
 провайдером только при корректной HTTP(S)-базе источника.
@@ -219,7 +219,7 @@ target против GET/POST аргументов. Полная историче
 [HTTP/embedded тесты](../frontend/tests/child_loading.py)
 ### Непрозрачное завершение сеанса и экспорт Windows
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L54) из player.h явно завершает SDL именно этой библиотеки на
+[fvm_desktop_shutdown](../frontend/common/player.h#L65) из player.h явно завершает SDL именно этой библиотеки на
 её UI-потоке после возврата playback. Если SDL_WasInit видит активную подсистему,
 возвращается [FVM_ERROR](../include/flashvm/flashvm.h#L45) без изменений; иначе вызывается SDL_Quit и возвращается
 [FVM_OK](../include/flashvm/flashvm.h#L44), в том числе при повторном завершении неиспользуемого сеанса. Операция
@@ -230,7 +230,7 @@ target против GET/POST аргументов. Полная историче
 embedded_movie_shutdown рядом с embedded_movie_play; module_host.c включает
 только module.h. Нельзя выгружать модуль во время активного запуска.
 
-Декларации Windows DLL используют FVM_DESKTOP_API из export.h с явными
+Декларации Windows DLL используют [FVM_DESKTOP_API](../frontend/common/export.h#L6) из export.h с явными
  dllexport/dllimport. CMake задаёт FVM_DESKTOP_SHARED публично и FVM_DESKTOP_BUILD
 приватно для shared host. При ручной линковке import library потребитель задаёт
 FVM_DESKTOP_SHARED; для статического архива не задаёт. ELF/Mach-O сохраняют
@@ -258,6 +258,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_API` | macro / define | [frontend/common/export.h:6](../frontend/common/export.h#L6) |
+| `fvm_desktop_http_fetch` | function | [frontend/common/http.h:25](../frontend/common/http.h#L25) |
+| `fvm_desktop_loader_init` | function | [frontend/common/source.h:64](../frontend/common/source.h#L64) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../frontend/common/player.h#L56) |
+| `fvm_desktop_run_source` | function | [frontend/common/source.h:75](../frontend/common/source.h#L75) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `FVM_DESKTOP_SOURCE_URL` | macro / define | [frontend/common/source.h:10](../frontend/common/source.h#L10) |
+| `FVM_DesktopFetch` | callback typedef | [frontend/common/source.h:45](../frontend/common/source.h#L45) |
+| `FVM_DesktopLoader` | struct | [frontend/common/source.h:55](../frontend/common/source.h#L55) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../frontend/common/options.h#L30) |
+| `FVM_DesktopSource` | struct | [frontend/common/source.h:28](../frontend/common/source.h#L28) |
+| `FVM_DesktopWrite` | callback typedef | [frontend/common/source.h:38](../frontend/common/source.h#L38) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:235](../include/flashvm/movieclip.h#L235) |
 | `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:244](../include/flashvm/movieclip.h#L244) |

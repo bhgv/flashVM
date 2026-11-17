@@ -5,20 +5,20 @@
 
 ## Contract and copying since v0.716
 
-[FVM_DesktopFrame](../frontend/common/frame.h#L18) describes a borrowed owner-thread native raster observation:
+[FVM_DesktopFrame](../frontend/common/frame.h#L16) describes a borrowed owner-thread native raster observation:
 RGBA8, width/height, stride, byte_count, pixels/source and tick/presentation counts.
-[FVM_DESKTOP_FRAME_RGBA8](../frontend/common/frame.h#L5) means straight-alpha R,G,B,A bytes, left to right and rows
+[FVM_DESKTOP_FRAME_RGBA8](../frontend/common/frame.h#L6) means straight-alpha R,G,B,A bytes, left to right and rows
 top to bottom, not an endian-dependent integer. Each visible row contains
 width * [FVM_DESKTOP_FRAME_PIXEL_BYTES](../frontend/common/frame.h#L7) bytes. Dimensions are bounded by
 [FVM_DESKTOP_FRAME_MAX_DIMENSION](../frontend/common/frame.h#L8), the current stage/raster extent limit.
 
 It is the logical scene, not a window screenshot: window chrome, DPI/letterboxing
-and native resize swaps are excluded. Reasons are [FVM_DESKTOP_FRAME_TICK](../frontend/common/frame.h#L10) after
-a host advance and [FVM_DESKTOP_FRAME_REFRESH](../frontend/common/frame.h#L11) for initial/dirty redraw without
+and native resize swaps are excluded. Reasons are [FVM_DESKTOP_FRAME_TICK](../frontend/common/frame.h#L9) after
+a host advance and [FVM_DESKTOP_FRAME_REFRESH](../frontend/common/frame.h#L10) for initial/dirty redraw without
 another host tick. Presentation counts start at one; movie_ticks/presentations
 belong to the current root and total_* belong to the complete run.
 
-[FVM_DesktopFrameNotify](../frontend/common/frame.h#L44)(frame, userdata)` runs on the owner after successful raster
+[FVM_DesktopFrameNotify](../frontend/common/frame.h#L39)(frame, userdata)` runs on the owner after successful raster
 and native presentation, outside VM rendering. [FVM_OK](../include/flashvm/flashvm.h#L44) continues; any other result
 fails playback after drawing/VM effects have already committed. Borrowed frame/
 pixels/source are valid only until return. Do not modify pixels, retain pointers,
@@ -26,8 +26,8 @@ reenter VM/player, shut down SDK, steal SDL events or throw across C. Copy pixel
 into independent storage before handing them to another thread. [GC:] No managed
 owner/pin is supplied: retaining frame does not retain its native buffer or VM.
 
-[FVM_DesktopFrameObserver](../frontend/common/frame.h#L47) is a separate descriptor; old source/options/loader/
-control layouts remain unchanged. [fvm_desktop_frame_observer_init](../frontend/common/frame.h#L57)(out)` fills
+[FVM_DesktopFrameObserver](../frontend/common/frame.h#L44) is a separate descriptor; old source/options/loader/
+control layouts remain unchanged. [fvm_desktop_frame_observer_init](../frontend/common/frame.h#L55)(out)` fills
 exact struct_size and null notify/userdata, returning 1/0 for nonnull/null with
 no allocation/SDK startup. An observed runner requires notify. The descriptor and
 userdata stay live until synchronous runner return.
@@ -55,14 +55,14 @@ the contract/copy utility; runner integration is documented as it is added. This
 is not a windowless widget, new GPU control or completion of roadmap stages.
 ## Observed runners since v0.717
 
-[fvm_desktop_run_source_observed](../frontend/common/frame.h#L76)(options, source, loader, control, observer, error)`
+[fvm_desktop_run_source_observed](../frontend/common/frame.h#L78)(options, source, loader, control, observer, error)`
 requires options/source/observer. loader is optional under existing resource policy
 (default permits startup only); control is optional and defaults to continuous
 running. An explicit initially_paused control can combine frame observations with
 owner steps or a controller mailbox. All policies/bytes/strings/userdata remain
 borrowed until synchronous return; the observer descriptor is shallow-copied.
 
-[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L83)(options, source, loader, monitor,
+[fvm_desktop_run_source_background_observed](../frontend/common/frame.h#L90)(options, source, loader, monitor,
 control, observer, error)` also requires an explicit background provider and monitor.
 monitor.asynchronous chooses continuing owner turns or blocking resource waits.
 Both runners return 0 on completion/window close/STOP, 1 on source/VM/presentation/
@@ -110,6 +110,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_frame_copy` | function | [frontend/common/frame.h:65](../frontend/common/frame.h#L65) |
+| `FVM_DESKTOP_FRAME_MAX_DIMENSION` | macro / define | [frontend/common/frame.h:8](../frontend/common/frame.h#L8) |
+| `fvm_desktop_frame_observer_init` | function | [frontend/common/frame.h:55](../frontend/common/frame.h#L55) |
+| `FVM_DESKTOP_FRAME_PIXEL_BYTES` | macro / define | [frontend/common/frame.h:7](../frontend/common/frame.h#L7) |
+| `FVM_DESKTOP_FRAME_REFRESH` | macro / define | [frontend/common/frame.h:10](../frontend/common/frame.h#L10) |
+| `FVM_DESKTOP_FRAME_RGBA8` | macro / define | [frontend/common/frame.h:6](../frontend/common/frame.h#L6) |
+| `FVM_DESKTOP_FRAME_TICK` | macro / define | [frontend/common/frame.h:9](../frontend/common/frame.h#L9) |
+| `fvm_desktop_run_source_background_observed` | function | [frontend/common/frame.h:90](../frontend/common/frame.h#L90) |
+| `fvm_desktop_run_source_observed` | function | [frontend/common/frame.h:78](../frontend/common/frame.h#L78) |
+| `FVM_DesktopFrame` | struct | [frontend/common/frame.h:16](../frontend/common/frame.h#L16) |
+| `FVM_DesktopFrameNotify` | callback typedef | [frontend/common/frame.h:39](../frontend/common/frame.h#L39) |
+| `FVM_DesktopFrameObserver` | struct | [frontend/common/frame.h:44](../frontend/common/frame.h#L44) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

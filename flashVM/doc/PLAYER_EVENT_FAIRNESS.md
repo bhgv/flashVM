@@ -1,7 +1,7 @@
 # Bounded SDL event processing
 
 [Русский](PLAYER_EVENT_FAIRNESS.ru.md). Since v0.658 each call to
-[`fvm_desktop_window_events`](../frontend/common/window.h#L59) handles at most 64 SDL records. On reaching that limit
+[`fvm_desktop_window_events`](../frontend/common/window.h#L68) handles at most 64 SDL records. On reaching that limit
 it returns immediately without waiting, leaving the remaining queue intact.
 The player can then deliver input, poll timers, take a safe GC step and advance
 or draw the movie. Window/exposure/user event storms cannot trap the host in one
@@ -64,3 +64,15 @@ Linux ARM64, Linux RISC-V64 and Windows x64 using the previously documented Zig
 host wrapper; foreign executables are not run. See [provenance](PLAYER_RECOVERY.md#validation-of-this-series).
 No physical input/cursor, Android/macOS, GPU-loss, endurance, full-core or new
 sanitizer acceptance is claimed. All nine roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_window_events` | function | [frontend/common/window.h:68](../frontend/common/window.h#L68) |
+<!-- source-links:end -->

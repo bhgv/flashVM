@@ -156,9 +156,9 @@ Native guard блокирует collection/release во время callbacks. В
 
 | Файл | Функции и ответственность |
 | --- | --- |
-| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L11)/frame_limit проверяют числа; [`fvm_desktop_parse`](../frontend/common/options.h#L58) публикует параметры атомарно, используя caller-owned scratch array путей; [`fvm_desktop_rate`](../frontend/common/options.h#L61) проверяет итоговую частоту; [`fvm_desktop_help`](../frontend/common/options.h#L64) выводит справку |
-| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L60) читает ограниченный UTF-8 файл; [`checked`](../frontend/common/player.c#L111) сообщает статус операции; [`clear_stage`](../frontend/common/player.c#L120) очищает фон; [`play`](../frontend/common/player.c#L211) владеет VM/окном и deadline; [`fvm_desktop_main`](../frontend/common/player.h#L61) разбирает CLI и список файлов |
-| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/window.h#L53) / [`fvm_desktop_window_present`](../frontend/common/window.h#L56) / [`fvm_desktop_window_events`](../frontend/common/window.h#L59) / [`fvm_desktop_window_close`](../frontend/common/window.h#L88) — граница ресурсов; [`draw_texture`](../frontend/common/sdl_window.c#L109)/[`handle_event`](../frontend/common/sdl_window.c#L331) — повторный показ и закрытие; [`fvm_desktop_now`](../frontend/common/window.h#L83) — монотонное время; [`fvm_desktop_window_error`](../frontend/common/window.h#L85) — borrowed сообщение |
+| [options.c](../frontend/common/options.c) | [`decimal`](../frontend/common/options.c#L11)/frame_limit проверяют числа; [`fvm_desktop_parse`](../frontend/common/options.h#L67) публикует параметры атомарно, используя caller-owned scratch array путей; [`fvm_desktop_rate`](../frontend/common/options.h#L71) проверяет итоговую частоту; [`fvm_desktop_help`](../frontend/common/options.h#L75) выводит справку |
+| [player.c](../frontend/common/player.c) | [`read_movie`](../frontend/common/player.c#L60) читает ограниченный UTF-8 файл; [`checked`](../frontend/common/player.c#L111) сообщает статус операции; [`clear_stage`](../frontend/common/player.c#L120) очищает фон; [`play`](../frontend/common/player.c#L211) владеет VM/окном и deadline; [`fvm_desktop_main`](../frontend/common/player.h#L74) разбирает CLI и список файлов |
+| [sdl_window.c](../frontend/common/sdl_window.c) | [`fvm_desktop_window_open`](../frontend/common/window.h#L53) / [`fvm_desktop_window_present`](../frontend/common/window.h#L63) / [`fvm_desktop_window_events`](../frontend/common/window.h#L68) / [`fvm_desktop_window_close`](../frontend/common/window.h#L114) — граница ресурсов; [`draw_texture`](../frontend/common/sdl_window.c#L109)/[`handle_event`](../frontend/common/sdl_window.c#L331) — повторный показ и закрытие; [`fvm_desktop_now`](../frontend/common/window.h#L105) — монотонное время; [`fvm_desktop_window_error`](../frontend/common/window.h#L109) — borrowed сообщение |
 | [options.h](../frontend/common/options.h), [window.h](../frontend/common/window.h) | Внутренние структуры/константы и контракты, не стабильный публичный ABI VM |
 
 ## Проверки и незавершённое
@@ -210,6 +210,16 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_Affine` | struct | [include/flashvm/path.h:39](../include/flashvm/path.h#L39) |
+| `fvm_desktop_help` | function | [frontend/common/options.h:75](../frontend/common/options.h#L75) |
+| `fvm_desktop_main` | function | [frontend/common/player.h:74](../frontend/common/player.h#L74) |
+| `fvm_desktop_now` | function | [frontend/common/window.h:105](../frontend/common/window.h#L105) |
+| `fvm_desktop_parse` | function | [frontend/common/options.h:67](../frontend/common/options.h#L67) |
+| `fvm_desktop_rate` | function | [frontend/common/options.h:71](../frontend/common/options.h#L71) |
+| `fvm_desktop_window_close` | function | [frontend/common/window.h:114](../frontend/common/window.h#L114) |
+| `fvm_desktop_window_error` | function | [frontend/common/window.h:109](../frontend/common/window.h#L109) |
+| `fvm_desktop_window_events` | function | [frontend/common/window.h:68](../frontend/common/window.h#L68) |
+| `fvm_desktop_window_open` | function | [frontend/common/window.h:53](../frontend/common/window.h#L53) |
+| `fvm_desktop_window_present` | function | [frontend/common/window.h:63](../frontend/common/window.h#L63) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:179](../include/flashvm/movieclip.h#L179) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |

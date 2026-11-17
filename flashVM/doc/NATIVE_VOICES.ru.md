@@ -92,7 +92,7 @@ Desktop callback StartSound разрешает метаданные на вла�
 старые голоса, поэтому ранее вычисленный свободный бюджет консервативен.
 SyncNoMultiple проверяется до дорогой подготовки и повторно при передаче.
 
-FVM_DESKTOP_AUDIO_EVENT_BYTES по умолчанию равен 64 MiB и переопределяется
+[FVM_DESKTOP_AUDIO_EVENT_BYTES](../frontend/common/audio_memory.h#L9) по умолчанию равен 64 MiB и переопределяется
 независимо от бюджета потоковых источников. Учитывает фиксированный микшер/слоты,
 старые и входящий голоса. Создание микшера и проверка фиксированной памяти идут
 до открытия SDL-аудиоустройства. VM, очередь/history/trace и накладные расходы
@@ -199,6 +199,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_EVENT_BYTES` | macro / define | [frontend/common/audio_memory.h:9](../frontend/common/audio_memory.h#L9) |
 | `fvm_swf_sound_mixer_create_bounded` | function | [include/flashvm/swf_sound_mixer.h:78](../include/flashvm/swf_sound_mixer.h#L78) |
 | `fvm_swf_sound_mixer_sound_active` | function | [include/flashvm/swf_sound_mixer.h:143](../include/flashvm/swf_sound_mixer.h#L143) |
 | `fvm_swf_sound_mixer_storage_info` | function | [include/flashvm/swf_sound_mixer.h:135](../include/flashvm/swf_sound_mixer.h#L135) |

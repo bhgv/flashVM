@@ -9,7 +9,7 @@
 печатает значение из того же заголовка. Публичные структуры player-host/VM не
 изменяются; новой консольной опции нет.
 
-В бюджет входят таблица [FVM_DesktopStreamSegment](../frontend/common/audio.h#L26), все удерживаемые объекты/индексы/
+В бюджет входят таблица [FVM_DesktopStreamSegment](../frontend/common/audio.h#L31), все удерживаемые объекты/индексы/
 payload снимков и временное одновременное владение encoded+decoded следующего
 ADPCM-снимка. Перед источником `i` проверяется
 `таблица + retained(предыдущих) + peak(i) <= потолок`. После успеха вычитается
@@ -19,7 +19,7 @@ ADPCM-снимка. Перед источником `i` проверяется
 
 ## Предварительная проверка, получение и освобождение
 
-До открытия окна/устройства [fvm_desktop_audio_validate](../frontend/common/audio.h#L76) повторяет ту же арифметику
+До открытия окна/устройства [fvm_desktop_audio_validate](../frontend/common/audio.h#L93) повторяет ту же арифметику
 в порядке источников. Временно подготавливаются **и PCM, и ADPCM**, запрашиваются
 размеры, временный снимок закрывается, его retained виртуально вычитается из остатка.
 Поэтому последовательность, помещающаяся после полного раскрытия, но превышающая
@@ -98,3 +98,17 @@ storage/allocation/C89-тесты и полный C-пример действи�
 включая независимую PCM-сверку. Исполнение ARM64/RISC-V64 и приёмка физических
 окон/динамиков не заявлены. Все этапы роудмапа остаются открытыми; логи, SDK и кеши
 не включаются в отслеживаемые исходники.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_DESKTOP_AUDIO_PREPARED_BYTES` | macro / define | [frontend/common/audio_memory.h:5](../frontend/common/audio_memory.h#L5) |
+| `fvm_desktop_audio_validate` | function | [frontend/common/audio.h:93](../frontend/common/audio.h#L93) |
+| `FVM_DesktopStreamSegment` | struct | [frontend/common/audio.h:31](../frontend/common/audio.h#L31) |
+<!-- source-links:end -->

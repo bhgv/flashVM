@@ -3,22 +3,22 @@
 [English](PLAYER_CONFIGURATION.md).
 
 Приложение C89/C++98 может линковать необязательную статическую цель CMake
-`flashvm_player_host` и вызывать [fvm_desktop_run](../frontend/common/player.h#L39) без сборки командной строки.
+`flashvm_player_host` и вызывать [fvm_desktop_run](../frontend/common/player.h#L46) без сборки командной строки.
 Цель содержит общий планировщик, интеграцию VM/сцены, ввод, вывод и аудиоадаптер;
 FlashVM и выбранный SDL SDK подключаются транзитивно. Консольный
-[fvm_desktop_main](../frontend/common/player.h#L61) разбирает аргументы и вызывает тот же runner. Это внутренний
+[fvm_desktop_main](../frontend/common/player.h#L74) разбирает аргументы и вызывает тот же runner. Это внутренний
 контракт frontend, а не новый стабильный ABI VM или установленный SDK.
 
 ## API и владение
 
 Подключите frontend/common/player.h; цель экспортирует каталог заголовка.
-[fvm_desktop_options_init](../frontend/common/options.h#L48) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/options.h#L29),
+[fvm_desktop_options_init](../frontend/common/options.h#L53) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/options.h#L30),
 возвращает 1 при успехе, 0 для null. По умолчанию: автоматический режим,
 качество HIGH, авторская частота на 100 процентов, пустой плейлист, нулевые
 ограничения и флаги. Выделения памяти и запуска устройств нет. Перед run
 задайте хотя бы один файл.
 
-[fvm_desktop_options_validate](../frontend/common/options.h#L51) возвращает 1 при корректных параметрах, иначе 0.
+[fvm_desktop_options_validate](../frontend/common/options.h#L58) возвращает 1 при корректных параметрах, иначе 0.
 Необязательный error получает null при успехе или статический текст ошибки;
 освобождать его нельзя. Проверка не меняет структуру, не открывает файлы,
 не запускает SDL/VM, не выделяет память, не печатает и не меняет локаль процесса.
@@ -30,13 +30,13 @@ FPS равен нулю (авторская частота) либо 0.1..1000; 
 отклоняются. Массив должен действительно содержать доступное число элементов:
 C не позволяет проверить произвольный адрес или узнать размер выделенной памяти.
 
-[fvm_desktop_run](../frontend/common/player.h#L39) возвращает [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L17) (2) до открытия первого
+[fvm_desktop_run](../frontend/common/player.h#L46) возвращает [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L18) (2) до открытия первого
 файла при некорректной конфигурации. Скалярные настройки копируются, массив и
 строки путей с завершающим NUL заимствуются до синхронного возврата: сохраняйте
 их доступными и неизменными. Пустой/null последующий путь отклоняет весь
 плейлист до запуска. Успех или закрытие пользователем возвращает
-[FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L15) (0); ошибка файла, VM или устройства —
-[FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L16) (1). Необязательный error получает null при успехе,
+[FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L16) (0); ошибка файла, VM или устройства —
+[FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L17) (1). Необязательный error получает null при успехе,
 подробный статический текст валидации или общее сообщение ошибки исполнения.
 Текущие ошибки воспроизведения, trace и статистика используют стандартные
 потоки: интерфейс обратного вызова диагностики пока не добавлен.
@@ -97,3 +97,22 @@ RISC-V64 Linux (musl) и Windows x86-64 (GNU), с отдельными стат�
 macOS и Android этим не сертифицированы. Все девять этапов остаются открытыми.
 
 [SWF sources / Источники SWF](PLAYER_SOURCES.ru.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_DESKTOP_EXIT_ARGUMENT` | macro / define | [frontend/common/player.h:18](../frontend/common/player.h#L18) |
+| `FVM_DESKTOP_EXIT_OK` | macro / define | [frontend/common/player.h:16](../frontend/common/player.h#L16) |
+| `FVM_DESKTOP_EXIT_PLAYBACK` | macro / define | [frontend/common/player.h:17](../frontend/common/player.h#L17) |
+| `fvm_desktop_main` | function | [frontend/common/player.h:74](../frontend/common/player.h#L74) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../frontend/common/options.h#L53) |
+| `fvm_desktop_options_validate` | function | [frontend/common/options.h:58](../frontend/common/options.h#L58) |
+| `fvm_desktop_run` | function | [frontend/common/player.h:46](../frontend/common/player.h#L46) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../frontend/common/options.h#L30) |
+<!-- source-links:end -->

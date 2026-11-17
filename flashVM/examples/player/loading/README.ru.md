@@ -63,11 +63,11 @@ SDL_RENDER_DRIVER=software.
 
 | API | Назначение |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация скалярных параметров приложения |
-| [fvm_desktop_run_memory](../../../frontend/common/player.h#L47) | Заимствование точных байтов и имени старта до возврата |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Инициализация скалярных параметров приложения |
+| [fvm_desktop_run_memory](../../../frontend/common/player.h#L56) | Заимствование точных байтов и имени старта до возврата |
 | [FVM_DesktopOptions.max_loads](../../../frontend/common/options.h#L35) | Бюджет старта и всех запросов фильмов/переменных |
 | loadMovie / MovieClip.loadVariables | Очередь скопированных запросов без сети внутри callback |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершение собственного глобального сеанса после очистки плеера |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Завершение собственного глобального сеанса после очистки плеера |
 
 [GC:] Runner удерживает queued targets до доставки, сохраняет объект и положение
 дочернего клипа при замене, освобождает корни запросов при ошибке/закрытии.
@@ -82,3 +82,18 @@ progressive loading и root streaming sound дочернего фильма не
 [API загрузки ядра](../../../include/flashvm/movieclip.h) ·
 [Реализация хоста](../../../frontend/common/player.c) ·
 [Реализация ядра](../../../src/standard/movieclip_loading.cpp)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../../../frontend/common/player.h#L56) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../../../frontend/common/options.h#L30) |
+<!-- source-links:end -->

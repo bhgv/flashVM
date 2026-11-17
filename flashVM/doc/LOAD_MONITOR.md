@@ -3,11 +3,11 @@
 [Русский](LOAD_MONITOR.ru.md) · [Background jobs](BACKGROUND_TRANSFER.md) ·
 [Annotated example](../examples/player/monitored_loading/README.md).
 
-[fvm_desktop_load_monitor_init](../frontend/common/load_monitor.h#L49) initializes [FVM_DesktopLoadMonitor](../frontend/common/load_monitor.h#L39): async child/form
-delivery, no deadline/callback. [fvm_desktop_run_source_monitored](../frontend/common/load_monitor.h#L57) takes existing
+[fvm_desktop_load_monitor_init](../frontend/common/load_monitor.h#L53) initializes [FVM_DesktopLoadMonitor](../frontend/common/load_monitor.h#L43): async child/form
+delivery, no deadline/callback. [fvm_desktop_run_source_monitored](../frontend/common/load_monitor.h#L63) takes existing
 options/source/background loader plus this new policy; old structure layouts and
 runners remain unchanged. asynchronous must be 0 or 1; timeout_ms is 0 (unlimited) or
-at most [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L13). Validation precedes notice/worker/device
+at most [FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS](../frontend/common/transfer.h#L14). Validation precedes notice/worker/device
 startup. Scalar/status rules remain 0 success/stop, 1 playback error, 2 invalid input.
 
 Each network request gets a source-run ID, kind ROOT/CHILD/VARIABLES and exactly
@@ -16,14 +16,14 @@ Local reads and requests discarded while still queued are not observed. ROOT
 includes startup and whole-root replacement; an embedded movie itself needs no
 network notice, but its network descendants do. FIFO and load budgets are shared.
 
-[FVM_DesktopLoadEvent](../frontend/common/load_monitor.h#L21) is borrowed for the callback only. reference/base identify
+[FVM_DesktopLoadEvent](../frontend/common/load_monitor.h#L22) is borrowed for the callback only. reference/base identify
 the copied request. location is nonnull only for FETCHED. received is provider
 body bytes, not total/wire size. BEGIN/WAIT result is NOT_FOUND. FETCHED means
 successful complete fetch/sink validation, before VM import; import/script errors
 can still fail playback with no second transport notice. There are no VM pointers.
 These host notices are not Flash MovieClipLoader or script lifecycle events.
 
-[FVM_DesktopLoadNotify](../frontend/common/load_monitor.h#L37) runs on the synchronous runner's owner thread outside VM
+[FVM_DesktopLoadNotify](../frontend/common/load_monitor.h#L39) runs on the synchronous runner's owner thread outside VM
 callbacks, even during startup before an SDL view exists. It may update a host-owned
 progress UI. It must not enter the VM, recurse a runner, destroy borrowed provider/
 SDK state, throw through C or steal the active player's SDL events. WAIT cadence
@@ -47,7 +47,7 @@ movies. Full Flash loader semantics and foreign runtime/device acceptance remain
 
 ## Playlist and console adapters (v0.686)
 
-[fvm_desktop_run_monitored](../frontend/common/load_monitor.h#L64)(options, monitor, error)` selects the compiled default
+[fvm_desktop_run_monitored](../frontend/common/load_monitor.h#L71)(options, monitor, error)` selects the compiled default
 worker provider for a playlist. IDs restart for each source; a host stop ends the
 whole playlist. Without a compiled network provider local files still play normally;
 URL input is unsupported. The per-source API keeps custom provider injection explicit.
@@ -72,7 +72,7 @@ response body; ordinary player diagnostics can still name a movie/source URL.
 Help/version work without devices, including with these valid monitor options.
 The console has no independent network or scheduler implementation.
 
-The owner checks [fvm_desktop_transfer_stop_requested](../frontend/common/transfer.h#L72) even while the native job
+The owner checks [fvm_desktop_transfer_stop_requested](../frontend/common/transfer.h#L95) even while the native job
 is PENDING. At a deadline it stops further VM turns and performs the final join,
 so a slow provider cancellation acknowledgement cannot extend script execution.
 The public job view stays PENDING until worker exit; no mutable payload leaks.
@@ -101,5 +101,13 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_run_monitored` | function | [frontend/common/load_monitor.h:71](../frontend/common/load_monitor.h#L71) |
+| `fvm_desktop_run_source_monitored` | function | [frontend/common/load_monitor.h:63](../frontend/common/load_monitor.h#L63) |
+| `FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS` | macro / define | [frontend/common/transfer.h:14](../frontend/common/transfer.h#L14) |
+| `fvm_desktop_transfer_stop_requested` | function | [frontend/common/transfer.h:95](../frontend/common/transfer.h#L95) |
+| `FVM_DesktopLoadEvent` | struct | [frontend/common/load_monitor.h:22](../frontend/common/load_monitor.h#L22) |
+| `FVM_DesktopLoadMonitor` | struct | [frontend/common/load_monitor.h:43](../frontend/common/load_monitor.h#L43) |
+| `FVM_DesktopLoadNotify` | callback typedef | [frontend/common/load_monitor.h:39](../frontend/common/load_monitor.h#L39) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

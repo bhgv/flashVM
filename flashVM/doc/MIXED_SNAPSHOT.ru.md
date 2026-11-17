@@ -36,7 +36,7 @@ Continue сохраняет общий clock и категории прежни�
 
 ## Desktop и пример
 
-`fvm_desktop_audio_mix_info` держит mutex producer и учитывает EOF последовательности:
+[`fvm_desktop_audio_mix_info`](../frontend/common/audio.h#L159) держит mutex producer и учитывает EOF последовательности:
 если впереди есть подготовленный header, sequence EOF ещё false. Mixed refill,
 resume/завершение и публичная stream-диагностика используют единое наблюдение.
 --stats получает категории из того же результата. Отдельный origin API сохранён.
@@ -105,6 +105,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_audio_mix_info` | function | [frontend/common/audio.h:159](../frontend/common/audio.h#L159) |
 | `fvm_swf_stream_output_mix_info` | function | [include/flashvm/swf_stream_output.h:162](../include/flashvm/swf_stream_output.h#L162) |
 | `FVM_SWFStreamMixInfo` | struct | [include/flashvm/swf_stream_output.h:28](../include/flashvm/swf_stream_output.h#L28) |
 <!-- source-links:end -->

@@ -8,8 +8,8 @@ Current v0.686 supports child movies and loadVariables; it supersedes the histor
 
 ## Memory input since v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L47) in [player.h](../frontend/common/player.h) accepts scalar
-[FVM_DesktopOptions](../frontend/common/options.h#L29), a const void pointer, the exact size_t byte count, a nonempty
+[fvm_desktop_run_memory](../frontend/common/player.h#L56) in [player.h](../frontend/common/player.h) accepts scalar
+[FVM_DesktopOptions](../frontend/common/options.h#L30), a const void pointer, the exact size_t byte count, a nonempty
 source name and optional static error output. char buf[] and read-only linked
 arrays both work; binary NUL is ordinary data. No temporary file, strlen(data),
 source mutation or ownership transfer occurs. Keep source bytes and name immutable
@@ -45,10 +45,10 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Roadmap status](ROADMAP_STATUS.md)
 ## Host transport and root loading since v0.674
 
-[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/source.h#L27) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L35)
-and [FVM_DesktopFetch](../frontend/common/source.h#L40). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
-[fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
+[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/source.h#L28) (kind, bytes,
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L55) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L38)
+and [FVM_DesktopFetch](../frontend/common/source.h#L45). [fvm_desktop_loader_init](../frontend/common/source.h#L64) selects no transport and max_loads=1.
+[fvm_desktop_run_source](../frontend/common/source.h#L75) accepts MEMORY, FILE or URL input with the same scalar
 validation, ignored playlist, return/error and main-thread rules as memory run.
 Non-memory sources must have null bytes and zero size. Names are 1..4096 bytes;
 max_loads must be 1..1024 and includes startup. Source/policy/array storage remains
@@ -89,8 +89,8 @@ unsupported requests and loop limits in both interpreter and JIT.
 
 FVM_PLAYER_HTTP=ON adds the independent libcurl 7.62+ SDK dependency to the
 optional frontend only. Default is OFF; custom transport and memory/file playback
-remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L22) in [http.h](../frontend/common/http.h)
-is an [FVM_DesktopFetch](../frontend/common/source.h#L40) provider: set loader.fetch to it and keep userdata null.
+remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L25) in [http.h](../frontend/common/http.h)
+is an [FVM_DesktopFetch](../frontend/common/source.h#L45) provider: set loader.fetch to it and keep userdata null.
 It resolves reference/base with libcurl's URL API, returns canonical provenance,
 performs HTTP(S) GET with TLS peer/hostname verification, checks the entire transfer
 and accepts only 2xx. Redirects are rejected, not followed; POST/authentication
@@ -104,7 +104,7 @@ The CLI and structured playlist detect a URI by ://. HTTP builds use this provid
 without a provider URI playback fails explicitly. --loads N sets a per-starting-
 movie total root-load budget, including startup, from 1 to 1024 (default 1).
 [FVM_DesktopOptions.max_loads](../frontend/common/options.h#L35) carries the same CLI/playlist policy; direct run_source
-uses its explicit [FVM_DesktopLoader](../frontend/common/source.h#L44) policy. Closing a movie ends the entire playlist.
+uses its explicit [FVM_DesktopLoader](../frontend/common/source.h#L55) policy. Closing a movie ends the entire playlist.
 File playlists still default to one authored pass. Unsupported targets/POST/etc
 propagate failure rather than being silently interpreted as root navigation.
 
@@ -115,8 +115,8 @@ cmake --build build-player --target flashvm_player
 ```
 
 For C/C++ embedding, include player.h and http.h, initialize options/loader, set
-source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0 and location to the URL;
-set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L22) and call [fvm_desktop_run_source](../frontend/common/source.h#L60). For a
+source.kind=[FVM_DESKTOP_SOURCE_URL](../frontend/common/source.h#L10), bytes=null, size=0 and location to the URL;
+set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L25) and call [fvm_desktop_run_source](../frontend/common/source.h#L75). For a
 linked startup resource choose MEMORY and the exact array size; the same loader
 can service absolute/relative requests made by the embedded movie. The provider
 resolves relative references only when the supplied base is a valid HTTP(S) URL.
@@ -221,7 +221,7 @@ and a host-supplied callback; see [native transport](SOCKET_TRANSPORT.md).
 [HTTP/embedded tests](../frontend/tests/child_loading.py)
 ### Opaque session cleanup and Windows exports
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L54) in player.h explicitly ends the matching library's SDL
+[fvm_desktop_shutdown](../frontend/common/player.h#L65) in player.h explicitly ends the matching library's SDL
 session on its UI owner thread after playback returns. If SDL_WasInit reports any
 active subsystem, it returns [FVM_ERROR](../include/flashvm/flashvm.h#L45) without touching it; otherwise it calls
 SDL_Quit and returns [FVM_OK](../include/flashvm/flashvm.h#L44), including repeated shutdown of an unused session.
@@ -232,7 +232,7 @@ application need not link/call a second copy of SDL. The example module exports
 embedded_movie_shutdown beside embedded_movie_play, and module_host.c includes
 only module.h. Do not unload any module while a run is active.
 
-Windows DLL declarations use FVM_DESKTOP_API in export.h with explicit dllexport/
+Windows DLL declarations use [FVM_DESKTOP_API](../frontend/common/export.h#L6) in export.h with explicit dllexport/
 dllimport. CMake supplies FVM_DESKTOP_SHARED publicly and FVM_DESKTOP_BUILD privately
 for shared hosts. A manual consumer of a player-host import library defines
 FVM_DESKTOP_SHARED; a static archive consumer does not. ELF/Mach-O keep default
@@ -261,6 +261,18 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DESKTOP_API` | macro / define | [frontend/common/export.h:6](../frontend/common/export.h#L6) |
+| `fvm_desktop_http_fetch` | function | [frontend/common/http.h:25](../frontend/common/http.h#L25) |
+| `fvm_desktop_loader_init` | function | [frontend/common/source.h:64](../frontend/common/source.h#L64) |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../frontend/common/player.h#L56) |
+| `fvm_desktop_run_source` | function | [frontend/common/source.h:75](../frontend/common/source.h#L75) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../frontend/common/player.h#L65) |
+| `FVM_DESKTOP_SOURCE_URL` | macro / define | [frontend/common/source.h:10](../frontend/common/source.h#L10) |
+| `FVM_DesktopFetch` | callback typedef | [frontend/common/source.h:45](../frontend/common/source.h#L45) |
+| `FVM_DesktopLoader` | struct | [frontend/common/source.h:55](../frontend/common/source.h#L55) |
+| `FVM_DesktopOptions` | struct | [frontend/common/options.h:30](../frontend/common/options.h#L30) |
+| `FVM_DesktopSource` | struct | [frontend/common/source.h:28](../frontend/common/source.h#L28) |
+| `FVM_DesktopWrite` | callback typedef | [frontend/common/source.h:38](../frontend/common/source.h#L38) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:235](../include/flashvm/movieclip.h#L235) |
 | `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:244](../include/flashvm/movieclip.h#L244) |

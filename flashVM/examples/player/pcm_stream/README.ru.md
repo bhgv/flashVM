@@ -31,7 +31,7 @@ snapshot принадлежит хосту до остановки worker; root 
 остаётся в owner thread. При закрытии worker join предшествует освобождению
 snapshot/device/context. Нет callbacks на стороне генератора и C API-обёрток, которые
 нужно связывать отдельно. C89 IDE-хост может запускать те же байты через
-fvm_desktop_run_memory; см. [встроенный фильм](../embedded_movie/README.ru.md).
+[fvm_desktop_run_memory](../../../frontend/common/player.h#L56); см. [встроенный фильм](../embedded_movie/README.ru.md).
 
 Для воспроизводимой проверки очереди: SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy с теми
 же аргументами. Это не слышимое устройство. FVM_AUDIO_TRACE=/absolute/path/evidence явно
@@ -67,8 +67,20 @@ StartSound и прочие кодеки пока не поддержаны: [к�
 целыми числами и сравнивает 71332 принятых стереокадра. Это dummy-очередь SDL,
 не запись динамиков и не приёмка физического устройства. С v0.765 конечный запуск ждёт разрешённый PCM и опустошение очереди до дополнительного
 срока 2000 мс; незавершённая работа даёт ошибку вместо успешного обрезания.
-Для прямого C89-встраивания передайте те же байты в `fvm_desktop_run_memory`, как
+Для прямого C89-встраивания передайте те же байты в [`fvm_desktop_run_memory`](../../../frontend/common/player.h#L56), как
 в [готовом примере](../embedded_movie/README.md). Контекст принадлежит владельцу,
 не worker; время жизни снимка завершается только после остановки producer.
 
 С v0.767 эти команды используют [общий бюджет подготовки 64 МиБ](../../../doc/PLAYER_STREAM_BUDGETS.ru.md). Файлы и ожидаемый PCM не меняются. Учитываются раскрытие источника и удерживаемые предшественники, а не RSS всего процесса.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../../../frontend/common/player.h#L56) |
+<!-- source-links:end -->

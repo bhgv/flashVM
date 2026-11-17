@@ -30,7 +30,7 @@ authorization, not native sample rate; no time stretching is implemented. The ho
 the source snapshot until worker shutdown, pins the root across GC and keeps all VM
 controls on the owner thread. Join precedes snapshot/device/context cleanup. The generator
 has no callbacks or separately linked C wrappers. An IDE C89 host can pass the same bytes
-through fvm_desktop_run_memory; see [embedded movie](../embedded_movie/README.md).
+through [fvm_desktop_run_memory](../../../frontend/common/player.h#L56); see [embedded movie](../embedded_movie/README.md).
 
 For reproducible queue checks use SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy with the
 same arguments; this is not audible device evidence.
@@ -71,7 +71,7 @@ python3 flashVM/frontend/tests/stream_adpcm.py build/player/frontend/flashvm_pla
 It decodes every bundled packet with FFmpeg, computes output conversion using
 integer arithmetic and checks all 71332 accepted 48000 Hz stereo frames.
 This is SDL dummy-queue evidence, not speaker recording or physical-device acceptance.
-The normal C API source is `fvm_desktop_run_memory`; pass the same bundled bytes
+The normal C API source is [`fvm_desktop_run_memory`](../../../frontend/common/player.h#L56); pass the same bundled bytes
 through the [existing C89 embedding example](../embedded_movie/README.md).
 
 Since v0.767 these commands also use the default [64-MiB aggregate preparation budget](../../../doc/PLAYER_STREAM_BUDGETS.md). Input files and expected samples are unchanged. The cap includes source expansion and retained predecessor ownership; it is not a process RSS limit.
@@ -102,3 +102,15 @@ starvation without requiring CPU contention or a real audio device.
 Для воспроизводимой проверки используется управляемое потребление тестового FIFO.
 
 Windows x64 explicit Zig/static-SDL build instructions (v0.770): [EN](../../../doc/CROSS_WINDOWS_ZIG.md) / [RU](../../../doc/CROSS_WINDOWS_ZIG.ru.md). Build/link evidence remains separate from Windows execution and device acceptance. Кросс-сборка не заменяет запуск на Windows.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_run_memory` | function | [frontend/common/player.h:56](../../../frontend/common/player.h#L56) |
+<!-- source-links:end -->

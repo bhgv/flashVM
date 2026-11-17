@@ -40,7 +40,7 @@ For libcurl disable SOCKET_HTTP/TLS and enable FVM_PLAYER_HTTP; background mode
 requires CURL_VERSION_THREADSAFE in the linked SDK. See the transport guide for
 static SDK and foreign OS/CPU build instructions. Cross-linking is not target execution.
 
-[fvm_desktop_background_supported](../../../frontend/common/background.h#L49)() checks default worker support before startup.
+[fvm_desktop_background_supported](../../../frontend/common/background.h#L58)() checks default worker support before startup.
 The asynchronous companion is [here](../async_loading/README.md).
 
 [main.c](main.c) explains every line. The options, source URL and loader remain
@@ -50,13 +50,31 @@ No callback receives a VM object. All jobs join before the SDK shutdown call.
 
 | API | Purpose, ownership and blocking |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller scalar playback options without startup. |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize caller background policy without starting a worker. |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Worker-safe native provider with borrowed options and cooperative cancellation; DNS can block. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker-safe libcurl adapter; rejects a linked SDK lacking thread-safe global APIs. |
-| [fvm_desktop_run_source_background](../../../frontend/common/background.h#L28) | Synchronous owner loop, pumping native events during network waits and importing only completed bytes. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | End the matching SDK only after joined workers and window cleanup; live jobs make it fail. |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Initialize caller scalar playback options without startup. |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Initialize caller background policy without starting a worker. |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Worker-safe native provider with borrowed options and cooperative cancellation; DNS can block. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Worker-safe libcurl adapter; rejects a linked SDK lacking thread-safe global APIs. |
+| [fvm_desktop_run_source_background](../../../frontend/common/background.h#L31) | Synchronous owner loop, pumping native events during network waits and importing only completed bytes. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | End the matching SDK only after joined workers and window cleanup; live jobs make it fail. |
 
 The detailed [C API contract](../../../doc/BACKGROUND_TRANSFER.md) lists arguments,
 errors and lifetime rules for these functions and the lower-level begin/poll/
 cancel/release API used by IDE hosts with their own event loop.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_background_supported` | function | [frontend/common/background.h:58](../../../frontend/common/background.h#L58) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_run_source_background` | function | [frontend/common/background.h:31](../../../frontend/common/background.h#L31) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
+<!-- source-links:end -->

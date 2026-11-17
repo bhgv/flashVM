@@ -98,18 +98,18 @@ consumer хост должен сам синхронизировать свою 
 
 | C API | Назначение, владение и блокирование |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Заполняет скалярные defaults без старта. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L53) | Заполняет скалярные defaults без старта. [PLAYER_CONFIGURATION.ru.md](../../../doc/PLAYER_CONFIGURATION.ru.md). |
 | [fvm_desktop_playback_control_init](../../../frontend/common/playback.h#L68) | Заполняет политику команд владельца без памяти; callback штатно останавливает после копии. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_frame_observer_init](../../../frontend/common/frame.h#L57) | Заполняет точный размер ABI observer и нули без старта. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
+| [fvm_desktop_frame_observer_init](../../../frontend/common/frame.h#L55) | Заполняет точный размер ABI observer и нули без старта. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
 | [fvm_desktop_frame_copy](../../../frontend/common/frame.h#L65) | Проверяет оба диапазона до записи видимых RGBA-строк; padding прежний, без памяти. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
-| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Заполняет явную политику provider байтов без workers/I/O. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Заполняет async/deadline наблюдение владельца без заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
-| [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Заполняет обычный loader; перед запуском явно увеличивается бюджет local-ресурсов. [PLAYER_SOURCES.ru.md](../../../doc/PLAYER_SOURCES.ru.md). |
-| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Выбранный native worker HTTP/TLS provider с кооперативной отменой; без pixels/VM. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный worker-safe curl provider с проверкой SDK globals. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_run_source_observed](../../../frontend/common/frame.h#L76) | Синхронный local/memory/URL запуск с необязательными loader/control и обязательным observer; borrow до возврата, код 0/1/2. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
-| [fvm_desktop_run_source_background_observed](../../../frontend/common/frame.h#L83) | Требует provider/monitor и observer; callbacks только владельцу, join до освобождения buffer/roots. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Явное завершение сессии после ресурсов runner; копия остаётся native-памятью хоста. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
+| [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L22) | Заполняет явную политику provider байтов без workers/I/O. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L53) | Заполняет async/deadline наблюдение владельца без заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
+| [fvm_desktop_loader_init](../../../frontend/common/source.h#L64) | Заполняет обычный loader; перед запуском явно увеличивается бюджет local-ресурсов. [PLAYER_SOURCES.ru.md](../../../doc/PLAYER_SOURCES.ru.md). |
+| [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L86) | Выбранный native worker HTTP/TLS provider с кооперативной отменой; без pixels/VM. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L52) | Альтернативный worker-safe curl provider с проверкой SDK globals. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
+| [fvm_desktop_run_source_observed](../../../frontend/common/frame.h#L78) | Синхронный local/memory/URL запуск с необязательными loader/control и обязательным observer; borrow до возврата, код 0/1/2. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
+| [fvm_desktop_run_source_background_observed](../../../frontend/common/frame.h#L90) | Требует provider/monitor и observer; callbacks только владельцу, join до освобождения buffer/roots. [FRAME_CAPTURE.ru.md](../../../doc/FRAME_CAPTURE.ru.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L65) | Явное завершение сессии после ресурсов runner; копия остаётся native-памятью хоста. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
 
 Аргументы возвращают код 2; source/render/observer/encoding/I/O-ошибка — 1;
 успешная копия и полная запись — 0. При неверном источнике output не открывается.
@@ -147,8 +147,8 @@ injection or native OS/widget certification is implied.
 
 | C API | Purpose / Назначение и владение |
 | --- | --- |
-| [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L95) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
-| [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L100) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+| [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L106) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+| [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L116) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
 
 ## Resource control / Ресурсное управление (v0.728)
 
@@ -168,10 +168,10 @@ endpoint управления и GUI-ФС не создаются. HTTP исхо
 | C API | Назначение и владение |
 | --- | --- |
 | [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L109) | Создать ограниченную native-очередь одного владельца, без startup VM/SDK. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L29) | Зарегистрировать CONTROL endpoint; заимствование adapter в Capture живёт до unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_init](../../../frontend/common/resource_control.h#L31) | Зарегистрировать CONTROL endpoint; заимствование adapter в Capture живёт до unregister. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L128) | Выдать CONTROL лишь доверенной локальной сессии, не произвольному remote client. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L139) | Скопировать пустой STOP request; принятие не равно исполнению. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
-| [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L39) | Доставить команду у владельца, вернуть intent без сохранения VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
+| [fvm_desktop_resource_control_notify](../../../frontend/common/resource_control.h#L42) | Доставить команду у владельца, вернуть intent без сохранения VM pointers. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L156) | Скопировать/подтвердить reply доставки, освободить identity/capacity. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L149) | На ошибке отменить queued STOP до take сохранённого результата. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
 | [`fvm_rdispatch_unregister`](../../../include/flashvm/rdispatch.h#L123) | После runner снять регистрацию до освобождения Capture. [EN](../../../doc/RESOURCE_DISPATCH.md) / [RU](../../../doc/RESOURCE_DISPATCH.ru.md). |
@@ -186,10 +186,10 @@ state adapter, затем control registration и dispatcher. Сетевого �
 
 | API | Владение / исполнение |
 | --- | --- |
-| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L41) | Создаёт native cache, заимствуя диспетчер без старта SDK. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L50) | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L55) | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
-| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L61) | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_create](../../../frontend/common/resource_state.h#L40) | Создаёт native cache, заимствуя диспетчер без старта SDK. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_observe](../../../frontend/common/resource_state.h#L52) | Owner копирует safe point до возврата следующей команды. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_read](../../../frontend/common/resource_state.h#L59) | Декодирует собственные event bytes в отдельную скалярную копию. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
+| [fvm_desktop_resource_state_destroy](../../../frontend/common/resource_state.h#L66) | Закрывает регистрацию/watches до окончания жизни диспетчера. [doc/PLAYER_RESOURCE_STATE.ru.md](../../../doc/PLAYER_RESOURCE_STATE.ru.md). |
 | [`fvm_rdispatch_subscribe`](../../../include/flashvm/revents.h#L63) | Открывает независимую очередь копий доверенной локальной сессии. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 | [`fvm_rdispatch_event_take`](../../../include/flashvm/revents.h#L79) | Забирает только эту очередь; PENDING тихого TURN не ошибка. [doc/RESOURCE_EVENTS.ru.md](../../../doc/RESOURCE_EVENTS.ru.md). |
 ## Экспорт кадров v0.736
@@ -211,11 +211,11 @@ destroy frame adapter, затем state/control/dispatcher. PPM по-прежн�
 
 | API | Владение / исполнение |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L70) | Создаёт три слота явного размера, заимствует dispatcher. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L79) | Owner копирует строки и публикует metadata без удержания borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L89) | Декодирует metadata события в отдельную native копию. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L94) | Удаляет локальные права/watches и все pins сессии перед teardown. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
-| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L100) | Снимает регистрацию до free native pixels; dispatcher принадлежит хосту. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_create](../../../frontend/common/resource_frame.h#L69) | Создаёт три слота явного размера, заимствует dispatcher. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_capture](../../../frontend/common/resource_frame.h#L78) | Owner копирует строки и публикует metadata без удержания borrowed pixels. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_read](../../../frontend/common/resource_frame.h#L91) | Декодирует metadata события в отдельную native копию. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_revoke](../../../frontend/common/resource_frame.h#L97) | Удаляет локальные права/watches и все pins сессии перед teardown. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
+| [fvm_desktop_resource_frame_destroy](../../../frontend/common/resource_frame.h#L104) | Снимает регистрацию до free native pixels; dispatcher принадлежит хосту. [doc/PLAYER_RESOURCE_FRAMES.ru.md](../../../doc/PLAYER_RESOURCE_FRAMES.ru.md). |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -226,6 +226,31 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_background_loader_init` | function | [frontend/common/background.h:22](../../../frontend/common/background.h#L22) |
+| `fvm_desktop_frame_copy` | function | [frontend/common/frame.h:65](../../../frontend/common/frame.h#L65) |
+| `fvm_desktop_frame_observer_init` | function | [frontend/common/frame.h:55](../../../frontend/common/frame.h#L55) |
+| `fvm_desktop_http_transfer_fetch` | function | [frontend/common/http.h:52](../../../frontend/common/http.h#L52) |
+| `fvm_desktop_load_monitor_init` | function | [frontend/common/load_monitor.h:53](../../../frontend/common/load_monitor.h#L53) |
+| `fvm_desktop_loader_init` | function | [frontend/common/source.h:64](../../../frontend/common/source.h#L64) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_playback_control_init` | function | [frontend/common/playback.h:68](../../../frontend/common/playback.h#L68) |
+| `fvm_desktop_resource_control_init` | function | [frontend/common/resource_control.h:31](../../../frontend/common/resource_control.h#L31) |
+| `fvm_desktop_resource_control_notify` | function | [frontend/common/resource_control.h:42](../../../frontend/common/resource_control.h#L42) |
+| `fvm_desktop_resource_frame_capture` | function | [frontend/common/resource_frame.h:78](../../../frontend/common/resource_frame.h#L78) |
+| `fvm_desktop_resource_frame_create` | function | [frontend/common/resource_frame.h:69](../../../frontend/common/resource_frame.h#L69) |
+| `fvm_desktop_resource_frame_destroy` | function | [frontend/common/resource_frame.h:104](../../../frontend/common/resource_frame.h#L104) |
+| `fvm_desktop_resource_frame_read` | function | [frontend/common/resource_frame.h:91](../../../frontend/common/resource_frame.h#L91) |
+| `fvm_desktop_resource_frame_revoke` | function | [frontend/common/resource_frame.h:97](../../../frontend/common/resource_frame.h#L97) |
+| `fvm_desktop_resource_state_create` | function | [frontend/common/resource_state.h:40](../../../frontend/common/resource_state.h#L40) |
+| `fvm_desktop_resource_state_destroy` | function | [frontend/common/resource_state.h:66](../../../frontend/common/resource_state.h#L66) |
+| `fvm_desktop_resource_state_observe` | function | [frontend/common/resource_state.h:52](../../../frontend/common/resource_state.h#L52) |
+| `fvm_desktop_resource_state_read` | function | [frontend/common/resource_state.h:59](../../../frontend/common/resource_state.h#L59) |
+| `fvm_desktop_run_source_background_observed` | function | [frontend/common/frame.h:90](../../../frontend/common/frame.h#L90) |
+| `fvm_desktop_run_source_background_offscreen` | function | [frontend/common/frame.h:116](../../../frontend/common/frame.h#L116) |
+| `fvm_desktop_run_source_observed` | function | [frontend/common/frame.h:78](../../../frontend/common/frame.h#L78) |
+| `fvm_desktop_run_source_offscreen` | function | [frontend/common/frame.h:106](../../../frontend/common/frame.h#L106) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
+| `fvm_desktop_socket_transfer_fetch` | function | [frontend/common/socket_http.h:86](../../../frontend/common/socket_http.h#L86) |
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../../../include/flashvm/rdispatch.h#L149) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../../../include/flashvm/rdispatch.h#L109) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../../../include/flashvm/rdispatch.h#L163) |

@@ -51,8 +51,8 @@ The loader contract is in [source.h](../frontend/common/source.h).
 
 | API | Contract |
 | --- | --- |
-| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36) | Nonnull caller-owned [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
-| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L43) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
+| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L38) | Nonnull caller-owned [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L29) receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
+| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L47) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
 
 Options require 0 < connect_ms <= total_ms <= 120000. DNS is synchronous
 getaddrinfo: elapsed resolver time counts, but the resolver call itself cannot
@@ -148,8 +148,8 @@ find-root/sysroot for a foreign SDK. Never mix host OpenSSL with a cross target.
 With TLS OFF no OpenSSL headers/libraries are required; HTTPS returns
 [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L48) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
 
-[FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) now includes ca_file, borrowed until fetch returns. Always
-initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36), which sets ca_file
+[FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L29) now includes ca_file, borrowed until fetch returns. Always
+initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L38), which sets ca_file
 to null. Null selects OpenSSL default trust paths, including its standard
 SSL_CERT_FILE/SSL_CERT_DIR environment configuration. A nonnull filename selects
 only that PEM CA bundle for this request; missing/empty/unreadable/invalid trust
@@ -186,16 +186,16 @@ are not instrumented by that probe. Foreign TLS SDK builds/runs remain unverifie
 plain HTTP cross-build evidence is not foreign TLS acceptance.
 ## Build capability query since v0.679
 
-[network.h](../frontend/common/network.h) defines [fvm_desktop_network_capabilities](../frontend/common/network.h#L19),
-which returns [FVM_DESKTOP_NETWORK_HTTP](../frontend/common/network.h#L5), [FVM_DESKTOP_NETWORK_HTTPS](../frontend/common/network.h#L6),
-[FVM_DESKTOP_NETWORK_SOCKET](../frontend/common/network.h#L7) and [FVM_DESKTOP_NETWORK_CURL](../frontend/common/network.h#L8) bits, or zero with no
+[network.h](../frontend/common/network.h) defines [fvm_desktop_network_capabilities](../frontend/common/network.h#L22),
+which returns [FVM_DESKTOP_NETWORK_HTTP](../frontend/common/network.h#L6), [FVM_DESKTOP_NETWORK_HTTPS](../frontend/common/network.h#L7),
+[FVM_DESKTOP_NETWORK_SOCKET](../frontend/common/network.h#L8) and [FVM_DESKTOP_NETWORK_CURL](../frontend/common/network.h#L9) bits, or zero with no
 default provider. It opens no file, socket, SDL subsystem, VM or trust store.
 It describes the compiled default, not a custom loader.fetch or current Internet/
 certificate/device readiness. A separate function avoids changing the existing
-FVM_DesktopBuildInfo layout. Use the native host thread; with older libcurl,
+[FVM_DesktopBuildInfo](../frontend/common/player.h#L22) layout. Use the native host thread; with older libcurl,
 coordinate concurrent initialization/queries according to that SDK's thread rules.
-The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L47) and
-[fvm_desktop_http_capabilities](../frontend/common/http.h#L26) report their own linked provider. The libcurl query
+The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L57) and
+[fvm_desktop_http_capabilities](../frontend/common/http.h#L35) report their own linked provider. The libcurl query
 checks the actual linked protocol list/SSL feature rather than assuming HTTPS.
 
 `--version` prints network_provider=none/socket/curl, http=yes/no, https=yes/no and
@@ -225,8 +225,19 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_http_capabilities` | function | [frontend/common/http.h:35](../frontend/common/http.h#L35) |
+| `fvm_desktop_network_capabilities` | function | [frontend/common/network.h:22](../frontend/common/network.h#L22) |
+| `FVM_DESKTOP_NETWORK_CURL` | macro / define | [frontend/common/network.h:9](../frontend/common/network.h#L9) |
+| `FVM_DESKTOP_NETWORK_HTTP` | macro / define | [frontend/common/network.h:6](../frontend/common/network.h#L6) |
+| `FVM_DESKTOP_NETWORK_HTTPS` | macro / define | [frontend/common/network.h:7](../frontend/common/network.h#L7) |
+| `FVM_DESKTOP_NETWORK_SOCKET` | macro / define | [frontend/common/network.h:8](../frontend/common/network.h#L8) |
+| `fvm_desktop_socket_capabilities` | function | [frontend/common/socket_http.h:57](../frontend/common/socket_http.h#L57) |
+| `fvm_desktop_socket_fetch` | function | [frontend/common/socket_http.h:47](../frontend/common/socket_http.h#L47) |
+| `fvm_desktop_socket_options_init` | function | [frontend/common/socket_http.h:38](../frontend/common/socket_http.h#L38) |
+| `FVM_DesktopBuildInfo` | struct | [frontend/common/player.h:22](../frontend/common/player.h#L22) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_SocketHTTPOptions` | struct | [frontend/common/socket_http.h:29](../frontend/common/socket_http.h#L29) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

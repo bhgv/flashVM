@@ -9,7 +9,7 @@
 ## Владение и лимиты
 
 При create хост явно выбирает capacity одного буфера от 1 до
-[FVM_DESKTOP_RFRAME_MAX_BYTES](../frontend/common/resource_frame.h#L29) (64 MiB). Буферов [FVM_DESKTOP_RFRAME_SLOTS](../frontend/common/resource_frame.h#L18) (три):
+[FVM_DESKTOP_RFRAME_MAX_BYTES](../frontend/common/resource_frame.h#L27) (64 MiB). Буферов [FVM_DESKTOP_RFRAME_SLOTS](../frontend/common/resource_frame.h#L18) (три):
 пиксельная память равна трём capacity плюс fixed native metadata. Все allocation
 предшествуют регистрации. Ошибки освобождают частичные выделения, сохраняют оба
 выхода. Неявного выделения максимального объёма нет; после create новые
@@ -25,7 +25,7 @@ leases могут жить после runner/SDK teardown, пока жив dispa
 Успешный capture имеет ненулевой Uint32 sequence в жизни адаптера; исчерпание
 LIMIT без оборачивания. Перед CHUNK клиент делает ACQUIRE. Изображение неизменно
 до RELEASE, revoke или destroy, даже при поступлении новых кадров. INFO/events
-сами pin не создают. Есть [FVM_DESKTOP_RFRAME_LEASES](../frontend/common/resource_frame.h#L20) (восемь) leases с отдельными
+сами pin не создают. Есть [FVM_DESKTOP_RFRAME_LEASES](../frontend/common/resource_frame.h#L19) (восемь) leases с отдельными
 необорачивающимися поколениями и аутентифицированным владельцем-сессией.
 Fairness, неявный timeout и идентичность после restart не обещаны. Читатель может
 занять ограниченную квоту; потерянные/нежелательные сессии освобождает хост.
@@ -48,11 +48,11 @@ lease ID не даёт прав; wire uname/session claim не выбирает 
 
 | Операция | Параметры и результат |
 | --- | --- |
-| [FVM_DESKTOP_RFRAME_INFO](../frontend/common/resource_frame.h#L8) | Пустой request, metadata latest с lease zero/zero. До первого capture terminal BUSY. Pin не создаётся. |
-| [FVM_DESKTOP_RFRAME_ACQUIRE](../frontend/common/resource_frame.h#L9) | Пустой request, metadata latest с новым lease ID/generation этой сессии. Заполненная/retired таблица LIMIT, ошибки pin не создают. Повторы намеренно создают независимые leases. |
+| [FVM_DESKTOP_RFRAME_INFO](../frontend/common/resource_frame.h#L9) | Пустой request, metadata latest с lease zero/zero. До первого capture terminal BUSY. Pin не создаётся. |
+| [FVM_DESKTOP_RFRAME_ACQUIRE](../frontend/common/resource_frame.h#L10) | Пустой request, metadata latest с новым lease ID/generation этой сессии. Заполненная/retired таблица LIMIT, ошибки pin не создают. Повторы намеренно создают независимые leases. |
 | [FVM_DESKTOP_RFRAME_CHUNK](../frontend/common/resource_frame.h#L11) | Ровно четыре канонических неотрицательных S-целых: lease ID, generation, byte offset, count. Count 1..[FVM_R_BYTES](../include/flashvm/rdispatch.h#L9), offset не больше byte_count. До count сырых packed RGBA bytes; точный конец OK/0, дальше или неверный count INVALID. Живой чужой lease DENIED, старый/отозванный/неизвестный UNKNOWN. Выравнивание на пиксель не требуется. |
 | [FVM_DESKTOP_RFRAME_RELEASE](../frontend/common/resource_frame.h#L14) | Ровно lease ID и generation как два S-целых. Освобождает только собственный pin; чужой DENIED, старый UNKNOWN. Успех — пустой ответ. При исчерпании generation слот окончательно retired. |
-| [FVM_DESKTOP_RFRAME_REGION](../frontend/common/resource_frame.h#L30) | READ: lease ID, generation, x, y, width, height. Прямоугольник packed RGBA до 512 байт; неверная геометрия INVALID, большой ответ LIMIT, старый lease UNKNOWN, чужая сессия DENIED. |
+| [FVM_DESKTOP_RFRAME_REGION](../frontend/common/resource_frame.h#L28) | READ: lease ID, generation, x, y, width, height. Прямоугольник packed RGBA до 512 байт; неверная геометрия INVALID, большой ответ LIMIT, старый lease UNKNOWN, чужая сессия DENIED. |
 
 Обычная resource write лишь ставит операцию в очередь, исполняет native owner
 pump. Эти пять handler используют только native cache и допустимы после
@@ -80,12 +80,12 @@ callback и выдача прав принадлежат хосту.
 
 | Функция | Контракт |
 | --- | --- |
-| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L70) | Dispatcher, canonical path, per-slot capacity, выходы adapter/target. Fixed native cache и пять READ операций, заимствование dispatcher до destroy. Некорректные аргументы/capacity INVALID, слишком большой объём LIMIT, allocation NOMEM, ошибки регистрации передаются. Выходы только на OK; SDK/device/grant не запускает. |
-| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L79) | Адаптер и borrowed frame. Проверяет format/reason/dimensions/counters/source/visible extents, копирует packed pixels в spare, публикует metadata, меняет latest. Без allocation. Неверный frame INVALID, capacity/sequence LIMIT; нет spare BUSY с ростом только dropped. Ошибки publish сохраняют прежний опубликованный кадр. Политику ошибок/пропуска выбирает хост. |
+| [fvm_desktop_resource_frame_create](../frontend/common/resource_frame.h#L69) | Dispatcher, canonical path, per-slot capacity, выходы adapter/target. Fixed native cache и пять READ операций, заимствование dispatcher до destroy. Некорректные аргументы/capacity INVALID, слишком большой объём LIMIT, allocation NOMEM, ошибки регистрации передаются. Выходы только на OK; SDK/device/grant не запускает. |
+| [fvm_desktop_resource_frame_capture](../frontend/common/resource_frame.h#L78) | Адаптер и borrowed frame. Проверяет format/reason/dimensions/counters/source/visible extents, копирует packed pixels в spare, публикует metadata, меняет latest. Без allocation. Неверный frame INVALID, capacity/sequence LIMIT; нет spare BUSY с ростом только dropped. Ошибки publish сохраняют прежний опубликованный кадр. Политику ошибок/пропуска выбирает хост. |
 | [fvm_desktop_resource_frame_notify](../frontend/common/resource_frame.h#L85) | Стандартный frame observer callback, userdata=adapter. OK/BUSY даёт [FVM_OK](../include/flashvm/flashvm.h#L44), при backpressure пропущен только экспорт. INVALID отображается в [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L47), прочее — [FVM_ERROR](../include/flashvm/flashvm.h#L45). Не удерживает source/pixel/VM указателей. Можно вместо него явно вызывать capture со своей политикой. |
-| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L89) | Декодирует один counted metadata payload без outer envelope. Проверяет полную schema, lease pair/range, packed geometry, flags, ненулевые sequence/presentations, reason, source length и точный конец. INVALID сохраняет native output. Результат принадлежит клиенту, без adapter/VM и allocation. |
-| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L94) | Owner передаёт adapter и trusted session после остановки транспорта. Удаляет права ресурса, его watches и все pins сессии. Ошибка сохраняет pins; regrant старые поколения не возрождает. При полном disconnect также вызвать очистку сессии dispatcher. |
-| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L100) | Owner останавливает capture/handlers/clients, unregister точного поколения и free native buffers, инвалидируя даже открытые pins. Running handler BUSY сохраняет pointer. OK обнуляет pointer; queued old jobs затем UNKNOWN и требуют take/disconnect. Dispatcher/client files/SDK принадлежат хосту. |
+| [fvm_desktop_resource_frame_read](../frontend/common/resource_frame.h#L91) | Декодирует один counted metadata payload без outer envelope. Проверяет полную schema, lease pair/range, packed geometry, flags, ненулевые sequence/presentations, reason, source length и точный конец. INVALID сохраняет native output. Результат принадлежит клиенту, без adapter/VM и allocation. |
+| [fvm_desktop_resource_frame_revoke](../frontend/common/resource_frame.h#L97) | Owner передаёт adapter и trusted session после остановки транспорта. Удаляет права ресурса, его watches и все pins сессии. Ошибка сохраняет pins; regrant старые поколения не возрождает. При полном disconnect также вызвать очистку сессии dispatcher. |
+| [fvm_desktop_resource_frame_destroy](../frontend/common/resource_frame.h#L104) | Owner останавливает capture/handlers/clients, unregister точного поколения и free native buffers, инвалидируя даже открытые pins. Running handler BUSY сохраняет pointer. OK обнуляет pointer; queued old jobs затем UNKNOWN и требуют take/disconnect. Dispatcher/client files/SDK принадлежат хосту. |
 
 Каждый lease освобождайте явно. Закрытие operation file, fid и даже 9P adapter
 **не** освобождает специфичные pins автоматически. Потерянный ACQUIRE reply может
@@ -181,7 +181,7 @@ OS/CPU: см. [desktop build](DESKTOP_FRONTEND.ru.md) и
 не заменяет сборку/запуск всего плеера, Android Activity/surface и проверку устройств.
 ## Области кадра v0.738
 
-`FVM_DESKTOP_RFRAME_REGION` (операция 5, READ) принимает ровно шесть
+[`FVM_DESKTOP_RFRAME_REGION`](../frontend/common/resource_frame.h#L28) (операция 5, READ) принимает ровно шесть
 канонических неотрицательных S-целых: lease ID, generation, x, y, width, height.
 Координаты — логические пиксели сцены от левого верхнего угла, начиная с нуля.
 Ширина и высота положительны; весь прямоугольник должен входить в закреплённый
@@ -239,6 +239,20 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_resource_frame_capture` | function | [frontend/common/resource_frame.h:78](../frontend/common/resource_frame.h#L78) |
+| `fvm_desktop_resource_frame_create` | function | [frontend/common/resource_frame.h:69](../frontend/common/resource_frame.h#L69) |
+| `fvm_desktop_resource_frame_destroy` | function | [frontend/common/resource_frame.h:104](../frontend/common/resource_frame.h#L104) |
+| `fvm_desktop_resource_frame_notify` | function | [frontend/common/resource_frame.h:85](../frontend/common/resource_frame.h#L85) |
+| `fvm_desktop_resource_frame_read` | function | [frontend/common/resource_frame.h:91](../frontend/common/resource_frame.h#L91) |
+| `fvm_desktop_resource_frame_revoke` | function | [frontend/common/resource_frame.h:97](../frontend/common/resource_frame.h#L97) |
+| `FVM_DESKTOP_RFRAME_ACQUIRE` | macro / define | [frontend/common/resource_frame.h:10](../frontend/common/resource_frame.h#L10) |
+| `FVM_DESKTOP_RFRAME_CHUNK` | macro / define | [frontend/common/resource_frame.h:11](../frontend/common/resource_frame.h#L11) |
+| `FVM_DESKTOP_RFRAME_INFO` | macro / define | [frontend/common/resource_frame.h:9](../frontend/common/resource_frame.h#L9) |
+| `FVM_DESKTOP_RFRAME_LEASES` | macro / define | [frontend/common/resource_frame.h:19](../frontend/common/resource_frame.h#L19) |
+| `FVM_DESKTOP_RFRAME_MAX_BYTES` | macro / define | [frontend/common/resource_frame.h:27](../frontend/common/resource_frame.h#L27) |
+| `FVM_DESKTOP_RFRAME_REGION` | macro / define | [frontend/common/resource_frame.h:28](../frontend/common/resource_frame.h#L28) |
+| `FVM_DESKTOP_RFRAME_RELEASE` | macro / define | [frontend/common/resource_frame.h:14](../frontend/common/resource_frame.h#L14) |
+| `FVM_DESKTOP_RFRAME_SLOTS` | macro / define | [frontend/common/resource_frame.h:18](../frontend/common/resource_frame.h#L18) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

@@ -67,32 +67,32 @@ authentication, congestion controller, video codec or remote window is installed
 | API | Ownership / выполнение |
 | --- | --- |
 | [`fvm_rdispatch_create`](../../../include/flashvm/rdispatch.h#L109) | Own the bounded private queue; no worker/VM startup. Release after adapter destruction. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_create` | Allocate three exact 4096-byte cache slots and register native handlers; partial failures free storage, dispatcher borrowed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_create`](../../../frontend/common/resource_frame.h#L69) | Allocate three exact 4096-byte cache slots and register native handlers; partial failures free storage, dispatcher borrowed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_grant`](../../../include/flashvm/rdispatch.h#L128) | Explicitly grant READ to the trusted local session; wire metadata grants no authority. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_init`](../../../include/flashvm/scontrol.h#L86) | Copy real local buffer ceilings; no active profile or allocation. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_sbindings_payload_write`](../../../include/flashvm/sbindings.h#L51) | Encode two immutable direction-local type declarations; input is borrowed only during the call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_srecord_write`](../../../include/flashvm/srecord.h#L76) | Wrap metadata/type declarations as compact checked records; output/used atomic on error. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_options_init` | Initialize the native playback descriptor before choosing mute/frame limit/interpreter. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_frame_observer_init` | Initialize exact observer ABI; callback borrows owner state through runner return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_run_source_offscreen` | Run real linked SWF/raster synchronously without SDL video/events; all borrowed bytes live through return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_capture` | Copy callback pixels into a spare cache slot; no source pointer retained, BUSY requires explicit host policy. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_options_init`](../../../frontend/common/options.h#L53) | Initialize the native playback descriptor before choosing mute/frame limit/interpreter. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_frame_observer_init`](../../../frontend/common/frame.h#L55) | Initialize exact observer ABI; callback borrows owner state through runner return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_run_source_offscreen`](../../../frontend/common/frame.h#L106) | Run real linked SWF/raster synchronously without SDL video/events; all borrowed bytes live through return. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_capture`](../../../frontend/common/resource_frame.h#L78) | Copy callback pixels into a spare cache slot; no source pointer retained, BUSY requires explicit host policy. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_post`](../../../include/flashvm/rdispatch.h#L139) | Copy one private cache request; accepted ID must later be taken or cancelled/taken. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_pump`](../../../include/flashvm/rdispatch.h#L145) | Execute only this private pure-cache handler on the owner, one bounded job; never pump arbitrary VM work here. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_take`](../../../include/flashvm/rdispatch.h#L156) | Copy and acknowledge the terminal reply, releasing the request slot. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_cancel`](../../../include/flashvm/rdispatch.h#L149) | Cancel queued work if local pumping fails; take still acknowledges the cancellation reply. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_read` | Strictly decode owned ACQUIRE metadata, including exact lease and geometry. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_read`](../../../frontend/common/resource_frame.h#L91) | Strictly decode owned ACQUIRE metadata, including exact lease and geometry. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_propose_at`](../../../include/flashvm/scontrol.h#L123) | Request a future capture-sequence activation boundary; keep prior active profile unchanged. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_write`](../../../include/flashvm/scontrol.h#L75) | Encode a small tag-zero proposal/ACK, no slot padding. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_read`](../../../include/flashvm/scontrol.h#L79) | Verify service bytes and copy exactly one message; trailing records stay unconsumed. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_respond`](../../../include/flashvm/scontrol.h#L99) | Choose no-greater peer/local limits into pending ACK state. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_commit`](../../../include/flashvm/scontrol.h#L108) | Activate only exact/correlated ACK after reliable host queueing, with the same boundary. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_scontrol_active`](../../../include/flashvm/scontrol.h#L132) | Copy committed selected values; UNKNOWN before agreement; preserve outputs on errors. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_write_part` | Check current READ/lease owner and encode one agreed-size retained range without allocating or touching VM. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_write_part`](../../../frontend/common/resource_frame.h#L116) | Check current READ/lease owner and encode one agreed-size retained range without allocating or touching VM. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_sinteger_write`](../../../include/flashvm/srecord.h#L62) | Encode two portable fields for explicit lease release; no native-endian struct serialization. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_revoke` | Quiesced owner removes session rights and every remaining pin, including error paths. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_resource_frame_destroy` | Unregister and free cache only after callbacks; successful destroy nulls its pointer. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_revoke`](../../../frontend/common/resource_frame.h#L97) | Quiesced owner removes session rights and every remaining pin, including error paths. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_resource_frame_destroy`](../../../frontend/common/resource_frame.h#L104) | Unregister and free cache only after callbacks; successful destroy nulls its pointer. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 | [`fvm_rdispatch_destroy`](../../../include/flashvm/rdispatch.h#L163) | Free a quiesced queue after its adapters and terminal replies are gone. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
-| `fvm_desktop_shutdown` | Verify runner/SDL ownership ended; final native pixel export deliberately follows this call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
+| [`fvm_desktop_shutdown`](../../../frontend/common/player.h#L65) | Verify runner/SDL ownership ended; final native pixel export deliberately follows this call. [Contract](../../../doc/PLAYER_FRAME_PARTS.md). |
 
 ## Feedback-driven real frame replay (v0.746)
 
@@ -154,6 +154,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_desktop_frame_observer_init` | function | [frontend/common/frame.h:55](../../../frontend/common/frame.h#L55) |
+| `fvm_desktop_options_init` | function | [frontend/common/options.h:53](../../../frontend/common/options.h#L53) |
+| `fvm_desktop_resource_frame_capture` | function | [frontend/common/resource_frame.h:78](../../../frontend/common/resource_frame.h#L78) |
+| `fvm_desktop_resource_frame_create` | function | [frontend/common/resource_frame.h:69](../../../frontend/common/resource_frame.h#L69) |
+| `fvm_desktop_resource_frame_destroy` | function | [frontend/common/resource_frame.h:104](../../../frontend/common/resource_frame.h#L104) |
+| `fvm_desktop_resource_frame_read` | function | [frontend/common/resource_frame.h:91](../../../frontend/common/resource_frame.h#L91) |
+| `fvm_desktop_resource_frame_revoke` | function | [frontend/common/resource_frame.h:97](../../../frontend/common/resource_frame.h#L97) |
+| `fvm_desktop_resource_frame_write_part` | function | [frontend/common/resource_frame.h:116](../../../frontend/common/resource_frame.h#L116) |
+| `fvm_desktop_run_source_offscreen` | function | [frontend/common/frame.h:106](../../../frontend/common/frame.h#L106) |
+| `fvm_desktop_shutdown` | function | [frontend/common/player.h:65](../../../frontend/common/player.h#L65) |
 | `fvm_rdispatch_cancel` | function | [include/flashvm/rdispatch.h:149](../../../include/flashvm/rdispatch.h#L149) |
 | `fvm_rdispatch_create` | function | [include/flashvm/rdispatch.h:109](../../../include/flashvm/rdispatch.h#L109) |
 | `fvm_rdispatch_destroy` | function | [include/flashvm/rdispatch.h:163](../../../include/flashvm/rdispatch.h#L163) |
