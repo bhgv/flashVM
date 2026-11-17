@@ -935,3 +935,12 @@ Children inherit independent native channel pins; typed application init uses
 the current Session without channel mount/capture. Constructor refusals preserve
 uncommitted handoffs and release temporary frames; failures after adoption retire
 consumed owners. Authenticated network admission remains separate work.
+
+## Provider-first code / Приоритет кода провайдера (runtime0.171)
+
+[Code/data purpose lookup](CODE-LOOKUP.md) gives Dis loads and their dependencies
+provider-first visible union candidates while ordinary data keeps its existing
+stack order. Native intent classes also describe `.m`, future native modules and
+initial/nested SWF without fixing new wire tags or module formats.
+[FlashVM independent/DisVM-managed I/O and selective input](FLASHVM-IO-MODES.md)
+records the accepted integration model; that FlashVM adapter remains future work.

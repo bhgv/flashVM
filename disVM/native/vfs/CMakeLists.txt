@@ -200,6 +200,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 # EN/RU: Standalone native namespace SDK fixture; explicit repository sources, no sibling build dependency.
 # Standalone native namespace SDK fixture; явные sources репозитория, без sibling build dependency.
 add_library(styx_namespace_fixture STATIC
+    "${vfs}/intent.c"
     "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
@@ -313,6 +314,10 @@ target_include_directories(vfs-launch-terminal PRIVATE "${CMAKE_CURRENT_SOURCE_D
 target_link_libraries(vfs-launch-terminal PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-launch-terminal COMMAND vfs-launch-terminal)
 set_tests_properties(vfs-launch-terminal PROPERTIES TIMEOUT 10)
+add_executable(vfs-code-order ../tests/launch/code_order.c ../tests/file-root/context.c)
+target_link_libraries(vfs-code-order PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-code-order COMMAND vfs-code-order)
+set_tests_properties(vfs-code-order PROPERTIES TIMEOUT 10)
 target_link_libraries(vfs-launch-service PRIVATE styx_namespace_fixture)
 target_link_options(vfs-launch-service PRIVATE "-Wl,--wrap=dvm_launch_request_create" "-Wl,--wrap=dvm_launch_slot_retired")
 add_test(NAME vfs-launch-service COMMAND vfs-launch-service)

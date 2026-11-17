@@ -13,6 +13,7 @@
 #include "guest.h"
 #include "loader.h"
 #include "resource.h"
+#include "intent.h"
 #include "metadata_wait.h"
 
 extern char *dvm_runtime_file_path(String *); /* Existing rooted guest path validation. */
@@ -53,7 +54,7 @@ Module *readmod(char *path, Module *cached, int sync)
         unload(cached);
     }
     group = dvm_namespace_current_group();
-    if (!group || !dvm_resource_plan(group, path, 1, &plan))
+    if (!group || !dvm_resource_plan_intent(group, path, DVM_RESOURCE_DIS, &plan))
     {
         kwerrstr("invalid or oversized namespace module path");
         return NULL;

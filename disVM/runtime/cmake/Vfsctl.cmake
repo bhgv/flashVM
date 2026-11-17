@@ -27,3 +27,4 @@ add_custom_target(disvm_vfsexport_sources DEPENDS "${view}/vfsexport_decl.h" "${
 add_dependencies(disvm disvm_vfsexport_sources)
 target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
 target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/cap_launch.c)
+target_sources(disvm PRIVATE vfs/intent.c)

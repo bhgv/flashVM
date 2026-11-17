@@ -32,6 +32,7 @@ WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference 
     ("launch-environment", "test_launch_environment.py", ()),
     ("terminal-init", "test_terminal_init.py", ()),
     ("launch-import", "test_launch_import.py", ()),
+    ("code-order", "test_code_order.py", ()),
     ("provider-cwd-wait", "test_provider_cwd_wait.py", ()),
     ("provider-cwd", "test_provider_cwd.py", ()),
     ("vfs-inspection-wait", "test_vfs_inspection_wait.py", ()),

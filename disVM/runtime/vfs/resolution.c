@@ -68,9 +68,11 @@ static int relative_join(const char *prefix, const char *suffix, char *output)
  * names and optional retained/relative are caller storage; group stays owned.
  * No I/O. Current directory survives a covering rebind; descendant bindings
  * still route by virtual components. '..' outside cwd uses virtual root lookup.
+ * module selects import base and stable provider-first candidates within the effective union.
  * RU: Разрешить под одним mutex; опционально удержать anchor/relative. Outputs
  * принадлежат caller, group удерживается. Без I/O. Covering rebind не меняет cwd;
- * descendant bindings идут по virtual components. '..' вне cwd — virtual root lookup. */
+ * descendant bindings идут по virtual components. '..' вне cwd — virtual root lookup.
+ * module выбирает import base и stable provider-first candidates своего effective union. */
 static int resolve(
     DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative, DVM_Provider **provider, DVM_ResourcePlan *whole)
 {
@@ -94,7 +96,9 @@ static int resolve(
             {
                 continue;
             }
-            if (length > longest && covers(binding->on, names->path))
+            if (covers(binding->on, names->path) && (length > longest ||
+                (module && length == longest && best && best->origin.role != DVM_ORIGIN_PROVIDER &&
+                 binding->origin.role == DVM_ORIGIN_PROVIDER)))
             {
                 longest = length;
                 best = binding;
@@ -152,44 +156,48 @@ static int resolve(
         whole->mount_flags = best->flags;
         whole->policy = best->flags & DVM_NS_AUTORWX;
         whole->layer_id = best->identity;
-        for (binding = best->next; binding; binding = binding->next)
+        for (unsigned pass = 0; pass < (module ? 2U : 1U) && result; pass++)
         {
-            DVM_ResourcePlan *choice;
-            if (strcmp(binding->on, best->on))
+            for (binding = group->bindings; binding; binding = binding->next)
             {
-                continue;
+                DVM_ResourcePlan *choice;
+                if (binding == best || strcmp(binding->on, best->on) ||
+                    (module && (binding->origin.role == DVM_ORIGIN_PROVIDER) != (pass == 0)))
+                {
+                    continue;
+                }
+                choice = calloc(1, sizeof(*choice));
+                if (!choice)
+                {
+                    result = 0;
+                    break;
+                }
+                choice->no_native_fallback = group->no_native_fallback;
+                choice->origin = binding->origin;
+                choice->names = *names;
+                choice->mount_flags = binding->flags;
+                whole->policy |= binding->flags & DVM_NS_AUTORWX;
+                choice->layer_id = binding->identity;
+                if (!display_join(binding->source, suffix, choice->names.native) ||
+                    !relative_join(binding->component, suffix, choice->relative) ||
+                    !dvm_anchor_retain(binding->anchor))
+                {
+                    free(choice);
+                    result = 0;
+                    break;
+                }
+                choice->anchor = binding->anchor;
+                if (!dvm_provider_retain(binding->provider))
+                {
+                    dvm_anchor_release(choice->anchor);
+                    free(choice);
+                    result = 0;
+                    break;
+                }
+                choice->provider = binding->provider;
+                *tail = choice;
+                tail = &choice->layers;
             }
-            choice = calloc(1, sizeof(*choice));
-            if (!choice)
-            {
-                result = 0;
-                break;
-            }
-            choice->no_native_fallback = group->no_native_fallback;
-            choice->origin = binding->origin;
-            choice->names = *names;
-            choice->mount_flags = binding->flags;
-            whole->policy |= binding->flags & DVM_NS_AUTORWX;
-            choice->layer_id = binding->identity;
-            if (!display_join(binding->source, suffix, choice->names.native) ||
-                !relative_join(binding->component, suffix, choice->relative) ||
-                !dvm_anchor_retain(binding->anchor))
-            {
-                free(choice);
-                result = 0;
-                break;
-            }
-            choice->anchor = binding->anchor;
-            if (!dvm_provider_retain(binding->provider))
-            {
-                dvm_anchor_release(choice->anchor);
-                free(choice);
-                result = 0;
-                break;
-            }
-            choice->provider = binding->provider;
-            *tail = choice;
-            tail = &choice->layers;
         }
         whole->mount_root = !strcmp(names->path, best->on);
         whole->union_root = whole->layers && whole->mount_root;
