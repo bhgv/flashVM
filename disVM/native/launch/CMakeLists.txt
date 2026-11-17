@@ -25,3 +25,26 @@ add_test(NAME vfs-launch-bidir COMMAND "${PYTHON_EXECUTABLE}"
 add_test(NAME vfs-launch-bidir-cancel COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:launch-bidir-peer>" cancel)
 set_tests_properties(vfs-launch-phy vfs-launch-bidir vfs-launch-bidir-cancel PROPERTIES TIMEOUT 30)
+
+# EN/RU: Explicit Inferno error vocabulary enables only acknowledged missing-name fallback.
+# Явный Inferno vocabulary включает только подтверждённый missing-name fallback.
+foreach(lookup_transport phy bidir)
+    if(lookup_transport STREQUAL "phy")
+        set(lookup_peer ../tests/phy-server/client.c)
+    else()
+        set(lookup_peer ../tests/phy-mux/peer.c)
+    endif()
+    add_executable(launch-lookup-${lookup_transport}-peer ${lookup_peer} ../tests/phy/limited.c
+        ../tests/launch/remote.c ../tests/file-root/context.c)
+    target_compile_definitions(launch-lookup-${lookup_transport}-peer PRIVATE STYX_LAUNCH_TEST=1 STYX_INFERNO_LOOKUP_TEST=1)
+    target_link_libraries(launch-lookup-${lookup_transport}-peer PRIVATE styx_launch infernostyx_phy remote_phy_mux)
+endforeach()
+add_test(NAME vfs-launch-lookup-phy COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-server/peers.py" "$<TARGET_FILE:phy-server-test>"
+    "$<TARGET_FILE:launch-lookup-phy-peer>" normal)
+foreach(lookup_case normal cancel)
+    add_test(NAME vfs-launch-lookup-bidir-${lookup_case} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:launch-lookup-bidir-peer>" ${lookup_case})
+    set_tests_properties(vfs-launch-lookup-bidir-${lookup_case} PROPERTIES TIMEOUT 30)
+endforeach()
+set_tests_properties(vfs-launch-lookup-phy PROPERTIES TIMEOUT 30)

@@ -20,6 +20,7 @@ struct StyxClient
     StyxMux *mux; /* Optional independent native owner; no Client pointers retained by it. */
     int transportclosed; /* Legacy transport close already consumed by explicit shutdown. */
     int cancelled; /* Current returned RPC cancelled, under client lock. */
+    unsigned error_profile; /* Host-selected immutable lookup error vocabulary, default opaque. */
     pthread_mutex_t lock; /* Protects refs/fids/reply copying; legacy RPC stays serialized. */
     StyxTransport transport; /* Legacy adopted stream; unused with native fd owner. */
     uchar *send; /* Owned bounded outgoing frame. */

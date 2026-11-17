@@ -70,6 +70,24 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 
+/* EN/RU: Known file may fail metadata after successful walk; never a missing-name lookup.
+ * Metadata file может отказать после успешного walk; это не missing-name lookup. */
+static char *statfile(Qid qid, Dir *out)
+{
+    if (qid.path == 5)
+    {
+        return Enonexist;
+    }
+    Styxfile *file = styxfindfile(&server, qid.path);
+    if (!file)
+    {
+        return Enonexist;
+    }
+    *out = file->d;
+    return nil;
+}
+
+
 /* EN/RU: Native owner serves reverse session while independent forward session is pending.
  * Native owner обслуживает reverse session независимо от pending forward session. */
 static void *serving(void *unused)
@@ -134,9 +152,13 @@ int main(int argc, char **argv)
     Styxops ops = {0};
     ops.open = openfile;
     ops.read = readfile;
+    ops.stat = statfile;
     check(!styxphyinit(&server, &ops, reverse, 0555, 1, 2), "original reverse server");
     check(styxaddfile(&server, Qroot, 1, "identity", 0444, "fixture") &&
         styxaddfile(&server, Qroot, 2, "events", 0444, "fixture"), "exported names");
+    check(styxadddir(&server, Qroot, 3, "locked", 0444, "fixture") &&
+        styxaddfile(&server, 3, 4, "secret", 0444, "fixture"), "unsearchable directory");
+    check(styxaddfile(&server, Qroot, 5, "statgone", 0444, "fixture") != nil, "metadata failure node");
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t owner;
     check(wake && !pthread_create(&owner, nil, serving, nil), "native server owner");

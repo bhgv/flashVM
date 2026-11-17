@@ -51,6 +51,33 @@ StyxClient *styxclientmountphy(RemotePhy *phy, unsigned msize, const char *user,
     unsigned timeout, unsigned limit);
 
 
+#define STYX_ERRORS_OPAQUE 0U /* Default: no remote text implies absence. */
+#define STYX_ERRORS_INFERNO 1U /* Explicit exact Inferno Enonexist vocabulary for lookup only. */
+
+
+/* EN/RU: Select known error vocabulary before sharing client or allocating walk fids;1/0.
+ * No I/O/authentication, unknown profile/late change refuses. Default is OPAQUE.
+ * Host attests server vocabulary, not access rights; partial walks never imply absence.
+ * Выбрать словарь ошибок до sharing/walk;1/0, без I/O/auth. Default OPAQUE;
+ * unknown/late change refused, partial walk не означает absence. */
+int styxclienterrorprofile(StyxClient *client, unsigned profile);
+
+
+/* EN/RU: Root-relative lookup with per-call copied absence, owned fid/NULL; missing required.
+ * Borrow client/path/cancel through return. Missing1 only exact acknowledged Inferno
+ * Enonexist under explicit profile; all other failures leave missing0. Inferno lookup
+ * walks one component per RPC so a partial Rwalk cannot erase the failure reason.
+ * Native PHY or legacy supported; non-NULL cancel requires PHY owner. No data retry.
+ * Root-relative lookup, свой fid/NULL, required missing;1 только explicit Inferno
+ * Enonexist, прочие ошибки0. Inputs borrowed, по одному компоненту под Inferno profile. */
+StyxFid *styxclientlookup(StyxClient *client, const char *path, StyxCancel *cancel, int *missing);
+
+
+/* EN/RU: Same lookup from caller-pinned unopened base; serialize its open/clunk through return.
+ * Тот же lookup от pinned unopened base; open/clunk сериализованы до return. */
+StyxFid *styxclientlookupfrom(StyxFid *base, const char *path, StyxCancel *cancel, int *missing);
+
+
 /* EN/RU: Configure carrier-owner heartbeat without protocol wait;1/0. All zeros disables.
  * idle/reply1..120000ms, misses2..16; NULL/legacy/terminal/invalid refuses unchanged.
  * One probe retains its tags/deadline through reconfiguration or disabling.

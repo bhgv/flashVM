@@ -132,3 +132,20 @@ void styxmountclunk(StyxClient *client, StyxFid *fid)
     }
     styxmountcancelend(&binding);
 }
+
+
+/* EN/RU: See mount_cancel.h; cancellation setup cannot fabricate a missing remote name.
+ * См. mount_cancel.h; setup cancellation не превращается в отсутствие имени. */
+StyxFid *styxmountlookup(StyxClient *client, StyxFid *base, const char *path, int *missing)
+{
+    *missing = 0;
+    StyxMountCancel binding;
+    if (!styxmountcancel(client, &binding))
+    {
+        return NULL;
+    }
+    StyxFid *fid = base ? styxclientlookupfrom(base, path, binding.token, missing) :
+        styxclientlookup(client, path, binding.token, missing);
+    styxmountcancelend(&binding);
+    return fid;
+}

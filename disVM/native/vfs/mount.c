@@ -47,7 +47,8 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     {
         return FVM_NOT_FOUND;
     }
-    StyxFid *fid = styxmountwalk(mount, path);
+    int missing;
+    StyxFid *fid = styxmountlookup(mount->client, mount->root, path, &missing);
     StyxMeta meta;
     int success = fid && styxmountstat(mount->client, fid, &meta) && (!mount->file_root || !meta.directory);
     styxmountclunk(mount->client, fid);
@@ -55,7 +56,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     {
         styxmountmeta(mount, &meta, out);
     }
-    return success ? FVM_OK : FVM_ERROR;
+    return success ? FVM_OK : missing ? FVM_NOT_FOUND : FVM_ERROR;
 }
 
 
@@ -82,7 +83,8 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
         return FVM_OUT_OF_MEMORY;
     }
     opened->mount = mount;
-    opened->fid = styxmountwalk(mount, path);
+    int missing;
+    opened->fid = styxmountlookup(mount->client, mount->root, path, &missing);
     StyxMeta meta;
     if (!opened->fid || !styxmountstat(mount->client, opened->fid, &meta) || (mount->file_root && meta.directory))
     {
@@ -114,7 +116,7 @@ failed:
     styxmountclunk(mount->client, opened->fid);
     free(opened->records);
     free(opened);
-    return FVM_ERROR;
+    return missing ? FVM_NOT_FOUND : FVM_ERROR;
 }
 
 

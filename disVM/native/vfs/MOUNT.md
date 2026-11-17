@@ -140,3 +140,12 @@ inside existing directories without hiding siblings or creating host files.
 
 Runtime0.155 adds [captured live directory/file roots](CAPTURE.md), shared by
 Sys.bind, Vfsctl and Vfsexport.capture without a Styx wire-format change.
+
+## Exact lookup absence / Подтверждённое отсутствие имени
+
+Metadata/open path resolution now uses the [per-call lookup result](../client/LOOKUP.md).
+Only an exact acknowledged Twalk Enonexist under a host-selected Inferno profile
+becomes FVM_NOT_FOUND. Default opaque errors, partial walks, stat/open failures,
+denial and transport failures stay conservative. Select the vocabulary before
+sharing the client or creating a mount; later changes refuse. No pathname is
+reopened after a failed data operation and no unknown effect is replayed.

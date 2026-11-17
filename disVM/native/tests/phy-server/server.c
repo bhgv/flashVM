@@ -109,6 +109,24 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 
+/* EN/RU: Known file may fail metadata after successful walk; never a missing-name lookup.
+ * Metadata file может отказать после успешного walk; это не missing-name lookup. */
+static char *statfile(Qid qid, Dir *out)
+{
+    if (qid.path == 5)
+    {
+        return Enonexist;
+    }
+    Styxfile *file = styxfindfile(&server, qid.path);
+    if (!file)
+    {
+        return Enonexist;
+    }
+    *out = file->d;
+    return nil;
+}
+
+
 /* EN/RU: Original client cleanup must follow pending/fid cleanup exactly once.
  * Original client cleanup следует за pending/fid cleanup один раз. */
 static char *freeclient(Client *client)
@@ -150,11 +168,15 @@ int main(int argc, char **argv)
     Styxops ops = {0};
     ops.open = openfile;
     ops.read = readfile;
+    ops.stat = statfile;
     ops.freefid = freefile;
     ops.freeclient = freeclient;
     check(!styxphyinit(&server, &ops, phy, 0555, 1, 2), "PHY original server init");
     check(styxaddfile(&server, Qroot, 1, "data", 0444, "fixture") &&
         styxaddfile(&server, Qroot, 2, "events", 0444, "fixture"), "ordinary served files");
+    check(styxadddir(&server, Qroot, 3, "locked", 0444, "fixture") &&
+        styxaddfile(&server, 3, 4, "secret", 0444, "fixture"), "unsearchable directory");
+    check(styxaddfile(&server, Qroot, 5, "statgone", 0444, "fixture") != nil, "metadata failure node");
     check(styxnotifyfd(&server, -1) == 0 && styxnotifyfd(&server, 0) < 0, "no hidden OS descriptor wait requirement");
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t producer;

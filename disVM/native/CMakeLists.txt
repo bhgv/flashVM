@@ -34,6 +34,7 @@ enable_testing()
 include(tests/phy/cases.cmake)
 include(tests/phy-server/cases.cmake)
 include(tests/phy-mux/cases.cmake)
+include(tests/lookup/cases.cmake)
 # EN/RU: This extra codec fixture belongs to the explicitly selected VFS SDK.
 # Дополнительный codec fixture принадлежит явно выбранному VFS SDK.
 if(INFERNO_VFS_SUPPORT)

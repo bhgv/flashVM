@@ -75,17 +75,19 @@ provider-first code lookup policy. Provider provenance and per-file stack moves
 use the normal namespace API; a copied namespace has an independent stack order.
 Read/write/open permissions are decided by ordinary operations and fixed ceilings.
 
-**Missing-name fallback over Styx is still conservative.** The current generic
-mount adapter maps remote path failures to FVM_ERROR, not a trustworthy
-FVM_NOT_FOUND. The union therefore refuses instead of trying a lower layer when
-it cannot distinguish absence from denial/failure. This change does not classify
-arbitrary Rerror strings as absence. Exact remote absence reporting needs a
-separate design/implementation before claiming full missing-path fallback for
-these network roots. Explicit provider selection/reordering already works.
+**Missing-name fallback requires an explicit error vocabulary.** Before retaining
+or using the terminal client, the native host may select
+`styxclienterrorprofile(client, STYX_ERRORS_INFERNO)` for a known Inferno-compatible
+endpoint. The [lookup contract](../client/LOOKUP.md) then maps only exact Twalk
+Enonexist to FVM_NOT_FOUND. Deep lookups walk one component per RPC to retain the
+failure reason. A permission error, unknown text, failed Tstat, cancellation or
+unacknowledged operation still stops lookup. Without opt-in, the default opaque
+profile keeps the earlier conservative behavior. No wire extension is required.
 
-Нельзя считать любой Rerror отсутствием: это может быть отказ доступа или сбой.
-Пока надёжное различение не проведено, нижний слой автоматически не выбирается.
-Это ограничение существующего Styx mount, а не снимок или замена namespace.
+Для известного Inferno endpoint host явно выбирает профиль до передачи client в
+этот adapter. Подтверждённое отсутствие имени допускает нижний провайдер; отказ
+поиска в каталоге и ошибка metadata после успешного walk — нет. Сам adapter
+профиль не угадывает, новых прав и host fallback не создаёт.
 
 No network launch request protocol, authenticated transfer of arbitrary FD grants,
 typed terminal init argument, provider-side guest startup or migration is added
@@ -107,5 +109,9 @@ fallback and local provider retirement. Existing ordinary/cancel/event tests sti
 run after the launch preparation, proving that namespace cleanup does not consume
 the original independently held client.
 
-All 299 Linux64 native SDK tests pass normally and under ASan/UBSan, with
+All 318 Linux64 native SDK tests pass normally and under ASan/UBSan, with
 LeakSanitizer disabled. Imported Inferno sources and FlashVM code are unchanged.
+
+Additional explicit-profile ordinary/bidir cases verify missing-name fallback
+against original libstyx, while remote search denial and failed stat never invoke
+the lower provider. The original no-profile cases still check conservative denial.

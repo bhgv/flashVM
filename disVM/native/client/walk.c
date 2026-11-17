@@ -42,9 +42,13 @@ static int components(const char *path, char *copy, char **names)
 
 /* EN/RU: See client.h; a partial walk is refused and any new remote fid clunked.
  * См. client.h; partial walk отклонить, новый remote fid поглотить clunk. */
-static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative, StyxCancel *cancel, int asynchronous, StyxTransfer *result)
+static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative, StyxCancel *cancel, int asynchronous, StyxTransfer *result, int *missing)
 {
     styxopclear(result);
+    if (missing)
+    {
+        *missing = 0;
+    }
     char copy[STYX_NAME_MAX];
     char *names[STYX_NAME_MAX];
     int count = components(relative, copy, names);
@@ -80,7 +84,8 @@ static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative, St
         request.type = Twalk;
         request.fid = index ? fid->number : base ? base->number : 1;
         request.newfid = fid->number;
-        request.nwname = count-index > MAXWELEM ? MAXWELEM : count-index;
+        unsigned limit = missing && client->error_profile == STYX_ERRORS_INFERNO ? 1 : MAXWELEM;
+        request.nwname = count-index > limit ? limit : count-index;
         for (unsigned i = 0; i < request.nwname; i++)
         {
             request.wname[i] = names[index+i];
@@ -100,6 +105,11 @@ static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative, St
         styxopresult(client, status, result);
         if (status != 1 || reply.nwqid != request.nwname)
         {
+            if (missing && request.nwname && status == 0 && client->error_profile == STYX_ERRORS_INFERNO &&
+                reply.ename && !strcmp(reply.ename, "file does not exist"))
+            {
+                *missing = 1;
+            }
             result->success = 0;
             goto abandoned;
         }
@@ -140,7 +150,7 @@ failed:
 StyxFid *styxclientwalk(StyxClient *client, const char *relative)
 {
     StyxTransfer result;
-    return walk(client, NULL, relative, NULL, 0, &result);
+    return walk(client, NULL, relative, NULL, 0, &result, NULL);
 }
 
 
@@ -149,7 +159,7 @@ StyxFid *styxclientwalk(StyxClient *client, const char *relative)
 StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative)
 {
     StyxTransfer result;
-    return base ? walk(base->client, base, relative, NULL, 0, &result) : NULL;
+    return base ? walk(base->client, base, relative, NULL, 0, &result, NULL) : NULL;
 }
 
 
@@ -162,7 +172,7 @@ StyxFid *styxclientwalkcancel(StyxClient *client, const char *relative, StyxCanc
         return NULL;
     }
     styxopclear(result);
-    return client && client->mux ? walk(client, NULL, relative, cancel, 1, result) : NULL;
+    return client && client->mux ? walk(client, NULL, relative, cancel, 1, result, NULL) : NULL;
 }
 
 
@@ -175,5 +185,52 @@ StyxFid *styxclientwalkfromcancel(StyxFid *base, const char *relative, StyxCance
         return NULL;
     }
     styxopclear(result);
-    return base && base->client->mux ? walk(base->client, base, relative, cancel, 1, result) : NULL;
+    return base && base->client->mux ? walk(base->client, base, relative, cancel, 1, result, NULL) : NULL;
+}
+
+
+/* EN/RU: See client.h; error profile freezes once any remote fid is allocated or client shared.
+ * См. client.h; profile нельзя менять после sharing или allocation remote fid. */
+int styxclienterrorprofile(StyxClient *client, unsigned profile)
+{
+    if (!client || profile > STYX_ERRORS_INFERNO)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&client->lock);
+    int valid = !client->failed && client->references == 1 && client->lastfid == 1;
+    if (valid)
+    {
+        client->error_profile = profile;
+    }
+    pthread_mutex_unlock(&client->lock);
+    return valid;
+}
+
+
+/* EN/RU: See client.h; preserve lookup-local missing across cleanup and concurrent RPCs.
+ * См. client.h; lookup-local missing сохраняется через cleanup и concurrent RPCs. */
+StyxFid *styxclientlookup(StyxClient *client, const char *path, StyxCancel *cancel, int *missing)
+{
+    if (!missing)
+    {
+        return NULL;
+    }
+    *missing = 0;
+    StyxTransfer result;
+    return client && (!cancel || client->mux) ? walk(client, NULL, path, cancel, cancel != NULL, &result, missing) : NULL;
+}
+
+
+/* EN/RU: See client.h; base remains pinned by native caller throughout the logical path.
+ * См. client.h; base остаётся pinned caller на время logical path. */
+StyxFid *styxclientlookupfrom(StyxFid *base, const char *path, StyxCancel *cancel, int *missing)
+{
+    if (!missing)
+    {
+        return NULL;
+    }
+    *missing = 0;
+    StyxTransfer result;
+    return base && (!cancel || base->client->mux) ? walk(base->client, base, path, cancel, cancel != NULL, &result, missing) : NULL;
 }

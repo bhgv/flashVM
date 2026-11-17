@@ -16,6 +16,8 @@
 typedef struct Source
 {
     const char *name; /* Borrowed overlapping resource name. */
+    unsigned fallback; /* Local-only metadata queried only after confirmed absence. */
+    unsigned denied; /* Must stay zero after remote search denial. */
     unsigned destroyed; /* Final native destructor count. */
 } Source;
 
@@ -37,7 +39,15 @@ static FVM_Result info(void *opaque, const char *path, FVM_FileInfo *out)
 {
     Source *source = opaque;
     int root = !strcmp(path, ".");
-    if (!root && strcmp(path, source->name))
+    if (!strcmp(path, "localonly"))
+    {
+        source->fallback++;
+    }
+    if (!strcmp(path, "locked/secret") || !strcmp(path, "statgone"))
+    {
+        source->denied++;
+    }
+    if (!root && strcmp(path, source->name) && strcmp(path, "localonly") && strcmp(path, "locked/secret") && strcmp(path, "statgone"))
     {
         return FVM_NOT_FOUND;
     }
@@ -149,7 +159,10 @@ static void refused(StyxClient *client, const DVM_LaunchOptions *options, unsign
  * Borrow client/name/expected до return; обе стороны продолжают обычные RPCs. */
 void launchremote(StyxClient *client, const char *name, const char *expected)
 {
-    Source source = {name, 0};
+    Source source = {name, 0, 0, 0};
+#ifdef STYX_INFERNO_LOOKUP_TEST
+    check(styxclienterrorprofile(client, STYX_ERRORS_INFERNO), "explicit Inferno lookup profile");
+#endif
     DVM_LaunchOptions options = {0};
     options.policy = DVM_LAUNCH_TERMINAL_FIRST;
     options.provider = dvm_provider_create_native(&ops, &source, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
@@ -181,6 +194,26 @@ void launchremote(StyxClient *client, const char *name, const char *expected)
     char path[64];
     snprintf(path, sizeof(path), "/%s", name);
     check(readresource(group, path, expected) == DVM_ORIGIN_TERMINAL, "remote terminal first");
+    check(!styxclienterrorprofile(client, STYX_ERRORS_OPAQUE), "profile cannot change after publication");
+    DVM_ResourcePlan fallback;
+    FVM_FileInfo current;
+#ifdef STYX_INFERNO_LOOKUP_TEST
+    check(readresource(group, "/localonly", "L") == DVM_ORIGIN_PROVIDER && source.fallback > 0,
+        "confirmed remote absence selects local grant");
+#else
+    check(dvm_resource_plan(group, "/localonly", 0, &fallback) &&
+        dvm_resource_info(&fallback, &current) != FVM_OK && !source.fallback,
+        "opaque default refuses text-based fallback");
+    dvm_resource_close(&fallback);
+#endif
+    check(dvm_resource_plan(group, "/locked/secret", 0, &fallback) &&
+        dvm_resource_info(&fallback, &current) != FVM_OK && !source.denied,
+        "remote search denial never tries local provider");
+    dvm_resource_close(&fallback);
+    check(dvm_resource_plan(group, "/statgone", 0, &fallback) &&
+        dvm_resource_info(&fallback, &current) != FVM_OK && !source.denied,
+        "successful walk followed by failed stat never selects lower grant");
+    dvm_resource_close(&fallback);
     DVM_Namespace *copy = dvm_namespace_copy(group);
     DVM_ResourcePlan plan;
     check(copy && dvm_resource_plan(group, path, 0, &plan) && plan.layers &&

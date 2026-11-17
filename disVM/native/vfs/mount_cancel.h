@@ -46,4 +46,8 @@ int styxmountopen(StyxClient *client, StyxFid *fid, int mode);
  * Поглотить fid под scope; setup refusal использует independent native cleanup. */
 void styxmountclunk(StyxClient *client, StyxFid *fid);
 
+
+/* EN/RU: Scoped lookup with per-operation absence output, owned fid/NULL; missing required.
+ * Scoped lookup с локальным missing, свой fid/NULL, без общего last-error state. */
+StyxFid *styxmountlookup(StyxClient *client, StyxFid *base, const char *path, int *missing);
 #endif

@@ -146,3 +146,10 @@ require suitable stream adaptation. Generic reverse RPC and symmetric logical
 The [original-core PHY server backend](../server/phy/README.md) now supplies the
 matching server-side carrier boundary, native producer wake and deferred-read
 retirement. Both native roles are tested together over a nonsocket PTY.
+
+## Typed absence for union lookup / Отсутствие имени для union
+
+The [lookup API and explicit Inferno error profile](LOOKUP.md) distinguish exact
+acknowledged missing names from denial/failure without a shared last-error state.
+Default error interpretation stays opaque; ordinary and bidir transports use the
+same lookup API. Existing batched walk APIs remain unchanged.

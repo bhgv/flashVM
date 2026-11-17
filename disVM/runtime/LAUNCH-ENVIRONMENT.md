@@ -143,4 +143,5 @@ The [native SDK adapter](../native/launch/README.md) now captures an already
 attached terminal Styx client and feeds its live VFS root into this namespace
 builder. It accepts ordinary sessions by default and explicitly configured bidir
 channels identically. It does not start guest code or create a network launch
-service. See its documented conservative missing-name fallback limitation.
+service. Its explicit Inferno lookup profile now permits acknowledged missing-name
+fallback; default opaque errors and actual denials still stop lookup.
