@@ -205,7 +205,7 @@ RemotePhy *phyposixfd(int descriptor, unsigned capabilities)
     socklen_t size = sizeof(kind);
     fd->socket = getsockopt(descriptor, SOL_SOCKET, SO_TYPE, &kind, &size) == 0;
     struct linger linger = {0, 0};
-    if (!(capabilities & PHY_STREAM) || (capabilities & PHY_PACKET) || descriptor < 0 || flags < 0 || (flags & O_ACCMODE) != O_RDWR ||
+    if (!(capabilities & PHY_STREAM) || (capabilities & (PHY_PACKET|PHY_BIDIR_SESSION)) || descriptor < 0 || flags < 0 || (flags & O_ACCMODE) != O_RDWR ||
         (fd->socket && (kind != SOCK_STREAM || setsockopt(descriptor, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger)))) || !configure(descriptor) || pipe(fd->wake) ||
         !configure(fd->wake[0]) || !configure(fd->wake[1]))
     {

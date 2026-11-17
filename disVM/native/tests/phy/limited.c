@@ -80,6 +80,12 @@ static void destroylayer(void *state)
 RemotePhy *phyfixture(RemotePhy *child, int terminal)
 {
     static const PhyOps ops = {readlayer, writelayer, waitlayer, wakelayer, NULL, NULL, disconnectlayer, destroylayer};
+    PhyInfo info;
+    if (!phyinfo(child, &info))
+    {
+        phyfree(child);
+        return NULL;
+    }
     Layer *layer = calloc(1, sizeof(*layer));
     if (!layer)
     {
@@ -88,7 +94,8 @@ RemotePhy *phyfixture(RemotePhy *child, int terminal)
     }
     layer->child = child;
     layer->terminal = terminal;
-    PhyInfo info = {PHY_STREAM|PHY_ORDERED|PHY_RELIABLE, 0, 3, 2, 1};
+    info.max_read = 3;
+    info.max_write = 2;
     RemotePhy *phy = phycreate(&ops, layer, &info);
     if (!phy)
     {

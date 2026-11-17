@@ -10,6 +10,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef STYX_LAUNCH_REQUEST_TEST
+
+
+/* EN/RU: Borrow client/options/path/expected through remote ticket lifecycle acceptance.
+ * Borrow client/options/path/expected до конца проверки remote ticket lifecycle. */
+extern void launchrequests(StyxClient *, const DVM_LaunchOptions *, const char *, const char *);
+#endif
+
 
 /* EN/RU: Caller-owned fixture state remains alive until final local provider release.
  * Fixture state живёт до final local provider release. */
@@ -233,6 +241,9 @@ void launchremote(StyxClient *client, const char *name, const char *expected)
     dvm_resource_close(&plan);
     dvm_namespace_release(group);
     dvm_namespace_release(copy);
+#ifdef STYX_LAUNCH_REQUEST_TEST
+    launchrequests(client, &options, path, expected);
+#endif
     dvm_provider_release(options.provider);
     check(source.destroyed == 1 && styxclientalive(client), "namespace retirement preserves original client");
 }

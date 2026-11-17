@@ -153,3 +153,7 @@ The [lookup API and explicit Inferno error profile](LOOKUP.md) distinguish exact
 acknowledged missing names from denial/failure without a shared last-error state.
 Default error interpretation stays opaque; ordinary and bidir transports use the
 same lookup API. Existing batched walk APIs remain unchanged.
+
+The immutable `styxclientbidir` query reports the carrier's explicit bidir-session
+mode, independently of ordinary RPC concurrency. The [FlashVM terminal request
+adapter](../launch/REQUESTS.md) requires that mode; general services may use either.

@@ -129,3 +129,13 @@ are still integration work. There is no claim of a completed remote launch.
 параметру `init`, сетевая передача capability и запуск модуля у провайдера ещё
 не подключены. Специализированная клиентская программа для каждого модуля
 не требуется выбранной архитектурой.
+
+## Bidir connection / Bidir-соединение
+
+The DisVM ↔ FlashVM terminal uses explicit bidir for general control, events,
+input, timers, drawing notifications, data and proxy operations in both directions.
+The [native request bridge](../native/launch/REQUESTS.md) now creates this pinned
+remote descriptor only through `styxbidirlaunchrequest`; it derives the channel
+root from the same bidir client and refuses ordinary clients. Local abstract
+channel grants and their existing tests remain separate from transport selection.
+This does not yet implement the terminal event/proxy payload schemas.

@@ -25,6 +25,7 @@ typedef struct RemotePhy RemotePhy; /* Owned native carrier, never a VM or wire 
 #define PHY_ORDERED 2U /* Bytes retain order. */
 #define PHY_RELIABLE 4U /* Loss/duplication/corruption handled below this interface or reported as failure. */
 #define PHY_HALF_DUPLEX 8U /* Driver arbitrates turn-taking below logical byte I/O. */
+#define PHY_BIDIR_SESSION 32U /* Logical stream from an explicitly configured bidirectional session adapter. */
 #define PHY_PACKET 16U /* Raw message carrier; requires a suitable adaptation before 9P. */
 
 

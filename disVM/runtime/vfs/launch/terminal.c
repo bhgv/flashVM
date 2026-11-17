@@ -50,6 +50,14 @@ static int relative(const char *path, size_t capacity)
 }
 
 
+/* EN/RU: See terminal.h; share canonical path checks with pre-acquisition native adapters.
+ * См. terminal.h; общая canonical проверка путей до native acquisition. */
+int dvm_terminal_channel_paths_valid(const char *receive, const char *send)
+{
+    return relative(receive, DVM_NS_PATH_LIMIT) && relative(send, DVM_NS_PATH_LIMIT);
+}
+
+
 /* EN/RU: See terminal.h; immutable capability checks never call provider code.
  * См. terminal.h; immutable checks не вызывают provider code. */
 int dvm_terminal_channels_valid(const DVM_TerminalChannels *channels)
@@ -57,8 +65,7 @@ int dvm_terminal_channels_valid(const DVM_TerminalChannels *channels)
     return channels && channels->provider &&
         (dvm_provider_native_flags(channels->provider) & DVM_PROVIDER_CANCEL_PATH) &&
         dvm_provider_bindable_at(channels->provider, ".") &&
-        relative(channels->receive, sizeof(channels->receive)) &&
-        relative(channels->send, sizeof(channels->send));
+        dvm_terminal_channel_paths_valid(channels->receive, channels->send);
 }
 
 

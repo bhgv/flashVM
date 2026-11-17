@@ -102,6 +102,12 @@ The client's outstanding-request limit and heartbeat do not activate this mode.
 There is no automatic upgrade of an ordinary stream. Most applications can keep
 the ordinary path; mutual VFS requests are the reason to opt into the extension.
 
+The FlashVM terminal is an explicit exception to the ordinary default: its
+DisVM connection requires bidir for general two-way control/event/data/proxy
+traffic. Other services may choose either mode. See the
+[terminal launch grant](../disVM/native/launch/REQUESTS.md); its separate constructor
+checks the native bidir-session capability and does not upgrade a plain stream.
+
 ## Bidirectional requests / Двусторонние обращения
 
 Standard 9P is a bidirectional byte connection with **client T-requests and

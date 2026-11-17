@@ -21,6 +21,12 @@ typedef struct DVM_TerminalChannels
 } DVM_TerminalChannels;
 
 
+/* EN/RU: Validate two borrowed canonical channel paths bounded by DVM_NS_PATH_LIMIT;1/0.
+ * No provider/transport I/O, no rewriting of absolute/dotdot/empty components.
+ * Проверить два borrowed canonical path с bound DVM_NS_PATH_LIMIT;1/0, без I/O/rewrite. */
+int dvm_terminal_channel_paths_valid(const char *receive, const char *send);
+
+
 /* EN/RU: Validate borrowed descriptor without callbacks/I/O;1 valid/0 invalid.
  * Require anchored dot and PATH cancellation; strings grant no additional rights.
  * Проверить borrowed descriptor без callbacks/I/O;1/0, anchored dot/PATH обязательны. */

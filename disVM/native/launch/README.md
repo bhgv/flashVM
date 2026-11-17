@@ -13,6 +13,16 @@ handoff. Failure returns NULL without publishing a partial environment.
 Пути по-прежнему разрешаются через VFS, независимо от того, файл это, устройство,
 канал или сокет. Дерево не сериализуется и не фиксируется.
 
+## FlashVM terminal and general requests / Терминал FlashVM и обычные запросы
+
+This page's ordinary/bidir choice concerns VFS-root preparation. General services
+may use either mode. The **FlashVM terminal connection requires bidir** for its
+general two-way control/event/data/proxy traffic. The new
+[request/ticket adapters](REQUESTS.md) expose a separate `styxbidirlaunchrequest`
+constructor for that grant and reject ordinary clients. Input/output is only one
+part of this terminal connection; additional bulk/stream channels remain supported
+by the existing announcement architecture.
+
 ## API and ownership / API и владение
 
 ```c
@@ -89,7 +99,9 @@ profile keeps the earlier conservative behavior. No wire extension is required.
 поиска в каталоге и ошибка metadata после успешного walk — нет. Сам adapter
 профиль не угадывает, новых прав и host fallback не создаёт.
 
-No network launch request protocol, authenticated transfer of arbitrary FD grants,
+The native [request/ticket bridge](REQUESTS.md) now connects captured roots to
+existing provider prepare/take. No network launch request protocol, authenticated
+transfer of arbitrary FD grants,
 typed terminal init argument, provider-side guest startup or migration is added
 here. Existing local launch tickets/terminal channels remain separate. This
 adapter supplies the missing root-to-preparation step rather than claiming the
@@ -109,7 +121,7 @@ fallback and local provider retirement. Existing ordinary/cancel/event tests sti
 run after the launch preparation, proving that namespace cleanup does not consume
 the original independently held client.
 
-All 318 Linux64 native SDK tests pass normally and under ASan/UBSan, with
+All 328 Linux64 native SDK tests pass normally and under ASan/UBSan, with
 LeakSanitizer disabled. Imported Inferno sources and FlashVM code are unchanged.
 
 Additional explicit-profile ordinary/bidir cases verify missing-name fallback

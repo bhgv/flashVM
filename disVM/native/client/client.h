@@ -51,6 +51,12 @@ StyxClient *styxclientmountphy(RemotePhy *phy, unsigned msize, const char *user,
     unsigned timeout, unsigned limit);
 
 
+/* EN/RU: Borrow live client;1 explicitly bidir-session carrier/0 ordinary or NULL.
+ * This immutable local capability is neither reverse-server liveness nor access authority.
+ * Borrow live client;1 bidir-session carrier/0 ordinary/NULL, не liveness/authority. */
+int styxclientbidir(StyxClient *client);
+
+
 #define STYX_ERRORS_OPAQUE 0U /* Default: no remote text implies absence. */
 #define STYX_ERRORS_INFERNO 1U /* Explicit exact Inferno Enonexist vocabulary for lookup only. */
 

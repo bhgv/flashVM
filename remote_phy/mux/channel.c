@@ -200,6 +200,6 @@ static void destroy(void *state)
 RemotePhy *muxendpoint(MuxChannel *channel)
 {
     static const PhyOps ops = {readbytes, writebytes, waitready, wake, available, NULL, disconnect, destroy};
-    PhyInfo info = {PHY_STREAM|PHY_ORDERED|PHY_RELIABLE, 0, 0, 0, 1};
+    PhyInfo info = {PHY_STREAM|PHY_ORDERED|PHY_RELIABLE|PHY_BIDIR_SESSION, 0, 0, 0, 1};
     return phycreate(&ops, channel, &info);
 }

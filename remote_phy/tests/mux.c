@@ -87,6 +87,8 @@ static void streams(void)
     RemotePhy *a1 = phybidirchannel(a, 1);
     RemotePhy *b0 = phybidirchannel(b, 0);
     RemotePhy *b1 = phybidirchannel(b, 1);
+    PhyInfo mode;
+    check(phyinfo(a0, &mode) && (mode.capabilities & PHY_BIDIR_SESSION), "explicit bidir endpoint capability");
     check(a0 && a1 && b0 && b1 && !phybidirchannel(a, 2) && !phybidirchannel(a, 0), "channel ownership");
     unsigned char source[65537];
     unsigned char result[65537];
@@ -224,6 +226,11 @@ static void malformed(unsigned kind)
 /* EN/RU: Run isolated positive and independent malformed-input acceptance. / Выполнить positive и negative acceptance. */
 int main(void)
 {
+    int bare[2];
+    check(!socketpair(AF_UNIX, SOCK_STREAM, 0, bare), "bare carrier pair");
+    check(!phyposixfd(bare[0], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE|PHY_BIDIR_SESSION),
+        "bare fd cannot become bidir by adding a flag");
+    close(bare[1]);
     streams();
     for (unsigned kind = 0; kind < 13; kind++)
     {

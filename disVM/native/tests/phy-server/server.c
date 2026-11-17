@@ -45,6 +45,10 @@ static void release(void *unused)
  * Каждый real opened fid получает native state с release через unchanged core. */
 static char *openfile(Qid *qid, int mode)
 {
+    if (qid->path == 6 && mode >= OREAD && mode <= ORDWR)
+    {
+        return nil;
+    }
     if (qid->path == Qroot && mode == OREAD)
     {
         return nil;
@@ -80,6 +84,11 @@ static void freefile(void *state)
  * Обычный read file либо original deferred event; вернуть одно событие. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == 6)
+    {
+        *count = styxreadstr(offset, bytes, *count, "input");
+        return nil;
+    }
     if (qid.path == 1)
     {
         *count = offset < 0 || offset > 6 ? 0 : styxreadstr(offset, bytes, *count, "serial");
@@ -127,6 +136,14 @@ static char *statfile(Qid qid, Dir *out)
 }
 
 
+/* EN/RU: Native terminal sink accepts an exact opaque fixture command, not graphics interpretation.
+ * Native terminal sink принимает opaque fixture command, без графической интерпретации. */
+static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
+{
+    return qid.path == 6 && offset == 0 && *count == 6 && !memcmp(bytes, "output", 6) ? nil : Eperm;
+}
+
+
 /* EN/RU: Original client cleanup must follow pending/fid cleanup exactly once.
  * Original client cleanup следует за pending/fid cleanup один раз. */
 static char *freeclient(Client *client)
@@ -169,6 +186,7 @@ int main(int argc, char **argv)
     ops.open = openfile;
     ops.read = readfile;
     ops.stat = statfile;
+    ops.write = writefile;
     ops.freefid = freefile;
     ops.freeclient = freeclient;
     check(!styxphyinit(&server, &ops, phy, 0555, 1, 2), "PHY original server init");
@@ -177,6 +195,7 @@ int main(int argc, char **argv)
     check(styxadddir(&server, Qroot, 3, "locked", 0444, "fixture") &&
         styxaddfile(&server, 3, 4, "secret", 0444, "fixture"), "unsearchable directory");
     check(styxaddfile(&server, Qroot, 5, "statgone", 0444, "fixture") != nil, "metadata failure node");
+    check(styxaddfile(&server, Qroot, 6, "terminal", 0666, "fixture") != nil, "terminal control node");
     check(styxnotifyfd(&server, -1) == 0 && styxnotifyfd(&server, 0) < 0, "no hidden OS descriptor wait requirement");
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t producer;

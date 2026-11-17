@@ -155,3 +155,10 @@ The native suite has274 cases and passes normally and under ASan/UBSan with
 cases and41 host-unit cases. The interpreter/JIT pre-init fixture passes ten
 repeated runs. Ownership checking in the allocation test uses its native
 allocation/free index, not a successful LeakSanitizer run.
+
+## Attached Styx roots / Подключённые Styx-корни
+
+The [native Styx bridge](../native/launch/REQUESTS.md) now constructs ticket/request
+pairs from an already attached live terminal root. General requests accept ordinary
+or bidir clients; a FlashVM terminal grant uses the separate bidir-only constructor.
+This is native preparation/routing, not a network serialization or guest start.

@@ -31,9 +31,14 @@ RemotePhy *phycreate(const PhyOps *ops, void *state, const PhyInfo *info)
 {
     if (!ops || !info || !ops->read || !ops->write || !ops->wait || !ops->wake ||
         !ops->disconnect || !ops->destroy || (info->connected != 0 && info->connected != 1) ||
-        (info->capabilities & ~(PHY_STREAM|PHY_ORDERED|PHY_RELIABLE|PHY_HALF_DUPLEX|PHY_PACKET)) ||
+        (info->capabilities & ~(PHY_STREAM|PHY_ORDERED|PHY_RELIABLE|PHY_HALF_DUPLEX|PHY_PACKET|PHY_BIDIR_SESSION)) ||
         !(info->capabilities & (PHY_STREAM|PHY_PACKET)) ||
         ((info->capabilities & PHY_STREAM) && (info->capabilities & PHY_PACKET)))
+    {
+        return NULL;
+    }
+    if ((info->capabilities & PHY_BIDIR_SESSION) &&
+        (info->capabilities & (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE)) != (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE))
     {
         return NULL;
     }

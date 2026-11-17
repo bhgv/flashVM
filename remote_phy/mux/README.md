@@ -51,6 +51,20 @@ anything or authorize reverse mounts. Any future remote-launch integration must
 retain ordinary mode as the default and require an explicit selection for the
 opposite-session setup; that launch option is not implemented yet.
 
+## FlashVM terminal requirement / Требование терминала FlashVM
+
+General applications and services may use ordinary or bidir sessions. The DisVM ↔
+FlashVM terminal connection **requires bidir** for its general two-way traffic:
+control, events, input, timers, drawing events, data and proxy-variable operations.
+The [native terminal request constructor](../../disVM/native/launch/REQUESTS.md)
+requires that explicit mode. This does not change ordinary 9P event reads for
+other services or define new terminal payload schemas here.
+
+`phybidirchannel` marks logical endpoints with `PHY_BIDIR_SESSION`; adapters that
+preserve that logical session preserve the local capability. Native Styx clients
+snapshot it for mode checks. It is not peer authentication or reverse-session
+liveness. The on-wire P9MX v1 framing remains unchanged.
+
 ## Roles and API / Роли и API
 
 | Channel | Endpoint A | Endpoint B |

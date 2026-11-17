@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     check(argc == 3, "inherited PTY descriptor/mode");
     RemotePhy *phy = phyfixture(phyposixfd(atoi(argv[1]), PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 0);
     StyxClient *client = styxclientmountphy(phy, 256, "fixture", "", 3000, 4);
-    check(client && styxclientwatchable(client), "native PHY mount");
+    check(client && !styxclientbidir(client) && styxclientwatchable(client), "native PHY mount");
 #ifdef STYX_LAUNCH_TEST
     launchremote(client, "data", "serial");
 #endif

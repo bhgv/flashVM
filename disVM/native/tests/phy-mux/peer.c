@@ -48,6 +48,10 @@ static void release(void *state)
 /* EN/RU: Allow only original readonly file/device open; qid/mode borrowed values. / Только readonly open. */
 static char *openfile(Qid *qid, int mode)
 {
+    if (qid->path == 6 && mode >= OREAD && mode <= ORDWR)
+    {
+        return nil;
+    }
     return (qid->path == 1 || qid->path == 2) && mode == OREAD ? nil : Eperm;
 }
 
@@ -56,6 +60,11 @@ static char *openfile(Qid *qid, int mode)
  * Identity file либо pending one-event read; request state только на server owner. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == 6)
+    {
+        *count = styxreadstr(offset, bytes, *count, "input");
+        return nil;
+    }
     if (qid.path == 1)
     {
         *count = styxreadstr(offset, bytes, *count, identity);
@@ -85,6 +94,14 @@ static char *statfile(Qid qid, Dir *out)
     }
     *out = file->d;
     return nil;
+}
+
+
+/* EN/RU: Native terminal sink accepts an exact opaque fixture command, not graphics interpretation.
+ * Native terminal sink принимает opaque fixture command, без графической интерпретации. */
+static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
+{
+    return qid.path == 6 && offset == 0 && *count == 6 && !memcmp(bytes, "output", 6) ? nil : Eperm;
 }
 
 
@@ -146,24 +163,26 @@ int main(int argc, char **argv)
     RemotePhy *carrier = phyfixture(phyposixfd(atoi(argv[1]), PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 0);
     PhyBidir *hub = phybidircreate(carrier, 1024);
     check(hub != nil, "physical mux");
-    RemotePhy *forward = phybidirchannel(hub, side);
+    RemotePhy *forward = phyfixture(phybidirchannel(hub, side), 0);
     RemotePhy *reverse = phybidirchannel(hub, 1-side);
     check(forward && reverse && !phybidirchannel(hub, side), "single logical ownership");
     Styxops ops = {0};
     ops.open = openfile;
     ops.read = readfile;
     ops.stat = statfile;
+    ops.write = writefile;
     check(!styxphyinit(&server, &ops, reverse, 0555, 1, 2), "original reverse server");
     check(styxaddfile(&server, Qroot, 1, "identity", 0444, "fixture") &&
         styxaddfile(&server, Qroot, 2, "events", 0444, "fixture"), "exported names");
     check(styxadddir(&server, Qroot, 3, "locked", 0444, "fixture") &&
         styxaddfile(&server, 3, 4, "secret", 0444, "fixture"), "unsearchable directory");
     check(styxaddfile(&server, Qroot, 5, "statgone", 0444, "fixture") != nil, "metadata failure node");
+    check(styxaddfile(&server, Qroot, 6, "terminal", 0666, "fixture") != nil, "terminal control node");
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t owner;
     check(wake && !pthread_create(&owner, nil, serving, nil), "native server owner");
     StyxClient *client = styxclientmountphy(forward, 256, "fixture", "", 5000, 4);
-    check(client != nil, "forward original 9P mount");
+    check(client && styxclientbidir(client), "forward original 9P mount retains bidir mode");
 #ifdef STYX_LAUNCH_TEST
     char expected[2] = {(char)('A'+1-side), 0};
     launchremote(client, "identity", expected);
