@@ -29,8 +29,11 @@ over the network. Other terminal types never pass through its UI-only reader.
 
 The [native S-record transport](../disVM/native/terminal/README.md) now supplies
 bounded record queues and automatic RX/TX I/O over the prepared bidir handoff.
-The terminal dispatcher must bind/route UI payloads between that transport and
-this capability, preserving the existing application envelope. Events, resource
+The native [`styx_terminal_ui` route](../disVM/native/terminal/ui/frame.h) now
+encodes/sends and validates copied `fvd1` values using the same codec as local
+queues. Its decode helper receives already dispatched records and does not become
+a second terminal reader. The host must still bind that route to this FlashVM
+capability and attach it to `$Idehost`. Events, resource
 loading, timer/render notifications and proxy messages remain independent typed
 routes on the same general terminal connection. No new UI wire schema is assigned
 by this adapter, and no mandatory AS relay is imposed on unrelated typed calls.

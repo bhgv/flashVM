@@ -24,10 +24,10 @@ static void initialize(void)
     {
         return;
     }
-    FVM_SBinding binding = {5, 1, 11, "test.opaque"};
+    FVM_SBinding binding[] = {{5, 1, 11, "test.opaque"}, {17, 1, 13, "test.ide.fvd1"}};
     unsigned char declaration[128];
     size_t size, encoded;
-    if (fvm_sbindings_payload_write(&binding, 1, declaration, sizeof(declaration), &size) != FVM_S_OK ||
+    if (fvm_sbindings_payload_write(binding, 2, declaration, sizeof(declaration), &size) != FVM_S_OK ||
         fvm_srecord_write(0, declaration, size, offered, sizeof(offered), &encoded) != FVM_S_OK)
     {
         exit(3);
@@ -40,6 +40,15 @@ static void initialize(void)
     }
     offered_size += encoded;
     if (fvm_srecord_write(9, nil, 0, offered+offered_size, sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+    /* EN/RU: Independent fvd1 golden payload; tag17 is a fixture-only UI binding.
+     * Независимый эталон fvd1; tag17 — только тестовая UI-привязка. */
+    static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
+    if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,
+        sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
     {
         exit(3);
     }
@@ -115,7 +124,7 @@ char *terminalwrite(char *bytes, ulong *count, vlong offset)
         if (status == FVM_S_OK)
         {
             if ((messages == 0 && (record.tag != 0 || record.size != 2)) ||
-                (messages == 1 && (record.tag != 101 || record.size != 240)) || messages > 1)
+                (messages == 1 && (record.tag != 101 || record.size != 240)) || messages > 2)
             {
                 return Ebadarg;
             }
@@ -127,6 +136,17 @@ char *terminalwrite(char *bytes, ulong *count, vlong offset)
                     {
                         return Ebadarg;
                     }
+                }
+            }
+            if (messages == 2)
+            {
+                /* EN/RU: Compare exact independent reply bytes, not this client's encoder.
+                 * Сравнить точные байты ответа с независимым эталоном. */
+                static const char reply[] = "fvd1:000000020000002b0000004d000000000000000000000000reply";
+                if (record.tag != 17 || record.size != sizeof(reply)-1 ||
+                    memcmp(record.payload, reply, sizeof(reply)-1))
+                {
+                    return Ebadarg;
                 }
             }
             messages++;

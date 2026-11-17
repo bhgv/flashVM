@@ -3,6 +3,7 @@
  * RU: Общий S-record transport на real bidir launch handoff, выдача по одной record и exact TX.
  */
 #include "control.h"
+#include "ui/frame.h"
 #include "flashvm/sbindings.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +45,7 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     FVM_SBinding slots[2];
     FVM_SBindings bindings;
     check(fvm_sbindings_init(&bindings, slots, 2) == FVM_S_OK, "independent RX bindings");
-    for (unsigned message = 0; message < 3; message++)
+    for (unsigned message = 0; message < 4; message++)
     {
         check(styxbidircontrolwait(control, 5000), "native record readiness without polling");
         unsigned long tag = 777;
@@ -70,9 +71,37 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
                 fvm_sbindings_lookup(&bindings, tag, &binding) == FVM_S_OK && !strcmp(binding.type, "test.opaque"),
                 "binary payload uses existing independent binding table");
         }
-        else
+        else if (message == 2)
         {
             check(tag == 9 && !size, "empty opaque record is still one event");
+        }
+        else
+        {
+            FVM_SBinding binding; /* Copied route identity from the control declaration. */
+            DVM_UIMessage ui; /* Private copied IDE values, independent of either VM heap. */
+            DVM_UIMessage before; /* Output sentinel for foreign/malformed routes. */
+            memset(&ui, 0, sizeof(ui));
+            before = ui;
+            check(styxbidiruidecode(17, 0, payload, size, &ui) == STYX_UI_OTHER &&
+                !memcmp(&ui, &before, sizeof(ui)), "control route is not consumed as UI");
+            check(styxbidiruidecode(17, 17, "bad", 3, &ui) == STYX_UI_INVALID &&
+                !memcmp(&ui, &before, sizeof(ui)), "malformed UI preserves copied output");
+            check(fvm_sbindings_lookup(&bindings, tag, &binding) == FVM_S_OK &&
+                !strcmp(binding.type, "test.ide.fvd1") &&
+                styxbidiruidecode(17, tag, payload, size, &ui) == STYX_UI_MESSAGE &&
+                ui.kind == DVM_UI_REQUEST && ui.id == 42 && ui.code == 77 &&
+                ui.first == -2147483647L-1 && ui.second == 2147483647L &&
+                ui.size == 4 && !memcmp(ui.text, "A\0\320\257", 4),
+                "one routed fvd1 record retains int32, NUL and UTF-8 values");
+            ui.kind = DVM_UI_REPLY;
+            ui.id = 43;
+            ui.first = 0;
+            ui.second = 0;
+            ui.size = 5;
+            memcpy(ui.text, "reply", 5);
+            check(!styxbidiruisend(control, 0, &ui), "tag-zero is never a UI route");
+            check(styxbidiruisend(control, 17, &ui) && styxbidircontrolflush(control, 5000),
+                "IDE reply uses existing native TX and exact short-write completion");
         }
     }
     check(styxbidircontrolstate(control) == STYX_CONTROL_LIVE, "idle receiver remains live");

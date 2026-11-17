@@ -72,6 +72,38 @@ AS/Dis `fvd1` envelope and presentation/document interfaces. A host dispatcher m
 route UI frames to that adapter without giving it unrelated terminal records.
 No graphics primitive or editor policy is moved into this native library.
 
+### Native IDE route / Нативный маршрут IDE
+
+`styx_terminal_ui` exposes [ui/frame.h](ui/frame.h). It shares the standalone
+[`fvd1` codec](../../host/ui_frame.c) with the existing local channel bridge.
+The codec only handles counted copied values; it links no FlashVM VM, channel,
+renderer or input implementation.
+
+`styxbidiruisend(control, ui_tag, &message)` validates and copies one frame into
+the existing bounded TX queue. Zero means no acceptance: invalid values, an
+insufficient record limit, a full queue or a stopped transport. The caller retains
+the message and can retry only an unaccepted enqueue. Queue acceptance is not an
+application acknowledgement; uncertain transport output is still never replayed.
+
+The sole general dispatcher calls `styxbidircontrolnext` once per record, handles
+bindings/control, and passes an established UI route to
+`styxbidiruidecode(ui_tag, tag, bytes, size, &message)`. `STYX_UI_MESSAGE` publishes
+one validated copy. `STYX_UI_OTHER` leaves the borrowed record with that dispatcher
+for another service. `STYX_UI_INVALID` preserves output. Neither decode result
+consumes a transport record or registers another reader.
+
+There is no reserved numeric UI tag. The host passes its established nonzero
+binding; tag zero is always refused as a UI route. Binding identity does not
+replace access checks. The fixture type `test.ide.fvd1` and its numeric tag are
+test-only, not a newly assigned production protocol identity.
+
+RU: Общий кодек `fvd1` используется локальными каналами и `styx_terminal_ui`.
+Отправка неблокирующая, с копированием в существующую ограниченную TX-очередь.
+Получение остаётся у единственного общего диспетчера: он выдаёт одну S-запись,
+обрабатывает привязку и передаёт UI-запись в `styxbidiruidecode`. Чужие записи
+не поглощаются, выходные значения при отказе не меняются. UI-tag согласуется
+снаружи; фиксированного номера и новой схемы сообщений здесь нет.
+
 ## Verified scope / Проверено
 
 Actual original libstyx/lib9 peers run two opposite sessions over one PTY and a
@@ -90,6 +122,10 @@ The generic transport and native handoff path are implemented. Automatic runtime
 attachment to `$Idehost`, a complete remote IDE launch, concrete timer/render/proxy
 schemas, hardware PHY drivers and new bulk-channel policies are not claimed here.
 
-All 336 Linux64 native SDK tests pass normally and under ASan/UBSan, with
-LeakSanitizer disabled. The IDE adapter and existing UI codec algorithm checks
-pass under Node; they do not claim remote IDE or FlashVM script execution.
+The terminal peer also receives an independent `fvd1` golden frame and sends an
+IDE reply checked against fixed bytes over the fragmented original 9P connection.
+This covers signed int32 bounds, embedded NUL, UTF-8 and foreign/malformed route
+isolation. The standalone codec fixture covers truncation and maximum payloads.
+The IDE adapter checks under Node are algorithm checks; they do not claim remote
+IDE or FlashVM script execution. Current validation results belong to the tested
+revision, rather than an invariant test count embedded in this document.

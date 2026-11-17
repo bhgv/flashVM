@@ -1,5 +1,10 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Local copied-value channels delegate fvd1 serialization to the portable codec.
+ * RU: Локальные каналы значений используют общий переносимый кодек fvd1.
+ */
 /* Value-only bridge: reuse FlashVM locking, waiters, cancellation and AS wrappers. */
 #include "disvm/ui_bridge.h"
+#include "disvm/ui_frame.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,143 +15,6 @@ struct DVM_UIBridge
     FVM_Channel *toward_dis; /* UI producer, Dis adapter consumer. */
     FVM_Channel *toward_ui;  /* Dis adapter producer, UI consumer. */
 };
-
-
-/* Admit canonical UTF-8 Unicode scalars so AS and Limbo cannot disagree through replacement.
- * text borrows size bytes, including NUL. Returns one for valid encoding, otherwise zero. */
-static int valid_text(const char *text, size_t size)
-{
-    size_t i = 0;
-    while (i < size)
-    {
-        unsigned long scalar;
-        unsigned long minimum;
-        unsigned int count;
-        unsigned int c = (unsigned char)text[i++];
-        if (c < 128)
-        {
-            continue;
-        }
-        if (c >= 194 && c <= 223)
-        {
-            scalar = c & 31U;
-            minimum = 128;
-            count = 1;
-        }
-        else if (c >= 224 && c <= 239)
-        {
-            scalar = c & 15U;
-            minimum = 2048;
-            count = 2;
-        }
-        else if (c >= 240 && c <= 244)
-        {
-            scalar = c & 7U;
-            minimum = 65536;
-            count = 3;
-        }
-        else
-        {
-            return 0;
-        }
-        if (size - i < count)
-        {
-            return 0;
-        }
-        while (count)
-        {
-            c = (unsigned char)text[i++];
-            if ((c & 192U) != 128U)
-            {
-                return 0;
-            }
-            scalar = (scalar << 6) | (c & 63U);
-            count--;
-        }
-        if (scalar < minimum || scalar > 0x10ffffUL || (scalar >= 0xd800UL && scalar <= 0xdfffUL))
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
-/* Validate portable scalar ranges before encoding or accepting an inbound record.
- * m is borrowed and nonnull. Returns one for an admitted common envelope, otherwise zero.
- * Operation-specific permission/schema checks remain with the receiving service. */
-static int valid_message(const DVM_UIMessage *m)
-{
-    if (m->kind < DVM_UI_REQUEST || m->kind > DVM_UI_VIEW || m->id > 0xffffffffUL || m->code > 0xffffffffUL ||
-        m->flags > 0xffffffffUL || m->first < (-2147483647L - 1L) || m->first > 2147483647L ||
-        m->second < (-2147483647L - 1L) || m->second > 2147483647L || m->size > DVM_UI_TEXT_MAX)
-    {
-        return 0;
-    }
-    if (!valid_text(m->text, m->size))
-    {
-        return 0;
-    }
-    if (m->kind == DVM_UI_REQUEST || m->kind == DVM_UI_REPLY)
-    {
-        return m->id != 0;
-    }
-    return m->id == 0;
-}
-
-
-/* Write one unsigned 32-bit value as eight lowercase ASCII hexadecimal digits.
- * p points to eight writable bytes; value has already been range checked. Returns nothing. */
-static void put_word(char *p, unsigned long value)
-{
-    static const char digits[] = "0123456789abcdef"; /* Locale-independent wire alphabet. */
-    unsigned int i;
-    for (i = 0; i < 8; i++)
-    {
-        p[7 - i] = digits[value & 15UL];
-        value >>= 4;
-    }
-}
-
-
-/* Parse eight lowercase hexadecimal digits. p borrows eight bytes, out receives a word.
- * Returns zero on malformed input; out is only written on success. */
-static int get_word(const char *p, unsigned long *out)
-{
-    unsigned int i;
-    unsigned long value = 0;
-    for (i = 0; i < 8; i++)
-    {
-        unsigned int digit;
-        if (p[i] >= '0' && p[i] <= '9')
-        {
-            digit = (unsigned int)(p[i] - '0');
-        }
-        else if (p[i] >= 'a' && p[i] <= 'f')
-        {
-            digit = (unsigned int)(p[i] - 'a' + 10);
-        }
-        else
-        {
-            return 0;
-        }
-        value = (value << 4) | digit;
-    }
-    *out = value;
-    return 1;
-}
-
-
-/* Reconstruct an int32 value without implementation-defined unsigned-to-signed narrowing.
- * value is a parsed 32-bit word. Returns its signed two's-complement mathematical value. */
-static long signed_word(unsigned long value)
-{
-    if (value <= 2147483647UL)
-    {
-        return (long)value;
-    }
-    return -1L - (long)(0xffffffffUL - value);
-}
 
 
 /* Allocate and initialize both directions; unwind every partial allocation on failure.
@@ -246,73 +114,49 @@ FVM_Result dvm_ui_channels(DVM_UIBridge *bridge, unsigned int side, FVM_Channel 
 }
 
 
-/* Build a canonical single-message frame; validate text with FlashVM's counted-string ABI.
- * Parameters/return follow ui_bridge.h. Output value is not published on failure. */
+/* EN/RU: Preserve the public counted-value ABI, delegating the portable frame to the shared codec.
+ * Message/storage/value borrowed, output unchanged on failure. Сохранить counted-value ABI,
+ * portable frame обрабатывается общим codec, inputs borrowed, output неизменен при отказе. */
 FVM_Result dvm_ui_encode(const DVM_UIMessage *message, char *storage, size_t capacity, FVM_Value *value)
 {
     FVM_Value encoded;
     FVM_Result result;
-    if (!message || !storage || !value || !valid_message(message) || capacity < DVM_UI_HEADER_SIZE + message->size)
+    size_t size;
+    if (!value)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    memcpy(storage, "fvd1:", 5);
-    put_word(storage + 5, message->kind);
-    put_word(storage + 13, message->id);
-    put_word(storage + 21, message->code);
-    put_word(storage + 29, message->flags);
-    put_word(storage + 37, ((unsigned long)message->first) & 0xffffffffUL);
-    put_word(storage + 45, ((unsigned long)message->second) & 0xffffffffUL);
-    memcpy(storage + DVM_UI_HEADER_SIZE, message->text, message->size);
-    result = fvm_value_string_bytes(&encoded, storage, DVM_UI_HEADER_SIZE + message->size);
+    result = dvm_ui_frame_encode(message, storage, capacity, &size);
     if (result == FVM_OK)
     {
-        *value = encoded;
+        result = fvm_value_string_bytes(&encoded, storage, size);
+        if (result == FVM_OK)
+        {
+            *value = encoded;
+        }
     }
     return result;
 }
 
 
-/* Parse the common envelope before committing the output record.
- * Parameters/return follow ui_bridge.h; stack storage contains no managed references. */
+/* EN/RU: Validate the public value capability before decoding the same portable bytes.
+ * Borrow value/out, output only on success. Проверить value capability и общий frame;
+ * value/out borrowed, output только при успехе. */
 FVM_Result dvm_ui_decode(const FVM_Value *value, DVM_UIMessage *out)
 {
-    DVM_UIMessage decoded;
     FVM_Value validated;
-    unsigned long first;
-    unsigned long second;
     size_t length;
     if (!value || !out || value->type != FVM_VALUE_STRING || value->metatable || !value->string)
     {
         return FVM_INVALID_ARGUMENT;
     }
     length = fvm_value_string_size(value);
-    if (length < DVM_UI_HEADER_SIZE || length > DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX ||
-        memcmp(value->string, "fvd1:", 5))
+    if (length < DVM_UI_HEADER_SIZE || length > DVM_UI_HEADER_SIZE+DVM_UI_TEXT_MAX ||
+        fvm_value_string_bytes(&validated, value->string, length) != FVM_OK)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (fvm_value_string_bytes(&validated, value->string, length) != FVM_OK)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    memset(&decoded, 0, sizeof(decoded));
-    if (!get_word(value->string + 5, &decoded.kind) || !get_word(value->string + 13, &decoded.id) ||
-        !get_word(value->string + 21, &decoded.code) || !get_word(value->string + 29, &decoded.flags) ||
-        !get_word(value->string + 37, &first) || !get_word(value->string + 45, &second))
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    decoded.first = signed_word(first);
-    decoded.second = signed_word(second);
-    decoded.size = length - DVM_UI_HEADER_SIZE;
-    memcpy(decoded.text, value->string + DVM_UI_HEADER_SIZE, decoded.size);
-    if (!valid_message(&decoded))
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    *out = decoded;
-    return FVM_OK;
+    return dvm_ui_frame_decode(value->string, length, out);
 }
 
 

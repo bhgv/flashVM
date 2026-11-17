@@ -6,11 +6,22 @@ target_include_directories(styx_terminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal PUBLIC styx_launch styx_movie_protocol)
 target_compile_options(styx_terminal PRIVATE -Wall -Wextra)
 
+# EN/RU: Reuse the standalone IDE value codec; no FlashVM VM or graphics objects.
+# Общий кодек значений IDE без VM и графических объектов FlashVM.
+add_library(styx_terminal_ui STATIC ui/frame.c "${INFERNO_VFS_SUPPORT}/disVM/host/ui_frame.c")
+target_include_directories(styx_terminal_ui PUBLIC "${INFERNO_VFS_SUPPORT}/disVM/include")
+target_link_libraries(styx_terminal_ui PUBLIC styx_terminal)
+target_compile_options(styx_terminal_ui PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
+target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)
+add_test(NAME terminal-ui-codec COMMAND terminal-ui-codec)
+
 add_executable(terminal-record-peer ../tests/phy-mux/peer.c ../tests/phy/limited.c
     ../tests/launch/remote.c ../tests/launch/request.c ../tests/file-root/context.c tests/server.c tests/client.c)
 target_compile_definitions(terminal-record-peer PRIVATE STYX_LAUNCH_TEST=1 STYX_INFERNO_LOOKUP_TEST=1
     STYX_LAUNCH_REQUEST_TEST=1 STYX_TERMINAL_RECORD_TEST=1)
-target_link_libraries(terminal-record-peer PRIVATE styx_terminal infernostyx_phy remote_phy_mux)
+target_link_libraries(terminal-record-peer PRIVATE styx_terminal_ui infernostyx_phy remote_phy_mux)
 foreach(terminal_case normal cancel)
     add_test(NAME terminal-record-${terminal_case} COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:terminal-record-peer>" ${terminal_case})
