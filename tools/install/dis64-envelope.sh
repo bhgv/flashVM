@@ -64,6 +64,9 @@ PYCODE
     for file in "$ROOT/disVM/upstream/doc"/dis64-*.md "$ROOT/disVM/upstream/doc"/dis64-*.json; do
         copy_file "$file" "$destination/docs/dis64/$(basename -- "$file")"
     done
+    # EN/RU: This retained native-series note is linked by the Dis64 guides.
+    # Связанная заметка native-series также доступна без сети в SDK.
+    copy_file "$ROOT/disVM/upstream/doc/native64-series0075.md" "$destination/docs/dis64/native64-series0075.md"
     copy_tree "$ROOT/examples/firststeps/tools/limbo-scalar" "$destination/examples/dis64-scalar"
     copy_file "$ROOT/tools/limbo-bootstrap/upstream/limbo/tests/README.dis64-scalar.md" "$destination/examples/dis64-scalar/UPSTREAM-SCALAR.md"
     copy_file "$ROOT/disVM/envelope/README.md" "$destination/DIS64-ENVELOPE.md"

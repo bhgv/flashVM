@@ -96,6 +96,18 @@ class FrontendTests(unittest.TestCase):
             if ("SDK_BOOTSTRAP" in log) != (sdl == "ON"):
                 self.fail("Dis graphical SDK selection ignored the explicit no-player choice")
 
+    # EN: Run the complete relocated Dis64 documentation regression with this interpreter.
+    # RU: Проверить все ссылки отдельного SDK Dis64 тем же интерпретатором Python.
+    def test_dis64_sdk_guides(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/install/tests/test_dis64_guides.py")],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode:
+            self.fail("Dis64 SDK guide regression: " + result.stderr)
+
+
     def test_limbo_alias_guides_use_shipped_headers(self):
         """A relocated alias SDK guide must use its include directory and public omitted sources."""
         with tempfile.TemporaryDirectory(prefix="Alias guide links ") as temporary:
