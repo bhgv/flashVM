@@ -17,6 +17,8 @@ add_library(styx_terminal_route STATIC route/life.c route/dispatch.c route/queue
 target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+add_subdirectory(bridge)
+
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)
 add_test(NAME terminal-ui-codec COMMAND terminal-ui-codec)

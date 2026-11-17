@@ -110,6 +110,9 @@ The opt-in [native binding dispatcher](route/README.md) now owns a dedicated
 record-consumer thread, applies the existing negotiated RX binding declarations,
 and delivers separate bounded copied UI/general mailboxes. It does not require
 a Limbo polling loop and never adds a second reader to an existing dispatcher.
+The [host UI relay](bridge/README.md) connects those UI messages to the existing
+real local IDE channel pair, with native-only waits, joined shutdown and retained
+pending copies on failure. It supports either local endpoint role.
 
 Actual original libstyx/lib9 peers run two opposite sessions over one PTY and a
 real native launch handoff. Record input is clipped to3bytes, record writes

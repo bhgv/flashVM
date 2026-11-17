@@ -1,0 +1,41 @@
+# Copyright (c) 2026 bhgv
+# EN: Relay adapter references the host UI API; the embedding supplies its actual implementation.
+# RU: Мост использует host UI API; настоящую реализацию предоставляет embedding.
+add_library(styx_terminal_bridge STATIC life.c relay.c state.c)
+target_link_libraries(styx_terminal_bridge PUBLIC styx_terminal_route)
+target_include_directories(styx_terminal_bridge PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(styx_terminal_bridge PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+# No implicit FlashVM build/download or VM dependency in the Inferno library targets.
+# Без неявной сборки/скачивания FlashVM и зависимости библиотек Inferno от VM.
+set(INFERNO_UI_HOST_LIBRARIES "" CACHE STRING "Explicit real host UI and FlashVM library list for relay acceptance")
+if(INFERNO_UI_HOST_LIBRARIES)
+    enable_language(CXX)
+    foreach(bridge_case RANGE 0 8)
+        set(bridge_peer terminal-bridge-peer-${bridge_case})
+        add_executable(${bridge_peer} ../../tests/phy-mux/peer.c ../../tests/phy/limited.c
+            ../../tests/launch/remote.c ../../tests/launch/request.c ../../tests/file-root/context.c
+            ../tests/server.c ../tests/bridge.c)
+        target_compile_definitions(${bridge_peer} PRIVATE STYX_LAUNCH_TEST=1 STYX_INFERNO_LOOKUP_TEST=1
+            STYX_LAUNCH_REQUEST_TEST=1 STYX_TERMINAL_RECORD_TEST=1 STYX_UI_BRIDGE_CASE=${bridge_case})
+        target_include_directories(${bridge_peer} PRIVATE "${INFERNO_VFS_SUPPORT}/flashVM/ports")
+        if(bridge_case EQUAL 7)
+            target_sources(${bridge_peer} PRIVATE ../tests/bridge_fault.c)
+            set_property(TARGET ${bridge_peer} APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,--wrap=styxbidirrouteuisend -Wl,--wrap=styxbidirroutestate")
+        endif()
+        if(bridge_case EQUAL 8)
+            target_sources(${bridge_peer} PRIVATE ../tests/bridge_as.c)
+            set_property(TARGET ${bridge_peer} APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,--wrap=styxbidirrouteuisend")
+        endif()
+        set_target_properties(${bridge_peer} PROPERTIES LINKER_LANGUAGE CXX)
+        target_link_libraries(${bridge_peer} PRIVATE styx_terminal_bridge infernostyx_phy remote_phy_mux
+            ${INFERNO_UI_HOST_LIBRARIES})
+        foreach(bridge_transport normal cancel)
+            add_test(NAME terminal-bridge-${bridge_case}-${bridge_transport} COMMAND "${PYTHON_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/phy-mux/peers.py" "$<TARGET_FILE:${bridge_peer}>" ${bridge_transport})
+            set_tests_properties(terminal-bridge-${bridge_case}-${bridge_transport} PROPERTIES TIMEOUT 30)
+        endforeach()
+    endforeach()
+endif()

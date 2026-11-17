@@ -42,7 +42,8 @@ RU: Конструктор явно выбирает профиль, где вс
 | `styxbidirroutesend` | Copy one independently bound general/control TX record; 1 accepted, 0 refused. |
 | `styxbidirrouteuisend` | Validate/copy one `fvd1` TX frame on an independently established nonzero outgoing tag. |
 | `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
-| `styxbidirroutestate` | Dispatcher’s first terminal reason; no queue consumption. |
+| `styxbidirroutestate` | Dispatcher’s terminal reason, or the transport's current terminal reason while dispatch is backpressured; no queue consumption. |
+| `styxbidirroutelimit` | Immutable configured record limit, or 0 for NULL. |
 | `styxbidirroutestop` | Cancel the owned workers without joining; already accepted mailbox items remain readable. |
 | `styxbidirroutefree` | After external callers retire, stop/join owned workers and free storage; shared client remains owned by the host. |
 
@@ -84,3 +85,8 @@ This provides automatic native dispatch and copied UI mailboxes. Runtime
 `$Idehost` attachment and its non-message RPCs (rows/path/ink/bulk) still need an
 explicit remote endpoint integration; this library does not turn them into
 remote calls by changing a queue name.
+
+The [native host bridge](../bridge/README.md) now connects the UI mailbox to the
+actual existing local `DVM_UIBridge` channels with two native relays. It retains
+the general-record consumer role at the host and leaves the RPC/runtime boundary
+above explicit.

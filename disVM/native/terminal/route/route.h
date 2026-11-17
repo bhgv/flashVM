@@ -76,6 +76,12 @@ int styxbidirrouteflush(StyxBidirRoute *route, unsigned timeout);
 int styxbidirroutestate(StyxBidirRoute *route);
 
 
+/* EN/RU: Immutable configured record limit, or 0 for NULL; no I/O or mutable state access.
+ * Неизменяемый лимит записи либо 0 для NULL, без I/O и доступа к изменяемому состоянию.
+ */
+unsigned styxbidirroutelimit(StyxBidirRoute *route);
+
+
 /* EN: Request cancellation without joining; NULL harmless. Buffered RX remains drainable.
  * RU: Запросить отмену без join. NULL допустим, уже принятые RX-записи доступны для чтения.
  */

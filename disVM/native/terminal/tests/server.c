@@ -7,7 +7,11 @@
 #include <styxserver.h>
 #include "flashvm/sstream.h"
 #include "flashvm/sbindings.h"
-static unsigned char offered[256]; /* Owner-built immutable encoded input stream. */
+#if defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 2
+static unsigned char offered[8192]; /* Repeated UI input to fill the real local channel. */
+#else
+static unsigned char offered[256]; /* Owner-built encoded input stream; owner may append a test receipt. */
+#endif
 static size_t offered_size; /* Total offered bytes. */
 static unsigned char received[512]; /* Owner-only transmit decoder storage. */
 static FVM_SStream decoder; /* Owner-only across exact write prefixes. */
@@ -67,7 +71,8 @@ static void initialize(void)
     }
     offered_size += encoded;
 #endif
-#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 2
+#if (defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 2) || \
+    (defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 5)
     static const char ui[] = "bad-ui-frame";
 #else
     static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
@@ -104,6 +109,17 @@ static void initialize(void)
         exit(3);
     }
     offered_size += encoded;
+#endif
+#if defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 2
+    for (unsigned i = 0; i < 40; i++)
+    {
+        if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,
+            sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+        {
+            exit(3);
+        }
+        offered_size += encoded;
+    }
 #endif
     fvm_sstream_init(&decoder, received, sizeof(received), 256);
 }
@@ -153,6 +169,46 @@ char *terminalread(Styxserver *server, char *bytes, ulong *count, vlong offset)
 }
 
 
+#ifdef STYX_UI_BRIDGE_CASE
+/* EN/RU: Append a test-only completion receipt after all reply bytes were validated.
+ * Complete an already deferred read on its real server owner, clipping the prefix to three bytes.
+ * Добавить тестовую квитанцию после проверки всех ответов, завершить deferred read на owner.
+ */
+static void bridgeack(void)
+{
+    size_t encoded; /* Complete receipt frame bytes appended to the offered stream. */
+    if (fvm_srecord_write(9, "done", 4, offered+offered_size,
+        sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+    if (pending)
+    {
+        vlong offset = styxreadoffset(pending); /* Deferred handle is owned by this native owner. */
+        ulong count = styxreadlimit(pending); /* Exact remote buffer capacity. */
+        if (offset < 0 || (uvlong)offset >= offered_size)
+        {
+            exit(3);
+        }
+        if (count > offered_size-(size_t)offset)
+        {
+            count = offered_size-(size_t)offset;
+        }
+        if (count > 3)
+        {
+            count = 3;
+        }
+        /* release() retires the caller handle synchronously; never access it after this call. */
+        if (!styxreadreply(pending, offered+offset, count, nil))
+        {
+            exit(3);
+        }
+    }
+}
+#endif
+
+
 /* EN/RU: Clip writes to two bytes and validate record sequence across all confirmed prefixes.
  * Записывать <=2 bytes, проверять records через все confirmed prefixes, без interleave/replay. */
 char *terminalwrite(char *bytes, ulong *count, vlong offset)
@@ -175,8 +231,12 @@ char *terminalwrite(char *bytes, ulong *count, vlong offset)
         at += used;
         if (status == FVM_S_OK)
         {
+            unsigned maximum = 3; /* Complete control/binary/reply sequence. */
+#if defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 4
+            maximum = 10; /* Eight independently relayed replies after two setup records. */
+#endif
             if ((messages == 0 && (record.tag != 0 || record.size != 2)) ||
-                (messages == 1 && (record.tag != 101 || record.size != 240)) || messages > 2)
+                (messages == 1 && (record.tag != 101 || record.size != 240)) || messages >= maximum)
             {
                 return Ebadarg;
             }
@@ -190,7 +250,7 @@ char *terminalwrite(char *bytes, ulong *count, vlong offset)
                     }
                 }
             }
-            if (messages == 2)
+            if (messages >= 2)
             {
                 /* EN/RU: Compare exact independent reply bytes, not this client's encoder.
                  * Сравнить точные байты ответа с независимым эталоном. */
@@ -202,6 +262,12 @@ char *terminalwrite(char *bytes, ulong *count, vlong offset)
                 }
             }
             messages++;
+#ifdef STYX_UI_BRIDGE_CASE
+            if (messages == maximum)
+            {
+                bridgeack();
+            }
+#endif
             fvm_sstream_reset(&decoder);
         }
         else if (status != FVM_S_MORE || !used)

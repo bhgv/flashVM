@@ -126,8 +126,8 @@ int styxbidirrouteflush(StyxBidirRoute *route, unsigned timeout)
 }
 
 
-/* EN/RU: See route.h; return only the dispatcher's sticky result, without inspecting queues.
- * См. route.h; вернуть зафиксированный результат диспетчера без потребления очередей.
+/* EN/RU: See route.h; expose transport failure even while the dispatcher awaits mailbox capacity.
+ * См. route.h; показать ошибку транспорта и при ожидании места в очереди, не потребляя записи.
  */
 int styxbidirroutestate(StyxBidirRoute *route)
 {
@@ -138,5 +138,14 @@ int styxbidirroutestate(StyxBidirRoute *route)
     pthread_mutex_lock(&route->lock);
     int reason = route->reason; /* Protected first outcome. */
     pthread_mutex_unlock(&route->lock);
-    return reason;
+    return reason ? reason : styxbidircontrolstate(route->control);
+}
+
+
+/* EN/RU: See route.h; configuration was published before worker creation and never changes.
+ * См. route.h; настройка опубликована до запуска потока и больше не меняется.
+ */
+unsigned styxbidirroutelimit(StyxBidirRoute *route)
+{
+    return route ? route->limit : 0;
 }

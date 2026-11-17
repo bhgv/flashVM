@@ -44,6 +44,13 @@ provides one-message copied UI/general mailboxes. It consumes no guest execution
 turns. The existing `$Idehost` additionally has rows/path/ink/bulk RPCs; their
 remote endpoint and runtime attachment are separate remaining integration work.
 
+The [native host-channel relay](../disVM/native/terminal/bridge/README.md) now
+provides a real `DVM_UIBridge` endpoint on that route. The ordinary local codec
+and actual AS channel wrappers work on it; relay workers exchange only copied
+values. Both local roles and context retirement are covered by original 9P peer
+tests. This does not yet register a remote `$Idehost` instance or implement its
+non-message RPC endpoints.
+
 ## What stays / Что сохраняется
 
 Existing Dis document/input/workspace services, AS presentation functions and the
