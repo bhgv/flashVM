@@ -5,6 +5,7 @@
 #ifndef STYX_CLIENT_H
 #define STYX_CLIENT_H
 #include "file.h"
+#include "phy.h"
 
 typedef struct StyxClient StyxClient; /* Owned connection reference. */
 typedef struct StyxCancel StyxCancel; /* Owned sticky native cancellation capability. */
@@ -39,10 +40,19 @@ StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, cons
 StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const char *name, unsigned timeout, unsigned limit);
 
 
-/* EN/RU: Configure fd-owner heartbeat without protocol wait;1/0. All zeros disables.
+/* EN/RU: Consume owned connected reliable ordered byte-stream PHY on every outcome; owned client/NULL.
+ * Uses the same native multiplex/heartbeat/cancel engine as mountfd, with no fd requirement.
+ * Driver callbacks remain native-only; stream adaptations must precede this admission boundary.
+ * Принять connected reliable ordered stream PHY всегда; свой client/NULL, общий native engine,
+ * без fd requirement; packet/reliability adaptations должны предшествовать этому уровню. */
+StyxClient *styxclientmountphy(RemotePhy *phy, unsigned msize, const char *user, const char *name,
+    unsigned timeout, unsigned limit);
+
+
+/* EN/RU: Configure carrier-owner heartbeat without protocol wait;1/0. All zeros disables.
  * idle/reply1..120000ms, misses2..16; NULL/legacy/terminal/invalid refuses unchanged.
  * One probe retains its tags/deadline through reconfiguration or disabling.
- * Настроить fd-owner heartbeat без ожидания;1/0, три нуля отключают будущие probes. */
+ * Настроить carrier-owner heartbeat без ожидания;1/0, три нуля отключают будущие probes. */
 int styxclientkeepalive(StyxClient *client, unsigned idle, unsigned reply, unsigned misses);
 
 
@@ -163,7 +173,7 @@ StyxFid *styxclientwalk(StyxClient *client, const char *relative);
 StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative);
 
 
-/* EN/RU: Cancellable logical walk for mountfd clients; owned fid/NULL, required result.
+/* EN/RU: Cancellable logical walk for native PHY clients; owned fid/NULL, required result.
  * One outer token covers all MAXWELEM fragments and cannot be reused. Result uses
  * StyxTransfer with count0; success means the complete walk was acknowledged.
  * Failure cleanup is native detached best-effort clunk, never a caller RPC wait.
@@ -206,7 +216,7 @@ void styxclientread(StyxFid *fid, unsigned long long offset, void *bytes, size_t
 void styxclientwrite(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxTransfer *result);
 
 
-/* EN/RU: Cancellable chunk requires mountfd client; same precise-prefix contract.
+/* EN/RU: Cancellable chunk requires native PHY client; same precise-prefix contract.
  * Original acknowledgement before Rflush wins; otherwise cancelled is set, with
  * uncertain effects if original bytes were sent. Caller serializes the fid.
  * Cancellable chunk требует mountfd; original acknowledgement не теряется. */
@@ -214,13 +224,13 @@ void styxclientreadcancel(StyxFid *fid, unsigned long long offset, void *bytes, 
 void styxclientwritecancel(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxCancel *cancel, StyxTransfer *result);
 
 
-/* EN/RU: Immutable explicit-cancel capability,1 for fd-owner,0 for NULL/legacy; no I/O.
- * Immutable explicit-cancel capability:1 fd-owner,0 NULL/legacy; без I/O/прав. */
+/* EN/RU: Immutable explicit-cancel capability,1 for carrier-owner,0 for NULL/legacy; no I/O.
+ * Immutable explicit-cancel capability:1 carrier-owner,0 NULL/legacy; без I/O/прав. */
 int styxclientcancellable(StyxClient *client);
 
 
-/* EN/RU: Local capability snapshot;1 if live fd owner has at least two RPC slots,0 otherwise.
- * Local capability snapshot;1 для live fd owner минимум с двумя RPC slots. */
+/* EN/RU: Local capability snapshot;1 if live carrier owner has at least two RPC slots,0 otherwise.
+ * Local capability snapshot;1 для live carrier owner минимум с двумя RPC slots. */
 int styxclientwatchable(StyxClient *client);
 
 
@@ -241,10 +251,10 @@ int styxclientrecord(const void *bytes, size_t size, StyxMeta *output, size_t *c
  * Поглотить fid, clunk если transport пригоден; NULL допустим. */
 void styxclientclunk(StyxFid *fid);
 
-/* EN/RU: Consume owned fid always; cancellable Tclunk on fd-owner, async cleanup on legacy.
+/* EN/RU: Consume owned fid always; cancellable Tclunk on carrier-owner, async cleanup on legacy.
  * An unacknowledged request schedules one independent best-effort cleanup; never reuses fid numbers.
  * Caller serializes/pins fid before transfer. Token is borrowed single-use, NULL keeps deadline.
- * Поглотить fid всегда; fd-owner Tclunk отменяем, legacy cleanup async; без Rclunk
+ * Поглотить fid всегда; carrier-owner Tclunk отменяем, legacy cleanup async; без Rclunk
  * один independent best-effort cleanup. Token borrowed single-use, NULL оставляет deadline. */
 void styxclientclunkcancel(StyxFid *fid, StyxCancel *cancel);
 

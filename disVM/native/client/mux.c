@@ -9,8 +9,7 @@
  * См. mux_internal.h; cleanup владеет descriptors, buffers и locks. */
 void styxmuxdestroy(StyxMux *mux)
 {
-    close(mux->wake[0]);
-    close(mux->wake[1]);
+    phyfree(mux->phy);
     free(mux->receive);
     free(mux->decode);
     free(mux->slots);
@@ -25,12 +24,7 @@ void styxmuxdestroy(StyxMux *mux)
  * См. mux.h; full pipe уже означает pending native work. */
 void styxmuxwake(StyxMux *mux)
 {
-    char byte = 1;
-    ssize_t n;
-    do
-    {
-        n = write(mux->wake[1], &byte, 1);
-    } while (n < 0 && errno == EINTR);
+    phywake(mux->phy);
 }
 
 
@@ -210,61 +204,38 @@ void styxmuxfree(StyxMux *mux)
 }
 
 
-/* EN/RU: See mux.h; adopt only nonblocking connected stream sockets, detached native owner.
- * См. mux.h; принять connected stream socket, detached native owner. */
-StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned limit)
+/* EN/RU: See mux.h; admit only connected reliable ordered byte streams, with one native owner.
+ * См. mux.h; только connected reliable ordered streams, один native owner. */
+StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit)
 {
-    int pipes[2] = {-1, -1};
-    int type;
-    socklen_t size = sizeof(type);
-    struct linger linger = {0, 0};
-    int flags = fd >= 0 ? fcntl(fd, F_GETFL, 0) : -1;
-    if (fd < 0 || capacity < 256 || capacity > 65536 || !timeout || timeout > 120000 || !limit || limit > 128 ||
-        flags < 0 || getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &size) || type != SOCK_STREAM ||
-        fcntl(fd, F_SETFL, flags|O_NONBLOCK) || fcntl(fd, F_SETFD, FD_CLOEXEC) || setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger)) || pipe(pipes))
+    PhyInfo info;
+    if (!phyinfo(phy, &info) || !info.connected ||
+        (info.capabilities & (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE)) != (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE) ||
+        capacity < 256 || capacity > 65536 || !timeout || timeout > 120000 || !limit || limit > 128)
     {
-        if (fd >= 0)
-        {
-            close(fd);
-        }
-        return NULL;
-    }
-    if (fcntl(pipes[0], F_SETFL, O_NONBLOCK) || fcntl(pipes[1], F_SETFL, O_NONBLOCK) ||
-        fcntl(pipes[0], F_SETFD, FD_CLOEXEC) || fcntl(pipes[1], F_SETFD, FD_CLOEXEC))
-    {
-        close(fd);
-        close(pipes[0]);
-        close(pipes[1]);
+        phyfree(phy);
         return NULL;
     }
     StyxMux *mux = calloc(1, sizeof(*mux));
     if (!mux)
     {
-        close(fd);
-        close(pipes[0]);
-        close(pipes[1]);
+        phyfree(phy);
         return NULL;
     }
     if (pthread_mutex_init(&mux->lock, NULL))
     {
         free(mux);
-        close(fd);
-        close(pipes[0]);
-        close(pipes[1]);
+        phyfree(phy);
         return NULL;
     }
     if (pthread_cond_init(&mux->ended, NULL))
     {
         pthread_mutex_destroy(&mux->lock);
         free(mux);
-        close(fd);
-        close(pipes[0]);
-        close(pipes[1]);
+        phyfree(phy);
         return NULL;
     }
-    mux->fd = fd;
-    mux->wake[0] = pipes[0];
-    mux->wake[1] = pipes[1];
+    mux->phy = phy;
     mux->capacity = capacity;
     mux->timeout = timeout;
     mux->limit = limit;
@@ -284,7 +255,6 @@ StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned lim
         {
             pthread_attr_destroy(&attributes);
         }
-        close(fd);
         styxmuxdestroy(mux);
         return NULL;
     }

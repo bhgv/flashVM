@@ -2,9 +2,9 @@
  * EN: Deterministic partial-send/flush fences using the actual native owner algorithm.
  * RU: Детерминированные partial-send/flush fences на настоящем native owner algorithm.
  */
-#define send capture
+#define phywrite capture
 #include "../../client/mux_loop.c"
-#undef send
+#undef phywrite
 
 static uchar sentbytes[512]; /* Captured exact output order. */
 static unsigned nsent; /* Bytes accepted by the fake nonblocking transport. */
@@ -25,20 +25,20 @@ static void check(int valid, char *why)
 
 /* EN/RU: Accept at most two bytes, never infer atomic frame writes from real TCP.
  * Принять максимум два bytes, без предположения atomic frame writes. */
-ssize_t capture(int fd, const void *bytes, size_t size, int flags)
+PhyTransfer capture(RemotePhy *phy, const void *bytes, size_t size)
 {
-    USED(fd);
-    USED(flags);
+    USED(phy);
     if (blocked)
     {
-        errno = EAGAIN;
-        return -1;
+        PhyTransfer out = {0, PHY_AGAIN, PHY_PREFIX};
+        return out;
     }
     unsigned count = size > 2 ? 2 : size;
     check(nsent+count <= sizeof(sentbytes), "capture bounds");
     memcpy(sentbytes+nsent, bytes, count);
     nsent += count;
-    return count;
+    PhyTransfer out = {count, PHY_OK, PHY_PREFIX};
+    return out;
 }
 
 

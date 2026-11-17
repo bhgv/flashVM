@@ -3,6 +3,7 @@
  * RU: Явное создание POSIX fd-owner, native lifetime pins и shutdown.
  */
 #include "internal.h"
+#include "drivers/posix/fd.h"
 #include <unistd.h>
 
 
@@ -10,8 +11,8 @@
  * См. client.h; native engine принимает connected fd при любом исходе. */
 StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const char *name, unsigned timeout, unsigned limit)
 {
-    StyxMux *mux = styxmuxcreate(fd, msize, timeout, limit);
-    return mux ? styxclientstart(NULL, mux, msize, user, name) : NULL;
+    return styxclientmountphy(phyposixfd(fd, PHY_STREAM|PHY_ORDERED|PHY_RELIABLE),
+        msize, user, name, timeout, limit);
 }
 
 

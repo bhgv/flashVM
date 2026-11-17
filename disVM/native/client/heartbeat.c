@@ -106,17 +106,13 @@ int styxbeattick(StyxMux *mux, double now)
 void styxbeatsend(StyxMux *mux)
 {
     StyxBeat *beat = &mux->beat;
-    ssize_t count = send(mux->fd, beat->bytes+beat->sent, sizeof(beat->bytes)-beat->sent, MSG_NOSIGNAL);
-    if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
-    {
-        return;
-    }
-    if (count <= 0 || (unsigned long)count > sizeof(beat->bytes)-beat->sent)
+    PhyTransfer out = phywrite(mux->phy, beat->bytes+beat->sent, sizeof(beat->bytes)-beat->sent);
+    if ((out.flags & PHY_UNCERTAIN) || (out.status != PHY_OK && out.status != PHY_AGAIN))
     {
         styxmuxbroken(mux);
         return;
     }
-    beat->sent += count;
+    beat->sent += out.count;
     if (beat->sent == sizeof(beat->bytes))
     {
         beat->missed = 0;

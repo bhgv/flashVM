@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Private bounded fd-owner transactions, original/flush tag leases and native state.
- * RU: Private bounded fd-owner transactions, original/flush tag leases и native state.
+ * EN: Private bounded carrier-owner transactions, original/flush tag leases and native state.
+ * RU: Private bounded carrier-owner transactions, original/flush tag leases и native state.
  */
 #ifndef STYX_MUX_INTERNAL_H
 #define STYX_MUX_INTERNAL_H
@@ -10,10 +10,6 @@
 #include "mux.h"
 #include "life.h"
 #include <pthread.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
 #include <time.h>
 
@@ -74,8 +70,7 @@ struct StyxMux
     int terminal; /* Immutable first terminal cause. */
     pthread_mutex_t lock; /* Protect admission, table, completion and references. */
     pthread_cond_t ended; /* Explicit native shutdown completion. */
-    int fd; /* Consumed connected stream, closed by native owner. */
-    int wake[2]; /* Owned nonblocking notification pipe until final ref. */
+    RemotePhy *phy; /* Owned carrier; only native owner performs I/O, other pinned threads may wake. */
     unsigned capacity; /* Maximum initial offered message bytes. */
     unsigned limit; /* Bounded outstanding request slots1..128. */
     unsigned timeout; /* Original and one flush grace budget in milliseconds. */
@@ -90,7 +85,7 @@ struct StyxMux
     size_t references; /* Client owner plus detached native thread. */
     int failed; /* Terminal transport/protocol failure. */
     int stopping; /* Explicit shutdown/final owner-drop request. */
-    int finished; /* Socket closed; notification fanout/thread reference may still be live. */
+    int finished; /* Carrier disconnected; notification fanout/thread reference may still be live. */
 };
 
 
@@ -106,8 +101,8 @@ void styxmuxbroken(StyxMux *);
 /* EN/RU: Release engine only after owner and native thread references retire.
  * Освободить engine после owner/native-thread refs. */
 void styxmuxdestroy(StyxMux *);
-/* EN/RU: Detached native fd owner; argument is its retained engine reference.
- * Detached native fd owner; argument — удержанная engine reference. */
+/* EN/RU: Detached native carrier owner; argument is its retained engine reference.
+ * Detached native carrier owner; argument — удержанная engine reference. */
 void *styxmuxrun(void *);
 
 

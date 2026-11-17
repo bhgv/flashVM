@@ -130,21 +130,17 @@ static void sendframe(StyxMux *mux)
     unsigned *position = mux->sendflush ? &flight->flushsent : &flight->sent;
     unsigned length = mux->sendflush ? sizeof(flight->flushbytes) : flight->length;
     uchar *bytes = mux->sendflush ? flight->flushbytes : flight->request;
-    ssize_t count = send(mux->fd, bytes+*position, length-*position, MSG_NOSIGNAL);
-    if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
-    {
-        return;
-    }
-    if (!mux->sendflush)
+    PhyTransfer out = phywrite(mux->phy, bytes+*position, length-*position);
+    if (!mux->sendflush && (out.count || out.status != PHY_AGAIN || (out.flags & PHY_UNCERTAIN)))
     {
         flight->answer.attempted = 1;
     }
-    if (count <= 0 || (unsigned long)count > length-*position)
+    *position += out.count;
+    if ((out.flags & PHY_UNCERTAIN) || (out.status != PHY_OK && out.status != PHY_AGAIN))
     {
         styxmuxbroken(mux);
         return;
     }
-    *position += count;
     if (*position == length)
     {
         mux->sending = NULL;
@@ -227,21 +223,17 @@ static void receiveframes(StyxMux *mux)
 {
     for (;;)
     {
-        ssize_t count = recv(mux->fd, mux->receive+mux->used, mux->want-mux->used, 0);
-        if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        PhyTransfer out = phyread(mux->phy, mux->receive+mux->used, mux->want-mux->used);
+        int terminal = (out.flags & PHY_UNCERTAIN) || (out.status != PHY_OK && out.status != PHY_AGAIN);
+        mux->used += out.count;
+        if (!out.count)
         {
+            if (terminal)
+            {
+                styxmuxbroken(mux);
+            }
             return;
         }
-        if (count < 0 && errno == EINTR)
-        {
-            continue;
-        }
-        if (count <= 0)
-        {
-            styxmuxbroken(mux);
-            return;
-        }
-        mux->used += count;
         if (mux->used == 4 && mux->want == 4)
         {
             mux->want = GBIT32(mux->receive);
@@ -261,12 +253,17 @@ static void receiveframes(StyxMux *mux)
             mux->used = 0;
             mux->want = 4;
         }
+        if (terminal)
+        {
+            styxmuxbroken(mux);
+            return;
+        }
     }
 }
 
 
-/* EN/RU: See mux_internal.h; only this native OS thread touches the stream fd.
- * См. mux_internal.h; только этот native OS thread обращается к stream fd. */
+/* EN/RU: See mux_internal.h; only this native OS thread performs carrier read/write/wait/disconnect.
+ * См. mux_internal.h; только этот native OS thread выполняет carrier I/O. */
 void *styxmuxrun(void *argument)
 {
     StyxMux *mux = argument;
@@ -291,29 +288,21 @@ void *styxmuxrun(void *argument)
         {
             break;
         }
-        struct pollfd ready[2] = {{mux->fd, POLLIN|((mux->sending || (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))) ? POLLOUT : 0), 0}, {mux->wake[0], POLLIN, 0}};
+        unsigned wanted = PHY_READ;
+        if (mux->sending || (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes)))
+        {
+            wanted |= PHY_WRITE;
+        }
+        unsigned ready = 0;
         pthread_mutex_unlock(&mux->lock);
-        int status = poll(ready, 2, timeout);
+        int status = phywait(mux->phy, wanted, timeout, &ready);
         pthread_mutex_lock(&mux->lock);
-        if (status < 0)
-        {
-            if (errno == EINTR)
-            {
-                continue;
-            }
-            styxmuxbroken(mux);
-            break;
-        }
-        if ((ready[0].revents & POLLNVAL) || (ready[1].revents & (POLLHUP|POLLERR|POLLNVAL)))
+        if (status != PHY_OK || (ready & PHY_FAILED))
         {
             styxmuxbroken(mux);
             break;
         }
-        char bytes[128];
-        while (read(mux->wake[0], bytes, sizeof(bytes)) > 0)
-        {
-        }
-        if (ready[0].revents & (POLLIN|POLLHUP|POLLERR))
+        if (ready & (PHY_READ|PHY_HANGUP))
         {
             receiveframes(mux);
             styxbeatreport(mux);
@@ -338,9 +327,8 @@ void *styxmuxrun(void *argument)
     }
     styxmuxbroken(mux);
     pthread_mutex_unlock(&mux->lock);
-    close(mux->fd);
+    phydisconnect(mux->phy);
     pthread_mutex_lock(&mux->lock);
-    mux->fd = -1;
     mux->finished = 1;
     pthread_cond_broadcast(&mux->ended);
     int reason = mux->terminal;

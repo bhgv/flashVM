@@ -28,7 +28,6 @@ int main(void)
     mux.limit = 2;
     mux.capacity = 256;
     mux.timeout = 1000;
-    mux.wake[0] = mux.wake[1] = -1;
     check(!pthread_mutex_init(&mux.lock, nil), "native lock");
     Fcall request;
     uchar bytes[256];

@@ -159,3 +159,9 @@ Runtime0.156 adds [cancellable walk/open/stat](CONTROL-CANCEL.md), including one
 logical cancellation scope across fragmented Twalk and detached abandoned-fid
 cleanup. It preserves the tag/Tflush rules above and the existing one-use public
 token contract. An unacknowledged sent Topen cannot be replayed on the same fid.
+
+The autonomous engine now accesses the carrier through
+[`RemotePhy`](../../../remote_phy/README.md), including heartbeat sends and local
+cancellation wakeups. POSIX descriptor/socket calls live in its driver;
+`styxclientmountphy` is the carrier-neutral constructor. Existing fd construction
+and all transaction/flush fences remain supported.

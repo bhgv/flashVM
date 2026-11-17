@@ -1,12 +1,12 @@
 /* Copyright (c) 2026 bhgv
- * EN: Private native fd multiplexer boundary; original codecs remain authoritative.
- * RU: Private native fd multiplexer; исходные codecs остаются authoritative.
+ * EN: Private native carrier multiplexer boundary; original codecs remain authoritative.
+ * RU: Private native carrier multiplexer; исходные codecs остаются authoritative.
  */
 #ifndef STYX_MUX_H
 #define STYX_MUX_H
 #include "client.h"
 #include "life.h"
-typedef struct StyxMux StyxMux; /* Refcounted autonomous native socket owner. */
+typedef struct StyxMux StyxMux; /* Refcounted autonomous native carrier owner. */
 typedef struct StyxFlight StyxFlight; /* One bounded admitted transaction. */
 typedef struct StyxAnswer
 {
@@ -17,9 +17,9 @@ typedef struct StyxAnswer
     int status; /* 1 expected response,0 Rerror,-1 no acknowledgement. */
 } StyxAnswer;
 
-/* EN/RU: Consume connected fd always; owned native engine/NULL. POSIX only.
- * Принять connected fd всегда; свой native engine/NULL. */
-StyxMux *styxmuxcreate(int fd, unsigned capacity, unsigned timeout, unsigned limit);
+/* EN/RU: Consume connected reliable ordered stream PHY always; owned native engine/NULL.
+ * Принять connected stream PHY всегда; свой native engine/NULL. */
+StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit);
 
 
 /* EN/RU: Borrow terminal source while retaining engine owner. Без передачи владения. */
@@ -38,14 +38,14 @@ int styxmuxalive(StyxMux *);
 /* EN/RU: Terminally reject all work and wake native owner; no guest access.
  * Terminally отклонить всю работу и разбудить owner, без guest access. */
 void styxmuxfail(StyxMux *);
-/* EN/RU: Explicit native shutdown waits for fd owner retirement; retains engine.
- * Явный native shutdown ждёт fd owner retirement, engine не поглощает. */
+/* EN/RU: Explicit native shutdown waits for carrier owner retirement; retains engine.
+ * Явный native shutdown ждёт carrier owner retirement, engine не поглощает. */
 void styxmuxshutdown(StyxMux *);
 /* EN/RU: Consume owner reference without joining; autonomous worker retires itself.
  * Поглотить owner ref без join; worker завершает себя сам. */
 void styxmuxfree(StyxMux *);
-/* EN/RU: Nonwaiting pipe signal while holding engine owner or bound cancel token.
- * Сигнал pipe без ожидания при owner ref либо bound cancel token. */
+/* EN/RU: Nonwaiting PHY interrupt while holding engine owner or bound cancel token.
+ * Сигнал PHY без ожидания при owner ref либо bound cancel token. */
 void styxmuxwake(StyxMux *);
 /* EN/RU: Cancel binding retains token until unbind; only one admitted flight per token, never reuse.
  * Bind удерживает token до unbind; только один flight на token. */
@@ -77,7 +77,7 @@ void styxcancelend(StyxCancel *cancel);
 int styxmuxkeepalive(StyxMux *, unsigned, unsigned, unsigned);
 
 
-/* EN/RU: Local streaming capability requires live fd owner with at least two RPC slots.
- * Local streaming capability требует live fd owner минимум с двумя RPC slots. */
+/* EN/RU: Local streaming capability requires live carrier owner with at least two RPC slots.
+ * Local streaming capability требует live carrier owner минимум с двумя RPC slots. */
 int styxmuxwatchable(StyxMux *mux);
 #endif

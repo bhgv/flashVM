@@ -39,10 +39,10 @@ typedef struct StyxMovieMonitorState
 
 /* EN/RU: Walk/open relative control file on session's exact granted connection, start owned reader/NULL.
  * Borrow session/path/input through return; retain session on success, native setup may block.
- * Requires watchable fd client with >=2 RPC slots and one exclusive input owner; opens read-only.
+ * Requires watchable native PHY client with >=2 RPC slots and one exclusive input owner; opens read-only.
  * No dial, authority lookup or implicit fallback. Failure unclaims input and preserves caller ownership; transport errors keep ordinary link behavior.
  * Пройти/open relative control на connection session; свой reader/NULL, retain session при success.
- * Native setup может блокировать; нужен watchable fd client, >=2 RPC slots, exclusive input owner. */
+ * Native setup может блокировать; нужен watchable native PHY client, >=2 RPC slots, exclusive input owner. */
 StyxMovieMonitor *styxmoviecontrolstart(StyxMovieSession *session, const char *relative,
     const StyxMovieInput *input);
 

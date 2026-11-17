@@ -24,7 +24,7 @@ Native SDK теперь сам читает управляющий поток в
 | [`styxmoviesessionretain/free`](receiver.h) | Explicit session owners; the last owner detaches its terminal watch. / Явные owners сессии. |
 
 Setup performs native Twalk/Topen and may block. It requires an already authorized,
-watchable native fd client with **at least two RPC slots**. One pending watch read
+watchable native PHY client with **at least two RPC slots**. One pending watch read
 uses a slot; resource fetches, other RPC and heartbeat continue on the same native
 connection. Legacy serialized transports and insufficient quotas refuse before
 control I/O. The monitor does not dial, authenticate, install paths, or grant access
@@ -141,3 +141,8 @@ disabled. Native components use existing Linux64 SDK inputs and original
 lib9/libstyx. Runtime/FlashVM versions and Limbo interface layouts are unchanged.
 A full authenticated distributed launcher, automatic external FlashVM process
 creation and generic media/input dispatch remain further integration work.
+
+The reader's watchable client may now use an arbitrary suitable
+[`RemotePhy`](../../../remote_phy/README.md). Socket/fd is one adapter; the monitor
+does not require a network address. Its local host-readiness pipe is separate
+from the physical carrier interface.

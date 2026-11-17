@@ -2,11 +2,11 @@
  * EN: Actual heartbeat/frame algorithms under deterministic short sends and monotonic clock.
  * RU: Настоящие heartbeat/frame algorithms с deterministic short sends и monotonic clock.
  */
-#define send capture
+#define phywrite capture
 #define clock_gettime fixtureclock
 #include "../../client/heartbeat.c"
 #include "../../client/mux_loop.c"
-#undef send
+#undef phywrite
 #undef clock_gettime
 
 static double milliseconds; /* Controlled monotonic fixture clock. */
@@ -38,22 +38,22 @@ int fixtureclock(clockid_t id, struct timespec *out)
 }
 
 
-/* EN/RU: Accept at most two bytes or EAGAIN; no production send substitution.
- * Принять максимум два bytes либо EAGAIN; production send не подменяется. */
-ssize_t capture(int fd, const void *input, size_t size, int flags)
+/* EN/RU: Accept at most two bytes or EAGAIN; substitute only the native PHY write boundary.
+ * Принять максимум два bytes либо EAGAIN; подменяется только native PHY write boundary. */
+PhyTransfer capture(RemotePhy *phy, const void *input, size_t size)
 {
-    USED(fd);
-    USED(flags);
+    USED(phy);
     if (blocked)
     {
-        errno = EAGAIN;
-        return -1;
+        PhyTransfer out = {0, PHY_AGAIN, PHY_PREFIX};
+        return out;
     }
     unsigned n = size > 2 ? 2 : size;
     check(count+n <= sizeof(bytes), "output capacity");
     memcpy(bytes+count, input, n);
     count += n;
-    return n;
+    PhyTransfer out = {n, PHY_OK, PHY_PREFIX};
+    return out;
 }
 
 

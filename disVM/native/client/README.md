@@ -132,3 +132,13 @@ walk/walkfrom/open/stat with explicit single-use tokens. Long walks retain one
 logical token across MAXWELEM fragments; failed walk fids retire independently.
 Unacknowledged sent Topen poisons later open/data use, while failed Tstat leaves
 its output and fid intact. Original codecs and wire messages are unchanged.
+
+## Carrier boundary / Граница физического транспорта
+
+[`remote_phy`](../../../remote_phy/README.md) now supplies read/write/wait/wake,
+availability, connection setup and ownership through native callbacks without an
+OS-descriptor requirement. `styxclientmountphy` uses the existing multiplex/flush/
+heartbeat engine; `styxclientmountfd` adapts an already granted reliable stream fd.
+The fd path supports non-socket byte devices as well as sockets. Raw packet buses
+require suitable stream adaptation. Generic reverse RPC and symmetric logical
+9P sessions remain separate proposals, described in the carrier guide.
