@@ -148,6 +148,8 @@ DVM_LaunchHandoff *dvm_launch_request_take(DVM_LaunchRequest *request)
         handoff->group = shared->group;
         shared->group = NULL;
         handoff->provider_origin = shared->provider_origin;
+        handoff->flashvm = shared->flashvm;
+        memset(&shared->flashvm, 0, sizeof(shared->flashvm));
         shared->state = DVM_LAUNCH_TAKEN;
     }
     fvm_port_sync_unlock(shared->lock);
@@ -168,6 +170,7 @@ void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff)
     if (handoff)
     {
         dvm_namespace_release(handoff->group);
+        dvm_provider_release(handoff->flashvm.provider);
         free(handoff->arguments);
         free(handoff);
     }

@@ -200,6 +200,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 # EN/RU: Standalone native namespace SDK fixture; explicit repository sources, no sibling build dependency.
 # Standalone native namespace SDK fixture; явные sources репозитория, без sibling build dependency.
 add_library(styx_namespace_fixture STATIC
+    "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
     "${vfs}/launch/service.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
@@ -306,6 +307,12 @@ add_test(NAME vfs-bind-cancel-transaction COMMAND vfs-cancel-bind)
 set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
 
 add_executable(vfs-launch-service ../tests/launch/service.c ../tests/file-root/context.c)
+add_executable(vfs-launch-terminal ../tests/launch/terminal.c ../tests/file-root/context.c
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../flashVM/src/protocol/srecord.c")
+target_include_directories(vfs-launch-terminal PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../flashVM/include")
+target_link_libraries(vfs-launch-terminal PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-terminal COMMAND vfs-launch-terminal)
+set_tests_properties(vfs-launch-terminal PROPERTIES TIMEOUT 10)
 target_link_libraries(vfs-launch-service PRIVATE styx_namespace_fixture)
 target_link_options(vfs-launch-service PRIVATE "-Wl,--wrap=dvm_launch_request_create" "-Wl,--wrap=dvm_launch_slot_retired")
 add_test(NAME vfs-launch-service COMMAND vfs-launch-service)

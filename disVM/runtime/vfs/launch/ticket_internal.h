@@ -19,6 +19,7 @@ typedef struct LaunchShared
     DVM_LaunchDescription description; /* Immutable copied request fields. */
     unsigned char *arguments; /* Immutable owned request bytes. */
     DVM_Provider *terminal; /* Owned granted root, never retained by cancellation callbacks. */
+    DVM_TerminalChannels flashvm; /* Owned separate FlashVM channel grant until take/final retirement. */
     DVM_Cancel *cancel; /* Independent native preparation signal. */
     DVM_Changes *changes; /* Owned journal, external observers may retain it independently. */
     DVM_Namespace *group; /* Owned only in READY, detached under lock. */

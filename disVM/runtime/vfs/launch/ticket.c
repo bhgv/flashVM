@@ -19,6 +19,7 @@ static void destroy(LaunchShared *shared)
         }
         dvm_namespace_release(shared->group);
         dvm_provider_release(shared->terminal);
+        dvm_provider_release(shared->flashvm.provider);
         dvm_cancel_release(shared->cancel);
         dvm_changes_destroy(shared->changes);
         if (shared->lock)
@@ -84,7 +85,8 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
         !dvm_launch_origin_valid(&spec->terminal_origin, DVM_ORIGIN_TERMINAL) ||
         !dvm_origin_id_valid(spec->expected_provider) || !spec->module[0] ||
         !memchr(spec->module, 0, sizeof(spec->module)) || spec->argument_bytes > DVM_LAUNCH_ARGUMENT_LIMIT ||
-        (spec->argument_bytes && !spec->arguments))
+        (spec->argument_bytes && !spec->arguments) ||
+        (spec->flashvm && !dvm_terminal_channels_valid(spec->flashvm)))
     {
         return NULL;
     }
@@ -110,6 +112,18 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
         return NULL;
     }
     shared->terminal = spec->terminal;
+    if (spec->flashvm)
+    {
+        if (!dvm_provider_retain(spec->flashvm->provider))
+        {
+            destroy(shared);
+            free(ticket);
+            free(request);
+            return NULL;
+        }
+        shared->flashvm = *spec->flashvm;
+        shared->description.terminal_channels = 1;
+    }
     shared->description.policy = spec->policy;
     shared->description.terminal_origin = spec->terminal_origin;
     strcpy(shared->description.expected_provider, spec->expected_provider);

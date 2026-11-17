@@ -908,3 +908,12 @@ endpoint/review capabilities, bounded reservations, FIFO review, native readines
 and close of unfinished requests. Quota spans active reviews and capability
 retirement. The interpreter/JIT pre-init fixture uses the complete native service
 handoff; network launch and FD/FlashVM terminal proxies remain separate work.
+
+## FlashVM channel handoff / Передача каналов FlashVM (runtime0.168)
+
+[Channel capability and transport boundary](LAUNCH-TERMINAL.md) carries the existing
+FlashVM control connection through native launch admission and one-use handoff.
+One duplex endpoint or a receive/send pair and live additional bulk channels use
+ordinary provider byte I/O, independent of the launch union's ordering. Existing
+FlashVM S-record codecs remain responsible for framing. Typed init integration,
+authenticated network capability transfer and provider execution remain pending.

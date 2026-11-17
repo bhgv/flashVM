@@ -26,6 +26,11 @@ The logical name is not resolved against the host filesystem. Startup bytes have
 no assigned network encoding and grant no native/managed pointer authority.
 FD and terminal-interface capabilities are separate future transport work.
 
+Runtime0.168 adds an optional retained [FlashVM channel grant](LAUNCH-TERMINAL.md)
+to native requests and one-use handoffs; typed init and network transfer remain
+separate integration work. This supersedes the terminal-capability limitation
+above without changing the original0.166 scope or adding a graphics proxy.
+
 Creation performs no provider I/O or authentication. The trusted launch adapter
 must associate identities with authenticated granted capabilities, route only the
 provider request to the proper owner and enforce aggregate admission quotas.

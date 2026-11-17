@@ -5,6 +5,7 @@
 #ifndef DVM_LAUNCH_TICKET_H
 #define DVM_LAUNCH_TICKET_H
 #include "prepare.h"
+#include "terminal.h"
 #include "../changes.h"
 #define DVM_LAUNCH_ARGUMENT_LIMIT 65536U /* Per-request copied startup bytes, no wire format assigned. */
 typedef struct DVM_LaunchTicket DVM_LaunchTicket; /* Requester status/cancel authority only. */
@@ -37,6 +38,7 @@ typedef struct DVM_LaunchSpec
     char module[DVM_NS_PATH_LIMIT]; /* Copied nonempty terminated logical module name. */
     const void *arguments; /* Copied bounded startup bytes, never native/managed pointer authority. */
     size_t argument_bytes; /* 0..DVM_LAUNCH_ARGUMENT_LIMIT. */
+    const DVM_TerminalChannels *flashvm; /* Optional borrowed channel grant, copied/retained at creation. */
 } DVM_LaunchSpec;
 
 
@@ -49,6 +51,7 @@ typedef struct DVM_LaunchDescription
     char expected_provider[DVM_ORIGIN_ID_BYTES]; /* Expected provider installation identity. */
     char module[DVM_NS_PATH_LIMIT]; /* Logical module label, not a host pathname lookup. */
     size_t argument_bytes; /* Exact immutable startup byte count. */
+    unsigned terminal_channels; /* One when a separate FlashVM channel grant accompanies this request. */
 } DVM_LaunchDescription;
 
 
@@ -61,6 +64,7 @@ typedef struct DVM_LaunchHandoff
     DVM_LaunchDescription description; /* Owned copied immutable request metadata. */
     DVM_Origin provider_origin; /* Accepted provider association, same launch session. */
     unsigned char *arguments; /* Owned independent copy of startup bytes. */
+    DVM_TerminalChannels flashvm; /* Owned channel root, moved once at take; provider NULL when absent. */
 } DVM_LaunchHandoff;
 
 
@@ -134,8 +138,8 @@ void dvm_launch_ticket_free(DVM_LaunchTicket *ticket);
 void dvm_launch_request_free(DVM_LaunchRequest *request);
 
 
-/* EN/RU: Consume exclusive handoff, freeing remaining namespace and startup bytes; NULL allowed.
- * Consumer clears group after explicitly moving its ownership to an instance.
- * Поглотить handoff, освобождая оставшиеся group/bytes; после move group обнуляется consumer. */
+/* EN/RU: Consume exclusive handoff, freeing remaining namespace, channel pin and bytes; NULL allowed.
+ * Consumer clears group/flashvm.provider after explicitly moving their ownership to an instance.
+ * Поглотить handoff и оставшиеся group/channel pin/bytes; после move owned fields обнуляются. */
 void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff);
 #endif

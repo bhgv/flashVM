@@ -130,6 +130,11 @@ int main(void)
     strcpy(spec.module, "entry");
     spec.arguments = "args";
     spec.argument_bytes = 4;
+    DVM_TerminalChannels channels = {0};
+    channels.provider = options.terminal;
+    strcpy(channels.receive, ".");
+    strcpy(channels.send, ".");
+    spec.flashvm = &channels;
     accounting = 1;
     unsigned failures = 0;
     for (unsigned position = 1; position <= 32; position++)
