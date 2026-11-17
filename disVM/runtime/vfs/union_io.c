@@ -16,6 +16,8 @@ void dvm_union_choose(DVM_ResourcePlan *root, DVM_ResourcePlan *choice)
     if (root != choice)
     {
         DVM_ResourcePlan old = *root;
+        root->origin = choice->origin;
+        choice->origin = old.origin;
         root->names = choice->names;
         memcpy(root->relative, choice->relative, sizeof(root->relative));
         root->anchor = choice->anchor;
@@ -60,7 +62,8 @@ static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInf
         {
             create = choice;
         }
-        if (dvm_resource_raw_info(choice, &info) == FVM_OK)
+        FVM_Result status = dvm_resource_raw_info(choice, &info);
+        if (status == FVM_OK)
         {
             dvm_union_choose(plan, choice);
             plan->directory = info.directory;
@@ -73,6 +76,10 @@ static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInf
                 *output = info;
             }
             return FVM_OK;
+        }
+        if (plan->absence_only && status != FVM_NOT_FOUND && !(plan->policy & DVM_NS_AUTORWX))
+        {
+            return status;
         }
     }
     if (dvm_cancel_requested(dvm_cancel_current()))

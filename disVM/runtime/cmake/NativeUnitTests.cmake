@@ -118,3 +118,6 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host Threads::Threads)
     target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
 endif()
+
+add_test(NAME disvm_system_identity COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_system_identity.py")
+set_tests_properties(disvm_system_identity PROPERTIES TIMEOUT 30 LABELS "host-unit")

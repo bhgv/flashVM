@@ -202,7 +202,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 add_library(styx_namespace_fixture STATIC
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
-    "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
 add_executable(vfs-file-root-server ../tests/file-root/backend.c ../tests/file-root/wire.c ../tests/peer/review.c)
@@ -305,6 +305,11 @@ target_link_libraries(vfs-cancel-bind PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-bind-cancel-transaction COMMAND vfs-cancel-bind)
 set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
 
+add_executable(vfs-launch-prepare ../tests/launch/prepare.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-prepare PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-prepare COMMAND vfs-launch-prepare)
+set_tests_properties(vfs-launch-prepare PROPERTIES TIMEOUT 10)
+
 add_executable(vfs-provider-cwd ../tests/cancel/cwd.c ../tests/file-root/context.c)
 target_link_libraries(vfs-provider-cwd PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-provider-cwd COMMAND vfs-provider-cwd)
@@ -335,3 +340,6 @@ foreach(mode success cancel race racefail)
         "$<TARGET_FILE:vfs-cancel-close-queue>" "$<TARGET_FILE:control-cancel-server>" queueclose "${mode}")
     set_tests_properties(vfs-close-queue-${mode} PROPERTIES TIMEOUT 30)
 endforeach()
+
+add_test(NAME system-installation-identity COMMAND "${PYTHON_EXECUTABLE}" "${INFERNO_VFS_SUPPORT}/disVM/runtime/test_system_identity.py")
+set_tests_properties(system-installation-identity PROPERTIES TIMEOUT 30)

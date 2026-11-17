@@ -29,6 +29,7 @@ WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference 
     ("file-graft", "test_file_graft.py", ()),
     ("capture-bind", "test_capture_bind.py", ()),
     ("vfs-data-cancel", "test_vfs_data_cancel.py", ()),
+    ("launch-environment", "test_launch_environment.py", ()),
     ("provider-cwd-wait", "test_provider_cwd_wait.py", ()),
     ("provider-cwd", "test_provider_cwd.py", ()),
     ("vfs-inspection-wait", "test_vfs_inspection_wait.py", ()),

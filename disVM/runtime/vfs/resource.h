@@ -6,6 +6,7 @@
 #define DVM_VFS_RESOURCE_H
 #include "namespace.h"
 #include "provider.h"
+#include "launch/origin.h"
 #include "anchor_port.h"
 #include "disvm/native_cleanup.h"
 typedef struct DVM_Anchor DVM_Anchor; /* Native capability with independently retained users. */
@@ -16,6 +17,9 @@ typedef struct DVM_Anchor DVM_Anchor; /* Native capability with independently re
 typedef struct DVM_ResourcePlan
 {
     struct DVM_ResourcePlan *layers; /* Owned lower choices captured at the same revision. */
+    int no_native_fallback; /* Refuse implicit host paths when no granted provider/anchor remains. */
+    int absence_only; /* Launch default: lower lookup only on NOT_FOUND; explicit AUTORWX overrides. */
+    DVM_Origin origin; /* Copied selected source association, no authority. */
     unsigned policy; /* Captured union-wide OR of explicit extension flags. */
     unsigned requested_access; /* Operation intent; zero for ordinary metadata lookup. */
     unsigned mount_flags; /* Create permission for this selected mount branch. */

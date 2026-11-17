@@ -84,6 +84,7 @@ static DVM_NamespaceBinding *capture(DVM_ResourcePlan *choice, const char *on, u
     strcpy(entry->on, on);
     strcpy(entry->source, choice->names.native);
     strcpy(entry->component, !strcmp(choice->relative, ".") ? "" : choice->relative);
+    entry->origin = choice->origin;
     entry->flags = flags;
     entry->identity = preserve ? choice->layer_id : 0;
     if (!choice->provider && dvm_resource_raw_info(choice, &info) == FVM_OK && info.directory)

@@ -175,7 +175,7 @@ void Vfsnative_text(void *frame)
     DVM_ResourcePlan plan, *entry;
     size_t count, position;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_text, ret), sizeof(*call.ret));
-    if (call.revision >= 0 && call.part >= 0 && call.part <= 1 && call.offset >= 0 &&
+    if (call.revision >= 0 && call.part >= 0 && call.part <= 6 && call.offset >= 0 &&
         path(call.path, name) && dvm_resource_plan(dvm_namespace_current_group(), name, 0, &plan))
     {
         result[0] = -2;
@@ -184,7 +184,14 @@ void Vfsnative_text(void *frame)
             entry = choice(&plan, call.index, &count, &position);
             if (entry)
             {
-                if (call.part)
+                if (call.part >= 2)
+                {
+                    const char *parts[] = {entry->origin.role == DVM_ORIGIN_TERMINAL ? "1" :
+                        entry->origin.role == DVM_ORIGIN_PROVIDER ? "2" : "", entry->origin.system,
+                        entry->origin.export_id, entry->origin.session, entry->origin.nickname};
+                    strcpy(text, parts[call.part-2]);
+                }
+                else if (call.part)
                 {
                     strcpy(text, entry->relative);
                 }

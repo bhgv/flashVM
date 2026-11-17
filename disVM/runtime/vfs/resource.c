@@ -68,6 +68,10 @@ FVM_Result dvm_resource_raw_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
     {
         return dvm_provider_info(plan->provider, plan->relative, output);
     }
+    if (plan->no_native_fallback && !plan->anchor)
+    {
+        return FVM_NOT_FOUND;
+    }
     return plan->anchor ? fvm_port_anchor_info_at(dvm_anchor_port(plan->anchor), plan->relative, output)
                         : fvm_port_path_info(plan->names.native, output);
 }
@@ -87,6 +91,10 @@ dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file,
     }
     *file = NULL;
     *directory = NULL;
+    if (plan->no_native_fallback && !plan->anchor)
+    {
+        return FVM_NOT_FOUND;
+    }
     if (!strcmp(mode, "r") && dvm_resource_info(plan, &metadata) == FVM_OK && metadata.directory)
     {
         return plan->anchor ? fvm_port_directory_open_at(dvm_anchor_port(plan->anchor), plan->relative, directory)

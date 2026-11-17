@@ -884,3 +884,11 @@ Union cwd, provider-root NEWNS and provider module byte loading remain unsupport
 
 Одиночный provider cwd сохраняется после covering bind/unmount и при FORKNS.
 Подписка `/dev/sysevents` удерживается автоматически до ухода из этого cwd.
+
+## Pre-init launch environment / Окружение до init (runtime0.165)
+
+[Launch preparation and source identities](LAUNCH-ENVIRONMENT.md) adds a native
+SDK for isolated terminal-first root unions, copied `Vfsctl.origin` metadata,
+per-file reorder provenance and a persistent installation-ID provisioner.
+This is environment preparation; network launch, FD/terminal proxies and remote
+module execution are still separate work. No local provider-image loader is added.

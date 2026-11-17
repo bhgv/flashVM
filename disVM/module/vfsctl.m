@@ -37,6 +37,26 @@ Vfsctl: module
     };
 
 
+    Terminal: con 1; # Resource supplied by this launch's terminal.
+    ExecutionProvider: con 2; # Resource supplied by this launch's execution provider.
+
+
+    # EN/RU: Copied provenance, not credentials or authority; role is relative to this launch.
+    # Copied provenance без authority; role относится к данному запуску.
+    Origin: adt
+    {
+        role: int; # Terminal or ExecutionProvider.
+        systemid, exportid, sessionid: string; # Canonical opaque identities.
+        nickname: string; # Display name only, never authority.
+    };
+
+
+    # EN/RU: Inspect provenance at an already observed nonnegative namespace revision; no provider I/O.
+    # Return Ready/nil for an unannotated route, Stale/nil on revision race, Error/nil on refusal.
+    # Читать provenance по уже известной revision без provider I/O; Ready/nil — без метки.
+    origin: fn(path: string, revision: big, index: int): (int,ref Origin);
+
+
     # EN/RU: Load native service once before sharing this module; raise on missing service.
     # Загрузить native service до sharing module; raise при отказе.
     init: fn();

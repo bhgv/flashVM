@@ -134,3 +134,26 @@ move(path: string, revision, id: big, index: int): int
 {
     return native->move(path, revision, id, index);
 }
+
+
+
+# EN/RU: Copy source text at one caller-supplied revision without metadata or rights callbacks.
+# Скопировать provenance по заданной revision без metadata/rights callbacks.
+origin(path: string, revision: big, index: int): (int,ref Origin)
+{
+    if (revision < big 0) {
+        return (Error, nil);
+    }
+    values := array[5] of string;
+    for (i := 0; i < len values; i++) {
+        (status, value) := text(path, revision, index, i+2);
+        if (status != Ready) {
+            return (status, nil);
+        }
+        values[i] = value;
+    }
+    if (values[0] == "") {
+        return (Ready, nil);
+    }
+    return (Ready, ref Origin(int values[0], values[1], values[2], values[3], values[4]));
+}

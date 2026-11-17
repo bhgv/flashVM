@@ -105,6 +105,10 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     copy = dvm_namespace_create(group->root, group->cwd, group->load_directory);
     if (copy)
     {
+        copy->no_native_fallback = group->no_native_fallback;
+        copy->absence_only = group->absence_only;
+        copy->cwd_origin = group->cwd_origin;
+        copy->load_origin = group->load_origin;
         copy->next_binding = group->next_binding;
         copy->cwd_identity = group->cwd_identity;
         memcpy(copy->cwd_source, group->cwd_source, sizeof(copy->cwd_source));

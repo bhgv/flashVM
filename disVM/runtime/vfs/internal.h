@@ -14,6 +14,7 @@
  * Один точный virtual prefix и сохранённый host source; владелец — группа. */
 typedef struct DVM_NamespaceBinding
 {
+    DVM_Origin origin; /* Copied launch source provenance, preserved through bind/move. */
     uint64_t head_identity; /* Stable mount-head identity across stack changes/replacement. */
     uint64_t identity; /* Group-local layer identity; never reused. */
     unsigned flags; /* Inferno mount ordering/create flags. */
@@ -30,6 +31,10 @@ typedef struct DVM_NamespaceBinding
  * Все изменяемые поля защищены lock; managed pointers/GC roots отсутствуют. */
 struct DVM_Namespace
 {
+    int no_native_fallback; /* Removing all grants must not expose implicit host paths. */
+    int absence_only; /* Isolated launch lookup policy, copied with namespace. */
+    DVM_Origin cwd_origin; /* Provenance of retained cwd. */
+    DVM_Origin load_origin; /* Provenance of retained import base. */
     DVM_NoticeHub *notices; /* Native namespace mutation push, never called under group lock. */
     FVM_PortSync *lock;                     /* Group-local mutex; never held across host I/O. */
     size_t references;                      /* Owning native references, including each resident. */

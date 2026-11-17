@@ -432,3 +432,8 @@ Sys.chdir with native acquisition/commit cancellation, sticky relative lookup,
 namespace copies and automatic cwd-source events after unmount. The native suite
 has269 cases. Union cwd, provider-root NEWNS and provider module byte loading
 remain explicit refusals; no native-path fallback is added.
+
+[Pre-init launch preparation](../runtime/LAUNCH-ENVIRONMENT.md), runtime0.165,
+constructs an isolated namespace from two granted live roots, terminal first.
+Source identity survives bind/move/copy and is available through Vfsctl.origin.
+The SDK does not yet perform network launch, FD transfer or remote module calls.

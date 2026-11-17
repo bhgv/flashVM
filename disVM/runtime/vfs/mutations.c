@@ -8,13 +8,13 @@
 #include <string.h>
 
 
-/* EN/RU: Borrow group/validated plan and mutually exclusive anchor/provider plus bounded component.
+/* EN/RU: Borrow group/validated plan, anchor/provider, bounded component and optional copied origin.
  * Retain separate cwd/import owners before locking. Return1 commit,0 stale,-1 refusal;
  * cancellation/revision/identity exhaustion prevents commit; displaced owners retire unlocked.
  * Заимствовать group/plan и anchor/provider с bounded component. Удержать cwd/import до lock;
  * вернуть1/0/-1, отмена/исчерпание не меняет состояние, старые owners освободить вне lock. */
 static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan, DVM_Anchor *anchor,
-                            DVM_Provider *provider, const char *component)
+                            DVM_Provider *provider, const char *component, const DVM_Origin *origin)
 {
     int result = 0;
     DVM_Anchor *old_cwd = NULL, *old_load = NULL;
@@ -56,6 +56,12 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
             old_load = group->load_anchor;
             old_cwd_provider = group->cwd_provider;
             old_load_provider = group->load_provider;
+            memset(&group->cwd_origin, 0, sizeof(group->cwd_origin));
+            if (origin)
+            {
+                group->cwd_origin = *origin;
+            }
+            group->load_origin = group->cwd_origin;
             group->cwd_identity = provider ? ++group->next_binding : 0;
             group->cwd_provider = provider;
             group->load_provider = provider;
@@ -94,7 +100,7 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
  * Чистый path commit для native unit clients; см. namespace.h. */
 int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
 {
-    return change_directory(group, plan, NULL, NULL, "");
+    return change_directory(group, plan, NULL, NULL, "", NULL);
 }
 
 
@@ -104,18 +110,21 @@ int dvm_namespace_chdir_resource(DVM_Namespace *group, DVM_ResourcePlan *plan)
 {
     return plan->created || plan->created_provider ?
         change_directory(group, &plan->names, plan->created, plan->created_provider,
-                         plan->created_provider ? plan->created_component : "") : -1;
+                         plan->created_provider ? plan->created_component : "", &plan->origin) : -1;
 }
 
 
-/* EN/RU: See namespace.h; allocate before locking and free displaced record after.
- * См. namespace.h; выделить до mutex, освободить заменённую запись после mutex. */
+/* EN/RU: Borrow group, frozen source/target, provider/anchor, component and optional origin.
+ * Copy provenance and retain resources before locking; return1/0/-1 commit/stale/refusal.
+ * Displaced references retire outside lock; no provider I/O under namespace mutex.
+ * Заимствовать group/source/target/provider/anchor/component/origin; копировать provenance,
+ * удержать resources до lock, вернуть1/0/-1; старые refs освобождаются вне lock. */
 static int bind_selection(DVM_Namespace *group,
                                 const DVM_NamespacePlan *source,
                                 const DVM_NamespacePlan *target,
                                 DVM_Provider *provider,
                                 DVM_Anchor *anchor,
-                                const char *component)
+                                const char *component, const DVM_Origin *origin)
 {
     DVM_NamespaceBinding *entry = calloc(1, sizeof(*entry)), *old = NULL, **link;
     int result = 0;
@@ -133,6 +142,10 @@ static int bind_selection(DVM_Namespace *group,
         dvm_anchor_release(anchor);
         free(entry);
         return -1;
+    }
+    if (origin)
+    {
+        entry->origin = *origin;
     }
     entry->provider = provider;
     entry->anchor = anchor;
@@ -215,7 +228,7 @@ int dvm_namespace_unmount(DVM_Namespace *group, const DVM_NamespacePlan *target,
 int dvm_namespace_bind_resource(DVM_Namespace *group, const DVM_NamespacePlan *source,
                                 const DVM_NamespacePlan *target, DVM_Anchor *anchor, const char *component)
 {
-    return bind_selection(group, source, target, NULL, anchor, component);
+    return bind_selection(group, source, target, NULL, anchor, component, NULL);
 }
 
 
@@ -231,7 +244,7 @@ int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *
     }
     source = *target;
     memcpy(source.native, label, strlen(label) + 1);
-    return bind_selection(group, &source, target, provider, NULL, "");
+    return bind_selection(group, &source, target, provider, NULL, "", NULL);
 }
 
 
@@ -247,14 +260,14 @@ int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *so
     if (dvm_provider_bindable_at(source->provider, source->relative))
     {
         return bind_selection(group, &source->names, target, source->provider, NULL,
-                              !strcmp(source->relative, ".") ? "" : source->relative);
+                              !strcmp(source->relative, ".") ? "" : source->relative, &source->origin);
     }
     DVM_Provider *root = dvm_provider_capture(source->provider, source->relative);
     if (!root)
     {
         return -1;
     }
-    int result = bind_selection(group, &source->names, target, root, NULL, "");
+    int result = bind_selection(group, &source->names, target, root, NULL, "", &source->origin);
     dvm_provider_release(root);
     return result;
 }

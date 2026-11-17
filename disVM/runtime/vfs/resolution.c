@@ -147,6 +147,7 @@ static int resolve(
     if (result && whole && best)
     {
         DVM_ResourcePlan **tail = &whole->layers;
+        whole->origin = best->origin;
         whole->head_id = best->head_identity;
         whole->mount_flags = best->flags;
         whole->policy = best->flags & DVM_NS_AUTORWX;
@@ -164,6 +165,8 @@ static int resolve(
                 result = 0;
                 break;
             }
+            choice->no_native_fallback = group->no_native_fallback;
+            choice->origin = binding->origin;
             choice->names = *names;
             choice->mount_flags = binding->flags;
             whole->policy |= binding->flags & DVM_NS_AUTORWX;
@@ -190,6 +193,15 @@ static int resolve(
         }
         whole->mount_root = !strcmp(names->path, best->on);
         whole->union_root = whole->layers && whole->mount_root;
+    }
+    if (result && whole)
+    {
+        whole->no_native_fallback = group->no_native_fallback;
+        whole->absence_only = group->absence_only;
+        if (!best && sticky)
+        {
+            whole->origin = module ? group->load_origin : group->cwd_origin;
+        }
     }
     fvm_port_sync_unlock(group->lock);
     return result;

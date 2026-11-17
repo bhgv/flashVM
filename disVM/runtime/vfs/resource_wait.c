@@ -22,6 +22,11 @@ int dvm_resource_anchor_wait(DVM_ResourcePlan *plan, int directory, char *compon
     const char *path = plan->anchor ? plan->relative : plan->names.native;
     int released;
     component[0] = 0;
+    if (plan->no_native_fallback && !plan->provider && !plan->anchor)
+    {
+        kwerrstr("no granted directory resource");
+        return 0;
+    }
     if (plan->provider)
     {
         kwerrstr("provider directory anchors are unsupported");

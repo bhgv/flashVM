@@ -9,7 +9,7 @@ Vfsnative: module
     # Читать copied card; revision=-1 captures current, stale=-2; no pointer results.
     layer: fn(path: string, revision: big, index: int): (int,big,big,big,int,int,int,int,int,int,int,int);
 
-    # EN/RU: Read virtual mount point(part0) or capability-relative path(part1), one UTF-8 byte.
+    # EN/RU: Read mount0/relative1 or launch role2/system3/export4/session5/nickname6, one UTF-8 byte.
     # Читать byte: status1/byte,0/end,-2/stale,-1/error. Never host absolute source paths.
     text: fn(path: string, revision: big, index, part, offset: int): (int,int);
 
