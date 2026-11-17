@@ -207,6 +207,14 @@ static const DVM_VfsOps streamops = {NULL, readfile, writefile, NULL, NULL, clos
 static FVM_Result openfile(void *opaque, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     (void)mode;
+    if (!strcmp(path, "openhold") || !strcmp(path, "openack"))
+    {
+        held();
+        if (!strcmp(path, "openhold"))
+        {
+            return FVM_ERROR;
+        }
+    }
     FVM_FileInfo meta;
     if (info(opaque, path, &meta) != FVM_OK || meta.directory)
     {
@@ -336,7 +344,7 @@ int __wrap_dvm_vfs_path_enter(DVM_VfsWait **wait)
 void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
-    check(started == 17 && released == started && opened == closed && created == destroyed && acknowledgements == 3,
+    check(started == 21 && released == started && opened == closed && created == destroyed && acknowledgements == 3,
           "capture/bind lifetime or committed acknowledgement");
     puts("PASS native VFS acquire wait ownership and committed results");
 }

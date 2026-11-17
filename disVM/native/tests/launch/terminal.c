@@ -90,7 +90,8 @@ static const DVM_VfsOps stream = {NULL, read_bytes, write_bytes, NULL, NULL, clo
 static FVM_Result open_bytes(void *opaque, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     Connection *connection = opaque;
-    (void)mode;
+    launch_check(!strcmp(mode, "r") || !strcmp(mode, "wo") || !strcmp(mode, "rw"),
+        "channel factory received a creating/truncating or non-Inferno mode");
     if (connection->denied)
     {
         return FVM_ERROR;

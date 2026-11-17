@@ -917,3 +917,12 @@ One duplex endpoint or a receive/send pair and live additional bulk channels use
 ordinary provider byte I/O, independent of the launch union's ordering. Existing
 FlashVM S-record codecs remain responsible for framing. Typed init integration,
 authenticated network capability transfer and provider execution remain pending.
+
+## Typed terminal entry / Типизированный terminal init (runtime0.169)
+
+[Terminal Session and capability FD opening](TERMINAL-INIT.md) adds generic
+`Terminalcmd.init(session, args)`, the pure Limbo Terminal helper and direct
+`Vfsexport.open(root, relative, mode)`. Actual interpreter/JIT applications use
+duplex or paired FlashVM streams and live extra channels after source unmount.
+Native mode conversion uses existing Inferno provider modes without truncation.
+Network launch and automatic host handoff import remain separate integration.

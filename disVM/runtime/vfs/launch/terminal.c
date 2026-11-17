@@ -68,7 +68,7 @@ FVM_Result dvm_terminal_channel_open(const DVM_TerminalChannels *channels, const
     const char *mode, DVM_VfsHandle *out)
 {
     if (!dvm_terminal_channels_valid(channels) || !relative(path, DVM_NS_PATH_LIMIT) ||
-        !mode || (strcmp(mode, "r") && strcmp(mode, "w") && strcmp(mode, "r+")) ||
+        !mode || (strcmp(mode, "r") && strcmp(mode, "w") && strcmp(mode, "r+") && strcmp(mode, "rw")) ||
         !out || out->ops || out->state)
     {
         return FVM_INVALID_ARGUMENT;
@@ -77,5 +77,6 @@ FVM_Result dvm_terminal_channel_open(const DVM_TerminalChannels *channels, const
     {
         return FVM_ERROR;
     }
-    return dvm_provider_open(channels->provider, path, mode, out);
+    const char *native_mode = !strcmp(mode, "r") ? "r" : !strcmp(mode, "w") ? "wo" : "rw";
+    return dvm_provider_open(channels->provider, path, native_mode, out);
 }

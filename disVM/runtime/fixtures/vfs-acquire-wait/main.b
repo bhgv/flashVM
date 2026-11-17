@@ -76,8 +76,20 @@ child(kind: int, ready, done: chan of int)
         result = stack->bind("remote/fast", "target", Vfsctl->MREPL, 0);
     11 =>
         result = sys->bind("remote/metahold", "legacy", 0);
+    12 or 13 =>
+        path := "openhold";
+        if (kind == 13) {
+            path = "openack";
+        }
+        fd := api->open(root, path, Sys->OREAD);
+        if (kind == 13) {
+            check(fd != nil, "acknowledged capability open lost to cancellation");
+            result = 0;
+        } else {
+            check(fd == nil, "cancelled capability open published FD");
+        }
     }
-    if (kind >= 7 && kind < 11) {
+    if ((kind >= 7 && kind < 11) || kind == 13) {
         check(result == 0, "committed namespace result lost to cancellation");
     } else {
         check(result == -1, "cancelled acquisition falsely succeeded");
@@ -122,14 +134,22 @@ init()
     ready := chan of int;
     done := chan of int;
     for (terminate := 0; terminate < 2; terminate++) {
-        for (kind := 0; kind < 5; kind++) {
-            spawn child(kind, ready, done);
+        for (kind := 0; kind < 7; kind++) {
+            operation := kind;
+            if (kind >= 5) {
+                operation = kind+7;
+            }
+            spawn child(operation, ready, done);
             pid := <-ready;
             watch(observer);
             if (terminate) {
                 check(ctl->killwait(pid) == Processctl->Retired, "kill admitted acquisition");
             } else {
-                check(ctl->cancelwait(pid) == Processctl->Cancelled && <-done == -1 &&
+                expected := -1;
+                if (operation == 13) {
+                    expected = 0;
+                }
+                check(ctl->cancelwait(pid) == Processctl->Cancelled && <-done == expected &&
                       ctl->killwait(pid) == Processctl->Retired, "cancel admitted acquisition");
             }
             target(int 'T');

@@ -6,6 +6,12 @@
 #include "filesystem_port.h"
 
 
+/* EN/RU: Reserve/publish one native descriptor for borrowed path/mode/selection; FD/-1.
+ * ACTIVE owner keeps selection pinned through native admission; no namespace re-resolution.
+ * Занять/выдать descriptor для borrowed selection; FD/-1, ACTIVE owner удерживает source. */
+int dvm_runtime_open_selected(const char *path, const char *mode, int asynchronous, DVM_ResourcePlan *selected);
+
+
 /* Snapshot borrowed UTF-8 path before optionally releasing the active heap.
  * mode is an immutable native r/w/wx literal. file/directory are native caller
  * cells receiving one owned handle or NULL. No descriptor-table access occurs

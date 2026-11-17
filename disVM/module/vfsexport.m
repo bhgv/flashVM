@@ -22,6 +22,10 @@ Vfsexport: module
     Ticket: adt { reserved: int; }; # One requester result/cancellation capability.
     Request: adt { reserved: int; }; # Immutable owner-side copied request and publisher identity.
 
+    # EN/RU: Open canonical relative name directly on root; modes OREAD/OWRITE/ORDWR, no creation.
+    # Открыть relative name без namespace lookup; owned FD/nil, без create/truncate/fallback.
+    open: fn(root: ref Root, path: string, mode: int): ref Sys->FD;
+
     # EN/RU: Capture one effective signed layer from own namespace; rights1..7; nil on refusal.
     # Захватить один effective layer по signed index; не весь набор descendant bind.
     capture: fn(path: string, index, rights: int): ref Root;

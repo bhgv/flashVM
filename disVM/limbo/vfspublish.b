@@ -2,6 +2,7 @@
 # EN: One-request UTF-8 publication reader; no native polling loop or foreign guest callback.
 # RU: One-request UTF-8 publication reader; без native polling loop и foreign guest callback.
 implement Vfspublish;
+include "sys.m";
 include "vfspublish.m";
 api: Vfsexport; # Immutable loaded builtin after init.
 

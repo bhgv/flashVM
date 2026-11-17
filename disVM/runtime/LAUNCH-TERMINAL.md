@@ -1,5 +1,10 @@
 # FlashVM channels at launch / Каналы FlashVM при запуске (runtime0.168)
 
+Runtime0.169 adds [typed application init and capability FD opening](TERMINAL-INIT.md).
+The native helper now accepts `rw` as well as `r+` and sends provider modes
+`r/wo/rw` without creation/truncation. Original0.168 integration limits below
+are superseded only as described in that follow-up.
+
 The terminal argument supplied to a module's `init` represents the existing
 FlashVM communication channel, or a receive/send pair. A provider uses its local
 FlashVM through the same channel model. Moving the FlashVM endpoint to the

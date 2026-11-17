@@ -55,7 +55,7 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
  * RU: Занять слот под мьютексом реестра, затем открыть вне мьютекса.
  * path/mode заимствованы; asynchronous выбирает Sys. Вернуть дескриптор либо -1.
  * До публикации и при откате слот остаётся занят своим шлюзом. */
-static int open_selected(const char *path, const char *mode, int asynchronous, DVM_ResourcePlan *selected)
+int dvm_runtime_open_selected(const char *path, const char *mode, int asynchronous, DVM_ResourcePlan *selected)
 {
     int index;
     DVM_FileGate *gate = dvm_file_gate_create();
@@ -109,7 +109,7 @@ static int open_selected(const char *path, const char *mode, int asynchronous, D
  * Обычный Sys open захватывает свой selection; path/mode заимствованы. FD/-1. */
 static int open_file_mode(const char *path, const char *mode, int asynchronous)
 {
-    return open_selected(path, mode, asynchronous, NULL);
+    return dvm_runtime_open_selected(path, mode, asynchronous, NULL);
 }
 
 
@@ -117,7 +117,7 @@ static int open_file_mode(const char *path, const char *mode, int asynchronous)
  * Сохранить выбранную identity каталога при module I/O; вернуть FD/-1. */
 int dvm_namespace_module_open(DVM_ResourcePlan *input)
 {
-    return input ? open_selected(input->names.native, "r", 0, input) : -1;
+    return input ? dvm_runtime_open_selected(input->names.native, "r", 0, input) : -1;
 }
 
 

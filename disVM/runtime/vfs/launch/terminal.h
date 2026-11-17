@@ -26,10 +26,11 @@ int dvm_terminal_channels_valid(const DVM_TerminalChannels *channels);
 
 
 /* EN/RU: Open a named channel on the pinned root into empty owned out; native-only, may block.
- * Borrow descriptor/path/mode through return; canonical relative path, mode r/w/r+ only.
+ * Borrow descriptor/path/mode through return; canonical relative path, mode r/w/r+/rw only.
+ * Provider receives r/wo/rw respectively: existing streams, no create/truncate.
  * Control and dynamically added bulk/stream nodes use the same operation; no framing/retry.
  * Current cancellation reaches opted-in provider; pre-cancel refuses before I/O.
- * Открыть канал в empty owned out; native blocking, borrowed inputs, mode r/w/r+.
+ * Открыть канал в empty owned out; native blocking, borrowed inputs, mode r/w/r+/rw.
  * Control/bulk/stream используют один API; без framing/retry, pre-cancel до I/O. */
 FVM_Result dvm_terminal_channel_open(const DVM_TerminalChannels *channels, const char *path,
     const char *mode, DVM_VfsHandle *out);
