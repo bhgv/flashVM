@@ -90,6 +90,18 @@ changing the 9P client. The [PTY acceptance wrapper](../disVM/native/tests/phy/l
 limits reads to3 and writes to2 bytes, forwards native interrupts, and injects a
 precise terminal-prefix error. It is a test adapter, not a radio reliability stack.
 
+## Default and optional sessions / Обычный и дополнительный режим
+
+The default is one ordinary Styx session: use `styxclientmountphy` and
+`styxphyinit` directly on the carrier. Replies and pending event Treads already
+provide return traffic. No P9MX queues, pump or framing are created on this path.
+
+Two opposite sessions require the **separate explicit `phymuxcreate` call at both
+peers**; see [mode selection](mux/README.md#explicit-opt-in--явное-включение).
+The client's outstanding-request limit and heartbeat do not activate this mode.
+There is no automatic upgrade of an ordinary stream. Most applications can keep
+the ordinary path; mutual VFS requests are the reason to opt into the extension.
+
 ## Bidirectional requests / Двусторонние обращения
 
 Standard 9P is a bidirectional byte connection with **client T-requests and

@@ -14,6 +14,36 @@ Inferno peer uses its ordinary stream directly, without this adapter.
 The exact frame layout, credit invariants and failure rules are documented in
 [WIRE.md](WIRE.md).
 
+## Explicit opt-in / Явное включение
+
+Ordinary single-session Styx is the default for applications. Pass the connected
+carrier directly to `styxclientmountphy` on the client and `styxphyinit` on its
+server. Neither constructor creates this mux, sends P9MX frames, starts its pump
+or allocates its queues. Their existing RPC concurrency and heartbeat options do
+not enable reverse sessions.
+
+| Mode | Explicit construction | Request initiators |
+| --- | --- | --- |
+| Ordinary, default | Direct carrier to the ordinary Styx constructor | Client sends T-requests; server returns R-replies. |
+| Two opposite sessions, opt-in | `phymuxcreate` at both peers, then ordinary Styx constructors on its channels | Each peer has its own client and server. |
+
+Для большинства применений достаточно обычного режима. Отдельный вызов
+`phymuxcreate()` — точка явного включения расширения; добавлять флаг к обычному
+mount/init для этого не требуется. По умолчанию встречная сессия не создаётся.
+Настройка `limit` у клиента задаёт число одновременных запросов одной сессии,
+а не включает встречную сессию. Ожидающий Tread для событий тоже работает в
+обычном режиме и не требует P9MX.
+
+«Однонаправленный» здесь относится к инициированию запросов. Обычная 9P-сессия
+уже передаёт байты в обе стороны: T-запросы и R-ответы. Две встречные сессии нужны,
+когда обе стороны должны самостоятельно обращаться к опубликованной VFS другой.
+
+There is no automatic upgrade or protocol sniffing. Configure both peers before
+starting the carrier's protocol owner. Opt-in framing does not itself publish
+anything or authorize reverse mounts. Any future remote-launch integration must
+retain ordinary mode as the default and require an explicit selection for the
+opposite-session setup; that launch option is not implemented yet.
+
 ## Roles and API / Роли и API
 
 | Channel | Endpoint A | Endpoint B |

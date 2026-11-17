@@ -42,9 +42,11 @@ StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const ch
 
 /* EN/RU: Consume owned connected reliable ordered byte-stream PHY on every outcome; owned client/NULL.
  * Uses the same native multiplex/heartbeat/cancel engine as mountfd, with no fd requirement.
+ * Ordinary single 9P session: limit bounds outstanding RPCs, never enables P9MX/reverse sessions.
  * Driver callbacks remain native-only; stream adaptations must precede this admission boundary.
  * Принять connected reliable ordered stream PHY всегда; свой client/NULL, общий native engine,
- * без fd requirement; packet/reliability adaptations должны предшествовать этому уровню. */
+ * без fd requirement; limit ограничивает RPC одной сессии, не включает P9MX.
+ * Packet/reliability adaptations должны предшествовать этому уровню. */
 StyxClient *styxclientmountphy(RemotePhy *phy, unsigned msize, const char *user, const char *name,
     unsigned timeout, unsigned limit);
 

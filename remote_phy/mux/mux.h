@@ -13,9 +13,12 @@ typedef struct PhyMux PhyMux; /* Owned native pump, never a VFS authority. */
 
 /* EN: Consume connected reliable ordered stream on every outcome; owned mux/NULL.
  * capacity1024..1048576 bounds EACH direction of EACH channel. Starts one native
- * I/O owner. Both peers must explicitly choose P9MX v1; no probing/fallback/auth.
+ * I/O owner. This separate constructor explicitly opts into two logical streams.
+ * Ordinary Styx client/server constructors never call it or upgrade a live stream.
+ * Both peers must explicitly choose P9MX v1; no probing/fallback/auth.
  * RU: Поглотить carrier всегда; свой mux/NULL. capacity ограничивает каждую очередь,
- * один native I/O owner; оба конца явно выбирают P9MX v1, без автодетекта/авторизации. */
+ * один native I/O owner. Только этот отдельный constructor включает два logical streams;
+ * обычные Styx constructors не включают его. Оба конца явно выбирают P9MX v1. */
 PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity);
 
 

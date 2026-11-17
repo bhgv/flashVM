@@ -17,8 +17,10 @@ typedef struct StyxPhyWake StyxPhyWake; /* Owned native readiness pin, no server
  * Fresh zeroed server/borrowed ops; native owner serializes init/wait/process/reply/end.
  * queued_frames1..128 bounds encoded reply storage; no socket/listener/dial/authentication added.
  * Link infernostyx_phy instead of the original POSIX backend; original 9P API/codecs remain intact.
+ * Ordinary single-session server: never creates P9MX or a reverse client.
  * Принять connected reliable ordered PHY всегда; NULL success/error string. Server zeroed,
- * ops borrowed; один native owner. queued_frames1..128, без socket/listener/dial/new authority. */
+ * ops borrowed; один native owner. queued_frames1..128, без socket/listener/dial/new authority.
+ * Обычный server одной сессии; не создаёт P9MX или встречного клиента. */
 char *styxphyinit(struct Styxserver *server, struct Styxops *ops, RemotePhy *phy,
     int permissions, int needfile, unsigned queued_frames);
 
