@@ -21,7 +21,7 @@ remains a compatibility adapter; `styxclientmountphy` accepts a custom carrier.
 | VFS/namespace | Visible names, live provider stacks and actual rwx access. / Видимость и права. | Existing DisVM capability/union rules unchanged. |
 | 9P/Styx | Files, fids, request tags, T/R transactions and Tflush. / Файловые операции. | Original lib9/libstyx codecs; native client and alternative original server use PHY. |
 | Control S-records | Typed announcements, events and application messages. / Управляющие записи. | Existing outbox/monitor; no new wire tags here. |
-| Stream/logical adapters | Framing, ordered reliable delivery, reassembly, logical-channel arbitration as needed. / Адаптация носителя. | Contract and composable driver wrappers; general packet/reliable tunnel and symmetric session mux are future work. |
+| Stream/logical adapters | Framing, ordered reliable delivery, reassembly, logical-channel arbitration as needed. / Адаптация носителя. | Composable drivers and [two-stream native mux](mux/README.md); general packet/reliable tunnel remains future work. |
 | RemotePhy | Native read/write/wait/wake/availability/connect/disconnect and capabilities. | Implemented without OS handles in public ABI. |
 | Driver family | Device/bus/IRQ/descriptor details. / Конкретная физика. | [`drivers/posix/fd.c`](drivers/posix/fd.c); other families can be added separately. |
 
@@ -107,13 +107,13 @@ bounded server-side buffering retains pending data.
 обычный control stream. Произвольный общий обратный RPC пока не оформлен; наличие
 фонового reader само по себе не означает готовый механизм удалённого вызова.
 
-For **mutual standard VFS access**, the proposed extension is two independent
+For **mutual standard VFS access**, the [implemented optional mux](mux/README.md) provides two independent
 logical 9P sessions: A-client→B-server and B-client→A-server. Each direction has
 its own fids/tags, authentication/admission and prepared exported root. Both may
 share one physical carrier through an explicit logical-channel demultiplexer
 with one physical I/O owner. This needs no second physical port or IP listener.
-The symmetric session mux is a proposal, not implemented by this change; no new
-wire envelope is fixed here. Mixing reverse T-messages into the current ordinary
+Both peers explicitly select the P9MX v1 transport extension; ordinary 9P remains
+unchanged within each stream. This does not automatically publish/mount roots. Mixing reverse T-messages into the current ordinary
 client session would be rejected as invalid replies.
 
 For **application messages**, one granted read/write control service can carry
@@ -147,13 +147,13 @@ carrier error and reject unreliable carriers before emitting 9P bytes.
 The existing SDK's socket/multiplex/heartbeat/cancel/event/VFS and56 actual-player
 TCP cases remain enabled through the fd compatibility adapter. Full Linux64
 native SDK acceptance passes normally and under ASan/UBSan, LeakSanitizer disabled.
-Physical hardware, RF loss recovery, hardware drivers, a general logical-session
-mux and migration between physical links are not claimed tested here.
+Physical hardware, RF loss recovery, hardware drivers, dynamic channel allocation,
+hardware-backed mux and migration between physical links are not claimed tested here.
 
 The original imported POSIX server remains available as `infernostyx`.
 The [alternative original-core server backend](../disVM/native/server/phy/README.md)
 now accepts a granted carrier through `styxphyinit`, with complete-frame staging,
 bounded reply queues, producer wake pins and original deferred-read retirement.
 Select `infernostyx_phy` for that backend; no vendored code or wire message is
-changed. Hardware drivers and a symmetric logical-session mux remain subsequent
-work. Runtime/FlashVM versions and guest module interfaces are unchanged.
+changed. Hardware drivers and automatic reverse-session setup in remote Dis launches remain
+subsequent work. Runtime/FlashVM versions and guest module interfaces are unchanged.

@@ -126,8 +126,16 @@ payload or new 9P opcode is introduced.
   cleanup. The native producer deliberately signals after end before dropping
   its last context pin.
 
-All 292 Linux64 SDK tests pass normally and under ASan/UBSan, LeakSanitizer
+All 296 Linux64 SDK tests pass normally and under ASan/UBSan, LeakSanitizer
 disabled. The public header also compiles as C89 and C++98. Vendored files remain unchanged. Existing POSIX/TCP VFS and actual
 FlashVM player tests continue through their original selected backend. This does
 not claim complete FlashVM-host-over-PHY integration, hardware validation or a
 symmetric two-session mux on one physical carrier; those remain subsequent work.
+
+## Two directions on one carrier / Два направления на одном носителе
+
+The optional [native stream mux](../../../../remote_phy/mux/README.md) now supplies
+two independent carriers for a native client and this original server at each
+peer. Both sides explicitly choose the transport extension; 9P messages and
+namespace permissions stay unchanged. See its guide for roles, bounded credits,
+shutdown and actual simultaneous PTY acceptance.
