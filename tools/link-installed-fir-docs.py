@@ -52,11 +52,15 @@ def envelope_pairs(root, package):
     for path in (root / "disVM/upstream/doc").glob("dis64-*"):
         if path.is_file():
             pairs[path] = package / "docs/dis64" / path.name
-    for name in ("isa.h", "dis64.h", "dis-rune.h", "dis-string-pool.h", "dis-operand.h", "dis-layout.h", "dis64-module.h", "dis64-types.h", "dis64-code.h", "dis64-pilot.h", "dis64-scalar.h", "dis64-data.h", "dis64-signature.h", "dis64-bindings.h"):
+    for name in ("isa.h", "dis64.h", "dis-rune.h", "dis-string-pool.h", "dis-operand.h", "dis-layout.h", "dis64-module.h", "dis64-types.h", "dis64-code.h", "dis64-pilot.h", "dis64-scalar.h", "dis64-data.h", "dis64-signature.h", "dis64-bindings.h", "dis64-storage-image.h"):
         pairs[root / "disVM/upstream/include" / name] = package / "include/dis64" / name
     pairs[root / "disVM/upstream/libinterp/tests/dis64/pilot42.hex"] = package / "examples/dis64-envelope/pilot42.hex"
     pairs[root / "disVM/upstream/libinterp/tests/dis64/pilot-init42.hex"] = package / "examples/dis64-envelope/pilot-init42.hex"
     pairs[root / "disVM/upstream/utils/dis64inspect/dis64inspect.c"] = package / "source/dis64inspect.c"
+    # Preserve links into the transitive pilot headers with their relative layout.
+    # Ссылки на зависимые заголовки pilot сохраняют структуру каталогов.
+    for path in (root / "disVM/upstream/include/dis64/pilot").glob("*.h"):
+        pairs[path] = package / "include/dis64/dis64/pilot" / path.name
     return pairs
 
 
