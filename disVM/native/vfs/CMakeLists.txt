@@ -309,8 +309,8 @@ set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
 
 add_executable(vfs-launch-service ../tests/launch/service.c ../tests/file-root/context.c)
 add_executable(vfs-launch-terminal ../tests/launch/terminal.c ../tests/file-root/context.c
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../flashVM/src/protocol/srecord.c")
-target_include_directories(vfs-launch-terminal PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../flashVM/include")
+    "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/srecord.c")
+target_include_directories(vfs-launch-terminal PRIVATE "${INFERNO_VFS_SUPPORT}/flashVM/include")
 target_link_libraries(vfs-launch-terminal PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-launch-terminal COMMAND vfs-launch-terminal)
 set_tests_properties(vfs-launch-terminal PROPERTIES TIMEOUT 10)

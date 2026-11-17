@@ -2,6 +2,8 @@
 
 Copyright (c) 2026 bhgv
 
+[Managed SWF loading through real Styx/S-record VFS streams / Управляемая загрузка SWF](movie/README.md)
+
 This package imports **all of lib9 and tools/libstyx**, together with the required non-graphical headers,
 legal notices and native Linux64 support, from Inferno's `experiment` branch.
 [UPSTREAM.json](UPSTREAM.json) records the exact revision and every source hash.
