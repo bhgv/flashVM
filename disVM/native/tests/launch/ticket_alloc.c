@@ -3,7 +3,7 @@
  * RU: Cleanup конструктора и allocation refusal handoff сохраняют ownership и READY.
  */
 #include "backend.h"
-#include "../../../runtime/vfs/launch/ticket.h"
+#include "../../../runtime/vfs/launch/service.h"
 static void *live[4096]; /* Native test-owned allocation index, no allocation while tracking. */
 static int accounting; /* Only ticket/preparation/handoff allocations are recorded. */
 static unsigned allocation; /* Count only allocations during the selected controlled call. */
@@ -74,6 +74,44 @@ void *__wrap_calloc(size_t count, size_t bytes)
         return NULL;
     }
     return record(__real_calloc(count, bytes));
+}
+
+
+/* EN/RU: Inject service construction/submission refusal and require exact quota restoration.
+ * Service objects and slots remain inside the allocation/free observer interval.
+ * Проверить allocation refusal service/submit и точный возврат quota, учитывая все objects/slots. */
+static void service_failures(DVM_LaunchOptions *options, DVM_LaunchSpec *spec)
+{
+    for (unsigned position = 1; position <= 20; position++)
+    {
+        allocation = 0;
+        fail_at = position;
+        DVM_LaunchService *owner = dvm_launch_service_create(options->provider_origin.system, 1);
+        fail_at = 0;
+        dvm_launch_service_free(owner);
+    }
+    DVM_LaunchService *owner = dvm_launch_service_create(options->provider_origin.system, 1);
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(owner);
+    launch_check(owner && endpoint, "service allocation fixture");
+    for (unsigned position = 1; position <= 40; position++)
+    {
+        allocation = 0;
+        fail_at = position;
+        DVM_LaunchTicket *ticket = dvm_launch_service_submit(endpoint, spec);
+        fail_at = 0;
+        if (ticket)
+        {
+            DVM_LaunchReview *review = dvm_launch_service_next(owner);
+            launch_check(review != NULL, "submitted request lost review");
+            dvm_launch_ticket_free(ticket);
+            dvm_launch_review_free(review);
+        }
+        DVM_LaunchServiceInfo info;
+        launch_check(dvm_launch_service_info(owner, &info) && !info.outstanding && !info.queued,
+                     "failed submission leaked quota or queue entry");
+    }
+    dvm_launch_endpoint_free(endpoint);
+    dvm_launch_service_free(owner);
 }
 
 
@@ -157,6 +195,7 @@ int main(void)
     dvm_launch_ticket_free(ticket);
     dvm_launch_request_free(request);
     dvm_launch_handoff_free(handoff);
+    service_failures(&options, &spec);
     for (unsigned i = 0; i < sizeof(live)/sizeof(live[0]); i++)
     {
         launch_check(!live[i], "ticket/preparation/handoff allocation leaked");

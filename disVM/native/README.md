@@ -443,3 +443,9 @@ requester/provider capabilities, cancellable preparation and one-use environment
 handoff. Tests cover actual native waits, take/cancel races, allocator rollback
 and the real interpreter/JIT pre-init fixture. The native suite has274 cases;
 no network launcher is claimed.
+
+[Bounded launch admission](../runtime/LAUNCH-SERVICE.md), runtime0.167, connects
+request capabilities to an owner FIFO with reservations, native readiness and
+close. Tests exercise concurrent submit/close, allocation rollback, active native
+preparation cancellation and independent handoff survival. No network launch
+listener or remote module execution is claimed. The native suite has275 cases.

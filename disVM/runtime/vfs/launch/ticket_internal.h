@@ -22,6 +22,9 @@ typedef struct LaunchShared
     DVM_Cancel *cancel; /* Independent native preparation signal. */
     DVM_Changes *changes; /* Owned journal, external observers may retain it independently. */
     DVM_Namespace *group; /* Owned only in READY, detached under lock. */
+    void (*retired)(void *); /* Optional admission-slot retirement before final storage release. */
+    void (*changed)(void *); /* Optional native journal forwarding, outside request mutex. */
+    void *context; /* Native admission slot only, never a guest pointer. */
     DVM_Origin provider_origin; /* Written once before READY publication. */
 } LaunchShared;
 
@@ -50,6 +53,16 @@ static inline int dvm_launch_root_cancellable(DVM_Provider *root)
     return (flags & DVM_PROVIDER_CANCEL_PATH) && (dvm_provider_bindable_at(root, ".") ||
         (dvm_provider_capturable(root) && (flags & DVM_PROVIDER_CANCEL_CAPTURE)));
 }
+
+
+/* EN/RU: Retain a live shared record under an external index lifetime guard;1/0 on finalizing/overflow.
+ * Удержать live record под external index lifetime guard;1/0 при finalizing/overflow. */
+int dvm_launch_shared_retain(LaunchShared *shared);
+
+
+/* EN/RU: Terminate unfinished shared request; signals/cleanup outside mutex,1 changed/0 terminal.
+ * Завершить unfinished request, signals/cleanup вне mutex;1/0. */
+int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state);
 
 
 /* EN/RU: Consume shared ref after wrapper stops using it, freeing last owners outside lock.

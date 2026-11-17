@@ -13,6 +13,10 @@ static void destroy(LaunchShared *shared)
 {
     if (shared)
     {
+        if (shared->retired)
+        {
+            shared->retired(shared->context);
+        }
         dvm_namespace_release(shared->group);
         dvm_provider_release(shared->terminal);
         dvm_cancel_release(shared->cancel);
@@ -24,6 +28,21 @@ static void destroy(LaunchShared *shared)
         free(shared->arguments);
         free(shared);
     }
+}
+
+
+/* EN/RU: See internal header; finalizing records cannot regain references.
+ * См. internal header; finalizing records не получают новые references. */
+int dvm_launch_shared_retain(LaunchShared *shared)
+{
+    fvm_port_sync_lock(shared->lock);
+    int live = shared->references && shared->references != (unsigned)-1;
+    if (live)
+    {
+        shared->references++;
+    }
+    fvm_port_sync_unlock(shared->lock);
+    return live;
 }
 
 
@@ -46,6 +65,10 @@ void dvm_launch_shared_drop(LaunchShared *shared)
 void dvm_launch_shared_changed(LaunchShared *shared)
 {
     changespost(shared->changes, DVM_CHANGE_CONNECTION, 0, 0);
+    if (shared->changed)
+    {
+        shared->changed(shared->context);
+    }
 }
 
 
@@ -163,7 +186,7 @@ DVM_Changes *dvm_launch_observe(DVM_LaunchTicket *ticket)
 /* EN/RU: Terminate a borrowed shared request before take; clear prepared group atomically.
  * Terminal state is CANCELLED or DENIED; signals/destruction/notifications run unlocked.
  * Завершить shared request до take, убрать group атомарно; signals/cleanup/notices вне lock. */
-static int terminate(LaunchShared *shared, DVM_LaunchState state)
+int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
 {
     DVM_Namespace *group = NULL;
     fvm_port_sync_lock(shared->lock);
@@ -190,7 +213,7 @@ static int terminate(LaunchShared *shared, DVM_LaunchState state)
  * См. ticket.h; requester не получает prepare/take authority. */
 int dvm_launch_ticket_cancel(DVM_LaunchTicket *ticket)
 {
-    return ticket ? terminate(ticket->shared, DVM_LAUNCH_CANCELLED) : 0;
+    return ticket ? dvm_launch_shared_terminate(ticket->shared, DVM_LAUNCH_CANCELLED) : 0;
 }
 
 
@@ -198,7 +221,7 @@ int dvm_launch_ticket_cancel(DVM_LaunchTicket *ticket)
  * См. ticket.h; provider отклоняет unfinished work без guest execution. */
 int dvm_launch_request_refuse(DVM_LaunchRequest *request)
 {
-    return request ? terminate(request->shared, DVM_LAUNCH_DENIED) : 0;
+    return request ? dvm_launch_shared_terminate(request->shared, DVM_LAUNCH_DENIED) : 0;
 }
 
 

@@ -3,7 +3,7 @@
  * RU: Настоящая concurrent отмена подготовки, outer-source forwarding и callback retirement.
  */
 #include "backend.h"
-#include "../../../runtime/vfs/launch/ticket.h"
+#include "../../../runtime/vfs/launch/service.h"
 #include <pthread.h>
 static pthread_mutex_t gate = PTHREAD_MUTEX_INITIALIZER; /* Protects native admission/retirement counters. */
 static pthread_cond_t admitted = PTHREAD_COND_INITIALIZER; /* Actual subscription admission signal. */
@@ -125,7 +125,15 @@ static void scenario(int kind)
     strcpy(input.expected_provider, options.provider_origin.system);
     strcpy(input.module, "remote-entry");
     DVM_LaunchRequest *request = NULL;
-    DVM_LaunchTicket *ticket = dvm_launch_request_create(&input, &request);
+    DVM_LaunchService *owner = kind == 6 ? dvm_launch_service_create(options.provider_origin.system, 1) : NULL;
+    DVM_LaunchEndpoint *endpoint = owner ? dvm_launch_service_endpoint(owner) : NULL;
+    DVM_LaunchTicket *ticket = kind == 6 ? dvm_launch_service_submit(endpoint, &input) :
+        dvm_launch_request_create(&input, &request);
+    DVM_LaunchReview *review = owner ? dvm_launch_service_next(owner) : NULL;
+    if (review)
+    {
+        request = dvm_launch_review_request(review);
+    }
     launch_check(ticket && request, "wait request construction");
     blocked = kind == 4 ? &provider : &terminal;
     DVM_Cancel *parent = dvm_cancel_create();
@@ -152,6 +160,10 @@ static void scenario(int kind)
         {
             dvm_cancel_request(parent);
         }
+        else if (kind == 6)
+        {
+            launch_check(dvm_launch_service_close(owner), "close service during native preparation");
+        }
         else if (kind == 2)
         {
             launch_check(dvm_launch_request_refuse(request), "concurrent provider refusal");
@@ -168,13 +180,22 @@ static void scenario(int kind)
     }
     launch_check(!pthread_join(thread, NULL), "prepare join");
     launch_check(!worker.result && !dvm_launch_request_take(request) &&
-        dvm_launch_ticket_status(ticket) == (kind == 2 ? DVM_LAUNCH_DENIED : DVM_LAUNCH_CANCELLED),
+        dvm_launch_ticket_status(ticket) == ((kind == 2 || kind == 6) ? DVM_LAUNCH_DENIED : DVM_LAUNCH_CANCELLED),
         "cancelled environment became available");
     launch_check(kind == 4 ? terminal.roots == 1 && provider.roots == 1 : provider.roots == 0,
                  "preparation continued into later root after cancellation");
     launch_check(dvm_cancel_requested(parent) == (kind == 1 || kind == 3), "ticket cancelled unrelated outer source");
     dvm_launch_ticket_free(ticket);
-    dvm_launch_request_free(request);
+    if (review)
+    {
+        dvm_launch_review_free(review);
+        dvm_launch_service_free(owner);
+        dvm_launch_endpoint_free(endpoint);
+    }
+    else
+    {
+        dvm_launch_request_free(request);
+    }
     dvm_cancel_release(parent);
     dvm_provider_release(options.terminal);
     dvm_provider_release(options.provider);
@@ -186,11 +207,11 @@ static void scenario(int kind)
  * Проверить native races без sleeps/guest polling и exact callback drain. */
 int main(void)
 {
-    for (int kind = 0; kind < 6; kind++)
+    for (int kind = 0; kind < 7; kind++)
     {
         scenario(kind);
     }
-    launch_check(started == 5 && retired == started, "independent callback state leaked");
+    launch_check(started == 6 && retired == started, "independent callback state leaked");
     puts("PASS launch native cancel refusal outer forwarding one-attempt and callback drain");
     return 0;
 }

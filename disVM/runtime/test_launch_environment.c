@@ -3,7 +3,7 @@
  * RU: Fixture pre-init окружения настоящего guest через production native SDK подготовки.
  */
 #include "../native/tests/launch/backend.h"
-#include "vfs/launch/ticket.h"
+#include "vfs/launch/service.h"
 static LaunchState terminal; /* Native fixture root, alive through final namespace retirement. */
 static LaunchState provider; /* Native execution-side root, never guest memory. */
 void __real_dvm_namespace_boot_shutdown(void);
@@ -28,15 +28,20 @@ DVM_Namespace *__wrap_dvm_namespace_rebase(DVM_ResourcePlan *cwd)
     strcpy(spec.module, "fixture-appinit");
     spec.arguments = "init";
     spec.argument_bytes = 4;
-    DVM_LaunchRequest *request = NULL;
-    DVM_LaunchTicket *ticket = dvm_launch_request_create(&spec, &request);
+    DVM_LaunchService *owner = dvm_launch_service_create(options.provider_origin.system, 4);
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(owner);
+    DVM_LaunchTicket *ticket = dvm_launch_service_submit(endpoint, &spec);
+    DVM_LaunchReview *review = dvm_launch_service_next(owner);
+    DVM_LaunchRequest *request = dvm_launch_review_request(review);
     launch_check(ticket && dvm_launch_request_prepare(request, options.provider, &options.provider_origin),
                  "request acceptance before application init");
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request);
     launch_check(handoff && dvm_launch_ticket_status(ticket) == DVM_LAUNCH_TAKEN &&
         !dvm_launch_request_take(request) && !memcmp(handoff->arguments, "init", 4), "one-use init handoff");
     dvm_launch_ticket_free(ticket);
-    dvm_launch_request_free(request);
+    dvm_launch_review_free(review);
+    dvm_launch_service_free(owner);
+    dvm_launch_endpoint_free(endpoint);
     DVM_Namespace *group = handoff->group;
     handoff->group = NULL;
     dvm_launch_handoff_free(handoff);

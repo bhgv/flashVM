@@ -900,3 +900,11 @@ status/cancel and provider prepare/take authority, copied startup bytes, native
 cancellation forwarding and source change notices. Preparation and handoff are
 atomic; transferred environments outlive both capabilities. Network launch,
 remote module interfaces and FD/FlashVM terminal proxies remain separate work.
+
+## Bounded launch service / Ограниченная очередь запуска (runtime0.167)
+
+[Native admission queue and lifetime](LAUNCH-SERVICE.md) adds owner/submit-only
+endpoint/review capabilities, bounded reservations, FIFO review, native readiness
+and close of unfinished requests. Quota spans active reviews and capability
+retirement. The interpreter/JIT pre-init fixture uses the complete native service
+handoff; network launch and FD/FlashVM terminal proxies remain separate work.
