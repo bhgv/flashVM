@@ -12,9 +12,10 @@
 /* EN/RU: Check copied identity and role without accepting identity text as credentials.
  * Nickname must be terminated; trusted adapter validates its UTF-8.
  * Проверить identity/role, не считать строки credentials; nickname завершён, UTF-8 проверяет adapter. */
-static int origin_valid(const DVM_Origin *origin, unsigned role)
+int dvm_launch_origin_valid(const DVM_Origin *origin, unsigned role)
 {
-    return origin->role == role && dvm_origin_id_valid(origin->system) &&
+    return origin && (role == DVM_ORIGIN_TERMINAL || role == DVM_ORIGIN_PROVIDER) && origin->role == role &&
+        dvm_origin_id_valid(origin->system) &&
         dvm_origin_id_valid(origin->export_id) && dvm_origin_id_valid(origin->session) &&
         memchr(origin->nickname, 0, sizeof(origin->nickname));
 }
@@ -51,8 +52,8 @@ static int acquire(DVM_NamespaceBinding *binding, DVM_Provider *source, const DV
 DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
 {
     if (!options || options->policy != DVM_LAUNCH_TERMINAL_FIRST ||
-        !origin_valid(&options->terminal_origin, DVM_ORIGIN_TERMINAL) ||
-        !origin_valid(&options->provider_origin, DVM_ORIGIN_PROVIDER) ||
+        !dvm_launch_origin_valid(&options->terminal_origin, DVM_ORIGIN_TERMINAL) ||
+        !dvm_launch_origin_valid(&options->provider_origin, DVM_ORIGIN_PROVIDER) ||
         strcmp(options->terminal_origin.session, options->provider_origin.session))
     {
         return NULL;

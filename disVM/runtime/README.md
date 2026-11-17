@@ -892,3 +892,11 @@ SDK for isolated terminal-first root unions, copied `Vfsctl.origin` metadata,
 per-file reorder provenance and a persistent installation-ID provisioner.
 This is environment preparation; network launch, FD/terminal proxies and remote
 module execution are still separate work. No local provider-image loader is added.
+
+## Launch request lifecycle / Запрос запуска (runtime0.166)
+
+[Launch tickets and one-use handoff](LAUNCH-TICKETS.md) adds separate requester
+status/cancel and provider prepare/take authority, copied startup bytes, native
+cancellation forwarding and source change notices. Preparation and handoff are
+atomic; transferred environments outlive both capabilities. Network launch,
+remote module interfaces and FD/FlashVM terminal proxies remain separate work.

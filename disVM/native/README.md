@@ -437,3 +437,9 @@ remain explicit refusals; no native-path fallback is added.
 constructs an isolated namespace from two granted live roots, terminal first.
 Source identity survives bind/move/copy and is available through Vfsctl.origin.
 The SDK does not yet perform network launch, FD transfer or remote module calls.
+
+[Launch request lifecycle](../runtime/LAUNCH-TICKETS.md), runtime0.166, adds native
+requester/provider capabilities, cancellable preparation and one-use environment
+handoff. Tests cover actual native waits, take/cancel races, allocator rollback
+and the real interpreter/JIT pre-init fixture. The native suite has274 cases;
+no network launcher is claimed.

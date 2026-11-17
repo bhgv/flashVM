@@ -76,7 +76,10 @@ DVM_Cancel *dvm_cancel_create(void)
     cancel->notices = dvm_notice_create();
     if (!cancel->lock || !cancel->notices)
     {
-        fvm_port_sync_destroy(cancel->lock);
+        if (cancel->lock)
+        {
+            fvm_port_sync_destroy(cancel->lock);
+        }
         dvm_notice_destroy(cancel->notices);
         free(cancel);
         return NULL;

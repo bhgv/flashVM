@@ -21,6 +21,11 @@ typedef struct DVM_LaunchOptions
 } DVM_LaunchOptions;
 
 
+/* EN/RU: Validate bounded copied source association and expected role, without I/O/authentication.
+ * Borrow origin; return1/0. Проверить origin/role без I/O/authentication, вернуть1/0. */
+int dvm_launch_origin_valid(const DVM_Origin *origin, unsigned role);
+
+
 /* EN/RU: Build owned isolated namespace/NULL before init. Native-only metadata/capture may block;
  * caller supplies a scope only for capable roots. No guest execution, FD transfer or wire protocol.
  * Capture roots, validate directories and cancel, then publish privately built terminal-first stack.

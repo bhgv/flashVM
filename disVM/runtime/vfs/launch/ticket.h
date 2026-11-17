@@ -1,0 +1,141 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Separated requester/provider launch capabilities and one-use pre-init environment handoff.
+ * RU: Раздельные requester/provider launch capabilities и одноразовая передача окружения до init.
+ */
+#ifndef DVM_LAUNCH_TICKET_H
+#define DVM_LAUNCH_TICKET_H
+#include "prepare.h"
+#include "../changes.h"
+#define DVM_LAUNCH_ARGUMENT_LIMIT 65536U /* Per-request copied startup bytes, no wire format assigned. */
+typedef struct DVM_LaunchTicket DVM_LaunchTicket; /* Requester status/cancel authority only. */
+typedef struct DVM_LaunchRequest DVM_LaunchRequest; /* Provider preparation/take authority. */
+
+
+/* EN/RU: States describe preparation/ownership, never evidence that code or init executed.
+ * States описывают подготовку/владение, не выполнение кода/init. */
+typedef enum DVM_LaunchState
+{
+    DVM_LAUNCH_INVALID = -1, /* Invalid capability. */
+    DVM_LAUNCH_PENDING = 0, /* Await provider decision. */
+    DVM_LAUNCH_PREPARING, /* Native root acquisition admitted once. */
+    DVM_LAUNCH_READY, /* Private environment available to provider. */
+    DVM_LAUNCH_TAKEN, /* Provider consumed one environment; execution is separate. */
+    DVM_LAUNCH_CANCELLED, /* Requester/outer native cancellation won before ready/take. */
+    DVM_LAUNCH_DENIED /* Provider refusal, abandonment or acquisition failure. */
+} DVM_LaunchState;
+
+
+/* EN/RU: Borrowed inputs through create only. Trusted adapter associates identities with grants;
+ * strings are not credentials. Module is a logical name, never implicitly resolved on the host.
+ * Inputs borrowed до create; trusted adapter связывает identities/grants, строки не credentials. */
+typedef struct DVM_LaunchSpec
+{
+    unsigned policy; /* Explicit terminal-first policy. */
+    DVM_Provider *terminal; /* Granted PATH/CAPTURE-capable terminal root, retained on success. */
+    DVM_Origin terminal_origin; /* Copied terminal source/launch association. */
+    char expected_provider[DVM_ORIGIN_ID_BYTES]; /* Expected execution installation, not an authorization token. */
+    char module[DVM_NS_PATH_LIMIT]; /* Copied nonempty terminated logical module name. */
+    const void *arguments; /* Copied bounded startup bytes, never native/managed pointer authority. */
+    size_t argument_bytes; /* 0..DVM_LAUNCH_ARGUMENT_LIMIT. */
+} DVM_LaunchSpec;
+
+
+/* EN/RU: Immutable copied request description, without root/provider/VM pointers.
+ * Immutable copied description без root/provider/VM pointers. */
+typedef struct DVM_LaunchDescription
+{
+    unsigned policy; /* Requested initial union order. */
+    DVM_Origin terminal_origin; /* Terminal association captured at request. */
+    char expected_provider[DVM_ORIGIN_ID_BYTES]; /* Expected provider installation identity. */
+    char module[DVM_NS_PATH_LIMIT]; /* Logical module label, not a host pathname lookup. */
+    size_t argument_bytes; /* Exact immutable startup byte count. */
+} DVM_LaunchDescription;
+
+
+/* EN/RU: Exclusive owned handoff; do not copy. Consumer may move group by clearing this field.
+ * No code executes on creation/take. Free remaining owners with dvm_launch_handoff_free.
+ * Exclusive handoff не копировать; consumer переносит group, обнуляя поле; код не запускается. */
+typedef struct DVM_LaunchHandoff
+{
+    DVM_Namespace *group; /* Owned isolated environment, survives ticket/request retirement. */
+    DVM_LaunchDescription description; /* Owned copied immutable request metadata. */
+    DVM_Origin provider_origin; /* Accepted provider association, same launch session. */
+    unsigned char *arguments; /* Owned independent copy of startup bytes. */
+} DVM_LaunchHandoff;
+
+
+/* EN/RU: Create requester ticket and provider request; output initially NULL, both owned on success.
+ * No I/O/authentication/guest execution; unsupported roots/invalid/OOM returnNULL with outputNULL.
+ * Caller routes request only through authenticated owner admission and enforces aggregate quotas.
+ * Создать две owned capabilities без I/O/auth/init; failure даётNULL/outputNULL,
+ * trusted adapter обеспечивает admission и суммарные quotas. */
+DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_LaunchRequest **request);
+
+
+/* EN/RU: Borrow live ticket; copied state, no wait or I/O; INVALID for NULL.
+ * Заимствовать live ticket; copied state без ожидания/I/O, NULL — INVALID. */
+DVM_LaunchState dvm_launch_ticket_status(DVM_LaunchTicket *ticket);
+
+
+/* EN/RU: Copy immutable description from borrowed live request into out;1 success,0 invalid.
+ * No root pointers or I/O. Скопировать description из live request в out;1/0,
+ * без root pointers и I/O. */
+int dvm_launch_describe(DVM_LaunchRequest *request, DVM_LaunchDescription *out);
+
+
+/* EN/RU: Copy a bounded immutable argument slice; request/bytes/copied borrowed,1/0.
+ * Zero capacity acceptsNULL bytes, offset beyond end refuses without copying.
+ * Скопировать bounded slice, request/bytes/copied borrowed;1/0, capacity0 допускаетNULL. */
+int dvm_launch_arguments(DVM_LaunchRequest *request, size_t offset, void *bytes, size_t capacity, size_t *copied);
+
+
+/* EN/RU: Return owned independent change journal/NULL; use native notices, not target polling.
+ * Events invalidate assumptions; read ticket state for authority, no full transition history promised.
+ * Вернуть owned journal/NULL; native notices без target polling, события — hints, не authority. */
+DVM_Changes *dvm_launch_observe(DVM_LaunchTicket *ticket);
+
+
+/* EN/RU: Borrow provider request/root/origin through native preparation outside locks.
+ * Require cancellable PATH/CAPTURE routes; forward current outer native cancellation via native-only state.
+ * Return1 only if READY published,0 refusal/cancel/race; one preparation, no automatic retry.
+ * Заимствовать request/root/origin для native подготовки вне locks; capable routes,
+ * outer cancellation передаётся native state;1 READY/0 refusal, без replay. */
+int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provider, const DVM_Origin *origin);
+
+
+/* EN/RU: Provider-only one-use take; owned independent handoff/NULL, OOM leaves READY.
+ * No init/process/network action. Provider-only take возвращает owned handoff/NULL;
+ * OOM сохраняет READY, никакого init/process/network action. */
+DVM_LaunchHandoff *dvm_launch_request_take(DVM_LaunchRequest *request);
+
+
+/* EN/RU: Cancel/refuse before TAKEN;1 changed,0 terminal/NULL. Native cancellation and cleanup
+ * run outside state mutex. Cancellation cannot revoke an already transferred environment.
+ * Cancel/refuse до TAKEN;1/0, signals/cleanup вне mutex; transferred environment не отзывается. */
+int dvm_launch_ticket_cancel(DVM_LaunchTicket *ticket);
+
+
+/* EN/RU: Provider refuses Pending/Preparing/Ready;1 changed/0 terminal orNULL.
+ * Signals and prepared-group disposal run outside shared mutex; TAKEN is preserved.
+ * Provider отклоняет Pending/Preparing/Ready;1/0, signals/cleanup вне mutex, TAKEN сохранён. */
+int dvm_launch_request_refuse(DVM_LaunchRequest *request);
+
+
+/* EN/RU: Consume exclusive requester ticket after its callers join; NULL allowed.
+ * Unfinished work is cancelled, TAKEN remains. Same-wrapper use/free must not overlap;
+ * opposite wrappers may operate concurrently. Поглотить ticket после join callers;
+ * unfinished work отменяется, TAKEN сохранён; use/free одного wrapper не совмещаются. */
+void dvm_launch_ticket_free(DVM_LaunchTicket *ticket);
+
+
+/* EN/RU: Consume exclusive provider wrapper after its callers join; refuse unfinished work.
+ * NULL allowed, transferred environments survive. Поглотить provider wrapper после join,
+ * unfinished work отклоняется; NULL допустим, transferred environment сохраняется. */
+void dvm_launch_request_free(DVM_LaunchRequest *request);
+
+
+/* EN/RU: Consume exclusive handoff, freeing remaining namespace and startup bytes; NULL allowed.
+ * Consumer clears group after explicitly moving its ownership to an instance.
+ * Поглотить handoff, освобождая оставшиеся group/bytes; после move group обнуляется consumer. */
+void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff);
+#endif
