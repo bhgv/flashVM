@@ -111,6 +111,7 @@ endif()
 
 if(INFERNO_VFS_SUPPORT)
     add_subdirectory(vfs)
+    add_subdirectory(launch)
 endif()
 
 add_executable(client-mux-frames-test tests/mux/frames.c)

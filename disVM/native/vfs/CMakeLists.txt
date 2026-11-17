@@ -208,6 +208,9 @@ add_library(styx_namespace_fixture STATIC
     "${vfs}/launch/service.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
+# EN/RU: Public native namespace SDK name; existing fixture consumers retain their target.
+# Публичное имя native namespace SDK; existing fixture target сохранён.
+add_library(styx_namespace ALIAS styx_namespace_fixture)
 add_executable(vfs-file-root-server ../tests/file-root/backend.c ../tests/file-root/wire.c ../tests/peer/review.c)
 set_source_files_properties(../tests/file-root/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
 target_link_libraries(vfs-file-root-server PRIVATE styx_vfs infernostyx)

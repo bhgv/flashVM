@@ -11,6 +11,13 @@
 #include "drivers/posix/fd.h"
 #include "../phy/limited.h"
 #include <pthread.h>
+#ifdef STYX_LAUNCH_TEST
+
+
+/* EN/RU: Native pre-init acceptance; client/name/expected borrowed through return.
+ * Native pre-init проверка, client/name/expected borrowed до return. */
+extern void launchremote(StyxClient *, const char *, const char *);
+#endif
 static Styxserver server; /* Owned by native server thread. */
 static StyxRead *pending; /* Original deferred request, server owner only. */
 static int event; /* Atomic native source notification. */
@@ -135,6 +142,10 @@ int main(int argc, char **argv)
     check(wake && !pthread_create(&owner, nil, serving, nil), "native server owner");
     StyxClient *client = styxclientmountphy(forward, 256, "fixture", "", 5000, 4);
     check(client != nil, "forward original 9P mount");
+#ifdef STYX_LAUNCH_TEST
+    char expected[2] = {(char)('A'+1-side), 0};
+    launchremote(client, "identity", expected);
+#endif
     Read work = {0};
     work.fid = opened(client, "events");
     work.cancel = styxcancelcreate();

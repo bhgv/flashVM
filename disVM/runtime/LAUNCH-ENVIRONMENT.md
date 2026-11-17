@@ -136,3 +136,11 @@ ownership drains through the existing native lifecycle.
 Next: authenticated prepare/accept exchange and launch tickets, reverse terminal
 VFS transport, FD and terminal-interface proxies, and provider-side module launch
 with dependency handling. These are still required for end-to-end remote execution.
+
+## Native Styx root adapter / Native Styx-корень
+
+The [native SDK adapter](../native/launch/README.md) now captures an already
+attached terminal Styx client and feeds its live VFS root into this namespace
+builder. It accepts ordinary sessions by default and explicitly configured bidir
+channels identically. It does not start guest code or create a network launch
+service. See its documented conservative missing-name fallback limitation.

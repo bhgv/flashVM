@@ -9,6 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef STYX_LAUNCH_TEST
+
+
+/* EN/RU: Native pre-init acceptance; client/name/expected borrowed through return.
+ * Native pre-init проверка, client/name/expected borrowed до return. */
+extern void launchremote(StyxClient *, const char *, const char *);
+#endif
 
 
 /* EN/RU: Explicit fixture invariant, no build-mode dependence.
@@ -75,6 +82,9 @@ int main(int argc, char **argv)
     RemotePhy *phy = phyfixture(phyposixfd(atoi(argv[1]), PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 0);
     StyxClient *client = styxclientmountphy(phy, 256, "fixture", "", 3000, 4);
     check(client && styxclientwatchable(client), "native PHY mount");
+#ifdef STYX_LAUNCH_TEST
+    launchremote(client, "data", "serial");
+#endif
     Work work = {0};
     work.fid = opened(client, "events");
     work.cancel = styxcancelcreate();

@@ -181,6 +181,10 @@ waits; the base RemotePhy ABI remains carrier independent. All 296 Linux64 nativ
 SDK tests pass normally and under ASan/UBSan, with LeakSanitizer disabled. The
 public mux header also compiles as C89/C++98.
 
+The [native launch root adapter](../../disVM/native/launch/README.md) can now use
+an explicitly constructed logical client to prepare the terminal/provider union
+before init; the same adapter also accepts an ordinary single session.
+
 This is native transport plumbing plus actual original-9P acceptance. It does
 not yet automatically wire reverse session roots into a remote Dis launch,
 change the existing FlashVM terminal protocol, allocate dynamic bulk channels,
