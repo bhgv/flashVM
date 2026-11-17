@@ -124,3 +124,8 @@ preserves the caller's independently retained healthy session where applicable.
 
 All 328 Linux64 native SDK tests pass normally and under ASan/UBSan, with
 LeakSanitizer disabled. Imported Inferno sources and FlashVM graphics code are unchanged.
+
+The [generic bidir terminal record transport](../terminal/README.md) now opens
+this job's control endpoints, runs independent native RX/TX owners and delivers
+one verified S-record at a time. Concrete event/proxy dispatch and automatic
+IDE host attachment remain separate from this transport layer.

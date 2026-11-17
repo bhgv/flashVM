@@ -18,6 +18,17 @@
  * Native pre-init проверка, client/name/expected borrowed до return. */
 extern void launchremote(StyxClient *, const char *, const char *);
 #endif
+#ifdef STYX_TERMINAL_RECORD_TEST
+
+
+/* EN/RU: Native fixture record source/sink; inputs borrowed during original callbacks.
+ * Native fixture record source/sink; inputs borrowed во время original callbacks. */
+extern char *terminalread(Styxserver *, char *, ulong *, vlong);
+
+
+/* EN/RU: Native fixture record sink, precise short-write count. / Native sink с precise count. */
+extern char *terminalwrite(char *, ulong *, vlong);
+#endif
 static Styxserver server; /* Owned by native server thread. */
 static StyxRead *pending; /* Original deferred request, server owner only. */
 static int event; /* Atomic native source notification. */
@@ -48,7 +59,7 @@ static void release(void *state)
 /* EN/RU: Allow only original readonly file/device open; qid/mode borrowed values. / Только readonly open. */
 static char *openfile(Qid *qid, int mode)
 {
-    if (qid->path == 6 && mode >= OREAD && mode <= ORDWR)
+    if ((qid->path == 6 || qid->path == 7) && mode >= OREAD && mode <= ORDWR)
     {
         return nil;
     }
@@ -60,6 +71,12 @@ static char *openfile(Qid *qid, int mode)
  * Identity file либо pending one-event read; request state только на server owner. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TERMINAL_RECORD_TEST
+    if (qid.path == 7)
+    {
+        return terminalread(&server, bytes, count, offset);
+    }
+#endif
     if (qid.path == 6)
     {
         *count = styxreadstr(offset, bytes, *count, "input");
@@ -101,6 +118,12 @@ static char *statfile(Qid qid, Dir *out)
  * Native terminal sink принимает opaque fixture command, без графической интерпретации. */
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TERMINAL_RECORD_TEST
+    if (qid.path == 7)
+    {
+        return terminalwrite(bytes, count, offset);
+    }
+#endif
     return qid.path == 6 && offset == 0 && *count == 6 && !memcmp(bytes, "output", 6) ? nil : Eperm;
 }
 
@@ -178,6 +201,9 @@ int main(int argc, char **argv)
         styxaddfile(&server, 3, 4, "secret", 0444, "fixture"), "unsearchable directory");
     check(styxaddfile(&server, Qroot, 5, "statgone", 0444, "fixture") != nil, "metadata failure node");
     check(styxaddfile(&server, Qroot, 6, "terminal", 0666, "fixture") != nil, "terminal control node");
+#ifdef STYX_TERMINAL_RECORD_TEST
+    check(styxaddfile(&server, Qroot, 7, "records", 0666, "fixture") != nil, "general terminal records node");
+#endif
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t owner;
     check(wake && !pthread_create(&owner, nil, serving, nil), "native server owner");

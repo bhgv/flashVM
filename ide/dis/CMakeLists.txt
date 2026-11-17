@@ -346,7 +346,7 @@ set(AS2_PARSE_EXECUTABLE "" CACHE FILEPATH "Optional own Coco/R AS2 parser")
 set(NODE_EXECUTABLE "" CACHE FILEPATH "Optional Node algorithm-test host")
 if(BUILD_TESTING AND IDE_AS_SOURCE_ROOT)
   if(AS2_PARSE_EXECUTABLE)
-    foreach(source syntax-worker.as presentation.as)
+    foreach(source syntax-worker.as presentation.as terminal-bridge.as)
       add_test(NAME ide_as_${source} COMMAND "${AS2_PARSE_EXECUTABLE}"
         "${IDE_AS_SOURCE_ROOT}/${source}")
     endforeach()
@@ -355,6 +355,9 @@ if(BUILD_TESTING AND IDE_AS_SOURCE_ROOT)
     add_test(NAME ide_as_algorithms COMMAND "${NODE_EXECUTABLE}" "${IDE_AS_SOURCE_ROOT}/tests.js"
       "${UIBRIDGE_SOURCE_ROOT}/examples/ui-channel/bridge.as")
     set_tests_properties(ide_as_algorithms PROPERTIES TIMEOUT 20)
+    add_test(NAME ide_as_terminal_bridge COMMAND "${NODE_EXECUTABLE}" "${IDE_AS_SOURCE_ROOT}/terminal-tests.js"
+      "${UIBRIDGE_SOURCE_ROOT}/examples/ui-channel/bridge.as")
+    set_tests_properties(ide_as_terminal_bridge PROPERTIES TIMEOUT 20)
   endif()
 endif()
 

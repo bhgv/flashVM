@@ -140,4 +140,5 @@ set_tests_properties(native-client-watch-quota PROPERTIES TIMEOUT 10)
 # Movie service зависит от явно выбранного VFS SDK, не от implicit sibling build.
 if(INFERNO_VFS_SUPPORT)
     add_subdirectory(movie)
+    add_subdirectory(terminal)
 endif()

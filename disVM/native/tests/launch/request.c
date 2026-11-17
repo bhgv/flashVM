@@ -10,6 +10,14 @@
 #include <string.h>
 #include <pthread.h>
 
+#ifdef STYX_TERMINAL_RECORD_TEST
+
+
+/* EN/RU: Borrow coherent bidir client/descriptor for general record transport acceptance.
+ * Borrow coherent client/descriptor до конца general record test. */
+extern void terminalprobe(StyxClient *, const DVM_TerminalChannels *);
+#endif
+
 
 /* EN/RU: Fatal fixture invariant independent of build profile, diagnostic borrowed. / Явный fatal invariant. */
 static void check(int valid, const char *why)
@@ -238,6 +246,9 @@ static void lifecycle(StyxClient *client, const DVM_LaunchOptions *options,
         if (kind == 4)
         {
             terminalhandoff(handoff, path);
+#ifdef STYX_TERMINAL_RECORD_TEST
+            terminalprobe(client, &handoff->flashvm);
+#endif
         }
         dvm_launch_handoff_free(handoff);
     }
