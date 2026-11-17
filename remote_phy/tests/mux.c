@@ -3,7 +3,7 @@
  * RU: Независимые проверки mux: credit isolation, bounded queues, binary wraparound и pinned stop.
  */
 #define _POSIX_C_SOURCE 200809L
-#include "mux/mux.h"
+#include "mux/bidir.h"
 #include "drivers/posix/fd.h"
 #include <sys/socket.h>
 #include <unistd.h>
@@ -80,14 +80,14 @@ static void streams(void)
 {
     int descriptors[2];
     check(!socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors), "native carrier pair");
-    PhyMux *a = phymuxcreate(phyposixfd(descriptors[0], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
-    PhyMux *b = phymuxcreate(phyposixfd(descriptors[1], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 2048);
+    PhyBidir *a = phybidircreate(phyposixfd(descriptors[0], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
+    PhyBidir *b = phybidircreate(phyposixfd(descriptors[1], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 2048);
     check(a && b, "asymmetric capacity muxes");
-    RemotePhy *a0 = phymuxchannel(a, 0);
-    RemotePhy *a1 = phymuxchannel(a, 1);
-    RemotePhy *b0 = phymuxchannel(b, 0);
-    RemotePhy *b1 = phymuxchannel(b, 1);
-    check(a0 && a1 && b0 && b1 && !phymuxchannel(a, 2) && !phymuxchannel(a, 0), "channel ownership");
+    RemotePhy *a0 = phybidirchannel(a, 0);
+    RemotePhy *a1 = phybidirchannel(a, 1);
+    RemotePhy *b0 = phybidirchannel(b, 0);
+    RemotePhy *b1 = phybidirchannel(b, 1);
+    check(a0 && a1 && b0 && b1 && !phybidirchannel(a, 2) && !phybidirchannel(a, 0), "channel ownership");
     unsigned char source[65537];
     unsigned char result[65537];
     for (size_t i = 0; i < sizeof(source); i++)
@@ -135,11 +135,11 @@ static void streams(void)
     transfer(a1, source, 8, 1);
     transfer(b1, result, 8, 0);
     check(!memcmp(source, result, 8), "other channel survives close");
-    phymuxfree(a);
+    phybidirfree(a);
     phywake(a1);
     check(phywait(a1, PHY_READ, 0, &ready) == PHY_OK && (ready & PHY_FAILED) && (ready & PHY_WAKE), "late pin after pump join");
     phyfree(a1);
-    phymuxfree(b);
+    phybidirfree(b);
     phyfree(b0);
     phyfree(b1);
 }
@@ -151,8 +151,8 @@ static void malformed(unsigned kind)
 {
     int descriptors[2];
     check(!socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors), "oracle pair");
-    PhyMux *hub = phymuxcreate(phyposixfd(descriptors[0], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
-    RemotePhy *channel = phymuxchannel(hub, 0);
+    PhyBidir *hub = phybidircreate(phyposixfd(descriptors[0], PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
+    RemotePhy *channel = phybidirchannel(hub, 0);
     check(hub && channel, "oracle channel");
     unsigned char bytes[32] = {'P', '9', 'M', 'X', 1, 2, 0, 0, 4, 0, 0, 0, 0, 4, 0, 0};
     size_t count = 16;
@@ -214,7 +214,7 @@ static void malformed(unsigned kind)
     check(write(descriptors[1], bytes, count) == (ssize_t)count, "raw oracle write");
     unsigned ready;
     check(phywait(channel, PHY_READ, 5000, &ready) == PHY_OK && (ready & PHY_FAILED), "malformed mux fails closed");
-    phymuxfree(hub);
+    phybidirfree(hub);
     phywake(channel);
     phyfree(channel);
     close(descriptors[1]);

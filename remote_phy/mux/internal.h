@@ -5,7 +5,7 @@
 #ifndef PHY_MUX_INTERNAL_H
 #define PHY_MUX_INTERNAL_H
 #define _POSIX_C_SOURCE 200809L
-#include "mux.h"
+#include "bidir.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +26,7 @@ typedef struct MuxQueue
 /* EN/RU: One logical stream; mutable fields protected by hub lock. / Логический поток под hub lock. */
 typedef struct MuxChannel
 {
-    struct PhyMux *hub; /* Retained enclosing allocation through endpoint destruction. */
+    struct PhyBidir *hub; /* Retained enclosing allocation through endpoint destruction. */
     unsigned id; /* Immutable wire channel. */
     int taken; /* Owner-only construction cannot repeat. */
     int closed; /* Local explicit abort, pending queue discarded. */
@@ -43,7 +43,7 @@ typedef struct MuxChannel
 
 
 /* EN/RU: Single physical owner, independent logical owners under lock. / Один physical owner, logical owners под lock. */
-struct PhyMux
+struct PhyBidir
 {
     RemotePhy *carrier; /* Immutable owned driver pointer, wake alive through final ref. */
     size_t capacity; /* Immutable per-queue byte bound. */
@@ -69,7 +69,7 @@ void muxget(MuxQueue *queue, size_t capacity, void *bytes, size_t count);
 
 /* EN/RU: Consume one ref under internal locking; final destroy after worker join and users retire.
  * Поглотить ref под lock; final destroy после worker join и retirement users. */
-void muxdrop(PhyMux *hub);
+void muxdrop(PhyBidir *hub);
 
 
 /* EN/RU: Native physical owner entry, borrowed hub held through join; no guest/callback execution.
@@ -86,7 +86,7 @@ void muxsignalchannel(MuxChannel *channel);
 
 
 /* EN/RU: Publish native readiness for both channels under retained hub lifetime. / Readiness для обоих каналов. */
-void muxsignal(PhyMux *hub);
+void muxsignal(PhyBidir *hub);
 
 
 /* EN/RU: Kernel wait if generation unchanged, borrowed relative monotonic timeout/NULL;0 normal/-1 error.

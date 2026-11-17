@@ -6,7 +6,7 @@
 
 
 /* EN/RU: See internal.h; final free has no live native pump/I/O/wake caller. / См. internal.h. */
-void muxdrop(PhyMux *hub)
+void muxdrop(PhyBidir *hub)
 {
     pthread_mutex_lock(&hub->lock);
     int last = --hub->refs == 0;
@@ -26,7 +26,7 @@ void muxdrop(PhyMux *hub)
 
 
 /* EN/RU: See mux.h; all buffers/synchronizers exist before publishing native worker. / См. mux.h. */
-PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity)
+PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity)
 {
     PhyInfo info;
     if (capacity < MUX_PAYLOAD || capacity > 1048576 || !phyinfo(carrier, &info) || !info.connected ||
@@ -35,7 +35,7 @@ PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity)
         phyfree(carrier);
         return NULL;
     }
-    PhyMux *hub = calloc(1, sizeof(*hub));
+    PhyBidir *hub = calloc(1, sizeof(*hub));
     if (!hub)
     {
         phyfree(carrier);
@@ -73,7 +73,7 @@ PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity)
 
 
 /* EN/RU: See mux.h; hub owner serializes channel acquisition/free; worker uses only locked fields. / См. mux.h. */
-RemotePhy *phymuxchannel(PhyMux *hub, unsigned id)
+RemotePhy *phybidirchannel(PhyBidir *hub, unsigned id)
 {
     if (!hub || id > 1)
     {
@@ -96,7 +96,7 @@ RemotePhy *phymuxchannel(PhyMux *hub, unsigned id)
 
 
 /* EN/RU: See mux.h; wake before join, preserve carrier wake storage for pinned logical handles. / См. mux.h. */
-void phymuxfree(PhyMux *hub)
+void phybidirfree(PhyBidir *hub)
 {
     if (hub)
     {

@@ -96,7 +96,7 @@ The default is one ordinary Styx session: use `styxclientmountphy` and
 `styxphyinit` directly on the carrier. Replies and pending event Treads already
 provide return traffic. No P9MX queues, pump or framing are created on this path.
 
-Two opposite sessions require the **separate explicit `phymuxcreate` call at both
+Two opposite sessions require the **separate explicit `phybidircreate` call at both
 peers**; see [mode selection](mux/README.md#explicit-opt-in--явное-включение).
 The client's outstanding-request limit and heartbeat do not activate this mode.
 There is no automatic upgrade of an ordinary stream. Most applications can keep

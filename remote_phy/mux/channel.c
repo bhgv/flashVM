@@ -10,7 +10,7 @@
 static PhyTransfer readbytes(void *state, void *bytes, size_t size)
 {
     MuxChannel *channel = state;
-    PhyMux *hub = channel->hub;
+    PhyBidir *hub = channel->hub;
     PhyTransfer out = {0, PHY_AGAIN, PHY_PREFIX};
     pthread_mutex_lock(&hub->lock);
     if (channel->rx.count)
@@ -40,7 +40,7 @@ static PhyTransfer readbytes(void *state, void *bytes, size_t size)
 static PhyTransfer writebytes(void *state, const void *bytes, size_t size)
 {
     MuxChannel *channel = state;
-    PhyMux *hub = channel->hub;
+    PhyBidir *hub = channel->hub;
     PhyTransfer out = {0, PHY_AGAIN, PHY_PREFIX};
     pthread_mutex_lock(&hub->lock);
     if (hub->failed || hub->stop || channel->remote || channel->closed)
@@ -67,7 +67,7 @@ static PhyTransfer writebytes(void *state, const void *bytes, size_t size)
 /* EN/RU: Compute readiness under hub lock without consuming input/wake. / Readiness под lock без consume. */
 static unsigned readiness(MuxChannel *channel, unsigned wanted)
 {
-    PhyMux *hub = channel->hub;
+    PhyBidir *hub = channel->hub;
     unsigned ready = __atomic_load_n(&channel->wake, __ATOMIC_ACQUIRE) ? PHY_WAKE : 0;
     if ((wanted & PHY_READ) && channel->rx.count)
     {
@@ -98,7 +98,7 @@ static unsigned readiness(MuxChannel *channel, unsigned wanted)
 static int waitready(void *state, unsigned wanted, int timeout, unsigned *ready)
 {
     MuxChannel *channel = state;
-    PhyMux *hub = channel->hub;
+    PhyBidir *hub = channel->hub;
     struct timespec deadline;
     if (clock_gettime(CLOCK_MONOTONIC, &deadline))
     {
@@ -178,7 +178,7 @@ static int available(void *state, size_t *bytes)
 static void disconnect(void *state)
 {
     MuxChannel *channel = state;
-    PhyMux *hub = channel->hub;
+    PhyBidir *hub = channel->hub;
     pthread_mutex_lock(&hub->lock);
     channel->closed = 1;
     channel->tx.count = 0;

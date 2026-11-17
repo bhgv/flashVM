@@ -14,6 +14,13 @@ Inferno peer uses its ordinary stream directly, without this adapter.
 The exact frame layout, credit invariants and failure rules are documented in
 [WIRE.md](WIRE.md).
 
+The public API uses `bidir` to make this opt-in visible at the call site:
+`PhyBidir`, `phybidircreate`, `phybidirchannel`, `phybidirfree`, declared in
+[`bidir.h`](bidir.h). The `phy` prefix reflects that this adapter carries byte
+streams and does not itself initialize Styx sessions. Ordinary mount/init names
+and behavior remain unchanged. The earlier `phymux*` names are replaced, without
+ambiguous aliases; the P9MX v1 wire format is unchanged.
+
 ## Explicit opt-in / Явное включение
 
 Ordinary single-session Styx is the default for applications. Pass the connected
@@ -25,10 +32,10 @@ not enable reverse sessions.
 | Mode | Explicit construction | Request initiators |
 | --- | --- | --- |
 | Ordinary, default | Direct carrier to the ordinary Styx constructor | Client sends T-requests; server returns R-replies. |
-| Two opposite sessions, opt-in | `phymuxcreate` at both peers, then ordinary Styx constructors on its channels | Each peer has its own client and server. |
+| Two opposite sessions, opt-in | `phybidircreate` at both peers, then ordinary Styx constructors on its channels | Each peer has its own client and server. |
 
 Для большинства применений достаточно обычного режима. Отдельный вызов
-`phymuxcreate()` — точка явного включения расширения; добавлять флаг к обычному
+`phybidircreate()` — точка явного включения расширения; добавлять флаг к обычному
 mount/init для этого не требуется. По умолчанию встречная сессия не создаётся.
 Настройка `limit` у клиента задаёт число одновременных запросов одной сессии,
 а не включает встречную сессию. Ожидающий Tread для событий тоже работает в
@@ -59,23 +66,23 @@ The two streams can also carry a different host-selected byte protocol; the mux
 never decodes their contents or assumes 9P frame boundaries.
 
 ```c
-#include "mux/mux.h"
+#include "mux/bidir.h"
 /* carrier is consumed on every outcome; each queue gets 16 KiB. */
-PhyMux *link = phymuxcreate(carrier, 16384);
+PhyBidir *link = phybidircreate(carrier, 16384);
 /* Check link and returned endpoints for NULL before using them. */
-RemotePhy *outgoing = phymuxchannel(link, 0);
-RemotePhy *incoming = phymuxchannel(link, 1);
+RemotePhy *outgoing = phybidirchannel(link, 0);
+RemotePhy *incoming = phybidirchannel(link, 1);
 /* Pass outgoing to styxclientmountphy and incoming to styxphyinit.
  * Each constructor consumes its endpoint. On peer B, exchange 0 and 1.
- * Retire protocol owners, then phymuxfree(link). */
+ * Retire protocol owners, then phybidirfree(link). */
 ```
 
-[`mux.h`](mux.h) documents ownership and threading. `phymuxcreate` accepts connected
+[`bidir.h`](bidir.h) documents ownership and threading. `phybidircreate` accepts connected
 STREAM+ORDERED+RELIABLE carriers and queue capacity1024..1048576, consumes the carrier
 on success or failure, allocates all four bounded byte queues and starts one native
 physical I/O owner. Capacity may differ between peers. Bare packets are refused.
 
-`phymuxchannel` takes channel0 or1 exactly once under the mux owner; it returns an
+`phybidirchannel` takes channel0 or1 exactly once under the mux owner; it returns an
 owned logical carrier or NULL. Each logical carrier then has its own native I/O
 owner, including an independent interruptible wait and sticky local wake. Wake uses an
 atomic generation plus a Linux futex wake without taking a producer mutex;
@@ -84,7 +91,7 @@ wake is concurrent on that logical carrier. Other channel operations and the
 physical pump run independently through short native mutex sections. There are
 no guest callbacks, guest polling, guest suspension or global stop.
 
-`phymuxfree` is an explicit **abort**, not a delivery acknowledgement: it requests
+`phybidirfree` is an explicit **abort**, not a delivery acknowledgement: it requests
 stop, wakes and joins the physical worker, disconnects the wire and drops the mux
 owner. Unsent queues may be discarded. For orderly application shutdown, peers
 must first acknowledge their own work and coordinate protocol/channel retirement.

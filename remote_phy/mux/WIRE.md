@@ -5,7 +5,7 @@ reliable ordered byte carrier. It is **not a new 9P message**, not a modificatio
 of Rflush and not auto-detected on a stock Inferno connection. Both native hosts
 must configure this adapter. Byte payloads preserve ordinary 9P unchanged.
 The native Linux implementation is [pump.c](pump.c); public ownership is in
-[mux.h](mux.h). Channel roles and application integration are in [README.md](README.md).
+[bidir.h](bidir.h). Channel roles and application integration are in [README.md](README.md).
 
 ## Frame
 
@@ -69,7 +69,7 @@ allowance and is discarded if the local application has already disconnected.
 Remote CLOSE drops unselected TX; confirmed RX remains readable, followed by EOF.
 The other logical channel remains live.
 
-`phymuxfree` aborts the whole link, joins its native worker and disconnects the
+`phybidirfree` aborts the whole link, joins its native worker and disconnects the
 physical carrier. It does not guarantee pending CLOSE/data delivery. For graceful
 shutdown, acknowledge application work and coordinate both peers before abort.
 A physical/protocol failure is shared by both channels. Complete confirmed input

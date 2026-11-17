@@ -7,7 +7,7 @@
 
 /* EN/RU: Select one bounded frame under hub lock; data copied before caller releases lock.
  * Выбрать bounded frame под lock; copy данных до unlock; 0 означает no pending output. */
-static size_t output(PhyMux *hub, unsigned char *frame)
+static size_t output(PhyBidir *hub, unsigned char *frame)
 {
     for (unsigned step = 0; step < 2; step++)
     {
@@ -73,7 +73,7 @@ static int header(const unsigned char *frame, size_t *wanted)
 
 /* EN/RU: Publish one complete incoming frame under lock; 1 accepted/-1 invalid sequence or credit violation.
  * Опубликовать complete frame под lock; 1 accepted/-1 malformed sequence/credit. */
-static int incoming(PhyMux *hub, const unsigned char *frame, size_t size)
+static int incoming(PhyBidir *hub, const unsigned char *frame, size_t size)
 {
     MuxChannel *channel = &hub->channels[frame[6]];
     if (channel->remote)
@@ -128,7 +128,7 @@ static int terminal(PhyTransfer out)
  * См. internal.h; partial frames/output сохраняются на worker между wait. */
 void *muxpump(void *state)
 {
-    PhyMux *hub = state;
+    PhyBidir *hub = state;
     unsigned char rx[MUX_HEADER+MUX_PAYLOAD];
     unsigned char tx[MUX_HEADER+MUX_PAYLOAD];
     size_t used = 0;

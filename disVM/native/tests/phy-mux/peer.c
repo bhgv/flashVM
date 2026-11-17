@@ -7,7 +7,7 @@
 #include <styxserver.h>
 #include "client.h"
 #include "server.h"
-#include "mux/mux.h"
+#include "mux/bidir.h"
 #include "drivers/posix/fd.h"
 #include "../phy/limited.h"
 #include <pthread.h>
@@ -119,11 +119,11 @@ int main(int argc, char **argv)
     check(side < 2, "side range");
     identity[0] = 'A'+side;
     RemotePhy *carrier = phyfixture(phyposixfd(atoi(argv[1]), PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 0);
-    PhyMux *hub = phymuxcreate(carrier, 1024);
+    PhyBidir *hub = phybidircreate(carrier, 1024);
     check(hub != nil, "physical mux");
-    RemotePhy *forward = phymuxchannel(hub, side);
-    RemotePhy *reverse = phymuxchannel(hub, 1-side);
-    check(forward && reverse && !phymuxchannel(hub, side), "single logical ownership");
+    RemotePhy *forward = phybidirchannel(hub, side);
+    RemotePhy *reverse = phybidirchannel(hub, 1-side);
+    check(forward && reverse && !phybidirchannel(hub, side), "single logical ownership");
     Styxops ops = {0};
     ops.open = openfile;
     ops.read = readfile;
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
     check(!pthread_join(owner, nil), "logical CLOSE retires reverse server");
     print("ENDED\n");
     check(read(0, &command, 1) == 1 && command == 't', "both peer servers witnessed CLOSE before pump stop");
-    phymuxfree(hub);
+    phybidirfree(hub);
     styxphywake(wake); /* Late native pin remains valid after hub stop. */
     styxphywakefree(wake);
     print("PASS simultaneous original 9P sessions on one carrier\n");

@@ -2,13 +2,13 @@
  * EN: Explicit two-stream native multiplexing over one granted reliable carrier.
  * RU: Явное native мультиплексирование двух потоков поверх одного надёжного носителя.
  */
-#ifndef PHY_MUX_H
-#define PHY_MUX_H
+#ifndef PHY_BIDIR_H
+#define PHY_BIDIR_H
 #include "phy.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct PhyMux PhyMux; /* Owned native pump, never a VFS authority. */
+typedef struct PhyBidir PhyBidir; /* Owned native pump, never a VFS authority. */
 
 
 /* EN: Consume connected reliable ordered stream on every outcome; owned mux/NULL.
@@ -19,7 +19,7 @@ typedef struct PhyMux PhyMux; /* Owned native pump, never a VFS authority. */
  * RU: Поглотить carrier всегда; свой mux/NULL. capacity ограничивает каждую очередь,
  * один native I/O owner. Только этот отдельный constructor включает два logical streams;
  * обычные Styx constructors не включают его. Оба конца явно выбирают P9MX v1. */
-PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity);
+PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity);
 
 
 /* EN: Owner-only take channel0 or1 once; owned RemotePhy/NULL, no extra wire open.
@@ -27,7 +27,7 @@ PhyMux *phymuxcreate(RemotePhy *carrier, size_t capacity);
  * Each returned stream has its own I/O owner and thread-safe sticky wake.
  * RU: Owner получает канал0/1 один раз; свой RemotePhy/NULL. ID согласованы с peer;
  * у каждого потока свой I/O owner и thread-safe sticky wake. */
-RemotePhy *phymuxchannel(PhyMux *mux, unsigned channel);
+RemotePhy *phybidirchannel(PhyBidir *mux, unsigned channel);
 
 
 /* EN: Owner stops/joins native pump and consumes mux; NULL harmless. Never call on
@@ -36,7 +36,7 @@ RemotePhy *phymuxchannel(PhyMux *mux, unsigned channel);
  * destruction releases carrier storage. No automatic reconnect or replay.
  * RU: Owner останавливает/join pump и поглощает mux. Каналы/wake pins живут до
  * своего release; confirmed input дочитывается, затем failure; без reconnect/replay. */
-void phymuxfree(PhyMux *mux);
+void phybidirfree(PhyBidir *mux);
 #ifdef __cplusplus
 }
 #endif

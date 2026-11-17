@@ -2,7 +2,7 @@
  * EN: Descriptor-free uncertain-output failure, no retransmission and retained wake storage.
  * RU: Descriptor-free uncertain-output failure, без retransmission и с retained wake storage.
  */
-#include "mux/mux.h"
+#include "mux/bidir.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -102,16 +102,16 @@ static RemotePhy *carrier(Driver *driver, unsigned capabilities)
 int main(void)
 {
     Driver driver = {0};
-    PhyMux *hub = phymuxcreate(carrier(&driver, PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
+    PhyBidir *hub = phybidircreate(carrier(&driver, PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1024);
     check(hub != NULL, "native pump admission");
     /* Acquisition can race terminal worker failure; both are valid public outcomes. */
-    RemotePhy *channel = phymuxchannel(hub, 0);
+    RemotePhy *channel = phybidirchannel(hub, 0);
     if (channel)
     {
         unsigned ready;
         check(phywait(channel, PHY_READ, 5000, &ready) == PHY_OK && (ready & PHY_FAILED), "uncertain fails entire hub");
     }
-    phymuxfree(hub);
+    phybidirfree(hub);
     check(driver.writes == 1 && driver.closes == 1, "unknown output is never retried");
     if (channel)
     {
@@ -121,10 +121,10 @@ int main(void)
     }
     check(driver.destroys == 1, "final carrier release exactly once");
     Driver rejected = {0};
-    check(!phymuxcreate(carrier(&rejected, PHY_PACKET), 1024) &&
+    check(!phybidircreate(carrier(&rejected, PHY_PACKET), 1024) &&
         !rejected.writes && rejected.closes == 1 && rejected.destroys == 1, "raw packets rejected before wire effects");
     Driver invalid = {0};
-    check(!phymuxcreate(carrier(&invalid, PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1023) &&
+    check(!phybidircreate(carrier(&invalid, PHY_STREAM|PHY_ORDERED|PHY_RELIABLE), 1023) &&
         !invalid.writes && invalid.destroys == 1, "invalid bounds consume input without wire effects");
     puts("PASS uncertain mux output, no replay, pinned lifetime and admission cleanup");
     return 0;

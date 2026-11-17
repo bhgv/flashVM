@@ -22,7 +22,7 @@ void muxsignalchannel(MuxChannel *channel)
 
 /* EN/RU: Signal both endpoint readiness predicates; caller holds hub lock or native owner ref.
  * Пробудить оба endpoint readiness predicates; caller держит hub lock либо owner ref. */
-void muxsignal(PhyMux *hub)
+void muxsignal(PhyBidir *hub)
 {
     muxsignalchannel(&hub->channels[0]);
     muxsignalchannel(&hub->channels[1]);
