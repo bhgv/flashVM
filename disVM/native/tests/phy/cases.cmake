@@ -4,7 +4,7 @@
 add_executable(phy-core-test "${CMAKE_CURRENT_SOURCE_DIR}/../../remote_phy/tests/core.c")
 target_link_libraries(phy-core-test PRIVATE remote_phy)
 add_test(NAME remote-phy-core COMMAND phy-core-test)
-add_executable(phy-styx-client tests/phy/client.c)
+add_executable(phy-styx-client tests/phy/client.c tests/phy/limited.c)
 target_link_libraries(phy-styx-client PRIVATE styx_client)
 foreach(phy_case normal prefix-error reject)
     add_test(NAME remote-phy-styx-${phy_case} COMMAND "${PYTHON_EXECUTABLE}"

@@ -29,8 +29,10 @@ set(inferno_headers "${INFERNO_SOURCE}/Linux/${inferno_arch}/include" "${INFERNO
 add_subdirectory(lib9)
 add_subdirectory(libstyx)
 add_subdirectory(client)
+add_subdirectory(server/phy)
 enable_testing()
 include(tests/phy/cases.cmake)
+include(tests/phy-server/cases.cmake)
 # EN/RU: This extra codec fixture belongs to the explicitly selected VFS SDK.
 # Дополнительный codec fixture принадлежит явно выбранному VFS SDK.
 if(INFERNO_VFS_SUPPORT)

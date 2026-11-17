@@ -19,7 +19,7 @@ remains a compatibility adapter; `styxclientmountphy` accepts a custom carrier.
 | Layer | Responsibility / Ответственность | Current scope / Текущий объём |
 | --- | --- | --- |
 | VFS/namespace | Visible names, live provider stacks and actual rwx access. / Видимость и права. | Existing DisVM capability/union rules unchanged. |
-| 9P/Styx | Files, fids, request tags, T/R transactions and Tflush. / Файловые операции. | Original lib9/libstyx codecs; native client uses PHY. |
+| 9P/Styx | Files, fids, request tags, T/R transactions and Tflush. / Файловые операции. | Original lib9/libstyx codecs; native client and alternative original server use PHY. |
 | Control S-records | Typed announcements, events and application messages. / Управляющие записи. | Existing outbox/monitor; no new wire tags here. |
 | Stream/logical adapters | Framing, ordered reliable delivery, reassembly, logical-channel arbitration as needed. / Адаптация носителя. | Contract and composable driver wrappers; general packet/reliable tunnel and symmetric session mux are future work. |
 | RemotePhy | Native read/write/wait/wake/availability/connect/disconnect and capabilities. | Implemented without OS handles in public ABI. |
@@ -86,7 +86,7 @@ attention line, опрос или временные слоты. Задержк�
 
 A wrapper may own another RemotePhy and forward/transform its byte operations,
 readiness and wake. This permits adding a framing/reliability layer without
-changing the 9P client. The [PTY acceptance wrapper](../disVM/native/tests/phy/client.c)
+changing the 9P client. The [PTY acceptance wrapper](../disVM/native/tests/phy/limited.c)
 limits reads to3 and writes to2 bytes, forwards native interrupts, and injects a
 precise terminal-prefix error. It is a test adapter, not a radio reliability stack.
 
@@ -150,8 +150,10 @@ native SDK acceptance passes normally and under ASan/UBSan, LeakSanitizer disabl
 Physical hardware, RF loss recovery, hardware drivers, a general logical-session
 mux and migration between physical links are not claimed tested here.
 
-The original imported server listener/backend remains its upstream POSIX
-implementation. This change connects the **native client** to PHY; the carrier API
-is reusable for a subsequent server-side adapter without altering 9P messages or
-editing the vendored server snapshot. Runtime/FlashVM versions and guest module
-interfaces are unchanged.
+The original imported POSIX server remains available as `infernostyx`.
+The [alternative original-core server backend](../disVM/native/server/phy/README.md)
+now accepts a granted carrier through `styxphyinit`, with complete-frame staging,
+bounded reply queues, producer wake pins and original deferred-read retirement.
+Select `infernostyx_phy` for that backend; no vendored code or wire message is
+changed. Hardware drivers and a symmetric logical-session mux remain subsequent
+work. Runtime/FlashVM versions and guest module interfaces are unchanged.

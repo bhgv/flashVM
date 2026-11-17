@@ -142,3 +142,7 @@ heartbeat engine; `styxclientmountfd` adapts an already granted reliable stream 
 The fd path supports non-socket byte devices as well as sockets. Raw packet buses
 require suitable stream adaptation. Generic reverse RPC and symmetric logical
 9P sessions remain separate proposals, described in the carrier guide.
+
+The [original-core PHY server backend](../server/phy/README.md) now supplies the
+matching server-side carrier boundary, native producer wake and deferred-read
+retirement. Both native roles are tested together over a nonsocket PTY.
