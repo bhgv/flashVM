@@ -11,6 +11,11 @@
 #include "vfs/sysevents.h"
 #include "vfs/boot.h"
 #include "owner_messages.h"
+static DVM_MovieOffer *offers; /* Independent host owner through shutdown. */
+static DVM_Changes *offer_journal; /* Host subscription source pin. */
+static DVM_NoticeTap *offer_tap; /* Native push observer, no guest polling. */
+static unsigned offer_notices; /* Atomically counted native callbacks. */
+static int mailbox_prepared; /* Publication must follow resident mailbox preparation. */
 static int fail_context; /* One selected native channel-descriptor allocation refusal. */
 static int fail_movie; /* Deliberate pre-publication service factory OOM. */
 static int fail_fork_movie; /* Refuse one child namespace replacement without changing its scope. */
@@ -32,6 +37,20 @@ DVM_MessageEndpoint *__real_dvm_messages_register(DVM_MessageRouter *router, uin
 
 
 DVM_Provider *__real_styxmovieservice(DVM_Namespace *group);
+
+
+/* EN/RU: Inspect automatic publication outside source locks; no I/O or managed entry.
+ * Проверить automatic publication вне source locks, без I/O/managed entry. */
+static void offer_changed(void *state, const DVM_ChangeEvent *event)
+{
+    (void)state;
+    (void)event;
+    DVM_MovieOfferInfo current;
+    launch_check(dvm_movie_offer_info(offers, &current), "offer snapshot");
+    launch_check(!current.ready || __atomic_load_n(&mailbox_prepared, __ATOMIC_ACQUIRE),
+        "READY escaped before resident mailbox preparation");
+    __atomic_add_fetch(&offer_notices, 1, __ATOMIC_RELAXED);
+}
 
 
 /* EN/RU: Refuse only selected staging allocation; neither an endpoint nor a namespace is adopted.
@@ -60,6 +79,13 @@ DVM_MessageEndpoint *__wrap_dvm_messages_register(DVM_MessageRouter *router, uin
     {
         fail_publication = 0;
         return NULL;
+    }
+    if (offers && !publication_handoff && !__atomic_load_n(&mailbox_prepared, __ATOMIC_ACQUIRE))
+    {
+        DVM_MovieOfferInfo current;
+        launch_check(dvm_movie_offer_info(offers, &current) && !current.generation && !current.ready,
+            "offer advertised during fallible mailbox registration");
+        __atomic_store_n(&mailbox_prepared, 1, __ATOMIC_RELEASE);
     }
     return __real_dvm_messages_register(router, id);
 }
@@ -189,6 +215,14 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
         strcpy(channels.receive, CONTROL == 1 ? "ctl" : "rx");
         strcpy(channels.send, CONTROL == 1 ? "ctl" : "tx");
     }
+    if (channels.provider)
+    {
+        offers = dvm_movie_offer_create();
+        offer_journal = dvm_movie_offer_observe(offers);
+        offer_tap = dvm_notice_subscribe(dvm_changes_notices(offer_journal), offer_changed, NULL, NULL);
+        launch_check(offers && offer_journal && offer_tap, "host offer observer");
+        channels.offers = offers;
+    }
     DVM_LaunchSpec spec = {0};
     spec.policy = options.policy;
     spec.terminal = options.terminal;
@@ -229,11 +263,25 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     later->group = dvm_namespace_copy(handoff->group);
     launch_check(later->group && dvm_provider_retain(channels.provider), "independent publication fixture grants");
     later->flashvm = channels;
+    DVM_MovieOffer *failed_offer = NULL;
+    if (channels.provider)
+    {
+        failed_offer = dvm_movie_offer_create();
+        launch_check(failed_offer && dvm_movie_offer_retain(failed_offer), "failed offer owner");
+        later->flashvm.offers = failed_offer;
+    }
     publication_handoff = later;
     fail_publication = 1;
     launch_check(refused(module, later), "publication failure did not reject constructor");
     launch_check(!fail_publication, "publication refusal was not reached");
     launch_check(!later->group && !later->flashvm.provider, "post-adoption failure restored moved ownership");
+    if (failed_offer)
+    {
+        DVM_MovieOfferInfo current;
+        launch_check(dvm_movie_offer_info(failed_offer, &current) && current.closed &&
+            !current.ready && current.generation == 1, "failed startup exposed READY or leaked admission");
+        dvm_movie_offer_release(failed_offer);
+    }
     publication_handoff = NULL;
     dvm_launch_handoff_free(later);
     fail_fork_movie = CONTROL != 2;
@@ -257,5 +305,17 @@ void __wrap_dvm_namespace_boot_shutdown(void)
     __real_dvm_namespace_boot_shutdown();
     launch_check(!fail_movie && !fail_fork_movie && opened == closed && retired == (CONTROL == 2 ? 0U : 1U) &&
         terminal.destroyed == 1 && execution.destroyed == 1, "imported process/root/FD lifetime leak");
+    if (offers)
+    {
+        DVM_MovieOfferInfo current;
+        launch_check(dvm_movie_offer_info(offers, &current) && current.closed && !current.ready &&
+            current.generation == 2 && __atomic_load_n(&offer_notices, __ATOMIC_RELAXED) == 2,
+            "automatic offer publication/retirement or child isolation");
+        dvm_notice_unsubscribe(offer_tap);
+        dvm_changes_destroy(offer_journal);
+        dvm_movie_offer_release(offers);
+        offers = NULL;
+        puts("PASS automatic movie offer staged startup and retirement");
+    }
     puts("PASS launch import constructor rollback and native lifetimes");
 }

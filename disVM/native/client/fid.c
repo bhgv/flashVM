@@ -35,3 +35,11 @@ int styxclientcancellable(StyxClient *client)
 {
     return client && client->mux != NULL;
 }
+
+
+/* EN/RU: See client.h; borrow pinned fid while observing the walked object's immutable kind.
+ * См. client.h; заимствовать pinned fid при чтении immutable kind walked object. */
+int styxclientfiddirectory(StyxFid *fid)
+{
+    return !fid || (fid->qid.type & QTAUTH) ? -1 : (fid->qid.type & QTDIR) != 0;
+}

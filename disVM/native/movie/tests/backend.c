@@ -4,6 +4,7 @@
  */
 #include "service.h"
 #include "protocol.h"
+#include "offer.h"
 #include "file_provider.h"
 #include "launch/prepare.h"
 #include <stdio.h>
@@ -16,6 +17,9 @@ typedef struct Root
     FVM_PortAnchor *anchor; /* Owned confined directory capability. */
     char role; /* Fixture diagnostic only, never authority. */
 } Root;
+extern DVM_MovieOffer *movie_test_offers; /* Native job registry held through fixture lifetime. */
+extern DVM_Namespace *movie_test_group; /* Private prepared namespace, not a wire pointer. */
+extern DVM_Provider *movie_test_controlprovider(void); /* Exact native control grant. */
 extern int movieserve(StyxBacking *root); /* Original libstyx translation unit. */
 
 
@@ -185,7 +189,23 @@ int main(int argc, char **argv)
     DVM_Namespace *group = dvm_launch_prepare(&options);
     DVM_Provider *service = group ? styxmovieservice(group) : NULL;
     StyxBacking *backing = service ? styxbacking(service) : NULL;
+    if (getenv("MOVIE_TEST_ANNOUNCE"))
+    {
+        movie_test_offers = dvm_movie_offer_create();
+        movie_test_group = group;
+        if (!movie_test_offers || dvm_movie_offer_bind(movie_test_offers, 0, service) != 1)
+        {
+            return 4;
+        }
+        DVM_Provider *control = movie_test_controlprovider();
+        DVM_Provider *folder = control ? styxmovieofferroot(movie_test_offers, control) : NULL;
+        styxbackingfree(backing);
+        backing = folder ? styxtree(folder) : NULL;
+        dvm_provider_release(folder);
+        dvm_provider_release(control);
+    }
     int result = backing ? movieserve(backing) : 3;
+    dvm_movie_offer_release(movie_test_offers);
     styxbackingfree(backing);
     dvm_provider_release(service);
     dvm_namespace_release(group);

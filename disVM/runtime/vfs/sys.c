@@ -20,6 +20,7 @@
 #include "stack.h"
 #include "bind_wait.h"
 #include "../../native/movie/service.h"
+#include "launch/terminal.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -132,6 +133,16 @@ void Sys_pctl(void *frame)
     DVM_Provider *previous_movie = owner->movie_provider;
     owner->namespace_group = replacement;
     owner->movie_provider = movie;
+    if (owner->terminal_channels && owner->terminal_channels->offers && owner->movie_offer_generation)
+    {
+        DVM_MovieOffer *offers = owner->terminal_channels->offers;
+        uint64_t generation = dvm_movie_offer_bind(offers, owner->movie_offer_generation, movie);
+        if (!generation)
+        {
+            dvm_movie_offer_close(offers, owner->movie_offer_generation);
+        }
+        owner->movie_offer_generation = generation;
+    }
     dvm_provider_release(previous_movie);
     dvm_namespace_release(previous);
     publish(call.ret, process->pid);

@@ -37,7 +37,8 @@ def main():
                 if result.returncode or marker not in output or \
                         'PASS launch import constructor rollback and native lifetimes' not in output:
                     raise RuntimeError(str(result.returncode)+': '+output[-16000:])
-                if variant != 2 and ('PASS automatic terminal movie code/data service' not in output or
+                if variant != 2 and ('PASS automatic movie offer staged startup and retirement' not in output or
+                                     'PASS automatic terminal movie code/data service' not in output or
                                      'PASS terminal movie child namespace and retained grant' not in output or
                                      'PASS terminal movie fresh NEWNS SWF stream' not in output):
                     raise RuntimeError('Missing movie service/scope acceptance '+output[-16000:])

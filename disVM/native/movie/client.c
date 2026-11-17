@@ -70,8 +70,8 @@ static int receive(StyxFid *fid, unsigned long long *offset, unsigned char *byte
 
 /* EN/RU: See client.h; all fid/stream buffers retire on success, sink refusal or protocol failure.
  * См. client.h; fid/buffers освобождаются при успехе, sink refusal и protocol failure. */
-FVM_Result styxmoviefetch(unsigned int purpose, const char *reference, const char *base,
-    FVM_DesktopWrite write, void *write_userdata, char *resolved, size_t capacity, void *userdata)
+FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *reference, const char *base,
+    FVM_DesktopWrite write, void *write_userdata, char *resolved, size_t capacity)
 {
     unsigned char buffer[MOVIE_FRAME], request[MOVIE_FRAME];
     size_t size, previous = 0, rn, bn;
@@ -81,21 +81,22 @@ FVM_Result styxmoviefetch(unsigned int purpose, const char *reference, const cha
     FVM_SBinding slot;
     FVM_Result result = FVM_ERROR;
     int begun = 0;
-    if (!userdata || !reference || !write || !resolved || !capacity ||
+    if (!fid)
+    {
+        return FVM_ERROR;
+    }
+    if (!reference || !write || !resolved || !capacity ||
         (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
     {
+        styxclientclunk(fid);
         return FVM_INVALID_ARGUMENT;
     }
     rn = strlen(reference);
     bn = base ? strlen(base) : 0;
     if (!rn || rn >= MOVIE_PATH || bn >= MOVIE_PATH)
     {
+        styxclientclunk(fid);
         return FVM_INVALID_ARGUMENT;
-    }
-    StyxFid *fid = styxclientwalk(userdata, ".");
-    if (!fid)
-    {
-        return FVM_ERROR;
     }
     if (!styxclientopen(fid, 2) || !movie_binding(buffer, &size) ||
         !sendrecord(fid, &offset, buffer, size))
@@ -165,4 +166,20 @@ FVM_Result styxmoviefetch(unsigned int purpose, const char *reference, const cha
 done:
     styxclientclunk(fid);
     return result;
+}
+
+
+/* EN/RU: See client.h; preserve ordinary attached-root lookup and pre-I/O argument refusal.
+ * См. client.h; сохранить attached-root lookup и отказ invalid arguments до I/O. */
+FVM_Result styxmoviefetch(unsigned int purpose, const char *reference, const char *base,
+    FVM_DesktopWrite write, void *write_userdata, char *resolved, size_t capacity, void *userdata)
+{
+    if (!userdata || !reference || !*reference || strlen(reference) >= MOVIE_PATH ||
+        (base && strlen(base) >= MOVIE_PATH) || !write || !resolved || !capacity ||
+        (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    return movie_fetch_fid(styxclientwalk(userdata, "."), purpose, reference, base,
+        write, write_userdata, resolved, capacity);
 }

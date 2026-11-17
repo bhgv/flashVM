@@ -35,4 +35,10 @@ int dvm_launch_process_inherit(struct Prog *process, struct Prog *parent);
 /* EN/RU: Retire a process's channel descriptor after its owner/users stop; NULL process allowed.
  * Освободить descriptor после завершения owner/users; NULL допустим, без managed access. */
 void dvm_launch_process_release(struct Prog *process);
+
+
+/* EN/RU: Constructor-only final announcement commit;1/0, native notices only, no I/O.
+ * Commit объявления только в constructor;1/0, native notices без I/O. */
+int dvm_launch_process_announce(struct Prog *process);
+
 #endif

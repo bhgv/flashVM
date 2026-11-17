@@ -5,6 +5,7 @@
 #ifndef DVM_LAUNCH_TERMINAL_H
 #define DVM_LAUNCH_TERMINAL_H
 #include "prepare.h"
+#include "movie_offer.h"
 
 
 /* EN/RU: Borrowed descriptor at submission, owned provider pin inside a handoff; never serialize.
@@ -16,6 +17,7 @@ typedef struct DVM_TerminalChannels
     DVM_Provider *provider; /* Granted anchored live channel root; no union/native fallback. */
     char receive[DVM_NS_PATH_LIMIT]; /* Provider-to-Dis direction, canonical relative path. */
     char send[DVM_NS_PATH_LIMIT]; /* Dis-to-provider direction, canonical relative path. */
+    DVM_MovieOffer *offers; /* Optional trusted per-job announcement source, retained with the descriptor. */
 } DVM_TerminalChannels;
 
 

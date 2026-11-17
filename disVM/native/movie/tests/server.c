@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "file.h"
+#include "tree.h"
+#include "../offer_ids.h"
 extern int movie_test_end(const void *bytes, size_t size); /* Scalar test-only codec boundary. */
 static Styxserver server; /* Socket-owner state, no guest VM execution. */
 static StyxBacking *backing; /* Borrowed through movieserve. */
@@ -20,8 +22,54 @@ static int stopped; /* Client disconnect terminates this bounded fixture. */
 static char *attach(char *user, char *name)
 {
     USED(user);
+    if (getenv("MOVIE_TEST_ANNOUNCE"))
+    {
+        if (!*name)
+        {
+            return styxattachroot(&server, nil, styxqid(Qroot, 1)) ? Eperm : nil;
+        }
+        return Eperm; /* Existing libstyx connection identity remains unchanged. */
+    }
     USED(name);
     return styxattachroot(&server, nil, styxqid(42, 0)) ? Eperm : nil;
+}
+
+
+/* EN/RU: Walk only the scoped virtual directory; no mount, dial or attach identity changes.
+ * Пройти scoped virtual directory без mount/dial/смены attach identity. */
+static char *walk(Qid *qid, char *name)
+{
+    if (!getenv("MOVIE_TEST_ANNOUNCE"))
+    {
+        return Enonexist;
+    }
+    StyxBacking *parent = nil;
+    if(qid->path == Qroot || qid->path == STYX_MOVIE_ROOT_ID)
+    {
+        parent = backing;
+    }
+    else if(qid->path == STYX_MOVIE_DIRECTORY_ID)
+    {
+        parent = styxwalknode(backing, "movie");
+    }
+    StyxBacking *child = parent ? styxwalknode(parent, name) : nil;
+    if(parent != backing)
+    {
+        styxbackingfree(parent);
+    }
+    StyxMeta info;
+    int valid = child && styxbackinginfo(child, &info);
+    styxbackingfree(child);
+    if (!valid)
+    {
+        return Enonexist;
+    }
+    *qid = styxqid(info.identity, info.directory);
+    if (!info.directory && info.identity < STYX_MOVIE_ROOT_ID)
+    {
+        print("WALK movie/%llud\n", info.identity);
+    }
+    return nil;
 }
 
 
@@ -30,7 +78,28 @@ static char *attach(char *user, char *name)
 static char *openfile(Qid *qid, int mode)
 {
     (void)qid;
-    StyxOpen *opened = styxfileopen(backing, mode);
+    StyxBacking *selected = nil;
+    if (getenv("MOVIE_TEST_ANNOUNCE"))
+    {
+        if(qid->path == STYX_MOVIE_CONTROL_ID)
+        {
+            selected = styxwalknode(backing, "ctl");
+        }
+        else
+        {
+            char name[64];
+            snprint(name, sizeof(name), "%llud", qid->path);
+            StyxBacking *directory = styxwalknode(backing, "movie");
+            selected = directory ? styxwalknode(directory, name) : nil;
+            styxbackingfree(directory);
+        }
+        if (!selected)
+        {
+            return Eperm;
+        }
+    }
+    StyxOpen *opened = styxfileopen(selected ? selected : backing, mode);
+    styxbackingfree(selected);
     if (!opened)
     {
         return Eperm;
@@ -134,12 +203,13 @@ int movieserve(StyxBacking *root)
     socklen_t size = sizeof(address);
     backing = root;
     ops.attach = attach;
+    ops.walk = walk;
     ops.open = openfile;
     ops.read = readfile;
     ops.write = writefile;
     ops.freefid = styxfileclose;
     ops.freeclient = closed;
-    if (styxinit(&server, &ops, "0", 0666, 0) ||
+    if (styxinit(&server, &ops, "0", getenv("MOVIE_TEST_ANNOUNCE") ? 0555 : 0666, 0) ||
         getsockname(server.connfd, (struct sockaddr *)&address, &size))
     {
         return 2;

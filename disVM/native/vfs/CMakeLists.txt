@@ -201,6 +201,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 # Standalone native namespace SDK fixture; явные sources репозитория, без sibling build dependency.
 add_library(styx_namespace_fixture STATIC
     "${vfs}/intent.c"
+    "${vfs}/launch/movie_offer.c"
     "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"

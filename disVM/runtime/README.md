@@ -953,3 +953,12 @@ one code/data endpoint for a terminal-bearing launch. Children and namespace
 replacement receive scoped services; ordinary startup remains without the grant.
 Matched Limbo interfaces expose the existing S-record service through ordinary
 Sys FDs, without an application-specific loader or guest monitoring loop.
+
+
+## Endpoint announcements / Объявления endpoint (runtime0.173)
+
+[Native source, ordinary Twalk and generic terminal receiver](TERMINAL-ANNOUNCEMENTS.md)
+connect the automatic movie grant to an already authorized Styx directory. READY
+follows resident preparation; namespace replacement advances generation and process
+retirement closes admission. The receiver rejects stale or interrupted acquisitions
+without native fallback. Native push requires no guest polling or suspension.

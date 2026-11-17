@@ -31,6 +31,7 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
         return 0;
     }
     *copy = *source;
+    copy->offers = NULL; /* A child must not replace the parent job's advertised scope. */
     DVM_Provider *movie = styxmovieservice(owner->namespace_group);
     if (!movie)
     {
@@ -55,6 +56,20 @@ void dvm_launch_process_release(Prog *process)
         DVM_Provider *movie = owner->movie_provider;
         owner->movie_provider = NULL;
         owner->terminal_channels = NULL;
+        if (channels && channels->offers)
+        {
+            if (owner->movie_offer_staged)
+            {
+                dvm_movie_offer_abort(channels->offers);
+            }
+            else if (owner->movie_offer_generation)
+            {
+                dvm_movie_offer_close(channels->offers, owner->movie_offer_generation);
+            }
+            dvm_movie_offer_release(channels->offers);
+        }
+        owner->movie_offer_generation = 0;
+        owner->movie_offer_staged = 0;
         dvm_provider_release(movie);
         if (channels)
         {
@@ -104,6 +119,14 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         free(channels);
         return 0;
     }
+    int staged = channels && channels->offers ? dvm_movie_offer_stage(channels->offers, movie) : 0;
+    if (channels && channels->offers && !staged)
+    {
+        dvm_provider_release(movie);
+        dvm_sysevents_release(events);
+        free(channels);
+        return 0;
+    }
     DVM_Namespace *previous = owner->namespace_group;
     DVM_SysEvents *previous_events = owner->system_events;
     dvm_launch_process_release(process);
@@ -111,11 +134,32 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->system_events = events;
     owner->terminal_channels = channels;
     owner->movie_provider = movie;
+    owner->movie_offer_staged = staged;
     owner->launch_adopted = 1;
     handoff->group = NULL;
     memset(&handoff->flashvm, 0, sizeof(handoff->flashvm));
     dvm_sysevents_retire(previous_events);
     dvm_sysevents_release(previous_events);
     dvm_namespace_release(previous);
+    return 1;
+}
+
+
+/* EN/RU: Publish only after resident identity/mailbox checks, before its first guest dispatch.
+ * Объявить после проверки resident identity/mailbox, до первого guest dispatch. */
+int dvm_launch_process_announce(Prog *process)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (!owner->movie_offer_staged)
+    {
+        return 1;
+    }
+    uint64_t generation = dvm_movie_offer_commit(owner->terminal_channels->offers);
+    if (!generation)
+    {
+        return 0;
+    }
+    owner->movie_offer_staged = 0;
+    owner->movie_offer_generation = generation;
     return 1;
 }

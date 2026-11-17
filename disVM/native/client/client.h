@@ -254,4 +254,9 @@ void styxclientclunkcancel(StyxFid *fid, StyxCancel *cancel);
  * Поглотить fid без RPC wait; worker владеет client/number; setup failure завершает connection. */
 void styxclientclunklater(StyxFid *fid);
 
+
+/* EN/RU: Borrow pinned fid; directory1/file0/invalid-1, no RPC.
+ * Заимствовать pinned fid; directory1/file0/invalid-1, без RPC. */
+int styxclientfiddirectory(StyxFid *fid);
+
 #endif

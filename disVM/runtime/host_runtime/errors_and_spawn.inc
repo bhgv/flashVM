@@ -327,6 +327,15 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
             destroy(module);
             error((char *)failure);
         }
+        if (!dvm_launch_process_announce(process))
+        {
+            __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
+            drop_guest_messages(process);
+            dvm_process_environment_destroy(process);
+            free(process);
+            destroy(module);
+            error("cannot publish terminal movie announcement");
+        }
         dvm_runtime_process_root_add(process);
         addrun(process);
     }

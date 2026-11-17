@@ -20,7 +20,7 @@ def fixture(path, name):
 
 # EN/RU: Create explicit conflicting grants, run one TCP owner and independent player, retire both.
 # Создать conflicting grants, выполнить TCP owner/player и завершить оба процесса.
-def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=False):
+def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=False, announced=None):
     with tempfile.TemporaryDirectory(prefix='styx movie ') as directory:
         work = Path(directory)
         terminal = work/'terminal'
@@ -42,19 +42,25 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
             (root/'denied.swf').write_bytes(simple)
             (root/'partial.swf').write_bytes(simple)
             (root/'simple.swf').write_bytes(simple)
+        (work/'root.swf').write_bytes(simple)
         (work/'denied.swf').write_bytes(simple)
         (work/'partial.swf').write_bytes(simple)
         (provider/'escape.swf').symlink_to(work/'denied.swf')
         name = 'simple.swf' if fault == 'noend' else deny if isinstance(deny, str) else 'denied.swf' if deny else prefix+'root.swf'
+        environment = dict(os.environ)
+        if fault:
+            environment['MOVIE_TEST_FAULT'] = fault
+        if announced:
+            environment['MOVIE_TEST_ANNOUNCE'] = announced
         with (work/'server.log').open('w+') as log:
             process = subprocess.Popen([server, terminal, provider], stdout=subprocess.PIPE,
                                        stderr=log, text=True, cwd=work,
-                                       env=dict(os.environ, MOVIE_TEST_FAULT=fault) if fault else None)
+                                       env=environment)
             try:
                 port = process.stdout.readline().strip()
                 if not port.isdecimal():
                     raise RuntimeError('server startup '+port)
-                env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', SDL_AUDIODRIVER='dummy')
+                env = dict(environment, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', SDL_AUDIODRIVER='dummy')
                 run = subprocess.run([player, port, mode, name,
                                       'deny' if deny or (fault and fault != 'coalesce') else 'sink' if sink else 'allow'], cwd=work, env=env,
                                      capture_output=True, text=True, timeout=30)
@@ -62,8 +68,8 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
                 log.seek(0)
                 output = log.read()
                 if run.returncode or process.returncode or 'PASS real TCP Styx S-record managed movie' not in run.stdout:
-                    raise RuntimeError(str((run.returncode, process.returncode))+run.stdout+run.stderr+output)
-                if not deny and (not fault or fault == 'coalesce'):
+                    raise RuntimeError(str((run.returncode, process.returncode))+run.stdout+run.stderr+output+process.stdout.read())
+                if not deny and (not fault or fault == 'coalesce') and announced not in ('crc', 'version'):
                     for line in ('OPEN P '+prefix+'root.swf 0', 'OPEN P '+prefix+'nested/child.swf 0',
                                  'OPEN T '+prefix+'root-vars.swf 0', 'OPEN T '+prefix+'nested/child-vars.txt 0'):
                         if line not in output:
@@ -72,9 +78,15 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
                         raise RuntimeError('Wrong code/data intent order '+output)
                     if mode == 'jit' and not re.search(r'native=[1-9][0-9]*', run.stderr):
                         raise RuntimeError('No actual JIT execution '+run.stderr)
+                if announced:
+                    remaining = process.stdout.read()
+                    if announced not in ('crc', 'version') and 'WALK movie/1' not in remaining:
+                        raise RuntimeError('No walk to advertised root '+remaining)
+                    if announced in ('normal', 'changing') and 'WALK movie/2' not in remaining:
+                        raise RuntimeError('No new generation walk '+remaining)
                 if deny == 'partial.swf' and 'PARTIAL 44' not in output:
                     raise RuntimeError('Missing acknowledged full SWF failure '+output)
-                print('PASS TCP Styx/S-record nested SWF '+mode+(' '+fault if fault else ' fragmented' if fragment else ' sink refusal/reuse' if sink else ' denied '+name if deny else ' code/data union'), flush=True)
+                print('PASS TCP Styx/S-record nested SWF '+mode+(' announced '+announced if announced else ' '+fault if fault else ' fragmented' if fragment else ' sink refusal/reuse' if sink else ' denied '+name if deny else ' code/data union'), flush=True)
             finally:
                 if process.poll() is None:
                     process.kill()
@@ -92,6 +104,8 @@ def main():
         scenario(server, player, sdk, mode, 'escape.swf')
         scenario(server, player, sdk, mode, False, fragment=True)
         scenario(server, player, sdk, mode, False, sink=True)
+        for announced in ('normal', 'changing', 'eof', 'disconnect', 'crc', 'version'):
+            scenario(server, player, sdk, mode, False, announced=announced)
         for fault in ('crc', 'eof', 'truncate', 'noend', 'coalesce'):
             scenario(server, player, sdk, mode, False, fault=fault)
 

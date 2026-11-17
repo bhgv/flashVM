@@ -20,6 +20,7 @@ static void destroy(LaunchShared *shared)
         dvm_namespace_release(shared->group);
         dvm_provider_release(shared->terminal);
         dvm_provider_release(shared->flashvm.provider);
+        dvm_movie_offer_release(shared->flashvm.offers);
         dvm_cancel_release(shared->cancel);
         dvm_changes_destroy(shared->changes);
         if (shared->lock)
@@ -116,6 +117,14 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
     {
         if (!dvm_provider_retain(spec->flashvm->provider))
         {
+            destroy(shared);
+            free(ticket);
+            free(request);
+            return NULL;
+        }
+        if (!dvm_movie_offer_retain(spec->flashvm->offers))
+        {
+            dvm_provider_release(spec->flashvm->provider);
             destroy(shared);
             free(ticket);
             free(request);

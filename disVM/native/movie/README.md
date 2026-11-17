@@ -50,8 +50,10 @@ alive through the synchronous run. Each fetch clones a fresh fid, opens ORDWR,
 negotiates directional bindings, requests one resource, consumes its reply and
 clunks on every outcome. Never serialize native sink/userdata pointers.
 Client and source callbacks perform native I/O without VM/SDL entry or guest
-suspension. The surrounding player remains owner-thread/synchronous; [runtime0.172](../../runtime/TERMINAL-MOVIES.md) now prepares the job grant before
-init; remote endpoint announcement and an asynchronous player entry remain separate work.
+suspension. The surrounding player remains owner-thread/synchronous; [runtime0.173](../../runtime/TERMINAL-MOVIES.md) now prepares the job grant before
+init; [native announcement and automatic receiver binding](../../runtime/TERMINAL-ANNOUNCEMENTS.md)
+now connect this grant to an existing authorized Styx directory. An asynchronous
+player entry remains separate work.
 
 `granted_client` удерживается до возврата player. Каждый fetch владеет отдельным
 fid и независимо освобождает его при успехе, отказе, EOF или ошибке checksum.
@@ -112,7 +114,7 @@ cmake -S disVM/native -B build/native \
   -DINFERNO_HOST_SUPPORT="$PWD/tools/limbo-bootstrap" \
   -DINFERNO_VFS_SUPPORT="$PWD" \
   -DINFERNO_MOVIE_PLAYER_BUILD="$PWD/build/flashvm-managed"
-cmake --build build/native --target movie-server movie-player movie-protocol-test --parallel
+cmake --build build/native --target movie-server movie-player movie-protocol-test movie-offers-test --parallel
 ctest --test-dir build/native -R '^managed-movie-' --output-on-failure
 ```
 
@@ -120,20 +122,22 @@ For SDK setup/build see the [managed player guide](../../../flashVM/doc/MANAGED_
 Supply SDL2 through its normal package or an explicit CMAKE_PREFIX_PATH.
 `tests/wire.py` uses the explicitly selected SDK's independent raw SWF oracles.
 
-Wire acceptance runs **22 scenarios**: interpreter/JIT; conflicting code/data
+Wire acceptance runs **34 scenarios**: interpreter/JIT; conflicting code/data
 providers; explicit denial with a valid local SWF present; full valid SWF prefix
 followed by source denial; confined symlink refusal; long fragmented requests/
 origins; sink refusal followed by reuse of the same connection; bad CRC, early EOF,
-truncation, missing END and coalesced replies. Negotiated msize256 forces actual
+truncation, missing END and coalesced replies; automatic announcement/update, stale
+replay, generation change during fetch, control EOF, disconnect and bad offer CRC/version. Negotiated msize256 forces actual
 9P fragmentation. Script verifies decoded variables, and JIT cases require real
 native entries. The protocol unit checks independent opens, one-byte framing,
 coalesced declarations, zero reads, bad CRC, unbound requests and size/purpose
-refusal. Both tests pass normally and under ASan/UBSan (LeakSanitizer disabled).
+refusal. The offer unit additionally checks unpublished reservation rollback, two pthread
+CAS contenders, live directory projection and held-open identity. All three tests pass normally and under ASan/UBSan (LeakSanitizer disabled).
 
 Проверки выполняют настоящий player и исходный C-сервер libstyx по TCP; здесь нет
 mock-функции, возвращающей SWF вместо сети. SDL dummy-video проверяет исполнение
 и загрузку, а не физический дисплей. Поддержанная платформа этого native SDK —
 Linux64. Runtime теперь автоматически выдаёт movie grant через Terminal Session
-([контракт](../../runtime/TERMINAL-MOVIES.md)). Автоматическое сетевое объявление и
-запуск внешнего FlashVM, общие файловые записи/сокеты, input filtering и
+([контракт](../../runtime/TERMINAL-MOVIES.md)). Объявление и receiver описаны [здесь](../../runtime/TERMINAL-ANNOUNCEMENTS.md).
+Запуск внешнего FlashVM, общие файловые записи/сокеты, input filtering и
 динамическое добавление media/bulk channels остаются отдельными этапами.

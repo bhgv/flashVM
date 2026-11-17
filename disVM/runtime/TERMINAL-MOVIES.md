@@ -37,9 +37,10 @@ this exact grant with the existing prepared Styx publication/transport machinery
 `Session.movie` не является сериализуемым указателем или публичным адресом. Это
 обычная capability внутри DisVM. Для удалённого FlashVM хост публикует именно этот
 файл существующим Styx-механизмом; SDK-клиент подключается к выданному endpoint.
-Автоматическое сетевое объявление endpoint и запуск внешнего FlashVM-процесса ещё
-не реализованы. Этот шаг автоматически готовит и передаёт grant внутри реального
-Dis launch; сетевой путь самого SDK уже проверен отдельно.
+Runtime0.173 добавляет [native-объявление и общий receiver](TERMINAL-ANNOUNCEMENTS.md)
+через уже разрешённое соединение. Хост по-прежнему предоставляет транспорт,
+аутентифицированный допуск и I/O owner; внешний FlashVM-процесс автоматически
+пока не создаётся.
 
 ## Namespace and lifetime / Namespace и время жизни
 
@@ -109,7 +110,7 @@ The code/data ordering fixture uses a live device-like provider yielding one byt
 per read, closing after a verified prefix. NEWNS additionally serves an entire
 independent SWF oracle from a real native file and verifies successful END.
 Network truncation/corruption and actual FlashVM execution belong to the separate
-[22-scenario TCP SDK acceptance](../native/movie/README.md#build-and-acceptance--сборка-и-проверки).
+[34-scenario TCP SDK acceptance](../native/movie/README.md#build-and-acceptance--сборка-и-проверки).
 The new startup paths pass in dynamic/static native builds and under ASan/UBSan
 with LeakSanitizer disabled. No physical terminal/device or complete distributed
 launcher acceptance is implied.
