@@ -54,6 +54,10 @@ extern int movie_test_announced(StyxClient *, const FVM_DesktopOptions *,
     const FVM_DesktopSource *, const char *); /* Native automatic-announcement acceptance. */
 
 
+extern int movie_test_monitored(StyxClient *, const FVM_DesktopOptions *,
+    const FVM_DesktopSource *, const char *); /* Autonomous native reader and actual player acceptance. */
+
+
 /* EN/RU: Run one real movie or verify explicit denial; close all transport/player ownership.
  * Small negotiated msize forces fragmented request/response records on real TCP.
  * Выполнить real movie либо проверить отказ; малый msize фрагментирует S-records через TCP. */
@@ -68,7 +72,9 @@ int main(int argc, char **argv)
     {
         return 3;
     }
-    StyxClient *client = styxclientmountfd(fd, 256, "fixture", "", 3000, 8);
+    const char *case_mode = getenv("MOVIE_TEST_ANNOUNCE");
+    unsigned slots = case_mode && !strcmp(case_mode, "monitor-quota") ? 1 : 8;
+    StyxClient *client = styxclientmountfd(fd, 256, "fixture", "", 3000, slots);
     if (!client)
     {
         return 4;
@@ -103,7 +109,9 @@ int main(int argc, char **argv)
     source.kind = FVM_DESKTOP_SOURCE_FILE;
     source.location = argv[3];
     const char *announced = getenv("MOVIE_TEST_ANNOUNCE");
-    int result = announced ? movie_test_announced(client, &options, &source, announced) :
+    int result = announced ? (!strncmp(announced, "monitor-", 8) ?
+        movie_test_monitored(client, &options, &source, announced) :
+        movie_test_announced(client, &options, &source, announced)) :
         fvm_desktop_run_source_managed(&options, &source, &loader, &error);
     int expected = !strcmp(argv[4], "deny") ? FVM_DESKTOP_EXIT_PLAYBACK : FVM_DESKTOP_EXIT_OK;
     styxclientshutdown(client);

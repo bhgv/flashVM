@@ -70,6 +70,14 @@ source publication alone wakes a pending control read; unrelated RPC and Tflush
 continue through original libstyx. Host admission, transport scheduling and shared
 control-tag reservation remain explicit.
 
+## Autonomous incoming control / Автономный приём
+
+[Native control monitor](MONITOR.md) retains a scoped receiver, walks its granted
+read-only control file and reads announcements on a dedicated native I/O thread.
+It supplies host readiness, exclusive feed ownership, optional generic raw-fragment
+dispatch and precise cancellation without stopping guests or closing a healthy
+shared connection. The player keeps its original thread and loader callback.
+
 ## Byte-stream schema / Схема byte stream
 
 Definitions: [`protocol.h`](protocol.h), codecs: [`protocol.c`](protocol.c).
@@ -131,11 +139,11 @@ For SDK setup/build see the [managed player guide](../../../flashVM/doc/MANAGED_
 Supply SDL2 through its normal package or an explicit CMAKE_PREFIX_PATH.
 `tests/wire.py` uses the explicitly selected SDK's independent raw SWF oracles.
 
-Wire acceptance runs **34 scenarios**: interpreter/JIT; conflicting code/data
+Wire acceptance runs **56 scenarios**: interpreter/JIT; conflicting code/data
 providers; explicit denial with a valid local SWF present; full valid SWF prefix
 followed by source denial; confined symlink refusal; long fragmented requests/
 origins; sink refusal followed by reuse of the same connection; bad CRC, early EOF,
-truncation, missing END and coalesced replies; automatic announcement/update, stale
+truncation, missing END and coalesced replies; automatic announcement/update, autonomous native reader lifecycle, stale
 replay, generation change during fetch, control EOF, disconnect and bad offer CRC/version. Negotiated msize256 forces actual
 9P fragmentation. Script verifies decoded variables, and JIT cases require real
 native entries. The protocol unit checks independent opens, one-byte framing,

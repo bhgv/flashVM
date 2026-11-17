@@ -14,9 +14,15 @@ typedef struct StyxMovieSession StyxMovieSession; /* Owned native receiver and c
 StyxMovieSession *styxmoviesession(StyxClient *client);
 
 
+/* EN/RU: Retain borrowed live session owner;1/0 on NULL/overflow, no I/O.
+ * Each successful retain needs free; watcher detaches only after the last public owner.
+ * Удержать live session;1/0 при NULL/overflow, каждый retain требует free. */
+int styxmoviesessionretain(StyxMovieSession *session);
+
+
 /* EN/RU: Feed arbitrary control byte fragments;1 accepted/0 protocol failure, sticky closed on failure.
  * Bindings for other types are retained; their data records are ignored. Caller serializes feed.
- * Thread-safe against fetch; no VM/SDL/provider I/O. READY generations never move backwards.
+ * Refuses without mutation while an automatic monitor owns input. Thread-safe against fetch; no VM/SDL/provider I/O. READY generations never move backwards.
  * Принять control fragments;1/0, malformed закрывает session; feed serialized caller,
  * fetch concurrent разрешён, без VM/SDL/provider I/O. */
 int styxmoviecontrol(StyxMovieSession *session, const void *bytes, size_t size);
@@ -42,7 +48,7 @@ int styxmovieavailable(StyxMovieSession *session, unsigned long long *generation
 void styxmoviecontrolend(StyxMovieSession *session);
 
 
-/* EN/RU: Consume receiver after feed/fetch callers retire; native watches retire independently.
+/* EN/RU: Consume one owner after its feed/fetch callers retire; native watches retire independently.
  * Never shuts down the caller's client. Поглотить receiver после feed/fetch, не закрывая client. */
 void styxmoviesessionfree(StyxMovieSession *session);
 #endif

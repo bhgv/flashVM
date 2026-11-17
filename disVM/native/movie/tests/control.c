@@ -13,9 +13,13 @@ DVM_Namespace *movie_test_group; /* Borrowed through backend main, never a guest
 
 typedef struct Control
 {
+    unsigned char prelude[128]; /* Fixture-only unrelated S-record pair. */
+    size_t prelude_size; /* Complete encoded extent, set before exposing the control. */
+    size_t prelude_sent; /* Confirmed ordinary Tread prefix. */
+    int faulted; /* Fixture-only one-shot framing/EOF injection. */
     StyxMovieWriter *writer; /* Owned production serializer over autonomous source notices. */
 } Control;
-static Control *active; /* Borrowed fixture control, pinned by pending fid ownership. */
+static Control *active; /* Last read callback context, borrowed only on the socket owner. */
 
 
 typedef struct Output
@@ -57,6 +61,7 @@ static FVM_Result info(void *state, FVM_FileInfo *out)
 static void readcontrol(void *state, void *bytes, size_t size, DVM_IoResult *out)
 {
     Control *control = state;
+    active = control;
     if (!size)
     {
         memset(out, 0, sizeof(*out));
@@ -64,8 +69,41 @@ static void readcontrol(void *state, void *bytes, size_t size, DVM_IoResult *out
         out->status = FVM_OK;
         return;
     }
+    const char *case_mode = getenv("MOVIE_TEST_ANNOUNCE");
+    if (case_mode && !strncmp(case_mode, "monitor-", 8) && size > 3)
+    {
+        size = 3;
+    }
+    if (control->prelude_sent < control->prelude_size)
+    {
+        size_t count = control->prelude_size-control->prelude_sent;
+        if (count > size)
+        {
+            count = size;
+        }
+        memcpy(bytes, control->prelude+control->prelude_sent, count);
+        control->prelude_sent += count;
+        memset(out, 0, sizeof(*out));
+        out->flags = DVM_IO_PREFIX;
+        out->status = FVM_OK;
+        out->count = count;
+        return;
+    }
+    if (case_mode && !strcmp(case_mode, "monitor-eof"))
+    {
+        memset(out, 0, sizeof(*out));
+        out->flags = DVM_IO_PREFIX;
+        out->status = FVM_OK;
+        out->stop = DVM_IO_EOF;
+        return;
+    }
     Output output = {bytes, size};
     *out = styxmoviewriterstep(control->writer, copy, &output);
+    if (case_mode && !strcmp(case_mode, "monitor-crc") && out->count && !control->faulted)
+    {
+        ((unsigned char *)bytes)[0] ^= 1;
+        control->faulted = 1;
+    }
 }
 
 
@@ -144,12 +182,34 @@ static FVM_Result factoryinfo(void *state, const char *path, FVM_FileInfo *out)
 }
 
 
+/* EN/RU: Prepare an unrelated bound S-record for the generic native dispatcher test, no VM.
+ * Подготовить unrelated bound S-record для generic native dispatcher test, без VM. */
+static int prelude(Control *control)
+{
+    FVM_SBinding binding = {0};
+    unsigned char payload[64], value = 42;
+    size_t size, first, second;
+    binding.tag = 9;
+    binding.version = 1;
+    binding.type_size = sizeof("flashvm.test")-1;
+    memcpy(binding.type, "flashvm.test", sizeof("flashvm.test"));
+    if (fvm_sbindings_payload_write(&binding, 1, payload, sizeof(payload), &size) != FVM_S_OK ||
+        fvm_srecord_write(0, payload, size, control->prelude, sizeof(control->prelude), &first) != FVM_S_OK ||
+        fvm_srecord_write(9, &value, 1, control->prelude+first, sizeof(control->prelude)-first, &second) != FVM_S_OK)
+    {
+        return 0;
+    }
+    control->prelude_size = first+second;
+    return 1;
+}
+
+
 /* EN/RU: Open independent control receiver over a ready native source; output owned on success.
  * Открыть independent control receiver над ready native source; output owned при успехе. */
 static FVM_Result opencontrol(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     (void)state;
-    if (strcmp(path, ".") || strcmp(mode, "rw"))
+    if (strcmp(path, ".") || (strcmp(mode, "rw") && strcmp(mode, "r")))
     {
         return FVM_ERROR;
     }
@@ -158,13 +218,18 @@ static FVM_Result opencontrol(void *state, const char *path, const char *mode, D
     {
         return FVM_OUT_OF_MEMORY;
     }
+    const char *case_mode = getenv("MOVIE_TEST_ANNOUNCE");
+    if (case_mode && !strcmp(case_mode, "monitor-mixed") && !prelude(control))
+    {
+        free(control);
+        return FVM_ERROR;
+    }
     control->writer = styxmoviewriter(movie_test_offers, 7);
     if (!control->writer)
     {
         free(control);
         return FVM_OUT_OF_MEMORY;
     }
-    active = control;
     out->ops = &operations;
     out->state = control;
     return FVM_OK;

@@ -2,7 +2,7 @@
  * EN: Native synchronized offer receiver; only validated current-generation bytes reach the player.
  * RU: Синхронизированный native receiver; player получает только validated current-generation bytes.
  */
-#include "receiver.h"
+#include "session_internal.h"
 #include "announcement.h"
 #include "channel_sync.h"
 #include <stdlib.h>
@@ -13,7 +13,9 @@
 struct StyxMovieSession
 {
     FVM_PortSync *lock; /* Owned short state lock; never held during network/VM work. */
-    size_t references; /* Base owner plus admitted native terminal watcher. */
+    size_t references; /* Public owners plus admitted native terminal watcher. */
+    size_t owners; /* Public callers, including an autonomous monitor. */
+    int automatic; /* Exclusive native monitor feed, never concurrent with manual feed. */
     StyxClient *client; /* Owned connection pin; root/control association never changes. */
     StyxWatch *watch; /* Owned terminal subscription, detached by base owner. */
     unsigned long long generation; /* Highest validated scoped offer, initially0. */
@@ -95,6 +97,7 @@ StyxMovieSession *styxmoviesession(StyxClient *client)
     }
     session->client = client;
     session->references = 2;
+    session->owners = 1;
     fvm_sbindings_init(&session->bindings, session->slots, FVM_SBINDINGS_MAX);
     session->watch = styxclientwatch(client, terminal, session, release);
     if (!session->watch)
@@ -160,16 +163,17 @@ static int accept(StyxMovieSession *session, const FVM_SRecord *record, size_t c
 }
 
 
-/* EN/RU: See receiver.h; retain coalesced tails and refuse corrupt bytes before semantic dispatch.
- * См. receiver.h; сохранить coalesced tails, отклонить corrupt bytes до dispatch. */
-int styxmoviecontrol(StyxMovieSession *session, const void *bytes, size_t size)
+/* EN/RU: Borrow session/bytes/size;1 accepted/0 refusal, retain coalesced tails.
+ * automatic1 requires monitor claim,0 requires manual ownership; corrupt input retires receiver.
+ * Borrow session/bytes/size;1/0, сохранить tails; automatic1 для monitor,0 для manual owner. */
+static int control(StyxMovieSession *session, const void *bytes, size_t size, int automatic)
 {
     if (!session || (!bytes && size))
     {
         return 0;
     }
     fvm_port_sync_lock(session->lock);
-    if (session->closed)
+    if (session->closed || session->automatic != automatic)
     {
         fvm_port_sync_unlock(session->lock);
         return 0;
@@ -218,6 +222,22 @@ invalid:
     session->ready = 0;
     fvm_port_sync_unlock(session->lock);
     return 0;
+}
+
+
+/* EN/RU: See receiver.h; manual feed refuses while an autonomous reader owns the direction.
+ * См. receiver.h; manual feed запрещён при autonomous reader ownership. */
+int styxmoviecontrol(StyxMovieSession *session, const void *bytes, size_t size)
+{
+    return control(session, bytes, size, 0);
+}
+
+
+/* EN/RU: See session_internal.h; only the monitor that holds the exclusive claim feeds here.
+ * См. session_internal.h; feed только для monitor с exclusive claim. */
+int movie_session_feed(StyxMovieSession *session, const void *bytes, size_t size)
+{
+    return control(session, bytes, size, 1);
 }
 
 
@@ -297,13 +317,62 @@ void styxmoviecontrolend(StyxMovieSession *session)
 }
 
 
-/* EN/RU: See receiver.h; base owner retires watcher once, then drops its independent pin.
- * См. receiver.h; base owner завершает watcher один раз и освобождает свой pin. */
+/* EN/RU: See receiver.h; retain only while caller already owns a live native reference.
+ * См. receiver.h; retain только под существующим live native owner. */
+int styxmoviesessionretain(StyxMovieSession *session)
+{
+    if (!session)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(session->lock);
+    int valid = session->owners && session->owners != (size_t)-1 && session->references != (size_t)-1;
+    if (valid)
+    {
+        session->owners++;
+        session->references++;
+    }
+    fvm_port_sync_unlock(session->lock);
+    return valid;
+}
+
+
+/* EN/RU: See session_internal.h; claim/unclaim setup under the same lock as feed.
+ * См. session_internal.h; claim/unclaim setup под общим с feed lock. */
+int movie_session_claim(StyxMovieSession *session, int acquire)
+{
+    fvm_port_sync_lock(session->lock);
+    int valid = acquire ? !session->closed && !session->automatic && !session->used : session->automatic;
+    if (valid)
+    {
+        session->automatic = acquire != 0;
+    }
+    fvm_port_sync_unlock(session->lock);
+    return valid;
+}
+
+
+/* EN/RU: See session_internal.h; caller holds a session owner, client association is immutable.
+ * См. session_internal.h; caller владеет session, client association immutable. */
+StyxClient *movie_session_client(StyxMovieSession *session)
+{
+    return session->client;
+}
+
+
+/* EN/RU: See receiver.h; last public owner detaches native watcher once, outside receiver lock.
+ * См. receiver.h; последний public owner завершает watcher один раз вне receiver lock. */
 void styxmoviesessionfree(StyxMovieSession *session)
 {
     if (session)
     {
-        styxclientunwatch(session->watch);
+        fvm_port_sync_lock(session->lock);
+        int last = --session->owners == 0;
+        fvm_port_sync_unlock(session->lock);
+        if (last)
+        {
+            styxclientunwatch(session->watch);
+        }
         release(session);
     }
 }

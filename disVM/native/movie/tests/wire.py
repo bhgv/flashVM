@@ -61,7 +61,22 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
                 if not port.isdecimal():
                     raise RuntimeError('server startup '+port)
                 env = dict(environment, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', SDL_AUDIODRIVER='dummy')
-                run = subprocess.run([player, port, mode, name,
+                if announced == 'monitor-stop':
+                    running = subprocess.Popen([player, port, mode, name, 'allow'], cwd=work, env=env,
+                                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    prefix_log = ''
+                    while True:
+                        checkpoint = process.stdout.readline()
+                        if not checkpoint:
+                            raise RuntimeError('server ended before pending read')
+                        prefix_log += checkpoint
+                        if checkpoint.strip() == 'PENDING OFFER':
+                            break
+                    stdout, stderr = running.communicate('g', timeout=30)
+                    run = subprocess.CompletedProcess(running.args, running.returncode, stdout, stderr)
+                else:
+                    prefix_log = ''
+                    run = subprocess.run([player, port, mode, name,
                                       'deny' if deny or (fault and fault != 'coalesce') else 'sink' if sink else 'allow'], cwd=work, env=env,
                                      capture_output=True, text=True, timeout=30)
                 process.wait(timeout=10)
@@ -69,7 +84,8 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
                 output = log.read()
                 if run.returncode or process.returncode or 'PASS real TCP Styx S-record managed movie' not in run.stdout:
                     raise RuntimeError(str((run.returncode, process.returncode))+run.stdout+run.stderr+output+process.stdout.read())
-                if not deny and (not fault or fault == 'coalesce') and announced not in ('crc', 'version'):
+                no_movie = announced in ('crc', 'version', 'monitor-refuse', 'monitor-crc', 'monitor-eof', 'monitor-quota', 'monitor-immediate')
+                if not deny and (not fault or fault == 'coalesce') and not no_movie:
                     for line in ('OPEN P '+prefix+'root.swf 0', 'OPEN P '+prefix+'nested/child.swf 0',
                                  'OPEN T '+prefix+'root-vars.swf 0', 'OPEN T '+prefix+'nested/child-vars.txt 0'):
                         if line not in output:
@@ -79,10 +95,10 @@ def scenario(server, player, sdk, mode, deny, fault=None, sink=False, fragment=F
                     if mode == 'jit' and not re.search(r'native=[1-9][0-9]*', run.stderr):
                         raise RuntimeError('No actual JIT execution '+run.stderr)
                 if announced:
-                    remaining = process.stdout.read()
-                    if announced not in ('crc', 'version') and 'WALK movie/1' not in remaining:
+                    remaining = prefix_log+process.stdout.read()
+                    if not no_movie and 'WALK movie/1' not in remaining:
                         raise RuntimeError('No walk to advertised root '+remaining)
-                    if announced in ('normal', 'changing') and 'WALK movie/2' not in remaining:
+                    if announced in ('normal', 'changing', 'monitor-normal', 'monitor-changing', 'monitor-held', 'monitor-mixed') and 'WALK movie/2' not in remaining:
                         raise RuntimeError('No new generation walk '+remaining)
                 if deny == 'partial.swf' and 'PARTIAL 44' not in output:
                     raise RuntimeError('Missing acknowledged full SWF failure '+output)
@@ -104,7 +120,10 @@ def main():
         scenario(server, player, sdk, mode, 'escape.swf')
         scenario(server, player, sdk, mode, False, fragment=True)
         scenario(server, player, sdk, mode, False, sink=True)
-        for announced in ('normal', 'changing', 'eof', 'disconnect', 'crc', 'version'):
+        for announced in ('normal', 'changing', 'eof', 'disconnect', 'crc', 'version',
+                          'monitor-normal', 'monitor-changing', 'monitor-held', 'monitor-stop',
+                          'monitor-disconnect', 'monitor-refuse', 'monitor-crc', 'monitor-eof',
+                          'monitor-mixed', 'monitor-quota', 'monitor-immediate'):
             scenario(server, player, sdk, mode, False, announced=announced)
         for fault in ('crc', 'eof', 'truncate', 'noend', 'coalesce'):
             scenario(server, player, sdk, mode, False, fault=fault)

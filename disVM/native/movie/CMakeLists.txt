@@ -7,7 +7,7 @@ add_library(styx_movie_protocol STATIC announcement.c protocol.c
 target_include_directories(styx_movie_protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${movie_flash}/include")
 add_library(styx_movie_service STATIC root.c offer.c publisher.c writer.c service.c request.c)
 target_link_libraries(styx_movie_service PUBLIC styx_namespace_fixture styx_movie_protocol)
-add_library(styx_movie_client STATIC receiver.c client.c)
+add_library(styx_movie_client STATIC receiver.c client.c monitor.c)
 target_include_directories(styx_movie_client PUBLIC "${movie_flash}/frontend/common")
 target_link_libraries(styx_movie_client PUBLIC styx_client styx_movie_protocol styx_vfs)
 add_executable(movie-server tests/backend.c tests/server.c tests/deferred.c tests/control.c ../tests/file-root/context.c)
@@ -18,8 +18,8 @@ set(INFERNO_MOVIE_PLAYER_BUILD "" CACHE PATH "Explicit built FlashVM desktop SDK
 if(INFERNO_MOVIE_PLAYER_BUILD)
     enable_language(CXX)
     find_package(SDL2 REQUIRED)
-    add_executable(movie-player tests/player.c tests/announced.c tests/watch_delay.c)
-    set_property(TARGET movie-player APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=styxclientwatch")
+    add_executable(movie-player tests/player.c tests/announced.c tests/monitored.c tests/monitor_fault.c tests/watch_delay.c)
+    set_property(TARGET movie-player APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=styxclientwatch -Wl,--wrap=pthread_create")
     target_link_libraries(movie-player PRIVATE styx_movie_client
         "${INFERNO_MOVIE_PLAYER_BUILD}/frontend/libflashvm_player_host.a"
         "${INFERNO_MOVIE_PLAYER_BUILD}/libflashvm.a"

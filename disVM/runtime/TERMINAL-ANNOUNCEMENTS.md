@@ -135,6 +135,15 @@ provider-first CODE and ordinary union-order DATA rules remain unchanged.
 без входа в Dis/AS heaps. Сам player по-прежнему работает синхронно на своём
 owner thread; асинхронный player API здесь не добавлен.
 
+## Autonomous incoming control / Автономный приём
+
+The SDK now provides a [native control monitor](../native/movie/MONITOR.md):
+`styxmoviecontrolstart(session, relative_control, input)` owns one watch read and
+updates the receiver while FlashVM executes. It retains session lifetime,
+provides host readiness and cancels through ordinary Tflush on teardown. Other
+control records reach the optional generic native dispatcher; shared directions
+require that dispatcher. No guest callback or suspension is introduced.
+
 ## Verified scope / Проверенный объём
 
 - Runtime constructor acceptance: paired/duplex/absent terminal, interpreter/JIT;
@@ -142,7 +151,7 @@ owner thread; асинхронный player API здесь не добавлен
   exactly one READY/CLOSED pair and no child takeover.
 - Native unit: unpublished reservation, rollback, two real pthread CAS contenders,
   canonical per-source names, live directory listing and held-open identities.
-- Real original-libstyx TCP plus actual FlashVM player:34 interpreter/JIT scenarios,
+- Real original-libstyx TCP plus actual FlashVM player:56 interpreter/JIT scenarios,
   including generation update/replay, change during acquisition, control EOF,
   disconnect, bad CRC/version and refusal with a valid local SWF present.
 - Normal and ASan/UBSan SDK builds; runtime dynamic/static and ASan/UBSan builds.

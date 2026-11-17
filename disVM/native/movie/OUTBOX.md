@@ -124,3 +124,7 @@ transport event-loop scheduling and arbitration with other outgoing S-record
 producers. Automatic external FlashVM process creation and a complete distributed
 launcher remain subsequent integration work. This change supplies the autonomous
 movie-output component for that host, rather than replacing its control protocol.
+
+The matching [autonomous incoming reader](MONITOR.md) now supplies native control
+read ownership, readiness and cancellation at the terminal. Its new interpreter/
+JIT acceptance expands actual-player wire coverage from34 to56 scenarios.
