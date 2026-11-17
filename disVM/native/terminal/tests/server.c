@@ -24,10 +24,19 @@ static void initialize(void)
     {
         return;
     }
-    FVM_SBinding binding[] = {{5, 1, 11, "test.opaque"}, {17, 1, 13, "test.ide.fvd1"}};
-    unsigned char declaration[128];
-    size_t size, encoded;
-    if (fvm_sbindings_payload_write(binding, 2, declaration, sizeof(declaration), &size) != FVM_S_OK ||
+    FVM_SBinding binding[] = { /* Fixture-only immutable RX identities. */
+        {5, 1, 11, "test.opaque"},
+        {17, 1, 13, "test.ide.fvd1"}
+    };
+    size_t binding_count = 2; /* Normally declare both identities before payloads. */
+#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 5
+    binding_count = 1; /* The UI identity is deliberately announced later. */
+#endif
+    unsigned char declaration[128]; /* Owned temporary control payload. */
+    size_t size; /* Encoded declaration payload bytes. */
+    size_t encoded; /* Complete S-record bytes. */
+    if (fvm_sbindings_payload_write(binding, binding_count, declaration,
+        sizeof(declaration), &size) != FVM_S_OK ||
         fvm_srecord_write(0, declaration, size, offered, sizeof(offered), &encoded) != FVM_S_OK)
     {
         exit(3);
@@ -46,13 +55,56 @@ static void initialize(void)
     offered_size += encoded;
     /* EN/RU: Independent fvd1 golden payload; tag17 is a fixture-only UI binding.
      * Независимый эталон fvd1; tag17 — только тестовая UI-привязка. */
+#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 3
+    /* EN/RU: Illegal immutable-tag rebind must not replace an admitted UI route.
+     * Конфликтующее объявление не должно заменять уже принятую UI-привязку. */
+    FVM_SBinding conflict = {17, 1, 10, "test.other"};
+    if (fvm_sbindings_payload_write(&conflict, 1, declaration, sizeof(declaration), &size) != FVM_S_OK ||
+        fvm_srecord_write(0, declaration, size, offered+offered_size,
+            sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+#endif
+#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 2
+    static const char ui[] = "bad-ui-frame";
+#else
     static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
+#endif
+#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 5
+    /* EN/RU: Preserve an unbound record, then announce its UI identity on the live connection.
+     * Сначала неизвестная запись, затем объявление её UI-типа на живом соединении. */
     if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,
         sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
     {
         exit(3);
     }
     offered_size += encoded;
+    if (fvm_sbindings_payload_write(binding+1, 1, declaration, sizeof(declaration), &size) != FVM_S_OK ||
+        fvm_srecord_write(0, declaration, size, offered+offered_size,
+            sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+#endif
+    if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,
+        sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+#if defined(STYX_ROUTE_CASE) && STYX_ROUTE_CASE == 6
+    /* EN/RU: Second UI item must backpressure the one-slot mailbox, not batch or overwrite it.
+     * Вторая UI-запись ожидает место, не объединяется и не заменяет первую. */
+    if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,
+        sizeof(offered)-offered_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    offered_size += encoded;
+#endif
     fvm_sstream_init(&decoder, received, sizeof(received), 256);
 }
 

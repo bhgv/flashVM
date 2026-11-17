@@ -38,6 +38,12 @@ loading, timer/render notifications and proxy messages remain independent typed
 routes on the same general terminal connection. No new UI wire schema is assigned
 by this adapter, and no mandatory AS relay is imposed on unrelated typed calls.
 
+An opt-in [native binding dispatcher](../disVM/native/terminal/route/README.md)
+now discovers agreed UI type/version bindings on its own native thread and
+provides one-message copied UI/general mailboxes. It consumes no guest execution
+turns. The existing `$Idehost` additionally has rows/path/ink/bulk RPCs; their
+remote endpoint and runtime attachment are separate remaining integration work.
+
 ## What stays / Что сохраняется
 
 Existing Dis document/input/workspace services, AS presentation functions and the

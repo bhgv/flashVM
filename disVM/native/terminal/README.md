@@ -106,6 +106,11 @@ RU: Общий кодек `fvd1` используется локальными �
 
 ## Verified scope / Проверено
 
+The opt-in [native binding dispatcher](route/README.md) now owns a dedicated
+record-consumer thread, applies the existing negotiated RX binding declarations,
+and delivers separate bounded copied UI/general mailboxes. It does not require
+a Limbo polling loop and never adds a second reader to an existing dispatcher.
+
 Actual original libstyx/lib9 peers run two opposite sessions over one PTY and a
 real native launch handoff. Record input is clipped to3bytes, record writes
 acknowledge2bytes; the physical adapter also fragments transfers. Tests consume
