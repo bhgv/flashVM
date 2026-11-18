@@ -193,3 +193,11 @@ drain accepted client records. `styxorderedready` continues to require a live pe
 Чистый EOF не обгоняет уже принятые записи. Ошибки и явный stop по-прежнему
 пробуждают подписчиков независимо от продвижения dispatcher. Исторический факт
 согласования не даёт права отправлять после завершения соединения.
+
+## Captured construction / Создание по закреплённым каналам
+
+The [shared native attachment](ATTACHMENT.md) validates a display-independent
+profile before opening captured Styx channels, creates this broker and queues its
+initial offer. A separate entry borrows an actual pre-adoption launch handoff.
+The CLI and optional FlashVM bridge use this same path; the caller keeps its
+original session, namespace and handoff ownership.

@@ -3,6 +3,7 @@
  * RU: Канонические ограниченные числа CLI, проверка повторов и preflight до получения транспорта.
  */
 #include "config.h"
+#include "order/broker/attach.h"
 #include "flashvm/sordctl.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -246,7 +247,8 @@ int unibuscli_parse(int argc, char *const *argv, UnibusCliConfig *config, const 
     {
         return !(seen & ~1U) && !config->count;
     }
-    return config->fd >= 3 && config->lane && config->count &&
+    StyxOrderedOptions options = {sizeof(options), config->limit, config->window, config->lane, config->tags, config->count}; /* Shared no-I/O profile validation. */
+    return styxorderedoptionsvalid(&options) && config->fd >= 3 && config->lane && config->count &&
         dvm_terminal_channel_paths_valid(config->root, config->root) &&
         dvm_terminal_channel_paths_valid(config->receive, config->send);
 }

@@ -5,7 +5,7 @@
 #include "session.h"
 #include "drivers/posix/fd.h"
 #include "mount.h"
-#include "flashvm/sordctl.h"
+#include "order/broker/attach.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -96,14 +96,15 @@ int unibuscli_connect(const UnibusCliConfig *config, UnibusCliLink *link)
     channels.provider = link->grant;
     strcpy(channels.receive, config->receive);
     strcpy(channels.send, config->send);
-    unsigned outer_limit = config->limit + 64; /* Service capacity is independent of a tiny application's body ceiling. */
-    if (outer_limit < FVM_SORDER_CTL_MAX)
-    {
-        outer_limit = FVM_SORDER_CTL_MAX;
-    }
-    link->peer = styxbidirordered(styxbidircontrol(link->client, &channels, outer_limit, 1),
-        config->limit, config->window, config->tags, config->count);
-    if (!link->peer || !styxorderedoffer(link->peer, 1, config->lane))
+    StyxOrderedOptions options = {0}; /* Shared native attachment profile, independent of display and CLI parsing. */
+    options.struct_size = sizeof(options);
+    options.limit = config->limit;
+    options.window = config->window;
+    options.lane = config->lane;
+    options.tags = config->tags;
+    options.count = config->count;
+    link->peer = styxbidirorderedchannels(link->client, &channels, &options);
+    if (!link->peer)
     {
         unibuscli_disconnect(link);
         return 0;

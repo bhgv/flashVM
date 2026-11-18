@@ -117,7 +117,7 @@ def preflight(cli):
             raise RuntimeError("none/help changed stdio or failed")
     left, right = socket.socketpair()
     base = ["--profile", "ordered", "--phy-fd", str(left.fileno()), "--lane", "71", "--tag", "7"]
-    invalid = [base + ["--lane", "72"], base + ["--tag", "7"], base + ["--tag", "-1"],
+    invalid = [base + ["--limit", "1", "--tag", "4294967295"], base + ["--lane", "72"], base + ["--tag", "7"], base + ["--tag", "-1"],
                base + ["--limit", "0"], base + ["--window", "9223372036854775808"],
                base + ["--window", "01"], base + ["--rx", "../hidden"], base + ["--channel", "2"],
                ["--profile", "none", "--phy-fd", str(left.fileno())], ["--phy-fd", str(left.fileno())],

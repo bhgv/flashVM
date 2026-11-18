@@ -3,6 +3,7 @@
  * RU: Создание согласованных общих каналов по исходному launch-descriptor; без IDE-специфичных путей.
  */
 #include "internal.h"
+#include "order/broker/attach.h"
 
 
 /* EN/RU: See ordered.h; common local queues/relays are shared with the existing flat bridge.
@@ -20,9 +21,12 @@ StyxBidirUIBridge *styxbidirordereduibridge(StyxOrdered *peer, unsigned local_si
 static int valid(const StyxOrderedTerminalOptions *options)
 {
     if (!options || options->struct_size != sizeof(*options) || options->local_side > DVM_UI_DIS ||
-        options->limit > 65536U - 64U || !options->lane || options->lane > FVM_SRECORD_U32 ||
-        !options->window || options->window >= (1ULL << 63) || !options->tags || !options->count ||
         options->ui_tag > FVM_SRECORD_U32)
+    {
+        return 0;
+    }
+    StyxOrderedOptions common = {sizeof(common), options->limit, options->window, options->lane, options->tags, options->count}; /* Native borrowed preflight. */
+    if (!styxorderedoptionsvalid(&common))
     {
         return 0;
     }
@@ -37,18 +41,7 @@ static int valid(const StyxOrderedTerminalOptions *options)
     int found = 0; /* UI grant must be declared explicitly by native host. */
     for (size_t i = 0; i < options->count; i++)
     {
-        if (options->tags[i] > FVM_SRECORD_U32)
-        {
-            return 0;
-        }
         found |= options->tags[i] == options->ui_tag;
-        for (size_t j = 0; j < i; j++)
-        {
-            if (options->tags[j] == options->tags[i])
-            {
-                return 0;
-            }
-        }
     }
     return found;
 }
@@ -64,8 +57,8 @@ StyxBidirUIBridge *styxbidirorderedterminal(StyxClient *client, const DVM_Termin
     {
         return NULL;
     }
-    StyxBidirControl *control = styxbidircontrol(client, channels, options->limit + 64, 1); /* Captured capability, owned on success. */
-    StyxOrdered *peer = styxbidirordered(control, options->limit, options->window, options->tags, options->count); /* Consumes control. */
+    StyxOrderedOptions common = {sizeof(common), options->limit, options->window, options->lane, options->tags, options->count}; /* Same grants as native non-display hosts. */
+    StyxOrdered *peer = styxbidirorderedchannels(client, channels, &common); /* Owned peer, initial offer already queued. */
     if (!peer)
     {
         return NULL;
@@ -73,11 +66,6 @@ StyxBidirUIBridge *styxbidirorderedterminal(StyxClient *client, const DVM_Termin
     StyxBidirUIBridge *bridge = styxbidirordereduibridge(peer, options->local_side, options->ui_tag); /* Consumes peer always. */
     if (!bridge)
     {
-        return NULL;
-    }
-    if (!styxorderedoffer(peer, 1, options->lane))
-    {
-        styxbidiruibridgefree(bridge);
         return NULL;
     }
     return bridge;

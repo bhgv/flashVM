@@ -248,3 +248,13 @@ to existing editor/desktop launchers.
 Явный CLI-профиль использует выданный FD без dial и не предоставляет клиентам
 служебный root0. Отдельные native-потоки обслуживают транспорт, ввод и клиентские
 очереди; заблокированный stdout отменяется без остановки гостевых потоков.
+
+## Shared captured attachment / Общее подключение выданных каналов
+
+The [native attachment API](../disVM/native/terminal/order/broker/ATTACHMENT.md)
+now constructs the same ordered broker from either a captured descriptor or an
+actual pre-adoption launch handoff. CLI and FlashVM bridge use this common path.
+It validates profile/grants before channel opens, respects native construction
+cancellation and retains terminal fids independently of the handoff namespace.
+An absent display does not change ordinary console FD access or create a bridge.
+This does not yet supply a network launch RPC or typed guest init conversion.

@@ -37,8 +37,13 @@ int main(void)
     CHECK(config.window == (1ULL << 63) - 1 && config.limit == 65472 && config.records == (size_t)-1);
     unibuscli_clear(&config);
     arguments[12] = "1";
+    CHECK(!unibuscli_parse(sizeof(arguments) / sizeof(*arguments), arguments, &config, &error));
+    unibuscli_clear(&config);
+    arguments[10] = "1";
     CHECK(unibuscli_parse(sizeof(arguments) / sizeof(*arguments), arguments, &config, &error) && config.limit == 1);
     unibuscli_clear(&config);
+    arguments[10] = "4294967295";
+    arguments[12] = "65472";
     const unsigned indexes[] = {4, 6, 10, 12, 14, 16}; /* Native fd, lane, tag, body, window, quota fields. */
     const char *invalid[] = {"2147483648", "4294967296", "4294967296", "65473", "9223372036854775808", "18446744073709551616"}; /* One beyond each bound. */
     for (unsigned i = 0; i < sizeof(indexes) / sizeof(*indexes); i++)

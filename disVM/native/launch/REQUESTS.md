@@ -129,3 +129,9 @@ The [generic bidir terminal record transport](../terminal/README.md) now opens
 this job's control endpoints, runs independent native RX/TX owners and delivers
 one verified S-record at a time. Concrete event/proxy dispatch and automatic
 IDE host attachment remain separate from this transport layer.
+
+The [shared ordered attachment](../terminal/order/broker/ATTACHMENT.md) can now
+consume the **borrowed channel description** of the actual one-use handoff through
+`styxbidirorderedlaunch`. The handoff itself remains owned and unchanged; this
+constructs the terminal broker only, without starting guest code or changing init.
+The CLI and optional FlashVM local-channel bridge share this native setup path.

@@ -159,3 +159,9 @@ cover profile/renewal waits, exact deadlines across unrelated wakeups, independe
 client progress, allocation rollback, stop wakeup and source pins after owner free.
 No multi-carrier scheduler, automatic lane growth or full guest-application
 migration is claimed by these tests.
+
+The captured-descriptor factory now delegates common profile validation and broker
+construction to [`styxbidirorderedchannels`](../order/broker/ATTACHMENT.md).
+It queues the initial offer before local value-channel relay setup. A later local
+setup failure stops the owned broker; it cannot retract an offer already admitted
+by the peer. Native non-display hosts use the same constructor independently.

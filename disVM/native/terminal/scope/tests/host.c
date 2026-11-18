@@ -139,7 +139,12 @@ static void failure(StyxScope *root, StyxScope *group, StyxScopeClient **clients
     }
     else
     {
-        command(control, "fill");
+        /* EN/RU: The deliberately invalid reply may retire RX before the final Twrite ACK reaches TX.
+         * Admission plus the exact broker reason below proves the command ran; successful flush is not guaranteed.
+         * Намеренно неверный ответ может закрыть RX раньше последнего Twrite ACK; допуск и точная причина ниже
+         * доказывают исполнение команды, успешный flush при таком завершении не гарантируется.
+         */
+        check(styxbidircontrolsendwait(control, 102, "fill", 4, 120000, NULL), "admit intentional failing fixture response");
     }
     check(!styxscopeclientwait(clients[2], 120000), "empty client wakes on protocol/stop/source retirement");
     int expected = STYX_SCOPE_CASE == 2 ? STYX_CONTROL_NOMEM : STYX_SCOPE_CASE == 4 ? STYX_CONTROL_READ_FAILED :

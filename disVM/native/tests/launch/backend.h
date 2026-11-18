@@ -95,7 +95,7 @@ static void launch_close(void *state)
 {
     (void)state;
 }
-static const DVM_VfsOps launch_stream = {NULL, launch_read, NULL, NULL, NULL, launch_close}; /* Live byte input. */
+static const DVM_VfsOps launch_stream = {.read = launch_read, .close = launch_close}; /* Live byte input. */
 
 
 /* EN/RU: Open only existing files; transfer borrowed state under provider wrapper pin.
@@ -120,7 +120,7 @@ static void launch_destroy(void *opaque)
     LaunchState *state = opaque;
     state->destroyed++;
 }
-static const DVM_ProviderOps launch_ops = {launch_info, launch_open, launch_destroy, DVM_PROVIDER_STABLE_BIND}; /* Stable roots, live children. */
+static const DVM_ProviderOps launch_ops = {.info = launch_info, .open = launch_open, .destroy = launch_destroy, .flags = DVM_PROVIDER_STABLE_BIND}; /* Stable roots, live children. */
 
 
 /* EN/RU: Fill copied canonical IDs using deterministic bytes for tests, never credentials.

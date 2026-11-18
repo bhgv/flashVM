@@ -57,7 +57,7 @@ must already be open; stdin must be readable and stdout writable.
 | `--channel` | 0 | 0 or1 |
 | `--root` | `.` | canonical relative Styx root |
 | `--rx`, `--tx` | `records` | canonical relative endpoint paths, `.` allowed |
-| `--limit` | 4096 | inner payload bytes1..65472 |
+| `--limit` | 4096 | inner body bytes1..65472, including encoded tag |
 | `--window` | 1024 | future displacement1..2^63−1 |
 | `--timeout-ms` | 3000 | attach/profile deadline1..120000ms |
 | `--receive-records` | 0 | 0=unbounded; otherwise owner receive quota up to SIZE_MAX |
@@ -65,7 +65,10 @@ must already be open; stdin must be readable and stdout writable.
 Numbers are canonical unsigned decimal; signs, redundant leading zeroes, overflow,
 duplicate singleton options and duplicate grants fail. Non-profile transport
 options are incompatible with `none`. Paths are copied and validated before I/O.
-An inner payload limit of1 does not restrict the private service-record capacity.
+An inner body limit of1 permits an empty tag0 record and does not restrict private
+service-record capacity. Grants whose encoded tag alone exceeds the body limit
+refuse during no-I/O parsing. The relay now uses the
+[shared captured attachment API](../order/broker/ATTACHMENT.md).
 
 ## Application streams / Клиентские потоки
 

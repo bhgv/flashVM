@@ -3,6 +3,7 @@
  * RU: C++98 связывает переносимый кодек службы и явный native API двунаправленного брокера.
  */
 #include "broker.h"
+#include "attach.h"
 #include "flashvm/sordctl.h"
 
 
@@ -20,6 +21,12 @@ int main()
         styxorderedrenew(NULL, 0) || styxorderedservicewait(NULL, 0) || styxorderedclientsend(NULL, NULL, 0))
     {
         return 1;
+    }
+    StyxOrderedOptions options = StyxOrderedOptions(); /* C++98 native descriptor preflight. */
+    if (styxorderedoptionsvalid(&options) || styxbidirorderedchannels(NULL, NULL, &options) ||
+        styxbidirorderedlaunch(NULL, NULL, &options))
+    {
+        return 2;
     }
     styxorderedfree(NULL);
     return 0;
