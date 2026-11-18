@@ -119,3 +119,10 @@ used by the Styx loader and available after typed Unibus routing. It validates
 BEGIN/BYTES/END, stages exact bytes and publishes the origin only on explicit
 success. This is one-resource reply handling, not a new correlated file/RPC API
 or implementation of the proposed `file/state` control nodes.
+
+A [one-shot native resource client](../disVM/native/terminal/resource/README.md)
+now sends the existing request through an independently granted TX binding and
+receives replies from an exclusively assigned typed queue. It has one monotonic
+budget, native cancellation and private staging of the returned origin. Generic
+provider-side Unibus dispatch and automatic logical-channel negotiation remain
+separate work; the existing VFS resource service still owns access decisions.

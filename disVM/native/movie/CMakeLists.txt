@@ -2,7 +2,7 @@
 # EN: Managed movie SDK uses explicit repository VFS/FlashVM protocol inputs and original Styx client.
 # RU: Managed movie SDK использует explicit VFS/FlashVM protocol inputs и original Styx client.
 set(movie_flash "${INFERNO_VFS_SUPPORT}/flashVM")
-add_library(styx_movie_protocol STATIC announcement.c protocol.c reply.c
+add_library(styx_movie_protocol STATIC announcement.c protocol.c reply.c request_payload.c
     "${movie_flash}/src/protocol/srecord.c" "${movie_flash}/src/protocol/sbindings.c")
 target_include_directories(styx_movie_protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${movie_flash}/include"
     "${movie_flash}/frontend/common")
@@ -66,3 +66,7 @@ add_executable(movie-reply-test tests/reply.c)
 target_link_libraries(movie-reply-test PRIVATE styx_movie_protocol)
 target_compile_options(movie-reply-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME managed-movie-reply COMMAND movie-reply-test)
+add_executable(movie-request-payload-test tests/request_payload.c)
+target_link_libraries(movie-request-payload-test PRIVATE styx_movie_protocol)
+target_compile_options(movie-request-payload-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME managed-movie-request-payload COMMAND movie-request-payload-test)

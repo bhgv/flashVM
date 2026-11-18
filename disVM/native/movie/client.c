@@ -5,6 +5,7 @@
 #include "client.h"
 #include "protocol.h"
 #include "reply.h"
+#include "request_payload.h"
 #include <string.h>
 
 
@@ -75,7 +76,7 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
     FVM_DesktopWrite write, void *write_userdata, char *resolved, size_t capacity)
 {
     unsigned char buffer[MOVIE_FRAME], request[MOVIE_FRAME];
-    size_t size, previous = 0, rn, bn;
+    size_t size, previous = 0;
     unsigned long long offset = 0;
     FVM_SRecord record;
     FVM_SBindings bindings;
@@ -92,9 +93,9 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
         styxclientclunk(fid);
         return FVM_INVALID_ARGUMENT;
     }
-    rn = strlen(reference);
-    bn = base ? strlen(base) : 0;
-    if (!rn || rn >= MOVIE_PATH || bn >= MOVIE_PATH)
+    size_t request_size; /* Complete checked payload including existing REQUEST opcode. */
+    if (!movie_request_payload(request, sizeof(request), &request_size,
+        purpose == FVM_DESKTOP_FETCH_CODE ? MOVIE_CODE : MOVIE_DATA, reference, base))
     {
         styxclientclunk(fid);
         return FVM_INVALID_ARGUMENT;
@@ -105,17 +106,7 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
     {
         goto done;
     }
-    request[0] = purpose == FVM_DESKTOP_FETCH_CODE ? MOVIE_CODE : MOVIE_DATA;
-    request[1] = (unsigned char)rn;
-    request[2] = (unsigned char)(rn>>8);
-    request[3] = (unsigned char)bn;
-    request[4] = (unsigned char)(bn>>8);
-    memcpy(request+5, reference, rn);
-    if (bn)
-    {
-        memcpy(request+5+rn, base, bn);
-    }
-    if (!movie_record(buffer, &size, MOVIE_REQUEST, request, 5+rn+bn) ||
+    if (!movie_record(buffer, &size, MOVIE_REQUEST, request + 1, request_size - 1) ||
         !sendrecord(fid, &offset, buffer, size))
     {
         goto done;

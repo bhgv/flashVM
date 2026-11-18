@@ -18,7 +18,7 @@ if(INFERNO_UI_HOST_LIBRARIES)
     # EN/RU: Existing 9P client ABI uses long long offsets in its public headers; keep that ABI.
     # Публичные заголовки существующего 9P client используют long long offsets; ABI не менять.
     target_compile_options(terminal-typed-header PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-long-long)
-    target_link_libraries(terminal-typed-header PRIVATE styx_terminal_route)
+    target_link_libraries(terminal-typed-header PRIVATE styx_terminal_resource)
     add_test(NAME terminal-typed-cxx98-header COMMAND terminal-typed-header)
     foreach(bridge_case RANGE 0 8)
         set(bridge_peer terminal-bridge-peer-${bridge_case})

@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 #define STYX_ROUTE_TYPES_MAX 8U /* Bound per-session typed queues independently of peer declarations. */
+struct DVM_Cancel; /* Borrowed native cancellation source; never a serialized capability. */
 
 
 /* EN/RU: Borrowed constructor configuration, copied before any worker or I/O starts.
@@ -58,6 +59,21 @@ int styxbidirroutetypednext(StyxBidirRoute *route, unsigned index, unsigned long
  * Native-ожидание очереди index: 1 есть запись/0 timeout/end/ошибка, без потребления или guest-кода.
  */
 int styxbidirroutetypedwait(StyxBidirRoute *route, unsigned index, unsigned timeout);
+
+
+/* EN/RU: Check immutable registered identity/version at index, 1 match/0 invalid/different; no I/O.
+ * Проверить неизменяемую регистрацию identity/version очереди index, 1/0, без I/O и RX consumption.
+ */
+int styxbidirroutetypedmatches(StyxBidirRoute *route, unsigned index, const char *type, unsigned long version);
+
+
+/* EN/RU: Native-only typed readiness with optional borrowed cancellation; 1 ready/0 otherwise.
+ * Cancellation wakes this wait without stopping route or consuming any queue; no polling/guest code.
+ * Callback detaches route access before return, even if native unsubscribe races an admitted notice.
+ * Native-ожидание с borrowed cancel, 1/0; отмена будит только ожидание, не останавливает route.
+ */
+int styxbidirroutetypedwaitcancel(StyxBidirRoute *route, unsigned index, unsigned timeout,
+    struct DVM_Cancel *cancel);
 #ifdef __cplusplus
 }
 #endif

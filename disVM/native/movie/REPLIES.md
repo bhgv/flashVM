@@ -7,6 +7,11 @@ time, after ordinary Styx framing or the
 `styxmoviefetch` client now uses this same receiver. No new S-tag, opcode,
 file protocol, path authority or physical transport is introduced.
 
+The [one-shot Unibus client](../terminal/resource/README.md) now sends that
+request and receives these replies using a finite budget and native cancellation.
+The [request codec](request_payload.h) is also shared with the VFS-side decoder;
+normalization, provider selection and final access decisions stay in that service.
+
 RU: Общий приёмник обрабатывает существующий формат `flashvm.movie` версии 1
 после проверки S-записи. Один код используется обычным Styx-загрузчиком и может
 принимать payload из typed-очереди Unibus. Новых числовых тегов и протоколов нет.

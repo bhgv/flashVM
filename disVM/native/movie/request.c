@@ -3,6 +3,7 @@
  * RU: Разрешить назначение запроса в granted live VFS и открыть ровно один раз.
  */
 #include "service_internal.h"
+#include "request_payload.h"
 
 
 /* EN/RU: Join a borrowed raw reference to its virtual movie base;1/0 with bounded output.
@@ -36,27 +37,16 @@ int movie_request(MovieOpen *opened, const unsigned char *bytes, size_t size)
     FVM_PortFile *file = NULL;
     FVM_PortDirectory *directory = NULL;
     FVM_Result status;
-    if (size < 6 || bytes[0] != MOVIE_REQUEST ||
-        (bytes[1] != MOVIE_CODE && bytes[1] != MOVIE_DATA))
+    unsigned purpose; /* Validated explicit wire intent, never inferred from filename. */
+    if (!movie_request_parse(bytes, size, &purpose, reference, base))
     {
         return 0;
     }
-    size_t rn = bytes[2] | (size_t)bytes[3]<<8;
-    size_t bn = bytes[4] | (size_t)bytes[5]<<8;
-    if (!rn || rn >= sizeof(reference) || bn >= sizeof(base) || size != 6+rn+bn ||
-        memchr(bytes+6, 0, rn+bn))
-    {
-        return 0;
-    }
-    memcpy(reference, bytes+6, rn);
-    reference[rn] = 0;
-    memcpy(base, bytes+6+rn, bn);
-    base[bn] = 0;
     opened->stage = MOVIE_END;
     opened->outcome = 1;
-    if (!pathjoin(reference, bn ? base : NULL, path) ||
+    if (!pathjoin(reference, *base ? base : NULL, path) ||
         !dvm_resource_plan_intent(opened->group, path,
-            bytes[1] == MOVIE_CODE ? DVM_RESOURCE_SWF : DVM_RESOURCE_DATA, &plan))
+            purpose == MOVIE_CODE ? DVM_RESOURCE_SWF : DVM_RESOURCE_DATA, &plan))
     {
         return 1;
     }

@@ -87,6 +87,8 @@ guest. Для независимого потока больших данных 
 | `styxbidirroutewait` | Optional native readiness wait for UI or general, within one monotonic timeout. Does not consume. |
 | `styxbidirroutetypednext` | One opaque record from a registered schema's queue, including empty payloads. |
 | `styxbidirroutetypedwait` | Native readiness of one registered queue; no consumption or guest execution. |
+| `styxbidirroutetypedmatches` | Check a queue's immutable local identity/version registration. |
+| `styxbidirroutetypedwaitcancel` | Native readiness with optional `DVM_Cancel`; cancellation consumes nothing and leaves the shared route live. |
 | `styxbidirroutesend` | Copy one independently bound general/control TX record; 1 accepted, 0 refused. |
 | `styxbidirrouteuisend` | Validate/copy one `fvd1` TX frame on an independently established nonzero outgoing tag. |
 | `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
@@ -149,3 +151,7 @@ The [native host bridge](../bridge/README.md) now connects the UI mailbox to the
 actual existing local `DVM_UIBridge` channels with two native relays. It retains
 the general-record consumer role at the host and leaves the RPC/runtime boundary
 above explicit.
+
+The [one-shot resource client](../resource/README.md) sends the existing resource
+request and receives checked reply bodies on an exclusively assigned typed queue.
+It leaves UI/general consumption with the host and uses cancelable native waits.

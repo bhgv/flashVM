@@ -102,3 +102,13 @@ int styxbidirroutetypedwait(StyxBidirRoute *route, unsigned index, unsigned time
     }
     return routewaitcount(route, &route->typed[index].count, timeout);
 }
+
+
+/* EN/RU: See types.h; queue configuration is copied before workers start and never mutated.
+ * См. types.h; конфигурация скопирована до запуска workers и больше не меняется.
+ */
+int styxbidirroutetypedmatches(StyxBidirRoute *route, unsigned index, const char *type, unsigned long version)
+{
+    return route && index < route->typed_count && routeschema(type, version) &&
+        route->typed[index].version == version && !strcmp(route->typed[index].type, type);
+}

@@ -13,11 +13,15 @@ target_include_directories(styx_terminal_ui PUBLIC "${INFERNO_VFS_SUPPORT}/disVM
 target_link_libraries(styx_terminal_ui PUBLIC styx_terminal)
 target_compile_options(styx_terminal_ui PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-add_library(styx_terminal_route STATIC route/life.c route/dispatch.c route/queue.c route/types.c)
+add_library(styx_terminal_route STATIC route/life.c route/dispatch.c route/queue.c route/types.c route/wait.c)
 target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_subdirectory(bridge)
+add_library(styx_terminal_resource STATIC resource/life.c resource/fetch.c)
+target_link_libraries(styx_terminal_resource PUBLIC styx_terminal_route)
+target_compile_options(styx_terminal_resource PRIVATE -Wall -Wextra -Wpedantic -Werror)
+include(tests/exchange.cmake)
 
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)
