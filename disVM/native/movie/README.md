@@ -163,3 +163,8 @@ Linux64. Runtime теперь автоматически выдаёт movie gran
 ([контракт](../../runtime/TERMINAL-MOVIES.md)). Объявление и receiver описаны [здесь](../../runtime/TERMINAL-ANNOUNCEMENTS.md).
 Запуск внешнего FlashVM, общие файловые записи/сокеты, input filtering и
 динамическое добавление media/bulk channels остаются отдельными этапами.
+
+[Scoped client cancellation](../terminal/resource/FETCH-CANCEL.md) now covers
+ordinary resource-fid walk/open/read/write/close with existing single-use native
+Styx tokens. Raw/announced origin remains private through final scope/generation
+checks. No new message format, fallback authority or second connection is added.

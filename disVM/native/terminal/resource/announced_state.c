@@ -40,40 +40,7 @@ int styxbidirmovieavailable(StyxBidirMovieReceiver *receiver, unsigned long long
  */
 int styxbidirmoviereceiverwait(StyxBidirMovieReceiver *receiver, unsigned long long minimum, unsigned timeout)
 {
-    if (!receiver || minimum > MOVIE_OFFER_GENERATION_MAX || timeout > 120000)
-    {
-        return -1;
-    }
-    struct timespec deadline; /* Original native readiness deadline. */
-    if (clock_gettime(CLOCK_MONOTONIC, &deadline))
-    {
-        return -1;
-    }
-    deadline.tv_sec += timeout / 1000;
-    deadline.tv_nsec += (long)(timeout % 1000) * 1000000L;
-    if (deadline.tv_nsec >= 1000000000L)
-    {
-        deadline.tv_sec++;
-        deadline.tv_nsec -= 1000000000L;
-    }
-    pthread_mutex_lock(&receiver->lock);
-    int result = 0; /* Pending until a matching authoritative generation or terminal condition. */
-    for (;;)
-    {
-        unsigned long long generation = 0; /* Local coherent snapshot. */
-        int available = movie_receiver_available(receiver, &generation); /* May observe link retirement immediately. */
-        if (available < 0 || (available && generation >= minimum))
-        {
-            result = available;
-            break;
-        }
-        if (!timeout || pthread_cond_timedwait(&receiver->changed, &receiver->lock, &deadline))
-        {
-            break;
-        }
-    }
-    pthread_mutex_unlock(&receiver->lock);
-    return result;
+    return movie_receiver_waitcancel(receiver, minimum, timeout, NULL);
 }
 
 

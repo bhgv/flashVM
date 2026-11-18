@@ -25,6 +25,15 @@ static void release(void *source)
 }
 
 
+/* EN/RU: Route-only retirement requests the separately pinned lifetime source, no receiver pointer.
+ * Route-only retirement запрашивает отдельно удержанный lifetime source, без receiver pointer.
+ */
+static void route_lost(void *source)
+{
+    dvm_cancel_request(source);
+}
+
+
 /* EN/RU: Dispose private construction or fully joined receiver; no running users may access it.
  * Освободить private construction либо joined receiver без оставшихся users.
  */
@@ -34,6 +43,7 @@ static void dispose(StyxBidirMovieReceiver *receiver)
     {
         styxclientunwatch(receiver->link);
     }
+    dvm_cancel_unsubscribe(receiver->retired);
     if (receiver->claimed)
     {
         movie_session_claim(receiver->session, 0);
@@ -94,6 +104,18 @@ StyxBidirMovieReceiver *styxbidirmoviereceiver(StyxBidirRoute *route, unsigned i
     }
     receiver->link = styxclientwatch(client, lost, receiver->cancel, release);
     if (!receiver->link)
+    {
+        dvm_cancel_release(receiver->cancel);
+        dispose(receiver);
+        return NULL;
+    }
+    if (!dvm_cancel_retain(receiver->cancel))
+    {
+        dispose(receiver);
+        return NULL;
+    }
+    receiver->retired = styxbidirroutewatch(route, route_lost, receiver->cancel, release);
+    if (!receiver->retired)
     {
         dvm_cancel_release(receiver->cancel);
         dispose(receiver);

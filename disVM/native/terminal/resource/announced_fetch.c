@@ -3,6 +3,7 @@
  * RU: Повторные/параллельные per-open fetch по объявленному generation exact Unibus client.
  */
 #include "announced_internal.h"
+#include "fetch_scope.h"
 
 
 /* EN/RU: See announced.h; preserve caller origin until the selected generation passes final admission.
@@ -21,24 +22,30 @@ FVM_Result styxbidirannouncedfetch(unsigned purpose, const char *reference, cons
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (styxbidirmoviereceiverwait(receiver, 0, receiver->timeout) != 1)
+    MovieFetchScope scope; /* Per-call source; neither caller cancellation nor failure can cancel other fetches. */
+    if (!movie_fetch_scope_enter(&scope, receiver->cancel))
     {
         return FVM_ERROR;
     }
-    unsigned long long expected = 0; /* Exact generation selected for this independent fid. */
-    if (styxbidirmovieavailable(receiver, &expected) != 1)
+    FVM_Result result = FVM_ERROR; /* No caller origin publication before all fences pass. */
+    if (movie_receiver_waitcancel(receiver, 0, receiver->timeout, scope.cancel) != 1)
     {
-        return FVM_ERROR;
+        goto done;
+    }
+    unsigned long long expected = 0; /* Exact generation selected for this independent fid. */
+    if (styxbidirmovieavailable(receiver, &expected) != 1 || dvm_cancel_requested(scope.cancel))
+    {
+        goto done;
     }
     char origin[MOVIE_PATH]; /* Private until both session and typed-receiver checks pass. */
     size_t bounded = capacity < sizeof(origin) ? capacity : sizeof(origin); /* Honour caller's output bound. */
-    FVM_Result result = movie_session_fetch(receiver->session, expected, purpose, reference, base,
-        write, state, origin, bounded); /* Existing Twalk/Topen/Twrite/Tread/Tclunk resource path. */
+    result = movie_session_fetch(receiver->session, expected, purpose, reference, base,
+        write, state, origin, bounded); /* Existing scoped Twalk/Topen/Twrite/Tread/Tclunk path. */
     if (result == FVM_OK)
     {
         pthread_mutex_lock(&receiver->lock);
-        unsigned long long current = 0; /* Final generation check serialized with typed offer acceptance. */
-        if (movie_receiver_available(receiver, &current) == 1 && current == expected)
+        unsigned long long current = 0; /* Final check serialized with typed offer acceptance. */
+        if (!dvm_cancel_requested(scope.cancel) && movie_receiver_available(receiver, &current) == 1 && current == expected)
         {
             memcpy(resolved, origin, strlen(origin) + 1);
         }
@@ -48,5 +55,7 @@ FVM_Result styxbidirannouncedfetch(unsigned purpose, const char *reference, cons
         }
         pthread_mutex_unlock(&receiver->lock);
     }
+done:
+    movie_fetch_scope_leave(&scope);
     return result;
 }

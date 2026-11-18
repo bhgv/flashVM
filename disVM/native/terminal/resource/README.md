@@ -121,3 +121,8 @@ tests separately exercise actual FlashVM loading.
 The generic [provider-side worker](SERVER.md) now executes requests through the
 actual VFS service. Automatic channel allocation/correlation and `file/state`
 VFS control nodes remain separate work; this is not a complete remote application launch.
+
+The one-shot handle now [forwards route retirement into its active native sink scope](FETCH-CANCEL.md),
+not only queue waits. Its retirement callback retains only a cancellation source,
+so late delivery cannot dereference a freed client handle. Announced per-call
+isolation and ordinary resource RPC cancellation are described in the same guide.

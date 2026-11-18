@@ -123,8 +123,10 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
         if (STYX_UI_BRIDGE_CASE == 9)
         {
             styxbidirroutestop(route);
-            check(styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_REMOTE,
-                "route retirement wakes a relay blocked on a full local queue");
+            FVM_Value idle; /* Outgoing stays empty in this fixture; observe close without draining full incoming. */
+            check(fvm_channel_receive_owned(outgoing, &idle, 1) == FVM_ERROR &&
+                styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_REMOTE,
+                "route retirement closes idle direction while preserving blocked incoming copy");
         }
         styxbidiruibridgejoin(bridge);
         DVM_UIMessage pending; /* Retained rejected RX copy survives the join boundary. */

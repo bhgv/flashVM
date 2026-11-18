@@ -9,7 +9,7 @@ target_include_directories(styx_movie_protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DI
 target_compile_options(styx_movie_protocol PRIVATE -Werror)
 add_library(styx_movie_service STATIC root.c offer.c publisher.c writer.c service.c request.c)
 target_link_libraries(styx_movie_service PUBLIC styx_namespace_fixture styx_movie_protocol)
-add_library(styx_movie_client STATIC receiver.c client.c monitor.c)
+add_library(styx_movie_client STATIC receiver.c client.c io.c monitor.c)
 target_include_directories(styx_movie_client PUBLIC "${movie_flash}/frontend/common")
 target_link_libraries(styx_movie_client PUBLIC styx_client styx_movie_protocol styx_vfs)
 add_executable(movie-server tests/backend.c tests/server.c tests/deferred.c tests/control.c ../tests/file-root/context.c)

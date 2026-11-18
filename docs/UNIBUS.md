@@ -156,3 +156,9 @@ cancellation-aware provider operations, preserves other scopes of the same
 provider, and keeps route FAILED distinct from explicit server STOPPED. Native
 cleanup and late callbacks retain their ordinary independent ownership; no guest
 polling, suspension or new wire control schema is involved.
+
+[Client fetch cancellation](../disVM/native/terminal/resource/FETCH-CANCEL.md)
+now reaches active ordinary resource RPCs and native staging sinks. Announced
+fetches use independent child scopes: a cancelled caller does not retire the
+receiver or another fetch. Readiness is interruptible without consuming offers,
+and raw-session origin publication now follows the final generation fence.

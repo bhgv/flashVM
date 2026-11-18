@@ -53,8 +53,11 @@ int styxbidirmoviereceiverstate(StyxBidirMovieReceiver *receiver);
  * before walk and after completion; publish caller origin only while that same offer remains live.
  * Repeated/parallel calls allowed with independent staging/output; host must retire every external
  * caller before free. Non-OK requires staging discard; no automatic replay or local fallback.
- * RU: Managed fetch с receiver userdata, отдельный fid на вызов. Проверить generation до/после I/O,
- * публиковать origin только при том же живом offer; staging принадлежит caller, без replay/fallback.
+ * Each call owns a child scope forwarding receiver/caller cancellation; fresh RPC tokens and scope-aware
+ * sinks can wake natively. Caller cancellation never retires the shared receiver or other fetches.
+ * RU: Managed fetch с receiver userdata, отдельные fid/child scope на вызов. Проверить generation до/после
+ * I/O, публиковать origin только при живом offer. Scope-aware sink и fresh RPC tokens учитывают отмену,
+ * без обратной отмены receiver/других calls. Staging принадлежит caller, без replay/fallback.
  */
 FVM_Result styxbidirannouncedfetch(unsigned purpose, const char *reference, const char *base,
     FVM_DesktopWrite write, void *state, char *resolved, size_t capacity, void *userdata);

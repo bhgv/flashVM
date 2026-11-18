@@ -2,23 +2,24 @@
  * EN: Managed resource reads over real Twalk/Topen/Twrite/Tread/Tclunk and S-record framing.
  * RU: Managed resource reads через настоящие Twalk/Topen/Twrite/Tread/Tclunk и S-record framing.
  */
-#include "client.h"
+#include "fetch_internal.h"
+#include "mount_cancel.h"
 #include "protocol.h"
 #include "reply.h"
 #include "request_payload.h"
 #include <string.h>
 
 
-/* EN/RU: Send one complete record with confirmed partial acknowledgements; no replay.
- * Shared stream offset includes both directions, matching existing StyxOpen semantics.
- * Передать record с confirmed partial acknowledgements; без replay, общий stream offset. */
-static int sendrecord(StyxFid *fid, unsigned long long *offset, const void *bytes, size_t size)
+/* EN/RU: Send borrowed bytes through exact client/fid, advancing offset only for confirmed prefixes; 1/0.
+ * Shared stream offset includes both directions. Each RPC gets a fresh scoped token; no replay.
+ * Передать borrowed bytes через exact client/fid, offset только по confirmed prefixes; 1/0, без replay. */
+static int sendrecord(StyxClient *client, StyxFid *fid, unsigned long long *offset, const void *bytes, size_t size)
 {
     size_t done = 0;
     while (done < size)
     {
         StyxTransfer result;
-        styxclientwrite(fid, *offset, (const unsigned char *)bytes+done, size-done, &result);
+        movie_transfer(client, fid, *offset, (unsigned char *)bytes+done, size-done, 1, &result);
         if (!result.success || !result.confirmed || result.uncertain ||
             !result.count || result.count > size-done)
         {
@@ -31,10 +32,10 @@ static int sendrecord(StyxFid *fid, unsigned long long *offset, const void *byte
 }
 
 
-/* EN/RU: Read one bounded complete record, retaining fragmented framing;1/0.
- * Bytes/view remain borrowed from output until next call; EOF before END is failure.
- * Прочитать один bounded record с fragment retention;1/0, EOF до END — ошибка. */
-static int receive(StyxFid *fid, unsigned long long *offset, unsigned char *bytes,
+/* EN/RU: Read one bounded record on exact client/fid, retaining framing in borrowed bytes/size/previous; 1/0.
+ * view borrows bytes until the next call; offset advances only for confirmed data. EOF before END fails.
+ * Прочитать bounded record через exact client/fid с borrowed framing state; 1/0, EOF до END — ошибка. */
+static int receive(StyxClient *client, StyxFid *fid, unsigned long long *offset, unsigned char *bytes,
     size_t *size, size_t *previous, FVM_SRecord *view)
 {
     size_t consumed;
@@ -58,7 +59,7 @@ static int receive(StyxFid *fid, unsigned long long *offset, unsigned char *byte
         }
         StyxTransfer result;
         /* Keep any following record bytes; transport read boundaries are not message boundaries. */
-        styxclientread(fid, *offset, bytes+*size, MOVIE_FRAME-*size, &result);
+        movie_transfer(client, fid, *offset, bytes+*size, MOVIE_FRAME-*size, 0, &result);
         if (!result.success || !result.confirmed || result.uncertain ||
             !result.count || result.count > MOVIE_FRAME-*size)
         {
@@ -70,12 +71,39 @@ static int receive(StyxFid *fid, unsigned long long *offset, unsigned char *byte
 }
 
 
-/* EN/RU: See client.h; all fid/stream buffers retire on success, sink refusal or protocol failure.
- * См. client.h; fid/buffers освобождаются при успехе, sink refusal и protocol failure. */
-FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *reference, const char *base,
+/* EN/RU: Native sink remains on its caller, with data and cancellation checked around one invocation.
+ * Native sink остаётся на caller, data/cancellation проверяются вокруг одного invocation.
+ */
+typedef struct MovieSink
+{
+    FVM_DesktopWrite write; /* Borrowed native sink through this fetch only. */
+    void *state;            /* Borrowed caller-owned sink context. */
+} MovieSink;
+
+
+/* EN/RU: Never start a sink after observed cancellation; retain a sink's own refusal result.
+ * Не начинать sink после observed cancellation; сохранить собственный отказ sink.
+ */
+static FVM_Result staging(const void *bytes, size_t size, void *state)
+{
+    MovieSink *sink = state; /* Owner-local context, no cross-thread callback. */
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
+    FVM_Result result = sink->write(bytes, size, sink->state);
+    return result == FVM_OK && dvm_cancel_requested(dvm_cancel_current()) ? FVM_ERROR : result;
+}
+
+
+/* EN/RU: See fetch_internal.h; all fid/stream buffers retire on success, sink refusal or protocol failure.
+ * См. fetch_internal.h; fid/buffers освобождаются при успехе, sink refusal и protocol failure. */
+FVM_Result movie_fetch_fid(StyxClient *client, StyxFid *fid, unsigned int purpose, const char *reference, const char *base,
     FVM_DesktopWrite write, void *write_userdata, char *resolved, size_t capacity)
 {
     unsigned char buffer[MOVIE_FRAME], request[MOVIE_FRAME];
+    char origin[MOVIE_PATH]; /* Private final origin until cleanup and scope checks succeed. */
+    MovieSink sink = {write, write_userdata}; /* Native owner-local callback gate. */
     size_t size, previous = 0;
     unsigned long long offset = 0;
     FVM_SRecord record;
@@ -90,30 +118,30 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
     if (!reference || !write || !resolved || !capacity ||
         (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
     {
-        styxclientclunk(fid);
+        styxmountclunk(client, fid);
         return FVM_INVALID_ARGUMENT;
     }
     size_t request_size; /* Complete checked payload including existing REQUEST opcode. */
     if (!movie_request_payload(request, sizeof(request), &request_size,
         purpose == FVM_DESKTOP_FETCH_CODE ? MOVIE_CODE : MOVIE_DATA, reference, base))
     {
-        styxclientclunk(fid);
+        styxmountclunk(client, fid);
         return FVM_INVALID_ARGUMENT;
     }
-    if (!movie_reply_init(&reply, write, write_userdata, resolved, capacity) ||
-        !styxclientopen(fid, 2) || !movie_binding(buffer, &size) ||
-        !sendrecord(fid, &offset, buffer, size))
+    if (!movie_reply_init(&reply, staging, &sink, origin, capacity < sizeof(origin) ? capacity : sizeof(origin)) ||
+        !styxmountopen(client, fid, 2) || !movie_binding(buffer, &size) ||
+        !sendrecord(client, fid, &offset, buffer, size))
     {
         goto done;
     }
     if (!movie_record(buffer, &size, MOVIE_REQUEST, request + 1, request_size - 1) ||
-        !sendrecord(fid, &offset, buffer, size))
+        !sendrecord(client, fid, &offset, buffer, size))
     {
         goto done;
     }
     fvm_sbindings_init(&bindings, &slot, 1);
     size = 0;
-    while (receive(fid, &offset, buffer, &size, &previous, &record))
+    while (receive(client, fid, &offset, buffer, &size, &previous, &record))
     {
         if (record.tag == FVM_SRECORD_CONTROL_TAG)
         {
@@ -137,7 +165,18 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
         }
     }
 done:
-    styxclientclunk(fid);
+    styxmountclunk(client, fid);
+    if (result == FVM_OK)
+    {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            result = FVM_ERROR;
+        }
+        else
+        {
+            memcpy(resolved, origin, reply.path_size + 1);
+        }
+    }
     return result;
 }
 
@@ -153,6 +192,6 @@ FVM_Result styxmoviefetch(unsigned int purpose, const char *reference, const cha
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return movie_fetch_fid(styxclientwalk(userdata, "."), purpose, reference, base,
+    return movie_fetch_fid(userdata, styxmountwalkcancel(userdata, NULL, "."), purpose, reference, base,
         write, write_userdata, resolved, capacity);
 }

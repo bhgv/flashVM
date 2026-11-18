@@ -41,6 +41,7 @@ void *movie_receiver_run(void *state)
             phase = valid || !live ? STYX_MOVIE_RECEIVER_CLOSED : STYX_MOVIE_RECEIVER_FAILED;
             movie_receiver_end(receiver, phase);
             pthread_mutex_unlock(&receiver->lock);
+            dvm_cancel_request(receiver->cancel);
             return NULL;
         }
         pthread_cond_broadcast(&receiver->changed);
@@ -49,5 +50,6 @@ void *movie_receiver_run(void *state)
     pthread_mutex_lock(&receiver->lock);
     movie_receiver_end(receiver, phase);
     pthread_mutex_unlock(&receiver->lock);
+    dvm_cancel_request(receiver->cancel);
     return NULL;
 }

@@ -19,14 +19,15 @@
  */
 struct StyxBidirMovieClient
 {
-    pthread_mutex_t lock; /* Protects one-use admission and explicit stop. */
-    StyxBidirRoute *route; /* Borrowed through final free; no automatic route shutdown. */
-    DVM_Cancel *cancel; /* Owned independent native cancellation source. */
-    unsigned index; /* Immutable exclusively assigned resource queue. */
-    unsigned long tag; /* Immutable independently granted TX tag. */
-    unsigned timeout; /* Immutable total native budget in milliseconds. */
-    int used; /* Sticky once a valid fetch enters, success or failure. */
-    int stopped; /* Sticky explicit host cancellation. */
+    pthread_mutex_t lock;   /* Protects one-use admission and explicit stop. */
+    StyxBidirRoute *route;  /* Borrowed through final free; no automatic route shutdown. */
+    DVM_Cancel *cancel;     /* Owned independent native cancellation source. */
+    DVM_CancelTap *retired; /* Owned route subscription; callback retains only cancel. */
+    unsigned index;         /* Immutable exclusively assigned resource queue. */
+    unsigned long tag;      /* Immutable independently granted TX tag. */
+    unsigned timeout;       /* Immutable total native budget in milliseconds. */
+    int used;               /* Sticky once a valid fetch enters, success or failure. */
+    int stopped;            /* Sticky explicit host cancellation. */
 };
 
 

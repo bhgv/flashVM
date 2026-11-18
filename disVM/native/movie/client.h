@@ -12,6 +12,8 @@
  * Attached root must be the granted movie service file; each call owns a fresh fid/session.
  * Native blocking, owner thread, serialized by player; no VM entry inside callback.
  * Return FVM_OK only after explicit successful END; all partial bytes remain staged by player.
+ * Current native scopes use existing per-RPC Styx cancellation where supported; sinks stay on owner.
+ * Origin remains private through successful END, cleanup and final scope checks.
  * No host file/network fallback; URLs are virtual names interpreted only by granted namespace.
  * Использовать как FVM_DesktopManagedFetch; userdata — borrowed retained StyxClient.
  * Каждый вызов владеет fresh fid, FVM_OK только после END; без local fallback/VM entry. */

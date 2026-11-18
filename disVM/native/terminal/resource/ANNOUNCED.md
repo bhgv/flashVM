@@ -93,16 +93,18 @@ terminal for that receiver. No incoming declaration is a TX permission.
 
 Native connection retirement wakes the worker through a separately pinned
 cancellation source. Watch callbacks reference that source rather than a receiver
-pointer. Stop does not forcibly abort a sink or an already issued ordinary RPC;
-those calls finish within their existing native I/O contracts and fail final
-session admission. The host must retire **all** external fetch/state callers
+pointer. [Fetch-local cancellation](FETCH-CANCEL.md) now forwards receiver retirement and
+outer-caller cancellation through independent per-call sources. Ordinary resource
+RPCs use the existing fresh-token/Tflush binding; native sinks can observe the
+current scope. No arbitrary callback is forcibly preempted. Final session admission
+still rejects changed/closed generations. The host must retire **all** external fetch/state callers
 before free, and keep the borrowed route alive until free completes.
 
 RU: Готовность обновляется автоматически. Старые объявления не откатывают новое
 generation; противоречивые и повреждённые объявления завершают только receiver.
 Stop/free не закрывают общий route/client и не ждут участия guest. Перед free
-host завершает все внешние fetch/state calls; уже запущенный native I/O не
-прерывается принудительно.
+host завершает все внешние fetch/state calls; native RPC отменяется через прежний Tflush,
+а sink соблюдает собственный контракт native I/O без принудительного прерывания.
 
 ## Verified scope / Границы проверки
 

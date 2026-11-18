@@ -20,17 +20,18 @@
  */
 struct StyxBidirMovieReceiver
 {
-    pthread_mutex_t lock; /* Serializes accepted offer updates, readiness and final origin publication. */
-    pthread_cond_t changed; /* Monotonic native readiness, never a guest polling loop. */
-    pthread_t worker; /* Sole typed offer consumer. */
-    StyxBidirRoute *route; /* Borrowed through final free. */
+    pthread_mutex_t lock;      /* Serializes accepted offer updates, readiness and final origin publication. */
+    pthread_cond_t changed;    /* Monotonic native readiness, never a guest polling loop. */
+    pthread_t worker;          /* Sole typed offer consumer. */
+    StyxBidirRoute *route;     /* Borrowed through final free. */
     StyxMovieSession *session; /* Owned exact-client session with exclusive typed feed claim. */
-    DVM_Cancel *cancel; /* Owned local source, separately pinned by terminal watcher. */
-    StyxWatch *link; /* Owned exact-client terminal subscription; callbacks reference only cancel. */
-    unsigned index; /* Immutable exclusive offer queue index. */
-    unsigned timeout; /* Initial native fetch readiness budget. */
-    int claimed; /* Exclusive session feed was acquired. */
-    int phase; /* READING or first terminal outcome, under lock. */
+    DVM_Cancel *cancel;        /* Owned local source, separately pinned by terminal watcher. */
+    StyxWatch *link;           /* Owned exact-client terminal subscription; callbacks reference only cancel. */
+    DVM_CancelTap *retired;    /* Owned route subscription with its own source-only callback pin. */
+    unsigned index;            /* Immutable exclusive offer queue index. */
+    unsigned timeout;          /* Initial native fetch readiness budget. */
+    int claimed;               /* Exclusive session feed was acquired. */
+    int phase;                 /* READING or first terminal outcome, under lock. */
 };
 
 
@@ -50,4 +51,11 @@ void movie_receiver_end(StyxBidirMovieReceiver *receiver, int phase);
  * Caller держит receiver mutex; authoritative native availability/optional generation, без I/O.
  */
 int movie_receiver_available(StyxBidirMovieReceiver *receiver, unsigned long long *generation);
+
+/* EN/RU: Readiness with optional borrowed fetch-local cancel, 1 ready/0 timeout/-1 retired/cancelled/invalid.
+ * No record consumption or shared receiver cancellation; callback access detached before return.
+ * Readiness с optional fetch-local cancel, 1/0/-1; без shared cancellation, late callbacks отделены.
+ */
+int movie_receiver_waitcancel(StyxBidirMovieReceiver *receiver, unsigned long long minimum,
+    unsigned timeout, DVM_Cancel *cancel);
 #endif

@@ -3,6 +3,8 @@
  * RU: Синхронизированный native receiver; player получает только validated current-generation bytes.
  */
 #include "session_internal.h"
+#include "fetch_internal.h"
+#include "mount_cancel.h"
 #include "announcement.h"
 #include "channel_sync.h"
 #include <stdlib.h>
@@ -10,6 +12,9 @@
 #include <stdio.h>
 
 
+/* EN/RU: Trusted native session retains its exact client, synchronized generation and bounded control decoder.
+ * Trusted native session удерживает exact client, synchronized generation и bounded control decoder.
+ */
 struct StyxMovieSession
 {
     FVM_PortSync *lock; /* Owned short state lock; never held during network/VM work. */
@@ -26,8 +31,6 @@ struct StyxMovieSession
     unsigned char input[MOVIE_FRAME]; /* Retained incomplete control record. */
     size_t used; /* Prefix extent, bounded by sizeof(input). */
 };
-extern FVM_Result movie_fetch_fid(StyxFid *, unsigned, const char *, const char *,
-    FVM_DesktopWrite, void *, char *, size_t); /* Consumes fid on every outcome. */
 
 
 /* EN/RU: Consume one native receiver pin after all admitted callbacks/operations retire.
@@ -265,22 +268,28 @@ FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long exp
     }
     char name[64];
     snprintf(name, sizeof(name), "movie/%llu", generation);
-    StyxFid *fid = styxclientwalk(session->client, name);
+    StyxFid *fid = styxmountwalkcancel(session->client, NULL, name);
     if (!fid)
     {
         return FVM_ERROR;
     }
     if (styxclientfiddirectory(fid) != 0)
     {
-        styxclientclunk(fid);
+        styxmountclunk(session->client, fid);
         return FVM_ERROR;
     }
-    FVM_Result result = movie_fetch_fid(fid, purpose, reference, base, write, state, resolved, capacity);
+    char origin[MOVIE_PATH]; /* Private through generation/link fence, even for the raw session API. */
+    FVM_Result result = movie_fetch_fid(session->client, fid, purpose, reference, base, write, state,
+        origin, capacity < sizeof(origin) ? capacity : sizeof(origin));
     observe_link(session);
     fvm_port_sync_lock(session->lock);
-    if (session->closed || !session->ready || session->generation != generation)
+    if (session->closed || !session->ready || session->generation != generation || dvm_cancel_requested(dvm_cancel_current()))
     {
         result = FVM_ERROR;
+    }
+    else if (result == FVM_OK)
+    {
+        memcpy(resolved, origin, strlen(origin) + 1);
     }
     fvm_port_sync_unlock(session->lock);
     return result;

@@ -5,6 +5,24 @@
 #include "internal.h"
 
 
+/* EN/RU: Route callback owns a native source pin only, never client/route/sink state.
+ * Route callback удерживает только native source, без client/route/sink state.
+ */
+static void retired(void *source)
+{
+    dvm_cancel_request(source);
+}
+
+
+/* EN/RU: Release native source after admitted callbacks retire, possibly after client free.
+ * Освободить native source после callbacks, возможно после client free.
+ */
+static void release(void *source)
+{
+    dvm_cancel_release(source);
+}
+
+
 /* EN/RU: See client.h; validate schema and bounds before allocating native state, no transport I/O.
  * См. client.h; проверить схему и bounds до allocation, без transport I/O.
  */
@@ -38,6 +56,18 @@ StyxBidirMovieClient *styxbidirmovieclient(StyxBidirRoute *route, unsigned index
     client->index = index;
     client->tag = tag;
     client->timeout = timeout;
+    if (!dvm_cancel_retain(client->cancel))
+    {
+        styxbidirmovieclientfree(client);
+        return NULL;
+    }
+    client->retired = styxbidirroutewatch(route, retired, client->cancel, release);
+    if (!client->retired)
+    {
+        dvm_cancel_release(client->cancel);
+        styxbidirmovieclientfree(client);
+        return NULL;
+    }
     return client;
 }
 
@@ -65,6 +95,7 @@ void styxbidirmovieclientfree(StyxBidirMovieClient *client)
     if (client)
     {
         styxbidirmovieclientstop(client);
+        dvm_cancel_unsubscribe(client->retired);
         dvm_cancel_release(client->cancel);
         pthread_mutex_destroy(&client->lock);
         free(client);
