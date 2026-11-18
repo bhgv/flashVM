@@ -2,7 +2,7 @@ implement ClipboardDemo;
 include "sys.m"; # Use ordinary runtime output; no window or native clipboard is opened.
 include "uibridge.m"; # Shared counted-value envelope and canonical transfer identity.
 include "ideclipboard.m"; # Reusable Dis-owned fragment staging, also used by the graphical controller.
-include "idehost.m"; # Import operation constants only; this example never loads $Idehost.
+include "unibus.m"; # Import operation constants only; this example never loads $Unibus.
 
 ClipboardDemo: module # A headless parameterless entry accepted by the installed Dis runtime.
 {
@@ -25,12 +25,12 @@ init()
         raise "fail: clipboard tutorial begin"; # No native pointer or descriptor substitutes for identity.
     }
     identity := codec->hexword(42); # Eight canonical ASCII digits precede every fragment body.
-    first := ref Uibridge->Message(Uibridge->Request, 1, Idehost->ClipboardData, 5, 0, 9, identity + "Я😀"); # Six bytes.
+    first := ref Uibridge->Message(Uibridge->Request, 1, Unibus->ClipboardData, 5, 0, 9, identity + "Я😀"); # Six bytes.
     (status, ready, text) := clipboard->chunk(codec, state, first); # Stage the prefix in a bounded private byte array.
     if (status != clipboard->Ok || ready || text != "" || state.used != 6) { # A prefix must not become source text.
         raise "fail: clipboard tutorial prefix"; # Atomic publication is checked independently of printed output.
     }
-    second := ref Uibridge->Message(Uibridge->Request, 1, Idehost->ClipboardData, 5, 6, 9, identity + "\nAB"); # Three bytes.
+    second := ref Uibridge->Message(Uibridge->Request, 1, Unibus->ClipboardData, 5, 6, 9, identity + "\nAB"); # Three bytes.
     (status, ready, text) = clipboard->chunk(codec, state, second); # Complete exactly nine bytes at the required offset.
     if (status != clipboard->Ok || !ready || text != "Я😀\nAB" || len text != 5) { # Byte offsets differ from scalar counts.
         raise "fail: clipboard tutorial completion"; # No partial or corrupted Unicode result is accepted.

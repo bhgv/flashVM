@@ -276,8 +276,10 @@ Build [our AS2 display compiler](../../compiler/as2/view/README.md), then build
 `DVM_AS_VIEW_COMPILER=/absolute/path/as2_viewc`, `DVM_FIR_COMPILER`,
 `DVM_FIR_OPTIMIZER` and `DVM_SWF_LINKER` paths; SDL windows additionally require
 `DVM_EDITOR_SDL=ON` and an explicit SDL2 SDK. The console `disvm` keeps its existing
-graphics-free build. `$Idehost` is registered only by the editor executable and
-borrows stack-rooted channels until Limbo explicitly detaches. No cross-heap
+graphics-free build. `$Unibus` is registered by the shared runtime; operations
+resolve the current process's [native launch binding](host_interface/README.md).
+The optional local editor backend borrows stack-rooted channels until Limbo
+explicitly detaches. No cross-heap
 pointers are transmitted. File/save/history policy runs in Limbo; TextField
 presentation uses FlashVM, and the thin SDL host only presents pixels/events.
 The Dis-selected viewport, mouse/scrolling, search/path fields and bundled-font scaling are documented in the tutorial; AS-worker/debugger integration remains open. `--events` is offscreen replay, not physical UI proof.

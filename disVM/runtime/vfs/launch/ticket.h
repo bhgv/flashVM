@@ -65,7 +65,15 @@ typedef struct DVM_LaunchHandoff
     DVM_Origin provider_origin; /* Accepted provider association, same launch session. */
     unsigned char *arguments; /* Owned independent copy of startup bytes. */
     DVM_TerminalChannels flashvm; /* Owned channel root, moved once at take; provider NULL when absent. */
+    struct UnibusBinding *unibus; /* Optional owned native per-launch handler, never a serialized frame. */
 } DVM_LaunchHandoff;
+
+
+/* EN/RU: Retain a native Unibus handler in an exclusive live handoff, 1/0; no claim/guest execution.
+ * Attach only once before adoption; caller keeps its reference. / Удержать native handler до adoption;
+ * только один раз, 1/0; caller сохраняет свой ref, без claim/guest-кода.
+ */
+int dvm_launch_handoff_unibus(DVM_LaunchHandoff *handoff, struct UnibusBinding *binding);
 
 
 /* EN/RU: Create requester ticket and provider request; output initially NULL, both owned on success.

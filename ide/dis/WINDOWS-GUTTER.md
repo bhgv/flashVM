@@ -53,7 +53,7 @@ not insert/delete source or run a command. No second source parser was added.
 Native code formats only presentation values, never computes source history or
 changes visibility directly from keyboard input. Default Noto and size 11 remain
 unchanged. Older native hosts/controllers must be rebuilt together because the
-Idehost interface now includes the initial preference getter and Gutter frames.
+Unibus interface now includes the initial preference getter and Gutter frames.
 
 ## Checks and build
 

@@ -127,7 +127,7 @@ short-write FIFO integrity and exactly one uncertain write attempt. These are
 native unit fixtures, not additional physical-device tests.
 
 The generic transport and native handoff path are implemented. Automatic runtime
-attachment to `$Idehost`, a complete remote IDE launch, concrete timer/render/proxy
+attachment to `$Unibus`, a complete remote IDE launch, concrete timer/render/proxy
 schemas, hardware PHY drivers and new bulk-channel policies are not claimed here.
 
 The terminal peer also receives an independent `fvd1` golden frame and sends an

@@ -57,7 +57,7 @@ A coalescing notification process retains readiness while the controller is busy
 
 ## C/Dis boundary
 
-The graphical `$Idehost` builtin adds the following methods to its matching `.m`
+The graphical `$Unibus` builtin adds the following methods to its matching `.m`
 interface. Recompile GUI Dis modules together with the updated runtime; the native
 signature changes. No SWF/Dis64 file format or shared wire identifier changes.
 

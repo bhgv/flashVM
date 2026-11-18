@@ -15,6 +15,7 @@
 #include "vfs/boot.h"
 #include "vfs/sysevents.h"
 #include "disvm/native_process.h"
+#include "disvm/unibus_binding.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +57,8 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     }
     owner->namespace_group = group;
     process->osenv = environment;
+    owner->unibus = parent ? unibusinherit(((DVM_RuntimeProcess *)parent)->unibus) : NULL;
+    owner->unibus_isolated = parent ? ((DVM_RuntimeProcess *)parent)->unibus_isolated : 0;
     if (!dvm_launch_process_inherit(process, parent))
     {
         dvm_process_environment_destroy(process);
@@ -78,6 +81,9 @@ void dvm_process_environment_destroy(Prog *process)
     if (process)
     {
         DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+        unibusownerretired(owner->unibus, (uintptr_t)process);
+        unibusrelease(owner->unibus);
+        owner->unibus = NULL;
         dvm_launch_process_release(process);
         dvm_sysevents_retire(owner->system_events);
         dvm_sysevents_release(owner->system_events);

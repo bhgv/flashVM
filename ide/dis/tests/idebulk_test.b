@@ -1,7 +1,7 @@
 implement BulkPortTest;
 include "sys.m";
 include "uibridge.m";
-include "idehost.m";
+include "unibus.m";
 include "idebulk.m";
 
 BulkPortTest: module {
@@ -27,7 +27,7 @@ require(valid: int, message: string)
 init()
 {
     sys = load Sys Sys->PATH;
-    host := load Idehost Idehost->PATH;
+    host := load Unibus Unibus->PATH;
     codec := load Uibridge Uibridge->PATH;
     bulk := load Idebulk Idebulk->PATH;
     require(host != nil && codec != nil && bulk != nil, "load actual modules");

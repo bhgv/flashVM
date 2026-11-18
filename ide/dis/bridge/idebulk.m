@@ -11,6 +11,6 @@ Idebulk: module
     # Register one private byte-array output and spawn its sender. completed is
     # caller-rooted and receives slot after each complete transfer and shutdown.
     # Return nil on invalid dependencies/slot or native registration refusal.
-    start: fn(codec: Uibridge, host: Idehost, slot: int,
+    start: fn(codec: Uibridge, host: Unibus, slot: int,
               completed: chan of int): chan of ref Job;
 };

@@ -1,7 +1,7 @@
 # Noto в поставке и масштабирование через каналы
 
 [English](ZOOM.md) · [Шрифт и лицензия](../assets/fonts/README.md) ·
-[Контроллер Dis](examples/graphical-editor/main.b) · [Протокол](bridge/idehost.m) ·
+[Контроллер Dis](examples/graphical-editor/main.b) · [Протокол](../../disVM/module/unibus.m) ·
 [Нативная геометрия](../../disVM/runtime/editor_view.c) ·
 [Исполняемая проверка](../../disVM/runtime/test_graphical_zoom.py).
 

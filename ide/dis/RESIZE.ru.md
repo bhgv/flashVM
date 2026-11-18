@@ -1,6 +1,6 @@
 # Изменение размера окна с подтверждением на Dis
 
-[English](RESIZE.md) · [Граница хоста](bridge/idehost.m) ·
+[English](RESIZE.md) · [Граница хоста](../../disVM/module/unibus.m) ·
 [Контроллер](examples/graphical-editor/main.b) ·
 [Тест реального растра и ввода](../../disVM/runtime/test_graphical_resize.py).
 

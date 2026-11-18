@@ -388,7 +388,7 @@ foreach(pool_example main rc-overlap backpressure backpressure-eight shared-file
    -o "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis"
    "${root}/disVM/examples/managed-workers/${pool_example}.b"
   DEPENDS limbo-bootstrap "${root}/disVM/examples/managed-workers/${pool_example}.b"
-   "${root}/ide/dis/bridge/idehost.m" VERBATIM)
+   "${root}/disVM/module/unibus.m" VERBATIM)
  list(APPEND pool_images "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis")
 endforeach()
 add_custom_target(disvm_managed_worker_modules ALL DEPENDS ${pool_images})

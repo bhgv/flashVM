@@ -86,5 +86,5 @@ released. The provider checks exact bytes and returns a fixture-only receipt.
 This verifies copied ownership across context retirement, not execution of a
 SWF application or a complete remote IDE.
 
-The host channel boundary is connected. Automatic runtime `$Idehost` attachment
+The host channel boundary is connected. Automatic runtime `$Unibus` attachment
 and remote rows/path/ink/bulk RPC endpoints remain separate integration work.

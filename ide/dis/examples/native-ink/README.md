@@ -32,7 +32,7 @@ the production input owner; only Begin/token End are proposed to Dis. This nativ
 input/raster check names its copied scene boundary; it does not mock the separate
 real Limbo-worker integration test.
 
-The C/Dis interface is [idehost.m](../../bridge/idehost.m). The ordered worker is
+The C/Dis interface is [unibus.m](../../../../disVM/module/unibus.m). The ordered worker is
 [ideinkworker.b](../../bridge/ideinkworker.b). See the complete
 [lifetime/scheduling contract](../../../NATIVE-INK.md), including capacity,
 publication fences, approximate preview quality and matching runtime signatures.

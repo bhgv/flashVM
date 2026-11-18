@@ -200,6 +200,7 @@ set_tests_properties(vfs-subscriptions-mounted PROPERTIES TIMEOUT 25)
 # EN/RU: Standalone native namespace SDK fixture; explicit repository sources, no sibling build dependency.
 # Standalone native namespace SDK fixture; явные sources репозитория, без sibling build dependency.
 add_library(styx_namespace_fixture STATIC
+    "${INFERNO_VFS_SUPPORT}/disVM/host/unibus_binding.c"
     "${vfs}/intent.c"
     "${vfs}/launch/movie_offer.c"
     "${vfs}/launch/terminal.c"
@@ -380,3 +381,9 @@ endforeach()
 
 add_test(NAME system-installation-identity COMMAND "${PYTHON_EXECUTABLE}" "${INFERNO_VFS_SUPPORT}/disVM/runtime/test_system_identity.py")
 set_tests_properties(system-installation-identity PROPERTIES TIMEOUT 30)
+
+# EN/RU: Pure native launch capability, independent of VM/renderer linkage.
+# Чистая native-capability запуска без линковки VM/renderer.
+add_executable(unibus-binding-test "${INFERNO_VFS_SUPPORT}/disVM/tests/unibus_binding.c")
+target_link_libraries(unibus-binding-test PRIVATE styx_namespace_fixture)
+add_test(NAME native-unibus-binding COMMAND unibus-binding-test)

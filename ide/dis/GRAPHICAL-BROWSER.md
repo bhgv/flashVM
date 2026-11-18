@@ -75,7 +75,7 @@ Windows/macOS/Android acceptance remains open.
 
 ## Callable graphical requests
 
-[Idehost declarations](bridge/idehost.m) use ordinary Uibridge Request envelopes.
+[Unibus declarations](../../disVM/module/unibus.m) use ordinary Uibridge Request envelopes.
 All five operations require flags=current document revision and second=current
 completed-view ticket. A stale ticket/revision returns Idecore.Conflict without
 moving selection or loading a file. Invalid payloads return Idecore.Invalid.

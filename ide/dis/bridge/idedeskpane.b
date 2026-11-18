@@ -15,7 +15,7 @@ include "idedeskclip.m";
 include "idevector.m";
 include "idevectorlabels.m";
 include "ideinkworker.m";
-include "idehost.m";
+include "unibus.m";
 
 
 # Complete one private document exchange; borrowed endpoint stays live and no
@@ -538,7 +538,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
     control := 0;
     diagnostic := "";
     inkack := 0; # Highest adopted native token; fence follows the actual outgoing wire.
-    native: Idehost;
+    native: Unibus;
     nativepending := 0; # Mixed portable input must first adopt all frozen native trajectories.
     inkfailure := 0; # A failed native handoff must never publish an incomplete Save.
     jobs: chan of ref Ideinkworker->Job;
@@ -854,7 +854,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         }
         if (inkack != 0 && (notices == nil || identity <= 0)) {
             if (native == nil) {
-                native = load Idehost Idehost->PATH;
+                native = load Unibus Unibus->PATH;
             }
             if (native != nil) {
                 # Bind retirement to this actual response, after Undo/style/new

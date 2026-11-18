@@ -51,3 +51,5 @@ if(DVM_RUNTIME_TESTS)
         endif()
     endif()
 endif()
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/UnibusTests.cmake")

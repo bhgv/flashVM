@@ -10,6 +10,7 @@
 #include "runtime.h"
 #include "../sysevents.h"
 #include "../../../native/movie/service.h"
+#include "disvm/unibus_binding.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,6 +116,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     DVM_Provider *movie = channels ? styxmovieservice(handoff->group) : NULL;
     if (channels && !movie)
     {
+        dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
         free(channels);
         return 0;
@@ -123,6 +125,19 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     if (channels && channels->offers && !staged)
     {
         dvm_provider_release(movie);
+        dvm_sysevents_retire(events);
+        dvm_sysevents_release(events);
+        free(channels);
+        return 0;
+    }
+    if (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process))
+    {
+        if (staged)
+        {
+            dvm_movie_offer_abort(channels->offers);
+        }
+        dvm_provider_release(movie);
+        dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
         free(channels);
         return 0;
@@ -130,6 +145,11 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     DVM_Namespace *previous = owner->namespace_group;
     DVM_SysEvents *previous_events = owner->system_events;
     dvm_launch_process_release(process);
+    unibusownerretired(owner->unibus, (uintptr_t)process);
+    unibusrelease(owner->unibus);
+    owner->unibus = handoff->unibus;
+    owner->unibus_isolated = 1;
+    handoff->unibus = NULL;
     owner->namespace_group = handoff->group;
     owner->system_events = events;
     owner->terminal_channels = channels;

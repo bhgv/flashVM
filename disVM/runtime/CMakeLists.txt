@@ -86,7 +86,7 @@ string(REPLACE "\tuchar *code; // Generated instructions" "\tunsigned long gener
 string(APPEND native_interp "\n#ifdef DVM_RUNTIME_GC_FIELDS\n#include \"gc_fields.h\"\n#undef Setmark\n#define Setmark(h) dvm_runtime_gc_mark(&(h)->color, &mutator, &nprop)\n#endif\n")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern int dvm_runtime_fast(int, int (*)(REG *), REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
-file(REMOVE "${view}/prepare.stamp" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
+file(REMOVE "${view}/prepare.stamp" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/unibusmod.h")
 
 set(host_prepare_args)
 set(channel_prepare_inputs
@@ -100,10 +100,8 @@ if(DVM_RUNTIME_COMPILER)
   list(APPEND host_prepare_args --fircompiler "${root}/disVM/module/fircompiler.m")
   list(APPEND host_prepare_products "${view}/fircompilermod.h")
 endif()
-if(DVM_RUNTIME_EDITOR)
-  list(APPEND host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
-  list(APPEND host_prepare_products "${view}/idehostmod.h")
-endif()
+list(APPEND host_prepare_args --unibus "${root}/disVM/module/unibus.m")
+list(APPEND host_prepare_products "${view}/unibusmod.h")
 if(DVM_RUNTIME_NATIVE_DEMO)
   set(native_demo_root "${root}/disVM/examples/native-module")
   set(DVM_LIMBO_BINDINGS "" CACHE FILEPATH "Our Coco/R Limbo C-interface generator")
@@ -134,7 +132,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
     string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
     prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h
     prepare_scalar_cons.py scalar_cons.h "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS}
-    "${root}/disVM/module/bigtable.m" "${root}/disVM/module/processctl.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m"
+    "${root}/disVM/module/bigtable.m" "${root}/disVM/module/processctl.m" ${runtime_inputs} "${root}/disVM/module/unibus.m"
     "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py
     prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py
     prepare_debug_dispatch.py
@@ -473,6 +471,7 @@ endforeach()
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
 list(APPEND module_headers ${syntax_headers})
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Vfsctl.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/UnibusSources.cmake")
 list(LENGTH module_names module_count)
 math(EXPR module_last "${module_count}-1")
 set(products)

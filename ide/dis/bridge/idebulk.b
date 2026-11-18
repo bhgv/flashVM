@@ -1,6 +1,6 @@
 implement Idebulk;
 include "uibridge.m";
-include "idehost.m";
+include "unibus.m";
 include "idebulk.m";
 
 
@@ -9,7 +9,7 @@ include "idebulk.m";
 # Output backpressure blocks this sender alone. Native routing consumes each
 # piece before the scheduler resumes; completed therefore follows last delivery.
 # Nil job releases the native borrow, acknowledges once, and terminates.
-serve(codec: Uibridge, host: Idehost, slot: int, output: chan of array of byte,
+serve(codec: Uibridge, host: Unibus, slot: int, output: chan of array of byte,
       jobs: chan of ref Job, completed: chan of int)
 {
     for (;;) {
@@ -56,7 +56,7 @@ serve(codec: Uibridge, host: Idehost, slot: int, output: chan of array of byte,
 # Borrow loaded immutable codec/host modules and a live completion channel.
 # Each output is rooted by its spawned owner's stack until acknowledged detach.
 # The single waiting job is a bound, not an unbounded snapshot backlog.
-start(codec: Uibridge, host: Idehost, slot: int,
+start(codec: Uibridge, host: Unibus, slot: int,
       completed: chan of int): chan of ref Job
 {
     if (codec == nil || host == nil || slot < 1 || slot > 8 || completed == nil) {

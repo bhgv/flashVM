@@ -3,6 +3,7 @@
  * RU: Одна попытка подготовки, независимая native передача отмены и provider-only handoff.
  */
 #include "ticket_internal.h"
+#include "disvm/unibus_binding.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -172,7 +173,22 @@ void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff)
         dvm_namespace_release(handoff->group);
         dvm_provider_release(handoff->flashvm.provider);
         dvm_movie_offer_release(handoff->flashvm.offers);
+        unibusrelease(handoff->unibus);
         free(handoff->arguments);
         free(handoff);
     }
+}
+
+
+/* EN/RU: See ticket.h; the binding is claimed only by the actual process adoption transaction.
+ * См. ticket.h; claim выполняет только настоящая транзакция принятия process.
+ */
+int dvm_launch_handoff_unibus(DVM_LaunchHandoff *handoff, UnibusBinding *binding)
+{
+    if (!handoff || !handoff->group || handoff->unibus || !unibusretain(binding))
+    {
+        return 0;
+    }
+    handoff->unibus = binding;
+    return 1;
 }

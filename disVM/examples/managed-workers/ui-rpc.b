@@ -1,6 +1,6 @@
 implement ManagedUI;
 include "sys.m";
-include "idehost.m";
+include "unibus.m";
 
 ManagedUI: module {
     init: fn(); # Requires disvm-editor, its UI main thread and an explicit font.
@@ -13,7 +13,7 @@ ManagedUI: module {
 init()
 {
     sys := load Sys Sys->PATH;
-    host := load Idehost Idehost->PATH;
+    host := load Unibus Unibus->PATH;
     if (host == nil) {
         raise "fail: managed UI host unavailable";
     }

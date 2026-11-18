@@ -19,7 +19,7 @@ include "fircompiler.m"; # Select explicit library language/target values.
 include "idecompiler.m"; # Build jobs remain Limbo channel operations.
 include "ideartifact.m"; # Export policy remains an ordinary Dis channel service.
 include "idebuildpanel.m"; # Bind artifacts and diagnostics to this document revision.
-include "idehost.m"; # Register ordinary channels with the native window owner.
+include "unibus.m"; # Register ordinary channels with the native window owner.
 
 GraphicalEditor: module # Parameterless entry accepted by the experimental host.
 {
@@ -321,7 +321,7 @@ init()
     viewport := load Ideviewport Ideviewport->PATH; # Link the bounded logical-line viewport.
     fields := load Idefield Idefield->PATH; # Keep modal field editing in reusable Dis logic.
     clipboard := load Ideclipboard Ideclipboard->PATH; # Load reusable bounded clipboard value staging.
-    host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
+    host := load Unibus Unibus->PATH; # Link only the native channel registration boundary.
     if (directoryfiles == nil || browsing == nil || sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil || fields == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
     }

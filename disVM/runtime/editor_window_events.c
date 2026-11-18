@@ -30,7 +30,7 @@ int dvm_editor_window_event(const SDL_Event *event, SDL_Window *window, DVM_UIMe
     {
         candidate.kind = DVM_UI_REQUEST;
         candidate.id = 1;
-        candidate.code = 65539; /* Idehost.Quit: controller confirms dirty documents. */
+        candidate.code = 65539; /* Unibus.Quit: controller confirms dirty documents. */
         candidate.flags = (SDL_GetModState() & KMOD_SHIFT) != 0;
     }
     else
@@ -54,7 +54,7 @@ int dvm_editor_window_event(const SDL_Event *event, SDL_Window *window, DVM_UIMe
             return 0;
         }
         candidate.kind = DVM_UI_POINTER;
-        candidate.code = 65552; /* Idehost.Resize: resolve_pointer binds revision/ticket before sending. */
+        candidate.code = 65552; /* Unibus.Resize: resolve_pointer binds revision/ticket before sending. */
         candidate.first = width;
         candidate.second = height;
     }

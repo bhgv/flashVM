@@ -7,7 +7,7 @@
 [Ctrl+I: живой инспектор документа](../../LIVE-PROJECTIONS.ru.md)
 
 [English](README.md) · [Полностью комментированный контроллер](main.b) ·
-[Интерфейс хоста](../../bridge/idehost.m) · [Рантайм](../../../../disVM/runtime/README.md) ·
+[Интерфейс хоста](../../../../disVM/module/unibus.m) · [Рантайм](../../../../disVM/runtime/README.md) ·
 [Навигация](../../NAVIGATION.ru.md) · [Окно/мышь](../../VIEWPORT.ru.md) ·
 [Поиск/файлы](../../ACTIONS.ru.md) · [Шрифт/масштаб](../../ZOOM.ru.md).
 

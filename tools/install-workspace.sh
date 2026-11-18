@@ -621,7 +621,6 @@ EOF
                 copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
                 copy_tree "$ROOT/ide/dis/app" "$destination/source/app"
                 copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"
-                copy_file "$ROOT/ide/dis/bridge/idehost.m" "$destination/include/limbo/idehost.m"
             fi
             file=$(program "$base" limbo-bootstrap)
             copy_file "$file" "$destination/limbo-native" 755
@@ -872,6 +871,7 @@ EOF
             copy_file "$ROOT/disVM/upstream/appl/lib/tests/regex-unicode.b" "$destination/examples/regex-unicode.b"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
+            copy_file "$ROOT/disVM/module/unibus.m" "$destination/include/limbo/unibus.m"
             copy_file "$ROOT/disVM/module/bigtable.m" "$destination/include/limbo/bigtable.m"
             copy_file "$ROOT/disVM/module/processctl.m" "$destination/include/limbo/processctl.m"
             copy_file "$ROOT/disVM/broker/brokerdiag.m" "$destination/include/limbo/brokerdiag.m"

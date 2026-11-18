@@ -1,7 +1,9 @@
-# Native window boundary: only copied values and ordinary Dis byte-array channels.
-Idehost: module
+# Copyright (c) 2026 bhgv
+# EN: Universal host interface for Dis/SWF applications; IDE is one of its clients.
+# RU: Универсальный host-интерфейс приложений Dis/SWF; IDE — один из его клиентов.
+Unibus: module
 {
-    PATH: con "$Idehost"; # Builtin supplied only by the graphical runtime executable.
+    PATH: con "$Unibus"; # Builtin interface; operations require a launch binding or the local graphical runtime.
     Save: con 65537;      # Save current revision to the configured native file path.
     Reload: con 65538;    # Reload that path only when the current document is clean.
     Quit: con 65539;      # Stop after a clean-state check; flags=1 explicitly discards edits.

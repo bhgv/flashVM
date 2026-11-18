@@ -34,6 +34,8 @@ endif()
 target_include_directories(disvm_module_image PUBLIC "${dvm_root}/include")
 # EN/RU: Pure copied-value codec; no FlashVM VM/graphics/channel implementation.
 # Чистый кодек значений без реализации VM, графики и каналов FlashVM.
+add_library(disvm_unibus_binding STATIC unibus_binding.c)
+target_include_directories(disvm_unibus_binding PUBLIC "${dvm_root}/include" PRIVATE "${fvm}/ports")
 add_library(disvm_ui_frame STATIC ui_frame.c)
 target_include_directories(disvm_ui_frame PUBLIC "${dvm_root}/include" "${fvm}/include")
 add_library(disvm_flashvm_host STATIC clock_port.c flashvm_file.c flashvm_socket.c flashvm_channel.c ui_bridge.c ui_pump.c ui_client.c flashvm_thread.c native_context.c native_owner.c native_world.c gc_workers.c gc_worker_pass.c)
@@ -45,6 +47,7 @@ if(DVM_FLASHVM_TARGET)
     message(FATAL_ERROR "DVM_FLASHVM_TARGET must name an existing target")
   endif()
   target_link_libraries(disvm_flashvm_host PUBLIC ${DVM_FLASHVM_TARGET})
+  target_link_libraries(disvm_unibus_binding PUBLIC ${DVM_FLASHVM_TARGET})
 else()
   add_library(disvm_shared_ports STATIC "${fvm}/ports/file_port.c"
     "${fvm}/ports/${port}/filesystem.c"
@@ -58,6 +61,7 @@ else()
     target_link_libraries(disvm_shared_ports PUBLIC Threads::Threads)
   endif()
   target_link_libraries(disvm_flashvm_host PUBLIC disvm_shared_ports)
+  target_link_libraries(disvm_unibus_binding PUBLIC disvm_shared_ports)
 endif()
 # Native module bytes are shared independently of either VM heap.
 add_library(disvm_module_store STATIC module_store.c)
@@ -73,6 +77,9 @@ target_link_libraries(disvm_module_store_example PRIVATE disvm_module_store disv
 
 include(CTest)
 if(BUILD_TESTING)
+  add_executable(disvm_unibus_binding_test "${dvm_root}/tests/unibus_binding.c")
+  target_link_libraries(disvm_unibus_binding_test PRIVATE disvm_unibus_binding)
+  add_test(NAME disvm_unibus_binding COMMAND disvm_unibus_binding_test)
   add_executable(disvm_ui_frame_test "${dvm_root}/tests/ui_frame.c")
   target_link_libraries(disvm_ui_frame_test PRIVATE disvm_ui_frame)
   add_test(NAME disvm_ui_frame COMMAND disvm_ui_frame_test)

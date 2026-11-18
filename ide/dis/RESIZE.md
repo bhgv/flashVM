@@ -1,6 +1,6 @@
 # Dis-admitted editor canvas resizing
 
-[Русский](RESIZE.ru.md) · [Host boundary](bridge/idehost.m) ·
+[Русский](RESIZE.ru.md) · [Host boundary](../../disVM/module/unibus.m) ·
 [Controller](examples/graphical-editor/main.b) ·
 [Actual surface/input tests](../../disVM/runtime/test_graphical_resize.py).
 

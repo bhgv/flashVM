@@ -5,7 +5,7 @@ include "idecore.m";
 include "idefileops.m";
 include "ideinput.m";
 include "idefield.m";
-include "idehost.m";
+include "unibus.m";
 include "idebulk.m";
 include "idedeskpane.m";
 include "idedesktop.m";
@@ -170,7 +170,7 @@ init()
         raise "fail: source domain module";
     }
     codec := load Uibridge Uibridge->PATH;
-    host := load Idehost Idehost->PATH;
+    host := load Unibus Unibus->PATH;
     panes := load Idedeskpane Idedeskpane->PATH;
     desk := load Idedesktop Idedesktop->PATH;
     fields := load Idefield Idefield->PATH;

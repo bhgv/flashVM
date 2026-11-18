@@ -9,7 +9,13 @@ new terminal architecture, rather than a reason to rewrite IDE commands or forms
 Основные изменения относятся к engine/host: соединение, VFS, запуск, S-record
 диспетчер, владение каналами и завершение. В IDE достаточно небольшого adapter у
 канальной границы. Но автоматическое получение terminal capability и маршрутизация
-её в `$Idehost` ещё должны быть подключены — одного изменения названия режима мало.
+её в `$Unibus` ещё должны быть подключены — одного изменения названия режима мало.
+
+[`Unibus`](../docs/UNIBUS.md) is the universal application interface, not an IDE
+execution mode. The [per-launch native binding](../disVM/runtime/host_interface/README.md)
+now installs that authority before `init`, with explicit inheritance and lifetime
+policies. A wire-backed implementation of its calls still needs the remote
+endpoint/marshalling below. All shared terminal traffic stays inside S-records.
 
 ## Implemented adapter / Реализованный adapter
 
@@ -33,7 +39,7 @@ The native [`styx_terminal_ui` route](../disVM/native/terminal/ui/frame.h) now
 encodes/sends and validates copied `fvd1` values using the same codec as local
 queues. Its decode helper receives already dispatched records and does not become
 a second terminal reader. The host must still bind that route to this FlashVM
-capability and attach it to `$Idehost`. Events, resource
+capability and attach it to `$Unibus`. Events, resource
 loading, timer/render notifications and proxy messages remain independent typed
 routes on the same general terminal connection. No new UI wire schema is assigned
 by this adapter, and no mandatory AS relay is imposed on unrelated typed calls.
@@ -41,14 +47,14 @@ by this adapter, and no mandatory AS relay is imposed on unrelated typed calls.
 An opt-in [native binding dispatcher](../disVM/native/terminal/route/README.md)
 now discovers agreed UI type/version bindings on its own native thread and
 provides one-message copied UI/general mailboxes. It consumes no guest execution
-turns. The existing `$Idehost` additionally has rows/path/ink/bulk RPCs; their
+turns. The existing `$Unibus` additionally has rows/path/ink/bulk RPCs; their
 remote endpoint and runtime attachment are separate remaining integration work.
 
 The [native host-channel relay](../disVM/native/terminal/bridge/README.md) now
 provides a real `DVM_UIBridge` endpoint on that route. The ordinary local codec
 and actual AS channel wrappers work on it; relay workers exchange only copied
 values. Both local roles and context retirement are covered by original 9P peer
-tests. This does not yet register a remote `$Idehost` instance or implement its
+tests. This does not yet register a remote `$Unibus` instance or implement its
 non-message RPC endpoints.
 
 ## What stays / Что сохраняется
@@ -59,7 +65,7 @@ be handled on the FlashVM owner; the new transport does not require a Dis round
 trip for every sample. User files/devices/channels still use VFS; executable
 resources retain the agreed provider-first lookup policy.
 
-The current installed desktop still obtains local ports from `$Idehost` through
+The current installed desktop still obtains local ports from `$Unibus` through
 its parameterless bootstrap. It is **not yet automatically launched remotely**
 by this change. The remaining host integration must provide the bidir terminal
 capability, route existing UI frames and retire it with the job. Its owner/queue

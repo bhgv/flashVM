@@ -371,3 +371,8 @@ static void inspect_release(void)
         inspect_data = nil;        /* [GC:] Retire exactly the extra native root, never a process-owned reference. */
     }
 }
+
+
+/* EN/RU: Register the per-launch Unibus dispatcher before guest module loading.
+ * Зарегистрировать per-launch Unibus до загрузки guest-модулей. */
+extern void dvm_unibus_initialize(void);

@@ -702,7 +702,7 @@ def main():
     parser.add_argument("--sys", required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--idehost", type=Path)
+    parser.add_argument("--unibus", type=Path)
     parser.add_argument("--fircompiler", type=Path)
     parser.add_argument("--native-demo", type=Path)
     parser.add_argument("--native-bindings", type=Path)
@@ -814,14 +814,14 @@ def main():
     loader_at = loader.index(marker)
     (args.output / "runt.h").write_text(text[:at] + srv[:srv_at] + loader[:loader_at])
     (args.output / "loadermod.h").write_text(loader[loader_at:])
-    if args.idehost is not None:
+    if args.unibus is not None:
         host = subprocess.check_output(
-            [args.compiler, "-a", "-t", "Idehost", str(args.idehost)], text=True
+            [args.compiler, "-a", "-t", "Unibus", str(args.unibus)], text=True
         )
         host_at = host.index(marker)
         with (args.output / "runt.h").open("a") as declarations:
             declarations.write(host[:host_at])
-        (args.output / "idehostmod.h").write_text(host[host_at:])
+        (args.output / "unibusmod.h").write_text(host[host_at:])
     if args.fircompiler is not None:
         compiler = subprocess.check_output(
             [args.compiler, "-a", "-t", "Fircompiler", str(args.fircompiler)], text=True)

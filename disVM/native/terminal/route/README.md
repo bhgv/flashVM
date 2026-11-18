@@ -82,7 +82,7 @@ and stop/join with full general or UI mailboxes. It verifies the shared client
 remains alive afterwards. These are native PTY tests, not new hardware PHY tests.
 
 This provides automatic native dispatch and copied UI mailboxes. Runtime
-`$Idehost` attachment and its non-message RPCs (rows/path/ink/bulk) still need an
+`$Unibus` attachment and its non-message RPCs (rows/path/ink/bulk) still need an
 explicit remote endpoint integration; this library does not turn them into
 remote calls by changing a queue name.
 

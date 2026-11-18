@@ -46,6 +46,7 @@ static int runtime_execute_inner(void *argument)
     mathmodinit();
     dvm_bigtable_initialize();
     dvm_processctl_initialize();
+    dvm_unibus_initialize();
     dvm_vfsnative_initialize();
     dvm_cap_initialize();
     dvm_proxyhost_initialize();

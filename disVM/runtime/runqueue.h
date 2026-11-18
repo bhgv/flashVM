@@ -68,6 +68,8 @@ typedef struct DVM_RuntimeProcess
     struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
     DVM_Namespace *namespace_group; /* Owning native reference; shared at spawn, detached by pctl. */
     struct DVM_TerminalChannels *terminal_channels; /* Optional owned immutable launch grant, copied/pinned at spawn. */
+    struct UnibusBinding *unibus; /* Owned per-launch native handler; explicit inheritance only, no managed roots. */
+    int unibus_isolated; /* Explicit launch scope forbids fallback to the host's unrelated local GUI. */
     struct DVM_Provider *movie_provider; /* Owned job-VFS movie stream root, prepared before publication. */
     uint64_t movie_offer_generation; /* Owner lease in optional per-job announcement source. */
     int movie_offer_staged; /* Unpublished reservation; rollback never advertises READY. */

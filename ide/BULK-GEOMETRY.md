@@ -30,7 +30,7 @@ No background native thread reads Limbo strings or channels.
 
 ## Typed native extension
 
-`Idehost.attachbulk(slot, output)` accepts a statically typed `chan of array of
+`Unibus.attachbulk(slot, output)` accepts a statically typed `chan of array of
 byte` at slot1..8; nil detaches. It returns0 on success and-1 for invalid/duplicate
 slots/channels or reuse of ordinary input/output. The sender's live stack roots
 its channel from registration through explicit acknowledged detach. A native
@@ -64,7 +64,7 @@ scheduling retains its existing contracts. No frame-rate timer drives transfer.
 ## Reproduction
 
 Build `disvm-editor` and all runtime modules together. Do not mix old/new
-`idedeskpane`, `idevector`, `idehost` or `idebulk` interfaces.
+`idedeskpane`, `idevector`, `unibus` or `idebulk` interfaces.
 
 ```
 ctest --test-dir build/workspace/disvm-editor -R 'bulk_|vector_control_cache|desktop_vector_protocol' --output-on-failure

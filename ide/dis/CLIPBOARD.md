@@ -73,6 +73,6 @@ source revision. A new meaningful operation supplies its own status.
 
 The tutorial stages six UTF-8 bytes for `Я😀`, then three for LF+`AB`, and returns
 one nine-byte/five-scalar value only on completion. It imports operation constants
-from idehost.m without loading the native GUI host or touching an OS clipboard.
+from unibus.m without loading the native GUI host or touching an OS clipboard.
 Our primary compiler/parser work remains the Coco/R Limbo/FIR pipeline; the
 source-built legacy compiler here is explicit temporary build tooling.

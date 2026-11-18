@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Legacy local renderer backend; per-launch Unibus dispatch lives in host_interface/dispatch.c.
+ * RU: Существующий local renderer backend; per-launch диспетчер Unibus находится в host_interface/dispatch.c.
+ */
 /* Bind ordinary Dis channels to the owner-local FlashVM presentation queues. */
 #include "lib9.h"
 #include "dat.h"
@@ -6,7 +10,7 @@
 #include "isa.h"
 #include "interp.h"
 #include "runt.h"
-#include "idehostmod.h"
+#include "host_interface/local.h"
 #include "disvm/dis_ui_channel.h"
 #include "disvm/ui_pump.h"
 #include "disvm/ui_client.h"
@@ -25,9 +29,9 @@ static DVM_UIClient *client;       /* Owned FIFO retains input until transport a
 /* Register one pair of statically typed byte-array ports; frame borrows builtin arguments.
  * Returns 0/-1 in the generated native-cell return slot. No GC ownership is transferred:
  * init must keep both channels rooted until all services stop and native routing detaches. */
-void Idehost_attach(void *frame)
+void dvm_local_Unibus_attach(void *frame)
 {
-    F_Idehost_attach *arguments = frame;
+    F_Unibus_attach *arguments = frame;
     WORD result = -1;
     if (!endpoint.requests && arguments->input != nil && arguments->input != H && arguments->output != nil &&
         arguments->output != H && arguments->input != arguments->output && arguments->input->mover == movp &&
@@ -43,9 +47,9 @@ void Idehost_attach(void *frame)
 /* Register one typed private geometry sender, or explicitly detach with nil.
  * frame is borrowed under the same Dis owner as attach. Cross-use of ordinary
  * input/output ports is refused; the sender stack roots any admitted channel. */
-void Idehost_attachbulk(void *frame)
+void dvm_local_Unibus_attachbulk(void *frame)
 {
-    F_Idehost_attachbulk *arguments = frame;
+    F_Unibus_attachbulk *arguments = frame;
     WORD result = -1;
     if (arguments->output == nil || (arguments->output != endpoint.requests && arguments->output != endpoint.replies))
     {
@@ -56,7 +60,7 @@ void Idehost_attachbulk(void *frame)
 
 /* End native borrowing before Limbo releases its stack-rooted port references.
  * frame has no arguments/result. The scheduler owner makes this mutation exclusively. */
-void Idehost_detach(void *frame)
+void dvm_local_Unibus_detach(void *frame)
 {
     USED(frame);
     endpoint.requests = nil;
@@ -81,11 +85,11 @@ static void return_owned_text(char *text, String **target)
 
 /* Return initial renderer line capacity in the generated native-cell result slot.
  * frame is borrowed; this reports actual font geometry without changing any document. */
-void Idehost_rows(void *frame)
+void dvm_local_Unibus_rows(void *frame)
 {
-    F_Idehost_rows captured;
-    F_Idehost_rows *arguments = &captured;
-    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Idehost_rows,ret),sizeof(*arguments->ret));
+    F_Unibus_rows captured;
+    F_Unibus_rows *arguments = &captured;
+    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Unibus_rows,ret),sizeof(*arguments->ret));
     long copied = 0;
     WORD rows;
     if (dvm_editor_threaded())
@@ -105,11 +109,11 @@ void Idehost_rows(void *frame)
 
 /* Copy the initial line-number preference into the generated native-cell result slot.
  * frame is borrowed; application visibility is subsequently controlled only by Dis envelopes. */
-void Idehost_linenumbers(void *frame)
+void dvm_local_Unibus_linenumbers(void *frame)
 {
-    F_Idehost_linenumbers captured;
-    F_Idehost_linenumbers *arguments = &captured;
-    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Idehost_linenumbers,ret),sizeof(*arguments->ret));
+    F_Unibus_linenumbers captured;
+    F_Unibus_linenumbers *arguments = &captured;
+    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Unibus_linenumbers,ret),sizeof(*arguments->ret));
     long copied = 0;
     WORD visible;
     if (dvm_editor_threaded())
@@ -129,11 +133,11 @@ void Idehost_linenumbers(void *frame)
 
 /* Return the explicit new-document flag in a matching generated native-cell slot.
  * frame borrows the builtin invocation; no heap mutation or native I/O occurs. */
-void Idehost_fresh(void *frame)
+void dvm_local_Unibus_fresh(void *frame)
 {
-    F_Idehost_fresh captured;
-    F_Idehost_fresh *arguments = &captured;
-    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Idehost_fresh,ret),sizeof(*arguments->ret));
+    F_Unibus_fresh captured;
+    F_Unibus_fresh *arguments = &captured;
+    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Unibus_fresh,ret),sizeof(*arguments->ret));
     long copied = 0;
     WORD fresh;
     if (dvm_editor_threaded())
@@ -153,11 +157,11 @@ void Idehost_fresh(void *frame)
 
 /* Return an independently Dis-owned configuration string in the generated frame.
  * frame is borrowed; retstr handles reference replacement and Dis allocation errors. */
-void Idehost_path(void *frame)
+void dvm_local_Unibus_path(void *frame)
 {
-    F_Idehost_path captured;
-    F_Idehost_path *arguments = &captured;
-    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Idehost_path,ret),sizeof(*arguments->ret));
+    F_Unibus_path captured;
+    F_Unibus_path *arguments = &captured;
+    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Unibus_path,ret),sizeof(*arguments->ret));
     char *copied = NULL;
     if (dvm_editor_threaded())
     {
@@ -201,7 +205,6 @@ void dvm_editor_transport_finish(void)
 /* Register only on the Dis owner; create UI on main through a copied RPC. */
 int dvm_editor_start(const char *directory)
 {
-    builtinmod("$Idehost", Idehostmodtab, Idehostmodlen);
     if ((!transport && !dvm_editor_transport_prepare()) ||
         dvm_ui_pump_create(transport,dvm_ui_dis_pump_offer,dvm_ui_dis_pump_take,&endpoint,&pump) != FVM_OK)
     {
@@ -328,11 +331,11 @@ void dvm_editor_stop(void)
 
 /* [GC:] retstr installs a private Dis string in the generated mapped return slot.
  * The borrowed native frozen buffer remains registered on allocation failure. */
-void Idehost_ink(void *frame)
+void dvm_local_Unibus_ink(void *frame)
 {
-    F_Idehost_ink captured;
-    F_Idehost_ink *arguments = &captured;
-    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Idehost_ink,ret),sizeof(*arguments->ret));
+    F_Unibus_ink captured;
+    F_Unibus_ink *arguments = &captured;
+    dvm_sys_capture(frame,arguments,sizeof(*arguments),offsetof(F_Unibus_ink,ret),sizeof(*arguments->ret));
     char *copied = NULL;
     if (dvm_editor_threaded())
     {
@@ -350,10 +353,10 @@ void Idehost_ink(void *frame)
 
 /* Borrow a rooted managed input only during this native call. Copy hash/extent,
  * never the String address, into the native pending-presentation registry. */
-void Idehost_inkdone(void *frame)
+void dvm_local_Unibus_inkdone(void *frame)
 {
-    F_Idehost_inkdone captured;
-    F_Idehost_inkdone *arguments = &captured;
+    F_Unibus_inkdone captured;
+    F_Unibus_inkdone *arguments = &captured;
     if (!frame || frame == H)
     {
         error(exNilref);
@@ -375,10 +378,10 @@ void Idehost_inkdone(void *frame)
 
 /* Apply scalar document admission before any live native samples are consumed.
  * Refusal retires only that capture; no document or VM reference is retained. */
-void Idehost_inkadmit(void *frame)
+void dvm_local_Unibus_inkadmit(void *frame)
 {
-    F_Idehost_inkadmit captured;
-    F_Idehost_inkadmit *arguments = &captured;
+    F_Unibus_inkadmit captured;
+    F_Unibus_inkadmit *arguments = &captured;
     if (!frame || frame == H)
     {
         error(exNilref);

@@ -13,7 +13,7 @@ acquire(vector: Idevector, job: ref Job, broken: int): (int,int)
     if (broken) {
         return (Idevector->Invalid,0);
     }
-    host := load Idehost Idehost->PATH;
+    host := load Unibus Unibus->PATH;
     codec := load Uibridge Uibridge->PATH;
     if (host == nil || codec == nil) {
         return (Idevector->Invalid,0);

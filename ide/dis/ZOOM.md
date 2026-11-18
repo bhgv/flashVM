@@ -2,7 +2,7 @@
 
 [Русский](ZOOM.ru.md) · [Asset/license](../assets/fonts/README.md) ·
 [Dis controller](examples/graphical-editor/main.b) ·
-[Host values](bridge/idehost.m) · [Native geometry](../../disVM/runtime/editor_view.c) ·
+[Host values](../../disVM/module/unibus.m) · [Native geometry](../../disVM/runtime/editor_view.c) ·
 [Real regression](../../disVM/runtime/test_graphical_zoom.py).
 
 The editor starts with bundled OFL Noto Sans Mono at 11 pixels. Neither the build
