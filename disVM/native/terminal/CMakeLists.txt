@@ -119,3 +119,5 @@ foreach(route_case RANGE 0 6)
         set_tests_properties(terminal-route-${route_case}-${route_transport} PROPERTIES TIMEOUT 30)
     endforeach()
 endforeach()
+
+add_subdirectory(cli)

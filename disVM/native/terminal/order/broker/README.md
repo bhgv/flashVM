@@ -175,3 +175,21 @@ precise timeout/size/memory/refusal results without changing the original send1/
 ABI. Lower-control notification now wakes clients/subscribers without waiting
 for dispatcher progress. No guest callback, global client drain or forced guest
 pause is introduced. Source-pinning subscriptions must fence owner lifetime.
+
+## Orderly EOF / Корректный EOF
+
+Clean lower-control EOF is an ordered barrier: the RX dispatcher first drains
+complete records already accepted by the lower queue, then closes the engine
+and issues its sticky retirement notification. The lower retirement callback must
+not close the engine ahead of those records. Physical faults, protocol failures
+and explicit stop retain their independent immediate wake path.
+
+`styxorderedagreed(peer, direction)` reports historical completed agreement,
+including after retirement. It is **not** liveness, send permission or a restart
+operation. The [explicit native CLI](../../cli/README.md) uses it only with clean
+EOF so that startup observation delayed until after orderly retirement can still
+drain accepted client records. `styxorderedready` continues to require a live peer.
+
+Чистый EOF не обгоняет уже принятые записи. Ошибки и явный stop по-прежнему
+пробуждают подписчиков независимо от продвижения dispatcher. Исторический факт
+согласования не даёт права отправлять после завершения соединения.

@@ -16,7 +16,7 @@ int main()
     size_t used = 123; /* Failure preservation sentinel. */
     if (fvm_sorder_control_write(&message, bytes, sizeof(bytes), &used) != FVM_S_INVALID || used != 123 ||
         styxorderedoffer(NULL, 1, 1) || styxorderedofferwait(NULL, 1, 0) || styxorderedclient(NULL, 0) ||
-        styxorderedready(NULL, STYX_ORDER_TX) || styxorderedwait(NULL, STYX_ORDER_TX, 0) ||
+        styxorderedready(NULL, STYX_ORDER_TX) || styxorderedagreed(NULL, STYX_ORDER_TX) || styxorderedwait(NULL, STYX_ORDER_TX, 0) ||
         styxorderedrenew(NULL, 0) || styxorderedservicewait(NULL, 0) || styxorderedclientsend(NULL, NULL, 0))
     {
         return 1;

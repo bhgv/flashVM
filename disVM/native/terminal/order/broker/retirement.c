@@ -26,6 +26,14 @@ static void retired(void *state)
     if (peer)
     {
         int reason = styxbidircontrolstate(peer->control); /* Sticky native snapshot, no I/O. */
+        if (reason == STYX_CONTROL_EOF)
+        {
+            /* EN/RU: Orderly EOF follows already accepted lower records; dispatcher drains them before ending the engine.
+             * Корректный EOF идёт после принятых нижних записей; dispatcher выдаёт их engine до завершения.
+             */
+            pthread_mutex_unlock(&notice->lock);
+            return;
+        }
         pthread_mutex_lock(&peer->lock);
         if (!peer->reason)
         {

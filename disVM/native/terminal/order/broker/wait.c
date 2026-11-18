@@ -126,3 +126,20 @@ int styxorderedservicewait(StyxOrdered *peer, unsigned timeout)
     pthread_mutex_unlock(&peer->lock);
     return ready;
 }
+
+
+
+/* EN/RU: See broker.h; accepted v1 profiles are immutable and remain inspectable after an orderly EOF.
+ * См. broker.h; принятые v1-профили неизменяемы и доступны для наблюдения после корректного EOF.
+ */
+int styxorderedagreed(StyxOrdered *peer, unsigned direction)
+{
+    if (!peer || direction > STYX_ORDER_TX)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&peer->lock);
+    int agreed = peer->active[direction]; /* Historical agreement, never current send authority. */
+    pthread_mutex_unlock(&peer->lock);
+    return agreed;
+}

@@ -234,3 +234,17 @@ counter; sticky physical-loss notification closes owned local channels even when
 the broker dispatcher cannot progress. Optional display construction leaves ordinary
 FD/VFS access independent. Native embedding selects this factory explicitly; this
 is not an automatic rewrite of the desktop/editor CLI or a multi-lane scheduler.
+
+## Explicit native stdio relay / Явный native stdio relay
+
+[`unibus-bidir`](../disVM/native/terminal/cli/README.md) selects an ordered
+bidirectional profile on an explicitly delegated POSIX carrier FD. Its binary
+stdin/stdout expose granted inner S-records only; root0 and ordering controls stay
+inside dedicated native broker workers. stdin EOF ends only the producer, and
+clean peer EOF drains already accepted records. It needs no display or UI library.
+This is a standalone relay, not remote Dis/SWF execution or an automatic change
+to existing editor/desktop launchers.
+
+Явный CLI-профиль использует выданный FD без dial и не предоставляет клиентам
+служебный root0. Отдельные native-потоки обслуживают транспорт, ввод и клиентские
+очереди; заблокированный stdout отменяется без остановки гостевых потоков.

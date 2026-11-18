@@ -50,6 +50,14 @@ int styxorderedofferwait(StyxOrdered *peer, unsigned long long operation, unsign
 int styxorderedready(StyxOrdered *peer, unsigned direction);
 
 
+/* EN: Native snapshot of accepted-once directional agreement,1/0, including after retirement.
+ * Diagnostic/history only: not liveness, transmit permission or permission to restart an ended session.
+ * RU: Native-снимок ранее принятого согласования:1/0, в том числе после завершения.
+ * Только история: не liveness, не разрешение TX и не право возобновить завершённую сессию.
+ */
+int styxorderedagreed(StyxOrdered *peer, unsigned direction);
+
+
 /* EN: Wait for one directional activation, 1 ready/0 timeout or terminal; no record consumption.
  * RU: Ждать включения одного направления: 1 — готово, 0 — timeout/завершено; записи не потребляются.
  */

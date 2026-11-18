@@ -134,6 +134,9 @@ int main(void)
     CHECK(styxorderedclientnext(client, &ordinal, bytes, sizeof(bytes), &size) == STYX_ORDER_RECORD && !ordinal && !memcmp(bytes, "new", 3));
     CHECK(!styxorderreceivewindow(peer->engine, 2));
     CHECK(!styxorderedofferwait(peer, 99, 0));
+    styxorderedstop(peer);
+    CHECK(styxorderedagreed(peer, STYX_ORDER_TX) && !styxorderedready(peer, STYX_ORDER_TX));
+    CHECK(!styxorderedclientsend(client, "ended", 5));
     styxorderedfree(peer);
     return 0;
 }
