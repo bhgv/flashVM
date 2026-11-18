@@ -3,6 +3,8 @@
  * RU: Public native/client capability APIs линкуются как C++98, не раскрывая scope internals.
  */
 #include "scope.h"
+#include "service/service.h"
+#include "operation/operation.h"
 #include <cstdio>
 
 
@@ -14,7 +16,10 @@ int main()
     unsigned long tag = 99; /* Refusal output sentinel. */
     unsigned long long generation = 99; /* Refusal generation sentinel. */
     size_t size = 99; /* Refusal extent sentinel. */
-    if (styxbidirscopes(NULL, 0) || styxscopegroup(NULL) || styxscopeclient(NULL, NULL) ||
+    if (styxscopeservicehandler(NULL, NULL, NULL, NULL) || styxscopeservicesend(NULL, NULL, 0) ||
+        styxscopetxprepare(NULL, 0, NULL, 0, NULL, 0) || styxscopetxconfirm(NULL, 0, 0) ||
+        styxscoperxcommit(NULL, NULL, 0, NULL, 0) || styxscopetxwait(NULL, 0, 0) ||
+        styxscopetxstate(NULL, &generation) != STYX_SCOPE_OPERATION_TERMINAL || generation != 99 || styxbidirscopes(NULL, 0) || styxscopegroup(NULL) || styxscopeclient(NULL, NULL) ||
         styxscopeassign(NULL, 0, NULL, 0) || styxscopebinding(NULL, 0, &tag, &generation) || tag != 99 || generation != 99 ||
         styxscopeclientnext(NULL, &tag, NULL, 0, &size) != STYX_CONTROL_END || size != 99 ||
         styxscopeclientwait(NULL, 0) || styxscopeservicenext(NULL, NULL, 0, &size) != STYX_CONTROL_END || size != 99 ||

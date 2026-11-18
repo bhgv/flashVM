@@ -75,7 +75,7 @@ extern int __real_pthread_create(pthread_t *, const pthread_attr_t *, void *(*)(
  */
 void scopefaultarm(void)
 {
-    armed = 1;
+    armed = STYX_SCOPE_CASE == 12 ? 2 : 1;
 }
 
 
@@ -130,7 +130,7 @@ DVM_CancelTap *__wrap_styxbidircontrolwatch(StyxBidirControl *control, void (*re
  */
 int __wrap_pthread_create(pthread_t *worker, const pthread_attr_t *attributes, void *(*entry)(void *), void *state)
 {
-    if (armed && STYX_SCOPE_CASE == 9)
+    if ((STYX_SCOPE_CASE == 12 && armed && !--armed) || (armed && STYX_SCOPE_CASE == 9))
     {
         armed = 0;
         return EAGAIN;

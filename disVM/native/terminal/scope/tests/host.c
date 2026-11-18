@@ -179,7 +179,7 @@ int main(void)
     StyxBidirControl *control = styxbidircontrol(client, &channels, 4096, 1); /* Owned by scoped root after create. */
     scopefaultarm();
     StyxScope *root = styxbidirscopes(control, STYX_SCOPE_CASE == 11 ? 128 : 4096); /* Explicit nested profile, never auto-upgrades legacy route. */
-    if (STYX_SCOPE_CASE == 7 || STYX_SCOPE_CASE == 9 || STYX_SCOPE_CASE == 10)
+    if (STYX_SCOPE_CASE == 7 || STYX_SCOPE_CASE == 9 || STYX_SCOPE_CASE == 10 || STYX_SCOPE_CASE == 12)
     {
         check(!root && styxclientalive(client), "constructor fault consumes only owned control and private root");
         control = styxbidircontrol(client, &channels, 4096, 1);

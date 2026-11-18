@@ -1,14 +1,15 @@
 # Copyright (c) 2026 bhgv
 # EN: Explicit nested S-record broker, native namespace authority and opaque application inbox capabilities.
 # RU: Явный nested S-record broker, native namespace authority и opaque application inbox capabilities.
-add_library(styx_terminal_scope STATIC life.c tree.c envelope.c run.c inbox.c send.c retirement.c)
+add_library(styx_terminal_scope STATIC life.c tree.c envelope.c run.c inbox.c send.c retirement.c
+    service/handler.c service/outbox.c operation/prepare.c operation/confirm.c)
 target_include_directories(styx_terminal_scope PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal_scope PUBLIC styx_terminal)
 target_compile_options(styx_terminal_scope PRIVATE -Wall -Wextra -Wpedantic -Werror)
 set_source_files_properties(tests/host.c tests/wire.c tests/fault.c
     PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Wpedantic;-Werror")
 set_property(SOURCE tests/wire.c APPEND PROPERTY COMPILE_OPTIONS -Wno-unknown-pragmas)
-foreach(scope_case RANGE 0 11)
+foreach(scope_case RANGE 0 12)
     set(scope_peer terminal-scope-${scope_case})
     add_executable(${scope_peer} tests/host.c tests/wire.c tests/fault.c ../tests/link/fixture.c
         ../../tests/file-root/context.c)
@@ -26,3 +27,5 @@ if(INFERNO_UI_HOST_LIBRARIES)
     target_link_libraries(terminal-scope-header PRIVATE styx_terminal_scope)
     add_test(NAME terminal-scope-cxx98-header COMMAND terminal-scope-header)
 endif()
+
+include(operation/tests/cases.cmake)

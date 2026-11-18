@@ -62,8 +62,23 @@ void styxscopefree(StyxScope *root)
         {
             pthread_join(hub->worker, NULL);
         }
+        if (hub->sender_started)
+        {
+            pthread_join(hub->sender, NULL);
+        }
         scoperetirementdetach(hub);
         styxbidircontrolfree(hub->control);
+        pthread_mutex_lock(&hub->lock);
+        ScopeServiceHandler *handler = scopeservicedrop(hub->handler);
+        hub->handler = NULL;
+        pthread_mutex_unlock(&hub->lock);
+        scopeservicefree(handler);
+        while (hub->service_head)
+        {
+            ScopeServiceMessage *message = hub->service_head;
+            hub->service_head = message->next;
+            free(message);
+        }
         scopeclear(root);
         free(hub->scratch);
         pthread_cond_destroy(&hub->changed);
@@ -113,7 +128,14 @@ StyxScope *styxbidirscopes(StyxBidirControl *control, unsigned limit)
     hub->control = control;
     root->hub = hub;
     hub->scratch = malloc(limit);
-    if (!hub->scratch || !scoperetirementattach(hub) || styxscopestate(root) || pthread_create(&hub->worker, NULL, scoperun, hub))
+    if (!hub->scratch || !scoperetirementattach(hub) || styxscopestate(root) ||
+        pthread_create(&hub->sender, NULL, scopeservicerun, hub))
+    {
+        styxscopefree(root);
+        return NULL;
+    }
+    hub->sender_started = 1;
+    if (styxscopestate(root) || pthread_create(&hub->worker, NULL, scoperun, hub))
     {
         styxscopefree(root);
         return NULL;

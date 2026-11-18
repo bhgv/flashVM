@@ -91,18 +91,17 @@ An accepted message already belongs to its resolved inbox. Reading it after a
 remap does not re-resolve the current outer tag. Local generations are not wire
 fields, authentication or distributed barriers.
 
-**Peer activation negotiation is not implemented here.** The native host must
-agree the envelope profile and tag activation with its peer, finish admission of
-old traffic and only then release new traffic under changed tags. A frame merely
-waiting in transport staging has not yet captured a recipient. Parallel physical
-or logical carriers need a coordinated activation boundary; changing a local
-mapping does not solve cross-channel ordering. No tag-zero command IDs or wire
-generation schema are invented by this implementation.
+[Confirmed native operations](operation/README.md) now provide ordered root-service
+handling, ACK-gated TX proposals and atomic RX commit plus reply admission. Only
+affected tags wait; unrelated clients remain live. The native adapter must still
+select an agreed wire encoding, authenticate requests and handle receiver replay.
+No numeric negotiation command schema is invented here.
 
-RU: Native remapping уже атомарен и защищён expected generation. Принятые записи
-остаются у прежних адресатов. Но распределённое согласование смены по тегу 0 ещё
-не подключено: host обязан обеспечить границу старого и нового трафика. Для
-нескольких каналов нужна общая согласованная граница, не произвольная local смена.
+For a single ordered connection, old records precede the assignment request and
+new affected-tag records wait for its ACK. Multiple striped carriers need order
+restoration for that tag, not a global drain of unrelated channels. The proposed
+64-bit record sequence and separate 64-bit assignment generation are selected;
+these fields are not implemented on the wire yet.
 
 ## Outgoing authority / Полномочия отправки
 
@@ -126,14 +125,14 @@ RemotePhy carrier and native control transport are reused. No new listener,
 network-specific carrier, interpreter, graphics library or wire opcode is added.
 
 Runtime `$Unibus` attachment, automatic selection of this profile, agreed
-root-service negotiation/rebinding commands, remote `sysevents` forwarding and
+production root-service wire codec, remote `sysevents` forwarding and
 scope-aware pressure diagnostics remain explicit integration work. This native
 layer provides the isolated inboxes, complete envelope transport and atomic local
 assignment needed for that work; it does not claim those integrations already run.
 
 ## Verification / Проверка
 
-Twelve [original-Styx scenarios](tests/host.c) run real bidir pumps and native
+Thirteen [original-Styx scenarios](tests/host.c) run real bidir pumps and native
 libstyx server/client operations with three-byte reads and two-byte write ACKs.
 They check duplicate local7 across clients/groups, independent client waits,
 client-local zero, native root/group zero, opaque nested-looking payloads, SMALL,
@@ -143,7 +142,7 @@ paths, explicit directional grants and nested local-zero TX.
 Other cases corrupt a later inner frame, refuse the second staged malloc,
 use an unbound outer tag, corrupt a later group envelope, shut down the original
 client and stop the root. Constructor faults exercise subscription refusal,
-worker creation refusal, sticky terminal replay and successful private retry.
+service-sender and broker-worker creation refusal, sticky terminal replay and successful private retry.
 An outer-body boundary case uses a scoped limit smaller than control staging and
 checks that outer tag bytes are charged alongside payload.
 A late-callback case deliberately delivers admitted notices after rootfree.

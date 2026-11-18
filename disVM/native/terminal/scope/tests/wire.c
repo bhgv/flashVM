@@ -213,11 +213,50 @@ static FVM_SRecord record(const void *bytes, size_t size, unsigned long tag)
 }
 
 
+#ifdef STYX_SCOPE_OPERATION_TEST
+
+
+/* EN/RU: Independent operation fixture handles its root-service/native data commands, 1 handled/0 unknown/-1 invalid.
+ * Independent operation fixture обрабатывает root-service/native data commands, 1/0/-1.
+ */
+extern int scopeoperationcommand(const FVM_SRecord *);
+
+
+/* EN/RU: Append original encoded output for the operation fixture on its sole server owner.
+ * Добавить original encoded output operation fixture на sole server owner.
+ */
+void scopeoperationoffer(unsigned long tag, const void *bytes, size_t size)
+{
+    append(tag, bytes, size);
+}
+
+
+/* EN/RU: Append one client-local message inside an explicit fixture outer tag, same original codec.
+ * Добавить client-local message в fixture outer tag исходным кодеком.
+ */
+void scopeoperationclient(unsigned long outer, unsigned long inner, const void *bytes, size_t size)
+{
+    client(outer, inner, bytes, size);
+}
+#endif
+
+
 /* EN/RU: Verify native fixture control or complete client TX envelope, append only root-native receipts.
  * Проверить fixture control либо полный client TX envelope, receipts лишь root-native.
  */
 static int command(const FVM_SRecord *message)
 {
+#ifdef STYX_SCOPE_OPERATION_TEST
+    int operation = scopeoperationcommand(message); /* Fixture-only service schemas, not production numeric IDs. */
+    if (operation)
+    {
+        if (operation > 0)
+        {
+            publish();
+        }
+        return operation > 0;
+    }
+#endif
     if (message->tag == 102 && message->size == 4 && !memcmp(message->payload, "fill", 4))
     {
         fill();

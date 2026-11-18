@@ -194,3 +194,10 @@ inboxes cannot access parent tags; separate clients may reuse local IDs. Native
 sibling RX/TX assignments are atomic and generation-guarded, with captured
 recipient queues and frozen accepted TX envelopes. Distributed tag-zero activation
 negotiation and automatic runtime attachment are still integration work.
+
+[Confirmed native scope operations](../disVM/native/terminal/scope/operation/README.md)
+now add ordered root-service handling, a nonblocking-to-broker service outbox,
+ACK-gated TX proposals and atomic RX commit/reply admission. Only affected tags
+wait for confirmation; unrelated clients and nested namespaces remain live. The
+wire adapter/receiver replay policy and per-tag ordering across striped carriers
+still require integration; local operation guards are not a new wire schema.

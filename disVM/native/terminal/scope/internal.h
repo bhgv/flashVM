@@ -6,6 +6,7 @@
 #define STYX_SCOPE_INTERNAL_H
 #define _POSIX_C_SOURCE 200809L
 #include "scope.h"
+#include "service/internal.h"
 #include "cancel.h"
 #include "flashvm/srecord.h"
 #include <pthread.h>
@@ -32,18 +33,24 @@ typedef struct ScopeMessage
  */
 typedef struct ScopeHub
 {
-    pthread_mutex_t lock;           /* Tree, generations, committed queues and first reason. */
-    pthread_cond_t changed;         /* Independent client/service readiness and retirement. */
-    pthread_t worker;               /* Sole nested dispatch owner. */
-    int started;                    /* Worker exists and must be joined. */
-    int reason;                     /* First terminal outcome, queued records remain drainable. */
-    unsigned char *scratch;         /* Owned broker-only input storage, allocated before publication. */
-    unsigned limit;                 /* Maximum envelope/inner S-record body. */
-    size_t queued;                  /* Total accepted unread records, checked for overflow. */
-    StyxBidirControl *control;      /* Owned explicit native bidir control. */
-    struct StyxScope *root;         /* Owned native tree root. */
-    struct ScopeRetirement *notice; /* Independent callback fence. */
-    DVM_CancelTap *retired;         /* Owned control retirement subscription. */
+    pthread_mutex_t lock;              /* Tree, generations, committed queues and first reason. */
+    pthread_cond_t changed;            /* Independent client/service readiness and retirement. */
+    pthread_t sender;                  /* Dedicated native service outbox owner. */
+    int sender_started;                /* Service worker must be joined before disposal. */
+    ScopeServiceMessage *service_head; /* Owned copied root0 output queue. */
+    ScopeServiceMessage *service_tail; /* Borrowed newest service output. */
+    size_t service_count;              /* Includes head while native control admission is in progress. */
+    ScopeServiceHandler *handler;      /* Owned registered native root handler. */
+    pthread_t worker;                  /* Sole nested dispatch owner. */
+    int started;                       /* Worker exists and must be joined. */
+    int reason;                        /* First terminal outcome, queued records remain drainable. */
+    unsigned char *scratch;            /* Owned broker-only input storage, allocated before publication. */
+    unsigned limit;                    /* Maximum envelope/inner S-record body. */
+    size_t queued;                     /* Total accepted unread records, checked for overflow. */
+    StyxBidirControl *control;         /* Owned explicit native bidir control. */
+    struct StyxScope *root;            /* Owned native tree root. */
+    struct ScopeRetirement *notice;    /* Independent callback fence. */
+    DVM_CancelTap *retired;            /* Owned control retirement subscription. */
 } ScopeHub;
 
 
@@ -60,6 +67,12 @@ struct StyxScope
     int leaf;                          /* Client envelope parses messages once, group routes deeper. */
     unsigned long tags[2];             /* Independent RX/TX parent tags, zero unbound. */
     unsigned long long generations[2]; /* Local expected-generation guards, never serialized. */
+    struct StyxScope *tx_pending;      /* This outer tag is reserved by an unresolved native proposal owner. */
+    ScopeProposal *proposal;           /* Owned ACK-gated TX candidate, NULL when resolved. */
+    size_t tx_holds;                   /* Selected pending tags at/below node protect this ancestor wrapper. */
+    unsigned long long tx_last;        /* Greatest admitted local proposal ID, never reused. */
+    unsigned long long tx_done;        /* Most recently resolved proposal ID. */
+    int tx_accepted;                   /* Cached last ACK/NACK outcome for exact duplicate confirmation. */
     ScopeMessage *head;                /* Owned client records or native group tag0 notices. */
     ScopeMessage *tail;                /* Borrowed last committed FIFO node. */
     size_t count;                      /* Current unread recipient messages. */
@@ -111,4 +124,14 @@ void scoperetirementdetach(ScopeHub *hub);
  * Поглотить isolated tree после users/worker, recursion ограничена depth.
  */
 void scopeclear(StyxScope *scope);
+
+/* EN/RU: Check/optionally commit assignments under hub lock, no allocation/locking or proposal-policy check.
+ * Проверить/commit assignments под hub lock, без allocation/locking либо proposal-policy check.
+ */
+int scopeassignlocked(StyxScope *parent, unsigned direction, const StyxScopeAssignment *list, size_t count, int apply);
+
+/* EN/RU: Under hub lock, check whether this tag/path may be changed while unrelated proposals stay live.
+ * Под hub lock проверить mutable tag/path, не запрещая unrelated proposals.
+ */
+int scopetxmutable(StyxScope *scope);
 #endif

@@ -42,7 +42,7 @@ int styxscopeclientsend(StyxScopeClient *client, unsigned long tag, const void *
     valid = valid && !hub->reason;
     for (StyxScope *scope = client->scope; valid && scope->parent; scope = scope->parent)
     {
-        valid = scope->tags[STYX_SCOPE_TX] && encode(hub, scope->tags[STYX_SCOPE_TX], first, used, second, &used);
+        valid = !scope->tx_pending && scope->tags[STYX_SCOPE_TX] && encode(hub, scope->tags[STYX_SCOPE_TX], first, used, second, &used);
         unsigned char *swap = first; /* Swap disjoint frame ownership, never overlap codec input/output. */
         first = second;
         second = swap;

@@ -82,6 +82,50 @@ static unsigned long finaltag(StyxScope *scope, unsigned direction, const StyxSc
 }
 
 
+/* EN/RU: See internal.h; descendant proposals protect ancestor wrappers, sibling tags remain independent.
+ * См. internal.h; descendant proposals защищают ancestor wrappers, sibling tags независимы.
+ */
+int scopetxmutable(StyxScope *scope)
+{
+    if (scope->tx_holds)
+    {
+        return 0;
+    }
+    for (StyxScope *node = scope; node; node = node->parent)
+    {
+        if (node->tx_pending)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: A pending candidate reserves its new tag without blocking unrelated sibling assignments.
+ * Pending candidate резервирует новый tag, не блокируя unrelated sibling assignments.
+ */
+static int mutable(StyxScope *parent, const StyxScopeAssignment *list, size_t count)
+{
+    for (size_t i = 0; i < count; i++)
+    {
+        if (!list[i].scope || list[i].scope->parent != parent || !scopetxmutable(list[i].scope))
+        {
+            return 0;
+        }
+        ScopeProposal *pending = parent->proposal; /* At most one control operation per parent, not a traffic-wide hold. */
+        for (size_t j = 0; pending && list[i].tag && j < pending->count; j++)
+        {
+            if (pending->list[j].scope != list[i].scope && pending->list[j].tag == list[i].tag)
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
 /* EN/RU: See scope.h; atomic transaction may swap sibling tags without transient duplicates or gaps.
  * См. scope.h; atomic transaction меняет sibling tags без transient duplicates либо gaps.
  */
@@ -91,8 +135,21 @@ int styxscopeassign(StyxScope *parent, unsigned direction, const StyxScopeAssign
     {
         return 0;
     }
-    ScopeHub *hub = parent->hub; /* Pinned by caller for entire transaction. */
+    ScopeHub *hub = parent->hub; /* Caller pins all native scopes through return. */
     pthread_mutex_lock(&hub->lock);
+    int valid = (direction != STYX_SCOPE_TX || mutable(parent, list, count)) &&
+        scopeassignlocked(parent, direction, list, count, 1);
+    pthread_mutex_unlock(&hub->lock);
+    return valid;
+}
+
+
+/* EN/RU: See internal.h; pure locked validator shared by direct maps and confirmed native transactions.
+ * См. internal.h; locked validator общий для direct maps и confirmed native transactions.
+ */
+int scopeassignlocked(StyxScope *parent, unsigned direction, const StyxScopeAssignment *list, size_t count, int apply)
+{
+    ScopeHub *hub = parent->hub; /* Caller holds this hub lock. */
     int valid = !hub->reason; /* Never remap a retired broker. */
     for (size_t i = 0; valid && i < count; i++)
     {
@@ -112,7 +169,7 @@ int styxscopeassign(StyxScope *parent, unsigned direction, const StyxScopeAssign
             valid = tag != finaltag(b, direction, list, count);
         }
     }
-    if (valid)
+    if (valid && apply)
     {
         for (size_t i = 0; i < count; i++)
         {
@@ -120,7 +177,6 @@ int styxscopeassign(StyxScope *parent, unsigned direction, const StyxScopeAssign
             list[i].scope->generations[direction]++;
         }
     }
-    pthread_mutex_unlock(&hub->lock);
     return valid;
 }
 
@@ -157,6 +213,7 @@ void scopeclear(StyxScope *scope)
             scope->head = message->next;
             free(message);
         }
+        free(scope->proposal);
         free(scope->client);
         free(scope);
         scope = next;

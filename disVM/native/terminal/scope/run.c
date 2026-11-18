@@ -26,9 +26,23 @@ void *scoperun(void *state)
             scopeend(hub, status == STYX_CONTROL_END ? styxbidircontrolstate(hub->control) : STYX_CONTROL_PROTOCOL);
             break;
         }
-        else if (!scopefeed(hub, tag, bytes, size))
+        else if (!tag && size >= hub->limit)
         {
+            scopeend(hub, STYX_CONTROL_PROTOCOL);
             break;
+        }
+        else
+        {
+            int handled = tag ? STYX_SCOPE_PASS : scopeservicehandle(hub, bytes, size);
+            if (handled == STYX_SCOPE_SERVICE_ERROR)
+            {
+                scopeend(hub, STYX_CONTROL_PROTOCOL);
+                break;
+            }
+            if (handled == STYX_SCOPE_PASS && !scopefeed(hub, tag, bytes, size))
+            {
+                break;
+            }
         }
     }
     return NULL;
