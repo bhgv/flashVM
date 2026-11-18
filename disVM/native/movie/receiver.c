@@ -245,16 +245,22 @@ int movie_session_feed(StyxMovieSession *session, const void *bytes, size_t size
 }
 
 
-/* EN/RU: See receiver.h; native I/O runs outside the short state mutex.
- * См. receiver.h; native I/O выполняется вне короткого state mutex. */
-FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long expected,
+/* EN/RU: See session_internal.h; consume the supplied fid even on refusal, native I/O outside state mutex.
+ * См. session_internal.h; поглотить переданный fid даже при отказе, native I/O вне state mutex. */
+FVM_Result movie_session_fetch_fid(StyxMovieSession *session, StyxFid *fid, unsigned long long expected,
     unsigned purpose, const char *reference, const char *base,
     FVM_DesktopWrite write, void *state, char *resolved, size_t capacity)
 {
-    if (!session || !reference || !*reference || strlen(reference) >= MOVIE_PATH ||
+    if (!session)
+    {
+        styxclientclunklater(fid);
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (!reference || !*reference || strlen(reference) >= MOVIE_PATH ||
         (base && strlen(base) >= MOVIE_PATH) || !write || !resolved || !capacity ||
         (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
     {
+        styxmountclunk(session->client, fid);
         return FVM_INVALID_ARGUMENT;
     }
     observe_link(session);
@@ -262,15 +268,9 @@ FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long exp
     unsigned long long generation = session->generation;
     int ready = session->ready && !session->closed;
     fvm_port_sync_unlock(session->lock);
-    if (!ready || (expected && generation != expected))
+    if (!ready || (expected && generation != expected) || !fid)
     {
-        return FVM_ERROR;
-    }
-    char name[64];
-    snprintf(name, sizeof(name), "movie/%llu", generation);
-    StyxFid *fid = styxmountwalkcancel(session->client, NULL, name);
-    if (!fid)
-    {
+        styxmountclunk(session->client, fid);
         return FVM_ERROR;
     }
     if (styxclientfiddirectory(fid) != 0)
@@ -293,6 +293,32 @@ FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long exp
     }
     fvm_port_sync_unlock(session->lock);
     return result;
+}
+
+
+/* EN/RU: Legacy attached-root selection, no alternate namespace; the shared fid helper makes final admission.
+ * Session/arguments borrowed, every acquired fid consumed. / Legacy выбор от attach root,
+ * shared fid helper делает final admission; session/arguments borrowed, fid поглощается всегда.
+ */
+FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long expected,
+    unsigned purpose, const char *reference, const char *base, FVM_DesktopWrite write, void *state,
+    char *resolved, size_t capacity)
+{
+    if (!session || !reference || !*reference || strlen(reference) >= MOVIE_PATH ||
+        (base && strlen(base) >= MOVIE_PATH) || !write || !resolved || !capacity ||
+        (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    unsigned long long generation = 0; /* Snapshot before scoped walk; fid helper rechecks before open. */
+    if (styxmovieavailable(session, &generation) != 1 || (expected && generation != expected))
+    {
+        return FVM_ERROR;
+    }
+    char name[64]; /* Existing canonical advertised service path. */
+    snprintf(name, sizeof(name), "movie/%llu", generation);
+    return movie_session_fetch_fid(session, styxmountwalkcancel(session->client, NULL, name), generation,
+        purpose, reference, base, write, state, resolved, capacity);
 }
 
 

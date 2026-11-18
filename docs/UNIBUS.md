@@ -39,6 +39,12 @@ bind/mount layers and permissions. It must not create a second filesystem model
 or a snapshot of an entire tree at connection time. A prepared connection gets
 its permitted live root; the provider decides what that root exposes.
 
+The native Styx terminal adapter and its announced resource loader both resolve
+from that [captured grant root](../disVM/native/terminal/GRANTS.md). Matching
+ambient names cannot replace granted endpoints. The adapter checks exact client
+association and local access ceilings; ordinary server operations still decide
+current permissions. A grant for one file does not authorize sibling services.
+
 Project files can come from local storage, another machine, multiple machines,
 Git, or several Git revisions simultaneously. Ordinary path operations retain
 their meaning. Provider properties expose origin, selected revision and stack

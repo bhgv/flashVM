@@ -8,6 +8,7 @@
 #include "resource/server.h"
 #include "resource/announced.h"
 #include "resource/outgoing.h"
+#include "mount_grant.h"
 #include "announcement.h"
 #include "request_payload.h"
 #include <cstdio>
@@ -21,7 +22,7 @@ int main()
     unsigned long tag = 99; /* Output sentinel for invalid reader. */
     size_t size = 99; /* Output sentinel for invalid reader. */
     StyxRouteType schema = {"test.file", 1}; /* Borrowed preflight input. */
-    if (styxbidirroutetypednext(NULL, 0, &tag, NULL, 0, &size) != STYX_CONTROL_END ||
+    if (styxmountgrantfid(NULL, NULL, 0) || styxbidircontrolwalk(NULL, NULL) || styxbidirroutewalk(NULL, NULL) || styxbidirroutetypednext(NULL, 0, &tag, NULL, 0, &size) != STYX_CONTROL_END ||
         tag != 99 || size != 99 || styxbidirroutetypedwait(NULL, 0, 0) ||
         styxbidirbindingroutes(NULL, NULL, 0, 1, NULL, 0, &schema, 1) ||
         styxbidirroutestate(NULL) != STYX_CONTROL_READ_FAILED ||

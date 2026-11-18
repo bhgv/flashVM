@@ -4,6 +4,7 @@
  */
 #include "announced_internal.h"
 #include "fetch_scope.h"
+#include <stdio.h>
 
 
 /* EN/RU: See announced.h; preserve caller origin until the selected generation passes final admission.
@@ -39,8 +40,11 @@ FVM_Result styxbidirannouncedfetch(unsigned purpose, const char *reference, cons
     }
     char origin[MOVIE_PATH]; /* Private until both session and typed-receiver checks pass. */
     size_t bounded = capacity < sizeof(origin) ? capacity : sizeof(origin); /* Honour caller's output bound. */
-    result = movie_session_fetch(receiver->session, expected, purpose, reference, base,
-        write, state, origin, bounded); /* Existing scoped Twalk/Topen/Twrite/Tread/Tclunk path. */
+    char name[64]; /* Existing service name stays relative to this route's actual grant root. */
+    snprintf(name, sizeof(name), "movie/%llu", expected);
+    StyxFid *fid = styxbidirroutewalk(receiver->route, name); /* Owned; no attached-root substitution. */
+    result = movie_session_fetch_fid(receiver->session, fid, expected, purpose, reference, base,
+        write, state, origin, bounded); /* Shared generation, scope, protocol and consuming-fid checks. */
     if (result == FVM_OK)
     {
         pthread_mutex_lock(&receiver->lock);

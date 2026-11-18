@@ -3,7 +3,8 @@
 [`styxbidirmoviereceiver`](announced.h) automatically consumes the **existing**
 `flashvm.movie.offer` version 1 announcements from a typed Unibus queue. Resource
 fetches then use ordinary `Twalk/Topen` on `movie/<generation>` of the **same 9P
-client**. Each open has independent existing S-record request/reply state.
+client**, relative to the route's [captured grant root](../GRANTS.md),
+not its ambient attach root. Each open has independent existing S-record request/reply state.
 Repeated and parallel loads therefore get separate logical streams through
 standard fids, without a new channel-negotiation schema, listener or dial.
 
@@ -54,7 +55,7 @@ FVM_Result result = styxbidirannouncedfetch(FVM_DESKTOP_FETCH_CODE,
 
 The callback validates arguments before waiting. Its configured readiness budget
 is `1..120000` milliseconds. Once ready, it captures a positive generation, opens
-one fresh service fid and uses the original resource request/reply codec. The
+one fresh service fid within that same grant and uses the original resource request/reply codec. The
 existing Styx RPC bounds govern transfer; this change adds no total-file deadline.
 CODE/DATA intent retains the service's executable/provider-first or ordinary
 namespace lookup policy. No local-file or alternate-client fallback is added.
@@ -121,3 +122,8 @@ the scoped offer-root API. Fixture binary bytes are not executed SWF content.
 Actual FlashVM loading remains in the existing managed-player tests. Automatic
 general bulk/video/audio channel negotiation and `file/state` control nodes remain
 separate work; resource stream isolation here uses existing ordinary fids.
+
+Grant-root fixtures also export colliding ambient and scoped channel/resource
+names. They verify scoped acquisition, denial of a file-only root's descendants,
+and preserved caller origin on refusal. Replacing the rooted announced callback
+with its previous attach-root implementation fails the scoped-resource case.

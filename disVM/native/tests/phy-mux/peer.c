@@ -29,6 +29,32 @@ extern char *terminalread(Styxserver *, char *, ulong *, vlong);
 /* EN/RU: Native fixture record sink, precise short-write count. / Native sink с precise count. */
 extern char *terminalwrite(char *, ulong *, vlong);
 #endif
+#ifdef STYX_TERMINAL_GRANT_TEST
+
+
+/* EN/RU: Original grant fixture setup, server borrowed on its sole owner before native serving starts.
+ * Original grant fixture setup, server borrowed на sole owner до запуска serving.
+ */
+extern void terminalgrantsetup(Styxserver *);
+
+
+/* EN/RU: Original granted endpoint open, server/qid/mode borrowed through callback.
+ * Original granted endpoint open, server/qid/mode borrowed до возврата callback.
+ */
+extern char *terminalgrantopen(Styxserver *, Qid *, int);
+
+
+/* EN/RU: Original scoped byte read, exact prefix output under original server ownership.
+ * Original scoped byte read, exact prefix output под original server ownership.
+ */
+extern char *terminalgrantread(Styxserver *, Qid, char *, ulong *, vlong);
+
+
+/* EN/RU: Original scoped byte write, exact prefix acknowledgement under original owner.
+ * Original scoped byte write, exact prefix acknowledgement на original owner.
+ */
+extern char *terminalgrantwrite(Styxserver *, Qid, char *, ulong *, vlong);
+#endif
 #ifdef STYX_TYPED_OFFER_TEST
 
 
@@ -69,6 +95,12 @@ static void release(void *state)
 /* EN/RU: Allow only original readonly file/device open; qid/mode borrowed values. / Только readonly open. */
 static char *openfile(Qid *qid, int mode)
 {
+#ifdef STYX_TERMINAL_GRANT_TEST
+    if (qid->path == 7 || qid->path >= 200)
+    {
+        return terminalgrantopen(&server, qid, mode);
+    }
+#endif
 #ifdef STYX_TYPED_OFFER_TEST
     if (qid->path >= 100)
     {
@@ -87,13 +119,19 @@ static char *openfile(Qid *qid, int mode)
  * Identity file либо pending one-event read; request state только на server owner. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TERMINAL_GRANT_TEST
+    if (qid.path == 7 || qid.path >= 200)
+    {
+        return terminalgrantread(&server, qid, bytes, count, offset);
+    }
+#endif
 #ifdef STYX_TYPED_OFFER_TEST
     if (qid.path >= 100)
     {
         return offerfileread(&server, bytes, count, offset);
     }
 #endif
-#ifdef STYX_TERMINAL_RECORD_TEST
+#if defined(STYX_TERMINAL_RECORD_TEST) && !defined(STYX_TERMINAL_GRANT_TEST)
     if (qid.path == 7)
     {
         return terminalread(&server, bytes, count, offset);
@@ -140,13 +178,19 @@ static char *statfile(Qid qid, Dir *out)
  * Native terminal sink принимает opaque fixture command, без графической интерпретации. */
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TERMINAL_GRANT_TEST
+    if (qid.path == 7 || qid.path >= 200)
+    {
+        return terminalgrantwrite(&server, qid, bytes, count, offset);
+    }
+#endif
 #ifdef STYX_TYPED_OFFER_TEST
     if (qid.path >= 100)
     {
         return offerfilewrite(&server, bytes, count, offset);
     }
 #endif
-#ifdef STYX_TERMINAL_RECORD_TEST
+#if defined(STYX_TERMINAL_RECORD_TEST) && !defined(STYX_TERMINAL_GRANT_TEST)
     if (qid.path == 7)
     {
         return terminalwrite(bytes, count, offset);
@@ -234,6 +278,9 @@ int main(int argc, char **argv)
     check(styxaddfile(&server, Qroot, 6, "terminal", 0666, "fixture") != nil, "terminal control node");
 #ifdef STYX_TERMINAL_RECORD_TEST
     check(styxaddfile(&server, Qroot, 7, "records", 0666, "fixture") != nil, "general terminal records node");
+#endif
+#ifdef STYX_TERMINAL_GRANT_TEST
+    terminalgrantsetup(&server);
 #endif
 #ifdef STYX_TYPED_OFFER_TEST
     check(styxadddir(&server, Qroot, 8, "movie", 0555, "fixture") &&

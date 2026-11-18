@@ -32,6 +32,7 @@ include(tests/publisher.cmake)
 include(tests/retirement/cases.cmake)
 include(tests/active_io/cases.cmake)
 include(tests/fetch_cancel/cases.cmake)
+include(tests/grant/cases.cmake)
 
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)

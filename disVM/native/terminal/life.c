@@ -3,6 +3,8 @@
  * RU: Создание bidir control и joined native lifetime с сохранением host session owner.
  */
 #include "internal.h"
+#include "mount_grant.h"
+#include "mount_cancel.h"
 
 
 /* EN/RU: See control.h; signal cancellation only, retain all storage through explicit join/free.
@@ -27,8 +29,9 @@ void styxbidircontrolfree(StyxBidirControl *control)
         {
             pthread_join(control->workers[i], NULL);
         }
-        styxclientclunk(control->rx);
-        styxclientclunk(control->tx);
+        styxmountclunk(control->client, control->rx);
+        styxmountclunk(control->client, control->tx);
+        styxmountclunk(control->client, control->root);
         styxclientfree(control->client);
         dvm_cancel_release(control->retired);
         free(control->incoming.bytes);
@@ -47,7 +50,7 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
     unsigned limit, unsigned slots)
 {
     if (!styxclientbidir(client) || !styxclientwatchable(client) || !dvm_terminal_channels_valid(channels) ||
-        !limit || limit > 65536 || !slots || slots > 32)
+        !limit || limit > 65536 || !slots || slots > 32 || dvm_cancel_requested(dvm_cancel_current()))
     {
         return NULL;
     }
@@ -88,14 +91,17 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
         return NULL;
     }
     control->client = client;
-    StyxFid *base = styxclientwalk(client, ".");
-    if (base)
+    control->root = styxmountgrantfid(channels->provider, client, FVM_ACCESS_READ | FVM_ACCESS_WRITE);
+    StyxFid *base = control->root; /* Borrowed immutable base; control retains it for later resource walks. */
+    if (base && (styxclientfiddirectory(base) != 0 ||
+        (!strcmp(channels->receive, ".") && !strcmp(channels->send, "."))))
     {
-        control->rx = styxclientwalkfrom(base, channels->receive);
-        control->tx = styxclientwalkfrom(base, channels->send);
+        control->rx = styxmountwalkcancel(client, base, channels->receive);
+        control->tx = styxmountwalkcancel(client, base, channels->send);
     }
-    styxclientclunk(base);
-    if (!control->rx || !control->tx || !styxclientopen(control->rx, 0) || !styxclientopen(control->tx, 1))
+    if (!control->rx || !control->tx || styxclientfiddirectory(control->rx) != 0 ||
+        styxclientfiddirectory(control->tx) != 0 || !styxmountopen(client, control->rx, 0) ||
+        !styxmountopen(client, control->tx, 1) || dvm_cancel_requested(dvm_cancel_current()))
     {
         styxbidircontrolfree(control);
         return NULL;
@@ -103,10 +109,14 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
     if (!pthread_create(&control->workers[0], NULL, controlreceive, control))
     {
         control->started = 1;
-        if (!pthread_create(&control->workers[1], NULL, controltransmit, control))
+        if (!dvm_cancel_requested(dvm_cancel_current()) &&
+            !pthread_create(&control->workers[1], NULL, controltransmit, control))
         {
             control->started = 2;
-            return control;
+            if (!dvm_cancel_requested(dvm_cancel_current()))
+            {
+                return control;
+            }
         }
     }
     styxbidircontrolfree(control);

@@ -31,11 +31,20 @@ int movie_session_feed(StyxMovieSession *session, const void *bytes, size_t size
 int movie_session_offer(StyxMovieSession *session, const void *bytes, size_t size);
 
 
-/* EN/RU: Existing native fetch with expected generation (0 captures current); no dial/fallback.
+/* EN/RU: Legacy attach-root native fetch with expected generation (0 captures current); no dial/fallback.
  * Reject mismatch before walk and recheck generation/link after bytes; all staging stays caller-owned.
  * Native fetch с expected generation, 0 выбирает current; проверить до walk и после bytes.
  */
 FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long expected,
+    unsigned purpose, const char *reference, const char *base, FVM_DesktopWrite write, void *state,
+    char *resolved, size_t capacity);
+
+
+/* EN/RU: Consume a fid already walked on this session's exact client; shared argument/generation/final fences.
+ * Session/arguments borrowed, fid consumed even on refusal; expected0 captures current generation.
+ * Поглотить fid exact client данного session, включая отказ; shared argument/generation/final fences.
+ */
+FVM_Result movie_session_fetch_fid(StyxMovieSession *session, StyxFid *fid, unsigned long long expected,
     unsigned purpose, const char *reference, const char *base, FVM_DesktopWrite write, void *state,
     char *resolved, size_t capacity);
 #endif

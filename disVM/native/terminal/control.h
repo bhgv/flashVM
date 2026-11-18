@@ -37,12 +37,14 @@ struct DVM_CancelTap *styxbidircontrolwatch(StyxBidirControl *control, void (*re
 
 
 /* EN/RU: Borrow client and descriptor through return; owned control/NULL, client retained on success.
- * Host must associate this descriptor with the SAME attached bidir client (as produced by
- * styxbidirlaunchrequest). Requires explicit bidir and watchable client, existing granted
- * canonical paths, limit1..65536 body bytes and slots1..32 per direction. Opens independent
- * read/write fids; starts two native I/O workers, no guest/SDL callbacks or new wire schemas.
- * Borrow client/descriptor до return; свой control/NULL, retain client. Только SAME bidir
- * grant, watchable client, canonical paths; limit1..65536, slots1..32. Два native workers. */
+ * Requires this SDK's native Styx grant on the exact client; enforce its immutable READ/WRITE
+ * ceiling plus directory EXEC/search. Clone the captured root; canonical RX/TX stay relative
+ * to it, file roots allow dot only. Remote Topen decides current permission. No ambient fallback.
+ * Explicit bidir/watchable client, limit1..65536 body bytes, slots1..32 per direction. Own root
+ * and independent RX/TX fids; two native workers, no guest/SDL callbacks or new wire schemas.
+ * Borrow client/descriptor до return; свой control/NULL. Только native Styx grant exact client,
+ * READ/WRITE ceiling и directory search; captured root, file root только dot. Текущие права
+ * решает Topen. Scope отменяет setup; rollback завершает своих workers и поглощает fids. */
 StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannels *channels,
     unsigned limit, unsigned slots);
 
@@ -92,6 +94,15 @@ int styxbidircontrolstate(StyxBidirControl *control);
  * без передачи прав/владения, I/O или поиска встречного соединения.
  */
 StyxClient *styxbidircontrolclient(StyxBidirControl *control);
+
+
+/* EN/RU: Walk a canonical relative name from the owned grant root; owned unopened fid/NULL.
+ * Borrow control/path through scoped native I/O. No ambient-root fallback; a file root allows dot only.
+ * Host pins control through all calls and retires them before free; never open/clunk its private root.
+ * Пройти canonical relative name от grant root; свой unopened fid/NULL. File root — только dot,
+ * без ambient fallback. Caller удерживает control до return и завершает все calls до free.
+ */
+StyxFid *styxbidircontrolwalk(StyxBidirControl *control, const char *relative);
 
 
 /* EN/RU: Request native cancellation, no joins/client shutdown; NULL harmless. Discards unsent TX.

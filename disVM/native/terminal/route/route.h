@@ -104,6 +104,13 @@ unsigned styxbidirroutelimit(StyxBidirRoute *route);
 StyxClient *styxbidirrouteclient(StyxBidirRoute *route);
 
 
+/* EN/RU: Canonical root-relative native walk on the owned grant, same lifetime/cancellation as controlwalk.
+ * Owned unopened fid/NULL, no ambient fallback; host pins route through return and all borrowers before free.
+ * Canonical native walk от owned grant, свой unopened fid/NULL; без ambient fallback, route pinned до return.
+ */
+StyxFid *styxbidirroutewalk(StyxBidirRoute *route, const char *relative);
+
+
 /* EN: Request cancellation without joining; NULL harmless. Buffered RX remains drainable.
  * RU: Запросить отмену без join. NULL допустим, уже принятые RX-записи доступны для чтения.
  */

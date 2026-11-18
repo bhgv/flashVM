@@ -3,6 +3,8 @@
  * RU: Обычная VFS mount factory над удержанными native client capabilities.
  */
 #include "mount_internal.h"
+#include "mount_grant.h"
+#include "provider_internal.h"
 #include "mount_cancel.h"
 #include "control/internal.h"
 #include <stdlib.h>
@@ -268,4 +270,26 @@ DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
 DVM_Provider *styxmountroot(StyxClient *client, StyxFid *root, unsigned access, int directory, int watch)
 {
     return create(client, access, NULL, NULL, NULL, root, directory, watch);
+}
+
+
+/* EN/RU: See mount_grant.h; factory identity is checked before casting immutable native state.
+ * The caller's provider pin keeps rootlife/fid/client alive throughout scoped clone I/O.
+ * См. mount_grant.h; factory identity до cast immutable native state; pin удерживает rootlife/fid/client.
+ */
+StyxFid *styxmountgrantfid(DVM_Provider *grant, StyxClient *client, unsigned access)
+{
+    if (!grant || !client || !access || (access & ~FVM_ACCESS_MASK) ||
+        (grant->ops != &operations && grant->ops != &fileoperations) ||
+        !dvm_provider_bindable_at(grant, ".") || dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return NULL;
+    }
+    struct Mount *mount = grant->state; /* Valid only for the two exact native factory identities above. */
+    unsigned required = access | (mount->file_root ? 0 : FVM_ACCESS_EXEC); /* Preserve local directory search ceiling. */
+    if (mount->client != client || (required & ~mount->access))
+    {
+        return NULL;
+    }
+    return styxmountwalk(mount, ".");
 }

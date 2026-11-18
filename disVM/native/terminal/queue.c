@@ -3,6 +3,7 @@
  * RU: Public bounded record queues и native completion waits без wire I/O у producer/consumer.
  */
 #include "internal.h"
+#include "mount_cancel.h"
 #include <errno.h>
 
 
@@ -150,4 +151,19 @@ DVM_CancelTap *styxbidircontrolwatch(StyxBidirControl *control, void (*receive)(
     void *state, void (*release)(void *))
 {
     return control ? dvm_cancel_subscribe(control->retired, receive, state, release) : NULL;
+}
+
+
+/* EN/RU: See control.h; root/client are immutable after publication and owned until external walkers retire.
+ * См. control.h; root/client immutable после publication и живут до завершения external walkers.
+ */
+StyxFid *styxbidircontrolwalk(StyxBidirControl *control, const char *relative)
+{
+    if (!control || !control->root || !dvm_terminal_channel_paths_valid(relative, relative) ||
+        styxbidircontrolstate(control) ||
+        (styxclientfiddirectory(control->root) == 0 && strcmp(relative, ".")))
+    {
+        return NULL;
+    }
+    return styxmountwalkcancel(control->client, control->root, relative);
 }

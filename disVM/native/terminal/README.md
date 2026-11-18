@@ -18,15 +18,17 @@ bindings. No new S-tag assignments, event payloads or 9P dialect are introduced.
 an explicit bidir session, obtains a [terminal launch handoff](../launch/REQUESTS.md)
 and keeps an independent client reference. Pass the SAME job/client and its
 `handoff->flashvm` descriptor to `styxbidircontrol(client, descriptor, limit, slots)`.
-The host must maintain this association; this adapter does not authenticate a
-provider or compare arbitrary opaque factory identities.
+The adapter checks the exact native Styx factory, actual client association and
+immutable access ceiling, then clones the captured grant root. Generic providers
+are refused by this adapter. See [grant roots and permissions](GRANTS.md).
 
 The constructor refuses ordinary/nonwatchable clients, invalid descriptors and
 limits. Body quota is1..65536bytes; there are1..32 fixed slots per direction.
 Storage is bounded by `(2*slots+1)*(limit+32)` bytes plus fixed metadata and RX
 scratch storage. All allocation, capture and endpoint opening finishes before
 successful publication. Construction borrows inputs and retains the client on
-success. Fids retain the existing attached root; no alternate host/VFS lookup.
+success. Fids retain the actual granted root; endpoint names are relative to that root,
+with no alternate host/VFS or client-attach-root lookup.
 The caller keeps the physical/bidir owner alive until all users retire.
 
 | Entry | Meaning |

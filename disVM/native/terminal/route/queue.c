@@ -180,3 +180,12 @@ struct DVM_CancelTap *styxbidirroutewatch(StyxBidirRoute *route, void (*receive)
 {
     return route ? styxbidircontrolwatch(route->control, receive, state, release) : NULL;
 }
+
+
+/* EN/RU: See route.h; preserve the underlying immutable grant and refuse a retired dispatcher.
+ * См. route.h; сохранить immutable grant и отказать после retirement dispatcher.
+ */
+StyxFid *styxbidirroutewalk(StyxBidirRoute *route, const char *relative)
+{
+    return route && !styxbidirroutestate(route) ? styxbidircontrolwalk(route->control, relative) : NULL;
+}

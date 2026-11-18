@@ -47,7 +47,10 @@ setup fails or cancellation is already requested; the existing detached best-eff
 cleanup path handles unacknowledged clunks.
 
 No second 9P connection, transport reader, listener, protocol opcode or capability
-lookup is introduced. The exact granted client remains associated with its source.
+lookup is introduced. The exact granted client remains associated with its source. Typed-announced
+fetches walk from the route's [retained grant root](../GRANTS.md) under the
+fetch-local scope; setup clones, endpoint opens and consuming cleanup also use
+the existing scope-to-Styx cancellation bridge.
 Legacy noncancellable clients retain their ordinary RPC deadline behavior; this
 change does not promise to interrupt their blocking implementation. Native Unibus
 routes already require the explicit native client capabilities used here.

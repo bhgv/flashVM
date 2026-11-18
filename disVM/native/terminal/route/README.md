@@ -13,6 +13,12 @@ and the host's agreed UI schema identity/version. It returns an owned route or
 NULL. Identity is printable non-space ASCII, at most 63 bytes; version is a
 nonzero uint32. It assigns no production type name or numeric UI tag.
 
+The transport retains the [actual granted root](../GRANTS.md).
+`styxbidirroutewalk(route, relative)` returns an owned unopened fid on the same
+client from that root. It accepts canonical relative names, refuses descendants
+of file roots and never substitutes the ambient attach root. Keep the route
+pinned until the call returns; retire external walkers before freeing it.
+
 Use this constructor **only after negotiating the existing RX tag-zero binding
 declaration profile**. Here every tag-zero record must be an existing
 `fvm_sbindings` declaration. Other control protocols keep the general control
