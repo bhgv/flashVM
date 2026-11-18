@@ -63,12 +63,12 @@ int styxbidirroutenext(StyxBidirRoute *route, unsigned long *tag, void *bytes, s
 }
 
 
-/* EN/RU: See route.h; spurious wakeups never renew the original timeout budget.
- * См. route.h; ложное пробуждение не продлевает первоначальный timeout.
+/* EN/RU: See internal.h; spurious wakeups never renew the original timeout budget.
+ * См. internal.h; ложное пробуждение не продлевает первоначальный timeout.
  */
-int styxbidirroutewait(StyxBidirRoute *route, int ui, unsigned timeout)
+int routewaitcount(StyxBidirRoute *route, unsigned *count, unsigned timeout)
 {
-    if (!route || (ui != 0 && ui != 1) || timeout > 120000)
+    if (!route || !count || timeout > 120000)
     {
         return 0;
     }
@@ -85,7 +85,6 @@ int styxbidirroutewait(StyxBidirRoute *route, int ui, unsigned timeout)
         deadline.tv_nsec -= 1000000000L;
     }
     pthread_mutex_lock(&route->lock);
-    unsigned *count = ui ? &route->ui_count : &route->count; /* Selected protected occupancy. */
     while (!*count && !route->reason && timeout)
     {
         if (pthread_cond_timedwait(&route->changed, &route->lock, &deadline))
@@ -96,6 +95,19 @@ int styxbidirroutewait(StyxBidirRoute *route, int ui, unsigned timeout)
     int ready = *count != 0; /* Already accepted items remain ready after stop. */
     pthread_mutex_unlock(&route->lock);
     return ready;
+}
+
+
+/* EN/RU: See route.h; select UI/general readiness without consuming any message.
+ * См. route.h; выбрать UI/general readiness без потребления сообщений.
+ */
+int styxbidirroutewait(StyxBidirRoute *route, int ui, unsigned timeout)
+{
+    if (!route || (ui != 0 && ui != 1))
+    {
+        return 0;
+    }
+    return routewaitcount(route, ui ? &route->ui_count : &route->count, timeout);
 }
 
 

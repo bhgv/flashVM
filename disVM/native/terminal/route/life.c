@@ -43,6 +43,11 @@ static void dispose(StyxBidirRoute *route)
     styxbidircontrolfree(route->control);
     pthread_cond_destroy(&route->changed);
     pthread_mutex_destroy(&route->lock);
+    for (unsigned i = 0; i < route->typed_count; i++)
+    {
+        free(route->typed[i].raw);
+    }
+    free(route->typed);
     free(route->ui);
     free(route->raw);
     free(route->scratch);
@@ -65,29 +70,32 @@ void styxbidirroutefree(StyxBidirRoute *route)
 }
 
 
-/* EN/RU: See route.h; validate schema bytes and allocation bounds before native I/O.
- * См. route.h; проверить схему и размеры до native I/O.
+/* EN/RU: See types.h; validate every schema and allocation bound before native I/O.
+ * См. types.h; проверить все схемы и allocation bounds до native I/O.
  */
-StyxBidirRoute *styxbidirbindingroute(StyxClient *client, const DVM_TerminalChannels *channels,
-    unsigned limit, unsigned slots, const char *type, unsigned long version)
+StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalChannels *channels,
+    unsigned limit, unsigned slots, const char *type, unsigned long version,
+    const StyxRouteType *types, unsigned count)
 {
-    size_t length = 0; /* Bounded borrowed schema identity length. */
-    if (!type || !version || version > 0xffffffffUL || !limit || limit > 65536 || !slots || slots > 32)
+    if (!limit || limit > 65536 || !slots || slots > 32 || count > STYX_ROUTE_TYPES_MAX ||
+        (count && !types) || (type ? !routeschema(type, version) : version != 0))
     {
         return NULL;
     }
-    while (length <= FVM_SBINDINGS_TYPE_MAX && type[length])
+    for (unsigned i = 0; i < count; i++)
     {
-        unsigned char c = (unsigned char)type[length]; /* Printable, non-space identity byte. */
-        if (c < 33 || c > 126)
+        if (!routeschema(types[i].type, types[i].version) ||
+            (type && types[i].version == version && !strcmp(types[i].type, type)))
         {
             return NULL;
         }
-        length++;
-    }
-    if (!length || length > FVM_SBINDINGS_TYPE_MAX)
-    {
-        return NULL;
+        for (unsigned j = 0; j < i; j++)
+        {
+            if (types[i].version == types[j].version && !strcmp(types[i].type, types[j].type))
+            {
+                return NULL;
+            }
+        }
     }
     StyxBidirRoute *route = calloc(1, sizeof(*route)); /* Unpublished native owner. */
     if (!route)
@@ -116,12 +124,36 @@ StyxBidirRoute *styxbidirbindingroute(StyxClient *client, const DVM_TerminalChan
     route->slots = slots;
     route->limit = limit;
     route->version = version;
-    memcpy(route->type, type, length + 1);
-    route->ui = calloc(slots, sizeof(*route->ui));
+    if (type)
+    {
+        strcpy(route->type, type);
+    }
+    if (count)
+    {
+        route->typed = calloc(count, sizeof(*route->typed));
+        if (!route->typed)
+        {
+            dispose(route);
+            return NULL;
+        }
+        route->typed_count = count;
+        for (unsigned i = 0; i < count; i++)
+        {
+            strcpy(route->typed[i].type, types[i].type);
+            route->typed[i].version = types[i].version;
+            route->typed[i].raw = malloc((size_t)slots * limit);
+            if (!route->typed[i].raw)
+            {
+                dispose(route);
+                return NULL;
+            }
+        }
+    }
+    route->ui = version ? calloc(slots, sizeof(*route->ui)) : NULL;
     route->raw = malloc((size_t)slots * limit);
     route->scratch = malloc(limit);
     route->encoded = malloc((size_t)limit + 32);
-    if (!route->ui || !route->raw || !route->scratch || !route->encoded ||
+    if ((version && !route->ui) || !route->raw || !route->scratch || !route->encoded ||
         fvm_sbindings_init(&route->incoming, route->bindings, FVM_SBINDINGS_MAX) != FVM_S_OK)
     {
         dispose(route);
@@ -134,4 +166,18 @@ StyxBidirRoute *styxbidirbindingroute(StyxClient *client, const DVM_TerminalChan
         return NULL;
     }
     return route;
+}
+
+
+/* EN/RU: See route.h; retain the existing UI/general constructor without extra typed queues.
+ * См. route.h; прежний конструктор UI/general без дополнительных типизированных очередей.
+ */
+StyxBidirRoute *styxbidirbindingroute(StyxClient *client, const DVM_TerminalChannels *channels,
+    unsigned limit, unsigned slots, const char *type, unsigned long version)
+{
+    if (!routeschema(type, version))
+    {
+        return NULL;
+    }
+    return styxbidirbindingroutes(client, channels, limit, slots, type, version, NULL, 0);
 }

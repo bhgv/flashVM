@@ -83,7 +83,8 @@ void *routedispatch(void *opaque)
             return NULL;
         }
         FVM_SBinding binding; /* Copied validated RX identity, never a TX permission. */
-        int ui = tag && fvm_sbindings_lookup(&route->incoming, tag, &binding) == FVM_S_OK &&
+        int bound = tag && fvm_sbindings_lookup(&route->incoming, tag, &binding) == FVM_S_OK;
+        int ui = bound && route->version &&
             binding.version == route->version && !strcmp(binding.type, route->type);
         DVM_UIMessage message; /* Validated private UI copy, published only on success. */
         if (ui && styxbidiruidecode(tag, tag, route->scratch, size, &message) != STYX_UI_MESSAGE)
@@ -91,7 +92,22 @@ void *routedispatch(void *opaque)
             routeend(route, STYX_CONTROL_PROTOCOL);
             return NULL;
         }
-        if (!publish(route, tag, size, ui ? &message : NULL))
+        RouteTypedQueue *typed = NULL; /* Exclusive optional opaque type destination. */
+        if (bound && !ui)
+        {
+            for (unsigned i = 0; i < route->typed_count; i++)
+            {
+                RouteTypedQueue *candidate = &route->typed[i]; /* Immutable local registration. */
+                if (binding.version == candidate->version && !strcmp(binding.type, candidate->type))
+                {
+                    typed = candidate;
+                    break;
+                }
+            }
+        }
+        int accepted = typed ? routepublishtyped(route, typed, tag, size) :
+            publish(route, tag, size, ui ? &message : NULL); /* Exactly one destination per record. */
+        if (!accepted)
         {
             return NULL;
         }

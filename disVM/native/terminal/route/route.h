@@ -6,6 +6,9 @@
 #define STYX_BIDIR_ROUTE_H
 #include "ui/frame.h"
 #include "flashvm/sbindings.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct StyxBidirRoute StyxBidirRoute; /* Owns its control and one native dispatcher. */
 
 
@@ -94,4 +97,7 @@ void styxbidirroutestop(StyxBidirRoute *route);
  * освободить route. Общий client остаётся у host. NULL допустим.
  */
 void styxbidirroutefree(StyxBidirRoute *route);
+#ifdef __cplusplus
+}
+#endif
 #endif

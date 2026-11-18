@@ -105,7 +105,10 @@ from the initial thread by default. The [.m call/ownership API](../disVM/runtime
 documents implemented policies and failure behavior.
 
 Existing native S-record transport, typed routing and the real host UI channel
-relay remain reusable mechanisms. Native test callbacks exercising launch metadata
+relay remain reusable mechanisms. The [typed dispatcher](../disVM/native/terminal/route/README.md)
+also provides independently consumed bounded opaque schema queues alongside UI
+and general records, including sessions without UI. It does not interpret file
+or RPC payloads or assign their schemas. Native test callbacks exercising launch metadata
 are not remote RPC implementations. Generic RPC marshalling, filesystem control
 providers/Git views and the remaining portable IDE presentation integration are
 separate work. The legacy desktop embedding still contains application-specific

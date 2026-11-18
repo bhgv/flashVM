@@ -13,7 +13,7 @@ target_include_directories(styx_terminal_ui PUBLIC "${INFERNO_VFS_SUPPORT}/disVM
 target_link_libraries(styx_terminal_ui PUBLIC styx_terminal)
 target_compile_options(styx_terminal_ui PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-add_library(styx_terminal_route STATIC route/life.c route/dispatch.c route/queue.c)
+add_library(styx_terminal_route STATIC route/life.c route/dispatch.c route/queue.c route/types.c)
 target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
@@ -32,6 +32,28 @@ foreach(terminal_case normal cancel)
     add_test(NAME terminal-record-${terminal_case} COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:terminal-record-peer>" ${terminal_case})
     set_tests_properties(terminal-record-${terminal_case} PROPERTIES TIMEOUT 30)
+endforeach()
+
+# EN/RU: Generic typed records coexist with UI and unknown records over the original fragmented 9P.
+# Общие типизированные записи рядом с UI и неизвестными записями через исходный fragmented 9P.
+set_source_files_properties(tests/typed_server.c tests/typed_route.c PROPERTIES
+    COMPILE_OPTIONS "-Wall;-Wextra;-Wpedantic;-Werror")
+# EN/RU: Original Inferno public headers retain Plan 9 pragmas; do not edit the imported declarations.
+# Исходные заголовки Inferno сохраняют pragmas Plan 9; импортированные объявления не менять.
+set_property(SOURCE tests/typed_server.c APPEND PROPERTY COMPILE_OPTIONS -Wno-unknown-pragmas)
+foreach(typed_case RANGE 0 6)
+    set(typed_peer terminal-typed-peer-${typed_case})
+    add_executable(${typed_peer} ../tests/phy-mux/peer.c ../tests/phy/limited.c
+        ../tests/launch/remote.c ../tests/launch/request.c ../tests/file-root/context.c
+        tests/typed_server.c tests/typed_route.c)
+    target_compile_definitions(${typed_peer} PRIVATE STYX_LAUNCH_TEST=1 STYX_INFERNO_LOOKUP_TEST=1
+        STYX_LAUNCH_REQUEST_TEST=1 STYX_TERMINAL_RECORD_TEST=1 STYX_TYPED_CASE=${typed_case})
+    target_link_libraries(${typed_peer} PRIVATE styx_terminal_route infernostyx_phy remote_phy_mux)
+    foreach(typed_transport normal cancel)
+        add_test(NAME terminal-typed-${typed_case}-${typed_transport} COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:${typed_peer}>" ${typed_transport})
+        set_tests_properties(terminal-typed-${typed_case}-${typed_transport} PROPERTIES TIMEOUT 30)
+    endforeach()
 endforeach()
 
 add_executable(terminal-record-fault tests/faults.c)

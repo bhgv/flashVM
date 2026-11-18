@@ -32,6 +32,52 @@ RU: Конструктор явно выбирает профиль, где вс
 повторы допустимы; замена типа занятого тега запрещена исходным кодеком.
 Неизвестные записи не пересматриваются задним числом.
 
+## Generic typed queues / Общие типизированные очереди
+
+[`styxbidirbindingroutes`](types.h) adds up to eight opaque typed mailboxes on
+that same native dispatcher, alongside UI and general traffic. Each registration
+is an agreed identity/version pair, copied at construction. Duplicate pairs,
+including a duplicate of the UI pair, are refused before I/O. Array order gives
+stable local indices; indices are not wire tags. Types are not assigned here.
+
+The UI pair is optional: pass `NULL, 0` for a console/data-only session. The old
+`styxbidirbindingroute` constructor keeps its UI/general behavior unchanged.
+For example, using identities already agreed with the peer:
+
+```c
+StyxRouteType types[] = {{file_type, file_version}, {event_type, event_version}};
+StyxBidirRoute *route = styxbidirbindingroutes(client, channels, 4096, 4,
+    ui_type, ui_version, types, 2);
+/* Check route before use; service general declarations and every registered queue. */
+```
+
+`styxbidirroutetypednext(route, index, &tag, bytes, capacity, &size)` copies
+exactly one complete record. Its statuses and SMALL behavior match the general
+reader. An empty payload is a record, not EOF. Multiple numeric RX tags declared
+with the same identity/version feed the same queue in receive order. There is no
+payload decoding or joining of file chunks at this boundary; permissions and
+operation/correlation semantics remain with the service provider.
+
+`styxbidirroutetypedwait(route, index, milliseconds)` optionally waits on the
+native consumer, with the same monotonic budget as the UI/general wait. Each queue
+has one consumer; consumers of different queues may run on different native
+threads. No consumer may free the route until all other external users retire.
+
+Every typed queue holds at most `slots` records of up to `limit` body bytes.
+Additional raw storage is bounded by `count * slots * limit`, with count at most
+eight, slots at most 32 and limit at most 65536. A full queue backpressures the
+single dispatcher and may delay later records of other types. This is lossless
+bounded storage, not a promise of latency isolation; use separately negotiated
+S-record channels for bulk transfers that must not delay the control stream.
+Declarations always remain general, and RX binding discovery gives no TX grant.
+
+RU: Новый конструктор добавляет до восьми очередей identity/version. Схемы
+копируются до запуска; индексы локальные, не сетевые теги. UI можно отключить
+через NULL/0. Потребитель получает одну запись, включая пустую; SMALL сохраняет
+её в очереди. Неизвестные типы и версии остаются общей очередью. Заполненная
+очередь задерживает native dispatcher и последующие записи, но не останавливает
+guest. Для независимого потока больших данных нужен отдельный S-канал.
+
 ## Mailboxes / Почтовые очереди
 
 | API | Result |
@@ -39,6 +85,8 @@ RU: Конструктор явно выбирает профиль, где вс
 | `styxbidirrouteui` | One copied `DVM_UIMessage`: RECORD, EMPTY or END. Output unchanged otherwise. |
 | `styxbidirroutenext` | One general record: RECORD, EMPTY, END or SMALL. SMALL changes only required size and preserves the head/tag. |
 | `styxbidirroutewait` | Optional native readiness wait for UI or general, within one monotonic timeout. Does not consume. |
+| `styxbidirroutetypednext` | One opaque record from a registered schema's queue, including empty payloads. |
+| `styxbidirroutetypedwait` | Native readiness of one registered queue; no consumption or guest execution. |
 | `styxbidirroutesend` | Copy one independently bound general/control TX record; 1 accepted, 0 refused. |
 | `styxbidirrouteuisend` | Validate/copy one `fvd1` TX frame on an independently established nonzero outgoing tag. |
 | `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
@@ -59,7 +107,7 @@ items drain before END. Explicit stop can abandon a record not yet accepted by
 a mailbox and unsent TX, as with the underlying control transport. Transport
 termination is observed in stream order as the dispatcher drains earlier input.
 Queues retain FIFO order individually; splitting routes does not promise a
-single delivery order between the two independent consumers.
+single delivery order between independent consumers.
 
 RX declarations never establish TX permission or tag assignment. The host passes
 an independently established outgoing tag to send. Queue acceptance is not peer
@@ -80,6 +128,17 @@ It covers one-slot backpressure, short reads/writes, unknown records, delayed
 binding discovery, version mismatch, conflicting declarations, malformed UI,
 and stop/join with full general or UI mailboxes. It verifies the shared client
 remains alive afterwards. These are native PTY tests, not new hardware PHY tests.
+
+[`tests/typed_route.c`](../tests/typed_route.c) and its independent
+[`typed_server.c`](../tests/typed_server.c) exercise mixed opaque/UI traffic,
+data-only sessions, constructor copying and rejected configurations, eight schema
+slots, shared-schema tags, exact NUL/binary bytes, SMALL/empty records, late
+declarations, unsupported versions, conflicting bindings, full-queue stop and
+parallel native consumers. Both original 9P sessions run over one fragmented PTY;
+TX receipts follow independent peer byte validation. The optional C++98 fixture
+links the public C APIs for engine adapters, retaining the existing 9P headers'
+64-bit `long long` offset extension in that build profile. This is transport acceptance, not
+execution of a remote Dis/SWF application or a file/RPC provider implementation.
 
 This provides automatic native dispatch and copied UI mailboxes. Runtime
 `$Unibus` attachment and its non-message RPCs (rows/path/ink/bulk) still need an
