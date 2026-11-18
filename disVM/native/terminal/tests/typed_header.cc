@@ -4,6 +4,7 @@
  */
 #include "route/types.h"
 #include "route/traffic.h"
+#include "route/pressure.h"
 #include "reply.h"
 #include "resource/client.h"
 #include "resource/server.h"
@@ -23,7 +24,9 @@ int main()
     unsigned long tag = 99; /* Output sentinel for invalid reader. */
     size_t size = 99; /* Output sentinel for invalid reader. */
     StyxRouteType schema = {"test.file", 1}; /* Borrowed preflight input. */
-    if (styxbidirroutequeueinfo(NULL, 0, 0, NULL) || styxbidirrouteservicewait(NULL, 0) ||
+    if (styxbidirroutequeuemetrics(NULL, 0, 0, NULL) || styxbidirroutepressurelimits(NULL, NULL) ||
+        styxbidirroutepressurewait(NULL, 0) || styxbidirroutepressurenext(NULL, NULL) != STYX_CONTROL_END ||
+        styxbidirroutequeueinfo(NULL, 0, 0, NULL) || styxbidirrouteservicewait(NULL, 0) ||
         styxbidirrouteservicenext(NULL, NULL, 0, NULL) != STYX_CONTROL_END || styxmountgrantfid(NULL, NULL, 0) || styxbidircontrolwalk(NULL, NULL) || styxbidirroutewalk(NULL, NULL) || styxbidirroutetypednext(NULL, 0, &tag, NULL, 0, &size) != STYX_CONTROL_END ||
         tag != 99 || size != 99 || styxbidirroutetypedwait(NULL, 0, 0) ||
         styxbidirbindingroutes(NULL, NULL, 0, 1, NULL, 0, &schema, 1) ||

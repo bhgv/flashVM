@@ -123,6 +123,10 @@ StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalCha
         free(route);
         return NULL;
     }
+    routepressureinit(route);
+    route->ui.kind = STYX_ROUTE_UI;
+    route->general.kind = STYX_ROUTE_GENERAL;
+    route->service.kind = STYX_ROUTE_SERVICE;
     route->slots = slots;
     route->limit = limit;
     route->version = version;
@@ -143,6 +147,8 @@ StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalCha
         {
             strcpy(route->typed[i].type, types[i].type);
             route->typed[i].version = types[i].version;
+            route->typed[i].mailbox.kind = STYX_ROUTE_TYPED;
+            route->typed[i].mailbox.index = i;
         }
     }
     route->scratch = malloc(limit);

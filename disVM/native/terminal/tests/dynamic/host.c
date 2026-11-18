@@ -10,6 +10,28 @@
 #include <string.h>
 
 
+#ifdef STYX_PRESSURE_TEST
+
+
+/* EN/RU: Configure and check native pressure diagnostics on this real route without consuming its messages.
+ * Настроить и проверить native pressure diagnostics real route без consumption messages.
+ */
+extern void pressurestart(StyxBidirRoute *);
+
+
+/* EN/RU: Validate automatic backlog notices/metrics before data drain; route remains pinned by main.
+ * Проверить automatic backlog notices/metrics до data drain; route удерживается main.
+ */
+extern void pressurefilled(StyxBidirRoute *);
+
+
+/* EN/RU: Validate recovery/counters after original exact FIFO drain, still before route disposal.
+ * Проверить recovery/counters после original exact FIFO drain, до disposal route.
+ */
+extern void pressuredrained(StyxBidirRoute *);
+#endif
+
+
 /* EN/RU: Create owned real bidir client, native original server and isolated carrier.
  * Создать свой real bidir client, native original server и изолированный carrier.
  */
@@ -108,6 +130,9 @@ int main(void)
     StyxRouteType types[] = {{"test.blocked", 1}, {"test.late", 1}}; /* Late binding destination initially unknown. */
     StyxBidirRoute *route = styxbidirbindingroutes(client, &channels, 512, 1, "test.ide.fvd1", 1, types, 2);
     check(route && styxbidirroutewait(route, 1, 3000), "UI received while initial general records remain unread");
+#ifdef STYX_PRESSURE_TEST
+    pressurestart(route);
+#endif
     RecipientWait waits[] = {{route, 1, -1}, {route, 0, -1}}; /* Independent service and late-client waits. */
     pthread_t workers[2]; /* Joined before route/users retire. */
     for (unsigned i = 0; i < 2; i++)
@@ -116,6 +141,9 @@ int main(void)
     }
     check(styxbidirroutesendwait(route, 102, "fill", 4, 3000, NULL) && styxbidirrouteflush(route, 3000), "actual fill request");
     dynamiccomplete();
+#ifdef STYX_PRESSURE_TEST
+    pressurefilled(route);
+#endif
     int failure = STYX_DYNAMIC_CASE >= 3; /* Actual allocator refusal, not a slow-recipient heuristic. */
     for (unsigned i = 0; i < 2; i++)
     {
@@ -189,6 +217,9 @@ int main(void)
     snapshot(route, STYX_ROUTE_GENERAL, 0, 0);
     snapshot(route, STYX_ROUTE_UI, 0, 0);
     snapshot(route, STYX_ROUTE_TYPED, 0, 0);
+#ifdef STYX_PRESSURE_TEST
+    pressuredrained(route);
+#endif
     check(styxclientalive(client), "local allocation failure/queue drain does not close shared native client");
     styxbidirroutefree(route);
     dvm_provider_release(grant);

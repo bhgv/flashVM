@@ -180,3 +180,10 @@ applied by the broker; other tag-zero subservices have an independent native
 service inbox. Coherent current/peak counts and payload bytes are available for
 future diagnostics. Automatic `sysmessages` warnings and scaling policies are
 not implemented by these queue metrics.
+
+Automatic [native backlog notices](../disVM/native/terminal/route/PRESSURE.md) now
+observe count/byte thresholds with hysteresis and fixed coalesced diagnostic slots.
+They wake an independent blocking native diagnostics consumer; oldest-record age
+and lifetime admission/delivery totals are available. Neither warnings nor clock
+failures pause clients or change routing. Remote tag-zero warning serialization
+and a `sysmessages` projection still require their agreed format and identity.

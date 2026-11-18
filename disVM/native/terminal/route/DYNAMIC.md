@@ -68,9 +68,10 @@ peak records and bytes. Invalid queries leave output untouched. Bytes exclude
 allocator metadata; UI bytes measure the copied decoded native message. A
 snapshot does not consume data or change the broker's behavior.
 
-These counters provide a basis for future growth warnings in `sysmessages` on
-both ends. Threshold policy, warning format, side/client identity, oldest-message
-age and rates are not implemented here. Debugger mechanisms decide execution
+Automatic [native threshold notices and extended metrics](PRESSURE.md) now add
+configurable hysteresis, coalescing, oldest-message age and lifetime totals.
+Projection into `sysmessages`, remote warning encoding and side/client identity
+remain to be agreed; instantaneous rate values are not calculated here. Debugger mechanisms decide execution
 hangs; Unibus must not turn a slow queue into a forced application stop.
 Balancing recipients and privileges remain separate policy. Additional physical
 or logical channels increase transport throughput, not consumer execution speed.

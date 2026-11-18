@@ -102,4 +102,5 @@ consumers, cancellation, malformed/conflicting input and late callback safety.
 The C++98 public-header fixture checks native engine linkage. These tests do not
 claim automatic remote `$Unibus` RPC integration, execution of remote applications
 or general bulk/media channel negotiation. `sysmessages` format and automatic
-queue-growth warnings remain to be agreed and implemented separately.
+wire projection remain to be agreed. Automatic [local native pressure notices](PRESSURE.md)
+and extended age/traffic metrics are implemented without blocking the broker.

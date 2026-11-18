@@ -11,10 +11,29 @@
 struct RouteRecord
 {
     struct RouteRecord *next; /* Owned continuation, NULL for newest accepted record. */
-    unsigned long tag;       /* Original S-record tag; UI keeps it as private metadata. */
-    size_t size;             /* Exact copied payload extent, zero permitted. */
-    unsigned char data[];    /* Owned exact payload storage immediately after native metadata. */
+    unsigned long tag;        /* Original S-record tag; UI keeps it as private metadata. */
+    size_t size;              /* Exact copied payload extent, zero permitted. */
+    struct timespec created;  /* Monotonic admission timestamp, private diagnostic only. */
+    int timed;                /* Timestamp capture succeeded; never a permission or lifetime marker. */
+    unsigned char data[];     /* Owned exact payload storage immediately after native metadata. */
 };
+
+
+/* EN/RU: Add one diagnostic total under owner lock; saturate on overflow without failing admission.
+ * Добавить diagnostic total под lock; overflow насыщает counter, не отказывая admission.
+ */
+static void total(RouteMailbox *mailbox, size_t *counter, size_t addition)
+{
+    if (addition > (size_t)-1 - *counter)
+    {
+        *counter = (size_t)-1;
+        mailbox->saturated = 1;
+    }
+    else
+    {
+        *counter += addition;
+    }
+}
 
 
 /* EN/RU: See mailbox.h; allocation/copy outside lock, publication is atomic with stop and accounting.
@@ -41,6 +60,7 @@ int routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag
     int accepted = !route->reason && !exhausted; /* Stop cannot publish a new record. */
     if (accepted)
     {
+        record->timed = clock_gettime(CLOCK_MONOTONIC, &record->created) == 0;
         if (mailbox->tail)
         {
             mailbox->tail->next = record;
@@ -52,6 +72,8 @@ int routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag
         mailbox->tail = record;
         mailbox->count++;
         mailbox->bytes += size;
+        total(mailbox, &mailbox->received, 1);
+        total(mailbox, &mailbox->received_bytes, size);
         if (mailbox->count > mailbox->peak_count)
         {
             mailbox->peak_count = mailbox->count;
@@ -60,6 +82,7 @@ int routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag
         {
             mailbox->peak_bytes = mailbox->bytes;
         }
+        routepressureupdate(route, mailbox, 0);
         pthread_cond_broadcast(&route->changed);
     }
     pthread_mutex_unlock(&route->lock);
@@ -78,7 +101,7 @@ int routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag
 /* EN/RU: See mailbox.h; release only the successfully copied head, retaining FIFO and exact counters.
  * См. mailbox.h; освободить лишь успешно скопированный head, сохраняя FIFO и точные counters.
  */
-int routemailboxnext(RouteMailbox *mailbox, int terminal, unsigned long *tag,
+int routemailboxnext(StyxBidirRoute *route, RouteMailbox *mailbox, int terminal, unsigned long *tag,
     void *bytes, size_t capacity, size_t *size)
 {
     struct RouteRecord *record = mailbox->head; /* Borrowed under caller-held route mutex. */
@@ -103,6 +126,9 @@ int routemailboxnext(RouteMailbox *mailbox, int terminal, unsigned long *tag,
     }
     mailbox->count--;
     mailbox->bytes -= record->size;
+    total(mailbox, &mailbox->delivered, 1);
+    total(mailbox, &mailbox->delivered_bytes, record->size);
+    routepressureupdate(route, mailbox, 0);
     free(record);
     return STYX_CONTROL_RECORD;
 }
@@ -120,4 +146,29 @@ void routemailboxclear(RouteMailbox *mailbox)
         free(record);
     }
     memset(mailbox, 0, sizeof(*mailbox));
+}
+
+
+/* EN/RU: See mailbox.h; monotonic age cannot be made negative by a failed/regressing clock.
+ * См. mailbox.h; monotonic age не становится отрицательным при failed/regressing clock.
+ */
+int routemailboxage(RouteMailbox *mailbox, unsigned long long *milliseconds)
+{
+    struct timespec now; /* Independent current monotonic reading. */
+    struct RouteRecord *record = mailbox->head; /* Borrowed under caller-held route mutex. */
+    if (!record || !record->timed || clock_gettime(CLOCK_MONOTONIC, &now) || now.tv_sec < record->created.tv_sec ||
+        (now.tv_sec == record->created.tv_sec && now.tv_nsec < record->created.tv_nsec))
+    {
+        return 0;
+    }
+    unsigned long long seconds = (unsigned long long)(now.tv_sec - record->created.tv_sec); /* Nonnegative bounded difference. */
+    long nanos = now.tv_nsec - record->created.tv_nsec; /* Borrow one second if needed. */
+    if (nanos < 0)
+    {
+        seconds--;
+        nanos += 1000000000L;
+    }
+    unsigned long long fraction = (unsigned long long)nanos / 1000000ULL; /* Truncate fractional milliseconds. */
+    *milliseconds = seconds > (~0ULL - fraction) / 1000ULL ? ~0ULL : seconds * 1000ULL + fraction;
+    return 1;
 }

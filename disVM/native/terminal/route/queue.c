@@ -21,7 +21,7 @@ int styxbidirrouteui(StyxBidirRoute *route, DVM_UIMessage *output)
     {
         unsigned long tag; /* Private UI record metadata, not exposed as application authority. */
         size_t size; /* Decoded message extent fixed at admission. */
-        status = routemailboxnext(&route->ui, route->reason, &tag, output, sizeof(*output), &size);
+        status = routemailboxnext(route, &route->ui, route->reason, &tag, output, sizeof(*output), &size);
     }
     pthread_mutex_unlock(&route->lock);
     return status;
@@ -38,7 +38,7 @@ int styxbidirroutenext(StyxBidirRoute *route, unsigned long *tag, void *bytes, s
         return STYX_CONTROL_END;
     }
     pthread_mutex_lock(&route->lock);
-    int status = routemailboxnext(&route->general, route->reason, tag, bytes, capacity, size);
+    int status = routemailboxnext(route, &route->general, route->reason, tag, bytes, capacity, size);
     pthread_mutex_unlock(&route->lock);
     return status;
 }

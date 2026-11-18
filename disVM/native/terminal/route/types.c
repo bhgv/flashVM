@@ -48,7 +48,7 @@ int styxbidirroutetypednext(StyxBidirRoute *route, unsigned index, unsigned long
         return STYX_CONTROL_END;
     }
     pthread_mutex_lock(&route->lock);
-    int status = routemailboxnext(&route->typed[index].mailbox, route->reason, tag, bytes, capacity, size);
+    int status = routemailboxnext(route, &route->typed[index].mailbox, route->reason, tag, bytes, capacity, size);
     pthread_mutex_unlock(&route->lock);
     return status;
 }

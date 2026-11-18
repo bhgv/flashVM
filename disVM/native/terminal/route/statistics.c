@@ -11,13 +11,11 @@
  */
 int styxbidirroutequeueinfo(StyxBidirRoute *route, unsigned kind, unsigned index, StyxRouteQueueInfo *output)
 {
-    if (!route || !output || kind > STYX_ROUTE_TYPED || (kind != STYX_ROUTE_TYPED && index) ||
-        (kind == STYX_ROUTE_TYPED && index >= route->typed_count))
+    RouteMailbox *mailbox = routemailboxselect(route, kind, index); /* Borrowed immutable mailbox association. */
+    if (!mailbox || !output)
     {
         return 0;
     }
-    RouteMailbox *mailbox = kind == STYX_ROUTE_GENERAL ? &route->general : kind == STYX_ROUTE_UI ? &route->ui :
-        kind == STYX_ROUTE_SERVICE ? &route->service : &route->typed[index].mailbox; /* Stable through caller's pin. */
     pthread_mutex_lock(&route->lock);
     output->records = mailbox->count;
     output->bytes = mailbox->bytes;
@@ -39,7 +37,7 @@ int styxbidirrouteservicenext(StyxBidirRoute *route, void *bytes, size_t capacit
     }
     unsigned long tag; /* Private constant-zero metadata, never an application tag assignment. */
     pthread_mutex_lock(&route->lock);
-    int status = routemailboxnext(&route->service, route->reason, &tag, bytes, capacity, size);
+    int status = routemailboxnext(route, &route->service, route->reason, &tag, bytes, capacity, size);
     pthread_mutex_unlock(&route->lock);
     return status;
 }

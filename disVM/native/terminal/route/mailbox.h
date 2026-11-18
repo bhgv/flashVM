@@ -17,6 +17,13 @@ typedef struct RouteMailbox
     size_t count;             /* Unread records; empty payload still counts once. */
     size_t bytes;             /* Unread copied payload bytes, excluding allocation metadata. */
     size_t peak_count;        /* Historical maximum occupancy. */
+    size_t received;          /* Lifetime admitted records, saturates on diagnostics overflow. */
+    size_t received_bytes;    /* Lifetime admitted payload bytes, saturates on overflow. */
+    size_t delivered;         /* Lifetime successfully copied records, excluding SMALL. */
+    size_t delivered_bytes;   /* Lifetime successfully copied payload bytes. */
+    unsigned saturated;       /* Diagnostic totals overflowed; never a routing failure. */
+    unsigned kind;            /* Immutable general/UI/service/typed identity. */
+    unsigned index;           /* Immutable typed recipient index, zero otherwise. */
     size_t peak_bytes;        /* Historical maximum copied payload bytes. */
 } RouteMailbox;
 struct StyxBidirRoute; /* Owner pins FIFO and native synchronization. */
@@ -34,7 +41,7 @@ int routeenqueue(struct StyxBidirRoute *route, RouteMailbox *mailbox, unsigned l
  * Borrow output through return; terminal controls empty result only. No I/O or callbacks.
  * Под mutex route выдать одну запись; SMALL меняет только required size, terminal лишь для empty.
  */
-int routemailboxnext(RouteMailbox *mailbox, int terminal, unsigned long *tag,
+int routemailboxnext(struct StyxBidirRoute *route, RouteMailbox *mailbox, int terminal, unsigned long *tag,
     void *bytes, size_t capacity, size_t *size);
 
 
@@ -42,4 +49,9 @@ int routemailboxnext(RouteMailbox *mailbox, int terminal, unsigned long *tag,
  * Поглотить все records после завершения worker/users; zero state безопасно, NULL не допускается.
  */
 void routemailboxclear(RouteMailbox *mailbox);
+
+/* EN/RU: Read oldest committed record's monotonic age under owner lock; 1 available/0 empty or clock failure.
+ * Output borrowed, unchanged on failure. / Возраст старейшей записи под lock; 1/0, output unchanged при отказе.
+ */
+int routemailboxage(RouteMailbox *mailbox, unsigned long long *milliseconds);
 #endif

@@ -6,6 +6,7 @@
 #define STYX_BIDIR_ROUTE_INTERNAL_H
 #include "types.h"
 #include "mailbox.h"
+#include "pressure_internal.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +44,7 @@ struct StyxBidirRoute
     FVM_SBindings incoming;                   /* Worker-only registry; never used for TX authority. */
     RouteMailbox ui;                          /* Copied decoded UI messages, protected by route lock. */
     RouteMailbox general;                     /* General records and legacy binding-observation copies. */
+    RoutePressure pressure;                   /* Native threshold state/inbox, no wire or guest callbacks. */
     RouteMailbox service;                     /* Non-binding tag-zero service records for native channel handlers. */
     unsigned char *scratch;                   /* Worker-only record storage. */
     unsigned char *encoded;                   /* Worker-only framing of a tag-zero declaration. */
