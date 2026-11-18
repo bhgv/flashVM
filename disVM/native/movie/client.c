@@ -4,6 +4,7 @@
  */
 #include "client.h"
 #include "protocol.h"
+#include "reply.h"
 #include <string.h>
 
 
@@ -80,7 +81,7 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
     FVM_SBindings bindings;
     FVM_SBinding slot;
     FVM_Result result = FVM_ERROR;
-    int begun = 0;
+    MovieReply reply; /* Owner-local validator shared with typed Unibus consumers. */
     if (!fid)
     {
         return FVM_ERROR;
@@ -98,7 +99,8 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
         styxclientclunk(fid);
         return FVM_INVALID_ARGUMENT;
     }
-    if (!styxclientopen(fid, 2) || !movie_binding(buffer, &size) ||
+    if (!movie_reply_init(&reply, write, write_userdata, resolved, capacity) ||
+        !styxclientopen(fid, 2) || !movie_binding(buffer, &size) ||
         !sendrecord(fid, &offset, buffer, size))
     {
         goto done;
@@ -125,7 +127,7 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
         if (record.tag == FVM_SRECORD_CONTROL_TAG)
         {
             size_t consumed;
-            if (begun || bindings.count ||
+            if (reply.stage != 0 || bindings.count ||
                 fvm_sbindings_apply(&bindings, buffer, size, &consumed) != FVM_S_OK || !movie_bound(&bindings))
             {
                 break;
@@ -136,30 +138,10 @@ FVM_Result movie_fetch_fid(StyxFid *fid, unsigned int purpose, const char *refer
         {
             break;
         }
-        unsigned kind = record.payload[0];
-        if (kind == MOVIE_BEGIN && !begun && record.size > 1 && record.size-1 < capacity &&
-            record.payload[1] == '/' && !memchr(record.payload+1, 0, record.size-1))
+        int accepted = movie_reply_accept(&reply, record.payload, record.size); /* One checked service payload. */
+        if (accepted != MOVIE_REPLY_MORE)
         {
-            memcpy(resolved, record.payload+1, record.size-1);
-            resolved[record.size-1] = 0;
-            begun = 1;
-        }
-        else if (kind == MOVIE_BYTES && begun && record.size > 1)
-        {
-            result = write(record.payload+1, record.size-1, write_userdata);
-            if (result != FVM_OK)
-            {
-                goto done;
-            }
-            result = FVM_ERROR;
-        }
-        else if (kind == MOVIE_END && record.size == 2)
-        {
-            result = begun && record.payload[1] == 0 ? FVM_OK : FVM_ERROR;
-            break;
-        }
-        else
-        {
+            result = movie_reply_result(&reply);
             break;
         }
     }

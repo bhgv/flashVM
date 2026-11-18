@@ -113,3 +113,9 @@ are not remote RPC implementations. Generic RPC marshalling, filesystem control
 providers/Git views and the remaining portable IDE presentation integration are
 separate work. The legacy desktop embedding still contains application-specific
 native code and is not proof of a fully portable IDE package.
+
+The existing resource protocol now has a [shared per-request reply receiver](../disVM/native/movie/REPLIES.md)
+used by the Styx loader and available after typed Unibus routing. It validates
+BEGIN/BYTES/END, stages exact bytes and publishes the origin only on explicit
+success. This is one-resource reply handling, not a new correlated file/RPC API
+or implementation of the proposed `file/state` control nodes.

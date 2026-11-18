@@ -1,5 +1,8 @@
 # Managed movie service / Управляемая загрузка SWF
 
+[Shared reply receiver / Общий приёмник ответов](REPLIES.md) documents resource
+payload handling reused by this Styx client and typed Unibus queues.
+
 This SDK connects the actual FlashVM managed player to a prepared DisVM VFS over
 **original Inferno libstyx/lib9, standard 9P2000 and S-records**. No new 9P message
 or per-SWF client program is introduced. Code and variable reads use the same

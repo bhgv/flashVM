@@ -58,6 +58,33 @@ static void initialize(void)
     {
         return;
     }
+#ifdef STYX_REPLY_ROUTE_TEST
+    FVM_SBinding bindings[] = { /* Existing resource schema beside independent opaque/UI schemas. */
+        {23, 1, 13, "flashvm.movie"},
+        {5, 1, 11, "test.opaque"},
+        {17, 1, 13, "test.ide.fvd1"}
+    };
+    declare(bindings, sizeof(bindings) / sizeof(bindings[0]));
+    append(5, "other", 5);
+    unsigned char begin[] = {2, '/', 'v', 'f', 's', '/', 'a', '.', 's', 'w', 'f'};
+    if (STYX_REPLY_ROUTE_TEST == 4)
+    {
+        begin[1] = '.'; /* A relative provider origin is never a resolved VFS name. */
+    }
+    append(23, begin, sizeof(begin));
+    static const unsigned char first[] = {3, 0, 128, 255, 0}; /* Independent binary data. */
+    append(23, first, sizeof(first));
+    static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
+    append(17, ui, sizeof(ui) - 1);
+    static const unsigned char second[] = {3, 'x'}; /* Independent second chunk. */
+    append(23, second, sizeof(second));
+    if (STYX_REPLY_ROUTE_TEST != 3)
+    {
+        unsigned char end[] = {4, STYX_REPLY_ROUTE_TEST == 1 ? 1 : 0}; /* Explicit success/refusal. */
+        append(23, end, sizeof(end));
+    }
+    append(9, "ready", 5);
+#else
     FVM_SBinding bindings[] = { /* Immutable fixture-only associations, unrelated to TX grants. */
         {5, 1, 11, "test.opaque"},
         {6, 1, 11, "test.opaque"},
@@ -85,6 +112,7 @@ static void initialize(void)
     append(5, "tail", 4);
     append(9, nil, 0);
     append(24, "vtwo", 4);
+#endif
     if (fvm_sstream_init(&decoder, received, sizeof(received), 256) != FVM_S_OK)
     {
         exit(3);

@@ -34,6 +34,24 @@ foreach(terminal_case normal cancel)
     set_tests_properties(terminal-record-${terminal_case} PROPERTIES TIMEOUT 30)
 endforeach()
 
+# EN/RU: Existing resource replies use the same validator through a typed queue and ordinary Styx.
+# Существующие ответы ресурса используют одну проверку через typed queue и обычный Styx.
+set_source_files_properties(tests/resource_reply.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Wpedantic;-Werror")
+foreach(reply_case RANGE 0 4)
+    set(reply_peer terminal-resource-peer-${reply_case})
+    add_executable(${reply_peer} ../tests/phy-mux/peer.c ../tests/phy/limited.c
+        ../tests/launch/remote.c ../tests/launch/request.c ../tests/file-root/context.c
+        tests/typed_server.c tests/resource_reply.c)
+    target_compile_definitions(${reply_peer} PRIVATE STYX_LAUNCH_TEST=1 STYX_INFERNO_LOOKUP_TEST=1
+        STYX_LAUNCH_REQUEST_TEST=1 STYX_TERMINAL_RECORD_TEST=1 STYX_REPLY_ROUTE_TEST=${reply_case})
+    target_link_libraries(${reply_peer} PRIVATE styx_terminal_route infernostyx_phy remote_phy_mux)
+    foreach(reply_transport normal cancel)
+        add_test(NAME terminal-resource-${reply_case}-${reply_transport} COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../tests/phy-mux/peers.py" "$<TARGET_FILE:${reply_peer}>" ${reply_transport})
+        set_tests_properties(terminal-resource-${reply_case}-${reply_transport} PROPERTIES TIMEOUT 30)
+    endforeach()
+endforeach()
+
 # EN/RU: Generic typed records coexist with UI and unknown records over the original fragmented 9P.
 # Общие типизированные записи рядом с UI и неизвестными записями через исходный fragmented 9P.
 set_source_files_properties(tests/typed_server.c tests/typed_route.c PROPERTIES

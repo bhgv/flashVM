@@ -2,9 +2,11 @@
 # EN: Managed movie SDK uses explicit repository VFS/FlashVM protocol inputs and original Styx client.
 # RU: Managed movie SDK использует explicit VFS/FlashVM protocol inputs и original Styx client.
 set(movie_flash "${INFERNO_VFS_SUPPORT}/flashVM")
-add_library(styx_movie_protocol STATIC announcement.c protocol.c
+add_library(styx_movie_protocol STATIC announcement.c protocol.c reply.c
     "${movie_flash}/src/protocol/srecord.c" "${movie_flash}/src/protocol/sbindings.c")
-target_include_directories(styx_movie_protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${movie_flash}/include")
+target_include_directories(styx_movie_protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${movie_flash}/include"
+    "${movie_flash}/frontend/common")
+target_compile_options(styx_movie_protocol PRIVATE -Werror)
 add_library(styx_movie_service STATIC root.c offer.c publisher.c writer.c service.c request.c)
 target_link_libraries(styx_movie_service PUBLIC styx_namespace_fixture styx_movie_protocol)
 add_library(styx_movie_client STATIC receiver.c client.c monitor.c)
@@ -57,3 +59,10 @@ add_test(NAME managed-movie-automatic COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic.py" "$<TARGET_FILE:movie-server>"
     "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(managed-movie-automatic PROPERTIES TIMEOUT 20)
+
+# EN/RU: One checked resource reply state works after raw Styx framing and typed Unibus routing.
+# Одна проверка ответа ресурса после raw Styx framing и typed Unibus routing.
+add_executable(movie-reply-test tests/reply.c)
+target_link_libraries(movie-reply-test PRIVATE styx_movie_protocol)
+target_compile_options(movie-reply-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME managed-movie-reply COMMAND movie-reply-test)
