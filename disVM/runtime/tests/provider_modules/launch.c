@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "runqueue.h"
 #include "vfs/launch/runtime.h"
+#include "vfs/launch/service.h"
 #include "../../../native/tests/launch/backend.h"
 #include "images.h"
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
@@ -69,6 +70,36 @@ static DVM_Provider *source(ImageSource *images, int terminal)
 }
 
 
+/* EN/RU: Native admission handler owns only launch SDK values, never a Module/Prog or managed pointer.
+ * Native admission handler владеет лишь launch SDK values, без Module/Prog и managed pointers.
+ */
+typedef struct Admission
+{
+    DVM_LaunchService *service; /* Borrowed owner, main joins handler before closing/freeing. */
+    DVM_LaunchOptions *options; /* Borrowed immutable granted root/source association. */
+    DVM_LaunchHandoff *handoff; /* Owned result moved back to the startup controller after join. */
+} Admission;
+
+
+/* EN/RU: Block on actual admission queue, prepare/take one environment on its native handler, never execute guest code.
+ * Блокироваться на actual admission queue, prepare/take одного окружения на native handler, без guest execution.
+ */
+static void *prepare(void *state)
+{
+    Admission *admission = state;
+    DVM_LaunchReview *review = NULL;
+    launch_check(dvm_launch_service_wait(admission->service, &review) == DVM_LAUNCH_WAIT_REQUEST,
+        "native admission receives one provider module request");
+    DVM_LaunchRequest *request = dvm_launch_review_request(review);
+    launch_check(dvm_launch_request_prepare(request, admission->options->provider, &admission->options->provider_origin),
+        "native admission prepares provider module environment");
+    admission->handoff = dvm_launch_request_take(request);
+    launch_check(admission->handoff != NULL, "native admission one-use take");
+    dvm_launch_review_free(review);
+    return NULL;
+}
+
+
 /* EN/RU: Build an actual pre-init namespace from both granted roots and invoke the unchanged production startup.
  * Собрать настоящий namespace до init из двух granted roots, вызвать неизменённый production startup.
  */
@@ -91,16 +122,21 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     const unsigned char arguments[] = {0, 255, 1, 128}; /* Binary startup bytes are independent of display. */
     spec.arguments = arguments;
     spec.argument_bytes = sizeof(arguments);
-    DVM_LaunchRequest *request = NULL; /* Separate actual provider-side preparation authority. */
-    DVM_LaunchTicket *ticket = dvm_launch_request_create(&spec, &request);
-    launch_check(ticket && request && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "image-root launch prepare");
-    DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* One-use real environment, no initial display context. */
-    launch_check(handoff != NULL, "image-root handoff");
+    DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
+    launch_check(service && endpoint, "provider module admission service");
+    Admission admission = {.service = service, .options = &options}; /* Native values, no managed roots leave controller. */
+    pthread_t handler; /* Dedicated native admission thread, not a guest executor. */
+    launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
+    DVM_LaunchTicket *ticket = dvm_launch_service_submit(endpoint, &spec);
+    launch_check(ticket && !pthread_join(handler, NULL), "native admission request and handler join");
+    DVM_LaunchHandoff *handoff = admission.handoff; /* Independent owned environment, no initial display context. */
+    dvm_launch_service_free(service);
+    dvm_launch_endpoint_free(endpoint);
     Prog *process = __real_dvm_runtime_launch_module(module, handoff);
     launch_check(process && !handoff->group, "image-root environment adopted before first guest dispatch");
     dvm_launch_handoff_free(handoff);
     dvm_launch_ticket_free(ticket);
-    dvm_launch_request_free(request);
     dvm_provider_release(options.terminal);
     dvm_provider_release(options.provider);
     return process;

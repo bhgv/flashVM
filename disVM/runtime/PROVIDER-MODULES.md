@@ -120,3 +120,8 @@ portable Limbo sources under [`fixtures/provider-modules`](fixtures/provider-mod
 resident-load, load-kill and Unibus launch regressions use only the mandatory native
 execution profile. ASan/UBSan acceptance uses a fully instrumented source-built
 runtime, with LeakSanitizer disabled in the restricted execution environment.
+
+The admission fixture now uses an independent native handler's
+[blocking service wait](LAUNCH-SERVICE-WAIT.md) before prepare/take and controller
+startup. This connects native request servicing to the real32 interpreter/JIT
+scenarios without introducing a guest cooperation loop or a network launch claim.

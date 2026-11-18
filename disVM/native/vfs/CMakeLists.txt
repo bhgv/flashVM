@@ -206,7 +206,7 @@ add_library(styx_namespace_fixture STATIC
     "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
-    "${vfs}/launch/service.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/launch/service.c" "${vfs}/launch/service_wait.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
 # EN/RU: Public native namespace SDK name; existing fixture consumers retain their target.
@@ -387,3 +387,21 @@ set_tests_properties(system-installation-identity PROPERTIES TIMEOUT 30)
 add_executable(unibus-binding-test "${INFERNO_VFS_SUPPORT}/disVM/tests/unibus_binding.c")
 target_link_libraries(unibus-binding-test PRIVATE styx_namespace_fixture)
 add_test(NAME native-unibus-binding COMMAND unibus-binding-test)
+
+# EN/RU: Blocking native admission receives one request; cancellation never closes the shared service.
+# Blocking native admission получает один request; отмена не закрывает общий service.
+add_executable(vfs-launch-service-wait ../tests/launch/wait/main.c ../tests/launch/wait/gates.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-service-wait PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-service-wait PRIVATE "-Wl,--wrap=fvm_port_sync_wait" "-Wl,--wrap=dvm_launch_service_next")
+add_test(NAME vfs-launch-service-wait COMMAND vfs-launch-service-wait)
+set_tests_properties(vfs-launch-service-wait PROPERTIES TIMEOUT 20)
+add_executable(vfs-launch-service-wait-alloc ../tests/launch/wait/allocation.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-service-wait-alloc PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-service-wait-alloc PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=calloc" "-Wl,--wrap=free")
+add_test(NAME vfs-launch-service-wait-alloc COMMAND vfs-launch-service-wait-alloc)
+set_tests_properties(vfs-launch-service-wait-alloc PROPERTIES TIMEOUT 10)
+add_executable(vfs-launch-service-wait-detached ../tests/launch/wait/detached.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-service-wait-detached PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-service-wait-detached PRIVATE "-Wl,--wrap=dvm_notice_subscribe" "-Wl,--wrap=fvm_port_sync_wait" "-Wl,--wrap=free")
+add_test(NAME vfs-launch-service-wait-detached COMMAND vfs-launch-service-wait-detached)
+set_tests_properties(vfs-launch-service-wait-detached PROPERTIES TIMEOUT 10)

@@ -45,6 +45,34 @@ DVM_LaunchTicket *dvm_launch_service_submit(DVM_LaunchEndpoint *endpoint, const 
 DVM_LaunchReview *dvm_launch_service_next(DVM_LaunchService *owner);
 
 
+/* EN/RU: Outcome of one blocking native queue operation; never a process/init completion status.
+ * Результат одного blocking native queue operation, не статус исполнения process/init.
+ */
+typedef enum DVM_LaunchWaitResult
+{
+    DVM_LAUNCH_WAIT_REQUEST = 1, /* Exactly one owned review was dequeued. */
+    DVM_LAUNCH_WAIT_CLOSED = 0, /* Service close observed without consuming another request. */
+    DVM_LAUNCH_WAIT_CANCELLED = -1, /* This native wait's current cancellation scope fired. */
+    DVM_LAUNCH_WAIT_FAILED = -2 /* Invalid input or native wait/subscription allocation failure. */
+} DVM_LaunchWaitResult;
+
+
+/* EN/RU: Block the calling native service-owner thread until one request, close or current-scope cancellation.
+ * Borrow live owner through return; out is required and cleared before work, receives owned review only on REQUEST.
+ * Pre-cancel consumes no queued request. Once dequeued, a review wins concurrent cancellation/close and remains owned.
+ * Cancellation affects this wait only; cancelled queue entries drain as with next. FAILED consumes no pending review.
+ * Multiple handlers may wait; each request has one winner, not a broadcast copy or promised handler fairness.
+ * No provider I/O, guest callback, VM admission/ledger entry, pause, polling, timer or global execution stop.
+ * Join all same-owner users before free; close may run concurrently. Call only outside managed admission.
+ * Блокировать native поток service-owner до одного request, close либо current-scope cancellation.
+ * Owner borrowed до return; out обязателен, очищается, owned review только при REQUEST.
+ * Pre-cancel не потребляет очередь; принятый review сохраняется при racing cancellation/close.
+ * Отмена касается лишь этого wait; один request получает один handler, fairness не обещается.
+ * Без provider I/O, guest callbacks/паузы/polling/VM admission. Users join до free, close допускается параллельно.
+ */
+DVM_LaunchWaitResult dvm_launch_service_wait(DVM_LaunchService *owner, DVM_LaunchReview **out);
+
+
 /* EN/RU: Borrow provider request only while review lives and its callers are joined before free.
  * Use existing describe/prepare/take; requester never obtains this capability through submit.
  * Заимствовать request до review free, использовать describe/prepare/take; submit не выдаёт это право. */

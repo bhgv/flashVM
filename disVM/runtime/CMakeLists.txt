@@ -193,7 +193,7 @@ add_executable(disvm
     vfs/mutations.c
     vfs/sys.c
     vfs/boot.c
-    vfs/launch/service.c
+    vfs/launch/service.c vfs/launch/service_wait.c
     vfs/launch/movie_offer.c
     vfs/launch/terminal.c
     vfs/launch/admission.c

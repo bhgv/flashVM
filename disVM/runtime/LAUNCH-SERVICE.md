@@ -1,5 +1,8 @@
 # Bounded launch admission / Ограниченный admission запуска (runtime0.167)
 
+[Native blocking admission wait](LAUNCH-SERVICE-WAIT.md) now connects one-request
+queue delivery to independent native handlers, with per-wait cancellation and close.
+
 This native SDK connects [launch tickets](LAUNCH-TICKETS.md) to a bounded owner
 queue. It supplies separate owner, submit-only endpoint and review capabilities,
 FIFO request selection, native readiness and service close. It does not add a
