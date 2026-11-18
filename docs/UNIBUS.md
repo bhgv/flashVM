@@ -123,6 +123,8 @@ or implementation of the proposed `file/state` control nodes.
 A [one-shot native resource client](../disVM/native/terminal/resource/README.md)
 now sends the existing request through an independently granted TX binding and
 receives replies from an exclusively assigned typed queue. It has one monotonic
-budget, native cancellation and private staging of the returned origin. Generic
-provider-side Unibus dispatch and automatic logical-channel negotiation remain
-separate work; the existing VFS resource service still owns access decisions.
+budget, native cancellation and private staging of the returned origin. The
+[autonomous native server](../disVM/native/terminal/resource/SERVER.md) now handles
+the provider side through the actual VFS service, retaining its live prepared
+namespace and respecting bounded TX backpressure. Automatic logical-channel
+negotiation, correlation and `file/state` control nodes remain separate work.

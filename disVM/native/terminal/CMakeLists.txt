@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Generic native terminal record transport reuses original FlashVM codecs, no graphics.
 # RU: Generic native terminal record transport использует FlashVM codecs, без графики.
-add_library(styx_terminal STATIC life.c queue.c io.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
+add_library(styx_terminal STATIC life.c queue.c send_wait.c io.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
 target_include_directories(styx_terminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal PUBLIC styx_launch styx_movie_protocol)
 target_compile_options(styx_terminal PRIVATE -Wall -Wextra)
@@ -18,10 +18,12 @@ target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_subdirectory(bridge)
-add_library(styx_terminal_resource STATIC resource/life.c resource/fetch.c)
-target_link_libraries(styx_terminal_resource PUBLIC styx_terminal_route)
+add_library(styx_terminal_resource STATIC resource/life.c resource/fetch.c resource/budget.c
+    resource/server_life.c resource/server_state.c resource/server_run.c)
+target_link_libraries(styx_terminal_resource PUBLIC styx_terminal_route styx_movie_service)
 target_compile_options(styx_terminal_resource PRIVATE -Wall -Wextra -Wpedantic -Werror)
 include(tests/exchange.cmake)
+include(tests/server.cmake)
 
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)

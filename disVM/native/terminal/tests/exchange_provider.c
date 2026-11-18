@@ -24,7 +24,6 @@ static const unsigned char content[] = {0, 128, 255, 0, 'x'}; /* Independent bin
  */
 static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 {
-    (void)state;
     if (strcmp(path, ".") && strcmp(path, "ok.swf") && strcmp(path, "denied.swf"))
     {
         return FVM_NOT_FOUND;
@@ -32,7 +31,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     memset(out, 0, sizeof(*out));
     strcpy(out->name, path);
     out->directory = !strcmp(path, ".");
-    out->mode = out->directory ? 0555 : !strcmp(path, "denied.swf") ? 0 : 0444;
+    out->mode = out->directory ? 0555 : state || !strcmp(path, "denied.swf") ? 0 : 0444;
     out->identity.low = out->directory ? 1 : 2;
     out->length.low = sizeof(content);
     return FVM_OK;
@@ -46,6 +45,12 @@ static FVM_Result readbytes(void *state, void *bytes, size_t size, size_t *recei
 {
     Cursor *cursor = state; /* Service-owned independent read cursor. */
     size_t count = sizeof(content) - cursor->offset; /* Remaining exact bytes. */
+#if defined(STYX_SERVER_CASE) && STYX_SERVER_CASE == 1
+    if (count > 1)
+    {
+        count = 1;
+    }
+#endif
     if (count > size)
     {
         count = size;
@@ -71,8 +76,7 @@ static const DVM_VfsOps stream = {NULL, readbytes, NULL, NULL, NULL, closebytes,
  */
 static FVM_Result openbytes(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    (void)state;
-    if (strcmp(path, "ok.swf") || strcmp(mode, "r"))
+    if (state || strcmp(path, "ok.swf") || strcmp(mode, "r"))
     {
         return FVM_ERROR;
     }
@@ -97,23 +101,50 @@ static void destroy(void *state)
 static const DVM_ProviderOps factory = {info, openbytes, destroy, DVM_PROVIDER_STABLE_BIND, NULL}; /* Immutable fixture policy. */
 
 
-/* EN/RU: Return owned real VFS service/NULL; its root is private, fixed and has no native fallback file.
- * Вернуть настоящий owned VFS service/NULL над private root без доступного native fallback file.
+/* EN/RU: Return an owned live prepared namespace/NULL with no accessible native fallback file.
+ * Вернуть owned live prepared namespace/NULL без доступного native fallback file.
  */
-DVM_Provider *exchangeprovider(void)
+DVM_Namespace *exchangegroup(void)
 {
     DVM_Namespace *group = dvm_namespace_create("/unibus-fixture-no-native-root", "/", "/"); /* Private namespace owner. */
     DVM_Provider *root = dvm_provider_create_capture(&factory, NULL, NULL, 1); /* Fixed permitted native provider. */
     DVM_NamespacePlan target; /* Copied mount target, never a wire pointer. */
-    DVM_Provider *service = NULL; /* Output acquired only after mounting the granted root. */
-    if (group && root && dvm_namespace_plan(group, "/", &target) &&
-        dvm_namespace_mount_provider(group, &target, root, "/fixture-provider") == 1)
-    {
-        service = styxmovieservice(group);
-    }
+    int mounted = group && root && dvm_namespace_plan(group, "/", &target) &&
+        dvm_namespace_mount_provider(group, &target, root, "/fixture-provider") == 1;
     dvm_provider_release(root);
+    if (!mounted)
+    {
+        dvm_namespace_release(group);
+        return NULL;
+    }
+    return group;
+}
+
+
+/* EN/RU: Retain the live prepared namespace in an owned actual service, preserving prior fixture API.
+ * Удержать живой prepared namespace настоящим service, сохраняя прежний fixture API.
+ */
+DVM_Provider *exchangeprovider(void)
+{
+    DVM_Namespace *group = exchangegroup(); /* Owned fixture root. */
+    DVM_Provider *service = group ? styxmovieservice(group) : NULL; /* Output independent of caller group ref. */
     dvm_namespace_release(group);
     return service;
+}
+
+
+/* EN/RU: Replace the live root policy after server creation, before a fixture-gated request arrives.
+ * Заменить policy живого root после создания server, до запроса через fixture gate.
+ */
+int exchangegroupdeny(DVM_Namespace *group)
+{
+    static int denied; /* Stateless non-NULL policy marker, no owned allocation. */
+    DVM_Provider *root = dvm_provider_create_capture(&factory, &denied, NULL, 1); /* New live root policy. */
+    DVM_NamespacePlan target; /* Current group revision, no frozen server snapshot. */
+    int changed = root && dvm_namespace_plan(group, "/", &target) &&
+        dvm_namespace_mount_provider(group, &target, root, "/fixture-denied") == 1;
+    dvm_provider_release(root);
+    return changed;
 }
 
 

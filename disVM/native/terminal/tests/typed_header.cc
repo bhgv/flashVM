@@ -5,6 +5,7 @@
 #include "route/types.h"
 #include "reply.h"
 #include "resource/client.h"
+#include "resource/server.h"
 #include "request_payload.h"
 #include <cstdio>
 
@@ -27,7 +28,11 @@ int main()
         styxbidirmoviefetch(0, NULL, NULL, NULL, NULL, NULL, 0, NULL) != FVM_INVALID_ARGUMENT ||
         styxbidirroutetypedmatches(NULL, 0, "test", 1) ||
         styxbidirroutetypedwaitcancel(NULL, 0, 0, NULL) ||
-        movie_request_payload(NULL, 0, NULL, 0, NULL, NULL))
+        movie_request_payload(NULL, 0, NULL, 0, NULL, NULL) ||
+        styxbidircontrolsendwait(NULL, 0, NULL, 0, 0, NULL) ||
+        styxbidirroutesendwait(NULL, 0, NULL, 0, 0, NULL) ||
+        styxbidirmovieserver(NULL, 0, 0, NULL, 0) || styxbidirmovieserverstate(NULL) != -1 ||
+        styxbidirmovieserverwait(NULL, 0) || !styxbidirmovieserverfree(NULL))
     {
         std::fputs("typed route C++98 public ABI failed\n", stderr);
         return 2;
@@ -35,5 +40,6 @@ int main()
     styxbidirroutefree(NULL);
     styxbidirmovieclientstop(NULL);
     styxbidirmovieclientfree(NULL);
+    styxbidirmovieserverstop(NULL);
     return 0;
 }

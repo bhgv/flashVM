@@ -90,6 +90,7 @@ guest. Для независимого потока больших данных 
 | `styxbidirroutetypedmatches` | Check a queue's immutable local identity/version registration. |
 | `styxbidirroutetypedwaitcancel` | Native readiness with optional `DVM_Cancel`; cancellation consumes nothing and leaves the shared route live. |
 | `styxbidirroutesend` | Copy one independently bound general/control TX record; 1 accepted, 0 refused. |
+| `styxbidirroutesendwait` | Bounded cancelable native TX-capacity wait before one-record acceptance; never replays an accepted frame. |
 | `styxbidirrouteuisend` | Validate/copy one `fvd1` TX frame on an independently established nonzero outgoing tag. |
 | `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
 | `styxbidirroutestate` | Dispatcher’s terminal reason, or the transport's current terminal reason while dispatch is backpressured; no queue consumption. |
@@ -155,3 +156,7 @@ above explicit.
 The [one-shot resource client](../resource/README.md) sends the existing resource
 request and receives checked reply bodies on an exclusively assigned typed queue.
 It leaves UI/general consumption with the host and uses cancelable native waits.
+
+The [autonomous resource server](../resource/SERVER.md) now consumes one request
+on its own native worker, retains the prepared live namespace and streams the
+actual VFS service's replies with bounded TX backpressure.

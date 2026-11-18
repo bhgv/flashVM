@@ -6,7 +6,11 @@
 #define STYX_BIDIR_CONTROL_H
 #include "client.h"
 #include "launch/terminal.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct StyxBidirControl StyxBidirControl; /* Owned native receive/transmit workers and queues. */
+struct DVM_Cancel; /* Optional borrowed native cancellation for bounded TX admission. */
 #define STYX_CONTROL_RECORD 1 /* Exactly one copied record. */
 #define STYX_CONTROL_EMPTY 0 /* No queued record while live. */
 #define STYX_CONTROL_END (-1) /* Terminal after draining confirmed RX records. */
@@ -35,6 +39,15 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
  * Tag0 is ordinary control content, not interpreted here; native callers may race next/state/stop.
  * Nonblocking enqueue одной copied S-record;1/0, без обещания delivery/peer execution. */
 int styxbidircontrolsend(StyxBidirControl *control, unsigned long tag, const void *payload, size_t size);
+
+
+/* EN/RU: Copy one complete record after bounded native TX-capacity wait, 1 accepted/0 refused.
+ * Payload/control/cancel borrowed through return; timeout 0..120000ms. Never retry an accepted frame.
+ * Cancellation wakes only this waiter and does not retract queued records or stop the control.
+ * Native-ожидание TX capacity и одна копия S-записи, 1/0; отмена не закрывает общий control.
+ */
+int styxbidircontrolsendwait(StyxBidirControl *control, unsigned long tag, const void *payload,
+    size_t size, unsigned timeout, struct DVM_Cancel *cancel);
 
 
 /* EN/RU: Copy exactly one verified record; EMPTY/END/SMALL or RECORD. On SMALL only size changes.
@@ -70,4 +83,7 @@ void styxbidircontrolstop(StyxBidirControl *control);
  * Never call on owned workers; shared client is not shut down. NULL harmless.
  * Поглотить после external callers; join только своих workers, shared client не закрывать. */
 void styxbidircontrolfree(StyxBidirControl *control);
+#ifdef __cplusplus
+}
+#endif
 #endif

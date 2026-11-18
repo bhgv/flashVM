@@ -1,5 +1,8 @@
 # Resource exchange on Unibus / Обмен ресурсом через Unibus
 
+[Autonomous VFS server / Автономный VFS-сервер](SERVER.md) supplies the native
+provider-side handler for an already granted resource channel.
+
 `styx_terminal_resource` supplies a native managed-fetch callback for one existing
 `flashvm.movie` version 1 request/reply exchange on a granted bidirectional
 S-record route. It uses the same request codec, VFS-side request interpretation
@@ -111,6 +114,6 @@ late replies and native cancellation/subscription races. The ordinary session
 remains usable after resource client retirement. Existing movie-player acceptance
 tests separately exercise actual FlashVM loading.
 
-The generic provider-side dispatcher for this shared Unibus exchange, automatic
-channel allocation/correlation, and `file/state` VFS control nodes remain separate
-integration work. This client does not claim a complete remote application launch.
+The generic [provider-side worker](SERVER.md) now executes requests through the
+actual VFS service. Automatic channel allocation/correlation and `file/state`
+VFS control nodes remain separate work; this is not a complete remote application launch.

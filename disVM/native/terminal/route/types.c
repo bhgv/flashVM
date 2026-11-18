@@ -112,3 +112,14 @@ int styxbidirroutetypedmatches(StyxBidirRoute *route, unsigned index, const char
     return route && index < route->typed_count && routeschema(type, version) &&
         route->typed[index].version == version && !strcmp(route->typed[index].type, type);
 }
+
+
+/* EN/RU: See types.h; outgoing authority is independent of every RX binding/queue.
+ * См. types.h; исходящие права независимы от всех RX bindings/очередей.
+ */
+int styxbidirroutesendwait(StyxBidirRoute *route, unsigned long tag, const void *bytes, size_t size,
+    unsigned timeout, struct DVM_Cancel *cancel)
+{
+    return route && !styxbidirroutestate(route) &&
+        styxbidircontrolsendwait(route->control, tag, bytes, size, timeout, cancel);
+}

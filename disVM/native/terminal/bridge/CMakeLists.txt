@@ -14,6 +14,7 @@ if(INFERNO_UI_HOST_LIBRARIES)
     # EN/RU: FlashVM adapters use C++98; verify typed and legacy public C linkage.
     # Адаптеры FlashVM используют C++98; проверить C linkage typed и legacy API.
     add_executable(terminal-typed-header ../tests/typed_header.cc)
+    target_sources(terminal-typed-header PRIVATE ../../tests/file-root/context.c)
     set_target_properties(terminal-typed-header PROPERTIES CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
     # EN/RU: Existing 9P client ABI uses long long offsets in its public headers; keep that ABI.
     # Публичные заголовки существующего 9P client используют long long offsets; ABI не менять.

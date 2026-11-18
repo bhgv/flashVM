@@ -74,6 +74,14 @@ int styxbidirroutetypedmatches(StyxBidirRoute *route, unsigned index, const char
  */
 int styxbidirroutetypedwaitcancel(StyxBidirRoute *route, unsigned index, unsigned timeout,
     struct DVM_Cancel *cancel);
+
+
+/* EN/RU: Bounded native TX admission, same grant/acceptance as routesend, payload borrowed until return.
+ * Waits for capacity only before acceptance; cancellation does not stop route or replay queued bytes.
+ * Ограниченное native-ожидание TX capacity до принятия, 1/0; без остановки route и replay bytes.
+ */
+int styxbidirroutesendwait(StyxBidirRoute *route, unsigned long tag, const void *bytes, size_t size,
+    unsigned timeout, struct DVM_Cancel *cancel);
 #ifdef __cplusplus
 }
 #endif
