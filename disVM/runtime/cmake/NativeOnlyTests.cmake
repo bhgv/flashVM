@@ -54,3 +54,4 @@ endif()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/UnibusTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProviderModuleTests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/LaunchContextTests.cmake")

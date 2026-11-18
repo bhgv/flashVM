@@ -14,6 +14,11 @@ client is required for this loader.
 
 ## Execution placement / Место исполнения
 
+See [Launchcontext](LAUNCH-CONTEXT.md#execution-location--место-исполнения) for the
+intended bidirectional/cross-system module-call boundary. A provider process may
+call visible modules on the terminal or third systems; those callees must execute
+on their owning side. The reader below does not yet implement that routing.
+
 A trusted native launch handoff establishes `provider_execution` before process
 publication. Children inherit that immutable execution role along with their
 ordinary namespace ownership. A running guest cannot enable it. A plain local

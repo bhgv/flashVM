@@ -87,7 +87,10 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     spec.terminal = options.terminal;
     spec.terminal_origin = options.terminal_origin;
     strcpy(spec.expected_provider, options.provider_origin.system);
-    strcpy(spec.module, "provider/module-bootstrap");
+    strcpy(spec.module, "/app.dis");
+    const unsigned char arguments[] = {0, 255, 1, 128}; /* Binary startup bytes are independent of display. */
+    spec.arguments = arguments;
+    spec.argument_bytes = sizeof(arguments);
     DVM_LaunchRequest *request = NULL; /* Separate actual provider-side preparation authority. */
     DVM_LaunchTicket *ticket = dvm_launch_request_create(&spec, &request);
     launch_check(ticket && request && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "image-root launch prepare");

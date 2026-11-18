@@ -1,5 +1,8 @@
 # Native launch import / Принятие native launch (runtime0.170)
 
+[Launchcontext](LAUNCH-CONTEXT.md) now makes copied accepted startup label/bytes
+available to the current bootstrap and its children, including display-free launches.
+
 Runtime0.172 adds [automatic Session.movie acquisition grants](TERMINAL-MOVIES.md),
 including child inheritance, namespace replacement and ordinary Sys.ORDWR streams.
 

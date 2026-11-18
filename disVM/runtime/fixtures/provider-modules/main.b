@@ -4,6 +4,7 @@
 implement Check;
 include "sys.m";
 include "value.m";
+include "launchcontext.m";
 Check: module
 {
     init: fn(); # Existing zero-argument startup ABI.
@@ -18,7 +19,15 @@ HELPERS
 init()
 {
     sys := load Sys Sys->PATH;
-    app := load Value "/app.dis";
+    launch := load Launchcontext Launchcontext->PATH;
+    if (launch == nil || launch->name() != "/app.dis") {
+        raise "missing copied launch label";
+    }
+    arguments := launch->arguments();
+    if (len arguments != 4 || int arguments[0] != 0 || int arguments[1] != 255 || int arguments[3] != 128) {
+        raise "missing binary launch arguments";
+    }
+    app := load Value launch->name();
     if (app == nil || app->value() != EXPECTED) {
         raise "provider application dependency mismatch";
     }

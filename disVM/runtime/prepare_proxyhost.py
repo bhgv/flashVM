@@ -43,7 +43,7 @@ def main():
     parser.add_argument("--compiler", required=True)
     parser.add_argument("--interface", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--module", default="Proxyhost", choices=("Proxyhost", "Proxygc", "Vfsnative", "Vfsexport"))
+    parser.add_argument("--module", default="Proxyhost", choices=("Proxyhost", "Proxygc", "Vfsnative", "Vfsexport", "Launchcontext"))
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="builtin-interface-", dir=args.output) as directory:
         interface = str(Path(args.interface).resolve())

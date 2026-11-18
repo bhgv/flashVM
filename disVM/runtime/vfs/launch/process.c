@@ -8,6 +8,7 @@
 #include "interp.h"
 #include "runqueue.h"
 #include "runtime.h"
+#include "context.h"
 #include "../sysevents.h"
 #include "../../../native/movie/service.h"
 #include "disvm/unibus_binding.h"
@@ -21,6 +22,12 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
 {
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
     DVM_TerminalChannels *source = parent ? ((DVM_RuntimeProcess *)parent)->terminal_channels : NULL;
+    DVM_LaunchContext *context = parent ? ((DVM_RuntimeProcess *)parent)->launch_context : NULL;
+    if (context && !dvm_launch_context_retain(context))
+    {
+        return 0;
+    }
+    owner->launch_context = context;
     if (!source)
     {
         return 1;
@@ -29,6 +36,8 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
     if (!copy || !dvm_provider_retain(source->provider))
     {
         free(copy);
+        dvm_launch_context_release(owner->launch_context);
+        owner->launch_context = NULL;
         return 0;
     }
     *copy = *source;
@@ -38,6 +47,8 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
     {
         dvm_provider_release(copy->provider);
         free(copy);
+        dvm_launch_context_release(owner->launch_context);
+        owner->launch_context = NULL;
         return 0;
     }
     owner->movie_provider = movie;
@@ -55,6 +66,8 @@ void dvm_launch_process_release(Prog *process)
         DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
         DVM_TerminalChannels *channels = owner->terminal_channels;
         DVM_Provider *movie = owner->movie_provider;
+        dvm_launch_context_release(owner->launch_context);
+        owner->launch_context = NULL;
         owner->movie_provider = NULL;
         owner->terminal_channels = NULL;
         if (channels && channels->offers)
@@ -130,8 +143,10 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         free(channels);
         return 0;
     }
-    if (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process))
+    DVM_LaunchContext *context = dvm_launch_context_create(handoff);
+    if (!context || (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process)))
     {
+        dvm_launch_context_release(context);
         if (staged)
         {
             dvm_movie_offer_abort(channels->offers);
@@ -155,6 +170,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->terminal_channels = channels;
     owner->movie_provider = movie;
     owner->movie_offer_staged = staged;
+    owner->launch_context = context;
     owner->provider_execution = 1; /* Trusted handoff establishes this runtime as the execution provider before publication. */
     owner->launch_adopted = 1;
     handoff->group = NULL;
