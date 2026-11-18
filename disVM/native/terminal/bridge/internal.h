@@ -5,6 +5,7 @@
 #ifndef STYX_BIDIR_UI_BRIDGE_INTERNAL_H
 #define STYX_BIDIR_UI_BRIDGE_INTERNAL_H
 #include "bridge.h"
+#include "ordered.h"
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -14,6 +15,8 @@
  */
 struct StyxBidirUIBridge
 {
+    StyxOrdered *ordered; /* Owned negotiated broker or NULL for a flat route. */
+    StyxOrderedClient *ordered_client; /* Borrowed sole UI inbox capability within ordered owner. */
     StyxBidirRoute *route; /* Owned, including its sole UI mailbox consumer role. */
     DVM_UIBridge *local; /* Owned real FlashVM channel pair; closed before relay join. */
     struct UIRetirement *retirement; /* Subscription-owned callback lifetime fence. */
@@ -56,4 +59,46 @@ int uibridgeretirementattach(StyxBidirUIBridge *bridge);
  * Отделить bridge до unsubscribe/disposal; только rollback либо joined host lifecycle.
  */
 void uibridgeretirementdetach(StyxBidirUIBridge *bridge);
+
+
+/* EN/RU: Consume exactly one transport backend, create local channel pair and native relays; owned result/NULL.
+ * Поглотить один transport backend, создать локальные каналы и native relays; свой результат/NULL.
+ */
+StyxBidirUIBridge *uibridgecreate(StyxBidirRoute *route, StyxOrdered *ordered, unsigned local_side, unsigned long tag);
+
+
+/* EN/RU: Backend-specific native stop/free/read/wait/send, no guest/graphics owner access.
+ * Native stop/free/read/wait/send выбранного backend, без доступа к гостю/graphics owner.
+ */
+void uibridgetransportstop(StyxBidirUIBridge *bridge);
+
+
+/* EN/RU: Consume owned backend after native relays and external users retire.
+ * Поглотить backend после завершения native relays и внешних users.
+ */
+void uibridgetransportfree(StyxBidirUIBridge *bridge);
+
+
+/* EN/RU: Copy one frame or RECORD/EMPTY/END; malformed frames return END, never enter local channels.
+ * Скопировать один frame: RECORD/EMPTY/END; ошибочный frame не попадает в локальные каналы.
+ */
+int uibridgetransportreceive(StyxBidirUIBridge *bridge, DVM_UIMessage *message);
+
+
+/* EN/RU: Native wait only this UI inbox, borrowed bridge remains pinned until return.
+ * Native-ожидание только UI-очереди; bridge удерживается до возврата.
+ */
+void uibridgetransportwait(StyxBidirUIBridge *bridge);
+
+
+/* EN/RU: One copied frame admission;1 accepted/0 native timeout/backpressure/-1 terminal or permanent refusal.
+ * Приём одной копии frame:1 принят/0 native timeout/backpressure/-1 завершение либо постоянный отказ.
+ */
+int uibridgetransportsend(StyxBidirUIBridge *bridge, const DVM_UIMessage *message);
+
+
+/* EN/RU: Copy backend terminal state, no I/O; only legacy route uses separate capacity-flush wait.
+ * Скопировать завершение backend, без I/O; лишь прежний route требует отдельного ожидания capacity.
+ */
+int uibridgetransportstate(StyxBidirUIBridge *bridge);
 #endif

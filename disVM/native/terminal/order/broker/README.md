@@ -33,7 +33,10 @@ access: the underlying control retains the original captured Styx capability.
 This is an Unibus payload extension, **not a modification of Styx/9P messages**.
 Original Tread/Twrite/walk/fid handling remains in libstyx. A compatible peer must
 select this same envelope profile. FlashVM receives the same portable service
-codec, but this change does not switch its existing launcher/AS bindings by default.
+codec. The [ordered terminal adapter](../../bridge/ORDERED.md) now connects this
+broker to existing real local value channels/AS wrappers through a captured launch
+descriptor. Native embedding explicitly selects it; existing desktop/editor CLI
+paths are not silently changed into remote launchers.
 
 Внешнее обрамление не переключается. В root0 идут службы, а в согласованном
 ненулевом теге — пакет с номером и внутренней S-записью. Поэтому внутренний
@@ -164,3 +167,11 @@ ACK/request handling after new data already exists. A separate Python unsigned
 integer/zlib oracle checks1212 complete service bodies. Public headers link from
 C++98 and codec acceptance endpoints compile as C90. These are native engine tests,
 not acceptance of an automatically upgraded FlashVM launcher or full multi-lane I/O.
+
+## Blocking send and lifecycle subscribers / Ожидающая отправка и подписки
+
+[Per-client sendwait and sticky native retirement](../../bridge/ORDERED.md) add
+precise timeout/size/memory/refusal results without changing the original send1/0
+ABI. Lower-control notification now wakes clients/subscribers without waiting
+for dispatcher progress. No guest callback, global client drain or forced guest
+pause is introduced. Source-pinning subscriptions must fence owner lifetime.

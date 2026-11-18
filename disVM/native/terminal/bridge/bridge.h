@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Native bidir relay between a terminal route and the existing local IDE UI channels.
- * RU: Native bidir-мост между маршрутом терминала и существующими каналами IDE.
+ * EN: Native bidir relay between a terminal transport and universal local value channels.
+ * RU: Native bidir-мост между терминальным transport и общими локальными value-каналами.
  */
 #ifndef STYX_BIDIR_UI_BRIDGE_H
 #define STYX_BIDIR_UI_BRIDGE_H
@@ -9,7 +9,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct StyxBidirUIBridge StyxBidirUIBridge; /* Owned route, local queues and two native relays. */
+typedef struct StyxBidirUIBridge StyxBidirUIBridge; /* Owned flat/ordered backend, local queues and two native relays. */
 #define STYX_UI_BRIDGE_LIVE 0 /* Both native relays are admitted. */
 #define STYX_UI_BRIDGE_STOPPED 1 /* Explicit host cancellation. */
 #define STYX_UI_BRIDGE_REMOTE 2 /* Terminal route stopped or refused a valid frame. */

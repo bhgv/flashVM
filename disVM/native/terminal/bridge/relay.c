@@ -30,10 +30,10 @@ void *uibridgereceive(void *opaque)
     while (!styxbidiruibridgestate(bridge))
     {
         DVM_UIMessage message; /* Private copy, never a pointer into either VM. */
-        int status = styxbidirrouteui(bridge->route, &message); /* One mailbox item. */
+        int status = uibridgetransportreceive(bridge, &message); /* One mailbox item. */
         if (status == STYX_CONTROL_EMPTY)
         {
-            styxbidirroutewait(bridge->route, 1, 120000);
+            uibridgetransportwait(bridge);
             continue;
         }
         if (status != STYX_CONTROL_RECORD)
@@ -68,13 +68,14 @@ void *uibridgetransmit(void *opaque)
             return NULL;
         }
         pending(bridge, 1, &message);
-        while (!styxbidirrouteuisend(bridge->route, bridge->tx_tag, &message))
+        int accepted; /* Detailed backend result; ordered send waits only this client's TX predicate. */
+        while ((accepted = uibridgetransportsend(bridge, &message)) != 1)
         {
             if (styxbidiruibridgestate(bridge))
             {
                 return NULL;
             }
-            if (styxbidirroutestate(bridge->route))
+            if (accepted < 0 || uibridgetransportstate(bridge))
             {
                 uibridgeend(bridge, STYX_UI_BRIDGE_REMOTE);
                 return NULL;
@@ -82,7 +83,10 @@ void *uibridgetransmit(void *opaque)
             /* EN/RU: Native condition wait, not retry polling; limits guarantee the frame fits.
              * Ожидание native-condition, не опрос; лимиты гарантируют вместимость кадра.
              */
-            styxbidirrouteflush(bridge->route, 120000);
+            if (bridge->route)
+            {
+                styxbidirrouteflush(bridge->route, 120000);
+            }
         }
         pending(bridge, 1, NULL);
     }

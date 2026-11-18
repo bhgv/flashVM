@@ -1,8 +1,8 @@
 # Copyright (c) 2026 bhgv
 # EN: Relay adapter references the host UI API; the embedding supplies its actual implementation.
 # RU: Мост использует host UI API; настоящую реализацию предоставляет embedding.
-add_library(styx_terminal_bridge STATIC life.c relay.c state.c retirement.c)
-target_link_libraries(styx_terminal_bridge PUBLIC styx_terminal_route)
+add_library(styx_terminal_bridge STATIC life.c relay.c state.c retirement.c transport.c ordered.c)
+target_link_libraries(styx_terminal_bridge PUBLIC styx_terminal_route styx_terminal_ordered)
 target_include_directories(styx_terminal_bridge PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_options(styx_terminal_bridge PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
@@ -54,3 +54,5 @@ if(INFERNO_UI_HOST_LIBRARIES)
         endforeach()
     endforeach()
 endif()
+
+include(tests/ordered/cases.cmake)

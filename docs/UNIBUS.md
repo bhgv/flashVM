@@ -223,3 +223,14 @@ uses a directionally agreed wrapper tag for prefix+inner-S-record packets. Fixed
 application handles expose only their inner tag, including application-local0.
 The factory/profile remains an explicit native host choice; existing launcher
 and AS paths are not automatically changed and multi-lane scheduling is still pending.
+
+## Ordered terminal attachment / Подключение согласованного терминала
+
+The [captured launch-descriptor adapter](../disVM/native/terminal/bridge/ORDERED.md)
+connects the negotiated broker to the same local Dis/FlashVM value channels,
+including actual AS wrappers. It preserves both endpoint roles, application-local0
+and other explicitly granted client queues. Native TX waits only its own profile/
+counter; sticky physical-loss notification closes owned local channels even when
+the broker dispatcher cannot progress. Optional display construction leaves ordinary
+FD/VFS access independent. Native embedding selects this factory explicitly; this
+is not an automatic rewrite of the desktop/editor CLI or a multi-lane scheduler.

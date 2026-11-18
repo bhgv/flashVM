@@ -17,7 +17,7 @@ void uibridgeend(StyxBidirUIBridge *bridge, int reason)
     }
     pthread_mutex_unlock(&bridge->lock);
     dvm_ui_close(bridge->local);
-    styxbidirroutestop(bridge->route);
+    uibridgetransportstop(bridge);
 }
 
 
@@ -59,7 +59,7 @@ void styxbidiruibridgefree(StyxBidirUIBridge *bridge)
     {
         styxbidiruibridgejoin(bridge);
         uibridgeretirementdetach(bridge);
-        styxbidirroutefree(bridge->route);
+        uibridgetransportfree(bridge);
         dvm_ui_destroy(bridge->local);
         pthread_mutex_destroy(&bridge->lock);
         free(bridge);
@@ -70,27 +70,34 @@ void styxbidiruibridgefree(StyxBidirUIBridge *bridge)
 /* EN/RU: See bridge.h; complete queue setup before either relay is published.
  * См. bridge.h; настройка очередей завершается до запуска обоих native-потоков.
  */
-StyxBidirUIBridge *styxbidiruibridge(StyxBidirRoute *route, unsigned local_side, unsigned long tx_tag)
+StyxBidirUIBridge *uibridgecreate(StyxBidirRoute *route, StyxOrdered *ordered, unsigned local_side, unsigned long tx_tag)
 {
-    if (!route || local_side > DVM_UI_DIS || !tx_tag || tx_tag > 0xffffffffUL ||
-        styxbidirroutelimit(route) < DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX + 32)
+    StyxOrderedClient *client = ordered ? styxorderedclient(ordered, tx_tag) : NULL; /* Predeclared UI capability. */
+    if ((!!route == !!ordered) || local_side > DVM_UI_DIS || tx_tag > 0xffffffffUL ||
+        (route && (!tx_tag || styxbidirroutelimit(route) < DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX + 32)) ||
+        (ordered && (!client || styxorderedclientceiling(client) < DVM_UI_HEADER_SIZE + DVM_UI_TEXT_MAX)))
     {
         styxbidirroutefree(route);
+        styxorderedfree(ordered);
         return NULL;
     }
     StyxBidirUIBridge *bridge = calloc(1, sizeof(*bridge)); /* Unpublished native owner. */
     if (!bridge)
     {
         styxbidirroutefree(route);
+        styxorderedfree(ordered);
         return NULL;
     }
     if (pthread_mutex_init(&bridge->lock, NULL))
     {
         styxbidirroutefree(route);
+        styxorderedfree(ordered);
         free(bridge);
         return NULL;
     }
     bridge->route = route;
+    bridge->ordered = ordered;
+    bridge->ordered_client = client;
     bridge->side = 1 - local_side;
     bridge->tx_tag = tx_tag;
     if (dvm_ui_create(0, &bridge->local) != FVM_OK)
@@ -116,4 +123,13 @@ StyxBidirUIBridge *styxbidiruibridge(StyxBidirRoute *route, unsigned local_side,
     }
     bridge->started = 2;
     return bridge;
+}
+
+
+/* EN/RU: See bridge.h; retain legacy flat-route construction and ownership unchanged.
+ * См. bridge.h; сохранить создание и владение прежним flat-route без изменения контракта.
+ */
+StyxBidirUIBridge *styxbidiruibridge(StyxBidirRoute *route, unsigned local_side, unsigned long tx_tag)
+{
+    return uibridgecreate(route, NULL, local_side, tx_tag);
 }

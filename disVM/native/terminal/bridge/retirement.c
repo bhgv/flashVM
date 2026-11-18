@@ -66,7 +66,8 @@ int uibridgeretirementattach(StyxBidirUIBridge *bridge)
         return 0;
     }
     notice->bridge = bridge;
-    struct DVM_CancelTap *tap = styxbidirroutewatch(bridge->route, retired, notice, release); /* Owns state only on success. */
+    struct DVM_CancelTap *tap = bridge->ordered ? styxorderedwatch(bridge->ordered, retired, notice, release) :
+        styxbidirroutewatch(bridge->route, retired, notice, release); /* Owns state only on success. */
     if (!tap)
     {
         release(notice);

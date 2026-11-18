@@ -50,6 +50,9 @@ struct StyxOrdered
     pthread_t workers[2]; /* Independent RX dispatcher and retained TX outbox. */
     unsigned started; /* Successfully created workers, joined before free. */
     int reason; /* Sticky transport reason, zero while live. */
+    DVM_Cancel *retired; /* Owned sticky broker-retirement source, independent of dispatcher progress. */
+    DVM_CancelTap *transport_retired; /* Owned lower-control subscription. */
+    struct OrderedRetirement *notice; /* Callback lifetime fence until explicit detachment. */
     StyxBidirControl *control; /* Owned ordinary S-record control, framing never switched globally. */
     StyxOrder *engine; /* Owned per-inner-tag queues/counters. */
     StyxOrderedClient *clients; /* Owned immutable predeclared application grants. */
@@ -152,4 +155,22 @@ void *orderedreceive(void *argument);
  * Native-отправитель заимствует peer до join; только он передаёт сохранённые TX-узлы.
  */
 void *orderedtransmit(void *argument);
+
+
+/* EN/RU: Initialize/detach the lower-control retirement fence during native construction/joined disposal.
+ * Инициализировать/отделить fence нижнего control при создании и после join.
+ */
+int orderedretirementattach(StyxOrdered *peer);
+
+
+/* EN/RU: Detach callback access before destroying peer, engine or control; late callbacks retain only their fence.
+ * Отделить доступ callback до удаления peer/engine/control; поздние callbacks удерживают лишь свой fence.
+ */
+void orderedretirementdetach(StyxOrdered *peer);
+
+
+/* EN/RU: Encode/admit one fixed-tag packet under peer lock, return detailed send status; failure receives terminal reason/0.
+ * Кодировать/принять пакет под mutex peer: подробный статус, failure получает причину завершения/0.
+ */
+int orderedsendlocked(StyxOrderedClient *client, const void *bytes, size_t size, int *failure);
 #endif

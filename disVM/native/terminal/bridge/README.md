@@ -1,9 +1,14 @@
 # Native terminal to host UI bridge / Мост терминала к host UI
 
-`styx_terminal_bridge` connects the native bidir binding dispatcher to the actual
-`DVM_UIBridge` channel pair already used by the IDE host. Both directions use
-the existing `fvd1` messages. There is no second terminal reader, guest callback,
-presentation policy or new wire schema in this adapter.
+`styx_terminal_bridge` connects either the native bidir binding dispatcher or the
+[negotiated ordered broker](ORDERED.md) to the existing `DVM_UIBridge` value-channel
+pair. This is a generic terminal mechanism, also used by the IDE host. Both
+backends keep the application-facing `fvd1` messages and actual FlashVM channels;
+there is no guest servicing loop or presentation policy in the adapter.
+
+The flat route below retains its existing protocol. The explicit ordered launch
+constructor is documented with ownership, negotiation, per-client TX waits,
+retirement and coverage in [ORDERED.md](ORDERED.md).
 
 ## Ownership and use / Владение и использование
 

@@ -1,71 +1,8 @@
 /* Copyright (c) 2026 bhgv
- * EN: Fixed-tag client sends, one-record copies and independent native waits; no root authority escapes.
- * RU: Отправка фиксированного тега, поштучное чтение и native-ожидание; полномочия root клиенту не выдаются.
+ * EN: Fixed-tag copied receives, independent native waits and the native-only root-service inbox.
+ * RU: Поштучное чтение своего тега, независимое native-ожидание и root-очередь только для native-владельца.
  */
 #include "internal.h"
-
-
-/* EN/RU: Charge encoded inner tag to negotiated remote body ceiling before assigning an ordinal.
- * Учесть кодирование внутреннего тега в согласованном ограничении до назначения номера.
- */
-static int fits(StyxOrderedClient *client, size_t size)
-{
-    FVM_SInteger tag = {0, client->tag, 0}; /* Original canonical tag. */
-    unsigned char bytes[FVM_SRECORD_INTEGER_MAX]; /* Private encoded scalar. */
-    size_t used; /* Body bytes occupied by tag. */
-    unsigned limit = client->peer->limits[STYX_ORDER_TX]; /* Negotiated remote ceiling. */
-    return fvm_sinteger_write(&tag, bytes, sizeof(bytes), &used) == FVM_S_OK && used <= limit && size <= limit - used;
-}
-
-
-/* EN/RU: See broker.h; allocate before numbering, then retain exactly those encoded bytes through native TX.
- * См. broker.h; выделить память до нумерации, затем сохранять именно полученные байты до native TX.
- */
-int styxorderedclientsend(StyxOrderedClient *client, const void *bytes, size_t size)
-{
-    if (!client || (!bytes && size))
-    {
-        return 0;
-    }
-    StyxOrdered *peer = client->peer; /* Caller pins native owner. */
-    pthread_mutex_lock(&peer->lock);
-    int valid = !peer->reason && peer->active[STYX_ORDER_TX] && !client->tx_pending && fits(client, size);
-    OrderedMessage *message = valid ? orderedcopy(peer->lanes[STYX_ORDER_TX], NULL, peer->limit + 40) : NULL; /* Private spool. */
-    valid = valid && message;
-    int failure = 0; /* An accepted MAX packet can require terminal handling if reset allocation fails. */
-    if (valid)
-    {
-        size_t used; /* Exact packet extent. */
-        valid = styxorderencode(peer->engine, client->tag, bytes, size, message->bytes, message->size, &used) == FVM_S_OK;
-        if (valid)
-        {
-            FVM_SOrderedRecord view; /* Checked ordinal from the exact retained packet. */
-            size_t checked; /* Complete packet extent. */
-            valid = fvm_sordered_read(message->bytes, used, peer->limit, &view, &checked) == FVM_S_OK && checked == used;
-            if (valid)
-            {
-                message->size = used;
-                client->sent = 1;
-                client->last = orderedvalue(view.ordinal);
-                orderedqueue(peer, message);
-                if (client->last == ~0ULL && !orderedrequest(client))
-                {
-                    failure = STYX_CONTROL_NOMEM;
-                }
-            }
-        }
-    }
-    pthread_mutex_unlock(&peer->lock);
-    if (!valid)
-    {
-        free(message);
-    }
-    if (failure)
-    {
-        orderedend(peer, failure);
-    }
-    return valid;
-}
 
 
 /* EN/RU: See broker.h; a small buffer never advances the renewal barrier or acknowledges unseen data.

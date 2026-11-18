@@ -19,6 +19,7 @@ void orderedend(StyxOrdered *peer, int reason)
     pthread_mutex_unlock(&peer->lock);
     styxorderclose(peer->engine);
     styxbidircontrolstop(peer->control);
+    dvm_cancel_request(peer->retired);
 }
 
 
@@ -62,8 +63,10 @@ void styxorderedfree(StyxOrdered *peer)
     {
         pthread_join(peer->workers[i], NULL);
     }
+    orderedretirementdetach(peer);
     styxbidircontrolfree(peer->control);
     styxorderfree(peer->engine);
+    dvm_cancel_release(peer->retired);
     while (peer->clients)
     {
         StyxOrderedClient *client = peer->clients; /* Transfer client ownership before unlink. */
@@ -127,7 +130,8 @@ StyxOrdered *styxbidirordered(StyxBidirControl *control, unsigned limit, unsigne
     peer->limit = limit;
     peer->window = window;
     peer->engine = styxordercreate(limit, window);
-    int valid = peer->engine != NULL; /* All later rollback can use the initialized owner. */
+    peer->retired = dvm_cancel_create();
+    int valid = peer->engine && peer->retired && orderedretirementattach(peer); /* All later rollback can use the initialized owner. */
     for (size_t i = 0; valid && i < count; i++)
     {
         valid = tags[i] <= FVM_SRECORD_U32 && !orderedfind(peer, tags[i]);

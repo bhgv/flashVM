@@ -56,11 +56,43 @@ int styxorderedready(StyxOrdered *peer, unsigned direction);
 int styxorderedwait(StyxOrdered *peer, unsigned direction, unsigned timeout);
 
 
+#define STYX_ORDERED_SENT 1 /* One immutable packet admitted, not peer delivery. */
+#define STYX_ORDERED_WAIT 0 /* Selected profile/counter still pending at deadline. */
+#define STYX_ORDERED_END (-1) /* Broker retired or invalid input. */
+#define STYX_ORDERED_SIZE (-2) /* Payload exceeds negotiated body capacity, no ordinal consumed. */
+#define STYX_ORDERED_NOMEM (-3) /* Spool allocation refused before numbering. */
+#define STYX_ORDERED_REFUSED (-4) /* Explicit offer rejection or exhausted counter after NACK. */
+
+
 /* EN: Copy one payload into retained TX spool, 1 accepted/0 refused; no I/O or delivery promise.
  * Fixed client tag only, no root0 access. At MAX queue automatic renewal after the last old packet.
  * RU: Скопировать payload в очередь TX: 1/0, без I/O и обещания доставки. При MAX автоматически запросить сброс.
  */
 int styxorderedclientsend(StyxOrderedClient *client, const void *bytes, size_t size);
+
+
+/* EN: Native-only send with one monotonic budget0..120000ms, detailed status above.
+ * Waits for TX profile/this tag's renewal only, then copies once under the same lock.
+ * Payload/client borrowed through return. Timeout preserves negotiation and consumes no number.
+ * RU: Native-отправка с единым timeout и подробным статусом. Ждать только профиль TX/сброс своего тега,
+ * затем однократно скопировать под тем же mutex; timeout не отменяет согласование и не расходует номер.
+ */
+int styxorderedclientsendwait(StyxOrderedClient *client, const void *bytes, size_t size, unsigned timeout);
+
+
+/* EN: Immutable maximum payload for this fixed tag under local ceiling, zero for invalid client; no I/O.
+ * RU: Неизменяемый максимум payload своего тега по локальному ceiling; ноль при неверном client, без I/O.
+ */
+size_t styxorderedclientceiling(StyxOrderedClient *client);
+
+
+/* EN: Native sticky retirement subscription, owned tap/NULL; state adopted only on success.
+ * Callback may replay before return, must be nonwaiting/native, no guest/provider I/O or recursive peer stop/free.
+ * Release follows all admitted callbacks; unsubscribe with dvm_cancel_unsubscribe. Peer pinned during setup.
+ * RU: Native-подписка на завершение, свой tap/NULL; state принят только при успехе. Callback может прийти
+ * до возврата, не ждёт и не исполняет гостя/I/O/free. Release после callbacks; peer удерживается при setup.
+ */
+struct DVM_CancelTap *styxorderedwatch(StyxOrdered *peer, void (*receive)(void *), void *state, void (*release)(void *));
 
 
 /* EN: One copied record, order result codes; SMALL changes only size. Native wait only this client's tag.

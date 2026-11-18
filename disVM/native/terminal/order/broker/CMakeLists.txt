@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Explicit native bidirectional broker with named negotiation and retained packet queues.
 # RU: Явный native-брокер с именованным согласованием и очередями сохранённых пакетов.
-add_library(styx_terminal_ordered STATIC life.c message.c profile.c renewal.c worker.c client.c wait.c)
+add_library(styx_terminal_ordered STATIC life.c message.c profile.c renewal.c worker.c client.c wait.c send.c send_wait.c retirement.c)
 target_include_directories(styx_terminal_ordered PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal_ordered PUBLIC styx_terminal_order styx_terminal)
 target_compile_options(styx_terminal_ordered PRIVATE -Wall -Wextra -Wpedantic -Werror)
@@ -44,3 +44,10 @@ set_target_properties(terminal-ordered-oracle PROPERTIES C_STANDARD 90 C_STANDAR
 target_compile_options(terminal-ordered-oracle PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME terminal-ordered-wire-oracle COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/oracle.py" "$<TARGET_FILE:terminal-ordered-oracle>")
+
+add_executable(terminal-ordered-sendwait tests/send_wait.c ../../../tests/file-root/context.c)
+target_link_libraries(terminal-ordered-sendwait PRIVATE styx_terminal_ordered)
+target_compile_options(terminal-ordered-sendwait PRIVATE -Wall -Wextra -Wpedantic -Werror)
+set_property(TARGET terminal-ordered-sendwait APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=pthread_cond_timedwait")
+add_test(NAME terminal-ordered-sendwait COMMAND terminal-ordered-sendwait)
+set_tests_properties(terminal-ordered-sendwait PROPERTIES TIMEOUT 15)
