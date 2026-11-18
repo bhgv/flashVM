@@ -126,3 +126,9 @@ The admission fixture now uses an independent native handler's
 [blocking service wait](LAUNCH-SERVICE-WAIT.md) before prepare/take and controller
 startup. This connects native request servicing to the real36 interpreter/JIT
 scenarios without introducing a guest cooperation loop or a network launch claim.
+
+The fixture now first routes the selected caller-VFS node through an
+[immutable owner address](LAUNCH-ROUTE.md). Its client/provider sources have
+separate real admission services, and the selected owner supplies its own execution
+root before the existing native handler/controller path runs. This remains a
+one-host native fixture, not a completed network typed-call implementation.

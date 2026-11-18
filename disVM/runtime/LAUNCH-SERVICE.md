@@ -14,6 +14,9 @@ API, and provider code is not downloaded to the terminal.
 окружения по-прежнему происходит после решения владельца и до init. Сетевой
 адаптер и remote execution остаются следующими этапами.
 
+[Pinned VFS routing and immutable launch addresses](LAUNCH-ROUTE.md) now submit
+through the selected owner's capability, preserving owner labels and queue acknowledgement.
+
 ## Capabilities / Полномочия
 
 [`vfs/launch/service.h`](vfs/launch/service.h) exposes:

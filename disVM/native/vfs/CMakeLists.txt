@@ -206,7 +206,7 @@ add_library(styx_namespace_fixture STATIC
     "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
-    "${vfs}/launch/service.c" "${vfs}/launch/service_wait.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/launch/service.c" "${vfs}/launch/service_wait.c" "${vfs}/launch/address.c" "${vfs}/launch/route.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
 # EN/RU: Public native namespace SDK name; existing fixture consumers retain their target.
@@ -412,3 +412,20 @@ add_executable(vfs-call-order ../tests/launch/call_order.c ../tests/file-root/co
 target_link_libraries(vfs-call-order PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-call-order COMMAND vfs-call-order)
 set_tests_properties(vfs-call-order PROPERTIES TIMEOUT 15)
+
+# EN/RU: Pinned VFS source to capability-bound launch destination, no code download or inferred peer authority.
+# Pinned VFS source в capability-bound launch destination, без code download и inferred peer authority.
+add_executable(vfs-launch-route ../tests/launch/route/main.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-route PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-route COMMAND vfs-launch-route)
+set_tests_properties(vfs-launch-route PROPERTIES TIMEOUT 15)
+add_executable(vfs-launch-route-race ../tests/launch/route/race.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-route-race PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-route-race PRIVATE "-Wl,--wrap=dvm_launch_service_submit")
+add_test(NAME vfs-launch-route-race COMMAND vfs-launch-route-race)
+set_tests_properties(vfs-launch-route-race PROPERTIES TIMEOUT 15)
+add_executable(vfs-launch-route-alloc ../tests/launch/route/allocation.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-route-alloc PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-route-alloc PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=calloc" "-Wl,--wrap=free")
+add_test(NAME vfs-launch-route-alloc COMMAND vfs-launch-route-alloc)
+set_tests_properties(vfs-launch-route-alloc PROPERTIES TIMEOUT 15)

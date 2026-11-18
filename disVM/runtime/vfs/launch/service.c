@@ -139,6 +139,20 @@ DVM_LaunchEndpoint *dvm_launch_service_endpoint(DVM_LaunchService *owner)
 }
 
 
+/* EN/RU: See service.h; borrowed source wrapper keeps immutable association and native mutex alive.
+ * См. service.h; borrowed source wrapper удерживает immutable association и native mutex.
+ */
+DVM_LaunchEndpoint *dvm_launch_endpoint_clone(DVM_LaunchEndpoint *endpoint)
+{
+    if (!endpoint)
+    {
+        return NULL;
+    }
+    DVM_LaunchService owner = {endpoint->shared}; /* Borrowed view only; never freed or closed here. */
+    return dvm_launch_service_endpoint(&owner);
+}
+
+
 /* EN/RU: See service.h; copy only native admission counters under service lock.
  * См. service.h; копировать только counters под lock. */
 int dvm_launch_service_info(DVM_LaunchService *owner, DVM_LaunchServiceInfo *out)

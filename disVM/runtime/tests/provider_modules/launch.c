@@ -10,10 +10,12 @@
 #include "runqueue.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/launch/service.h"
+#include "vfs/launch/route.h"
 #include "vfs/resource.h"
 #include "../../../native/tests/launch/backend.h"
 #include "images.h"
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
+static __thread int route_selecting; /* Startup controller explicitly selects caller side before any guest exists. */
 static unsigned provider_lookups; /* Atomic observed caller-side load selections, including initial controller. */
 static unsigned terminal_lookups; /* Atomic observed accepted client-caller selections. */
 static ImageSource execution_images; /* Actual provider-first code source. */
@@ -67,7 +69,8 @@ extern int __real_dvm_resource_plan_call(DVM_Namespace *, const char *, unsigned
 int __wrap_dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsigned local_role, DVM_ResourcePlan *plan)
 {
     Prog *caller = currun(); /* Current permanent owner, or initial controller before any guest. */
-    unsigned expected = caller ? ((DVM_RuntimeProcess *)caller)->module_local_role : DVM_ORIGIN_PROVIDER;
+    unsigned expected = caller ? ((DVM_RuntimeProcess *)caller)->module_local_role :
+        route_selecting && CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER;
     launch_check(local_role == expected, "actual module loader did not select its caller-local side");
     __atomic_add_fetch(local_role == DVM_ORIGIN_TERMINAL ? &terminal_lookups : &provider_lookups, 1, __ATOMIC_RELAXED);
     return __real_dvm_resource_plan_call(group, path, local_role, plan);
@@ -122,6 +125,32 @@ static void *prepare(void *state)
 }
 
 
+/* EN/RU: Native fixture maps actual source capabilities to separate owner service endpoints, without identity-string routing.
+ * Native fixture связывает actual source capabilities с разными owner endpoints, без identity-string routing.
+ */
+typedef struct ImageRoutes
+{
+    DVM_LaunchOptions *options; /* Borrowed original caller's two granted roots through routing. */
+    DVM_LaunchEndpoint *client; /* Borrowed client-source owner's independent admission endpoint. */
+    DVM_LaunchEndpoint *server; /* Borrowed provider-source owner's independent admission endpoint. */
+} ImageRoutes;
+
+
+/* EN/RU: Resolve one pinned actual app node to its owning service and unchanged module label, no image reads.
+ * Разрешить pinned actual app node в service владельца и module label, без чтения image.
+ */
+static DVM_LaunchAddress *locate(void *state, const DVM_ResourcePlan *selected, const FVM_FileInfo *metadata)
+{
+    ImageRoutes *routes = state;
+    launch_check(selected->selected && !metadata->directory && !strcmp(selected->relative, "app.dis"),
+        "image route exact selected module node");
+    DVM_LaunchEndpoint *endpoint = selected->provider == routes->options->terminal ? routes->client :
+        selected->provider == routes->options->provider ? routes->server : NULL;
+    launch_check(endpoint != NULL, "image route capability source association");
+    return dvm_launch_address_create(endpoint, "/app.dis");
+}
+
+
 /* EN/RU: Build an actual pre-init namespace from both granted roots and invoke the unchanged production startup.
  * Собрать настоящий namespace до init из двух granted roots, вызвать неизменённый production startup.
  */
@@ -144,21 +173,41 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     const unsigned char arguments[] = {0, 255, 1, 128}; /* Binary startup bytes are independent of display. */
     spec.arguments = arguments;
     spec.argument_bytes = sizeof(arguments);
-    DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
-    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
-    launch_check(service && endpoint, "provider module admission service");
-    Admission admission = {.service = service, .options = &options}; /* Native values, no managed roots leave controller. */
-    pthread_t handler; /* Dedicated native admission thread, not a guest executor. */
-    launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
-    DVM_LaunchTicket *ticket = dvm_launch_service_submit(endpoint, &spec);
-    launch_check(ticket && !pthread_join(handler, NULL), "native admission request and handler join");
-    DVM_LaunchHandoff *handoff = admission.handoff; /* Independent owned environment, no initial display context. */
+    DVM_LaunchService *server = dvm_launch_service_create(options.provider_origin.system, 1);
+    DVM_LaunchService *client = dvm_launch_service_create(options.terminal_origin.system, 1);
+    DVM_LaunchEndpoint *server_endpoint = dvm_launch_service_endpoint(server);
+    DVM_LaunchEndpoint *client_endpoint = dvm_launch_service_endpoint(client);
+    launch_check(server && client && server_endpoint && client_endpoint, "image source owner services");
+    DVM_Namespace *caller_namespace = dvm_launch_prepare(&options); /* Caller view selects source before owner admission. */
+    launch_check(caller_namespace != NULL, "image routing caller namespace");
+    DVM_LaunchOptions callee = options; /* Borrowed input roots stay owned by original options through handler join. */
     if (CONTROL == 17)
     {
-        handoff->local_role = DVM_ORIGIN_TERMINAL; /* Trusted host chooses its local lookup side before process publication. */
+        callee.provider = options.terminal; /* Selected client source supplies its own execution root, not provider's root. */
+        callee.provider_origin = options.terminal_origin;
+        callee.provider_origin.role = DVM_ORIGIN_PROVIDER; /* That source is now the callee's local provider role. */
     }
-    dvm_launch_service_free(service);
-    dvm_launch_endpoint_free(endpoint);
+    ImageRoutes routes = {.options = &options, .client = client_endpoint, .server = server_endpoint};
+    Admission admission = {.service = CONTROL == 17 ? client : server, .options = &callee};
+    pthread_t handler; /* Dedicated native admission thread, never a guest executor. */
+    launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
+    strcpy(spec.module, "/caller-label-must-not-be-used");
+    memset(spec.expected_provider, 'x', sizeof(spec.expected_provider)); /* Address must supply actual owner identity. */
+    route_selecting = 1;
+    DVM_LaunchTicket *ticket = dvm_launch_route_submit(caller_namespace, "/app.dis",
+        CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER, &spec, locate, &routes);
+    route_selecting = 0;
+    launch_check(ticket && !pthread_join(handler, NULL), "native routed request and handler join");
+    dvm_namespace_release(caller_namespace);
+    DVM_LaunchHandoff *handoff = admission.handoff; /* Callee owns an independent prepared environment, no display needed. */
+    if (CONTROL == 17)
+    {
+        handoff->local_role = DVM_ORIGIN_TERMINAL;
+    }
+    dvm_launch_service_free(server);
+    dvm_launch_service_free(client);
+    dvm_launch_endpoint_free(server_endpoint);
+    dvm_launch_endpoint_free(client_endpoint);
     Prog *process = __real_dvm_runtime_launch_module(module, handoff);
     launch_check(process && !handoff->group, "image-root environment adopted before first guest dispatch");
     dvm_launch_handoff_free(handoff);

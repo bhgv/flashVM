@@ -121,3 +121,7 @@ Private source omissions forcing provider-only preference or dropping bind origi
 copy fail with the intended semantic messages, not compile errors or crashes.
 LeakSanitizer remains disabled in this restricted environment; native ownership
 and image-buffer retirement observations are kept enabled.
+
+[Native launch routing](LAUNCH-ROUTE.md) now carries this selected source into an
+immutable owner address and bounded admission queue. Automatic network discovery
+and transparent typed module-call marshalling remain unfinished.

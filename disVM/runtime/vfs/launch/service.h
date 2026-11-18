@@ -32,6 +32,14 @@ DVM_LaunchService *dvm_launch_service_create(const char system[DVM_ORIGIN_ID_BYT
 DVM_LaunchEndpoint *dvm_launch_service_endpoint(DVM_LaunchService *owner);
 
 
+/* EN/RU: Clone a borrowed live submit-only endpoint into an independent owned wrapper/NULL on closed/OOM/overflow.
+ * No provider I/O or new authority; callers keep source live through return, free each wrapper after its users join.
+ * Скопировать borrowed submit-only endpoint в independent owned wrapper/NULL при closed/OOM/overflow.
+ * Без provider I/O и новой authority; source удерживается до return, wrappers освобождаются после join users.
+ */
+DVM_LaunchEndpoint *dvm_launch_endpoint_clone(DVM_LaunchEndpoint *endpoint);
+
+
 /* EN/RU: Submit copied spec through borrowed endpoint; return owned requester ticket/NULL.
  * Expected provider must match service; capacity includes reservations and reviewed requests.
  * No provider I/O or implicit execution. Подать spec через endpoint; owned ticket/NULL,
