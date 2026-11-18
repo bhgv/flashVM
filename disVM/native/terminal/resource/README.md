@@ -1,5 +1,9 @@
 # Resource exchange on Unibus / Обмен ресурсом через Unibus
 
+[Announced per-open channels / Объявленные per-open каналы](ANNOUNCED.md) now
+support repeated/parallel fetches through ordinary fids on the same exact client,
+with automatic typed offer reception and generation fencing.
+
 [Autonomous VFS server / Автономный VFS-сервер](SERVER.md) supplies the native
 provider-side handler for an already granted resource channel.
 

@@ -29,6 +29,16 @@ extern char *terminalread(Styxserver *, char *, ulong *, vlong);
 /* EN/RU: Native fixture record sink, precise short-write count. / Native sink с precise count. */
 extern char *terminalwrite(char *, ulong *, vlong);
 #endif
+#ifdef STYX_TYPED_OFFER_TEST
+
+
+/* EN/RU: Original per-fid resource service callbacks for this explicitly selected fixture only.
+ * Исходные per-fid callbacks resource service только данного явно выбранного fixture.
+ */
+extern char *offerfileopen(Styxserver *, Qid *, int);
+extern char *offerfileread(Styxserver *, char *, ulong *, vlong);
+extern char *offerfilewrite(Styxserver *, char *, ulong *, vlong);
+#endif
 static Styxserver server; /* Owned by native server thread. */
 static StyxRead *pending; /* Original deferred request, server owner only. */
 static int event; /* Atomic native source notification. */
@@ -59,6 +69,12 @@ static void release(void *state)
 /* EN/RU: Allow only original readonly file/device open; qid/mode borrowed values. / Только readonly open. */
 static char *openfile(Qid *qid, int mode)
 {
+#ifdef STYX_TYPED_OFFER_TEST
+    if (qid->path >= 100)
+    {
+        return offerfileopen(&server, qid, mode);
+    }
+#endif
     if ((qid->path == 6 || qid->path == 7) && mode >= OREAD && mode <= ORDWR)
     {
         return nil;
@@ -71,6 +87,12 @@ static char *openfile(Qid *qid, int mode)
  * Identity file либо pending one-event read; request state только на server owner. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TYPED_OFFER_TEST
+    if (qid.path >= 100)
+    {
+        return offerfileread(&server, bytes, count, offset);
+    }
+#endif
 #ifdef STYX_TERMINAL_RECORD_TEST
     if (qid.path == 7)
     {
@@ -118,6 +140,12 @@ static char *statfile(Qid qid, Dir *out)
  * Native terminal sink принимает opaque fixture command, без графической интерпретации. */
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_TYPED_OFFER_TEST
+    if (qid.path >= 100)
+    {
+        return offerfilewrite(&server, bytes, count, offset);
+    }
+#endif
 #ifdef STYX_TERMINAL_RECORD_TEST
     if (qid.path == 7)
     {
@@ -194,6 +222,9 @@ int main(int argc, char **argv)
     ops.read = readfile;
     ops.stat = statfile;
     ops.write = writefile;
+#ifdef STYX_TYPED_OFFER_TEST
+    ops.freefid = styxfileclose;
+#endif
     check(!styxphyinit(&server, &ops, reverse, 0555, 1, 2), "original reverse server");
     check(styxaddfile(&server, Qroot, 1, "identity", 0444, "fixture") &&
         styxaddfile(&server, Qroot, 2, "events", 0444, "fixture"), "exported names");
@@ -203,6 +234,12 @@ int main(int argc, char **argv)
     check(styxaddfile(&server, Qroot, 6, "terminal", 0666, "fixture") != nil, "terminal control node");
 #ifdef STYX_TERMINAL_RECORD_TEST
     check(styxaddfile(&server, Qroot, 7, "records", 0666, "fixture") != nil, "general terminal records node");
+#endif
+#ifdef STYX_TYPED_OFFER_TEST
+    check(styxadddir(&server, Qroot, 8, "movie", 0555, "fixture") &&
+        styxaddfile(&server, 8, 100, "1", 0666, "fixture") &&
+        styxaddfile(&server, 8, 101, "2", 0666, "fixture") &&
+        styxaddfile(&server, 8, 102, "3", 0666, "fixture"), "scoped per-open resource nodes");
 #endif
     StyxPhyWake *wake = styxphywakepin(&server);
     pthread_t owner;

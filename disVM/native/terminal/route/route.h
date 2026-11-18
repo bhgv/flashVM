@@ -85,6 +85,12 @@ int styxbidirroutestate(StyxBidirRoute *route);
 unsigned styxbidirroutelimit(StyxBidirRoute *route);
 
 
+/* EN/RU: Borrow immutable exact underlying client until routefree; NULL for invalid, no I/O/authority.
+ * Заимствовать неизменяемый exact client до routefree, NULL invalid, без I/O/выдачи прав.
+ */
+StyxClient *styxbidirrouteclient(StyxBidirRoute *route);
+
+
 /* EN: Request cancellation without joining; NULL harmless. Buffered RX remains drainable.
  * RU: Запросить отмену без join. NULL допустим, уже принятые RX-записи доступны для чтения.
  */

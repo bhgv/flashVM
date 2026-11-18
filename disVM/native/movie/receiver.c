@@ -110,6 +110,41 @@ StyxMovieSession *styxmoviesession(StyxClient *client)
 }
 
 
+/* EN/RU: Validate one agreed offer payload under session lock, without transport/tag interpretation.
+ * Проверить agreed offer payload под session lock, без transport/tag interpretation.
+ */
+static int offer(StyxMovieSession *session, const unsigned char *bytes, size_t size)
+{
+    FVM_SInteger number;
+    size_t consumed;
+    if (size < 2 ||
+        (bytes[0] != MOVIE_OFFER_READY && bytes[0] != MOVIE_OFFER_CLOSED) ||
+        fvm_sinteger_read(bytes+1, size-1, &number, &consumed) != FVM_S_OK ||
+        consumed != size-1 || number.negative)
+    {
+        return 0;
+    }
+    unsigned long long generation = ((unsigned long long)number.high << 32) | number.low;
+    if (!generation || generation > MOVIE_OFFER_GENERATION_MAX)
+    {
+        return 0;
+    }
+    if (generation < session->generation)
+    {
+        return 1; /* Delayed older traffic cannot replace newer authority. */
+    }
+    int ready = bytes[0] == MOVIE_OFFER_READY;
+    if (generation == session->generation)
+    {
+        return ready == session->ready;
+    }
+    session->generation = generation;
+    session->ready = ready;
+    session->closed = !ready;
+    return 1;
+}
+
+
 /* EN/RU: Validate one complete record under state lock, before changing accepted generation.
  * Проверить complete record под state lock до изменения accepted generation. */
 static int accept(StyxMovieSession *session, const FVM_SRecord *record, size_t consumed)
@@ -133,33 +168,7 @@ static int accept(StyxMovieSession *session, const FVM_SRecord *record, size_t c
     {
         return 1;
     }
-    FVM_SInteger number;
-    size_t size;
-    if (binding.version != MOVIE_OFFER_VERSION || record->size < 2 ||
-        (record->payload[0] != MOVIE_OFFER_READY && record->payload[0] != MOVIE_OFFER_CLOSED) ||
-        fvm_sinteger_read(record->payload+1, record->size-1, &number, &size) != FVM_S_OK ||
-        size != record->size-1 || number.negative)
-    {
-        return 0;
-    }
-    unsigned long long generation = ((unsigned long long)number.high << 32) | number.low;
-    if (!generation || generation > MOVIE_OFFER_GENERATION_MAX)
-    {
-        return 0;
-    }
-    if (generation < session->generation)
-    {
-        return 1; /* Delayed older traffic cannot replace newer authority. */
-    }
-    int ready = record->payload[0] == MOVIE_OFFER_READY;
-    if (generation == session->generation)
-    {
-        return ready == session->ready;
-    }
-    session->generation = generation;
-    session->ready = ready;
-    session->closed = !ready;
-    return 1;
+    return binding.version == MOVIE_OFFER_VERSION && offer(session, record->payload, record->size);
 }
 
 
@@ -243,10 +252,10 @@ int movie_session_feed(StyxMovieSession *session, const void *bytes, size_t size
 
 /* EN/RU: See receiver.h; native I/O runs outside the short state mutex.
  * См. receiver.h; native I/O выполняется вне короткого state mutex. */
-FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, const char *base,
-    FVM_DesktopWrite write, void *state, char *resolved, size_t capacity, void *userdata)
+FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long expected,
+    unsigned purpose, const char *reference, const char *base,
+    FVM_DesktopWrite write, void *state, char *resolved, size_t capacity)
 {
-    StyxMovieSession *session = userdata;
     if (!session || !reference || !*reference || strlen(reference) >= MOVIE_PATH ||
         (base && strlen(base) >= MOVIE_PATH) || !write || !resolved || !capacity ||
         (purpose != FVM_DESKTOP_FETCH_CODE && purpose != FVM_DESKTOP_FETCH_DATA))
@@ -258,7 +267,7 @@ FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, cons
     unsigned long long generation = session->generation;
     int ready = session->ready && !session->closed;
     fvm_port_sync_unlock(session->lock);
-    if (!ready)
+    if (!ready || (expected && generation != expected))
     {
         return FVM_ERROR;
     }
@@ -283,6 +292,16 @@ FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, cons
     }
     fvm_port_sync_unlock(session->lock);
     return result;
+}
+
+
+/* EN/RU: See receiver.h; retain legacy selection of the current announced generation.
+ * См. receiver.h; сохранить прежний выбор текущего объявленного generation.
+ */
+FVM_Result styxmovieannouncedfetch(unsigned purpose, const char *reference, const char *base,
+    FVM_DesktopWrite write, void *state, char *resolved, size_t capacity, void *userdata)
+{
+    return movie_session_fetch(userdata, 0, purpose, reference, base, write, state, resolved, capacity);
 }
 
 
@@ -375,4 +394,26 @@ void styxmoviesessionfree(StyxMovieSession *session)
         }
         release(session);
     }
+}
+
+
+/* EN/RU: See session_internal.h; automatic feed claim and no partial raw frame are mandatory.
+ * См. session_internal.h; нужны automatic claim и отсутствие partial raw frame.
+ */
+int movie_session_offer(StyxMovieSession *session, const void *bytes, size_t size)
+{
+    if (!session || (!bytes && size))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(session->lock);
+    int admitted = !session->closed && session->automatic && !session->used;
+    int valid = admitted && offer(session, bytes, size);
+    if (admitted && !valid)
+    {
+        session->closed = 1;
+        session->ready = 0;
+    }
+    fvm_port_sync_unlock(session->lock);
+    return valid;
 }

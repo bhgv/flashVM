@@ -121,5 +121,9 @@ waiting. Actual FlashVM loading remains in the existing managed-player tests;
 the binary source used here is not executable SWF content.
 
 This supplies the native provider-side handler for an already granted channel.
-Automatic channel negotiation/advertisement, correlated parallel requests and
-the proposed `file/state` VFS control nodes remain separate integration work.
+Negotiation of new general-purpose Unibus channels, correlated shared-stream
+requests and the proposed `file/state` VFS control nodes remain separate work.
+
+For repeated/parallel resource acquisition, the [announced per-open adapter](ANNOUNCED.md)
+now consumes existing offers automatically and opens independent ordinary service
+fids on that exact connection. The one-shot typed server retains its single-request scope.

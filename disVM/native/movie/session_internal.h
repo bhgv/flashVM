@@ -22,4 +22,20 @@ StyxClient *movie_session_client(StyxMovieSession *session);
 /* EN/RU: Feed borrowed fragments under exclusive monitor claim;1/0, same protocol/lock as manual feed.
  * Принять borrowed fragments под exclusive claim;1/0, общий protocol/lock с manual feed. */
 int movie_session_feed(StyxMovieSession *session, const void *bytes, size_t size);
+
+
+/* EN/RU: Accept one already typed/checksummed MOVIE_OFFER_TYPE/VERSION body under exclusive claim.
+ * 1 accepted/0 refused; malformed admitted input retires session, no tag rebinding or transport read.
+ * Принять checked body объявления под exclusive claim, 1/0; malformed завершает session.
+ */
+int movie_session_offer(StyxMovieSession *session, const void *bytes, size_t size);
+
+
+/* EN/RU: Existing native fetch with expected generation (0 captures current); no dial/fallback.
+ * Reject mismatch before walk and recheck generation/link after bytes; all staging stays caller-owned.
+ * Native fetch с expected generation, 0 выбирает current; проверить до walk и после bytes.
+ */
+FVM_Result movie_session_fetch(StyxMovieSession *session, unsigned long long expected,
+    unsigned purpose, const char *reference, const char *base, FVM_DesktopWrite write, void *state,
+    char *resolved, size_t capacity);
 #endif

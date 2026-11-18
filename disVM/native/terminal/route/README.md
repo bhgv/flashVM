@@ -95,6 +95,7 @@ guest. Для независимого потока больших данных 
 | `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
 | `styxbidirroutestate` | Dispatcher’s terminal reason, or the transport's current terminal reason while dispatch is backpressured; no queue consumption. |
 | `styxbidirroutelimit` | Immutable configured record limit, or 0 for NULL. |
+| `styxbidirrouteclient` | Borrow exact immutable underlying client association while the route is pinned. No permission/ownership transfer. |
 | `styxbidirroutestop` | Cancel the owned workers without joining; already accepted mailbox items remain readable. |
 | `styxbidirroutefree` | After external callers retire, stop/join owned workers and free storage; shared client remains owned by the host. |
 
@@ -160,3 +161,7 @@ It leaves UI/general consumption with the host and uses cancelable native waits.
 The [autonomous resource server](../resource/SERVER.md) now consumes one request
 on its own native worker, retains the prepared live namespace and streams the
 actual VFS service's replies with bounded TX backpressure.
+
+The [announced resource adapter](../resource/ANNOUNCED.md) also consumes the
+existing offer schema automatically and opens independent ordinary resource fids
+on that exact client. It does not install a competing raw control reader.

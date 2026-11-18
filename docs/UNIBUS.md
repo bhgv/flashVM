@@ -128,3 +128,10 @@ budget, native cancellation and private staging of the returned origin. The
 the provider side through the actual VFS service, retaining its live prepared
 namespace and respecting bounded TX backpressure. Automatic logical-channel
 negotiation, correlation and `file/state` control nodes remain separate work.
+
+The [announced resource adapter](../disVM/native/terminal/resource/ANNOUNCED.md)
+now receives existing ready/closed generation offers on a native typed consumer.
+Repeated and parallel resource fetches open independent ordinary service fids on
+the exact same connection, preserving VFS decisions and S-record framing. This
+uses the existing offer and per-open protocols; general bulk/video/audio channel
+negotiation and the proposed control nodes remain separate integration work.

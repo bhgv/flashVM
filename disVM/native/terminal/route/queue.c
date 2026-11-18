@@ -161,3 +161,12 @@ unsigned styxbidirroutelimit(StyxBidirRoute *route)
 {
     return route ? route->limit : 0;
 }
+
+
+/* EN/RU: See route.h; trusted adapters may verify connection identity without opening another session.
+ * См. route.h; trusted adapters проверяют identity соединения без открытия другой сессии.
+ */
+StyxClient *styxbidirrouteclient(StyxBidirRoute *route)
+{
+    return route ? styxbidircontrolclient(route->control) : NULL;
+}

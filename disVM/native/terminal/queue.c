@@ -119,6 +119,15 @@ int styxbidircontrolstate(StyxBidirControl *control)
 }
 
 
+/* EN/RU: See control.h; connection pin and association are immutable after native worker publication.
+ * См. control.h; connection pin/association неизменны после публикации native workers.
+ */
+StyxClient *styxbidircontrolclient(StyxBidirControl *control)
+{
+    return control ? control->client : NULL;
+}
+
+
 /* EN/RU: See control.h; native receive wait never removes a queued record. / Native RX wait без consume. */
 int styxbidircontrolwait(StyxBidirControl *control, unsigned timeout)
 {

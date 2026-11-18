@@ -74,6 +74,13 @@ int styxbidircontrolflush(StyxBidirControl *control, unsigned timeout);
 int styxbidircontrolstate(StyxBidirControl *control);
 
 
+/* EN/RU: Borrow immutable exact client association while control stays pinned; NULL for invalid.
+ * No ownership/permission transfer, I/O or reverse client discovery. / Заимствовать exact client,
+ * без передачи прав/владения, I/O или поиска встречного соединения.
+ */
+StyxClient *styxbidircontrolclient(StyxBidirControl *control);
+
+
 /* EN/RU: Request native cancellation, no joins/client shutdown; NULL harmless. Discards unsent TX.
  * Запросить native cancel без joins/client shutdown; unsent TX отбрасывается. */
 void styxbidircontrolstop(StyxBidirControl *control);
