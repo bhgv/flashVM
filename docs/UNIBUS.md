@@ -201,3 +201,17 @@ ACK-gated TX proposals and atomic RX commit/reply admission. Only affected tags
 wait for confirmation; unrelated clients and nested namespaces remain live. The
 wire adapter/receiver replay policy and per-tag ordering across striped carriers
 still require integration; local operation guards are not a new wire schema.
+
+## Per-tag packet order / Порядок пакетов по тегам
+
+The explicit [ordered-packet profile](../disVM/native/terminal/order/README.md)
+adds a compact unsigned64 sequence before one complete S-record: one CRC-5/length
+byte plus one to eight number bytes. No generation is added to each data packet.
+Native queues restore order separately per namespace/tag/direction; a gap in one
+tag does not block another. Only the selected counter renews through an explicit
+service request/ACK. Existing plain-S channels keep their framing; automatic
+profile negotiation and lane growth are not enabled by this codec/API change.
+
+Явный профиль добавляет перед S-записью компактный номер и CRC-5, восстанавливает
+порядок независимо по тегам и сбрасывает лишь выбранный счётчик после подтверждения.
+Существующие каналы обычных S-записей автоматически не меняют формат.

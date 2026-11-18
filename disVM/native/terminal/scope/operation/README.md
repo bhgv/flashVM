@@ -96,16 +96,19 @@ boundary. There is no need to wait for unrelated clients or drain every channel.
 If a tag is striped over several carriers, restore order **for that tag and its
 scope/direction** before applying its queued assignment request.
 
-The selected design is a **64-bit record sequence** plus a separate **64-bit
-assignment generation**, scoped to tag namespace and direction. A 32-bit sequence
-is not the default or an implicit truncation. Modular serial comparison requires
-the outstanding window to remain below 2^63. A separate generation/session
-boundary distinguishes old incarnations after reassignment or reconnect.
-At ten million records per second the sequence wraps after approximately
-58,000 years. The existing canonical S-integer codec can represent this magnitude
-without serializing native machine layout; numeric tag IDs remain separate.
-These are selected design widths, not new wire fields implemented by this change.
-No per-tag reorder buffer, striping engine or automatic carrier growth is claimed here.
+The selected design uses a **64-bit record sequence**, scoped to namespace,
+tag and direction. There is **no separate generation in each data packet**.
+The [explicit ordered-packet profile](../../order/README.md) implements the
+compact CRC-5 prefix and native per-tag reordering. Its prefix is outside the
+S-record: one checksum/length byte and one to eight unsigned number bytes.
+
+Only the counter approaching wrap is renewed through an explicit service
+request/ACK, after its old deliveries retire. Other counters continue. At a
+billion records per second uint64 covers about **584.5 years**. Local assignment
+generations and native operation correlation remain local safety guards; they
+are not extra per-packet fields. Reconnect must establish a fresh agreed session,
+rather than reuse ambiguous old lane traffic. Automatic striping and automatic
+carrier growth are not implemented by this profile.
 
 ## Verification / Проверка
 

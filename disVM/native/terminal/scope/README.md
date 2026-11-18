@@ -99,9 +99,11 @@ No numeric negotiation command schema is invented here.
 
 For a single ordered connection, old records precede the assignment request and
 new affected-tag records wait for its ACK. Multiple striped carriers need order
-restoration for that tag, not a global drain of unrelated channels. The proposed
-64-bit record sequence and separate 64-bit assignment generation are selected;
-these fields are not implemented on the wire yet.
+restoration for that tag, not a global drain of unrelated channels. The explicit [ordered-packet profile](../order/README.md) supplies a compact
+64-bit per-tag sequence and native reorder queues. No generation is carried in
+each data packet. Only the counter approaching wrap is renewed by an explicit
+service request/ACK after retiring its old deliveries. Existing plain-S streams
+retain their original framing; automatic striping is not implemented.
 
 ## Outgoing authority / Полномочия отправки
 
