@@ -149,3 +149,10 @@ The real local UI relay also closes its owned channels on route retirement,
 including idle/full-channel cases. Accepted messages remain individually drainable;
 private callback contexts detach object access before disposal. Shared Styx clients
 and caller cancellation sources remain independently owned.
+
+[Active resource I/O](../disVM/native/terminal/resource/ACTIVE-IO.md) now receives
+route retirement through the server's own native cancellation scope. It reaches
+cancellation-aware provider operations, preserves other scopes of the same
+provider, and keeps route FAILED distinct from explicit server STOPPED. Native
+cleanup and late callbacks retain their ordinary independent ownership; no guest
+polling, suspension or new wire control schema is involved.

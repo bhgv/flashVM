@@ -11,6 +11,7 @@
  */
 static void dispose(StyxBidirMovieServer *server)
 {
+    dvm_cancel_unsubscribe(server->retired);
     dvm_provider_release(server->service);
     dvm_cancel_release(server->cancel);
     pthread_cond_destroy(&server->changed);
@@ -61,7 +62,7 @@ StyxBidirMovieServer *styxbidirmovieserver(StyxBidirRoute *route, unsigned index
     server->timeout = timeout;
     server->cancel = dvm_cancel_create();
     server->service = styxmovieservice(group);
-    if (!server->cancel || !server->service || pthread_create(&server->worker, NULL, movie_server_run, server))
+    if (!server->cancel || !server->service || !movie_server_watch(server) || pthread_create(&server->worker, NULL, movie_server_run, server))
     {
         dispose(server);
         return NULL;

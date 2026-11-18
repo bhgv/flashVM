@@ -147,6 +147,10 @@ done:
     {
         dvm_cancel_leave(&scope);
     }
-    movie_server_publish(server, dvm_cancel_requested(server->cancel) ? STYX_MOVIE_SERVER_STOPPED : outcome);
+    /* EN/RU: Explicit stop already latched STOPPED before requesting cancellation. Route retirement
+     * cancels the same I/O scope but is a failure, never a fabricated host stop or successful END.
+     * Явный stop уже фиксирует STOPPED до cancel. Route retirement — FAILED, не host stop/успех.
+     */
+    movie_server_publish(server, dvm_cancel_requested(server->cancel) ? STYX_MOVIE_SERVER_FAILED : outcome);
     return NULL;
 }

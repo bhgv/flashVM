@@ -92,3 +92,8 @@ A local negative control linked the old route lifecycle into the same full-queue
 fixture and failed at the expected prompt-resource-retirement check. Normal and
 sanitizer results belong to the tested revision. This does not claim new physical
 hardware drivers, heartbeat policy or a complete remote application launcher.
+
+The [resource server now forwards route retirement into active provider I/O](../resource/ACTIVE-IO.md),
+using its independently pinned native cancellation source. This extends the
+queue wakeup path to declared cancellation-aware native metadata/open/read/close,
+without cancelling other operations of the same provider.

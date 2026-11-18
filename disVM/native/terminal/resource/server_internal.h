@@ -14,16 +14,17 @@
  */
 struct StyxBidirMovieServer
 {
-    pthread_mutex_t lock; /* Protects current status and terminal publication. */
+    pthread_mutex_t lock;   /* Protects current status and terminal publication. */
     pthread_cond_t changed; /* Monotonic status readiness, no guest participation. */
-    pthread_t worker; /* Sole resource RX consumer and VFS request owner. */
-    StyxBidirRoute *route; /* Borrowed through final worker join and free. */
-    DVM_Provider *service; /* Owned real VFS service retaining live prepared namespace. */
-    DVM_Cancel *cancel; /* Owned independent native cancellation source. */
-    unsigned index; /* Immutable exclusively assigned RX queue. */
-    unsigned long tag; /* Immutable independently granted TX binding. */
-    unsigned timeout; /* Entire request/response native budget in milliseconds. */
-    int state; /* WAITING/WORKING or first terminal outcome, under lock. */
+    pthread_t worker;       /* Sole resource RX consumer and VFS request owner. */
+    StyxBidirRoute *route;  /* Borrowed through final worker join and free. */
+    DVM_Provider *service;  /* Owned real VFS service retaining live prepared namespace. */
+    DVM_Cancel *cancel;     /* Owned independent native cancellation source. */
+    DVM_CancelTap *retired; /* Owned route retirement tap; callback independently pins cancel only. */
+    unsigned index;         /* Immutable exclusively assigned RX queue. */
+    unsigned long tag;      /* Immutable independently granted TX binding. */
+    unsigned timeout;       /* Entire request/response native budget in milliseconds. */
+    int state;              /* WAITING/WORKING or first terminal outcome, under lock. */
 };
 
 
@@ -37,4 +38,9 @@ void movie_server_publish(StyxBidirMovieServer *server, int state);
  * Native worker entry, server заимствован до join, без guest calls/скрытого executor.
  */
 void *movie_server_run(void *server);
+
+/* EN/RU: Subscribe to sticky route retirement, 1/0; private constructor only, source pin adopted on success.
+ * Подписаться на sticky route retirement, 1/0; private constructor, source pin принят при успехе.
+ */
+int movie_server_watch(StyxBidirMovieServer *server);
 #endif

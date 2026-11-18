@@ -96,8 +96,12 @@ partial writes retain the existing precise-prefix/no-replay behavior.
 The worker propagates an independent native cancellation scope to VFS callbacks.
 Callbacks must honour/bound their own I/O; the server checks cancellation and
 budget between operations and never forcibly preempts native provider code.
-Stop wakes native RX/TX queue waits. It does not pause a guest, join foreign
-workers, close the shared client or discard another producer's queued messages.
+Stop wakes native RX/TX queue waits. Route retirement now also requests that
+scope while the worker is inside a cancellation-aware provider's metadata/open/
+read/close. [Active-I/O cancellation](ACTIVE-IO.md) describes the distinct FAILED
+versus explicit STOPPED outcomes and source-only callback lifetime. It does not
+pause a guest, join foreign workers, close the shared client or discard another
+producer's queued messages.
 
 RU: Весь обмен имеет один deadline. При полном TX worker ждёт свободное место,
 а не повторяет уже принятую запись и не накапливает файл в памяти. Отмена будит

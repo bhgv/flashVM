@@ -24,6 +24,9 @@ typedef struct StyxBidirMovieServer StyxBidirMovieServer; /* Owned native worker
  * queue matching MOVIE_TYPE/VERSION; tx_tag is independently granted. Limit >= MOVIE_FRAME+32,
  * timeout 1..120000ms for request wait and response combined. No transport setup or new binding.
  * The live namespace is retained, not copied/frozen. Existing service makes final VFS decisions.
+ * Route retirement automatically requests this server's native provider scope; FAILED differs from
+ * explicit host STOPPED. Providers still honour/bound their own I/O. Subscription failure rolls back.
+ * Callback state retains only its cancellation source, never a server/route pointer.
  * One request only; host services other queues and retires this logical channel before reuse.
  * RU: Удержать prepared group и запустить один native worker, свой server/NULL. Route заимствован
  * до free, namespace остаётся живым. Один запрос, права определяет существующий VFS service.
