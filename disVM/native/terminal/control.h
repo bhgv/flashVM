@@ -41,7 +41,8 @@ struct DVM_CancelTap *styxbidircontrolwatch(StyxBidirControl *control, void (*re
  * ceiling plus directory EXEC/search. Clone the captured root; canonical RX/TX stay relative
  * to it, file roots allow dot only. Remote Topen decides current permission. No ambient fallback.
  * Explicit bidir/watchable client, limit1..65536 body bytes, slots1..32 per direction. Own root
- * and independent RX/TX fids; two native workers, no guest/SDL callbacks or new wire schemas.
+ * and independent RX/TX fids; sticky client-terminal watch, two native workers, no guest/SDL
+ * callbacks or new wire schemas. Refuse watch failure/observed terminal during setup.
  * Borrow client/descriptor до return; свой control/NULL. Только native Styx grant exact client,
  * READ/WRITE ceiling и directory search; captured root, file root только dot. Текущие права
  * решает Topen. Scope отменяет setup; rollback завершает своих workers и поглощает fids. */

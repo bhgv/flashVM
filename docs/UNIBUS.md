@@ -168,3 +168,8 @@ now reaches active ordinary resource RPCs and native staging sinks. Announced
 fetches use independent child scopes: a cancelled caller does not retire the
 receiver or another fetch. Readiness is interruptible without consuming offers,
 and raw-session origin publication now follows the final generation fence.
+
+Native transport [connection retirement](../disVM/native/terminal/LINK-RETIREMENT.md)
+is automatic even with full RX/route queues and idle TX. Already admitted records
+remain individually drainable. Native resource workers observe retirement without
+guest polling or additional application-level heartbeat messages.

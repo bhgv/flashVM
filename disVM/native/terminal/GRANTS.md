@@ -31,7 +31,7 @@ No new permission query or wire extension is introduced.
 | Arbitrary generic provider | Refused by this native Styx adapter | No route created |
 
 Generic providers retain their existing generic
-[`dvm_terminal_channel_open`](../launch/terminal.h) path. This native adapter
+[`dvm_terminal_channel_open`](../../runtime/vfs/launch/terminal.h) path. This native adapter
 does not reinterpret their opaque state or replace them with a supplied client's
 root. Supporting another backend requires an explicit adapter/export.
 

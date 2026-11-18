@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Generic native terminal record transport reuses original FlashVM codecs, no graphics.
 # RU: Generic native terminal record transport использует FlashVM codecs, без графики.
-add_library(styx_terminal STATIC life.c queue.c send_wait.c io.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
+add_library(styx_terminal STATIC life.c link.c queue.c send_wait.c io.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
 target_include_directories(styx_terminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal PUBLIC styx_launch styx_movie_protocol)
 target_compile_options(styx_terminal PRIVATE -Wall -Wextra)
@@ -33,6 +33,7 @@ include(tests/retirement/cases.cmake)
 include(tests/active_io/cases.cmake)
 include(tests/fetch_cancel/cases.cmake)
 include(tests/grant/cases.cmake)
+include(tests/link/cases.cmake)
 
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)

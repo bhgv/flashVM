@@ -56,6 +56,10 @@ output; no unknown tail is replayed. Stop interrupts active read/write RPCs thro
 the existing Tflush cancellation path and leaves the host's client owned/alive
 unless the underlying connection itself failed.
 
+A direct [client-terminal subscription](LINK-RETIREMENT.md) also retires the
+transport when RX is blocked on a full queue and TX is idle. It uses no extra
+reader, guest polling or wire message. Earlier local outcomes remain first.
+
 Native local-retirement subscriptions are available through `styxbidircontrolwatch`
 and `styxbidirroutewatch`. They return source-pinning `DVM_CancelTap` handles,
 removed with `dvm_cancel_unsubscribe`. Sticky native callbacks run outside queue

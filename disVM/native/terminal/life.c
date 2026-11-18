@@ -29,6 +29,7 @@ void styxbidircontrolfree(StyxBidirControl *control)
         {
             pthread_join(control->workers[i], NULL);
         }
+        controllinkdetach(control);
         styxmountclunk(control->client, control->rx);
         styxmountclunk(control->client, control->tx);
         styxmountclunk(control->client, control->root);
@@ -106,14 +107,19 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
         styxbidircontrolfree(control);
         return NULL;
     }
+    if (!controllinkattach(control) || styxbidircontrolstate(control))
+    {
+        styxbidircontrolfree(control);
+        return NULL;
+    }
     if (!pthread_create(&control->workers[0], NULL, controlreceive, control))
     {
         control->started = 1;
-        if (!dvm_cancel_requested(dvm_cancel_current()) &&
+        if (!styxbidircontrolstate(control) && !dvm_cancel_requested(dvm_cancel_current()) &&
             !pthread_create(&control->workers[1], NULL, controltransmit, control))
         {
             control->started = 2;
-            if (!dvm_cancel_requested(dvm_cancel_current()))
+            if (!styxbidircontrolstate(control) && !dvm_cancel_requested(dvm_cancel_current()))
             {
                 return control;
             }

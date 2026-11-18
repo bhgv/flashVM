@@ -148,7 +148,11 @@ static int command(const FVM_SRecord *record)
     }
     unsigned queue = STYX_RETIREMENT_CASE % 3; /* General/UI/typed fixture backpressure. */
     static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
-    for (unsigned i = 0; i < 2; i++)
+    unsigned copies = 2; /* Two records fill the route, additional link-test records also fill raw RX. */
+#ifdef STYX_CONTROL_LINK_TEST
+    copies = 6;
+#endif
+    for (unsigned i = 0; i < copies; i++)
     {
         append(queue == 0 ? 9 : queue == 1 ? 17 : 23, queue == 1 ? ui : "held", queue == 1 ? sizeof(ui) - 1 : 4);
     }

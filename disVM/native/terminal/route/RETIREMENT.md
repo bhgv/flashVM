@@ -97,3 +97,11 @@ The [resource server now forwards route retirement into active provider I/O](../
 using its independently pinned native cancellation source. This extends the
 queue wakeup path to declared cancellation-aware native metadata/open/read/close,
 without cancelling other operations of the same provider.
+
+## Full underlying RX / Полный underlying RX
+
+The [control's direct client-terminal watch](../LINK-RETIREMENT.md) also wakes
+this route when its underlying RX worker is blocked on raw queue capacity and
+TX is idle. Connection failure no longer depends on another record/RPC or a
+consumer draining that queue. Existing first-reason and one-record drain rules
+continue to apply.
