@@ -169,3 +169,8 @@ their selected recipient queues. Recipient accumulation does not block shared RX
 or tag-zero system-service admission. Transport staging slots are not application
 queue limits. [Queue snapshots and native service inbox](route/traffic.h) are
 available without introducing new wire formats.
+
+An explicit [nested S-record profile](scope/README.md) supplies isolated client
+namespaces, native-only ancestor services, atomic sibling tag reassignment and
+separate directional outgoing authority. It reuses this control transport without
+silently changing the existing flat route profile or guessing a negotiation schema.

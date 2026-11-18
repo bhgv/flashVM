@@ -17,6 +17,7 @@ add_library(styx_terminal_route STATIC route/life.c route/mailbox.c route/statis
 target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+add_subdirectory(scope)
 add_subdirectory(bridge)
 add_library(styx_terminal_resource STATIC resource/life.c resource/fetch.c resource/budget.c
     resource/server_life.c resource/server_state.c resource/server_run.c resource/server_retirement.c

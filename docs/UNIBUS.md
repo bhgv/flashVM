@@ -187,3 +187,10 @@ They wake an independent blocking native diagnostics consumer; oldest-record age
 and lifetime admission/delivery totals are available. Neither warnings nor clock
 failures pause clients or change routing. Remote tag-zero warning serialization
 and a `sysmessages` projection still require their agreed format and identity.
+
+The explicit [nested namespace broker](../disVM/native/terminal/scope/README.md)
+now separates native root/group services from client-local S-record IDs. Client
+inboxes cannot access parent tags; separate clients may reuse local IDs. Native
+sibling RX/TX assignments are atomic and generation-guarded, with captured
+recipient queues and frozen accepted TX envelopes. Distributed tag-zero activation
+negotiation and automatic runtime attachment are still integration work.
