@@ -150,3 +150,9 @@ resource-source changes and emits the existing declaration plus READY/CLOSED
 S-records. The [announced receiver](resource/ANNOUNCED.md) opens independent
 ordinary resource fids of the same client. Both preserve shared route ownership
 and use native cancellation without guest participation.
+
+Transport retirement now [wakes route mailboxes directly](route/RETIREMENT.md),
+without waiting for the sole dispatcher to regain queue capacity. The UI relay
+also observes retirement and closes its own local channels to wake idle/full
+native waits. Accepted records remain individually drainable; no guest pause,
+new event format or shared-client shutdown is introduced.

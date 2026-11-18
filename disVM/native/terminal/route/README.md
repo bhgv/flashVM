@@ -165,3 +165,13 @@ actual VFS service's replies with bounded TX backpressure.
 The [announced resource adapter](../resource/ANNOUNCED.md) also consumes the
 existing offer schema automatically and opens independent ordinary resource fids
 on that exact client. It does not install a competing raw control reader.
+
+## Retirement during pressure / Завершение при заполнении
+
+The route now [propagates transport retirement directly](RETIREMENT.md) through
+its native condition, even when the dispatcher waits for capacity in a full
+mailbox. Accepted heads remain drainable, one per call; an unaccepted pending
+record is not published after retirement. Empty queue/resource waits wake without
+waiting for their own deadlines or mutating caller cancellation sources.
+Construction requires the native subscription; rollback and disposal detach
+callback access before nonwaiting unsubscribe and storage destruction.

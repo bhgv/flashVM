@@ -16,6 +16,8 @@ struct StyxBidirUIBridge
 {
     StyxBidirRoute *route; /* Owned, including its sole UI mailbox consumer role. */
     DVM_UIBridge *local; /* Owned real FlashVM channel pair; closed before relay join. */
+    struct UIRetirement *retirement; /* Subscription-owned callback lifetime fence. */
+    struct DVM_CancelTap *retired; /* Owned sticky route retirement subscription. */
     unsigned side; /* Relay role, opposite the local endpoint's role. */
     unsigned long tx_tag; /* Immutable independently established outgoing UI binding. */
     pthread_mutex_t lock; /* Protects first reason and diagnostic pending copies. */
@@ -43,4 +45,15 @@ void *uibridgereceive(void *bridge);
  * Native-передача TX, bridge заимствован до join, доступа к VM нет.
  */
 void *uibridgetransmit(void *bridge);
+
+/* EN/RU: Attach after local channels/setup, 1/0; constructor only, callback may run before return.
+ * Подписаться после local channels/setup, 1/0; только constructor, callback возможен до return.
+ */
+int uibridgeretirementattach(StyxBidirUIBridge *bridge);
+
+
+/* EN/RU: Detach bridge access before unsubscribe/disposal; only rollback or joined host lifecycle.
+ * Отделить bridge до unsubscribe/disposal; только rollback либо joined host lifecycle.
+ */
+void uibridgeretirementdetach(StyxBidirUIBridge *bridge);
 #endif

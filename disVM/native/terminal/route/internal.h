@@ -32,6 +32,8 @@ typedef struct RouteTypedQueue
 struct StyxBidirRoute
 {
     StyxBidirControl *control; /* Owned transport; never exposed to a second reader. */
+    struct RouteRetirement *retirement; /* Subscription-owned lifetime fence, detached before control disposal. */
+    struct DVM_CancelTap *retired; /* Owned sticky transport retirement subscription. */
     pthread_mutex_t lock; /* Protects queue indices and first terminal reason. */
     pthread_cond_t changed; /* Monotonic readiness and returned mailbox capacity. */
     pthread_t worker; /* Sole RX dispatcher; no VM/SDL access. */
@@ -85,4 +87,15 @@ int routewaitcount(StyxBidirRoute *route, unsigned *count, unsigned timeout);
  * Только dispatcher: копия scratch в queue, 1 принято/0 stop; возможно ожидание свободного места.
  */
 int routepublishtyped(StyxBidirRoute *route, RouteTypedQueue *queue, unsigned long tag, size_t size);
+
+/* EN/RU: Attach one native retirement callback after storage/control setup; 1/0, constructor only.
+ * Подписаться после setup storage/control; 1/0, только constructor, без guest/I/O.
+ */
+int routeretirementattach(StyxBidirRoute *route);
+
+
+/* EN/RU: Detach callback route access before disposal; no worker/caller may still use route.
+ * Отделить route от callback до disposal, только construction rollback либо joined lifecycle.
+ */
+void routeretirementdetach(StyxBidirRoute *route);
 #endif

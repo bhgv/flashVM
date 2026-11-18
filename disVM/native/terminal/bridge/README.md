@@ -88,3 +88,25 @@ SWF application or a complete remote IDE.
 
 The host channel boundary is connected. Automatic runtime `$Unibus` attachment
 and remote rows/path/ink/bulk RPC endpoints remain separate integration work.
+
+## Automatic route retirement / Автоматическое завершение route
+
+The relay now observes the route's sticky native retirement source as well as
+ordinary send/receive outcomes. Route retirement latches REMOTE and closes the
+owned local pair, so an idle relay or a relay blocked on full local RX wakes
+without a new local frame or explicit host stop. An earlier LOCAL/STOPPED reason
+remains first. Buffered messages remain drainable; pending copies are preserved.
+
+The callback owns independent native lifetime state. Final free detaches bridge
+access before unsubscribing and before destroying channels/route. Already-admitted
+late callbacks can safely retire afterwards. A subscription allocation failure
+fails construction and consumes the private route according to the existing
+constructor contract. No callback recursively stops the route or enters either VM.
+
+RU: Завершение route автоматически закрывает собственные local channels моста
+и будит native relays, включая ожидание пустой/полной очереди. Уже принятые
+messages и pending-копии сохраняются по прежним правилам. Поздний callback после
+free безопасен: доступ к bridge отделяется до unsubscribe и удаления channels.
+
+See [retirement verification](../route/RETIREMENT.md) for deterministic pressure,
+constructor rollback and post-free callback fixtures with actual FlashVM channels.

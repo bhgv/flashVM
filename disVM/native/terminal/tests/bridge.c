@@ -16,6 +16,14 @@
  */
 extern unsigned terminalbridgefaultcalls(void);
 #endif
+#if STYX_UI_BRIDGE_CASE == 13
+
+
+/* EN/RU: Deliver already-admitted fixture callbacks after the bridge and owned channels are freed.
+ * Выдать admitted fixture callbacks после освобождения bridge и owned channels.
+ */
+extern void terminalbridgelate(void);
+#endif
 #if STYX_UI_BRIDGE_CASE == 8
 /* EN/RU: Exercise actual AS channel wrappers on their FlashVM owner, then retire that context.
  * Проверить настоящие AS-channel wrappers на своём FlashVM owner и завершить context.
@@ -74,8 +82,12 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     check(route != NULL, "real owned terminal route");
     unsigned side = STYX_UI_BRIDGE_CASE == 1 || STYX_UI_BRIDGE_CASE == 8 ?
         DVM_UI_UI : DVM_UI_DIS; /* Retained local role. */
+    if (STYX_UI_BRIDGE_CASE == 12)
+    {
+        styxbidirroutestop(route);
+    }
     StyxBidirUIBridge *bridge = styxbidiruibridge(route, side, 17); /* Consumes route on every result. */
-    if (STYX_UI_BRIDGE_CASE == 3)
+    if (STYX_UI_BRIDGE_CASE == 3 || STYX_UI_BRIDGE_CASE == 11)
     {
         check(!bridge && styxclientalive(client), "undersized route refused without harming shared client");
         return;
@@ -83,6 +95,15 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     check(bridge != NULL, "native host relay");
     DVM_UIBridge *local = styxbidiruibridgelocal(bridge); /* Borrowed real local queue pair. */
     route = styxbidiruibridgeroute(bridge);
+    if (STYX_UI_BRIDGE_CASE == 12)
+    {
+        DVM_UIMessage empty; /* No local UI item accepted after pre-construction retirement. */
+        check(styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_REMOTE &&
+            dvm_ui_receive(local, side, &empty, 1) == FVM_ERROR, "sticky retirement closes channels before relays start");
+        styxbidiruibridgefree(bridge);
+        check(styxclientalive(client), "sticky constructor retirement preserves ordinary client");
+        return;
+    }
     for (unsigned i = 0; i < 3; i++)
     {
         unsigned char bytes[256]; /* General records remain separate from the UI endpoint. */
@@ -93,17 +114,24 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
             "host consumes general events independently of the UI relay");
         check(tag == (i == 0 ? 0UL : i == 1 ? 5UL : 9UL), "general records preserve FIFO order");
     }
-    if (STYX_UI_BRIDGE_CASE == 2)
+    if (STYX_UI_BRIDGE_CASE == 2 || STYX_UI_BRIDGE_CASE == 9)
     {
         FVM_Channel *outgoing; /* Borrowed local producer handle. */
         FVM_Channel *incoming; /* Borrowed local receive queue, filled by the native RX relay. */
         check(dvm_ui_channels(local, side, &outgoing, &incoming) == FVM_OK, "borrow real queue handles");
         blocked_sender(incoming);
+        if (STYX_UI_BRIDGE_CASE == 9)
+        {
+            styxbidirroutestop(route);
+            check(styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_REMOTE,
+                "route retirement wakes a relay blocked on a full local queue");
+        }
         styxbidiruibridgejoin(bridge);
         DVM_UIMessage pending; /* Retained rejected RX copy survives the join boundary. */
         check(styxbidiruibridgepending(bridge, 0, &pending) && pending.id == 42,
             "blocked RX message survives stop/join for diagnosis");
-        check(styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_STOPPED, "explicit stop wins relay races");
+        check(styxbidiruibridgestate(bridge) == (STYX_UI_BRIDGE_CASE == 9 ? STYX_UI_BRIDGE_REMOTE : STYX_UI_BRIDGE_STOPPED),
+            "first remote/explicit reason survives relay joins");
         styxbidiruibridgefree(bridge);
         check(styxclientalive(client), "full local queue teardown preserves shared client");
         return;
@@ -129,6 +157,16 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     check(dvm_ui_receive(local, side, &message, 1) == FVM_OK && message.id == 42 &&
         message.first == -2147483647L - 1 && message.size == 4 &&
         !memcmp(message.text, "A\0\320\257", 4), "automatic remote-to-real-local UI delivery");
+    if (STYX_UI_BRIDGE_CASE == 10)
+    {
+        styxbidirroutestop(route);
+        check(dvm_ui_receive(local, side, &message, 1) == FVM_ERROR &&
+            styxbidiruibridgestate(bridge) == STYX_UI_BRIDGE_REMOTE,
+            "idle local channels close on route retirement, without sending a local frame");
+        styxbidiruibridgefree(bridge);
+        check(styxclientalive(client), "idle native relay retirement preserves ordinary client");
+        return;
+    }
     if (STYX_UI_BRIDGE_CASE == 6)
     {
         dvm_ui_close(local);
@@ -179,5 +217,8 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     styxbidiruibridgejoin(bridge);
     check(!styxbidiruibridgepending(bridge, 1, &message), "all locally accepted replies reached remote TX");
     styxbidiruibridgefree(bridge);
+#if STYX_UI_BRIDGE_CASE == 13
+    terminalbridgelate();
+#endif
     check(styxclientalive(client), "native relay teardown preserves unrelated bidir traffic");
 }

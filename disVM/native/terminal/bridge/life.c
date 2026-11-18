@@ -58,6 +58,7 @@ void styxbidiruibridgefree(StyxBidirUIBridge *bridge)
     if (bridge)
     {
         styxbidiruibridgejoin(bridge);
+        uibridgeretirementdetach(bridge);
         styxbidirroutefree(bridge->route);
         dvm_ui_destroy(bridge->local);
         pthread_mutex_destroy(&bridge->lock);
@@ -93,6 +94,11 @@ StyxBidirUIBridge *styxbidiruibridge(StyxBidirRoute *route, unsigned local_side,
     bridge->side = 1 - local_side;
     bridge->tx_tag = tx_tag;
     if (dvm_ui_create(0, &bridge->local) != FVM_OK)
+    {
+        styxbidiruibridgefree(bridge);
+        return NULL;
+    }
+    if (!uibridgeretirementattach(bridge))
     {
         styxbidiruibridgefree(bridge);
         return NULL;

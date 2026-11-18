@@ -7,7 +7,7 @@
 #include <styxserver.h>
 #include "flashvm/sstream.h"
 #include "flashvm/sbindings.h"
-#if defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 2
+#if defined(STYX_UI_BRIDGE_CASE) && (STYX_UI_BRIDGE_CASE == 2 || STYX_UI_BRIDGE_CASE == 9)
 static unsigned char offered[8192]; /* Repeated UI input to fill the real local channel. */
 #else
 static unsigned char offered[256]; /* Owner-built encoded input stream; owner may append a test receipt. */
@@ -110,7 +110,7 @@ static void initialize(void)
     }
     offered_size += encoded;
 #endif
-#if defined(STYX_UI_BRIDGE_CASE) && STYX_UI_BRIDGE_CASE == 2
+#if defined(STYX_UI_BRIDGE_CASE) && (STYX_UI_BRIDGE_CASE == 2 || STYX_UI_BRIDGE_CASE == 9)
     for (unsigned i = 0; i < 40; i++)
     {
         if (fvm_srecord_write(17, ui, sizeof(ui)-1, offered+offered_size,

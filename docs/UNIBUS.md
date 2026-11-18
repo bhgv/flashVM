@@ -142,3 +142,10 @@ READY/CLOSED S-records. It has independent source subscriptions, bounded native
 TX admission, source/route retirement wakeups and no guest polling. Local producer
 stop does not withdraw a shared source; orderly withdrawal closes the source and
 publishes CLOSED. Queued generation/DONE means queue admission, not peer receipt.
+
+[Native route retirement](../disVM/native/terminal/route/RETIREMENT.md) now wakes
+queue/resource waits even when the dispatcher is blocked by a full mailbox.
+The real local UI relay also closes its owned channels on route retirement,
+including idle/full-channel cases. Accepted messages remain individually drainable;
+private callback contexts detach object access before disposal. Shared Styx clients
+and caller cancellation sources remain independently owned.

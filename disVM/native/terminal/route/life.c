@@ -40,6 +40,7 @@ void styxbidirroutestop(StyxBidirRoute *route)
  */
 static void dispose(StyxBidirRoute *route)
 {
+    routeretirementdetach(route);
     styxbidircontrolfree(route->control);
     pthread_cond_destroy(&route->changed);
     pthread_mutex_destroy(&route->lock);
@@ -56,8 +57,8 @@ static void dispose(StyxBidirRoute *route)
 }
 
 
-/* EN/RU: See route.h; no user callback can initiate self-join.
- * См. route.h; user callbacks отсутствуют, self-join недопустим.
+/* EN/RU: See route.h; external users retire first; no free from dispatcher or retirement callbacks.
+ * См. route.h; сначала завершить users, не free из dispatcher/retirement callbacks.
  */
 void styxbidirroutefree(StyxBidirRoute *route)
 {
@@ -160,7 +161,7 @@ StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalCha
         return NULL;
     }
     route->control = styxbidircontrol(client, channels, limit, slots);
-    if (!route->control || pthread_create(&route->worker, NULL, routedispatch, route))
+    if (!route->control || !routeretirementattach(route) || pthread_create(&route->worker, NULL, routedispatch, route))
     {
         dispose(route);
         return NULL;
