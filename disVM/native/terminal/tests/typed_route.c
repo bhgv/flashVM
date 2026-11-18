@@ -38,7 +38,7 @@ static void general(StyxBidirRoute *route, unsigned long expected_tag, const voi
         tag == expected_tag, "one expected general record");
     if (expected_tag)
     {
-        check(size == length && (!size || !memcmp(bytes, expected, size)), "general payload unchanged");
+        check(size == length && (!size || (expected && !memcmp(bytes, expected, size))), "general payload unchanged");
     }
     else
     {
@@ -158,11 +158,14 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     if (STYX_TYPED_CASE == 3)
     {
         check(styxbidirroutetypedwait(route, 0, 5000), "full one-slot typed queue");
+        general(route, 9, NULL, 0);
         styxbidirroutestop(route);
         check(styxbidirroutetypedwait(route, 0, 0), "accepted typed head survives stop");
         typed(route, 0, 5, binary, sizeof(binary));
+        typed(route, 0, 6, NULL, 0);
+        typed(route, 0, 5, "tail", 4);
         check(styxbidirroutetypednext(route, 0, &tag, &output, 1, &size) == STYX_CONTROL_END,
-            "stop does not admit blocked second typed record");
+            "all accumulated records drain after stop");
         styxbidirroutefree(route);
         check(styxclientalive(client), "stop with full typed queue preserves original session");
         return;

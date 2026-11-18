@@ -21,8 +21,8 @@
 extern void retirementarm(StyxBidirRoute *, unsigned);
 
 
-/* EN/RU: Observe actual native dispatcher backpressure; outer process timeout bounds fixture failure.
- * Наблюдать настоящий native dispatcher backpressure; timeout процесса ограничивает отказ fixture.
+/* EN/RU: Observe actual committed recipient backlog; outer process timeout bounds fixture failure.
+ * Наблюдать настоящий committed recipient backlog; timeout процесса ограничивает отказ fixture.
  */
 extern void retirementblocked(void);
 
@@ -103,8 +103,8 @@ static void general(StyxBidirRoute *route, unsigned long expected)
 }
 
 
-/* EN/RU: Exercise real TX failure or public control stop while dispatcher waits on a full native queue.
- * Проверить real TX failure либо public control stop при ожидании dispatcher полной native queue.
+/* EN/RU: Exercise real TX failure or public control stop while unread recipient records remain queued.
+ * Проверить real TX failure либо public control stop при накоплении непрочитанных recipient records.
  */
 void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
 {
@@ -143,7 +143,7 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     StyxBidirMovieServer *server = styxbidirmovieserver(route, 2, 101, group, 5000); /* Own native empty request wait. */
     dvm_namespace_release(group);
     check(cancel && receiver && server, "independent native resource workers");
-    Waiting waits[] = { /* No waiter consumes the intentionally full queue. */
+    Waiting waits[] = { /* No waiter consumes the intentionally unread queue. */
         {route, NULL, full == 0 ? 1U : 0U, -1, -1},
         {route, NULL, 2, -1, -1}, {route, cancel, 3, -1, -1}
     };
@@ -165,7 +165,7 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     }
     check(styxbidirroutestate(route) == expected && styxbidirmovieserverwait(server, 1000) &&
         styxbidirmovieserverstate(server) == STYX_MOVIE_SERVER_FAILED &&
-        styxbidirmoviereceiverwait(receiver, 1, 1000) == -1, "native resources retire while dispatcher has no capacity");
+        styxbidirmoviereceiverwait(receiver, 1, 1000) == -1, "native resources retire with unread recipient backlog");
     for (unsigned i = 0; i < 3; i++)
     {
         check(!pthread_join(threads[i], NULL) && !waits[i].result && waits[i].elapsed < 1500,
@@ -182,7 +182,10 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
         size == 4 && !memcmp(bytes, "held", 4) && tag == (full == 0 ? 9UL : 23UL)), "accepted head survives retirement");
     head = full == 0 ? styxbidirroutenext(route, &tag, bytes, sizeof(bytes), &size) : full == 1 ?
         styxbidirrouteui(route, &ui) : styxbidirroutetypednext(route, 0, &tag, bytes, sizeof(bytes), &size);
-    check(head == STYX_CONTROL_END, "waiting dispatcher never admits a second record after retirement");
+    check(head == STYX_CONTROL_RECORD, "second accepted record survives retirement beyond former slot limit");
+    head = full == 0 ? styxbidirroutenext(route, &tag, bytes, sizeof(bytes), &size) : full == 1 ?
+        styxbidirrouteui(route, &ui) : styxbidirroutetypednext(route, 0, &tag, bytes, sizeof(bytes), &size);
+    check(head == STYX_CONTROL_END, "all accepted records drain individually before END");
     check(styxbidirmoviereceiverfree(receiver) && styxbidirmovieserverfree(server), "only resource-owned workers joined");
     retirementarm(NULL, 0);
     styxbidirroutefree(route);

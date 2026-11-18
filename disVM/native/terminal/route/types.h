@@ -25,18 +25,18 @@ typedef struct StyxRouteType
 /* EN: Create an owned dispatcher/NULL; borrow client/channels/types only through setup.
  * The same grant and binding-declaration RX profile as route.h are required. ui_type/version
  * optionally select the existing UI decoder; NULL/0 disables it for console/data-only sessions.
- * Copy count schemas (0..TYPES_MAX), indexed in caller order. Each gets slots entries with limit
- * payload bytes; total storage is bounded by (count+1)*slots*limit plus UI/transport storage.
- * Reject duplicate type/version pairs, including the UI pair, before I/O. Version mismatches,
- * unknown tags and all declarations remain general; queued records are never reclassified.
- * UI and typed queues have one consumer each, general still must be serviced. Full queues apply
- * lossless backpressure to this dispatcher, never a guest pause; they can delay later traffic.
- * RX associations confer no TX authority. External users must retire before routefree.
- * RU: Создать свой dispatcher/NULL, скопировать count схем до I/O. NULL/0 отключает UI.
- * Индексы — порядок types. Каждая очередь ограничена slots*limit; дубликаты запрещены.
- * Неизвестные записи/версии и объявления остаются общими, старые записи не переклассифицируются.
- * Полная очередь задерживает только native dispatcher, но может задержать последующий трафик.
- * RX не даёт TX-прав. Перед routefree завершить внешних пользователей.
+ * Copy count schemas (0..TYPES_MAX), indexed in caller order. Recipient FIFOs grow dynamically;
+ * slots bounds only the underlying transport staging, not unread recipient messages.
+ * Reject duplicate type/version pairs, including UI, before I/O. Unknown application tags/versions
+ * and binding-observation copies remain general; other tag-zero subservices have a native service inbox.
+ * Each mailbox has one consumer. Waiting blocks only that consumer; admission never waits for it.
+ * Genuine allocation/accounting exhaustion retires the route with NOMEM; no silent drops or replay.
+ * RX associations confer no TX authority. External users retire before routefree.
+ * RU: Создать свой dispatcher/NULL, скопировать count схем до I/O; NULL/0 отключает UI.
+ * Очереди адресатов растут динамически, slots ограничивает лишь staging транспорта.
+ * Ожидание своей очереди блокирует лишь consumer; dispatcher не ждёт её освобождения.
+ * Non-binding tag0 — native service inbox. Настоящий отказ памяти завершает route как NOMEM.
+ * RX не даёт TX-прав; перед routefree завершить внешних пользователей.
  */
 StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalChannels *channels,
     unsigned limit, unsigned slots, const char *ui_type, unsigned long ui_version,

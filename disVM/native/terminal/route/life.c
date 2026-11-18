@@ -46,11 +46,12 @@ static void dispose(StyxBidirRoute *route)
     pthread_mutex_destroy(&route->lock);
     for (unsigned i = 0; i < route->typed_count; i++)
     {
-        free(route->typed[i].raw);
+        routemailboxclear(&route->typed[i].mailbox);
     }
     free(route->typed);
-    free(route->ui);
-    free(route->raw);
+    routemailboxclear(&route->ui);
+    routemailboxclear(&route->general);
+    routemailboxclear(&route->service);
     free(route->scratch);
     free(route->encoded);
     free(route);
@@ -142,19 +143,11 @@ StyxBidirRoute *styxbidirbindingroutes(StyxClient *client, const DVM_TerminalCha
         {
             strcpy(route->typed[i].type, types[i].type);
             route->typed[i].version = types[i].version;
-            route->typed[i].raw = malloc((size_t)slots * limit);
-            if (!route->typed[i].raw)
-            {
-                dispose(route);
-                return NULL;
-            }
         }
     }
-    route->ui = version ? calloc(slots, sizeof(*route->ui)) : NULL;
-    route->raw = malloc((size_t)slots * limit);
     route->scratch = malloc(limit);
     route->encoded = malloc((size_t)limit + 32);
-    if ((version && !route->ui) || !route->raw || !route->scratch || !route->encoded ||
+    if (!route->scratch || !route->encoded ||
         fvm_sbindings_init(&route->incoming, route->bindings, FVM_SBINDINGS_MAX) != FVM_S_OK)
     {
         dispose(route);

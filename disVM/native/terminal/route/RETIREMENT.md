@@ -1,20 +1,9 @@
-# Retirement under backpressure / Завершение при заполненных очередях
+# Native retirement / Native-завершение
 
-A transport error must wake the native route even when its sole dispatcher is
-waiting for room in a full general, UI or typed mailbox. Previously the public
-state accessor could expose a TX failure while condition waits remained blocked
-until their own deadlines: the dispatcher had not yet propagated that failure.
-
-The route now subscribes to the transport's existing sticky native retirement
-source during construction, before publishing its dispatcher. The callback copies
-the transport outcome into the route's first terminal reason and signals the
-route condition. It does not wait for queue capacity, dispatch guest code, consume
-records, close the shared client or recursively stop the transport.
-
-RU: Ошибка TX/завершение транспорта будит route независимо от заполнения очередей.
-Раньше статус уже показывал ошибку, а native waits могли ждать собственного
-тайм-аута. Теперь отдельное sticky-уведомление сразу будит условия route; гостевые
-потоки и формат сообщений в этом не участвуют.
+Recipient queues now [grow dynamically](DYNAMIC.md). The dispatcher never waits
+for a consumer to release a mailbox slot. Native retirement subscriptions remain
+necessary: a local stop, connection loss or allocation failure wakes consumers
+waiting on empty queues independently of other recipient progress.
 
 ## Queue outcomes / Результаты очередей
 
@@ -22,12 +11,11 @@ RU: Ошибка TX/завершение транспорта будит route �
 | --- | --- |
 | Empty mailbox | Native general/UI/typed waits wake and report no record; the next call reports END. |
 | Accepted queued records | Each remains readable, one record per call, then END. |
-| Dispatcher waiting with an unaccepted record | It wakes and exits; returning capacity cannot admit this record after retirement. |
+| Record not yet admitted when retirement wins | It is not published after retirement. |
 | Typed wait with caller cancellation | Route retirement wakes the wait without requesting the caller's cancellation source. |
 | Resource receiver/server waiting for typed data | Existing native worker observes the route outcome and retires within its normal local lifecycle. |
 
-Admission here means entry into a route mailbox. A verified transport frame still
-waiting in the dispatcher or transport queue has not yet received that guarantee.
+Admission here means entry into a route mailbox. A frame not yet admitted to a recipient queue has not received that guarantee.
 No notification creates a batch application event, new S-tag or Styx dialect.
 Already accepted output retains the transport's existing precise-prefix and
 no-replay rules. Failure does not grant another client, namespace or provider.
@@ -98,10 +86,10 @@ using its independently pinned native cancellation source. This extends the
 queue wakeup path to declared cancellation-aware native metadata/open/read/close,
 without cancelling other operations of the same provider.
 
-## Full underlying RX / Полный underlying RX
+## Transport staging / Staging транспорта
 
 The [control's direct client-terminal watch](../LINK-RETIREMENT.md) also wakes
-this route when its underlying RX worker is blocked on raw queue capacity and
-TX is idle. Connection failure no longer depends on another record/RPC or a
-consumer draining that queue. Existing first-reason and one-record drain rules
-continue to apply.
+this route independently of native transport staging and idle TX. Raw transport
+rings are internal broker staging, not client recipient queues. Original fixtures
+now checkpoint at least two committed recipient messages beyond the former
+one-slot limit; both must drain individually before END after retirement.

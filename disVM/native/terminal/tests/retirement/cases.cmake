@@ -14,7 +14,7 @@ foreach(retirement_case RANGE 0 7)
         STYX_LAUNCH_REQUEST_TEST=1 STYX_TERMINAL_RECORD_TEST=1 STYX_SERVER_CASE=7
         STYX_RETIREMENT_CASE=${retirement_case})
     set_property(TARGET ${retirement_peer} APPEND_STRING PROPERTY LINK_FLAGS
-        " -Wl,--wrap=pthread_cond_wait -Wl,--wrap=styxclientwritecancel -Wl,--wrap=styxbidircontrolwatch")
+        " -Wl,--wrap=routeenqueue -Wl,--wrap=styxclientwritecancel -Wl,--wrap=styxbidircontrolwatch")
     target_link_libraries(${retirement_peer} PRIVATE styx_terminal_resource infernostyx_phy remote_phy_mux)
     foreach(retirement_transport normal cancel)
         add_test(NAME terminal-retirement-${retirement_case}-${retirement_transport} COMMAND "${PYTHON_EXECUTABLE}"

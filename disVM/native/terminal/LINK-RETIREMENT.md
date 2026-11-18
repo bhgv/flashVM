@@ -73,3 +73,11 @@ Negative controls replace the constructor body with the preceding implementation
 in the same new test build. Both explicit client shutdown and actual carrier
 break then fail the bounded full-RX retirement check. Normal and ASan/UBSan
 builds pass all 652 cases, including these 12 new scenarios.
+
+## Dynamic recipients / Динамические адресаты
+
+Recipient mailboxes now [grow without blocking the dispatcher](route/DYNAMIC.md).
+The raw native transport-ring tests remain separate; route scenarios now observe
+six committed recipient messages rather than an application-capacity wait.
+Connection retirement, first reasons and detached callback lifetime are unchanged.
+The original 652-case result above records the earlier fixed-mailbox stage.

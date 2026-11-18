@@ -90,14 +90,14 @@ int styxbidirroutetypedwaitcancel(StyxBidirRoute *route, unsigned index, unsigne
         return 0;
     }
     pthread_mutex_lock(&route->lock);
-    while (!route->typed[index].count && !route->reason && !wait->cancelled && timeout)
+    while (!route->typed[index].mailbox.count && !route->reason && !wait->cancelled && timeout)
     {
         if (pthread_cond_timedwait(&route->changed, &route->lock, &deadline))
         {
             break;
         }
     }
-    int ready = !wait->cancelled && route->typed[index].count; /* Protected final readiness. */
+    int ready = !wait->cancelled && route->typed[index].mailbox.count; /* Protected final readiness. */
     pthread_mutex_unlock(&route->lock);
     pthread_mutex_lock(&wait->lock);
     wait->route = NULL;

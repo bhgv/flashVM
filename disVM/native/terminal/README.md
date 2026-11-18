@@ -162,3 +162,10 @@ without waiting for the sole dispatcher to regain queue capacity. The UI relay
 also observes retirement and closes its own local channels to wake idle/full
 native waits. Accepted records remain individually drainable; no guest pause,
 new event format or shared-client shutdown is introduced.
+
+The native [route broker](route/DYNAMIC.md) drains transport staging into dynamic
+recipient FIFOs. The broker blocks for incoming S-records; clients block only for
+their selected recipient queues. Recipient accumulation does not block shared RX
+or tag-zero system-service admission. Transport staging slots are not application
+queue limits. [Queue snapshots and native service inbox](route/traffic.h) are
+available without introducing new wire formats.

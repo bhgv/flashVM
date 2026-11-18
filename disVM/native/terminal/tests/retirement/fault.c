@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Native-only deterministic dispatcher-capacity checkpoint and one subscription-allocation refusal.
- * RU: Native-only checkpoint ожидания capacity диспетчера и один отказ создания subscription.
+ * EN: Native-only deterministic recipient-backlog checkpoint and one subscription-allocation refusal.
+ * RU: Native-only checkpoint накопления recipient backlog и один отказ создания subscription.
  */
 #include "../../route/internal.h"
 #include <stdio.h>
@@ -10,38 +10,37 @@
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; /* Protects test-only checkpoint state. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Native checkpoint admission, never sleeps. */
 static StyxBidirRoute *target; /* Main pins allocation until dispatcher join. */
-static unsigned selected; /* Queue whose actual full-capacity wait is observed. */
-static int entered; /* Dispatcher reached its real capacity condition wait. */
+static unsigned selected; /* Queue whose committed backlog is observed. */
+static int entered; /* Dispatcher committed both original records. */
 static int refused; /* One constructor callback subscription refusal. */
 
 
-/* EN/RU: Original native condition wait, buffers/locks remain caller-owned throughout.
- * Исходное native ожидание condition, locks принадлежат caller.
+/* EN/RU: Original copied mailbox admission; wrapper observes committed records without changing scheduling.
+ * Исходный admission копий; wrapper наблюдает committed records, не меняя scheduling.
  */
-extern int __real_pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *);
+extern int __real_routeenqueue(StyxBidirRoute *, RouteMailbox *, unsigned long, const void *, size_t);
 
 
-/* EN/RU: Observe the exact bounded dispatcher wait without altering its condition or lock contract.
- * Наблюдать точное bounded dispatcher wait, не меняя condition либо lock contract.
+/* EN/RU: Signal after selected recipient accumulated both records beyond the former one-slot limit.
+ * Подать signal после накопления обеих records сверх прежнего one-slot limit.
  */
-int __wrap_pthread_cond_wait(pthread_cond_t *condition, pthread_mutex_t *mutex)
+int __wrap_routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag, const void *bytes, size_t size)
 {
-    if (condition == &changed && mutex == &lock)
-    {
-        return __real_pthread_cond_wait(condition, mutex);
-    }
+    int result = __real_routeenqueue(route, mailbox, tag, bytes, size);
     pthread_mutex_lock(&lock);
-    if (target && condition == &target->changed && mutex == &target->lock)
+    if (target == route)
     {
-        unsigned count = selected == 0 ? target->count : selected == 1 ? target->ui_count : target->typed[0].count; /* Route lock is already held. */
-        if (!target->reason && count == target->slots)
+        pthread_mutex_lock(&route->lock);
+        size_t count = selected == 0 ? route->general.count : selected == 1 ? route->ui.count : route->typed[0].mailbox.count;
+        if (!route->reason && count >= 2)
         {
             entered = 1;
             pthread_cond_broadcast(&changed);
         }
+        pthread_mutex_unlock(&route->lock);
     }
     pthread_mutex_unlock(&lock);
-    return __real_pthread_cond_wait(condition, mutex);
+    return result;
 }
 
 
@@ -58,8 +57,8 @@ void retirementarm(StyxBidirRoute *route, unsigned queue)
 }
 
 
-/* EN/RU: Wait only for actual native capacity blockage; external process timeout bounds broken tests.
- * Ждать только настоящей native capacity blockage; timeout процесса ограничивает сломанный тест.
+/* EN/RU: Wait only for actual committed recipient backlog; external process timeout bounds broken tests.
+ * Ждать только настоящий committed recipient backlog; timeout процесса ограничивает сломанный тест.
  */
 void retirementblocked(void)
 {

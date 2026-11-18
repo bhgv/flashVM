@@ -10,7 +10,7 @@
 #ifndef STYX_RETIREMENT_CASE
 #define STYX_RETIREMENT_CASE 0 /* General queue, real uncertain TX failure. */
 #endif
-static unsigned char offered[4096]; /* Original server-owner offered S-stream. */
+static unsigned char offered[65536]; /* Original server-owner offered S-stream. */
 static size_t offered_size; /* Encoded offered bytes, including appended fixture updates. */
 static unsigned char input[256]; /* Server-owner command decoder storage. */
 static FVM_SStream decoder; /* Server-owner exact fragmented S-record decoder. */
@@ -148,6 +148,31 @@ static int command(const FVM_SRecord *record)
     }
     unsigned queue = STYX_RETIREMENT_CASE % 3; /* General/UI/typed fixture backpressure. */
     static const char ui[] = "fvd1:000000010000002a0000004d00000000800000007fffffffA\0\320\257";
+#ifdef STYX_DYNAMIC_TEST
+    for (unsigned i = 0; i < 512; i++)
+    {
+        unsigned char value[] = {0, 0, (unsigned char)(i >> 8), (unsigned char)i}; /* Independent FIFO oracle. */
+        append(queue == 0 ? 9 : queue == 1 ? 17 : 23, queue == 1 ? (const void *)ui : value,
+            queue == 1 ? sizeof(ui) - 1 : sizeof(value));
+    }
+    unsigned char service[] = {0xaa, 0, 128, 255}; /* Canonical version42 then opaque fixture service body. */
+    for (unsigned i = 0; i < 64; i++)
+    {
+        append(0, service, sizeof(service));
+    }
+    FVM_SBinding late = {31, 1, 9, "test.late"}; /* Late association must apply past application backlog. */
+    unsigned char declaration[64]; /* Original binding codec output. */
+    size_t size; /* Exact body extent. */
+    if (fvm_sbindings_payload_write(&late, 1, declaration, sizeof(declaration), &size) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    append(0, declaration, size);
+    append(31, "tail", 4);
+    append(9, "done", 4);
+    publish();
+    return 1;
+#else
     unsigned copies = 2; /* Two records fill the route, additional link-test records also fill raw RX. */
 #ifdef STYX_CONTROL_LINK_TEST
     copies = 6;
@@ -158,6 +183,7 @@ static int command(const FVM_SRecord *record)
     }
     publish();
     return 1;
+#endif
 }
 
 

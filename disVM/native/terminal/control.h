@@ -20,6 +20,7 @@ struct DVM_Cancel; /* Optional borrowed native cancellation for bounded TX admis
 #define STYX_CONTROL_EOF 2 /* Input ended. */
 #define STYX_CONTROL_READ_FAILED 3 /* Read/cancellation/transport failure. */
 #define STYX_CONTROL_WRITE_FAILED 4 /* Failed/uncertain output, never replayed. */
+#define STYX_CONTROL_NOMEM 6 /* Genuine allocation/accounting exhaustion, not a slow consumer. */
 #define STYX_CONTROL_PROTOCOL 5 /* Framing/checksum/bounds failure. */
 
 struct DVM_CancelTap; /* Owned native subscription, retired with dvm_cancel_unsubscribe. */

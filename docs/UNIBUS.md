@@ -84,10 +84,9 @@ without a receiver treating their contents as part of a file or SWF stream.
 No new numeric S-tags are assigned here.
 
 Styx/9P continues to supply files/channels and its normal protocol messages;
-this does not redefine Twalk/Topen/Tread/Twrite. The current binding-declaration
-RX profile is explicitly selected, not silently imposed on every future tag-zero
-control schema. Any broader control dispatcher must preserve other negotiated
-types and messages.
+this does not redefine Twalk/Topen/Tread/Twrite. Version1 tag-zero bindings are
+handled by the native broker; other versioned tag-zero services retain a separate
+native system inbox. Application recipients receive their nonzero-tag records.
 
 Operations on FlashVM run on its owner through copied messages. A foreign thread
 does not inspect/mutate its heap directly. Event/statistics delivery does not
@@ -173,3 +172,11 @@ Native transport [connection retirement](../disVM/native/terminal/LINK-RETIREMEN
 is automatic even with full RX/route queues and idle TX. Already admitted records
 remain individually drainable. Native resource workers observe retirement without
 guest polling or additional application-level heartbeat messages.
+
+[Dynamic recipient queues](../disVM/native/terminal/route/DYNAMIC.md) separate
+blocking channel reception from each client's blocking receive. Unread messages
+accumulate without a dispatcher-capacity wait. Version1 tag-zero bindings are
+applied by the broker; other tag-zero subservices have an independent native
+service inbox. Coherent current/peak counts and payload bytes are available for
+future diagnostics. Automatic `sysmessages` warnings and scaling policies are
+not implemented by these queue metrics.

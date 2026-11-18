@@ -3,10 +3,12 @@
  * RU: Наблюдать настоящие full native RX waits, проверить отказ subscription, sticky replay и late callbacks.
  */
 #include "../../internal.h"
+#include "../../route/internal.h"
 #include <stdio.h>
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; /* Protect test-only observation and wrapper arm. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Actual RX capacity checkpoint. */
 static unsigned entered;   /* Count of full RX waits actually admitted, including re-waits. */
+static int routed;        /* Atomic mode: route tests observe recipient accumulation instead of raw capacity. */
 static int armed;         /* Main-only next watch behavior, consumed synchronously during setup. */
 static void (*late_receive)(void *, int); /* Retained original callback for post-free delivery. */
 static void (*late_release)(void *);      /* Retained original state disposal after post-free callback. */
@@ -50,7 +52,7 @@ void *__wrap_controlreceive(void *state)
  */
 int __wrap_pthread_cond_wait(pthread_cond_t *condition, pthread_mutex_t *mutex)
 {
-    if (receiving && condition == &receiving->changed && mutex == &receiving->lock &&
+    if (!__atomic_load_n(&routed, __ATOMIC_ACQUIRE) && receiving && condition == &receiving->changed && mutex == &receiving->lock &&
         !receiving->reason && receiving->incoming.count == receiving->slots && !receiving->active[0])
     {
         pthread_mutex_lock(&lock);
@@ -69,6 +71,7 @@ void linkreset(void)
 {
     pthread_mutex_lock(&lock);
     entered = 0;
+    __atomic_store_n(&routed, 1, __ATOMIC_RELEASE);
     pthread_mutex_unlock(&lock);
 }
 
@@ -164,4 +167,33 @@ int linklate(void)
     late_release(late_state);
     late_state = NULL;
     return 1;
+}
+
+
+/* EN/RU: Original mailbox admission, route/mailbox borrowed through return.
+ * Исходный mailbox admission, route/mailbox borrowed до return.
+ */
+extern int __real_routeenqueue(StyxBidirRoute *, RouteMailbox *, unsigned long, const void *, size_t);
+
+
+/* EN/RU: Route scenarios reach six accepted records without consumer activity; never fabricate fullness.
+ * Route scenarios достигают шести accepted records без consumer activity, без fake fullness.
+ */
+int __wrap_routeenqueue(StyxBidirRoute *route, RouteMailbox *mailbox, unsigned long tag, const void *bytes, size_t size)
+{
+    int result = __real_routeenqueue(route, mailbox, tag, bytes, size);
+    if (__atomic_load_n(&routed, __ATOMIC_ACQUIRE))
+    {
+        pthread_mutex_lock(&route->lock);
+        int accumulated = mailbox->count >= 6;
+        pthread_mutex_unlock(&route->lock);
+        if (accumulated)
+        {
+            pthread_mutex_lock(&lock);
+            entered = 1;
+            pthread_cond_broadcast(&changed);
+            pthread_mutex_unlock(&lock);
+        }
+    }
+    return result;
 }

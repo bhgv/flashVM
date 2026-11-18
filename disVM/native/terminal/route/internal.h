@@ -1,10 +1,11 @@
 /* Copyright (c) 2026 bhgv
- * EN: Private dispatcher ownership and mutex-protected bounded routing queues.
- * RU: Владение диспетчером и ограниченные очереди маршрутизации под mutex.
+ * EN: Private dispatcher ownership and mutex-protected dynamic recipient queues.
+ * RU: Владение диспетчером и динамические очереди адресатов под mutex.
  */
 #ifndef STYX_BIDIR_ROUTE_INTERNAL_H
 #define STYX_BIDIR_ROUTE_INTERNAL_H
 #include "types.h"
+#include "mailbox.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,12 +18,8 @@
 typedef struct RouteTypedQueue
 {
     char type[FVM_SBINDINGS_TYPE_MAX + 1]; /* Owned immutable schema identity. */
-    unsigned long version; /* Immutable schema version. */
-    unsigned char *raw; /* Owned slots*limit copied payload storage. */
-    size_t sizes[32]; /* Payload byte counts under route lock. */
-    unsigned long tags[32]; /* Original numeric RX tags under route lock. */
-    unsigned first; /* Oldest accepted record under route lock. */
-    unsigned count; /* Occupancy under route lock. */
+    unsigned long version;                 /* Immutable schema version. */
+    RouteMailbox mailbox;                  /* Dynamically growing copied FIFO, protected by route lock. */
 } RouteTypedQueue;
 
 
@@ -31,31 +28,26 @@ typedef struct RouteTypedQueue
  */
 struct StyxBidirRoute
 {
-    StyxBidirControl *control; /* Owned transport; never exposed to a second reader. */
-    struct RouteRetirement *retirement; /* Subscription-owned lifetime fence, detached before control disposal. */
-    struct DVM_CancelTap *retired; /* Owned sticky transport retirement subscription. */
-    pthread_mutex_t lock; /* Protects queue indices and first terminal reason. */
-    pthread_cond_t changed; /* Monotonic readiness and returned mailbox capacity. */
-    pthread_t worker; /* Sole RX dispatcher; no VM/SDL access. */
-    unsigned slots; /* Capacity of each queue, 1..32. */
-    unsigned limit; /* Maximum borrowed record payload capacity. */
-    int reason; /* First terminal reason; earlier queued items remain readable. */
-    char type[FVM_SBINDINGS_TYPE_MAX + 1]; /* Immutable negotiated UI schema identity, empty when disabled. */
-    unsigned long version; /* Immutable negotiated UI schema version, zero when disabled. */
+    StyxBidirControl *control;                /* Owned transport; never exposed to a second reader. */
+    struct RouteRetirement *retirement;       /* Subscription-owned lifetime fence, detached before control disposal. */
+    struct DVM_CancelTap *retired;            /* Owned sticky transport retirement subscription. */
+    pthread_mutex_t lock;                     /* Protects queue indices and first terminal reason. */
+    pthread_cond_t changed;                   /* Monotonic recipient readiness and terminal wakeups. */
+    pthread_t worker;                         /* Sole RX dispatcher; no VM/SDL access. */
+    unsigned slots;                           /* Underlying transport staging slots, 1..32; never a recipient limit. */
+    unsigned limit;                           /* Maximum borrowed record payload capacity. */
+    int reason;                               /* First terminal reason; earlier queued items remain readable. */
+    char type[FVM_SBINDINGS_TYPE_MAX + 1];    /* Immutable negotiated UI schema identity, empty when disabled. */
+    unsigned long version;                    /* Immutable negotiated UI schema version, zero when disabled. */
     FVM_SBinding bindings[FVM_SBINDINGS_MAX]; /* Worker-only bounded RX associations. */
-    FVM_SBindings incoming; /* Worker-only registry; never used for TX authority. */
-    DVM_UIMessage *ui; /* Owned copied UI queue, NULL for data-only sessions. */
-    unsigned ui_first; /* Oldest UI entry, under lock. */
-    unsigned ui_count; /* Accepted unread UI entries, under lock. */
-    unsigned char *raw; /* Owned general queue bytes, slots*limit. */
-    size_t sizes[32]; /* General queue active byte counts, under lock. */
-    unsigned long tags[32]; /* General queue tags, under lock. */
-    unsigned first; /* Oldest general entry, under lock. */
-    unsigned count; /* Accepted unread general entries, under lock. */
-    unsigned char *scratch; /* Worker-only record storage. */
-    unsigned char *encoded; /* Worker-only framing of a tag-zero declaration. */
-    RouteTypedQueue *typed; /* Owned immutable array; each FIFO is protected by route lock. */
-    unsigned typed_count; /* Immutable number of typed queues. */
+    FVM_SBindings incoming;                   /* Worker-only registry; never used for TX authority. */
+    RouteMailbox ui;                          /* Copied decoded UI messages, protected by route lock. */
+    RouteMailbox general;                     /* General records and legacy binding-observation copies. */
+    RouteMailbox service;                     /* Non-binding tag-zero service records for native channel handlers. */
+    unsigned char *scratch;                   /* Worker-only record storage. */
+    unsigned char *encoded;                   /* Worker-only framing of a tag-zero declaration. */
+    RouteTypedQueue *typed;                   /* Owned immutable array; each FIFO is protected by route lock. */
+    unsigned typed_count;                     /* Immutable number of typed queues. */
 };
 
 
@@ -80,13 +72,14 @@ int routeschema(const char *type, unsigned long version);
 /* EN/RU: Native wait on borrowed lock-protected count; one monotonic budget, 1 ready/0 otherwise.
  * Native-ожидание заимствованного count под lock, один monotonic budget, 1 есть запись/0 иначе.
  */
-int routewaitcount(StyxBidirRoute *route, unsigned *count, unsigned timeout);
+int routewaitcount(StyxBidirRoute *route, size_t *count, unsigned timeout);
 
 
-/* EN/RU: Dispatcher-only copy of scratch to queue; 1 published/0 stopped; may wait for capacity.
- * Только dispatcher: копия scratch в queue, 1 принято/0 stop; возможно ожидание свободного места.
+/* EN/RU: Dispatcher-only copy of scratch to queue; 1 published/0 stopped or allocation failure; no capacity wait.
+ * Только dispatcher: копия scratch в queue, 1 принято/0 stop; без ожидания свободного места.
  */
 int routepublishtyped(StyxBidirRoute *route, RouteTypedQueue *queue, unsigned long tag, size_t size);
+
 
 /* EN/RU: Attach one native retirement callback after storage/control setup; 1/0, constructor only.
  * Подписаться после setup storage/control; 1/0, только constructor, без guest/I/O.

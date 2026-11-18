@@ -11,7 +11,7 @@ foreach(link_case RANGE 0 11)
         tests/retirement/wire.c tests/exchange_provider.c ../tests/file-root/context.c)
     target_compile_definitions(${link_peer} PRIVATE STYX_CONTROL_LINK_TEST=1 STYX_RETIREMENT_CASE=${link_queue})
     set_property(TARGET ${link_peer} APPEND_STRING PROPERTY LINK_FLAGS
-        " -Wl,--wrap=pthread_cond_wait -Wl,--wrap=controlreceive -Wl,--wrap=styxclientwatch")
+        " -Wl,--wrap=pthread_cond_wait -Wl,--wrap=routeenqueue -Wl,--wrap=controlreceive -Wl,--wrap=styxclientwatch")
     target_link_libraries(${link_peer} PRIVATE styx_terminal_resource infernostyx_phy remote_phy_mux)
     add_test(NAME ${link_peer} COMMAND ${link_peer} ${link_case})
     set_tests_properties(${link_peer} PROPERTIES TIMEOUT 15)

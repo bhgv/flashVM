@@ -43,14 +43,13 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     check(styxbidirroutewait(route, 0, 5000), "automatic declaration reception without a guest poll");
     DVM_UIMessage ui; /* Caller-owned message output and eventual reply. */
     memset(&ui, 0, sizeof(ui));
-    check(styxbidirrouteui(route, &ui) == STYX_CONTROL_EMPTY,
-        "full general mailbox backpressures dispatcher without dropping records");
     if (STYX_ROUTE_CASE == 1)
     {
+        check(styxbidirroutewait(route, 1, 5000), "UI arrives without draining general backlog");
         styxbidirroutestop(route);
         check(styxbidirroutestate(route) == STYX_CONTROL_STOPPED, "stop latches before join");
     }
-    unsigned general = STYX_ROUTE_CASE == 1 ? 1 : STYX_ROUTE_CASE == 4 ? 4 : STYX_ROUTE_CASE == 5 ? 5 : 3;
+    unsigned general = STYX_ROUTE_CASE == 4 ? 4 : STYX_ROUTE_CASE == 5 ? 5 : 3;
     for (unsigned i = 0; i < general; i++)
     {
         unsigned char bytes[256]; /* Bounded copied general payload. */

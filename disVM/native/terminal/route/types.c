@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Bounded opaque typed S-record queues, independent of UI and application payload formats.
- * RU: Ограниченные очереди типизированных S-записей без зависимости от UI и форматов приложений.
+ * EN: Dynamic opaque typed S-record queues, independent of UI and application payload formats.
+ * RU: Динамические очереди типизированных S-записей без зависимости от UI и форматов приложений.
  */
 #include "internal.h"
 
@@ -28,36 +28,17 @@ int routeschema(const char *type, unsigned long version)
 }
 
 
-/* EN/RU: See internal.h; stop wakes a full FIFO without discarding earlier accepted records.
- * См. internal.h; stop будит заполненную FIFO, сохраняя принятые ранее записи.
+/* EN/RU: See internal.h; admission copies a record without waiting for its consumer.
+ * См. internal.h; admission копирует запись без ожидания consumer.
  */
 int routepublishtyped(StyxBidirRoute *route, RouteTypedQueue *queue, unsigned long tag, size_t size)
 {
-    pthread_mutex_lock(&route->lock);
-    while (!route->reason && queue->count == route->slots)
-    {
-        pthread_cond_wait(&route->changed, &route->lock);
-    }
-    int accepted = !route->reason; /* No new publication after cancellation. */
-    if (accepted)
-    {
-        unsigned slot = (queue->first + queue->count) % route->slots; /* Protected tail. */
-        if (size)
-        {
-            memcpy(queue->raw + (size_t)slot * route->limit, route->scratch, size);
-        }
-        queue->sizes[slot] = size;
-        queue->tags[slot] = tag;
-        queue->count++;
-        pthread_cond_broadcast(&route->changed);
-    }
-    pthread_mutex_unlock(&route->lock);
-    return accepted;
+    return routeenqueue(route, &queue->mailbox, tag, route->scratch, size);
 }
 
 
-/* EN/RU: See types.h; copy one full record before returning queue capacity to the native producer.
- * См. types.h; скопировать одну полную запись до возврата места native-производителю.
+/* EN/RU: See types.h; copy and release exactly one accepted record, preserving SMALL.
+ * См. types.h; скопировать и освободить одну запись, сохраняя SMALL.
  */
 int styxbidirroutetypednext(StyxBidirRoute *route, unsigned index, unsigned long *tag,
     void *bytes, size_t capacity, size_t *size)
@@ -66,26 +47,8 @@ int styxbidirroutetypednext(StyxBidirRoute *route, unsigned index, unsigned long
     {
         return STYX_CONTROL_END;
     }
-    RouteTypedQueue *queue = &route->typed[index]; /* Stable immutable queue location. */
     pthread_mutex_lock(&route->lock);
-    int status = route->reason ? STYX_CONTROL_END : STYX_CONTROL_EMPTY; /* Protected readiness. */
-    if (queue->count)
-    {
-        *size = queue->sizes[queue->first];
-        status = STYX_CONTROL_SMALL;
-        if (*size <= capacity)
-        {
-            if (*size)
-            {
-                memcpy(bytes, queue->raw + (size_t)queue->first * route->limit, *size);
-            }
-            *tag = queue->tags[queue->first];
-            queue->first = (queue->first + 1) % route->slots;
-            queue->count--;
-            status = STYX_CONTROL_RECORD;
-            pthread_cond_broadcast(&route->changed);
-        }
-    }
+    int status = routemailboxnext(&route->typed[index].mailbox, route->reason, tag, bytes, capacity, size);
     pthread_mutex_unlock(&route->lock);
     return status;
 }
@@ -100,7 +63,7 @@ int styxbidirroutetypedwait(StyxBidirRoute *route, unsigned index, unsigned time
     {
         return 0;
     }
-    return routewaitcount(route, &route->typed[index].count, timeout);
+    return routewaitcount(route, &route->typed[index].mailbox.count, timeout);
 }
 
 

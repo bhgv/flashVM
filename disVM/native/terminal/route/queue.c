@@ -6,8 +6,8 @@
 #include "internal.h"
 
 
-/* EN/RU: See route.h; copy before returning capacity to the native producer.
- * См. route.h; копирование до возврата свободного места native-производителю.
+/* EN/RU: See route.h; copy and release one accepted message under the queue mutex.
+ * См. route.h; скопировать и освободить одно принятое сообщение под mutex очереди.
  */
 int styxbidirrouteui(StyxBidirRoute *route, DVM_UIMessage *output)
 {
@@ -17,13 +17,11 @@ int styxbidirrouteui(StyxBidirRoute *route, DVM_UIMessage *output)
     }
     pthread_mutex_lock(&route->lock);
     int status = route->reason ? STYX_CONTROL_END : STYX_CONTROL_EMPTY; /* Protected readiness. */
-    if (route->ui_count)
+    if (route->ui.count)
     {
-        *output = route->ui[route->ui_first];
-        route->ui_first = (route->ui_first + 1) % route->slots;
-        route->ui_count--;
-        status = STYX_CONTROL_RECORD;
-        pthread_cond_broadcast(&route->changed);
+        unsigned long tag; /* Private UI record metadata, not exposed as application authority. */
+        size_t size; /* Decoded message extent fixed at admission. */
+        status = routemailboxnext(&route->ui, route->reason, &tag, output, sizeof(*output), &size);
     }
     pthread_mutex_unlock(&route->lock);
     return status;
@@ -40,24 +38,7 @@ int styxbidirroutenext(StyxBidirRoute *route, unsigned long *tag, void *bytes, s
         return STYX_CONTROL_END;
     }
     pthread_mutex_lock(&route->lock);
-    int status = route->reason ? STYX_CONTROL_END : STYX_CONTROL_EMPTY; /* Protected readiness. */
-    if (route->count)
-    {
-        *size = route->sizes[route->first];
-        status = STYX_CONTROL_SMALL;
-        if (*size <= capacity)
-        {
-            if (*size)
-            {
-                memcpy(bytes, route->raw + route->first * route->limit, *size);
-            }
-            *tag = route->tags[route->first];
-            route->first = (route->first + 1) % route->slots;
-            route->count--;
-            status = STYX_CONTROL_RECORD;
-            pthread_cond_broadcast(&route->changed);
-        }
-    }
+    int status = routemailboxnext(&route->general, route->reason, tag, bytes, capacity, size);
     pthread_mutex_unlock(&route->lock);
     return status;
 }
@@ -66,7 +47,7 @@ int styxbidirroutenext(StyxBidirRoute *route, unsigned long *tag, void *bytes, s
 /* EN/RU: See internal.h; spurious wakeups never renew the original timeout budget.
  * См. internal.h; ложное пробуждение не продлевает первоначальный timeout.
  */
-int routewaitcount(StyxBidirRoute *route, unsigned *count, unsigned timeout)
+int routewaitcount(StyxBidirRoute *route, size_t *count, unsigned timeout)
 {
     if (!route || !count || timeout > 120000)
     {
@@ -107,7 +88,7 @@ int styxbidirroutewait(StyxBidirRoute *route, int ui, unsigned timeout)
     {
         return 0;
     }
-    return routewaitcount(route, ui ? &route->ui_count : &route->count, timeout);
+    return routewaitcount(route, ui ? &route->ui.count : &route->general.count, timeout);
 }
 
 
@@ -138,8 +119,8 @@ int styxbidirrouteflush(StyxBidirRoute *route, unsigned timeout)
 }
 
 
-/* EN/RU: See route.h; expose transport failure even while the dispatcher awaits mailbox capacity.
- * См. route.h; показать ошибку транспорта и при ожидании места в очереди, не потребляя записи.
+/* EN/RU: See route.h; expose first route/transport failure independently of consumer progress.
+ * См. route.h; показать первую ошибку route/transport независимо от consumer, не потребляя записи.
  */
 int styxbidirroutestate(StyxBidirRoute *route)
 {

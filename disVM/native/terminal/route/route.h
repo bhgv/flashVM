@@ -27,17 +27,17 @@ struct DVM_CancelTap *styxbidirroutewatch(StyxBidirRoute *route, void (*receive)
 
 /* EN: Borrow client/channels/type during setup; return owned route or NULL.
  * client/channels MUST refer to the same original bidir grant, as required by control.h.
- * The host must have negotiated the existing tag-zero binding-declaration profile for RX.
+ * The host must use the existing tag-zero subservice version header; version1 selects bindings.
  * type/version identify its UI schema, never a capability or a new wire identity assigned here.
  * Each valid declaration updates RX bindings atomically and is also delivered to the general queue.
  * Malformed/conflicting declarations or malformed bound UI stop routing; earlier queues drain.
- * limit/slots have control's bounds; each mailbox has slots entries. A full mailbox backpressures
- * this native dispatcher only; no guest callbacks, polling, suspension or queue drops.
+ * limit/slots have control's bounds; recipient queues grow independently of transport slots.
+ * Native broker waits for input; each consumer waits only for its own queue. No admission capacity wait.
  * RU: Заимствовать аргументы, вернуть свой route/NULL. client/channels — один исходный grant.
  * Требуется заранее
- * согласованный RX-профиль объявлений bindings в tag0. type/version — согласованная схема UI.
+ * согласованный RX-профиль versioned subservices в tag0, version1 — bindings; type/version — схема UI.
  * Декларации обновляют RX и выдаются общей очередью. Ошибки прекращают приём, прежние записи
- * доступны для чтения. Заполненная очередь задерживает только собственный native-диспетчер.
+ * доступны для чтения. Динамические очереди не задерживают dispatcher ожиданием consumer.
  */
 StyxBidirRoute *styxbidirbindingroute(StyxClient *client, const DVM_TerminalChannels *channels,
     unsigned limit, unsigned slots, const char *type, unsigned long version);

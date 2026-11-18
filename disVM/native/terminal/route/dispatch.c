@@ -5,58 +5,31 @@
 #include "internal.h"
 
 
-/* EN: Copy scratch bytes or message into its bounded mailbox, waiting only on this native owner.
- * route/tag/size describe the worker's record; message selects UI, NULL selects general.
- * Return 1 once accepted, 0 on explicit stop. No queue lock is held across transport I/O.
- * RU: Скопировать запись из scratch либо message в ограниченную очередь, ожидая только
- * своим native-потоком. message выбирает UI, NULL — общую очередь. 1 — принято, 0 — stop.
- */
-static int publish(StyxBidirRoute *route, unsigned long tag, size_t size, const DVM_UIMessage *message)
-{
-    pthread_mutex_lock(&route->lock);
-    unsigned *count = message ? &route->ui_count : &route->count; /* Selected protected occupancy. */
-    while (!route->reason && *count == route->slots)
-    {
-        pthread_cond_wait(&route->changed, &route->lock);
-    }
-    int accepted = !route->reason; /* Publish only while this route is live. */
-    if (accepted)
-    {
-        unsigned first = message ? route->ui_first : route->first; /* Protected oldest entry. */
-        unsigned slot = (first + *count) % route->slots; /* Reserved unpublished tail. */
-        if (message)
-        {
-            route->ui[slot] = *message;
-        }
-        else
-        {
-            memcpy(route->raw + slot * route->limit, route->scratch, size);
-            route->sizes[slot] = size;
-            route->tags[slot] = tag;
-        }
-        (*count)++;
-        pthread_cond_broadcast(&route->changed);
-    }
-    pthread_mutex_unlock(&route->lock);
-    return accepted;
-}
-
-
 /* EN/RU: Validate one already verified tag-zero payload with the existing atomic registry codec.
- * Return 1 applied/0 refused; borrowed route/scratch, only the worker mutates incoming bindings.
- * Проверить tag0 штатным атомарным кодеком; 1 применено/0 отказ, bindings меняет только worker.
+ * Return 1 binding applied/2 delegated service/0 refused; borrowed route/scratch, only the worker mutates incoming bindings.
+ * Проверить tag0 штатным атомарным кодеком; 1 bindings применены/2 другая service/0 отказ, bindings меняет только worker.
  */
 static int declaration(StyxBidirRoute *route, size_t size)
 {
     size_t encoded; /* Complete rewrapped declaration bytes. */
     size_t used; /* Exact bytes consumed by the original binding codec. */
+    FVM_SInteger version; /* Existing first canonical integer selects a tag-zero subservice. */
+    size_t prefix; /* Only version identification here; handlers own their schemas. */
+    if (fvm_sinteger_read(route->scratch, size, &version, &prefix) != FVM_S_OK || version.negative || version.high)
+    {
+        return 0;
+    }
+    if (version.low != FVM_SBINDINGS_VERSION)
+    {
+        return 2;
+    }
     return fvm_srecord_write(0, route->scratch, size, route->encoded, route->limit + 32, &encoded) == FVM_S_OK &&
         fvm_sbindings_apply(&route->incoming, route->encoded, encoded, &used) == FVM_S_OK && used == encoded;
 }
 
 
-/* EN/RU: See internal.h; transport waits and mailbox capacity waits never dispatch a guest.
- * См. internal.h; ожидания транспорта и места в очереди не исполняют guest-код.
+/* EN/RU: See internal.h; broker blocks for incoming records, never for recipient capacity; no guest dispatch.
+ * См. internal.h; broker ждёт входящие records, не capacity адресата; без guest dispatch.
  */
 void *routedispatch(void *opaque)
 {
@@ -77,10 +50,19 @@ void *routedispatch(void *opaque)
                 styxbidircontrolstate(route->control) : STYX_CONTROL_PROTOCOL);
             return NULL;
         }
-        if (!tag && !declaration(route, size))
+        int service = tag ? 0 : declaration(route, size); /* 1 binding handled here, 2 delegated native service. */
+        if (!tag && !service)
         {
             routeend(route, STYX_CONTROL_PROTOCOL);
             return NULL;
+        }
+        if (!tag && service == 2)
+        {
+            if (!routeenqueue(route, &route->service, tag, route->scratch, size))
+            {
+                return NULL;
+            }
+            continue;
         }
         FVM_SBinding binding; /* Copied validated RX identity, never a TX permission. */
         int bound = tag && fvm_sbindings_lookup(&route->incoming, tag, &binding) == FVM_S_OK;
@@ -106,7 +88,8 @@ void *routedispatch(void *opaque)
             }
         }
         int accepted = typed ? routepublishtyped(route, typed, tag, size) :
-            publish(route, tag, size, ui ? &message : NULL); /* Exactly one destination per record. */
+            routeenqueue(route, ui ? &route->ui : &route->general, tag, ui ? (const void *)&message : route->scratch,
+                ui ? sizeof(message) : size); /* Exactly one destination per record. */
         if (!accepted)
         {
             return NULL;

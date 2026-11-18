@@ -1,183 +1,105 @@
-# Native binding dispatcher / Native-диспетчер привязок
+# Native Unibus dispatcher / Native-диспетчер Unibus
 
-`styx_terminal_route` adds an explicitly selected native dispatcher on top of the
-existing bidir control transport. It owns that transport and its sole record
-reader. No Limbo loop, guest pause, guest callback, VM pointer or graphics code
-is involved. Every receive operation returns at most one copied item.
+`styx_terminal_route` owns one native incoming dispatcher on an explicitly bidir
+Styx terminal connection. The broker blocks for incoming S-records; independent
+consumers block for their own recipient queues. Dynamic recipient queues never
+make the broker wait for application consumption. No guest callback, polling,
+forced suspension or alternate interpreter is involved.
 
-## Selecting the profile / Выбор профиля
+See [dynamic recipients and system services](DYNAMIC.md) for admission, memory
+failure, tag-zero handling, queue metrics and the scope of verification.
 
-[`styxbidirbindingroute`](route.h) takes the same client and granted channel
-descriptor as `styxbidircontrol`, record limit `1..65536`, mailbox slots `1..32`,
-and the host's agreed UI schema identity/version. It returns an owned route or
-NULL. Identity is printable non-space ASCII, at most 63 bytes; version is a
-nonzero uint32. It assigns no production type name or numeric UI tag.
+## Setup / Создание
 
-The transport retains the [actual granted root](../GRANTS.md).
-`styxbidirroutewalk(route, relative)` returns an owned unopened fid on the same
-client from that root. It accepts canonical relative names, refuses descendants
-of file roots and never substitutes the ambient attach root. Keep the route
-pinned until the call returns; retire external walkers before freeing it.
-
-Use this constructor **only after negotiating the existing RX tag-zero binding
-declaration profile**. Here every tag-zero record must be an existing
-`fvm_sbindings` declaration. Other control protocols keep the general control
-transport and their own dispatcher; this constructor does not guess their schema.
-This is an opt-in host profile, not a change to 9P/Styx or the S-record wire format.
-
-The worker validates declarations atomically and discovers matching UI tags by
-identity **and** version. The original registry admits new tags and identical
-repeated declarations; conflicting rebinding remains a protocol error. An
-unbound record stays general even if a matching declaration arrives later.
-Unknown identities and other schema versions also stay general.
-
-RU: Конструктор явно выбирает профиль, где все входящие tag0 — уже согласованные
-объявления штатного `fvm_sbindings`. Другие протоколы управления не распознаются
-по догадке: для них остаётся общий control transport. Диспетчер сам применяет
-объявления и направляет UI по совпадению типа и версии. Новые теги и точные
-повторы допустимы; замена типа занятого тега запрещена исходным кодеком.
-Неизвестные записи не пересматриваются задним числом.
-
-## Generic typed queues / Общие типизированные очереди
-
-[`styxbidirbindingroutes`](types.h) adds up to eight opaque typed mailboxes on
-that same native dispatcher, alongside UI and general traffic. Each registration
-is an agreed identity/version pair, copied at construction. Duplicate pairs,
-including a duplicate of the UI pair, are refused before I/O. Array order gives
-stable local indices; indices are not wire tags. Types are not assigned here.
-
-The UI pair is optional: pass `NULL, 0` for a console/data-only session. The old
-`styxbidirbindingroute` constructor keeps its UI/general behavior unchanged.
-For example, using identities already agreed with the peer:
+[`styxbidirbindingroute`](route.h) selects an agreed UI identity/version.
+[`styxbidirbindingroutes`](types.h) optionally adds up to eight opaque typed
+recipients and supports console/data-only sessions with NULL/0 UI identity.
+Schemas are copied during setup; duplicate pairs are refused before I/O.
 
 ```c
 StyxRouteType types[] = {{file_type, file_version}, {event_type, event_version}};
 StyxBidirRoute *route = styxbidirbindingroutes(client, channels, 4096, 4,
     ui_type, ui_version, types, 2);
-/* Check route before use; service general declarations and every registered queue. */
+/* Check route before use; each recipient has its own consumer. */
 ```
 
-`styxbidirroutetypednext(route, index, &tag, bytes, capacity, &size)` copies
-exactly one complete record. Its statuses and SMALL behavior match the general
-reader. An empty payload is a record, not EOF. Multiple numeric RX tags declared
-with the same identity/version feed the same queue in receive order. There is no
-payload decoding or joining of file chunks at this boundary; permissions and
-operation/correlation semantics remain with the service provider.
+The client and descriptor must identify the same actual native Styx grant.
+[Captured-root validation](../GRANTS.md) checks exact client, local ceiling and
+canonical relative endpoints. Resource walks remain under that root; file-only
+roots cannot acquire sibling services. `styxbidirroutewalk` returns an owned
+unopened fid; callers pin the route through the call and retire before free.
 
-`styxbidirroutetypedwait(route, index, milliseconds)` optionally waits on the
-native consumer, with the same monotonic budget as the UI/general wait. Each queue
-has one consumer; consumers of different queues may run on different native
-threads. No consumer may free the route until all other external users retire.
+`limit` remains 1..65536 and `slots` 1..32 for native transport staging. Recipient
+storage grows with unread messages instead of being limited to `slots` entries.
+Each queue has one consumer; distinct consumers may run on distinct native
+execution threads. UI decoding and opaque copying never cross managed heaps.
 
-Every typed queue holds at most `slots` records of up to `limit` body bytes.
-Additional raw storage is bounded by `count * slots * limit`, with count at most
-eight, slots at most 32 and limit at most 65536. A full queue backpressures the
-single dispatcher and may delay later records of other types. This is lossless
-bounded storage, not a promise of latency isolation; use separately negotiated
-S-record channels for bulk transfers that must not delay the control stream.
-Declarations always remain general, and RX binding discovery gives no TX grant.
+## Routing / Маршрутизация
 
-RU: Новый конструктор добавляет до восьми очередей identity/version. Схемы
-копируются до запуска; индексы локальные, не сетевые теги. UI можно отключить
-через NULL/0. Потребитель получает одну запись, включая пустую; SMALL сохраняет
-её в очереди. Неизвестные типы и версии остаются общей очередью. Заполненная
-очередь задерживает native dispatcher и последующие записи, но не останавливает
-guest. Для независимого потока больших данных нужен отдельный S-канал.
-
-## Mailboxes / Почтовые очереди
-
-| API | Result |
+| Incoming record | Destination |
 | --- | --- |
-| `styxbidirrouteui` | One copied `DVM_UIMessage`: RECORD, EMPTY or END. Output unchanged otherwise. |
-| `styxbidirroutenext` | One general record: RECORD, EMPTY, END or SMALL. SMALL changes only required size and preserves the head/tag. |
-| `styxbidirroutewait` | Optional native readiness wait for UI or general, within one monotonic timeout. Does not consume. |
-| `styxbidirroutetypednext` | One opaque record from a registered schema's queue, including empty payloads. |
-| `styxbidirroutetypedwait` | Native readiness of one registered queue; no consumption or guest execution. |
-| `styxbidirroutetypedmatches` | Check a queue's immutable local identity/version registration. |
-| `styxbidirroutetypedwaitcancel` | Native readiness with optional `DVM_Cancel`; cancellation consumes nothing and leaves the shared route live. |
-| `styxbidirroutesend` | Copy one independently bound general/control TX record; 1 accepted, 0 refused. |
-| `styxbidirroutesendwait` | Bounded cancelable native TX-capacity wait before one-record acceptance; never replays an accepted frame. |
-| `styxbidirrouteuisend` | Validate/copy one `fvd1` TX frame on an independently established nonzero outgoing tag. |
-| `styxbidirrouteflush` | Existing bounded TX acknowledgement wait; not a remote execution acknowledgement. |
-| `styxbidirroutestate` | Dispatcher’s terminal reason, or the transport's current terminal reason while dispatch is backpressured; no queue consumption. |
-| `styxbidirroutelimit` | Immutable configured record limit, or 0 for NULL. |
-| `styxbidirrouteclient` | Borrow exact immutable underlying client association while the route is pinned. No permission/ownership transfer. |
-| `styxbidirroutestop` | Cancel the owned workers without joining; already accepted mailbox items remain readable. |
-| `styxbidirroutefree` | After external callers retire, stop/join owned workers and free storage; shared client remains owned by the host. |
+| Tag0, existing version1 bindings | Atomic broker registry update plus legacy general observation copy |
+| Tag0, another canonical subservice/version | Separate native service inbox; its handler validates the body |
+| Nonzero tag bound to selected UI identity/version | Copied decoded UI queue |
+| Nonzero tag bound to registered typed identity/version | That recipient's opaque queue |
+| Other nonzero tag/type/version | General queue |
 
-There is one consumer per mailbox; UI and general consumers may be independent
-native threads. Valid declarations are also copied to the general queue, so
-their original payload is observable. A full mailbox backpressures the native
-dispatcher at that record; the host must service both queues. Neither unknown
-records nor older UI messages are silently dropped to make progress.
+Bindings are directional. Exact repeats are idempotent; conflicting bindings and
+malformed admitted UI terminate the route. Unknown application records are not
+reclassified after a later declaration. RX associations grant no TX permission.
+Non-binding service bodies are preserved, not executed by guessing their format.
 
-Malformed/conflicting declarations and malformed frames on an admitted UI tag
-latch PROTOCOL, cancel native I/O and wake waiters. Previously accepted mailbox
-items drain before END. Explicit stop can abandon a record not yet accepted by
-a mailbox and unsent TX, as with the underlying control transport. Transport
-termination is observed in stream order as the dispatcher drains earlier input.
-Queues retain FIFO order individually; splitting routes does not promise a
-single delivery order between independent consumers.
+RU: Брокер применяет bindings, служебные записи оставляет native-службам, а
+nonzero-теги направляет адресатам. У каждого consumer своё блокирующее ожидание.
+Накопление одной FIFO не мешает другим очередям или следующим tag0.
 
-RX declarations never establish TX permission or tag assignment. The host passes
-an independently established outgoing tag to send. Queue acceptance is not peer
-execution, and uncertain writes are never replayed automatically.
+## Receiving and diagnostics / Приём и диагностика
 
-RU: На очередь приходится один потребитель; UI и общую очередь могут обслуживать
-разные native-потоки. Выдача всегда по одному элементу. Полная очередь задерживает
-только native-диспетчер; host должен обслуживать обе очереди. Декларации остаются
-видимыми как обычные записи общей очереди. Ошибка завершает приём, но уже принятые
-элементы можно дочитать. Явный stop может отбросить ещё не принятый в очередь
-элемент и неотправленный TX. Входящие объявления не дают исходящих прав.
+| API | Behavior |
+| --- | --- |
+| `styxbidirroutenext` | One general record, including legacy binding observations; SMALL preserves head |
+| `styxbidirrouteui` | One copied UI message |
+| `styxbidirroutetypednext` | One opaque record from registered recipient index |
+| `styxbidirrouteservicenext` | One non-binding tag-zero body for a native channel-service handler |
+| `styxbidirroutewait` | Block native caller for selected general/UI queue readiness |
+| `styxbidirroutetypedwait` | Block native caller for its typed queue readiness |
+| `styxbidirroutetypedwaitcancel` | Same with independent caller cancellation |
+| `styxbidirrouteservicewait` | Block native system-service consumer for its inbox |
+| `styxbidirroutequeueinfo` | Non-consuming coherent current/peak records and payload bytes |
 
-## Integration and acceptance / Интеграция и проверки
+All receive calls deliver at most one record. Empty payload is a record, not EOF.
+Waits preserve one monotonic budget; cancellation consumes nothing and does not
+cancel the shared route. See [`traffic.h`](traffic.h) for system inbox and metrics.
 
-The actual example is [`tests/route.c`](../tests/route.c), using the same native
-launch handoff and original libstyx/lib9 peers as the underlying record tests.
-It covers one-slot backpressure, short reads/writes, unknown records, delayed
-binding discovery, version mismatch, conflicting declarations, malformed UI,
-and stop/join with full general or UI mailboxes. It verifies the shared client
-remains alive afterwards. These are native PTY tests, not new hardware PHY tests.
+## Sending and lifetime / Передача и владение
 
-[`tests/typed_route.c`](../tests/typed_route.c) and its independent
-[`typed_server.c`](../tests/typed_server.c) exercise mixed opaque/UI traffic,
-data-only sessions, constructor copying and rejected configurations, eight schema
-slots, shared-schema tags, exact NUL/binary bytes, SMALL/empty records, late
-declarations, unsupported versions, conflicting bindings, full-queue stop and
-parallel native consumers. Both original 9P sessions run over one fragmented PTY;
-TX receipts follow independent peer byte validation. The optional C++98 fixture
-links the public C APIs for engine adapters, retaining the existing 9P headers'
-64-bit `long long` offset extension in that build profile. This is transport acceptance, not
-execution of a remote Dis/SWF application or a file/RPC provider implementation.
+`styxbidirroutesend`, `styxbidirroutesendwait` and `styxbidirrouteuisend` retain
+existing whole-record TX admission, independent outgoing tags and precise-prefix
+acknowledgement. Acceptance is not remote execution. Unknown effects are not
+replayed. `styxbidirrouteflush` waits for native queued output acknowledgements.
 
-This provides automatic native dispatch and copied UI mailboxes. Runtime
-`$Unibus` attachment and its non-message RPCs (rows/path/ink/bulk) still need an
-explicit remote endpoint integration; this library does not turn them into
-remote calls by changing a queue name.
+Stop/failure wakes recipient waits; all accepted records remain individually
+drainable before END. Genuine allocation/accounting exhaustion reports NOMEM.
+The [retirement subscriptions](RETIREMENT.md) and
+[client-terminal watch](../LINK-RETIREMENT.md) remain independent of consumer
+progress. Final free requires external users to retire, stops/joins owned workers
+and frees unread copied nodes. Local stop/free does not close the host's shared
+client. Late native callbacks use detached private lifetime contexts.
 
-The [native host bridge](../bridge/README.md) now connects the UI mailbox to the
-actual existing local `DVM_UIBridge` channels with two native relays. It retains
-the general-record consumer role at the host and leaves the RPC/runtime boundary
-above explicit.
+## Integration / Интеграция
 
-The [one-shot resource client](../resource/README.md) sends the existing resource
-request and receives checked reply bodies on an exclusively assigned typed queue.
-It leaves UI/general consumption with the host and uses cancelable native waits.
+The [native UI bridge](../bridge/README.md) relays between its UI recipient and
+the actual local FlashVM/DisVM channels. A blocked local relay does not stop the
+shared dispatcher. The [resource client](../resource/README.md),
+[resource server](../resource/SERVER.md),
+[announced adapter](../resource/ANNOUNCED.md) and
+[outgoing publisher](../resource/OUTGOING.md) retain their own consumers and
+cancellation/lifetime contracts.
 
-The [autonomous resource server](../resource/SERVER.md) now consumes one request
-on its own native worker, retains the prepared live namespace and streams the
-actual VFS service's replies with bounded TX backpressure.
-
-The [announced resource adapter](../resource/ANNOUNCED.md) also consumes the
-existing offer schema automatically and opens independent ordinary resource fids
-on that exact client. It does not install a competing raw control reader.
-
-## Retirement during pressure / Завершение при заполнении
-
-The route now [propagates transport retirement directly](RETIREMENT.md) through
-its native condition, even when the dispatcher waits for capacity in a full
-mailbox. Accepted heads remain drainable, one per call; an unaccepted pending
-record is not published after retirement. Empty queue/resource waits wake without
-waiting for their own deadlines or mutating caller cancellation sources.
-Construction requires the native subscription; rollback and disposal detach
-callback access before nonwaiting unsubscribe and storage destruction.
+The original Styx fixtures cover dynamic accumulation, late bindings, opaque
+system service records, exact FIFO bytes, actual allocation failure, independent
+consumers, cancellation, malformed/conflicting input and late callback safety.
+The C++98 public-header fixture checks native engine linkage. These tests do not
+claim automatic remote `$Unibus` RPC integration, execution of remote applications
+or general bulk/media channel negotiation. `sysmessages` format and automatic
+queue-growth warnings remain to be agreed and implemented separately.
