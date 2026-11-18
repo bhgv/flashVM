@@ -3,7 +3,8 @@
 The running execution-provider instance can now load ordinary native-cell `.dis`
 applications and dependencies from its granted VFS providers. The existing typed
 Limbo `load`/module-call interface and original Dis parser remain unchanged.
-Code lookup uses the prepared namespace's **provider-first** policy; ordinary data
+Typed module lookup uses [caller-local first](CODE-LOOKUP.md); accepted provider-local
+launches therefore consider the provider class first. Ordinary data
 keeps its terminal-first policy. No display context or application-specific remote
 client is required for this loader.
 
@@ -97,13 +98,13 @@ while ordinary data comes from the terminal. Same-path, same-length and same
 metadata updates verify that retained old code remains stable and fresh loads see
 the updated version.
 
-Sixteen cases cover normal loading, denied opens, early EOF, oversized low/high
+Eighteen cases cover normal loading, denied opens, early EOF, oversized low/high
 lengths, failed opened metadata, invalid Dis bytes, cancellation after a copied
 prefix, image-allocation failure, malformed read acknowledgement, missing handle
 cancellation capabilities, accepted child killwait during an actually blocked
 provider read, and refusal outside the native execution role, noncanonical split-length parts and an opened
 directory replacing earlier file metadata. Each runs in both
-modes. Native allocation/free observation verifies real image-buffer retirement;
+modes, including inherited client-local/provider-local calls with their actual application/dependency results. Native allocation/free observation verifies real image-buffer retirement;
 provider destructor counters verify that no namespace/handle pins survive shutdown.
 No fake Module result or interpretation of source files substitutes for guest
 execution.
@@ -123,5 +124,5 @@ runtime, with LeakSanitizer disabled in the restricted execution environment.
 
 The admission fixture now uses an independent native handler's
 [blocking service wait](LAUNCH-SERVICE-WAIT.md) before prepare/take and controller
-startup. This connects native request servicing to the real32 interpreter/JIT
+startup. This connects native request servicing to the real36 interpreter/JIT
 scenarios without introducing a guest cooperation loop or a network launch claim.

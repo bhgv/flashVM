@@ -58,6 +58,7 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     owner->namespace_group = group;
     process->osenv = environment;
     owner->unibus = parent ? unibusinherit(((DVM_RuntimeProcess *)parent)->unibus) : NULL;
+    owner->module_local_role = parent ? ((DVM_RuntimeProcess *)parent)->module_local_role : DVM_ORIGIN_TERMINAL;
     owner->provider_execution = parent ? ((DVM_RuntimeProcess *)parent)->provider_execution : 0;
     owner->unibus_isolated = parent ? ((DVM_RuntimeProcess *)parent)->unibus_isolated : 0;
     if (!dvm_launch_process_inherit(process, parent))

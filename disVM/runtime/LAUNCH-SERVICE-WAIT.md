@@ -100,7 +100,7 @@ Native tests use deterministic condition/queue gates, with no timing sleeps:
   joined and its service owner freed. Late real delivery must remain valid and
   free exactly one recipient allocation afterward.
 
-The existing32-case source-built provider-module test now uses this actual
+The existing36-case source-built provider-module test now uses this actual
 native handler: service submit → blocking receive → prepare → take → controller
 startup → real Dis application/dependency calls. Both interpreter and JIT retain
 their namespace, cancellation, parser failure and image-ownership checks.

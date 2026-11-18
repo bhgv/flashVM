@@ -27,17 +27,20 @@ def main():
             compile_image(compiler, include, root, source, work / "value.dis", [fixtures])
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
-        for variant in range(16):
+        for variant in range(18):
             main_source = work / "main.b"
-            template = (fixtures / ("kill.b" if variant == 10 else "main.b")).read_text()
+            template_name = {10: "kill.b", 16: "child.b", 17: "child.b"}.get(variant, "main.b")
+            template = (fixtures / template_name).read_text()
+            expected = {0: 111, 16: 111, 17: 222}.get(variant, -1)
             if variant == 13:
                 template = template.replace("app == nil || app->value() != EXPECTED", "app != nil")
-            main_source.write_text(template.replace("EXPECTED", "-1" if variant else "111")
+            main_source.write_text(template.replace("EXPECTED", str(expected))
                                    .replace("HELPERS", "" if variant else (fixtures / "update.b").read_text())
                                    .replace("SWITCH", "" if variant else "update(sys, app);"))
             compile_image(compiler, include, root, main_source, work / "main.dis", [fixtures])
             binary = relink(runtime, work, root / "tests/provider_modules/launch.c", variant,
-                            ["dvm_runtime_launch_module", "dvm_namespace_boot_shutdown", "dvm_launch_process_adopt", "malloc", "free"])
+                            ["dvm_runtime_launch_module", "dvm_namespace_boot_shutdown",
+                             "dvm_launch_process_adopt", "dvm_resource_plan_call", "malloc", "free"])
             for mode in ["--no-jit", "--jit"]:
                 result = subprocess.run([binary, "--native-spawn", mode, work / "main.dis"], cwd=work,
                                         capture_output=True, text=True, timeout=30)

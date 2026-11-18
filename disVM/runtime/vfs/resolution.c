@@ -68,13 +68,15 @@ static int relative_join(const char *prefix, const char *suffix, char *output)
  * names and optional retained/relative are caller storage; group stays owned.
  * No I/O. Current directory survives a covering rebind; descendant bindings
  * still route by virtual components. '..' outside cwd uses virtual root lookup.
- * module selects import base and stable provider-first candidates within the effective union.
+ * module selects import base; preferred selects the caller-local source class within the effective union.
  * RU: Разрешить под одним mutex; опционально удержать anchor/relative. Outputs
  * принадлежат caller, group удерживается. Без I/O. Covering rebind не меняет cwd;
  * descendant bindings идут по virtual components. '..' вне cwd — virtual root lookup.
- * module выбирает import base и stable provider-first candidates своего effective union. */
+ * module выбирает import base, preferred — caller-local группу sources своего effective union. */
 static int resolve(
-    DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative, DVM_Provider **provider, DVM_ResourcePlan *whole)
+    DVM_Namespace *group, const char *path, int module, unsigned preferred,
+    DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative,
+    DVM_Provider **provider, DVM_ResourcePlan *whole)
 {
     DVM_NamespaceBinding *binding, *best = NULL;
     DVM_Anchor *anchor;
@@ -97,8 +99,8 @@ static int resolve(
                 continue;
             }
             if (covers(binding->on, names->path) && (length > longest ||
-                (module && length == longest && best && best->origin.role != DVM_ORIGIN_PROVIDER &&
-                 binding->origin.role == DVM_ORIGIN_PROVIDER)))
+                (module && length == longest && best && best->origin.role != preferred &&
+                 binding->origin.role == preferred)))
             {
                 longest = length;
                 best = binding;
@@ -162,7 +164,7 @@ static int resolve(
             {
                 DVM_ResourcePlan *choice;
                 if (binding == best || strcmp(binding->on, best->on) ||
-                    (module && (binding->origin.role == DVM_ORIGIN_PROVIDER) != (pass == 0)))
+                    (module && (binding->origin.role == preferred) != (pass == 0)))
                 {
                     continue;
                 }
@@ -220,7 +222,7 @@ static int resolve(
  * См. namespace.h; names-only plan не передаёт resource reference. */
 int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 0, plan, NULL, NULL, NULL, NULL);
+    return resolve(group, path, 0, 0, plan, NULL, NULL, NULL, NULL);
 }
 
 
@@ -228,20 +230,56 @@ int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan
  * См. namespace.h; согласованный выбор import directory. */
 int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 1, plan, NULL, NULL, NULL, NULL);
+    return resolve(group, path, 1, DVM_ORIGIN_PROVIDER, plan, NULL, NULL, NULL, NULL);
 }
 
 
-/* EN/RU: See resource.h; output must not already own a live plan.
- * См. resource.h; output не должен уже владеть живым plan. */
-int dvm_resource_plan(DVM_Namespace *group, const char *path, int module, DVM_ResourcePlan *plan)
+/* EN/RU: Resolve borrowed group/path into empty caller-owned plan; module selects import base, preferred selects source class.
+ * Return1 with retained owners/registered cleanup,0 after cleanup on failure. No provider I/O; group remains caller-owned.
+ * Разрешить borrowed group/path в empty owned plan; module выбирает import base, preferred — source class.
+ * Вернуть1 с retained owners/cleanup либо0 после cleanup; без provider I/O, group принадлежит caller.
+ */
+static int resource_plan(
+    DVM_Namespace *group, const char *path, int module, unsigned preferred, DVM_ResourcePlan *plan)
 {
     memset(plan, 0, sizeof(*plan));
     plan->group = group;
-    if (!resolve(group, path, module, &plan->names, &plan->anchor, plan->relative, &plan->provider, plan))
+    if (!resolve(group, path, module, preferred, &plan->names, &plan->anchor, plan->relative, &plan->provider, plan))
     {
         dvm_resource_close(plan);
         return 0;
     }
     return dvm_resource_register(plan);
+}
+
+
+/* EN/RU: See resource.h; retain the existing explicit asset/data intent contract.
+ * См. resource.h; сохранить существующий explicit asset/data intent contract.
+ */
+int dvm_resource_plan(DVM_Namespace *group, const char *path, int module, DVM_ResourcePlan *plan)
+{
+    return resource_plan(group, path, module, DVM_ORIGIN_PROVIDER, plan);
+}
+
+
+/* EN/RU: See resource.h; caller-local call selection has no mutable global/group order or role inference from paths.
+ * См. resource.h; caller-local call selection не меняет global/group order и не выводит role из path.
+ */
+int dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsigned local_role, DVM_ResourcePlan *plan)
+{
+    if (!plan)
+    {
+        return 0;
+    }
+    if (!group || !path || (local_role != DVM_ORIGIN_TERMINAL && local_role != DVM_ORIGIN_PROVIDER))
+    {
+        memset(plan, 0, sizeof(*plan));
+        return 0;
+    }
+    if (!resource_plan(group, path, 1, local_role, plan))
+    {
+        memset(plan, 0, sizeof(*plan));
+        return 0;
+    }
+    return 1;
 }

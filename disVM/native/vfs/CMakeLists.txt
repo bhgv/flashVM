@@ -405,3 +405,10 @@ target_link_libraries(vfs-launch-service-wait-detached PRIVATE styx_namespace_fi
 target_link_options(vfs-launch-service-wait-detached PRIVATE "-Wl,--wrap=dvm_notice_subscribe" "-Wl,--wrap=fvm_port_sync_wait" "-Wl,--wrap=free")
 add_test(NAME vfs-launch-service-wait-detached COMMAND vfs-launch-service-wait-detached)
 set_tests_properties(vfs-launch-service-wait-detached PROPERTIES TIMEOUT 10)
+
+# EN/RU: Typed module lookup is local to each caller; explicit asset intents keep their existing policies.
+# Поиск typed module локален каждому caller; explicit asset intents сохраняют свои policies.
+add_executable(vfs-call-order ../tests/launch/call_order.c ../tests/file-root/context.c)
+target_link_libraries(vfs-call-order PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-call-order COMMAND vfs-call-order)
+set_tests_properties(vfs-call-order PROPERTIES TIMEOUT 15)

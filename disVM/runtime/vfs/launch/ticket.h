@@ -60,6 +60,7 @@ typedef struct DVM_LaunchDescription
  * Exclusive handoff не копировать; consumer переносит group, обнуляя поле; код не запускается. */
 typedef struct DVM_LaunchHandoff
 {
+    unsigned local_role; /* Native host sets caller-local TERMINAL/PROVIDER class; zero keeps provider startup default. */
     DVM_Namespace *group; /* Owned isolated environment, survives ticket/request retirement. */
     DVM_LaunchDescription description; /* Owned copied immutable request metadata. */
     DVM_Origin provider_origin; /* Accepted provider association, same launch session. */

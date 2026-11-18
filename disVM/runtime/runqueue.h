@@ -74,6 +74,7 @@ typedef struct DVM_RuntimeProcess
     uint64_t movie_offer_generation; /* Owner lease in optional per-job announcement source. */
     int movie_offer_staged; /* Unpublished reservation; rollback never advertises READY. */
     struct DVM_LaunchContext *launch_context; /* Owned immutable startup label/bytes; inherited native pin, no managed pointers. */
+    unsigned module_local_role; /* Immutable caller-local lookup class; independent of image-execution admission. */
     int provider_execution; /* Native accepted execution-provider role, inherited by children; never inferred from a remote pathname. */
     int launch_adopted; /* One handoff consumed before publication; never changed by a running guest. */
 } DVM_RuntimeProcess;

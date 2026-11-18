@@ -76,6 +76,19 @@ FVM_PortAnchor *dvm_anchor_port(DVM_Anchor *anchor);
 int dvm_resource_plan(DVM_Namespace *group, const char *path, int module, DVM_ResourcePlan *plan);
 
 
+/* EN/RU: Select an implementation for a typed module call from the caller's namespace/import base.
+ * local_role is the trusted caller-relative TERMINAL/PROVIDER class, never a permission or wire claim.
+ * Prefer visible candidates of that class, then remaining candidates, preserving each class's stack order.
+ * Longest explicit target and retained cwd/import anchor rules still apply; namespace/data plans stay unchanged.
+ * Return1 owned plan/0 failure; no provider I/O. Invalid input clears non-NULL empty output; do not overwrite live plans.
+ * Выбрать реализацию typed module call из namespace/import base caller; local_role — trusted класс своей стороны.
+ * Сначала видимые candidates своего класса, затем остальные; порядок внутри групп сохраняется.
+ * Longest target и retained import anchor действуют прежним образом; namespace/data plans не меняются.
+ * Вернуть1 owned plan/0 failure, без provider I/O; invalid очищает non-NULL empty output, live plan не перезаписывать.
+ */
+int dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsigned local_role, DVM_ResourcePlan *plan);
+
+
 /* EN/RU: Close plan on its source owner, also used by native unwind; NULL harmless.
  * Закрыть plan своим source owner; используется native unwind; NULL безопасен. */
 void dvm_resource_close(DVM_ResourcePlan *plan);

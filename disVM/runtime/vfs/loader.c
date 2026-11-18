@@ -13,7 +13,7 @@
 #include "guest.h"
 #include "loader.h"
 #include "resource.h"
-#include "intent.h"
+#include "runqueue.h"
 #include "metadata_wait.h"
 #include "raise.h"
 #include <stdlib.h>
@@ -36,7 +36,8 @@ char *dvm_namespace_load_name(String *name)
 
 
 /* [GC:] EN: Consume borrowed path's optional cached reference. Builtins retain
- * their global registry contract; file loads resolve once on ACTIVE source.
+ * their global registry contract; file loads resolve once on ACTIVE source,
+ * preferring that caller's immutable local source class.
  * Native-host cache and reader receive one frozen name. Provider images use the
  * selected opened-object reader without pathname-cache reuse. sync is forwarded
  * to the unchanged native reader; provider I/O brackets its own source wait.
@@ -71,7 +72,10 @@ Module *readmod(char *path, Module *cached, int sync)
         nexterror();
     }
     group = dvm_namespace_current_group();
-    if (!group || !dvm_resource_plan_intent(group, path, DVM_RESOURCE_DIS, plan))
+    Prog *caller = currun(); /* ACTIVE permanent owner only; startup controller has no caller yet. */
+    unsigned local_role = caller ? ((DVM_RuntimeProcess *)caller)->module_local_role :
+        DVM_ORIGIN_PROVIDER; /* Job-relative own side, not a ban on reverse/third-system calls. */
+    if (!group || !dvm_resource_plan_call(group, path, local_role, plan))
     {
         free(plan);
         poperror();

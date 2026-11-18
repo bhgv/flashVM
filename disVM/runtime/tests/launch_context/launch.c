@@ -160,6 +160,9 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     launch_check(handoff != NULL, "startup one-use handoff");
     dvm_launch_request_free(request);
     dvm_launch_ticket_free(ticket);
+    handoff->local_role = 99;
+    refusal(module, handoff);
+    handoff->local_role = 0;
     size_t saved_size = handoff->description.argument_bytes; /* Restore each exclusive invalid input before retry. */
     unsigned char *saved_bytes = handoff->arguments;
     handoff->description.argument_bytes = DVM_LAUNCH_ARGUMENT_LIMIT + 1;

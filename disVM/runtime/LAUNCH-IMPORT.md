@@ -17,6 +17,10 @@ No channel mount, capture or namespace pathname is needed for this import.
 Bootstrap вызывает `Terminal.current()` и передаёт Session обычному typed
 `Terminalcmd.init(session, args)`. Специализированный клиент приложения не нужен.
 
+[Caller-local module lookup](CODE-LOOKUP.md) now lets the trusted host set the
+native handoff's `local_role` before adoption; zero keeps provider startup behavior.
+The lookup role is immutable per process and independent of execution admission.
+
 ## Trusted host entry / Вход trusted host
 
 [`vfs/launch/runtime.h`](vfs/launch/runtime.h) exposes the native startup boundary:

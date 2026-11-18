@@ -105,7 +105,7 @@ native retirement after child killwait and shutdown.
 
 The existing provider-module bootstrap also obtains its application's label
 and binary startup data through this builtin before the ordinary typed load/call.
-Its32 executions retain the separate native blocked-reader killwait cases.
+Its36 executions retain the separate native blocked-reader killwait cases.
 Both sets use source-built native-cell code and the supported dedicated OS-thread
 model. ASan/UBSan runs use a fully instrumented runtime; LeakSanitizer remains
 disabled in this restricted environment. No executing FlashVM or completed

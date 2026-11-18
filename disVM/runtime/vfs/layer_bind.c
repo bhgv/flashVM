@@ -61,6 +61,7 @@ static DVM_NamespaceBinding *capture(DVM_ResourcePlan *source, const char *targe
         }
         entry->provider = source->provider;
     }
+    entry->origin = source->origin; /* A bind changes the visible name, not the selected source association. */
     entry->flags = flags;
     strcpy(entry->on, target);
     strcpy(entry->source, source->names.native);

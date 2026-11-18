@@ -10,9 +10,12 @@
 #include "runqueue.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/launch/service.h"
+#include "vfs/resource.h"
 #include "../../../native/tests/launch/backend.h"
 #include "images.h"
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
+static unsigned provider_lookups; /* Atomic observed caller-side load selections, including initial controller. */
+static unsigned terminal_lookups; /* Atomic observed accepted client-caller selections. */
 static ImageSource execution_images; /* Actual provider-first code source. */
 
 
@@ -49,6 +52,25 @@ int __wrap_dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         owner->provider_execution = 0;
     }
     return result;
+}
+
+
+/* EN/RU: Original caller-relative source selection returns an actual owned plan/0; no parser/load result is mocked.
+ * Исходный caller-relative selection выдаёт настоящий owned plan/0; parser/load result не подменяется.
+ */
+extern int __real_dvm_resource_plan_call(DVM_Namespace *, const char *, unsigned, DVM_ResourcePlan *);
+
+
+/* EN/RU: Observe actual loader's ACTIVE caller role, never infer side from module names or change guest state.
+ * Наблюдать роль настоящего ACTIVE caller loader, не выводить сторону из имени и не менять guest state.
+ */
+int __wrap_dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsigned local_role, DVM_ResourcePlan *plan)
+{
+    Prog *caller = currun(); /* Current permanent owner, or initial controller before any guest. */
+    unsigned expected = caller ? ((DVM_RuntimeProcess *)caller)->module_local_role : DVM_ORIGIN_PROVIDER;
+    launch_check(local_role == expected, "actual module loader did not select its caller-local side");
+    __atomic_add_fetch(local_role == DVM_ORIGIN_TERMINAL ? &terminal_lookups : &provider_lookups, 1, __ATOMIC_RELAXED);
+    return __real_dvm_resource_plan_call(group, path, local_role, plan);
 }
 
 
@@ -131,6 +153,10 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     DVM_LaunchTicket *ticket = dvm_launch_service_submit(endpoint, &spec);
     launch_check(ticket && !pthread_join(handler, NULL), "native admission request and handler join");
     DVM_LaunchHandoff *handoff = admission.handoff; /* Independent owned environment, no initial display context. */
+    if (CONTROL == 17)
+    {
+        handoff->local_role = DVM_ORIGIN_TERMINAL; /* Trusted host chooses its local lookup side before process publication. */
+    }
     dvm_launch_service_free(service);
     dvm_launch_endpoint_free(endpoint);
     Prog *process = __real_dvm_runtime_launch_module(module, handoff);
@@ -150,7 +176,10 @@ void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
-        terminal_images.opened == 0 && execution_images.opened == (CONTROL == 13 ? 0U : CONTROL ? 1U : 4U), "provider code source and lifetime isolation");
+        terminal_images.opened == (CONTROL == 17 ? 2U : 0U) &&
+        execution_images.opened == (CONTROL == 13 || CONTROL == 17 ? 0U : CONTROL == 16 ? 2U : CONTROL ? 1U : 4U), "provider code source and lifetime isolation");
     launch_check(allocated_images == freed_images && (CONTROL == 13 || allocated_images > 0), "actual provider image-buffer ownership drain");
+    launch_check(provider_lookups && (CONTROL == 17 ? terminal_lookups != 0 : terminal_lookups == 0),
+        "actual caller-side load coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

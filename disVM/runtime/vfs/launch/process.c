@@ -98,7 +98,8 @@ void dvm_launch_process_release(Prog *process)
  * См. runtime.h; после commit двух ownership moves fallible setup больше нет. */
 int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
 {
-    if (!process || !handoff || !handoff->group)
+    if (!process || !handoff || !handoff->group ||
+        (handoff->local_role && handoff->local_role != DVM_ORIGIN_TERMINAL && handoff->local_role != DVM_ORIGIN_PROVIDER))
     {
         return 0;
     }
@@ -171,6 +172,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->movie_provider = movie;
     owner->movie_offer_staged = staged;
     owner->launch_context = context;
+    owner->module_local_role = handoff->local_role ? handoff->local_role : DVM_ORIGIN_PROVIDER;
     owner->provider_execution = 1; /* Trusted handoff establishes this runtime as the execution provider before publication. */
     owner->launch_adopted = 1;
     handoff->group = NULL;
