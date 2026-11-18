@@ -16,8 +16,8 @@ void styxbidircontrolstop(StyxBidirControl *control)
 }
 
 
-/* EN/RU: See control.h; native workers never invoke user callbacks, so self-free is not an entry path.
- * См. control.h; workers не вызывают user callbacks, self-free не является entry path. */
+/* EN/RU: See control.h; external callers retire first; never free on workers or retirement callbacks.
+ * См. control.h; сначала завершить callers, не free из workers/retirement callbacks. */
 void styxbidircontrolfree(StyxBidirControl *control)
 {
     if (control)
@@ -30,6 +30,7 @@ void styxbidircontrolfree(StyxBidirControl *control)
         styxclientclunk(control->rx);
         styxclientclunk(control->tx);
         styxclientfree(control->client);
+        dvm_cancel_release(control->retired);
         free(control->incoming.bytes);
         free(control->outgoing.bytes);
         free(control->decode);
@@ -74,13 +75,14 @@ StyxBidirControl *styxbidircontrol(StyxClient *client, const DVM_TerminalChannel
         free(control);
         return NULL;
     }
+    control->retired = dvm_cancel_create();
     control->limit = limit;
     control->slots = slots;
     control->extent = limit+32;
     control->incoming.bytes = malloc(control->extent*slots);
     control->outgoing.bytes = malloc(control->extent*slots);
     control->decode = malloc(control->extent);
-    if (!control->incoming.bytes || !control->outgoing.bytes || !control->decode || !styxclientretain(client))
+    if (!control->retired || !control->incoming.bytes || !control->outgoing.bytes || !control->decode || !styxclientretain(client))
     {
         styxbidircontrolfree(control);
         return NULL;

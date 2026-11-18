@@ -135,3 +135,10 @@ Repeated and parallel resource fetches open independent ordinary service fids on
 the exact same connection, preserving VFS decisions and S-record framing. This
 uses the existing offer and per-open protocols; general bulk/video/audio channel
 negotiation and the proposed control nodes remain separate integration work.
+
+The [automatic outgoing offer producer](../disVM/native/terminal/resource/OUTGOING.md)
+now connects native source changes to shared TX using existing declaration and
+READY/CLOSED S-records. It has independent source subscriptions, bounded native
+TX admission, source/route retirement wakeups and no guest polling. Local producer
+stop does not withdraw a shared source; orderly withdrawal closes the source and
+publishes CLOSED. Queued generation/DONE means queue admission, not peer receipt.

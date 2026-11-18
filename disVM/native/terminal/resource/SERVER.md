@@ -127,3 +127,7 @@ requests and the proposed `file/state` VFS control nodes remain separate work.
 For repeated/parallel resource acquisition, the [announced per-open adapter](ANNOUNCED.md)
 now consumes existing offers automatically and opens independent ordinary service
 fids on that exact connection. The one-shot typed server retains its single-request scope.
+
+The [outgoing offer producer](OUTGOING.md) now publishes live source changes on
+shared Unibus TX without guest polling. It complements the announced per-open
+receiver; it does not change this typed server's one-request contract.

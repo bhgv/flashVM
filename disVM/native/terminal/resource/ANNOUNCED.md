@@ -7,8 +7,9 @@ client**. Each open has independent existing S-record request/reply state.
 Repeated and parallel loads therefore get separate logical streams through
 standard fids, without a new channel-negotiation schema, listener or dial.
 
-The producer uses the existing [`styxmovieofferroot`](../../movie/offer.h) and
-announcement writer with an authorized per-job namespace. The host associates
+The [automatic outgoing producer](OUTGOING.md) connects an existing offer source
+to shared Unibus TX. The existing [`styxmovieofferroot`](../../movie/offer.h)
+projects its authorized per-job namespace. The host associates
 that export with this route's exact granted connection. Ready/closed generation
 notices carry no host path, address, user credentials or native capability pointer.
 

@@ -70,3 +70,10 @@ add_executable(movie-request-payload-test tests/request_payload.c)
 target_link_libraries(movie-request-payload-test PRIVATE styx_movie_protocol)
 target_compile_options(movie-request-payload-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME managed-movie-request-payload COMMAND movie-request-payload-test)
+
+# EN/RU: Shared raw/typed offer decoder validates independent scalar payload oracles.
+# Общий raw/typed offer decoder проверяет независимые scalar payload oracles.
+add_executable(movie-offer-payload tests/offer_payload.c)
+target_compile_options(movie-offer-payload PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_link_libraries(movie-offer-payload PRIVATE styx_movie_protocol)
+add_test(NAME managed-movie-offer-payload COMMAND movie-offer-payload)

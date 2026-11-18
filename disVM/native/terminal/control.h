@@ -22,6 +22,19 @@ struct DVM_Cancel; /* Optional borrowed native cancellation for bounded TX admis
 #define STYX_CONTROL_WRITE_FAILED 4 /* Failed/uncertain output, never replayed. */
 #define STYX_CONTROL_PROTOCOL 5 /* Framing/checksum/bounds failure. */
 
+struct DVM_CancelTap; /* Owned native subscription, retired with dvm_cancel_unsubscribe. */
+
+
+/* EN/RU: Subscribe to sticky local transport/route retirement, owned tap/NULL; state adopted only on success.
+ * Native nonwaiting callback may run before return, without internal queue locks, possibly more than once.
+ * Use dvm_cancel_unsubscribe; release(state) follows admitted callbacks and can outlive controlfree.
+ * Borrow control through setup; callback must not access it after its owner retires. No queue consumption.
+ * Подписка на local retirement, свой tap/NULL; state принят при успехе, release после callbacks.
+ * Callback native без ожидания/VM/I/O; sticky replay возможен до return, без queue locks.
+ */
+struct DVM_CancelTap *styxbidircontrolwatch(StyxBidirControl *control, void (*receive)(void *),
+    void *state, void (*release)(void *));
+
 
 /* EN/RU: Borrow client and descriptor through return; owned control/NULL, client retained on success.
  * Host must associate this descriptor with the SAME attached bidir client (as produced by
@@ -87,7 +100,7 @@ void styxbidircontrolstop(StyxBidirControl *control);
 
 
 /* EN/RU: Consume after external callers retire; stop/join only its two native workers, then clunk/free.
- * Never call on owned workers; shared client is not shut down. NULL harmless.
+ * Never call on owned workers or retirement callbacks; shared client is not shut down. NULL harmless.
  * Поглотить после external callers; join только своих workers, shared client не закрывать. */
 void styxbidircontrolfree(StyxBidirControl *control);
 #ifdef __cplusplus

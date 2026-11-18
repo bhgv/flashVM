@@ -23,6 +23,7 @@ void controlend(StyxBidirControl *control, int reason)
     }
     pthread_cond_broadcast(&control->changed);
     pthread_mutex_unlock(&control->lock);
+    dvm_cancel_request(control->retired);
 }
 
 

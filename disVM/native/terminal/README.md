@@ -54,6 +54,13 @@ output; no unknown tail is replayed. Stop interrupts active read/write RPCs thro
 the existing Tflush cancellation path and leaves the host's client owned/alive
 unless the underlying connection itself failed.
 
+Native local-retirement subscriptions are available through `styxbidircontrolwatch`
+and `styxbidirroutewatch`. They return source-pinning `DVM_CancelTap` handles,
+removed with `dvm_cancel_unsubscribe`. Sticky native callbacks run outside queue
+locks, can replay before subscribe returns and must remain nonwaiting, without
+VM/provider/transport I/O. They report retirement without consuming queue entries;
+their independently retained state may retire after transport disposal.
+
 A clean RX EOF terminates the control object; EOF with an incomplete record is a
 protocol failure. CRC/limit failure never publishes a partial record. The first
 terminal reason wins; this is not a history of every concurrent failure.
@@ -137,3 +144,9 @@ isolation. The standalone codec fixture covers truncation and maximum payloads.
 The IDE adapter checks under Node are algorithm checks; they do not claim remote
 IDE or FlashVM script execution. Current validation results belong to the tested
 revision, rather than an invariant test count embedded in this document.
+
+The [automatic outgoing offer producer](resource/OUTGOING.md) observes native
+resource-source changes and emits the existing declaration plus READY/CLOSED
+S-records. The [announced receiver](resource/ANNOUNCED.md) opens independent
+ordinary resource fids of the same client. Both preserve shared route ownership
+and use native cancellation without guest participation.

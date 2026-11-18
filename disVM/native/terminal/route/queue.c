@@ -170,3 +170,13 @@ StyxClient *styxbidirrouteclient(StyxBidirRoute *route)
 {
     return route ? styxbidircontrolclient(route->control) : NULL;
 }
+
+
+/* EN/RU: See route.h; owned transport retires on routing failures and explicit stop as well.
+ * См. route.h; свой transport завершается также при routing failure и explicit stop.
+ */
+struct DVM_CancelTap *styxbidirroutewatch(StyxBidirRoute *route, void (*receive)(void *),
+    void *state, void (*release)(void *))
+{
+    return route ? styxbidircontrolwatch(route->control, receive, state, release) : NULL;
+}

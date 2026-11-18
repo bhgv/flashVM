@@ -7,6 +7,8 @@
 #include "resource/client.h"
 #include "resource/server.h"
 #include "resource/announced.h"
+#include "resource/outgoing.h"
+#include "announcement.h"
 #include "request_payload.h"
 #include <cstdio>
 
@@ -38,7 +40,10 @@ int main()
         styxbidirmoviereceiver(NULL, 0, 0) || styxbidirmovieavailable(NULL, NULL) != -1 ||
         styxbidirmoviereceiverwait(NULL, 0, 0) != -1 || styxbidirmoviereceiverstate(NULL) != -1 ||
         styxbidirannouncedfetch(0, NULL, NULL, NULL, NULL, NULL, 0, NULL) != FVM_INVALID_ARGUMENT ||
-        !styxbidirmoviereceiverfree(NULL))
+        !styxbidirmoviereceiverfree(NULL) || styxbidirmoviepublisher(NULL, NULL, 0, 0) ||
+        styxbidirmoviepublisherstate(NULL, NULL) != -1 || styxbidirmoviepublisherwait(NULL, 0, 0) != -1 ||
+        !styxbidirmoviepublisherfree(NULL) || styxbidircontrolwatch(NULL, NULL, NULL, NULL) ||
+        styxbidirroutewatch(NULL, NULL, NULL, NULL) || movie_offer_parse(NULL, 0, NULL, NULL))
     {
         std::fputs("typed route C++98 public ABI failed\n", stderr);
         return 2;
@@ -48,5 +53,6 @@ int main()
     styxbidirmovieclientfree(NULL);
     styxbidirmovieserverstop(NULL);
     styxbidirmoviereceiverstop(NULL);
+    styxbidirmoviepublisherstop(NULL);
     return 0;
 }

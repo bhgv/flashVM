@@ -5,6 +5,9 @@
 #ifndef STYX_MOVIE_ANNOUNCEMENT_H
 #define STYX_MOVIE_ANNOUNCEMENT_H
 #include "protocol.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define MOVIE_OFFER_TYPE "flashvm.movie.offer" /* Binding identity on the already granted control stream. */
 #define MOVIE_OFFER_VERSION 1UL /* Payload: ready/closed byte then one canonical positive generation. */
 #define MOVIE_OFFER_READY 1U /* Current logical service root is available. */
@@ -22,4 +25,13 @@ int movie_offer_binding(unsigned long tag, void *out, size_t capacity, size_t *s
  * Сформировать ready/closed generation record;1/0, native struct не передаётся. */
 int movie_offer_record(unsigned long tag, unsigned state, unsigned long long generation,
     void *out, size_t capacity, size_t *size);
+
+
+/* EN/RU: Validate one exact existing offer payload, 1/0; output state/generation unchanged on failure.
+ * No tags, allocation or authority. / Проверить точный offer payload, 1/0; без тегов/allocation/прав.
+ */
+int movie_offer_parse(const void *bytes, size_t size, unsigned *state, unsigned long long *generation);
+#ifdef __cplusplus
+}
+#endif
 #endif

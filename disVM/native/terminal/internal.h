@@ -6,6 +6,7 @@
 #define STYX_CONTROL_INTERNAL_H
 #define _POSIX_C_SOURCE 200809L
 #include "control.h"
+#include "cancel.h"
 #include "flashvm/sstream.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -41,14 +42,15 @@ struct StyxBidirControl
     unsigned slots; /* Fixed slots per direction. */
     size_t extent; /* Limit plus conservative S-record framing reserve. */
     int reason; /* Sticky first terminal reason. */
+    DVM_Cancel *retired; /* Owned sticky native notification source; callbacks run outside control lock. */
     ControlQueue incoming; /* Verified individual records, drainable after stop/failure. */
     ControlQueue outgoing; /* Encoded frames; head remains pinned until acknowledged. */
     unsigned char *decode; /* RX-only incremental decoder storage. */
 };
 
 
-/* EN/RU: Publish first terminal reason and signal active tokens under lock; no guest calls.
- * Первый terminal reason и сигнал native tokens под lock, без guest calls. */
+/* EN/RU: Publish first terminal reason and signal active RPC tokens under lock; notify native taps after unlock.
+ * Первый reason и active RPC tokens под lock, native taps после unlock, без guest calls. */
 void controlend(StyxBidirControl *control, int reason);
 
 

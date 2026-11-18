@@ -115,17 +115,9 @@ StyxMovieSession *styxmoviesession(StyxClient *client)
  */
 static int offer(StyxMovieSession *session, const unsigned char *bytes, size_t size)
 {
-    FVM_SInteger number;
-    size_t consumed;
-    if (size < 2 ||
-        (bytes[0] != MOVIE_OFFER_READY && bytes[0] != MOVIE_OFFER_CLOSED) ||
-        fvm_sinteger_read(bytes+1, size-1, &number, &consumed) != FVM_S_OK ||
-        consumed != size-1 || number.negative)
-    {
-        return 0;
-    }
-    unsigned long long generation = ((unsigned long long)number.high << 32) | number.low;
-    if (!generation || generation > MOVIE_OFFER_GENERATION_MAX)
+    unsigned state; /* Validated existing offer state. */
+    unsigned long long generation; /* Validated canonical positive generation. */
+    if (!movie_offer_parse(bytes, size, &state, &generation))
     {
         return 0;
     }
@@ -133,7 +125,7 @@ static int offer(StyxMovieSession *session, const unsigned char *bytes, size_t s
     {
         return 1; /* Delayed older traffic cannot replace newer authority. */
     }
-    int ready = bytes[0] == MOVIE_OFFER_READY;
+    int ready = state == MOVIE_OFFER_READY;
     if (generation == session->generation)
     {
         return ready == session->ready;

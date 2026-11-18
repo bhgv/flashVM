@@ -11,6 +11,19 @@ extern "C" {
 #endif
 typedef struct StyxBidirRoute StyxBidirRoute; /* Owns its control and one native dispatcher. */
 
+struct DVM_CancelTap; /* Owned native subscription, retired with dvm_cancel_unsubscribe. */
+
+
+/* EN/RU: Subscribe to sticky local transport/route retirement, owned tap/NULL; state adopted only on success.
+ * Native nonwaiting callback may run before return, without internal queue locks, possibly more than once.
+ * Use dvm_cancel_unsubscribe; release(state) follows admitted callbacks and can outlive routefree.
+ * Borrow route through setup; callback must not access it after its owner retires. No queue consumption.
+ * Подписка на local retirement, свой tap/NULL; state принят при успехе, release после callbacks.
+ * Callback native без ожидания/VM/I/O; sticky replay возможен до return, без queue locks.
+ */
+struct DVM_CancelTap *styxbidirroutewatch(StyxBidirRoute *route, void (*receive)(void *),
+    void *state, void (*release)(void *));
+
 
 /* EN: Borrow client/channels/type during setup; return owned route or NULL.
  * client/channels MUST refer to the same original bidir grant, as required by control.h.
@@ -98,7 +111,7 @@ void styxbidirroutestop(StyxBidirRoute *route);
 
 
 /* EN: After external users retire, stop and join only owned native workers, release route.
- * Shared client remains owned by its host. NULL harmless; never call from the dispatcher itself.
+ * Shared client remains owned by its host. NULL harmless; never call from the dispatcher or retirement callbacks.
  * RU: После завершения внешних пользователей остановить и join только свои native-потоки,
  * освободить route. Общий client остаётся у host. NULL допустим.
  */

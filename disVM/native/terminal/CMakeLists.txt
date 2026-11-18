@@ -20,12 +20,14 @@ target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Wer
 add_subdirectory(bridge)
 add_library(styx_terminal_resource STATIC resource/life.c resource/fetch.c resource/budget.c
     resource/server_life.c resource/server_state.c resource/server_run.c
-    resource/announced_life.c resource/announced_run.c resource/announced_state.c resource/announced_fetch.c)
+    resource/announced_life.c resource/announced_run.c resource/announced_state.c resource/announced_fetch.c
+    resource/outgoing_life.c resource/outgoing_run.c resource/outgoing_state.c)
 target_link_libraries(styx_terminal_resource PUBLIC styx_terminal_route styx_movie_service styx_movie_client)
 target_compile_options(styx_terminal_resource PRIVATE -Wall -Wextra -Wpedantic -Werror)
 include(tests/exchange.cmake)
 include(tests/server.cmake)
 include(tests/offers.cmake)
+include(tests/publisher.cmake)
 
 add_executable(terminal-ui-codec "${INFERNO_VFS_SUPPORT}/disVM/tests/ui_frame.c")
 target_link_libraries(terminal-ui-codec PRIVATE styx_terminal_ui)

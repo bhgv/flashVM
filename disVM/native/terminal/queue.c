@@ -141,3 +141,13 @@ int styxbidircontrolflush(StyxBidirControl *control, unsigned timeout)
 {
     return waitqueue(control, timeout, 0);
 }
+
+
+/* EN/RU: See control.h; tap pins only the sticky native source, never the transport object.
+ * См. control.h; tap удерживает sticky native source, не transport object.
+ */
+DVM_CancelTap *styxbidircontrolwatch(StyxBidirControl *control, void (*receive)(void *),
+    void *state, void (*release)(void *))
+{
+    return control ? dvm_cancel_subscribe(control->retired, receive, state, release) : NULL;
+}

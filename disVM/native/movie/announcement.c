@@ -42,3 +42,29 @@ int movie_offer_record(unsigned long tag, unsigned state, unsigned long long gen
     return fvm_sinteger_write(&value, payload+1, sizeof(payload)-1, &count) == FVM_S_OK &&
         fvm_srecord_write(tag, payload, count+1, out, capacity, size) == FVM_S_OK;
 }
+
+
+/* EN/RU: See announcement.h; reuse canonical integer codec before publishing native scalar outputs.
+ * См. announcement.h; общий canonical integer codec до публикации native scalar outputs.
+ */
+int movie_offer_parse(const void *input, size_t size, unsigned *state, unsigned long long *generation)
+{
+    const unsigned char *bytes = input; /* Borrowed exact payload, no native wire struct. */
+    FVM_SInteger number; /* Checked native limbs from the shared codec. */
+    size_t consumed; /* Exact canonical integer extent. */
+    if (!bytes || size < 2 || !state || !generation ||
+        (bytes[0] != MOVIE_OFFER_READY && bytes[0] != MOVIE_OFFER_CLOSED) ||
+        fvm_sinteger_read(bytes + 1, size - 1, &number, &consumed) != FVM_S_OK ||
+        consumed != size - 1 || number.negative)
+    {
+        return 0;
+    }
+    unsigned long long value = ((unsigned long long)number.high << 32) | number.low; /* Checked positive generation. */
+    if (!value || value > MOVIE_OFFER_GENERATION_MAX)
+    {
+        return 0;
+    }
+    *state = bytes[0];
+    *generation = value;
+    return 1;
+}
