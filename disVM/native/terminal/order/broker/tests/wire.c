@@ -168,6 +168,9 @@ static void control(const FVM_SOrderControl *message)
         check(message->command == FVM_SORDER_ACK && message->tag == 7 && message->lane == 91 &&
             message->operation.low == remote_reset.operation.low && message->boundary.low == remote_reset.boundary.low);
         data(7, 0, "new");
+#ifdef ORDERED_FILE_TEST
+        data(7, 1, ""); /* Empty application payload remains a nonempty S-record, not EOF. */
+#endif
     }
 }
 
@@ -206,6 +209,13 @@ static void packet(const FVM_SRecord *outer)
         check(!view.record.tag && !ordinal && view.record.size == 9 && !memcmp(view.record.payload, "local-out", 9));
         host_zero = 1;
     }
+#ifdef ORDERED_GUEST_FILE_TEST
+    if (host_records == 1 && host_zero)
+    {
+        data(9, 2, "guest-verified"); /* Native guest fixture receipt, not a new production protocol. */
+    }
+#endif
+
 }
 
 

@@ -33,7 +33,7 @@ target_sources(disvm PRIVATE vfs/intent.c)
 # Автоматический movie endpoint использует только VFS/S-record code, без второй lib9/GUI.
 target_sources(disvm PRIVATE
     "${root}/disVM/native/movie/service.c" "${root}/disVM/native/movie/request.c"
-    "${root}/disVM/native/movie/protocol.c"
+    "${root}/disVM/native/movie/protocol.c" "${root}/disVM/native/movie/request_payload.c"
     "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/srecord.c"
     "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/sbindings.c")
 target_include_directories(disvm PRIVATE "${root}/disVM/native/movie" "${CMAKE_CURRENT_SOURCE_DIR}/vfs" "${DVM_FLASHVM_SOURCE_ROOT}/include")

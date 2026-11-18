@@ -44,3 +44,5 @@ set_property(TARGET terminal-order-fault APPEND_STRING PROPERTY LINK_FLAGS " -Wl
 add_test(NAME terminal-order-allocation-boundary COMMAND terminal-order-fault)
 
 add_subdirectory(broker)
+
+add_subdirectory(files)

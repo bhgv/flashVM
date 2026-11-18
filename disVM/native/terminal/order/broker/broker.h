@@ -9,6 +9,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+struct DVM_Cancel; /* Borrowed native cancellation capability, never a guest pointer. */
 typedef struct StyxOrdered StyxOrdered; /* Native owner, never an application capability. */
 typedef struct StyxOrderedClient StyxOrderedClient; /* Borrowed fixed inner-tag capability until owner free. */
 
@@ -155,6 +156,39 @@ void styxorderedstop(StyxOrdered *peer);
  * Не вызывать из workers. Без принудительной остановки гостей и потребления их записей.
  */
 void styxorderedfree(StyxOrdered *peer);
+
+/* EN/RU: Borrow pinned client/source; wait only its inbox,1 ready/0 cancel, timeout, end or allocation failure.
+ * Cancellation consumes no message and never closes the broker. timeout0..120000ms, NULL source allowed.
+ * Заимствовать client/source; ждать лишь свой inbox:1 готово/0 отмена, timeout, end либо OOM.
+ * Отмена не потребляет запись и не закрывает broker, timeout0..120000ms, NULL source допустим.
+ */
+int styxorderedclientwaitcancel(StyxOrderedClient *client, unsigned timeout, struct DVM_Cancel *source);
+
+
+#define STYX_ORDERED_CANCELLED (-5) /* Caller cancellation won before packet admission; no ordinal consumed. */
+
+
+/* EN/RU: Same sendwait contract with native cancellation; CANCELLED affects only this call, never peer/client lifetime.
+ * Borrow source/client/bytes through return; one monotonic deadline, NULL source preserves ordinary behavior.
+ * Тот же sendwait с native-отменой; CANCELLED относится лишь к вызову, не lifetime peer/client.
+ * Source/client/bytes borrowed до возврата; один monotonic deadline, NULL source сохраняет обычное поведение.
+ */
+int styxorderedclientsendwaitcancel(StyxOrderedClient *client, const void *bytes, size_t size,
+    unsigned timeout, struct DVM_Cancel *source);
+
+
+#define STYX_ORDER_CANCELLED (-3) /* Operation-local RX cancellation, head remains unread. */
+#define STYX_ORDER_WAIT_NOMEM (-4) /* Cancellation subscription refused, no receive effect. */
+
+
+/* EN/RU: Atomically wait/copy one selected record under one deadline; ordinary next results plus CANCELLED/WAIT_NOMEM.
+ * Borrow client/output/source through return. SMALL preserves the head; timeout gives EMPTY. No broker stop or guest servicing.
+ * Атомарно ждать/копировать одну выбранную запись за один deadline; статусы next плюс CANCELLED/WAIT_NOMEM.
+ * Client/output/source borrowed; SMALL сохраняет head, timeout даёт EMPTY. Без stop broker и обслуживания guest.
+ */
+int styxorderedclientnextwaitcancel(StyxOrderedClient *client, unsigned long long *ordinal,
+    void *bytes, size_t capacity, size_t *size, unsigned timeout, struct DVM_Cancel *source);
+
 #ifdef __cplusplus
 }
 #endif

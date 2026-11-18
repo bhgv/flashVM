@@ -258,3 +258,12 @@ It validates profile/grants before channel opens, respects native construction
 cancellation and retains terminal fids independently of the handoff namespace.
 An absent display does not change ordinary console FD access or create a bridge.
 This does not yet supply a network launch RPC or typed guest init conversion.
+
+## Ordinary record files / Обычные файлы записей
+
+The [record-file provider](../disVM/native/terminal/order/files/README.md) exposes
+one granted client through normal VFS/FD operations and original inner S-records.
+Native cancellable waits affect only the calling operation. The actual portable
+Dis guest test prepares a filtered pre-init namespace, rejects raw carrier access,
+and exchanges verified records with an original Styx server in interpreter/JIT
+modes. No display context or specialized Unibus builtin callback is required.

@@ -3,12 +3,13 @@
  * RU: Native TX-ожидание своего профиля/счётчика, независимо от очереди другого клиента.
  */
 #include "internal.h"
+#include "wait_cancel.h"
 
 
 /* EN/RU: See broker.h; copy only once, preserving the original deadline across unrelated notifications.
  * См. broker.h; копировать однократно, сохраняя исходный deadline при посторонних уведомлениях.
  */
-int styxorderedclientsendwait(StyxOrderedClient *client, const void *bytes, size_t size, unsigned timeout)
+int styxorderedclientsendwaitcancel(StyxOrderedClient *client, const void *bytes, size_t size, unsigned timeout, DVM_Cancel *source)
 {
     if (!client || (!bytes && size) || timeout > 120000)
     {
@@ -31,11 +32,21 @@ int styxorderedclientsendwait(StyxOrderedClient *client, const void *bytes, size
         deadline.tv_nsec -= 1000000000L;
     }
     StyxOrdered *peer = client->peer; /* Borrowed until wait/admission/terminal handling completes. */
+    OrderedWaitCancel *wait; /* Optional cancellation predicate, fenced through return. */
+    if (!orderedwaitattach(peer, source, &wait))
+    {
+        return STYX_ORDERED_NOMEM;
+    }
     pthread_mutex_lock(&peer->lock);
     int result = STYX_ORDERED_WAIT; /* Pending by default, never consumes an ordinal on timeout. */
     int failure = 0; /* Propagate terminal reasons only after releasing peer lock. */
     for (;;)
     {
+        if (wait && wait->cancelled)
+        {
+            result = STYX_ORDERED_CANCELLED;
+            break;
+        }
         if (peer->reason)
         {
             result = STYX_ORDERED_END;
@@ -53,9 +64,19 @@ int styxorderedclientsendwait(StyxOrderedClient *client, const void *bytes, size
         }
     }
     pthread_mutex_unlock(&peer->lock);
+    orderedwaitdetach(wait);
     if (failure)
     {
         orderedend(peer, failure);
     }
     return result;
+}
+
+
+/* EN/RU: See broker.h; preserve the existing no-cancellation API and detailed status values.
+ * См. broker.h; сохранить прежний API без отмены и подробные значения статуса.
+ */
+int styxorderedclientsendwait(StyxOrderedClient *client, const void *bytes, size_t size, unsigned timeout)
+{
+    return styxorderedclientsendwaitcancel(client, bytes, size, timeout, NULL);
 }

@@ -1,0 +1,77 @@
+# Copyright (c) 2026 bhgv
+# EN: Source-built SDK plus actual runtime interpreter/JIT acceptance, private linking only.
+# RU: Проверка source-built SDK с настоящим runtime interpreter/JIT, только private-linking.
+from pathlib import Path
+import shlex
+import subprocess
+import sys
+import tempfile
+
+
+# EN/RU: Read native CMake compiler metadata without guessing system or library paths.
+# Прочитать metadata native CMake compiler без угадывания system/library paths.
+def flags(directory):
+    result = {}
+    for line in (directory / "flags.make").read_text().splitlines():
+        if " = " in line:
+            key, value = line.split(" = ", 1)
+            result[key] = shlex.split(value)
+    return result
+
+
+# EN/RU: Run bounded compilation/execution, report the actual diagnostic; build errors never count as semantic detection.
+# Выполнить bounded compilation/execution с настоящей диагностикой, build-errors не считаются semantic detection.
+def run(command, cwd):
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=90)
+    if result.returncode:
+        raise RuntimeError("command failed: " + " ".join(map(str, command)) + "\n" + result.stdout + result.stderr)
+    return result
+
+
+# EN/RU: Compile a portable guest and link actual production objects with native launch/wire instrumentation.
+# Собрать переносимый guest и связать production objects с native launch/wire instrumentation.
+def main():
+    runtime, compiler, include, sdk = [Path(value).resolve() for value in sys.argv[1:5]]
+    root = Path(__file__).resolve().parents[6]
+    runtime_root = root / "disVM/runtime"
+    sdk_target = sdk / "terminal/order/files"
+    metadata = runtime.parent / "CMakeFiles/disvm.dir"
+    native_metadata = sdk_target / "CMakeFiles/terminal-ordered-files.dir"
+    rt = flags(metadata)
+    runtime_link = shlex.split((metadata / "link.txt").read_text())
+    sdk_link = shlex.split((native_metadata / "link.txt").read_text())
+    native = flags(native_metadata)
+    with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
+        work = Path(name)
+        run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),
+             str(runtime_root / "fixtures/unibus-files/main.b")], work)
+        wrapper = work / "wrapper.o"
+        run([runtime_link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *native["C_INCLUDES"], *rt["C_FLAGS"],
+             "-c", str(runtime_root / "test_unibus_files.c"), "-o", str(wrapper)], work)
+        objects = [wrapper]
+        for source in [root / "disVM/native/terminal/tests/link/fixture.c",
+                       root / "disVM/native/terminal/order/broker/tests/wire.c"]:
+            obj = work / (source.stem + ".o")
+            run([sdk_link[0], *native["C_DEFINES"], *native["C_INCLUDES"], *native["C_FLAGS"],
+                 "-DORDERED_GUEST_FILE_TEST=1", "-c", str(source), "-o", str(obj)], work)
+            objects.append(obj)
+        link = [value for value in shlex.split((metadata / "link.txt").read_text())
+                if not value.startswith("-Wl,--dependency-file=")]
+        link[1:1] = [value for value in native["C_FLAGS"] if value.startswith("-fsanitize=")]
+        link[link.index("-o") + 1] = str(work / "disvm-files")
+        libraries = [str((sdk_target / value).resolve()) for value in sdk_link if value.endswith(".a")]
+        link += [str(value) for value in objects]
+        link += ["-Wl,--wrap=dvm_runtime_launch_module", "-Wl,--wrap=dvm_namespace_boot_shutdown",
+                 "-Wl,--start-group", *libraries, "-Wl,--end-group",
+                 *[value for value in sdk_link if value.startswith("-l") or value == "-pthread"]]
+        run(link, runtime.parent)
+        for mode in ["--no-jit", "--jit"]:
+            result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")], work)
+            if "PASS real Dis guest file Unibus bidirectional records" not in result.stdout or \
+                    "PASS real Dis Unibus file native ownership drain" not in result.stdout:
+                raise RuntimeError("missing guest/lifetime evidence: " + result.stdout + result.stderr)
+            print("PASS actual portable Dis guest record files " + mode, flush=True)
+
+
+if __name__ == "__main__":
+    main()

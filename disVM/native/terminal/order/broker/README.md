@@ -201,3 +201,13 @@ profile before opening captured Styx channels, creates this broker and queues it
 initial offer. A separate entry borrows an actual pre-adoption launch handoff.
 The CLI and optional FlashVM bridge use this same path; the caller keeps its
 original session, namespace and handoff ownership.
+
+## Operation-local cancellation / Отмена отдельной операции
+
+Cancellable variants now wait for only the selected client. Native subscriptions
+wake the broker condition without stopping it; the dispatcher publishes readiness
+under the same mutex. A combined wait/copy prevents another open from stealing a
+checked head. Cancellation and subscription failure consume no message/ordinal
+before admission. The [ordinary record-file provider](../files/README.md) forwards
+the current native FD cancellation scope into these waits; no guest polling loop
+or managed callback is added.

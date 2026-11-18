@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Explicit native bidirectional broker with named negotiation and retained packet queues.
 # RU: Явный native-брокер с именованным согласованием и очередями сохранённых пакетов.
-add_library(styx_terminal_ordered STATIC attach.c life.c message.c profile.c renewal.c worker.c client.c wait.c send.c send_wait.c retirement.c)
+add_library(styx_terminal_ordered STATIC attach.c life.c message.c profile.c renewal.c worker.c client.c wait.c send.c send_wait.c wait_cancel.c retirement.c)
 target_include_directories(styx_terminal_ordered PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal_ordered PUBLIC styx_terminal_order styx_terminal)
 target_compile_options(styx_terminal_ordered PRIVATE -Wall -Wextra -Wpedantic -Werror)

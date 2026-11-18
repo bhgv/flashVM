@@ -48,6 +48,7 @@ static int dispatch(StyxOrdered *peer, unsigned long tag, const void *bytes, siz
         return 0;
     }
     int result = styxorderfeed(peer->engine, bytes, size); /* Engine owns immutable payload copy. */
+    pthread_cond_broadcast(&peer->changed); /* Native cancellable inbox waits share the dispatch publication lock. */
     return result == STYX_ORDER_NOMEM ? -1 : result == STYX_ORDER_ACCEPTED || result == STYX_ORDER_DUPLICATE;
 }
 

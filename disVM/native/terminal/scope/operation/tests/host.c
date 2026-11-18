@@ -142,7 +142,8 @@ int main(void)
     channels.provider = grant;
     strcpy(channels.receive, "records");
     strcpy(channels.send, "records");
-    StyxScope *root = styxbidirscopes(styxbidircontrol(client, &channels, 4096, 1), 4096); /* Own control on every outcome. */
+    StyxBidirControl *control = styxbidircontrol(client, &channels, 4096, 1); /* Borrowed below after root takes ownership. */
+    StyxScope *root = styxbidirscopes(control, 4096); /* Own control on every outcome. */
     check(root != NULL, "scoped root");
     service(root, "ready");
     StyxScopeClient *a_client; /* Application A has only its isolated inbox/send capability. */
@@ -193,6 +194,12 @@ int main(void)
     StyxScopeAssignment nested = {c, 33, 1}; /* Same candidate ID33 belongs to another tag namespace. */
     check(styxscopetxprepare(group, 1, &nested, 1, "proposal:group", 14), "independent nested operation while root client waits");
     service(root, "group-pending");
+    /* EN/RU: The peer may publish its receipt before the last Twrite ACK frees the one-slot native outbox.
+     * Fence that fixture write before testing nonblocking sibling admission; the selected profile still awaits its explicit ACK.
+     * Peer может прислать receipt до освобождения односвязного outbox последним Twrite ACK.
+     * Дождаться этого fixture-write перед nonblocking sibling admission; выбранный профиль всё ещё ждёт своего явного ACK.
+     */
+    check(styxbidircontrolflush(control, 120000), "proposal write completed before nonblocking sibling admission");
     state(root, STYX_SCOPE_OPERATION_WAITING, 1);
     state(group, STYX_SCOPE_OPERATION_WAITING, 1);
     check(!styxscopeclientsend(c_client, 7, "bad", 3) && styxscopeclientsend(d_client, 7, "D-live", 6),
