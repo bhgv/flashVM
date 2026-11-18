@@ -30,12 +30,39 @@ extern char *terminalread(Styxserver *, char *, ulong *, vlong);
  */
 extern char *terminalwrite(char *, ulong *, vlong);
 
+#ifdef ORDERED_GUEST_FILE_TEST
+
+
+/* EN/RU: Own actual compiled readonly asset storage through original server join.
+ * Владеть настоящим compiled readonly asset-storage до join original server.
+ */
+extern void fixtureimagesinit(Styxserver *);
+
+
+/* EN/RU: Serve one original remote offset/count, borrowed buffers, short prefixes only.
+ * Обслужить исходные remote offset/count, buffers borrowed, только short prefixes.
+ */
+extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
+
+
+/* EN/RU: Release image storage after every original server callback has retired.
+ * Освободить image-storage после завершения всех original server callbacks.
+ */
+extern void fixtureimagesfree(void);
+#endif
+
 
 /* EN/RU: Serve only the granted records node; original core owns walk, permissions and fid lifecycle.
  * Обслужить records node; walk, права и fid lifecycle принадлежат original core.
  */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef ORDERED_GUEST_FILE_TEST
+    if (qid.path != 7)
+    {
+        return fixtureimagesread(qid, bytes, count, offset);
+    }
+#endif
     return qid.path == 7 ? terminalread(&server, bytes, count, offset) : Ebadarg;
 }
 
@@ -78,7 +105,14 @@ StyxClient *linkfixture(void)
     local = phybidircreate(phyposixfd(pair[0], caps), 4096);
     remote = phybidircreate(phyposixfd(pair[1], caps), 4096);
     if (!local || !remote || styxphyinit(&server, &operations, phybidirchannel(remote, 0), 0555, 1, 2) ||
-        !styxaddfile(&server, Qroot, 7, "records", 0666, "fixture") || pthread_create(&worker, nil, serve, nil))
+        !styxaddfile(&server, Qroot, 7, "records", 0666, "fixture"))
+    {
+        exit(3);
+    }
+#ifdef ORDERED_GUEST_FILE_TEST
+    fixtureimagesinit(&server);
+#endif
+    if (pthread_create(&worker, nil, serve, nil))
     {
         exit(3);
     }
@@ -107,6 +141,9 @@ void linkfixturefree(void)
     {
         exit(3);
     }
+#ifdef ORDERED_GUEST_FILE_TEST
+    fixtureimagesfree();
+#endif
     phybidirfree(local);
     phybidirfree(remote);
     close(breaker);

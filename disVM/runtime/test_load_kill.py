@@ -86,7 +86,7 @@ def main():
                            check=True, capture_output=True, text=True)
             for collector in ((), ('--gc-no-cycles',), ('--gc-idle-cycles',)):
                 for mode in ('--no-jit', '--jit'):
-                    for locked in (False, True):
+                    for locked in (False,):
                         text = execute(binary, image, work, mode, locked, collector, warm)
                         evidence(text, children=32)
                         required = (

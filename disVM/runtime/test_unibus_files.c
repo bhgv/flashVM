@@ -13,9 +13,10 @@
 #include "../native/terminal/order/broker/attach.h"
 #include "../native/terminal/order/files/files.h"
 #include "../native/launch/request.h"
+#include "../native/vfs/mount.h"
 #include "../native/tests/launch/backend.h"
 static LaunchState terminal; /* Unused local fixture root, disposed before remote preparation. */
-static LaunchState execution; /* Live execution-provider fixture through all guest namespaces. */
+static LaunchState execution; /* Temporary local fixture retires before the actual Styx code root is prepared. */
 static StyxClient *connection; /* Original native session, independent of broker owners. */
 static StyxOrderedFiles *files; /* Explicit lifecycle owner after namespace/FD disposal. */
 
@@ -65,6 +66,15 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     launch_check(connection != NULL, "real original server/client fixture");
     DVM_LaunchOptions options = launch_options(&terminal, &execution); /* Real private live-root preparation. */
     dvm_provider_release(options.terminal);
+    options.terminal = NULL;
+    dvm_provider_release(options.provider); /* Execution image root below uses actual original-Styx files instead. */
+    launch_check(styxclientretain(connection), "retained execution asset session");
+    DVM_Provider *assets = styxmountproviderat(connection, ".", FVM_ACCESS_MASK); /* Actual remote qid-backed images. */
+    DVM_View *code = dvm_view_create(NULL, NULL, NULL); /* Do not publish the raw records node through the execution root either. */
+    launch_check(assets && code && dvm_view_map(code, "/app.dis", assets, "app.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
+        dvm_view_map(code, "/dep.dis", assets, "dep.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "filtered actual Styx code grants");
+    options.provider = dvm_view_freeze(code);
+    dvm_provider_release(assets);
     DVM_LaunchSpec spec = {0}; /* Captured terminal channels and execution source are independently authorized. */
     spec.policy = options.policy;
     spec.terminal_origin = options.terminal_origin;

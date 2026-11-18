@@ -155,6 +155,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->terminal_channels = channels;
     owner->movie_provider = movie;
     owner->movie_offer_staged = staged;
+    owner->provider_execution = 1; /* Trusted handoff establishes this runtime as the execution provider before publication. */
     owner->launch_adopted = 1;
     handoff->group = NULL;
     memset(&handoff->flashvm, 0, sizeof(handoff->flashvm));

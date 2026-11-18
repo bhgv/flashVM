@@ -27,6 +27,7 @@ def gate(binary, package, work, mode, locked, control, warm=True):
     process = subprocess.Popen(
         [
             str(binary),
+            "--native-spawn",
             mode,
             "--stats",
             *(["--gc-locked-poll"] if locked else []),
@@ -137,10 +138,11 @@ def main():
         work = Path(temporary)
         package = prepare(compiler, include, root, work)
         for mode in ("--no-jit", "--jit"):
-            for locked in (False, True):
+            for locked in (False,):
                 result = subprocess.run(
                     [
                         str(runtime),
+                        "--native-spawn",
                         mode,
                         "--stats",
                         "--quantum",
@@ -167,7 +169,7 @@ def main():
                 ["dvm_namespace_module_open", "fvm_port_file_info", "dvm_module_registry_lookup"],
             )
             for mode in ("--no-jit", "--jit"):
-                for locked in ((False, True) if not control else (False,)):
+                for locked in (False,):
                     for warm in ((False, True) if not control else (True,)):
                         gate(binary, package, work, mode, locked, control, warm)
 

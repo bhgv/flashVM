@@ -267,3 +267,13 @@ Native cancellable waits affect only the calling operation. The actual portable
 Dis guest test prepares a filtered pre-init namespace, rejects raw carrier access,
 and exchanges verified records with an original Styx server in interpreter/JIT
 modes. No display context or specialized Unibus builtin callback is required.
+
+
+## Provider code dependencies / Провайдерские зависимости кода
+
+The [provider module loader](../disVM/runtime/PROVIDER-MODULES.md) now reads ordinary
+Dis applications/dependencies through granted VFS handles inside an accepted native
+execution-provider launch. Code remains provider-first and ordinary data remains
+terminal-first. Actual interpreter/JIT acceptance includes original Styx asset reads
+alongside Unibus traffic; plain terminal contexts refuse implicit local execution
+of mounted provider code. The network launch/RPC layer remains separate.

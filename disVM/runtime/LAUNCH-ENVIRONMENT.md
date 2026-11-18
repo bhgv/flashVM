@@ -1,16 +1,16 @@
-# Pre-init launch environment / Окружение перед init (runtime0.165)
+# Pre-init launch environment / Окружение перед init
 
-This checkpoint implements provider-side **namespace preparation**, source
-provenance and installation identity provisioning. It does not yet implement a
-network launch service, remote module/function proxies, FD wire transfer or the
-FlashVM terminal proxy. The previous local provider-image loader experiment is
-kept on a separate local work branch and is not part of this release.
+This checkpoint implements provider-side namespace preparation, source provenance
+and installation identity provisioning. [Provider-backed Dis loading](PROVIDER-MODULES.md)
+now reads applications and dependencies inside an accepted execution-provider
+context. Network launch service, remote module/function proxies, arbitrary FD wire
+transfer and full FlashVM terminal dispatch remain separate integration work.
 
-Реализован законченный этап подготовки окружения: два выданных живых корня,
-изолированный namespace, терминал первым, просмотр происхождения и перестановка
-отдельного устройства. Это ещё не сетевой удалённый запуск. Провайдерский `.dis`
-не скачивается для исполнения на терминале; эксперимент такого локального
-загрузчика не входит в этот commit.
+Реализованы подготовка окружения, живые выданные корни, происхождение ресурсов и
+identity установки. Загрузка `.dis` и зависимостей из VFS теперь работает внутри
+принятого контекста исполнения провайдера. Сам сетевой запуск и проксирование
+вызовов ещё требуют отдельного слоя; терминал не скачивает модуль для неявного
+локального исполнения.
 
 ## Agreed execution model / Согласованная модель
 

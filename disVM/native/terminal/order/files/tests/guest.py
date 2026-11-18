@@ -44,13 +44,20 @@ def main():
     with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
         work = Path(name)
         run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),
+             "-I", str(runtime_root / "fixtures/provider-modules"),
              str(runtime_root / "fixtures/unibus-files/main.b")], work)
+        value_source = work / "value.b"
+        value_source.write_text((runtime_root / "fixtures/provider-modules/constant.b").read_text().replace("EXPECTED_VALUE", "111"))
+        for source, output in [(value_source, "dep.dis"), (runtime_root / "fixtures/provider-modules/app.b", "app.dis")]:
+            run([str(compiler), "-I", str(include), "-I", str(runtime_root / "fixtures/provider-modules"),
+                 "-o", str(work / output), str(source)], work)
         wrapper = work / "wrapper.o"
         run([runtime_link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *native["C_INCLUDES"], *rt["C_FLAGS"],
              "-c", str(runtime_root / "test_unibus_files.c"), "-o", str(wrapper)], work)
         objects = [wrapper]
         for source in [root / "disVM/native/terminal/tests/link/fixture.c",
-                       root / "disVM/native/terminal/order/broker/tests/wire.c"]:
+                       root / "disVM/native/terminal/order/broker/tests/wire.c",
+                       root / "disVM/native/terminal/tests/link/images.c"]:
             obj = work / (source.stem + ".o")
             run([sdk_link[0], *native["C_DEFINES"], *native["C_INCLUDES"], *native["C_FLAGS"],
                  "-DORDERED_GUEST_FILE_TEST=1", "-c", str(source), "-o", str(obj)], work)

@@ -129,3 +129,9 @@ implicitly. C++98 public-header coverage remains a separate test.
 This completes a generic file/FD ingress for an explicitly prepared launch. It
 is not a public authenticated network launch service, arbitrary FD wire transfer,
 remote function-call schema, SWF execution or a default desktop CLI mode switch.
+
+
+The actual guest now also loads an application and dependency from filtered
+execution-provider files served by original Styx, then continues its bidirectional
+record exchange on the same connection. See the [runtime loader contract](../../../../runtime/PROVIDER-MODULES.md)
+for execution-role admission, opened-handle metadata, cancellation and cache isolation.

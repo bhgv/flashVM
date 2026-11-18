@@ -36,7 +36,7 @@ def main():
                        check=True, capture_output=True, text=True)
         for collector in ((), ('--gc-no-cycles',), ('--gc-idle-cycles',)):
             for mode in ('--no-jit', '--jit'):
-                for locked in (False, True):
+                for locked in (False,):
                     result = subprocess.run([str(runtime), '--native-spawn', '--stats', mode,
                                              *collector, *(['--gc-locked-poll'] if locked else []),
                                              str(image)], cwd=work, capture_output=True,

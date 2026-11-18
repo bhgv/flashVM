@@ -3,6 +3,7 @@
 # RU: Настоящий переносимый консольный guest использует обычные Sys FD для записей Unibus, без display/host builtin.
 implement Check;
 include "sys.m";
+include "value.m";
 Check: module { init: fn(); };
 sys: Sys; # Owner-local builtin handle, no transport authority.
 
@@ -46,6 +47,10 @@ take(fd: ref Sys->FD, tag: int, expected: string)
 init()
 {
     sys = load Sys Sys->PATH;
+    app := load Value "/app.dis";
+    if (app == nil || app->value() != 111) {
+        raise "actual Styx module/dependency load failed";
+    }
     seven := sys->open("/seven", Sys->ORDWR);
     nine := sys->open("/nine", Sys->OREAD);
     zero := sys->open("/zero", Sys->ORDWR);

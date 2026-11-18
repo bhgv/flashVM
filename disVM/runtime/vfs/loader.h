@@ -40,4 +40,18 @@ char *dvm_namespace_load_name(struct String *name);
 /* EN/RU: Test private copied metadata for exact representability before cache use.
  * Проверить точную представимость private metadata до использования cache. */
 int dvm_namespace_module_cacheable(const struct Dir *metadata);
+
+
+/* [GC:] EN: ACTIVE source borrows one selected provider plan/path; returns owned parsed Module/NULL.
+ * Opened-handle metadata and exact bounded bytes are authoritative; no cache reuse by logical path.
+ * Requires an accepted native execution-provider launch (inherited by children), provider PATH cancellation,
+ * and opened-handle INFO/DATA cancellation; cleanup precedes managed reentry, caller retains/frees plan.
+ * Ordinary read permission semantics match Dis load; intent changes source order, not authority.
+ * RU: ACTIVE source заимствует selected provider plan/path; свой parsed Module/NULL.
+ * Metadata открытого handle и bounded bytes определяют образ; cache по logical path не используется.
+ * Нужен принятый provider-launch, PATH и INFO/DATA cancellation; cleanup до managed reentry,
+ * caller удерживает/освобождает plan.
+ * Обычные read-права соответствуют Dis load; intent меняет порядок источников, не полномочия.
+ */
+struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan);
 #endif
