@@ -1,0 +1,121 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Explicit bidirectional ordered broker; native root authority and isolated fixed-tag client handles.
+ * RU: Явный двунаправленный брокер порядка; native-полномочия владельца и изолированные handles клиентов.
+ */
+#ifndef STYX_ORDERED_BROKER_H
+#define STYX_ORDERED_BROKER_H
+#include "control.h"
+#include "order.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct StyxOrdered StyxOrdered; /* Native owner, never an application capability. */
+typedef struct StyxOrderedClient StyxOrderedClient; /* Borrowed fixed inner-tag capability until owner free. */
+
+
+/* EN: Consume control on every outcome; own broker/NULL. Predeclare unique permitted inner tags before workers start.
+ * limit1..control_limit-64, control_limit>=256; window1..2^63-1. No implicit upgrade of another live broker.
+ * RU: Поглотить control всегда; вернуть свой брокер/NULL. Разрешённые внутренние теги задаются до запуска workers.
+ * limit и window ограничивают тело/перестановку. Другой работающий брокер автоматически не обновляется.
+ */
+StyxOrdered *styxbidirordered(StyxBidirControl *control, unsigned limit, unsigned long long window,
+    const unsigned long *tags, size_t count);
+
+
+/* EN: Native-only look up predeclared tag, borrowed capability/NULL; tag0 here remains application-local.
+ * RU: Native-поиск объявленного тега; заимствованный handle/NULL. Внутренний тег 0 остаётся клиентским.
+ */
+StyxOrderedClient *styxorderedclient(StyxOrdered *peer, unsigned long tag);
+
+
+/* EN: Propose this TX direction once, queue named root0 service; strictly increasing nonzero operation and lane!=0.
+ * 1 admitted/0 refused; only ACCEPT activates TX. Explicit REJECT permits a later proposal, timeout never cancels.
+ * RU: Предложить TX-направление, поставить службу root0 в очередь: 1/0. Только ACCEPT включает TX.
+ */
+int styxorderedoffer(StyxOrdered *peer, unsigned long long operation, unsigned long lane);
+
+
+/* EN: Wait for this exact latest offer's ACCEPT/REJECT, 1 resolved/0 timeout, unknown or terminal.
+ * Does not imply acceptance; inspect TX readiness. Timeout leaves the proposal untouched.
+ * RU: Ждать ACCEPT/REJECT точного последнего предложения: 1 — операция завершена, 0 — timeout/неизвестно/соединение завершено.
+ * Результат не означает согласия; проверить готовность TX. Timeout не отменяет предложение.
+ */
+int styxorderedofferwait(StyxOrdered *peer, unsigned long long operation, unsigned timeout);
+
+
+/* EN: Copy directional readiness or wait under one monotonic timeout0..120000ms, 1 ready/0 otherwise.
+ * Native callers retain peer through return; neither function consumes records.
+ * RU: Проверить готовность направления либо ждать с единым timeout: 1/0. Записи не потребляются.
+ */
+int styxorderedready(StyxOrdered *peer, unsigned direction);
+
+
+/* EN: Wait for one directional activation, 1 ready/0 timeout or terminal; no record consumption.
+ * RU: Ждать включения одного направления: 1 — готово, 0 — timeout/завершено; записи не потребляются.
+ */
+int styxorderedwait(StyxOrdered *peer, unsigned direction, unsigned timeout);
+
+
+/* EN: Copy one payload into retained TX spool, 1 accepted/0 refused; no I/O or delivery promise.
+ * Fixed client tag only, no root0 access. At MAX queue automatic renewal after the last old packet.
+ * RU: Скопировать payload в очередь TX: 1/0, без I/O и обещания доставки. При MAX автоматически запросить сброс.
+ */
+int styxorderedclientsend(StyxOrderedClient *client, const void *bytes, size_t size);
+
+
+/* EN: One copied record, order result codes; SMALL changes only size. Native wait only this client's tag.
+ * Inputs borrowed, one consumer per handle; next may queue a ready renewal ACK without I/O.
+ * RU: Одна копия записи; SMALL меняет только size. Ожидание блокирует лишь поток этого клиента.
+ */
+int styxorderedclientnext(StyxOrderedClient *client, unsigned long long *ordinal, void *bytes, size_t capacity, size_t *size);
+
+
+/* EN: Block only this client's native consumer, 1 queued/0 timeout or terminal; owner pinned through return.
+ * RU: Блокировать только native-потребителя этого клиента: 1 — запись есть, 0 — timeout/завершено.
+ */
+int styxorderedclientwait(StyxOrderedClient *client, unsigned timeout);
+
+
+/* EN: Native-only early renewal of one TX tag; 1 request queued/0 refused. RX/other TX tags continue.
+ * Existing reliable ordered carrier provides the old-delivery barrier; additional lanes need their own barrier.
+ * RU: Native-запрос раннего сброса одного TX-тега: 1/0. Остальные теги и RX продолжают работу.
+ */
+int styxorderedrenew(StyxOrdered *peer, unsigned long tag);
+
+
+/* EN: Native-only read one unrecognized root service, RECORD/EMPTY/END/SMALL; no application access.
+ * RU: Native-чтение одной неизвестной службы root0; клиентские handles сюда доступа не имеют.
+ */
+int styxorderedservicenext(StyxOrdered *peer, void *bytes, size_t capacity, size_t *size);
+
+
+/* EN: Native-only wait for root-service inbox, timeout0..120000ms, 1 queued/0 timeout or terminal.
+ * Ready notices remain visible after stop; peer pinned, no consumption or transport access.
+ * RU: Native-ожидание root-службы: 1 — есть запись, 0 — timeout/завершено; без потребления и I/O.
+ */
+int styxorderedservicewait(StyxOrdered *peer, unsigned timeout);
+
+
+/* EN: Copy sticky control reason; stop wakes all waits and preserves ready records. Free after all external users retire.
+ * Never free from broker workers; consumes owned control and clients, NULL harmless.
+ * RU: Скопировать причину завершения; stop будит ожидания и сохраняет готовые записи. Free после внешних users.
+ */
+int styxorderedstate(StyxOrdered *peer);
+
+
+/* EN: Native nonjoining stop, wakes waits and preserves ready payloads; NULL harmless.
+ * RU: Native-stop без join; будит ожидания и сохраняет готовые записи. NULL безопасен.
+ */
+void styxorderedstop(StyxOrdered *peer);
+
+
+/* EN: Consume owner/control/client handles after external users retire, joining both broker workers.
+ * Never call from workers. NULL harmless. No forced guest suspension or payload draining.
+ * RU: Поглотить владельца/control/handles после внешних users, завершить workers через join.
+ * Не вызывать из workers. Без принудительной остановки гостей и потребления их записей.
+ */
+void styxorderedfree(StyxOrdered *peer);
+#ifdef __cplusplus
+}
+#endif
+#endif

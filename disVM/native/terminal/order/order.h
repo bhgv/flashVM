@@ -30,6 +30,13 @@ typedef struct StyxOrder StyxOrder; /* Native owner of one namespace's independe
 StyxOrder *styxordercreate(unsigned limit, unsigned long long window);
 
 
+/* EN: Tighten receive displacement before first RX data, 1/0; equal window remains idempotent.
+ * Borrow engine; native peer has agreed this bound. Existing TX counters are untouched.
+ * RU: Сузить окно приёма до первых RX-данных: 1/0, равное окно идемпотентно. TX не меняется.
+ */
+int styxorderreceivewindow(StyxOrder *order, unsigned long long window);
+
+
 /* EN/RU: Native-only seed an unused directional counter before peer traffic,1/0; default starts at0.
  * Existing/used direction cannot be overwritten. Caller agrees initial value with peer; no inferred wire command.
  * Задать first для неиспользованного tag/direction: 1/0; по умолчанию ноль. Начальное значение явно согласуется с другой стороной.

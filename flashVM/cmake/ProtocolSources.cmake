@@ -6,6 +6,7 @@ set(FVM_PROTOCOL_SOURCES
     src/protocol/order/prefix.c
     src/protocol/order/packet.c
     src/protocol/order/stream.c
+    src/protocol/order/control.c
     src/protocol/sbindings.c
     src/protocol/sstream.c
     src/protocol/sslot.c

@@ -147,3 +147,30 @@ void styxorderfree(StyxOrder *order)
         free(order);
     }
 }
+
+
+/* EN/RU: See order.h; tighten the agreed receive window before first RX data, preserving existing TX counters.
+ * См. order.h; сузить окно RX до первых данных, сохраняя существующие TX-счётчики.
+ */
+int styxorderreceivewindow(StyxOrder *order, unsigned long long window)
+{
+    if (!order || !window || window >= (1ULL << 63))
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&order->lock);
+    int valid = !order->closed && window <= order->window; /* Never enlarge the current agreed window. */
+    if (window != order->window)
+    {
+        for (OrderTag *tag = order->tags; valid && tag; tag = tag->next)
+        {
+            valid = !tag->used[STYX_ORDER_RX];
+        }
+    }
+    if (valid)
+    {
+        order->window = window;
+    }
+    pthread_mutex_unlock(&order->lock);
+    return valid;
+}

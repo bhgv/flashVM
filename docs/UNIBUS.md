@@ -215,3 +215,11 @@ profile negotiation and lane growth are not enabled by this codec/API change.
 Явный профиль добавляет перед S-записью компактный номер и CRC-5, восстанавливает
 порядок независимо по тегам и сбрасывает лишь выбранный счётчик после подтверждения.
 Существующие каналы обычных S-записей автоматически не меняют формат.
+
+The explicit [negotiated ordered broker](../disVM/native/terminal/order/broker/README.md)
+adds named root0 `unibus.order.v1` negotiation and automatic selected-counter
+renewal on one reliable ordered stream. It keeps ordinary outer S-records and
+uses a directionally agreed wrapper tag for prefix+inner-S-record packets. Fixed
+application handles expose only their inner tag, including application-local0.
+The factory/profile remains an explicit native host choice; existing launcher
+and AS paths are not automatically changed and multi-lane scheduling is still pending.

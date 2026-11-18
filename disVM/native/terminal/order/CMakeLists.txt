@@ -42,3 +42,5 @@ target_link_libraries(terminal-order-fault PRIVATE styx_terminal_order)
 target_compile_options(terminal-order-fault PRIVATE -Wall -Wextra -Wpedantic -Werror)
 set_property(TARGET terminal-order-fault APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=malloc -Wl,--wrap=calloc")
 add_test(NAME terminal-order-allocation-boundary COMMAND terminal-order-fault)
+
+add_subdirectory(broker)

@@ -135,7 +135,7 @@ substitute for the session/transport barrier. A reconnect must establish a new
 agreed session and retire old lane traffic, rather than reusing an ambiguous
 connection. Do not destroy the old replay boundary while any old lane can deliver.
 
-The native APIs do **not** assign numeric wire command IDs, authenticate peers,
+The low-level native APIs do **not** assign numeric wire command IDs, authenticate peers,
 provide automatic request retry, or install automatic striping/carrier growth.
 The existing [root service hook/outbox](../scope/operation/README.md) can carry
 an adapter's negotiated control messages on an ordinary ordered S-record control
@@ -165,3 +165,12 @@ native-адаптер сессии. Формат его служебных ко�
 The ordinary complete native suite and ASan/UBSan suite cover the existing
 plain-S connections too. These checks do not claim automatic ordered-profile
 negotiation or a completed multi-lane scheduler.
+
+## Integrated broker / Подключённый брокер
+
+The explicit [negotiated bidirectional broker](broker/README.md) now supplies
+the native service adapter, named OFFER/ACCEPT exchange, retained packet outbox,
+per-client capabilities and automatic selected-counter renewal on one original
+Styx stream. It keeps ordinary outer S-record framing and carries this prefix
+inside the negotiated lane envelope. Low-level raw ordered lanes remain available.
+Existing flat/scoped/FlashVM launch profiles are not silently upgraded.
