@@ -50,6 +50,14 @@ void dvm_sysevents_bind(DVM_SysEvents *events);
 DVM_SysEvents *dvm_sysevents_current(void);
 
 
+/* EN: Install an optional native owner-local selector, borrowed until bind resets it. NULL restores the bound inbox.
+ * Selector returns a borrowed inbox/NULL and may allocate native scope state; no guest callbacks or foreign frame access.
+ * RU: Установить необязательный нативный селектор своего потока до следующего bind; NULL возвращает базовую очередь.
+ * Селектор возвращает заимствованную очередь/NULL; допускается нативное выделение состояния, но не guest callback.
+ */
+void dvm_sysevents_select(DVM_SysEvents *(*selector)(void));
+
+
 /* EN/RU: Construct boot-installed contextual device; exactly one live instance.
  * Contextual opens capture current owner's inbox, never a caller-supplied PID.
  * Return an owned factory or NULL on allocation failure/already-published device.

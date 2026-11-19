@@ -20,6 +20,7 @@
 #include "environment.h"
 #include "binding.h"
 #include "spawn_scope.h"
+#include "event_scope.h"
 #include "vfs/launch/context.h"
 #include "module_interface/launch.h"
 #define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19 || CONTROL == 21) /* Actual terminal-source owner scenarios, including changed caller bind. */
@@ -319,7 +320,7 @@ void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
     unsigned expected_execution_opens = (CONTROL >= 20 && CONTROL <= 23) || CONTROL == 13 || CONTROL == 37 || CLIENT_OWNER ? 0U :
-        (CONTROL == 16 || CONTROL == 18 || CONTROL == 27 || CONTROL == 32) ? 2U : CONTROL ? 1U : 4U;
+        (CONTROL == 16 || CONTROL == 18 || CONTROL == 27 || CONTROL == 32 || CONTROL == 40) ? 2U : CONTROL ? 1U : 4U;
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
         terminal_images.opened == (CLIENT_OWNER && CONTROL != 21 ? 2U : 0U) &&
         execution_images.opened == expected_execution_opens, "provider code source and lifetime isolation");
@@ -330,11 +331,14 @@ void __wrap_dvm_namespace_boot_shutdown(void)
         "actual caller-side load coverage");
     launch_check((CONTROL == 10 || CONTROL == 13 || checked_targets) &&
         refused_targets == (CONTROL >= 20 && CONTROL <= 24 ? 1U : 0U), "actual inherited target-contract guard coverage");
-    launch_check(CONTROL < 25 || environment_bindings == ((CONTROL == 27 || CONTROL == 32) ? 2U : 1U),
+    launch_check(CONTROL < 25 || environment_bindings == ((CONTROL == 27 || CONTROL == 32 || CONTROL == 40) ? 2U : 1U),
         "actual module instance environment coverage");
     launch_check(CONTROL != 36 || namespace_refusals == 1, "actual namespace constructor allocation failure coverage");
     launch_check(CONTROL != 38 || namespace_late_refusals == 1, "late constructor rollback coverage");
-    launch_check(CONTROL < 33 || namespace_inherits == (CONTROL == 37 ? 0U : (CONTROL == 34 || CONTROL == 38) ? 2U : 1U),
+    launch_check(CONTROL != 41 || misdirected_scopes == 1, "actual old wrong-inbox pctl control coverage");
+    launch_check(CONTROL != 42 || refused_scopes == 1, "actual scope subscription failure/retry coverage");
+    launch_check(CONTROL < 39 || background_reports == (CONTROL == 41 ? 0U : 1U), "native report delivery outside module execution");
+    launch_check((CONTROL < 33 || CONTROL > 38) || namespace_inherits == (CONTROL == 37 ? 0U : (CONTROL == 34 || CONTROL == 38) ? 2U : 1U),
         "actual effective module namespace inheritance coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

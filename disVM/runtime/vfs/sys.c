@@ -123,19 +123,11 @@ void Sys_pctl(void *frame)
         publish(call.ret, -1);
         return;
     }
-    if (!dvm_module_environment_reserve(process) || !dvm_sysevents_group(owner->system_events, replacement))
-    {
-        dvm_namespace_release(replacement);
-        dvm_provider_release(movie);
-        kwerrstr("cannot replace system-event namespace scope");
-        publish(call.ret, -1);
-        return;
-    }
     if (!dvm_module_environment_replace(process, replacement))
     {
         dvm_namespace_release(replacement);
         dvm_provider_release(movie);
-        kwerrstr("cannot detach module namespace");
+        kwerrstr("cannot replace namespace and system-event scope");
         publish(call.ret, -1);
         return;
     }

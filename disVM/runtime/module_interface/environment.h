@@ -8,6 +8,7 @@
 struct Modlink; /* Exact locally rooted module instance, never sent over Styx. */
 struct DVM_LaunchContext; /* Immutable owner-side label/arguments/contract, never a foreign heap object. */
 struct Prog; /* Permanent runtime owner, borrowed only by that owner. */
+struct DVM_SysEvents; /* Native scope-owned inbox, independently retained by opened descriptors. */
 typedef struct DVM_ModuleOverride DVM_ModuleOverride; /* Process-owned detached namespace variants. */
 
 
@@ -52,17 +53,30 @@ void dvm_module_environment_retire(struct Modlink *link);
 DVM_Namespace *dvm_module_environment_current(struct Prog *process);
 
 
-/* [GC:] EN/RU: Reserve current module's pctl slot before any external group-change notifications;1/0 OOM.
- * Empty slots grant nothing and retire with process. ACTIVE owner only, native allocation without I/O.
- * Зарезервировать pctl slot current module до external notifications;1/0 OOM. Empty slot не даёт authority.
+/* [GC:] EN: Reserve current module's pctl slot and independent event observer before group-change notifications;1/0 OOM.
+ * Empty group slots select the original prepared group and retire with process. ACTIVE owner only; no provider I/O.
+ * RU: Зарезервировать слот pctl и отдельного наблюдателя событий до уведомлений о смене группы;1/0 OOM.
+ * Пустая группа слота означает исходную prepared group. Только ACTIVE поток; без provider I/O.
  */
 int dvm_module_environment_reserve(struct Prog *process);
 
 
+/* EN: Borrow the active module binding's per-process inbox, or the base inbox for an unbound owner.
+ * Native first selection allocates a slot/observer; return NULL on allocation failure or noncurrent owner.
+ * No guest execution or provider I/O; subsequent source delivery remains independent of the recipient.
+ * RU: Заимствовать очередь текущей привязки модуля либо базовую очередь непривязанного потока.
+ * Первый нативный выбор создаёт слот/наблюдателя; NULL при отказе памяти или чужом потоке.
+ * Без guest execution и provider I/O; дальнейшая доставка не зависит от исполнения получателя.
+ */
+struct DVM_SysEvents *dvm_module_events_current(struct Prog *process);
+
+
 /* [GC:] EN/RU: Consume replacement only on success, replacing current module override or ordinary process group.
- * Caller exclusively owns replacement;1/0 OOM, old native owner queued outside registry lock.
+ * Caller exclusively owns replacement;1/0 allocation/subscription failure, old owner released outside registry lock.
+ * Prepare the selected inbox's replacement scope before committing the namespace pointer; failure consumes neither group.
  * ACTIVE permanent owner only; FD table, terminal grant and other module instances stay untouched.
- * Принять replacement лишь при успехе; заменить module override/process group.1/0 OOM, старый owner на closer.
+ * Принять replacement лишь при успехе; заменить module override/process group. Снять старую ссылку вне registry lock.
+ * Подготовить область выбранной очереди до фиксации namespace; при отказе группы не поглощаются.
  */
 int dvm_module_environment_replace(struct Prog *process, DVM_Namespace *replacement);
 
@@ -70,12 +84,14 @@ int dvm_module_environment_replace(struct Prog *process, DVM_Namespace *replacem
 /* [GC:] EN/RU: Retain the spawning owner's effective bound-module namespace in a fresh unpublished child; return 1 on success.
  * Borrow parent/child through return; parent must be the ACTIVE owner for module-frame inspection.
  * Retain the current group rather than copy it; later FORKNS detaches only the process that requests it.
+ * Create an independent child inbox/observer before publication; never share the parent's consumable FIFO.
  * NULL/noncurrent constructor parent needs no module-frame selection; ordinary base-group inheritance stays in the constructor.
  * Child must have an empty override list. Failure publishes no override; private process cleanup releases other staged owners.
  * Return 0 for invalid child state, allocation failure or reference overflow. No blocking or managed allocation.
  * RU: Удержать выбранное окружение модуля родителя в ещё не опубликованном ребёнке; вернуть 1 при успехе.
  * Родитель и ребёнок заимствуются до возврата; читать кадры можно только своего активного родителя.
  * Группа разделяется до FORKNS. Список переопределений ребёнка должен быть пустым.
+ * До публикации создать отдельную очередь ребёнка; FIFO родителя не разделяется.
  * NULL/чужой родитель не требует записи выбора модуля; основную группу наследует конструктор.
  * При ошибке состояния, выделения памяти или переполнении ссылки вернуть 0 без публикации записи.
  * Без блокировки и выделения управляемых объектов; откат остальных ссылок выполняет конструктор.

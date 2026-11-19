@@ -10,6 +10,7 @@
 #include "runqueue.h"
 #include "environment.h"
 #include "../vfs/launch/context.h"
+#include "../vfs/sysevents.h"
 #include "../close_worker.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -37,6 +38,7 @@ struct DVM_ModuleOverride
 {
     uint64_t identity; /* Exact live binding token, not a module pathname or reused address. */
     DVM_Namespace *group; /* Owned pctl-created live namespace. */
+    DVM_SysEvents *events; /* Owned independent process/binding inbox; never the caller's base inbox. */
     struct DVM_ModuleOverride *next; /* Permanent owner's native-only list. */
 };
 static pthread_mutex_t environment_lock = PTHREAD_MUTEX_INITIALIZER; /* Protects registry publication/removal only, never I/O. */
@@ -219,7 +221,11 @@ int dvm_module_environment_reserve(Prog *process)
     {
         if (item->identity == entry->identity)
         {
-            return 1;
+            if (!item->events)
+            {
+                item->events = dvm_sysevents_create(item->group ? item->group : entry->group);
+            }
+            return item->events != NULL;
         }
     }
     DVM_ModuleOverride *item = calloc(1, sizeof(*item));
@@ -228,9 +234,45 @@ int dvm_module_environment_reserve(Prog *process)
         return 0;
     }
     item->identity = entry->identity;
+    item->events = dvm_sysevents_create(entry->group);
+    if (!item->events)
+    {
+        free(item);
+        return 0;
+    }
     item->next = owner->module_namespaces;
     owner->module_namespaces = item;
     return 1;
+}
+
+
+/* EN/RU: See environment.h; only this ACTIVE owner's scalar slot is read or initialized.
+ * См. environment.h; читается/создаётся лишь слот своего ACTIVE потока, без чужих кадров.
+ */
+DVM_SysEvents *dvm_module_events_current(Prog *process)
+{
+    if (!process || process != currun())
+    {
+        return NULL;
+    }
+    ModuleEnvironment *entry = current(process, 0);
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (!entry)
+    {
+        return owner->system_events;
+    }
+    if (!dvm_module_environment_reserve(process))
+    {
+        return NULL;
+    }
+    for (DVM_ModuleOverride *item = owner->module_namespaces; item; item = item->next)
+    {
+        if (item->identity == entry->identity)
+        {
+            return item->events;
+        }
+    }
+    return NULL;
 }
 
 
@@ -247,26 +289,27 @@ int dvm_module_environment_replace(Prog *process, DVM_Namespace *replacement)
     ModuleEnvironment *entry = current(process, 0);
     if (!entry)
     {
+        if (!dvm_sysevents_group(owner->system_events, replacement))
+        {
+            return 0;
+        }
         DVM_Namespace *old = owner->namespace_group;
         owner->namespace_group = replacement;
         dvm_namespace_release(old);
         return 1;
+    }
+    if (!dvm_module_environment_reserve(process))
+    {
+        return 0;
     }
     DVM_ModuleOverride *item = owner->module_namespaces;
     while (item && item->identity != entry->identity)
     {
         item = item->next;
     }
-    if (!item)
+    if (!item || !dvm_sysevents_group(item->events, replacement))
     {
-        item = calloc(1, sizeof(*item));
-        if (!item)
-        {
-            return 0;
-        }
-        item->identity = entry->identity;
-        item->next = owner->module_namespaces;
-        owner->module_namespaces = item;
+        return 0;
     }
     DVM_Namespace *old = item->group;
     item->group = replacement;
@@ -287,6 +330,8 @@ void dvm_module_environment_release(Prog *process)
         {
             DVM_ModuleOverride *item = *head;
             *head = item->next;
+            dvm_sysevents_retire(item->events);
+            dvm_sysevents_release(item->events);
             dvm_namespace_release(item->group);
             free(item);
         }
@@ -346,6 +391,13 @@ int dvm_module_environment_inherit(Prog *child, Prog *parent)
     }
     copy->identity = entry->identity;
     copy->group = group;
+    copy->events = dvm_sysevents_create(group);
+    if (!copy->events)
+    {
+        dvm_namespace_release(group);
+        free(copy);
+        return 0;
+    }
     ((DVM_RuntimeProcess *)child)->module_namespaces = copy;
     return 1;
 }

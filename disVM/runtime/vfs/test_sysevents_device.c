@@ -14,6 +14,18 @@ static unsigned destroyed; /* Atomic count of actual candidate destructor calls,
 static pthread_mutex_t probe_lock = PTHREAD_MUTEX_INITIALIZER; /* Protects first installation of the test-only destructor observer. */
 static const DVM_ProviderOps *original_ops; /* Borrowed static production table, valid through all joined candidates. */
 static DVM_ProviderOps observed_ops; /* Immutable candidate table once workers leave the probe mutex. */
+static DVM_SysEvents *selected_inbox; /* Borrowed test-main scope selection; never accessed by constructor workers. */
+static unsigned selections; /* Synchronous selector invocation count, observed only on test main. */
+
+
+/* EN: Return the test owner's selected native inbox or explicit refusal; no allocation or recipient execution.
+ * RU: Вернуть выбранную нативную очередь теста либо явный отказ; без выделения памяти и исполнения получателя.
+ */
+static DVM_SysEvents *select_inbox(void)
+{
+    selections++;
+    return selected_inbox;
+}
 
 
 /* EN: Observe actual destruction, then delegate with the original state and ownership contract unchanged.
@@ -135,6 +147,48 @@ static void retained_handle(DVM_Provider *provider)
 }
 
 
+/* EN: Verify selection/refusal, bind-time reset, and an opened FD pinned to its original retired inbox.
+ * All inputs are private to test main; cleanup consumes every native reference after the real FD reaches EOF.
+ * RU: Проверить выбор/отказ, сброс при bind и удержание открытым FD исходной завершённой очереди.
+ * Все объекты принадлежат тесту; после настоящего EOF освободить каждую нативную ссылку.
+ */
+static void contextual_selection(void)
+{
+    DVM_Namespace *group = dvm_namespace_create("/", "/", NULL);
+    DVM_SysEvents *base = dvm_sysevents_create(group);
+    DVM_SysEvents *other = dvm_sysevents_create(group);
+    DVM_Provider *provider = dvm_sysevents_device();
+    DVM_VfsHandle held = {0};
+    DVM_VfsHandle refused = {0};
+    require(base && other && provider, "selector construction");
+    dvm_sysevents_bind(base);
+    selected_inbox = other;
+    dvm_sysevents_select(select_inbox);
+    require(dvm_sysevents_current() == other && dvm_provider_open(provider, ".", "r", &held) == FVM_OK,
+        "selector chooses independent inbox");
+    selected_inbox = NULL;
+    require(!dvm_sysevents_current() && dvm_provider_access(provider, ".", FVM_ACCESS_READ) == FVM_ERROR &&
+        dvm_provider_open(provider, ".", "r", &refused) != FVM_OK && !refused.ops,
+        "refused selector must not fall back to base inbox");
+    unsigned before = selections;
+    dvm_sysevents_bind(base);
+    require(dvm_sysevents_current() == base && selections == before, "bind clears stale selector");
+    dvm_sysevents_retire(other);
+    dvm_sysevents_release(other);
+    char bytes[DVM_SYSEVENT_FRAME_BYTES];
+    require(dvm_vfs_read_chunk(&held, bytes, sizeof(bytes)).count > 0, "held original namespace notice");
+    require(dvm_vfs_read_chunk(&held, bytes, sizeof(bytes)).count > 0, "held original exit notice");
+    require(dvm_vfs_read_chunk(&held, bytes, sizeof(bytes)).stop == DVM_IO_EOF,
+        "held FD did not retain original retired inbox");
+    dvm_vfs_close(&held);
+    dvm_sysevents_bind(NULL);
+    dvm_sysevents_retire(base);
+    dvm_sysevents_release(base);
+    dvm_provider_release(provider);
+    dvm_namespace_release(group);
+}
+
+
 /* EN: Exercise eight concurrent constructors repeatedly; exactly one owned result must remain recognizable.
  * Each round joins all workers before release; unpublished losers must not erase the winner's identity.
  * RU: Несколько раз запустить восемь конкурирующих конструкторов; ровно один результат должен распознаваться.
@@ -185,5 +239,6 @@ void test_sysevents_device(void)
         retained_handle(winner);
         require(destroyed == DEVICE_CREATORS, "winner actually destroyed on final close");
     }
+    contextual_selection();
     puts("PASS sysevents device: state/factory refusal, 32 real racing candidates and opened-handle lifetime");
 }

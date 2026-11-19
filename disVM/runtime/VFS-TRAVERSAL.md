@@ -172,8 +172,8 @@ Real native Dis applications run in both interpreter and JIT, checking dependenc
 lookup, module-bound builtin I/O, FORKNS, two independent module instances and
 redirected stdin sharing. These tests attach prepared environments through the
 public native API to actual original-linker results; they do not mock execution.
-The module fixture now covers 76 positive interpreter/JIT executions and two
-negative controls which deliberately omit the inherited binding. Additional
+The module fixture now covers 82 positive interpreter/JIT executions and four
+negative controls which omit the inherited binding or misdirect event-scope replacement. Additional
 cases verify post-spawn shared edits, independent parent/child `FORKNS`, a
 grandchild, real allocation refusal and rollback after a later context-retain
 failure. Each accepted child is explicitly joined; the omission controls catch
@@ -192,8 +192,10 @@ Modlink proxy or marshal arbitrary `.m` arguments/results/channels/FDs. A truste
 owner must already select the actual provider runtime and load its own local
 implementation there. The new per-instance environment is the execution-side
 building block for that next integration; it does not download provider code to
-the terminal or relocate dependencies/devices. Per-module VFS selection also does
-not yet switch all process-level sysevents subscriptions at every mcall/return.
+the terminal or relocate dependencies/devices. Native event-device selection and
+pctl now use independent per-process/binding inboxes; already opened FD scopes
+are preserved. First scope selection initializes observers, rather than a hook
+on every mcall/return; see [system event scopes](SYSTEM-EVENTS.md).
 
 Полностью прозрачный межмашинный `load`/вызов через `.m` остаётся отдельной
 интеграцией. Здесь реализованы окружение конкретного исполняемого экземпляра,

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 static __thread DVM_SysEvents *current; /* Native inbox borrowed from the permanent owner reference. */
+static __thread DVM_SysEvents *(*select_current)(void); /* Optional runtime selector; reads only its permanent owner's live frames. */
 static DVM_Provider *device; /* Atomic identity of the boot-installed contextual device node. */
 
 
@@ -13,7 +14,7 @@ static DVM_Provider *device; /* Atomic identity of the boot-installed contextual
  * См. internal header; без PID lookup и foreign process access. */
 DVM_SysEvents *dvm_sysevents_current(void)
 {
-    return current;
+    return select_current ? select_current() : current;
 }
 
 
@@ -22,6 +23,16 @@ DVM_SysEvents *dvm_sysevents_current(void)
 void dvm_sysevents_bind(DVM_SysEvents *events)
 {
     current = events;
+    select_current = NULL;
+}
+
+
+/* EN/RU: See sysevents.h; only the current native owner changes its TLS selector.
+ * См. sysevents.h; TLS-селектор меняет только свой нативный поток.
+ */
+void dvm_sysevents_select(DVM_SysEvents *(*selector)(void))
+{
+    select_current = selector;
 }
 
 
@@ -46,7 +57,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *output)
 static FVM_Result open_device(void *state, const char *path, const char *mode, DVM_VfsHandle *output)
 {
     (void)state;
-    return !strcmp(path, ".") ? dvm_sysevents_open(current, mode, output) : FVM_NOT_FOUND;
+    return !strcmp(path, ".") ? dvm_sysevents_open(dvm_sysevents_current(), mode, output) : FVM_NOT_FOUND;
 }
 
 
@@ -55,7 +66,7 @@ static FVM_Result open_device(void *state, const char *path, const char *mode, D
 static FVM_Result access_check(void *state, const char *path, unsigned access)
 {
     (void)state;
-    return current && !strcmp(path, ".") && access == FVM_ACCESS_READ ? FVM_OK : FVM_ERROR;
+    return !strcmp(path, ".") && access == FVM_ACCESS_READ && dvm_sysevents_current() ? FVM_OK : FVM_ERROR;
 }
 
 

@@ -6,10 +6,27 @@
 #define PROVIDER_MODULE_ENVIRONMENT_TEST_H
 #include "../../module_interface/environment.h"
 #include "../../vfs/launch/context.h"
+#include "../../vfs/boot.h"
 #include <limits.h>
 static DVM_Namespace *prepared_environments[2]; /* Controller prepares each instance once before admitting any guest. */
 static DVM_LaunchContext *prepared_contexts[2]; /* Independent copied snapshots, caller pins dropped immediately after attachment. */
 static unsigned environment_bindings; /* Actual native attachment count, read only after guest retirement. */
+
+
+/* EN: Explicitly grant the actual boot event device into an unpublished fixture group; no path or recipient is mocked.
+ * RU: Явно предоставить настоящее boot-устройство событий в неопубликованную группу теста, без подмены получателя.
+ */
+static void environment_events(DVM_Namespace *group)
+{
+    DVM_ResourcePlan source;
+    DVM_NamespacePlan target;
+    launch_check(dvm_resource_plan(dvm_namespace_boot_group(), "/dev/sysevents", 0, &source) && source.provider,
+        "actual boot event device grant");
+    launch_check(dvm_namespace_plan(group, "/dev/sysevents", &target) &&
+        dvm_namespace_mount_provider(group, &target, source.provider, "/events-grant") == 1,
+        "explicit fixture event node binding");
+    dvm_resource_close(&source);
+}
 
 
 /* EN/RU: Prepare independent owner-first live groups on provider controller, borrowing granted options only here.
@@ -19,13 +36,21 @@ static void environment_prepare(const DVM_LaunchOptions *options, const DVM_Laun
 {
     if (CONTROL >= 25)
     {
+        if (CONTROL >= 39)
+        {
+            environment_events(handoff->group);
+        }
         DVM_LaunchOptions owned = *options;
         owned.policy = DVM_LAUNCH_OWNER_FIRST;
-        unsigned count = (CONTROL == 27 || CONTROL == 32) ? 2 : 1;
+        unsigned count = (CONTROL == 27 || CONTROL == 32 || CONTROL == 40) ? 2 : 1;
         for (unsigned i = 0; i < count; i++)
         {
             prepared_environments[i] = dvm_launch_prepare(&owned);
             launch_check(prepared_environments[i] != NULL, "per-instance owner-first preparation");
+            if (CONTROL >= 39)
+            {
+                environment_events(prepared_environments[i]);
+            }
             if (CONTROL >= 29)
             {
                 DVM_LaunchHandoff selected = *handoff; /* Trusted owner fixture chooses immutable invocation payload after admission. */
@@ -50,7 +75,7 @@ static void environment_attach(Modlink *link)
         return;
     }
     unsigned index = environment_bindings;
-    launch_check(index < ((CONTROL == 27 || CONTROL == 32) ? 2U : 1U) && prepared_environments[index], "one prepared group per instance");
+    launch_check(index < ((CONTROL == 27 || CONTROL == 32 || CONTROL == 40) ? 2U : 1U) && prepared_environments[index], "one prepared group per instance");
     DVM_LaunchContext *context = prepared_contexts[index];
     if (context)
     {

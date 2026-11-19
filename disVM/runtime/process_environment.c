@@ -100,6 +100,14 @@ void dvm_process_environment_destroy(Prog *process)
 }
 
 
+/* EN: Select the current native owner's module inbox; return a borrowed inbox/NULL, with no foreign frames.
+ * RU: Выбрать очередь модуля своего нативного потока; вернуть заимствованную очередь/NULL, без чужих кадров. */
+static DVM_SysEvents *current_events(void)
+{
+    return dvm_module_events_current(currun());
+}
+
+
 /* EN: Bind the permanent owner's borrowed process; no context/jump-frame copy.
  * Return one/zero for valid/invalid metadata; FP runtime failure aborts. No roots
  * or frames change, and no native ownership transfers to another process.
@@ -119,6 +127,7 @@ int dvm_process_environment_bind(Prog *process)
     }
     up->env = process->osenv;
     dvm_sysevents_bind(((DVM_RuntimeProcess *)process)->system_events);
+    dvm_sysevents_select(current_events);
     return 1;
 }
 

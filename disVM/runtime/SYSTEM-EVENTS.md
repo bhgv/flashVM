@@ -200,10 +200,51 @@ publication and must fail with `multiple published device factories`. Build erro
 timeouts and sanitizer reports do not count as detection. The same fixture also
 retains its existing namespace/source races, queue and scope-isolation checks.
 
-These checks do not add module-call-boundary inbox selection. The current owner's
-inbox is still process-scoped; per-Modlink namespace selection is documented in
-[module environments](VFS-TRAVERSAL.md). Switching module-specific subscriptions
-while preserving already opened FD capabilities remains separate integration.
+## Bound module scopes / Области привязанных модулей
+
+An owner retains its base inbox plus independent native inboxes keyed by the exact
+module binding identity. The device's native TLS selector uses the same nearest
+bound live frame as [VFS lookup](VFS-TRAVERSAL.md), including builtin and unbound
+helper calls. Returning to the caller therefore selects its own inbox for new
+opens. No foreign process frames are read, no target pauses, and no guest callback
+or registration protocol participates.
+
+`FORKNS`/`NEWNS` prepare the selected inbox's new observer before committing the
+namespace pointer. Failed allocation/subscription leaves the old namespace and
+queue scope intact. A module's change must not rebind or purge the caller's base
+inbox. Already opened FDs keep their captured inbox through return and reentry;
+explicit pctl for that same scope still purges its old-scope records as before.
+Two instances of the same module have different binding identities and queues.
+Spawn creates its own observer rather than sharing the parent's consumable FIFO.
+
+Очередь базового окружения и очереди привязок модулей независимы. Выбор выполняется
+нативно по своим живым кадрам; возврат из модуля не перенастраивает открытые FD.
+Смена namespace модуля затрагивает лишь его очередь. Отказ подготовки подписки
+не фиксирует новую VFS; повторная попытка допустима. Ребёнок получает отдельного
+наблюдателя, поэтому не отбирает события у родителя.
+
+First native event-scope selection (device access/open or pctl) allocates the
+module's slot and automatic observers; a bound child receives them before process
+publication. There is no hook on every module-call boundary in this checkpoint.
+Before a slot exists, provider journals supply conservative initial invalidation
+when it is selected, not a replay of every earlier report. Subsequent delivery is
+automatic even while execution is elsewhere. Native first-selection failure
+refuses access; it never falls back to an unrelated base inbox. Slots contain no
+managed module root and retire with the permanent owner; retained FDs can drain
+the original queue after that retirement.
+
+Слот модуля создаётся при первом нативном выборе области событий или pctl;
+для наследуемой привязки ребёнка — до публикации потока. Отдельного перехвата
+каждого входа в модуль пока нет. Ранние изменения представлены начальным
+уведомлением о перечитывании состояния из журнала, а не полным воспроизведением.
+После создания подписки доставка не зависит от исполнения получателя.
+
+Acceptance adds actual interpreter/JIT module return/reentry, held caller/module
+FDs, two same-path instances, real subscription allocation refusal with retry,
+source publication while the caller executes outside the module, and a control
+restoring the old wrong-inbox pctl argument. Native device tests
+also cover explicit selector refusal without base fallback, bind-time reset and
+an opened FD draining its original retired inbox through EOF.
 
 [Native inbox tests](vfs/test_sysevents.c) prove source-to-inbox delivery before
 any owner binding or device open, independent inboxes, namespace isolation,
