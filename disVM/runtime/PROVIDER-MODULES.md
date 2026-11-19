@@ -165,3 +165,10 @@ FORKNS inside a bound module, separate namespaces for two instances, and inherit
 redirected stdin with its original shared offset. Positive explicit binding checks
 also exercise `dvm_module_link_prepared`, including final native namespace cleanup.
 See [active traversal and instance environments](VFS-TRAVERSAL.md).
+
+
+The current total is **66 interpreter/JIT scenarios**. Module launch metadata now
+belongs to the bound instance as well as its VFS: unbound dependencies inherit it,
+and a child spawned from such a dependency retains it without parent frames.
+Two instances carry different binary arguments while the containing process
+keeps its original payload. See [module-instance launch context](LAUNCH-CONTEXT.md#module-instance-context--контекст-экземпляра-модуля).

@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "kernel.h"
 #include "binding.h"
+#include "../vfs/launch/context.h"
 
 
 /* [GC:] EN/RU: See binding.h; only native snapshot allocation precedes the original linker's root/MP transaction.
@@ -73,6 +74,32 @@ Modlink *dvm_module_link_prepared(Module *module, Import *imports, int mkmp,
     {
         destroy(link);
         kwerrstr("cannot attach module namespace");
+        return H;
+    }
+    return link;
+}
+
+
+/* [GC:] EN/RU: See binding.h; contract ownership stays in the caller's immutable context until native attachment retains it.
+ * См. binding.h; contract остаётся в immutable caller context до native attachment, удерживающего собственный pin.
+ */
+Modlink *dvm_module_link_launch(Module *module, Import *imports, int mkmp,
+    DVM_Namespace *group, DVM_LaunchContext *context)
+{
+    if (!group || !context || !context->contract)
+    {
+        if (module && module != H)
+        {
+            unload(module);
+        }
+        kwerrstr("module launch binding requires a typed context and prepared namespace");
+        return H;
+    }
+    Modlink *link = dvm_module_link_contract(module, imports, mkmp, context->contract);
+    if (link != H && !dvm_module_environment_bind_context(link, group, context))
+    {
+        destroy(link);
+        kwerrstr("cannot attach module launch environment");
         return H;
     }
     return link;

@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "runqueue.h"
 #include "environment.h"
+#include "../vfs/launch/context.h"
 #include "../close_worker.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
  */
 typedef struct ModuleEnvironment
 {
+    DVM_LaunchContext *context; /* Optional owned immutable per-instance launch metadata. */
     Modlink *link; /* Comparison only under registry lock; never dereferenced on closer. */
     DVM_Namespace *group; /* Owned prepared namespace, borrowed only under a rooted link/frame. */
     DVM_CloseJob *job; /* Preallocated before attachment, transferred at final managed retirement. */
@@ -48,6 +50,7 @@ static uint64_t next_identity; /* Binding tokens never wrap or get reused. */
 static void close_environment(void *payload)
 {
     ModuleEnvironment *entry = payload;
+    dvm_launch_context_release(entry->context);
     dvm_namespace_release(entry->group);
     free(entry);
 }
@@ -57,7 +60,7 @@ static const DVM_VfsOps cleanup = {.close = close_environment}; /* Native-only d
 /* [GC:] EN/RU: See environment.h; allocations precede publication and no registry mutex covers a destructor.
  * См. environment.h; allocation до publication, destructor вне registry mutex.
  */
-int dvm_module_environment_bind(Modlink *link, DVM_Namespace *group)
+int dvm_module_environment_bind_context(Modlink *link, DVM_Namespace *group, DVM_LaunchContext *context)
 {
     if (!link || link == H || !group)
     {
@@ -71,6 +74,14 @@ int dvm_module_environment_bind(Modlink *link, DVM_Namespace *group)
         dvm_close_discard(job);
         return 0;
     }
+    if (context && !dvm_launch_context_retain(context))
+    {
+        dvm_namespace_release(group);
+        free(entry);
+        dvm_close_discard(job);
+        return 0;
+    }
+    entry->context = context;
     entry->link = link;
     entry->group = group;
     entry->job = job;
@@ -138,17 +149,21 @@ static ModuleEnvironment *find(Modlink *link)
 }
 
 
-/* [GC:] EN/RU: Walk permanent owner's live frames, including builtin and local helper calls, not saved Prog.R snapshots.
+/* [GC:] EN/RU: Walk live owner frames; metadata selects context-bearing entries, zero selects any bound namespace.
  * Only exact module crossings change the lookup key; no managed allocation or frame pointer escapes.
  * Обойти live frames permanent owner, включая builtin/local helpers, без saved Prog.R snapshots.
  */
-static ModuleEnvironment *current(Prog *process)
+static ModuleEnvironment *current(Prog *process, int metadata)
 {
     if (!process || process != currun())
     {
         return NULL;
     }
     ModuleEnvironment *entry = find(DVM_R.M);
+    if (metadata && entry && !entry->context)
+    {
+        entry = NULL;
+    }
     const void *fp = DVM_R.FP;
     while (!entry && fp && fp != H)
     {
@@ -157,6 +172,10 @@ static ModuleEnvironment *current(Prog *process)
         if (frame.mr && frame.mr != H)
         {
             entry = find(frame.mr);
+            if (metadata && entry && !entry->context)
+            {
+                entry = NULL;
+            }
         }
         fp = frame.fp;
     }
@@ -169,7 +188,7 @@ static ModuleEnvironment *current(Prog *process)
  */
 DVM_Namespace *dvm_module_environment_current(Prog *process)
 {
-    ModuleEnvironment *entry = current(process);
+    ModuleEnvironment *entry = current(process, 0);
     if (!entry)
     {
         return NULL;
@@ -190,7 +209,7 @@ DVM_Namespace *dvm_module_environment_current(Prog *process)
  */
 int dvm_module_environment_reserve(Prog *process)
 {
-    ModuleEnvironment *entry = current(process);
+    ModuleEnvironment *entry = current(process, 0);
     if (!entry)
     {
         return process && process == currun();
@@ -225,7 +244,7 @@ int dvm_module_environment_replace(Prog *process, DVM_Namespace *replacement)
         return 0;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
-    ModuleEnvironment *entry = current(process);
+    ModuleEnvironment *entry = current(process, 0);
     if (!entry)
     {
         DVM_Namespace *old = owner->namespace_group;
@@ -272,4 +291,27 @@ void dvm_module_environment_release(Prog *process)
             free(item);
         }
     }
+}
+
+
+/* [GC:] EN/RU: See environment.h; group-only attachment deliberately inherits an enclosing accepted launch context.
+ * См. environment.h; group-only attachment намеренно наследует enclosing accepted launch context.
+ */
+int dvm_module_environment_bind(Modlink *link, DVM_Namespace *group)
+{
+    return dvm_module_environment_bind_context(link, group, NULL);
+}
+
+
+/* [GC:] EN/RU: See environment.h; owning Modlink frames or process constructor pins keep this native snapshot alive.
+ * См. environment.h; Modlink frames либо process constructor pins удерживают native snapshot.
+ */
+DVM_LaunchContext *dvm_module_launch_current(Prog *process)
+{
+    if (!process || process != currun())
+    {
+        return NULL;
+    }
+    ModuleEnvironment *entry = current(process, 1);
+    return entry ? entry->context : ((DVM_RuntimeProcess *)process)->launch_context;
 }

@@ -5,24 +5,36 @@
 #ifndef PROVIDER_MODULE_ENVIRONMENT_TEST_H
 #define PROVIDER_MODULE_ENVIRONMENT_TEST_H
 #include "../../module_interface/environment.h"
+#include "../../vfs/launch/context.h"
+#include <limits.h>
 static DVM_Namespace *prepared_environments[2]; /* Controller prepares each instance once before admitting any guest. */
+static DVM_LaunchContext *prepared_contexts[2]; /* Independent copied snapshots, caller pins dropped immediately after attachment. */
 static unsigned environment_bindings; /* Actual native attachment count, read only after guest retirement. */
 
 
 /* EN/RU: Prepare independent owner-first live groups on provider controller, borrowing granted options only here.
  * Подготовить independent owner-first live groups на provider controller; options borrowed лишь до return.
  */
-static void environment_prepare(const DVM_LaunchOptions *options)
+static void environment_prepare(const DVM_LaunchOptions *options, const DVM_LaunchHandoff *handoff)
 {
     if (CONTROL >= 25)
     {
         DVM_LaunchOptions owned = *options;
         owned.policy = DVM_LAUNCH_OWNER_FIRST;
-        unsigned count = CONTROL == 27 ? 2 : 1;
+        unsigned count = (CONTROL == 27 || CONTROL == 32) ? 2 : 1;
         for (unsigned i = 0; i < count; i++)
         {
             prepared_environments[i] = dvm_launch_prepare(&owned);
             launch_check(prepared_environments[i] != NULL, "per-instance owner-first preparation");
+            if (CONTROL >= 29)
+            {
+                DVM_LaunchHandoff selected = *handoff; /* Trusted owner fixture chooses immutable invocation payload after admission. */
+                unsigned char arguments[3] = {77, 0, (unsigned char)(i + 1)};
+                selected.description.argument_bytes = sizeof(arguments);
+                selected.arguments = arguments;
+                prepared_contexts[i] = dvm_launch_context_create(&selected);
+                launch_check(prepared_contexts[i] != NULL, "per-instance native context snapshot");
+            }
         }
     }
 }
@@ -38,9 +50,23 @@ static void environment_attach(Modlink *link)
         return;
     }
     unsigned index = environment_bindings;
-    launch_check(index < (CONTROL == 27 ? 2U : 1U) && prepared_environments[index], "one prepared group per instance");
-    launch_check(dvm_module_environment_bind(link, prepared_environments[index]), "actual private instance attachment");
-    launch_check(!dvm_module_environment_bind(link, prepared_environments[index]), "duplicate module attachment accepted");
+    launch_check(index < ((CONTROL == 27 || CONTROL == 32) ? 2U : 1U) && prepared_environments[index], "one prepared group per instance");
+    DVM_LaunchContext *context = prepared_contexts[index];
+    if (context)
+    {
+        unsigned original = context->references; /* Still private, not yet attached/published by this owner. */
+        context->references = UINT_MAX;
+        launch_check(!dvm_module_environment_bind_context(link, prepared_environments[index], context),
+            "overflowed native context reference was accepted");
+        context->references = original;
+    }
+    launch_check(dvm_module_environment_bind_context(link, prepared_environments[index], prepared_contexts[index]),
+        "actual private instance metadata/namespace attachment");
+    launch_check(!dvm_module_environment_bind_context(link, prepared_environments[index], context),
+        "duplicate module metadata attachment accepted");
+    launch_check(!context || context->references == 2, "duplicate attachment lost or leaked context ownership");
+    dvm_launch_context_release(prepared_contexts[index]);
+    prepared_contexts[index] = NULL;
     dvm_namespace_release(prepared_environments[index]);
     prepared_environments[index] = NULL;
     environment_bindings++;

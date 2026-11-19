@@ -6,6 +6,7 @@
 #define DVM_MODULE_ENVIRONMENT_H
 #include "../vfs/namespace.h"
 struct Modlink; /* Exact locally rooted module instance, never sent over Styx. */
+struct DVM_LaunchContext; /* Immutable owner-side label/arguments/contract, never a foreign heap object. */
 struct Prog; /* Permanent runtime owner, borrowed only by that owner. */
 typedef struct DVM_ModuleOverride DVM_ModuleOverride; /* Process-owned detached namespace variants. */
 
@@ -17,6 +18,23 @@ typedef struct DVM_ModuleOverride DVM_ModuleOverride; /* Process-owned detached 
  * Без managed allocation/provider I/O. Каждый remote instance получает собственную prepared group.
  */
 int dvm_module_environment_bind(struct Modlink *link, DVM_Namespace *group);
+
+
+/* [GC:] EN/RU: Retain prepared group and optional immutable native launch context on a private rooted link;1/0.
+ * Same lifetime/publication rules as bind; context borrowed through return, independently retained on success.
+ * No managed allocation/provider I/O; NULL context preserves caller-context inheritance.
+ * Удержать prepared group и optional native launch context в private rooted link;1/0.
+ * Context borrowed до return, retained при success; NULL сохраняет наследование caller context.
+ */
+int dvm_module_environment_bind_context(struct Modlink *link, DVM_Namespace *group, struct DVM_LaunchContext *context);
+
+
+/* [GC:] EN/RU: Borrow nearest module's launch metadata, otherwise this ACTIVE permanent owner's process context; NULL if absent.
+ * Search live rooted frames, including builtins/helpers. No allocation, I/O or ownership transfer.
+ * Заимствовать launch metadata ближайшего module либо process context своего ACTIVE owner; NULL если нет.
+ * Поиск по live rooted frames, без allocation/I/O/ownership transfer.
+ */
+struct DVM_LaunchContext *dvm_module_launch_current(struct Prog *process);
 
 
 /* [GC:] EN/RU: Detach final link's native environment and queue its preallocated closer job; no I/O/allocation.

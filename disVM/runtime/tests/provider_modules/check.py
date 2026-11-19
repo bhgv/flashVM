@@ -28,7 +28,13 @@ def main():
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
         compile_image(compiler, include, root, fixtures / "wrong.b", work / "wrong.dis", [fixtures])
-        for variant in range(29):
+        for variant in range(33):
+            if variant >= 30:
+                dependency = "dependency-child.b" if variant == 31 else "dependency-context.b"
+                for label, value in [("first", 111), ("next", 112)]:
+                    source = work / "value.b"
+                    source.write_text((fixtures / dependency).read_text().replace("EXPECTED_VALUE", str(value)))
+                    compile_image(compiler, include, root, source, work / (label + ".dis"), [fixtures])
             if variant >= 25:
                 app_source = (fixtures / "app.b").read_text().replace('include "value.m";', 'include "value.m";\ninclude "sys.m";')
                 extra = '    sys := load Sys Sys->PATH;\n'
@@ -40,13 +46,16 @@ def main():
                     extra += '    input := array[4] of byte;\n    if (sys->read(sys->fildes(0), input, 4) != 4 || string input != "left") { raise "module lost redirected stdin"; }\n'
                 extra += '    data := sys->open("/data", Sys->OREAD);\n    bytes := array[32] of byte;\n    n := sys->read(data, bytes, len bytes);\n    if (n != 9 || string bytes[:n] != "execution") { raise "module builtin lost owner-first environment"; }\n'
                 app_source = app_source.replace('    dep := load Value', extra + '    dep := load Value')
+                if variant >= 29:
+                    extra_result = "int arguments[2]" if variant == 32 else "0"
+                    app_source = (fixtures / "app-context.b").read_text().replace("RESULT_EXTRA", extra_result)
                 source = work / "app.b"
                 source.write_text(app_source)
                 compile_image(compiler, include, root, source, work / "app.dis", [fixtures])
             main_source = work / "main.b"
             template_name = {10: "kill.b", 16: "child.b", 17: "child.b", 18: "child.b", 19: "child.b", 24: "contract-child.b"}.get(variant, "main.b")
             template = (fixtures / template_name).read_text()
-            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222, 25: 111, 26: 111, 27: 111, 28: 111}.get(variant, -1)
+            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222, 25: 111, 26: 111, 27: 111, 28: 111, 29: 111, 30: 111, 31: 111, 32: 112}.get(variant, -1)
             if variant == 13:
                 template = template.replace("app == nil || app->value() != EXPECTED", "app != nil")
             if variant in (20, 21, 22, 23):
@@ -56,6 +65,11 @@ def main():
                 template = template.replace('    data := sys->open', '    other := load Value "/app.dis";\n    if (other == nil || other->value() != 111 || sys->open("/saved", Sys->OREAD) != nil) { raise "module namespace escaped to caller"; }\n    data := sys->open')
             if variant == 28:
                 template = template.replace('    SWITCH', '    input := array[4] of byte;\n    if (sys->read(sys->fildes(0), input, 4) != 4 || string input != "next") { raise "redirected stdin offset changed"; }\n    SWITCH')
+            if variant >= 29:
+                check_context = '    arguments = launch->arguments();\n    if (len arguments != 4 || int arguments[0] != 0) { raise "module metadata escaped into caller"; }\n'
+                if variant == 32:
+                    check_context += '    other := load Value "/app.dis";\n    if (other == nil || other->value() != 113) { raise "module instances shared launch context"; }\n'
+                template = template.replace('    data := sys->open', check_context + '    data := sys->open')
             main_source.write_text(template.replace("EXPECTED", str(expected))
                                    .replace("HELPERS", "" if variant else (fixtures / "update.b").read_text())
                                    .replace("SWITCH", "" if variant else "update(sys, app);"))

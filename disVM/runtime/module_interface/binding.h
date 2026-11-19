@@ -43,4 +43,16 @@ struct Modlink *dvm_module_link_contract(struct Module *module, struct Import *i
  */
 struct Modlink *dvm_module_link_prepared(struct Module *module, struct Import *imports, int mkmp,
     const DVM_LaunchContract *required, DVM_Namespace *group);
+
+
+/* [GC:] EN/RU: Typed owner-local linking with per-instance prepared VFS and immutable accepted launch context; owned link/H.
+ * Consume local Module on all outcomes; imports/group/context borrowed through return/exception.
+ * A non-NULL typed context supplies the required contract; validate it before original linking or MP setup.
+ * Bind group and metadata together before publication. No remote I/O, init invocation or automatic FD/terminal replacement.
+ * Caller prepares context from the accepted handoff outside managed admission and retains inputs until return.
+ * Typed owner-local linking с per-instance VFS/context; свой link/H. Module поглотить всегда, inputs borrowed.
+ * Typed context задаёт required contract; проверка до original linking. Без remote I/O/init/подмены FD.
+ */
+struct Modlink *dvm_module_link_launch(struct Module *module, struct Import *imports, int mkmp,
+    DVM_Namespace *group, struct DVM_LaunchContext *context);
 #endif

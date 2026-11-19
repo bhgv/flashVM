@@ -9,6 +9,7 @@
 #include "runqueue.h"
 #include "runtime.h"
 #include "context.h"
+#include "../../module_interface/environment.h"
 #include "../sysevents.h"
 #include "../../../native/movie/service.h"
 #include "disvm/unibus_binding.h"
@@ -22,7 +23,8 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
 {
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
     DVM_TerminalChannels *source = parent ? ((DVM_RuntimeProcess *)parent)->terminal_channels : NULL;
-    DVM_LaunchContext *context = parent ? ((DVM_RuntimeProcess *)parent)->launch_context : NULL;
+    DVM_LaunchContext *context = parent ? (parent == currun() ? dvm_module_launch_current(parent) :
+        ((DVM_RuntimeProcess *)parent)->launch_context) : NULL;
     if (context && !dvm_launch_context_retain(context))
     {
         return 0;

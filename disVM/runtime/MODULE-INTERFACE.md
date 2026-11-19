@@ -205,7 +205,7 @@ Module, followed by its Modlink, retains the actual chosen implementation throug
 ordinary native ownership. A later VFS bind does not cause this API to look up a
 new object. This does not turn a filename or a system ID into execution authority.
 
-The 58 real interpreter/JIT module scenarios also exercise explicit bindings of
+The 66 real interpreter/JIT module scenarios also exercise explicit bindings of
 source-built images parsed under an unrelated alias label. Success preserves the
 exact Module identity, original entry frame/PC and requested link count. Refusals
 cover real int/big mismatch, a required export unused by the current imports,
@@ -219,7 +219,7 @@ A private control that skips complete requirements for the unused-member case
 fails semantically in both engines, where ordinary import linking alone would
 succeed. Build errors, signals and timeouts do not count. Affected runtime
 checks pass normally and with ASan/UBSan, including module retirement, module
-cycles, source-generation idempotence and the 58 provider-module scenarios. Public
+cycles, source-generation idempotence and the 66 provider-module scenarios. Public
 binding declarations also compile standalone as strict C89 and C++98.
 
 This is an explicit native owner-side primitive. Ordinary Limbo `load` still uses
@@ -240,3 +240,10 @@ its namespace pin until return and can release it after successful attachment.
 The result owns its independent native environment until managed retirement.
 See [VFS traversal and module lifetime](VFS-TRAVERSAL.md) for stack order, nested
 calls, pctl, FD preservation, collector cleanup and remaining remote proxy scope.
+
+
+`dvm_module_link_launch(module, imports, mkmp, group, context)` adds an immutable
+accepted invocation snapshot to that same native lifetime. Its own contract is
+validated before linking; current Launchcontext reads, nested helpers and spawn
+use that instance's snapshot. Missing typed context refuses. This remains an
+owner-local bridge; transparent remote `.m` marshalling is not implemented by it.

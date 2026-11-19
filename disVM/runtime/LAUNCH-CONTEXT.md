@@ -1,7 +1,8 @@
 # Accepted launch data / Данные принятого запуска
 
 [`Launchcontext`](../module/launchcontext.m) is a DisVM extension exposing the
-current process's copied logical module label and opaque startup bytes. It closes
+current invocation's copied logical module label and opaque startup bytes: the
+nearest bound module instance supplies them, otherwise its process context does. It closes
 the gap between native request acceptance and a bootstrap's ordinary typed
 application call. It works without a FlashVM/display context and does not change
 Inferno's standard Sys interface or inject arguments into native Dis frames.
@@ -53,8 +54,8 @@ fallible preparation and the optional Unibus claim have succeeded.
 
 A successful adoption retains its independent snapshot even after the host
 changes/frees the handoff metadata and the requester/provider wrappers retire.
-Each child constructor retains the immutable snapshot, including display-free
-children. A failed child setup rolls that pin back. Owner retirement and failed
+Each child constructor retains the effective invoking snapshot, including
+children spawned inside an unbound dependency of a bound module. A failed child setup rolls that pin back. Owner retirement and failed
 publication drop their native pins; the final release frees native storage without
 provider callbacks, managed references or I/O. Refcount overflow refuses creation
 of another owner without wrapping or resurrecting a zero-reference allocation.
@@ -110,3 +111,47 @@ Both sets use source-built native-cell code and the supported dedicated OS-threa
 model. ASan/UBSan runs use a fully instrumented runtime; LeakSanitizer remains
 disabled in this restricted environment. No executing FlashVM or completed
 cross-machine module-call path is claimed by these fixtures.
+
+
+## Module-instance context / Контекст экземпляра модуля
+
+A trusted provider can create `DVM_LaunchContext` from an accepted native handoff
+once, then pass it with the prepared namespace to
+[`dvm_module_link_launch`](module_interface/binding.h). The context's complete
+required interface is checked against the actual local implementation before the
+original Inferno linker runs. Namespace and metadata are attached together before
+the resulting Modlink is published. No init call, remote code transfer, argument
+marshalling or FD/terminal replacement is implicit in this API.
+
+The instance retains native ownership independently of the caller's snapshot.
+Builtin calls and ordinary unbound helpers see the nearest enclosing instance's
+metadata; a return restores the caller's view naturally through its rooted frames.
+Different instances of the same module can carry different argument bytes without
+changing the containing process's original launch data. Spawn copies the effective
+context into the fresh process constructor even when the new child has no caller
+frames. Final ordinary/collector module retirement queues namespace and context
+cleanup together on the native closer.
+
+A group-only `dvm_module_link_prepared` attachment deliberately inherits its
+caller's context. An explicit typed `dvm_module_link_launch` requires a context
+with a contract and refuses missing inputs instead of treating it as an untyped
+launch. Native reference overflow or duplicate attachment preserves all caller
+pins; failure before publication never replaces an existing instance.
+
+These are the same native objects a process-filesystem view should expose.
+Inferno's convention is [`/prog/<pid>`](https://www.inferno-os.org/inferno/man/3/prog.html),
+including `ns`, `nsgrp` and `fd`. This hosted runtime does not yet port that full
+device; there is no implemented `/proc` or new module-directory layout claimed
+here. A future compatible `/prog` projection must share these native sources,
+rather than keep a second authoritative copy indexed only by PID.
+
+There are now 66 actual provider-module interpreter/JIT scenarios. The eight
+latest runs check instance metadata, unbound dependencies, a child spawned from
+such a dependency, two simultaneous module instances, typed context binding,
+refcount overflow/duplicate rollback and restoration of the original caller data.
+
+Validation: 19 affected runtime checks pass in normal and ASan/UBSan builds;
+11 traversal/actual-Unibus-guest SDK checks pass in both builds. The native
+binding declarations also compile standalone as strict C89 and C++98. No guest
+pause, cooperative service loop or second process-filesystem state store was
+introduced for these metadata reads.

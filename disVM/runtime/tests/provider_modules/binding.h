@@ -70,6 +70,24 @@ static Module *binding_image(const char *file)
 }
 
 
+/* EN/RU: Own an immutable typed context copied from a provider-side handoff for the actual explicit linker test.
+ * required stays borrowed; the context gets independent contract storage before any allocation-failure injection.
+ * Создать typed context из provider-side handoff; required borrowed, context владеет independent contract copy.
+ */
+static DVM_LaunchContext *binding_context(const DVM_LaunchContract *required)
+{
+    DVM_LaunchHandoff handoff = {0};
+    strcpy(handoff.description.module, "/explicit-local-instance.dis");
+    handoff.description.typed = 1;
+    handoff.contract = dvm_launch_contract_clone(required);
+    launch_check(handoff.contract != NULL, "explicit launch context requirements");
+    DVM_LaunchContext *context = dvm_launch_context_create(&handoff);
+    dvm_launch_contract_free(handoff.contract);
+    launch_check(context != NULL, "explicit immutable module launch snapshot");
+    return context;
+}
+
+
 /* [GC:] EN/RU: Bind actual caller imports to the exact parsed local implementation; validate full contract before linker entry.
  * required/imports borrowed under caller's Module pin. Refusal consumes input once without entering linkmod.
  * Snapshot failures target each real calloc; success returns same Module and original entry frames/PCs.
@@ -80,16 +98,20 @@ static void binding_attempt(const char *file, Import *imports, const DVM_LaunchC
     unsigned failure, int expected)
 {
     Module *module = binding_image(file);
-    DVM_Namespace *prepared = expected && !failure ? dvm_namespace_create("/", "/", NULL) : NULL;
+    int typed_context = CONTROL >= 29 && required && imports && imports != H;
+    DVM_Namespace *prepared = (expected && !failure) || typed_context ? dvm_namespace_create("/", "/", NULL) : NULL;
+    DVM_LaunchContext *context = typed_context ? binding_context(required) : NULL;
     launch_check(!expected || failure || prepared, "explicit prepared linker environment");
     binding_input = module;
     binding_links = 0;
     binding_unloads = 0;
     binding_allocation = failure;
     binding_watching = 1;
-    Modlink *link = prepared ? dvm_module_link_prepared(module, imports, 1, required, prepared) :
+    Modlink *link = context ? dvm_module_link_launch(module, imports, 1, prepared, context) :
+        prepared ? dvm_module_link_prepared(module, imports, 1, required, prepared) :
         dvm_module_link_contract(module, imports, 1, required);
     binding_watching = 0;
+    dvm_launch_context_release(context);
     dvm_namespace_release(prepared);
     launch_check(!binding_allocation, "explicit binding snapshot refusal was not reached");
     if (expected)

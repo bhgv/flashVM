@@ -23,7 +23,7 @@
 Module *dvm_launch_module_checked(const char *path, Module *module)
 {
     Prog *process = currun();
-    DVM_LaunchContext *context = process ? ((DVM_RuntimeProcess *)process)->launch_context : NULL;
+    DVM_LaunchContext *context = dvm_module_launch_current(process);
     if (!module || module == H || !path || !context || !context->contract || strcmp(path, context->module))
     {
         return module;

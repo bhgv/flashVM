@@ -5,6 +5,7 @@
 #include "../cap_internal.h"
 #include "runqueue.h"
 #include "context.h"
+#include "../../module_interface/environment.h"
 #include "launchcontext_decl.h"
 #include "launchcontext_table.h"
 
@@ -15,7 +16,7 @@
 static DVM_LaunchContext *current(void)
 {
     Prog *process = currun();
-    return process ? ((DVM_RuntimeProcess *)process)->launch_context : NULL;
+    return dvm_module_launch_current(process);
 }
 
 
