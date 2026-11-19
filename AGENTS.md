@@ -58,6 +58,49 @@ outputs and deliberately raw oracle fixtures unchanged.
   variable identifiers such as `cocor` and COCOR_ROOT. The CMake generator tests
   automatically check SDK selection and Markdown prose spelling.
 
+# Documentation, help and README standard (2026-11-19)
+
+This is a standing user requirement for future documentation throughout the
+repository, not only for the standalone libraries. Follow the organization and
+level of explanation in the Macromedia Flash ActionScript Dictionary supplied by
+the user and these QNX references:
+
+- Conceptual introduction: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.resmgr/topic/overview.html
+- Function reference: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/o/open.html
+- Service implementation guidance: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.security.system/topic/manual/write_resource_manager.html
+
+Use these as structural examples; write original explanations for our actual
+implementations, rather than copying their prose or assuming their guarantees.
+
+- Provide an introduction explaining what the component is, why it exists, its
+  architecture, use cases and the boundaries of its responsibilities.
+- Keep conceptual introductions, step-by-step tutorials and API reference pages
+  distinct and cross-linked. README files must explain what to choose and why,
+  prerequisites, build/run steps, configuration and how to reach the full help.
+- Give each public function or command its own Markdown reference page. Document
+  its purpose, syntax, required headers/library or module, every parameter,
+  units, allowed values, flags, defaults and optional arguments; return values,
+  status/error conditions, side effects, ownership and resource lifetimes;
+  blocking, cancellation and concurrency restrictions where applicable;
+  availability/platform limits, working examples and related entries.
+- Explain configuration and command-line variants with their effects, not just
+  their names. Separate supported behavior from proposals and untested ports.
+- Maintain separate English and Russian pages and README files, with reciprocal
+  language links and equivalent substantive coverage.
+- Link mentioned APIs to their reference and implementation, and to relevant
+  main-project help when it exists. Keep source anchors and relative links valid
+  after code changes and when an independently distributed component is copied.
+- Make examples runnable and educational: explain setup, each source line,
+  request/control flow, expected output, failure paths and cleanup. Explain the
+  meaning and reason for operations; do not generate filler comments that merely
+  restate syntax. Preserve copyrights and original license notices.
+- Make new documentation and example READMEs reachable from the root documentation
+  viewer. Independently distributed libraries also need their own offline viewer
+  and navigation that work without the VM or the surrounding repository.
+- Check descriptions against implementations, verify links and exercise the
+  documented commands as appropriate. Formatting or generated metadata alone
+  does not establish the semantic accuracy or completeness of documentation.
+
 # Standing publication authorization (2026-10-25)
 
 The user explicitly authorizes non-force publication to bhgv/flashVM master and
