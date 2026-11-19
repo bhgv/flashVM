@@ -22,8 +22,8 @@ def flags(directory):
 
 # EN/RU: Run bounded compilation/execution, report the actual diagnostic; build errors never count as semantic detection.
 # Выполнить bounded compilation/execution с настоящей диагностикой, build-errors не считаются semantic detection.
-def run(command, cwd):
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=90)
+def run(command, cwd, env=None):
+    result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, timeout=90)
     if result.returncode:
         raise RuntimeError("command failed: " + " ".join(map(str, command)) + "\n" + result.stdout + result.stderr)
     return result
@@ -49,6 +49,16 @@ def main():
                                  capture_output=True, text=True, timeout=5)
         if refused.returncode != 2 or "delegated connected stream FD" not in refused.stderr:
             raise RuntimeError("CLI did not reject stdin as launch carrier")
+        for options in [
+            ["--request", "launch", "0"],
+            ["--records", "launch", "records"],
+            ["--grant", "/zero", "7", "r", "--grant", "/seven", "7", "rw"],
+            ["--grant", "/app.dis/sub", "7", "r"],
+        ]:
+            refused = subprocess.run([cli, "--terminal-launch-fd", "0", "fixture", "app.dis", "-",
+                                      *options, "--", "main.dis"], capture_output=True, text=True, timeout=5)
+            if refused.returncode != 2 or not refused.stderr.startswith("usage:"):
+                raise RuntimeError("CLI accepted invalid launch configuration: " + " ".join(options))
     with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
         work = Path(name)
         run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),
@@ -80,12 +90,18 @@ def main():
                  "-Wl,--start-group", *libraries, "-Wl,--end-group",
                  *[value for value in sdk_link if value.startswith("-l") or value == "-pthread"]]
         run(link, runtime.parent)
-        for mode in ["--no-jit", "--jit"]:
-            result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")], work)
-            if "PASS real Dis guest file Unibus bidirectional records" not in result.stdout or \
-                    "PASS real Dis Unibus file native ownership drain" not in result.stdout:
-                raise RuntimeError("missing guest/lifetime evidence: " + result.stdout + result.stderr)
-            print("PASS actual portable Dis guest record files " + mode, flush=True)
+        profiles = ["default", "custom"] if cli else ["default"]
+        for profile in profiles:
+            env = os.environ.copy()
+            if profile == "custom":
+                env["DVM_TEST_TERMINAL_CUSTOM"] = "1"
+            for mode in ["--no-jit", "--jit"]:
+                result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")],
+                             work, env)
+                if "PASS real Dis guest file Unibus bidirectional records" not in result.stdout or \
+                        "PASS real Dis Unibus file native ownership drain" not in result.stdout:
+                    raise RuntimeError("missing guest/lifetime evidence: " + result.stdout + result.stderr)
+                print("PASS actual portable Dis guest record files " + profile + " " + mode, flush=True)
 
 
 if __name__ == "__main__":

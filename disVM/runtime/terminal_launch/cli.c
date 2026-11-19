@@ -2,10 +2,10 @@
  * EN: One launch on an externally authorized Styx connection.
  * RU: Один запуск по заранее выданному соединению Styx.
  */
+#include "config.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "../../native/terminal/route/launch.h"
-#include "../../native/terminal/order/files/launch.h"
 #include "../../native/vfs/mount.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
@@ -20,15 +20,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-
-/* EN/RU: Validate the host's exact, bounded application identifier.
- * Проверить точное имя приложения, заданное оператором. */
-static int identifier(const char *name)
-{
-    size_t size = strlen(name);
-    return size && size < DVM_NS_PATH_LIMIT && name[0] != '$';
-}
 
 
 /* EN/RU: Duplicate a delegated connected socket, preserving the original FD.
@@ -119,7 +110,7 @@ static DVM_Provider *code_root(DVM_Provider *root, const char *file, const char 
 /* EN/RU: Read one configured launch route and atomically take its reviewed environment.
  * Принять одну запись заданного маршрута, проверить запрос и забрать окружение. */
 static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
-    const char *name, const char *file, const char *dependency)
+    const TerminalLaunchConfig *config)
 {
     DVM_LaunchSpec spec = {0};
     spec.policy = DVM_LAUNCH_OWNER_FIRST;
@@ -132,17 +123,16 @@ static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
     {
         return NULL;
     }
-    strcpy(spec.module, name);
+    strcpy(spec.module, config->label);
     strcpy(spec.expected_provider, origin.system);
     strcpy(origin.session, spec.terminal_origin.session);
 
     DVM_TerminalChannels ingress = {0};
     ingress.provider = root;
-    strcpy(ingress.receive, "launch");
-    strcpy(ingress.send, "records");
+    strcpy(ingress.receive, config->request);
+    strcpy(ingress.send, config->paths.send);
     const StyxRouteType type = {"disvm.launch", 1};
-    const StyxTerminalPaths paths = {"records", "records", NULL};
-    DVM_Provider *code = code_root(root, file, dependency);
+    DVM_Provider *code = code_root(root, config->code, config->dependency);
     DVM_LaunchService *service = code ? dvm_launch_service_create(spec.expected_provider, 1) : NULL;
     DVM_LaunchEndpoint *endpoint = service ? dvm_launch_service_endpoint(service) : NULL;
     StyxBidirRoute *route = endpoint ? styxbidirbindingroutes(client, &ingress, 4096, 2, NULL, 0, &type, 1) : NULL;
@@ -150,8 +140,8 @@ static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
     DVM_LaunchHandoff *handoff = NULL;
     unsigned char payload[4096];
     size_t size;
-    if (route && styxbidirroutetypedwait(route, 0, 5000) &&
-        styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &paths, endpoint, 17,
+    if (route && styxbidirroutetypedwait(route, 0, config->timeout) &&
+        styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &config->paths, endpoint, config->tag,
             payload, sizeof(payload), &size, &ticket) == STYX_CONTROL_RECORD)
     {
         DVM_LaunchReview *review = dvm_launch_service_next(service);
@@ -175,14 +165,15 @@ static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
  * Выполнить профиль одного запуска и освободить владельцев в обратном порядке. */
 int dvm_terminal_launch_cli(int argc, char **argv)
 {
-    if (argc < 8 || !identifier(argv[3]) || !strcmp(argv[4], ".") ||
-        !strcmp(argv[4], "-") || !strcmp(argv[5], ".") ||
-        !dvm_terminal_channel_paths_valid(argv[4], argv[5]) || strcmp(argv[6], "--"))
+    TerminalLaunchConfig config;
+    if (!dvm_terminal_launch_config(argc, argv, &config))
     {
-        fprintf(stderr, "usage: disvm --terminal-launch-fd FD LABEL CODE-FILE DEP-FILE-OR-DASH -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --terminal-launch-fd FD LABEL CODE-FILE DEP-FILE-OR-DASH "
+            "[--request PATH TAG] [--records RX TX] [--lane TAG] [--timeout-ms MS] "
+            "[--grant PATH TAG r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
-    int fd = connected(argv[2]);
+    int fd = connected(config.fd);
     if (fd < 0)
     {
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
@@ -198,24 +189,18 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     if (mux)
     {
         phyfree(phybidirchannel(mux, 1));
-        client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "", "", 3000, 8);
+        client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "", "", config.timeout, 8);
     }
     DVM_Provider *root = client && styxclientretain(client) ?
         styxmountproviderat(client, ".", FVM_ACCESS_MASK) : NULL;
-    DVM_LaunchHandoff *handoff = root ? receive_launch(client, root, argv[3], argv[4], argv[5]) : NULL;
-    const unsigned long tags[] = {0, 7, 9};
-    const StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, 71, tags, 3};
-    const StyxLaunchFile mappings[] = {
-        {"/zero", 0, FVM_ACCESS_READ | FVM_ACCESS_WRITE},
-        {"/seven", 7, FVM_ACCESS_READ | FVM_ACCESS_WRITE},
-        {"/nine", 9, FVM_ACCESS_READ}
-    };
+    DVM_LaunchHandoff *handoff = root ? receive_launch(client, root, &config) : NULL;
+    const StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, config.lane, config.tags, config.count};
     StyxOrderedFiles *files = handoff ? styxorderedlaunchfiles(client, handoff, &ordered,
-        mappings, sizeof(mappings) / sizeof(mappings[0])) : NULL;
+        config.files, config.count) : NULL;
     int status = 1;
     if (files)
     {
-        status = dvm_runtime_main_with_handoff(argc - 6, argv + 6, handoff);
+        status = dvm_runtime_main_with_handoff(argc - config.separator, argv + config.separator, handoff);
     }
     else
     {

@@ -43,20 +43,27 @@ build/disvm-terminal/disvm --terminal-launch-fd 3 my-app app.dis dep.dis \
 | Dependency | Exact path exposed as `/dep.dis`, or `-` for none / Путь зависимости или `-` |
 | After `--` | Ordinary VM options and local bootstrap path / Обычные опции VM и путь локального bootstrap |
 
-The peer serves P9MX channel 0. Its `launch` file supplies a binding declaration
-for tag 17, type `disvm.launch`, version 1, followed by one launch record. The
-runtime waits up to five seconds for that mailbox. Its `records` file carries
-ordered Unibus with lane 71 on the provider side. The guest receives only
-`/zero` (tag 0, read/write), `/seven` (tag 7, read/write) and `/nine` (tag 9,
-read only) from the terminal layer. Launch context and startup acknowledgement
-are handled by the bootstrap and guest protocol.
+Optional arguments go before the separator.
 
-Терминал обслуживает P9MX channel 0. Файл `launch` отдаёт привязку тега 17
-к типу `disvm.launch` версии 1 и одну запись запуска. Ожидание очереди занимает
-до пяти секунд. Файл `records` обслуживает ordered Unibus с lane 71 на стороне
-провайдера. Из слоя терминала гость получает `/zero` и `/seven` на чтение
-и запись, а `/nine` только на чтение. Подтверждение запуска отправляет гость
-по протоколу своего bootstrap.
+Дополнительные параметры указываются перед `--`.
+
+| Option / Параметр | Default / По умолчанию | Effect / Действие |
+| --- | --- | --- |
+| `--request PATH TAG` | `launch 17` | Read the request from a separate Styx file under a nonzero negotiated tag / Читать запрос из отдельного файла Styx под указанным тегом |
+| `--records RX TX` | `records records` | Choose the ordered Unibus input and output files / Выбрать входной и выходной файлы ordered Unibus |
+| `--lane TAG` | `71` | Select the nonzero ordered TX lane / Задать ненулевой тег исходящего ordered-канала |
+| `--timeout-ms MS` | `5000` | Set each connection and mailbox wait budget, 1–120000 ms / Задать срок отдельного ожидания подключения и запроса |
+| `--grant PATH TAG MODE` | `/zero 0 rw`, `/seven 7 rw`, `/nine 9 r` | First explicit grant replaces all defaults. Repeat up to 32 times with distinct paths/tags and mode `r`, `w` or `rw` / Первая выдача заменяет все значения по умолчанию. До 32 уникальных путей и тегов |
+
+The peer serves P9MX channel 0 and declares the selected request tag with type
+`disvm.launch`, version 1. It sends one launch record on that tag. The request
+file and the Unibus input file must be distinct. Launch context and startup
+acknowledgement are handled by the bootstrap and guest protocol.
+
+Терминал обслуживает P9MX channel 0, объявляет выбранный тег запроса с типом
+`disvm.launch` версии 1 и отправляет одну запись запуска. Файл запроса отличается
+от входного файла Unibus. Подтверждение запуска отправляет гость по протоколу
+своего bootstrap.
 
 The optional SDK CTest `terminal-ordered-files-cli` uses an independent original
 Styx server over TCP loopback. Set `INFERNO_DISVM_TERMINAL_CLI` together with the

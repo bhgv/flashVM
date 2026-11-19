@@ -46,16 +46,17 @@ void fixtureimagesinit(Styxserver *server)
         file->d.length = lengths[i];
     }
     const unsigned char arguments[] = {'r', 0, 'n'};
-    const FVM_SBinding binding = {17, 1, sizeof("disvm.launch") - 1, "disvm.launch"};
+    int custom = getenv("DVM_TEST_TERMINAL_CUSTOM") != NULL;
+    const FVM_SBinding binding = {custom ? 23 : 17, 1, sizeof("disvm.launch") - 1, "disvm.launch"};
     unsigned char declaration[64];
     size_t declared;
     size_t encoded;
-    Styxfile *request = styxaddfile(server, Qroot, 10, "launch", 0444, "fixture");
+    Styxfile *request = styxaddfile(server, Qroot, 10, custom ? "job-request" : "launch", 0444, "fixture");
     if (!request || fvm_sbindings_payload_write(&binding, 1, declaration, sizeof(declaration),
             &declared) != FVM_S_OK ||
         fvm_srecord_write(0, declaration, declared, launch_frame, sizeof(launch_frame),
             &launch_size) != FVM_S_OK ||
-        fvm_srecord_write(17, arguments, sizeof(arguments), launch_frame + launch_size,
+        fvm_srecord_write(binding.tag, arguments, sizeof(arguments), launch_frame + launch_size,
             sizeof(launch_frame) - launch_size, &encoded) != FVM_S_OK)
     {
         exit(3);

@@ -105,9 +105,16 @@ static void *serve(void *unused)
  * Поглотить fd и настроить исходный server на явном logical stream. */
 static void server_start(int fd, unsigned caps)
 {
+    const char *records = "records";
+#ifdef ORDERED_GUEST_FILE_TEST
+    if (getenv("DVM_TEST_TERMINAL_CUSTOM"))
+    {
+        records = "job-records";
+    }
+#endif
     remote = phybidircreate(phyposixfd(fd, caps), 4096);
     if (!remote || styxphyinit(&server, &operations, phybidirchannel(remote, 0), 0555, 1, 2) ||
-        !styxaddfile(&server, Qroot, 7, "records", 0666, "fixture"))
+        !styxaddfile(&server, Qroot, 7, (char *)records, 0666, "fixture"))
     {
         exit(3);
     }

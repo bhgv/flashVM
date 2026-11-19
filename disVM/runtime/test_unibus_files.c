@@ -125,6 +125,15 @@ static int run_cli(const char *runtime, const char *mode, const char *bootstrap)
     launch_check(child >= 0, "CLI process");
     if (!child)
     {
+        if (getenv("DVM_TEST_TERMINAL_CUSTOM"))
+        {
+            execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
+                "app.dis", "dep.dis", "--request", "job-request", "23",
+                "--records", "job-records", "job-records", "--lane", "71", "--timeout-ms", "3000",
+                "--grant", "/nine", "9", "r", "--grant", "/zero", "0", "rw", "--grant", "/seven", "7", "rw",
+                "--", mode, bootstrap, (char *)NULL);
+            _exit(3);
+        }
         execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
             "app.dis", "dep.dis", "--", mode, bootstrap, (char *)NULL);
         _exit(3);
