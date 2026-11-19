@@ -52,7 +52,7 @@ Styx::client; hosted native build
 int styxclientwalktarget(StyxClient *client, WalkEntity *root);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L168)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L174)
 
 ## См. также
 

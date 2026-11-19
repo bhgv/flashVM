@@ -50,7 +50,7 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-fvm_sbindings_init(&bindings, slots, 2) == FVM_S_OK; /* EN: Invoke fvm_sbindings_init with these explicit arguments. RU: Вызвать fvm_sbindings_init с этими явными аргументами. */
+fvm_sbindings_init(&bindings, slots, 2) == FVM_S_OK;
 ```
 
 [Complete calling context](../../examples/bridge/main.c#L177)

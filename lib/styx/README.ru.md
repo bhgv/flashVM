@@ -146,3 +146,5 @@ python3 view_docs.py --port 8910 --no-browser
 ## Введение и руководство
 
 [What and why](docs/introduction.ru.md) · [Writing a service](docs/tutorial.ru.md)
+
+Пошаговое подключение из C/C++ и выбор версии/компонентов: [SDK](docs/embedding.ru.md).

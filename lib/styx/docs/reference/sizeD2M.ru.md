@@ -49,7 +49,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-uint required = sizeD2M(&info); /* EN: Measure the complete encoded directory entry. RU: Измерить целую кодированную запись каталога. */
+uint required = sizeD2M(&info);
 ```
 
 [Complete calling context](../../examples/server.c#L270)

@@ -54,10 +54,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-fvm_srecord_read((const unsigned char *)input + first, size - first, FVM_SORDER_CTL_MAX, &command, &second);
+result = fvm_srecord_read(outer.payload, outer.size, 128, &inner, &consumed);
 ```
 
-[Complete calling context](../../protocol/order/control.c#L172)
+[Complete calling context](../../examples/nested.c#L117)
 
 ## See also
 

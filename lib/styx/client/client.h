@@ -10,4 +10,7 @@
 #include "readable_parts/client-h/part-001.inc"
 #include "readable_parts/client-h/part-002.inc"
 #include "readable_parts/client-h/part-003.inc"
+#ifdef __cplusplus
+}
+#endif
 #endif

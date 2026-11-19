@@ -52,7 +52,7 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-int valid = fid && styxclientopen(fid, 0); /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
+int valid = fid && styxclientopen(fid, 0);
 ```
 
 [Complete calling context](../../examples/client.c#L61)

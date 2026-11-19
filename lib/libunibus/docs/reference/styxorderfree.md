@@ -48,10 +48,10 @@ Unibus::queues; C99 + pthread
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxorderfree(receiver); /* EN: Invoke styxorderfree with these explicit arguments. RU: Вызвать styxorderfree с этими явными аргументами. */
+styxorderfree(context.receiver);
 ```
 
-[Complete calling context](../../examples/queues.c#L77)
+[Complete calling context](../../examples/queues.c#L152)
 
 ## See also
 

@@ -1,6 +1,21 @@
 # Copyright (c) 2026 bhgv
-# EN/RU: Resolve only the package's native hosted dependency; no VM SDK lookup.
-# Найти только нативную зависимость пакета; без поиска VM SDK.
+# EN: Relocatable Styx discovery; report built components before loading native dependencies.
+# RU: Переносимое обнаружение Styx; проверить наличие компонентов до native dependencies.
+@PACKAGE_INIT@
+set(Styx_VERSION "@PROJECT_VERSION@")
+set(Styx_codec_FOUND TRUE)
+set(Styx_wire_FOUND TRUE)
+set(Styx_nine_FOUND @STYX_HOSTED@)
+set(Styx_server_FOUND @STYX_HOSTED@)
+set(Styx_carrier_FOUND @STYX_HOSTED@)
+set(Styx_walk_FOUND @STYX_HOSTED@)
+set(Styx_client_FOUND @STYX_HOSTED@)
+set(Styx_phy_server_FOUND @STYX_HOSTED@)
+check_required_components(Styx)
+if(NOT Styx_FOUND AND DEFINED Styx_FOUND)
+    set(Styx_NOT_FOUND_MESSAGE "Requested Styx component is unavailable; inspect the package's STYX_HOSTED build option")
+    return()
+endif()
 include(CMakeFindDependencyMacro)
 if(@STYX_HOSTED@)
     find_dependency(Threads)

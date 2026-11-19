@@ -44,7 +44,7 @@ Styx::nine; hosted Linux64 support
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-print("%d\n", ntohs(address.sin_port)); /* EN: Invoke print with these explicit arguments. RU: Вызвать print с этими явными аргументами. */
+print("%d\n", ntohs(address.sin_port));
 ```
 
 [Complete calling context](../../examples/server.c#L370)

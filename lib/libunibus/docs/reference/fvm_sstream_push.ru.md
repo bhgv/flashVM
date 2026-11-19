@@ -59,7 +59,7 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-FVM_SResult result = fvm_sstream_push(&stream, &input, 1, &record, &consumed); /* EN: Feed a fragment and preserve the exact consumed count. RU: Подать фрагмент, сохранив точное consumed. */
+FVM_SResult result = fvm_sstream_push(&stream, &input, 1, &record, &consumed);
 ```
 
 [Complete calling context](../../examples/bridge/main.c#L191)

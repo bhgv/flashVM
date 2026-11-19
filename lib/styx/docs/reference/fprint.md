@@ -45,7 +45,7 @@ Styx::nine; hosted Linux64 support
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-fprint(2, "backend initialization failed\n"); /* EN: Invoke fprint with these explicit arguments. RU: Вызвать fprint с этими явными аргументами. */
+fprint(2, "backend initialization failed\n");
 ```
 
 [Complete calling context](../../examples/server.c#L361)

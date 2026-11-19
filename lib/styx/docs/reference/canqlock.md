@@ -47,7 +47,7 @@ Styx::nine; hosted Linux64 support
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-canqlock(&l->k); /* block writers if we are the first reader */
+canqlock(&l->k);
 ```
 
 [Complete calling context](../../vendor/inferno/lib9/lock.c#L188)

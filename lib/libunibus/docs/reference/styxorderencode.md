@@ -57,10 +57,10 @@ Unibus::queues; C99 + pthread
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-int good = styxorderencode(sender, 8, "eight", 5, packet, sizeof(packet), &used) == FVM_S_OK && /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
+CHECK(styxorderencode(order, 7, "zero", 4, bytes, sizeof(bytes), &size) == FVM_S_LIMIT && size == 777);
 ```
 
-[Complete calling context](../../examples/queues.c#L68)
+[Complete calling context](../../order/tests/fault.c#L86)
 
 ## See also
 

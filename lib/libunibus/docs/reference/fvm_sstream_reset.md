@@ -49,7 +49,7 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-valid = dispatch(record, &bindings, workers) && fvm_sstream_reset(&stream) == FVM_S_OK; /* EN: Release the current borrowed record before accepting another. RU: Освободить текущее borrowed представление до следующей записи. */
+valid = dispatch(record, &bindings, workers) && fvm_sstream_reset(&stream) == FVM_S_OK;
 ```
 
 [Complete calling context](../../examples/bridge/main.c#L194)

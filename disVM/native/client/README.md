@@ -157,3 +157,7 @@ same lookup API. Existing batched walk APIs remain unchanged.
 The immutable `styxclientbidir` query reports the carrier's explicit bidir-session
 mode, independently of ordinary RPC concurrency. The [FlashVM terminal request
 adapter](../launch/REQUESTS.md) requires that mode; general services may use either.
+
+## C / C++ SDK
+
+[Integration, C linkage and package selection](../../../lib/styx/docs/embedding.md) · [Интеграция, C linkage и выбор компонентов](../../../lib/styx/docs/embedding.ru.md).

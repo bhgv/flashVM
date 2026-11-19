@@ -40,7 +40,7 @@ add_library(styx_nine STATIC ${nine} "${src}/libmath/dtoa.c" "${src}/libmath/FPc
     "${src}/libmath/g_fmt.c" "${src}/libmath/gfltconv.c" support/host/decimal_sync.c ports/posix/fatal.c)
 target_include_directories(styx_nine PUBLIC
     "$<BUILD_INTERFACE:${src}/Linux/${arch}/include>" "$<BUILD_INTERFACE:${src}/include>"
-    "$<INSTALL_INTERFACE:include/styx/inferno/Linux/${arch}/include>" "$<INSTALL_INTERFACE:include/styx/inferno/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/inferno/Linux/${arch}/include>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/inferno/include>"
     PRIVATE "${src}/lib9")
 target_compile_options(styx_nine PRIVATE -fno-strict-aliasing)
 target_link_libraries(styx_nine PUBLIC Threads::Threads m)
@@ -48,27 +48,27 @@ add_library(styx_server STATIC "${src}/tools/libstyx/styxserver.c" "${src}/tools
 target_include_directories(styx_server PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_server PUBLIC styx_nine)
 add_library(styx_carrier STATIC remote_phy/phy.c remote_phy/select.c remote_phy/drivers/posix/fd.c)
-target_include_directories(styx_carrier PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/remote_phy>" "$<INSTALL_INTERFACE:include/styx/phy>")
+target_include_directories(styx_carrier PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/remote_phy>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/phy>")
 add_library(styx_walk STATIC walk/walk.c walk/wire.c walk/packet.c)
-target_include_directories(styx_walk PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/walk>" "$<INSTALL_INTERFACE:include/styx/walk>")
+target_include_directories(styx_walk PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/walk>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/walk>")
 target_link_libraries(styx_walk PUBLIC styx_wire Threads::Threads)
 add_library(styx_client STATIC client/session.c client/traversal.c client/fid.c client/clunk.c client/walk.c client/open.c
     client/operation.c client/forget.c client/io.c client/stat.c client/fd.c client/phy.c client/cancel.c client/mux.c
     client/mux_loop.c client/heartbeat.c client/life.c)
-target_include_directories(styx_client PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/client>" "$<INSTALL_INTERFACE:include/styx/client>")
+target_include_directories(styx_client PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/client>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/client>")
 target_link_libraries(styx_client PUBLIC styx_nine styx_carrier styx_walk Threads::Threads)
 add_library(styx_phy_server STATIC server/phy/core.c server/phy/backend.c server/phy/io.c server/phy/lifetime.c
     server/phy/traversal.c server/phy/traversal_fids.c)
 target_include_directories(styx_phy_server PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/server/phy>"
-    "$<INSTALL_INTERFACE:include/styx/server>" PRIVATE "${src}/tools/libstyx")
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/server>" PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_phy_server PUBLIC styx_nine styx_carrier styx_walk Threads::Threads)
 foreach(target nine server carrier walk client phy_server)
     add_library(Styx::${target} ALIAS styx_${target})
     set_target_properties(styx_${target} PROPERTIES EXPORT_NAME ${target} C_STANDARD 99 C_STANDARD_REQUIRED YES)
     list(APPEND styx_targets styx_${target})
 endforeach()
-install(DIRECTORY "${src}/Linux" "${src}/include" DESTINATION include/styx/inferno)
-install(DIRECTORY client/ DESTINATION include/styx/client FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
-install(DIRECTORY remote_phy/ DESTINATION include/styx/phy FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
-install(DIRECTORY walk/ DESTINATION include/styx/walk FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
-install(FILES server/phy/server.h DESTINATION include/styx/server)
+install(DIRECTORY "${src}/Linux" "${src}/include" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/styx/inferno)
+install(DIRECTORY client/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/styx/client FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
+install(DIRECTORY remote_phy/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/styx/phy FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
+install(DIRECTORY walk/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/styx/walk FILES_MATCHING PATTERN "*.h" PATTERN "*.inc")
+install(FILES server/phy/server.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/styx/server)

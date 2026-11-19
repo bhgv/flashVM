@@ -149,3 +149,5 @@ progress, acknowledgement/rollover and allocation-failure boundaries. See
 ## Introduction and tutorial
 
 [What and why](docs/introduction.md) · [Writing a service](docs/tutorial.md)
+
+C/C++ integration, package versions and component selection: [SDK](docs/embedding.md).

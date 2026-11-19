@@ -52,9 +52,13 @@ Unibus::wire; C89, no OS/allocator/threads
 
 ## Пример
 
-Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
-[Examples](../../examples/README.ru.md)
+```c
+result = fvm_sbindings_payload_write(&assignment, 1, metadata, sizeof(metadata), &metadata_size);
+```
+
+[Complete calling context](../../examples/nested.c#L73)
 
 ## См. также
 

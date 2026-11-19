@@ -8,6 +8,12 @@
 #include "file.h"
 #include "phy.h"
 
+/* EN/RU: Export C linkage to native C++ callers; keep the existing C ABI.
+ * C linkage для native C++ callers; существующий C ABI сохраняется. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct StyxClient StyxClient; /* Owned connection reference. */
 typedef struct StyxCancel StyxCancel; /* Owned sticky native cancellation capability. */
 typedef struct StyxFid StyxFid; /* Owned independent remote fid and connection pin. */
@@ -327,4 +333,7 @@ void styxclientclunklater(StyxFid *fid);
  * Заимствовать pinned fid; directory1/file0/invalid-1, без RPC. */
 int styxclientfiddirectory(StyxFid *fid);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

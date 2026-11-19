@@ -48,7 +48,7 @@ Styx::server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-void styxattachfree(StyxAttach *); /* Drop caller ref; reply error before abandoning live work. */
+void styxattachfree(StyxAttach *);
 ```
 
 [Complete calling context](../../vendor/inferno/include/readable_parts/styxserver-h/part-002.inc#L31)

@@ -51,7 +51,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 int styxclientretain(StyxClient *client);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L333)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L339)
 
 ## See also
 

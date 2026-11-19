@@ -58,10 +58,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-result = fvm_srecord_write(tag, bytes, size, (unsigned char *)output + header, capacity - header, &frame);
+result = fvm_srecord_write(0, metadata, metadata_size, wire, sizeof(wire), &wire_size);
 ```
 
-[Complete calling context](../../protocol/order/packet.c#L60)
+[Complete calling context](../../examples/nested.c#L78)
 
 ## See also
 

@@ -59,7 +59,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 StyxFid *styxclientlookup(StyxClient *client, const char *path, StyxCancel *cancel, int *missing);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L268)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L274)
 
 ## See also
 

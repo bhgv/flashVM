@@ -147,3 +147,5 @@ license terms apply to their components; [LICENSE.bhgv](LICENSE.bhgv) covers fir
 ## Introduction and tutorial
 
 [What and why](docs/introduction.md) · [Writing a service](docs/tutorial.md)
+
+C/C++ integration, package versions and component selection: [SDK](docs/embedding.md).

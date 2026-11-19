@@ -55,7 +55,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 int styxclienterrorprofile(StyxClient *client, unsigned profile);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L240)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L246)
 
 ## See also
 

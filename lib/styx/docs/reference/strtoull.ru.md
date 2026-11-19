@@ -49,7 +49,7 @@ Styx::nine; hosted Linux64 support
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-unsigned long long removed = strtoull(command + 7, &end, 10); /* EN: Parse a numeric object identity and inspect the end pointer. RU: Разобрать числовой ID и проверить end pointer. */
+unsigned long long removed = strtoull(command + 7, &end, 10);
 ```
 
 [Complete calling context](../../examples/live.c#L199)

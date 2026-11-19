@@ -49,7 +49,7 @@ Styx::server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-Client *styxattachclient(StyxAttach *); /* Borrow live pending client, nil after retirement. */
+Client *styxattachclient(StyxAttach *);
 ```
 
 [Complete calling context](../../vendor/inferno/include/readable_parts/styxserver-h/part-001.inc#L433)

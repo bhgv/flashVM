@@ -19,7 +19,7 @@ ctest --test-dir build -R ^unibus-nested$ --output-on-failure
 
 ## Parameters and results
 
-No command-line arguments. Exit 0 means all example checks passed; nonzero identifies a failure stage in source. Stdout is a PASS diagnostic, not an arbitrary binary transport.
+No command-line arguments. Exit 0 means all example checks passed; exit 1 reports failure and stderr identifies the stage. Stdout is a PASS diagnostic, not an arbitrary binary transport.
 
 128/256-byte buffers are sample capacities, not protocol limits. Two binding slots are provided; one is used. Checks cover tag, schema and the four bytes 21.5; MORE between fragments is expected. Do not overwrite storage while its borrowed payload is being consumed.
 

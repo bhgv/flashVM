@@ -50,7 +50,7 @@ Styx::phy_server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxend(&server); /* EN: Invoke styxend with these explicit arguments. RU: Вызвать styxend с этими явными аргументами. */
+styxend(&server);
 ```
 
 [Complete calling context](../../examples/server.c#L377)

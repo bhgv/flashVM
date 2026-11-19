@@ -51,7 +51,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-size = convD2M(&row, bytes, sizeof(bytes)); /* EN: Pack a standard counted directory record. RU: Упаковать стандартную counted запись каталога. */
+size = convD2M(&row, bytes, sizeof(bytes));
 ```
 
 [Complete calling context](../../examples/codec.c#L59)

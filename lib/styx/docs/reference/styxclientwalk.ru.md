@@ -51,7 +51,7 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-StyxFid *fid = styxclientwalk(client, argv[2]); /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
+StyxFid *fid = styxclientwalk(client, argv[2]);
 ```
 
 [Complete calling context](../../examples/client.c#L60)

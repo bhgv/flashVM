@@ -234,6 +234,8 @@ def main():
                             info["start"] = node.start_byte
                             found.append(info)
             for info in sorted(found, key=lambda value: value["start"], reverse=True):
+                if "standalone-reviewed:" in source:
+                    continue
                 before = data[max(0, info["start"] - 3000):info["start"]]
                 if f"[standalone-contract:{info['name']}]".encode() not in before:
                     data = data[:info["start"]] + contract(info).encode() + data[info["start"]:]

@@ -51,10 +51,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-result = fvm_sstream_init(&next.stream, storage, capacity, limit);
+result = fvm_sstream_init(&stream, receive_storage, sizeof(receive_storage), 256);
 ```
 
-[Complete calling context](../../protocol/order/stream.c#L60)
+[Complete calling context](../../examples/nested.c#L99)
 
 ## See also
 

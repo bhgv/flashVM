@@ -48,7 +48,7 @@ Styx::nine; hosted Linux64 support
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-return _fmtcpy(f, s, utfnlen(s, i), i); /* byte precision omits incomplete runes */
+return _fmtcpy(f, s, utfnlen(s, i), i);
 ```
 
 [Complete calling context](../../vendor/inferno/lib9/readable_parts/dofmt-c/part-002.inc#L68)

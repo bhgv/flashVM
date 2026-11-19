@@ -56,7 +56,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L47)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L53)
 
 ## See also
 

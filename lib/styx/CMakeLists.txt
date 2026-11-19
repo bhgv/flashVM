@@ -5,15 +5,16 @@ cmake_minimum_required(VERSION 3.16)
 project(Styx VERSION 0.1.0 LANGUAGES C)
 include(CTest)
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 option(STYX_HOSTED "Build original Linux64 lib9, server, client and PHY adapters" ON)
 add_library(styx_codec STATIC vendor/inferno/lib9/convM2S.c vendor/inferno/lib9/convS2M.c
     vendor/inferno/lib9/convD2M.c vendor/inferno/lib9/convM2D.c)
-target_include_directories(styx_codec PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>"
+target_include_directories(styx_codec PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/codec")
 set_target_properties(styx_codec PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO EXPORT_NAME codec)
 add_library(Styx::codec ALIAS styx_codec)
 add_library(styx_wire STATIC protocol/srecord.c protocol/sstream.c)
-target_include_directories(styx_wire PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>")
+target_include_directories(styx_wire PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 set_target_properties(styx_wire PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS NO EXPORT_NAME wire)
 add_library(Styx::wire ALIAS styx_wire)
 set(styx_targets styx_codec styx_wire)
@@ -38,8 +39,13 @@ endif()
 install(TARGETS ${styx_targets} EXPORT StyxTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT StyxTargets NAMESPACE Styx:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Styx)
-configure_file(cmake/StyxConfig.cmake.in StyxConfig.cmake @ONLY)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/StyxConfig.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Styx)
+# Relocatable package discovery and an explicit same-minor source compatibility policy.
+configure_package_config_file(cmake/StyxConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/StyxConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Styx")
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/StyxConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/StyxConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/StyxConfigVersion.cmake" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Styx")
 install(FILES README.md LICENSE.bhgv SOURCES.jsonl vendor/UPSTREAM.json DESTINATION ${CMAKE_INSTALL_DATADIR}/styx)
 install(DIRECTORY vendor/inferno/lib/legal DESTINATION ${CMAKE_INSTALL_DATADIR}/styx)
 

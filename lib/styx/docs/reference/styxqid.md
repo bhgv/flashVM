@@ -45,7 +45,7 @@ Styx::server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-out->qid = styxqid(row->id, (row->mode & CATALOG_DIR) != 0); /* EN: Update out->qid for the current operation. RU: Обновить out->qid для текущей операции. */
+out->qid = styxqid(row->id, (row->mode & CATALOG_DIR) != 0);
 ```
 
 [Complete calling context](../../examples/server.c#L56)

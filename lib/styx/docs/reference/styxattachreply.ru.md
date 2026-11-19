@@ -49,7 +49,7 @@ Styx::server; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-int styxattachreply(StyxAttach *, char *error); /* 1 consumed/attempted,0 retired/staged; nil Rattach. */
+int styxattachreply(StyxAttach *, char *error);
 ```
 
 [Complete calling context](../../vendor/inferno/include/readable_parts/styxserver-h/part-002.inc#L18)

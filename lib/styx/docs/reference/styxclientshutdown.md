@@ -49,7 +49,7 @@ Styx::client; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxclientshutdown(client); /* EN: Invoke styxclientshutdown with these explicit arguments. RU: Вызвать styxclientshutdown с этими явными аргументами. */
+styxclientshutdown(client);
 ```
 
 [Complete calling context](../../examples/client.c#L85)

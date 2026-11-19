@@ -52,7 +52,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 int styxclientwalktarget(StyxClient *client, WalkEntity *root);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L168)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L174)
 
 ## See also
 

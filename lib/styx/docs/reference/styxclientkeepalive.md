@@ -56,7 +56,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 int styxclientkeepalive(StyxClient *client, unsigned idle, unsigned reply, unsigned misses);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L316)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L322)
 
 ## See also
 

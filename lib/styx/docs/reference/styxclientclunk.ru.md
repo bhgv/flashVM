@@ -48,7 +48,7 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxclientclunk(fid); /* EN: Invoke styxclientclunk with these explicit arguments. RU: Вызвать styxclientclunk с этими явными аргументами. */
+styxclientclunk(fid);
 ```
 
 [Complete calling context](../../examples/client.c#L84)

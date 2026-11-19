@@ -43,7 +43,7 @@ Styx::nine; hosted Linux64 support
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-setfsr(0); /* Clear pending exceptions */
+setfsr(0);
 ```
 
 [Complete calling context](../../vendor/inferno/libmath/FPcontrol-Linux.c#L19)

@@ -48,7 +48,7 @@ Styx::client; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxclientclunk(fid); /* EN: Invoke styxclientclunk with these explicit arguments. RU: Вызвать styxclientclunk с этими явными аргументами. */
+styxclientclunk(fid);
 ```
 
 [Complete calling context](../../examples/client.c#L84)

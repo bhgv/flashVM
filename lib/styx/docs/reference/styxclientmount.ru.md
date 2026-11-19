@@ -56,7 +56,7 @@ Styx::client; hosted native build
 StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L47)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L53)
 
 ## См. также
 

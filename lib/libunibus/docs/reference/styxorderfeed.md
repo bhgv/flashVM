@@ -51,10 +51,10 @@ Unibus::queues; C99 + pthread
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxorderfeed(receiver, packet, used) == STYX_ORDER_ACCEPTED; /* EN: Invoke styxorderfeed with these explicit arguments. RU: Вызвать styxorderfeed с этими явными аргументами. */
+styxorderfeed(context.receiver, packet, used) == STYX_ORDER_ACCEPTED;
 ```
 
-[Complete calling context](../../examples/queues.c#L73)
+[Complete calling context](../../examples/queues.c#L126)
 
 ## See also
 

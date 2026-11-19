@@ -59,7 +59,7 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-FVM_SResult result = fvm_sstream_push(&stream, &input, 1, &record, &consumed); /* EN: Feed a fragment and preserve the exact consumed count. RU: Подать фрагмент, сохранив точное consumed. */
+FVM_SResult result = fvm_sstream_push(&stream, &input, 1, &record, &consumed);
 ```
 
 [Complete calling context](../../examples/bridge/main.c#L191)

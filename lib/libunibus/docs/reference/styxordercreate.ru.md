@@ -50,10 +50,10 @@ Unibus::queues; C99 + pthread
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-StyxOrder *sender = styxordercreate(256, 16); /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
+sender = styxordercreate(256, 16);
 ```
 
-[Complete calling context](../../examples/queues.c#L57)
+[Complete calling context](../../examples/queues.c#L97)
 
 ## См. также
 

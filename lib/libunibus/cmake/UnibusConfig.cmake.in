@@ -1,6 +1,15 @@
 # Copyright (c) 2026 bhgv
-# EN/RU: Resolve only optional native queues; no other project packages are needed.
-# Найти только необязательные нативные очереди; другие пакеты проекта не нужны.
+# EN: Relocatable Unibus discovery; report built components before loading native dependencies.
+# RU: Переносимое обнаружение Unibus; проверить наличие компонентов до native dependencies.
+@PACKAGE_INIT@
+set(Unibus_VERSION "@PROJECT_VERSION@")
+set(Unibus_wire_FOUND TRUE)
+set(Unibus_queues_FOUND @UNIBUS_QUEUES@)
+check_required_components(Unibus)
+if(NOT Unibus_FOUND AND DEFINED Unibus_FOUND)
+    set(Unibus_NOT_FOUND_MESSAGE "Requested Unibus component is unavailable; inspect the package's UNIBUS_QUEUES build option")
+    return()
+endif()
 include(CMakeFindDependencyMacro)
 if(@UNIBUS_QUEUES@)
     find_dependency(Threads)

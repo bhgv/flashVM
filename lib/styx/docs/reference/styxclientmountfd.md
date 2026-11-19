@@ -56,7 +56,7 @@ Styx::client; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-StyxClient *client = styxclientmountfd(descriptor, 8192, "demo", "", 5000, 8); /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
+StyxClient *client = styxclientmountfd(descriptor, 8192, "demo", "", 5000, 8);
 ```
 
 [Complete calling context](../../examples/client.c#L55)

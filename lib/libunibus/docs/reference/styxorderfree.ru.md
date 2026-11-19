@@ -48,10 +48,10 @@ Unibus::queues; C99 + pthread
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxorderfree(receiver); /* EN: Invoke styxorderfree with these explicit arguments. RU: Вызвать styxorderfree с этими явными аргументами. */
+styxorderfree(context.receiver);
 ```
 
-[Complete calling context](../../examples/queues.c#L77)
+[Complete calling context](../../examples/queues.c#L152)
 
 ## См. также
 

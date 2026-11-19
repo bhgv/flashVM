@@ -49,7 +49,7 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxclientshutdown(client); /* EN: Invoke styxclientshutdown with these explicit arguments. RU: Вызвать styxclientshutdown с этими явными аргументами. */
+styxclientshutdown(client);
 ```
 
 [Complete calling context](../../examples/client.c#L85)

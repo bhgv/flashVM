@@ -4,7 +4,10 @@
 from pathlib import Path
 import json
 import re
-from .layout import flattened, unannotated
+from functools import lru_cache
+from .layout import TOKEN, flattened, unannotated as read_unannotated
+
+unannotated = lru_cache(maxsize=None)(read_unannotated)  # A generation pass does not modify source headers.
 from .reference_notes import PARAMETERS, NOTES
 
 CODECS = {"convM2S", "convS2M", "sizeS2M", "convD2M", "convM2D", "sizeD2M", "statcheck"}  # Exact original portable entry points.
@@ -67,17 +70,35 @@ def availability(package, info):
     return "Styx::server; hosted native build" if "libstyx" in info["unit"] else "Styx::nine; hosted Linux64 support"
 
 
-# EN/RU: Locate a concrete call site outside declarations/comments; return source, line and a short actual snippet.
-# Найти конкретный вызов вне declarations/comments; вернуть файл, строку и настоящий короткий фрагмент.
-def example(base, name):
+# EN: Index first real call sites in borrowed base once per generation, preferring examples.
+# Comments and quoted literals are excluded from matching; snippets preserve literal arguments.
+# Returns owned name -> (relative path, physical line, code) entries; no source is modified.
+# RU: Один раз индексировать первые реальные вызовы в base, предпочитая примеры.
+# Не искать вызовы в комментариях/литералах; в snippet сохранить аргументы-литералы.
+# Вернуть name -> (относительный путь, физическая строка, код); исходники не менять.
+@lru_cache(maxsize=None)
+def call_sites(base):
     paths = sorted(base.rglob("*.c")) + sorted(base.rglob("*.inc"))
     paths.sort(key=lambda path: ("examples" not in path.parts, "tests" not in path.parts, str(path)))
+    result = {}
     for path in paths:
-        text = path.read_text()
-        for number, line in enumerate(text.splitlines(), 1):
-            if not line.lstrip().startswith(("*", "/*", "//", "#", "extern")) and re.search(r"\b" + re.escape(name) + r"\s*\(", line) and ";" in line:
-                return path.relative_to(base).as_posix(), number, line.strip()
-    return None
+        source = path.read_text()
+        code = TOKEN.sub(lambda match: re.sub(r"[^\n]", " ", match.group())
+                         if match.group().startswith(("/*", "//")) else match.group(), source)
+        scan = TOKEN.sub(lambda match: re.sub(r"[^\n]", " ", match.group())
+                         if '"' in match.group() or match.group().startswith("'") else match.group(), code)
+        for number, (line, search) in enumerate(zip(code.splitlines(), scan.splitlines()), 1):
+            if search.lstrip().startswith(("#", "extern")) or ";" not in search:
+                continue
+            for name in re.findall(r"\b([A-Za-z_][A-Za-z_0-9]*)\s*\(", search):
+                result.setdefault(name, (path.relative_to(base).as_posix(), number, line.strip()))
+    return result
+
+
+# EN: Return a cached concrete call for borrowed base/name, or None if no call site exists.
+# RU: Вернуть кешированный реальный вызов для base/name либо None, если вызова нет.
+def example(base, name):
+    return call_sites(base).get(name)
 
 
 # EN: Generate separate EN/RU dictionary pages for all actual public definitions; keep source anchors exact.

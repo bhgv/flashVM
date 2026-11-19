@@ -161,7 +161,7 @@
 {"path": "vendor/inferno/tools/libstyx/styxaux.h", "sha256": "8399450f79f462e9cbf1b0df97fae2c1454c1fecdff0537c63f840e2aba74ab1", "source": "disVM/native/src/tools/libstyx/styxaux.h", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/styxserver.c", "sha256": "94ff3b850f9f2b49a695fa80ae24c32a8231f578e4817fffba3e3a9adcf5875a", "source": "disVM/native/src/tools/libstyx/styxserver.c", "transform": "identity"}
 {"path": "client/cancel.c", "sha256": "399a47b72c8194ef7aed4899feb1081738acede98869b5e7209e85dda7a7ed35", "source": "disVM/native/client/cancel.c", "transform": "identity"}
-{"path": "client/client.h", "sha256": "95a027b88126710f99cdbaac5d2ae685b6f235ddcac0f77026d4dc48dc54a450", "source": "disVM/native/client/client.h", "transform": "identity"}
+{"path": "client/client.h", "sha256": "928d184343d8289b18dc7ff2eab12e6e0f516b128cf9ff5a07e5af2f629336e2", "source": "disVM/native/client/client.h", "transform": "identity"}
 {"path": "client/clunk.c", "sha256": "2764bb28af85978e92848e07dd2a9d4084f2519673a0f6855ecd18aba014cca0", "source": "disVM/native/client/clunk.c", "transform": "identity"}
 {"path": "client/fd.c", "sha256": "6a3691e236328846aed2e89ccb3c74b16400fe55ca241765978daeff08239b93", "source": "disVM/native/client/fd.c", "transform": "identity"}
 {"path": "client/fid.c", "sha256": "3d79b89edbdb6e25b3edde5c19e291b0bee46bb5b0c243f14e4bc7474d6fa05c", "source": "disVM/native/client/fid.c", "transform": "identity"}

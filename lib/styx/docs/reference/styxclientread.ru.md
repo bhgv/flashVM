@@ -53,7 +53,7 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxclientread(fid, offset, bytes, sizeof(bytes), &result); /* EN: Invoke styxclientread with these explicit arguments. RU: Вызвать styxclientread с этими явными аргументами. */
+styxclientread(fid, offset, bytes, sizeof(bytes), &result);
 ```
 
 [Complete calling context](../../examples/client.c#L67)

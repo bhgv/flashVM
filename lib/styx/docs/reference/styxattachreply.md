@@ -49,7 +49,7 @@ Styx::server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-int styxattachreply(StyxAttach *, char *error); /* 1 consumed/attempted,0 retired/staged; nil Rattach. */
+int styxattachreply(StyxAttach *, char *error);
 ```
 
 [Complete calling context](../../vendor/inferno/include/readable_parts/styxserver-h/part-002.inc#L18)

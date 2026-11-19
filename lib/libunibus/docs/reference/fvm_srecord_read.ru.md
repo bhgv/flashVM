@@ -54,10 +54,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-fvm_srecord_read((const unsigned char *)input + first, size - first, FVM_SORDER_CTL_MAX, &command, &second);
+result = fvm_srecord_read(outer.payload, outer.size, 128, &inner, &consumed);
 ```
 
-[Complete calling context](../../protocol/order/control.c#L172)
+[Complete calling context](../../examples/nested.c#L117)
 
 ## См. также
 

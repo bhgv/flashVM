@@ -49,7 +49,7 @@ Styx::client; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxclientfree(client); /* EN: Invoke styxclientfree with these explicit arguments. RU: Вызвать styxclientfree с этими явными аргументами. */
+styxclientfree(client);
 ```
 
 [Complete calling context](../../examples/client.c#L86)

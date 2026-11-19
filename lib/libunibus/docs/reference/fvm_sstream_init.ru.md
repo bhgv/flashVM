@@ -51,10 +51,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-result = fvm_sstream_init(&next.stream, storage, capacity, limit);
+result = fvm_sstream_init(&stream, receive_storage, sizeof(receive_storage), 256);
 ```
 
-[Complete calling context](../../protocol/order/stream.c#L60)
+[Complete calling context](../../examples/nested.c#L99)
 
 ## См. также
 

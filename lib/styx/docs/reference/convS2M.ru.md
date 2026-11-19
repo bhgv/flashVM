@@ -51,7 +51,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-uint size = convS2M(&input, bytes, sizeof(bytes)); /* EN: Invoke convS2M with these explicit arguments. RU: Вызвать convS2M с этими явными аргументами. */
+uint size = convS2M(&input, bytes, sizeof(bytes));
 ```
 
 [Complete calling context](../../examples/codec.c#L33)

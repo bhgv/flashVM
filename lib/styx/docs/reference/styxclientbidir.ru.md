@@ -52,7 +52,7 @@ Styx::client; hosted native build
 int styxclientbidir(StyxClient *client);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L214)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L220)
 
 ## См. также
 

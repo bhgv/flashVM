@@ -54,7 +54,7 @@ Styx::client; hosted native build
 StyxFid *styxclientlookupfrom(StyxFid *base, const char *path, StyxCancel *cancel, int *missing);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L291)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L297)
 
 ## См. также
 

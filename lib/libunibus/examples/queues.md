@@ -19,9 +19,9 @@ ctest --test-dir build -R ^unibus-queues$ --output-on-failure
 
 ## Parameters and results
 
-No command-line arguments. Exit 0 means all example checks passed; nonzero identifies a failure stage in source. Stdout is a PASS diagnostic, not an arbitrary binary transport.
+No command-line arguments. Exit 0 means all example checks passed; exit 1 reports failure and stderr identifies the stage. Stdout is a PASS diagnostic, not an arbitrary binary transport.
 
-styxordercreate uses a maximum message of 256 and window 16; client7 wait is bounded to 5000 ms. These are example settings, not policy for every client. Historical styxorder C names preserve source compatibility without a libstyx dependency.
+[styxordercreate](../docs/reference/styxordercreate.md) uses a maximum message of 256 and window 16; client7 wait is bounded to 5000 ms. The barrier confirms worker startup, not exact wait admission. Setup failures release every constructed engine/barrier. After worker creation, receiver close precedes join; ready records remain drainable. unibus-example-failures injects four partial-initialization failures. Unexpected join failure terminates this teaching process through _Exit: state borrowed by an unretired worker cannot be reclaimed safely. An embedding application must choose its own fatal-failure policy. These are example settings, not policy for every client. Historical styxorder C names preserve source compatibility without a libstyx dependency.
 
 ## Source and reference
 

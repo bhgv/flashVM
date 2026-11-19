@@ -48,10 +48,10 @@ Unibus::queues; C99 + pthread
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxorderclose(receiver); /* EN: Invoke styxorderclose with these explicit arguments. RU: Вызвать styxorderclose с этими явными аргументами. */
+styxorderclose(context.receiver);
 ```
 
-[Complete calling context](../../examples/queues.c#L76)
+[Complete calling context](../../examples/queues.c#L133)
 
 ## См. также
 

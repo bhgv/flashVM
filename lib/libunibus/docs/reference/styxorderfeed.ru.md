@@ -51,10 +51,10 @@ Unibus::queues; C99 + pthread
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxorderfeed(receiver, packet, used) == STYX_ORDER_ACCEPTED; /* EN: Invoke styxorderfeed with these explicit arguments. RU: Вызвать styxorderfeed с этими явными аргументами. */
+styxorderfeed(context.receiver, packet, used) == STYX_ORDER_ACCEPTED;
 ```
 
-[Complete calling context](../../examples/queues.c#L73)
+[Complete calling context](../../examples/queues.c#L126)
 
 ## См. также
 

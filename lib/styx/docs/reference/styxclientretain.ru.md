@@ -51,7 +51,7 @@ Styx::client; hosted native build
 int styxclientretain(StyxClient *client);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L333)
+[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L339)
 
 ## См. также
 

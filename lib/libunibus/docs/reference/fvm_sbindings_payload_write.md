@@ -52,9 +52,13 @@ Unibus::wire; C89, no OS/allocator/threads
 
 ## Example
 
-Use the complete layer examples; this lower-level entry is also documented at its exact implementation below.
+Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
-[Examples](../../examples/README.md)
+```c
+result = fvm_sbindings_payload_write(&assignment, 1, metadata, sizeof(metadata), &metadata_size);
+```
+
+[Complete calling context](../../examples/nested.c#L73)
 
 ## See also
 
