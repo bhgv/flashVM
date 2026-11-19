@@ -38,7 +38,7 @@ build/remote-owner-compiler/limbo_remote_owner \
 
 Include/path ограничены255 ASCII bytes: letters/digits, `_`, `-`, `.` и, только
 для implementation path, `/`. Конфликт с imports/locals адаптера даёт отказ.
-Includes, ADT, aliases, дополнительные exports, variadics, polymorphism, другая
+Includes, ADT, дополнительные exports, variadics, polymorphism, другая
 арность и non-int argument/result пока не поддержаны и отклоняются до открытия
 destination. Syntax error также сохраняет прежний output. Write/close error
 может оставить prefix; exit2 — ошибка, exit0 — успех. Это host C tool без
@@ -84,3 +84,5 @@ VFS root не сбрасывается, remote tree не фиксируется,
 объявляющая поддержку любых сигнатур.
 
 [C API: limbo_remote_owner](../../../compiler/limbo/frontend/REMOTE-OWNER.ru.md)
+
+Константы, включая PATH, сохраняются в исходном интерфейсе и не становятся transport authority. Unqualified aliases аргумента/результата разрешает существующий C-resolver с lexical scope: module scope выше file scope, цепочки сохраняют scope объявления. Использованные циклы, неизвестные/qualified types и итоговый non-int дают отказ до output. Constant expressions не вычисляются генератором; весь интерфейс проверяет обычный Dis compiler. Path реализации по-прежнему явно выбирает trusted launcher.

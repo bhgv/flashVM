@@ -11,12 +11,12 @@ extern "C" {
 
 
 /* EN: Borrow catalog, include basename and provider-local implementation path.
- * Support exactly one fn(int):int in one module, with no includes/aliases/ADTs.
+ * Support exactly one fn(int):int in one module, with constants/scalar aliases, but no includes/ADTs.
  * Return 1/0 and optional error text; output=NULL preflights without writing.
  * Reject unsupported input before output. Stream failures may leave a prefix;
  * caller owns publication and catalog lifetime. No VM execution or wire I/O.
  * RU: Заимствовать catalog, include basename и provider-local implementation path.
- * Поддержать ровно одну fn(int):int в одном module, без includes/aliases/ADT.
+ * Поддержать ровно одну fn(int):int в одном module, с constants/scalar aliases, без includes/ADT.
  * Вернуть 1/0 и optional error; output=NULL проверяет без записи. Unsupported
  * input отклоняется до output. Stream error может оставить prefix; publication
  * и lifetime принадлежат caller. Без VM execution и wire I/O.

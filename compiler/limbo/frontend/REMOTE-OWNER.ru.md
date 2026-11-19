@@ -38,3 +38,5 @@ Supported profile, path bounds, unsupported operations и runnable example оп�
 Совместимость интерфейса не является execution permission/authentication.
 Generated Dis load проверяет actual provider implementation; automatic client-side
 module binding остаётся отдельным участком работы.
+
+Constants и unqualified scalar aliases допускаются рядом с единственным function export. Типы разрешает существующий lexical C-resolver; PATH не меняет явно заданный implementation path.

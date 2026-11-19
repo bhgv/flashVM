@@ -40,7 +40,7 @@ build/remote-owner-compiler/limbo_remote_owner \
 
 Include/path spellings are bounded to255 ASCII bytes using letters, digits, `_`,
 `-`, `.` and, only for the implementation path, `/`. Names conflicting with
-adapter imports/locals refuse. Includes, ADTs, aliases, additional exports,
+adapter imports/locals refuse. Includes, ADTs, additional exports,
 variadics, polymorphism, other arities and non-int argument/result types are
 unsupported and fail before the destination opens. A syntax error also preserves
 existing output. Write/close errors may leave an output prefix; the CLI returns2
@@ -86,3 +86,5 @@ and expands marshalling by supported type categories. The current profile is a
 working bounded path, not a placeholder claiming arbitrary signatures.
 
 [C API: limbo_remote_owner](../../../compiler/limbo/frontend/REMOTE-OWNER.md)
+
+Constants, including PATH, remain source declarations and grant no transport authority. The existing C resolver resolves unqualified argument/result aliases lexically: module scope precedes file scope and each alias uses its declaration scope. Used cycles, unknown/qualified types and a non-int resolved type refuse before output. The generator does not evaluate constant expressions; the normal Dis compiler checks the whole interface. The trusted launcher still explicitly chooses the implementation path.

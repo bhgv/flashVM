@@ -38,3 +38,5 @@ serialize parsing according to the existing frontend API and synchronize shared
 output/error buffers. A compatible interface is not execution permission or
 transport authentication. The generated Dis load checks the actual provider
 implementation; client-side automatic module binding remains separate work.
+
+Constants and unqualified scalar aliases may accompany the single function export. Types use the existing lexical C resolver; PATH does not override the explicit implementation path.

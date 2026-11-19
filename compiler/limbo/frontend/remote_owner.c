@@ -5,6 +5,7 @@
  * Адаптер вызывает обычный Dis module провайдера, не копирует native frames.
  */
 #include "remote_owner.h"
+#include "resolve.h"
 #include <string.h>
 
 
@@ -75,6 +76,67 @@ static int reserved(const char *name)
 }
 
 
+/* EN: Find one module and one function, permitting constants/type aliases only.
+ * Borrow catalog; publish declaration indices only on success. No include lookup
+ * or constant evaluation; the normal Dis compiler still checks the whole source.
+ * RU: Найти один module и одну function, допуская constants/type aliases.
+ * Заимствовать catalog, публиковать indices только при успехе. Без include lookup
+ * и constant evaluation; весь source проверяет обычный Dis compiler.
+ */
+static int selection(const LimboInterface *catalog, size_t *module, size_t *function)
+{
+    size_t m = SIZE_MAX;
+    size_t f = SIZE_MAX;
+    size_t i;
+    LimboDeclaration declaration;
+    for (i = 0; i < limbo_interface_count(catalog); i++)
+    {
+        if (!limbo_interface_declaration(catalog, i, &declaration))
+        {
+            return 0;
+        }
+        if (declaration.kind == LIMBO_MODULE && m == SIZE_MAX)
+        {
+            m = i;
+        }
+        else if (declaration.kind == LIMBO_FUNCTION && f == SIZE_MAX)
+        {
+            f = i;
+        }
+        else if (declaration.kind != LIMBO_CONSTANT && declaration.kind != LIMBO_ALIAS)
+        {
+            return 0;
+        }
+    }
+    if (m == SIZE_MAX || f == SIZE_MAX ||
+        !limbo_interface_declaration(catalog, f, &declaration) || declaration.scope != m)
+    {
+        return 0;
+    }
+    *module = m;
+    *function = f;
+    return 1;
+}
+
+
+/* EN: Resolve a borrowed type in its lexical scope and require scalar int.
+ * Return 1/0; propagate no native frame or inferred layout. Resolver owns temps.
+ * RU: Разрешить type в lexical scope, требовать scalar int. Вернуть 1/0;
+ * native frames и guessed layout не передаются. Temps принадлежат resolver.
+ */
+static int integer_type(const LimboInterface *catalog, size_t scope, size_t type)
+{
+    size_t resolved;
+    const char *kind;
+    if (!limbo_interface_resolve_type(catalog, scope, type, &resolved, NULL))
+    {
+        return 0;
+    }
+    kind = limbo_interface_type_kind(catalog, resolved);
+    return kind && !strcmp(kind, "int");
+}
+
+
 /* EN/RU: See remote_owner.h. Preflight the complete supported shape, then emit.
  * См. remote_owner.h. Сначала проверить весь supported shape, затем генерировать.
  */
@@ -86,26 +148,26 @@ int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
     LimboSignature signature;
     LimboParameter parameter;
     LimboDiagnostic diagnostic;
-    const char *kind;
+    size_t module_index;
+    size_t function_index;
     if (error && capacity)
     {
         error[0] = 0;
     }
     if (!catalog || !spelling(include_name, 0) || !spelling(implementation, 1) ||
-        limbo_interface_count(catalog) != 2 ||
-        !limbo_interface_declaration(catalog, 0, &module) || module.kind != LIMBO_MODULE ||
-        !limbo_interface_declaration(catalog, 1, &function) ||
-        function.kind != LIMBO_FUNCTION || function.scope != 0 ||
+        !selection(catalog, &module_index, &function_index) ||
+        !limbo_interface_declaration(catalog, module_index, &module) ||
+        !limbo_interface_declaration(catalog, function_index, &function) ||
         !limbo_interface_validate_functions(catalog, &diagnostic) ||
-        !limbo_interface_signature(catalog, 1, &signature) ||
+        !limbo_interface_signature(catalog, function_index, &signature) ||
         signature.parameter_count != 1 || signature.variadic || signature.polymorphic ||
-        !limbo_interface_parameter(catalog, 1, 0, &parameter) || parameter.self_parameter)
+        !limbo_interface_parameter(catalog, function_index, 0, &parameter) || parameter.self_parameter)
     {
         return refused(error, capacity, "requires one module with one fn(int):int export");
     }
-    kind = limbo_interface_type_kind(catalog, parameter.type_node);
-    if (!kind || strcmp(kind, "int") || signature.result_node == SIZE_MAX ||
-        !(kind = limbo_interface_type_kind(catalog, signature.result_node)) || strcmp(kind, "int") ||
+    if (!integer_type(catalog, function.scope, parameter.type_node) ||
+        signature.result_node == SIZE_MAX ||
+        !integer_type(catalog, function.scope, signature.result_node) ||
         reserved(module.name))
     {
         return refused(error, capacity, "unsupported type or adapter module-name collision");

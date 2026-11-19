@@ -3,5 +3,7 @@
 # RU: Обычный общий интерфейс, без wire fields и native frame layout.
 Compute: module
 {
-    compute: fn(value: int): int; # Copied scalar input/result / Scalar input/result.
+    PATH: con "implementation.dis"; # Ordinary description, not transport authority.
+    Scalar: type int; # Source alias resolved by the existing C semantic pass.
+    compute: fn(value: Scalar): Scalar; # Copied scalar input/result / Scalar input/result.
 };
