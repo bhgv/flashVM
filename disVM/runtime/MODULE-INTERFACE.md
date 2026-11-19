@@ -64,8 +64,9 @@ from a matching hash.
 
 Keep the implementation version chosen for the check through actual binding/use;
 a metadata snapshot alone does not pin future code loaded from a changing path.
-The caller is responsible for pinning valid parsed Import/Module storage while
-an adapter reads it. Returned native snapshots own all names/signatures and may
+Named-target loading now repeats the interface check on the actual parsed Module,
+as described below. The caller is responsible for pinning valid parsed
+Import/Module storage while an adapter reads it. Returned native snapshots own all names/signatures and may
 outlive source modules, client buffers, tickets and requests independently.
 Readers may share immutable contracts; their owner must join readers before free.
 
@@ -96,7 +97,7 @@ Private negative controls removing the preparation gate or ignoring signature
 bits fail with the intended semantic diagnostic; compile errors/crashes/timeouts
 are not accepted as detection.
 
-All 40 actual interpreter/JIT provider-module scenarios use a real compiler Import
+All 50 actual interpreter/JIT provider-module scenarios use a real compiler Import
 table and owner exports parsed from a real `.dis`. A separately compiled
 [`wrong.m`](fixtures/provider-modules/wrong.m) declares `value(): big` and fails
 against `Value.value(): int`, even where native storage sizes are equal. Variants
@@ -112,8 +113,53 @@ and the existing Unibus/proxy mechanisms. Existing proxy support is not advertis
 as support for arbitrary `.m` signatures. Network contract exchange remains
 unassigned; all channel control/data still follow the existing S-record layering.
 
-The final native SDK has 739 tests. It and five affected dedicated runtime cases
-pass normally and with ASan/UBSan, including all 40 real module executions.
+The final native SDK has 740 tests. It and five affected dedicated runtime cases
+pass normally and with ASan/UBSan, including all 50 real module scenarios.
 LeakSanitizer is disabled because the execution environment cannot support it;
 explicit allocation, provider and image-buffer lifetime checks remain enabled.
 Imported Inferno sources remain byte-identical to their pinned revisions.
+
+## Contract after take and during load / Контракт после передачи окружения
+
+`dvm_launch_request_take` now clones the accepted immutable requirements into
+`handoff.contract` before committing READY → TAKEN. Clone OOM leaves READY and
+all original owners intact. Request requirements remain immutable and available
+for review even after a successful take; moving their pointer would break that
+lifetime. Handoff free retires only its independent copy.
+
+The pre-publication process constructor copies the contract into its immutable
+`DVM_LaunchContext`. The typed marker must be 0/1 and exactly agree with contract
+presence. Missing requirements or an undeclared contract refuse construction.
+Snapshot OOM leaves the caller's handoff intact. Parent and children share this
+native context through its existing atomic references; retiring the parent cannot
+remove the child's required interface. The final context release frees its copy.
+No guest pointers, callbacks, wait loops or new service threads are introduced.
+
+[`dvm_launch_module_checked`](module_interface/launch.h) receives the actual owned
+Module returned by the existing reader. On an ACTIVE owner, an exact match between
+the caller's load name and the inherited launch label triggers another comparison
+against the actual parsed exports. Provider-backed, native-file and builtin return
+paths use this hook. A mismatch or failure to allocate export metadata unloads the
+input Module, sets `launch target interface changed or cannot be checked` and
+returns NULL. It does not retry another side or query a provider a second time.
+On success, the same Module proceeds to ordinary Inferno linking.
+
+This extra hook applies to exact named-target loads. It is not an alias identity
+resolver: a different load name, dependency or opaque owner label is not silently
+interpreted as the same target. Those paths retain ordinary Inferno type checking.
+A general remote module binding must explicitly carry the checked target and
+contract into its marshalling/invocation path; this hook does not complete that
+work. Matching signatures permit compatible live updates and do not freeze files,
+module versions, namespace stacks or provider data.
+
+The new native context test checks independent request/handoff/context ownership,
+parent-before-child retirement, both context-copy allocation failures and invalid
+typed markers. Typed take allocation refusal now includes its extra contract clone.
+The ten additional interpreter/JIT runs cover provider/client target replacement
+after admission, both real export-snapshot calloc failure positions, and a child's
+load after its parent explicitly switches the provider's future target bytes.
+They observe guard refusal before ordinary linking rather than treating any nil
+load as proof. A private control omitting this loaded-target guard fails with the
+intended semantic diagnostic in both engines, even though Inferno's later linker
+also rejects the incompatible implementation. Compile errors, crashes and timeouts
+are not counted as successful detection.

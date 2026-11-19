@@ -70,6 +70,7 @@ typedef struct DVM_LaunchHandoff
     unsigned char *arguments; /* Owned independent copy of startup bytes. */
     DVM_TerminalChannels flashvm; /* Owned channel root, moved once at take; provider NULL when absent. */
     struct UnibusBinding *unibus; /* Optional owned native per-launch handler, never a serialized frame. */
+    DVM_LaunchContract *contract; /* Owned independent copied requirements, mandatory when description.typed is one. */
 } DVM_LaunchHandoff;
 
 

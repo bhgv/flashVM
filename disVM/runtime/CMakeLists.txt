@@ -197,7 +197,7 @@ add_executable(disvm
     vfs/launch/movie_offer.c
     vfs/launch/terminal.c
     vfs/launch/admission.c
-    vfs/launch/ticket.c vfs/launch/contract.c vfs/launch/contract_request.c module_interface/contract.c
+    vfs/launch/ticket.c vfs/launch/contract.c vfs/launch/contract_request.c module_interface/contract.c module_interface/launch.c
     vfs/launch/accept.c
     vfs/launch/prepare.c
     vfs/loader.c

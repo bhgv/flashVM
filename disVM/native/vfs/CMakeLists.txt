@@ -459,3 +459,11 @@ add_test(NAME vfs-launch-contract COMMAND vfs-launch-contract)
 set_tests_properties(vfs-launch-contract PROPERTIES TIMEOUT 15)
 add_test(NAME vfs-launch-contract-alloc COMMAND vfs-launch-ticket-alloc typed)
 set_tests_properties(vfs-launch-contract-alloc PROPERTIES TIMEOUT 15)
+
+# EN/RU: Typed requirements survive request/take, independent context copying and parent retirement.
+# Typed requirements переживают request/take, independent context copying и retirement parent.
+add_executable(vfs-launch-contract-context ../tests/launch/contract/context.c "${vfs}/launch/context.c" ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-contract-context PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-contract-context PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=free")
+add_test(NAME vfs-launch-contract-context COMMAND vfs-launch-contract-context)
+set_tests_properties(vfs-launch-contract-context PROPERTIES TIMEOUT 15)

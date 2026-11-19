@@ -371,7 +371,8 @@ static FVM_Result image_open(void *state, const char *path, const char *mode, DV
     cursor->dependency = dependency;
     cursor->switching = switching;
     cursor->waiting = !strcmp(path, "waiting");
-    cursor->image = !strcmp(path, "app.dis") ? &source->app : dependency ?
+    cursor->image = !strcmp(path, "app.dis") ?
+        (CONTROL == 24 && __atomic_load_n(&source->switched, __ATOMIC_ACQUIRE) ? &source->next : &source->app) : dependency ?
         (__atomic_load_n(&source->switched, __ATOMIC_ACQUIRE) ? &source->next : &source->first) : NULL;
     output->state = cursor;
     output->ops = &image_stream;

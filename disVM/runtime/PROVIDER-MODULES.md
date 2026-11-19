@@ -145,3 +145,9 @@ The same 40 scenarios now also exercise [native interface admission](MODULE-INTE
 actual compiler imports are checked against parsed owner exports before root
 preparation. A separately compiled int/big result mismatch is refused, while
 normal parent/child application and dependency execution remains unchanged.
+
+There are now 50 interpreter/JIT scenarios. Ten additional runs replace a target
+after admission on client/provider sides, refuse each actual snapshot-allocation
+position, and verify inherited requirements in a child after the provider changes
+future target opens. [Process contract retention](MODULE-INTERFACE.md) and actual
+loader-guard refusal are observed independently of the ordinary linker result.

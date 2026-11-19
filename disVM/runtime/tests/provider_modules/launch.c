@@ -17,12 +17,69 @@
 #include "images.h"
 #include "vfs/loader.h"
 #include "contracts.h"
-#define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19) /* Actual terminal-source owner scenarios, including changed caller bind. */
+#include "vfs/launch/context.h"
+#include "module_interface/launch.h"
+#define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19 || CONTROL == 21) /* Actual terminal-source owner scenarios, including changed caller bind. */
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
 static __thread int route_selecting; /* Startup controller explicitly selects caller side before any guest exists. */
 static unsigned provider_lookups; /* Atomic observed caller-side load selections, including initial controller. */
 static unsigned terminal_lookups; /* Atomic observed accepted client-caller selections. */
 static ImageSource execution_images; /* Actual provider-first code source. */
+static unsigned checked_targets; /* Actual named-target checks on ACTIVE parent/child owners. */
+static unsigned refused_targets; /* Actual guard refusals before ordinary linking, not inferred from a nil load. */
+static __thread unsigned contract_allocation; /* Test-only countdown for actual adapter snapshot calloc refusal. */
+
+
+/* EN/RU: Original calloc returns owned zeroed count*size bytes/NULL without test recursion.
+ * Исходный calloc возвращает свой zeroed count*size storage/NULL, без test recursion.
+ */
+extern void *__real_calloc(size_t count, size_t size);
+
+
+/* EN/RU: Fail only the selected target-contract snapshot allocation on this permanent owner; forward all other allocations.
+ * Отказать только выбранной target-contract snapshot allocation этого постоянного owner; остальные переслать.
+ */
+void *__wrap_calloc(size_t count, size_t size)
+{
+    if (contract_allocation && --contract_allocation == 0)
+    {
+        return NULL;
+    }
+    return __real_calloc(count, size);
+}
+
+
+/* [GC:] EN/RU: Original guard consumes the owned Module and returns the same owner/NULL without replacement parsing.
+ * Исходный guard поглощает owned Module и возвращает тот же owner/NULL, без replacement parsing.
+ */
+extern Module *__real_dvm_launch_module_checked(const char *, Module *);
+
+
+/* [GC:] EN/RU: Observe actual inherited-contract checks; inject only native snapshot OOM, never fabricate a Module/refusal.
+ * Наблюдать actual inherited-contract checks; вводить лишь native snapshot OOM, не подменять Module/refusal.
+ */
+Module *__wrap_dvm_launch_module_checked(const char *path, Module *module)
+{
+    Prog *process = currun();
+    DVM_LaunchContext *context = process ? ((DVM_RuntimeProcess *)process)->launch_context : NULL;
+    int target = module && module != H && context && context->contract && path && !strcmp(path, context->module);
+    if (target)
+    {
+        __atomic_add_fetch(&checked_targets, 1, __ATOMIC_RELAXED);
+        if (CONTROL == 22 || CONTROL == 23)
+        {
+            contract_allocation = CONTROL - 21;
+        }
+    }
+    Module *answer = __real_dvm_launch_module_checked(path, module);
+    if (target && !answer)
+    {
+        __atomic_add_fetch(&refused_targets, 1, __ATOMIC_RELAXED);
+    }
+    launch_check(!contract_allocation, "target contract allocation refusal was not reached");
+    return answer;
+}
+
 
 
 /* EN/RU: Original startup borrows module and moves exclusive handoff before process publication.
@@ -221,6 +278,17 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     {
         handoff->local_role = DVM_ORIGIN_TERMINAL;
     }
+    if (CONTROL == 20 || CONTROL == 21)
+    {
+        ImageSource *changed = CLIENT_OWNER ? &terminal_images : &execution_images;
+        free(changed->app.bytes);
+        changed->app = image_read("wrong.dis"); /* Change only after native owner accepted the original interface. */
+    }
+    if (CONTROL == 24)
+    {
+        free(execution_images.next.bytes);
+        execution_images.next = image_read("wrong.dis"); /* Parent explicitly switches future opens before child loads. */
+    }
     dvm_launch_service_free(server);
     dvm_launch_service_free(client);
     dvm_launch_endpoint_free(server_endpoint);
@@ -241,15 +309,17 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
 void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
-    unsigned expected_execution_opens = CONTROL == 13 || CLIENT_OWNER ? 0U :
+    unsigned expected_execution_opens = (CONTROL >= 20 && CONTROL <= 23) || CONTROL == 13 || CLIENT_OWNER ? 0U :
         (CONTROL == 16 || CONTROL == 18) ? 2U : CONTROL ? 1U : 4U;
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
-        terminal_images.opened == (CLIENT_OWNER ? 2U : 0U) &&
+        terminal_images.opened == (CLIENT_OWNER && CONTROL != 21 ? 2U : 0U) &&
         execution_images.opened == expected_execution_opens, "provider code source and lifetime isolation");
     launch_check(allocated_images == freed_images && (CONTROL == 13 || allocated_images > 0), "actual provider image-buffer ownership drain");
     launch_check(terminal_images.advertised == (CLIENT_OWNER ? 1U : 0U) &&
         execution_images.advertised == (CLIENT_OWNER ? 0U : 1U), "actual selected provider advertisement coverage");
     launch_check(provider_lookups && (CLIENT_OWNER ? terminal_lookups != 0 : terminal_lookups == 0),
         "actual caller-side load coverage");
+    launch_check((CONTROL == 10 || CONTROL == 13 || checked_targets) &&
+        refused_targets == (CONTROL >= 20 ? 1U : 0U), "actual inherited target-contract guard coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

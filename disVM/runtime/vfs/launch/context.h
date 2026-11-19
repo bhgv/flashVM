@@ -15,13 +15,14 @@ typedef struct DVM_LaunchContext
     unsigned references; /* Native constructor/owner pins; never guest-visible or resurrected. */
     size_t argument_bytes; /* Exact immutable payload extent, bounded by launch admission. */
     char module[DVM_NS_PATH_LIMIT]; /* Copied logical label, never authority or resolved host path. */
+    DVM_LaunchContract *contract; /* Owned immutable requirements, shared only through this native context reference count. */
     unsigned char arguments[]; /* Owned immutable binary payload, no native/managed pointers. */
 } DVM_LaunchContext;
 
 
-/* EN/RU: Copy borrowed exclusive handoff's label/bytes; owned context/NULL on invalid/OOM.
+/* EN/RU: Copy borrowed exclusive handoff's label/bytes/contract; owned context/NULL on invalid/OOM.
  * No I/O, authority acquisition or handoff mutation; caller pins input through return.
- * Скопировать label/bytes exclusive handoff; свой context/NULL при invalid/OOM.
+ * Скопировать label/bytes/contract exclusive handoff; свой context/NULL при invalid/OOM.
  * Без I/O, получения authority и изменения handoff; caller удерживает input до возврата.
  */
 DVM_LaunchContext *dvm_launch_context_create(const DVM_LaunchHandoff *handoff);

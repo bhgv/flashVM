@@ -12,6 +12,7 @@
 #include "module_registry.h"
 #include "guest.h"
 #include "loader.h"
+#include "../module_interface/launch.h"
 #include "resource.h"
 #include "runqueue.h"
 #include "metadata_wait.h"
@@ -53,7 +54,7 @@ Module *readmod(char *path, Module *cached, int sync)
     DVM_Namespace *group;
     if (path && path[0] == '$')
     {
-        return dvm_namespace_native_readmod(path, cached, sync, NULL);
+        return dvm_launch_module_checked(path, dvm_namespace_native_readmod(path, cached, sync, NULL));
     }
     if (cached)
     {
@@ -97,14 +98,14 @@ Module *readmod(char *path, Module *cached, int sync)
         dvm_resource_close(plan);
         free(plan);
         poperror();
-        return answer;
+        return dvm_launch_module_checked(path, answer);
     }
     cached = dvm_module_registry_lookup(plan->names.native);
     Module *answer = dvm_namespace_native_readmod(plan->names.native, cached, sync, plan);
     dvm_resource_close(plan);
     free(plan);
     poperror();
-    return answer;
+    return dvm_launch_module_checked(path, answer);
 }
 
 

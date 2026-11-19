@@ -140,3 +140,8 @@ already transparent. See [routing](LAUNCH-ROUTE.md),
 name/signature contract to each independent submission. The owner must validate
 its actual exports before preparing a typed request. Resolved addresses remain
 reusable for different required subsets; no code or value codec is downloaded.
+
+The [retained process contract](MODULE-INTERFACE.md#contract-after-take-and-during-load--контракт-после-передачи-окружения)
+now survives request/take and parent/child startup. Exact named-target loads
+recheck their actual parsed exports before ordinary linking; this adds no wire
+representation, provider lookup or general remote invocation mechanism.

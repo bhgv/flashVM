@@ -16,7 +16,8 @@ DVM_LaunchContext *dvm_launch_context_create(const DVM_LaunchHandoff *handoff)
     if (!handoff || !handoff->description.module[0] ||
         !memchr(handoff->description.module, 0, sizeof(handoff->description.module)) ||
         handoff->description.argument_bytes > DVM_LAUNCH_ARGUMENT_LIMIT ||
-        (handoff->description.argument_bytes && !handoff->arguments))
+        (handoff->description.argument_bytes && !handoff->arguments) || handoff->description.typed > 1 ||
+        (!!handoff->description.typed != !!handoff->contract))
     {
         return NULL;
     }
@@ -24,6 +25,12 @@ DVM_LaunchContext *dvm_launch_context_create(const DVM_LaunchHandoff *handoff)
     DVM_LaunchContext *context = malloc(sizeof(*context) + length);
     if (!context)
     {
+        return NULL;
+    }
+    context->contract = dvm_launch_contract_clone(handoff->contract);
+    if (handoff->contract && !context->contract)
+    {
+        free(context);
         return NULL;
     }
     context->references = 1;
@@ -67,6 +74,7 @@ void dvm_launch_context_release(DVM_LaunchContext *context)
 {
     if (context && __atomic_sub_fetch(&context->references, 1, __ATOMIC_ACQ_REL) == 0)
     {
+        dvm_launch_contract_free(context->contract);
         free(context);
     }
 }

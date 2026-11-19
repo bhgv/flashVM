@@ -222,7 +222,7 @@ int main(int argc, char **argv)
     DVM_LaunchTicket *ticket = dvm_launch_request_create(&spec, &request);
     launch_check(ticket && (!typed || dvm_launch_request_check(request, contract)) &&
         dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "prepare for take refusal");
-    for (unsigned position = 1; position <= 2; position++)
+    for (unsigned position = 1; position <= (typed ? 3U : 2U); position++)
     {
         allocation = 0;
         fail_at = position;
