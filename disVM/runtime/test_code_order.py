@@ -1,6 +1,6 @@
 # Copyright (c) 2026 bhgv
-# EN: Compile conflicting native module images and execute real provider-first loader paths.
-# RU: Собрать конфликтующие module images и выполнить настоящий provider-first loader.
+# EN: Compile conflicting native module images and execute real caller-relative loader paths.
+# RU: Собрать конфликтующие модули и проверить загрузку сначала со своей стороны, затем с обратной.
 from pathlib import Path
 import subprocess
 import sys
@@ -31,9 +31,9 @@ def main():
             result = subprocess.run([binary, '--native-spawn', mode, '--stats', work/'main.dis'],
                                     cwd=work, capture_output=True, text=True, timeout=45)
             output = result.stdout+result.stderr
-            if result.returncode or 'PASS provider-first code and terminal-first data with dependencies' not in output:
+            if result.returncode or 'PASS own-side-first code and terminal-first data with dependencies' not in output:
                 raise RuntimeError(str(result.returncode)+': '+output[-16000:])
-            print('PASS provider-first code '+mode, flush=True)
+            print('PASS own-side-first code '+mode, flush=True)
 
 
 if __name__ == '__main__':

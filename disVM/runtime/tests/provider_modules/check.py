@@ -28,7 +28,10 @@ def main():
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
         compile_image(compiler, include, root, fixtures / "wrong.b", work / "wrong.dis", [fixtures])
-        for variant in range(33):
+        selected = [int(value) for value in sys.argv[4:]] or list(range(39))
+        if any(value < 0 or value > 38 for value in selected):
+            raise ValueError("provider module variant outside 0..38")
+        for variant in selected:
             if variant >= 30:
                 dependency = "dependency-child.b" if variant == 31 else "dependency-context.b"
                 for label, value in [("first", 111), ("next", 112)]:
@@ -49,13 +52,16 @@ def main():
                 if variant >= 29:
                     extra_result = "int arguments[2]" if variant == 32 else "0"
                     app_source = (fixtures / "app-context.b").read_text().replace("RESULT_EXTRA", extra_result)
+                if variant >= 33:
+                    mode = variant - 33 if variant <= 36 else 3 if variant == 38 else 0
+                    app_source = (fixtures / "app-namespace-child.b").read_text().replace("TEST_MODE", str(mode))
                 source = work / "app.b"
                 source.write_text(app_source)
                 compile_image(compiler, include, root, source, work / "app.dis", [fixtures])
             main_source = work / "main.b"
             template_name = {10: "kill.b", 16: "child.b", 17: "child.b", 18: "child.b", 19: "child.b", 24: "contract-child.b"}.get(variant, "main.b")
             template = (fixtures / template_name).read_text()
-            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222, 25: 111, 26: 111, 27: 111, 28: 111, 29: 111, 30: 111, 31: 111, 32: 112}.get(variant, -1)
+            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222, 25: 111, 26: 111, 27: 111, 28: 111, 29: 111, 30: 111, 31: 111, 32: 112, 33: 111, 34: 111, 35: 111, 36: 111, 37: 111, 38: 111}.get(variant, -1)
             if variant == 13:
                 template = template.replace("app == nil || app->value() != EXPECTED", "app != nil")
             if variant in (20, 21, 22, 23):
@@ -69,7 +75,18 @@ def main():
                 check_context = '    arguments = launch->arguments();\n    if (len arguments != 4 || int arguments[0] != 0) { raise "module metadata escaped into caller"; }\n'
                 if variant == 32:
                     check_context += '    other := load Value "/app.dis";\n    if (other == nil || other->value() != 113) { raise "module instances shared launch context"; }\n'
+                if variant >= 33:
+                    check_context += '    if (sys->open("/private", Sys->OREAD) != nil) { raise "private module namespace escaped to caller"; }\n'
                 template = template.replace('    data := sys->open', check_context + '    data := sys->open')
+            if variant == 37:
+                checked_call = '    if (app == nil || app->value() != EXPECTED) {\n        raise "provider application dependency mismatch";\n    }'
+                refusal = ('    refused := 0;\n    {\n        ignored := app->value();\n'
+                           '    } exception {\n        "bound child lost private namespace" => refused = 1;\n    }\n'
+                           '    if (!refused) { raise "namespace inheritance omission escaped detection"; }\n'
+                           '    sys->print("REJECTED namespace inheritance omission\\n");')
+                if template.count(checked_call) != 1:
+                    raise RuntimeError("namespace omission control source anchor drift")
+                template = template.replace(checked_call, refusal)
             main_source.write_text(template.replace("EXPECTED", str(expected))
                                    .replace("HELPERS", "" if variant else (fixtures / "update.b").read_text())
                                    .replace("SWITCH", "" if variant else "update(sys, app);"))
@@ -77,10 +94,16 @@ def main():
             binary = relink(runtime, work, root / "tests/provider_modules/launch.c", variant,
                             ["dvm_runtime_launch_module", "dvm_namespace_boot_shutdown",
                              "dvm_launch_process_adopt", "dvm_resource_plan_call",
-                             "dvm_launch_module_checked", "linkmod", "unload", "malloc", "calloc", "free"])
+                             "dvm_launch_module_checked", "dvm_module_environment_inherit", "dvm_launch_process_inherit", "linkmod", "unload", "malloc", "calloc", "free"])
             for mode in ["--no-jit", "--jit"]:
                 result = subprocess.run([binary, "--native-spawn", mode, work / "main.dis"], cwd=work,
                                         capture_output=True, text=True, input="leftnext", timeout=30)
+                if variant == 37:
+                    if result.returncode or "REJECTED namespace inheritance omission" not in result.stdout or \
+                            "PASS provider module source selection and native ownership drain" not in result.stdout:
+                        raise RuntimeError(f"namespace inheritance omission control missed semantic failure {mode}\n" + result.stdout + result.stderr)
+                    print(f"PASS namespace inheritance omission rejected {mode}", flush=True)
+                    continue
                 if result.returncode or "PASS provider-backed Dis module and dependency" not in result.stdout or \
                         "PASS provider module source selection and native ownership drain" not in result.stdout:
                     raise RuntimeError(f"provider module variant={variant} {mode}\n" + result.stdout + result.stderr)

@@ -67,6 +67,22 @@ int dvm_module_environment_reserve(struct Prog *process);
 int dvm_module_environment_replace(struct Prog *process, DVM_Namespace *replacement);
 
 
+/* [GC:] EN/RU: Retain the spawning owner's effective bound-module namespace in a fresh unpublished child; return 1 on success.
+ * Borrow parent/child through return; parent must be the ACTIVE owner for module-frame inspection.
+ * Retain the current group rather than copy it; later FORKNS detaches only the process that requests it.
+ * NULL/noncurrent constructor parent needs no module-frame selection; ordinary base-group inheritance stays in the constructor.
+ * Child must have an empty override list. Failure publishes no override; private process cleanup releases other staged owners.
+ * Return 0 for invalid child state, allocation failure or reference overflow. No blocking or managed allocation.
+ * RU: Удержать выбранное окружение модуля родителя в ещё не опубликованном ребёнке; вернуть 1 при успехе.
+ * Родитель и ребёнок заимствуются до возврата; читать кадры можно только своего активного родителя.
+ * Группа разделяется до FORKNS. Список переопределений ребёнка должен быть пустым.
+ * NULL/чужой родитель не требует записи выбора модуля; основную группу наследует конструктор.
+ * При ошибке состояния, выделения памяти или переполнении ссылки вернуть 0 без публикации записи.
+ * Без блокировки и выделения управляемых объектов; откат остальных ссылок выполняет конструктор.
+ */
+int dvm_module_environment_inherit(struct Prog *child, struct Prog *parent);
+
+
 /* EN/RU: Consume process-local overrides after its execution/borrowers retire; NULL process allowed, no managed access.
  * Освободить process-local overrides после execution/borrowers; NULL допустим, без managed access.
  */

@@ -126,6 +126,22 @@ resolution.
 7. Final Modlink retirement, including Fast/cycle-collector paths, removes its
    weak registry key and queues preallocated native cleanup on the closer.
 
+Spawn retains the currently selected module binding as well as the base group.
+This matters when the child starts in the same bound module: its first frame
+must select the parent's effective group, including earlier `FORKNS` edits,
+rather than return to the module's original prepared group. Parent and child
+share that group until either explicitly forks its own namespace. Only the
+active binding is inherited; unrelated module override records are not copied.
+Construction stages this native reference before publishing the child. Allocation
+failure or a later launch-context retain failure releases all staged ownership.
+The constructor inspects only its own active parent's frames, never another
+running owner's register set.
+
+При `spawn` сохраняется выбранное окружение текущего модуля, включая изменения
+после `FORKNS`. Родитель и ребёнок разделяют одну группу, пока один из них явно
+не отделит свою. Это действует и для вложенного `spawn`. Ошибка создания потока
+не публикует ребёнка и освобождает уже удержанные ссылки. `/prog` не изменён.
+
 Loads in this new policy follow the actual configured stack, including explicit
 later reorders. The module import base remains the normal import base. Legacy
 explicit `DVM_LAUNCH_TERMINAL_FIRST` environments keep their established policy;
@@ -156,6 +172,19 @@ Real native Dis applications run in both interpreter and JIT, checking dependenc
 lookup, module-bound builtin I/O, FORKNS, two independent module instances and
 redirected stdin sharing. These tests attach prepared environments through the
 public native API to actual original-linker results; they do not mock execution.
+The module fixture now covers 76 positive interpreter/JIT executions and two
+negative controls which deliberately omit the inherited binding. Additional
+cases verify post-spawn shared edits, independent parent/child `FORKNS`, a
+grandchild, real allocation refusal and rollback after a later context-retain
+failure. Each accepted child is explicitly joined; the omission controls catch
+the exact namespace error and still require the native ownership drain.
+
+The native loader/cache fixture uses the agreed caller-relative rule: prime a
+provider image through an explicit alias, then load the same virtual name from
+the terminal owner's own layer and check its transitive dependency. Removing
+that layer selects the provider image and its dependency without changing the
+already loaded terminal instance. This is local native-source lookup coverage,
+not evidence of remote execution or generic `.m` marshalling.
 
 **This is not yet a transparent cross-machine Limbo module-call implementation.**
 The ordinary terminal-side `load` still does not automatically create a remote

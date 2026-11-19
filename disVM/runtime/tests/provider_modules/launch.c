@@ -19,6 +19,7 @@
 #include "contracts.h"
 #include "environment.h"
 #include "binding.h"
+#include "spawn_scope.h"
 #include "vfs/launch/context.h"
 #include "module_interface/launch.h"
 #define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19 || CONTROL == 21) /* Actual terminal-source owner scenarios, including changed caller bind. */
@@ -317,7 +318,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
 void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
-    unsigned expected_execution_opens = (CONTROL >= 20 && CONTROL <= 23) || CONTROL == 13 || CLIENT_OWNER ? 0U :
+    unsigned expected_execution_opens = (CONTROL >= 20 && CONTROL <= 23) || CONTROL == 13 || CONTROL == 37 || CLIENT_OWNER ? 0U :
         (CONTROL == 16 || CONTROL == 18 || CONTROL == 27 || CONTROL == 32) ? 2U : CONTROL ? 1U : 4U;
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
         terminal_images.opened == (CLIENT_OWNER && CONTROL != 21 ? 2U : 0U) &&
@@ -331,5 +332,9 @@ void __wrap_dvm_namespace_boot_shutdown(void)
         refused_targets == (CONTROL >= 20 && CONTROL <= 24 ? 1U : 0U), "actual inherited target-contract guard coverage");
     launch_check(CONTROL < 25 || environment_bindings == ((CONTROL == 27 || CONTROL == 32) ? 2U : 1U),
         "actual module instance environment coverage");
+    launch_check(CONTROL != 36 || namespace_refusals == 1, "actual namespace constructor allocation failure coverage");
+    launch_check(CONTROL != 38 || namespace_late_refusals == 1, "late constructor rollback coverage");
+    launch_check(CONTROL < 33 || namespace_inherits == (CONTROL == 37 ? 0U : (CONTROL == 34 || CONTROL == 38) ? 2U : 1U),
+        "actual effective module namespace inheritance coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

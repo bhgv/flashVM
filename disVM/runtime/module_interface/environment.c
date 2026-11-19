@@ -315,3 +315,37 @@ DVM_LaunchContext *dvm_module_launch_current(Prog *process)
     ModuleEnvironment *entry = current(process, 1);
     return entry ? entry->context : ((DVM_RuntimeProcess *)process)->launch_context;
 }
+
+
+/* [GC:] EN/RU: See environment.h; scalar binding identity avoids reselecting the original module group in a child's first frame.
+ * Only this active binding is inherited; unrelated per-module overrides are not copied into another execution context.
+ * RU: Контракт в environment.h; идентификатор привязки сохраняет выбранную группу в первом кадре ребёнка.
+ * Наследуется только текущая привязка, остальные переопределения модулей не копируются.
+ */
+int dvm_module_environment_inherit(Prog *child, Prog *parent)
+{
+    if (!child || child == parent || ((DVM_RuntimeProcess *)child)->module_namespaces)
+    {
+        return 0;
+    }
+    if (!parent || parent != currun())
+    {
+        return 1;
+    }
+    ModuleEnvironment *entry = current(parent, 0);
+    if (!entry)
+    {
+        return 1;
+    }
+    DVM_Namespace *group = dvm_module_environment_current(parent);
+    DVM_ModuleOverride *copy = group ? calloc(1, sizeof(*copy)) : NULL;
+    if (!copy || !dvm_namespace_retain(group))
+    {
+        free(copy);
+        return 0;
+    }
+    copy->identity = entry->identity;
+    copy->group = group;
+    ((DVM_RuntimeProcess *)child)->module_namespaces = copy;
+    return 1;
+}

@@ -43,7 +43,7 @@ static DVM_NamespaceBinding *binding(DVM_Namespace *group, const char *source, c
 }
 
 
-/* EN/RU: Install equal-name native roots in terminal-first data order before module/guest startup.
+/* EN/RU: Install equal-name native roots in terminal-first data order before module/guest startup; the ordinary owner starts on the terminal side.
  * Provider provenance is fixture-assigned trusted metadata, never accepted from a wire.
  * Установить same-name roots до старта guest; trusted provenance не берётся из wire. */
 int __wrap_dvm_namespace_boot_initialize(const char *directory)
@@ -55,7 +55,7 @@ int __wrap_dvm_namespace_boot_initialize(const char *directory)
     DVM_Namespace *group = dvm_namespace_boot_group();
     DVM_NamespaceBinding *terminal = binding(group, "terminal", "/code", DVM_ORIGIN_TERMINAL);
     DVM_NamespaceBinding *provider = binding(group, "provider", "/code", DVM_ORIGIN_PROVIDER);
-    DVM_NamespaceBinding *alias = binding(group, "terminal", "/terminal-code", DVM_ORIGIN_TERMINAL);
+    DVM_NamespaceBinding *alias = binding(group, "provider", "/provider-code", DVM_ORIGIN_PROVIDER);
     provider->head_identity = terminal->head_identity;
     provider->flags = DVM_NS_AFTER;
     alias->next = group->bindings;
