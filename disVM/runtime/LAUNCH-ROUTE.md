@@ -130,9 +130,10 @@ Private negative controls must fail semantically when caller labels replace owne
 labels, acknowledged tickets are discarded after cancellation, or routing re-resolves
 the live path after the locator. Compile errors/crashes/timeouts do not count.
 
-Transparent ordinary `load` → remote typed calls, automatic provider-side address
-discovery, authenticated network capability exchange and general `.m` marshalling
-remain separate work. This change implements the native selection-to-admission
+Native provider-side address discovery is now available through
+[`dvm_launch_route_discover`](PROVIDER-LAUNCH.md), including filtered exports and
+live policy guards. Transparent ordinary `load` → remote typed calls, authenticated
+network capability exchange and general `.m` marshalling remain separate work. This change implements the native selection-to-admission
 boundary without guessing a new Styx/S-record message dialect.
 
 The full native SDK passes733/733 tests ordinarily and with ASan/UBSan. Four
@@ -141,3 +142,7 @@ provider-module executions. Final route cases additionally cover true absence
 fallback in both directions and pass normally/with sanitizers. LeakSanitizer is
 disabled in this restricted environment; explicit native allocation/provider
 ownership checks remain enabled. Imported Inferno libraries remain byte-identical.
+
+The current provider-discovery extension adds two native tests (735 total) and
+replaces the module fixture locator table with source-owned advertisements.
+See [provider discovery](PROVIDER-LAUNCH.md) for the current contracts and coverage.

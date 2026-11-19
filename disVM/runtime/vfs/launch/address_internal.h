@@ -12,6 +12,11 @@
  */
 struct DVM_LaunchAddress
 {
+    void (*dispose)(DVM_LaunchAddress *); /* Optional leaf-native capability cleanup; avoids service-library dependency in guard core. */
+    DVM_LaunchAddress *inner; /* Exclusive wrapped address, NULL for leaf; guard chains are freed iteratively. */
+    DVM_LaunchCheck check; /* Optional bounded local policy for a wrapper, no provider/guest I/O. */
+    void *context; /* Owned guard state only for wrappers; may outlive original provider factory. */
+    void (*release)(void *); /* Optional nonblocking native guard cleanup, outside all source/service locks. */
     DVM_LaunchEndpoint *endpoint; /* Independent owned submit-only wrapper through joined address retirement. */
     char module[DVM_NS_PATH_LIMIT]; /* Immutable owner-side logical label, never copied from request at submit. */
 };

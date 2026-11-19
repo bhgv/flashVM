@@ -20,6 +20,15 @@ int dvm_launch_route_input(const DVM_LaunchSpec *spec)
 }
 
 
+/* EN/RU: Leaf-only cleanup consumes its owned endpoint, no service close; generic guard core frees storage afterward.
+ * Leaf-only cleanup поглощает owned endpoint без service close; generic guard core затем освобождает storage.
+ */
+static void dispose(DVM_LaunchAddress *address)
+{
+    dvm_launch_endpoint_free(address->endpoint);
+}
+
+
 /* EN/RU: See route.h; validate the bounded label before allocation and keep caller endpoint ownership unchanged.
  * См. route.h; проверить bounded label до allocation, не менять endpoint ownership caller.
  */
@@ -49,6 +58,7 @@ DVM_LaunchAddress *dvm_launch_address_create(DVM_LaunchEndpoint *endpoint, const
         free(address);
         return NULL;
     }
+    address->dispose = dispose;
     memcpy(address->module, module, length + 1);
     return address;
 }
@@ -63,21 +73,20 @@ DVM_LaunchTicket *dvm_launch_address_submit(DVM_LaunchAddress *address, const DV
     {
         return NULL;
     }
+    while (address->inner)
+    {
+        if (dvm_cancel_requested(dvm_cancel_current()) || address->check(address->context) != 1)
+        {
+            return NULL;
+        }
+        address = address->inner;
+    }
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return NULL;
+    }
     DVM_LaunchSpec routed = *spec; /* Borrowed native grants/argument bytes only during the ordinary copied submit. */
     memcpy(routed.expected_provider, address->endpoint->shared->system, sizeof(routed.expected_provider));
     memcpy(routed.module, address->module, sizeof(routed.module));
     return dvm_launch_service_submit(address->endpoint, &routed);
-}
-
-
-/* EN/RU: See route.h; endpoint release neither closes its service nor cancels already acknowledged requests.
- * См. route.h; release endpoint не закрывает service и не отменяет acknowledged requests.
- */
-void dvm_launch_address_free(DVM_LaunchAddress *address)
-{
-    if (address)
-    {
-        dvm_launch_endpoint_free(address->endpoint);
-        free(address);
-    }
 }

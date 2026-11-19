@@ -42,3 +42,25 @@ DVM_LaunchTicket *dvm_launch_route_submit(DVM_Namespace *group, const char *path
     dvm_resource_close(&source);
     return ticket;
 }
+
+
+/* EN/RU: Borrow selected plan/metadata during discovery; return provider's owned address/NULL, no ambient name lookup.
+ * context is unused. / Заимствовать selected plan/metadata; свой provider address/NULL, без ambient lookup,
+ * context не используется.
+ */
+static DVM_LaunchAddress *discover(void *context, const DVM_ResourcePlan *selected, const FVM_FileInfo *metadata)
+{
+    (void)context;
+    (void)metadata;
+    return dvm_provider_launch(selected->provider, selected->relative);
+}
+
+
+/* EN/RU: See route.h; reuse all selection, cancellation and acknowledgement rules through one provider resolver.
+ * См. route.h; повторно использовать selection/cancellation/ack через общий provider resolver.
+ */
+DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *path, unsigned local_role,
+    const DVM_LaunchSpec *spec)
+{
+    return dvm_launch_route_submit(group, path, local_role, spec, discover, NULL);
+}

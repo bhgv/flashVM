@@ -418,7 +418,12 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
             identity = 0;
         }
     }
-    DVM_Provider *provider = dvm_provider_create_native(identity ? &stable : &dynamic, view, dvm_view_capture, 0, native_flags);
+    if (native_flags & DVM_PROVIDER_CANCEL_PATH)
+    {
+        native_flags |= DVM_PROVIDER_CANCEL_LAUNCH; /* Our dispatcher checks each selected source before scoped delegation. */
+    }
+    DVM_Provider *provider = dvm_provider_create_routed(identity ? &stable : &dynamic, view,
+        dvm_view_capture, 0, native_flags, dvm_view_launch);
     if (!provider)
     {
         dvm_view_discard(view);

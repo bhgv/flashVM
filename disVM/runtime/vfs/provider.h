@@ -8,6 +8,7 @@
 #include "anchor_port.h"
 #include "changes.h"
 
+#define DVM_PROVIDER_CANCEL_LAUNCH 8U /* Requires PATH and a launch callback; address discovery consumes current scope. */
 #define DVM_PROVIDER_CANCEL_CAPTURE 4U /* Requires PATH; capture consumes scope and returns a PATH-capable root. */
 #define DVM_PROVIDER_CANCEL_LIST 2U /* Requires PATH; directory open/list and all returned stream closes consume scope. */
 #define DVM_PROVIDER_CANCEL_PATH 1U /* Native factory info/open/access consume current cancellation scope. */
@@ -20,6 +21,19 @@ typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; referenc
  * Native I/O permitted outside namespace/lifetime locks; caller pins source through return.
  * Захватить relative node в свой fresh root provider/NULL; сохранить policy, native I/O вне locks. */
 typedef DVM_Provider *(*DVM_ProviderCapture)(void *state, const char *relative);
+
+
+struct DVM_LaunchAddress; /* Native owned submit capability; never serialized as a pointer. */
+
+
+/* EN/RU: Borrow canonical relative node and state; return owned native launch address/NULL, no guest execution.
+ * Enforce current source policy; native I/O may block outside locks, current scope requires explicit LAUNCH opt-in.
+ * Returned addresses may outlive the factory: bind any required ongoing policy/lifetime with an address guard.
+ * Заимствовать canonical relative node/state; вернуть owned native launch address/NULL, без guest execution.
+ * Проверять current source policy; native I/O вне locks, current scope требует LAUNCH opt-in.
+ * Address переживает factory: ongoing policy/lifetime закреплять address guard.
+ */
+typedef struct DVM_LaunchAddress *(*DVM_ProviderLaunch)(void *state, const char *relative);
 
 
 /* EN/RU: Immutable trusted callbacks, code alive through destroy. Relative paths
@@ -55,6 +69,26 @@ DVM_Provider *dvm_provider_create_capture(const DVM_ProviderOps *ops, void *stat
  * Adopt state only on success; existing callback-table layout stays unchanged.
  * Как create_capture с immutable native_flags; state принят только при успехе. */
 DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root, unsigned native_flags);
+
+
+/* EN/RU: Like create_native, with immutable optional launch callback, adopting state only on success.
+ * ProviderOps ABI stays unchanged; LAUNCH requires callback/PATH. No callbacks or I/O during construction.
+ * Как create_native с optional immutable launch callback, state принят только при success.
+ * ProviderOps ABI прежний; LAUNCH требует callback/PATH, constructor без callbacks/I/O.
+ */
+DVM_Provider *dvm_provider_create_routed(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture,
+    int fixed_root, unsigned native_flags, DVM_ProviderLaunch launch);
+
+
+/* EN/RU: Borrow live provider/canonical relative node; owned launch address/NULL, no authority inferred from metadata.
+ * Reject invalid relative path/pre-cancel/unsupported callback or scope before invoking provider.
+ * Native-only outside managed admission; no source-lifetime lock during callback. Caller owns returned address
+ * even when cancellation races callback return; free it or use routed submit, which handles that race.
+ * Заимствовать live provider/canonical relative node; owned launch address/NULL, metadata не даёт authority.
+ * Invalid path/pre-cancel/unsupported scope отказывают до callback. Native-only вне managed admission,
+ * callback без lifetime lock; caller владеет address даже при racing cancellation и обязан освободить.
+ */
+struct DVM_LaunchAddress *dvm_provider_launch(DVM_Provider *provider, const char *relative);
 
 
 /* EN/RU: Borrow retained factory; immutable native capabilities/0, no I/O or authority.

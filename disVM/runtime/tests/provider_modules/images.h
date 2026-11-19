@@ -6,6 +6,7 @@
 #define PROVIDER_MODULE_IMAGES_H
 #include "../../vfs/provider.h"
 #include "../../vfs/cancel.h"
+#include "../../vfs/launch/route.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,6 +117,8 @@ typedef struct Image
  */
 typedef struct ImageSource
 {
+    DVM_LaunchEndpoint *endpoint; /* Owned advertised source-owner capability, independent of original wrapper lifetime. */
+    unsigned advertised; /* Atomic actual provider address lookups, never image reads. */
     Image app;          /* Application image, normal typed dependency load. */
     Image first;        /* Original dependency image. */
     Image next;         /* Updated dependency with identical metadata/length for cache isolation. */
@@ -391,11 +394,30 @@ static FVM_Result image_open(void *state, const char *path, const char *mode, DV
 static void image_destroy(void *state)
 {
     ImageSource *source = state; /* Stack fixture lives through runtime shutdown. */
+    dvm_launch_endpoint_free(source->endpoint);
+    source->endpoint = NULL;
     free(source->app.bytes);
     free(source->first.bytes);
     free(source->next.bytes);
     __atomic_add_fetch(&source->destroyed, 1, __ATOMIC_RELEASE);
 }
+
+/* EN/RU: Source advertises its own explicit module nodes directly, with no caller-side locator map or image read.
+ * Source сам объявляет explicit module nodes, без caller-side locator map и чтения image.
+ */
+static DVM_LaunchAddress *image_launch(void *state, const char *relative)
+{
+    ImageSource *source = state;
+    if ((strcmp(relative, "app.dis") && strcmp(relative, "dep.dis")) || dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return NULL;
+    }
+    __atomic_add_fetch(&source->advertised, 1, __ATOMIC_RELAXED);
+    char module[DVM_NS_PATH_LIMIT]; /* Copied canonical owner label, unrelated to caller's visible alias. */
+    snprintf(module, sizeof(module), "/%s", relative);
+    return dvm_launch_address_create(source->endpoint, module);
+}
+
 static const DVM_ProviderOps image_operations = {.info = image_info, .open = image_open,
     .destroy = image_destroy, .flags = DVM_PROVIDER_STABLE_BIND}; /* Live images under one stable root. */
 #endif

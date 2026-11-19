@@ -80,8 +80,10 @@ int __wrap_dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsign
 /* EN/RU: Own real compiled native-cell images under one opt-in live root; no Module or parser result is fabricated.
  * Владеть настоящими compiled native-cell images под opt-in live root; Module/parser results не подменяются.
  */
-static DVM_Provider *source(ImageSource *images, int terminal)
+static DVM_Provider *source(ImageSource *images, int terminal, DVM_LaunchEndpoint *endpoint)
 {
+    images->endpoint = dvm_launch_endpoint_clone(endpoint);
+    launch_check(images->endpoint != NULL, "advertised image source endpoint pin");
     images->terminal = terminal;
     images->app = image_read("app.dis");
     images->first = image_read(terminal ? "terminal.dis" : "first.dis");
@@ -91,7 +93,8 @@ static DVM_Provider *source(ImageSource *images, int terminal)
         memset(images->first.bytes, 0, images->first.size); /* Correct byte count, intentionally invalid Dis image. */
     }
     launch_check(terminal || images->first.size == images->next.size, "same-length live provider image fixture");
-    return dvm_provider_create_native(&image_operations, images, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
+    return dvm_provider_create_routed(&image_operations, images, NULL, 1,
+        DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LAUNCH, image_launch);
 }
 
 
@@ -125,32 +128,6 @@ static void *prepare(void *state)
 }
 
 
-/* EN/RU: Native fixture maps actual source capabilities to separate owner service endpoints, without identity-string routing.
- * Native fixture связывает actual source capabilities с разными owner endpoints, без identity-string routing.
- */
-typedef struct ImageRoutes
-{
-    DVM_LaunchOptions *options; /* Borrowed original caller's two granted roots through routing. */
-    DVM_LaunchEndpoint *client; /* Borrowed client-source owner's independent admission endpoint. */
-    DVM_LaunchEndpoint *server; /* Borrowed provider-source owner's independent admission endpoint. */
-} ImageRoutes;
-
-
-/* EN/RU: Resolve one pinned actual app node to its owning service and unchanged module label, no image reads.
- * Разрешить pinned actual app node в service владельца и module label, без чтения image.
- */
-static DVM_LaunchAddress *locate(void *state, const DVM_ResourcePlan *selected, const FVM_FileInfo *metadata)
-{
-    ImageRoutes *routes = state;
-    launch_check(selected->selected && !metadata->directory && !strcmp(selected->relative, "app.dis"),
-        "image route exact selected module node");
-    DVM_LaunchEndpoint *endpoint = selected->provider == routes->options->terminal ? routes->client :
-        selected->provider == routes->options->provider ? routes->server : NULL;
-    launch_check(endpoint != NULL, "image route capability source association");
-    return dvm_launch_address_create(endpoint, "/app.dis");
-}
-
-
 /* EN/RU: Build an actual pre-init namespace from both granted roots and invoke the unchanged production startup.
  * Собрать настоящий namespace до init из двух granted roots, вызвать неизменённый production startup.
  */
@@ -162,8 +139,13 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     DVM_LaunchOptions options = launch_options(&terminal, &execution);
     dvm_provider_release(options.terminal);
     dvm_provider_release(options.provider);
-    options.terminal = source(&terminal_images, 1);
-    options.provider = source(&execution_images, 0);
+    DVM_LaunchService *server = dvm_launch_service_create(options.provider_origin.system, 1);
+    DVM_LaunchService *client = dvm_launch_service_create(options.terminal_origin.system, 1);
+    DVM_LaunchEndpoint *server_endpoint = dvm_launch_service_endpoint(server);
+    DVM_LaunchEndpoint *client_endpoint = dvm_launch_service_endpoint(client);
+    launch_check(server && client && server_endpoint && client_endpoint, "image source owner services");
+    options.terminal = source(&terminal_images, 1, client_endpoint);
+    options.provider = source(&execution_images, 0, server_endpoint);
     DVM_LaunchSpec spec = {0}; /* Existing typed launch ticket, no new network schema. */
     spec.policy = options.policy;
     spec.terminal = options.terminal;
@@ -173,11 +155,6 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     const unsigned char arguments[] = {0, 255, 1, 128}; /* Binary startup bytes are independent of display. */
     spec.arguments = arguments;
     spec.argument_bytes = sizeof(arguments);
-    DVM_LaunchService *server = dvm_launch_service_create(options.provider_origin.system, 1);
-    DVM_LaunchService *client = dvm_launch_service_create(options.terminal_origin.system, 1);
-    DVM_LaunchEndpoint *server_endpoint = dvm_launch_service_endpoint(server);
-    DVM_LaunchEndpoint *client_endpoint = dvm_launch_service_endpoint(client);
-    launch_check(server && client && server_endpoint && client_endpoint, "image source owner services");
     DVM_Namespace *caller_namespace = dvm_launch_prepare(&options); /* Caller view selects source before owner admission. */
     launch_check(caller_namespace != NULL, "image routing caller namespace");
     DVM_LaunchOptions callee = options; /* Borrowed input roots stay owned by original options through handler join. */
@@ -187,15 +164,14 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
         callee.provider_origin = options.terminal_origin;
         callee.provider_origin.role = DVM_ORIGIN_PROVIDER; /* That source is now the callee's local provider role. */
     }
-    ImageRoutes routes = {.options = &options, .client = client_endpoint, .server = server_endpoint};
     Admission admission = {.service = CONTROL == 17 ? client : server, .options = &callee};
     pthread_t handler; /* Dedicated native admission thread, never a guest executor. */
     launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
     strcpy(spec.module, "/caller-label-must-not-be-used");
     memset(spec.expected_provider, 'x', sizeof(spec.expected_provider)); /* Address must supply actual owner identity. */
     route_selecting = 1;
-    DVM_LaunchTicket *ticket = dvm_launch_route_submit(caller_namespace, "/app.dis",
-        CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER, &spec, locate, &routes);
+    DVM_LaunchTicket *ticket = dvm_launch_route_discover(caller_namespace, "/app.dis",
+        CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER, &spec);
     route_selecting = 0;
     launch_check(ticket && !pthread_join(handler, NULL), "native routed request and handler join");
     dvm_namespace_release(caller_namespace);
@@ -228,6 +204,8 @@ void __wrap_dvm_namespace_boot_shutdown(void)
         terminal_images.opened == (CONTROL == 17 ? 2U : 0U) &&
         execution_images.opened == (CONTROL == 13 || CONTROL == 17 ? 0U : CONTROL == 16 ? 2U : CONTROL ? 1U : 4U), "provider code source and lifetime isolation");
     launch_check(allocated_images == freed_images && (CONTROL == 13 || allocated_images > 0), "actual provider image-buffer ownership drain");
+    launch_check(terminal_images.advertised == (CONTROL == 17 ? 1U : 0U) &&
+        execution_images.advertised == (CONTROL == 17 ? 0U : 1U), "actual selected provider advertisement coverage");
     launch_check(provider_lookups && (CONTROL == 17 ? terminal_lookups != 0 : terminal_lookups == 0),
         "actual caller-side load coverage");
     puts("PASS provider module source selection and native ownership drain");

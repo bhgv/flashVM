@@ -19,11 +19,13 @@ typedef struct ProviderHandle
 
 /* EN/RU: See provider.h; ownership transfer occurs only after full allocation.
  * См. provider.h; владение передаётся после полного выделения. */
-DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture, int fixed_root, unsigned native_flags)
+DVM_Provider *dvm_provider_create_routed(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture,
+    int fixed_root, unsigned native_flags, DVM_ProviderLaunch launch)
 {
     DVM_Provider *provider;
-    if ((native_flags & ~(DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE)) ||
-        ((native_flags & (DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE)) && !(native_flags & DVM_PROVIDER_CANCEL_PATH)) || (fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
+    if ((native_flags & ~(DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE | DVM_PROVIDER_CANCEL_LAUNCH)) ||
+        ((native_flags & DVM_PROVIDER_CANCEL_LAUNCH) && !launch) ||
+        ((native_flags & (DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE | DVM_PROVIDER_CANCEL_LAUNCH)) && !(native_flags & DVM_PROVIDER_CANCEL_PATH)) || (fixed_root != 0 && fixed_root != 1) || !ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
     {
         return NULL;
     }
@@ -48,10 +50,21 @@ DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state
     provider->references = 1;
     provider->ops = ops;
     provider->state = state;
+    provider->launch = launch;
     provider->capture = capture;
     provider->anchored = fixed_root;
     provider->native_flags = native_flags;
     return provider;
+}
+
+
+/* EN/RU: See provider.h; old native factory construction advertises no launch callback or new authority.
+ * См. provider.h; старый native constructor не объявляет launch callback и новую authority.
+ */
+DVM_Provider *dvm_provider_create_native(const DVM_ProviderOps *ops, void *state, DVM_ProviderCapture capture,
+    int fixed_root, unsigned native_flags)
+{
+    return dvm_provider_create_routed(ops, state, capture, fixed_root, native_flags, NULL);
 }
 
 

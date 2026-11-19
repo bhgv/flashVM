@@ -125,3 +125,7 @@ and image-buffer retirement observations are kept enabled.
 [Native launch routing](LAUNCH-ROUTE.md) now carries this selected source into an
 immutable owner address and bounded admission queue. Automatic network discovery
 and transparent typed module-call marshalling remain unfinished.
+
+[Provider-owned discovery](PROVIDER-LAUNCH.md) now obtains native owner addresses
+from the selected provider, preserving filtered mappings and live export policy.
+It adds no remote address wire exchange or general typed-call marshalling.

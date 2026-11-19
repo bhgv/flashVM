@@ -86,4 +86,11 @@ void dvm_view_drop(void *state);
 /* EN/RU: Capture callback rebases a subtree, anchors its selected source and preserves explicit rules/policy.
  * Capture callback переносит subtree, удерживает selected source и сохраняет explicit rules/policy. */
 DVM_Provider *dvm_view_capture(void *state, const char *relative);
+
+/* EN/RU: Discover through one visible READ|EXEC mapping and wrap the result in a live view-policy gate.
+ * Borrow state/relative; owned native address/NULL, no source code image reads.
+ * Обнаружить через visible READ|EXEC mapping и обернуть live view-policy gate;
+ * state/relative borrowed, owned native address/NULL, без чтения code image.
+ */
+struct DVM_LaunchAddress *dvm_view_launch(void *state, const char *relative);
 #endif

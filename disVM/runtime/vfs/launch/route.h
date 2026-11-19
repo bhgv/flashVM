@@ -17,6 +17,24 @@ typedef struct DVM_LaunchAddress DVM_LaunchAddress; /* Owned native submit desti
 DVM_LaunchAddress *dvm_launch_address_create(DVM_LaunchEndpoint *endpoint, const char *module);
 
 
+/* EN/RU: Bounded native local permission check for address use;1 allow/otherwise deny, no I/O/VM/waits.
+ * Borrow context through call. / Bounded native local permission check;1 разрешить, иначе отказать,
+ * context borrowed до return; без I/O/VM/waits.
+ */
+typedef int (*DVM_LaunchCheck)(void *context);
+
+
+/* EN/RU: Wrap an owned address with live local policy; consume inner on EVERY outcome.
+ * Adopt context/release only on success; caller cleans its context when NULL is returned.
+ * New owned address/NULL on invalid/OOM. check is required and outlives wrapper; release is optional,
+ * nonblocking native cleanup. Gate does not retarget inner; joins before free apply to the whole chain.
+ * Обернуть owned address live local policy; inner поглощается ВСЕГДА. Context/release принять лишь при success,
+ * при NULL context очищает caller. Свой address/NULL; check обязателен, cleanup native/nonblocking.
+ */
+DVM_LaunchAddress *dvm_launch_address_guard(DVM_LaunchAddress *inner, DVM_LaunchCheck check,
+    void *context, void (*release)(void *));
+
+
 /* EN/RU: Submit through borrowed immutable address using spec's terminal/channel grants, policy and copied arguments.
  * Ignore spec.module/expected_provider: destination capability supplies both. Owned requester ticket/NULL.
  * Pre-cancel refuses before submission; acknowledged ticket survives later racing cancellation, no replay/retry.
@@ -58,4 +76,14 @@ typedef DVM_LaunchAddress *(*DVM_LaunchLocate)(void *context, const DVM_Resource
  */
 DVM_LaunchTicket *dvm_launch_route_submit(DVM_Namespace *group, const char *path, unsigned local_role,
     const DVM_LaunchSpec *spec, DVM_LaunchLocate locate, void *context);
+
+/* EN/RU: Like route_submit using the selected provider's advertised launch callback, no per-request locator map.
+ * Native anchors/unadvertised/denied selected nodes refuse; never retry another side or download code.
+ * Same borrowed inputs, native cancellation and one acknowledged ticket contract as route_submit.
+ * Как route_submit через advertised callback выбранного provider, без per-request locator map.
+ * Native anchors/unadvertised/denied nodes отказывают без retry/скачивания; inputs borrowed, cancellation/ack прежние.
+ */
+DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *path, unsigned local_role,
+    const DVM_LaunchSpec *spec);
+
 #endif

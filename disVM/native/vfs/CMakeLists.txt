@@ -3,16 +3,16 @@
 # RU: Явные неграфические VFS/FlashVM ports; без второй библиотеки lib9.
 set(vfs "${INFERNO_VFS_SUPPORT}/disVM/runtime/vfs")
 set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
-if(NOT EXISTS "${vfs}/cancel.c" OR NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
+if(NOT EXISTS "${vfs}/cancel.c" OR NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${vfs}/provider_launch.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
 add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_capture.c mount_root.c mount_cancel.c mount_io.c mount_notice.c
     feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
     subscriptions/lifetime.c subscriptions/open.c
-    "${vfs}/cancel.c" "${vfs}/provider.c" "${vfs}/provider_capture.c" "${vfs}/handle.c" "${vfs}/io_result.c"
+    "${vfs}/cancel.c" "${vfs}/provider.c" "${vfs}/provider_capture.c" "${vfs}/provider_launch.c" "${vfs}/launch/address_guard.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
-    "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_capture.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
+    "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_capture.c" "${vfs}/view_launch.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
     "${ports}/file_port.c" "${ports}/linux/filesystem.c" "${ports}/linux/channel_sync.c")
 target_include_directories(styx_vfs PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${vfs}"
     "${ports}" "${INFERNO_VFS_SUPPORT}/flashVM/include" "${INFERNO_VFS_SUPPORT}/disVM/include")
@@ -429,3 +429,15 @@ target_link_libraries(vfs-launch-route-alloc PRIVATE styx_namespace_fixture)
 target_link_options(vfs-launch-route-alloc PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=calloc" "-Wl,--wrap=free")
 add_test(NAME vfs-launch-route-alloc COMMAND vfs-launch-route-alloc)
 set_tests_properties(vfs-launch-route-alloc PROPERTIES TIMEOUT 15)
+
+# EN/RU: Provider-advertised addresses preserve capture/export scopes and live execution policy after discovery.
+# Provider-advertised addresses сохраняют capture/export scope и live execution policy после discovery.
+add_executable(vfs-launch-discovery ../tests/launch/discovery/main.c ../tests/launch/discovery/source.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-discovery PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-discovery COMMAND vfs-launch-discovery)
+set_tests_properties(vfs-launch-discovery PROPERTIES TIMEOUT 20)
+add_executable(vfs-launch-discovery-alloc ../tests/launch/discovery/allocation.c ../tests/launch/discovery/source.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-discovery-alloc PRIVATE styx_namespace_fixture)
+target_link_options(vfs-launch-discovery-alloc PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=calloc" "-Wl,--wrap=free")
+add_test(NAME vfs-launch-discovery-alloc COMMAND vfs-launch-discovery-alloc)
+set_tests_properties(vfs-launch-discovery-alloc PROPERTIES TIMEOUT 15)
