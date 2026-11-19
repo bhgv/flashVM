@@ -4,6 +4,7 @@
 implement Check;
 include "sys.m";
 include "value.m";
+include "launchcontext.m";
 Check: module { init: fn(); };
 sys: Sys; # Owner-local builtin handle, no transport authority.
 
@@ -47,6 +48,15 @@ take(fd: ref Sys->FD, tag: int, expected: string)
 init()
 {
     sys = load Sys Sys->PATH;
+    launch := load Launchcontext Launchcontext->PATH;
+    if (launch == nil || launch->name() != "provider/unibus-files.dis") {
+        raise "missing accepted launch identity";
+    }
+    arguments := launch->arguments();
+    if (len arguments != 3 || arguments[0] != byte 'r' ||
+        arguments[1] != byte 0 || arguments[2] != byte 'n') {
+        raise "wrong accepted startup bytes";
+    }
     app := load Value "/app.dis";
     if (app == nil || app->value() != 111) {
         raise "actual Styx module/dependency load failed";
@@ -54,7 +64,7 @@ init()
     seven := sys->open("/seven", Sys->ORDWR);
     nine := sys->open("/nine", Sys->OREAD);
     zero := sys->open("/zero", Sys->ORDWR);
-    if (sys->open("/records", Sys->OREAD) != nil) {
+    if (sys->open("/records", Sys->OREAD) != nil || sys->open("/launch", Sys->OREAD) != nil) {
         raise "raw transport leaked into application namespace";
     }
     if (seven == nil || nine == nil || zero == nil) {

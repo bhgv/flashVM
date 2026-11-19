@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Generic native terminal record transport reuses original FlashVM codecs, no graphics.
 # RU: Generic native terminal record transport использует FlashVM codecs, без графики.
-add_library(styx_terminal STATIC life.c link.c queue.c send_wait.c io.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
+add_library(styx_terminal STATIC life.c link.c queue.c send_wait.c io.c launch_frame.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
 target_include_directories(styx_terminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal PUBLIC styx_launch styx_movie_protocol)
 target_compile_options(styx_terminal PRIVATE -Wall -Wextra)
@@ -13,7 +13,7 @@ target_include_directories(styx_terminal_ui PUBLIC "${INFERNO_VFS_SUPPORT}/disVM
 target_link_libraries(styx_terminal_ui PUBLIC styx_terminal)
 target_compile_options(styx_terminal_ui PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
-add_library(styx_terminal_route STATIC route/life.c route/mailbox.c route/statistics.c route/metrics.c route/pressure.c route/dispatch.c route/queue.c route/types.c route/wait.c route/retirement.c)
+add_library(styx_terminal_route STATIC route/life.c route/launch.c route/mailbox.c route/statistics.c route/metrics.c route/pressure.c route/dispatch.c route/queue.c route/types.c route/wait.c route/retirement.c)
 target_link_libraries(styx_terminal_route PUBLIC styx_terminal_ui)
 target_compile_options(styx_terminal_route PRIVATE -Wall -Wextra -Wpedantic -Werror)
 

@@ -7,7 +7,10 @@
 #include <styxserver.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "flashvm/sbindings.h"
 static unsigned char *images[2]; /* Native immutable fixture images until server join. */
+static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
+static size_t launch_size; /* Complete frame extent exposed by the original server. */
 static size_t lengths[2]; /* Exact bytes advertised in original Styx metadata. */
 
 
@@ -42,6 +45,23 @@ void fixtureimagesinit(Styxserver *server)
         }
         file->d.length = lengths[i];
     }
+    const unsigned char arguments[] = {'r', 0, 'n'};
+    const FVM_SBinding binding = {17, 1, sizeof("test.launch") - 1, "test.launch"};
+    unsigned char declaration[64];
+    size_t declared;
+    size_t encoded;
+    Styxfile *request = styxaddfile(server, Qroot, 10, "launch", 0444, "fixture");
+    if (!request || fvm_sbindings_payload_write(&binding, 1, declaration, sizeof(declaration),
+            &declared) != FVM_S_OK ||
+        fvm_srecord_write(0, declaration, declared, launch_frame, sizeof(launch_frame),
+            &launch_size) != FVM_S_OK ||
+        fvm_srecord_write(17, arguments, sizeof(arguments), launch_frame + launch_size,
+            sizeof(launch_frame) - launch_size, &encoded) != FVM_S_OK)
+    {
+        exit(3);
+    }
+    launch_size += encoded;
+    request->d.length = launch_size;
 }
 
 
@@ -50,24 +70,26 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path < 8 || qid.path > 9 || offset < 0)
+    if (qid.path < 8 || qid.path > 10 || offset < 0)
     {
         return Ebadarg;
     }
     unsigned index = qid.path - 8; /* Exact readonly fixture node. */
-    if ((uvlong)offset > lengths[index])
+    const unsigned char *source = index == 2 ? launch_frame : images[index];
+    size_t length = index == 2 ? launch_size : lengths[index];
+    if ((uvlong)offset > length)
     {
         return Ebadarg;
     }
-    if (*count > lengths[index] - (size_t)offset)
+    if (*count > length - (size_t)offset)
     {
-        *count = lengths[index] - (size_t)offset;
+        *count = length - (size_t)offset;
     }
     if (*count > 3)
     {
         *count = 3;
     }
-    memmove(bytes, images[index] + offset, *count);
+    memmove(bytes, source + offset, *count);
     return nil;
 }
 

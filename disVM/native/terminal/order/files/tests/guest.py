@@ -44,7 +44,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
         work = Path(name)
         run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),
-             "-I", str(runtime_root / "fixtures/provider-modules"),
+             "-I", str(runtime_root / "fixtures/provider-modules"), "-I", str(root / "disVM/module"),
              str(runtime_root / "fixtures/unibus-files/main.b")], work)
         value_source = work / "value.b"
         value_source.write_text((runtime_root / "fixtures/provider-modules/constant.b").read_text().replace("EXPECTED_VALUE", "111"))

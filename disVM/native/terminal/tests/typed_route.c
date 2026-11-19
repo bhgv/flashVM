@@ -3,6 +3,7 @@
  * RU: Проверки независимых типизированных очередей рядом с UI/general через настоящий исходный 9P.
  */
 #include "route/types.h"
+#include "route/launch.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -118,6 +119,45 @@ static void preflight(void)
 }
 
 
+/* EN/RU: Consume tag5 from the live fixture route as a provider launch request.
+ * Принять tag5 из живого fixture route как запрос запуска у провайдера. */
+static void launch_record(StyxBidirRoute *route)
+{
+    DVM_LaunchSpec spec = {0};
+    spec.policy = DVM_LAUNCH_TERMINAL_FIRST;
+    spec.terminal_origin.role = DVM_ORIGIN_TERMINAL;
+    memset(spec.terminal_origin.system, 'A', DVM_ORIGIN_ID_BYTES - 1);
+    memset(spec.terminal_origin.export_id, 'E', DVM_ORIGIN_ID_BYTES - 1);
+    memset(spec.terminal_origin.session, 'I', DVM_ORIGIN_ID_BYTES - 1);
+    memset(spec.expected_provider, 'M', DVM_ORIGIN_ID_BYTES - 1);
+    strcpy(spec.module, "fixture/console.dis");
+    StyxTerminalPaths paths = {"records", "records", NULL};
+    DVM_LaunchService *service = dvm_launch_service_create(spec.expected_provider, 1);
+    check(service != NULL, "launch service");
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
+    check(endpoint != NULL, "launch endpoint");
+    unsigned char bytes[3];
+    size_t size = 0;
+    DVM_LaunchTicket *ticket = NULL;
+    check(styxbidirroutetypedwait(route, 0, 5000), "live launch record readiness");
+    check(styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &paths, endpoint, 5,
+        bytes, 2, &size, &ticket) == STYX_CONTROL_SMALL && size == sizeof(bytes) && !ticket,
+        "small launch buffer preserves record");
+    check(styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &paths, endpoint, 5,
+        bytes, sizeof(bytes), &size, &ticket) == STYX_CONTROL_RECORD && ticket &&
+        dvm_launch_ticket_status(ticket) == DVM_LAUNCH_PENDING, "live record is queued");
+    DVM_LaunchReview *review = dvm_launch_service_next(service);
+    check(review != NULL, "launch review");
+    check(dvm_launch_arguments(dvm_launch_review_request(review), 0, bytes, sizeof(bytes), &size) &&
+        size == sizeof(bytes) && bytes[0] == 0 && bytes[1] == 128 && bytes[2] == 255,
+        "provider receives exact live bytes");
+    dvm_launch_review_free(review);
+    dvm_launch_ticket_free(ticket);
+    dvm_launch_endpoint_free(endpoint);
+    dvm_launch_service_free(service);
+}
+
+
 /* EN/RU: Borrow real launch grant, exercise native-only independent routing and bounded shutdown.
  * Заимствовать настоящий launch grant, проверить native-маршрутизацию и ограниченное завершение.
  */
@@ -176,7 +216,14 @@ void terminalprobe(StyxClient *client, const DVM_TerminalChannels *descriptor)
     }
     if (STYX_TYPED_CASE != 6)
     {
-        typed(route, 0, 5, binary, sizeof(binary));
+        if (STYX_TYPED_CASE == 0)
+        {
+            launch_record(route);
+        }
+        else
+        {
+            typed(route, 0, 5, binary, sizeof(binary));
+        }
         typed(route, 0, 6, NULL, 0);
     }
     DVM_UIMessage ui; /* Private UI copy, independent from typed/raw FIFOs. */

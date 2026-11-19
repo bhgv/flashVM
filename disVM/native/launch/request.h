@@ -5,7 +5,8 @@
 #ifndef STYX_LAUNCH_REQUEST_H
 #define STYX_LAUNCH_REQUEST_H
 #include "client.h"
-#include "launch/ticket.h"
+#include "launch/service.h"
+#include "flashvm/srecord.h"
 
 
 /* EN: Consume one terminal client ref on every outcome; owned requester ticket/NULL.
@@ -51,4 +52,30 @@ typedef struct StyxTerminalPaths
  * Host запускает обе роли; local marker не доказывает peer liveness/auth. */
 DVM_LaunchTicket *styxbidirlaunchrequest(StyxClient *terminal, const DVM_LaunchSpec *spec,
     unsigned access, const StyxTerminalPaths *paths, DVM_LaunchRequest **request);
+
+
+/* EN: Capture the same bidir root as styxbidirlaunchrequest and submit to an
+ * existing authorized endpoint. Consume terminal ref on all outcomes. Borrow
+ * spec/paths/endpoint through return. Returns owned ticket or NULL before queue
+ * publication. The provider takes a separate review from its service. Metadata
+ * I/O may block; caller bounds concurrent captures separately from queue quota.
+ * RU: Захватить тот же bidir root и подать запрос в выданный endpoint. Ref terminal
+ * поглощается всегда. Spec/paths/endpoint заимствованы до возврата. Возвращает
+ * ticket либо NULL до публикации. Review выдаёт очередь владельцу. Чтение
+ * метаданных может ждать; вызывающий отдельно ограничивает параллельные захваты. */
+DVM_LaunchTicket *styxbidirlaunchsubmit(StyxClient *terminal, const DVM_LaunchSpec *spec,
+    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchEndpoint *endpoint);
+
+/* EN: Submit one decoded record on an authenticated application's launch route.
+ * Bindings and the argument-free spec are chosen by the host; the peer supplies
+ * only startup bytes. Borrow all inputs except one consumed terminal ref.
+ * A foreign tag or oversized payload is refused before Styx I/O.
+ * Return a caller-owned queue ticket or NULL; see styxbidirlaunchsubmit.
+ * RU: Подать декодированную запись на разрешённом маршруте запуска приложения.
+ * Маршрут и spec без аргументов задаёт host; peer передаёт лишь байты аргументов.
+ * Заимствует все входы, кроме поглощаемой ссылки terminal. Чужой tag или
+ * превышение размера отклоняются до Styx I/O. Возвращает ticket либо NULL. */
+DVM_LaunchTicket *styxbidirlaunchrecord(StyxClient *terminal, const DVM_LaunchSpec *spec,
+    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchEndpoint *endpoint,
+    unsigned long tag, const FVM_SRecord *record);
 #endif

@@ -80,6 +80,83 @@ and exposes neither capability until its final cancellation check. It does not
 select an error vocabulary: an Inferno lookup profile must be chosen beforehand
 by the native host when appropriate. Ordinary opaque-error behavior is preserved.
 
+## Submit to the provider queue / Подача в очередь провайдера
+
+`styxbidirlaunchsubmit` captures the bidir root and submits the resulting spec
+through a previously authorized [submit endpoint](../../runtime/LAUNCH-SERVICE.md).
+It returns the requester ticket. The service owner dequeues the separate review
+and then prepares and takes the handoff. Queue admission and guest startup remain
+separate observations. The guest fixture uses this route before importing the
+private VFS and exchanging the startup receipt through its granted Unibus files.
+
+`styxbidirlaunchsubmit` захватывает bidir-корень и подаёт описание через заранее
+выданный endpoint очереди. Вызывающий получает ticket, а владелец очереди
+забирает review, готовит окружение и получает handoff. Успех подачи сообщает о
+приёме в очередь. Старт гостя подтверждается отдельно через выданные файлы Unibus.
+
+### Dispatch an existing S-record / Передать существующую S-запись
+
+The authenticated host dispatcher can pass a decoded record to
+`styxbidirlaunchrecord`. The host binds the expected nonzero tag to an
+argument-free spec for one permitted application. The record body supplies up to
+65536 bytes of startup arguments, including NULs. Foreign tags and oversized
+bodies are refused before Styx I/O. A successful submission copies the arguments
+and returns a ticket. The guest reads its own copy through `Launchcontext`.
+
+Диспетчер с уже проверенной сессией передаёт декодированную запись в
+`styxbidirlaunchrecord`. Host связывает ненулевой тег с описанием разрешённого
+приложения без аргументов. Тело записи передаёт до 65536 байт аргументов, включая
+NUL. Чужой тег и превышение размера отклоняются до Styx I/O. При подаче аргументы
+копируются, а гость читает свою копию через `Launchcontext`.
+
+The dispatcher owns authentication and assignment of the tag. The adapter
+consumes one client reference per call. It does not read from the connection
+directly or define a numeric wire tag.
+
+Диспетчер отвечает за проверку сессии и назначение тега. Адаптер поглощает одну
+ссылку на клиент за вызов. Он получает готовую запись, а номер тега задаёт host.
+
+### Complete encoded frame / Полный закодированный кадр
+
+[`styxterminallaunchframe`](../terminal/launch_frame.h) accepts one complete S-record
+from the host's existing reader. The common codec verifies checksum and framing.
+A truncated record or any trailing bytes cause refusal before queue submission.
+This entry is available to hosts that already own a complete encoded frame.
+
+[`styxterminallaunchframe`](../terminal/launch_frame.h) принимает одну полную
+S-запись от существующего reader. Общий кодек проверяет длину и контрольную сумму.
+Обрезанная запись или лишние байты отклоняются до подачи в очередь. Этот вход
+доступен, когда host уже получил полный закодированный кадр.
+
+### Typed terminal mailbox / Типизированная очередь терминала
+
+[`styxbidirroutelaunchnext`](../terminal/route/launch.h) connects an existing
+dispatcher to provider admission. Register the launch schema in
+`styxbidirbindingroutes` and dedicate its typed queue to this consumer.
+The host supplies the authorized application spec and negotiated tag. The
+adapter takes the terminal root from the same client as the dispatcher.
+A small buffer leaves the head queued. A consumed but refused request returns
+a distinct status. Metadata acquisition runs on the caller after dequeuing,
+so the dispatcher can continue receiving other messages.
+
+[`styxbidirroutelaunchnext`](../terminal/route/launch.h) соединяет диспетчер с
+очередью провайдера. Зарегистрируйте схему запуска в `styxbidirbindingroutes`
+и выделите её очередь этому потребителю. Host задаёт разрешённое приложение и
+согласованный тег. Корень терминала берётся из соединения самого диспетчера.
+При недостатке буфера запись остаётся в очереди. Отказ после получения записи
+возвращается отдельным статусом. Метаданные читает вызывающий после получения
+записи, поэтому диспетчер продолжает принимать остальные сообщения.
+
+The guest fixture serves the binding and request through a separate read-only
+Styx node. The actual dispatcher classifies the request, the provider adopts
+its queued handoff, and the guest confirms startup on its Unibus record channel.
+The guest's filtered union hides both raw terminal nodes.
+
+В сквозной проверке отдельный узел Styx отдаёт объявление привязки и запрос.
+Диспетчер выбирает очередь, провайдер принимает окружение из этой очереди,
+а гость подтверждает запуск по каналу Unibus. Оба исходных узла терминала
+скрыты из union гостя.
+
 ## Prepare, take and lifetime / Подготовка, take и lifetime
 
 1. Requester observes/cancels its ticket; it has no provider root or take authority.

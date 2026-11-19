@@ -27,13 +27,13 @@ static int valid(const DVM_LaunchSpec *spec, unsigned access)
  * No ticket/request is exposed before all cancellation/ownership checks finish.
  * См. request.h; ticket/request не выдаются до завершения checks и передачи ownership. */
 static DVM_LaunchTicket *create(StyxClient *terminal, const DVM_LaunchSpec *spec,
-    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchRequest **request)
+    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchRequest **request, DVM_LaunchEndpoint *endpoint)
 {
     if (request)
     {
         *request = NULL;
     }
-    if (!request || !terminal || !valid(spec, access) || !styxclientcancellable(terminal) ||
+    if ((!request && !endpoint) || !terminal || !valid(spec, access) || !styxclientcancellable(terminal) ||
         (paths && (!styxclientbidir(terminal) || !(access & FVM_ACCESS_WRITE) ||
             !dvm_terminal_channel_paths_valid(paths->receive, paths->send))) ||
         dvm_cancel_requested(dvm_cancel_current()))
@@ -63,9 +63,22 @@ static DVM_LaunchTicket *create(StyxClient *terminal, const DVM_LaunchSpec *spec
             channels.offers = paths->offers;
             prepared.flashvm = &channels;
         }
-        ticket = dvm_launch_request_create(&prepared, &pending);
+        if (endpoint)
+        {
+            /* EN/RU: A queued ticket stays observable after publication.
+             * После публикации ticket остаётся доступным для наблюдения. */
+            ticket = dvm_launch_service_submit(endpoint, &prepared);
+        }
+        else
+        {
+            ticket = dvm_launch_request_create(&prepared, &pending);
+        }
     }
     dvm_provider_release(root);
+    if (endpoint)
+    {
+        return ticket;
+    }
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
         dvm_launch_ticket_free(ticket);
@@ -82,7 +95,7 @@ static DVM_LaunchTicket *create(StyxClient *terminal, const DVM_LaunchSpec *spec
 DVM_LaunchTicket *styxlaunchrequest(StyxClient *terminal, const DVM_LaunchSpec *spec,
     unsigned access, DVM_LaunchRequest **request)
 {
-    return create(terminal, spec, access, NULL, request);
+    return create(terminal, spec, access, NULL, request, NULL);
 }
 
 
@@ -100,5 +113,39 @@ DVM_LaunchTicket *styxbidirlaunchrequest(StyxClient *terminal, const DVM_LaunchS
         styxclientfree(terminal);
         return NULL;
     }
-    return create(terminal, spec, access, paths, request);
+    return create(terminal, spec, access, paths, request, NULL);
+}
+
+
+// EN/RU: See request.h; the queue owns provider review after publication.
+// См. request.h; после публикации право review принадлежит очереди.
+DVM_LaunchTicket *styxbidirlaunchsubmit(StyxClient *terminal, const DVM_LaunchSpec *spec,
+    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchEndpoint *endpoint)
+{
+    if (!paths || !endpoint)
+    {
+        styxclientfree(terminal);
+        return NULL;
+    }
+    return create(terminal, spec, access, paths, NULL, endpoint);
+}
+
+
+/* EN/RU: Apply the host's route before touching the captured remote root.
+ * Проверить выданный host маршрут до обращения к удалённому корню. */
+DVM_LaunchTicket *styxbidirlaunchrecord(StyxClient *terminal, const DVM_LaunchSpec *spec,
+    unsigned access, const StyxTerminalPaths *paths, DVM_LaunchEndpoint *endpoint,
+    unsigned long tag, const FVM_SRecord *record)
+{
+    if (!spec || spec->arguments || spec->argument_bytes || !tag || tag > 0xffffffffUL ||
+        !record || record->tag != tag || record->size > DVM_LAUNCH_ARGUMENT_LIMIT ||
+        (record->size && !record->payload))
+    {
+        styxclientfree(terminal);
+        return NULL;
+    }
+    DVM_LaunchSpec submitted = *spec; /* Only arguments come from the peer. */
+    submitted.arguments = record->payload;
+    submitted.argument_bytes = record->size;
+    return styxbidirlaunchsubmit(terminal, &submitted, access, paths, endpoint);
 }

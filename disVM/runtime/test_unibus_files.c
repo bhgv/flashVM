@@ -12,7 +12,7 @@
 #include "vfs/export.h"
 #include "../native/terminal/order/broker/attach.h"
 #include "../native/terminal/order/files/files.h"
-#include "../native/launch/request.h"
+#include "../native/terminal/route/launch.h"
 #include "../native/vfs/mount.h"
 #include "../native/tests/launch/backend.h"
 static LaunchState terminal; /* Unused local fixture root, disposed before remote preparation. */
@@ -74,6 +74,14 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     launch_check(assets && code && dvm_view_map(code, "/app.dis", assets, "app.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
         dvm_view_map(code, "/dep.dis", assets, "dep.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "filtered actual Styx code grants");
     options.provider = dvm_view_freeze(code);
+    DVM_TerminalChannels ingress = {0};
+    ingress.provider = assets;
+    strcpy(ingress.receive, "launch");
+    strcpy(ingress.send, "records");
+    const StyxRouteType launch_type = {"test.launch", 1}; /* Dedicated fixture schema. */
+    StyxBidirRoute *route = styxbidirbindingroutes(connection, &ingress, 128, 2,
+        NULL, 0, &launch_type, 1);
+    launch_check(route != NULL, "live launch dispatcher");
     dvm_provider_release(assets);
     DVM_LaunchSpec spec = {0}; /* Captured terminal channels and execution source are independently authorized. */
     spec.policy = options.policy;
@@ -81,9 +89,28 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     strcpy(spec.expected_provider, options.provider_origin.system);
     strcpy(spec.module, "provider/unibus-files.dis");
     StyxTerminalPaths paths = {"records", "records", NULL}; /* Existing granted original-Styx endpoints. */
-    DVM_LaunchRequest *request = NULL; /* Exclusive provider-side capability. */
-    launch_check(styxclientretain(connection), "retained requester client");
-    DVM_LaunchTicket *ticket = styxbidirlaunchrequest(connection, &spec, FVM_ACCESS_MASK, &paths, &request);
+    DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
+    launch_check(service != NULL, "provider launch service");
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
+    launch_check(endpoint != NULL, "submit-only terminal endpoint");
+    unsigned char startup[3]; /* Private copy made by the live typed mailbox. */
+    size_t startup_size = 0;
+    DVM_LaunchTicket *ticket = NULL;
+    launch_check(styxbidirroutetypedwait(route, 0, 5000), "live launch frame received");
+    launch_check(styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &paths, endpoint, 17,
+        startup, sizeof(startup), &startup_size, &ticket) == STYX_CONTROL_RECORD &&
+        startup_size == sizeof(startup), "dispatcher delivered complete launch request");
+    styxbidirroutefree(route); /* The independent application record channel opens next. */
+    launch_check(ticket && dvm_launch_ticket_status(ticket) == DVM_LAUNCH_PENDING, "queued terminal request");
+    DVM_LaunchReview *review = dvm_launch_service_next(service);
+    launch_check(review != NULL, "provider review");
+    DVM_LaunchRequest *request = dvm_launch_review_request(review);
+    memset(startup, 0, startup_size); /* Provider must see the copied original, including embedded NUL. */
+    unsigned char copied[3];
+    size_t extent = 0;
+    launch_check(dvm_launch_arguments(request, 0, copied, sizeof(copied), &extent) &&
+        extent == sizeof(copied) && copied[0] == 'r' && copied[1] == 0 && copied[2] == 'n',
+        "provider received independent startup bytes");
     launch_check(ticket && request && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "actual remote request prepare");
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
     unsigned long tags[] = {0, 7, 9}; /* Authorized application inboxes only. */
@@ -106,7 +133,9 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     launch_check(process && !handoff->group && !handoff->flashvm.provider, "real pre-init ownership transfer");
     dvm_launch_handoff_free(handoff);
     dvm_launch_ticket_free(ticket);
-    dvm_launch_request_free(request);
+    dvm_launch_review_free(review);
+    dvm_launch_endpoint_free(endpoint);
+    dvm_launch_service_free(service);
     dvm_provider_release(options.provider);
     return process;
 }
