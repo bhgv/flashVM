@@ -99,3 +99,5 @@ The earlier intermittent deep relay error is consistent with this reproduced
 shutdown defect. This does not prove it was the only possible source of every
 historic transport failure. Grant checkpoint variants7/11 remain a separate
 stability investigation; no full parallel SDK success is claimed here.
+
+[Open handles after namespace unbind](OPEN-FID-LIFETIME.md) · [Русский](OPEN-FID-LIFETIME.ru.md).

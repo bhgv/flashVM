@@ -106,7 +106,9 @@ def relay(listener, port, mode, requests, errors):
 # Выполнить bounded TCP acceptance и проверить lifetime counters исходного сервера.
 def main():
     mode = sys.argv[4]
-    expected = {'basic': 6, 'loss': 4, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'slow': 3, 'badwalk': 2}
+    # One extra basic fid is deliberately retained after namespace unbind.
+    # Дополнительный basic fid удерживается после unbind namespace.
+    expected = {'basic': 7, 'loss': 4, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'slow': 3, 'badwalk': 2}
     args = [sys.argv[2]] if mode in ('partial', 'deep') else [sys.argv[2], str(expected[mode]), '2']
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     errors, requests = [], []

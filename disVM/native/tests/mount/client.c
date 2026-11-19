@@ -27,6 +27,10 @@ typedef struct Stream
     unsigned budget; /* Explicit native test deadline in milliseconds. */
     unsigned calls; /* Send callback count, serialized by native client. */
 } Stream;
+/* EN/RU: Return an owned open fid after discarding its namespace; caller closes it.
+ * Вернуть открытый fid после удаления namespace; закрывает вызывающий. */
+DVM_VfsHandle styxtest_detached_open(DVM_Provider *provider);
+
 static unsigned lost; /* Protected native terminal count, published by either transport. */
 static pthread_mutex_t notices = PTHREAD_MUTEX_INITIALIZER; /* Test event lock. */
 static pthread_cond_t arrived = PTHREAD_COND_INITIALIZER; /* Independent native delivery gate. */
@@ -198,6 +202,7 @@ static void *reader(void *state)
  * Проверить live names, Qid/offset64 и opens после release factory. */
 static void basic(DVM_Provider *provider)
 {
+    DVM_VfsHandle detached = styxtest_detached_open(provider);
     DVM_VfsHandle a = openfile(provider, "first", "r");
     DVM_VfsHandle b = openfile(provider, "first", "r");
     DVM_VfsHandle control = openfile(provider, "ctl", "wo");
@@ -226,6 +231,8 @@ static void basic(DVM_Provider *provider)
     DVM_VfsHandle refused = {0};
     check(dvm_provider_open(provider, "later", "wo", &refused) != FVM_OK && !refused.state, "operation beats writable metadata");
     dvm_provider_release(provider);
+    contents(&detached, "changed");
+    dvm_vfs_close(&detached);
     contents(&a, "changed");
     dvm_vfs_close(&a);
     contents(&b, "changed");

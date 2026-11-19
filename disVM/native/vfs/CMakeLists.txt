@@ -50,8 +50,8 @@ add_test(NAME vfs-peer-deferred-stop-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAK
     "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" shutdown)
 set_tests_properties(vfs-peer-deferred-stop-wire PROPERTIES TIMEOUT 30)
 
-add_executable(vfs-mount-test ../tests/mount/client.c)
-target_link_libraries(vfs-mount-test PRIVATE styx_vfs)
+add_executable(vfs-mount-test ../tests/mount/client.c ../tests/mount/detached.c ../tests/file-root/context.c)
+target_link_libraries(vfs-mount-test PRIVATE styx_namespace_fixture)
 add_executable(vfs-mount-deep-server ../tests/mount/deep.c)
 set_source_files_properties(../tests/mount/deep.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
 target_link_libraries(vfs-mount-deep-server PRIVATE infernostyx)

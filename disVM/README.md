@@ -292,3 +292,5 @@ covers request-local cycle detection, the explicit S-record Styx history profile
 provider-first per-instance environments and the exact remaining remote-load boundary.
 
 [Permanent native owners: runnable console example](examples/resident-owners/README.md) · [Русский](examples/resident-owners/README.ru.md).
+
+[Remote open-fid lifetime](native/vfs/OPEN-FID-LIFETIME.md) · [Русский](native/vfs/OPEN-FID-LIFETIME.ru.md).
