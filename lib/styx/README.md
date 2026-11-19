@@ -153,3 +153,10 @@ license terms apply to their components; [LICENSE.bhgv](LICENSE.bhgv) covers fir
 C/C++ integration, package versions and component selection: [SDK](docs/embedding.md).
 
 Real 9P without TCP or carrier descriptors: [Memory PHY](examples/memory_phy/README.md).
+
+## Source release identity
+
+Archives produced by the workspace release tool contain `RELEASE.json` with the
+exact source commit and per-file SHA-256/modes. The sidecar `SHA256SUMS` covers
+the compressed archives. Verify the archive receipt before unpacking. Git is not
+needed to build the unpacked source; the build options above remain the same.

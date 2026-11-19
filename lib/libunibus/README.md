@@ -153,3 +153,10 @@ progress, acknowledgement/rollover and allocation-failure boundaries. See
 [What and why](docs/introduction.md) · [Writing a service](docs/tutorial.md)
 
 C/C++ integration, package versions and component selection: [SDK](docs/embedding.md).
+
+## Source release identity
+
+Archives produced by the workspace release tool contain `RELEASE.json` with the
+exact source commit and per-file SHA-256/modes. The sidecar `SHA256SUMS` covers
+the compressed archives. Verify the archive receipt before unpacking. Git is not
+needed to build the unpacked source; the build options above remain the same.

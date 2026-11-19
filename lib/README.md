@@ -54,3 +54,9 @@ each package's independent acceptance.
 [Acceptance and limits](VALIDATION.md)
 
 [Maintenance scope and remaining inherited work](MAINTENANCE.md)
+
+## Source archives
+
+[Create and verify independent source distributions](DISTRIBUTION.md). Each package
+owns its sources, licenses, examples and offline help; exact Git snapshots produce
+reproducible archives with per-file manifests and SHA-256 receipts.

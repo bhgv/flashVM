@@ -94,3 +94,13 @@ The shared server walkthrough explains provisional outputs, byte offsets and
 backend-specific lifetimes.
 
 [Precise scope and inherited maintenance debt](MAINTENANCE.md)
+
+## Source distribution acceptance
+
+The [release procedure](DISTRIBUTION.md) adds deterministic, separate source archives
+with per-file SHA-256/mode manifests and compressed archive receipts. Git fixture
+checks cover dirty/untracked isolation, exact binary blobs/executable bits, ignored
+archive attributes/settings and rejected symlinks/reserved paths. Actual archives
+are built twice and unpacked outside the checkout; all four hosted/minimal builds,
+relocated external consumers, installed docs and five wire models are exercised by
+`python3 lib/tests/distribution.py /absolute/path/to/cmake`.

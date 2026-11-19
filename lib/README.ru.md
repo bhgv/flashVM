@@ -52,3 +52,9 @@ python3 lib/tests/interoperability.py build/standalone-styx build/standalone-uni
 [Проверки и границы](VALIDATION.ru.md)
 
 [Состояние сопровождения и оставшийся долг](MAINTENANCE.ru.md)
+
+## Исходные архивы
+
+[Создание и проверка самостоятельных дистрибутивов](DISTRIBUTION.ru.md). В каждом
+пакете свои исходники, лицензии, примеры и offline-справка; точный снимок Git
+даёт воспроизводимый архив с пофайловым манифестом и квитанцией SHA-256.
