@@ -39,7 +39,8 @@ only an example name backed by native test bytes; no camera hardware is opened.
 
 [`vfs/launch/prepare.h`](vfs/launch/prepare.h) defines `DVM_LaunchOptions` and
 `dvm_launch_prepare`. The caller supplies two already granted providers, copied
-source associations and `DVM_LAUNCH_TERMINAL_FIRST`. Unknown policy values,
+source associations and an explicit policy: legacy `DVM_LAUNCH_TERMINAL_FIRST`
+or per-instance `DVM_LAUNCH_OWNER_FIRST`. See [module VFS and traversal](VFS-TRAVERSAL.md). Unknown policy values,
 noncanonical IDs, wrong source roles and different launch sessions are refused
 before source I/O. There is no silent negotiation to another order.
 
@@ -47,8 +48,8 @@ Preparation captures both dot roots and validates directory kind outside
 namespace locks. Callers may provide a native cancellation scope only for capable
 routes. Pre-cancel starts no callbacks; cancellation after the first root stops
 before acquiring the second. Every staged reference is released on failure.
-Success returns an owned private namespace with terminal first and execution
-provider second at `/`. It has no native host root anchor, so an absent resource
+Success returns an owned private namespace with the explicitly selected root
+first at `/`; `OWNER_FIRST` places the execution provider above the caller root. It has no native host root anchor, so an absent resource
 cannot escape into the preparation host's filesystem, even after all root
 grants are unmounted. This no-native-fallback property also applies to directory
 acquisition and namespace copies. The API executes no guest,

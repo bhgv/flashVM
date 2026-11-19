@@ -4,6 +4,7 @@
  */
 #ifndef STYX_CLIENT_H
 #define STYX_CLIENT_H
+#include "walk.h"
 #include "file.h"
 #include "phy.h"
 
@@ -49,6 +50,28 @@ StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const ch
  * Packet/reliability adaptations должны предшествовать этому уровню. */
 StyxClient *styxclientmountphy(RemotePhy *phy, unsigned msize, const char *user, const char *name,
     unsigned timeout, unsigned limit);
+
+
+/* EN/RU: Explicit negotiated S-record history profile around unchanged Styx frames; consumes PHY always.
+ * Both endpoints must enable the profile. tag is a nonzero direction-local assignment in tag0 controls.
+ * No raw fallback/dial/authentication; active history must have exportable VM identities.
+ * Явный S-record history profile, PHY принят всегда; обе стороны включают profile, tag согласуется через tag0.
+ */
+StyxClient *styxclientwalkmountphy(RemotePhy *phy, unsigned msize, const char *user, const char *name,
+    unsigned timeout, unsigned limit, unsigned long tag);
+
+
+/* EN/RU: Copy acknowledged fixed server projection identity,1/0; no I/O or new authority, inputs borrowed.
+ * Скопировать acknowledged server projection identity,1/0; без I/O/new authority, inputs borrowed.
+ */
+int styxclientwalktarget(StyxClient *client, WalkEntity *root);
+
+
+/* EN/RU: Probe active destination state before crossing a negotiated stream, without pushing it or doing I/O.
+ * Raw profile returns WALK_OK. base/path identify the retained root, operation/detail follow walk.h; WALK_* result.
+ * Проверить active destination до negotiated stream, без push/I/O; raw profile WALK_OK. base/path — retained root.
+ */
+int styxclientwalkprobe(StyxClient *client, StyxFid *base, const char *relative, unsigned operation, const char *detail);
 
 
 /* EN/RU: Borrow live client;1 explicitly bidir-session carrier/0 ordinary or NULL.

@@ -21,6 +21,7 @@
 #include "bind_wait.h"
 #include "../../native/movie/service.h"
 #include "launch/terminal.h"
+#include "../module_interface/environment.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -32,7 +33,8 @@ extern char *dvm_runtime_file_path(String *); /* Borrowed validated guest UTF-8 
 DVM_Namespace *dvm_namespace_current_group(void)
 {
     Prog *process = currun();
-    return process ? ((DVM_RuntimeProcess *)process)->namespace_group : dvm_namespace_boot_group();
+    DVM_Namespace *module = process ? dvm_module_environment_current(process) : NULL;
+    return module ? module : process ? ((DVM_RuntimeProcess *)process)->namespace_group : dvm_namespace_boot_group();
 }
 
 
@@ -92,13 +94,13 @@ void Sys_pctl(void *frame)
     }
     if (call.flags == Sys_FORKNS)
     {
-        replacement = dvm_namespace_copy(owner->namespace_group);
+        replacement = dvm_namespace_copy(dvm_namespace_current_group());
     }
     else
     {
         DVM_ResourcePlan cwd;
         char component[DVM_NS_PATH_LIMIT];
-        if (dvm_resource_plan(owner->namespace_group, ".", 0, &cwd))
+        if (dvm_resource_plan(dvm_namespace_current_group(), ".", 0, &cwd))
         {
             if (dvm_resource_anchor_wait(&cwd, 1, component))
             {
@@ -121,7 +123,7 @@ void Sys_pctl(void *frame)
         publish(call.ret, -1);
         return;
     }
-    if (!dvm_sysevents_group(owner->system_events, replacement))
+    if (!dvm_module_environment_reserve(process) || !dvm_sysevents_group(owner->system_events, replacement))
     {
         dvm_namespace_release(replacement);
         dvm_provider_release(movie);
@@ -129,9 +131,15 @@ void Sys_pctl(void *frame)
         publish(call.ret, -1);
         return;
     }
-    DVM_Namespace *previous = owner->namespace_group;
+    if (!dvm_module_environment_replace(process, replacement))
+    {
+        dvm_namespace_release(replacement);
+        dvm_provider_release(movie);
+        kwerrstr("cannot detach module namespace");
+        publish(call.ret, -1);
+        return;
+    }
     DVM_Provider *previous_movie = owner->movie_provider;
-    owner->namespace_group = replacement;
     owner->movie_provider = movie;
     if (owner->terminal_channels && owner->terminal_channels->offers && owner->movie_offer_generation)
     {
@@ -144,7 +152,6 @@ void Sys_pctl(void *frame)
         owner->movie_offer_generation = generation;
     }
     dvm_provider_release(previous_movie);
-    dvm_namespace_release(previous);
     publish(call.ret, process->pid);
 }
 

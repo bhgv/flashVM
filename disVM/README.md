@@ -285,3 +285,8 @@ admission remains exclusive; this is not whole-process ownership conversion.
 [Runtime observability / Статистика и отладка всей VM](runtime/OBSERVABILITY.md)
 описывает общий контракт live-наблюдения, существующие возможности и этапы
 расширения. Первый JSON normalizer reports: `tools/runtime_stats.py`.
+
+
+[Union traversal and per-module VFS / Обход юнионов и VFS экземпляра](runtime/VFS-TRAVERSAL.md)
+covers request-local cycle detection, the explicit S-record Styx history profile,
+provider-first per-instance environments and the exact remaining remote-load boundary.

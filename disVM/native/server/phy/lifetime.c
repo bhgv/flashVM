@@ -11,6 +11,8 @@ void styxphywakefree(StyxPhyWake *context)
 {
     if (context && __atomic_sub_fetch(&context->references, 1, __ATOMIC_ACQ_REL) == 0)
     {
+        styxphywalkclear(context);
+        free(context->walk_decode);
         phyfree(context->phy);
         free(context->receive);
         free(context->output);
@@ -67,8 +69,8 @@ char *styxinit(Styxserver *server, Styxops *ops, char *port, int mode, int needf
 
 /* EN/RU: See server.h; prepare all owned buffers before invoking unchanged original initialization.
  * См. server.h; подготовить buffers до unchanged original initialization. */
-char *styxphyinit(Styxserver *server, Styxops *ops, RemotePhy *phy,
-    int permissions, int needfile, unsigned queued_frames)
+char *styxphyinitprofile(Styxserver *server, Styxops *ops, RemotePhy *phy,
+    int permissions, int needfile, unsigned queued_frames, const WalkEntity *root)
 {
     PhyInfo info;
     if (!server || !ops || server->ftab || server->priv || queued_frames < 1 || queued_frames > 128 ||
@@ -84,14 +86,22 @@ char *styxphyinit(Styxserver *server, Styxops *ops, RemotePhy *phy,
         phyfree(phy);
         return Enomem;
     }
+    context->walk_mode = root != NULL;
+    if (root)
+    {
+        context->walk_root = *root;
+    }
+    context->capacity = MSGMAX + (root ? WALK_PACKET_OVERHEAD : 0);
+    context->stride = MSGMAX + (root ? 128U : 0);
     context->references = 1;
     context->phy = phy;
     context->wanted = 4;
     context->slots = queued_frames;
-    context->receive = malloc(MSGMAX);
-    context->output = malloc((size_t)queued_frames*MSGMAX);
+    context->walk_decode = root ? malloc(MSGMAX) : NULL;
+    context->receive = malloc(context->capacity);
+    context->output = malloc((size_t)queued_frames*context->stride);
     context->lengths = calloc(queued_frames, sizeof(*context->lengths));
-    if (!context->receive || !context->output || !context->lengths)
+    if (!context->receive || !context->output || !context->lengths || (root && !context->walk_decode))
     {
         styxphywakefree(context);
         return Enomem;
@@ -119,8 +129,48 @@ char *styxprocess(Styxserver *server)
     }
     StyxPhyWake *previous = styxphyowner;
     styxphyowner = context;
+    WalkScope endpoint = {0};
+    WalkScope scope = {0};
+    context->walk_before = walk_cycles();
+    context->walk_cycle = 0;
+    if (context->walk_mode && context->complete && !styxphywalkenter(context, &scope))
+    {
+        context->failed = 1;
+        styxphyowner = previous;
+        return "invalid traversal control/data record";
+    }
+    if (context->walk_mode && context->complete &&
+        !styxphywalkrequest(context, context->receive, context->used, &endpoint))
+    {
+        int cycle = walk_cycles() != context->walk_before;
+        context->processing = 1;
+        int accepted = cycle && styxphywalkreject(server);
+        context->processing = 0;
+        if (scope.active && !walk_leave(&scope))
+        {
+            abort();
+        }
+        if (accepted)
+        {
+            styxphyoutput(context);
+        }
+        else
+        {
+            context->failed = 1;
+        }
+        styxphyowner = previous;
+        return accepted ? NULL : "invalid traversal endpoint state";
+    }
     context->processing = 1;
     char *error = styxcoreprocess(server);
+    if (endpoint.active && !walk_leave(&endpoint))
+    {
+        abort();
+    }
+    if (scope.active && !walk_leave(&scope))
+    {
+        abort();
+    }
     context->processing = 0;
     styxphyoutput(context);
     styxphyowner = previous;

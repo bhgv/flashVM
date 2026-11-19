@@ -13,6 +13,10 @@
 struct DVM_Provider
 {
     FVM_PortSync *lock; /* Native lifetime lock. */
+    WalkEntity walk_entity; /* Immutable projection identity after first callback or explicit get. */
+    unsigned long walk_high; /* Captured logical node high32, independent of bind occurrence. */
+    unsigned long walk_low; /* Captured logical node low32. */
+    int walk_used; /* Identity publication seal under lifetime lock. */
     size_t references; /* Owning native capabilities/handles. */
     const DVM_ProviderOps *ops; /* Immutable callback table/code through destruction. */
     void *state; /* Owned native factory state. */

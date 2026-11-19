@@ -13,7 +13,7 @@
  */
 int dvm_launch_route_input(const DVM_LaunchSpec *spec)
 {
-    return spec && spec->policy == DVM_LAUNCH_TERMINAL_FIRST && dvm_launch_root_cancellable(spec->terminal) &&
+    return spec && (spec->policy == DVM_LAUNCH_TERMINAL_FIRST || spec->policy == DVM_LAUNCH_OWNER_FIRST) && dvm_launch_root_cancellable(spec->terminal) &&
         dvm_launch_origin_valid(&spec->terminal_origin, DVM_ORIGIN_TERMINAL) &&
         spec->argument_bytes <= DVM_LAUNCH_ARGUMENT_LIMIT && (!spec->argument_bytes || spec->arguments) &&
         (!spec->flashvm || dvm_terminal_channels_valid(spec->flashvm));

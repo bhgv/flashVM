@@ -5,10 +5,10 @@
 #ifndef STYX_MUX_INTERNAL_H
 #define STYX_MUX_INTERNAL_H
 #define _POSIX_C_SOURCE 200809L
-#include <lib9.h>
-#include <styx.h>
+#include "internal.h"
 #include "mux.h"
 #include "life.h"
+#include "packet.h"
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
@@ -21,6 +21,9 @@ struct StyxFlight
     StyxMux *mux; /* Borrowed engine, pinned by caller client lifetime. */
     StyxCancel *cancel; /* Retained until caller collection. */
     pthread_cond_t condition; /* One waiting native RPC caller. */
+    uchar *wire; /* Optional owned S-record envelope, captured on original caller before broker admission. */
+    uchar *flushwire; /* Optional owned encoded flush envelope, separate from original request. */
+    unsigned flushlength; /* Actual flush wire extent, raw profile remains nine bytes. */
     uchar *request; /* Owned encoded original frame. */
     unsigned length; /* Complete original frame size. */
     unsigned sent; /* Original frame bytes accepted by send. */
@@ -44,6 +47,9 @@ struct StyxFlight
  * Один bounded probe без fid; оба tag постоянно вне RPC leases. */
 typedef struct StyxBeat
 {
+    unsigned long long completed; /* Saturating count of actually acknowledged probes, under mux lock. */
+    uchar *wire; /* Optional owned negotiated envelope for this exact heartbeat probe. */
+    unsigned length; /* Actual wire extent, nine bytes in the raw profile. */
     unsigned idle; /* Future idle interval, zero disables new probes. */
     unsigned reply; /* Future probe window in monotonic milliseconds. */
     unsigned misses; /* Future terminal threshold2..16. */
@@ -64,12 +70,16 @@ typedef struct StyxBeat
  * Один autonomous native owner, без VM/client pointers и foreign callbacks. */
 struct StyxMux
 {
+    unsigned long walk_tag; /* Explicit direction-local traversal profile, zero means raw 9P. */
+    int walk_bound; /* Server root assignment has been validated by a reply. */
+    WalkEntity walk_root; /* Acknowledged immutable granted root, no source/VM pointers. */
+    unsigned wire_capacity; /* Receive capacity includes only bounded reply envelope overhead. */
     StyxBeat beat; /* Native heartbeat policy and fixed probe storage. */
     StyxLife *life; /* Owned terminal source, independent of Client lifetime. */
     int localstop; /* Explicit shutdown reports CLOSED; normal owner drop stays quiet. */
     int terminal; /* Immutable first terminal cause. */
     pthread_mutex_t lock; /* Protect admission, table, completion and references. */
-    pthread_cond_t ended; /* Explicit native shutdown completion. */
+    pthread_cond_t ended; /* Native shutdown/probe acknowledgement predicate notifications. */
     RemotePhy *phy; /* Owned carrier; only native owner performs I/O, other pinned threads may wake. */
     unsigned capacity; /* Maximum initial offered message bytes. */
     unsigned limit; /* Bounded outstanding request slots1..128. */
@@ -104,6 +114,9 @@ void styxmuxdestroy(StyxMux *);
 /* EN/RU: Detached native carrier owner; argument is its retained engine reference.
  * Detached native carrier owner; argument — удержанная engine reference. */
 void *styxmuxrun(void *);
+
+/* EN/RU: Validate negotiated S-record reply under owner lock;1/0, cycle copied for original caller. */
+int styxmuxwalkreply(StyxMux *mux, unsigned *cycle);
 
 
 /* EN/RU: Under engine lock, heartbeat timer timeout/-1; expired policy breaks engine.

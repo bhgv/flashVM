@@ -12,7 +12,7 @@
  * Проверить spec/access до remote I/O,1/0, identity strings не credentials. */
 static int valid(const DVM_LaunchSpec *spec, unsigned access)
 {
-    return spec && !spec->terminal && spec->policy == DVM_LAUNCH_TERMINAL_FIRST &&
+    return spec && !spec->terminal && (spec->policy == DVM_LAUNCH_TERMINAL_FIRST || spec->policy == DVM_LAUNCH_OWNER_FIRST) &&
         dvm_launch_origin_valid(&spec->terminal_origin, DVM_ORIGIN_TERMINAL) &&
         dvm_origin_id_valid(spec->expected_provider) && spec->module[0] &&
         memchr(spec->module, 0, sizeof(spec->module)) && spec->argument_bytes <= DVM_LAUNCH_ARGUMENT_LIMIT &&

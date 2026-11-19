@@ -107,6 +107,7 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     {
         copy->no_native_fallback = group->no_native_fallback;
         copy->absence_only = group->absence_only;
+        copy->module_stack_order = group->module_stack_order;
         copy->cwd_origin = group->cwd_origin;
         copy->load_origin = group->load_origin;
         copy->next_binding = group->next_binding;

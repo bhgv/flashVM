@@ -37,3 +37,10 @@ target_sources(disvm PRIVATE
     "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/srecord.c"
     "${DVM_FLASHVM_SOURCE_ROOT}/src/protocol/sbindings.c")
 target_include_directories(disvm PRIVATE "${root}/disVM/native/movie" "${CMAKE_CURRENT_SOURCE_DIR}/vfs" "${DVM_FLASHVM_SOURCE_ROOT}/include")
+
+# EN/RU: Share request-local traversal state with native providers and transport adapters.
+# Общий request-local traversal state для native providers и transport adapters.
+if(NOT TARGET vfs_walk)
+    add_subdirectory("${root}/disVM/host/traversal" "${CMAKE_CURRENT_BINARY_DIR}/walk")
+endif()
+target_link_libraries(disvm PRIVATE vfs_walk)

@@ -15,9 +15,15 @@ static FVM_Result info(void *state, FVM_FileInfo *out)
 {
     struct Mounted *opened = state;
     StyxMeta meta;
+    unsigned long cycles = walk_cycles();
+    int probe = styxclientwalkprobe(opened->mount->client, opened->fid, ".", WALK_FSTAT, "");
+    if (probe != WALK_OK)
+    {
+        return probe == WALK_CYCLE ? DVM_VFS_CYCLE : FVM_ERROR;
+    }
     if (!styxmountstat(opened->mount->client, opened->fid, &meta))
     {
-        return FVM_ERROR;
+        return walk_cycles() != cycles ? DVM_VFS_CYCLE : FVM_ERROR;
     }
     styxmountmeta(opened->mount, &meta, out);
     return FVM_OK;
@@ -132,6 +138,12 @@ static FVM_Result seekfile(void *state, long offset, int origin, long *position)
 static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
 {
     struct Mounted *opened = state;
+    unsigned long cycles = walk_cycles();
+    int probe = styxclientwalkprobe(opened->mount->client, opened->fid, ".", WALK_LIST, "");
+    if (probe != WALK_OK)
+    {
+        return probe == WALK_CYCLE ? DVM_VFS_CYCLE : FVM_ERROR;
+    }
     *entries = NULL;
     *count = 0;
     if (!opened->directory || opened->failed || dvm_cancel_requested(dvm_cancel_current()))
@@ -196,7 +208,7 @@ failed:
     opened->failed = 1;
     *count = 0;
     free(batch);
-    return FVM_ERROR;
+    return walk_cycles() != cycles ? DVM_VFS_CYCLE : FVM_ERROR;
 }
 
 

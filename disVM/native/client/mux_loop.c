@@ -55,6 +55,19 @@ static int deadlines(StyxMux *mux, double now)
                 styxmuxbroken(mux);
                 return 0;
             }
+            flight->flushlength = sizeof(flight->flushbytes);
+            if (mux->walk_tag)
+            {
+                size_t encoded = 0;
+                flight->flushwire = walk_packet_write(WALK_PACKET_REQUEST, mux->walk_tag, NULL,
+                    flight->flushbytes, sizeof(flight->flushbytes), &encoded);
+                if (!flight->flushwire)
+                {
+                    styxmuxbroken(mux);
+                    return 0;
+                }
+                flight->flushlength = (unsigned)encoded;
+            }
         }
         if (flight->watching && !flight->flushing)
         {
@@ -80,7 +93,7 @@ static int deadlines(StyxMux *mux, double now)
  * Не смешивать frames; flush priority только после полной отправки original bytes. */
 static void selectframe(StyxMux *mux)
 {
-    if (mux->sending || (mux->beat.active && mux->beat.sent && mux->beat.sent < sizeof(mux->beat.bytes)))
+    if (mux->sending || (mux->beat.active && mux->beat.sent && mux->beat.sent < mux->beat.length))
     {
         return;
     }
@@ -94,7 +107,7 @@ static void selectframe(StyxMux *mux)
             return;
         }
     }
-    if (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))
+    if (mux->beat.active && mux->beat.sent < mux->beat.length)
     {
         return;
     }
@@ -121,15 +134,16 @@ static void sendframe(StyxMux *mux)
     StyxFlight *flight = mux->sending;
     if (!flight)
     {
-        if (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes))
+        if (mux->beat.active && mux->beat.sent < mux->beat.length)
         {
             styxbeatsend(mux);
         }
         return;
     }
     unsigned *position = mux->sendflush ? &flight->flushsent : &flight->sent;
-    unsigned length = mux->sendflush ? sizeof(flight->flushbytes) : flight->length;
-    uchar *bytes = mux->sendflush ? flight->flushbytes : flight->request;
+    unsigned length = mux->sendflush ? flight->flushlength : flight->length;
+    uchar *bytes = mux->sendflush ? (flight->flushwire ? flight->flushwire : flight->flushbytes) :
+        (flight->wire ? flight->wire : flight->request);
     PhyTransfer out = phywrite(mux->phy, bytes+*position, length-*position);
     if (!mux->sendflush && (out.count || out.status != PHY_AGAIN || (out.flags & PHY_UNCERTAIN)))
     {
@@ -152,6 +166,11 @@ static void sendframe(StyxMux *mux)
  * Маршрутизировать только leased tags и точные kinds; Rerror для Tflush недопустим. */
 static int dispatch(StyxMux *mux)
 {
+    unsigned cycle = 0;
+    if (mux->walk_tag && !styxmuxwalkreply(mux, &cycle))
+    {
+        return 0;
+    }
     int probe = styxbeatreply(mux);
     if (probe >= 0)
     {
@@ -186,7 +205,7 @@ static int dispatch(StyxMux *mux)
     }
     if (flush)
     {
-        if (!flight->flushing || flight->flushsent != sizeof(flight->flushbytes) || reply.type != Rflush)
+        if (!flight->flushing || flight->flushsent != flight->flushlength || reply.type != Rflush)
         {
             return 0;
         }
@@ -206,6 +225,11 @@ static int dispatch(StyxMux *mux)
     }
     memcpy(flight->answer.bytes, mux->receive, mux->want);
     flight->answer.length = mux->want;
+    if (cycle && reply.type != Rerror)
+    {
+        return 0;
+    }
+    flight->answer.cycle = cycle;
     flight->answer.status = reply.type == Rerror ? 0 : 1;
     flight->original = 1;
     if (!flight->flushsent)
@@ -237,7 +261,7 @@ static void receiveframes(StyxMux *mux)
         if (mux->used == 4 && mux->want == 4)
         {
             mux->want = GBIT32(mux->receive);
-            if (mux->want < 7 || mux->want > mux->capacity)
+            if (mux->want < 7 || mux->want > mux->wire_capacity)
             {
                 styxmuxbroken(mux);
                 return;
@@ -289,7 +313,7 @@ void *styxmuxrun(void *argument)
             break;
         }
         unsigned wanted = PHY_READ;
-        if (mux->sending || (mux->beat.active && mux->beat.sent < sizeof(mux->beat.bytes)))
+        if (mux->sending || (mux->beat.active && mux->beat.sent < mux->beat.length))
         {
             wanted |= PHY_WRITE;
         }

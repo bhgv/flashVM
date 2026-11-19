@@ -2,7 +2,8 @@
  * EN: Native factory references and factory-pinning open handles.
  * RU: Native factory references и удержание factory открытыми handles.
  */
-#include "provider_internal.h"
+#include "provider_walk.h"
+#include <string.h>
 #include "channel_sync.h"
 #include <stdlib.h>
 
@@ -11,9 +12,11 @@
  * Один открытый ресурс владеет inner handle и одной factory reference. */
 typedef struct ProviderHandle
 {
+    WalkEntity held_identity; /* Never-reused opened-object identity; replacement at the same path is a different state. */
     DVM_VfsOps ops; /* Immutable after publication; optional operations mirror inner. */
     DVM_VfsHandle inner; /* Exclusive native handle from factory. */
     DVM_Provider *provider; /* Keeps factory state/code alive until consuming close. */
+    char path[WALK_PATH_LIMIT]; /* Copied opened-node search state for directory/metadata callback recursion. */
 } ProviderHandle;
 
 
@@ -43,6 +46,13 @@ DVM_Provider *dvm_provider_create_routed(const DVM_ProviderOps *ops, void *state
     provider->changes = dvm_changes_create();
     if (!provider->changes)
     {
+        fvm_port_sync_destroy(provider->lock);
+        free(provider);
+        return NULL;
+    }
+    if (!walk_entity(&provider->walk_entity))
+    {
+        dvm_changes_destroy(provider->changes);
         fvm_port_sync_destroy(provider->lock);
         free(provider);
         return NULL;
@@ -139,7 +149,18 @@ void dvm_provider_release(DVM_Provider *provider)
  * См. provider.h; caller уже удерживает lifetime. */
 FVM_Result dvm_provider_info(DVM_Provider *provider, const char *relative, FVM_FileInfo *output)
 {
-    return provider && relative && output ? provider->ops->info(provider->state, relative, output) : FVM_INVALID_ARGUMENT;
+    if (!provider || !relative || !output)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    WalkScope scope = {0};
+    FVM_Result status = dvm_provider_walk_enter(provider, relative, WALK_INFO, "", &scope);
+    if (status == FVM_OK)
+    {
+        status = provider->ops->info(provider->state, relative, output);
+        dvm_provider_walk_leave(&scope);
+    }
+    return status;
 }
 
 
@@ -148,7 +169,14 @@ FVM_Result dvm_provider_info(DVM_Provider *provider, const char *relative, FVM_F
 static FVM_Result wrapped_info(void *state, FVM_FileInfo *output)
 {
     ProviderHandle *handle = state;
-    return dvm_vfs_info(&handle->inner, output);
+    WalkScope scope = {0};
+    FVM_Result status = dvm_vfs_walk_enter(&handle->held_identity, handle->path, WALK_FSTAT, "", &scope);
+    if (status == FVM_OK)
+    {
+        status = dvm_vfs_info(&handle->inner, output);
+        dvm_provider_walk_leave(&scope);
+    }
+    return status;
 }
 
 
@@ -224,7 +252,14 @@ static FVM_Result wrapped_seek(void *state, long offset, int origin, long *posit
 static FVM_Result wrapped_list(void *state, FVM_FileInfo **entries, size_t *count)
 {
     ProviderHandle *handle = state;
-    return dvm_vfs_list(&handle->inner, entries, count);
+    WalkScope scope = {0};
+    FVM_Result status = dvm_vfs_walk_enter(&handle->held_identity, handle->path, WALK_LIST, "", &scope);
+    if (status == FVM_OK)
+    {
+        status = dvm_vfs_list(&handle->inner, entries, count);
+        dvm_provider_walk_leave(&scope);
+    }
+    return status;
 }
 
 
@@ -267,18 +302,31 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     {
         return FVM_INVALID_ARGUMENT;
     }
+    WalkScope scope = {0};
+    FVM_Result entered = dvm_provider_walk_enter(provider, relative, WALK_OPEN, mode, &scope);
+    if (entered != FVM_OK)
+    {
+        return entered;
+    }
+    dvm_provider_walk_leave(&scope); /* Allocation/retention happens outside the active callback, then re-enter below. */
     handle = calloc(1, sizeof(*handle));
     if (!handle)
     {
         return FVM_OUT_OF_MEMORY;
     }
-    if (!dvm_provider_retain(provider))
+    if (!walk_entity(&handle->held_identity) || !dvm_provider_retain(provider))
     {
         free(handle);
         return FVM_ERROR;
     }
     handle->provider = provider;
-    result = provider->ops->open(provider->state, relative, mode, &produced);
+    strcpy(handle->path, relative);
+    result = dvm_provider_walk_enter(provider, relative, WALK_OPEN, mode, &scope);
+    if (result == FVM_OK)
+    {
+        result = provider->ops->open(provider->state, relative, mode, &produced);
+        dvm_provider_walk_leave(&scope);
+    }
     if (result != FVM_OK)
     {
         if (produced.ops || produced.state)
@@ -326,7 +374,19 @@ FVM_Result dvm_provider_access(DVM_Provider *provider, const char *relative, uns
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return provider->ops->access ? provider->ops->access(provider->state, relative, access) : FVM_UNSUPPORTED;
+    if (!provider->ops->access)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    const char *modes[] = {"", "x", "w", "wx", "r", "rx", "rw", "rwx"};
+    WalkScope scope = {0};
+    FVM_Result status = dvm_provider_walk_enter(provider, relative, WALK_ACCESS, modes[access], &scope);
+    if (status == FVM_OK)
+    {
+        status = provider->ops->access(provider->state, relative, access);
+        dvm_provider_walk_leave(&scope);
+    }
+    return status;
 }
 
 

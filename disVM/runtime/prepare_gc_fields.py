@@ -59,4 +59,10 @@ def adapt(source, unit):
         if source.count(before) != count:
             raise ValueError("hosted GC scalar boundary drift: " + before)
         source = source.replace(before, after)
+    if unit == "heap":
+        anchor = "\tml = H2D(Modlink*, h);"
+        if source.count(anchor) != 1:
+            raise ValueError("hosted module-environment retirement boundary drift")
+        source = '#include "module_interface/environment.h"\n' + source.replace(
+            anchor, anchor + "\n\tdvm_module_environment_retire(ml);", 1)
     return '#include "gc_fields.h"\n' + source

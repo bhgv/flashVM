@@ -66,6 +66,7 @@ typedef struct DVM_RuntimeProcess
     Osenv environment;       /* Native error storage owned by this permanent resident. */
     fenv_t floating_environment; /* Guest FP environment retained on its permanent OS owner. */
     struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
+    struct DVM_ModuleOverride *module_namespaces; /* Process-local pctl groups keyed by never-reused module binding identity. */
     DVM_Namespace *namespace_group; /* Owning native reference; shared at spawn, detached by pctl. */
     struct DVM_TerminalChannels *terminal_channels; /* Optional owned immutable launch grant, copied/pinned at spawn. */
     struct UnibusBinding *unibus; /* Owned per-launch native handler; explicit inheritance only, no managed roots. */

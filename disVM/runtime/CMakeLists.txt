@@ -192,12 +192,12 @@ add_executable(disvm
     vfs/group.c
     vfs/mutations.c
     vfs/sys.c
-    vfs/boot.c
+    vfs/boot.c vfs/walk_boot.c
     vfs/launch/service.c vfs/launch/service_wait.c vfs/launch/address.c vfs/launch/address_guard.c vfs/launch/route.c
     vfs/launch/movie_offer.c
     vfs/launch/terminal.c
     vfs/launch/admission.c
-    vfs/launch/ticket.c vfs/launch/contract.c vfs/launch/contract_request.c module_interface/contract.c module_interface/launch.c module_interface/binding.c
+    vfs/launch/ticket.c vfs/launch/contract.c vfs/launch/contract_request.c module_interface/contract.c module_interface/launch.c module_interface/binding.c module_interface/environment.c
     vfs/launch/accept.c
     vfs/launch/prepare.c
     vfs/loader.c
@@ -222,7 +222,7 @@ add_executable(disvm
     vfs/changes.c
     vfs/changes_refresh.c
     vfs/cancel.c
-    vfs/provider.c vfs/provider_capture.c vfs/provider_launch.c
+    vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/provider_launch.c
     vfs/layer_bind.c
     vfs/auto_access.c
     vfs/union_io.c vfs/directory.c vfs/directory_names.c

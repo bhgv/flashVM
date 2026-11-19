@@ -5,6 +5,7 @@
 #ifndef STYX_PHY_SERVER_H
 #define STYX_PHY_SERVER_H
 #include "phy.h"
+#include "walk.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,6 +24,25 @@ typedef struct StyxPhyWake StyxPhyWake; /* Owned native readiness pin, no server
  * Обычный server одной сессии; не создаёт P9MX или встречного клиента. */
 char *styxphyinit(struct Styxserver *server, struct Styxops *ops, RemotePhy *phy,
     int permissions, int needfile, unsigned queued_frames);
+
+
+/* EN/RU: Explicit S-record active-history profile around original Styx; PHY consumed always, root copied on success.
+ * Both peers opt in; root describes the virtual exported endpoint of the actual prepared grant and must have nonzero domain/object.
+ * Tag0 negotiates data purpose; malformed profiles close without raw fallback. Same owner/quota rules as styxphyinit.
+ * Явный S-record history profile; PHY принят всегда, root — virtual exported endpoint actual grant с nonzero domain/object.
+ * Обе стороны opt in; tag0 согласует purpose, malformed profiles закрываются без raw fallback.
+ */
+char *styxphywalkinit(struct Styxserver *server, struct Styxops *ops, RemotePhy *phy,
+    int permissions, int needfile, unsigned queued_frames, const WalkEntity *root);
+
+
+/* EN/RU: Return a standard Rerror text while explicitly marking this currently executing callback's result as a cycle.
+ * Server owner/current synchronous callback only; does not grant access, pause a guest, or guess from error text.
+ * Use only when the actual VFS result is DVM_VFS_CYCLE. Raw peers receive ordinary Rerror; profile peers also get a typed flag.
+ * Вернуть Rerror text и явно отметить cycle текущего synchronous callback. Только server owner; без guesses/authority.
+ * Вызывать лишь для фактического DVM_VFS_CYCLE; raw peer получает обычный Rerror, profile также typed flag.
+ */
+char *styxphycycleerror(struct Styxserver *server);
 
 
 /* EN/RU: Owner-only pin native wake state while server is live; owned handle/NULL on invalid/overflow.

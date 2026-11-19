@@ -43,6 +43,7 @@ static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInf
 {
     DVM_ResourcePlan *choice, *create = NULL;
     FVM_FileInfo info;
+    int cycle = 0; /* A cyclic candidate is skipped, but never converted into absence at exhaustion. */
     if (plan->selected)
     {
         return output ? dvm_resource_raw_info(plan, output) : FVM_OK;
@@ -77,6 +78,15 @@ static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInf
             }
             return FVM_OK;
         }
+        if (status == DVM_VFS_CYCLE)
+        {
+            cycle = 1;
+            if (create == choice)
+            {
+                create = NULL;
+            }
+            continue;
+        }
         if (plan->absence_only && status != FVM_NOT_FOUND && !(plan->policy & DVM_NS_AUTORWX))
         {
             return status;
@@ -91,7 +101,7 @@ static FVM_Result select_entry(DVM_ResourcePlan *plan, int creating, FVM_FileInf
         dvm_union_choose(plan, create);
         return FVM_OK;
     }
-    return FVM_ERROR;
+    return cycle ? DVM_VFS_CYCLE : plan->absence_only ? FVM_NOT_FOUND : FVM_ERROR;
 }
 
 
@@ -124,6 +134,7 @@ typedef struct UnionCursor
     DVM_VfsHandle header; /* Opened first directory supplies stable fstat identity. */
     DVM_VfsHandle current; /* Lazily opened branch stream, independently serialized. */
     int failed; /* Publication failure forbids subsequent batches. */
+    int cycle; /* A directory branch loop was skipped; report it when no further entries remain. */
 } UnionCursor;
 
 
@@ -194,7 +205,7 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
         FVM_Result status;
         if (!dvm_namespace_layer_at(cursor->group, cursor->on, cursor->head_id, cursor->index, &choice))
         {
-            return FVM_OK;
+            return cursor->cycle ? DVM_VFS_CYCLE : FVM_OK;
         }
         if (dvm_cancel_current() &&
             (cursor->current.ops ? !(cursor->current.native_flags & DVM_VFS_CANCEL_LIST) :
@@ -214,8 +225,12 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
                 return FVM_OK;
             }
         }
+        if (status == DVM_VFS_CYCLE)
+        {
+            cursor->cycle = 1;
+        }
         if (dvm_cancel_requested(dvm_cancel_current()) ||
-            (dvm_cancel_current() && cursor->current.ops && status != FVM_OK))
+            (dvm_cancel_current() && cursor->current.ops && status != FVM_OK && status != DVM_VFS_CYCLE))
         {
             fvm_port_directory_entries_free(*entries);
             *entries = NULL;
@@ -229,7 +244,7 @@ static FVM_Result union_list(void *state, FVM_FileInfo **entries, size_t *count)
         dvm_vfs_close(&cursor->current);
         cursor->index++;
     }
-    return FVM_OK;
+    return cursor->cycle ? DVM_VFS_CYCLE : FVM_OK;
 }
 
 
@@ -244,6 +259,7 @@ static FVM_Result union_seek(void *state, long offset, int origin, long *positio
     }
     dvm_vfs_close(&cursor->current);
     cursor->index = 0;
+    cursor->cycle = 0;
     *position = 0;
     return FVM_OK;
 }
@@ -281,8 +297,8 @@ static int close_ready(void *state)
 static const DVM_VfsOps union_ops = {union_info, NULL, NULL, union_seek, union_list, union_close, union_abort}; /* Native union directory adapter. */
 
 
-/* EN/RU: See resource.h; first directory open must succeed, lower opens are lazy.
- * См. resource.h; первый directory open должен пройти, нижние открываются лениво. */
+/* EN/RU: See resource.h; skip proven cycles when acquiring the stable header, then open listing branches lazily.
+ * См. resource.h; пропустить proven cycles при захвате stable header, listing branches открывать лениво. */
 FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
 {
     UnionCursor *cursor = calloc(1, sizeof(*cursor));
@@ -299,7 +315,21 @@ FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
     cursor->group = plan->group;
     cursor->head_id = plan->head_id;
     strcpy(cursor->on, plan->names.path);
-    status = open_directory(plan, &cursor->header);
+    status = DVM_VFS_CYCLE;
+    for (DVM_ResourcePlan *choice = plan; choice; choice = choice->layers)
+    {
+        if (dvm_cancel_requested(dvm_cancel_current()))
+        {
+            status = FVM_ERROR;
+            break;
+        }
+        status = open_directory(choice, &cursor->header);
+        if (status != DVM_VFS_CYCLE)
+        {
+            break;
+        }
+        cursor->cycle = 1;
+    }
     if (status != FVM_OK)
     {
         union_close(cursor);

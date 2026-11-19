@@ -7,6 +7,8 @@
 #include "handle.h"
 #include "anchor_port.h"
 #include "changes.h"
+#include "walk.h"
+#define DVM_VFS_CYCLE ((FVM_Result)-7) /* Proven traversal cycle; not NOT_FOUND or a permission decision. */
 
 #define DVM_PROVIDER_CANCEL_LAUNCH 8U /* Requires PATH and a launch callback; address discovery consumes current scope. */
 #define DVM_PROVIDER_CANCEL_CAPTURE 4U /* Requires PATH; capture consumes scope and returns a PATH-capable root. */
@@ -50,6 +52,19 @@ typedef struct DVM_ProviderOps
     unsigned long flags; /* Declared native capabilities; unknown bits refuse creation. */
     FVM_Result (*access)(void *state, const char *relative, unsigned access); /* Optional effective rights check; no effects/VM access. */
 } DVM_ProviderOps;
+
+
+/* EN/RU: Set stable logical projection/node identity on an exclusively owned unpublished factory;1/0.
+ * entity is native trusted metadata, never permission. Refuse after any callback/get or shared publication.
+ * Установить logical projection/node identity в exclusive unpublished factory;1/0, не permission.
+ */
+int dvm_provider_walk_identity(DVM_Provider *provider, const WalkEntity *entity, unsigned long node_high, unsigned long node_low);
+
+
+/* EN/RU: Copy and seal immutable native projection identity; borrowed provider/output through return,1/0 invalid.
+ * Скопировать и seal immutable projection identity; provider/output borrowed до return,1/0 invalid.
+ */
+int dvm_provider_walk_get(DVM_Provider *provider, WalkEntity *entity);
 
 
 /* EN/RU: Create native factory owning state on success only; ops must outlive it.

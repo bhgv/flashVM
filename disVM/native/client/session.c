@@ -80,6 +80,7 @@ static int exchange(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel
 {
     client->attempted = 0;
     client->cancelled = 0;
+    client->cycle = 0;
     if (client->failed)
     {
         return -1;
@@ -113,6 +114,11 @@ static int exchange(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel
     pthread_mutex_lock(&client->lock);
     client->attempted = answer.attempted;
     client->cancelled = answer.cancelled;
+    client->cycle = answer.cycle;
+    if (answer.cycle)
+    {
+        walk_note_cycle();
+    }
     int status = answer.status;
     if (answer.length)
     {

@@ -14,7 +14,7 @@
 static int valid(const DVM_LaunchOptions *options, unsigned access)
 {
     return options && !options->terminal && options->provider &&
-        options->policy == DVM_LAUNCH_TERMINAL_FIRST && !(access & ~FVM_ACCESS_MASK) &&
+        (options->policy == DVM_LAUNCH_TERMINAL_FIRST || options->policy == DVM_LAUNCH_OWNER_FIRST) && !(access & ~FVM_ACCESS_MASK) &&
         (access & (FVM_ACCESS_READ|FVM_ACCESS_EXEC)) == (FVM_ACCESS_READ|FVM_ACCESS_EXEC) &&
         dvm_launch_origin_valid(&options->terminal_origin, DVM_ORIGIN_TERMINAL) &&
         dvm_launch_origin_valid(&options->provider_origin, DVM_ORIGIN_PROVIDER) &&

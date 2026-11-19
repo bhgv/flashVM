@@ -51,3 +51,29 @@ Modlink *dvm_module_link_contract(Module *module, Import *imports, int mkmp, con
     module = dvm_module_check_contract(module, required);
     return module ? linkmod(module, imports, mkmp) : H;
 }
+
+
+/* [GC:] EN/RU: See binding.h; the returned link is private until native attachment completes, without another managed allocation.
+ * См. binding.h; link остаётся private до native attachment, без дополнительной managed allocation.
+ */
+Modlink *dvm_module_link_prepared(Module *module, Import *imports, int mkmp,
+    const DVM_LaunchContract *required, DVM_Namespace *group)
+{
+    if (!group)
+    {
+        if (module && module != H)
+        {
+            unload(module);
+        }
+        kwerrstr("module binding requires a prepared namespace");
+        return H;
+    }
+    Modlink *link = dvm_module_link_contract(module, imports, mkmp, required);
+    if (link != H && !dvm_module_environment_bind(link, group))
+    {
+        destroy(link);
+        kwerrstr("cannot attach module namespace");
+        return H;
+    }
+    return link;
+}

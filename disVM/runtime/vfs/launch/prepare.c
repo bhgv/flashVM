@@ -51,7 +51,7 @@ static int acquire(DVM_NamespaceBinding *binding, DVM_Provider *source, const DV
  * См. prepare.h; ownership подключено до любого failure, требующего cleanup. */
 DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
 {
-    if (!options || options->policy != DVM_LAUNCH_TERMINAL_FIRST ||
+    if (!options || (options->policy != DVM_LAUNCH_TERMINAL_FIRST && options->policy != DVM_LAUNCH_OWNER_FIRST) ||
         !dvm_launch_origin_valid(&options->terminal_origin, DVM_ORIGIN_TERMINAL) ||
         !dvm_launch_origin_valid(&options->provider_origin, DVM_ORIGIN_PROVIDER) ||
         strcmp(options->terminal_origin.session, options->provider_origin.session))
@@ -67,8 +67,12 @@ DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
     }
     group->bindings = first;
     first->next = calloc(1, sizeof(*first));
-    if (!first->next || !acquire(first, options->terminal, &options->terminal_origin) ||
-        !acquire(first->next, options->provider, &options->provider_origin))
+    int owner_first = options->policy == DVM_LAUNCH_OWNER_FIRST;
+    if (!first->next ||
+        !acquire(first, owner_first ? options->provider : options->terminal,
+            owner_first ? &options->provider_origin : &options->terminal_origin) ||
+        !acquire(first->next, owner_first ? options->terminal : options->provider,
+            owner_first ? &options->terminal_origin : &options->provider_origin))
     {
         dvm_namespace_release(group);
         return NULL;
@@ -79,6 +83,7 @@ DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
     group->version = 1;
     group->no_native_fallback = 1;
     group->absence_only = 1;
+    group->module_stack_order = owner_first;
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
         dvm_namespace_release(group);

@@ -2,7 +2,7 @@
  * EN: Optional native provider advertisement without image reads, authority inference or callback-lock reentry.
  * RU: Optional native provider advertisement без чтения image, вывода authority и callback-lock reentry.
  */
-#include "provider_internal.h"
+#include "provider_walk.h"
 #include "namespace.h"
 #include "cancel.h"
 #include <string.h>
@@ -51,5 +51,12 @@ struct DVM_LaunchAddress *dvm_provider_launch(DVM_Provider *provider, const char
     {
         return NULL;
     }
-    return provider->launch(provider->state, path);
+    WalkScope scope = {0};
+    if (dvm_provider_walk_enter(provider, path, WALK_LAUNCH, "", &scope) != FVM_OK)
+    {
+        return NULL;
+    }
+    struct DVM_LaunchAddress *address = provider->launch(provider->state, path);
+    dvm_provider_walk_leave(&scope);
+    return address;
 }

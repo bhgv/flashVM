@@ -14,12 +14,18 @@ typedef struct StyxAnswer
     unsigned length; /* Complete raw response length. */
     int attempted; /* Original frame started sending. */
     int cancelled; /* Cancel/timeout retired without original acknowledgement. */
+    int cycle; /* Proven negotiated remote traversal loop, never inferred from Rerror text. */
     int status; /* 1 expected response,0 Rerror,-1 no acknowledgement. */
 } StyxAnswer;
 
 /* EN/RU: Consume connected reliable ordered stream PHY always; owned native engine/NULL.
  * Принять connected stream PHY всегда; свой native engine/NULL. */
 StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit);
+
+/* EN/RU: Explicit history profile, consumes PHY on every outcome; same bounds, nonzero direction-local data tag.
+ * Явный history profile; PHY принят всегда, прежние bounds, nonzero data tag.
+ */
+StyxMux *styxmuxcreatewalkphy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit, unsigned long tag);
 
 
 /* EN/RU: Borrow terminal source while retaining engine owner. Без передачи владения. */

@@ -85,6 +85,7 @@ static int resolve(
     size_t longest = 0;
     int sticky, result = 0;
     fvm_port_sync_lock(group->lock);
+    int role_order = module && !group->module_stack_order; /* Protected with the selected group state. */
     context = module ? group->load_directory : group->cwd;
     anchor = module ? group->load_anchor : group->cwd_anchor;
     selected_provider = module ? group->load_provider : group->cwd_provider;
@@ -99,7 +100,7 @@ static int resolve(
                 continue;
             }
             if (covers(binding->on, names->path) && (length > longest ||
-                (module && length == longest && best && best->origin.role != preferred &&
+                (role_order && length == longest && best && best->origin.role != preferred &&
                  binding->origin.role == preferred)))
             {
                 longest = length;
@@ -158,13 +159,13 @@ static int resolve(
         whole->mount_flags = best->flags;
         whole->policy = best->flags & DVM_NS_AUTORWX;
         whole->layer_id = best->identity;
-        for (unsigned pass = 0; pass < (module ? 2U : 1U) && result; pass++)
+        for (unsigned pass = 0; pass < (role_order ? 2U : 1U) && result; pass++)
         {
             for (binding = group->bindings; binding; binding = binding->next)
             {
                 DVM_ResourcePlan *choice;
                 if (binding == best || strcmp(binding->on, best->on) ||
-                    (module && (binding->origin.role == preferred) != (pass == 0)))
+                    (role_order && (binding->origin.role == preferred) != (pass == 0)))
                 {
                     continue;
                 }

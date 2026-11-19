@@ -32,6 +32,7 @@ typedef struct DVM_NamespaceBinding
 struct DVM_Namespace
 {
     int no_native_fallback; /* Removing all grants must not expose implicit host paths. */
+    int module_stack_order; /* Per-instance owner-first policy: loads preserve the actual union stack instead of role sorting. */
     int absence_only; /* Isolated launch lookup policy, copied with namespace. */
     DVM_Origin cwd_origin; /* Provenance of retained cwd. */
     DVM_Origin load_origin; /* Provenance of retained import base. */

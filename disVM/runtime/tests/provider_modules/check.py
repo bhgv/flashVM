@@ -28,16 +28,34 @@ def main():
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
         compile_image(compiler, include, root, fixtures / "wrong.b", work / "wrong.dis", [fixtures])
-        for variant in range(25):
+        for variant in range(29):
+            if variant >= 25:
+                app_source = (fixtures / "app.b").read_text().replace('include "value.m";', 'include "value.m";\ninclude "sys.m";')
+                extra = '    sys := load Sys Sys->PATH;\n'
+                if variant == 26:
+                    extra += '    if (sys->pctl(Sys->FORKNS, nil) < 0) { raise "module FORKNS failed"; }\n'
+                if variant == 27:
+                    extra += '    if (sys->open("/saved", Sys->OREAD) != nil || sys->bind("/data", "/saved", 0) < 0) { raise "module instances share namespace edits"; }\n'
+                if variant == 28:
+                    extra += '    input := array[4] of byte;\n    if (sys->read(sys->fildes(0), input, 4) != 4 || string input != "left") { raise "module lost redirected stdin"; }\n'
+                extra += '    data := sys->open("/data", Sys->OREAD);\n    bytes := array[32] of byte;\n    n := sys->read(data, bytes, len bytes);\n    if (n != 9 || string bytes[:n] != "execution") { raise "module builtin lost owner-first environment"; }\n'
+                app_source = app_source.replace('    dep := load Value', extra + '    dep := load Value')
+                source = work / "app.b"
+                source.write_text(app_source)
+                compile_image(compiler, include, root, source, work / "app.dis", [fixtures])
             main_source = work / "main.b"
             template_name = {10: "kill.b", 16: "child.b", 17: "child.b", 18: "child.b", 19: "child.b", 24: "contract-child.b"}.get(variant, "main.b")
             template = (fixtures / template_name).read_text()
-            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222}.get(variant, -1)
+            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222, 25: 111, 26: 111, 27: 111, 28: 111}.get(variant, -1)
             if variant == 13:
                 template = template.replace("app == nil || app->value() != EXPECTED", "app != nil")
             if variant in (20, 21, 22, 23):
                 template = template.replace("if (app == nil || app->value() != EXPECTED) {",
                                             "if (app != nil) {\n        ignored := app->value();")
+            if variant == 27:
+                template = template.replace('    data := sys->open', '    other := load Value "/app.dis";\n    if (other == nil || other->value() != 111 || sys->open("/saved", Sys->OREAD) != nil) { raise "module namespace escaped to caller"; }\n    data := sys->open')
+            if variant == 28:
+                template = template.replace('    SWITCH', '    input := array[4] of byte;\n    if (sys->read(sys->fildes(0), input, 4) != 4 || string input != "next") { raise "redirected stdin offset changed"; }\n    SWITCH')
             main_source.write_text(template.replace("EXPECTED", str(expected))
                                    .replace("HELPERS", "" if variant else (fixtures / "update.b").read_text())
                                    .replace("SWITCH", "" if variant else "update(sys, app);"))
@@ -48,7 +66,7 @@ def main():
                              "dvm_launch_module_checked", "linkmod", "unload", "malloc", "calloc", "free"])
             for mode in ["--no-jit", "--jit"]:
                 result = subprocess.run([binary, "--native-spawn", mode, work / "main.dis"], cwd=work,
-                                        capture_output=True, text=True, timeout=30)
+                                        capture_output=True, text=True, input="leftnext", timeout=30)
                 if result.returncode or "PASS provider-backed Dis module and dependency" not in result.stdout or \
                         "PASS provider module source selection and native ownership drain" not in result.stdout:
                     raise RuntimeError(f"provider module variant={variant} {mode}\n" + result.stdout + result.stderr)

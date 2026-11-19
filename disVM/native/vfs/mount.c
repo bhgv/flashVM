@@ -45,6 +45,12 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 {
     struct Mount *mount = state;
+    unsigned long cycles = walk_cycles();
+    int probe = styxclientwalkprobe(mount->client, mount->root, path, WALK_INFO, "");
+    if (probe != WALK_OK)
+    {
+        return probe == WALK_CYCLE ? DVM_VFS_CYCLE : FVM_ERROR;
+    }
     if (mount->file_root && strcmp(path, "."))
     {
         return FVM_NOT_FOUND;
@@ -58,7 +64,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     {
         styxmountmeta(mount, &meta, out);
     }
-    return success ? FVM_OK : missing ? FVM_NOT_FOUND : FVM_ERROR;
+    return success ? FVM_OK : walk_cycles() != cycles ? DVM_VFS_CYCLE : missing ? FVM_NOT_FOUND : FVM_ERROR;
 }
 
 
@@ -67,6 +73,7 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     struct Mount *mount = state;
+    unsigned long cycles = walk_cycles();
     if (mount->file_root && strcmp(path, "."))
     {
         return FVM_NOT_FOUND;
@@ -78,6 +85,12 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
     if (how < 0 || (required & ~mount->access))
     {
         return FVM_ERROR;
+    }
+    int probe = styxclientwalkprobe(mount->client, mount->root, path, WALK_OPEN,
+        how == 0 ? "r" : how == 1 ? "wo" : "rw");
+    if (probe != WALK_OK)
+    {
+        return probe == WALK_CYCLE ? DVM_VFS_CYCLE : FVM_ERROR;
     }
     struct Mounted *opened = calloc(1, sizeof(*opened));
     if (!opened)
@@ -118,7 +131,7 @@ failed:
     styxmountclunk(mount->client, opened->fid);
     free(opened->records);
     free(opened);
-    return missing ? FVM_NOT_FOUND : FVM_ERROR;
+    return walk_cycles() != cycles ? DVM_VFS_CYCLE : missing ? FVM_NOT_FOUND : FVM_ERROR;
 }
 
 

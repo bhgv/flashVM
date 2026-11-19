@@ -30,7 +30,7 @@ static FVM_Result permitted(DVM_ResourcePlan *choice, const char *relative, unsi
  * No creation/open occurs; missing/non-directory parents refuse this branch.
  * Проверить actual parent на write И search; без create/open. Отсутствующий
  * parent либо не-каталог отвергает ветвь. Borrow choice through native callbacks. */
-static int creatable(DVM_ResourcePlan *choice)
+static FVM_Result creatable(DVM_ResourcePlan *choice)
 {
     char parent[DVM_NS_PATH_LIMIT], *slash;
     FVM_FileInfo info;
@@ -54,8 +54,8 @@ static int creatable(DVM_ResourcePlan *choice)
         status = choice->anchor ? fvm_port_anchor_info_at(dvm_anchor_port(choice->anchor), parent, &info)
                                 : FVM_UNSUPPORTED;
     }
-    return status == FVM_OK && info.directory &&
-           permitted(choice, parent, FVM_ACCESS_WRITE | FVM_ACCESS_EXEC) == FVM_OK;
+    return status != FVM_OK ? status : !info.directory ? FVM_ERROR :
+        permitted(choice, parent, FVM_ACCESS_WRITE | FVM_ACCESS_EXEC);
 }
 
 
@@ -69,6 +69,7 @@ FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating)
 {
     DVM_ResourcePlan *choice;
     FVM_FileInfo info;
+    int cycle = 0; /* Preserve proven cycles at exhaustion, even in explicit access-based selection. */
     unsigned requested = plan->requested_access;
     if (!requested || (requested & ~FVM_ACCESS_MASK))
     {
@@ -80,36 +81,56 @@ FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating)
         {
             return FVM_ERROR;
         }
-        int exists = dvm_resource_raw_info(choice, &info) == FVM_OK;
+        FVM_Result status = dvm_resource_raw_info(choice, &info);
+        if (status == DVM_VFS_CYCLE)
+        {
+            cycle = 1;
+            continue;
+        }
+        int exists = status == FVM_OK;
         if (dvm_cancel_requested(dvm_cancel_current()))
         {
             return FVM_ERROR;
         }
         if (creating)
         {
-            if (!creatable(choice) || (exists && info.directory))
+            status = creatable(choice);
+            if (status == DVM_VFS_CYCLE)
+            {
+                cycle = 1;
+            }
+            if (status != FVM_OK || (exists && info.directory))
             {
                 continue;
             }
-            if (!exists || permitted(choice, choice->relative, requested) == FVM_OK)
-            {
-                dvm_union_choose(plan, choice);
-                plan->directory = 0;
-                plan->union_root = 0;
-                return FVM_OK;
-            }
         }
-        else if (exists && !(info.directory && (requested & FVM_ACCESS_EXEC)) &&
-                 permitted(choice, choice->relative, requested | (info.directory ? FVM_ACCESS_EXEC : 0)) == FVM_OK)
+        if (exists)
         {
-            dvm_union_choose(plan, choice);
-            plan->directory = info.directory;
-            if (!info.directory)
+            if (!creating && info.directory && (requested & FVM_ACCESS_EXEC))
             {
-                plan->union_root = 0;
+                continue;
             }
-            return FVM_OK;
+            status = permitted(choice, choice->relative, requested | (info.directory ? FVM_ACCESS_EXEC : 0));
+            if (status == DVM_VFS_CYCLE)
+            {
+                cycle = 1;
+            }
+            if (status != FVM_OK)
+            {
+                continue;
+            }
         }
+        else if (!creating)
+        {
+            continue;
+        }
+        dvm_union_choose(plan, choice);
+        plan->directory = exists && info.directory;
+        if (!plan->directory)
+        {
+            plan->union_root = 0;
+        }
+        return FVM_OK;
     }
-    return FVM_ERROR;
+    return cycle ? DVM_VFS_CYCLE : FVM_ERROR;
 }

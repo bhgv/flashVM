@@ -10,6 +10,7 @@
 void styxmuxdestroy(StyxMux *mux)
 {
     phyfree(mux->phy);
+    free(mux->beat.wire);
     free(mux->receive);
     free(mux->decode);
     free(mux->slots);
@@ -125,9 +126,27 @@ StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsi
         pthread_mutex_unlock(&mux->lock);
         return NULL;
     }
+    memcpy(flight->request, bytes, length);
+    PBIT16(flight->request + 5, ((const uchar *)bytes)[4] == Tversion ? NOTAG : index + 1);
+    size_t encoded = 0;
+    if (mux->walk_tag)
+    {
+        flight->wire = walk_packet_write(WALK_PACKET_REQUEST, mux->walk_tag, NULL,
+            flight->request, length, &encoded);
+        if (!flight->wire)
+        {
+            pthread_cond_destroy(&flight->condition);
+            free(flight->request);
+            free(flight->answer.bytes);
+            free(flight);
+            pthread_mutex_unlock(&mux->lock);
+            return NULL;
+        }
+    }
     if (!styxcancelbind(cancel, mux))
     {
         pthread_cond_destroy(&flight->condition);
+        free(flight->wire);
         free(flight->request);
         free(flight->answer.bytes);
         free(flight);
@@ -141,7 +160,7 @@ StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsi
     flight->tag = ((const uchar *)bytes)[4] == Tversion ? NOTAG : index+1;
     flight->flush = mux->limit+index+1;
     flight->bound = bound;
-    flight->length = length;
+    flight->length = mux->walk_tag ? (unsigned)encoded : length;
     memcpy(flight->request, bytes, length);
     PBIT16(flight->request+5, flight->tag);
     flight->deadline = styxmuxtime()+mux->timeout;
@@ -166,6 +185,8 @@ StyxAnswer styxmuxcollect(StyxFlight *flight)
     pthread_mutex_unlock(&mux->lock);
     styxcancelunbind(flight->cancel);
     pthread_cond_destroy(&flight->condition);
+    free(flight->wire);
+    free(flight->flushwire);
     free(flight->request);
     free(flight);
     return answer;
@@ -206,7 +227,7 @@ void styxmuxfree(StyxMux *mux)
 
 /* EN/RU: See mux.h; admit only connected reliable ordered byte streams, with one native owner.
  * См. mux.h; только connected reliable ordered streams, один native owner. */
-StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit)
+StyxMux *styxmuxcreatewalkphy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit, unsigned long tag)
 {
     PhyInfo info;
     if (!phyinfo(phy, &info) || !info.connected ||
@@ -236,12 +257,14 @@ StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, u
         return NULL;
     }
     mux->phy = phy;
+    mux->walk_tag = tag;
+    mux->wire_capacity = capacity + (tag ? 128U : 0U);
     mux->capacity = capacity;
     mux->timeout = timeout;
     mux->limit = limit;
     mux->references = 2;
     mux->want = 4;
-    mux->receive = malloc(capacity);
+    mux->receive = malloc(mux->wire_capacity);
     mux->decode = malloc(capacity);
     mux->slots = calloc(limit, sizeof(*mux->slots));
     mux->life = styxlifecreate();
@@ -279,4 +302,13 @@ int styxmuxwatchable(StyxMux *mux)
     int valid = !mux->failed && !mux->stopping && mux->limit >= 2;
     pthread_mutex_unlock(&mux->lock);
     return valid;
+}
+
+
+/* EN/RU: See mux.h; ordinary construction retains the exact raw 9P framing and allocation bounds.
+ * См. mux.h; ordinary constructor сохраняет raw 9P framing и allocation bounds.
+ */
+StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit)
+{
+    return styxmuxcreatewalkphy(phy, capacity, timeout, limit, 0);
 }

@@ -91,6 +91,9 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.path == 1)
     {
+#ifdef STYX_WALK_TEST
+        check(walk_depth() >= 1, "client traversal history not imported on server owner");
+#endif
         *count = offset < 0 || offset > 6 ? 0 : styxreadstr(offset, bytes, *count, "serial");
         return nil;
     }
@@ -189,7 +192,14 @@ int main(int argc, char **argv)
     ops.write = writefile;
     ops.freefid = freefile;
     ops.freeclient = freeclient;
+#ifdef STYX_WALK_TEST
+    unsigned long domain[4] = {8, 7, 6, 5};
+    WalkEntity root;
+    check(walk_domain(domain) && walk_entity(&root), "server endpoint identity");
+    check(!styxphywalkinit(&server, &ops, phy, 0555, 1, 2, &root), "history PHY original server init");
+#else
     check(!styxphyinit(&server, &ops, phy, 0555, 1, 2), "PHY original server init");
+#endif
     check(styxaddfile(&server, Qroot, 1, "data", 0444, "fixture") &&
         styxaddfile(&server, Qroot, 2, "events", 0444, "fixture"), "ordinary served files");
     check(styxadddir(&server, Qroot, 3, "locked", 0444, "fixture") &&

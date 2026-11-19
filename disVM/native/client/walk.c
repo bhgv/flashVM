@@ -66,6 +66,26 @@ static StyxFid *walk(StyxClient *client, StyxFid *base, const char *relative, St
         free(fid);
         return NULL;
     }
+    const char *prefix = base ? base->walk_path : ".";
+    size_t first = strcmp(prefix, ".") ? strlen(prefix) : 0;
+    size_t tail = strcmp(relative, ".") ? strlen(relative) : 0;
+    if (first + tail + 2 > sizeof(fid->walk_path))
+    {
+        styxcancelend(cancel);
+        free(fid);
+        return NULL;
+    }
+    memcpy(fid->walk_path, prefix, first);
+    if (first && tail)
+    {
+        fid->walk_path[first++] = '/';
+    }
+    memcpy(fid->walk_path + first, relative, tail);
+    fid->walk_path[first + tail] = 0;
+    if (!first && !tail)
+    {
+        strcpy(fid->walk_path, ".");
+    }
     int remote = 0;
     pthread_mutex_lock(&client->lock);
     if ((base && (base->opened || base->poisoned)) ||

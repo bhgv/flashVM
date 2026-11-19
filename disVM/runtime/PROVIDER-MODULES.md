@@ -5,7 +5,8 @@ applications and dependencies from its granted VFS providers. The existing typed
 Limbo `load`/module-call interface and original Dis parser remain unchanged.
 Typed module lookup uses [caller-local first](CODE-LOOKUP.md); accepted provider-local
 launches therefore consider the provider class first. Ordinary data
-keeps its terminal-first policy. No display context or application-specific remote
+keeps its explicitly selected policy; [per-instance owner-first environments](VFS-TRAVERSAL.md)
+use the actual configured stack for data and loads. No display context or application-specific remote
 client is required for this loader.
 
 Исполняющий DisVM на стороне провайдера читает `.dis` через выданные VFS-handles.
@@ -146,13 +147,21 @@ actual compiler imports are checked against parsed owner exports before root
 preparation. A separately compiled int/big result mismatch is refused, while
 normal parent/child application and dependency execution remains unchanged.
 
-There are now 50 interpreter/JIT scenarios. Ten additional runs replace a target
+The first 50 interpreter/JIT scenarios cover the typed-admission boundary. Ten additional runs replace a target
 after admission on client/provider sides, refuse each actual snapshot-allocation
 position, and verify inherited requirements in a child after the provider changes
 future target opens. [Process contract retention](MODULE-INTERFACE.md) and actual
 loader-guard refusal are observed independently of the ordinary linker result.
 
-The 50 scenarios now additionally exercise the [explicit native binding bridge](MODULE-INTERFACE.md):
+Those 50 scenarios also exercise the [explicit native binding bridge](MODULE-INTERFACE.md):
 actual parsed Module ownership, complete requirements before ordinary linkmod,
 original entry frames/PCs, unused required members, snapshot allocation failures
 and recovery. This is owner-local linking, not transparent network module loading.
+
+
+There are now **58 interpreter/JIT scenarios**. The eight added runs exercise
+provider-side per-Modlink namespace attachment, actual dependency and Sys calls,
+FORKNS inside a bound module, separate namespaces for two instances, and inherited
+redirected stdin with its original shared offset. Positive explicit binding checks
+also exercise `dvm_module_link_prepared`, including final native namespace cleanup.
+See [active traversal and instance environments](VFS-TRAVERSAL.md).

@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "disvm/refcount.h"
 #include "module_retirement.h"
+#include "../../module_interface/environment.h"
 #include "../../gc_fields.h"
 #include "../../runtime_gc.h"
 #include <stdio.h>
@@ -46,6 +47,7 @@ void dvm_gc_fast_module_finalize(Heap *heap)
         abort();
     }
     Module *module = H2D(Modlink *, heap)->m;
+    dvm_module_environment_retire(H2D(Modlink *, heap));
     H2D(Modlink *, heap)->m = NULL;
     unload(module);
 }
@@ -93,6 +95,7 @@ void dvm_gc_fast_module_graph_finalize(Heap *heap, Module *module)
         fputs("disvm: invalid graph-owned native Module finalization\n", stderr);
         abort();
     }
+    dvm_module_environment_retire(H2D(Modlink *, heap));
     H2D(Modlink *, heap)->m = NULL;
     module->origmp = H;
     dvm_runtime_module_finish(module);

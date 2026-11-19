@@ -5,6 +5,7 @@
 #include "boot.h"
 #include "internal.h"
 #include "sysevents.h"
+#include "walk_boot.h"
 #include <stdio.h>
 #include <unistd.h>
 
@@ -28,7 +29,7 @@ int dvm_namespace_boot_initialize(const char *package_directory)
     DVM_NamespacePlan source, on;
     DVM_Namespace *group;
     size_t index;
-    if (startup_group || !package_directory || !getcwd(cwd, sizeof(cwd)))
+    if (startup_group || !package_directory || !getcwd(cwd, sizeof(cwd)) || !dvm_vfs_walk_initialize())
     {
         return 0;
     }

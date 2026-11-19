@@ -17,6 +17,7 @@
 #include "images.h"
 #include "vfs/loader.h"
 #include "contracts.h"
+#include "environment.h"
 #include "binding.h"
 #include "vfs/launch/context.h"
 #include "module_interface/launch.h"
@@ -299,6 +300,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     dvm_launch_service_free(client);
     dvm_launch_endpoint_free(server_endpoint);
     dvm_launch_endpoint_free(client_endpoint);
+    environment_prepare(&options);
     Prog *process = __real_dvm_runtime_launch_module(module, handoff);
     launch_check(process && !handoff->group, "image-root environment adopted before first guest dispatch");
     dvm_launch_handoff_free(handoff);
@@ -316,7 +318,7 @@ void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
     unsigned expected_execution_opens = (CONTROL >= 20 && CONTROL <= 23) || CONTROL == 13 || CLIENT_OWNER ? 0U :
-        (CONTROL == 16 || CONTROL == 18) ? 2U : CONTROL ? 1U : 4U;
+        (CONTROL == 16 || CONTROL == 18 || CONTROL == 27) ? 2U : CONTROL ? 1U : 4U;
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
         terminal_images.opened == (CLIENT_OWNER && CONTROL != 21 ? 2U : 0U) &&
         execution_images.opened == expected_execution_opens, "provider code source and lifetime isolation");
@@ -326,6 +328,8 @@ void __wrap_dvm_namespace_boot_shutdown(void)
     launch_check(provider_lookups && (CLIENT_OWNER ? terminal_lookups != 0 : terminal_lookups == 0),
         "actual caller-side load coverage");
     launch_check((CONTROL == 10 || CONTROL == 13 || checked_targets) &&
-        refused_targets == (CONTROL >= 20 ? 1U : 0U), "actual inherited target-contract guard coverage");
+        refused_targets == (CONTROL >= 20 && CONTROL <= 24 ? 1U : 0U), "actual inherited target-contract guard coverage");
+    launch_check(CONTROL < 25 || environment_bindings == (CONTROL == 27 ? 2U : 1U),
+        "actual module instance environment coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

@@ -5,7 +5,8 @@
 #ifndef DVM_LAUNCH_PREPARE_H
 #define DVM_LAUNCH_PREPARE_H
 #include "../resource.h"
-#define DVM_LAUNCH_TERMINAL_FIRST 1U /* Only currently negotiated initial union policy. */
+#define DVM_LAUNCH_TERMINAL_FIRST 1U /* Legacy explicit terminal-first union policy. */
+#define DVM_LAUNCH_OWNER_FIRST 2U /* Per-module owner VFS above the caller-provided live Styx projection. */
 
 
 /* EN/RU: Borrowed granted roots and copied identity; caller retains inputs through preparation.
@@ -28,7 +29,7 @@ int dvm_launch_origin_valid(const DVM_Origin *origin, unsigned role);
 
 /* EN/RU: Build owned isolated namespace/NULL before init. Native-only metadata/capture may block;
  * caller supplies a scope only for capable roots. No guest execution, FD transfer or wire protocol.
- * Capture roots, validate directories and cancel, then publish privately built terminal-first stack.
+ * Capture roots, validate directories and cancel, then publish the explicitly selected private stack once per instance.
  * Создать owned isolated namespace/NULL до init; native metadata/capture может ждать.
  * Без guest execution/FD transfer/wire; roots удержаны, dirs/cancel проверены до выдачи результата. */
 DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options);

@@ -5,6 +5,7 @@
 #ifndef DVM_MODULE_INTERFACE_BINDING_H
 #define DVM_MODULE_INTERFACE_BINDING_H
 #include "contract.h"
+#include "environment.h"
 struct Modlink;
 
 
@@ -30,4 +31,16 @@ struct Module *dvm_module_check_contract(struct Module *module, const DVM_Launch
  */
 struct Modlink *dvm_module_link_contract(struct Module *module, struct Import *imports, int mkmp,
     const DVM_LaunchContract *required);
+
+
+/* [GC:] EN/RU: Original typed linking plus retained per-instance prepared provider-side namespace; owned link/H.
+ * Consume local Module on all outcomes; borrow imports/required/group through return/exception.
+ * group must be separately prepared for this instance before ACTIVE admission; linking performs no remote I/O.
+ * Environment attachment uses native allocation only; failure destroys the unexposed link and keeps caller's group pin.
+ * FD0/1/2 and terminal capabilities remain the caller's actual inherited objects, including shell redirections.
+ * Typed linking с per-instance prepared namespace; свой link/H. Module поглотить всегда; прочие inputs borrowed.
+ * Group готовится у провайдера до ACTIVE admission. Нет remote I/O; FD/terminal не подменяются.
+ */
+struct Modlink *dvm_module_link_prepared(struct Module *module, struct Import *imports, int mkmp,
+    const DVM_LaunchContract *required, DVM_Namespace *group);
 #endif

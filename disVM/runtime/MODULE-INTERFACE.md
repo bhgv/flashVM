@@ -205,7 +205,7 @@ Module, followed by its Modlink, retains the actual chosen implementation throug
 ordinary native ownership. A later VFS bind does not cause this API to look up a
 new object. This does not turn a filename or a system ID into execution authority.
 
-The 50 real interpreter/JIT module scenarios also exercise explicit bindings of
+The 58 real interpreter/JIT module scenarios also exercise explicit bindings of
 source-built images parsed under an unrelated alias label. Success preserves the
 exact Module identity, original entry frame/PC and requested link count. Refusals
 cover real int/big mismatch, a required export unused by the current imports,
@@ -217,9 +217,9 @@ state is local to the startup controller's native thread.
 
 A private control that skips complete requirements for the unused-member case
 fails semantically in both engines, where ordinary import linking alone would
-succeed. Build errors, signals and timeouts do not count. Eight affected runtime
+succeed. Build errors, signals and timeouts do not count. Affected runtime
 checks pass normally and with ASan/UBSan, including module retirement, module
-cycles, source-generation idempotence and the 50 provider-module scenarios. Public
+cycles, source-generation idempotence and the 58 provider-module scenarios. Public
 binding declarations also compile standalone as strict C89 and C++98.
 
 This is an explicit native owner-side primitive. Ordinary Limbo `load` still uses
@@ -228,3 +228,15 @@ remote module value or an implicit alias-to-contract association. Future generat
 proxies can use the explicit bridge after resolving and loading their actual
 owner-local implementation. Remote discovery, marshalling and invocation remain
 separate work; no wire layout or S-record tag is assigned by this API.
+
+
+## Per-instance prepared namespace / Подготовленный namespace экземпляра
+
+[`dvm_module_link_prepared`](module_interface/binding.h) performs the same complete
+contract check and original Inferno linking, then attaches a previously prepared
+provider-side namespace to that private actual Modlink. Attachment does no remote
+I/O or managed allocation; failure retires the unexposed link. The caller keeps
+its namespace pin until return and can release it after successful attachment.
+The result owns its independent native environment until managed retirement.
+See [VFS traversal and module lifetime](VFS-TRAVERSAL.md) for stack order, nested
+calls, pctl, FD preservation, collector cleanup and remaining remote proxy scope.

@@ -13,6 +13,8 @@
 #include "vfs/launch/runtime.h"
 #include "sys_capture.h"
 #include "vfs/boot.h"
+#include "vfs/guest.h"
+#include "module_interface/environment.h"
 #include "vfs/sysevents.h"
 #include "disvm/native_process.h"
 #include "disvm/unibus_binding.h"
@@ -44,7 +46,8 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     {
         snprintf(environment->syserrstr, ERRMAX, "%s", source->syserrstr);
     }
-    DVM_Namespace *group = parent ? ((DVM_RuntimeProcess *)parent)->namespace_group : dvm_namespace_boot_group();
+    DVM_Namespace *group = parent ? (parent == currun() ? dvm_namespace_current_group() :
+        ((DVM_RuntimeProcess *)parent)->namespace_group) : dvm_namespace_boot_group();
     if (!group || !dvm_namespace_retain(group))
     {
         return 0;
@@ -90,6 +93,7 @@ void dvm_process_environment_destroy(Prog *process)
         dvm_sysevents_retire(owner->system_events);
         dvm_sysevents_release(owner->system_events);
         owner->system_events = NULL;
+        dvm_module_environment_release(process);
         dvm_namespace_release(owner->namespace_group);
         owner->namespace_group = NULL;
     }

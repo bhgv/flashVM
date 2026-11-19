@@ -83,7 +83,7 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
     {
         *out = NULL;
     }
-    if (!out || !spec || spec->policy != DVM_LAUNCH_TERMINAL_FIRST || !dvm_launch_root_cancellable(spec->terminal) ||
+    if (!out || !spec || (spec->policy != DVM_LAUNCH_TERMINAL_FIRST && spec->policy != DVM_LAUNCH_OWNER_FIRST) || !dvm_launch_root_cancellable(spec->terminal) ||
         !dvm_launch_origin_valid(&spec->terminal_origin, DVM_ORIGIN_TERMINAL) ||
         !dvm_origin_id_valid(spec->expected_provider) || !spec->module[0] ||
         !memchr(spec->module, 0, sizeof(spec->module)) || spec->argument_bytes > DVM_LAUNCH_ARGUMENT_LIMIT ||

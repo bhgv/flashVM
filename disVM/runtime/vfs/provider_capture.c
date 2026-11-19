@@ -2,7 +2,7 @@
  * EN: Native captured-root capabilities with source-pinned invalidation forwarding.
  * RU: Native captured-root capabilities с source-pinned forwarding invalidations.
  */
-#include "provider_internal.h"
+#include "provider_walk.h"
 #include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
@@ -77,7 +77,13 @@ DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative)
     {
         return NULL;
     }
+    WalkScope scope = {0};
+    if (dvm_provider_walk_enter(provider, relative, WALK_CAPTURE, "", &scope) != FVM_OK)
+    {
+        return NULL;
+    }
     DVM_Provider *captured = provider->capture(provider->state, relative);
+    dvm_provider_walk_leave(&scope);
     if (!captured)
     {
         return NULL;

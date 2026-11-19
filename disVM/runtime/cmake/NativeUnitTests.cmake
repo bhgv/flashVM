@@ -34,67 +34,67 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     set_tests_properties(disvm_native_fp_records PROPERTIES TIMEOUT 10 LABELS "host-unit")
     add_executable(disvm_vfs_handle_test vfs/test_handle.c vfs/handle.c vfs/io_result.c)
     target_include_directories(disvm_vfs_handle_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_vfs_handle_test PRIVATE disvm_flashvm_host)
+    target_link_libraries(disvm_vfs_handle_test PRIVATE disvm_flashvm_host vfs_walk)
     add_test(NAME disvm_vfs_handle COMMAND disvm_vfs_handle_test)
     set_tests_properties(disvm_vfs_handle PROPERTIES TIMEOUT 10 LABELS "host-unit")
     add_executable(disvm_sysevents_test vfs/test_sysevents.c vfs/test_notice.c vfs/test_sysevents_queue.c
         vfs/test_sysevents_race.c vfs/test_sysevents_subscriptions.c vfs/sysevents.c vfs/sysevents_watch.c
         vfs/sysevents_stream.c vfs/sysevents_device.c owner_messages.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c
+        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c
         vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_sysevents_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_sysevents_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_sysevents_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     set_property(TARGET disvm_sysevents_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
     add_test(NAME disvm_sysevents COMMAND disvm_sysevents_test)
     set_tests_properties(disvm_sysevents PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_stack_test vfs/test_stack.c vfs/stack.c vfs/stack_target.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c
+        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c
         vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_stack_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_stack_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_stack_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     set_property(TARGET disvm_stack_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
     add_test(NAME disvm_stack COMMAND disvm_stack_test)
     set_tests_properties(disvm_stack PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_eventfs_test vfs/test_eventfs.c vfs/eventfs.c vfs/eventfile.c
-        vfs/handle.c vfs/io_result.c vfs/cancel.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
+        vfs/handle.c vfs/io_result.c vfs/cancel.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
     target_include_directories(disvm_eventfs_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_eventfs_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_eventfs_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_eventfs COMMAND disvm_eventfs_test)
     set_tests_properties(disvm_eventfs PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_changes_test vfs/test_changes.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
     target_include_directories(disvm_changes_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_changes_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_changes_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_changes COMMAND disvm_changes_test)
     set_tests_properties(disvm_changes PROPERTIES TIMEOUT 20 LABELS "host-unit")
-    add_executable(disvm_io_result_test vfs/test_io_result.c vfs/handle.c vfs/io_result.c vfs/cancel.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
+    add_executable(disvm_io_result_test vfs/test_io_result.c vfs/handle.c vfs/io_result.c vfs/cancel.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
     target_include_directories(disvm_io_result_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_io_result_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_io_result_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_io_result COMMAND disvm_io_result_test)
     set_tests_properties(disvm_io_result PROPERTIES TIMEOUT 10 LABELS "host-unit")
     add_executable(disvm_provider_mount_test vfs/test_provider_mount.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c
-        vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
+        vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_provider_mount_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_provider_mount_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_provider_mount_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_provider_mount COMMAND disvm_provider_mount_test)
     set_tests_properties(disvm_provider_mount PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_layer_order_test vfs/test_layer_order.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c
+        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c
         vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_layer_order_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_layer_order_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_layer_order_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_layer_order COMMAND disvm_layer_order_test)
     set_tests_properties(disvm_layer_order PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_auto_access_test vfs/test_auto_access.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c
+        vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c
         vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_auto_access_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_auto_access_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_auto_access_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_auto_access COMMAND disvm_auto_access_test)
     set_tests_properties(disvm_auto_access PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c
-        vfs/observation.c vfs/resolution.c vfs/provider.c vfs/provider_capture.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
+        vfs/observation.c vfs/resolution.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     add_test(NAME disvm_namespace_concurrent COMMAND disvm_namespace_test)
     add_test(NAME disvm_anchor_port COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_anchor_port.py" "$<TARGET_FILE:disvm_anchor_port_test>")
@@ -115,7 +115,7 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND anchor_includes "${DVM_FLASHVM_SOURCE_ROOT}/ports" "${DVM_FLASHVM_SOURCE_ROOT}/include")
     add_executable(disvm_anchor_port_test vfs/test_anchor_port.c)
     target_include_directories(disvm_anchor_port_test PRIVATE ${anchor_includes})
-    target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
     target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
 endif()
 

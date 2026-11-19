@@ -31,7 +31,7 @@ static char value(DVM_Namespace *group, const char *path, unsigned *role)
  * Проверить refusal policy/identity/type/cancel без namespace publication и лишних callbacks. */
 static void refusals(DVM_LaunchOptions *options, LaunchState *terminal, LaunchState *provider)
 {
-    options->policy = 2;
+    options->policy = 0xffffffffU;
     launch_check(!dvm_launch_prepare(options), "unknown policy accepted");
     options->policy = DVM_LAUNCH_TERMINAL_FIRST;
     options->terminal_origin.system[42] = 'B';

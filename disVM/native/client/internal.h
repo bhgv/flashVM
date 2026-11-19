@@ -19,6 +19,7 @@ struct StyxClient
     int terminal; /* First legacy terminal reason, serialized by client lock. */
     StyxMux *mux; /* Optional independent native owner; no Client pointers retained by it. */
     int transportclosed; /* Legacy transport close already consumed by explicit shutdown. */
+    int cycle; /* Current acknowledged traversal-cycle annotation, copied before cleanup RPCs. */
     int cancelled; /* Current returned RPC cancelled, under client lock. */
     int bidir; /* Immutable native carrier bidirectional-session capability; not peer authority/liveness. */
     unsigned error_profile; /* Host-selected immutable lookup error vocabulary, default opaque. */
@@ -40,6 +41,7 @@ struct StyxClient
 struct StyxFid
 {
     StyxClient *client; /* Retained connection until clunk. */
+    char walk_path[STYX_NAME_MAX]; /* Canonical relative root path for traversal identity, never reopened for I/O. */
     u32int number; /* Independent remote fid, never keyed by Qid. */
     Qid qid; /* Last walked/opened remote identity. */
     unsigned unit; /* Maximum read/write payload, negotiated and Ropen-limited. */

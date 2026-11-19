@@ -17,7 +17,7 @@ void styxphyreceive(StyxPhyWake *context)
         if (context->used == 4 && context->wanted == 4)
         {
             context->wanted = GBIT32(context->receive);
-            if (context->wanted < 7 || context->wanted > MSGMAX)
+            if (context->wanted < 7 || context->wanted > context->capacity)
             {
                 context->failed = 1;
                 return;
@@ -47,7 +47,7 @@ void styxphyoutput(StyxPhyWake *context)
     {
         unsigned remaining = context->lengths[context->first]-context->sent;
         PhyTransfer out = phywrite(context->phy,
-            context->output+context->first*MSGMAX+context->sent, remaining);
+            context->output+context->first*context->stride+context->sent, remaining);
         context->sent += out.count;
         if ((out.flags & PHY_UNCERTAIN) || (out.status != PHY_OK && out.status != PHY_AGAIN))
         {
@@ -106,8 +106,40 @@ int styxsend(Styxserver *server, int token, char *bytes, int size, int flags)
         return -1;
     }
     unsigned slot = (context->first+context->queued)%context->slots;
-    memmove(context->output+slot*MSGMAX, bytes, size);
-    context->lengths[slot] = size;
+    if (context->walk_mode)
+    {
+        if (!styxphywalkresponse(context, bytes, (unsigned)size))
+        {
+            context->failed = 1;
+            return -1;
+        }
+        size_t length = 0;
+        unsigned kind = WALK_PACKET_REPLY;
+        if ((unsigned char)bytes[4] == Rerror && context->walk_cycle &&
+            GBIT16((unsigned char *)bytes + 5) == context->walk_request.tag)
+        {
+            kind |= WALK_PACKET_CYCLE;
+        }
+        void *packet = walk_packet_write(kind, context->walk_tag, &context->walk_root, bytes, (size_t)size, &length);
+        if (!packet || length > context->stride)
+        {
+            free(packet);
+            context->failed = 1;
+            return -1;
+        }
+        if (GBIT16((unsigned char *)bytes + 5) == context->walk_request.tag)
+        {
+            context->walk_cycle = 0;
+        }
+        memmove(context->output + slot * context->stride, packet, length);
+        context->lengths[slot] = (unsigned)length;
+        free(packet);
+    }
+    else
+    {
+        memmove(context->output + slot * context->stride, bytes, size);
+        context->lengths[slot] = size;
+    }
     context->queued++;
     return size;
 }

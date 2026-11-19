@@ -36,7 +36,7 @@ void styxbeattraffic(StyxMux *mux)
     StyxBeat *beat = &mux->beat;
     double now = styxmuxtime();
     beat->due = now+beat->idle;
-    if (beat->active && beat->sent == sizeof(beat->bytes))
+    if (beat->active && beat->sent == beat->length)
     {
         beat->missed = 0;
         beat->deadline = now+beat->budget;
@@ -74,6 +74,19 @@ int styxbeattick(StyxMux *mux, double now)
             styxmuxbroken(mux);
             return 0;
         }
+        beat->length = sizeof(beat->bytes);
+        if (mux->walk_tag)
+        {
+            size_t encoded = 0;
+            beat->wire = walk_packet_write(WALK_PACKET_REQUEST, mux->walk_tag, NULL,
+                beat->bytes, sizeof(beat->bytes), &encoded);
+            if (!beat->wire)
+            {
+                styxmuxbroken(mux);
+                return 0;
+            }
+            beat->length = (unsigned)encoded;
+        }
         beat->active = 1;
         beat->sent = 0;
         beat->missed = 0;
@@ -94,7 +107,7 @@ int styxbeattick(StyxMux *mux, double now)
         beat->missed += elapsed;
         beat->deadline += elapsed*beat->budget;
         beat->suspect = 1;
-        beat->notice = beat->sent == sizeof(beat->bytes) ? STYX_LINK_SUSPECT : STYX_LINK_STALLED;
+        beat->notice = beat->sent == beat->length ? STYX_LINK_SUSPECT : STYX_LINK_STALLED;
     }
     double until = (beat->active ? beat->deadline : beat->due)-now;
     return until > 120000 ? 120000 : (int)until+1;
@@ -106,14 +119,14 @@ int styxbeattick(StyxMux *mux, double now)
 void styxbeatsend(StyxMux *mux)
 {
     StyxBeat *beat = &mux->beat;
-    PhyTransfer out = phywrite(mux->phy, beat->bytes+beat->sent, sizeof(beat->bytes)-beat->sent);
+    PhyTransfer out = phywrite(mux->phy, (beat->wire ? beat->wire : beat->bytes) + beat->sent, beat->length - beat->sent);
     if ((out.flags & PHY_UNCERTAIN) || (out.status != PHY_OK && out.status != PHY_AGAIN))
     {
         styxmuxbroken(mux);
         return;
     }
     beat->sent += out.count;
-    if (beat->sent == sizeof(beat->bytes))
+    if (beat->sent == beat->length)
     {
         beat->missed = 0;
         beat->deadline = styxmuxtime()+beat->budget;
@@ -131,12 +144,20 @@ int styxbeatreply(StyxMux *mux)
     }
     StyxBeat *beat = &mux->beat;
     Fcall reply;
-    if (!beat->active || beat->sent != sizeof(beat->bytes) || mux->want != 7 ||
+    if (!beat->active || beat->sent != beat->length || mux->want != 7 ||
         convM2S(mux->receive, mux->want, &reply) != mux->want || reply.type != Rflush)
     {
         return 0;
     }
     beat->active = 0;
+    if (beat->completed != ~0ULL)
+    {
+        beat->completed++;
+    }
+    pthread_cond_broadcast(&mux->ended);
+    free(beat->wire);
+    beat->wire = NULL;
+    beat->length = 0;
     if (beat->suspect)
     {
         beat->notice = STYX_LINK_READY;

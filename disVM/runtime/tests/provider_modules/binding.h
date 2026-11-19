@@ -33,7 +33,9 @@ Modlink *__wrap_linkmod(Module *module, Import *imports, int mkmp)
     {
         binding_links++;
     }
-    return __real_linkmod(module, imports, mkmp);
+    Modlink *link = __real_linkmod(module, imports, mkmp);
+    environment_attach(link);
+    return link;
 }
 
 
@@ -78,13 +80,17 @@ static void binding_attempt(const char *file, Import *imports, const DVM_LaunchC
     unsigned failure, int expected)
 {
     Module *module = binding_image(file);
+    DVM_Namespace *prepared = expected && !failure ? dvm_namespace_create("/", "/", NULL) : NULL;
+    launch_check(!expected || failure || prepared, "explicit prepared linker environment");
     binding_input = module;
     binding_links = 0;
     binding_unloads = 0;
     binding_allocation = failure;
     binding_watching = 1;
-    Modlink *link = dvm_module_link_contract(module, imports, 1, required);
+    Modlink *link = prepared ? dvm_module_link_prepared(module, imports, 1, required, prepared) :
+        dvm_module_link_contract(module, imports, 1, required);
     binding_watching = 0;
+    dvm_namespace_release(prepared);
     launch_check(!binding_allocation, "explicit binding snapshot refusal was not reached");
     if (expected)
     {
