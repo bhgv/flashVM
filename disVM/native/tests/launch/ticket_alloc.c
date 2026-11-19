@@ -8,8 +8,20 @@ static void *live[4096]; /* Native test-owned allocation index, no allocation wh
 static int accounting; /* Only ticket/preparation/handoff allocations are recorded. */
 static unsigned allocation; /* Count only allocations during the selected controlled call. */
 static unsigned fail_at; /* One-based refusal position, zero disables injection. */
+
+
+/* EN/RU: Original allocator for bytes; return owned storage/NULL, no observer recursion.
+ * Исходный allocator для bytes; свой storage/NULL, без observer recursion. */
 void *__real_malloc(size_t bytes);
+
+
+/* EN/RU: Original zeroed count*bytes allocator; owned storage/NULL, no observer recursion.
+ * Исходный zeroed allocator count*bytes; свой storage/NULL, без observer recursion. */
 void *__real_calloc(size_t count, size_t bytes);
+
+
+/* EN/RU: Original free consumes pointer/NULL; no observer recursion or ownership retained.
+ * Исходный free поглощает pointer/NULL; без observer recursion и удержания ownership. */
 void __real_free(void *pointer);
 
 
@@ -115,11 +127,15 @@ static void service_failures(DVM_LaunchOptions *options, DVM_LaunchSpec *spec)
 }
 
 
-/* EN/RU: Fail each constructor allocation, then each handoff allocation, preserving transferable READY.
- * Проверить constructor/handoff allocations, сохранив transferable READY после отказа take. */
-int main(void)
+/* EN/RU: argc/argv optionally select typed mode; fail constructor/handoff allocations while preserving transferable READY.
+ * Return0 after complete allocation drain, explicit exit2 on failure.
+ * argc/argv выбирают optional typed mode; проверить constructor/handoff allocations, сохраняя transferable READY.
+ * Return0 после полного allocation drain, явный exit2 при отказе. */
+int main(int argc, char **argv)
 {
-    LaunchState terminal = {0}, provider = {0};
+    int typed = argc == 2 && !strcmp(argv[1], "typed");
+    LaunchState terminal = {0};
+    LaunchState provider = {0};
     terminal.terminal = 1;
     DVM_LaunchOptions options = launch_options(&terminal, &provider);
     DVM_LaunchSpec spec = {0};
@@ -135,6 +151,24 @@ int main(void)
     strcpy(channels.receive, ".");
     strcpy(channels.send, ".");
     spec.flashvm = &channels;
+    DVM_LaunchSymbol symbol = {"value", 0x80000000UL};
+    if (typed)
+    {
+        allocation = 0;
+        fail_at = 1;
+        launch_check(!dvm_launch_contract_create(&symbol, 1), "contract creation ignored allocation refusal");
+        fail_at = 0;
+    }
+    DVM_LaunchContract *contract = typed ? dvm_launch_contract_create(&symbol, 1) : NULL;
+    launch_check(!typed || contract, "typed allocation fixture");
+    if (typed)
+    {
+        allocation = 0;
+        fail_at = 1;
+        launch_check(!dvm_launch_contract_clone(contract), "contract cloning ignored allocation refusal");
+        fail_at = 0;
+    }
+    spec.contract = contract;
     accounting = 1;
     unsigned failures = 0;
     for (unsigned position = 1; position <= 32; position++)
@@ -165,7 +199,8 @@ int main(void)
         DVM_LaunchRequest *review = NULL;
         DVM_LaunchTicket *pending = dvm_launch_request_create(&spec, &review);
         DVM_CancelScope outer = {0};
-        launch_check(pending && dvm_cancel_enter(&outer, parent), "outer refusal scope");
+        launch_check(pending && (!typed || dvm_launch_request_check(review, contract)) &&
+            dvm_cancel_enter(&outer, parent), "outer refusal scope");
         allocation = 0;
         fail_at = position;
         int ready = dvm_launch_request_prepare(review, options.provider, &options.provider_origin);
@@ -185,7 +220,8 @@ int main(void)
     dvm_cancel_release(parent);
     DVM_LaunchRequest *request = NULL;
     DVM_LaunchTicket *ticket = dvm_launch_request_create(&spec, &request);
-    launch_check(ticket && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "prepare for take refusal");
+    launch_check(ticket && (!typed || dvm_launch_request_check(request, contract)) &&
+        dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "prepare for take refusal");
     for (unsigned position = 1; position <= 2; position++)
     {
         allocation = 0;
@@ -206,6 +242,7 @@ int main(void)
         launch_check(!live[i], "ticket/preparation/handoff allocation leaked");
     }
     accounting = 0;
+    dvm_launch_contract_free(contract);
     dvm_provider_release(options.terminal);
     dvm_provider_release(options.provider);
     launch_check(terminal.destroyed == 1 && provider.destroyed == 1, "allocation refusal leaked root owners");

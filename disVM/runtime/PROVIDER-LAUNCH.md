@@ -135,3 +135,8 @@ and general `.m` marshalling are still unfinished. This native advertisement is
 one boundary needed for those paths, not a claim that remote module calls are
 already transparent. See [routing](LAUNCH-ROUTE.md),
 [code lookup](CODE-LOOKUP.md) and [actual module execution](PROVIDER-MODULES.md).
+
+[Native interface admission](MODULE-INTERFACE.md) adds an optional copied Inferno
+name/signature contract to each independent submission. The owner must validate
+its actual exports before preparing a typed request. Resolved addresses remain
+reusable for different required subsets; no code or value codec is downloaded.

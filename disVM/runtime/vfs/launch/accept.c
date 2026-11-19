@@ -45,7 +45,7 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
         return 0;
     }
     fvm_port_sync_lock(shared->lock);
-    int admitted = shared->state == DVM_LAUNCH_PENDING;
+    int admitted = shared->state == DVM_LAUNCH_PENDING && shared->contract_checked;
     if (admitted)
     {
         shared->state = DVM_LAUNCH_PREPARING;

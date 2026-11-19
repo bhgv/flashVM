@@ -206,7 +206,7 @@ add_library(styx_namespace_fixture STATIC
     "${vfs}/launch/terminal.c"
     "${vfs}/path.c" "${vfs}/group.c" "${vfs}/mutations.c" "${vfs}/layer_bind.c"
     "${vfs}/union_io.c" "${vfs}/directory.c" "${vfs}/directory_names.c" "${vfs}/auto_access.c"
-    "${vfs}/launch/service.c" "${vfs}/launch/service_wait.c" "${vfs}/launch/address.c" "${vfs}/launch/route.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
+    "${vfs}/launch/service.c" "${vfs}/launch/service_wait.c" "${vfs}/launch/address.c" "${vfs}/launch/route.c" "${vfs}/launch/admission.c" "${vfs}/launch/ticket.c" "${vfs}/launch/contract.c" "${vfs}/launch/contract_request.c" "${vfs}/launch/accept.c" "${vfs}/launch/prepare.c" "${vfs}/cwd_acquire.c" "${vfs}/resolution.c" "${vfs}/resource.c" "${vfs}/anchor.c" "${vfs}/resource_groups.c"
     "${vfs}/stack.c" "${vfs}/stack_target.c" "${vfs}/export_native.c")
 target_link_libraries(styx_namespace_fixture PUBLIC styx_vfs)
 # EN/RU: Public native namespace SDK name; existing fixture consumers retain their target.
@@ -450,3 +450,12 @@ add_test(NAME vfs-launch-resolve COMMAND vfs-launch-resolve)
 set_tests_properties(vfs-launch-resolve PROPERTIES TIMEOUT 20)
 add_test(NAME vfs-launch-resolve-alloc COMMAND vfs-launch-discovery-alloc resolve)
 set_tests_properties(vfs-launch-resolve-alloc PROPERTIES TIMEOUT 15)
+
+# EN/RU: Inferno name/signature contracts must match before any provider environment acquisition.
+# Контракты имён/сигнатур Inferno должны совпасть до получения provider environment.
+add_executable(vfs-launch-contract ../tests/launch/contract/main.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-contract PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-contract COMMAND vfs-launch-contract)
+set_tests_properties(vfs-launch-contract PROPERTIES TIMEOUT 15)
+add_test(NAME vfs-launch-contract-alloc COMMAND vfs-launch-ticket-alloc typed)
+set_tests_properties(vfs-launch-contract-alloc PROPERTIES TIMEOUT 15)

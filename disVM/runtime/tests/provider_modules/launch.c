@@ -15,6 +15,8 @@
 #include "vfs/export.h"
 #include "../../../native/tests/launch/backend.h"
 #include "images.h"
+#include "vfs/loader.h"
+#include "contracts.h"
 #define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19) /* Actual terminal-source owner scenarios, including changed caller bind. */
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
 static __thread int route_selecting; /* Startup controller explicitly selects caller side before any guest exists. */
@@ -107,6 +109,9 @@ typedef struct Admission
 {
     DVM_LaunchService *service; /* Borrowed owner, main joins handler before closing/freeing. */
     DVM_LaunchOptions *options; /* Borrowed immutable granted root/source association. */
+    DVM_LaunchContract *exports; /* Borrowed immutable actual owner exports through native handler join. */
+    DVM_LaunchContract *wrong; /* Borrowed real compiled incompatible exports, never code executed by this thread. */
+    size_t required_count; /* Actual caller members; empty unused interfaces legitimately accept extra exports. */
     DVM_LaunchHandoff *handoff; /* Owned result moved back to the startup controller after join. */
 } Admission;
 
@@ -121,8 +126,18 @@ static void *prepare(void *state)
     launch_check(dvm_launch_service_wait(admission->service, &review) == DVM_LAUNCH_WAIT_REQUEST,
         "native admission receives one provider module request");
     DVM_LaunchRequest *request = dvm_launch_review_request(review);
-    launch_check(dvm_launch_request_prepare(request, admission->options->provider, &admission->options->provider_origin),
-        "native admission prepares provider module environment");
+    DVM_LaunchDescription description;
+    launch_check(dvm_launch_describe(request, &description) && description.typed &&
+        !dvm_launch_request_prepare(request, admission->options->provider, &admission->options->provider_origin),
+        "actual typed request bypassed interface validation");
+    if (admission->required_count)
+    {
+        launch_check(!dvm_launch_request_check(request, admission->wrong),
+            "actual Limbo int/big interface mismatch was accepted");
+    }
+    launch_check(dvm_launch_request_check(request, admission->exports) &&
+        dvm_launch_request_prepare(request, admission->options->provider, &admission->options->provider_origin),
+        "native admission checks actual exports before environment preparation");
     admission->handoff = dvm_launch_request_take(request);
     launch_check(admission->handoff != NULL, "native admission one-use take");
     dvm_launch_review_free(review);
@@ -136,6 +151,7 @@ static void *prepare(void *state)
 Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused)
 {
     (void)unused;
+    interface_adapter_checks();
     LaunchState terminal = {0}; /* Reuse existing checked source-association fixture only. */
     LaunchState execution = {0}; /* Temporary local factories are disposed before image roots publish. */
     DVM_LaunchOptions options = launch_options(&terminal, &execution);
@@ -166,7 +182,15 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
         callee.provider_origin = options.terminal_origin;
         callee.provider_origin.role = DVM_ORIGIN_PROVIDER; /* That source is now the callee's local provider role. */
     }
-    Admission admission = {.service = CLIENT_OWNER ? client : server, .options = &callee};
+    DVM_LaunchContract *required = required_interface(module);
+    DVM_LaunchContract *exports = image_interface(CLIENT_OWNER ? &terminal_images.app : &execution_images.app,
+        "/native-contract-owner");
+    Image wrong_image = image_read("wrong.dis");
+    DVM_LaunchContract *wrong = image_interface(&wrong_image, "/native-contract-wrong");
+    free(wrong_image.bytes);
+    spec.contract = required;
+    Admission admission = {.service = CLIENT_OWNER ? client : server, .options = &callee,
+        .exports = exports, .wrong = wrong, .required_count = dvm_launch_contract_count(required)};
     pthread_t handler; /* Dedicated native admission thread, never a guest executor. */
     launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
     strcpy(spec.module, "/caller-label-must-not-be-used");
@@ -188,7 +212,10 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     dvm_namespace_release(caller_namespace); /* Resolved destination must work after caller view retirement. */
     DVM_LaunchTicket *ticket = dvm_launch_address_submit(address, &spec);
     dvm_launch_address_free(address);
+    dvm_launch_contract_free(required); /* Request owns its independent snapshot through owner review. */
     launch_check(ticket && !pthread_join(handler, NULL), "native resolved request and handler join");
+    dvm_launch_contract_free(exports);
+    dvm_launch_contract_free(wrong);
     DVM_LaunchHandoff *handoff = admission.handoff; /* Callee owns an independent prepared environment, no display needed. */
     if (CLIENT_OWNER)
     {

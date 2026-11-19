@@ -27,6 +27,7 @@ static void destroy(LaunchShared *shared)
         {
             fvm_port_sync_destroy(shared->lock);
         }
+        dvm_launch_contract_free(shared->contract);
         free(shared->arguments);
         free(shared);
     }
@@ -99,13 +100,17 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
         shared->lock = fvm_port_sync_create();
         shared->cancel = dvm_cancel_create();
         shared->changes = dvm_changes_create();
+        shared->contract = dvm_launch_contract_clone(spec->contract);
+        shared->contract_checked = !spec->contract;
+        shared->description.typed = spec->contract != NULL;
         if (spec->argument_bytes)
         {
             shared->arguments = malloc(spec->argument_bytes);
         }
     }
     if (!shared || !ticket || !request || !shared->lock || !shared->cancel || !shared->changes ||
-        (spec->argument_bytes && !shared->arguments) || !dvm_provider_retain(spec->terminal))
+        (spec->argument_bytes && !shared->arguments) || (spec->contract && !shared->contract) ||
+        !dvm_provider_retain(spec->terminal))
     {
         destroy(shared);
         free(ticket);

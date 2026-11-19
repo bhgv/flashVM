@@ -6,6 +6,7 @@
 #define DVM_LAUNCH_TICKET_H
 #include "prepare.h"
 #include "terminal.h"
+#include "contract.h"
 #include "../changes.h"
 #define DVM_LAUNCH_ARGUMENT_LIMIT 65536U /* Per-request copied startup bytes, no wire format assigned. */
 typedef struct DVM_LaunchTicket DVM_LaunchTicket; /* Requester status/cancel authority only. */
@@ -39,6 +40,7 @@ typedef struct DVM_LaunchSpec
     const void *arguments; /* Copied bounded startup bytes, never native/managed pointer authority. */
     size_t argument_bytes; /* 0..DVM_LAUNCH_ARGUMENT_LIMIT. */
     const DVM_TerminalChannels *flashvm; /* Optional borrowed channel grant, copied/retained at creation. */
+    const DVM_LaunchContract *contract; /* Optional borrowed immutable requirements, cloned at request creation. */
 } DVM_LaunchSpec;
 
 
@@ -52,6 +54,7 @@ typedef struct DVM_LaunchDescription
     char module[DVM_NS_PATH_LIMIT]; /* Logical module label, not a host pathname lookup. */
     size_t argument_bytes; /* Exact immutable startup byte count. */
     unsigned terminal_channels; /* One when a separate FlashVM channel grant accompanies this request. */
+    unsigned typed; /* One when owner interface validation is required before preparation; not a wire field. */
 } DVM_LaunchDescription;
 
 
@@ -85,6 +88,26 @@ int dvm_launch_handoff_unibus(DVM_LaunchHandoff *handoff, struct UnibusBinding *
 DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_LaunchRequest **request);
 
 
+/* EN/RU: Clone copied requirements for native owner inspection; owned snapshot/NULL for untyped/invalid/OOM.
+ * Borrow request through return; description.typed distinguishes untyped from a failed typed clone.
+ * No state change, authorization, I/O or code execution; snapshot outlives request/ticket after success.
+ * Копировать requirements для native owner inspection; свой snapshot/NULL при untyped/invalid/OOM.
+ * Request borrowed до return; description.typed отличает untyped от failed clone. Без state change/I/O/execution.
+ */
+DVM_LaunchContract *dvm_launch_request_contract(DVM_LaunchRequest *request);
+
+
+/* EN/RU: Owner checks actual immutable exports against copied required names/signatures;1 accepted/0 mismatch or not PENDING.
+ * Borrow request/exports through return; no ownership transfer, code execution, provider I/O or prepare on this call.
+ * A mismatch leaves PENDING for explicit refusal/review. Typed requests cannot prepare until a match is accepted.
+ * Current/request cancellation refuses; authorization and choosing the actual implementation remain the owner's responsibility.
+ * Owner сверяет actual immutable exports с copied requirements;1/0 при mismatch либо не PENDING.
+ * Inputs borrowed; без передачи ownership, code execution, provider I/O/prepare. Mismatch сохраняет PENDING.
+ * Typed request не подготавливается до match; cancellation отказывает, actual implementation/authorization выбирает owner.
+ */
+int dvm_launch_request_check(DVM_LaunchRequest *request, const DVM_LaunchContract *exports);
+
+
 /* EN/RU: Borrow live ticket; copied state, no wait or I/O; INVALID for NULL.
  * Заимствовать live ticket; copied state без ожидания/I/O, NULL — INVALID. */
 DVM_LaunchState dvm_launch_ticket_status(DVM_LaunchTicket *ticket);
@@ -109,8 +132,10 @@ DVM_Changes *dvm_launch_observe(DVM_LaunchTicket *ticket);
 
 
 /* EN/RU: Borrow provider request/root/origin through native preparation outside locks.
+ * Typed requests require an accepted request_check first; unvalidated requests remain PENDING without provider I/O.
  * Require cancellable PATH/CAPTURE routes; forward current outer native cancellation via native-only state.
  * Return1 only if READY published,0 refusal/cancel/race; one preparation, no automatic retry.
+ * Typed request требует принятого request_check; иначе PENDING без provider I/O.
  * Заимствовать request/root/origin для native подготовки вне locks; capable routes,
  * outer cancellation передаётся native state;1 READY/0 refusal, без replay. */
 int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provider, const DVM_Origin *origin);

@@ -140,3 +140,8 @@ Address discovery now precedes caller-namespace retirement and later submission.
 Two additional cases replace that namespace root with the opposite source before
 submit; the selected owner still supplies the parent/child execution environment.
 See [deferred resolution](PROVIDER-LAUNCH.md) for ownership and remaining limits.
+
+The same 40 scenarios now also exercise [native interface admission](MODULE-INTERFACE.md):
+actual compiler imports are checked against parsed owner exports before root
+preparation. A separately compiled int/big result mismatch is refused, while
+normal parent/child application and dependency execution remains unchanged.

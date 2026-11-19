@@ -17,6 +17,8 @@ typedef struct LaunchShared
     unsigned references; /* Requester plus provider wrappers. */
     DVM_LaunchState state; /* Preparation/ownership state only. */
     DVM_LaunchDescription description; /* Immutable copied request fields. */
+    DVM_LaunchContract *contract; /* Owned immutable requirements, NULL preserves legacy untyped admission. */
+    int contract_checked; /* Lock-protected one-way match acceptance while PENDING, initially true only for untyped. */
     unsigned char *arguments; /* Immutable owned request bytes. */
     DVM_Provider *terminal; /* Owned granted root, never retained by cancellation callbacks. */
     DVM_TerminalChannels flashvm; /* Owned separate FlashVM channel grant until take/final retirement. */

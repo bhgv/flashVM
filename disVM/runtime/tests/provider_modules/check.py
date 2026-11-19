@@ -27,6 +27,7 @@ def main():
             compile_image(compiler, include, root, source, work / "value.dis", [fixtures])
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
+        compile_image(compiler, include, root, fixtures / "wrong.b", work / "wrong.dis", [fixtures])
         for variant in range(20):
             main_source = work / "main.b"
             template_name = {10: "kill.b", 16: "child.b", 17: "child.b", 18: "child.b", 19: "child.b"}.get(variant, "main.b")
