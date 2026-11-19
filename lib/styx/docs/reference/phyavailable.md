@@ -46,9 +46,13 @@ Styx::carrier; hosted native build
 
 ## Example
 
-Use the complete layer examples; this lower-level entry is also documented at its exact implementation below.
+Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
-[Examples](../../examples/README.md)
+```c
+good = good && phyavailable(right, &hint) == PHY_UNSUPPORTED && hint == 123;
+```
+
+[Complete calling context](../../tests/memory_contract.c#L140)
 
 ## See also
 

@@ -49,10 +49,10 @@ Styx::client; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-int styxclientbidir(StyxClient *client);
+good = client && !styxclientbidir(client) && use_file(client);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L220)
+[Complete calling context](../../examples/memory_phy/main.c#L115)
 
 ## See also
 

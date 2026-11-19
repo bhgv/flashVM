@@ -52,10 +52,10 @@ Styx::carrier; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-int status = phywait(mux->phy, wanted, timeout, &ready);
+int good = phywait(test->phy, PHY_READ, -1, &ready) == PHY_OK && (ready & PHY_WAKE);
 ```
 
-[Complete calling context](../../client/mux_loop.c#L400)
+[Complete calling context](../../tests/memory_contract.c#L43)
 
 ## See also
 

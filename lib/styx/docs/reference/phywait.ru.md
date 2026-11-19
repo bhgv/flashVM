@@ -52,10 +52,10 @@ Styx::carrier; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-int status = phywait(mux->phy, wanted, timeout, &ready);
+int good = phywait(test->phy, PHY_READ, -1, &ready) == PHY_OK && (ready & PHY_WAKE);
 ```
 
-[Complete calling context](../../client/mux_loop.c#L400)
+[Complete calling context](../../tests/memory_contract.c#L43)
 
 ## См. также
 

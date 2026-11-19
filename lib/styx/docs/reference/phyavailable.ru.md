@@ -46,9 +46,13 @@ Styx::carrier; hosted native build
 
 ## Пример
 
-Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
-[Examples](../../examples/README.ru.md)
+```c
+good = good && phyavailable(right, &hint) == PHY_UNSUPPORTED && hint == 123;
+```
+
+[Complete calling context](../../tests/memory_contract.c#L140)
 
 ## См. также
 

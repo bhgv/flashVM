@@ -48,10 +48,10 @@ Styx::carrier; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-phyfree(mux->phy);
+phyfree(client_phy);
 ```
 
-[Complete calling context](../../client/mux.c#L23)
+[Complete calling context](../../examples/memory_phy/main.c#L78)
 
 ## See also
 

@@ -47,10 +47,10 @@ Styx::server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-long styxreadstr(ulong off, char *buf, ulong n, char *str);
+*count = offset >= (vlong)(sizeof(contents) - 1) ? 0 : styxreadstr(offset, bytes, *count, (char *)contents);
 ```
 
-[Complete calling context](../../vendor/inferno/include/readable_parts/styxserver-h/part-001.inc#L278)
+[Complete calling context](../../examples/memory_phy/server.c#L37)
 
 ## See also
 

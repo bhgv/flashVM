@@ -51,10 +51,10 @@ Styx::carrier; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-PhyTransfer out = phyread(mux->phy, mux->receive + mux->used, mux->want - mux->used);
+PhyTransfer out = phyread(right, NULL, 0);
 ```
 
-[Complete calling context](../../client/mux_loop.c#L317)
+[Complete calling context](../../tests/memory_contract.c#L141)
 
 ## See also
 

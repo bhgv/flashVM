@@ -56,9 +56,13 @@ Styx::client; hosted native build
 
 ## Пример
 
-Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
-[Examples](../../examples/README.ru.md)
+```c
+client = styxclientmountphy(client_phy, 256, "demo", "", 3000, 4);
+```
+
+[Complete calling context](../../examples/memory_phy/main.c#L113)
 
 ## См. также
 

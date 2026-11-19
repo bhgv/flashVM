@@ -46,6 +46,8 @@ def consumers(cmake, prefix, folder, package, hosted, log):
     wire = 'codec' if package == 'styx' else 'wire'
     native = 'client' if package == 'styx' else 'queues'
     required = wire + (' ' + native if hosted else '')
+    if package == 'styx' and hosted:
+        required += ' phy_server'
     build = discover(cmake, prefix, folder, name, '0.1.0 EXACT CONFIG REQUIRED COMPONENTS ' + required, log)
     cmake_source = (folder / 'CMakeLists.txt').read_text().replace('project(Discover C)', 'project(Consumer C CXX)')
     for profile, fixture in zip(('wire', 'native'), PROBES[package]):
@@ -64,11 +66,34 @@ def consumers(cmake, prefix, folder, package, hosted, log):
     standard = 99 if package == 'styx' else 90
     cmake_source += f'add_executable(documented documented.c)\ntarget_link_libraries(documented PRIVATE {name}::{wire})\n'
     cmake_source += f'set_target_properties(documented PROPERTIES C_STANDARD {standard} C_STANDARD_REQUIRED YES C_EXTENSIONS NO)\n'
+    if package == 'styx' and hosted:
+        for extension in ('c', 'cpp'):
+            code = (Path(__file__).parent / 'consumers/styx_phy.c').read_text()
+            (folder / ('phy_' + extension + '.' + extension)).write_text(code)
+            cmake_source += f'add_executable(phy_{extension} phy_{extension}.{extension})\ntarget_link_libraries(phy_{extension} PRIVATE Styx::phy_server)\n'
+            cmake_source += f'set_target_properties(phy_{extension} PROPERTIES CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)\n'
+        carrier = prefix / 'share/styx/examples/memory_phy'
+        sources = []
+        for path in sorted(carrier.glob('*')):
+            if path.suffix in ('.c', '.h'):
+                if path.suffix == '.c':
+                    sources.append(path.name)
+        # Group private example headers/sources away from the SDK probes to avoid short-name collisions.
+        memory = folder / 'memory_example'
+        memory.mkdir()
+        for path in sorted(carrier.glob('*')):
+            if path.suffix in ('.c', '.h'):
+                (memory / path.name).write_text(path.read_text())
+        cmake_source += 'add_executable(memory_example ' + ' '.join('memory_example/' + name for name in sources) + ')\n'
+        cmake_source += 'target_link_libraries(memory_example PRIVATE Styx::client Styx::phy_server)\nset_target_properties(memory_example PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)\n'
     (folder / 'CMakeLists.txt').write_text(cmake_source)
     with log.open('a') as output:
         for command in ([str(cmake), '-S', str(folder), '-B', str(build)], [str(cmake), '--build', str(build)]):
             subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, check=True)
         subprocess.run([str(build / 'documented')], stdout=output, stderr=subprocess.STDOUT, check=True)
+        if package == 'styx' and hosted:
+            for program in ('phy_c', 'phy_cpp', 'memory_example'):
+                subprocess.run([str(build / program)], stdout=output, stderr=subprocess.STDOUT, check=True)
         for profile in ('wire', 'native') if hosted else ('wire',):
             for extension in ('c', 'cpp'):
                 subprocess.run([str(build / (profile + '_' + extension))], stdout=output, stderr=subprocess.STDOUT, check=True)

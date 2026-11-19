@@ -50,10 +50,10 @@ Styx::carrier; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-phywrite(mux->phy, (beat->wire ? beat->wire : beat->bytes) + beat->sent, beat->length - beat->sent);
+out = phywrite(left, source + sent, sizeof(source) - sent);
 ```
 
-[Complete calling context](../../client/heartbeat.c#L175)
+[Complete calling context](../../tests/memory_contract.c#L151)
 
 ## См. также
 

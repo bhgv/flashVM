@@ -56,9 +56,13 @@ Styx::client; hosted native build
 
 ## Example
 
-Use the complete layer examples; this lower-level entry is also documented at its exact implementation below.
+Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
-[Examples](../../examples/README.md)
+```c
+client = styxclientmountphy(client_phy, 256, "demo", "", 3000, 4);
+```
+
+[Complete calling context](../../examples/memory_phy/main.c#L113)
 
 ## See also
 

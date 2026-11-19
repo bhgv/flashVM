@@ -49,10 +49,10 @@ Styx::server; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-check(styxaddfile(&s, Qroot, 3, "hidden", 0444, "alice") != nil, "hidden cached child");
+Styxfile *file = initialized ? styxaddfile(&server, Qroot, 1, "status", 0444, "demo") : nil;
 ```
 
-[Complete calling context](../../vendor/inferno/tools/libstyx/tests/directories.c#L290)
+[Complete calling context](../../examples/memory_phy/server.c#L54)
 
 ## См. также
 

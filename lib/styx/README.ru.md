@@ -148,3 +148,5 @@ python3 view_docs.py --port 8910 --no-browser
 [What and why](docs/introduction.ru.md) · [Writing a service](docs/tutorial.ru.md)
 
 Пошаговое подключение из C/C++ и выбор версии/компонентов: [SDK](docs/embedding.ru.md).
+
+Новый пример настоящего 9P без TCP и fd носителя: [Memory PHY](examples/memory_phy/README.ru.md).

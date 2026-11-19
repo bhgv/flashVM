@@ -48,10 +48,10 @@ Styx::carrier; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-phydisconnect(mux->phy);
+phydisconnect(left);
 ```
 
-[Complete calling context](../../client/mux_loop.c#L432)
+[Complete calling context](../../tests/memory_contract.c#L244)
 
 ## См. также
 

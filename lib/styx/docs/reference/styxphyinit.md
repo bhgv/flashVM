@@ -57,9 +57,13 @@ Styx::phy_server; hosted native build
 
 ## Example
 
-Use the complete layer examples; this lower-level entry is also documented at its exact implementation below.
+Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
-[Examples](../../examples/README.md)
+```c
+char *error = styxphyinit(&server, &ops, owner->phy, 0555, 1, 2);
+```
+
+[Complete calling context](../../examples/memory_phy/server.c#L52)
 
 ## See also
 

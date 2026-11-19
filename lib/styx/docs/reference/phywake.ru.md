@@ -48,10 +48,10 @@ Styx::carrier; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-phywake(mux->phy);
+phywake(phy);
 ```
 
-[Complete calling context](../../client/mux.c#L50)
+[Complete calling context](../../tests/memory_contract.c#L96)
 
 ## См. также
 

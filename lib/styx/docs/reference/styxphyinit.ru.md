@@ -57,9 +57,13 @@ Styx::phy_server; hosted native build
 
 ## Пример
 
-Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
-[Examples](../../examples/README.ru.md)
+```c
+char *error = styxphyinit(&server, &ops, owner->phy, 0555, 1, 2);
+```
+
+[Complete calling context](../../examples/memory_phy/server.c#L52)
 
 ## См. также
 

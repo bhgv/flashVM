@@ -50,10 +50,10 @@ Styx::phy_server; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-styxend(&server);
+owner->clean = !initialized || styxend(&server) == nil;
 ```
 
-[Complete calling context](../../examples/server.c#L377)
+[Complete calling context](../../examples/memory_phy/server.c#L71)
 
 ## See also
 

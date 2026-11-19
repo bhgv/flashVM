@@ -50,10 +50,10 @@ Styx::phy_server; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-styxend(&server);
+owner->clean = !initialized || styxend(&server) == nil;
 ```
 
-[Complete calling context](../../examples/server.c#L377)
+[Complete calling context](../../examples/memory_phy/server.c#L71)
 
 ## См. также
 

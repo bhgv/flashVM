@@ -51,5 +51,5 @@ install(DIRECTORY vendor/inferno/lib/legal DESTINATION ${CMAKE_INSTALL_DATADIR}/
 
 # Install a self-contained offline documentation tree, including source link targets.
 install(FILES README.ru.md view_docs.py CMakeLists.txt .clang-format DESTINATION ${CMAKE_INSTALL_DATADIR}/styx)
-install(DIRECTORY docs examples include codec client server remote_phy walk vendor protocol ports support cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/styx
+install(DIRECTORY docs examples include codec client server remote_phy walk vendor protocol ports support cmake tests DESTINATION ${CMAKE_INSTALL_DATADIR}/styx
     PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)

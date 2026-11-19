@@ -50,10 +50,10 @@ Styx::carrier; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-RemotePhy *phy = phycreate(&ops, fd, &info);
+RemotePhy *first = phycreate(&ops, &link->ends[0], &info);
 ```
 
-[Complete calling context](../../remote_phy/drivers/posix/fd.c#L346)
+[Complete calling context](../../examples/memory_phy/memory.c#L90)
 
 ## See also
 

@@ -50,10 +50,10 @@ Styx::carrier; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-RemotePhy *phy = phycreate(&ops, fd, &info);
+RemotePhy *first = phycreate(&ops, &link->ends[0], &info);
 ```
 
-[Complete calling context](../../remote_phy/drivers/posix/fd.c#L346)
+[Complete calling context](../../examples/memory_phy/memory.c#L90)
 
 ## См. также
 

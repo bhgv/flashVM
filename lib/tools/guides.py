@@ -2,6 +2,7 @@
 # EN: Author-maintained EN/RU example recipes and protocol/porting guides, separate from extracted API metadata.
 # RU: Авторские EN/RU рецепты примеров и руководства протокола/переноса отдельно от извлечённых metadata API.
 from pathlib import Path
+from .memory_guide import main as memory_guide
 
 MODELS = {
     "flat": ("Fixed root files", "Фиксированные файлы корня", "fixed.c", "status; temperature", "status", "ready\\n",
@@ -100,6 +101,7 @@ ctest --test-dir build -R '^styx-{key}$' --output-on-failure  # Independent wire
                 content += "\n## HTTP backend schema\n\n`GET endpoint?op=list&id=0&start=0&limit=16` returns a JSON array. `op=stat` returns zero or one row. Each row has exact unsigned64 `id`/`parent`, numeric standard `mode`, UTF-8 `name`, optional text `value`. The source owns stable identities and access policy; changing a filename must not alias an unrelated held ID.\n\n[HTTP adapter](../http_query.py) · [HTTP fixture](../http_source.py).\n"
             write(root / f"styx/examples/{key}/README{suffix}", content)
             index.append(f"- [{title}]({key}/README{suffix}) — `styx-{key}`")
+        index.append(f"- [Custom memory PHY](memory_phy/README{suffix}) — `styx-memory-phy`")
         index.extend(["", "[Core guide](../README" + suffix + ") · [Native client source](client.c) · [Backend contract](catalog.h)", ""])
         write(root / f"styx/examples/README{suffix}", "\n".join(index))
 
@@ -170,6 +172,7 @@ Copyright (c) 2026 bhgv
 def main():
     root = Path(__file__).resolve().parents[1]
     examples(root)
+    memory_guide(root / "styx")
     topics(root)
 
 

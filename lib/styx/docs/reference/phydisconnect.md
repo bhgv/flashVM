@@ -48,10 +48,10 @@ Styx::carrier; hosted native build
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-phydisconnect(mux->phy);
+phydisconnect(left);
 ```
 
-[Complete calling context](../../client/mux_loop.c#L432)
+[Complete calling context](../../tests/memory_contract.c#L244)
 
 ## See also
 

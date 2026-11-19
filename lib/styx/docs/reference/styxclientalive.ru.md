@@ -48,10 +48,10 @@ Styx::client; hosted native build
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-int styxclientalive(StyxClient *client);
+int good = denied && !styxclientopen(denied, 1) && styxclientalive(client);
 ```
 
-[Complete calling context](../../client/readable_parts/client-h/part-001.inc#L426)
+[Complete calling context](../../examples/memory_phy/main.c#L23)
 
 ## См. также
 

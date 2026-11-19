@@ -9,13 +9,13 @@ Linux arm64/riscv64 selections have not been executed on those physical targets.
 
 | Check | Result |
 | --- | --- |
-| Styx hosted | 12/12: six original server regressions, portable codec, five catalog models |
+| Styx hosted | 16/16: six original server regressions, portable codec, five catalog models |
 | libunibus hosted | 11/11: nested records, independent native waits, four order regressions, queue initialization failures, gateway, adversarial two-client cases, gateway initialization failures and short/failed I/O |
 | Cross-library wire integration | 5/5 catalog models through independently linked gateway |
 | Isolated copies | Each package configured, built and tested outside its original source directory |
 | Minimal profiles | Styx codec/wire without hosted adapters; libunibus wire without native queues |
 | Relocated SDK | Installed prefixes moved; external C and C++98 consumers linked/ran codec, wire, native client and queues with CMAKE_INSTALL_INCLUDEDIR=api/include |
-| Documented applications | Installed example sources built/ran as external applications in all four profiles; 16 downstream executables including C/C++98 probes |
+| Documented applications | Installed example sources built/ran as external applications in all four profiles; 19 downstream executables including C/C++98 probes |
 | SDK discovery | Exact version accepted; incompatible major/minor and missing required components rejected; unavailable optional components accepted |
 | Sanitizers | ASan/UBSan hosted tests plus five cross-library cases passed; LSan was disabled in this sandbox |
 | Offline documentation | Both languages, local Markdown links, physical source anchors, live independent viewers and path confinement |
@@ -66,3 +66,7 @@ io.c for that specific defect and passes after latching the failed direction.
 Documentation checks verify not just anchor range but function names and exact
 call-site excerpts at the linked source line. Reference scanner fixtures exclude
 comment/string decoys from required-header and example selection.
+
+## Custom carrier acceptance
+
+A real native 9P client and original Styx server communicate over bounded memory, without a descriptor-backed carrier. Tests cover 2/3-byte fragmented transfers, backpressure, drain-before-EOF, uncertain write prefixes, finite monotonic waits, 500 concurrent wake rounds and four constructor failure stages. A Linux link-time guard rejects descriptor/network entry points; it is not a kernel syscall trace. The relocated SDK builds and runs this complete example from installed sources, plus C/C++98 PHY-server consumers.
