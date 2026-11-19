@@ -210,24 +210,18 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
   endforeach()
 endif()
 
-# Service tutorial and independent multi-case acceptance use actual Dis modules.
-if(DVM_RUNTIME_COMPILER)
-  foreach(example compiler-service compiler-service-check build-panel artifact-export)
-    set(source "${root}/ide/dis/examples/compiler-service/main.b")
-    if(example STREQUAL "artifact-export")
-      set(source "${root}/ide/dis/examples/artifact-export/main.b")
-    endif()
-    if(example STREQUAL "build-panel")
-      set(source "${root}/ide/dis/examples/build-panel/main.b")
-    endif()
-    if(example STREQUAL "compiler-service-check")
-      set(source "${root}/ide/dis/tests/compiler_service_test.b")
-    endif()
-    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis" "${CMAKE_CURRENT_BINARY_DIR}/${example}.sbl"
-      COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis" "${source}"
-      DEPENDS limbo-bootstrap "${source}" ${module_headers} VERBATIM)
-    add_custom_target(disvm_${example} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis")
-  endforeach()
+# EN: Keep only the archived multi-case fixture here; deployable examples are
+# built by CompilerModules.cmake regardless of test registration.
+# RU: Здесь лишь архивная проверка; поставляемые примеры собирает CompilerModules.cmake.
+if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_TESTS)
+    set(source "${root}/ide/dis/tests/compiler_service_test.b")
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compiler-service-check.dis"
+        "${CMAKE_CURRENT_BINARY_DIR}/compiler-service-check.sbl"
+        COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
+            -o "${CMAKE_CURRENT_BINARY_DIR}/compiler-service-check.dis" "${source}"
+        DEPENDS limbo-bootstrap "${source}" ${module_headers} VERBATIM)
+    add_custom_target(disvm_compiler-service-check ALL
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/compiler-service-check.dis")
 endif()
 
 if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER AND DVM_FIR_SOURCE_COMPILER AND DVM_SWF_LINKER)

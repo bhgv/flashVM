@@ -133,3 +133,5 @@ if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR AND UNIX)
         "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/run-desktop-ide.sh")
     set_tests_properties(disvm_desktop_installed PROPERTIES TIMEOUT 200 LABELS "native;editor")
 endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/CompilerTests.cmake")

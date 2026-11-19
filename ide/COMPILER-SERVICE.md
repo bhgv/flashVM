@@ -129,9 +129,27 @@ and the service archive. Disabling the capability removes installer-owned stale
 tutorial/archive products. The ordinary worker module remains loadable and its
 start reports unavailable. No deployed CLI binary is needed by the builtin.
 
-## Acceptance
+With `DVM_RUNTIME_COMPILER=ON`, building `disvm` or `disvm-editor` also builds
+`compiler-service.dis`, `build-panel.dis` and `artifact-export.dis`, including
+their debug symbols and matching imported modules. These production targets stay
+available when `DVM_RUNTIME_TESTS=OFF`; they are defined in
+[CompilerModules.cmake](../disVM/runtime/cmake/CompilerModules.cmake).
 
-The tutorial creates 24 real artifacts: all four language profiles, both
+## Active acceptance
+
+With runtime tests enabled, `disvm_compiler_examples_jit` and
+`disvm_compiler_examples_interpreter` run the three examples in separate temporary
+directories, verify the exported source debug data and execute the exported Dis
+with result `42`. The [test implementation](../disVM/runtime/test_compiler_examples.py)
+needs Python only on the development host. Graphical compiler builds also expose
+`disvm_desktop_workflow_jit` and `disvm_desktop_workflow_interpreter`: complete
+headless desktop editing, save, build-console, thumbnail and dirty-close checks.
+These checks use native owner threads; they do not exercise physical SDL input
+or attach a debugger to a running target.
+
+## Retained acceptance fixtures
+
+The archived multi-case fixture creates 24 real artifacts: all four language profiles, both
 optimization choices and all three formats. Host acceptance independently runs
 CLI libraries, compares every artifact byte, compares complete source debug JSON,
 executes every produced Dis and linked SWF, and checks exact result 42. Interpreter
@@ -145,6 +163,10 @@ failures, tests double disposal and unavailable temporary staging. Relocated SDK
 checks relink the C99 client against shipped archives and rerun native builds
 without references to the original checkout. Physical ARM64/RV64, full IDE
 self-hosting and final debugger attachment remain separate acceptance work.
+
+These extensive historical registrations are currently archived, outside the
+default native test set. Their sources remain available; the active checks above
+do not claim this entire matrix.
 
 The shared Math fix is published upstream and the host-only rewrite is retired.
 Checked fetch precedes GC/quota; direct dispatch uses captured callback pointers.
