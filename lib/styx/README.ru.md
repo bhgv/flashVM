@@ -3,6 +3,8 @@
 Copyright (c) 2026 bhgv. Исходные уведомления Inferno сохранены в
 [vendor/inferno/NOTICE](vendor/inferno/NOTICE) и NOTICE отдельных компонентов.
 
+Библиотека реализована на C и не требует C++ compiler/runtime. Другие языки допустимы для примеров, тестовых клиентов и инструментов; C++ consumer tests проверяют совместимость C API, не язык реализации.
+
 [English](README.md) · [Справка API](docs/index.ru.md) · [Примеры](examples/README.ru.md)
 
 Проект не зависит от DisVM, FlashVM и Unibus. В нём находятся исходные codec Inferno

@@ -33,12 +33,13 @@ def main():
         shutil.rmtree(area)
     area.mkdir()
     log = area / 'acceptance.log'
+    run([sys.executable, root / 'lib/tests/c_only.py', cmake], area, log)
     for package, option in [('styx', 'STYX_HOSTED'), ('libunibus', 'UNIBUS_QUEUES')]:
         source = area / (package + '-source')
         shutil.copytree(root / 'lib' / package, source, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         for minimal in ([False] if sanitized else [False, True]):
             build = area / (package + ('-minimal' if minimal else '-hosted'))
-            configure = [cmake, '-S', source, '-B', build, '-DBUILD_TESTING=ON', f'-D{option}={"OFF" if minimal else "ON"}', '-DCMAKE_INSTALL_INCLUDEDIR=api/include']
+            configure = [cmake, '-S', source, '-B', build, '-DBUILD_TESTING=ON', f'-D{option}={"OFF" if minimal else "ON"}', '-DCMAKE_INSTALL_INCLUDEDIR=api/include', '-DCMAKE_CXX_COMPILER=/unavailable-cxx']
             if sanitized:
                 configure += ['-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -g', '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined']
                 os.environ['ASAN_OPTIONS'] = 'detect_leaks=0'

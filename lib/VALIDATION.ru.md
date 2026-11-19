@@ -28,6 +28,7 @@ Copyright (c) 2026 bhgv
 
 ```sh
 python3 lib/export.py --check
+python3 lib/tests/c_only.py /absolute/path/to/cmake
 python3 lib/tests/isolated.py /absolute/path/to/cmake
 python3 lib/tests/isolated.py /absolute/path/to/cmake --sanitize
 python3 lib/tests/documentation.py
@@ -85,3 +86,7 @@ Live tutorial отвергает несколько команд, внутрен
 ## Приёмка HTTP-провайдера
 
 HTTP tutorial проверяет точные unsigned64 ID, соответствие stat ID и parent непосредственных детей, уникальность страницы, обязательные/text fields, UTF-8 byte limits, повторные JSON keys и нестандартные числа до любого stdout helper. Объявленное тело ответа должно быть получено полностью: усечённый [] не означает успешное отсутствие. Подмена stat ID и приём усечённого пустого ответа воспроизведены на прежнем helper. Mutable HTTP fixture и настоящий 9P server/client проверяют ID 2^53+1 и 2^64-1, переименование открытого объекта, изменение данных, Rerror и последующие reads/listings в той же сессии. HTTP backend остаётся синхронным учебным адаптером, не production asynchronous HTTP scheduler.
+
+## Требование реализации на C
+
+DisVM core/runtime и обе самостоятельные библиотеки остаются на C. CMake guard библиотек отклоняет C++ units и CXX source/linker overrides, не ограничивая языки примеров/потребителей. Negative fixtures выполняются без включения CXX. Изолированные hosted/minimal сборки задают недоступный CMAKE_CXX_COMPILER; отдельная конфигурация C++98 consumers проверяет совместимость C API. Текущие объявления DisVM core/native используют LANGUAGES C; для этого требования менять runtime не потребовалось.

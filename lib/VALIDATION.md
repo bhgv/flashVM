@@ -26,6 +26,7 @@ Reproduction from the repository root:
 
 ```sh
 python3 lib/export.py --check
+python3 lib/tests/c_only.py /absolute/path/to/cmake
 python3 lib/tests/isolated.py /absolute/path/to/cmake
 python3 lib/tests/isolated.py /absolute/path/to/cmake --sanitize
 python3 lib/tests/documentation.py
@@ -78,3 +79,7 @@ The live tutorial rejects multiple commands, internal line endings, embedded NUL
 ## HTTP provider acceptance
 
 The HTTP tutorial now validates exact unsigned64 IDs, stat identity, immediate-child parents, page-local uniqueness, required/text fields, UTF-8 byte limits, duplicate JSON keys and nonstandard numbers before any helper stdout. Declared response lengths must be complete; a truncated [] must not report successful absence. Both wrong-stat substitution and truncated-empty acceptance were reproduced with the prior helper. A mutable HTTP fixture and real 9P server/client exercise IDs 2^53+1 and 2^64-1, renamed opened objects, changing values, Rerror and subsequent reads/listings on the same session. The HTTP backend remains a synchronous teaching adapter, not a production asynchronous HTTP scheduler.
+
+## C implementation requirement
+
+DisVM core/runtime and both standalone libraries remain implemented in C. The standalone CMake guard rejects C++ units and CXX source/linker overrides, while leaving example/consumer languages unrestricted. Its negative fixtures run without enabling CXX. Isolated hosted/minimal library builds set CMAKE_CXX_COMPILER to an unavailable path; downstream C++98 consumers use a separate configuration to check C API compatibility. The existing DisVM core/native project declarations use LANGUAGES C; no DisVM runtime changes were needed for this requirement.

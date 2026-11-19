@@ -126,3 +126,19 @@ work there with expected-head and tree checks. Dedicated native OS threads witho
 global exclusive/stop are the mandatory default and only supported execution
 profile. Do not use single-threaded/exclusive reference modes in runtime or CI;
 retained historical code is not authorization to reactivate those profiles.
+
+# Implementation language: DisVM and external libraries
+
+- Preserve the original Dis implementation in C; do not introduce C++ into
+  DisVM core/runtime.
+- DisVM runtime/core, libstyx (`lib/styx`) and libunibus (`lib/libunibus`) must
+  be implemented in C, without C++ source units or a C++ runtime dependency.
+  Portability and compactness are explicit design requirements. Keep existing
+  architecture-specific assembly isolated; this rule does not prescribe FlashVM's
+  implementation language.
+- Examples, test clients, documentation and development/build tools may use other
+  languages. C++ consumer tests check the C API's compatibility; they do not
+  authorize implementing the libraries in C++.
+- Keep standalone library projects configured with `LANGUAGES C`; check exported
+  implementation targets with their C-only build guard. Do not add a C++ compiler
+  requirement to build the C libraries.

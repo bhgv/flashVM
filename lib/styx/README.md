@@ -3,6 +3,8 @@
 Copyright (c) 2026 bhgv. Original Inferno notices remain in [vendor/inferno/NOTICE](vendor/inferno/NOTICE)
 and the individual component notices.
 
+The library is implemented in C and requires no C++ compiler/runtime. Examples, test clients and tools may use other languages; C++ consumer tests verify C API compatibility, not the implementation language.
+
 [Русский](README.ru.md) · [API reference](docs/index.md) · [Examples](examples/README.md)
 
 This project is independent of DisVM, FlashVM and Unibus. It contains original

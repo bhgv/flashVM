@@ -2,6 +2,8 @@
 
 Copyright (c) 2026 bhgv. [License](LICENSE.bhgv).
 
+The library is implemented in C and requires no C++ compiler/runtime. Examples, test clients and tools may use other languages; C++ consumer tests verify C API compatibility, not the implementation language.
+
 [Русский](README.ru.md) · [API reference](docs/index.md) · [Examples](examples/README.md)
 
 Unibus is a separate source library. It does not include or link Styx, DisVM,

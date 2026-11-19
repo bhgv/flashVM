@@ -2,6 +2,8 @@
 
 Copyright (c) 2026 bhgv. [Лицензия](LICENSE.bhgv).
 
+Библиотека реализована на C и не требует C++ compiler/runtime. Другие языки допустимы для примеров, тестовых клиентов и инструментов; C++ consumer tests проверяют совместимость C API, не язык реализации.
+
 [English](README.md) · [Справка API](docs/index.ru.md) · [Примеры](examples/README.ru.md)
 
 Это отдельная исходная библиотека. Она не включает и не линкует Styx, DisVM,
