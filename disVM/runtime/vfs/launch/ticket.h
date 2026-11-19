@@ -74,6 +74,16 @@ typedef struct DVM_LaunchHandoff
 } DVM_LaunchHandoff;
 
 
+/* EN: Replace the terminal VFS root of an exclusive prepared handoff. Borrow the
+ * new terminal provider through return. Preserve accepted execution authority,
+ * union order and terminal channel grant. Native capture may block. Returns
+ * 1 on replacement, 0 with the original handoff intact.
+ * RU: Заменить терминальный корень эксклюзивного handoff. Новый provider
+ * заимствован до возврата. Полномочия исполнения, порядок union и транспортный
+ * grant сохраняются. Захват может блокировать. 1 при замене, иначе handoff цел. */
+int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider *terminal);
+
+
 /* EN/RU: Retain a native Unibus handler in an exclusive live handoff, 1/0; no claim/guest execution.
  * Attach only once before adoption; caller keeps its reference. / Удержать native handler до adoption;
  * только один раз, 1/0; caller сохраняет свой ref, без claim/guest-кода.

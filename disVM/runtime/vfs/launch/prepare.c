@@ -2,7 +2,7 @@
  * EN: Atomic private launch environment construction; no native host root fallback.
  * RU: Атомарная сборка приватного окружения запуска без fallback к native host root.
  */
-#include "prepare.h"
+#include "ticket.h"
 #include "../internal.h"
 #include "../cancel.h"
 #include <stdlib.h>
@@ -90,4 +90,47 @@ DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
         return NULL;
     }
     return group;
+}
+
+// EN/RU: Keep the accepted execution root while replacing the terminal view.
+// Сохранить принятый execution root при подстановке представления терминала.
+int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider *terminal)
+{
+    if (!handoff || !handoff->group || !terminal)
+    {
+        return 0;
+    }
+    DVM_Namespace *original = handoff->group;
+    DVM_Provider *execution = NULL;
+    fvm_port_sync_lock(original->lock);
+    DVM_NamespaceBinding *first = original->bindings;
+    DVM_NamespaceBinding *second = first ? first->next : NULL;
+    int owner_first = handoff->description.policy == DVM_LAUNCH_OWNER_FIRST;
+    DVM_NamespaceBinding *provider = owner_first ? first : second;
+    if (original->version == 1 && original->no_native_fallback && second && !second->next &&
+        provider->origin.role == DVM_ORIGIN_PROVIDER && !strcmp(provider->on, "/") &&
+        dvm_provider_retain(provider->provider))
+    {
+        execution = provider->provider;
+    }
+    fvm_port_sync_unlock(original->lock);
+    if (!execution)
+    {
+        return 0;
+    }
+    DVM_LaunchOptions options = {0};
+    options.policy = handoff->description.policy;
+    options.terminal = terminal;
+    options.provider = execution;
+    options.terminal_origin = handoff->description.terminal_origin;
+    options.provider_origin = handoff->provider_origin;
+    DVM_Namespace *projected = dvm_launch_prepare(&options);
+    dvm_provider_release(execution);
+    if (!projected)
+    {
+        return 0;
+    }
+    handoff->group = projected;
+    dvm_namespace_release(original);
+    return 1;
 }

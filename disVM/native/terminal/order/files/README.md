@@ -100,6 +100,23 @@ DVM_Provider *port = styxorderedfile(files, 7, FVM_ACCESS_READ | FVM_ACCESS_WRIT
 /* After the view/namespace and every open FD retire, require styxorderedfilesfree(files) == 1. */
 ```
 
+## Prepare a launch file set / Подготовка файлов запуска
+
+[`styxorderedlaunchfiles`](launch.h) takes the authorized client, exclusive handoff,
+ordered options and an explicit list of guest paths, tags and access modes. It
+attaches to the original terminal channel grant and creates a default-deny view
+containing just those mappings. The handoff's execution layer and union order
+remain in effect. A setup failure preserves the original handoff. After success,
+the launcher keeps the returned file set alive until the runtime has released
+the guest's namespace and FDs.
+
+[`styxorderedlaunchfiles`](launch.h) получает выданный client, эксклюзивный handoff,
+настройки ordered и явный список гостевых путей, тегов и прав. Брокер подключается
+к исходным каналам терминала, а терминальный слой VFS получает только указанные
+файлы. Слой исполнения и порядок union сохраняются. При отказе подготовки исходный
+handoff остаётся доступен. После успешного вызова лаунчер удерживает file set до
+завершения runtime и освобождения гостевых FD и namespace.
+
 ## Actual coverage / Реальная проверка
 
 The native test uses original libstyx on explicit bidir PHY with three-byte reads

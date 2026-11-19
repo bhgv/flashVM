@@ -10,8 +10,7 @@
 #include "runqueue.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
-#include "../native/terminal/order/broker/attach.h"
-#include "../native/terminal/order/files/files.h"
+#include "../native/terminal/order/files/launch.h"
 #include "../native/terminal/route/launch.h"
 #include "../native/vfs/mount.h"
 #include "../native/tests/launch/backend.h"
@@ -31,17 +30,6 @@ extern StyxClient *linkfixture(void);
  * Завершить настоящий исходный server и physical owners после client refs.
  */
 extern void linkfixturefree(void);
-
-
-/* EN/RU: Map one owned filtered file into a default-deny application view, then release caller factory ref.
- * Добавить owned filtered file в default-deny application view, освободить исходный factory-ref.
- */
-static void mapfile(DVM_View *view, const char *path, unsigned long tag, unsigned access)
-{
-    DVM_Provider *provider = styxorderedfile(files, tag, access); /* Ordinary retained single-file capability. */
-    launch_check(provider && dvm_view_map(view, path, provider, ".", access, 0), "map filtered Unibus record file");
-    dvm_provider_release(provider);
-}
 
 
 /* EN/RU: Prepare actual remote-root ticket, take once, construct ordered broker, install file grants and invoke real startup.
@@ -102,20 +90,18 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
     unsigned long tags[] = {0, 7, 9}; /* Authorized application inboxes only. */
     StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, 71, tags, 3}; /* Same profile as native API acceptance. */
-    StyxOrdered *peer = styxbidirorderedlaunch(connection, handoff, &ordered); /* Explicit native connection, no default CLI rewrite. */
-    files = styxorderedfiles(peer);
-    launch_check(files && !styxorderedstate(peer), "native file-set owner");
-    DVM_View *view = dvm_view_create(NULL, NULL, NULL); /* Default deny: raw carrier nodes never enter the guest namespace. */
-    launch_check(view != NULL, "filtered application view");
-    mapfile(view, "/seven", 7, FVM_ACCESS_READ | FVM_ACCESS_WRITE);
-    mapfile(view, "/nine", 9, FVM_ACCESS_READ);
-    mapfile(view, "/zero", 0, FVM_ACCESS_READ | FVM_ACCESS_WRITE);
-    options.terminal = dvm_view_freeze(view); /* Ordinary live view, no snapshot of remote files or records. */
-    DVM_Namespace *filtered = dvm_launch_prepare(&options); /* Native owner chooses the guest-visible grant before init. */
-    launch_check(filtered != NULL, "prepare filtered application namespace");
-    dvm_namespace_release(handoff->group);
-    handoff->group = filtered;
-    dvm_provider_release(options.terminal);
+    const StyxLaunchFile invalid = {"/forbidden", 99, FVM_ACCESS_READ};
+    DVM_Namespace *original = handoff->group;
+    launch_check(!styxorderedlaunchfiles(connection, handoff, &ordered, &invalid, 1) &&
+        handoff->group == original, "unauthorized tag preserves original handoff");
+    const StyxLaunchFile mappings[] = {
+        {"/seven", 7, FVM_ACCESS_READ | FVM_ACCESS_WRITE},
+        {"/nine", 9, FVM_ACCESS_READ},
+        {"/zero", 0, FVM_ACCESS_READ | FVM_ACCESS_WRITE}
+    };
+    files = styxorderedlaunchfiles(connection, handoff, &ordered, mappings,
+        sizeof(mappings) / sizeof(mappings[0]));
+    launch_check(files && handoff->group, "filtered file set and private launch namespace");
     dvm_launch_ticket_free(ticket);
     dvm_launch_review_free(review);
     dvm_launch_endpoint_free(endpoint);

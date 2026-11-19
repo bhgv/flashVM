@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Generic ordinary VFS projection of already granted ordered clients, independent of VM/display.
 # RU: Обычная VFS-проекция выданных ordered-клиентов, независимо от VM/display.
-add_library(styx_ordered_files STATIC life.c provider.c io.c)
+add_library(styx_ordered_files STATIC life.c provider.c io.c launch.c)
 target_include_directories(styx_ordered_files PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_ordered_files PUBLIC styx_terminal_ordered)
 target_compile_options(styx_ordered_files PRIVATE -Wall -Wextra -Wpedantic -Werror)
