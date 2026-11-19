@@ -23,6 +23,19 @@ The lookup role is immutable per process and independent of execution admission.
 
 ## Trusted host entry / Вход trusted host
 
+A native launcher can call `dvm_runtime_main_with_handoff(argc, argv, handoff)`
+once per process. Use the ordinary CLI arguments with a host-selected local
+bootstrap. The launcher keeps the handoff shell alive through runtime shutdown
+and frees it after return. The ordinary `disvm` executable calls this entry with
+a null handoff. `--gdb` cannot transfer an in-process handoff across exec.
+
+Нативный лаунчер может один раз на процесс вызвать
+`dvm_runtime_main_with_handoff(argc, argv, handoff)` с обычными параметрами CLI
+и локальным bootstrap, выбранным лаунчером. Оболочка handoff остаётся у вызывающего
+до возврата после завершения runtime. Обычный `disvm` вызывает этот вход без
+handoff. Режим `--gdb` не переносит handoff между процессами.
+
+
 [`vfs/launch/runtime.h`](vfs/launch/runtime.h) exposes the native startup boundary:
 
 | API | Ownership and phase |

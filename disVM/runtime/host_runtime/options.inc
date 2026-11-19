@@ -10,7 +10,7 @@
  * RU: Разобрать заимствованные argc/argv в стартовом потоке и проверить настройки
  * исполнения/GC до создания потоков. Вернуть код VM либо ненулевую диагностику
  * ошибки параметров/старта; профиль работающей VM не изменяется. */
-int main(int argc, char **argv)
+int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff)
 {
     struct sigaction pipe_action = {0};
     int gc_selected = 0;
@@ -23,6 +23,11 @@ int main(int argc, char **argv)
 #endif
     if (argc > 1 && !strcmp(argv[1], "--gdb"))
     {
+        if (handoff)
+        {
+            fprintf(stderr, "disvm: --gdb cannot transfer a native launch handoff\n");
+            return 2;
+        }
         return runtime_launch_gdb(argc, argv);
     }
     /* This executable handles broken pipes as I/O errors on every worker,
@@ -425,11 +430,19 @@ int main(int argc, char **argv)
         fprintf(stderr, "cannot start private debugger socket: %s\n", debug_path);
         return 2;
     }
+    RuntimeEntry entry = {argv[1], handoff};
 #ifdef DVM_RUNTIME_EDITOR
     if (threaded)
     {
-        return dvm_editor_thread_launch(runtime_execute, argv[1]);
+        return dvm_editor_thread_launch(runtime_execute, &entry);
     }
 #endif
-    return runtime_execute(argv[1]);
+    return runtime_execute(&entry);
+}
+
+/* EN/RU: Ordinary CLI boot with no preauthorized handoff; forwards argc/argv.
+ * Обычный CLI-запуск без переданного handoff; передаёт argc/argv. */
+int main(int argc, char **argv)
+{
+    return dvm_runtime_main_with_handoff(argc, argv, NULL);
 }

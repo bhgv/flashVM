@@ -4,16 +4,25 @@
  */
 
 
+/* EN/RU: Startup inputs borrowed until the controller and GUI owners join.
+ * Параметры запуска заимствованы до join контроллера и владельца GUI. */
+typedef struct RuntimeEntry
+{
+    const char *path; /* Host-selected local bootstrap path. */
+    DVM_LaunchHandoff *handoff; /* Optional exclusive native environment. */
+} RuntimeEntry;
+
+
 /* EN: Initialize the runtime and drive its controller on the bound native owner.
- * argument is a borrowed module path valid until join/return. Native guests run
+ * argument points to the borrowed RuntimeEntry until join/return. Native guests run
  * on their permanent threads; their channel operations use the guarded paths.
  * Native collectors cannot stop the world. Return nonzero on startup/runtime
  * failure; the outer wrapper joins services before retiring owner TLS.
  * RU: Инициализировать runtime и вести контроллер на привязанном владельце.
- * argument — путь модуля до join/возврата. Гости исполняются на постоянных потоках,
+ * argument — заимствованный RuntimeEntry до join/возврата. Гости исполняются на постоянных потоках,
  * каналы используют защищённые операции, native GC не останавливает мир.
  * При ошибке вернуть ненулевой код; внешняя обёртка делает join до удаления TLS. */
-static int runtime_execute_inner(void *argument)
+static int runtime_execute_inner(const RuntimeEntry *argument)
 {
     DVM_NativeContext *context;
     Module *module;
@@ -61,7 +70,7 @@ static int runtime_execute_inner(void *argument)
     excinit();
     dvm_srv_initialize();
     srvmodinit();
-    entry = entry_resource((char *)argument);
+    entry = entry_resource((char *)argument->path);
     if (!dvm_namespace_boot_initialize(module_directory))
     {
         error("cannot initialize startup namespace");
@@ -92,7 +101,7 @@ static int runtime_execute_inner(void *argument)
         }
         dvm_runqueue_enable_direct();
     }
-    process = dvm_runtime_launch_module(module, NULL);
+    process = dvm_runtime_launch_module(module, argument->handoff);
     poperror();
     unload(module);
     initial_guest = process;

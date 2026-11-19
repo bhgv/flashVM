@@ -12,8 +12,18 @@
 #include "mux/bidir.h"
 #include "drivers/posix/fd.h"
 #include <pthread.h>
+#ifdef ORDERED_GUEST_FILE_TEST
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <signal.h>
+#include <sys/wait.h>
+#endif
 static Styxserver server;    /* Original native server, owned through join. */
+#ifdef ORDERED_GUEST_FILE_TEST
+static pid_t worker;         /* Independent server process, reaped after client close. */
+#else
 static pthread_t worker;     /* Dedicated original server owner. */
+#endif
 static PhyBidir *local;      /* Host-side explicit bidir pump. */
 static PhyBidir *remote;     /* Server-side explicit bidir pump. */
 static int breaker = -1;    /* Owned duplicate used only to break the real physical carrier. */
@@ -91,28 +101,91 @@ static void *serve(void *unused)
 }
 
 
-/* EN/RU: Own real client/NULL on one logical stream of an explicitly bidir carrier, no guest/GUI.
- * Свой real client/NULL на logical stream явного bidir carrier, без guest/GUI.
- */
-StyxClient *linkfixture(void)
+/* EN/RU: Consume fd and start the original server on the explicit logical stream.
+ * Поглотить fd и настроить исходный server на явном logical stream. */
+static void server_start(int fd, unsigned caps)
 {
-    int pair[2]; /* Connected native fixture carrier; each PHY consumes one original descriptor. */
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) || (breaker = dup(pair[0])) < 0)
-    {
-        exit(3);
-    }
-    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE; /* Explicit carrier capabilities. */
-    local = phybidircreate(phyposixfd(pair[0], caps), 4096);
-    remote = phybidircreate(phyposixfd(pair[1], caps), 4096);
-    if (!local || !remote || styxphyinit(&server, &operations, phybidirchannel(remote, 0), 0555, 1, 2) ||
+    remote = phybidircreate(phyposixfd(fd, caps), 4096);
+    if (!remote || styxphyinit(&server, &operations, phybidirchannel(remote, 0), 0555, 1, 2) ||
         !styxaddfile(&server, Qroot, 7, "records", 0666, "fixture"))
     {
         exit(3);
     }
+}
+
+
 #ifdef ORDERED_GUEST_FILE_TEST
-    fixtureimagesinit(&server);
+/* EN/RU: Build a private TCP connection on loopback; return both owned descriptors.
+ * Создать частное TCP-соединение через loopback, вернуть два собственных fd. */
+static void loopback_pair(int pair[2])
+{
+    int listener = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in address = {0};
+    socklen_t size = sizeof(address);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (listener < 0 || bind(listener, (struct sockaddr *)&address, size) ||
+        getsockname(listener, (struct sockaddr *)&address, &size) || listen(listener, 1))
+    {
+        exit(3);
+    }
+    pair[0] = socket(AF_INET, SOCK_STREAM, 0);
+    if (pair[0] < 0 || connect(pair[0], (struct sockaddr *)&address, size))
+    {
+        exit(3);
+    }
+    pair[1] = accept(listener, NULL, NULL);
+    int immediate = 1; /* The fixture deliberately splits reads and write acknowledgements. */
+    if (pair[1] < 0 || close(listener) ||
+        setsockopt(pair[0], IPPROTO_TCP, TCP_NODELAY, &immediate, sizeof(immediate)) ||
+        setsockopt(pair[1], IPPROTO_TCP, TCP_NODELAY, &immediate, sizeof(immediate)))
+    {
+        exit(3);
+    }
+}
 #endif
+
+
+/* EN/RU: Own real client/NULL on one logical stream of an explicitly bidir carrier.
+ * Свой real client/NULL на logical stream явного bidir carrier.
+ */
+StyxClient *linkfixture(void)
+{
+    int pair[2]; /* Connected carrier; each PHY consumes one descriptor. */
+    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
+#ifdef ORDERED_GUEST_FILE_TEST
+    loopback_pair(pair);
+    worker = fork(); /* No native worker has started yet. */
+    if (worker < 0)
+    {
+        exit(3);
+    }
+    if (!worker)
+    {
+        close(pair[0]);
+        signal(SIGPIPE, SIG_IGN);
+        server_start(pair[1], caps);
+        fixtureimagesinit(&server);
+        serve(NULL);
+        fixtureimagesfree();
+        phybidirfree(remote);
+        _exit(0);
+    }
+    close(pair[1]);
+#else
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair))
+    {
+        exit(3);
+    }
+    server_start(pair[1], caps);
     if (pthread_create(&worker, nil, serve, nil))
+    {
+        exit(3);
+    }
+#endif
+    breaker = dup(pair[0]);
+    local = phybidircreate(phyposixfd(pair[0], caps), 4096);
+    if (breaker < 0 || !local)
     {
         exit(3);
     }
@@ -137,14 +210,22 @@ void linkfixturebreak(void)
  */
 void linkfixturefree(void)
 {
+#ifdef ORDERED_GUEST_FILE_TEST
+    shutdown(breaker, SHUT_RDWR); /* Wake the remote process before joining it. */
+    phybidirfree(local);
+    close(breaker);
+    int status;
+    if (waitpid(worker, &status, 0) != worker || !WIFEXITED(status) || WEXITSTATUS(status))
+    {
+        exit(3);
+    }
+#else
     if (pthread_join(worker, nil))
     {
         exit(3);
     }
-#ifdef ORDERED_GUEST_FILE_TEST
-    fixtureimagesfree();
-#endif
     phybidirfree(local);
     phybidirfree(remote);
     close(breaker);
+#endif
 }

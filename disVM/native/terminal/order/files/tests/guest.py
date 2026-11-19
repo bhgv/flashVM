@@ -68,7 +68,7 @@ def main():
         link[link.index("-o") + 1] = str(work / "disvm-files")
         libraries = [str((sdk_target / value).resolve()) for value in sdk_link if value.endswith(".a")]
         link += [str(value) for value in objects]
-        link += ["-Wl,--wrap=dvm_runtime_launch_module", "-Wl,--wrap=dvm_namespace_boot_shutdown",
+        link += ["-Wl,--wrap=main",
                  "-Wl,--start-group", *libraries, "-Wl,--end-group",
                  *[value for value in sdk_link if value.startswith("-l") or value == "-pthread"]]
         run(link, runtime.parent)

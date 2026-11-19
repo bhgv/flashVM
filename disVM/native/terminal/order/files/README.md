@@ -113,7 +113,8 @@ to finish without sleeping after that wake. Factory/FD pins prevent early dispos
 
 The optional actual guest test prepares/takes a real remote-root launch ticket,
 attaches the broker from its captured handoff, prepares a filtered application VFS
-and invokes the production runtime's pre-init adoption. The same compiled portable
+and calls the production launch entry with that handoff. The original Styx peer
+runs in a separate process connected by TCP loopback. The same compiled portable
 Dis image uses ordinary Sys FDs in both interpreter and JIT modes. The original
 server verifies outgoing client records and returns a receipt; after guest shutdown,
 FD/provider/namespace ownership drains before native broker/physical teardown.
@@ -133,7 +134,8 @@ remote function-call schema, SWF execution or a default desktop CLI mode switch.
 
 The actual guest now also loads an application and dependency from filtered
 execution-provider files served by original Styx, then continues its bidirectional
-record exchange on the same connection. The terminal checks a guest startup record
+record exchange on the same connection. Сервер Styx работает в отдельном процессе через TCP loopback.
+The terminal checks a guest startup record
 after the code and dependency loads and acknowledges it before the guest continues.
 The final receipt separately confirms application output.
 

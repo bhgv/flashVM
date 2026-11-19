@@ -33,18 +33,6 @@ extern StyxClient *linkfixture(void);
 extern void linkfixturefree(void);
 
 
-/* EN/RU: Original runtime startup, module borrowed; moves exclusive handoff before first guest publication.
- * Исходный runtime startup, module borrowed; перенос exclusive handoff до первой публикации guest.
- */
-extern Prog *__real_dvm_runtime_launch_module(Module *, DVM_LaunchHandoff *);
-
-
-/* EN/RU: Original final namespace shutdown after all guest execution/FD owners retire.
- * Исходный final namespace shutdown после всех guest execution/FD owners.
- */
-extern void __real_dvm_namespace_boot_shutdown(void);
-
-
 /* EN/RU: Map one owned filtered file into a default-deny application view, then release caller factory ref.
  * Добавить owned filtered file в default-deny application view, освободить исходный factory-ref.
  */
@@ -59,9 +47,8 @@ static void mapfile(DVM_View *view, const char *path, unsigned long tag, unsigne
 /* EN/RU: Prepare actual remote-root ticket, take once, construct ordered broker, install file grants and invoke real startup.
  * Подготовить настоящий remote-root ticket, одноразовый take, ordered broker и file grants, вызвать настоящий startup.
  */
-Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused)
+static DVM_LaunchHandoff *prepare_launch(void)
 {
-    (void)unused;
     connection = linkfixture();
     launch_check(connection != NULL, "real original server/client fixture");
     DVM_LaunchOptions options = launch_options(&terminal, &execution); /* Real private live-root preparation. */
@@ -129,27 +116,31 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     dvm_namespace_release(handoff->group);
     handoff->group = filtered;
     dvm_provider_release(options.terminal);
-    Prog *process = __real_dvm_runtime_launch_module(module, handoff); /* Production adoption and dedicated owner publication. */
-    launch_check(process && !handoff->group && !handoff->flashvm.provider, "real pre-init ownership transfer");
-    dvm_launch_handoff_free(handoff);
     dvm_launch_ticket_free(ticket);
     dvm_launch_review_free(review);
     dvm_launch_endpoint_free(endpoint);
     dvm_launch_service_free(service);
     dvm_provider_release(options.provider);
-    return process;
+    return handoff;
 }
 
 
 /* EN/RU: Require actual guest namespaces and FDs to release exports before joining native broker/physical owners.
  * Требовать освобождения exports настоящими guest namespaces/FD до join native broker/physical owners.
  */
-void __wrap_dvm_namespace_boot_shutdown(void)
+int __wrap_main(int argc, char **argv)
 {
-    __real_dvm_namespace_boot_shutdown();
+    DVM_LaunchHandoff *handoff = prepare_launch();
+    int status = dvm_runtime_main_with_handoff(argc, argv, handoff);
+    if (!status)
+    {
+        launch_check(!handoff->group && !handoff->flashvm.provider, "real pre-init ownership transfer");
+    }
+    dvm_launch_handoff_free(handoff);
     launch_check(execution.destroyed == 1 && terminal.destroyed == 1 && styxorderedfilesfree(files), "guest FD/provider lifecycle drain");
     styxclientshutdown(connection);
     styxclientfree(connection);
     linkfixturefree();
     puts("PASS real Dis Unibus file native ownership drain");
+    return status;
 }

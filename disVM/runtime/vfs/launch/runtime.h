@@ -9,6 +9,19 @@ struct Prog; /* Runtime-owned unpublished process, borrowed by its constructor. 
 struct Module; /* Loaded provider-local module, managed by the runtime controller. */
 
 
+/* EN: Run one DisVM invocation on the host launch thread, with the usual CLI
+ * options and a host-selected local bootstrap path. Borrow argv and the exclusive
+ * optional handoff through return. Successful adoption transfers handoff grants
+ * to the initial guest. The caller frees the shell after runtime shutdown.
+ * Returns the CLI exit status. One invocation per process; no concurrent calls.
+ * RU: Выполнить один запуск DisVM в стартовом потоке с обычными CLI-опциями
+ * и локальным bootstrap, выбранным host. Argv и необязательный exclusive handoff
+ * заимствованы до возврата. При adoption grants переходят первому гостю,
+ * вызывающий освобождает оболочку после завершения runtime. Возвращает CLI status.
+ * Один вызов на процесс, без конкурентных вызовов. */
+int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff);
+
+
 /* EN/RU: Controller starts an already loaded zero-argument bootstrap with optional handoff.
  * Requires ACTIVE startup controller, before guest dispatch; returns published initial process.
  * Adoption moves group/channel ownership and copies immutable startup label/bytes.
