@@ -63,6 +63,15 @@ host timing noise while detecting the previous full-core spin. A local headless
 measurement changed from 99.4% before the fix to 0.0% at clock-tick resolution after
 it. This does not measure physical SDL event handling or animated workloads.
 
+The SDL acceptance also exercises the real event loop and software renderer with
+`SDL_VIDEODRIVER=dummy`: visible/minimized idle intervals, restore, resize, native
+text, Ctrl+S and Quit. A local run measured about 1.6–3.4% of one CPU across all
+threads while the dummy window was idle. This includes normal event/timer polling;
+it is distinct from the headless FIFO measurement above. No physical display,
+window-manager behavior or real keyboard/touch hardware is inferred. See the
+[C input injector](../disVM/runtime/test_sdl_idle.c) and
+[isolated relink/measurement driver](../disVM/runtime/test_sdl_idle.py).
+
 ## Actual owners and widgets
 
 | Element | FlashVM representation | Dis owner |
