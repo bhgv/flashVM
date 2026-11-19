@@ -42,7 +42,8 @@ def main():
     paths = [Path(value) for value in sys.argv[1:]] or ([root / 'libunibus/examples' / name for name in ('nested.c', 'queues.c')]
         + sorted((root / 'libunibus/examples/bridge').glob('*.[ch]'))
         + sorted((root / 'styx/examples/memory_phy').glob('*.[ch]'))
-        + [root / 'styx/examples/live.c', root / 'styx/tests/live_registry.c'])
+        + [root / 'styx/examples/live.c', root / 'styx/tests/live_registry.c',
+           root / 'styx/examples/http_query.py', root / 'styx/tests/http_contract.py'])
     audit(paths)
 
 

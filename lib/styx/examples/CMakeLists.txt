@@ -65,3 +65,6 @@ set_tests_properties(styx-live-registry PROPERTIES TIMEOUT 10)
 add_test(NAME styx-live-wire COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/live_wire.py" "$<TARGET_FILE:styx-live>")
 set_tests_properties(styx-live-wire PROPERTIES TIMEOUT 30)
+add_test(NAME styx-http-contract COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tests/http_contract.py" "$<TARGET_FILE:styx-http>")
+set_tests_properties(styx-http-contract PROPERTIES TIMEOUT 90)

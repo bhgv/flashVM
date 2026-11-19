@@ -4,6 +4,7 @@
 from pathlib import Path
 from .memory_guide import main as memory_guide
 from .live_guide import main as live_guide
+from .http_guide import main as http_guide
 
 MODELS = {
     "flat": ("Fixed root files", "Фиксированные файлы корня", "fixed.c", "status; temperature", "status", "ready\\n",
@@ -175,6 +176,7 @@ def main():
     examples(root)
     memory_guide(root / "styx")
     live_guide(root / "styx")
+    http_guide(root / "styx")
     topics(root)
 
 

@@ -9,7 +9,7 @@ Linux arm64/riscv64 selections have not been executed on those physical targets.
 
 | Check | Result |
 | --- | --- |
-| Styx hosted | 18/18: six original server regressions, portable codec, five catalog models |
+| Styx hosted | 19/19: six original server regressions, portable codec, five catalog models |
 | libunibus hosted | 11/11: nested records, independent native waits, four order regressions, queue initialization failures, gateway, adversarial two-client cases, gateway initialization failures and short/failed I/O |
 | Cross-library wire integration | 5/5 catalog models through independently linked gateway |
 | Isolated copies | Each package configured, built and tested outside its original source directory |
@@ -74,3 +74,7 @@ A real native 9P client and original Styx server communicate over bounded memory
 ## Mutable registry acceptance
 
 The live tutorial rejects multiple commands, internal line endings, embedded NUL, signed IDs and decimal overflow without mutation. One terminal LF/CRLF is accepted and counted. The new grammar regression fails on the prior live.c because it silently discarded a second command. Direct tests cover all 16 slots, bounded pages, shared directory/child pins, final-close reclamation and fresh Qids; two real 9P clients verify Rerror recovery and another client's retained opened file. Authored EN/RU guidance separates name visibility from opened-object lifetime.
+
+## HTTP provider acceptance
+
+The HTTP tutorial now validates exact unsigned64 IDs, stat identity, immediate-child parents, page-local uniqueness, required/text fields, UTF-8 byte limits, duplicate JSON keys and nonstandard numbers before any helper stdout. Declared response lengths must be complete; a truncated [] must not report successful absence. Both wrong-stat substitution and truncated-empty acceptance were reproduced with the prior helper. A mutable HTTP fixture and real 9P server/client exercise IDs 2^53+1 and 2^64-1, renamed opened objects, changing values, Rerror and subsequent reads/listings on the same session. The HTTP backend remains a synchronous teaching adapter, not a production asynchronous HTTP scheduler.
