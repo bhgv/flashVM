@@ -1,0 +1,243 @@
+# API dictionary
+
+Copyright (c) 2026 bhgv
+
+Separate pages cover actual public definitions. Syntax and source anchors come from the built source copy.
+
+[Guide](../README.md) · [Introduction](introduction.md) · [Tutorial](tutorial.md) · [Examples](../examples/README.md) · [Protocol](protocol.md) · [Porting](porting.md)
+
+- [_assert](reference/_assert.md) — `Styx::nine; hosted Linux64 support`
+- [_exits](reference/_exits.md) — `Styx::nine; hosted Linux64 support`
+- [_tas](reference/_tas.md) — `Styx::nine; hosted Linux64 support`
+- [canlock](reference/canlock.md) — `Styx::nine; hosted Linux64 support`
+- [canqlock](reference/canqlock.md) — `Styx::nine; hosted Linux64 support`
+- [canrlock](reference/canrlock.md) — `Styx::nine; hosted Linux64 support`
+- [charstod](reference/charstod.md) — `Styx::nine; hosted Linux64 support`
+- [chartorune](reference/chartorune.md) — `Styx::nine; hosted Linux64 support`
+- [cistrcmp](reference/cistrcmp.md) — `Styx::nine; hosted Linux64 support`
+- [cistrncmp](reference/cistrncmp.md) — `Styx::nine; hosted Linux64 support`
+- [cistrstr](reference/cistrstr.md) — `Styx::nine; hosted Linux64 support`
+- [cleanname](reference/cleanname.md) — `Styx::nine; hosted Linux64 support`
+- [convD2M](reference/convD2M.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convM2D](reference/convM2D.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convM2S](reference/convM2S.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convS2M](reference/convS2M.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [create](reference/create.md) — `Styx::nine; hosted Linux64 support`
+- [dec16](reference/dec16.md) — `Styx::nine; hosted Linux64 support`
+- [dec32](reference/dec32.md) — `Styx::nine; hosted Linux64 support`
+- [dec64](reference/dec64.md) — `Styx::nine; hosted Linux64 support`
+- [dirfmt](reference/dirfmt.md) — `Styx::nine; hosted Linux64 support`
+- [dirfstat](reference/dirfstat.md) — `Styx::nine; hosted Linux64 support`
+- [dirfwstat](reference/dirfwstat.md) — `Styx::nine; hosted Linux64 support`
+- [dirstat](reference/dirstat.md) — `Styx::nine; hosted Linux64 support`
+- [dirwstat](reference/dirwstat.md) — `Styx::nine; hosted Linux64 support`
+- [dofmt](reference/dofmt.md) — `Styx::nine; hosted Linux64 support`
+- [dorfmt](reference/dorfmt.md) — `Styx::nine; hosted Linux64 support`
+- [enc16](reference/enc16.md) — `Styx::nine; hosted Linux64 support`
+- [enc32](reference/enc32.md) — `Styx::nine; hosted Linux64 support`
+- [enc64](reference/enc64.md) — `Styx::nine; hosted Linux64 support`
+- [errfmt](reference/errfmt.md) — `Styx::nine; hosted Linux64 support`
+- [errstr](reference/errstr.md) — `Styx::nine; hosted Linux64 support`
+- [exits](reference/exits.md) — `Styx::nine; hosted Linux64 support`
+- [fcallfmt](reference/fcallfmt.md) — `Styx::nine; hosted Linux64 support`
+- [fmtfdflush](reference/fmtfdflush.md) — `Styx::nine; hosted Linux64 support`
+- [fmtfdinit](reference/fmtfdinit.md) — `Styx::nine; hosted Linux64 support`
+- [fmtinstall](reference/fmtinstall.md) — `Styx::nine; hosted Linux64 support`
+- [fmtprint](reference/fmtprint.md) — `Styx::nine; hosted Linux64 support`
+- [fmtrune](reference/fmtrune.md) — `Styx::nine; hosted Linux64 support`
+- [fmtrunestrcpy](reference/fmtrunestrcpy.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrcpy](reference/fmtstrcpy.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrflush](reference/fmtstrflush.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrinit](reference/fmtstrinit.md) — `Styx::nine; hosted Linux64 support`
+- [fmtvprint](reference/fmtvprint.md) — `Styx::nine; hosted Linux64 support`
+- [fprint](reference/fprint.md) — `Styx::nine; hosted Linux64 support`
+- [fullrune](reference/fullrune.md) — `Styx::nine; hosted Linux64 support`
+- [fvm_sinteger_read](reference/fvm_sinteger_read.md) — `Styx::wire; C89`
+- [fvm_sinteger_write](reference/fvm_sinteger_write.md) — `Styx::wire; C89`
+- [fvm_srecord_read](reference/fvm_srecord_read.md) — `Styx::wire; C89`
+- [fvm_srecord_write](reference/fvm_srecord_write.md) — `Styx::wire; C89`
+- [fvm_srecord_write_pair](reference/fvm_srecord_write_pair.md) — `Styx::wire; C89`
+- [fvm_sstream_init](reference/fvm_sstream_init.md) — `Styx::wire; C89`
+- [fvm_sstream_push](reference/fvm_sstream_push.md) — `Styx::wire; C89`
+- [fvm_sstream_reset](reference/fvm_sstream_reset.md) — `Styx::wire; C89`
+- [getcallerpc](reference/getcallerpc.md) — `Styx::nine; hosted Linux64 support`
+- [getfcr](reference/getfcr.md) — `Styx::nine; hosted Linux64 support`
+- [getfields](reference/getfields.md) — `Styx::nine; hosted Linux64 support`
+- [getfsr](reference/getfsr.md) — `Styx::nine; hosted Linux64 support`
+- [getuser](reference/getuser.md) — `Styx::nine; hosted Linux64 support`
+- [getwd](reference/getwd.md) — `Styx::nine; hosted Linux64 support`
+- [isInf](reference/isInf.md) — `Styx::nine; hosted Linux64 support`
+- [isNaN](reference/isNaN.md) — `Styx::nine; hosted Linux64 support`
+- [isalpharune](reference/isalpharune.md) — `Styx::nine; hosted Linux64 support`
+- [islowerrune](reference/islowerrune.md) — `Styx::nine; hosted Linux64 support`
+- [isspacerune](reference/isspacerune.md) — `Styx::nine; hosted Linux64 support`
+- [istitlerune](reference/istitlerune.md) — `Styx::nine; hosted Linux64 support`
+- [isupperrune](reference/isupperrune.md) — `Styx::nine; hosted Linux64 support`
+- [lock](reference/lock.md) — `Styx::nine; hosted Linux64 support`
+- [nulldir](reference/nulldir.md) — `Styx::nine; hosted Linux64 support`
+- [phyavailable](reference/phyavailable.md) — `Styx::carrier; hosted native build`
+- [phyconnect](reference/phyconnect.md) — `Styx::carrier; hosted native build`
+- [phycreate](reference/phycreate.md) — `Styx::carrier; hosted native build`
+- [phydisconnect](reference/phydisconnect.md) — `Styx::carrier; hosted native build`
+- [phyfree](reference/phyfree.md) — `Styx::carrier; hosted native build`
+- [phyinfo](reference/phyinfo.md) — `Styx::carrier; hosted native build`
+- [phyposixfd](reference/phyposixfd.md) — `Styx::carrier; hosted native build`
+- [phyread](reference/phyread.md) — `Styx::carrier; hosted native build`
+- [physelect](reference/physelect.md) — `Styx::carrier; hosted native build`
+- [phywait](reference/phywait.md) — `Styx::carrier; hosted native build`
+- [phywake](reference/phywake.md) — `Styx::carrier; hosted native build`
+- [phywrite](reference/phywrite.md) — `Styx::carrier; hosted native build`
+- [pow10](reference/pow10.md) — `Styx::nine; hosted Linux64 support`
+- [print](reference/print.md) — `Styx::nine; hosted Linux64 support`
+- [qlock](reference/qlock.md) — `Styx::nine; hosted Linux64 support`
+- [qsort](reference/qsort.md) — `Styx::nine; hosted Linux64 support`
+- [qunlock](reference/qunlock.md) — `Styx::nine; hosted Linux64 support`
+- [quotefmtinstall](reference/quotefmtinstall.md) — `Styx::nine; hosted Linux64 support`
+- [quoterunestrfmt](reference/quoterunestrfmt.md) — `Styx::nine; hosted Linux64 support`
+- [quotestrfmt](reference/quotestrfmt.md) — `Styx::nine; hosted Linux64 support`
+- [readn](reference/readn.md) — `Styx::nine; hosted Linux64 support`
+- [rerrstr](reference/rerrstr.md) — `Styx::nine; hosted Linux64 support`
+- [rlock](reference/rlock.md) — `Styx::nine; hosted Linux64 support`
+- [runefmtstrflush](reference/runefmtstrflush.md) — `Styx::nine; hosted Linux64 support`
+- [runefmtstrinit](reference/runefmtstrinit.md) — `Styx::nine; hosted Linux64 support`
+- [runelen](reference/runelen.md) — `Styx::nine; hosted Linux64 support`
+- [runenlen](reference/runenlen.md) — `Styx::nine; hosted Linux64 support`
+- [runeseprint](reference/runeseprint.md) — `Styx::nine; hosted Linux64 support`
+- [runesmprint](reference/runesmprint.md) — `Styx::nine; hosted Linux64 support`
+- [runesnprint](reference/runesnprint.md) — `Styx::nine; hosted Linux64 support`
+- [runestrchr](reference/runestrchr.md) — `Styx::nine; hosted Linux64 support`
+- [runestrlen](reference/runestrlen.md) — `Styx::nine; hosted Linux64 support`
+- [runetochar](reference/runetochar.md) — `Styx::nine; hosted Linux64 support`
+- [runevseprint](reference/runevseprint.md) — `Styx::nine; hosted Linux64 support`
+- [runevsmprint](reference/runevsmprint.md) — `Styx::nine; hosted Linux64 support`
+- [runevsnprint](reference/runevsnprint.md) — `Styx::nine; hosted Linux64 support`
+- [runlock](reference/runlock.md) — `Styx::nine; hosted Linux64 support`
+- [seek](reference/seek.md) — `Styx::nine; hosted Linux64 support`
+- [seprint](reference/seprint.md) — `Styx::nine; hosted Linux64 support`
+- [setbinmode](reference/setbinmode.md) — `Styx::nine; hosted Linux64 support`
+- [setfcr](reference/setfcr.md) — `Styx::nine; hosted Linux64 support`
+- [setfsr](reference/setfsr.md) — `Styx::nine; hosted Linux64 support`
+- [sizeD2M](reference/sizeD2M.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [sizeS2M](reference/sizeS2M.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [smprint](reference/smprint.md) — `Styx::nine; hosted Linux64 support`
+- [snprint](reference/snprint.md) — `Styx::nine; hosted Linux64 support`
+- [sprint](reference/sprint.md) — `Styx::nine; hosted Linux64 support`
+- [statcheck](reference/statcheck.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [strdup](reference/strdup.md) — `Styx::nine; hosted Linux64 support`
+- [strecpy](reference/strecpy.md) — `Styx::nine; hosted Linux64 support`
+- [strtoll](reference/strtoll.md) — `Styx::nine; hosted Linux64 support`
+- [strtoull](reference/strtoull.md) — `Styx::nine; hosted Linux64 support`
+- [styxadddir](reference/styxadddir.md) — `Styx::server; hosted native build`
+- [styxaddfile](reference/styxaddfile.md) — `Styx::server; hosted native build`
+- [styxattachclient](reference/styxattachclient.md) — `Styx::server; hosted native build`
+- [styxattachfree](reference/styxattachfree.md) — `Styx::server; hosted native build`
+- [styxattachreply](reference/styxattachreply.md) — `Styx::server; hosted native build`
+- [styxattachroot](reference/styxattachroot.md) — `Styx::server; hosted native build`
+- [styxcancelcreate](reference/styxcancelcreate.md) — `Styx::client; hosted native build`
+- [styxcancelfree](reference/styxcancelfree.md) — `Styx::client; hosted native build`
+- [styxcancelrequest](reference/styxcancelrequest.md) — `Styx::client; hosted native build`
+- [styxclient](reference/styxclient.md) — `Styx::server; hosted native build`
+- [styxclientalive](reference/styxclientalive.md) — `Styx::client; hosted native build`
+- [styxclientbidir](reference/styxclientbidir.md) — `Styx::client; hosted native build`
+- [styxclientcancellable](reference/styxclientcancellable.md) — `Styx::client; hosted native build`
+- [styxclientclunk](reference/styxclientclunk.md) — `Styx::client; hosted native build`
+- [styxclientclunkcancel](reference/styxclientclunkcancel.md) — `Styx::client; hosted native build`
+- [styxclientclunklater](reference/styxclientclunklater.md) — `Styx::client; hosted native build`
+- [styxclienterrorprofile](reference/styxclienterrorprofile.md) — `Styx::client; hosted native build`
+- [styxclientfiddirectory](reference/styxclientfiddirectory.md) — `Styx::client; hosted native build`
+- [styxclientfree](reference/styxclientfree.md) — `Styx::client; hosted native build`
+- [styxclientkeepalive](reference/styxclientkeepalive.md) — `Styx::client; hosted native build`
+- [styxclientlink](reference/styxclientlink.md) — `Styx::client; hosted native build`
+- [styxclientlookup](reference/styxclientlookup.md) — `Styx::client; hosted native build`
+- [styxclientlookupfrom](reference/styxclientlookupfrom.md) — `Styx::client; hosted native build`
+- [styxclientmount](reference/styxclientmount.md) — `Styx::client; hosted native build`
+- [styxclientmountfd](reference/styxclientmountfd.md) — `Styx::client; hosted native build`
+- [styxclientmountphy](reference/styxclientmountphy.md) — `Styx::client; hosted native build`
+- [styxclientobserve](reference/styxclientobserve.md) — `Styx::client; hosted native build`
+- [styxclientopen](reference/styxclientopen.md) — `Styx::client; hosted native build`
+- [styxclientopencancel](reference/styxclientopencancel.md) — `Styx::client; hosted native build`
+- [styxclientread](reference/styxclientread.md) — `Styx::client; hosted native build`
+- [styxclientreadcancel](reference/styxclientreadcancel.md) — `Styx::client; hosted native build`
+- [styxclientreadwatch](reference/styxclientreadwatch.md) — `Styx::client; hosted native build`
+- [styxclientrecord](reference/styxclientrecord.md) — `Styx::client; hosted native build`
+- [styxclientretain](reference/styxclientretain.md) — `Styx::client; hosted native build`
+- [styxclientrootdirectory](reference/styxclientrootdirectory.md) — `Styx::client; hosted native build`
+- [styxclientshutdown](reference/styxclientshutdown.md) — `Styx::client; hosted native build`
+- [styxclientstat](reference/styxclientstat.md) — `Styx::client; hosted native build`
+- [styxclientstatcancel](reference/styxclientstatcancel.md) — `Styx::client; hosted native build`
+- [styxclientunwatch](reference/styxclientunwatch.md) — `Styx::client; hosted native build`
+- [styxclientwalk](reference/styxclientwalk.md) — `Styx::client; hosted native build`
+- [styxclientwalkcancel](reference/styxclientwalkcancel.md) — `Styx::client; hosted native build`
+- [styxclientwalkfrom](reference/styxclientwalkfrom.md) — `Styx::client; hosted native build`
+- [styxclientwalkfromcancel](reference/styxclientwalkfromcancel.md) — `Styx::client; hosted native build`
+- [styxclientwalkmountphy](reference/styxclientwalkmountphy.md) — `Styx::client; hosted native build`
+- [styxclientwalkprobe](reference/styxclientwalkprobe.md) — `Styx::client; hosted native build`
+- [styxclientwalktarget](reference/styxclientwalktarget.md) — `Styx::client; hosted native build`
+- [styxclientwatch](reference/styxclientwatch.md) — `Styx::client; hosted native build`
+- [styxclientwatchable](reference/styxclientwatchable.md) — `Styx::client; hosted native build`
+- [styxclientwrite](reference/styxclientwrite.md) — `Styx::client; hosted native build`
+- [styxclientwritecancel](reference/styxclientwritecancel.md) — `Styx::client; hosted native build`
+- [styxdebug](reference/styxdebug.md) — `Styx::server; hosted native build`
+- [styxdeferattach](reference/styxdeferattach.md) — `Styx::server; hosted native build`
+- [styxdeferread](reference/styxdeferread.md) — `Styx::server; hosted native build`
+- [styxend](reference/styxend.md) — `Styx::phy_server; hosted native build`
+- [styxfindfile](reference/styxfindfile.md) — `Styx::server; hosted native build`
+- [styxfree](reference/styxfree.md) — `Styx::server; hosted native build`
+- [styxgetaux](reference/styxgetaux.md) — `Styx::server; hosted native build`
+- [styxinit](reference/styxinit.md) — `Styx::phy_server; hosted native build`
+- [styxmalloc](reference/styxmalloc.md) — `Styx::server; hosted native build`
+- [styxnotifyfd](reference/styxnotifyfd.md) — `Styx::phy_server; hosted native build`
+- [styxperm](reference/styxperm.md) — `Styx::server; hosted native build`
+- [styxphycycleerror](reference/styxphycycleerror.md) — `Styx::phy_server; hosted native build`
+- [styxphyflush](reference/styxphyflush.md) — `Styx::phy_server; hosted native build`
+- [styxphyinit](reference/styxphyinit.md) — `Styx::phy_server; hosted native build`
+- [styxphypending](reference/styxphypending.md) — `Styx::phy_server; hosted native build`
+- [styxphyspace](reference/styxphyspace.md) — `Styx::phy_server; hosted native build`
+- [styxphywake](reference/styxphywake.md) — `Styx::phy_server; hosted native build`
+- [styxphywakefree](reference/styxphywakefree.md) — `Styx::phy_server; hosted native build`
+- [styxphywakepin](reference/styxphywakepin.md) — `Styx::phy_server; hosted native build`
+- [styxphywalkinit](reference/styxphywalkinit.md) — `Styx::phy_server; hosted native build`
+- [styxprocess](reference/styxprocess.md) — `Styx::phy_server; hosted native build`
+- [styxqid](reference/styxqid.md) — `Styx::server; hosted native build`
+- [styxreadaux](reference/styxreadaux.md) — `Styx::server; hosted native build`
+- [styxreadclient](reference/styxreadclient.md) — `Styx::server; hosted native build`
+- [styxreadfree](reference/styxreadfree.md) — `Styx::server; hosted native build`
+- [styxreadlimit](reference/styxreadlimit.md) — `Styx::server; hosted native build`
+- [styxreadoffset](reference/styxreadoffset.md) — `Styx::server; hosted native build`
+- [styxreadreply](reference/styxreadreply.md) — `Styx::server; hosted native build`
+- [styxreadstr](reference/styxreadstr.md) — `Styx::server; hosted native build`
+- [styxrmfile](reference/styxrmfile.md) — `Styx::server; hosted native build`
+- [styxsetaux](reference/styxsetaux.md) — `Styx::server; hosted native build`
+- [styxsetowner](reference/styxsetowner.md) — `Styx::server; hosted native build`
+- [styxwait](reference/styxwait.md) — `Styx::server; hosted native build`
+- [sysfatal](reference/sysfatal.md) — `Styx::nine; hosted Linux64 support`
+- [tokenize](reference/tokenize.md) — `Styx::nine; hosted Linux64 support`
+- [tolowerrune](reference/tolowerrune.md) — `Styx::nine; hosted Linux64 support`
+- [totitlerune](reference/totitlerune.md) — `Styx::nine; hosted Linux64 support`
+- [toupperrune](reference/toupperrune.md) — `Styx::nine; hosted Linux64 support`
+- [unlock](reference/unlock.md) — `Styx::nine; hosted Linux64 support`
+- [utfecpy](reference/utfecpy.md) — `Styx::nine; hosted Linux64 support`
+- [utflen](reference/utflen.md) — `Styx::nine; hosted Linux64 support`
+- [utfnlen](reference/utfnlen.md) — `Styx::nine; hosted Linux64 support`
+- [utfrrune](reference/utfrrune.md) — `Styx::nine; hosted Linux64 support`
+- [utfrune](reference/utfrune.md) — `Styx::nine; hosted Linux64 support`
+- [vfprint](reference/vfprint.md) — `Styx::nine; hosted Linux64 support`
+- [vseprint](reference/vseprint.md) — `Styx::nine; hosted Linux64 support`
+- [vsmprint](reference/vsmprint.md) — `Styx::nine; hosted Linux64 support`
+- [vsnprint](reference/vsnprint.md) — `Styx::nine; hosted Linux64 support`
+- [walk_cycles](reference/walk_cycles.md) — `Styx::walk; hosted native build`
+- [walk_depth](reference/walk_depth.md) — `Styx::walk; hosted native build`
+- [walk_domain](reference/walk_domain.md) — `Styx::walk; hosted native build`
+- [walk_domain_get](reference/walk_domain_get.md) — `Styx::walk; hosted native build`
+- [walk_enter](reference/walk_enter.md) — `Styx::walk; hosted native build`
+- [walk_entity](reference/walk_entity.md) — `Styx::walk; hosted native build`
+- [walk_export](reference/walk_export.md) — `Styx::walk; hosted native build`
+- [walk_export_size](reference/walk_export_size.md) — `Styx::walk; hosted native build`
+- [walk_import](reference/walk_import.md) — `Styx::walk; hosted native build`
+- [walk_leave](reference/walk_leave.md) — `Styx::walk; hosted native build`
+- [walk_note_cycle](reference/walk_note_cycle.md) — `Styx::walk; hosted native build`
+- [walk_packet_read](reference/walk_packet_read.md) — `Styx::walk; hosted native build`
+- [walk_packet_write](reference/walk_packet_write.md) — `Styx::walk; hosted native build`
+- [werrstr](reference/werrstr.md) — `Styx::nine; hosted Linux64 support`
+- [wlock](reference/wlock.md) — `Styx::nine; hosted Linux64 support`
+- [wunlock](reference/wunlock.md) — `Styx::nine; hosted Linux64 support`

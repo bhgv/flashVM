@@ -1,0 +1,60 @@
+# fmtfdinit
+
+Copyright (c) 2026 bhgv — reference annotations; original component licenses remain applicable.
+
+[English](fmtfdinit.md) · [Index](../index.ru.md)
+
+## Синтаксис
+
+```c
+#include <lib9.h>
+
+int fmtfdinit(Fmt *f, int fd, char *buf, int size);
+```
+
+## Библиотека
+
+Styx::nine; hosted Linux64 support
+
+## Параметры
+
+| Параметр | Объявление | Назначение и ограничения |
+| --- | --- | --- |
+| `f` | `Fmt *f` | Активный исходный formatter-контекст, включая cursor вывода и состояние преобразования. |
+| `fd` | `int fd` | Скалярный операнд операции; диапазон протокола/алгоритма описан ниже. |
+| `buf` | `char *buf` | Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием. |
+| `size` | `int size` | Запрошенная длина в байтах; соответствующий буфер должен её покрывать. |
+
+## Описание
+
+fmtfdinit: исходная POSIX-поддержка lib9 fmtfd.
+
+### Сохранённый контракт implementation/header
+
+Reject invalid spans before changing the caller's formatter; empty buffers remain valid.
+
+## Возвращаемое значение
+
+`int`; прямые константы результата тела: -1, 0. Пересылаемый результат сохраняет статус вызываемого API.
+
+## Ошибки и владение
+
+Соблюдать точный контракт выше: overlap input/output, capacity, отмену и правила освобождения. Протокольное подтверждение, результат native queue и завершённый удалённый эффект — разные результаты. Уведомление не даёт прав, неопределённая запись не повторяется автоматически.
+
+## Доступность
+
+Styx::nine; hosted Linux64 support
+
+## Пример
+
+Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+
+[Examples](../../examples/README.ru.md)
+
+## См. также
+
+- [Implementation: vendor/inferno/lib9/fmtfd.c:62](../../vendor/inferno/lib9/fmtfd.c#L62)
+- [Public declaration](../../vendor/inferno/Linux/386/include/lib9.h)
+- [API index](../index.ru.md)
+- [Protocol and lifetime](../protocol.ru.md)
+- [Main-project help](https://github.com/bhgv/flashVM/blob/master/disVM/native/README.md)

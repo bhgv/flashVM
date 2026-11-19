@@ -14,6 +14,10 @@ Current series [v0.1821](docs/releases/v0.1821.md) adds guarded channel allocati
 
 ## Browse documentation
 
+[Independent communication libraries](lib/README.md): [Styx EN](lib/styx/README.md) /
+[RU](lib/styx/README.ru.md), [libunibus EN](lib/libunibus/README.md) / [RU](lib/libunibus/README.ru.md).
+Both libraries also own a standalone `view_docs.py`, including their API/source and example READMEs.
+
 From this repository's root:
 
 ```sh

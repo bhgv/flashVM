@@ -2,6 +2,10 @@
 
 # Рабочее пространство FlashVM
 
+[Независимые библиотеки связи](lib/README.ru.md): [Styx EN](lib/styx/README.md) /
+[RU](lib/styx/README.ru.md), [libunibus EN](lib/libunibus/README.md) / [RU](lib/libunibus/README.ru.md).
+У обеих библиотек отдельный `view_docs.py` со справкой API, исходниками и README примеров.
+
 Меню сборки: `python3 build-menu.py`.
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)

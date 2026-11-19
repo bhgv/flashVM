@@ -29,6 +29,8 @@ HOME = "README.md"
 SOURCE_EXTENSIONS = (
     ".c",
     ".h",
+    ".inc",
+    ".jsonl",
     ".cpp",
     ".hpp",
     ".mm",
@@ -201,7 +203,8 @@ def navigation(root, component=""):
     if component:
         groups.insert(0, ("Repository", ""))
         # Workspace-only navigation: detached VM browsing never inspects siblings.
-        for title, folder in [("Compilers", "compiler"), ("Linker", "linker"), ("FIR", "fir")]:
+        for title, folder in [("Compilers", "compiler"), ("Linker", "linker"), ("FIR", "fir"),
+                              ("Standalone Styx", "lib/styx"), ("Standalone libunibus", "lib/libunibus")]:
             if os.path.isdir(os.path.join(root, folder)):
                 groups.append((title, folder))
     blocks = []

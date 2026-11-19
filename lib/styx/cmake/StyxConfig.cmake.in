@@ -1,0 +1,8 @@
+# Copyright (c) 2026 bhgv
+# EN/RU: Resolve only the package's native hosted dependency; no VM SDK lookup.
+# Найти только нативную зависимость пакета; без поиска VM SDK.
+include(CMakeFindDependencyMacro)
+if(@STYX_HOSTED@)
+    find_dependency(Threads)
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/StyxTargets.cmake")

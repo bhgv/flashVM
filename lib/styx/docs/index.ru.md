@@ -1,0 +1,243 @@
+# Справочник API
+
+Copyright (c) 2026 bhgv
+
+Отдельная страница для каждого фактически определённого публичного входа. Синтаксис и source anchors взяты из собираемой копии.
+
+[Guide](../README.ru.md) · [Introduction](introduction.ru.md) · [Tutorial](tutorial.ru.md) · [Examples](../examples/README.ru.md) · [Protocol](protocol.ru.md) · [Porting](porting.ru.md)
+
+- [_assert](reference/_assert.ru.md) — `Styx::nine; hosted Linux64 support`
+- [_exits](reference/_exits.ru.md) — `Styx::nine; hosted Linux64 support`
+- [_tas](reference/_tas.ru.md) — `Styx::nine; hosted Linux64 support`
+- [canlock](reference/canlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [canqlock](reference/canqlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [canrlock](reference/canrlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [charstod](reference/charstod.ru.md) — `Styx::nine; hosted Linux64 support`
+- [chartorune](reference/chartorune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [cistrcmp](reference/cistrcmp.ru.md) — `Styx::nine; hosted Linux64 support`
+- [cistrncmp](reference/cistrncmp.ru.md) — `Styx::nine; hosted Linux64 support`
+- [cistrstr](reference/cistrstr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [cleanname](reference/cleanname.ru.md) — `Styx::nine; hosted Linux64 support`
+- [convD2M](reference/convD2M.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convM2D](reference/convM2D.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convM2S](reference/convM2S.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [convS2M](reference/convS2M.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [create](reference/create.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dec16](reference/dec16.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dec32](reference/dec32.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dec64](reference/dec64.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dirfmt](reference/dirfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dirfstat](reference/dirfstat.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dirfwstat](reference/dirfwstat.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dirstat](reference/dirstat.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dirwstat](reference/dirwstat.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dofmt](reference/dofmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [dorfmt](reference/dorfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [enc16](reference/enc16.ru.md) — `Styx::nine; hosted Linux64 support`
+- [enc32](reference/enc32.ru.md) — `Styx::nine; hosted Linux64 support`
+- [enc64](reference/enc64.ru.md) — `Styx::nine; hosted Linux64 support`
+- [errfmt](reference/errfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [errstr](reference/errstr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [exits](reference/exits.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fcallfmt](reference/fcallfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtfdflush](reference/fmtfdflush.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtfdinit](reference/fmtfdinit.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtinstall](reference/fmtinstall.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtprint](reference/fmtprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtrune](reference/fmtrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtrunestrcpy](reference/fmtrunestrcpy.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrcpy](reference/fmtstrcpy.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrflush](reference/fmtstrflush.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtstrinit](reference/fmtstrinit.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fmtvprint](reference/fmtvprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fprint](reference/fprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fullrune](reference/fullrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [fvm_sinteger_read](reference/fvm_sinteger_read.ru.md) — `Styx::wire; C89`
+- [fvm_sinteger_write](reference/fvm_sinteger_write.ru.md) — `Styx::wire; C89`
+- [fvm_srecord_read](reference/fvm_srecord_read.ru.md) — `Styx::wire; C89`
+- [fvm_srecord_write](reference/fvm_srecord_write.ru.md) — `Styx::wire; C89`
+- [fvm_srecord_write_pair](reference/fvm_srecord_write_pair.ru.md) — `Styx::wire; C89`
+- [fvm_sstream_init](reference/fvm_sstream_init.ru.md) — `Styx::wire; C89`
+- [fvm_sstream_push](reference/fvm_sstream_push.ru.md) — `Styx::wire; C89`
+- [fvm_sstream_reset](reference/fvm_sstream_reset.ru.md) — `Styx::wire; C89`
+- [getcallerpc](reference/getcallerpc.ru.md) — `Styx::nine; hosted Linux64 support`
+- [getfcr](reference/getfcr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [getfields](reference/getfields.ru.md) — `Styx::nine; hosted Linux64 support`
+- [getfsr](reference/getfsr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [getuser](reference/getuser.ru.md) — `Styx::nine; hosted Linux64 support`
+- [getwd](reference/getwd.ru.md) — `Styx::nine; hosted Linux64 support`
+- [isInf](reference/isInf.ru.md) — `Styx::nine; hosted Linux64 support`
+- [isNaN](reference/isNaN.ru.md) — `Styx::nine; hosted Linux64 support`
+- [isalpharune](reference/isalpharune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [islowerrune](reference/islowerrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [isspacerune](reference/isspacerune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [istitlerune](reference/istitlerune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [isupperrune](reference/isupperrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [lock](reference/lock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [nulldir](reference/nulldir.ru.md) — `Styx::nine; hosted Linux64 support`
+- [phyavailable](reference/phyavailable.ru.md) — `Styx::carrier; hosted native build`
+- [phyconnect](reference/phyconnect.ru.md) — `Styx::carrier; hosted native build`
+- [phycreate](reference/phycreate.ru.md) — `Styx::carrier; hosted native build`
+- [phydisconnect](reference/phydisconnect.ru.md) — `Styx::carrier; hosted native build`
+- [phyfree](reference/phyfree.ru.md) — `Styx::carrier; hosted native build`
+- [phyinfo](reference/phyinfo.ru.md) — `Styx::carrier; hosted native build`
+- [phyposixfd](reference/phyposixfd.ru.md) — `Styx::carrier; hosted native build`
+- [phyread](reference/phyread.ru.md) — `Styx::carrier; hosted native build`
+- [physelect](reference/physelect.ru.md) — `Styx::carrier; hosted native build`
+- [phywait](reference/phywait.ru.md) — `Styx::carrier; hosted native build`
+- [phywake](reference/phywake.ru.md) — `Styx::carrier; hosted native build`
+- [phywrite](reference/phywrite.ru.md) — `Styx::carrier; hosted native build`
+- [pow10](reference/pow10.ru.md) — `Styx::nine; hosted Linux64 support`
+- [print](reference/print.ru.md) — `Styx::nine; hosted Linux64 support`
+- [qlock](reference/qlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [qsort](reference/qsort.ru.md) — `Styx::nine; hosted Linux64 support`
+- [qunlock](reference/qunlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [quotefmtinstall](reference/quotefmtinstall.ru.md) — `Styx::nine; hosted Linux64 support`
+- [quoterunestrfmt](reference/quoterunestrfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [quotestrfmt](reference/quotestrfmt.ru.md) — `Styx::nine; hosted Linux64 support`
+- [readn](reference/readn.ru.md) — `Styx::nine; hosted Linux64 support`
+- [rerrstr](reference/rerrstr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [rlock](reference/rlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runefmtstrflush](reference/runefmtstrflush.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runefmtstrinit](reference/runefmtstrinit.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runelen](reference/runelen.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runenlen](reference/runenlen.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runeseprint](reference/runeseprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runesmprint](reference/runesmprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runesnprint](reference/runesnprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runestrchr](reference/runestrchr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runestrlen](reference/runestrlen.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runetochar](reference/runetochar.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runevseprint](reference/runevseprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runevsmprint](reference/runevsmprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runevsnprint](reference/runevsnprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [runlock](reference/runlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [seek](reference/seek.ru.md) — `Styx::nine; hosted Linux64 support`
+- [seprint](reference/seprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [setbinmode](reference/setbinmode.ru.md) — `Styx::nine; hosted Linux64 support`
+- [setfcr](reference/setfcr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [setfsr](reference/setfsr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [sizeD2M](reference/sizeD2M.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [sizeS2M](reference/sizeS2M.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [smprint](reference/smprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [snprint](reference/snprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [sprint](reference/sprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [statcheck](reference/statcheck.ru.md) — `Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hosted build`
+- [strdup](reference/strdup.ru.md) — `Styx::nine; hosted Linux64 support`
+- [strecpy](reference/strecpy.ru.md) — `Styx::nine; hosted Linux64 support`
+- [strtoll](reference/strtoll.ru.md) — `Styx::nine; hosted Linux64 support`
+- [strtoull](reference/strtoull.ru.md) — `Styx::nine; hosted Linux64 support`
+- [styxadddir](reference/styxadddir.ru.md) — `Styx::server; hosted native build`
+- [styxaddfile](reference/styxaddfile.ru.md) — `Styx::server; hosted native build`
+- [styxattachclient](reference/styxattachclient.ru.md) — `Styx::server; hosted native build`
+- [styxattachfree](reference/styxattachfree.ru.md) — `Styx::server; hosted native build`
+- [styxattachreply](reference/styxattachreply.ru.md) — `Styx::server; hosted native build`
+- [styxattachroot](reference/styxattachroot.ru.md) — `Styx::server; hosted native build`
+- [styxcancelcreate](reference/styxcancelcreate.ru.md) — `Styx::client; hosted native build`
+- [styxcancelfree](reference/styxcancelfree.ru.md) — `Styx::client; hosted native build`
+- [styxcancelrequest](reference/styxcancelrequest.ru.md) — `Styx::client; hosted native build`
+- [styxclient](reference/styxclient.ru.md) — `Styx::server; hosted native build`
+- [styxclientalive](reference/styxclientalive.ru.md) — `Styx::client; hosted native build`
+- [styxclientbidir](reference/styxclientbidir.ru.md) — `Styx::client; hosted native build`
+- [styxclientcancellable](reference/styxclientcancellable.ru.md) — `Styx::client; hosted native build`
+- [styxclientclunk](reference/styxclientclunk.ru.md) — `Styx::client; hosted native build`
+- [styxclientclunkcancel](reference/styxclientclunkcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientclunklater](reference/styxclientclunklater.ru.md) — `Styx::client; hosted native build`
+- [styxclienterrorprofile](reference/styxclienterrorprofile.ru.md) — `Styx::client; hosted native build`
+- [styxclientfiddirectory](reference/styxclientfiddirectory.ru.md) — `Styx::client; hosted native build`
+- [styxclientfree](reference/styxclientfree.ru.md) — `Styx::client; hosted native build`
+- [styxclientkeepalive](reference/styxclientkeepalive.ru.md) — `Styx::client; hosted native build`
+- [styxclientlink](reference/styxclientlink.ru.md) — `Styx::client; hosted native build`
+- [styxclientlookup](reference/styxclientlookup.ru.md) — `Styx::client; hosted native build`
+- [styxclientlookupfrom](reference/styxclientlookupfrom.ru.md) — `Styx::client; hosted native build`
+- [styxclientmount](reference/styxclientmount.ru.md) — `Styx::client; hosted native build`
+- [styxclientmountfd](reference/styxclientmountfd.ru.md) — `Styx::client; hosted native build`
+- [styxclientmountphy](reference/styxclientmountphy.ru.md) — `Styx::client; hosted native build`
+- [styxclientobserve](reference/styxclientobserve.ru.md) — `Styx::client; hosted native build`
+- [styxclientopen](reference/styxclientopen.ru.md) — `Styx::client; hosted native build`
+- [styxclientopencancel](reference/styxclientopencancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientread](reference/styxclientread.ru.md) — `Styx::client; hosted native build`
+- [styxclientreadcancel](reference/styxclientreadcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientreadwatch](reference/styxclientreadwatch.ru.md) — `Styx::client; hosted native build`
+- [styxclientrecord](reference/styxclientrecord.ru.md) — `Styx::client; hosted native build`
+- [styxclientretain](reference/styxclientretain.ru.md) — `Styx::client; hosted native build`
+- [styxclientrootdirectory](reference/styxclientrootdirectory.ru.md) — `Styx::client; hosted native build`
+- [styxclientshutdown](reference/styxclientshutdown.ru.md) — `Styx::client; hosted native build`
+- [styxclientstat](reference/styxclientstat.ru.md) — `Styx::client; hosted native build`
+- [styxclientstatcancel](reference/styxclientstatcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientunwatch](reference/styxclientunwatch.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalk](reference/styxclientwalk.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalkcancel](reference/styxclientwalkcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalkfrom](reference/styxclientwalkfrom.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalkfromcancel](reference/styxclientwalkfromcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalkmountphy](reference/styxclientwalkmountphy.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalkprobe](reference/styxclientwalkprobe.ru.md) — `Styx::client; hosted native build`
+- [styxclientwalktarget](reference/styxclientwalktarget.ru.md) — `Styx::client; hosted native build`
+- [styxclientwatch](reference/styxclientwatch.ru.md) — `Styx::client; hosted native build`
+- [styxclientwatchable](reference/styxclientwatchable.ru.md) — `Styx::client; hosted native build`
+- [styxclientwrite](reference/styxclientwrite.ru.md) — `Styx::client; hosted native build`
+- [styxclientwritecancel](reference/styxclientwritecancel.ru.md) — `Styx::client; hosted native build`
+- [styxdebug](reference/styxdebug.ru.md) — `Styx::server; hosted native build`
+- [styxdeferattach](reference/styxdeferattach.ru.md) — `Styx::server; hosted native build`
+- [styxdeferread](reference/styxdeferread.ru.md) — `Styx::server; hosted native build`
+- [styxend](reference/styxend.ru.md) — `Styx::phy_server; hosted native build`
+- [styxfindfile](reference/styxfindfile.ru.md) — `Styx::server; hosted native build`
+- [styxfree](reference/styxfree.ru.md) — `Styx::server; hosted native build`
+- [styxgetaux](reference/styxgetaux.ru.md) — `Styx::server; hosted native build`
+- [styxinit](reference/styxinit.ru.md) — `Styx::phy_server; hosted native build`
+- [styxmalloc](reference/styxmalloc.ru.md) — `Styx::server; hosted native build`
+- [styxnotifyfd](reference/styxnotifyfd.ru.md) — `Styx::phy_server; hosted native build`
+- [styxperm](reference/styxperm.ru.md) — `Styx::server; hosted native build`
+- [styxphycycleerror](reference/styxphycycleerror.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphyflush](reference/styxphyflush.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphyinit](reference/styxphyinit.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphypending](reference/styxphypending.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphyspace](reference/styxphyspace.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphywake](reference/styxphywake.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphywakefree](reference/styxphywakefree.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphywakepin](reference/styxphywakepin.ru.md) — `Styx::phy_server; hosted native build`
+- [styxphywalkinit](reference/styxphywalkinit.ru.md) — `Styx::phy_server; hosted native build`
+- [styxprocess](reference/styxprocess.ru.md) — `Styx::phy_server; hosted native build`
+- [styxqid](reference/styxqid.ru.md) — `Styx::server; hosted native build`
+- [styxreadaux](reference/styxreadaux.ru.md) — `Styx::server; hosted native build`
+- [styxreadclient](reference/styxreadclient.ru.md) — `Styx::server; hosted native build`
+- [styxreadfree](reference/styxreadfree.ru.md) — `Styx::server; hosted native build`
+- [styxreadlimit](reference/styxreadlimit.ru.md) — `Styx::server; hosted native build`
+- [styxreadoffset](reference/styxreadoffset.ru.md) — `Styx::server; hosted native build`
+- [styxreadreply](reference/styxreadreply.ru.md) — `Styx::server; hosted native build`
+- [styxreadstr](reference/styxreadstr.ru.md) — `Styx::server; hosted native build`
+- [styxrmfile](reference/styxrmfile.ru.md) — `Styx::server; hosted native build`
+- [styxsetaux](reference/styxsetaux.ru.md) — `Styx::server; hosted native build`
+- [styxsetowner](reference/styxsetowner.ru.md) — `Styx::server; hosted native build`
+- [styxwait](reference/styxwait.ru.md) — `Styx::server; hosted native build`
+- [sysfatal](reference/sysfatal.ru.md) — `Styx::nine; hosted Linux64 support`
+- [tokenize](reference/tokenize.ru.md) — `Styx::nine; hosted Linux64 support`
+- [tolowerrune](reference/tolowerrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [totitlerune](reference/totitlerune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [toupperrune](reference/toupperrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [unlock](reference/unlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [utfecpy](reference/utfecpy.ru.md) — `Styx::nine; hosted Linux64 support`
+- [utflen](reference/utflen.ru.md) — `Styx::nine; hosted Linux64 support`
+- [utfnlen](reference/utfnlen.ru.md) — `Styx::nine; hosted Linux64 support`
+- [utfrrune](reference/utfrrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [utfrune](reference/utfrune.ru.md) — `Styx::nine; hosted Linux64 support`
+- [vfprint](reference/vfprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [vseprint](reference/vseprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [vsmprint](reference/vsmprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [vsnprint](reference/vsnprint.ru.md) — `Styx::nine; hosted Linux64 support`
+- [walk_cycles](reference/walk_cycles.ru.md) — `Styx::walk; hosted native build`
+- [walk_depth](reference/walk_depth.ru.md) — `Styx::walk; hosted native build`
+- [walk_domain](reference/walk_domain.ru.md) — `Styx::walk; hosted native build`
+- [walk_domain_get](reference/walk_domain_get.ru.md) — `Styx::walk; hosted native build`
+- [walk_enter](reference/walk_enter.ru.md) — `Styx::walk; hosted native build`
+- [walk_entity](reference/walk_entity.ru.md) — `Styx::walk; hosted native build`
+- [walk_export](reference/walk_export.ru.md) — `Styx::walk; hosted native build`
+- [walk_export_size](reference/walk_export_size.ru.md) — `Styx::walk; hosted native build`
+- [walk_import](reference/walk_import.ru.md) — `Styx::walk; hosted native build`
+- [walk_leave](reference/walk_leave.ru.md) — `Styx::walk; hosted native build`
+- [walk_note_cycle](reference/walk_note_cycle.ru.md) — `Styx::walk; hosted native build`
+- [walk_packet_read](reference/walk_packet_read.ru.md) — `Styx::walk; hosted native build`
+- [walk_packet_write](reference/walk_packet_write.ru.md) — `Styx::walk; hosted native build`
+- [werrstr](reference/werrstr.ru.md) — `Styx::nine; hosted Linux64 support`
+- [wlock](reference/wlock.ru.md) — `Styx::nine; hosted Linux64 support`
+- [wunlock](reference/wunlock.ru.md) — `Styx::nine; hosted Linux64 support`

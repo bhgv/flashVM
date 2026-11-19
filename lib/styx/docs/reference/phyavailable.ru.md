@@ -1,0 +1,59 @@
+# phyavailable
+
+Copyright (c) 2026 bhgv — reference annotations; original component licenses remain applicable.
+
+[English](phyavailable.md) · [Index](../index.ru.md)
+
+## Синтаксис
+
+```c
+#include <styx/phy/phy.h>
+
+int phyavailable(RemotePhy *phy, size_t *bytes);
+```
+
+## Библиотека
+
+Styx::carrier; hosted native build
+
+## Параметры
+
+| Параметр | Объявление | Назначение и ограничения |
+| --- | --- | --- |
+| `phy` | `RemotePhy *phy` | Capability физического носителя; передача владения зависит от конструктора/операции. |
+| `bytes` | `size_t *bytes` | Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием. |
+
+## Описание
+
+phyavailable: реализация remote_phy/phy и нативное состояние.
+
+### Сохранённый контракт implementation/header
+
+EN/RU: Optional local byte hint, not EOF or permission; owner-serialized, output unchanged on failure.
+Optional byte hint, не EOF/permission; owner-serialized, output сохраняется при failure.
+
+## Возвращаемое значение
+
+`int`; прямые константы результата тела: see Description and the implementation. Пересылаемый результат сохраняет статус вызываемого API.
+
+## Ошибки и владение
+
+Соблюдать точный контракт выше: overlap input/output, capacity, отмену и правила освобождения. Протокольное подтверждение, результат native queue и завершённый удалённый эффект — разные результаты. Уведомление не даёт прав, неопределённая запись не повторяется автоматически.
+
+## Доступность
+
+Styx::carrier; hosted native build
+
+## Пример
+
+Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
+
+[Examples](../../examples/README.ru.md)
+
+## См. также
+
+- [Implementation: remote_phy/phy.c:278](../../remote_phy/phy.c#L278)
+- [Public declaration](../../remote_phy/phy.h)
+- [API index](../index.ru.md)
+- [Protocol and lifetime](../protocol.ru.md)
+- [Main-project help](https://github.com/bhgv/flashVM/blob/master/remote_phy/README.md)

@@ -1,0 +1,23 @@
+# Copyright (c) 2026 bhgv
+# EN/RU: Five real original-server applications with distinct backends, no interpreter or graphics dependency.
+# Пять настоящих приложений исходного сервера с разными backend, без интерпретатора и графики.
+add_executable(styx-cat client.c)
+target_link_libraries(styx-cat PRIVATE Styx::client)
+set_target_properties(styx-cat PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+foreach(example flat tree database live http)
+    if(example STREQUAL "flat" OR example STREQUAL "tree")
+        set(backend fixed.c)
+    elseif(example STREQUAL "http")
+        set(backend http_catalog.c)
+    else()
+        set(backend ${example}.c)
+    endif()
+    add_executable(styx-${example} server.c ${backend})
+    target_link_libraries(styx-${example} PRIVATE Styx::server)
+    set_target_properties(styx-${example} PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+    target_compile_options(styx-${example} PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas)
+    add_test(NAME styx-${example} COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/check.py" "$<TARGET_FILE:styx-${example}>" ${example} "$<TARGET_FILE:styx-cat>")
+    set_tests_properties(styx-${example} PROPERTIES TIMEOUT 120)
+endforeach()
+target_compile_definitions(styx-tree PRIVATE CATALOG_TREE=1)
+target_compile_definitions(styx-http PRIVATE CATALOG_PYTHON="${Python3_EXECUTABLE}" CATALOG_HELPER="${CMAKE_CURRENT_SOURCE_DIR}/http_query.py")
