@@ -7,7 +7,7 @@ Copyright (c) 2026 bhgv — reference annotations; original component licenses r
 ## Syntax
 
 ```c
-#include <flashvm/sbindings.h>
+#include <flashvm/srecord.h>
 
 FVM_SResult fvm_srecord_write(
     unsigned long tag, const void *payload, size_t size, unsigned char *out, size_t capacity, size_t *used);
@@ -24,7 +24,7 @@ Unibus::wire; C89, no OS/allocator/threads
 | `tag` | `unsigned long tag` | Unsigned direction-local tag, 0..0xffffffff; transport tag 0 is service-owned. |
 | `payload` | `const void *payload` | Borrowed opaque bytes, possibly nested records; disjoint from output/state. |
 | `size` | `size_t size` | Payload bytes; tag+payload must fit the body profile bound. |
-| `out` | `unsigned char *out` | Buffer/cursor used by this algorithm; the description defines direction, bounds and retained views. |
+| `out` | `unsigned char *out` | Caller-owned writable destination for the complete checked record. |
 | `capacity` | `size_t capacity` | Accessible destination bytes; insufficient space reports LIMIT. |
 | `used` | `size_t *used` | Complete encoded byte count on OK; unchanged on failure. |
 
@@ -66,7 +66,7 @@ result = fvm_srecord_write(0, metadata, metadata_size, wire, sizeof(wire), &wire
 ## See also
 
 - [Implementation: protocol/srecord.c:362](../../protocol/srecord.c#L362)
-- [Public declaration](../../include/flashvm/sbindings.h)
+- [Public declaration](../../include/flashvm/srecord.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)
 - [Main-project help](https://github.com/bhgv/flashVM/blob/master/flashVM/examples/embedding/srecords/README.md)

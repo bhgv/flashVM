@@ -68,3 +68,6 @@ NOTES = {
     'styxorderwait': ('Returns nonzero only if the selected queue has a ready record. Returns zero on timeout, closed-empty state, invalid arguments or native clock/wait failure. It does not distinguish these zero cases; inspect lifecycle separately. Other tags have independent readiness.',
                       'Ненулевой результат только при готовой записи выбранной очереди. Ноль — timeout, closed-empty, неверные аргументы либо native clock/wait error. Причины нуля не различаются; lifecycle проверяется отдельно. У других тегов независимая готовность.'),
 }
+
+# Source definitions use out; the public prototype calls the same destination output.
+PARAMETERS["fvm_srecord_write"]["out"] = PARAMETERS["fvm_srecord_write"]["output"]

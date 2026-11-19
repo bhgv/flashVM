@@ -49,10 +49,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-valid = dispatch(record, &bindings, workers) && fvm_sstream_reset(&stream) == FVM_S_OK;
+result = fvm_sstream_reset(&stream);
 ```
 
-[Complete calling context](../../examples/bridge/main.c#L194)
+[Complete calling context](../../examples/nested.c#L126)
 
 ## См. также
 

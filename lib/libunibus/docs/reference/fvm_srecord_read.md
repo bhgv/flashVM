@@ -54,10 +54,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-result = fvm_srecord_read(outer.payload, outer.size, 128, &inner, &consumed);
+int invalid = fvm_srecord_read(record.payload, record.size, BRIDGE_LIMIT + 32, &request, &used) != FVM_S_OK;
 ```
 
-[Complete calling context](../../examples/nested.c#L117)
+[Complete calling context](../../examples/bridge/receive.c#L43)
 
 ## See also
 

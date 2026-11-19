@@ -9,6 +9,10 @@ import subprocess
 import sys
 import urllib.request
 import urllib.error
+from functools import lru_cache
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.tools.layout import TOKEN
 
 
 # EN: Require condition, raising an actionable ValueError(message) on failure; no state or ownership transfer.
@@ -18,13 +22,52 @@ def require(condition, message):
         raise ValueError(message)
 
 
+# EN: Cache physical source lines from borrowed path with only comments masked;
+# literals and line numbers remain exact. Never modify the installed SDK/source.
+# RU: Кешировать физические строки path, скрыв только comments; literals и номера
+# строк сохраняются. Установленный SDK/исходник не изменяется.
+@lru_cache(maxsize=None)
+def code_lines(path):
+    return TOKEN.sub(lambda match: re.sub(r"[^\n]", " ", match.group())
+                     if match.group().startswith(("/*", "//")) else match.group(), path.read_text()).splitlines()
+
+
+# EN: Verify generated API implementation anchors and call-site excerpts in page.
+# Borrow base/path/source; require the actual function at its line and an exact
+# comment-free example line. A merely in-range but stale anchor must fail.
+# RU: Проверить implementation anchors и call-site excerpts в page. base/path/source
+# заимствованы; требовать функцию в указанной строке и точную строку примера без
+# comments. Устаревший anchor внутри допустимого диапазона должен дать отказ.
+def reference_anchors(base, path, source):
+    name = path.stem.removesuffix('.ru')
+    for target in re.findall(r'\[Implementation: [^\]]+\]\(([^)]+)\)', source):
+        relative, _, anchor = target.partition('#L')
+        destination = (path.parent / relative).resolve()
+        require(destination.is_relative_to(base.resolve()), f'{path}: source escapes package')
+        lines = code_lines(destination)
+        row = int(anchor) - 1
+        require(0 <= row < len(lines) and re.search(r'\b' + re.escape(name) + r'\b', lines[row]),
+                f'{path}: implementation anchor no longer points to {name}: {target}')
+    for snippet, target in re.findall(r'```c\n([^\n]*)\n```\n\n\[Complete calling context\]\(([^)]+)\)', source):
+        relative, _, anchor = target.partition('#L')
+        destination = (path.parent / relative).resolve()
+        require(destination.is_relative_to(base.resolve()), f'{path}: call site escapes package')
+        lines = code_lines(destination)
+        row = int(anchor) - 1
+        require(0 <= row < len(lines) and lines[row].strip() == snippet,
+                f'{path}: call-site excerpt/source line drift: {target}')
+
+
 # EN: Check authored Markdown links under borrowed base, including physical source line anchors.
 # Returns None; external URLs and prose inside code fences are not resolved over the network.
 # RU: Проверить Markdown под base, включая физические номера строк. Возврата нет;
 # внешние URL и текст внутри code fences не запрашиваются по сети.
 def links(base):
     for path in base.rglob('*.md'):
-        text = re.sub(r'```.*?```', '', path.read_text(), flags=re.S)
+        source = path.read_text()
+        if path.parent.name == 'reference':
+            reference_anchors(base, path, source)
+        text = re.sub(r'```.*?```', '', source, flags=re.S)
         for target in re.findall(r'\]\(([^)]+)\)', text):
             if re.match(r'[a-z]+:', target) or target.startswith('#'):
                 continue

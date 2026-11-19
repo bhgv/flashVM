@@ -24,7 +24,7 @@ Styx::wire; C89
 | `tag` | `unsigned long tag` | Беззнаковый тег направления 0..0xffffffff; transport tag 0 принадлежит обслуживанию. |
 | `payload` | `const void *payload` | Заимствованные непрозрачные байты, возможно вложенные записи; отдельно от output/state. |
 | `size` | `size_t size` | Байты payload; tag+payload должны помещаться в предел body-профиля. |
-| `out` | `unsigned char *out` | Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием. |
+| `out` | `unsigned char *out` | Выходной буфер вызывающего для целой проверяемой записи. |
 | `capacity` | `size_t capacity` | Доступные выходные байты; нехватка места даёт LIMIT. |
 | `used` | `size_t *used` | Полная кодированная длина при OK; при отказе не меняется. |
 

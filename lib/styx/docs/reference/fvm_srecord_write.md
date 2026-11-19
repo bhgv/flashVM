@@ -24,7 +24,7 @@ Styx::wire; C89
 | `tag` | `unsigned long tag` | Unsigned direction-local tag, 0..0xffffffff; transport tag 0 is service-owned. |
 | `payload` | `const void *payload` | Borrowed opaque bytes, possibly nested records; disjoint from output/state. |
 | `size` | `size_t size` | Payload bytes; tag+payload must fit the body profile bound. |
-| `out` | `unsigned char *out` | Buffer/cursor used by this algorithm; the description defines direction, bounds and retained views. |
+| `out` | `unsigned char *out` | Caller-owned writable destination for the complete checked record. |
 | `capacity` | `size_t capacity` | Accessible destination bytes; insufficient space reports LIMIT. |
 | `used` | `size_t *used` | Complete encoded byte count on OK; unchanged on failure. |
 

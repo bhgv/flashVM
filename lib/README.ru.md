@@ -49,4 +49,4 @@ python3 lib/tests/interoperability.py build/standalone-styx build/standalone-uni
 включая двух клиентов с одинаковыми внутренними tag/fid. Это дополнение к их
 самостоятельным проверкам, а не замена этих проверок.
 
-[Проверки и границы](VALIDATION.md)
+[Проверки и границы](VALIDATION.ru.md)

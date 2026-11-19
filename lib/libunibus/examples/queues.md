@@ -6,7 +6,7 @@ Copyright (c) 2026 bhgv
 
 ## Purpose and design
 
-A pthread consumer waits only for client 7 while the dispatcher delivers client 8 immediately. The barrier establishes concurrent lifetime without sleeps. Main then delivers client 7, joins the consumer and closes/frees both engines.
+A pthread consumer waits only for client 7 while the dispatcher delivers client 8. The barrier establishes concurrent lifetime without sleeps, not exact wait admission. Main then delivers client 7 and retires the worker and resources.
 
 ## Build and run
 
@@ -14,14 +14,16 @@ A pthread consumer waits only for client 7 while the dispatcher delivers client 
 cmake -S . -B build -DUNIBUS_QUEUES=ON -DBUILD_TESTING=ON
 cmake --build build -j
 ./build/examples/unibus-queues
-ctest --test-dir build -R ^unibus-queues$ --output-on-failure
+ctest --test-dir build -R '^unibus-queues$' --output-on-failure
 ```
 
 ## Parameters and results
 
-No command-line arguments. Exit 0 means all example checks passed; exit 1 reports failure and stderr identifies the stage. Stdout is a PASS diagnostic, not an arbitrary binary transport.
+No command-line arguments. Exit 0 means the exact expected result; exit 1 reports failure and stderr identifies the stage. Stdout is a PASS diagnostic, not binary carrier bytes.
 
-[styxordercreate](../docs/reference/styxordercreate.md) uses a maximum message of 256 and window 16; client7 wait is bounded to 5000 ms. The barrier confirms worker startup, not exact wait admission. Setup failures release every constructed engine/barrier. After worker creation, receiver close precedes join; ready records remain drainable. unibus-example-failures injects four partial-initialization failures. Unexpected join failure terminates this teaching process through _Exit: state borrowed by an unretired worker cannot be reclaimed safely. An embedding application must choose its own fatal-failure policy. These are example settings, not policy for every client. Historical styxorder C names preserve source compatibility without a libstyx dependency.
+[styxordercreate](../docs/reference/styxordercreate.md) selects maximum message 256 and window 16. Client 7 wait is bounded to 5000 ms; these are example settings, not policy for every client. Historical styxorder C names preserve source compatibility without creating a libstyx dependency.
+
+Setup failures release all constructed engines/barriers. After worker creation, receiver close precedes join; ready records remain drainable. unibus-example-failures injects four partial-initialization failures. Unexpected join failure terminates the teaching process through _Exit: borrowed worker state cannot be reclaimed before retirement is proven. An embedding application chooses its own fatal-failure policy.
 
 ## Source and reference
 

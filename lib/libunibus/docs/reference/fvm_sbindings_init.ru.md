@@ -50,10 +50,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-fvm_sbindings_init(&bindings, slots, 2) == FVM_S_OK;
+result = fvm_sbindings_init(&bindings, slots, 2);
 ```
 
-[Complete calling context](../../examples/bridge/main.c#L177)
+[Complete calling context](../../examples/nested.c#L68)
 
 ## См. также
 

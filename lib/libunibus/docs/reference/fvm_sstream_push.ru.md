@@ -59,10 +59,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
 
 ```c
-FVM_SResult result = fvm_sstream_push(&stream, &input, 1, &record, &consumed);
+FVM_SResult result = fvm_sstream_push(&stream, input + cursor, (size_t)amount - cursor, &record, &consumed);
 ```
 
-[Complete calling context](../../examples/bridge/main.c#L191)
+[Complete calling context](../../examples/bridge/receive.c#L109)
 
 ## См. также
 

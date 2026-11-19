@@ -40,12 +40,31 @@ def public_headers(base):
         "vendor/inferno/include/fcall.h", "vendor/inferno/Linux/386/include/lib9.h")]
 
 
+# EN: Return cached declaration-search text from borrowed header path. Mask comments
+# and quoted literals without changing offsets/newlines, so prose cannot impersonate a declaration.
+# RU: Вернуть кешированный текст поиска declarations для header path. Заменить comments/
+# literals пробелами, сохранив offsets/newlines: prose не должна имитировать declaration.
+@lru_cache(maxsize=None)
+def header_code(path):
+    return TOKEN.sub(lambda match: re.sub(r"[^\n]", " ", match.group())
+                     if match.group().startswith(("/*", "//")) or '"' in match.group() or "'" in match.group()
+                     else match.group(), unannotated(path))
+
+
+# EN: Return the first actual header declaration of borrowed name, or None.
+# headers is an ordered iterable of readable source paths; comments/literals cannot match.
+# RU: Вернуть первый header declaration имени name либо None. headers — упорядоченные
+# пути; комментарии/литералы не могут выдаваться за declaration.
+def declaration_header(headers, name):
+    return next((path for path in headers if re.search(r"\b" + re.escape(name) + r"\s*\(", header_code(path))), None)
+
+
 # EN/RU: Find the original pre-declaration comment, stripping generated contracts; return owned prose or empty text.
 # Найти исходный комментарий перед declaration без generated contract; вернуть текст либо пустую строку.
 def header_contract(headers, name):
     for header in headers:
         source = unannotated(header)
-        masked = re.sub(r"/\*.*?\*/|//[^\n]*", lambda match: " " * len(match.group()), source, flags=re.S)
+        masked = header_code(header)
         match = re.search(r"\b" + re.escape(name) + r"\s*\(", masked)
         if match:
             prefix = source[:match.start()]
@@ -123,7 +142,7 @@ def main():
         links = [[], []]
         for name, info in sorted(chosen.items()):
             description = header_contract(headers, name) or info["original"]
-            declaring = next((path for path in headers if re.search(r"\b" + re.escape(name) + r"\s*\(", unannotated(path))), None)
+            declaring = declaration_header(headers, name)
             header_name = declaring.relative_to(base).as_posix() if declaring else info["source"]
             include_name = header_name.removeprefix("include/")
             if header_name.startswith("vendor/"):

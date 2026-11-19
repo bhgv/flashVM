@@ -53,10 +53,10 @@ Unibus::wire; C89, no OS/allocator/threads
 Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
 
 ```c
-fvm_sbindings_apply(bindings, encoded, size, &used) == FVM_S_OK;
+fvm_sbindings_apply(bindings, encoded, size, &used) == FVM_S_OK && used == size;
 ```
 
-[Complete calling context](../../examples/bridge/main.c#L83)
+[Complete calling context](../../examples/bridge/receive.c#L33)
 
 ## See also
 

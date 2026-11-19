@@ -39,7 +39,8 @@ def audit(paths):
 # проверенных примера libunibus. Остальные файлы не получают метку review автоматически.
 def main():
     root = Path(__file__).resolve().parents[1]
-    paths = [Path(value) for value in sys.argv[1:]] or [root / 'libunibus/examples' / name for name in ('nested.c', 'queues.c')]
+    paths = [Path(value) for value in sys.argv[1:]] or ([root / 'libunibus/examples' / name for name in ('nested.c', 'queues.c')]
+        + sorted((root / 'libunibus/examples/bridge').glob('*.[ch]')))
     audit(paths)
 
 
