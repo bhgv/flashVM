@@ -1,6 +1,10 @@
 /* Copyright (c) 2026 bhgv
- * EN: Original C libstyx serving a synthetic deep hierarchy for multi-batch walks.
- * RU: Исходный C libstyx с синтетической deep hierarchy для multi-batch walk.
+ * EN: Original C libstyx serves a synthetic deep hierarchy for multi-batch walks.
+ * An acknowledged stop requests shutdown only after the sole client disconnects;
+ * its opened fids must still accept reads and Tclunk replies until then.
+ * RU: Исходная C libstyx выдаёт deep hierarchy для multi-batch walks. Stop только
+ * запрашивает завершение после disconnect единственного клиента; его opened fid
+ * до этого принимают read и подтверждённый Tclunk.
  */
 #include <lib9.h>
 #include <styx.h>
@@ -8,25 +12,34 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-static Styxserver server; /* Isolated native test owner. */
-static int stopping; /* Explicit native fixture stop. */
-static int closed; /* Opened remote fids retired exactly once. */
-static int clients; /* Client backend retirement count. */
+static Styxserver server;   /* Sole native owner / Единственный native owner. */
+static int stop_requested;  /* ctl acknowledged; client still owns fids / Stop принят, fid ещё живы. */
+static int stopping;        /* Sole client retired after its fids / Клиент завершён после fid. */
+static int closed;          /* Successful-open retirements / Завершённые successful opens. */
+static int clients;         /* Final backend retirements / Финальные backend retirements. */
 
 
-/* EN/RU: One component at a time, seventeen directories then a file.
- * По одному component: семнадцать каталогов, затем файл. */
+/* EN: Resolve borrowed component name against mutable qid: seventeen d directories,
+ * then file; ctl is a root sibling. Return nil after updating qid, Enonexist otherwise.
+ * No resource is opened here. Only the original server owner calls this fixture.
+ * RU: Разрешить name по qid: семнадцать каталогов d, затем file; ctl лежит в root.
+ * Вернуть nil и изменить qid при успехе, иначе Enonexist. Ресурс здесь не открывается;
+ * fixture вызывает только исходный server owner.
+ */
 static char *walk(Qid *qid, char *name)
 {
-    if(qid->path == 0 && !strcmp(name, "ctl")){
+    if (qid->path == 0 && !strcmp(name, "ctl"))
+    {
         *qid = styxqid(100, 0);
         return nil;
     }
-    if(qid->path < 17 && !strcmp(name, "d")){
-        *qid = styxqid(qid->path+1, 1);
+    if (qid->path < 17 && !strcmp(name, "d"))
+    {
+        *qid = styxqid(qid->path + 1, 1);
         return nil;
     }
-    if(qid->path == 17 && !strcmp(name, "file")){
+    if (qid->path == 17 && !strcmp(name, "file"))
+    {
         *qid = styxqid(18, 0);
         return nil;
     }
@@ -34,16 +47,22 @@ static char *walk(Qid *qid, char *name)
 }
 
 
-/* EN/RU: Permit only the explicit fixture file/control open modes.
- * Разрешить только явные file/control open modes теста. */
+/* EN: Borrow qid/mode; allow only file OREAD or ctl OWRITE. Return nil/Eperm;
+ * successful opens are counted by their eventual close callbacks, not here.
+ * RU: Заимствовать qid/mode; разрешить только file OREAD или ctl OWRITE.
+ * Вернуть nil/Eperm; successful opens учитываются при окончательном close.
+ */
 static char *openfile(Qid *qid, int mode)
 {
     return (qid->path == 18 && mode == OREAD) || (qid->path == 100 && mode == OWRITE) ? nil : Eperm;
 }
 
 
-/* EN/RU: Return ordinary metadata with the requested remote identity.
- * Вернуть обычные metadata с запрошенной remote identity. */
+/* EN: Fill borrowed out for logical qid with static strings and exact length/mode.
+ * Return nil; the original dispatcher packs the borrowed strings before reuse.
+ * RU: Заполнить out по qid статическими строками, length/mode. Вернуть nil;
+ * исходный dispatcher упаковывает заимствованные строки до повторного обращения.
+ */
 static char *statfile(Qid qid, Dir *out)
 {
     memset(out, 0, sizeof(*out));
@@ -51,13 +70,18 @@ static char *statfile(Qid qid, Dir *out)
     out->name = qid.path == 18 ? "file" : qid.path == 100 ? "ctl" : "d";
     out->uid = out->gid = out->muid = "fixture";
     out->length = qid.path == 18 ? 5 : 0;
-    out->mode = qid.path < 18 ? DMDIR|0555 : qid.path == 18 ? 0444 : 0222;
+    out->mode = qid.path < 18 ? DMDIR | 0555 : qid.path == 18 ? 0444 : 0222;
     return nil;
 }
 
 
-/* EN/RU: Real Tread uses retained fid identity and an explicit64-bit offset.
- * Настоящий Tread использует удержанный fid и explicit64-bit offset. */
+/* EN: Read retained qid18 into borrowed bytes of incoming *n capacity at offset.
+ * Publish exact count including EOF via styxreadstr; return nil/Eperm.
+ * A stop request does not invalidate this already opened object.
+ * RU: Читать удержанный qid18 в bytes ёмкостью входного *n по offset. Задать
+ * точный count, включая EOF, через styxreadstr; вернуть nil/Eperm. Stop request
+ * не лишает доступа к уже открытому объекту.
+ */
 static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
     if (qid.path != 18 || offset < 0)
@@ -69,21 +93,31 @@ static char *readfile(Qid qid, char *bytes, ulong *n, vlong offset)
 }
 
 
-/* EN/RU: Explicit test control, not a production publication command.
- * Явное управление тестом, не production publication command. */
+/* EN: Accept exactly four borrowed stop bytes on ctl at offset0; retain no input.
+ * Set only stop_requested and return nil with unchanged *n acknowledgement.
+ * The server must continue serving this client's final Tclunk messages. Final
+ * shutdown is selected in freeclient, after original libstyx retires all fids.
+ * RU: Принять ровно четыре stop bytes на ctl при offset0, не сохраняя input.
+ * Выставить только stop_requested, вернуть nil с прежним *n acknowledgement.
+ * Сервер продолжает обслуживать Tclunk клиента. Shutdown выбирается в freeclient
+ * после освобождения всех fid исходной libstyx.
+ */
 static char *writefile(Qid qid, char *bytes, ulong *n, vlong offset)
 {
     if (qid.path != 100 || offset != 0 || *n != 4 || memcmp(bytes, "stop", 4))
     {
         return Eperm;
     }
-    stopping = 1;
+    stop_requested = 1;
     return nil;
 }
 
 
-/* EN/RU: Count successful-open retirement; unopened partial walks do not call close.
- * Учесть successful-open retirement; unopened partial walks не вызывают close. */
+/* EN: Record one successful-open retirement; qid/mode are intentionally unused.
+ * Return nil. Unopened partial-walk fids do not invoke this callback.
+ * RU: Учесть один successful-open retirement; qid/mode намеренно не используются.
+ * Вернуть nil. Unopened partial-walk fid не вызывают этот callback.
+ */
 static char *closefile(Qid qid, int mode)
 {
     USED(qid.path);
@@ -93,18 +127,35 @@ static char *closefile(Qid qid, int mode)
 }
 
 
-/* EN/RU: Count final backend retirement after all fids have gone.
- * Учесть финальный backend retirement после всех fid. */
+/* EN: Original libstyx calls this after deleting the sole client's fids. client
+ * is borrowed and unused. Count retirement and publish loop exit only when stop
+ * was requested. Do not call styxend reentrantly; main does it after dispatch.
+ * RU: Исходная libstyx вызывает callback после удаления fid клиента. client
+ * заимствован и не используется. Учесть retirement, выбрать выход только после
+ * stop request. Не вызывать styxend рекурсивно: main сделает это после dispatch.
+ */
 static char *freeclient(Client *client)
 {
     USED(client);
     clients++;
+    if (stop_requested)
+    {
+        stopping = 1;
+    }
     return nil;
 }
 
 
-/* EN/RU: Run original POSIX Styx TCP and require exact open/client retirement.
- * Запустить исходный POSIX Styx TCP с проверкой open/client retirement. */
+/* EN: Own one original POSIX Styx server and its serial callbacks. Print its
+ * selected TCP port, serve until stop+client retirement, then require exactly two
+ * opened-handle closes and one client release. Return 1/2 setup, 3 dispatch, 4
+ * cleanup/count failure, otherwise 0. This is a single-client fixture, not a
+ * production service shutdown protocol; external test drivers bound its lifetime.
+ * RU: Владеть POSIX Styx server и serial callbacks. Вывести TCP port, обслуживать
+ * до stop+client retirement; затем требовать ровно два close и один client release.
+ * Коды: 1/2 setup, 3 dispatch, 4 cleanup/count error, иначе 0. Это single-client
+ * fixture, не production shutdown protocol; lifetime ограничивает test driver.
+ */
 int main(void)
 {
     Styxops ops;
@@ -127,7 +178,8 @@ int main(void)
         return 2;
     }
     print("%d\n", ntohs(address.sin_port));
-    while(!stopping){
+    while (!stopping)
+    {
         if (styxwait(&server) != nil || styxprocess(&server) != nil)
         {
             return 3;

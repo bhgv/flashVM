@@ -55,6 +55,12 @@ target_link_libraries(vfs-mount-test PRIVATE styx_vfs)
 add_executable(vfs-mount-deep-server ../tests/mount/deep.c)
 set_source_files_properties(../tests/mount/deep.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
 target_link_libraries(vfs-mount-deep-server PRIVATE infernostyx)
+foreach(retirement clunk disconnect)
+    add_test(NAME vfs-mount-retirement-${retirement} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mount/retirement.py"
+        "$<TARGET_FILE:vfs-mount-deep-server>" "${retirement}")
+    set_tests_properties(vfs-mount-retirement-${retirement} PROPERTIES TIMEOUT 20)
+endforeach()
 foreach(scenario basic partial loss badtag badcount msize iounit dirbad readonly deep slow badwalk)
     if(scenario STREQUAL "partial")
         set(mount_server "$<TARGET_FILE:vfs-file-wire-test>")

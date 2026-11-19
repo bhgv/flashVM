@@ -451,3 +451,10 @@ request capabilities to an owner FIFO with reservations, native readiness and
 close. Tests exercise concurrent submit/close, allocation rollback, active native
 preparation cancellation and independent handoff survival. No network launch
 listener or remote module execution is claimed. The native suite has275 cases.
+
+[Deep mount retirement](vfs/MOUNT-RETIREMENT.md) /
+[освобождение opened fid](vfs/MOUNT-RETIREMENT.ru.md) fixes the single-client
+fixture's stop/Tclunk ordering. The server waits for original client retirement
+instead of closing under pending cleanup; two deterministic 9P regressions,
+36 mount/mux/control cases and 120 repeated executions cover the change.
+This changes no DisVM runtime API or production shutdown policy.

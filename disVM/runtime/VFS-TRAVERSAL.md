@@ -218,3 +218,12 @@ ten consecutive isolated reruns; this does not establish that parallel transport
 acceptance is free of timing failures. No retry was added to the tests and no
 failing checkpoint was weakened. These observations remain a separate stability
 follow-up rather than being described as a clean parallel normal-suite result.
+
+The deep fixture's premature shutdown has since been reproduced and corrected:
+[stop and opened-fid retirement](../native/vfs/MOUNT-RETIREMENT.md),
+[русский разбор](../native/vfs/MOUNT-RETIREMENT.ru.md). Its stop callback now
+requests shutdown while the original client completes Tclunk/disconnect; the
+relay's exact-frame checks remain strict. The targeted normal group passes
+36/36 and four affected cases pass 30 repetitions each with parallelism4.
+This does not close the separate grant-checkpoint investigation or establish
+that every historical transport failure had the same cause.
