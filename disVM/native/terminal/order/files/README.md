@@ -133,5 +133,13 @@ remote function-call schema, SWF execution or a default desktop CLI mode switch.
 
 The actual guest now also loads an application and dependency from filtered
 execution-provider files served by original Styx, then continues its bidirectional
-record exchange on the same connection. See the [runtime loader contract](../../../../runtime/PROVIDER-MODULES.md)
+record exchange on the same connection. The terminal checks a guest startup record
+after the code and dependency loads and acknowledges it before the guest continues.
+The final receipt separately confirms application output.
+
+Терминал получает стартовую запись гостя после загрузки кода и зависимости и
+подтверждает её перед продолжением обмена. Отдельное итоговое подтверждение
+относится к выводу приложения.
+
+See the [runtime loader contract](../../../../runtime/PROVIDER-MODULES.md)
 for execution-role admission, opened-handle metadata, cancellation and cache isolation.

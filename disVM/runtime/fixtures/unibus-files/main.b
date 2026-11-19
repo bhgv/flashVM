@@ -62,15 +62,21 @@ init()
     }
     take(nine, 9, "nine");
     take(nine, 9, "rx-live");
+    # EN: The fixed tag7 record confirms that this guest reached init and loaded its module.
+    # RU: Запись tag7 подтверждает, что этот гость дошёл до init и загрузил модуль.
+    started := array[] of {byte 186, byte 133, byte 135, byte 111, byte 117, byte 116, byte 48};
+    if (sys->write(seven, started, len started) != len started) {
+        raise "Unibus startup record refused";
+    }
+    take(nine, 9, "started");
     take(zero, 0, "local-in");
     take(seven, 7, "zero");
     take(seven, 7, "one");
     take(seven, 7, "two");
     take(seven, 7, "new");
-    # Fixed independent original S-records: tag7/out0 and tag0/local-out, never root0.
-    first := array[] of {byte 186, byte 133, byte 135, byte 111, byte 117, byte 116, byte 48};
+    # Fixed original S-record: tag0/local-out, never root0.
     local := array[] of {byte 178, byte 138, byte 128, byte 108, byte 111, byte 99, byte 97, byte 108, byte 45, byte 111, byte 117, byte 116};
-    if (sys->write(seven, first, len first) != len first || sys->write(zero, local, len local) != len local) {
+    if (sys->write(zero, local, len local) != len local) {
         raise "Unibus write refused";
     }
     take(nine, 9, "guest-verified");

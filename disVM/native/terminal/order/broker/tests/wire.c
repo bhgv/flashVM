@@ -189,6 +189,12 @@ static void packet(const FVM_SRecord *outer)
         uvlong expected = ORDERED_CASE == 5 && host_records < 2 ? ~0ULL - 1 + host_records : 0; /* Agreed fixture checkpoint. */
         check(ordinal == expected);
         host_records++;
+#ifdef ORDERED_GUEST_FILE_TEST
+        /* EN/RU: Acknowledge the exact init marker before application output.
+         * Подтвердить точный маркер init до вывода приложения. */
+        check(host_records == 1 && view.record.size == 4 && !memcmp(view.record.payload, "out0", 4));
+        data(9, 2, "started");
+#endif
         if (host_records == (ORDERED_CASE == 5 ? 3U : 2U))
         {
             check(host_zero && view.record.size == 6 && !memcmp(view.record.payload, "outnew", 6));
@@ -212,7 +218,7 @@ static void packet(const FVM_SRecord *outer)
 #ifdef ORDERED_GUEST_FILE_TEST
     if (host_records == 1 && host_zero)
     {
-        data(9, 2, "guest-verified"); /* Native guest fixture receipt, not a new production protocol. */
+        data(9, 3, "guest-verified"); /* Native guest fixture receipt, not a new production protocol. */
     }
 #endif
 
