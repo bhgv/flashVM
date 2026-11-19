@@ -122,9 +122,11 @@ if(DVM_RUNTIME_EDITOR)
     add_dependencies(disvm_flashvm_native_module_example disvm_flashvm_native_module_swf)
     add_test(NAME disvm_flashvm_native_module_example COMMAND disvm_flashvm_native_module_example "${view}/native-module.swf")
   endif()
-  # One producer owns both generated headers across parallel Make target graphs.
+  # EN/RU: All view consumers require chrome generation before C compilation.
+  # Всем view consumers нужна генерация chrome до компиляции C.
   add_custom_target(disvm_view_headers DEPENDS
     "${view}/ide_view_swf.h" "${view}/desktop_view_swf.h")
+  add_dependencies(disvm_view_headers disvm_chrome_headers)
   add_dependencies(disvm-editor disvm_view_headers)
   target_sources(disvm-editor PRIVATE desktop_view.c vector_local.c vector_transform.c desktop_paint_primitives.c desktop_drawing_capability.c desktop_window_chrome.c)
   if(DVM_RUNTIME_TESTS)
@@ -154,7 +156,9 @@ if(DVM_RUNTIME_EDITOR)
   target_include_directories(disvm-editor PRIVATE ${runtime_includes} "${DVM_FLASHVM_SOURCE_ROOT}/ports")
   target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_GC_FIELDS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}" DVM_RUNTIME_BACKEND="${runtime_backend}")
   target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)
-  target_link_libraries(disvm-editor PRIVATE fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9
+  # EN/RU: Shared VFS sources require traversal symbols and its PUBLIC headers.
+  # Общим VFS sources нужны traversal symbols и PUBLIC headers этой библиотеки.
+  target_link_libraries(disvm-editor PRIVATE vfs_walk fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9
     limbo_bootstrap_support limbo_bootstrap_lib9 disvm_remote_session flashvm m)
   if(DVM_EDITOR_SDL)
     find_package(SDL2 2.0.9 CONFIG REQUIRED)
