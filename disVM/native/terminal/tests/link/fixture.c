@@ -146,16 +146,14 @@ static void loopback_pair(int pair[2])
 #endif
 
 
-/* EN/RU: Own real client/NULL on one logical stream of an explicitly bidir carrier.
- * Свой real client/NULL на logical stream явного bidir carrier.
- */
-StyxClient *linkfixture(void)
-{
-    int pair[2]; /* Connected carrier; each PHY consumes one descriptor. */
-    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
 #ifdef ORDERED_GUEST_FILE_TEST
+/* EN/RU: Start the real loopback server and give the launcher an owned carrier FD.
+ * Запустить настоящий loopback server и передать лаунчеру собственный fd. */
+int linkfixturefd(void)
+{
+    int pair[2];
     loopback_pair(pair);
-    worker = fork(); /* No native worker has started yet. */
+    worker = fork();
     if (worker < 0)
     {
         exit(3);
@@ -164,7 +162,7 @@ StyxClient *linkfixture(void)
     {
         close(pair[0]);
         signal(SIGPIPE, SIG_IGN);
-        server_start(pair[1], caps);
+        server_start(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
         fixtureimagesinit(&server);
         serve(NULL);
         fixtureimagesfree();
@@ -172,7 +170,20 @@ StyxClient *linkfixture(void)
         _exit(0);
     }
     close(pair[1]);
+    return pair[0];
+}
+#endif
+
+
+/* EN/RU: Own real client/NULL on one logical stream of an explicitly bidir carrier.
+ * Свой real client/NULL на logical stream явного bidir carrier. */
+StyxClient *linkfixture(void)
+{
+    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
+#ifdef ORDERED_GUEST_FILE_TEST
+    int fd = linkfixturefd();
 #else
+    int pair[2]; /* Connected carrier; each PHY consumes one descriptor. */
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair))
     {
         exit(3);
@@ -182,9 +193,10 @@ StyxClient *linkfixture(void)
     {
         exit(3);
     }
+    int fd = pair[0];
 #endif
-    breaker = dup(pair[0]);
-    local = phybidircreate(phyposixfd(pair[0], caps), 4096);
+    breaker = dup(fd);
+    local = phybidircreate(phyposixfd(fd, caps), 4096);
     if (breaker < 0 || !local)
     {
         exit(3);
@@ -211,9 +223,12 @@ void linkfixturebreak(void)
 void linkfixturefree(void)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
-    shutdown(breaker, SHUT_RDWR); /* Wake the remote process before joining it. */
-    phybidirfree(local);
-    close(breaker);
+    if (breaker >= 0)
+    {
+        shutdown(breaker, SHUT_RDWR); /* Wake the remote process before joining it. */
+        phybidirfree(local);
+        close(breaker);
+    }
     int status;
     if (waitpid(worker, &status, 0) != worker || !WIFEXITED(status) || WEXITSTATUS(status))
     {

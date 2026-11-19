@@ -498,3 +498,5 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeOnlyTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeUnitTests.cmake")
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ExportTests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/TerminalLaunch.cmake")

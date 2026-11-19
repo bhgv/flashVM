@@ -1,4 +1,5 @@
 # Explicit bidirectional CLI / Явный двунаправленный CLI
+[DisVM terminal launch / Запуск DisVM через терминал](../../../runtime/TERMINAL-LAUNCH-CLI.md)
 
 `unibus-bidir` is a native binary stdio relay for the
 [negotiated ordered broker](../order/broker/README.md). It launches no DisVM,

@@ -46,7 +46,7 @@ void fixtureimagesinit(Styxserver *server)
         file->d.length = lengths[i];
     }
     const unsigned char arguments[] = {'r', 0, 'n'};
-    const FVM_SBinding binding = {17, 1, sizeof("test.launch") - 1, "test.launch"};
+    const FVM_SBinding binding = {17, 1, sizeof("disvm.launch") - 1, "disvm.launch"};
     unsigned char declaration[64];
     size_t declared;
     size_t encoded;

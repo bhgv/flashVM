@@ -1,6 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Source-built SDK plus actual runtime interpreter/JIT acceptance, private linking only.
 # RU: Проверка source-built SDK с настоящим runtime interpreter/JIT, только private-linking.
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -41,6 +42,13 @@ def main():
     runtime_link = shlex.split((metadata / "link.txt").read_text())
     sdk_link = shlex.split((native_metadata / "link.txt").read_text())
     native = flags(native_metadata)
+    cli = os.environ.get("DVM_TEST_TERMINAL_CLI")
+    if cli:
+        refused = subprocess.run([cli, "--terminal-launch-fd", "0", "fixture",
+                                  "app.dis", "-", "--", "main.dis"],
+                                 capture_output=True, text=True, timeout=5)
+        if refused.returncode != 2 or "delegated connected stream FD" not in refused.stderr:
+            raise RuntimeError("CLI did not reject stdin as launch carrier")
     with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
         work = Path(name)
         run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),

@@ -444,5 +444,12 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
  * Обычный CLI-запуск без переданного handoff; передаёт argc/argv. */
 int main(int argc, char **argv)
 {
+#ifdef DVM_TERMINAL_LAUNCH
+    extern int dvm_terminal_launch_cli(int, char **);
+    if (argc > 1 && !strcmp(argv[1], "--terminal-launch-fd"))
+    {
+        return dvm_terminal_launch_cli(argc, argv);
+    }
+#endif
     return dvm_runtime_main_with_handoff(argc, argv, NULL);
 }

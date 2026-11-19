@@ -29,6 +29,20 @@ if(INFERNO_DISVM_RUNTIME OR INFERNO_LIMBO_COMPILER)
     set_tests_properties(terminal-ordered-files-guest PROPERTIES TIMEOUT 180 LABELS "native-guest")
 endif()
 
+set(INFERNO_DISVM_TERMINAL_CLI "" CACHE FILEPATH "Optional source-matched disvm with terminal launch CLI enabled")
+if(INFERNO_DISVM_TERMINAL_CLI)
+    if(NOT TARGET terminal-ordered-files OR NOT EXISTS "${INFERNO_DISVM_TERMINAL_CLI}"
+        OR NOT INFERNO_DISVM_RUNTIME OR NOT INFERNO_LIMBO_COMPILER)
+        message(FATAL_ERROR "Terminal launch CLI acceptance needs the CLI and guest runtime/compiler")
+    endif()
+    add_test(NAME terminal-ordered-files-cli COMMAND "${CMAKE_COMMAND}" -E env
+        "DVM_TEST_TERMINAL_CLI=${INFERNO_DISVM_TERMINAL_CLI}"
+        "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/guest.py"
+        "${INFERNO_DISVM_RUNTIME}" "${INFERNO_LIMBO_COMPILER}"
+        "${INFERNO_VFS_SUPPORT}/disVM/upstream/module" "${CMAKE_BINARY_DIR}")
+    set_tests_properties(terminal-ordered-files-cli PROPERTIES TIMEOUT 180 LABELS "native-guest")
+endif()
+
 if(INFERNO_UI_HOST_LIBRARIES)
     add_executable(terminal-ordered-files-header tests/header.cc ../../../tests/file-root/context.c)
     set_target_properties(terminal-ordered-files-header PROPERTIES CXX_STANDARD 98 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)

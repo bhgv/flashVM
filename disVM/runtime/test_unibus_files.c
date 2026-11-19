@@ -2,6 +2,8 @@
  * EN: Real pre-init ordered launch handoff, ordinary VFS record files and dedicated guest execution.
  * RU: Настоящий ordered launch handoff до init, обычные VFS record-файлы и dedicated guest execution.
  */
+#include <sys/wait.h>
+#include <unistd.h>
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -24,6 +26,7 @@ static StyxOrderedFiles *files; /* Explicit lifecycle owner after namespace/FD d
  * Исходный fixture client, owned до явной native-очистки, без guest/имитации протокола.
  */
 extern StyxClient *linkfixture(void);
+extern int linkfixturefd(void); /* Owned fixture carrier for a separate CLI process. */
 
 
 /* EN/RU: Join actual original server and physical owners after all client refs retire.
@@ -53,7 +56,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     ingress.provider = assets;
     strcpy(ingress.receive, "launch");
     strcpy(ingress.send, "records");
-    const StyxRouteType launch_type = {"test.launch", 1}; /* Dedicated fixture schema. */
+    const StyxRouteType launch_type = {"disvm.launch", 1}; /* Dedicated fixture schema. */
     StyxBidirRoute *route = styxbidirbindingroutes(connection, &ingress, 128, 2,
         NULL, 0, &launch_type, 1);
     launch_check(route != NULL, "live launch dispatcher");
@@ -111,11 +114,44 @@ static DVM_LaunchHandoff *prepare_launch(void)
 }
 
 
+/* EN/RU: Delegate a real stream to the actual configured CLI and reap both processes.
+ * Передать реальный stream штатному CLI и дождаться обоих процессов. */
+static int run_cli(const char *runtime, const char *mode, const char *bootstrap)
+{
+    int fd = linkfixturefd();
+    char descriptor[24];
+    snprintf(descriptor, sizeof(descriptor), "%d", fd);
+    pid_t child = fork();
+    launch_check(child >= 0, "CLI process");
+    if (!child)
+    {
+        execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
+            "app.dis", "dep.dis", "--", mode, bootstrap, (char *)NULL);
+        _exit(3);
+    }
+    close(fd);
+    int status;
+    launch_check(waitpid(child, &status, 0) == child && WIFEXITED(status), "CLI process exited");
+    linkfixturefree();
+    return WEXITSTATUS(status);
+}
+
+
 /* EN/RU: Require actual guest namespaces and FDs to release exports before joining native broker/physical owners.
  * Требовать освобождения exports настоящими guest namespaces/FD до join native broker/physical owners.
  */
 int __wrap_main(int argc, char **argv)
 {
+    const char *runtime = getenv("DVM_TEST_TERMINAL_CLI");
+    if (runtime && argc == 4)
+    {
+        int status = run_cli(runtime, argv[2], argv[3]);
+        if (!status)
+        {
+            puts("PASS real Dis Unibus file native ownership drain");
+        }
+        return status;
+    }
     DVM_LaunchHandoff *handoff = prepare_launch();
     int status = dvm_runtime_main_with_handoff(argc, argv, handoff);
     if (!status)
