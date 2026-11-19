@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 bhgv
+# EN: Build-engine/component selection; installed launchers and options are separate modules.
+# RU: Выбор сборщика и компонентов; установленные команды и настройки вынесены отдельно.
 """Interactive native workspace build selector; delegates builds to Bash.
 
 Uses only Python 3's standard library. External SDK paths are inherited from
@@ -15,7 +18,10 @@ import shutil
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent  # Workspace root for literal build paths.
+sys.path.insert(0, str(ROOT / "tools"))
+from menu.products import product_entries, launch_product, show_products
+from menu.options import choose_presentation, choose_settings as _choose_settings
 
 
 # Stable display order also determines the component numbers in the menu.
@@ -60,6 +66,7 @@ NATIVE_TEST_COMPONENTS = frozenset(("mk", "iyacc", "limbo-bootstrap"))
 NATIVE_BACKENDS = ("meson", "make", "mk")
 
 
+# RU: Проверить backend/projects/tests/demo до сборки; при несовместимости ValueError.
 def validate_backend(backend, projects, tests=False, demo=None):
     """Reject unsupported native requests before creating any build products."""
     if backend not in NATIVE_BACKENDS:
@@ -84,6 +91,7 @@ def validate_backend(backend, projects, tests=False, demo=None):
         )
 
 
+# RU: Для projects выбрать совместимый backend; вернуть имя после ввода.
 def choose_compatible_backend(projects, backend=None):
     """Keep the full component selection unless the user explicitly replaces it."""
     while True:
@@ -108,6 +116,7 @@ def choose_compatible_backend(projects, backend=None):
 
 
 # Validate the complete selection before spawning a process or writing files.
+# RU: Разобрать value в имена компонентов; неизвестное значение даёт ValueError.
 def selection(value):
     """Resolve comma/space-separated numbers or names; preserve unique order."""
     names = [name for name, _ in COMPONENTS]
@@ -132,6 +141,7 @@ def selection(value):
 
 
 # Report local tools without installing them; source bootstrap is a distinct capability.
+# RU: Без аргументов определить доступные сборщики; вернуть описания без сборки.
 def backend_status():
     """Describe executable discovery and the native subset for each engine."""
     entries = []
@@ -164,6 +174,7 @@ def backend_status():
 
 
 # Print discovery separately from actual version/selection validation in the launcher.
+# RU: Без аргументов вывести результаты обнаружения сборщиков; продукты не создаёт.
 def show_backends():
     """Display what exists on this machine; no probe is build acceptance."""
     print("Сборочные двигатели:")
@@ -176,6 +187,7 @@ def show_backends():
 
 
 # Give explicit engine choice while retaining auto as the empty-input default.
+# RU: Без аргументов запросить сборщик, повторять неверный ввод; вернуть имя.
 def choose_backend():
     """Accept one engine name or its displayed number, never evaluate user input."""
     show_backends()
@@ -192,6 +204,7 @@ def choose_backend():
 
 
 # Ask until a valid selection is supplied; EOF and Ctrl-C are handled by main.
+# RU: Без аргументов запросить компоненты; вернуть проверенный список.
 def choose_components():
     """Show the component menu and return one or several selected names."""
     print("\nСборка FlashVM workspace\n")
@@ -209,6 +222,7 @@ def choose_components():
 
 
 # Keep optional interactive choices explicit; empty input accepts the default.
+# RU: Прочитать ответ на prompt; вернуть bool, EOF передаётся вызывающему.
 def ask_yes(prompt):
     """Return a yes/no answer, rejecting accidental non-answer text."""
     while True:
@@ -221,6 +235,7 @@ def ask_yes(prompt):
 
 
 # Select a runnable Limbo client after the caller opts into a console example.
+# RU: Без аргументов выбрать пример IDE; вернуть его имя после проверки ввода.
 def choose_example():
     """Choose navigation, history or replaceall; empty input preserves the original default."""
     while True:
@@ -234,276 +249,14 @@ def choose_example():
         print("Введите 1/navigation, 2/history или 3/replaceall.")
 
 
-# Select a visible player configuration; Enter builds the real AGG/JIT desktop host.
-# args receives explicit profile/player settings. Returns nothing; invalid input retries.
-def choose_presentation(args):
-    print("\nFlashVM: что собрать?")
-    print("  1. Окно, графика, мышь/клавиатура, звук + JIT (по умолчанию)")
-    print("  2. Окно, графика, ввод и звук: интерпретатор")
-    print("  3. Обе оконные сборки: интерпретатор и JIT")
-    print("  4. Только консоль, без графического SDK")
-    while True:
-        value = input("Вариант FlashVM [1]: ").strip()
-        if value in ("", "1", "2", "3", "4"):
-            args.vm_profiles = {
-                "": "player",
-                "1": "player",
-                "2": "agg",
-                "3": "agg,player",
-                "4": "minimal",
-            }[value]
-            args.no_player = value == "4"
-            args.player = not args.no_player
-            if args.player:
-                print("SDL2 SDK при необходимости соберётся автоматически; примеры будут в out/.")
-            return
-        print("Введите 1, 2, 3 или 4.")
-
-
-# Edit all remaining build settings without requiring command-line switches.
-# args is the parsed settings object. Returns after the user accepts the settings.
+# EN: Edit args through the shared options UI; injected ask_yes stays testable.
+# RU: Изменить args через общие настройки; ask_yes передаётся для проверки.
 def choose_settings(args):
-    if not ask_yes("Изменить дополнительные настройки сборки?"):
-        return
-    while True:
-        print(
-            "\nНастройки: 1 — параллельные задания ({}), 2 — конфигурация ({})".format(
-                args.jobs, args.config
-            )
-        )
-        print(
-            "  3 — каталог сборки ({}), 4 — каталог установки ({})".format(
-                args.build_root or "build/workspace", args.out or "out"
-            )
-        )
-        print(
-            "  5 — установка результатов ({}), 6 — профили FlashVM ({})".format(
-                "выключена" if args.no_install else "включена", args.vm_profiles or "авто"
-            )
-        )
-        print(
-            "  7 — только показать команду ({}), Enter — начать сборку".format(
-                "да" if args.dry_run else "нет"
-            )
-        )
-        value = input("Настройка: ").strip()
-        if not value:
-            return
-        if value == "1":
-            count = input("Число параллельных заданий [{}]: ".format(args.jobs)).strip()
-            if count.isdigit() and int(count) > 0:
-                args.jobs = int(count)
-            elif count:
-                print("Нужно положительное целое число.")
-        elif value == "2":
-            config = input("Release, Debug, RelWithDebInfo [{}]: ".format(args.config)).strip()
-            if config in ("Release", "Debug", "RelWithDebInfo", "MinSizeRel"):
-                args.config = config
-            elif config:
-                print("Неизвестная конфигурация.")
-        elif value in ("3", "4"):
-            path = input("Каталог (Enter — оставить текущий): ").strip()
-            if path:
-                if value == "3":
-                    args.build_root = path
-                else:
-                    args.out = path
-        elif value == "5":
-            args.no_install = not ask_yes(
-                "Устанавливать бинарные файлы, примеры и команды запуска?"
-            )
-        elif value == "6":
-            profiles = input("Профили через запятую: default,minimal,agg,cairo,player: ").strip()
-            if profiles and all(
-                item in ("default", "minimal", "agg", "cairo", "player")
-                for item in profiles.split(",")
-            ):
-                args.vm_profiles = profiles
-            elif profiles:
-                print("Неизвестный профиль.")
-        elif value == "7":
-            args.dry_run = ask_yes("Только показать команду, не собирать?")
-        else:
-            print("Введите номер настройки или Enter.")
-
-
-# Discover installed scripts without treating the generic checker as an application
-# dependency. prefix is an explicit path; return stable menu IDs and copied metadata.
-# The fallback launcher belongs only to the separately labelled legacy editor.
-def product_entries(prefix):
-    rows = (
-        ("4", "console", "Программа Dis", (prefix / "disvm-runtime/run-console.sh",), False),
-        (
-            "5",
-            "terminal",
-            "Терминальный редактор Dis",
-            (prefix / "disvm-runtime/run-editor.sh",),
-            False,
-        ),
-        ("6", "services", "Сервисы IDE", (prefix / "disvm-runtime/run-ide.sh",), False),
-        ("7", "modules", "Библиотеки Inferno", (prefix / "disvm-runtime/run-modules.sh",), False),
-        (
-            "8",
-            "desktop",
-            "IDE MovieClip: MDI-вкладки, полки/палитры File/Edit/Search, Draw/SVG, Debug, Limbo/AS, F7/F8",
-            (prefix / "disvm-editor/run-desktop-ide.sh",),
-            True,
-        ),
-        (
-            "9",
-            "editor",
-            "Прежний одиночный графический редактор",
-            (prefix / "disvm-editor/run-ide.sh", prefix / "disvm-editor/run-graphical-editor.sh"),
-            True,
-        ),
-        (
-            "10",
-            "lifecycle",
-            "Пример независимых владельцев и закрытия окон",
-            (
-                prefix / "disvm-runtime/run-desktop-lifecycle.sh",
-                prefix / "disvm-editor/run-desktop-lifecycle.sh",
-            ),
-            False,
-        ),
-        (
-            "11",
-            "pointer",
-            "Пример Unicode-выделения и проверки revision",
-            (
-                prefix / "disvm-runtime/run-desktop-pointer.sh",
-                prefix / "disvm-editor/run-desktop-pointer.sh",
-            ),
-            False,
-        ),
-    )
-    # The clipboard client is part of the same native packages, not a Python UI.
-    rows += (("12", "clipboard", "Пример сессионного Copy/Cut/Paste между окнами",
-              (prefix / "disvm-runtime/run-desktop-clipboard.sh",
-               prefix / "disvm-editor/run-desktop-clipboard.sh"), False),)
-    rows += (("13", "envelope", "Dis64: инспектор контейнера (демо, без исполнения)",
-              (prefix / "disvm-editor/run-dis64-envelope.sh",
-               prefix / "disvm-runtime/run-dis64-envelope.sh",
-               prefix / "disvm-host/run-dis64-envelope.sh",
-               prefix / "disvm/run-dis64-envelope.sh"), False),)
-    rows += (("14", "pilot", "Dis64: проверка metadata/types/code pilot42 (без исполнения)",
-              (prefix / "disvm-editor/run-dis64-pilot.sh",
-               prefix / "disvm-runtime/run-dis64-pilot.sh",
-               prefix / "disvm-host/run-dis64-pilot.sh",
-               prefix / "disvm/run-dis64-pilot.sh"), False),)
-    rows += (("15", "storage", "Dis64: initialized data40/ADDW2 (проверка без исполнения)",
-              (prefix / "disvm-editor/run-dis64-storage.sh",
-               prefix / "disvm-runtime/run-dis64-storage.sh",
-               prefix / "disvm-host/run-dis64-storage.sh",
-               prefix / "disvm/run-dis64-storage.sh"), False),)
-    rows += (("16", "syntax", "Coco/R: ленивый анализ Limbo/AS (проверка сервиса, без GUI)",
-              (prefix / "disvm-editor/run-syntax-check.sh",
-               prefix / "disvm-runtime/run-syntax-check.sh"), False),)
-    rows += (("17", "tokens", "Coco/R: контекст, поиск и лексические кандидаты (пример без GUI)",
-              (prefix / "disvm-editor/run-token-query.sh",
-               prefix / "disvm-runtime/run-token-query.sh"), False),)
-    rows += (("18", "flashvm-native", "FlashVM: C-модуль, GC и вызов из AS/SWF (без GUI)",
-              (prefix / "disvm-editor/run-flashvm-native-module.sh",), False),)
-    rows += (("19", "managed-workers", "DisVM: OS-исполнители (auto / заданное число), каналы и GC (эксперимент)",
-              (prefix / "disvm-editor/run-managed-workers.sh",
-               prefix / "disvm-runtime/run-managed-workers.sh"), False),)
-    entries = {}
-    for key, name, label, candidates, graphical in rows:
-        script = next((path for path in candidates if path.is_file()), None)
-        if script is not None:
-            entries[key] = (name, label, script, graphical)
-    return entries
-
-
-# Launch one admitted installed application. entry contains immutable discovery
-# metadata; document/font are literal argv values. interactive controls only the
-# optional source-path question, never a font search. Return the child exit status.
-def launch_product(entry, args, bash, interactive):
-    name, label, script, graphical = entry
-    command = [bash, str(script)]
-    if graphical:
-        font = os.environ.get("FVM_EDITOR_FONT")
-        if font:
-            command += ["--font", font]
-        document = getattr(args, "document", None)
-        if interactive and document is None:
-            document = input("Файл UTF-8 (Enter — новый буфер без пути сохранения): ").strip()
-        if document:
-            command += ["--document", document]
-    print("Запуск " + label + ": " + " ".join(shlex.quote(value) for value in command), flush=True)
-    return subprocess.call(command)
-
-
-# Show actual installed products in interactive and CLI builds. args supplies
-# prefix/launch policy; bash is resolved. Return a real child status, 2 for an
-# unavailable explicit launch, or zero when the user finishes. Missing run-checks
-# never hides installed bytecode applications or their documented entry points.
-def show_products(args, bash, interactive):
-    requested = getattr(args, "launch", None)
-    if args.no_install:
-        print("Установка отключена; команды в out/ не создавались.")
-        return 2 if requested else 0
-    prefix = Path(args.out).expanduser().resolve() if args.out else ROOT / "out"
-    checker = prefix / "run-checks.sh"
-    window = prefix / "flashvm/run-demo.sh"
-    entries = product_entries(prefix)
-    print("\nРезультаты сборки: " + str(prefix))
-    if checker.is_file():
-        print("1 — Проверки: " + str(checker))
-    if window.is_file():
-        print("2 — Окно, ввод и звук: " + str(window))
-    for key, (_, label, script, _) in entries.items():
-        print(key + " — " + label + ": " + str(script))
-    for component in ("disvm-editor", "disvm-runtime"):
-        guide = prefix / component / "ENTRYPOINTS.md"
-        if guide.is_file():
-            print("Запуск и возможности: " + str(guide))
-    if "9" in entries and "8" not in entries:
-        print(
-            "MovieClip-стол отсутствует в этом пакете. Пересоберите и установите disvm-editor; пункт 9 запускает прежний редактор."
-        )
-    if requested:
-        entry = next((row for row in entries.values() if row[0] == requested), None)
-        if entry is None:
-            print(
-                "Не установлен запуск "
-                + requested
-                + ". Для desktop/editor выберите disvm-editor; для примеров — disvm-runtime; для envelope/pilot/storage также подходит disvm-host."
-            )
-            return 2
-        return launch_product(entry, args, bash, False)
-    if not interactive or (not entries and not checker.is_file() and not window.is_file()):
-        return 0
-    while True:
-        print("\nЗапустить установленный продукт:")
-        if checker.is_file():
-            print("  1 — проверки")
-        if window.is_file():
-            print("  2 — оконный пример")
-            if checker.is_file():
-                print("  3 — проверки и окно")
-        for key, (_, label, _, _) in entries.items():
-            print("  " + key + " — " + label)
-        value = input("Enter — закончить, либо номер запуска: ").strip()
-        if not value:
-            return 0
-        if value in entries:
-            return launch_product(entries[value], args, bash, True)
-        if value in ("1", "3") and checker.is_file():
-            status = subprocess.call([bash, str(checker)])
-            if status or value == "1":
-                return status
-        elif value != "2":
-            print("Выберите номер установленного продукта или Enter.")
-            continue
-        if value in ("2", "3") and window.is_file():
-            return subprocess.call(
-                [bash, str(checker), "--window"] if checker.is_file() else [bash, str(window)]
-            )
-        print("Оконный пакет не установлен. Выберите оконную сборку FlashVM в меню.")
+    return _choose_settings(args, ask_yes)
 
 
 # Build an argv list, never a shell expression; SDK preflight belongs to Bash.
+# RU: Из args/projects/bash создать список argv; команды не выполняются.
 def build_command(args, projects, bash):
     """Construct the shared builder command with literal paths and arguments."""
     command = [
@@ -537,6 +290,7 @@ def build_command(args, projects, bash):
 
 
 # Return the builder's exit status so scripts can detect configuration/test errors.
+# RU: Разобрать argv или открыть меню; выполнить сборку/запуск, вернуть код процесса.
 def main(argv=None):
     """Parse CLI options or open a menu, then execute the common Bash builder."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -574,8 +328,13 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens", "flashvm-native", "managed-workers"),
-                        help="After a successful build launch an installed application; desktop is the MovieClip IDE")
+    parser.add_argument(
+        "--launch",
+        choices=("console", "terminal", "services", "modules", "desktop", "editor",
+                 "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage",
+                 "syntax", "tokens", "flashvm-native", "resident-owners"),
+        help="After a successful build launch an installed application; desktop is the MovieClip IDE",
+    )
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)

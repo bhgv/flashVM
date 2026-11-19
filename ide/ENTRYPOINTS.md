@@ -15,8 +15,8 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
 | 17 / tokens | `sh run-token-query.sh` | Coco/R: контекст, поиск, лексические кандидаты; настоящий пример Limbo без GUI |
-| 16 / syntax | `sh run-syntax-check.sh` | Coco/R Limbo/AS: ленивый сервис, отмена устаревших задач, Unicode, revision; без цветного GUI |
-| 19 / managed-workers | `sh run-managed-workers.sh` | Пул OS-исполнителей DisVM: по умолчанию2, `DVM_MANAGED_WORKERS=8` для восьми; каналы, общий хип, миграция процессов |
+| 16 / syntax | `sh run-syntax-check.sh` | Короткий пример настоящих Coco/R-сканеров Limbo/AS, Unicode и отклонения устаревшей проекции; без GUI |
+| 19 / resident-owners | `sh run-resident-owners.sh` | Четыре закреплённых нативных потока, личное состояние и ответы через каналы; без пула и миграций |
 | 12 / clipboard | `sh run-desktop-clipboard.sh` | Сессионный Copy/Cut/Paste через отдельного владельца Limbo |
 
 Пункты 10/11/12 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
@@ -74,3 +74,5 @@ Menu8 presents lazy Limbo/AS colours through the native contour extension; menu1
 
 
 Menu **8 → Draw** / **Ctrl+Shift+N** creates an independent vector window. B/R/E/L, colours1..6, F fill, Ctrl+Z/Y, Ctrl+S/O SVG. A `.svg` launch path selects a vector owner. [Guide EN](VECTOR-EDITOR.md) · [RU](VECTOR-EDITOR.ru.md).
+
+[Пример закреплённых владельцев — EN](../disVM/examples/resident-owners/README.md) · [RU](../disVM/examples/resident-owners/README.ru.md)

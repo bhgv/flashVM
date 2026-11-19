@@ -167,11 +167,15 @@ sh out/disvm-runtime/run-syntax-check.sh --no-jit
 sh out/disvm-runtime/run-syntax-check.sh --jit
 ```
 
-[idesyntax_test.b](dis/tests/idesyntax_test.b) uses actual generated scanners and
+Menu 16 runs the [small syntax example](dis/examples/syntax/main.b): two Unicode
+inputs, actual generated scanners, rejection of stale projection and acknowledged
+shutdown. It does not run quota-sized stress workloads during an ordinary menu
+launch. The retained [idesyntax_test.b](dis/tests/idesyntax_test.b) is a separate
+stress fixture using actual generated scanners and
 Dis channels. It checks escaped/incomplete strings/comments, supplementary
 Unicode, atomic quotas, immutable old catalogs, stale projection, an edit burst
-while old analysis is active, duplicate tickets and shutdown. Both interpreter
-and JIT pass. These are functional scheduling tests, not measured physical typing
+while old analysis is active, duplicate tickets and shutdown. The small installed example is checked with interpreter and JIT. The retained
+stress matrix is not implied by that check. These are functional service tests, not measured physical typing
 latency or parallel VM execution. Real headless MovieClip/raster integration
 checks additionally verify coloured pixels and queued edits in both VM modes.
 

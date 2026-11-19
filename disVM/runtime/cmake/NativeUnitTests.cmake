@@ -129,3 +129,12 @@ include("${CMAKE_CURRENT_LIST_DIR}/EditorAcceptance.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/CompilerTests.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/NativeModuleTests.cmake")
+
+if(DVM_RUNTIME_TESTS)
+    foreach(mode jit interpreter)
+        add_test(NAME disvm_resident_owners_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_owners.py" "$<TARGET_FILE:disvm>"
+            "${CMAKE_CURRENT_BINARY_DIR}/resident-owners.dis" "${mode}")
+        set_tests_properties(disvm_resident_owners_${mode} PROPERTIES TIMEOUT 60 LABELS "native;examples")
+    endforeach()
+endif()

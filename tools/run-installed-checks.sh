@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
-# Check installed executables without a compiler checkout or reference emu.
+# Copyright (c) 2026 bhgv
+# EN: Check installed console capabilities, including editor-only packages.
+# RU: Проверка консольных возможностей, включая отдельный пакет editor.
 # Arguments: optional --window followed by player options. Returns first failure.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -29,14 +31,24 @@ for component in disvm disvm-host; do
         checks=$((checks + 1))
     fi
 done
-if [ -x "$root/disvm-runtime/disvm" ]; then
-    sh "$root/disvm-runtime/run-console.sh"
-    sh "$root/disvm-runtime/run-ide.sh"
-    if [ -f "$root/disvm-runtime/run-modules.sh" ]; then
-        sh "$root/disvm-runtime/run-modules.sh"
+for component in disvm-runtime disvm-editor; do
+    package="$root/$component"
+    if [ -x "$package/disvm" ]; then
+        sh "$package/run-console.sh"
+        if [ -f "$package/run-ide-console.sh" ]; then
+            sh "$package/run-ide-console.sh"
+        else
+            sh "$package/run-ide.sh"
+        fi
+        if [ -f "$package/run-modules.sh" ]; then
+            sh "$package/run-modules.sh"
+        fi
+        if [ -f "$package/run-resident-owners.sh" ]; then
+            sh "$package/run-resident-owners.sh"
+        fi
+        checks=$((checks + 1))
     fi
-    checks=$((checks + 1))
-fi
+done
 if [ "$checks" -eq 0 ]; then
     printf '%s\n' 'No runnable VM checks installed; build vm or disvm first.' >&2
     exit 1

@@ -290,3 +290,5 @@ admission remains exclusive; this is not whole-process ownership conversion.
 [Union traversal and per-module VFS / Обход юнионов и VFS экземпляра](runtime/VFS-TRAVERSAL.md)
 covers request-local cycle detection, the explicit S-record Styx history profile,
 provider-first per-instance environments and the exact remaining remote-load boundary.
+
+[Permanent native owners: runnable console example](examples/resident-owners/README.md) · [Русский](examples/resident-owners/README.ru.md).

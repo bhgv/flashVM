@@ -208,5 +208,8 @@ if(DVM_RUNTIME_EDITOR)
     DEPENDS limbo-bootstrap "${root}/ide/dis/app/main.b" "${root}/ide/dis/app/ide.m"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" ${module_headers} VERBATIM)
   add_custom_target(disvm_ide_application ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ide.dis")
+  # EN/RU: Every installed graphical launcher needs its matching bytecode.
+  # Каждой установленной графической команде нужен согласованный байткод.
+  add_dependencies(disvm-editor disvm_ide_application disvm_graphical_module)
 
 endif()

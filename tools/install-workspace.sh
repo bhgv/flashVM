@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Install actual workspace products and owned examples without requiring CMake at install time.
+# Copyright (c) 2026 bhgv
+# EN: Install selected products; component-specific payloads live under tools/install/.
+# RU: Установка выбранных продуктов; состав компонентов вынесен в tools/install/.
 set -euo pipefail
 ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd) # Workspace source root.
 BUILD="$ROOT/build/workspace"                                       # Existing build tree, never cleaned here.
@@ -10,6 +12,7 @@ VM_BUILD=""                                                         # Optional s
 
 # Reject an incomplete package instead of silently reporting a successful installation.
 # Parameters: diagnostic words. Returns: never; writes stderr and exits with status 1.
+# RU: Сообщить об ошибке из аргументов и завершить установку с кодом 1.
 fail() {
     printf 'install-workspace: %s\n' "$*" >&2
     exit 1
@@ -17,6 +20,7 @@ fail() {
 
 # Copy one known product, retaining ordinary data permissions or setting executable mode.
 # Parameters: source, destination, optional mode. Returns: cp/chmod failure propagates.
+# RU: Копировать source в destination с mode; отсутствие источника — ошибка.
 copy_file() {
     local source=$1 destination=$2 mode=${3:-644}
     [[ -f "$source" ]] || fail "Missing product: $source"
@@ -27,6 +31,7 @@ copy_file() {
 
 # Copy an explicitly selected SDK/example directory; no source checkout is removed.
 # Parameters: source directory and destination directory. Returns: copy failure propagates.
+# RU: Копировать дерево source в destination; чужие файлы не удалять.
 copy_tree() {
     local source=$1 destination=$2
     [[ -d "$source" ]] || fail "Missing SDK directory: $source"
@@ -36,6 +41,7 @@ copy_tree() {
 
 # Locate a named executable in native, CMake or multi-configuration output layouts.
 # Parameters: build directory and target basename. Returns: prints a path, or fails visibly.
+# RU: В base найти name/CONFIG и вернуть путь; отсутствие программы — ошибка.
 program() {
     local base=$1 name=$2 candidate found scan_base
     for candidate in "$base/$CONFIG/$name.exe" "$base/$CONFIG/$name" "$base/$name.exe" "$base/$name"; do
@@ -52,6 +58,7 @@ program() {
 
 # Install the actual named program; PE outputs keep their .exe suffix.
 # Parameters: build directory, target basename, package directory. Returns: copy failure propagates.
+# RU: Установить программу name из base в destination с учётом .exe.
 install_program() {
     local source name=$2 destination=$3
     source=$(program "$1" "$name")
@@ -63,9 +70,14 @@ install_program() {
 
 # Load Dis64 packaging separately from the component dispatch.
 source "$ROOT/tools/install/dis64-envelope.sh"
+source "$ROOT/tools/install/runtime.sh"
+source "$ROOT/tools/install/runtime-payload.sh"
+source "$ROOT/tools/install/host.sh"
+source "$ROOT/tools/install/fir.sh"
 
 # Preserve first-party licensing plus selected upstream notices rather than relabeling code.
 # Parameters: package directory and component source directory. Returns: copy failure propagates.
+# RU: Скопировать лицензии source в destination без смены авторства.
 notices() {
     local destination=$1 source=$2 file relative
     copy_file "$ROOT/LICENSE" "$destination/LICENSES/FlashVM-MIT.txt"
@@ -81,6 +93,7 @@ notices() {
 
 # Install libraries without flattening their relative paths or mixing graphics variants.
 # Parameters: build directory and package directory. Returns: copy failure propagates.
+# RU: Скопировать библиотеки base в destination, сохранив структуру.
 libraries() {
     local base=$1 destination=$2 file relative scan_base
     # A build-root entry may be a symlink to an already tested build. Traverse its
@@ -163,6 +176,7 @@ EOF
 
 # Package one requested component with actual products and honest runtime status.
 # Parameters: component name. Returns: installation failure propagates to the builder.
+# RU: Установить компонент из аргумента; разделяемые helpers наследуют локальные пути.
 install_component() {
     local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file sdk_cache native_demo_enabled
     case "$component" in
@@ -271,71 +285,7 @@ Read examples/video/README.md; a successful load or blank window is not video ac
 EOF
             ;;
         fir)
-            source="$ROOT/fir/v1"
-            mkdir -p "$destination/examples"
-            for file in fir1 fir1_source fir1_opt fir1_table_run fir1_integer_identities_example; do
-                install_program "$base" "$file" "$destination"
-            done
-            install_program "$base" fir1_dis_example "$destination"
-            copy_tree "$ROOT/examples/firststeps" "$destination/examples/firststeps"
-            copy_tree "$source/examples/dis" "$destination/examples/dis"
-            copy_tree "$source/examples/tables" "$destination/examples/tables"
-            copy_tree "$source/examples/type-aliases" "$destination/examples/type-aliases"
-            copy_tree "$source/examples/integer-identities" "$destination/examples/integer-identities"
-            copy_tree "$source/include" "$destination/include"
-            copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
-            copy_file "$source/compiler/dis_table.c" "$destination/source/dis_table.c"
-            for file in DIVISION_FACTS.md DIVISION_FACTS.ru.md SPARSE_PRODUCT_FACTS.md SPARSE_PRODUCT_FACTS.ru.md INTEGER_PAIRS.md INTEGER_PAIRS.ru.md INTEGER_FACTS.md INTEGER_FACTS.ru.md SHIFT_FACTS.md SHIFT_FACTS.ru.md KNOWN_RESULTS.md KNOWN_RESULTS.ru.md SWF_INT_DIVMOD.md SWF_INT_DIVMOD.ru.md SWF_INT_SHIFTS.md SWF_INT_SHIFTS.ru.md INTEGER_IDENTITIES.md INTEGER_IDENTITIES.ru.md NUMERIC_FLOW.md NUMERIC_FLOW.ru.md NUMERIC_FOR.md NUMERIC_FOR.ru.md GROUPED_CONDITIONS.md GROUPED_CONDITIONS.ru.md NUMERIC_LOGIC.md NUMERIC_LOGIC.ru.md REAL_CONDITIONS.md REAL_CONDITIONS.ru.md COVERAGE.md COVERAGE.ru.md TYPED_PREDICATES.md TYPED_PREDICATES.ru.md INT_BITS.md INT_BITS.ru.md SOURCE_ALIASES.md SOURCE_ALIASES.ru.md DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md TYPE_REFLECTION.md TYPE_REFLECTION.ru.md BIG_ARITHMETIC.md BIG_ARITHMETIC.ru.md BIG_BITWISE.md BIG_BITWISE.ru.md BIG_CFG.md BIG_CFG.ru.md BIG_DECISIONS.md BIG_DECISIONS.ru.md TABLE_CFG.md TABLE_CFG.ru.md TABLE_MUTATION.md TABLE_MUTATION.ru.md TERMINAL_ARMS.md TERMINAL_ARMS.ru.md COMPARISON_VALUES.md COMPARISON_VALUES.ru.md SHORT_CIRCUIT.md SHORT_CIRCUIT.ru.md COMPOUND_UPDATES.md COMPOUND_UPDATES.ru.md UNICODE_STRINGS.md UNICODE_STRINGS.ru.md INT_ARITHMETIC.md INT_ARITHMETIC.ru.md TEXT_BITS.md TEXT_BITS.ru.md INT_SHIFTS.md INT_SHIFTS.ru.md TEXT_VALUES.md TEXT_VALUES.ru.md TABLE_LITERALS.md TABLE_LITERALS.ru.md RELATIVE_SEQUENCES.md RELATIVE_SEQUENCES.ru.md SLICE_ASSIGNMENT.md SLICE_ASSIGNMENT.ru.md BIG_SHIFTS.md BIG_SHIFTS.ru.md; do
-                copy_file "$source/doc/$file" "$destination/docs/$file"
-            done
-            for file in API.md API.ru.md; do
-                copy_file "$source/compiler/$file" "$destination/docs/$file"
-            done
-            "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination"
-            cat >"$destination/README-FIRSTSTEPS.md" <<'EOF'
-# Numeric source -> FIR -> object
-
-./fir1_source as2 --input examples/firststeps/arithmetic.as arithmetic.fir
-./fir1 check arithmetic.fir
-./fir1 opt arithmetic.fir arithmetic.opt.fir
-./fir1 object arithmetic.opt.fir arithmetic.swo
-
-Pass arithmetic.swo to the separately packaged swl linker. The included source,
-expected FIR and SWF illustrate the numeric subset, not a complete AS compiler.
-If your host restricts temporary files, set TMPDIR to an existing writable folder.
-
-Typed tables: [source/FIR](docs/TABLES.md), [native Dis](docs/TABLES_DIS.md),
-[русский контракт](docs/TABLES_DIS.ru.md). Compile examples/tables/main.b with
-fir1_source, then fir1 dis tables.fir tables.dis and run it with the matching
-hosted disvm --jit --quantum 1 --inspect-words 0 2 tables.dis. Expected: 42, 1.
-The reference runner and C99 reference/compiler clients remain available separately.
-
-# Our Limbo numeric subset -> direct NC64 Dis (no limbo-native/assembler)
-./fir1_source limbo --input examples/dis/main.b answer.fir
-./fir1 dis answer.fir answer.dis
-# Run with the separately installed NC64 DisVM:
-../disvm-editor/disvm --jit --inspect-words 0 1 answer.dis
-# Expected: DATA 0 2147483647
-
-Read examples/dis/README.md and README.ru.md, plus docs/DIS_BACKEND.md/.ru.md.
-The target captures i32/bool/f64 trace values plus integer executed flags after completion.
-It supports verified CFG and terminal Limbo decisions, not full module lowering. The C99 example and libfir1_ir/libfir1_source_api/libfir1_io are included.
-
-# Terminal decision: values [0,42,0], executed flags [0,1,0].
-./fir1_source limbo --input examples/dis/decision.b decision.fir
-./fir1 dis decision.fir decision.dis
-../disvm-editor/disvm --jit --max-instructions 1000 --inspect-words 0 6 decision.dis
-
-# Numeric AS3 binary64: -11.5, 3.75, -1.25; flags at offsets 24/32/40.
-./fir1_source as3 --input examples/dis/reals.as reals.fir
-./fir1 dis reals.fir reals.dis
-../disvm-editor/disvm --jit --inspect-reals 0 3 reals.dis
-
-# Homogeneous Limbo real: explicit real return type, result 42.5.
-./fir1_source limbo --input examples/dis/real.b real.fir
-./fir1 dis real.fir real.dis
-../disvm-editor/disvm --jit --inspect-reals 0 1 real.dis
-EOF
+            install_fir_package
             ;;
         linker)
             mkdir -p "$destination/examples"
@@ -365,755 +315,10 @@ EOF
             printf '%s\n' '# Limbo symbols' './sblmap examples/idecore.sbl' 'Build IDE first to include its real .sbl example.' >"$destination/README-FIRSTSTEPS.md"
             ;;
         disvm-runtime | disvm-editor)
-            source="$ROOT/disVM"
-            install_dis64_envelope "$base" "$destination"
-            mkdir -p "$destination"
-            copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
-            copy_tree "$ROOT/flashVM/examples/embedding/native_module" "$destination/examples/flashvm-native-module"
-            if [[ -f "$base/disvm_flashvm_native_module_example" && -f "$base/native/native-module.swf" ]]; then
-                install_program "$base" disvm_flashvm_native_module_example "$destination"
-                copy_file "$ROOT/disVM/runtime/run-flashvm-native-module.sh" "$destination/run-flashvm-native-module.sh" 755
-                copy_file "$base/native/native-module.swf" "$destination/examples/flashvm-native-module/native-module.swf"
-            fi
-            copy_file "$ROOT/disVM/runtime/FLASHVM-NATIVE-MODULE.md" "$destination/examples/flashvm-native-module/README.md"
-            mkdir -p "$destination/docs/ide"
-            for language in md ru.md; do
-                sed -e 's|../../flashVM/|https://github.com/bhgv/flashVM/blob/master/flashVM/|g' \
-                    -e 's|../../disVM/|https://github.com/bhgv/flashVM/blob/master/disVM/|g' \
-                    "$ROOT/ide/dis/DESKTOP-CONTROLS.$language" >"$destination/docs/ide/DESKTOP-CONTROLS.$language"
-            done
-            copy_file "$ROOT/disVM/NATIVE64-REVIEW.md" "$destination/docs/dis64/NATIVE64-REVIEW.md"
-            copy_file "$ROOT/disVM/NATIVE64-REVIEW.ru.md" "$destination/docs/dis64/NATIVE64-REVIEW.ru.md"
-            copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.md" "$destination/RETAINED-SCENE.md"
-            copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.ru.md" "$destination/RETAINED-SCENE.ru.md"
-            copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"
-            copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.ru.md" "$destination/SYS_CAPTURE.ru.md"
-            copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.md" "$destination/NATIVE_MODULES.md"
-            copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
-            copy_file "$ROOT/ide/BULK-GEOMETRY.md" "$destination/BULK-GEOMETRY.md"
-            copy_file "$ROOT/ide/BULK-GEOMETRY.ru.md" "$destination/BULK-GEOMETRY.ru.md"
-            copy_file "$ROOT/ide/NATIVE-INK.md" "$destination/NATIVE-INK.md"
-            copy_file "$ROOT/ide/NATIVE-INK.ru.md" "$destination/NATIVE-INK.ru.md"
-            for native_ink_file in editor_primitive.h editor_xor.h editor_vector_layout.h editor_full_raster.h editor_ink.c editor_ink.h editor_ink_pointer.h editor_wheel_batch.h editor_bulk.c editor_bulk.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
-                copy_file "$ROOT/disVM/runtime/$native_ink_file" "$destination/source/native-ink/$native_ink_file"
-            done
-            for chrome_file in desktop_round_primitive.h desktop_chrome.h desktop_drawing_capability.c desktop_paint_primitives.c desktop_window_chrome.c; do
-                copy_file "$ROOT/disVM/runtime/$chrome_file" "$destination/source/chrome-native/$chrome_file"
-            done
-            copy_tree "$ROOT/ide/dis/examples/native-ink" "$destination/examples/native-ink"
-            copy_file "$ROOT/disVM/runtime/test_ink_primitives.c" "$destination/examples/native-ink/stamp-check.c"
-            copy_file "$ROOT/ide/dis/tests/native_ink_test.b" "$destination/examples/native-ink/worker-check.b"
-            copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/docs/limbo/NATIVE_C.md"
-            copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.ru.md" "$destination/docs/limbo/NATIVE_C.ru.md"
-            copy_file "$ROOT/flashVM/doc/RENDER_ASYNC.md" "$destination/docs/ide/RENDER_ASYNC.md"
-            copy_file "$ROOT/flashVM/doc/RENDER_ASYNC.ru.md" "$destination/docs/ide/RENDER_ASYNC.ru.md"
-            copy_file "$ROOT/flashVM/doc/TEXT_COLOR_RANGES.md" "$destination/docs/ide/TEXT_COLOR_RANGES.md"
-            copy_file "$ROOT/flashVM/doc/TEXT_COLOR_RANGES.ru.md" "$destination/docs/ide/TEXT_COLOR_RANGES.ru.md"
-            copy_file "$ROOT/ide/RENDER_OWNERS.md" "$destination/docs/ide/RENDER_OWNERS.md"
-            copy_file "$ROOT/ide/RENDER_OWNERS.ru.md" "$destination/docs/ide/RENDER_OWNERS.ru.md"
-            copy_file "$ROOT/disVM/examples/native-module/nativedemo.m" "$destination/include/limbo/nativedemo.m"
-            native_demo_enabled=OFF
-            if [[ -f "$base/CMakeCache.txt" ]] && grep -q '^DVM_RUNTIME_NATIVE_DEMO:BOOL=ON$' "$base/CMakeCache.txt"; then
-                native_demo_enabled=ON
-            fi
-            printf 'Nativedemo=%s\n' "$native_demo_enabled" >"$destination/NATIVE-MODULES.txt"
-            if [[ "$native_demo_enabled" == ON ]]; then
-                copy_file "$base/native/nativedemo_native.h" "$destination/examples/native-module/nativedemo_native.h"
-            else
-                # Retire only these installer-owned products when an existing package is switched off.
-                rm -f -- "$destination/native-demo.dis" "$destination/native-demo.sbl" "$destination/examples/native-module/nativedemo_native.h"
-            fi
-            compiler_enabled=OFF
-            if [[ -f "$base/CMakeCache.txt" ]] && grep -q '^DVM_RUNTIME_COMPILER:BOOL=ON$' "$base/CMakeCache.txt"; then
-                compiler_enabled=ON
-            fi
-            printf 'Fircompiler=%s\n' "$compiler_enabled" >>"$destination/NATIVE-MODULES.txt"
-            copy_file "$ROOT/disVM/module/fircompiler.m" "$destination/include/limbo/fircompiler.m"
-            copy_file "$ROOT/disVM/compiler/compiler_engine.h" "$destination/include/native/compiler_engine.h"
-            copy_tree "$ROOT/ide/dis/examples/artifact-export" "$destination/examples/artifact-export"
-            copy_file "$ROOT/ide/dis/tests/artifact_test.b" "$destination/examples/artifact-export/acceptance.b"
-            copy_file "$ROOT/disVM/runtime/test_artifact_export.py" "$destination/examples/artifact-export/check.py"
-            copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/artifact-export/test_compiler_service.py"
-            copy_file "$ROOT/ide/ARTIFACT-EXPORT.md" "$destination/ARTIFACT-EXPORT.md"
-            copy_file "$ROOT/ide/ARTIFACT-EXPORT.ru.md" "$destination/ARTIFACT-EXPORT.ru.md"
-            copy_tree "$ROOT/ide/dis/examples/mdi" "$destination/examples/mdi"
-            copy_tree "$ROOT/ide/dis/examples/debugger-scaffold" "$destination/examples/debugger-scaffold"
-            copy_file "$ROOT/disVM/examples/asinctasks/main.b" "$destination/examples/asinctasks/main.b"
-            copy_file "$ROOT/disVM/module/asinctasks.m" "$destination/include/limbo/asinctasks.m"
-            copy_file "$ROOT/disVM/limbo/asinctasks.b" "$destination/source/asinctasks.b"
-            copy_file "$ROOT/ide/dis/tests/asinctasks_test.b" "$destination/examples/asinctasks/acceptance.b"
-            copy_file "$ROOT/compiler/runtime/ASINC-TASKS.md" "$destination/examples/asinctasks/README.md"
-            copy_file "$ROOT/compiler/runtime/ASINC-TASKS.ru.md" "$destination/examples/asinctasks/README.ru.md"
-            copy_file "$ROOT/disVM/examples/asincviews/main.b" "$destination/examples/asincviews/main.b"
-            copy_file "$ROOT/disVM/module/asincviews.m" "$destination/include/limbo/asincviews.m"
-            copy_file "$ROOT/disVM/limbo/asincviews.b" "$destination/source/asincviews.b"
-            copy_file "$ROOT/ide/dis/tests/asincviews_test.b" "$destination/examples/asincviews/acceptance.b"
-            copy_file "$ROOT/compiler/runtime/ASINC-VIEWS.md" "$destination/examples/asincviews/README.md"
-            copy_file "$ROOT/compiler/runtime/ASINC-VIEWS.ru.md" "$destination/examples/asincviews/README.ru.md"
-            copy_file "$ROOT/ide/dis/tests/idemdi_test.b" "$destination/examples/mdi/acceptance.b"
-            copy_file "$ROOT/ide/dis/tests/idedebug_test.b" "$destination/examples/debugger-scaffold/acceptance.b"
-            copy_file "$ROOT/ide/MDI-SDI.md" "$destination/MDI-SDI.md"
-            copy_file "$ROOT/ide/MDI-SDI.ru.md" "$destination/MDI-SDI.ru.md"
-            copy_file "$ROOT/ide/DEBUGGER.md" "$destination/DEBUGGER.md"
-            copy_file "$ROOT/ide/DEBUGGER.ru.md" "$destination/DEBUGGER.ru.md"
-            copy_file "$ROOT/ide/DESKTOP.md" "$destination/DESKTOP.md"
-            copy_file "$ROOT/ide/DESKTOP.ru.md" "$destination/DESKTOP.ru.md"
-            copy_file "$ROOT/ide/DESKTOP-LIFECYCLE.md" "$destination/DESKTOP-LIFECYCLE.md"
-            copy_file "$ROOT/ide/DESKTOP-LIFECYCLE.ru.md" "$destination/DESKTOP-LIFECYCLE.ru.md"
-            copy_file "$ROOT/ide/DESKTOP-POINTER.md" "$destination/DESKTOP-POINTER.md"
-            copy_file "$ROOT/ide/DESKTOP-POINTER.ru.md" "$destination/DESKTOP-POINTER.ru.md"
-            copy_tree "$ROOT/ide/dis/examples/desktop-pointer" "$destination/examples/desktop-pointer"
-            copy_tree "$ROOT/ide/dis/examples/desktop-lifecycle" "$destination/examples/desktop-lifecycle"
-            copy_file "$ROOT/ide/dis/bridge/idedesktop.b" "$destination/source/idedesktop.b"
-            copy_file "$ROOT/ide/dis/bridge/ideatlas.b" "$destination/source/ideatlas.b"
-            copy_file "$ROOT/ide/dis/bridge/idedesktopatlas.b" "$destination/source/idedesktopatlas.b"
-            copy_file "$ROOT/ide/dis/bridge/idedesktoptools.b" "$destination/source/idedesktoptools.b"
-            copy_file "$ROOT/ide/dis/bridge/idedeskpane.b" "$destination/source/idedeskpane.b"
-            copy_file "$ROOT/ide/dis/tests/desktop_test.b" "$destination/examples/desktop-owners.b"
-            copy_file "$ROOT/ide/dis/bridge/ideartifact.b" "$destination/source/ideartifact.b"
-            copy_file "$ROOT/ide/dis/bridge/idefileops.b" "$destination/source/idefileops.b"
-            copy_tree "$ROOT/ide/dis/examples/build-panel" "$destination/examples/build-panel"
-            copy_tree "$ROOT/ide/dis/examples/compiler-service" "$destination/examples/compiler-service"
-            copy_file "$ROOT/ide/dis/tests/compiler_service_test.b" "$destination/examples/compiler-service/acceptance.b"
-            copy_file "$ROOT/disVM/compiler/test_engine.c" "$destination/examples/compiler-service/client.c"
-            copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/compiler-service/check.py"
-            copy_file "$ROOT/ide/COMPILER-SERVICE.md" "$destination/COMPILER-SERVICE.md"
-            copy_file "$ROOT/ide/COMPILER-SERVICE.ru.md" "$destination/COMPILER-SERVICE.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idebuildpanel.b" "$destination/source/idebuildpanel.b"
-            copy_file "$ROOT/ide/dis/tests/buildpanel_test.b" "$destination/examples/compiler-service/buildpanel-check.b"
-            copy_file "$ROOT/ide/BUILD-PANEL.md" "$destination/BUILD-PANEL.md"
-            copy_file "$ROOT/ide/BUILD-PANEL.ru.md" "$destination/BUILD-PANEL.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idecompiler.b" "$destination/source/idecompiler.b"
-            copy_file "$ROOT/ide/dis/bridge/ideworkspace.b" "$destination/source/ideworkspace.b"
-            copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
-            sed -e 's|dis/bridge/ideworkspace.m|include/limbo/ideworkspace.m|g' \
-                -e 's|dis/bridge/ideworkspace.b|source/ideworkspace.b|g' \
-                -e 's|dis/examples/workspace/README.md|examples/workspace/README.md|g' \
-                -e 's|../disVM/MODULE-STORE.md|https://github.com/bhgv/flashVM/blob/master/disVM/MODULE-STORE.md|g' \
-                "$ROOT/ide/WORKSPACE.md" >"$destination/WORKSPACE.md"
-            for language in md ru.md; do
-                sed -e 's|dis/bridge/idecompiler.m|include/limbo/idecompiler.m|g' \
-                    -e 's|../disVM/module/fircompiler.m|include/limbo/fircompiler.m|g' \
-                    -e 's|../disVM/compiler/compiler_engine.h|include/native/compiler_engine.h|g' \
-                    -e 's|dis/examples/compiler-service/|examples/compiler-service/|g' \
-                    -e 's|../disVM/SYNC|https://github.com/bhgv/flashVM/blob/master/disVM/SYNC|g' \
-                    "$ROOT/ide/COMPILER-SERVICE.$language" >"$destination/COMPILER-SERVICE.$language"
-                sed 's|../../../COMPILER-SERVICE|../../COMPILER-SERVICE|g' \
-                    "$ROOT/ide/dis/examples/compiler-service/README.$language" >"$destination/examples/compiler-service/README.$language"
-            done
-            if [[ "$compiler_enabled" != ON ]]; then
-                rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
-            fi
-            for module in ideatlas idevectorlabels idebulk tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
-                [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
-            done
-            copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-desktop-pointer.sh" "$destination/run-desktop-pointer.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-desktop-clipboard.sh" "$destination/run-desktop-clipboard.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-syntax-check.sh" "$destination/run-syntax-check.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-token-query.sh" "$destination/run-token-query.sh" 755
-            copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
-            copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
-            for control in ideinkworker ideinkacquire ideinkfit idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
-                copy_file "$ROOT/ide/dis/bridge/$control.b" "$destination/source/$control.b"
-            done
-            copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
-            copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorlabels.b" "$destination/source/idevectorlabels.b"
-            copy_file "$ROOT/ide/dis/bridge/idebulk.b" "$destination/source/idebulk.b"
-            copy_file "$ROOT/ide/VECTOR-PICKING.md" "$destination/VECTOR-PICKING.md"
-            copy_file "$ROOT/ide/VECTOR-PICKING.ru.md" "$destination/VECTOR-PICKING.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idevectorpresentation.b" "$destination/source/idevectorpresentation.b"
-            copy_file "$ROOT/ide/dis/examples/vector/pick-benchmark.b" "$destination/examples/vector/pick-benchmark.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorwire.b" "$destination/source/idevectorwire.b"
-            copy_file "$ROOT/ide/VECTOR-EDITING.md" "$destination/VECTOR-EDITING.md"
-            copy_file "$ROOT/ide/VECTOR-EDITING.ru.md" "$destination/VECTOR-EDITING.ru.md"
-            copy_file "$ROOT/ide/FLASHVM-LOCAL-MOTION.md" "$destination/FLASHVM-LOCAL-MOTION.md"
-            copy_file "$ROOT/ide/NODE-TOOLS.md" "$destination/NODE-TOOLS.md"
-            copy_file "$ROOT/ide/NODE-TOOLS.ru.md" "$destination/NODE-TOOLS.ru.md"
-            copy_file "$ROOT/ide/FLASHVM-LOCAL-MOTION.ru.md" "$destination/FLASHVM-LOCAL-MOTION.ru.md"
-            copy_file "$ROOT/ide/VECTOR-CANCELLATION.md" "$destination/VECTOR-CANCELLATION.md"
-            copy_file "$ROOT/ide/VECTOR-CANCELLATION.ru.md" "$destination/VECTOR-CANCELLATION.ru.md"
-            copy_file "$ROOT/ide/VECTOR-VIEWPORT.md" "$destination/VECTOR-VIEWPORT.md"
-            copy_file "$ROOT/ide/VECTOR-VIEWPORT.ru.md" "$destination/VECTOR-VIEWPORT.ru.md"
-            copy_file "$ROOT/disVM/MILLISEC.md" "$destination/MILLISEC.md"
-            copy_file "$ROOT/disVM/MILLISEC.ru.md" "$destination/MILLISEC.ru.md"
-            copy_file "$ROOT/disVM/include/disvm/clock_port.h" "$destination/include/disvm/clock_port.h"
-            copy_file "$ROOT/disVM/host/clock_port.c" "$destination/source/clock/clock_port.c"
-            copy_file "$ROOT/disVM/runtime/clock_sys.c" "$destination/source/clock/clock_sys.c"
-            copy_file "$ROOT/ide/dis/tests/millisec_test.b" "$destination/examples/millisec/main.b"
-            copy_file "$base/millisec-test.dis" "$destination/examples/millisec/main.dis"
-            copy_file "$ROOT/ide/dis/bridge/idevectorlocal.b" "$destination/source/idevectorlocal.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectornodes.b" "$destination/source/idevectornodes.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectornodecurve.b" "$destination/source/idevectornodecurve.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectornodebreak.b" "$destination/source/idevectornodebreak.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectoroverlaycache.b" "$destination/source/idevectoroverlaycache.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorclipboard.b" "$destination/source/idevectorclipboard.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorcancel.b" "$destination/source/idevectorcancel.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorpick.b" "$destination/source/idevectorpick.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorbrushfit.b" "$destination/source/idevectorbrushfit.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorviewport.b" "$destination/source/idevectorviewport.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectoredit.b" "$destination/source/idevectoredit.b"
-            copy_file "$ROOT/ide/dis/bridge/idevectorchain.b" "$destination/source/idevectorchain.b"
-            copy_file "$ROOT/ide/assets/vector-v0.1718.png" "$destination/VECTOR-EDITOR.png"
-            copy_file "$ROOT/ide/VECTOR-EDITOR.md" "$destination/VECTOR-EDITOR.md"
-            copy_file "$ROOT/ide/VECTOR-EDITOR.ru.md" "$destination/VECTOR-EDITOR.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idetokenquery.b" "$destination/source/idetokenquery.b"
-            copy_file "$ROOT/ide/TOKEN-QUERIES.md" "$destination/TOKEN-QUERIES.md"
-            copy_file "$ROOT/ide/TOKEN-QUERIES.ru.md" "$destination/TOKEN-QUERIES.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idesyntax.b" "$destination/source/idesyntax.b"
-            copy_tree "$ROOT/ide/syntax" "$destination/source/syntax"
-            for file in "$ROOT/ide/syntax/"*.m; do
-                copy_file "$file" "$destination/include/limbo/$(basename "$file")"
-            done
-            copy_file "$ROOT/ide/SYNTAX-LAZY.md" "$destination/SYNTAX-LAZY.md"
-            copy_file "$ROOT/ide/SYNTAX-LAZY.ru.md" "$destination/SYNTAX-LAZY.ru.md"
-
-            copy_file "$ROOT/ide/dis/bridge/idedeskclip.b" "$destination/source/idedeskclip.b"
-            copy_file "$ROOT/ide/CHROME-ATLAS.md" "$destination/CHROME-ATLAS.md"
-            copy_file "$ROOT/ide/CHROME-ATLAS.ru.md" "$destination/CHROME-ATLAS.ru.md"
-            copy_file "$ROOT/ide/DESKTOP-WORKSPACE.md" "$destination/DESKTOP-WORKSPACE.md"
-            copy_file "$ROOT/ide/DESKTOP-WORKSPACE.ru.md" "$destination/DESKTOP-WORKSPACE.ru.md"
-            copy_file "$ROOT/ide/DESKTOP-GLASS-MOTION.md" "$destination/DESKTOP-GLASS-MOTION.md"
-            copy_file "$ROOT/ide/DESKTOP-GLASS-MOTION.ru.md" "$destination/DESKTOP-GLASS-MOTION.ru.md"
-            copy_file "$ROOT/ide/DESKTOP-CLIPBOARD.md" "$destination/DESKTOP-CLIPBOARD.md"
-            copy_file "$ROOT/ide/DESKTOP-CLIPBOARD.ru.md" "$destination/DESKTOP-CLIPBOARD.ru.md"
-            copy_tree "$ROOT/ide/dis/examples/desktop-clipboard" "$destination/examples/desktop-clipboard"
-            copy_file "$ROOT/ide/ENTRYPOINTS.md" "$destination/ENTRYPOINTS.md"
-            install_program "$base" disvm "$destination"
-            if [[ "$component" == disvm-editor ]]; then
-                for module in desktop-ide desktop-example; do
-                    [[ -s "$base/$module.dis" ]] || fail "Missing desktop application: $base/$module.dis; build all editor targets before installation"
-                done
-                install_program "$base" disvm-editor "$destination"
-                copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
-                copy_tree "$ROOT/ide/dis/examples/desktop" "$destination/examples/desktop"
-                copy_file "$ROOT/ide/dis/app/desktop.b" "$destination/source/desktop.b"
-                copy_file "$ROOT/ide/dis/app/desktop.m" "$destination/include/limbo/desktop.m"
-                copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/check.py"
-                copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/test_desktop.py"
-                copy_file "$ROOT/disVM/runtime/test_desktop_pointer.py" "$destination/examples/desktop/check-pointer.py"
-                copy_file "$ROOT/disVM/runtime/test_desktop_clipboard.py" "$destination/examples/desktop/check-clipboard.py"
-                copy_file "$ROOT/disVM/runtime/test_desktop_workspace.py" "$destination/examples/desktop/check-workspace.py"
-                copy_file "$ROOT/disVM/runtime/test_graphical_editor.py" "$destination/examples/desktop/test_graphical_editor.py"
-                copy_file "$ROOT/ide/assets/desktop-v0.1719.png" "$destination/DESKTOP.png"
-                copy_file "$ROOT/ide/assets/desktop-v0.1719.png" "$destination/assets/desktop-v0.1719.png"
-                copy_file "$ROOT/ide/assets/desktop-v0.1677.png" "$destination/DESKTOP-CLIPBOARD.png"
-                copy_tree "$ROOT/ide/as" "$destination/source/as"
-                copy_file "$ROOT/compiler/as2/view/README.md" "$destination/docs/as2/VIEW.md"
-                copy_file "$ROOT/compiler/as2/view/README.ru.md" "$destination/docs/as2/VIEW.ru.md"
-                copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.md" "$destination/docs/fir/AS_PROPERTIES.md"
-                copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.ru.md" "$destination/docs/fir/AS_PROPERTIES.ru.md"
-                for artifact in fir opt.fir swo swf; do
-                    if [[ -f "$base/native/desktop-view.$artifact" ]]; then
-                        copy_file "$base/native/desktop-view.$artifact" "$destination/ui/desktop-view.$artifact"
-                    fi
-                    if [[ -f "$base/native/ide-view.$artifact" ]]; then
-                        copy_file "$base/native/ide-view.$artifact" "$destination/ui/editor-view.$artifact"
-                    fi
-                done
-                copy_tree "$ROOT/ide/assets/fonts" "$destination/fonts"
-                for file in "$ROOT/ide/dis/"*.md; do
-                    copy_file "$file" "$destination/docs/dis/$(basename "$file")"
-                done
-                copy_file "$ROOT/ide/assets/fonts/OFL.txt" "$destination/LICENSES/Noto-OFL.txt"
-                copy_file "$ROOT/external/sdl2/LICENSE.txt" "$destination/LICENSES/SDL2.txt"
-                copy_file "$ROOT/disVM/runtime/run-graphical-editor.sh" "$destination/run-graphical-editor.sh" 755
-                copy_tree "$ROOT/ide/dis/app" "$destination/source/app"
-                copy_tree "$ROOT/ide/dis/examples/graphical-editor" "$destination/examples/graphical-editor"
-            fi
-            file=$(program "$base" limbo-bootstrap)
-            copy_file "$file" "$destination/limbo-native" 755
-            copy_file "$base/bootstrap/target-abi.json" "$destination/ABI.json"
-            for file in "$base"/*.dis "$base"/*.sbl; do
-                if [[ "$native_demo_enabled" != ON && ( "$(basename "$file")" == native-demo.dis || "$(basename "$file")" == native-demo.sbl ) ]]; then
-                    continue
-                fi
-                if [[ "$compiler_enabled" != ON && ( "$(basename "$file")" == compiler-service.dis || "$(basename "$file")" == compiler-service.sbl || "$(basename "$file")" == compiler-service-check.dis || "$(basename "$file")" == compiler-service-check.sbl || "$(basename "$file")" == buildpanel-test.dis || "$(basename "$file")" == buildpanel-test.sbl || "$(basename "$file")" == build-panel.dis || "$(basename "$file")" == build-panel.sbl || "$(basename "$file")" == artifact-export.dis || "$(basename "$file")" == artifact-export.sbl || "$(basename "$file")" == artifact-test.dis || "$(basename "$file")" == artifact-test.sbl ) ]]; then
-                    continue
-                fi
-                if [[ -f "$file" ]]; then
-                    copy_file "$file" "$destination/$(basename "$file")"
-                fi
-            done
-            copy_file "$ROOT/disVM/runtime/run-console.sh" "$destination/run-console.sh" 755
-            if [[ "$component" == disvm-editor ]]; then
-                copy_file "$ROOT/disVM/runtime/run-ide-window.sh" "$destination/run-ide.sh" 755
-                copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide-console.sh" 755
-            else
-                copy_file "$ROOT/disVM/runtime/run-ide.sh" "$destination/run-ide.sh" 755
-            fi
-            copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
-            copy_file "$ROOT/disVM/runtime/run-managed-workers.sh" "$destination/run-managed-workers.sh" 755
-            copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
-            copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
-            copy_tree "$ROOT/ide/dis/examples/directory-browser" "$destination/examples/directory-browser"
-            copy_file "$ROOT/disVM/runtime/test_directory_browser.py" "$destination/examples/directory-browser/run.py"
-            copy_file "$ROOT/ide/dis/GRAPHICAL-BROWSER.md" "$destination/GRAPHICAL-BROWSER.md"
-            copy_file "$ROOT/ide/dis/GRAPHICAL-BROWSER.ru.md" "$destination/GRAPHICAL-BROWSER.ru.md"
-            copy_file "$ROOT/disVM/runtime/test_graphical_browser.py" "$destination/examples/directory-browser/graphical-check.py"
-            copy_file "$ROOT/disVM/runtime/test_graphical_editor.py" "$destination/examples/directory-browser/test_graphical_editor.py"
-            copy_file "$ROOT/ide/dis/DIRECTORIES.md" "$destination/DIRECTORIES.md"
-            copy_file "$ROOT/ide/dis/DIRECTORIES.ru.md" "$destination/DIRECTORIES.ru.md"
-            copy_tree "$ROOT/disVM/examples/filesystem" "$destination/examples/filesystem"
-            copy_file "$ROOT/disVM/runtime/test_filesystem.py" "$destination/examples/filesystem/run.py"
-            copy_file "$ROOT/disVM/runtime/FILESYSTEM.md" "$destination/FILESYSTEM.md"
-            copy_file "$ROOT/disVM/runtime/FILESYSTEM.ru.md" "$destination/FILESYSTEM.ru.md"
-            copy_tree "$ROOT/disVM/examples/relative-sequences" "$destination/examples/relative-sequences"
-            copy_tree "$ROOT/disVM/examples/hybrid-table" "$destination/examples/hybrid-table"
-            copy_tree "$ROOT/disVM/examples/table-guards" "$destination/examples/table-guards"
-            copy_tree "$ROOT/disVM/examples/table-leases" "$destination/examples/table-leases"
-            copy_tree "$ROOT/common/owned" "$destination/source/owned"
-            copy_tree "$ROOT/common/table" "$destination/source/table"
-            copy_file "$ROOT/LICENSE" "$destination/source/owned/LICENSE"
-            copy_file "$ROOT/LICENSE" "$destination/source/table/LICENSE"
-            copy_file "$ROOT/disVM/PAYLOAD_GUARDS.md" "$destination/PAYLOAD_GUARDS.md"
-            copy_file "$ROOT/disVM/PAYLOAD_GUARDS.ru.md" "$destination/PAYLOAD_GUARDS.ru.md"
-            copy_tree "$ROOT/common/table" "$destination/source/hybrid-table-core"
-            copy_file "$ROOT/LICENSE" "$destination/source/hybrid-table-core/LICENSE"
-            copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
-            copy_file "$ROOT/disVM/MODULE_AUDIT.md" "$destination/MODULE_AUDIT.md"
-            copy_file "$ROOT/disVM/MODULE_AUDIT.ru.md" "$destination/MODULE_AUDIT.ru.md"
-            for file in "$base/native/libraries/"*.b; do
-                copy_file "$file" "$destination/source/libraries/$(basename "$file")"
-            done
-            copy_tree "$ROOT/ide/dis/examples/editor-console" "$destination/examples/editor-console"
-            copy_file "$ROOT/disVM/runtime/README.md" "$destination/README-FIRSTSTEPS.md"
-            "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination" --runtime
-            copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
-            copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
-            copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
-            copy_tree "$ROOT/disVM/examples/managed-workers" "$destination/examples/managed-workers"
-            copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
-            copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
-            copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
-            copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
-            copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
-            copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
-            copy_tree "$ROOT/disVM/examples/native-guard-registry" "$destination/examples/native-guard-registry"
-            copy_tree "$ROOT/disVM/examples/native-cell-access" "$destination/examples/native-cell-access"
-            copy_tree "$ROOT/disVM/examples/native-range-access" "$destination/examples/native-range-access"
-            copy_tree "$ROOT/disVM/examples/native-root-batch" "$destination/examples/native-root-batch"
-            copy_tree "$ROOT/disVM/examples/guarded-mapped-copy" "$destination/examples/guarded-mapped-copy"
-            copy_tree "$ROOT/disVM/examples/guarded-list-head" "$destination/examples/guarded-list-head"
-            copy_tree "$ROOT/disVM/examples/guarded-pointer-list" "$destination/examples/guarded-pointer-list"
-            copy_tree "$ROOT/disVM/examples/guarded-list-bytes" "$destination/examples/guarded-list-bytes"
-            copy_tree "$ROOT/disVM/examples/guarded-integer" "$destination/examples/guarded-integer"
-            copy_tree "$ROOT/disVM/examples/guarded-arithmetic" "$destination/examples/guarded-arithmetic"
-            copy_tree "$ROOT/disVM/examples/native-small-range" "$destination/examples/native-small-range"
-            copy_tree "$ROOT/disVM/examples/guarded-product-division" "$destination/examples/guarded-product-division"
-            # Complete public header closure for the native-owner C tutorial.
-            for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
-                copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
-            done
-            copy_file "$ROOT/flashVM/ports/thread_port.h" "$destination/source/ports/thread_port.h"
-            copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
-            copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
-            copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c guard_registry.c cell_access.c cell_access_private.h range_access.c small_range.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
-                copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
-            done
-            copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
-            copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
-            copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
-            copy_file "$ROOT/disVM/include/disvm/owner_slot.h" "$destination/include/disvm/owner_slot.h"
-            copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
-            copy_file "$ROOT/disVM/tests/owner_slot.c" "$destination/source/tests/owner_slot.c"
-            copy_file "$ROOT/disVM/tests/owner_mailbox.c" "$destination/source/tests/owner_mailbox.c"
-            copy_file "$ROOT/disVM/tests/owner_slot.py" "$destination/source/tests/owner_slot.py"
-            copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
-            copy_tree "$ROOT/disVM/examples/managed-owner" "$destination/examples/managed-owner"
-            copy_tree "$ROOT/disVM/examples/native-owner-slot" "$destination/examples/native-owner-slot"
-            copy_file "$ROOT/disVM/runtime/OWNER-SLOTS.md" "$destination/OWNER-SLOTS.md"
-            copy_file "$ROOT/disVM/runtime/MANAGED-OWNERS.md" "$destination/MANAGED-OWNERS.md"
-            copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
-            copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-PARALLELISM-STATUS.ru.md" "$destination/HEAP-PARALLELISM-STATUS.ru.md"
-            copy_file "$ROOT/disVM/include/disvm/range_access.h" "$destination/include/disvm/range_access.h"
-            copy_file "$ROOT/disVM/include/disvm/small_range.h" "$destination/include/disvm/small_range.h"
-            copy_file "$ROOT/disVM/tests/range_access.c" "$destination/source/tests/range_access.c"
-            copy_file "$ROOT/disVM/tests/range_access.py" "$destination/source/tests/range_access.py"
-            copy_file "$ROOT/disVM/tests/small_range.py" "$destination/source/tests/small_range.py"
-            copy_file "$ROOT/disVM/tests/small_extend.c" "$destination/source/tests/small_extend.c"
-            copy_file "$ROOT/disVM/tests/small_extend.py" "$destination/source/tests/small_extend.py"
-            copy_file "$ROOT/disVM/tests/range_extend.c" "$destination/source/tests/range_extend.c"
-            copy_file "$ROOT/disVM/tests/range_extend.py" "$destination/source/tests/range_extend.py"
-            copy_file "$ROOT/disVM/include/disvm/cell_access.h" "$destination/include/disvm/cell_access.h"
-            copy_file "$ROOT/disVM/tests/cell_access.c" "$destination/source/tests/cell_access.c"
-            copy_file "$ROOT/disVM/tests/cell_access.py" "$destination/source/tests/cell_access.py"
-            copy_file "$ROOT/disVM/include/disvm/guard_registry.h" "$destination/include/disvm/guard_registry.h"
-            copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
-            copy_file "$ROOT/disVM/tests/guard_registry.c" "$destination/source/tests/guard_registry.c"
-            copy_file "$ROOT/disVM/tests/guard_registry_faults.c" "$destination/source/tests/guard_registry_faults.c"
-            copy_file "$ROOT/disVM/tests/guard_registry.py" "$destination/source/tests/guard_registry.py"
-            copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"
-            copy_file "$ROOT/disVM/tests/object_guard.py" "$destination/source/tests/object_guard.py"
-            copy_tree "$ROOT/disVM/examples/native-object-guard" "$destination/examples/native-object-guard"
-            copy_file "$ROOT/disVM/host/refcount.c" "$destination/source/host/refcount.c"
-            copy_file "$ROOT/disVM/include/disvm/refcount.h" "$destination/include/disvm/refcount.h"
-            copy_file "$ROOT/disVM/tests/refcount.c" "$destination/source/tests/refcount.c"
-            copy_file "$ROOT/disVM/tests/refcount.py" "$destination/source/tests/refcount.py"
-            copy_tree "$ROOT/disVM/examples/native-refcount" "$destination/examples/native-refcount"
-            copy_file "$ROOT/disVM/runtime/OBJECT-GUARDS.md" "$destination/OBJECT-GUARDS.md"
-            copy_file "$ROOT/disVM/runtime/REFCOUNT-CONVERSION.md" "$destination/REFCOUNT-CONVERSION.md"
-            copy_file "$ROOT/disVM/runtime/TYPE-COUNTS.md" "$destination/TYPE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-COUNTS.md" "$destination/HEAP-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/OPCODE-COUNTS.md" "$destination/OPCODE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/MODULE-COUNTS.md" "$destination/MODULE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-SNAPSHOTS.md" "$destination/HEAP-SNAPSHOTS.md"
-            copy_file "$ROOT/disVM/runtime/CALL-COUNTS.md" "$destination/CALL-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/SERVICE-COUNTS.md" "$destination/SERVICE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/JIT-COUNTS.md" "$destination/JIT-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-BUILDER.md" "$destination/POINTER-BUILDER.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-TAIL.md" "$destination/POINTER-TAIL.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-REGISTRY.md" "$destination/ROOT-REGISTRY.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-POOL.md" "$destination/HEAP-POOL.md"
-            copy_file "$ROOT/disVM/runtime/BOUNDARY-COUNTS.md" "$destination/BOUNDARY-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/STACK-CHECK.md" "$destination/STACK-CHECK.md"
-            copy_file "$ROOT/disVM/runtime/RETIREMENT-QUEUE.md" "$destination/RETIREMENT-QUEUE.md"
-            copy_file "$ROOT/disVM/runtime/GC-FIELDS.md" "$destination/GC-FIELDS.md"
-            copy_file "$ROOT/disVM/runtime/OWNER-TAIL.md" "$destination/OWNER-TAIL.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-BYTES.md" "$destination/SHARED-BYTES.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-BATCH.md" "$destination/ROOT-BATCH.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-MAPPED.md" "$destination/SHARED-MAPPED.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-HEAD.md" "$destination/SHARED-HEAD.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-LIST-POINTER.md" "$destination/SHARED-LIST-POINTER.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-LIST-BYTES.md" "$destination/SHARED-LIST-BYTES.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-INTEGER.md" "$destination/SHARED-INTEGER.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-ARITHMETIC.md" "$destination/SHARED-ARITHMETIC.md"
-            copy_file "$ROOT/disVM/runtime/SMALL-RANGES.md" "$destination/SMALL-RANGES.md"
-            copy_file "$ROOT/disVM/runtime/PRODUCT-DIVISION.md" "$destination/PRODUCT-DIVISION.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-SHIFTS.md" "$destination/SHARED-SHIFTS.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-BRANCHES.md" "$destination/SHARED-BRANCHES.md"
-            copy_file "$ROOT/disVM/runtime/ARRAY-LENGTH.md" "$destination/ARRAY-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/LIST-LENGTH.md" "$destination/LIST-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/STRING-LENGTH.md" "$destination/STRING-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/STRING-BRANCHES.md" "$destination/STRING-BRANCHES.md"
-            copy_file "$ROOT/disVM/runtime/REAL-BRANCHES.md" "$destination/REAL-BRANCHES.md"
-            copy_tree "$ROOT/disVM/examples/real-arithmetic" "$destination/examples/real-arithmetic"
-            if [[ -f "$base/native/amd64-emit.h" && -f "$base/native/xec.c" ]]; then
-                copy_file "$base/native/amd64-emit.h" "$destination/source/dispatch/amd64-emit.h"
-                copy_file "$base/native/xec.c" "$destination/source/dispatch/xec.c"
-            fi
-            copy_file "$ROOT/disVM/runtime/reports/guarded-dispatch-runtime110.json" "$destination/reports/guarded-dispatch-runtime110.json"
-            copy_file "$ROOT/disVM/runtime/reports/guarded-dispatch-runtime109.json" "$destination/reports/guarded-dispatch-runtime109.json"
-            copy_file "$ROOT/disVM/upstream/libinterp/xec.c" "$destination/source/conversion-oracle/xec.c"
-            copy_tree "$ROOT/disVM/examples/heap-hold" "$destination/examples/heap-hold"
-            copy_file "$ROOT/disVM/runtime/MAPPED-CONS.md" "$destination/MAPPED-CONS.md"
-            copy_file "$ROOT/disVM/runtime/RAW-CONS.md" "$destination/RAW-CONS.md"
-            copy_file "$ROOT/disVM/runtime/SCALAR-CONS.md" "$destination/SCALAR-CONS.md"
-            copy_file "$ROOT/disVM/runtime/VALUE-PREPARE.md" "$destination/VALUE-PREPARE.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-TRANSACTION.md" "$destination/POINTER-TRANSACTION.md"
-            copy_file "$ROOT/disVM/runtime/performance/pointer-transaction-runtime114-initial.json" "$destination/performance/pointer-transaction-runtime114-initial.json"
-            copy_file "$ROOT/disVM/runtime/performance/pointer-transaction-runtime114.json" "$destination/performance/pointer-transaction-runtime114.json"
-            copy_file "$ROOT/disVM/runtime/POINTER-PREPARE.md" "$destination/POINTER-PREPARE.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-COMMIT.md" "$destination/HEAP-COMMIT.md"
-            copy_tree "$ROOT/disVM/examples/heap-commit" "$destination/examples/heap-commit"
-            copy_file "$ROOT/disVM/runtime/HEAP-HOLD.md" "$destination/HEAP-HOLD.md"
-            copy_file "$ROOT/disVM/runtime/REAL-CONVERSION.md" "$destination/REAL-CONVERSION.md"
-            copy_tree "$ROOT/disVM/examples/real-conversion" "$destination/examples/real-conversion"
-            copy_file "$ROOT/disVM/runtime/GUARDED-DISPATCH.md" "$destination/GUARDED-DISPATCH.md"
-            copy_file "$ROOT/disVM/runtime/REAL-ARITHMETIC.md" "$destination/REAL-ARITHMETIC.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-REPLACEMENT.md" "$destination/ROOT-REPLACEMENT.md"
-            copy_tree "$ROOT/disVM/examples/root-group-replace" "$destination/examples/root-group-replace"
-            copy_tree "$ROOT/disVM/examples/guarded-real-branches" "$destination/examples/guarded-real-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-string-branches" "$destination/examples/guarded-string-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-string-length" "$destination/examples/guarded-string-length"
-            copy_tree "$ROOT/disVM/examples/guarded-list-length" "$destination/examples/guarded-list-length"
-            copy_tree "$ROOT/disVM/examples/native-range-extension" "$destination/examples/native-range-extension"
-            copy_tree "$ROOT/disVM/examples/guarded-array-length" "$destination/examples/guarded-array-length"
-            copy_tree "$ROOT/disVM/examples/native-small-extension" "$destination/examples/native-small-extension"
-            copy_tree "$ROOT/disVM/examples/guarded-branches" "$destination/examples/guarded-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-shifts" "$destination/examples/guarded-shifts"
-            copy_file "$ROOT/disVM/runtime/PERFORMANCE-COSTS.md" "$destination/PERFORMANCE-COSTS.md"
-            copy_tree "$ROOT/disVM/runtime/performance" "$destination/performance"
-            copy_file "$ROOT/disVM/runtime/SHARED-POINTER.md" "$destination/SHARED-POINTER.md"
-            copy_file "$ROOT/disVM/runtime/GUARD-REGISTRY.md" "$destination/GUARD-REGISTRY.md"
-            copy_file "$ROOT/disVM/runtime/GC-PENDING.md" "$destination/GC-PENDING.md"
-            copy_file "$ROOT/disVM/runtime/AGGREGATE-TAIL.md" "$destination/AGGREGATE-TAIL.md"
-            copy_file "$ROOT/disVM/host/include/lib9.h" "$destination/source/host/include/lib9.h"
-            copy_file "$ROOT/disVM/upstream/Linux/arm/include/lib9.h" "$destination/source/upstream/Linux/arm/include/lib9.h"
-            copy_file "$ROOT/disVM/upstream/include/arm-fp.h" "$destination/source/upstream/include/arm-fp.h"
-            copy_file "$ROOT/disVM/upstream/include/pool.h" "$destination/source/upstream/include/pool.h"
-            copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
-            copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"
-            copy_file "$ROOT/disVM/runtime/MULTITHREADING-ROADMAP.ru.md" "$destination/MULTITHREADING-ROADMAP.ru.md"
-            copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in record_new.c record_new.h prepare_record_new.py test_record_new.c test_record_new.py mapped_prepare.c mapped_prepare.h mapped_cons.c mapped_cons.h prepare_mapped_cons.py test_mapped_prepare.c test_mapped_prepare.py test_mapped_cons.c test_mapped_cons.py test_mapped_tail.py raw_cons.c raw_cons.h prepare_raw_cons.py test_raw_cons.c test_raw_cons.py test_raw_tail.py scalar_cons.c scalar_cons.h scalar_tail.c prepare_scalar_cons.py test_scalar_cons.c test_scalar_cons.py test_scalar_tail.py value_prepare.c value_prepare.h test_value_prepare.c test_value_prepare.py pointer_transaction.c pointer_transaction.h test_pointer_transaction.c test_pointer_transaction.py benchmark_pointer_transaction.py pointer_stage.c pointer_stage.h pointer_prepare.c pointer_prepare.h test_pointer_prepare.py benchmark_heap_commit.py heap_commit.c heap_commit.h test_heap_commit.py heap_hold.c heap_hold.h test_heap_hold.py benchmark_heap_hold.py shared_real_conversion.c shared_real_conversion.h real_conversion_value.c real_conversion_value.h prepare_shared_real_conversion.py test_shared_real_conversion.py test_real_conversion_tail.py benchmark_real_conversion.py test_guarded_dispatch.py benchmark_real_dispatch.py shared_real_arithmetic.c shared_real_arithmetic.h real_arithmetic_value.c real_arithmetic_value.h prepare_shared_real_arithmetic.py test_shared_real_arithmetic.py test_real_arithmetic_tail.py benchmark_real_arithmetic.py test_root_replace.c test_root_replace.py test_managed_root_replace.py benchmark_root_replace.py shared_real_branch.c shared_real_branch.h real_branch_value.c real_branch_value.h prepare_shared_real_branch.py test_shared_real_branch.py test_real_branch_tail.py benchmark_real_branch.py shared_string_branch.c shared_string_branch.h string_branch_value.c string_branch_value.h prepare_shared_string_branch.py test_shared_string_branch.py test_string_branch_tail.py benchmark_string_branch.py shared_string_length.c shared_string_length.h string_length_value.c string_length_value.h prepare_shared_string_length.py test_shared_string_length.py test_string_length_tail.py benchmark_string_length.py shared_list_length.c shared_list_length.h list_length_value.c list_length_value.h prepare_shared_list_length.py test_shared_list_length.py test_list_length_tail.py benchmark_list_length.py shared_array_length.c shared_array_length.h array_length_value.c array_length_value.h prepare_shared_array_length.py test_shared_array_length.py test_array_length_tail.py benchmark_array_length.py shared_branch.c shared_branch.h branch_value.c branch_value.h prepare_shared_branch.py test_shared_branch.py test_branch_tail.py benchmark_shared_branch.py native_jump.c native_jump.h test_native_jump.py shared_shift.c shared_shift.h shift_value.c shift_value.h prepare_shared_shift.py test_shared_shift.py test_shift_tail.py test_shift_errors.py benchmark_shared_shift.py benchmark_product_division.py test_arithmetic_errors.py benchmark_small_arithmetic.py shared_arithmetic.c shared_arithmetic.h arithmetic_value.c arithmetic_value.h prepare_shared_arithmetic.py test_shared_arithmetic.py test_arithmetic_tail.py benchmark_shared_arithmetic.py shared_integer.c shared_integer.h integer_value.c integer_value.h prepare_shared_integer.py test_shared_integer.py test_integer_tail.py benchmark_shared_integer.py shared_list_bytes.c shared_list_bytes.h prepare_shared_list_bytes.py test_shared_list_bytes.py test_list_bytes_tail.py benchmark_shared_list_bytes.py shared_list_pointer.c shared_list_pointer.h prepare_shared_list_pointer.py test_shared_list_pointer.py benchmark_shared_list_pointer.py list_hold.c list_hold.h shared_head.c shared_head.h prepare_shared_head.py test_shared_head.py benchmark_shared_head.py shared_mapped.c shared_mapped.h prepare_shared_mapped.py test_shared_mapped.py benchmark_shared_mapped.py shared_access.c shared_access.h shared_bytes.c shared_bytes.h byte_transfer.c byte_transfer.h bytes_fast.c bytes_fast.h prepare_shared_bytes.py prepare_bytes_tail.py test_shared_bytes.py test_bytes_tail.py benchmark_guarded_copies.py shared_pointer.c shared_pointer.h prepare_shared_pointer.py test_shared_pointer.py benchmark_shared_pointer.py managed_owner.c managed_owner.h managed_owner_probe.c managed_owner_probe.h guard_registry_probe.c test_managed_guards.py runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py test_rc_reservation.c type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_registry.c module_registry.h test_module_registry.c test_module_registry.py test_resident_load.py test_resident_decimal.py test_resident_errors.py test_native_acceptance.c test_resident_native_count.py test_gc_requests.c test_gc_requests.py test_mapped_accounting.c test_mapped_accounting.py string_view_sync.c string_view_sync.h prepare_string_view.py test_string_view.c test_string_view.py jit_publication.c jit_publication.h prepare_jit_publication.py test_jit_publish.c test_jit_publish.py test_module_kill.c test_process_roots.c test_process_roots.py test_resident_root_probe.py test_load_kill.c test_load_kill.py module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_private.h root_batch.c root_batch.h test_root_batch.c test_root_batch.py test_managed_root_batch.py root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h file_slots.c file_slots.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_managed_start.c test_resident_startup.py test_removed_pool.py test_owner_messages.c owner_messages.c owner_messages.h host_cancellations.c host_cancellations.h test_host_cancellations.c thread_registrar.c thread_registrar.h channel_match.c channel_match.h test_resident_alt.py test_resident_processctl.py test_parent_reply_exit.c test_channel_gc_snapshot.c test_file_gate_churn.c test_file_gate_churn.py test_resident_files.py test_file_slot_barrier.c test_native_cancel.c test_native_cancel.py test_native_kill.c test_native_kill.py test_resident_tables.py test_table_preflight.c test_table_retirement.c test_table_retirement.py test_table_scope_kill.c test_table_scope_kill.py test_table_transfer.py test_table_fifo_edit.py test_table_parent_exit.c test_table_parent_exit.py test_close_backlog.c test_close_backlog.py bigtable_owner.h gc/fast/file_retirement.c gc/fast/file_retirement.h gc/fast/table_retirement.c gc/fast/table_retirement.h; do
-                copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
-            done
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-alt" "$destination/source/threading/fixtures/resident-alt"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-processctl" "$destination/source/threading/fixtures/resident-processctl"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-files" "$destination/source/threading/fixtures/resident-files"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-close-backlog" "$destination/source/threading/fixtures/resident-close-backlog"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-load" "$destination/source/threading/fixtures/resident-load"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-decimal" "$destination/source/threading/fixtures/resident-decimal"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-errors" "$destination/source/threading/fixtures/resident-errors"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-count" "$destination/source/threading/fixtures/resident-native-count"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-gc-requests" "$destination/source/threading/fixtures/resident-gc-requests"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-mapped-count" "$destination/source/threading/fixtures/resident-mapped-count"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-string-view" "$destination/source/threading/fixtures/resident-string-view"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-jit-publish" "$destination/source/threading/fixtures/resident-jit-publish"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-root-probe" "$destination/source/threading/fixtures/resident-root-probe"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-cancel" "$destination/source/threading/fixtures/resident-native-cancel"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-kill" "$destination/source/threading/fixtures/resident-native-kill"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-tables" "$destination/source/threading/fixtures/resident-tables"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-retirement" "$destination/source/threading/fixtures/resident-table-retirement"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-scope-kill" "$destination/source/threading/fixtures/resident-table-scope-kill"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-transfer" "$destination/source/threading/fixtures/resident-table-transfer"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-fifo-edit" "$destination/source/threading/fixtures/resident-table-fifo-edit"
-            copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
-            copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
-            copy_file "$ROOT/disVM/upstream/module/readdir.m" "$destination/include/limbo/readdir.m"
-            copy_file "$ROOT/disVM/upstream/module/regex.m" "$destination/include/limbo/regex.m"
-            copy_file "$ROOT/disVM/upstream/appl/lib/tests/regex-unicode.b" "$destination/examples/regex-unicode.b"
-            copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
-            copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
-            copy_file "$ROOT/disVM/module/unibus.m" "$destination/include/limbo/unibus.m"
-            copy_file "$ROOT/disVM/module/bigtable.m" "$destination/include/limbo/bigtable.m"
-            copy_file "$ROOT/disVM/module/processctl.m" "$destination/include/limbo/processctl.m"
-            copy_file "$ROOT/disVM/broker/brokerdiag.m" "$destination/include/limbo/brokerdiag.m"
-            for file in broker.h codec.h flash_channel.h; do
-                copy_file "$ROOT/disVM/broker/$file" "$destination/include/disvm/$file"
-            done
-            copy_tree "$ROOT/disVM/broker" "$destination/examples/broker"
-            copy_tree "$ROOT/ide/dis/examples/projection" "$destination/examples/projection"
-            copy_tree "$ROOT/ide/dis/examples/document-projection" "$destination/examples/document-projection"
-            copy_file "$ROOT/ide/as/projection-values.as" "$destination/as/projection-values.as"
-            for file in idevalue ideprojection ideinspect idedocprojection idebrowser; do
-                copy_file "$ROOT/ide/dis/bridge/$file.b" "$destination/source/$file.b"
-            done
-            copy_file "$ROOT/ide/dis/PROJECTIONS.md" "$destination/PROJECTIONS.md"
-            copy_file "$ROOT/ide/dis/VALUES.md" "$destination/VALUES.md"
-            copy_file "$ROOT/ide/dis/VALUES.ru.md" "$destination/VALUES.ru.md"
-            copy_file "$ROOT/ide/dis/LIVE-PROJECTIONS.md" "$destination/LIVE-PROJECTIONS.md"
-            copy_file "$ROOT/ide/dis/LIVE-PROJECTIONS.ru.md" "$destination/LIVE-PROJECTIONS.ru.md"
-            copy_file "$ROOT/ide/dis/WINDOWS-GUTTER.md" "$destination/WINDOWS-GUTTER.md"
-            copy_file "$ROOT/ide/dis/WINDOWS-GUTTER.ru.md" "$destination/WINDOWS-GUTTER.ru.md"
-            copy_file "$ROOT/ide/dis/bridge/idefiles.README.md" "$destination/FILE-WINDOWS.md"
-            copy_file "$ROOT/ide/dis/bridge/idefiles.b" "$destination/source/idefiles.b"
-            for file in "$ROOT/ide/dis/bridge/"*.m; do
-                copy_file "$file" "$destination/include/limbo/$(basename "$file")"
-            done
-            "${PYTHON:-python3}" "$ROOT/tools/link-installed-runtime-docs.py" "$ROOT" "$destination"
+            install_runtime_package
             ;;
         disvm | disvm-host)
-            source="$ROOT/disVM"
-            install_dis64_envelope "$base" "$destination"
-            mkdir -p "$destination"
-            copy_tree "$ROOT/disVM/include" "$destination/include"
-            # Export the public header closure required by flashvm_host.h.
-            copy_tree "$ROOT/flashVM/include" "$destination/include"
-            for file in thread_port.h channel_sync.h file_port.h filesystem_port.h network/socket.h network/resolver.h; do
-                copy_file "$ROOT/flashVM/ports/$file" "$destination/include/$file"
-            done
-            copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
-            copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
-            copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
-            copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
-            copy_tree "$ROOT/disVM/examples/managed-workers" "$destination/examples/managed-workers"
-            copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
-            copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
-            copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
-            copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
-            copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
-            copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
-            copy_tree "$ROOT/disVM/examples/native-guard-registry" "$destination/examples/native-guard-registry"
-            copy_tree "$ROOT/disVM/examples/native-cell-access" "$destination/examples/native-cell-access"
-            copy_tree "$ROOT/disVM/examples/native-range-access" "$destination/examples/native-range-access"
-            copy_tree "$ROOT/disVM/examples/native-root-batch" "$destination/examples/native-root-batch"
-            copy_tree "$ROOT/disVM/examples/guarded-mapped-copy" "$destination/examples/guarded-mapped-copy"
-            copy_tree "$ROOT/disVM/examples/guarded-list-head" "$destination/examples/guarded-list-head"
-            copy_tree "$ROOT/disVM/examples/guarded-pointer-list" "$destination/examples/guarded-pointer-list"
-            copy_tree "$ROOT/disVM/examples/guarded-list-bytes" "$destination/examples/guarded-list-bytes"
-            copy_tree "$ROOT/disVM/examples/guarded-integer" "$destination/examples/guarded-integer"
-            copy_tree "$ROOT/disVM/examples/guarded-arithmetic" "$destination/examples/guarded-arithmetic"
-            copy_tree "$ROOT/disVM/examples/native-small-range" "$destination/examples/native-small-range"
-            copy_tree "$ROOT/disVM/examples/guarded-product-division" "$destination/examples/guarded-product-division"
-            # Complete public header closure for the native-owner C tutorial.
-            for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
-                copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
-            done
-            copy_file "$ROOT/flashVM/ports/thread_port.h" "$destination/source/ports/thread_port.h"
-            copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
-            copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
-            copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c guard_registry.c cell_access.c cell_access_private.h range_access.c small_range.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
-                copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
-            done
-            copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
-            copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
-            copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
-            copy_file "$ROOT/disVM/include/disvm/owner_slot.h" "$destination/include/disvm/owner_slot.h"
-            copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
-            copy_file "$ROOT/disVM/tests/owner_slot.c" "$destination/source/tests/owner_slot.c"
-            copy_file "$ROOT/disVM/tests/owner_mailbox.c" "$destination/source/tests/owner_mailbox.c"
-            copy_file "$ROOT/disVM/tests/owner_slot.py" "$destination/source/tests/owner_slot.py"
-            copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
-            copy_tree "$ROOT/disVM/examples/managed-owner" "$destination/examples/managed-owner"
-            copy_tree "$ROOT/disVM/examples/native-owner-slot" "$destination/examples/native-owner-slot"
-            copy_file "$ROOT/disVM/runtime/OWNER-SLOTS.md" "$destination/OWNER-SLOTS.md"
-            copy_file "$ROOT/disVM/runtime/MANAGED-OWNERS.md" "$destination/MANAGED-OWNERS.md"
-            copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
-            copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-PARALLELISM-STATUS.ru.md" "$destination/HEAP-PARALLELISM-STATUS.ru.md"
-            copy_file "$ROOT/disVM/include/disvm/range_access.h" "$destination/include/disvm/range_access.h"
-            copy_file "$ROOT/disVM/include/disvm/small_range.h" "$destination/include/disvm/small_range.h"
-            copy_file "$ROOT/disVM/tests/range_access.c" "$destination/source/tests/range_access.c"
-            copy_file "$ROOT/disVM/tests/range_access.py" "$destination/source/tests/range_access.py"
-            copy_file "$ROOT/disVM/tests/small_range.py" "$destination/source/tests/small_range.py"
-            copy_file "$ROOT/disVM/tests/small_extend.c" "$destination/source/tests/small_extend.c"
-            copy_file "$ROOT/disVM/tests/small_extend.py" "$destination/source/tests/small_extend.py"
-            copy_file "$ROOT/disVM/tests/range_extend.c" "$destination/source/tests/range_extend.c"
-            copy_file "$ROOT/disVM/tests/range_extend.py" "$destination/source/tests/range_extend.py"
-            copy_file "$ROOT/disVM/include/disvm/cell_access.h" "$destination/include/disvm/cell_access.h"
-            copy_file "$ROOT/disVM/tests/cell_access.c" "$destination/source/tests/cell_access.c"
-            copy_file "$ROOT/disVM/tests/cell_access.py" "$destination/source/tests/cell_access.py"
-            copy_file "$ROOT/disVM/include/disvm/guard_registry.h" "$destination/include/disvm/guard_registry.h"
-            copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
-            copy_file "$ROOT/disVM/tests/guard_registry.c" "$destination/source/tests/guard_registry.c"
-            copy_file "$ROOT/disVM/tests/guard_registry_faults.c" "$destination/source/tests/guard_registry_faults.c"
-            copy_file "$ROOT/disVM/tests/guard_registry.py" "$destination/source/tests/guard_registry.py"
-            copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"
-            copy_file "$ROOT/disVM/tests/object_guard.py" "$destination/source/tests/object_guard.py"
-            copy_tree "$ROOT/disVM/examples/native-object-guard" "$destination/examples/native-object-guard"
-            copy_file "$ROOT/disVM/host/refcount.c" "$destination/source/host/refcount.c"
-            copy_file "$ROOT/disVM/include/disvm/refcount.h" "$destination/include/disvm/refcount.h"
-            copy_file "$ROOT/disVM/tests/refcount.c" "$destination/source/tests/refcount.c"
-            copy_file "$ROOT/disVM/tests/refcount.py" "$destination/source/tests/refcount.py"
-            copy_tree "$ROOT/disVM/examples/native-refcount" "$destination/examples/native-refcount"
-            copy_file "$ROOT/disVM/runtime/OBJECT-GUARDS.md" "$destination/OBJECT-GUARDS.md"
-            copy_file "$ROOT/disVM/runtime/REFCOUNT-CONVERSION.md" "$destination/REFCOUNT-CONVERSION.md"
-            copy_file "$ROOT/disVM/runtime/TYPE-COUNTS.md" "$destination/TYPE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-COUNTS.md" "$destination/HEAP-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/OPCODE-COUNTS.md" "$destination/OPCODE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/MODULE-COUNTS.md" "$destination/MODULE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-SNAPSHOTS.md" "$destination/HEAP-SNAPSHOTS.md"
-            copy_file "$ROOT/disVM/runtime/CALL-COUNTS.md" "$destination/CALL-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/SERVICE-COUNTS.md" "$destination/SERVICE-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/JIT-COUNTS.md" "$destination/JIT-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-BUILDER.md" "$destination/POINTER-BUILDER.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-TAIL.md" "$destination/POINTER-TAIL.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-REGISTRY.md" "$destination/ROOT-REGISTRY.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-POOL.md" "$destination/HEAP-POOL.md"
-            copy_file "$ROOT/disVM/runtime/BOUNDARY-COUNTS.md" "$destination/BOUNDARY-COUNTS.md"
-            copy_file "$ROOT/disVM/runtime/STACK-CHECK.md" "$destination/STACK-CHECK.md"
-            copy_file "$ROOT/disVM/runtime/RETIREMENT-QUEUE.md" "$destination/RETIREMENT-QUEUE.md"
-            copy_file "$ROOT/disVM/runtime/GC-FIELDS.md" "$destination/GC-FIELDS.md"
-            copy_file "$ROOT/disVM/runtime/OWNER-TAIL.md" "$destination/OWNER-TAIL.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-BYTES.md" "$destination/SHARED-BYTES.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-BATCH.md" "$destination/ROOT-BATCH.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-MAPPED.md" "$destination/SHARED-MAPPED.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-HEAD.md" "$destination/SHARED-HEAD.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-LIST-POINTER.md" "$destination/SHARED-LIST-POINTER.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-LIST-BYTES.md" "$destination/SHARED-LIST-BYTES.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-INTEGER.md" "$destination/SHARED-INTEGER.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-ARITHMETIC.md" "$destination/SHARED-ARITHMETIC.md"
-            copy_file "$ROOT/disVM/runtime/SMALL-RANGES.md" "$destination/SMALL-RANGES.md"
-            copy_file "$ROOT/disVM/runtime/PRODUCT-DIVISION.md" "$destination/PRODUCT-DIVISION.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-SHIFTS.md" "$destination/SHARED-SHIFTS.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-BRANCHES.md" "$destination/SHARED-BRANCHES.md"
-            copy_file "$ROOT/disVM/runtime/ARRAY-LENGTH.md" "$destination/ARRAY-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/LIST-LENGTH.md" "$destination/LIST-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/STRING-LENGTH.md" "$destination/STRING-LENGTH.md"
-            copy_file "$ROOT/disVM/runtime/STRING-BRANCHES.md" "$destination/STRING-BRANCHES.md"
-            copy_file "$ROOT/disVM/runtime/REAL-BRANCHES.md" "$destination/REAL-BRANCHES.md"
-            copy_tree "$ROOT/disVM/examples/real-arithmetic" "$destination/examples/real-arithmetic"
-            if [[ -f "$base/native/amd64-emit.h" && -f "$base/native/xec.c" ]]; then
-                copy_file "$base/native/amd64-emit.h" "$destination/source/dispatch/amd64-emit.h"
-                copy_file "$base/native/xec.c" "$destination/source/dispatch/xec.c"
-            fi
-            copy_file "$ROOT/disVM/runtime/reports/guarded-dispatch-runtime110.json" "$destination/reports/guarded-dispatch-runtime110.json"
-            copy_file "$ROOT/disVM/runtime/reports/guarded-dispatch-runtime109.json" "$destination/reports/guarded-dispatch-runtime109.json"
-            copy_file "$ROOT/disVM/upstream/libinterp/xec.c" "$destination/source/conversion-oracle/xec.c"
-            copy_tree "$ROOT/disVM/examples/heap-hold" "$destination/examples/heap-hold"
-            copy_file "$ROOT/disVM/runtime/MAPPED-CONS.md" "$destination/MAPPED-CONS.md"
-            copy_file "$ROOT/disVM/runtime/RAW-CONS.md" "$destination/RAW-CONS.md"
-            copy_file "$ROOT/disVM/runtime/SCALAR-CONS.md" "$destination/SCALAR-CONS.md"
-            copy_file "$ROOT/disVM/runtime/VALUE-PREPARE.md" "$destination/VALUE-PREPARE.md"
-            copy_file "$ROOT/disVM/runtime/POINTER-TRANSACTION.md" "$destination/POINTER-TRANSACTION.md"
-            copy_file "$ROOT/disVM/runtime/performance/pointer-transaction-runtime114-initial.json" "$destination/performance/pointer-transaction-runtime114-initial.json"
-            copy_file "$ROOT/disVM/runtime/performance/pointer-transaction-runtime114.json" "$destination/performance/pointer-transaction-runtime114.json"
-            copy_file "$ROOT/disVM/runtime/POINTER-PREPARE.md" "$destination/POINTER-PREPARE.md"
-            copy_file "$ROOT/disVM/runtime/HEAP-COMMIT.md" "$destination/HEAP-COMMIT.md"
-            copy_tree "$ROOT/disVM/examples/heap-commit" "$destination/examples/heap-commit"
-            copy_file "$ROOT/disVM/runtime/HEAP-HOLD.md" "$destination/HEAP-HOLD.md"
-            copy_file "$ROOT/disVM/runtime/REAL-CONVERSION.md" "$destination/REAL-CONVERSION.md"
-            copy_tree "$ROOT/disVM/examples/real-conversion" "$destination/examples/real-conversion"
-            copy_file "$ROOT/disVM/runtime/GUARDED-DISPATCH.md" "$destination/GUARDED-DISPATCH.md"
-            copy_file "$ROOT/disVM/runtime/REAL-ARITHMETIC.md" "$destination/REAL-ARITHMETIC.md"
-            copy_file "$ROOT/disVM/runtime/ROOT-REPLACEMENT.md" "$destination/ROOT-REPLACEMENT.md"
-            copy_tree "$ROOT/disVM/examples/root-group-replace" "$destination/examples/root-group-replace"
-            copy_tree "$ROOT/disVM/examples/guarded-real-branches" "$destination/examples/guarded-real-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-string-branches" "$destination/examples/guarded-string-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-string-length" "$destination/examples/guarded-string-length"
-            copy_tree "$ROOT/disVM/examples/guarded-list-length" "$destination/examples/guarded-list-length"
-            copy_tree "$ROOT/disVM/examples/native-range-extension" "$destination/examples/native-range-extension"
-            copy_tree "$ROOT/disVM/examples/guarded-array-length" "$destination/examples/guarded-array-length"
-            copy_tree "$ROOT/disVM/examples/native-small-extension" "$destination/examples/native-small-extension"
-            copy_tree "$ROOT/disVM/examples/guarded-branches" "$destination/examples/guarded-branches"
-            copy_tree "$ROOT/disVM/examples/guarded-shifts" "$destination/examples/guarded-shifts"
-            copy_file "$ROOT/disVM/runtime/PERFORMANCE-COSTS.md" "$destination/PERFORMANCE-COSTS.md"
-            copy_tree "$ROOT/disVM/runtime/performance" "$destination/performance"
-            copy_file "$ROOT/disVM/runtime/SHARED-POINTER.md" "$destination/SHARED-POINTER.md"
-            copy_file "$ROOT/disVM/runtime/GUARD-REGISTRY.md" "$destination/GUARD-REGISTRY.md"
-            copy_file "$ROOT/disVM/runtime/GC-PENDING.md" "$destination/GC-PENDING.md"
-            copy_file "$ROOT/disVM/runtime/AGGREGATE-TAIL.md" "$destination/AGGREGATE-TAIL.md"
-            copy_file "$ROOT/disVM/host/include/lib9.h" "$destination/source/host/include/lib9.h"
-            copy_file "$ROOT/disVM/upstream/Linux/arm/include/lib9.h" "$destination/source/upstream/Linux/arm/include/lib9.h"
-            copy_file "$ROOT/disVM/upstream/include/arm-fp.h" "$destination/source/upstream/include/arm-fp.h"
-            copy_file "$ROOT/disVM/upstream/include/pool.h" "$destination/source/upstream/include/pool.h"
-            copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
-            copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
-            copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"
-            copy_file "$ROOT/disVM/runtime/MULTITHREADING-ROADMAP.ru.md" "$destination/MULTITHREADING-ROADMAP.ru.md"
-            copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in record_new.c record_new.h prepare_record_new.py test_record_new.c test_record_new.py mapped_prepare.c mapped_prepare.h mapped_cons.c mapped_cons.h prepare_mapped_cons.py test_mapped_prepare.c test_mapped_prepare.py test_mapped_cons.c test_mapped_cons.py test_mapped_tail.py raw_cons.c raw_cons.h prepare_raw_cons.py test_raw_cons.c test_raw_cons.py test_raw_tail.py scalar_cons.c scalar_cons.h scalar_tail.c prepare_scalar_cons.py test_scalar_cons.c test_scalar_cons.py test_scalar_tail.py value_prepare.c value_prepare.h test_value_prepare.c test_value_prepare.py pointer_transaction.c pointer_transaction.h test_pointer_transaction.c test_pointer_transaction.py benchmark_pointer_transaction.py pointer_stage.c pointer_stage.h pointer_prepare.c pointer_prepare.h test_pointer_prepare.py benchmark_heap_commit.py heap_commit.c heap_commit.h test_heap_commit.py heap_hold.c heap_hold.h test_heap_hold.py benchmark_heap_hold.py shared_real_conversion.c shared_real_conversion.h real_conversion_value.c real_conversion_value.h prepare_shared_real_conversion.py test_shared_real_conversion.py test_real_conversion_tail.py benchmark_real_conversion.py test_guarded_dispatch.py benchmark_real_dispatch.py shared_real_arithmetic.c shared_real_arithmetic.h real_arithmetic_value.c real_arithmetic_value.h prepare_shared_real_arithmetic.py test_shared_real_arithmetic.py test_real_arithmetic_tail.py benchmark_real_arithmetic.py test_root_replace.c test_root_replace.py test_managed_root_replace.py benchmark_root_replace.py shared_real_branch.c shared_real_branch.h real_branch_value.c real_branch_value.h prepare_shared_real_branch.py test_shared_real_branch.py test_real_branch_tail.py benchmark_real_branch.py shared_string_branch.c shared_string_branch.h string_branch_value.c string_branch_value.h prepare_shared_string_branch.py test_shared_string_branch.py test_string_branch_tail.py benchmark_string_branch.py shared_string_length.c shared_string_length.h string_length_value.c string_length_value.h prepare_shared_string_length.py test_shared_string_length.py test_string_length_tail.py benchmark_string_length.py shared_list_length.c shared_list_length.h list_length_value.c list_length_value.h prepare_shared_list_length.py test_shared_list_length.py test_list_length_tail.py benchmark_list_length.py shared_array_length.c shared_array_length.h array_length_value.c array_length_value.h prepare_shared_array_length.py test_shared_array_length.py test_array_length_tail.py benchmark_array_length.py shared_branch.c shared_branch.h branch_value.c branch_value.h prepare_shared_branch.py test_shared_branch.py test_branch_tail.py benchmark_shared_branch.py native_jump.c native_jump.h test_native_jump.py shared_shift.c shared_shift.h shift_value.c shift_value.h prepare_shared_shift.py test_shared_shift.py test_shift_tail.py test_shift_errors.py benchmark_shared_shift.py benchmark_product_division.py test_arithmetic_errors.py benchmark_small_arithmetic.py shared_arithmetic.c shared_arithmetic.h arithmetic_value.c arithmetic_value.h prepare_shared_arithmetic.py test_shared_arithmetic.py test_arithmetic_tail.py benchmark_shared_arithmetic.py shared_integer.c shared_integer.h integer_value.c integer_value.h prepare_shared_integer.py test_shared_integer.py test_integer_tail.py benchmark_shared_integer.py shared_list_bytes.c shared_list_bytes.h prepare_shared_list_bytes.py test_shared_list_bytes.py test_list_bytes_tail.py benchmark_shared_list_bytes.py shared_list_pointer.c shared_list_pointer.h prepare_shared_list_pointer.py test_shared_list_pointer.py benchmark_shared_list_pointer.py list_hold.c list_hold.h shared_head.c shared_head.h prepare_shared_head.py test_shared_head.py benchmark_shared_head.py shared_mapped.c shared_mapped.h prepare_shared_mapped.py test_shared_mapped.py benchmark_shared_mapped.py shared_access.c shared_access.h shared_bytes.c shared_bytes.h byte_transfer.c byte_transfer.h bytes_fast.c bytes_fast.h prepare_shared_bytes.py prepare_bytes_tail.py test_shared_bytes.py test_bytes_tail.py benchmark_guarded_copies.py shared_pointer.c shared_pointer.h prepare_shared_pointer.py test_shared_pointer.py benchmark_shared_pointer.py managed_owner.c managed_owner.h managed_owner_probe.c managed_owner_probe.h guard_registry_probe.c test_managed_guards.py runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py test_rc_reservation.c type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_registry.c module_registry.h test_module_registry.c test_module_registry.py test_resident_load.py test_resident_decimal.py test_resident_errors.py test_native_acceptance.c test_resident_native_count.py test_gc_requests.c test_gc_requests.py test_mapped_accounting.c test_mapped_accounting.py string_view_sync.c string_view_sync.h prepare_string_view.py test_string_view.c test_string_view.py jit_publication.c jit_publication.h prepare_jit_publication.py test_jit_publish.c test_jit_publish.py test_module_kill.c test_process_roots.c test_process_roots.py test_resident_root_probe.py test_load_kill.c test_load_kill.py module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_private.h root_batch.c root_batch.h test_root_batch.c test_root_batch.py test_managed_root_batch.py root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h file_slots.c file_slots.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_managed_start.c test_resident_startup.py test_removed_pool.py test_owner_messages.c owner_messages.c owner_messages.h host_cancellations.c host_cancellations.h test_host_cancellations.c thread_registrar.c thread_registrar.h channel_match.c channel_match.h test_resident_alt.py test_resident_processctl.py test_parent_reply_exit.c test_channel_gc_snapshot.c test_file_gate_churn.c test_file_gate_churn.py test_resident_files.py test_file_slot_barrier.c test_native_cancel.c test_native_cancel.py test_native_kill.c test_native_kill.py test_resident_tables.py test_table_preflight.c test_table_retirement.c test_table_retirement.py test_table_scope_kill.c test_table_scope_kill.py test_table_transfer.py test_table_fifo_edit.py test_table_parent_exit.c test_table_parent_exit.py test_close_backlog.c test_close_backlog.py bigtable_owner.h gc/fast/file_retirement.c gc/fast/file_retirement.h gc/fast/table_retirement.c gc/fast/table_retirement.h; do
-                copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
-            done
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-alt" "$destination/source/threading/fixtures/resident-alt"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-processctl" "$destination/source/threading/fixtures/resident-processctl"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-files" "$destination/source/threading/fixtures/resident-files"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-close-backlog" "$destination/source/threading/fixtures/resident-close-backlog"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-load" "$destination/source/threading/fixtures/resident-load"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-decimal" "$destination/source/threading/fixtures/resident-decimal"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-errors" "$destination/source/threading/fixtures/resident-errors"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-count" "$destination/source/threading/fixtures/resident-native-count"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-gc-requests" "$destination/source/threading/fixtures/resident-gc-requests"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-mapped-count" "$destination/source/threading/fixtures/resident-mapped-count"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-string-view" "$destination/source/threading/fixtures/resident-string-view"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-jit-publish" "$destination/source/threading/fixtures/resident-jit-publish"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-root-probe" "$destination/source/threading/fixtures/resident-root-probe"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-cancel" "$destination/source/threading/fixtures/resident-native-cancel"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-native-kill" "$destination/source/threading/fixtures/resident-native-kill"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-tables" "$destination/source/threading/fixtures/resident-tables"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-retirement" "$destination/source/threading/fixtures/resident-table-retirement"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-scope-kill" "$destination/source/threading/fixtures/resident-table-scope-kill"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-transfer" "$destination/source/threading/fixtures/resident-table-transfer"
-            copy_tree "$ROOT/disVM/runtime/fixtures/resident-table-fifo-edit" "$destination/source/threading/fixtures/resident-table-fifo-edit"
-            if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&
-                grep -q '^DVM_BUILD_DIAGNOSTICS:BOOL=ON$' "$base/CMakeCache.txt"; then
-                for file in disvm-check disvm-jit-word32 disvm-jit-word64; do
-                    install_program "$base" "$file" "$destination"
-                done
-            fi
-            for file in console-check.dis console-check.sbl; do
-                if [[ -f "$base/$file" ]]; then
-                    copy_file "$base/$file" "$destination/$file"
-                fi
-            done
-            if [[ -n "$(find "$base" -type f \( -name disvm_module_store_example -o -name disvm_module_store_example.exe \) -print -quit)" ]]; then
-                install_program "$base" disvm_module_store_example "$destination"
-            fi
-            copy_file "$ROOT/disVM/MODULE-STORE.md" "$destination/MODULE-STORE.md"
-            copy_file "$ROOT/disVM/RUNNABLE-CHECKS.md" "$destination/RUNNABLE-CHECKS.md"
-            copy_tree "$ROOT/disVM/module" "$destination/module"
-            copy_tree "$ROOT/disVM/limbo" "$destination/limbo"
-            copy_tree "$ROOT/disVM/examples/ui-channel" "$destination/examples/ui-channel"
-            copy_file "$ROOT/disVM/OWNER-PUMP.ru.md" "$destination/OWNER-PUMP.ru.md"
-            printf '%s\n' '# Dis native SDK' 'Run ./disvm-check when native AMD64 diagnostics were built. This executes real Dis/JIT checks without external emu.' 'console-check.dis is a genuine Limbo channel/Sys test program; its full embedded module host is still in progress.' 'The native module/scheduler/GC host integration remains in progress.' >"$destination/README-FIRSTSTEPS.md"
+            install_host_package
             ;;
         ide)
             source="$ROOT/ide/dis"
