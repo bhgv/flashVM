@@ -25,6 +25,28 @@ raster replay. The existing `ide.dis` application and full single-editor entry
 remain available. No compiler CLI, Python, external Inferno emu or browser runs
 inside the deployed desktop.
 
+The `disvm-editor` build target also compiles `desktop-ide.dis`, the desktop
+examples and the matching imported libraries. This remains true with
+`DVM_RUNTIME_TESTS=OFF`; application products do not depend on archived tests.
+After changing a `.m` interface, rebuild and reinstall the complete package rather
+than retaining an old `desktop-ide.dis` beside newly compiled libraries. A
+`fail: desktop modules` at startup means at least one initial import failed;
+it does not identify which import or distinguish a missing file from an interface
+mismatch.
+
+```sh
+cmake --build <runtime-build> --target disvm-editor --parallel 4
+python3 disVM/runtime/test_desktop_install.py <runtime-build> disVM/runtime/run-desktop-ide.sh
+```
+
+Replace `<runtime-build>` with the configured runtime build directory, not the
+installation directory. The [build rules](../disVM/runtime/cmake/DesktopModules.cmake)
+produce portable bytecode; the [installation check](../disVM/runtime/test_desktop_install.py)
+copies products into a temporary package and uses the shipped launcher from an
+unrelated working directory. It checks real rendering, editing, saving and
+acknowledged shutdown with both JIT and interpretation. It does not test the
+optional compiler service or a physical SDL window.
+
 ## Actual owners and widgets
 
 | Element | FlashVM representation | Dis owner |

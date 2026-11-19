@@ -2,11 +2,6 @@
 # EN: Ordered DesktopAndVectorTests registrations; include from the runtime source directory.
 # RU: Регистрация DesktopAndVectorTests; подключать из каталога исходников runtime.
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis"
-  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis" "${root}/ide/dis/examples/desktop-pointer/main.b"
-  DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop-pointer/main.b" ${module_headers} VERBATIM)
-add_custom_target(disvm_desktop_pointer_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis")
 if(DVM_RUNTIME_TESTS)
   foreach(mode jit interpreter)
     set(dispatch --jit)
@@ -20,11 +15,6 @@ if(DVM_RUNTIME_TESTS)
   endforeach()
 endif()
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis"
-  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
-    -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis" "${root}/ide/dis/examples/desktop-clipboard/main.b"
-  DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop-clipboard/main.b" ${module_headers} VERBATIM)
-add_custom_target(disvm_desktop_clipboard_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis")
 if(DVM_RUNTIME_TESTS)
   foreach(mode jit interpreter)
     set(dispatch --jit)

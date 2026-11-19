@@ -124,3 +124,12 @@ endif()
 
 add_test(NAME disvm_system_identity COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_system_identity.py")
 set_tests_properties(disvm_system_identity PROPERTIES TIMEOUT 30 LABELS "host-unit")
+
+# EN: Check the portable guest and relative imports through the shipped launcher.
+# RU: Проверять переносимого гостя и относительные импорты через штатный launcher.
+if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR AND UNIX)
+    add_test(NAME disvm_desktop_installed COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_install.py"
+        "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/run-desktop-ide.sh")
+    set_tests_properties(disvm_desktop_installed PROPERTIES TIMEOUT 200 LABELS "native;editor")
+endif()
