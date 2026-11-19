@@ -247,3 +247,9 @@ accepted invocation snapshot to that same native lifetime. Its own contract is
 validated before linking; current Launchcontext reads, nested helpers and spawn
 use that instance's snapshot. Missing typed context refuses. This remains an
 owner-local bridge; transparent remote `.m` marshalling is not implemented by it.
+
+[Generated scalar owner from .m](../examples/remote-scalar/README.md) /
+[генерация owner из .m](../examples/remote-scalar/README.ru.md) now executes an ordinary
+provider-local implementation across two actual DisVMs. The C99 generator uses
+the existing Coco/R interface catalog. The first profile is one fn(int):int;
+automatic client-side remote load and composite marshalling remain separate.

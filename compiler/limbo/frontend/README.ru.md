@@ -139,3 +139,5 @@ C99 API и отдельная утилита `limbo_tree`. Проверен та
 [Native C interface backend](NATIVE_C.md) / [Русский](NATIVE_C.ru.md).
 
 [Outer alias resolution / Внешние алиасы](ALIASES.md) · [RU](ALIASES.ru.md).
+
+[Generated remote scalar owner](../../../disVM/examples/remote-scalar/README.ru.md) — `limbo_remote_owner`, C99, fn(int):int.

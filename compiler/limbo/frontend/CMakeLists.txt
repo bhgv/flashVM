@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.10)
-project(limbo_frontend VERSION 0.11.1 LANGUAGES C)
+project(limbo_frontend VERSION 0.11.2 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -251,4 +251,18 @@ if(BUILD_TESTING)
   add_executable(limbo_source_position_test tests/source_position.c)
   target_link_libraries(limbo_source_position_test PRIVATE limbo_frontend)
   add_test(NAME limbo_source_position COMMAND limbo_source_position_test)
+endif()
+
+# C-only generator; the generated Limbo adapter executes on the provider VM.
+add_library(limbo_remote_owner_lib remote_owner.c)
+target_link_libraries(limbo_remote_owner_lib PUBLIC limbo_interfaces)
+add_executable(limbo_remote_owner remote_main.c)
+target_link_libraries(limbo_remote_owner PRIVATE limbo_remote_owner_lib)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(limbo_remote_owner_lib PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(limbo_remote_owner PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(BUILD_TESTING)
+    add_test(NAME limbo_remote_owner_generation COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_owner.py" "$<TARGET_FILE:limbo_remote_owner>")
 endif()
