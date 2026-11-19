@@ -8,35 +8,48 @@
 #include <string.h>
 
 
-/* EN/RU: See route.h; source plan owns exact chosen provider/anchor through resolver, submit and address retirement.
- * См. route.h; source plan удерживает exact provider/anchor до конца resolver, submit и address retirement.
+/* EN/RU: Select into caller-owned zeroed plan, obtain owned address/NULL; caller always closes plan.
+ * Borrow group/path/locate/context through return. No code reads or managed entry; selected source stays pinned.
+ * Выбрать в нулевой plan caller, получить свой address/NULL; caller всегда закрывает plan.
+ * Inputs borrowed до return; без чтения кода/managed entry; выбранный source удерживается.
+ */
+static DVM_LaunchAddress *select_address(DVM_Namespace *group, const char *path, unsigned local_role,
+    DVM_LaunchLocate locate, void *context, DVM_ResourcePlan *source)
+{
+    if (!locate || dvm_cancel_requested(dvm_cancel_current()) ||
+        !dvm_resource_plan_call(group, path, local_role, source))
+    {
+        return NULL;
+    }
+    source->absence_only = 1; /* Opaque lookup failure never means absence. */
+    source->requested_access = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
+    FVM_FileInfo metadata; /* Actual selected node; metadata is not an execution grant. */
+    if ((!dvm_cancel_current() || dvm_path_cancellable(source)) &&
+        dvm_resource_info(source, &metadata) == FVM_OK && !metadata.directory &&
+        !dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return locate(context, source, &metadata);
+    }
+    return NULL;
+}
+
+
+/* EN/RU: See route.h; keep exact chosen provider/anchor pinned through resolver, submit and address retirement.
+ * См. route.h; удержать exact provider/anchor до конца resolver, submit и address retirement.
  */
 DVM_LaunchTicket *dvm_launch_route_submit(DVM_Namespace *group, const char *path, unsigned local_role,
     const DVM_LaunchSpec *spec, DVM_LaunchLocate locate, void *context)
 {
-    if (!locate || !dvm_launch_route_input(spec) || dvm_cancel_requested(dvm_cancel_current()))
+    if (!dvm_launch_route_input(spec))
     {
         return NULL;
     }
-    DVM_ResourcePlan source;
-    if (!dvm_resource_plan_call(group, path, local_role, &source))
+    DVM_ResourcePlan source = {0};
+    DVM_LaunchAddress *address = select_address(group, path, local_role, locate, context, &source);
+    DVM_LaunchTicket *ticket = NULL; /* Only an actual acknowledged requester ticket escapes. */
+    if (address && !dvm_cancel_requested(dvm_cancel_current()))
     {
-        return NULL;
-    }
-    source.absence_only = 1; /* A call never interprets an opaque lookup error as absence. */
-    source.requested_access = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
-    FVM_FileInfo metadata; /* Final selected node's acknowledged metadata, never interpreted as an execution grant. */
-    DVM_LaunchAddress *address = NULL; /* Owned callback result, consumed even if cancellation races acquisition. */
-    DVM_LaunchTicket *ticket = NULL; /* Acknowledged requester result only; no provider review escapes. */
-    if ((!dvm_cancel_current() || dvm_path_cancellable(&source)) &&
-        dvm_resource_info(&source, &metadata) == FVM_OK && !metadata.directory &&
-        !dvm_cancel_requested(dvm_cancel_current()))
-    {
-        address = locate(context, &source, &metadata);
-        if (address && !dvm_cancel_requested(dvm_cancel_current()))
-        {
-            ticket = dvm_launch_address_submit(address, spec);
-        }
+        ticket = dvm_launch_address_submit(address, spec);
     }
     dvm_launch_address_free(address);
     dvm_resource_close(&source);
@@ -63,4 +76,21 @@ DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *pa
     const DVM_LaunchSpec *spec)
 {
     return dvm_launch_route_submit(group, path, local_role, spec, discover, NULL);
+}
+
+
+/* EN/RU: See route.h; the owned address replaces the temporary source plan, never retaining the caller namespace.
+ * См. route.h; owned address заменяет временный source plan, не удерживая namespace caller.
+ */
+DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role)
+{
+    DVM_ResourcePlan source = {0};
+    DVM_LaunchAddress *address = select_address(group, path, local_role, discover, NULL, &source);
+    dvm_resource_close(&source);
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        dvm_launch_address_free(address);
+        return NULL;
+    }
+    return address;
 }

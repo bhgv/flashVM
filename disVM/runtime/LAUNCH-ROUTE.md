@@ -146,3 +146,8 @@ ownership checks remain enabled. Imported Inferno libraries remain byte-identica
 The current provider-discovery extension adds two native tests (735 total) and
 replaces the module fixture locator table with source-owned advertisements.
 See [provider discovery](PROVIDER-LAUNCH.md) for the current contracts and coverage.
+
+[Deferred resolution](PROVIDER-LAUNCH.md#deferred-resolution--отложенный-запуск)
+now returns an owned reusable address without queue admission. Immediate routing
+keeps its existing preflight and source pin through acknowledgement; both paths
+share selection rules. The owner capability survives caller-namespace retirement.

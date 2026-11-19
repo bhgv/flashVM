@@ -12,8 +12,10 @@
 #include "vfs/launch/service.h"
 #include "vfs/launch/route.h"
 #include "vfs/resource.h"
+#include "vfs/export.h"
 #include "../../../native/tests/launch/backend.h"
 #include "images.h"
+#define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19) /* Actual terminal-source owner scenarios, including changed caller bind. */
 static ImageSource terminal_images; /* Native fixture bytes live through every guest/closer owner. */
 static __thread int route_selecting; /* Startup controller explicitly selects caller side before any guest exists. */
 static unsigned provider_lookups; /* Atomic observed caller-side load selections, including initial controller. */
@@ -70,7 +72,7 @@ int __wrap_dvm_resource_plan_call(DVM_Namespace *group, const char *path, unsign
 {
     Prog *caller = currun(); /* Current permanent owner, or initial controller before any guest. */
     unsigned expected = caller ? ((DVM_RuntimeProcess *)caller)->module_local_role :
-        route_selecting && CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER;
+        route_selecting && CLIENT_OWNER ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER;
     launch_check(local_role == expected, "actual module loader did not select its caller-local side");
     __atomic_add_fetch(local_role == DVM_ORIGIN_TERMINAL ? &terminal_lookups : &provider_lookups, 1, __ATOMIC_RELAXED);
     return __real_dvm_resource_plan_call(group, path, local_role, plan);
@@ -158,25 +160,37 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
     DVM_Namespace *caller_namespace = dvm_launch_prepare(&options); /* Caller view selects source before owner admission. */
     launch_check(caller_namespace != NULL, "image routing caller namespace");
     DVM_LaunchOptions callee = options; /* Borrowed input roots stay owned by original options through handler join. */
-    if (CONTROL == 17)
+    if (CLIENT_OWNER)
     {
         callee.provider = options.terminal; /* Selected client source supplies its own execution root, not provider's root. */
         callee.provider_origin = options.terminal_origin;
         callee.provider_origin.role = DVM_ORIGIN_PROVIDER; /* That source is now the callee's local provider role. */
     }
-    Admission admission = {.service = CONTROL == 17 ? client : server, .options = &callee};
+    Admission admission = {.service = CLIENT_OWNER ? client : server, .options = &callee};
     pthread_t handler; /* Dedicated native admission thread, never a guest executor. */
     launch_check(!pthread_create(&handler, NULL, prepare, &admission), "native admission handler construction");
     strcpy(spec.module, "/caller-label-must-not-be-used");
     memset(spec.expected_provider, 'x', sizeof(spec.expected_provider)); /* Address must supply actual owner identity. */
     route_selecting = 1;
-    DVM_LaunchTicket *ticket = dvm_launch_route_discover(caller_namespace, "/app.dis",
-        CONTROL == 17 ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER, &spec);
+    DVM_LaunchAddress *address = dvm_launch_route_resolve(caller_namespace, "/app.dis",
+        CLIENT_OWNER ? DVM_ORIGIN_TERMINAL : DVM_ORIGIN_PROVIDER);
     route_selecting = 0;
-    launch_check(ticket && !pthread_join(handler, NULL), "native routed request and handler join");
-    dvm_namespace_release(caller_namespace);
+    launch_check(address != NULL, "provider module deferred owner resolution");
+    DVM_LaunchServiceInfo info;
+    launch_check(dvm_launch_service_info(admission.service, &info) && !info.queued && !info.outstanding,
+        "provider module resolution reserved launch quota");
+    if (CONTROL == 18 || CONTROL == 19)
+    {
+        DVM_Provider *opposite = CLIENT_OWNER ? options.provider : options.terminal;
+        launch_check(dvm_stack_mount(caller_namespace, opposite, "/", 0, 0) == 1,
+            "replace caller bind before using resolved module owner");
+    }
+    dvm_namespace_release(caller_namespace); /* Resolved destination must work after caller view retirement. */
+    DVM_LaunchTicket *ticket = dvm_launch_address_submit(address, &spec);
+    dvm_launch_address_free(address);
+    launch_check(ticket && !pthread_join(handler, NULL), "native resolved request and handler join");
     DVM_LaunchHandoff *handoff = admission.handoff; /* Callee owns an independent prepared environment, no display needed. */
-    if (CONTROL == 17)
+    if (CLIENT_OWNER)
     {
         handoff->local_role = DVM_ORIGIN_TERMINAL;
     }
@@ -200,13 +214,15 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
 void __wrap_dvm_namespace_boot_shutdown(void)
 {
     __real_dvm_namespace_boot_shutdown();
+    unsigned expected_execution_opens = CONTROL == 13 || CLIENT_OWNER ? 0U :
+        (CONTROL == 16 || CONTROL == 18) ? 2U : CONTROL ? 1U : 4U;
     launch_check(terminal_images.destroyed == 1 && execution_images.destroyed == 1 &&
-        terminal_images.opened == (CONTROL == 17 ? 2U : 0U) &&
-        execution_images.opened == (CONTROL == 13 || CONTROL == 17 ? 0U : CONTROL == 16 ? 2U : CONTROL ? 1U : 4U), "provider code source and lifetime isolation");
+        terminal_images.opened == (CLIENT_OWNER ? 2U : 0U) &&
+        execution_images.opened == expected_execution_opens, "provider code source and lifetime isolation");
     launch_check(allocated_images == freed_images && (CONTROL == 13 || allocated_images > 0), "actual provider image-buffer ownership drain");
-    launch_check(terminal_images.advertised == (CONTROL == 17 ? 1U : 0U) &&
-        execution_images.advertised == (CONTROL == 17 ? 0U : 1U), "actual selected provider advertisement coverage");
-    launch_check(provider_lookups && (CONTROL == 17 ? terminal_lookups != 0 : terminal_lookups == 0),
+    launch_check(terminal_images.advertised == (CLIENT_OWNER ? 1U : 0U) &&
+        execution_images.advertised == (CLIENT_OWNER ? 0U : 1U), "actual selected provider advertisement coverage");
+    launch_check(provider_lookups && (CLIENT_OWNER ? terminal_lookups != 0 : terminal_lookups == 0),
         "actual caller-side load coverage");
     puts("PASS provider module source selection and native ownership drain");
 }

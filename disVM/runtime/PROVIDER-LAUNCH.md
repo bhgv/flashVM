@@ -40,6 +40,45 @@ blindly inherit its parent's callback or authority. Legacy providers may continu
 to use explicit `dvm_launch_route_submit` locators, or advertise no launch address.
 Host anchors without an advertisement refuse discovery.
 
+## Deferred resolution / Отложенный запуск
+
+`dvm_launch_route_resolve(group, path, local_role)` returns an owned reusable
+address, or NULL. It performs the same caller-local-first selection, metadata
+check and provider discovery as immediate routing, but needs no launch arguments
+or terminal grants. It does not submit a request, reserve admission quota, create
+a worker, open code bytes or authorize execution. Resolution happens on an already
+native caller outside managed admission, under its current cancellation scope.
+
+```c
+DVM_LaunchAddress *address = dvm_launch_route_resolve(group, "/app.dis", local_role);
+/* The caller namespace may now change or retire. Inputs for startup can be prepared later. */
+DVM_LaunchTicket *ticket = dvm_launch_address_submit(address, &spec);
+/* Keep the address for further independent requests, or free it after joining its users. */
+dvm_launch_address_free(address);
+/* A non-NULL ticket is separately owned and must eventually be freed. */
+```
+
+The selected native capability and owner label remain stable across later binds;
+a fresh resolution sees the new namespace. Addresses retain no caller namespace
+or temporary selection plan. A filtered address retains its exact source mapping
+and live policy context, so revocation still blocks later submissions. Ordinary
+source metadata is not polled on each use: the owner independently accepts or
+refuses each request. A held address cannot revive a closed service.
+
+One immutable address can be borrowed by concurrent native submitters, each with
+its own arguments and requester ticket. Owner quota still limits outstanding
+requests; releasing one request permits another submit without repeating provider
+metadata or advertisement callbacks. Cancellation of one operation does not poison
+the address. Late cancellation during resolution disposes its staged address;
+after an acknowledged submit the ordinary ticket contract applies.
+
+Отдельный resolve сохраняет владельца выбранного модуля, а не имя для будущего
+повторного поиска. Можно сначала разрешить имя, затем подготовить аргументы и
+несколько раз подать независимые запросы. Перестановка bind влияет на новый
+resolve; отзыв прав экспортирующего view проверяется и на уже полученном адресе.
+Это native-основа будущего binding типизированного модуля, а не готовый удалённый
+`Module` для обычного `load` и не новый формат сетевого обмена.
+
 ## Filtered exports and changing permissions / Права экспорта
 
 Views translate the selected virtual node into its exact mapped source and ask
@@ -70,16 +109,25 @@ source/context lifetime, mixed cancellation promises, pre/late cancellation,
 5,000 nested guards and all 17 observed allocation-failure positions. Each failed
 allocation must drain ownership and allow a subsequent successful request.
 
-All 36 interpreter/JIT provider-module scenarios now use provider advertisements
-instead of a fixture-specific destination table. They execute real Dis applications
+All 40 interpreter/JIT provider-module scenarios now use deferred provider resolution
+instead of a fixture-specific destination table. The caller namespace retires
+before submit; two additional variants replace its root with the opposite source
+before submission, while parent/child application and dependency calls remain
+on the originally selected owner. They execute real Dis applications
 and dependencies through two real native owner services on one host. They do not
 simulate two networked VMs. Standalone export linking remains independent of the
 launch VM/service implementation.
 
-The native SDK has 735 tests. Five affected dedicated runtime cases cover launch
-import, Unibus launch, provider modules, launch context and export trees. All 735 native SDK tests and all five affected runtime tests passed normally
-and with ASan/UBSan. Private negative controls disabling live policy or scoped
-launch support failed with the intended semantic diagnostic. LeakSanitizer is unavailable
+The native SDK has 737 tests. Deferred resolution adds concurrent request/payload
+isolation, exact owner queue/quota observations, namespace/source retirement,
+pre/late cancellation and all four observed resolution-allocation failures.
+All 737 native SDK tests and five affected runtime tests pass normally and with
+ASan/UBSan. The runtime cases cover launch import, Unibus launch,
+provider modules, launch context and export trees. The retained-resolution
+extension adds two native cases and four real Dis executions to the previous
+provider-discovery coverage. Private negative controls disabling late-cancel
+cleanup or caller-local ordering fail with their intended semantic diagnostics;
+compile failures, crashes and timeouts do not count. LeakSanitizer is unavailable
 in this environment; explicit allocation and provider-lifetime checks remain on.
 
 Automatic remote Styx address exchange, ordinary `load` to remote typed calls,

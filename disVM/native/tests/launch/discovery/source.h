@@ -18,6 +18,8 @@ typedef struct SourceStats
     unsigned created; /* Successful native source factories. */
     unsigned destroyed; /* Actual final source destructor calls. */
     DVM_Cancel *cancel_on_query; /* Optional borrowed per-operation source, set only by the synchronous cancellation fixture. */
+    unsigned metadata; /* Actual path metadata callbacks, including preparation. */
+    unsigned opened; /* Actual data-open callbacks; resolving/using addresses must not invoke these. */
     unsigned queries; /* Actual launch callback calls, excluding generic preflight refusals. */
 } SourceStats;
 

@@ -441,3 +441,12 @@ target_link_libraries(vfs-launch-discovery-alloc PRIVATE styx_namespace_fixture)
 target_link_options(vfs-launch-discovery-alloc PRIVATE "-Wl,--wrap=malloc" "-Wl,--wrap=calloc" "-Wl,--wrap=free")
 add_test(NAME vfs-launch-discovery-alloc COMMAND vfs-launch-discovery-alloc)
 set_tests_properties(vfs-launch-discovery-alloc PROPERTIES TIMEOUT 15)
+
+# EN/RU: Deferred reusable resolution reserves no queue quota and never re-resolves a later bind.
+# Отложенный reusable resolve не резервирует quota и не разрешает более поздний bind повторно.
+add_executable(vfs-launch-resolve ../tests/launch/discovery/resolve.c ../tests/launch/discovery/source.c ../tests/file-root/context.c)
+target_link_libraries(vfs-launch-resolve PRIVATE styx_namespace_fixture)
+add_test(NAME vfs-launch-resolve COMMAND vfs-launch-resolve)
+set_tests_properties(vfs-launch-resolve PROPERTIES TIMEOUT 20)
+add_test(NAME vfs-launch-resolve-alloc COMMAND vfs-launch-discovery-alloc resolve)
+set_tests_properties(vfs-launch-resolve-alloc PROPERTIES TIMEOUT 15)

@@ -86,4 +86,19 @@ DVM_LaunchTicket *dvm_launch_route_submit(DVM_Namespace *group, const char *path
 DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *path, unsigned local_role,
     const DVM_LaunchSpec *spec);
 
+
+/* EN/RU: Resolve a caller-relative module to an owned reusable address/NULL, without submitting or reserving quota.
+ * Borrow group/path through return; native-only outside managed admission, current cancellation scope applies.
+ * Same selection/metadata/refusal rules as route_discover; late cancellation frees the acquired address.
+ * Caller frees address after joining its users. No caller namespace is retained or re-resolved on submit;
+ * address retains only its native capability and optional live policy. New resolution observes new bindings.
+ * No code bytes, guest execution, admission/authorization or automatic owner execution occur here.
+ * Разрешить module caller в свой reusable address/NULL, без submit и quota reservation.
+ * group/path borrowed до return; native-only вне managed admission, current cancellation scope.
+ * Правила selection/metadata/refusal как route_discover; поздняя отмена освобождает address.
+ * Caller освобождает после join users; namespace не удерживается и не разрешается при submit.
+ * Address сохраняет capability/live policy; новый resolve видит новые binds. Без чтения кода и запуска guest.
+ */
+DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role);
+
 #endif

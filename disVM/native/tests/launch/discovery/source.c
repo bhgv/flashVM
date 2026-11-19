@@ -57,6 +57,7 @@ static FVM_Result info(void *state, const char *relative, FVM_FileInfo *output)
 {
     Source *source = state;
     char full[DVM_NS_PATH_LIMIT];
+    __atomic_add_fetch(&source->stats->metadata, 1, __ATOMIC_RELAXED);
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
         return FVM_ERROR;
@@ -72,6 +73,7 @@ static FVM_Result open_source(void *state, const char *relative, const char *mod
 {
     Source *source = state;
     char full[DVM_NS_PATH_LIMIT];
+    __atomic_add_fetch(&source->stats->opened, 1, __ATOMIC_RELAXED);
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
         return FVM_ERROR;

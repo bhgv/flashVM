@@ -6,6 +6,7 @@
 static void *live[64]; /* Native route allocations only, no observer allocation or managed pointers. */
 static int tracking; /* Main-thread-only fixture; no other workers/callback publishers are started. */
 static unsigned allocation; /* Actual malloc/calloc positions within the public route call. */
+static int resolve_only; /* Main-thread selection: measure retained resolution, not immediate submission. */
 static unsigned fail_at; /* Zero allows all setup allocations; nonzero fails exactly this one. */
 
 
@@ -117,16 +118,27 @@ static unsigned attempt(DVM_LaunchOptions *options, unsigned failure)
     allocation = 0;
     fail_at = failure;
     tracking = 1;
-    DVM_LaunchTicket *ticket = dvm_launch_route_discover(group, "/run", DVM_ORIGIN_PROVIDER, &request);
+    DVM_LaunchAddress *address = resolve_only ? dvm_launch_route_resolve(group, "/run", DVM_ORIGIN_PROVIDER) : NULL;
+    DVM_LaunchTicket *ticket = resolve_only ? NULL :
+        dvm_launch_route_discover(group, "/run", DVM_ORIGIN_PROVIDER, &request);
     tracking = 0;
     unsigned positions = allocation;
     if (failure)
     {
         DVM_LaunchServiceInfo info;
-        launch_check(!ticket && dvm_launch_service_info(owner, &info) && !info.outstanding && !info.queued,
+        launch_check(!address && !ticket && dvm_launch_service_info(owner, &info) && !info.outstanding && !info.queued,
             "discovery failure leaked partial admission");
-        ticket = dvm_launch_route_discover(group, "/run", DVM_ORIGIN_PROVIDER, &request);
-        launch_check(ticket != NULL, "discovery failure poisoned source/policy");
+        address = resolve_only ? dvm_launch_route_resolve(group, "/run", DVM_ORIGIN_PROVIDER) : NULL;
+        ticket = resolve_only ? NULL : dvm_launch_route_discover(group, "/run", DVM_ORIGIN_PROVIDER, &request);
+        launch_check(resolve_only ? address != NULL : ticket != NULL, "discovery failure poisoned source/policy");
+    }
+    if (resolve_only)
+    {
+        DVM_LaunchServiceInfo info;
+        launch_check(address && dvm_launch_service_info(owner, &info) && !info.outstanding && !info.queued,
+            "resolution consumed admission quota");
+        ticket = dvm_launch_address_submit(address, &request);
+        dvm_launch_address_free(address);
     }
     source_received(owner, ticket);
     dvm_namespace_release(group);
@@ -143,16 +155,19 @@ static unsigned attempt(DVM_LaunchOptions *options, unsigned failure)
 }
 
 
-/* EN/RU: Measure actual allocations, refuse every position and require native root drain; no mocked module result.
- * Измерить actual allocations, отказать каждой position и требовать native root drain; без mocked module result.
+/* EN/RU: argc/argv select optional "resolve" mode; measure allocations and refuse every position with native root drain.
+ * Return0 on success, explicit exit2 on contract failure; no mocked module result.
+ * argc/argv выбирают optional "resolve"; измерить allocations, отказать каждой position и требовать native root drain.
+ * Return0 при успехе, явный exit2 при нарушении contract; без mocked module result.
  */
-int main(void)
+int main(int argc, char **argv)
 {
+    resolve_only = argc == 2 && !strcmp(argv[1], "resolve");
     LaunchState terminal = {.terminal = 1};
     LaunchState provider = {0};
     DVM_LaunchOptions options = launch_options(&terminal, &provider);
     unsigned count = attempt(&options, 0);
-    launch_check(count > 8 && count < 64, "filtered discovery allocation coverage incomplete");
+    launch_check(count >= (resolve_only ? 4U : 9U) && count < 64, "filtered discovery allocation coverage incomplete");
     for (unsigned i = 1; i <= count; i++)
     {
         (void)attempt(&options, i);
@@ -160,6 +175,6 @@ int main(void)
     dvm_provider_release(options.terminal);
     dvm_provider_release(options.provider);
     launch_check(terminal.destroyed == 1 && provider.destroyed == 1, "filtered discovery caller root drain");
-    printf("PASS all %u filtered discovery allocation refusal positions\n", count);
+    printf("PASS all %u filtered %s allocation refusal positions\n", count, resolve_only ? "resolution" : "discovery");
     return 0;
 }

@@ -134,3 +134,9 @@ table. Its client/provider sources have
 separate real admission services, and the selected owner supplies its own execution
 root before the existing native handler/controller path runs. This remains a
 one-host native fixture, not a completed network typed-call implementation.
+
+The retained-resolution extension runs 40 actual interpreter/JIT scenarios.
+Address discovery now precedes caller-namespace retirement and later submission.
+Two additional cases replace that namespace root with the opposite source before
+submit; the selected owner still supplies the parent/child execution environment.
+See [deferred resolution](PROVIDER-LAUNCH.md) for ownership and remaining limits.

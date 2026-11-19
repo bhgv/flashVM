@@ -27,11 +27,11 @@ def main():
             compile_image(compiler, include, root, source, work / "value.dis", [fixtures])
             (work / (label + ".dis")).write_bytes((work / "value.dis").read_bytes())
         compile_image(compiler, include, root, fixtures / "app.b", work / "app.dis", [fixtures])
-        for variant in range(18):
+        for variant in range(20):
             main_source = work / "main.b"
-            template_name = {10: "kill.b", 16: "child.b", 17: "child.b"}.get(variant, "main.b")
+            template_name = {10: "kill.b", 16: "child.b", 17: "child.b", 18: "child.b", 19: "child.b"}.get(variant, "main.b")
             template = (fixtures / template_name).read_text()
-            expected = {0: 111, 16: 111, 17: 222}.get(variant, -1)
+            expected = {0: 111, 16: 111, 17: 222, 18: 111, 19: 222}.get(variant, -1)
             if variant == 13:
                 template = template.replace("app == nil || app->value() != EXPECTED", "app != nil")
             main_source.write_text(template.replace("EXPECTED", str(expected))
