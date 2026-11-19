@@ -123,23 +123,6 @@ if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR)
   endforeach()
 endif()
 
-# Optional executable tutorial uses the same generated native ABI and both real dispatch modes.
-if(DVM_RUNTIME_NATIVE_DEMO)
-  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${CMAKE_CURRENT_BINARY_DIR}/native-demo.sbl"
-    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module" -I "${native_demo_root}"
-      -o "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${native_demo_root}/main.b"
-    DEPENDS limbo-bootstrap "${native_demo_root}/nativedemo.m" "${native_demo_root}/main.b" VERBATIM)
-  add_custom_target(disvm_native_module_tutorial ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis")
-  if(DVM_RUNTIME_TESTS)
-    foreach(mode jit interpreter)
-      add_test(NAME disvm_native_module_${mode} COMMAND "${PYTHON_EXECUTABLE}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/test_native_module.py" "$<TARGET_FILE:disvm>"
-        "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${mode}")
-      set_tests_properties(disvm_native_module_${mode} PROPERTIES TIMEOUT 60)
-    endforeach()
-  endif()
-endif()
-
 # Run the new source aliases through our FIR backend and actual native Dis dispatch.
 if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
   foreach(mode jit interpreter)

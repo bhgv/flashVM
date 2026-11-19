@@ -132,6 +132,14 @@ if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR AND UNIX)
         "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_install.py"
         "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/run-desktop-ide.sh")
     set_tests_properties(disvm_desktop_installed PROPERTIES TIMEOUT 200 LABELS "native;editor")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+        add_test(NAME disvm_editor_idle_cpu COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/test_editor_idle.py" "$<TARGET_FILE:disvm-editor>"
+            "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis"
+            "${CMAKE_CURRENT_BINARY_DIR}/fonts/NotoSansMono-Regular.ttf")
+        set_tests_properties(disvm_editor_idle_cpu PROPERTIES TIMEOUT 90 LABELS "native;editor")
+    endif()
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/CompilerTests.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/NativeModuleTests.cmake")

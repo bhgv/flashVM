@@ -60,7 +60,9 @@ build/native-module/disvm --jit --stats --quantum 1 \
 ```
 
 CMake generates `native/nativedemo_native.h` from the `.m`, compiles `native.c`
-into the host, and builds matching `native-demo.dis/.sbl`. The same optional source
+into the host, and builds matching `native-demo.dis/.sbl`, including when
+`DVM_RUNTIME_TESTS=OFF`. Production targets live in
+[NativeModules.cmake](../../runtime/cmake/NativeModules.cmake). The same optional source
 is included by `disvm-editor` when the graphical target is enabled. No compiler,
 Python or header generation occurs in the running example. If `$Nativedemo` cannot
 be loaded, confirm that the runtime was rebuilt with the option enabled; installing
@@ -72,8 +74,12 @@ Expected final output:
 PASS native module: wrap=ok sum=42 strings=2048 caught=1 shutdown=ok
 ```
 
-Tests run interpreter/JIT at quanta 1 and 2048. They check actual dispatch counters
-and require GC activity at quantum 1. The client tests `MAX_BIG+1 == MIN_BIG`,
+Tests run interpreter/JIT at instruction budgets 1 and 2048. They check actual
+dispatch counters, concurrent Fast GC passes, balanced native retirement and joined
+resident owners without migration or leftover channel work. The historical inline
+`gc_runs` counter is not used as concurrent collector progress. No global stop or
+exclusive tracing is enabled. The checks are registered only when the optional
+builtin and runtime tests are both enabled. The client tests `MAX_BIG+1 == MIN_BIG`,
 request/reply sum 42, 2048 string returns, caught C error, another successful call
 and acknowledged stop. A failed check changes the process exit status.
 

@@ -296,6 +296,12 @@ int dvm_editor_ui_poll(int stopping)
         }
         progress = 1;
     }
+    if (progress)
+    {
+        /* EN/RU: Publish before replay input can block awaiting another record.
+         * Пробудить контроллер до возможного ожидания следующей replay-записи. */
+        dvm_editor_controller_wake();
+    }
     if (!stopping && !dvm_editor_thread_is_stopping())
     {
         int event = dvm_editor_event(&message);

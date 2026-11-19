@@ -493,7 +493,7 @@ target_link_libraries(disvm PRIVATE disvm_remote_session)
 # EN/RU: Production host targets stay active; historical reference registrations
 # are archived. Native-only acceptance is the sole default test profile.
 # Host-цели остаются; исторические reference-регистрации больше не подключаются.
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/EditorTargets.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimeProducts.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeOnlyTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeUnitTests.cmake")
 

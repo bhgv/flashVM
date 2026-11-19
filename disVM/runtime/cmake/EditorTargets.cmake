@@ -210,8 +210,3 @@ if(DVM_RUNTIME_EDITOR)
   add_custom_target(disvm_ide_application ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ide.dis")
 
 endif()
-
-# EN/RU: Production guest programs are required even when tests are disabled.
-# Гостевые программы нужны и при выключенных тестах.
-include("${CMAKE_CURRENT_LIST_DIR}/DesktopModules.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/CompilerModules.cmake")

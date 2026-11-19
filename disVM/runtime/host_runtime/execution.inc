@@ -112,6 +112,9 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start resident thread registry");
     }
+#ifdef DVM_RUNTIME_EDITOR
+    dvm_editor_controller_ready();
+#endif
     if (gc_worker && !dvm_close_worker_start())
     {
         error("cannot start native close worker");
@@ -161,9 +164,11 @@ static int runtime_execute_inner(void *argument)
             {
                 dvm_managed_workers_record();
             }
-#ifndef DVM_RUNTIME_EDITOR
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
                 (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending() ||
+#ifdef DVM_RUNTIME_EDITOR
+                 dvm_editor_attached() ||
+#endif
                  (dvm_debug_enabled && __atomic_load_n(&live, __ATOMIC_RELAXED))))
             {
                 if (!dvm_managed_workers_park(dedicated_controller_pending))
@@ -172,7 +177,6 @@ static int runtime_execute_inner(void *argument)
                 }
                 continue;
             }
-#endif
         }
         if (!dvm_managed_workers_yield(!native_spawn && !dvm_runqueue_head() && !guest_cancel_pending()))
         {
@@ -201,6 +205,11 @@ static int runtime_execute_inner(void *argument)
 static int runtime_execute(void *argument)
 {
     int result = runtime_execute_inner(argument);
+#ifdef DVM_RUNTIME_EDITOR
+    /* EN/RU: Disable UI wake callbacks before the scheduler service is destroyed.
+     * Запретить UI-пробуждения до удаления сервиса планировщика. */
+    dvm_editor_thread_stopping();
+#endif
     dvm_debug_quiesce();
     dvm_runtime_cancel_native_waits();
     if (!dvm_managed_workers_stop(show_stats))

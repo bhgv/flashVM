@@ -1,4 +1,7 @@
-/* UI main thread and a real, independently bound Dis scheduler worker. */
+/* Copyright (c) 2026 bhgv
+ * EN: UI-main launcher, copied RPC and scheduler wake lifetime.
+ * RU: Запуск UI main, копируемые RPC и время жизни пробуждений планировщика.
+ */
 #include "editor_thread.h"
 #include "editor_view.h"
 #include "editor_ink.h"
@@ -11,7 +14,7 @@
 #include <stdio.h>
 
 
-/* One process-wide host session; its VMs each retain one exclusive heap owner. */
+/* Launcher metadata only; Dis and FlashVM retain their distinct execution owners. */
 typedef struct EditorThread
 {
     FVM_PortSync *sync; /* Protect state publication and RPC request/reply. */
@@ -29,6 +32,7 @@ typedef struct EditorThread
     int initialized; /* UI creation was attempted; main must destroy partial state. */
     int running; /* UI initialization succeeded; event polling is admitted. */
     int stopping; /* Dis has begun owner teardown. */
+    int controller_ready; /* Scheduler wake target exists until synchronized shutdown. */
     int failed; /* Latched native UI/RPC failure. */
     int done; /* Worker published terminal status after TLS unbind. */
     int result; /* Runtime exit code. */
@@ -177,6 +181,43 @@ void dvm_editor_thread_stopping(void)
 }
 
 
+/* EN: Publish scheduler availability after startup. Called only by the Dis
+ * controller; no arguments, heap access, ownership transfer or blocking wait.
+ * RU: Объявить готовность планировщика после старта. Только контроллер Dis;
+ * нет аргументов, доступа к куче, передачи владения или блокирующего ожидания. */
+void dvm_editor_controller_ready(void)
+{
+    EditorThread *s = session;
+    if (s)
+    {
+        fvm_port_sync_lock(s->sync);
+        s->controller_ready = 1;
+        fvm_port_sync_unlock(s->sync);
+    }
+}
+
+
+/* EN: Notify the controller of copied UI queue progress or failure. No arguments
+ * or result. The session mutex pins scheduler lifetime against teardown; no VM
+ * heap is touched. UI main may call before startup or after stopping (no-op).
+ * RU: Сообщить контроллеру о движении очереди UI или ошибке. Нет аргументов или
+ * результата. Замок сессии защищает жизнь планировщика от завершения; куча VM
+ * не затрагивается. До старта и после stopping вызов UI ничего не делает. */
+void dvm_editor_controller_wake(void)
+{
+    EditorThread *s = session;
+    if (s)
+    {
+        fvm_port_sync_lock(s->sync);
+        if (s->controller_ready && !s->stopping)
+        {
+            dvm_managed_workers_wake();
+        }
+        fvm_port_sync_unlock(s->sync);
+    }
+}
+
+
 /* Scheduler-boundary observation; no Dis heap or UI callback is involved. */
 int dvm_editor_thread_failed(void)
 {
@@ -312,6 +353,7 @@ int dvm_editor_thread_launch(int (*entry)(void *), void *user)
                 fvm_port_sync_signal_all(state.sync);
                 fvm_port_sync_unlock(state.sync);
                 dvm_ui_close(dvm_editor_transport());
+                dvm_editor_controller_wake();
             }
         }
         if (done)

@@ -286,10 +286,33 @@ static int guest_cancel_pending(void)
 }
 
 
-/* Recheck controller work after sampling the wake generation. A peer
- * may have completed a channel wait before that generation was sampled. */
+/* EN: Recheck work after sampling the wake generation, with controller heap
+ * admission still active. A UI pump pass may deliver queued messages. Return
+ * nonzero for work/failure reporting; an attached UI can supply future input.
+ * RU: Проверить работу после выборки поколения, пока допуск к куче активен.
+ * Pump может доставить сообщения. Вернуть наличие работы/ошибки; подключённый
+ * UI может подать ввод в будущем, поэтому пустые каналы не означают deadlock. */
 static int dedicated_controller_pending(void)
 {
+#ifdef DVM_RUNTIME_EDITOR
+    /* EN: Recheck the pump after sampling the wake generation. Consuming here
+     * closes the race with UI input and guest output published before parking.
+     * RU: Повторить pump после выборки поколения пробуждений, чтобы не потерять
+     * ввод UI или вывод гостя, опубликованный перед началом ожидания. */
+    if (dvm_editor_attached())
+    {
+        int progress = dvm_editor_poll();
+        if (progress < 0)
+        {
+            error("graphical editor transport/presentation failure");
+        }
+        if (progress)
+        {
+            dvm_runtime_input_progress();
+            return 1;
+        }
+    }
+#endif
     if (dvm_debug_enabled && dvm_debug_requested())
     {
         return 1;
@@ -299,7 +322,11 @@ static int dedicated_controller_pending(void)
             (__atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) || dvm_messages_pending(resident->messages, 0, 0) ||
              dvm_messages_pending(resident->messages, 1, 0))) ||
            guest_cancel_pending() ||
-           (!dvm_debug_enabled && !dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending());
+           (!dvm_debug_enabled && !dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending()
+#ifdef DVM_RUNTIME_EDITOR
+            && !dvm_editor_attached()
+#endif
+           );
 }
 
 

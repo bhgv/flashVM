@@ -47,6 +47,22 @@ unrelated working directory. It checks real rendering, editing, saving and
 acknowledged shutdown with both JIT and interpretation. It does not test the
 optional compiler service or a physical SDL window.
 
+## Idle waiting
+
+The native Dis controller waits on its work notification when all desktop clients
+are blocked. Input queued by the UI, queue capacity released by presentation, guest
+channel work and UI failure wake that controller. A second nonblocking pump pass
+after sampling the wake generation closes the check-to-sleep race. UI wake callbacks
+are disabled before scheduler teardown; guest threads keep their own execution
+owners and are not globally paused.
+
+The Linux-only `disvm_editor_idle_cpu` check holds the replay FIFO open after
+initial rendering, measures process CPU for two seconds, then injects edit/save/quit
+and checks the saved file. It rejects consumption above 15% of one CPU, allowing
+host timing noise while detecting the previous full-core spin. A local headless
+measurement changed from 99.4% before the fix to 0.0% at clock-tick resolution after
+it. This does not measure physical SDL event handling or animated workloads.
+
 ## Actual owners and widgets
 
 | Element | FlashVM representation | Dis owner |

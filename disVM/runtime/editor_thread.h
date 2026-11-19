@@ -1,4 +1,7 @@
-/* Native Dis/UI ownership split; no VM pointers cross this interface. */
+/* Copyright (c) 2026 bhgv
+ * EN: Native UI/controller lifecycle and copied RPC declarations.
+ * RU: Объявления жизненного цикла UI/контроллера и копируемых RPC.
+ */
 #ifndef DVM_EDITOR_THREAD_H
 #define DVM_EDITOR_THREAD_H
 #include "disvm/ui_bridge.h"
@@ -36,6 +39,16 @@ int dvm_editor_thread_rpc(unsigned int operation, unsigned long token,
 void dvm_editor_thread_stopping(void);
 
 
+/* EN/RU: Publish scheduler wake lifetime on Dis startup; no heap ownership changes.
+ * Объявить жизнь цели пробуждений при старте Dis; владение кучей не меняется. */
+void dvm_editor_controller_ready(void);
+
+
+/* EN/RU: Wake for UI queue progress/error while the scheduler remains live.
+ * Разбудить живой планировщик при движении очереди UI или ошибке. */
+void dvm_editor_controller_wake(void);
+
+
 /* Thread-safe failure observation for the Dis scheduler between turns. */
 int dvm_editor_thread_failed(void);
 
@@ -44,7 +57,7 @@ int dvm_editor_thread_failed(void);
 int dvm_editor_thread_is_stopping(void);
 
 
-/* Main-owner delivery remains direct in sequential mode; threaded mode sends a
+/* Delivery before a native session is direct; an active session sends a
  * copied record to the UI queue, blocking only the Dis worker under backpressure. */
 int dvm_editor_deliver(const DVM_UIMessage *message);
 

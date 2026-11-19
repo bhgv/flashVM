@@ -144,9 +144,6 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER)
   endforeach()
 endif()
 
-# Build the same structural codec tools beside the separate NC64 runtime.
-add_subdirectory("${root}/disVM/envelope" envelope)
-
 if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
   foreach(mode jit interpreter)
     add_test(NAME disvm_fir_integer_pairs_${mode} COMMAND "${PYTHON_EXECUTABLE}"
@@ -378,11 +375,6 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
   endforeach()
 endif()
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/millisec-test.dis"
-  COMMAND "$<TARGET_FILE:limbo-bootstrap>" ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/millisec-test.dis"
-    "${root}/ide/dis/tests/millisec_test.b"
-  DEPENDS limbo-bootstrap "${root}/ide/dis/tests/millisec_test.b" VERBATIM)
-add_custom_target(disvm_millisec_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/millisec-test.dis")
 if(DVM_RUNTIME_TESTS)
   add_executable(disvm_clock_port_test test_clock_port.c)
   target_link_libraries(disvm_clock_port_test PRIVATE disvm_flashvm_host)
