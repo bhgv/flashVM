@@ -54,3 +54,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_test(NAME styx-memory-no-descriptor COMMAND styx-memory-no-descriptor)
     set_tests_properties(styx-memory-no-descriptor PROPERTIES TIMEOUT 15)
 endif()
+
+# Registry contract tests need neither the server nor network/VM resources.
+add_executable(styx-live-registry ../tests/live_registry.c live.c)
+target_include_directories(styx-live-registry PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+set_target_properties(styx-live-registry PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+target_compile_options(styx-live-registry PRIVATE -Wall -Wextra -Werror)
+add_test(NAME styx-live-registry COMMAND styx-live-registry)
+set_tests_properties(styx-live-registry PROPERTIES TIMEOUT 10)
+add_test(NAME styx-live-wire COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tests/live_wire.py" "$<TARGET_FILE:styx-live>")
+set_tests_properties(styx-live-wire PROPERTIES TIMEOUT 30)

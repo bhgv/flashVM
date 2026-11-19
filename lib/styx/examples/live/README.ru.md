@@ -1,59 +1,86 @@
-# Живой реестр окон/контролов
+# Живое пространство имён: окна и контролы
 
 Copyright (c) 2026 bhgv
 
-[English](README.md) · [Index](../README.ru.md)
+[English](README.md) · [Русский](README.ru.md) · [Examples](../README.ru.md)
 
-## Назначение и выбор модели
+## Что и зачем
 
-Backend содержит небольшой нативный реестр без GUI toolkit. Запись add/remove в ctl сразу публикует/скрывает записи. Стабильные ID не переиспользуются. Скрытие имени не удаляет открытый объект: catalog_pin/catalog_unpin удерживают его через open/close исходного сервера. Запросы заменяются обращениями к реальному реестру окон/контролов приложения.
+Этот сервер показывает разницу между именем и уже открытым объектом. Окно имеет каталог и два файла: title и button. Запись в ctl добавляет окно или скрывает его имя. Это модель реестра приложения, без GUI toolkit, DisVM и FlashVM; вместо окон здесь могут быть датчики, задачи или записи БД.
+
+Новые Twalk и Tread корня видят текущие имена. Уже открытый fid удерживает ID объекта до Tclunk или разрыва своего соединения. Удаление имени не перенаправляет такой fid на новое окно. Дерево не замораживается и не передаётся целиком.
 
 ## Сборка и запуск
 
 ```sh
-cmake -S . -B build -DSTYX_HOSTED=ON -DBUILD_TESTING=ON  # Hosted example targets / Нативные примеры
-cmake --build build -j  # Build the library and examples / Собрать библиотеку и примеры
-./build/examples/styx-live 5640  # Keep running in terminal1 / Оставить в терминале1
+cmake -S . -B build -DSTYX_HOSTED=ON -DBUILD_TESTING=ON
+cmake --build build -j
+./build/examples/styx-live 5640
 ```
+
+Команды выполняются из корня пакета. Сервер остаётся в первом терминале; в другом:
 
 ```sh
-./build/examples/styx-cat 5640 window-100/title  # Read through original native 9P client / Читать нативным 9P-клиентом
-ctest --test-dir build -R '^styx-live$' --output-on-failure  # Independent wire acceptance / Независимая wire-проверка
+./build/examples/styx-cat 5640 window-100/title
+ctest --test-dir build -R '^styx-live' --output-on-failure
 ```
 
-## Параметры
+Ожидается `Live window` без завершающего LF. Порт — единственный параметр: decimal 0..65535, default 0 выбирает свободный. Первая stdout-строка сервера содержит фактический порт. Выберите свободный порт и одинаково задайте его клиенту. Ошибка startup даёт ненулевой exit; Ctrl-C завершает пример. Второй backend source параметр не используется. Hosted-профиль требует Linux64/libc/pthread; минимальный codec не запускает этот сервер.
 
-| Параметр | Варианты | Смысл |
+## Имена, права и ID
+
+| Path | mode | ID / contents |
 | --- | --- | --- |
-| argv1 | `0..65535`, default `0` | TCP-порт;0 выбирает свободный. Первая stdout-строка — реальный порт. |
-| argv2 | unused | Источник явно задаёт оператор; клиент не передаёт host-пути. |
-| names | `ctl; window-ID/title; window-ID/button` | Пространство имён этого примера. |
-| file sample | `window-100/title` | Ожидаемый текст: `Live window` |
+| / | directory 0555 | 0 |
+| /ctl | 0222 | 1 |
+| /window-N | directory 0555 | N |
+| /window-N/title | 0444 | N+1 / `Live window` |
+| /window-N/button | 0444 | N+2 / `enabled` |
 
-## Как проходят запросы
+Первое N=100. Успешный add резервирует три следующих ID: 103, 106 и далее. Неуспешный add не расходует ID. Всего 16 мест, включая скрытые окна с открытыми fid. Счётчик ID не оборачивается: исчерпание даёт отказ. Mode проверяет сервер, а ctl дополнительно проверяет синтаксис и смысл команды. Это демонстрационная политика, не authentication/изоляция юзеров.
 
-Twalk разрешает один или несколько компонентов в fid. Topen проверяет режим и удерживает объект. Tread файла использует удерживаемый ID и offset. Tread каталога кодирует только целые Dir непосредственных детей; offset измеряется байтами. Tclunk/разрыв вызывает cleanup. Между запросами дерево может меняться; повторный обход перед каждым read/write не добавляется.
+## ctl
 
-## Границы и изменение backend
+```text
+add
+remove <decimal-window-ID>
+```
 
-Общий CatalogRow содержит имя до127 UTF-8 байт и demonstration text до2047 байт; страница содержит максимум16 детей. Для фотографий/больших данных заменить текстовый read на byte-stream/read по offset. Это не требование 9P хранить файл целиком. Списки, изменившиеся между страницами, могут требовать rewind offset0. Backend-вызовы примера синхронны; production asynchronous I/O использует deferred-read API.
+Одна Twrite — одна полная команда, offset строго 0. Разрешён один необязательный завершающий LF или CRLF. Длина 1..79 байтов, включая окончание; Rwrite подтверждает всю исходную длину только при успешном изменении. Команда не накапливается между writes.
 
-TSV-пример ограничен128 ключами; он перечитывает один плоский набор, не рекурсивное дерево. Live-пример имеет16 мест для видимых/удерживаемых окон. HTTP-helper ограничивает ответ128KiB, socket timeout3с и process alarm5с; IDs должны точно сохранять uint64, без округления через JavaScript double.
+ID содержит только decimal digits, положителен и помещается в uint64; ведущие нули разрешены. Знак, лишние пробелы, NUL, внутренние CR/LF, несколько команд, overflow, неизвестный/уже скрытый ID и отсутствие свободного места дают Rerror без изменения реестра. Нельзя послать `add\nadd`: вторую команду сервер не отбрасывает и первую не исполняет. Rerror не закрывает исправное соединение.
 
-## Исходники и справка
+## Проверяемый сценарий
 
-- [Server callbacks](../server.c), [catalog_query / pin / unpin contract](../catalog.h), [backend implementation](../live.c).
-- [styxinit](../../docs/reference/styxinit.ru.md), [convD2M](../../docs/reference/convD2M.ru.md), [convM2S](../../docs/reference/convM2S.ru.md).
-- [Original client](../client.c), [independent wire client](../wire_client.py), [acceptance](../check.py).
-- [Main-project native Styx help](https://github.com/bhgv/flashVM/blob/master/disVM/native/README.md).
-
-## Изменение реестра
+Из второго терминала, с PYTHONPATH=examples. В wire_client каждый успешный open возвращает fid; его владелец закрывает его через clunk, а finally закрывает соединение даже при ошибке.
 
 ```python
-from wire_client import Client  # PYTHONPATH=examples; standard 9P client / Стандартный клиент
-c = Client(5640)  # Own one connection / Владеть соединением
-c.write('ctl', 'add')  # Publish a new window / Опубликовать новое окно
-print(c.directory('/'))  # Observe current names / Увидеть текущие имена
-c.write('ctl', 'remove 100')  # Hide name, retain open objects / Скрыть имя, удержать open-объекты
-c.close()  # Retire fids and connection / Освободить fid и соединение
+from wire_client import Client  # Standard 9P test client / Стандартный 9P-клиент примера.
+c = Client(5640)  # Negotiate session and attach root / Создать сессию и attach корня.
+try:
+    held = c.open('/window-100/title')  # Pin original object / Удержать исходный объект.
+    c.write('/ctl', 'add')  # Publish window-103 / Опубликовать window-103.
+    c.write('/ctl', 'remove 100')  # Hide only the old name / Скрыть старое имя.
+    print(c.directory('/'))  # ctl, window-103 / Текущие имена корня.
+    print(c.read(held, 0, 64))  # b'Live window'; fid still works / fid ещё работает.
+    c.clunk(held)  # Final close permits slot reuse / Разрешить reuse места.
+    c.write('/ctl', 'add')  # Publish window-106, never window-100 / Новый ID.
+finally:
+    c.close()  # Retire remaining fids on failure too / Освободить fid и при ошибке.
 ```
+
+Список корня может выводиться в другом порядке; сравнивайте набор имён. Запускайте сценарий на свежем сервере: ID монотонны и не сбрасываются между клиентами.
+
+## Backend и время жизни
+
+[catalog_query](../live.c#L73) `(listing,id,start,out,capacity,count)` выдаёт stat или страницу непосредственных детей; start — число строк, не byte offset 9P. Сервер кодирует целые Dir и преобразует byte offset в проход по страницам. Никакой recursive preload нет. Изменение списка между чтениями может потребовать rewind offset=0.
+
+[catalog_pin](../live.c#L236) `(id)` удерживает общее место окна для directory/title/button; [catalog_unpin](../live.c#L262) `(id)` освобождает одно успешное удержание. Remove скрывает имя сразу, а место освобождает только без удержаний. [catalog_init](../live.c#L36) `(source)` вызывается один раз до запросов, source не сохраняется. Это private backend API примера, не установленный ABI библиотеки. Все query/write/pin/unpin сериализует один server owner; при подключении внешнего изменяющего потока потребуется синхронизация. Стандартные клиентские потоки при этом не приостанавливаются.
+
+## Проверки и исходники
+
+`styx-live-registry` проверяет grammar, bounded pages, 16 мест, два pin одного окна, final close и новый ID после reuse. `styx-live-wire` использует две настоящие 9P-сессии: Rerror не меняет реестр и не разрывает связь; изменение одним клиентом не разрушает opened fid другого. Исходный `styx-live` проверяет базовую навигацию и обновления.
+
+[Registry source](../live.c) · [Backend declarations](../catalog.h) · [Server callbacks](../server.c) · [Registry tests](../../tests/live_registry.c) · [Wire tests](../../tests/live_wire.py) · [Client helper](../wire_client.py)
+
+[styxinit](../../docs/reference/styxinit.ru.md) · [styxprocess](../../docs/reference/styxprocess.ru.md) · [styxend](../../docs/reference/styxend.ru.md) · [Main-project Styx help](https://github.com/bhgv/flashVM/blob/master/disVM/native/README.md)

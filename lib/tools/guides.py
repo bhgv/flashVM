@@ -3,6 +3,7 @@
 # RU: Авторские EN/RU рецепты примеров и руководства протокола/переноса отдельно от извлечённых metadata API.
 from pathlib import Path
 from .memory_guide import main as memory_guide
+from .live_guide import main as live_guide
 
 MODELS = {
     "flat": ("Fixed root files", "Фиксированные файлы корня", "fixed.c", "status; temperature", "status", "ready\\n",
@@ -173,6 +174,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     examples(root)
     memory_guide(root / "styx")
+    live_guide(root / "styx")
     topics(root)
 
 

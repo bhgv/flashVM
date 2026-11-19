@@ -9,7 +9,7 @@ Linux arm64/riscv64 selections have not been executed on those physical targets.
 
 | Check | Result |
 | --- | --- |
-| Styx hosted | 16/16: six original server regressions, portable codec, five catalog models |
+| Styx hosted | 18/18: six original server regressions, portable codec, five catalog models |
 | libunibus hosted | 11/11: nested records, independent native waits, four order regressions, queue initialization failures, gateway, adversarial two-client cases, gateway initialization failures and short/failed I/O |
 | Cross-library wire integration | 5/5 catalog models through independently linked gateway |
 | Isolated copies | Each package configured, built and tested outside its original source directory |
@@ -70,3 +70,7 @@ comment/string decoys from required-header and example selection.
 ## Custom carrier acceptance
 
 A real native 9P client and original Styx server communicate over bounded memory, without a descriptor-backed carrier. Tests cover 2/3-byte fragmented transfers, backpressure, drain-before-EOF, uncertain write prefixes, finite monotonic waits, 500 concurrent wake rounds and four constructor failure stages. A Linux link-time guard rejects descriptor/network entry points; it is not a kernel syscall trace. The relocated SDK builds and runs this complete example from installed sources, plus C/C++98 PHY-server consumers.
+
+## Mutable registry acceptance
+
+The live tutorial rejects multiple commands, internal line endings, embedded NUL, signed IDs and decimal overflow without mutation. One terminal LF/CRLF is accepted and counted. The new grammar regression fails on the prior live.c because it silently discarded a second command. Direct tests cover all 16 slots, bounded pages, shared directory/child pins, final-close reclamation and fresh Qids; two real 9P clients verify Rerror recovery and another client's retained opened file. Authored EN/RU guidance separates name visibility from opened-object lifetime.

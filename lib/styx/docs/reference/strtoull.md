@@ -46,13 +46,9 @@ Styx::nine; hosted Linux64 support
 
 ## Example
 
-Actual call-site excerpt; its enclosing source provides variable initialization and cleanup.
+Use the complete layer examples; this lower-level entry is also documented at its exact implementation below.
 
-```c
-unsigned long long removed = strtoull(command + 7, &end, 10);
-```
-
-[Complete calling context](../../examples/live.c#L199)
+[Examples](../../examples/README.md)
 
 ## See also
 

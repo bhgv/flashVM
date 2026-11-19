@@ -1,282 +1,277 @@
 /* Copyright (c) 2026 bhgv
- * EN: Live window/control registry with monotonic object IDs; the example needs no actual GUI library.
- * RU: Живой реестр окон/контролов с монотонными ID объектов; пример не требует GUI-библиотеки.
+ * EN: Mutable window/control namespace for a single native Styx server owner.
+ * Names can disappear while opened IDs remain pinned; slots and Qids have
+ * different lifetimes. No GUI toolkit, VM or global pause is involved.
+ * RU: Изменяемое пространство окон/контролов одного native Styx server owner.
+ * Имена исчезают, но открытые ID удерживаются; время жизни места и Qid различно.
+ * GUI toolkit, VM и глобальная остановка не требуются.
+ * standalone-reviewed: authored registry contracts and control grammar.
  */
-#include "catalog.h" /* EN: Import declarations for this translation unit. RU: Подключить объявления этой единицы компиляции. */
-#include <stdio.h> /* EN: Import declarations for this translation unit. RU: Подключить объявления этой единицы компиляции. */
-#include <stdlib.h> /* EN: Import declarations for this translation unit. RU: Подключить объявления этой единицы компиляции. */
-#include <string.h> /* EN: Import declarations for this translation unit. RU: Подключить объявления этой единицы компиляции. */
-#include <limits.h> /* EN: Import declarations for this translation unit. RU: Подключить объявления этой единицы компиляции. */
+#include "catalog.h"
+#include <stdio.h>
+#include <string.h>
+#include <limits.h>
 
-/* EN/RU: Published name and retained open-object lifetime are separate states.
- * Опубликованное имя и время жизни удержанного open-объекта — разные состояния.
+/* EN/RU: One shared lifetime for a directory and its two children.
+ * Общее время жизни каталога и двух его дочерних файлов.
  */
-typedef struct Window /* EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами. */
-{ /* EN: Begin this scope. RU: Начало области. */
+typedef struct Window
+{
     uint64_t id;         /* Stable never-reused base Qid. */
     unsigned references; /* Actual original-server opened fids retaining this object. */
     int visible;         /* Included in fresh root walks/listings only while set. */
-} Window; /* EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами. */
+} Window;
 
 static Window windows[16];     /* Bounded live/held object slots, reusable only after final hidden close. */
 static uint64_t next_id = 100; /* Never reused; each window reserves three consecutive stable IDs. */
 
-/* EN/RU: Initialize one live window; optional source is unused.
- * Инициализировать одно живое окно; необязательный source не используется.
+
+/* EN: Initialize once before serving requests; source is unused and never retained.
+ * Return 1 after publishing the first window. Static state belongs to this server
+ * process; this is neither a reset API nor safe during concurrent requests.
+ * RU: Инициализировать один раз до обслуживания; source не используется и не хранится.
+ * Вернуть 1 после публикации первого окна. Static state принадлежит server process;
+ * это не API сброса, конкурентные вызовы недопустимы.
  */
+int catalog_init(const char *source)
+{
+    (void)source;
+    windows[0].id = next_id;
+    windows[0].visible = 1;
+    next_id += 3; /* Reserve window, title and button Qids as one never-reused group. */
+    return 1;
+}
 
 
-/* [standalone-contract:catalog_init]
- * EN: catalog_init: examples/live implementation and native state.
- * RU: catalog_init: реализация examples/live и нативное состояние.
- * source (const char *source): Referenced value of the declared type; lifetime and input/output effects remain those of the implementation.
- * RU: Ссылка на значение объявленного типа; время жизни и input/output-эффекты соответствуют реализации.
- * Return: int; direct result constants in this body: 1. Forwarded results preserve the called API's status.
- * Возврат: int; прямые константы результата тела: 1. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
+/* EN: Copy candidate row after skipping start matches; seen/count are borrowed
+ * counters, out has capacity rows. Increment seen even when the page is full;
+ * increment count only for copied rows. No pointers escape, no allocation/wait.
+ * RU: Скопировать row после пропуска start совпадений; seen/count — заимствованные
+ * счётчики, out вмещает capacity строк. seen растёт и для полной страницы,
+ * count — только при копировании. Без сохранения указателей, allocation/wait.
  */
-int catalog_init(const char *source) /* EN: Invoke catalog_init with these explicit arguments. RU: Вызвать catalog_init с этими явными аргументами. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    (void)source; /* EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами. */
-    windows[0].id = next_id; /* EN: Update windows[0].id for the current operation. RU: Обновить windows[0].id для текущей операции. */
-    windows[0].visible = 1; /* EN: Update windows[0].visible for the current operation. RU: Обновить windows[0].visible для текущей операции. */
-    next_id += 3; /* EN: Update next_id for the current operation. RU: Обновить next_id для текущей операции. */
-    return 1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
+static void emit(CatalogRow row, size_t start, size_t *seen, CatalogRow *out, size_t capacity, size_t *count)
+{
+    if ((*seen)++ >= start && *count < capacity)
+    {
+        out[(*count)++] = row;
+    }
+}
 
-/* EN/RU: Emit one copied row into a bounded result page after skipping start matches.
- * Скопировать строку в ограниченную страницу, пропустив start совпадений.
+
+/* EN: listing=0 looks up stable id; nonzero lists its immediate children.
+ * start counts matching rows, not encoded 9P bytes; out/count are caller-owned,
+ * capacity bounds all copies. Return 1 with count=0 for absent objects/end.
+ * Hidden pinned IDs still resolve for held fids, but fresh root listings omit
+ * them. Walk/open policy belongs to server.c. The server owner serializes calls.
+ * RU: listing=0 ищет stable id; ненулевой — его непосредственных детей.
+ * start считает строки, не байты 9P; out/count принадлежат caller, capacity
+ * ограничивает копии. Вернуть 1 и count=0 при отсутствии/конце. Скрытые pinned ID
+ * доступны удержанным fid, но не новым root listings. Walk/open policy — server.c.
+ * Все вызовы сериализованы владельцем сервера.
  */
+int catalog_query(int listing, uint64_t id, size_t start, CatalogRow *out, size_t capacity, size_t *count)
+{
+    CatalogRow row = {0, 0, CATALOG_DIR | 0555, "/", ""};
+    size_t seen = 0;
+    *count = 0;
+    if (!listing && !id)
+    {
+        emit(row, start, &seen, out, capacity, count);
+    }
+    row.id = 1; /* ctl is a permanent write-only sibling of all published windows. */
+    row.mode = 0222;
+    strcpy(row.name, "ctl");
+    if ((listing && !id) || (!listing && id == 1))
+    {
+        emit(row, start, &seen, out, capacity, count);
+    }
+    for (size_t index = 0; index < 16; index++)
+    {
+        if (!windows[index].id)
+        {
+            continue;
+        }
+        /* Parts 0/1/2 are directory/title/button; metadata is copied only on demand. */
+        for (unsigned part = 0; part < 3; part++)
+        {
+            memset(&row, 0, sizeof(row));
+            row.id = windows[index].id + part;
+            row.parent = part ? windows[index].id : 0;
+            row.mode = part ? 0444 : CATALOG_DIR | 0555;
+            if (!part)
+            {
+                snprintf(row.name, sizeof(row.name), "window-%llu", (unsigned long long)row.id);
+            }
+            else
+            {
+                strcpy(row.name, part == 1 ? "title" : "button");
+                strcpy(row.value, part == 1 ? "Live window" : "enabled");
+            }
+            /* Direct ID queries serve held fids; root enumeration applies visibility. */
+            if ((!listing && row.id == id) || (listing && row.parent == id && (id || windows[index].visible)))
+            {
+                emit(row, start, &seen, out, capacity, count);
+            }
+        }
+    }
+    return 1;
+}
 
 
-/* [standalone-contract:emit]
- * EN: emit: examples/live implementation and native state.
- * RU: emit: реализация examples/live и нативное состояние.
- * row (CatalogRow row): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * start (size_t start): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * seen (size_t *seen): Referenced value of the declared type; lifetime and input/output effects remain those of the implementation.
- * RU: Ссылка на значение объявленного типа; время жизни и input/output-эффекты соответствуют реализации.
- * out (CatalogRow *out): Buffer/cursor used by this algorithm; the description defines direction, bounds and retained views.
- * RU: Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием.
- * capacity (size_t capacity): Actual caller-owned output capacity; it is not permission to write past the buffer.
- * RU: Фактическая ёмкость буфера вызывающего; выход за неё недопустим.
- * count (size_t *count): Extent/count used by the selected conversion; byte/rune/record units follow its signature and description.
- * RU: Длина/число выбранного преобразования; единицы bytes/runes/records заданы сигнатурой и описанием.
- * Return: No C return value; output/state/ownership effects are specified in Description.
- * Возврат: Возвращаемого C-значения нет; изменения output/state/владения заданы в описании.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
+/* EN: Parse nonempty decimal digits from borrowed text into borrowed output.
+ * Return 1 only for a positive uint64; reject signs, suffixes and overflow before
+ * multiplication. Publish output only on success; no locale/errno dependency.
+ * RU: Разобрать непустые decimal digits text в output. Вернуть 1 только для
+ * положительного uint64; отвергнуть знаки, суффиксы и overflow до умножения.
+ * output меняется только при успехе; locale/errno не используются.
  */
-static void emit(CatalogRow row, size_t start, size_t *seen, CatalogRow *out, size_t capacity, size_t *count) /* EN: Invoke emit with these explicit arguments. RU: Вызвать emit с этими явными аргументами. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    if ((*seen)++ >= start && *count < capacity) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        out[(*count)++] = row; /* EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
+static int remove_id(const char *text, uint64_t *output)
+{
+    uint64_t value = 0; /* Stable ID, not an array index or host pointer. */
+    if (!*text)
+    {
+        return 0;
+    }
+    for (; *text; text++)
+    {
+        if (*text < '0' || *text > '9')
+        {
+            return 0;
+        }
+        unsigned digit = (unsigned)(*text - '0');
+        if (value > (UINT64_MAX - digit) / 10)
+        {
+            return 0;
+        }
+        value = value * 10 + digit;
+    }
+    if (!value)
+    {
+        return 0;
+    }
+    *output = value;
+    return 1;
+}
 
-/* EN/RU: Query only current registry entries; removed IDs never resolve to newly created windows.
- * Запросить только текущие записи реестра; удалённые ID не разрешаются в новые окна.
+
+/* EN: Apply exactly one ctl command at offset zero. id must be 1, input covers
+ * size bytes (1..79); optional one LF or CRLF is part of the accepted byte count.
+ * Reject embedded NUL/newlines, extra commands, signs, spaces around the ID and
+ * decimal overflow. Return size only after mutation, otherwise -1 without mutation.
+ * No input is retained; one server owner serializes query/write/pin/unpin.
+ * RU: Выполнить ровно одну ctl-команду при offset=0 и id=1; input содержит size
+ * байтов (1..79). Один завершающий LF/CRLF входит в подтверждённую длину.
+ * Отказать при NUL/внутреннем newline, нескольких командах, знаке, пробелах вокруг
+ * ID и decimal overflow. Вернуть size после изменения, иначе -1 без изменений.
+ * input не сохраняется; query/write/pin/unpin выполняет один server owner.
  */
+long catalog_write(uint64_t id, const char *input, size_t size, uint64_t offset)
+{
+    char command[80];
+    if (id != 1 || offset || !size || size >= sizeof(command) || memchr(input, 0, size))
+    {
+        return -1;
+    }
+    memcpy(command, input, size);
+    command[size] = 0;
+    size_t length = size; /* Work on the bounded local copy, never modify caller memory. */
+    if (length && command[length - 1] == '\n')
+    {
+        command[--length] = 0;
+        if (length && command[length - 1] == '\r')
+        {
+            command[--length] = 0;
+        }
+    }
+    if (memchr(command, '\n', length) || memchr(command, '\r', length))
+    {
+        return -1; /* A second line must never be silently acknowledged and discarded. */
+    }
+    if (!strcmp(command, "add") && next_id <= UINT64_MAX - 3)
+    {
+        for (size_t index = 0; index < 16; index++)
+        {
+            if (!windows[index].id)
+            {
+                windows[index].id = next_id;
+                windows[index].visible = 1;
+                next_id += 3;
+                return size;
+            }
+        }
+    }
+    if (!strncmp(command, "remove ", 7))
+    {
+        uint64_t removed;
+        if (remove_id(command + 7, &removed))
+        {
+            for (size_t index = 0; index < 16; index++)
+            {
+                if (windows[index].id == removed && windows[index].visible)
+                {
+                    windows[index].visible = 0; /* Detach the name before considering storage reclamation. */
+                    if (!windows[index].references)
+                    {
+                        windows[index].id = 0;
+                    }
+                    return size;
+                }
+            }
+        }
+    }
+    return -1;
+}
 
 
-/* [standalone-contract:catalog_query]
- * EN: Query one live stat or a bounded immediate-child page without traversing the whole namespace.
- * RU: Запросить живой stat либо ограниченную страницу непосредственных детей без обхода всего namespace.
- * listing (int listing): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * id (uint64_t id): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * start (size_t start): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * out (CatalogRow *out): Buffer/cursor used by this algorithm; the description defines direction, bounds and retained views.
- * RU: Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием.
- * capacity (size_t capacity): Actual caller-owned output capacity; it is not permission to write past the buffer.
- * RU: Фактическая ёмкость буфера вызывающего; выход за неё недопустим.
- * count (size_t *count): Extent/count used by the selected conversion; byte/rune/record units follow its signature and description.
- * RU: Длина/число выбранного преобразования; единицы bytes/runes/records заданы сигнатурой и описанием.
- * Return: int; direct result constants in this body: 1. Forwarded results preserve the called API's status.
- * Возврат: int; прямые константы результата тела: 1. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
+/* EN: Retain one already validated opened id; root/ctl need no registry slot.
+ * Return 1 on success, 0 for absent IDs or reference exhaustion. All three IDs
+ * of a window share one refcount; hidden objects are not republished by pin.
+ * The native server pairs each successful pin with exactly one unpin.
+ * RU: Удержать проверенный opened id; root/ctl не требуют места реестра.
+ * Вернуть 1 при успехе, 0 при отсутствии/переполнении. Три ID окна разделяют
+ * счётчик; pin не публикует скрытое имя. Native server вызывает ровно один unpin
+ * для каждого успешного pin. Только поток-владелец сервера.
  */
-int catalog_query(int listing, uint64_t id, size_t start, CatalogRow *out, size_t capacity, size_t *count) /* EN: Ask the backend only for the selected object/page. RU: Запросить у backend выбранный объект или страницу. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    CatalogRow row = {0, 0, CATALOG_DIR | 0555, "/", ""}; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-    size_t seen = 0; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-    *count = 0; /* EN: Update *count for the current operation. RU: Обновить *count для текущей операции. */
-    if (!listing && !id) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        emit(row, start, &seen, out, capacity, count); /* EN: Invoke emit with these explicit arguments. RU: Вызвать emit с этими явными аргументами. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    row.id = 1; /* EN: Update row.id for the current operation. RU: Обновить row.id для текущей операции. */
-    row.mode = 0222; /* EN: Update row.mode for the current operation. RU: Обновить row.mode для текущей операции. */
-    strcpy(row.name, "ctl"); /* EN: Invoke strcpy with these explicit arguments. RU: Вызвать strcpy с этими явными аргументами. */
-    if ((listing && !id) || (!listing && id == 1)) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        emit(row, start, &seen, out, capacity, count); /* EN: Invoke emit with these explicit arguments. RU: Вызвать emit с этими явными аргументами. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    for (size_t index = 0; index < 16; index++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        if (!windows[index].id) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            continue; /* EN: Advance to the next iteration. RU: Перейти к следующей итерации. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-        for (unsigned part = 0; part < 3; part++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            memset(&row, 0, sizeof(row)); /* EN: Clear the destination before filling its fields. RU: Очистить приёмник до заполнения полей. */
-            row.id = windows[index].id + part; /* EN: Update row.id for the current operation. RU: Обновить row.id для текущей операции. */
-            row.parent = part ? windows[index].id : 0; /* EN: Update row.parent for the current operation. RU: Обновить row.parent для текущей операции. */
-            row.mode = part ? 0444 : CATALOG_DIR | 0555; /* EN: Update row.mode for the current operation. RU: Обновить row.mode для текущей операции. */
-            if (!part) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                snprintf(row.name, sizeof(row.name), "window-%llu", (unsigned long long)row.id); /* EN: Format within the supplied output capacity. RU: Форматировать в указанной ёмкости. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-            else /* EN: Handle the alternative to the preceding condition. RU: Обработать альтернативу предыдущего условия. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                strcpy(row.name, part == 1 ? "title" : "button"); /* EN: Invoke strcpy with these explicit arguments. RU: Вызвать strcpy с этими явными аргументами. */
-                strcpy(row.value, part == 1 ? "Live window" : "enabled"); /* EN: Invoke strcpy with these explicit arguments. RU: Вызвать strcpy с этими явными аргументами. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-            if ((!listing && row.id == id) || (listing && row.parent == id && (id || windows[index].visible))) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                emit(row, start, &seen, out, capacity, count); /* EN: Invoke emit with these explicit arguments. RU: Вызвать emit с этими явными аргументами. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    return 1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
+int catalog_pin(uint64_t id)
+{
+    if (id < 2)
+    {
+        return 1;
+    }
+    for (size_t index = 0; index < 16; index++)
+    {
+        Window *window = &windows[index];
+        if (window->id && id >= window->id && id - window->id < 3 && window->references != UINT_MAX)
+        {
+            window->references++;
+            return 1;
+        }
+    }
+    return 0;
+}
 
-/* EN: ctl accepts add or remove <stable-ID>; acknowledge exactly one bounded command at offset0.
- * RU: ctl принимает add либо remove <стабильный-ID>; подтвердить одну ограниченную команду при offset0.
+
+/* EN: Release one successful pin of id. The last close of a hidden window frees
+ * its slot; its Qids are never recycled. Unknown/unpinned IDs are ignored.
+ * No allocation or I/O; only the server owner may change this shared registry.
+ * RU: Освободить успешный pin id. Последний close скрытого окна освобождает место,
+ * но Qid не переиспользуются. Неизвестные/unpinned ID игнорируются.
+ * Без allocation/I/O; менять общий реестр может только server owner.
  */
-
-
-/* [standalone-contract:catalog_write]
- * EN: catalog_write: examples/live implementation and native state.
- * RU: catalog_write: реализация examples/live и нативное состояние.
- * id (uint64_t id): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * input (const char *input): Buffer/cursor used by this algorithm; the description defines direction, bounds and retained views.
- * RU: Буфер/cursor этого алгоритма; направление, границы и удерживаемые views заданы описанием.
- * size (size_t size): Requested byte extent; the relevant buffer must cover it.
- * RU: Запрошенная длина в байтах; соответствующий буфер должен её покрывать.
- * offset (uint64_t offset): Position in the selected object; file bytes and encoded directory bytes retain their protocol meaning.
- * RU: Позиция выбранного объекта; байты файла/кодированных записей каталога имеют протокольный смысл.
- * Return: long; direct result constants in this body: -1. Forwarded results preserve the called API's status.
- * Возврат: long; прямые константы результата тела: -1. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
- */
-long catalog_write(uint64_t id, const char *input, size_t size, uint64_t offset) /* EN: Invoke catalog_write with these explicit arguments. RU: Вызвать catalog_write с этими явными аргументами. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    char command[80]; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-    if (id != 1 || offset || !size || size >= sizeof(command) || memchr(input, 0, size)) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        return -1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    memcpy(command, input, size); /* EN: Copy the explicitly bounded byte span. RU: Скопировать явно ограниченный диапазон байтов. */
-    command[size] = 0; /* EN: Update command[size] for the current operation. RU: Обновить command[size] для текущей операции. */
-    command[strcspn(command, "\r\n")] = 0; /* EN: Invoke strcspn with these explicit arguments. RU: Вызвать strcspn с этими явными аргументами. */
-    if (!strcmp(command, "add") && next_id <= UINT64_MAX - 3) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        for (size_t index = 0; index < 16; index++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            if (!windows[index].id) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                windows[index].id = next_id; /* EN: Update windows[index].id for the current operation. RU: Обновить windows[index].id для текущей операции. */
-                windows[index].visible = 1; /* EN: Update windows[index].visible for the current operation. RU: Обновить windows[index].visible для текущей операции. */
-                next_id += 3; /* EN: Update next_id for the current operation. RU: Обновить next_id для текущей операции. */
-                return size; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    if (!strncmp(command, "remove ", 7)) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        char *end; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-        unsigned long long removed = strtoull(command + 7, &end, 10); /* EN: Parse a numeric object identity and inspect the end pointer. RU: Разобрать числовой ID и проверить end pointer. */
-        if (!end[0] && removed) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            for (size_t index = 0; index < 16; index++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                if (windows[index].id == removed && windows[index].visible) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-                { /* EN: Begin this scope. RU: Начало области. */
-                    windows[index].visible = 0; /* EN: Update windows[index].visible for the current operation. RU: Обновить windows[index].visible для текущей операции. */
-                    if (!windows[index].references) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-                    { /* EN: Begin this scope. RU: Начало области. */
-                        windows[index].id = 0; /* EN: Update windows[index].id for the current operation. RU: Обновить windows[index].id для текущей операции. */
-                    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-                    return size; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-                } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    return -1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-
-/* EN: Retain one active object's actual opened fid; reject refcount exhaustion, never republish a hidden name.
- * RU: Удержать настоящий opened fid объекта; отказать при переполнении счётчика, не публиковать скрытое имя заново.
- */
-
-
-/* [standalone-contract:catalog_pin]
- * EN: catalog_pin: examples/live implementation and native state.
- * RU: catalog_pin: реализация examples/live и нативное состояние.
- * id (uint64_t id): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * Return: int; direct result constants in this body: 0, 1. Forwarded results preserve the called API's status.
- * Возврат: int; прямые константы результата тела: 0, 1. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
- */
-int catalog_pin(uint64_t id) /* EN: Retain the opened object independently of its published name. RU: Удержать открытый объект независимо от имени. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    if (id < 2) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        return 1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    for (size_t index = 0; index < 16; index++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        Window *window = &windows[index]; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-        if (window->id && id >= window->id && id - window->id < 3 && window->references != UINT_MAX) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            window->references++; /* EN: Update window->references for the current operation. RU: Обновить window->references для текущей операции. */
-            return 1; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    return 0; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-
-/* EN: Consume one successful pin; an unpublished window's storage is reusable only after its final opened fid closes.
- * RU: Поглотить одно успешное удержание; место скрытого окна переиспользуется только после закрытия последнего fid.
- */
-
-
-/* [standalone-contract:catalog_unpin]
- * EN: catalog_unpin: examples/live implementation and native state.
- * RU: catalog_unpin: реализация examples/live и нативное состояние.
- * id (uint64_t id): Scalar operand of this operation; protocol/algorithm ranges are described below.
- * RU: Скалярный операнд операции; диапазон протокола/алгоритма описан ниже.
- * Return: No C return value; output/state/ownership effects are specified in Description.
- * Возврат: Возвращаемого C-значения нет; изменения output/state/владения заданы в описании.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
- */
-void catalog_unpin(uint64_t id) /* EN: Release the opened-object hold. RU: Снять удержание открытого объекта. */
-{ /* EN: Begin this scope. RU: Начало области. */
-    for (size_t index = 0; index < 16; index++) /* EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла. */
-    { /* EN: Begin this scope. RU: Начало области. */
-        Window *window = &windows[index]; /* EN: Declare operation-local storage; its initializer specifies the initial value. RU: Объявить память операции; initializer задаёт начальное значение. */
-        if (window->id && id >= window->id && id - window->id < 3 && window->references) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-        { /* EN: Begin this scope. RU: Начало области. */
-            window->references--; /* EN: Update window->references for the current operation. RU: Обновить window->references для текущей операции. */
-            if (!window->visible && !window->references) /* EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию. */
-            { /* EN: Begin this scope. RU: Начало области. */
-                window->id = 0; /* EN: Update window->id for the current operation. RU: Обновить window->id для текущей операции. */
-            } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-            return; /* EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются. */
-        } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-    } /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
-} /* EN: Finish this scope or grouped value. RU: Конец области либо составного значения. */
+void catalog_unpin(uint64_t id)
+{
+    for (size_t index = 0; index < 16; index++)
+    {
+        Window *window = &windows[index];
+        if (window->id && id >= window->id && id - window->id < 3 && window->references)
+        {
+            window->references--;
+            if (!window->visible && !window->references)
+            {
+                window->id = 0;
+            }
+            return;
+        }
+    }
+}

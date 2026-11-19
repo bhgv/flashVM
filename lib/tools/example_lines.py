@@ -41,7 +41,8 @@ def main():
     root = Path(__file__).resolve().parents[1]
     paths = [Path(value) for value in sys.argv[1:]] or ([root / 'libunibus/examples' / name for name in ('nested.c', 'queues.c')]
         + sorted((root / 'libunibus/examples/bridge').glob('*.[ch]'))
-        + sorted((root / 'styx/examples/memory_phy').glob('*.[ch]')))
+        + sorted((root / 'styx/examples/memory_phy').glob('*.[ch]'))
+        + [root / 'styx/examples/live.c', root / 'styx/tests/live_registry.c'])
     audit(paths)
 
 

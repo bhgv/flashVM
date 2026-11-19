@@ -46,13 +46,9 @@ Styx::nine; hosted Linux64 support
 
 ## Пример
 
-Фрагмент настоящего вызова; инициализация переменных и cleanup находятся в окружающем исходнике.
+Использовать полные примеры слоя; точная реализация этого низкоуровневого входа приведена по ссылке ниже.
 
-```c
-unsigned long long removed = strtoull(command + 7, &end, 10);
-```
-
-[Complete calling context](../../examples/live.c#L199)
+[Examples](../../examples/README.ru.md)
 
 ## См. также
 
