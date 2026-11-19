@@ -45,7 +45,7 @@ def main():
             binary = relink(runtime, work, root / "tests/provider_modules/launch.c", variant,
                             ["dvm_runtime_launch_module", "dvm_namespace_boot_shutdown",
                              "dvm_launch_process_adopt", "dvm_resource_plan_call",
-                             "dvm_launch_module_checked", "malloc", "calloc", "free"])
+                             "dvm_launch_module_checked", "linkmod", "unload", "malloc", "calloc", "free"])
             for mode in ["--no-jit", "--jit"]:
                 result = subprocess.run([binary, "--native-spawn", mode, work / "main.dis"], cwd=work,
                                         capture_output=True, text=True, timeout=30)

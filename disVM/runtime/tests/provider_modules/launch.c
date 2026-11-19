@@ -17,6 +17,7 @@
 #include "images.h"
 #include "vfs/loader.h"
 #include "contracts.h"
+#include "binding.h"
 #include "vfs/launch/context.h"
 #include "module_interface/launch.h"
 #define CLIENT_OWNER (CONTROL == 17 || CONTROL == 19 || CONTROL == 21) /* Actual terminal-source owner scenarios, including changed caller bind. */
@@ -42,6 +43,10 @@ extern void *__real_calloc(size_t count, size_t size);
 void *__wrap_calloc(size_t count, size_t size)
 {
     if (contract_allocation && --contract_allocation == 0)
+    {
+        return NULL;
+    }
+    if (binding_allocation && --binding_allocation == 0)
     {
         return NULL;
     }
@@ -240,6 +245,7 @@ Prog *__wrap_dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *unused
         callee.provider_origin.role = DVM_ORIGIN_PROVIDER; /* That source is now the callee's local provider role. */
     }
     DVM_LaunchContract *required = required_interface(module);
+    interface_binding_checks(module, required);
     DVM_LaunchContract *exports = image_interface(CLIENT_OWNER ? &terminal_images.app : &execution_images.app,
         "/native-contract-owner");
     Image wrong_image = image_read("wrong.dis");

@@ -34,13 +34,14 @@ static void interface_adapter_checks(void)
 }
 
 
-/* [GC:] EN/RU: Snapshot caller's actual Value import table; empty table only when this compiled variant uses no Value members.
- * Borrow pinned parsed module through return; owned native snapshot, explicit fixture failure on invalid metadata/OOM.
- * Снять snapshot actual Value import table caller; пустой table, если variant не использует members Value.
- * Parsed module borrowed/pinned до return; свой native snapshot, явный отказ при invalid metadata/OOM.
+/* [GC:] EN/RU: Borrow the real Value import table under the startup caller's Module pin; no allocation or retention.
+ * Unused-interface variants return one static empty table; no pointer leaves the startup controller.
+ * Заимствовать real Value imports при Module pin caller; без allocation/retention.
+ * Неиспользуемый interface даёт static empty table; pointer не выходит из startup controller.
  */
-static DVM_LaunchContract *required_interface(Module *module)
+static Import *required_imports(Module *module)
 {
+    static Import empty; /* Immutable zero sentinel for variants that never use a Value member. */
     if (module->ldt)
     {
         for (unsigned table = 0; module->ldt[table]; table++)
@@ -50,20 +51,25 @@ static DVM_LaunchContract *required_interface(Module *module)
             {
                 if (!strcmp(imports[i].name, "value"))
                 {
-                    DVM_LaunchContract *contract = dvm_module_contract_imports(imports);
-                    launch_check(contract != NULL, "actual caller import contract");
-                    return contract;
+                    return imports;
                 }
             }
         }
     }
     launch_check(CONTROL == 10 || CONTROL == 13, "actual typed caller omitted Value imports");
-    Import empty = {0};
-    DVM_LaunchContract *contract = dvm_module_contract_imports(&empty);
-    launch_check(contract != NULL, "empty unused caller interface");
-    return contract;
+    return &empty;
 }
 
+
+/* [GC:] EN/RU: Copy actual borrowed caller import metadata into an owned native contract; failure is explicit.
+ * Скопировать actual borrowed caller imports в свой native contract; отказ явный.
+ */
+static DVM_LaunchContract *required_interface(Module *module)
+{
+    DVM_LaunchContract *contract = dvm_module_contract_imports(required_imports(module));
+    launch_check(contract != NULL, "actual caller import contract");
+    return contract;
+}
 
 /* [GC:] EN/RU: Parse actual source-built image on startup controller, snapshot exports, unload Module before native handler.
  * Image/label borrowed through return; no returned Module/Type/frame/code pointer, no guest bytecode executes.

@@ -145,3 +145,8 @@ The [retained process contract](MODULE-INTERFACE.md#contract-after-take-and-duri
 now survives request/take and parent/child startup. Exact named-target loads
 recheck their actual parsed exports before ordinary linking; this adds no wire
 representation, provider lookup or general remote invocation mechanism.
+
+[Explicit local object binding](MODULE-INTERFACE.md#explicit-object-binding--явная-привязка-объекта)
+now checks complete requirements on an already loaded Module and invokes the
+original Inferno linker on that exact object. It does not infer implementation
+identity from a load-name match, repeat VFS discovery or serialize VM pointers.

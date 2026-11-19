@@ -163,3 +163,68 @@ load as proof. A private control omitting this loaded-target guard fails with th
 intended semantic diagnostic in both engines, even though Inferno's later linker
 also rejects the incompatible implementation. Compile errors, crashes and timeouts
 are not counted as successful detection.
+
+## Explicit object binding / Явная привязка объекта
+
+[`binding.h`](module_interface/binding.h) now offers a name-independent native path:
+
+| API | Ownership and result |
+| --- | --- |
+| `dvm_module_check_contract(module, required)` | Consume owned local Module; return the same owner/NULL after the complete contract check |
+| `dvm_module_link_contract(module, imports, mkmp, required)` | Consume owned local Module on every outcome; return the original linker's owned Modlink/H |
+
+The caller supplies the actual already loaded implementation and explicitly chosen
+requirements. No path string, current launch label or namespace search determines
+which object gets checked. NULL requirements refuse; an allocation failure must
+not silently choose untyped linking. Invalid module/import-table pointers of the
+ordinary NULL/H forms also refuse. Other pointers must refer to valid local parsed
+metadata; this API does not validate arbitrary native memory supplied by a peer.
+
+The complete required interface is checked before `linkmod` is entered, including
+members unused by the current import table. The standard Inferno linker then
+independently verifies actual requested imports and performs its ordinary MP/frame
+construction. `mkmp` keeps its original meaning: nonzero creates independent module
+data. A refused precheck unloads its input once, without MP construction or another
+source attempt. Native snapshot allocations are retired before any managed linker
+allocation or exception. Linker failures/exceptions retain the original cleanup
+contract. The named-load hook delegates its matching step to this same checker.
+
+```c
+/* Owner/controller has one owned reference to the actual selected local Module.
+ * imports stays protected by its caller Module; required is a live native snapshot. */
+Modlink *bound = dvm_module_link_contract(candidate, imports, 1, required);
+candidate = NULL; /* Consumed on success, refusal or a linker exception. */
+/* On success, publish bound into an appropriate managed root before further
+ * managed allocation/wait. The caller eventually consumes its owned Modlink. */
+```
+
+Only the ACTIVE local owner/controller may use this bridge. Module, Type, Import,
+frame and code pointers remain inside that runtime; none may be sent to another
+native handler, VM or transport as an implementation of remote binding. A held
+Module, followed by its Modlink, retains the actual chosen implementation through
+ordinary native ownership. A later VFS bind does not cause this API to look up a
+new object. This does not turn a filename or a system ID into execution authority.
+
+The 50 real interpreter/JIT module scenarios also exercise explicit bindings of
+source-built images parsed under an unrelated alias label. Success preserves the
+exact Module identity, original entry frame/PC and requested link count. Refusals
+cover real int/big mismatch, a required export unused by the current imports,
+missing requirements, NULL/H import tables, invalid modules and each of the two
+actual export-snapshot calloc positions. A subsequent valid bind must still work.
+Observers count actual ordinary linker entry and direct input unload; they do not
+replace a Module, linker result, MP constructor or guest execution. Observation
+state is local to the startup controller's native thread.
+
+A private control that skips complete requirements for the unused-member case
+fails semantically in both engines, where ordinary import linking alone would
+succeed. Build errors, signals and timeouts do not count. Eight affected runtime
+checks pass normally and with ASan/UBSan, including module retirement, module
+cycles, source-generation idempotence and the 50 provider-module scenarios. Public
+binding declarations also compile standalone as strict C89 and C++98.
+
+This is an explicit native owner-side primitive. Ordinary Limbo `load` still uses
+its existing named-load and Inferno-link paths; it has not acquired a general
+remote module value or an implicit alias-to-contract association. Future generated
+proxies can use the explicit bridge after resolving and loading their actual
+owner-local implementation. Remote discovery, marshalling and invocation remain
+separate work; no wire layout or S-record tag is assigned by this API.

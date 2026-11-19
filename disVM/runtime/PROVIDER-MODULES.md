@@ -151,3 +151,8 @@ after admission on client/provider sides, refuse each actual snapshot-allocation
 position, and verify inherited requirements in a child after the provider changes
 future target opens. [Process contract retention](MODULE-INTERFACE.md) and actual
 loader-guard refusal are observed independently of the ordinary linker result.
+
+The 50 scenarios now additionally exercise the [explicit native binding bridge](MODULE-INTERFACE.md):
+actual parsed Module ownership, complete requirements before ordinary linkmod,
+original entry frames/PCs, unused required members, snapshot allocation failures
+and recovery. This is owner-local linking, not transparent network module loading.

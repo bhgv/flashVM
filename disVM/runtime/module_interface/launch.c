@@ -10,7 +10,7 @@
 #include "kernel.h"
 #include "runqueue.h"
 #include "../vfs/launch/context.h"
-#include "contract.h"
+#include "binding.h"
 #include "launch.h"
 #include <string.h>
 
@@ -28,14 +28,5 @@ Module *dvm_launch_module_checked(const char *path, Module *module)
     {
         return module;
     }
-    DVM_LaunchContract *exports = dvm_module_contract_exports(module);
-    int matched = exports && dvm_launch_contract_matches(context->contract, exports);
-    dvm_launch_contract_free(exports);
-    if (!matched)
-    {
-        unload(module);
-        kwerrstr("launch target interface changed or cannot be checked");
-        return NULL;
-    }
-    return module;
+    return dvm_module_check_contract(module, context->contract);
 }
