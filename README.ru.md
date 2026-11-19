@@ -1,3 +1,5 @@
+[Простой редактора и неизменные кадры](disVM/runtime/EDITOR-IDLE.ru.md).
+
 [Нативные расширения](docs/NATIVE-EXTENSIONS.ru.md) · [Контролы стола](ide/dis/DESKTOP-CONTROLS.ru.md)
 
 # Рабочее пространство FlashVM

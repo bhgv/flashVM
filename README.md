@@ -1,3 +1,5 @@
+[Editor idle waits and unchanged frames](disVM/runtime/EDITOR-IDLE.md).
+
 [Native extensions](docs/NATIVE-EXTENSIONS.md) · [Desktop controls](ide/dis/DESKTOP-CONTROLS.md)
 
 # FlashVM workspace

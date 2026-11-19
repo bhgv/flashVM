@@ -49,6 +49,11 @@ void dvm_editor_controller_ready(void);
 void dvm_editor_controller_wake(void);
 
 
+/* EN/RU: Wake UI after copied queue publication; session stays pinned through return.
+ * Пробудить UI после публикации копии сообщения; сессия удерживается до возврата. */
+void dvm_editor_ui_wake(void);
+
+
 /* Thread-safe failure observation for the Dis scheduler between turns. */
 int dvm_editor_thread_failed(void);
 

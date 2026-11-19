@@ -38,6 +38,7 @@ typedef struct EditorThread
     int result; /* Runtime exit code. */
     int worker_bound; /* Real Dis entry returned with its own extended-up TLS. */
     int worker_released; /* That owner unbound/destroyed TLS before publishing done. */
+    unsigned long wake_generation; /* Locked publication epoch for non-SDL condition waits. */
     unsigned long polls; /* Main-loop iterations while the worker remains live. */
 } EditorThread;
 
@@ -143,6 +144,12 @@ int dvm_editor_thread_rpc(unsigned int operation, unsigned long token,
     s->operation = operation;
     s->answered = 0;
     s->reply_ok = 0;
+    s->wake_generation++;
+    fvm_port_sync_signal_all(s->sync);
+    if (s->running)
+    {
+        dvm_editor_idle_notify();
+    }
     while (!s->answered && !s->failed)
     {
         fvm_port_sync_wait(s->sync);
@@ -175,6 +182,11 @@ void dvm_editor_thread_stopping(void)
     {
         fvm_port_sync_lock(s->sync);
         s->stopping = 1;
+        s->wake_generation++;
+        if (s->running)
+        {
+            dvm_editor_idle_notify();
+        }
         fvm_port_sync_signal_all(s->sync);
         fvm_port_sync_unlock(s->sync);
     }
@@ -212,6 +224,27 @@ void dvm_editor_controller_wake(void)
         if (s->controller_ready && !s->stopping)
         {
             dvm_managed_workers_wake();
+        }
+        fvm_port_sync_unlock(s->sync);
+    }
+}
+
+
+/* EN: Wake UI after a copied queue publication. No arguments/result or VM heap
+ * access. The session mutex pins SDL and its condition against final destruction.
+ * RU: Пробудить UI после публикации копии. Нет аргументов/результата и доступа
+ * к куче VM. Замок сессии удерживает SDL и condition до завершения вызова. */
+void dvm_editor_ui_wake(void)
+{
+    EditorThread *s = session;
+    if (s)
+    {
+        fvm_port_sync_lock(s->sync);
+        s->wake_generation++;
+        fvm_port_sync_signal_all(s->sync);
+        if (s->running)
+        {
+            dvm_editor_idle_notify();
         }
         fvm_port_sync_unlock(s->sync);
     }
@@ -267,6 +300,12 @@ static void execute(void *argument)
         fvm_port_sync_lock(s->sync);
         s->result = 1;
         s->done = 1;
+        s->wake_generation++;
+        if (s->running)
+        {
+            dvm_editor_idle_notify();
+        }
+        fvm_port_sync_signal_all(s->sync);
         fvm_port_sync_unlock(s->sync);
         return;
     }
@@ -285,6 +324,11 @@ static void execute(void *argument)
     fvm_port_sync_lock(s->sync);
     s->result = result;
     s->done = 1;
+    s->wake_generation++;
+    if (s->running)
+    {
+        dvm_editor_idle_notify();
+    }
     fvm_port_sync_signal_all(s->sync);
     fvm_port_sync_unlock(s->sync);
 }
@@ -331,7 +375,9 @@ int dvm_editor_thread_launch(int (*entry)(void *), void *user)
         int stopping;
         int active;
         int progress = 0;
+        unsigned long generation;
         fvm_port_sync_lock(state.sync);
+        generation = state.wake_generation;
         if (state.operation && !state.answered && !state.failed)
         {
             state.reply_ok = serve(&state);
@@ -360,9 +406,18 @@ int dvm_editor_thread_launch(int (*entry)(void *), void *user)
         {
             break;
         }
-        if (!progress)
+        if (progress <= 0)
         {
-            fvm_port_thread_sleep_us(1000);
+            unsigned long delay = active && !stopping && progress == 0 ? dvm_editor_idle_delay() : 1000;
+            if (!active || !dvm_editor_idle_wait(delay))
+            {
+                fvm_port_sync_lock(state.sync);
+                if (!state.done && !(state.operation && !state.answered) && state.wake_generation == generation)
+                {
+                    fvm_port_sync_wait_ms(state.sync, delay);
+                }
+                fvm_port_sync_unlock(state.sync);
+            }
         }
     }
     fvm_port_thread_join(state.worker);
@@ -391,5 +446,10 @@ int dvm_editor_deliver(const DVM_UIMessage *message)
     {
         return dvm_editor_present(message);
     }
-    return dvm_ui_send(dvm_editor_transport(),DVM_UI_DIS,message,1) == FVM_OK;
+    int delivered = dvm_ui_send(dvm_editor_transport(),DVM_UI_DIS,message,1) == FVM_OK;
+    if (delivered)
+    {
+        dvm_editor_ui_wake();
+    }
+    return delivered;
 }

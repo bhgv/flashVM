@@ -252,6 +252,10 @@ int dvm_editor_poll(void)
         return -1;
     }
     progress |= bulk;
+    if (progress)
+    {
+        dvm_editor_ui_wake();
+    }
     if (!dvm_editor_threaded())
     {
         int ui = dvm_editor_ui_poll(0);

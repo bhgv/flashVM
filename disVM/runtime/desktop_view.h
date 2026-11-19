@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Owner-thread view contracts; borrowed/copied values cross these boundaries.
+ * RU: Контракты view владельца; границы используют заимствованные/копии значений.
+ */
 /* MovieClip scene adapter; all objects stay on the FlashVM/context owner. */
 #ifndef DVM_DESKTOP_VIEW_H
 #define DVM_DESKTOP_VIEW_H
@@ -55,6 +59,11 @@ int dvm_desktop_prepare_cached(DVM_EditorFrame *frame, const DVM_EditorFrame *pr
 /* Advance frame-independent visual interpolation by1..1000 milliseconds.
  * Return one when new copied raster work is needed; owner only, no VM callbacks. */
 int dvm_desktop_advance(unsigned int elapsed);
+
+
+/* EN/RU: Owner-only immutable animation query; no callbacks or frame invalidation.
+ * Неизменяющий запрос анимации владельцем; без callbacks и инвалидирования кадра. */
+int dvm_desktop_animating(void);
 
 
 /* Owner-only input hit in the last completed scene. x/y are canvas pixels;

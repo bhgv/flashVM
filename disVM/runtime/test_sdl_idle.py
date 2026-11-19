@@ -45,12 +45,13 @@ def main():
                 if not item.startswith("-Wl,--dependency-file=")]
         binary = work / "editor"
         link[link.index("-o") + 1] = str(binary)
-        call([*link, str(obj), "-Wl,--wrap=SDL_PollEvent"], runtime.parent)
+        symbols = ("SDL_PollEvent", "SDL_WaitEventTimeout", "SDL_RenderPresent", "fvm_render_queue_submit", "SDL_Quit", "dvm_editor_ui_poll", "fvm_timers_poll", "SDL_GetCurrentVideoDriver")
+        call([*link, str(obj), *("-Wl,--wrap=" + symbol for symbol in symbols)], runtime.parent)
         document = work / "document.txt"
         document.write_text("original", encoding="utf-8")
         result = subprocess.run(
             [str(binary), "--font", str(font), "--document", str(document), "--capture", str(work / "window.ppm"), str(module)],
-            cwd=work, env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy", TMPDIR=str(work)),
+            cwd=work, env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy", TMPDIR=str(work), DVM_EDITOR_THREAD_STATS="1"),
             text=True, capture_output=True, timeout=45,
         )
         if result.returncode:
@@ -58,12 +59,19 @@ def main():
         pixels = (work / "window.ppm").read_bytes()
         if not pixels.startswith(b"P6\n") or len(set(pixels[-100000:])) < 10:
             raise RuntimeError("SDL renderer did not publish a real capture")
-        readings = re.findall(r"SDLIDLE (visible|minimized) cpu=([\d.]+)", result.stderr)
-        if len(readings) != 2 or any(float(value) > 20 for _, value in readings):
+        readings = re.findall(r"SDLIDLE (visible|minimized) cpu=([\d.]+) presents=(\d+) frames=(\d+) polls=(\d+)", result.stderr)
+        if len(readings) != 2 or any(float(cpu) > 5 or int(presents) or int(frames) or int(iterations) > 160
+                                     for _, cpu, presents, frames, iterations in readings):
             raise RuntimeError("SDL idle busy loop: " + result.stderr)
+        timer = re.findall(r"SDLIDLE timer_ms=([\d.]+)", result.stderr)
+        if len(timer) != 1 or not 50 <= float(timer[0]) <= 300:
+            raise RuntimeError("timer deadline missed: " + result.stderr)
+        polls = re.search(r"NATIVEOWNERS .*ui_polls=(\d+)", result.stdout)
+        if not polls:
+            raise RuntimeError("unnecessary UI polling: " + result.stdout[-2000:])
         if document.read_text(encoding="utf-8") != "native-original":
             raise RuntimeError("native SDL text/save did not reach the document")
-        print("PASS SDL dummy window: idle=" + str(readings) + " minimize/restore/resize/text/save/quit=ok")
+        print("PASS SDL dummy window: idle=" + str(readings) + " timer_ms=" + timer[0] + " minimize/restore/resize/text/save/quit=ok")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+[Editor idle waits / Ожидание редактора](EDITOR-IDLE.md) · [Русский](EDITOR-IDLE.ru.md)
+
 [Local Limbo publication capabilities — runtime0.135](VFS-PUBLICATION.md)
 
 [Prepared trees and publication requests — runtime0.134](VFS-EXPORT.md)
