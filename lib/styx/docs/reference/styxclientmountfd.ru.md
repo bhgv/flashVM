@@ -59,7 +59,7 @@ Styx::client; hosted native build
 StyxClient *client = styxclientmountfd(descriptor, 8192, "demo", "", 5000, 8);
 ```
 
-[Complete calling context](../../examples/client.c#L55)
+[Complete calling context](../../examples/client.c#L51)
 
 ## См. также
 

@@ -56,7 +56,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 styxclientread(fid, offset, bytes, sizeof(bytes), &result);
 ```
 
-[Complete calling context](../../examples/client.c#L67)
+[Complete calling context](../../examples/client.c#L63)
 
 ## See also
 

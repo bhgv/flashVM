@@ -50,3 +50,5 @@ python3 lib/tests/interoperability.py build/standalone-styx build/standalone-uni
 самостоятельным проверкам, а не замена этих проверок.
 
 [Проверки и границы](VALIDATION.ru.md)
+
+[Состояние сопровождения и оставшийся долг](MAINTENANCE.ru.md)

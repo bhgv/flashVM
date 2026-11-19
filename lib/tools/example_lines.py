@@ -33,17 +33,17 @@ def audit(paths):
         print('PASS reviewed-source lexical audit:', path)
 
 
-# EN: Optional CLI paths select manually reviewed files; default to the two reviewed
-# libunibus tutorials. Other files are not silently labelled reviewed by this tool.
-# RU: Необязательные CLI paths выбирают отредактированные файлы; по умолчанию два
-# проверенных примера libunibus. Остальные файлы не получают метку review автоматически.
+# EN: Optional CLI paths select manually reviewed files; default to all authored
+# tutorials in both packages. Inherited library sources are outside this audit.
+# RU: Необязательные CLI paths выбирают отредактированные файлы; по умолчанию все
+# примеры обоих пакетов. Унаследованные library sources не входят в этот audit.
 def main():
     root = Path(__file__).resolve().parents[1]
-    paths = [Path(value) for value in sys.argv[1:]] or ([root / 'libunibus/examples' / name for name in ('nested.c', 'queues.c')]
-        + sorted((root / 'libunibus/examples/bridge').glob('*.[ch]'))
-        + sorted((root / 'styx/examples/memory_phy').glob('*.[ch]'))
-        + [root / 'styx/examples/live.c', root / 'styx/tests/live_registry.c',
-           root / 'styx/examples/http_query.py', root / 'styx/tests/http_contract.py'])
+    tutorials = [path for package in ('styx', 'libunibus')
+                 for path in (root / package / 'examples').rglob('*')
+                 if path.suffix in ('.c', '.h', '.py') and '__pycache__' not in path.parts]
+    paths = [Path(value) for value in sys.argv[1:]] or sorted(tutorials) + [
+        root / 'styx/tests/live_registry.c', root / 'styx/tests/http_contract.py']
     audit(paths)
 
 

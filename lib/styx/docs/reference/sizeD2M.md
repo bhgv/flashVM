@@ -52,7 +52,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 uint required = sizeD2M(&info);
 ```
 
-[Complete calling context](../../examples/server.c#L270)
+[Complete calling context](../../examples/server.c#L208)
 
 ## See also
 

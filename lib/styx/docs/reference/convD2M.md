@@ -54,7 +54,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 size = convD2M(&row, bytes, sizeof(bytes));
 ```
 
-[Complete calling context](../../examples/codec.c#L59)
+[Complete calling context](../../examples/codec.c#L56)
 
 ## See also
 

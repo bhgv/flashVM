@@ -5,6 +5,7 @@
 from pathlib import Path
 import importlib.util
 import re
+import shlex
 import subprocess
 import sys
 import urllib.request
@@ -63,6 +64,8 @@ def reference_anchors(base, path, source):
 # RU: Проверить Markdown под base, включая физические номера строк. Возврата нет;
 # внешние URL и текст внутри code fences не запрашиваются по сети.
 def links(base):
+    if (base / 'examples/database/README.md').is_file():
+        tsv_recipe(base)
     for path in base.rglob('*.md'):
         source = path.read_text()
         if path.parent.name == 'reference':
@@ -81,6 +84,23 @@ def links(base):
     for path in base.rglob('*'):
         if path.suffix in ('.c', '.h', '.inc', '.py') and '__pycache__' not in path.parts:
             require(len(path.read_text().splitlines()) <= 500, f'oversized source: {path}')
+
+
+# EN: Run only the inspected printf format from each documented TSV recipe,
+# never a shell or its redirection. Require real tabs/newlines, not escaped text.
+# Borrow base; create no files. This catches double escaping in guide templates.
+# RU: Выполнить только проверенный printf format из TSV-рецепта, не shell и не
+# redirection. Требовать настоящие tabs/newlines, не escaped text. base заимствован,
+# файлы не создаются; проверка ловит double escaping в шаблонах руководства.
+def tsv_recipe(base):
+    for suffix in ('.md', '.ru.md'):
+        guide = base / ('examples/database/README' + suffix)
+        line = next(line for line in guide.read_text().splitlines() if line.startswith('printf '))
+        arguments = shlex.split(line, comments=True)
+        require(len(arguments) == 4 and arguments[0] == 'printf' and
+                arguments[2:] == ['>', 'keys.tsv'], f'{guide}: unexpected recipe syntax')
+        result = subprocess.run(arguments[:2], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        require(result.stdout == b'alpha\tone\nbeta\ttwo\n', f'{guide}: TSV recipe emits escaped text')
 
 
 # EN: Start the package's real viewer, request EN/RU/reference/source pages and rejection cases, then reap it.

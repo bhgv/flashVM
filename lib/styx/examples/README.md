@@ -9,7 +9,7 @@ Copyright (c) 2026 bhgv
 - [Live key/value database view](database/README.md) — `styx-database`
 - [Lazy paginated HTTP hierarchy](http/README.md) — `styx-http`
 - [Live window/control registry](live/README.md) — `styx-live`
-
+- [Common server walkthrough](common.md)
 - [Custom memory PHY](memory_phy/README.md) — `styx-memory-phy`
 
 [Core guide](../README.md) · [Native client source](client.c) · [Backend contract](catalog.h)

@@ -55,7 +55,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 int valid = fid && styxclientopen(fid, 0);
 ```
 
-[Complete calling context](../../examples/client.c#L61)
+[Complete calling context](../../examples/client.c#L57)
 
 ## See also
 

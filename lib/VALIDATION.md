@@ -83,3 +83,14 @@ The HTTP tutorial now validates exact unsigned64 IDs, stat identity, immediate-c
 ## C implementation requirement
 
 DisVM core/runtime and both standalone libraries remain implemented in C. The standalone CMake guard rejects C++ units and CXX source/linker overrides, while leaving example/consumer languages unrestricted. Its negative fixtures run without enabling CXX. Isolated hosted/minimal library builds set CMAKE_CXX_COMPILER to an unavailable path; downstream C++98 consumers use a separate configuration to check C API compatibility. The existing DisVM core/native project declarations use LANGUAGES C; no DisVM runtime changes were needed for this requirement.
+
+## Example review completion
+
+All 31 C/header/Python source files beneath the two examples/ trees are included
+in the lexical audit after manual contract review. The 12 reworked files also
+have unchanged C tokens/Python AST verified separately. The EN/RU README TSV
+command is executed without a shell and must produce actual tabs/newlines.
+The shared server walkthrough explains provisional outputs, byte offsets and
+backend-specific lifetimes.
+
+[Precise scope and inherited maintenance debt](MAINTENANCE.md)

@@ -1,141 +1,203 @@
 # Copyright (c) 2026 bhgv
 # EN: Independent minimal standard 9P2000 client for example acceptance, not an alternate production implementation.
 # RU: Независимый минимальный 9P2000-клиент для проверки примеров, не альтернативная production реализация.
-import socket  # EN: Import the standard-library/test helper used below. RU: Подключить используемый ниже standard-library или test helper.
-import struct  # EN: Import the standard-library/test helper used below. RU: Подключить используемый ниже standard-library или test helper.
+# standalone-reviewed: authored fixture contracts; Python AST unchanged.
+import socket
+import struct
 
 
-# EN/RU: Encode one standard counted UTF-8 string.
-# Кодировать одну стандартную UTF-8 строку с длиной.
-def text(value):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-    data = value.encode()  # EN: Update data for the current operation. RU: Обновить data для текущей операции.
-    return struct.pack("<H", len(data)) + data  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
+# EN: Encode borrowed Unicode value as a standard counted UTF-8 string; return owned bytes.
+# struct.pack rejects a length beyond uint16. No wire send occurs.
+# RU: Кодировать Unicode value как стандартную counted UTF-8 string; вернуть собственные bytes.
+# struct.pack отказывает при длине вне uint16. Отправки в сеть нет.
+def text(value):
+    data = value.encode()
+    return struct.pack("<H", len(data)) + data
 
 
-# EN/RU: Require an exact protocol condition, preserving checks under Python -O.
-# Требовать точное условие протокола, сохраняя проверки при Python -O.
-def require(valid, message):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-    if not valid:  # EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию.
-        raise RuntimeError(message)  # EN: Invoke RuntimeError with these explicit arguments. RU: Вызвать RuntimeError с этими явными аргументами.
+# EN: Require borrowed valid; otherwise raise RuntimeError(message). This remains active under
+# python -O and changes no client state by itself.
+# RU: Проверить valid, иначе RuntimeError(message). Проверка действует при python -O и сама не
+# меняет client state.
+def require(valid, message):
+    if not valid:
+        raise RuntimeError(message)
 
 
 # EN/RU: Own one TCP connection with independent monotonically assigned fids/tags; close explicitly.
 # Владеть одним TCP-соединением с независимыми монотонными fid/tag; закрывать явно.
-class Client:  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-    # EN/RU: Connect to the supplied loopback port and negotiate a standard session/root.
-    # Подключиться к заданному loopback-порту и согласовать стандартную сессию/корень.
-    def __init__(self, port):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        self.socket = socket.create_connection(("127.0.0.1", port), timeout=8)  # EN: Update self.socket for the current operation. RU: Обновить self.socket для текущей операции.
-        self.tag = 0  # EN: Update self.tag for the current operation. RU: Обновить self.tag для текущей операции.
-        self.fid = 1  # EN: Update self.fid for the current operation. RU: Обновить self.fid для текущей операции.
-        self.rpc(100, struct.pack("<I", 8192) + text("9P2000"))  # EN: Invoke self.rpc with these explicit arguments. RU: Вызвать self.rpc с этими явными аргументами.
-        self.rpc(104, struct.pack("<II", 1, 0xffffffff) + text("demo") + text(""))  # EN: Invoke self.rpc with these explicit arguments. RU: Вызвать self.rpc с этими явными аргументами.
+class Client:
 
-    # EN/RU: Receive exactly size bytes or fail on premature disconnect.
-    # Получить ровно size байт либо отказать при раннем разрыве.
-    def exact(self, size):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        data = b""  # EN: Update data for the current operation. RU: Обновить data для текущей операции.
-        while len(data) < size:  # EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла.
-            part = self.socket.recv(size - len(data))  # EN: Update part for the current operation. RU: Обновить part для текущей операции.
-            require(part, "premature 9P EOF")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-            data += part  # EN: Update data for the current operation. RU: Обновить data для текущей операции.
-        return data  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
 
-    # EN/RU: Perform one matched standard RPC; error responses are explicit exceptions, never inferred absence.
-    # Выполнить один стандартный RPC с совпадающим tag; Rerror — явное исключение, не вывод об отсутствии.
-    def rpc(self, kind, payload):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        self.tag += 1  # EN: Update self.tag for the current operation. RU: Обновить self.tag для текущей операции.
-        requested_tag = 0xffff if kind == 100 else self.tag  # EN: Update requested_tag for the current operation. RU: Обновить requested_tag для текущей операции.
-        self.socket.sendall(struct.pack("<IBH", 7 + len(payload), kind, requested_tag) + payload)  # EN: Invoke self.socket.sendall with these explicit arguments. RU: Вызвать self.socket.sendall с этими явными аргументами.
-        size, returned, tag = struct.unpack("<IBH", self.exact(7))  # EN: Invoke struct.unpack with these explicit arguments. RU: Вызвать struct.unpack с этими явными аргументами.
-        require(7 <= size <= 8192 and tag == requested_tag, "bad 9P response envelope")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        body = self.exact(size - 7)  # EN: Update body for the current operation. RU: Обновить body для текущей операции.
-        if returned == 107:  # EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию.
-            length = struct.unpack_from("<H", body)[0]  # EN: Update length for the current operation. RU: Обновить length для текущей операции.
-            raise RuntimeError("Rerror: " + body[2:2 + length].decode())  # EN: Invoke RuntimeError with these explicit arguments. RU: Вызвать RuntimeError с этими явными аргументами.
-        require(returned == kind + 1, "wrong response type")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        return body  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
+    # EN: Own a TCP connection to loopback port with an 8s socket timeout; negotiate msize8192 and
+    # attach root fid1 as demo. No concurrent RPCs are supported. A setup exception aborts
+    # construction; this test helper is not a production reconnection API.
+    # RU: Владеть TCP connection к loopback port с timeout8с; согласовать msize8192 и attach root
+    # fid1 как demo. Конкурентные RPC не поддерживаются. Setup exception прерывает создание; helper
+    # не является production reconnection API.
+    def __init__(self, port):
+        self.socket = socket.create_connection(("127.0.0.1", port), timeout=8)
+        self.tag = 0
+        self.fid = 1
+        self.rpc(100, struct.pack("<I", 8192) + text("9P2000"))
+        self.rpc(104, struct.pack("<II", 1, 0xffffffff) + text("demo") + text(""))
 
-    # EN/RU: Walk from the attached root and require every component; return the new owned fid.
-    # Пройти от корня и требовать каждый компонент; вернуть новый свой fid.
-    def walk(self, path):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        parts = [part for part in path.split("/") if part]  # EN: Update parts for the current operation. RU: Обновить parts для текущей операции.
-        self.fid += 1  # EN: Update self.fid for the current operation. RU: Обновить self.fid для текущей операции.
-        result = self.rpc(110, struct.pack("<IIH", 1, self.fid, len(parts)) + b"".join(text(part) for part in parts))  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-        require(struct.unpack_from("<H", result)[0] == len(parts), "partial walk")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        return self.fid  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
 
-    # EN/RU: Open the selected path/mode and return its owned fid.
-    # Открыть путь с заданным mode и вернуть свой fid.
-    def open(self, path, mode=0):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        fid = self.walk(path)  # EN: Update fid for the current operation. RU: Обновить fid для текущей операции.
-        self.rpc(112, struct.pack("<IB", fid, mode))  # EN: Invoke self.rpc with these explicit arguments. RU: Вызвать self.rpc с этими явными аргументами.
-        return fid  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
+    # EN: Read exactly size bytes under the socket timeout; return owned bytes. EOF raises
+    # RuntimeError and socket errors propagate. Fragment boundaries are never treated as records;
+    # caller serializes socket reads.
+    # RU: Прочитать ровно size bytes с socket timeout; вернуть собственные bytes. EOF даёт
+    # RuntimeError, socket errors передаются выше. Фрагменты не считаются записями; caller
+    # сериализует reads.
+    def exact(self, size):
+        data = b""
+        while len(data) < size:
+            part = self.socket.recv(size - len(data))
+            require(part, "premature 9P EOF")
+            data += part
+        return data
 
-    # EN/RU: Read one exact acknowledged chunk from an existing fid at the supplied offset.
-    # Прочитать подтверждённый chunk из существующего fid по заданному offset.
-    def read(self, fid, offset, count):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        result = self.rpc(116, struct.pack("<IQI", fid, offset, count))  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-        size = struct.unpack_from("<I", result)[0]  # EN: Update size for the current operation. RU: Обновить size для текущей операции.
-        require(size <= count and len(result) == size + 4, "bad Rread extent")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        return result[4:]  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
 
-    # EN/RU: Clunk an owned fid; the connection root stays independently retained.
-    # Освободить свой fid; корень соединения удерживается независимо.
-    def clunk(self, fid):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        self.rpc(120, struct.pack("<I", fid))  # EN: Invoke self.rpc with these explicit arguments. RU: Вызвать self.rpc с этими явными аргументами.
+    # EN: Send borrowed kind/payload once with a fresh tag (NOTAG for Tversion). Match response
+    # size/tag/type, return owned body, or raise on Rerror/transport/malformed reply. This finite
+    # test client never reuses/wraps its counters and has no pipelining; malformed fields may also
+    # raise struct/Unicode errors. No retry is implied.
+    # RU: Один раз отправить kind/payload с новым tag (NOTAG для Tversion). Проверить response
+    # size/tag/type, вернуть body либо exception при Rerror/transport/malformed reply. Конечный test
+    # client не оборачивает counters и не делает pipelining; поля могут дать struct/Unicode errors.
+    # Retry не подразумевается.
+    def rpc(self, kind, payload):
+        self.tag += 1
+        requested_tag = 0xffff if kind == 100 else self.tag
+        self.socket.sendall(struct.pack("<IBH", 7 + len(payload), kind, requested_tag) + payload)
+        size, returned, tag = struct.unpack("<IBH", self.exact(7))
+        require(7 <= size <= 8192 and tag == requested_tag, "bad 9P response envelope")
+        body = self.exact(size - 7)
+        if returned == 107:
+            length = struct.unpack_from("<H", body)[0]
+            raise RuntimeError("Rerror: " + body[2:2 + length].decode())
+        require(returned == kind + 1, "wrong response type")
+        return body
 
-    # EN/RU: Read a bounded text file using repeated small chunks; always clunk on completion/failure.
-    # Прочитать ограниченный текст малыми chunks; всегда выполнить clunk по завершении/ошибке.
-    def file(self, path):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        fid = self.open(path)  # EN: Update fid for the current operation. RU: Обновить fid для текущей операции.
-        try:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            result = b""  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-            while True:  # EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла.
-                chunk = self.read(fid, len(result), 7)  # EN: Update chunk for the current operation. RU: Обновить chunk для текущей операции.
-                if not chunk:  # EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию.
-                    return result.decode()  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
-                result += chunk  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-                require(len(result) <= 4096, "demo text limit")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        finally:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            self.clunk(fid)  # EN: Invoke self.clunk with these explicit arguments. RU: Вызвать self.clunk с этими явными аргументами.
 
-    # EN/RU: List a directory with real byte-offset pagination, validating whole standard Dir records and unique names.
-    # Перечислить каталог по реальным байтовым offset, проверяя целые стандартные Dir и уникальность имён.
-    def directory(self, path):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        fid = self.open(path)  # EN: Update fid for the current operation. RU: Обновить fid для текущей операции.
-        result = []  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-        offset = 0  # EN: Update offset for the current operation. RU: Обновить offset для текущей операции.
-        try:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            while True:  # EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла.
-                chunk = self.read(fid, offset, 192)  # EN: Update chunk for the current operation. RU: Обновить chunk для текущей операции.
-                if not chunk:  # EN: Choose a branch using this condition. RU: Выбрать ветку по этому условию.
-                    require(len(result) == len(set(result)), "duplicate directory names")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-                    return result  # EN: Return this branch result to the caller; no further statements in this branch run. RU: Вернуть результат ветки вызывающему; последующие операторы ветки не выполняются.
-                cursor = 0  # EN: Update cursor for the current operation. RU: Обновить cursor для текущей операции.
-                while cursor < len(chunk):  # EN: Iterate while the explicit loop condition permits. RU: Повторять, пока выполняется явное условие цикла.
-                    size = struct.unpack_from("<H", chunk, cursor)[0] + 2  # EN: Update size for the current operation. RU: Обновить size для текущей операции.
-                    require(size >= 49 and cursor + size <= len(chunk), "split directory record")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-                    length = struct.unpack_from("<H", chunk, cursor + 41)[0]  # EN: Update length for the current operation. RU: Обновить length для текущей операции.
-                    result.append(chunk[cursor + 43:cursor + 43 + length].decode())  # EN: Invoke result.append with these explicit arguments. RU: Вызвать result.append с этими явными аргументами.
-                    cursor += size  # EN: Update cursor for the current operation. RU: Обновить cursor для текущей операции.
-                offset += len(chunk)  # EN: Update offset for the current operation. RU: Обновить offset для текущей операции.
-                require(len(result) < 10000, "directory acceptance quota")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        finally:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            self.clunk(fid)  # EN: Invoke self.clunk with these explicit arguments. RU: Вызвать self.clunk с этими явными аргументами.
+    # EN: Walk borrowed slash-separated path from root fid1. Require all components and return a new
+    # owned fid on success. Error/partial walk raises; close the session to retire any residual
+    # failed-walk fid. Empty path clones the root.
+    # RU: Пройти path с slash-разделителями от root fid1. Требовать все компоненты, вернуть новый
+    # owned fid. Error/partial walk даёт exception; close session освобождает остаточный failed-walk
+    # fid. Пустой path клонирует root.
+    def walk(self, path):
+        parts = [part for part in path.split("/") if part]
+        self.fid += 1
+        result = self.rpc(110, struct.pack("<IIH", 1, self.fid, len(parts)) + b"".join(text(part) for part in parts))
+        require(struct.unpack_from("<H", result)[0] == len(parts), "partial walk")
+        return self.fid
 
-    # EN/RU: Send one control command through an ordinarily opened write fid and require its exact acknowledgement.
-    # Послать команду через обычный write fid и требовать точное подтверждение.
-    def write(self, path, value):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        fid = self.open(path, 1)  # EN: Update fid for the current operation. RU: Обновить fid для текущей операции.
-        try:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            data = value.encode()  # EN: Update data for the current operation. RU: Обновить data для текущей операции.
-            result = self.rpc(118, struct.pack("<IQI", fid, 0, len(data)) + data)  # EN: Update result for the current operation. RU: Обновить result для текущей операции.
-            require(struct.unpack("<I", result)[0] == len(data), "short control acknowledgement")  # EN: Invoke require with these explicit arguments. RU: Вызвать require с этими явными аргументами.
-        finally:  # EN: Continue the surrounding expression with these operands. RU: Продолжить окружающее выражение этими операндами.
-            self.clunk(fid)  # EN: Invoke self.clunk with these explicit arguments. RU: Вызвать self.clunk с этими явными аргументами.
 
-    # EN/RU: Close the connection, retiring all remaining server-side fids.
-    # Закрыть соединение, освободив оставшиеся серверные fid.
-    def close(self):  # EN: Define the documented handler below. RU: Определить документированный ниже обработчик.
-        self.socket.close()  # EN: Release this owned native descriptor. RU: Освободить этот native descriptor.
+    # EN: Walk path, Topen with numeric mode (default OREAD=0), return owned fid. On successful
+    # return caller must clunk; open failure may leave its walked fid until session close. No
+    # truncation/creation is added implicitly.
+    # RU: Выполнить walk path, Topen с numeric mode (default OREAD=0), вернуть owned fid. После
+    # успеха caller делает clunk; при open failure walked fid может жить до session close. Неявных
+    # truncate/create нет.
+    def open(self, path, mode=0):
+        fid = self.walk(path)
+        self.rpc(112, struct.pack("<IB", fid, mode))
+        return fid
+
+
+    # EN: Read at byte offset from borrowed opened fid, requesting count bytes. Return owned payload
+    # after verifying exact Rread count/extent. Empty bytes is confirmed EOF; Rerror is an
+    # exception, not absence. Fid ownership is unchanged.
+    # RU: Читать из opened fid по byte offset, запросив count bytes. Вернуть payload после проверки
+    # Rread count/extent. Пустые bytes — подтверждённый EOF, Rerror — exception, не отсутствие.
+    # Владение fid не меняется.
+    def read(self, fid, offset, count):
+        result = self.rpc(116, struct.pack("<IQI", fid, offset, count))
+        size = struct.unpack_from("<I", result)[0]
+        require(size <= count and len(result) == size + 4, "bad Rread extent")
+        return result[4:]
+
+
+    # EN: Send Tclunk for owned fid; success retires it on the server. Return None; errors propagate
+    # and the caller must not assume successful retirement. Root remains until connection close.
+    # RU: Послать Tclunk owned fid; успех освобождает его на сервере. Вернуть None; errors
+    # передаются выше, нельзя предполагать successful retirement. Root остаётся до connection close.
+    def clunk(self, fid):
+        self.rpc(120, struct.pack("<I", fid))
+
+
+    # EN: Open borrowed path readonly, read 7-byte chunks up to the 4096-byte demo quota and decode
+    # UTF-8 at EOF. Return text; always clunk a successfully opened fid through finally.
+    # RPC/decode/quota errors propagate. This is a text-test convenience, not a streaming production
+    # API.
+    # RU: Открыть path readonly, читать chunks по7 bytes до demo quota4096, декодировать UTF-8 при
+    # EOF. Вернуть text; finally всегда делает clunk успешного open. RPC/decode/quota errors
+    # передаются выше. Это text-test helper, не production streaming API.
+    def file(self, path):
+        fid = self.open(path)
+        try:
+            result = b""
+            while True:
+                chunk = self.read(fid, len(result), 7)
+                if not chunk:
+                    return result.decode()
+                result += chunk
+                require(len(result) <= 4096, "demo text limit")
+        finally:
+            self.clunk(fid)
+
+
+    # EN: Open path, read 192-byte pages using cumulative encoded byte offsets, decode whole Dir
+    # records and require unique names at EOF. Return names in server order; always clunk after
+    # successful open. A 10000-name test quota bounds accumulation. No snapshot is requested; source
+    # changes may require rewind or raise.
+    # RU: Открыть path, читать pages192 bytes по суммарным encoded byte offsets, декодировать целые
+    # Dir и проверить уникальность имён при EOF. Вернуть имена в порядке сервера; после successful
+    # open всегда clunk. Quota10000 ограничивает накопление. Snapshot не запрашивается; изменения
+    # могут требовать rewind или дать error.
+    def directory(self, path):
+        fid = self.open(path)
+        result = []
+        offset = 0
+        try:
+            while True:
+                chunk = self.read(fid, offset, 192)
+                if not chunk:
+                    require(len(result) == len(set(result)), "duplicate directory names")
+                    return result
+                cursor = 0
+                while cursor < len(chunk):
+                    size = struct.unpack_from("<H", chunk, cursor)[0] + 2
+                    require(size >= 49 and cursor + size <= len(chunk), "split directory record")
+                    length = struct.unpack_from("<H", chunk, cursor + 41)[0]
+                    result.append(chunk[cursor + 43:cursor + 43 + length].decode())
+                    cursor += size
+                offset += len(chunk)
+                require(len(result) < 10000, "directory acceptance quota")
+        finally:
+            self.clunk(fid)
+
+
+    # EN: Open borrowed path OWRITE, encode value as UTF-8, send one Twrite at offset0 and require
+    # acknowledgement of every byte. Return None; short/Rerror fails and is never replayed. Always
+    # clunk after successful open.
+    # RU: Открыть path OWRITE, кодировать value в UTF-8, отправить один Twrite offset0 и требовать
+    # полный count. Вернуть None; short/Rerror — отказ без replay. Всегда clunk после successful
+    # open.
+    def write(self, path, value):
+        fid = self.open(path, 1)
+        try:
+            data = value.encode()
+            result = self.rpc(118, struct.pack("<IQI", fid, 0, len(data)) + data)
+            require(struct.unpack("<I", result)[0] == len(data), "short control acknowledgement")
+        finally:
+            self.clunk(fid)
+
+
+    # EN: Close this owned socket; the server retires all remaining fids on disconnect. No Tclunk
+    # loop or remote success acknowledgement is promised. Call from the same serialized test owner.
+    # RU: Закрыть owned socket; сервер освобождает оставшиеся fid при disconnect. Tclunk loop и
+    # remote acknowledgement не обещаются. Вызывает тот же serialized test owner.
+    def close(self):
+        self.socket.close()

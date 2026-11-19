@@ -54,7 +54,7 @@ Styx::client; hosted native build
 StyxFid *fid = styxclientwalk(client, argv[2]);
 ```
 
-[Complete calling context](../../examples/client.c#L60)
+[Complete calling context](../../examples/client.c#L56)
 
 ## См. также
 

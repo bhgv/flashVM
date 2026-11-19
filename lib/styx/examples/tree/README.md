@@ -46,3 +46,5 @@ The TSV demo is bounded to128 keys and rereads one flat dataset, not a recursive
 - [styxinit](../../docs/reference/styxinit.md), [convD2M](../../docs/reference/convD2M.md), [convM2S](../../docs/reference/convM2S.md).
 - [Original client](../client.c), [independent wire client](../wire_client.py), [acceptance](../check.py).
 - [Main-project native Styx help](https://github.com/bhgv/flashVM/blob/master/disVM/native/README.md).
+
+[Common server walkthrough](../common.md)

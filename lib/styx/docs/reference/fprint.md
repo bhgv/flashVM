@@ -48,7 +48,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 fprint(2, "backend initialization failed\n");
 ```
 
-[Complete calling context](../../examples/server.c#L361)
+[Complete calling context](../../examples/server.c#L279)
 
 ## See also
 

@@ -47,7 +47,7 @@ Styx::nine; hosted Linux64 support
 print("%d\n", ntohs(address.sin_port));
 ```
 
-[Complete calling context](../../examples/server.c#L370)
+[Complete calling context](../../examples/server.c#L288)
 
 ## См. также
 

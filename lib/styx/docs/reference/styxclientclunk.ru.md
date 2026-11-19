@@ -51,7 +51,7 @@ Styx::client; hosted native build
 styxclientclunk(fid);
 ```
 
-[Complete calling context](../../examples/client.c#L84)
+[Complete calling context](../../examples/client.c#L80)
 
 ## См. также
 

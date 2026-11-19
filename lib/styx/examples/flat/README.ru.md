@@ -46,3 +46,5 @@ TSV-пример ограничен128 ключами; он перечитыва
 - [styxinit](../../docs/reference/styxinit.ru.md), [convD2M](../../docs/reference/convD2M.ru.md), [convM2S](../../docs/reference/convM2S.ru.md).
 - [Original client](../client.c), [independent wire client](../wire_client.py), [acceptance](../check.py).
 - [Main-project native Styx help](https://github.com/bhgv/flashVM/blob/master/disVM/native/README.md).
+
+[Common server walkthrough](../common.ru.md)

@@ -56,7 +56,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 char *error = styxinit(&server, &ops, argc > 1 ? argv[1] : "0", 0555, 0);
 ```
 
-[Complete calling context](../../examples/server.c#L364)
+[Complete calling context](../../examples/server.c#L282)
 
 ## See also
 

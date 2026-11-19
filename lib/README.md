@@ -52,3 +52,5 @@ clients reusing the same internal tags/fids. It supplements, rather than replace
 each package's independent acceptance.
 
 [Acceptance and limits](VALIDATION.md)
+
+[Maintenance scope and remaining inherited work](MAINTENANCE.md)

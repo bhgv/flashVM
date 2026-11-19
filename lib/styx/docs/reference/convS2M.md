@@ -54,7 +54,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 uint size = convS2M(&input, bytes, sizeof(bytes));
 ```
 
-[Complete calling context](../../examples/codec.c#L33)
+[Complete calling context](../../examples/codec.c#L30)
 
 ## See also
 

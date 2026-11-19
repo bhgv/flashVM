@@ -51,7 +51,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 styxclientclunk(fid);
 ```
 
-[Complete calling context](../../examples/client.c#L84)
+[Complete calling context](../../examples/client.c#L80)
 
 ## See also
 

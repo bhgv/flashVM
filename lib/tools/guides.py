@@ -5,6 +5,7 @@ from pathlib import Path
 from .memory_guide import main as memory_guide
 from .live_guide import main as live_guide
 from .http_guide import main as http_guide
+from .common_guide import main as common_guide
 
 MODELS = {
     "flat": ("Fixed root files", "Фиксированные файлы корня", "fixed.c", "status; temperature", "status", "ready\\n",
@@ -101,8 +102,10 @@ ctest --test-dir build -R '^styx-{key}$' --output-on-failure  # Independent wire
                 content += "\n## " + ("Изменение реестра" if language else "Changing the registry") + "\n\n```python\nfrom wire_client import Client  # PYTHONPATH=examples; standard 9P client / Стандартный клиент\nc = Client(5640)  # Own one connection / Владеть соединением\nc.write('ctl', 'add')  # Publish a new window / Опубликовать новое окно\nprint(c.directory('/'))  # Observe current names / Увидеть текущие имена\nc.write('ctl', 'remove 100')  # Hide name, retain open objects / Скрыть имя, удержать open-объекты\nc.close()  # Retire fids and connection / Освободить fid и соединение\n```\n"
             if key == "http":
                 content += "\n## HTTP backend schema\n\n`GET endpoint?op=list&id=0&start=0&limit=16` returns a JSON array. `op=stat` returns zero or one row. Each row has exact unsigned64 `id`/`parent`, numeric standard `mode`, UTF-8 `name`, optional text `value`. The source owns stable identities and access policy; changing a filename must not alias an unrelated held ID.\n\n[HTTP adapter](../http_query.py) · [HTTP fixture](../http_source.py).\n"
+            content += f"\n[Common server walkthrough](../common{suffix})\n"
             write(root / f"styx/examples/{key}/README{suffix}", content)
             index.append(f"- [{title}]({key}/README{suffix}) — `styx-{key}`")
+        index.append(f"- [Common server walkthrough](common{suffix})")
         index.append(f"- [Custom memory PHY](memory_phy/README{suffix}) — `styx-memory-phy`")
         index.extend(["", "[Core guide](../README" + suffix + ") · [Native client source](client.c) · [Backend contract](catalog.h)", ""])
         write(root / f"styx/examples/README{suffix}", "\n".join(index))
@@ -174,6 +177,7 @@ Copyright (c) 2026 bhgv
 def main():
     root = Path(__file__).resolve().parents[1]
     examples(root)
+    common_guide(root / "styx")
     memory_guide(root / "styx")
     live_guide(root / "styx")
     http_guide(root / "styx")

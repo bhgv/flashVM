@@ -48,7 +48,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 out->qid = styxqid(row->id, (row->mode & CATALOG_DIR) != 0);
 ```
 
-[Complete calling context](../../examples/server.c#L56)
+[Complete calling context](../../examples/server.c#L39)
 
 ## See also
 

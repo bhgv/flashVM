@@ -48,7 +48,7 @@ Styx::server; hosted native build
 out->qid = styxqid(row->id, (row->mode & CATALOG_DIR) != 0);
 ```
 
-[Complete calling context](../../examples/server.c#L56)
+[Complete calling context](../../examples/server.c#L39)
 
 ## См. также
 

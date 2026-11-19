@@ -90,3 +90,13 @@ HTTP tutorial проверяет точные unsigned64 ID, соответст�
 ## Требование реализации на C
 
 DisVM core/runtime и обе самостоятельные библиотеки остаются на C. CMake guard библиотек отклоняет C++ units и CXX source/linker overrides, не ограничивая языки примеров/потребителей. Negative fixtures выполняются без включения CXX. Изолированные hosted/minimal сборки задают недоступный CMAKE_CXX_COMPILER; отдельная конфигурация C++98 consumers проверяет совместимость C API. Текущие объявления DisVM core/native используют LANGUAGES C; для этого требования менять runtime не потребовалось.
+
+## Завершение прохода по примерам
+
+Все 31 C/header/Python source files под обоими examples/ включены в lexical audit
+после ручного описания контрактов. Для 12 переоформленных файлов отдельно проверены
+неизменные C tokens/Python AST. TSV-команда из EN/RU README исполняется без shell
+и должна выдать настоящие tabs/newlines. Общий server walkthrough описывает
+provisional outputs, byte offsets и backend-specific lifetimes.
+
+[Точный объём и унаследованный долг](MAINTENANCE.ru.md)

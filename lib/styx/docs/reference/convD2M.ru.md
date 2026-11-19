@@ -54,7 +54,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 size = convD2M(&row, bytes, sizeof(bytes));
 ```
 
-[Complete calling context](../../examples/codec.c#L59)
+[Complete calling context](../../examples/codec.c#L56)
 
 ## См. также
 

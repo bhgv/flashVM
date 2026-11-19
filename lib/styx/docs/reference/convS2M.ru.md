@@ -54,7 +54,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 uint size = convS2M(&input, bytes, sizeof(bytes));
 ```
 
-[Complete calling context](../../examples/codec.c#L33)
+[Complete calling context](../../examples/codec.c#L30)
 
 ## См. также
 

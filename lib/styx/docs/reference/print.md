@@ -47,7 +47,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 print("%d\n", ntohs(address.sin_port));
 ```
 
-[Complete calling context](../../examples/server.c#L370)
+[Complete calling context](../../examples/server.c#L288)
 
 ## See also
 

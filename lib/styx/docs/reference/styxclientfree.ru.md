@@ -52,7 +52,7 @@ Styx::client; hosted native build
 styxclientfree(client);
 ```
 
-[Complete calling context](../../examples/client.c#L86)
+[Complete calling context](../../examples/client.c#L82)
 
 ## См. также
 

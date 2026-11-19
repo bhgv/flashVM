@@ -48,7 +48,7 @@ Styx::nine; hosted Linux64 support
 fprint(2, "backend initialization failed\n");
 ```
 
-[Complete calling context](../../examples/server.c#L361)
+[Complete calling context](../../examples/server.c#L279)
 
 ## См. также
 

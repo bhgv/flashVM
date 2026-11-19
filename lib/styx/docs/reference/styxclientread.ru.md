@@ -56,7 +56,7 @@ Styx::client; hosted native build
 styxclientread(fid, offset, bytes, sizeof(bytes), &result);
 ```
 
-[Complete calling context](../../examples/client.c#L67)
+[Complete calling context](../../examples/client.c#L63)
 
 ## См. также
 

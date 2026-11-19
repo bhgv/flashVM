@@ -52,7 +52,7 @@ Styx::codec; C99, no OS/allocator/threads; alternatively Styx::nine in the hoste
 uint required = sizeD2M(&info);
 ```
 
-[Complete calling context](../../examples/server.c#L270)
+[Complete calling context](../../examples/server.c#L208)
 
 ## См. также
 

@@ -52,7 +52,7 @@ Actual call-site excerpt; its enclosing source provides variable initialization 
 styxclientshutdown(client);
 ```
 
-[Complete calling context](../../examples/client.c#L85)
+[Complete calling context](../../examples/client.c#L81)
 
 ## See also
 
