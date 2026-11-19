@@ -52,7 +52,13 @@ DVM_SysEvents *dvm_sysevents_current(void);
 
 /* EN/RU: Construct boot-installed contextual device; exactly one live instance.
  * Contextual opens capture current owner's inbox, never a caller-supplied PID.
- * Создать boot device; opens захватывают current owner inbox, без PID от guest. */
+ * Return an owned factory or NULL on allocation failure/already-published device.
+ * Concurrent constructors publish one winner; losing candidates release all native ownership.
+ * The singleton is reusable only after the last bound/open factory reference retires.
+ * RU: Создать boot device; opens захватывают current owner inbox, без PID от guest.
+ * Вернуть свою factory либо NULL при отказе памяти/уже опубликованном устройстве.
+ * Конкурирующие конструкторы выбирают одного победителя и освобождают проигравших.
+ * Повторное создание возможно после ухода последней ссылки bind/open. */
 DVM_Provider *dvm_sysevents_device(void);
 
 

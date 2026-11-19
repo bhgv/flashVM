@@ -38,15 +38,18 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     add_test(NAME disvm_vfs_handle COMMAND disvm_vfs_handle_test)
     set_tests_properties(disvm_vfs_handle PROPERTIES TIMEOUT 10 LABELS "host-unit")
     add_executable(disvm_sysevents_test vfs/test_sysevents.c vfs/test_notice.c vfs/test_sysevents_queue.c
-        vfs/test_sysevents_race.c vfs/test_sysevents_subscriptions.c vfs/sysevents.c vfs/sysevents_watch.c
+        vfs/test_sysevents_race.c vfs/test_sysevents_subscriptions.c vfs/test_sysevents_device.c vfs/sysevents.c vfs/sysevents_watch.c
         vfs/sysevents_stream.c vfs/sysevents_device.c owner_messages.c vfs/path.c vfs/group.c vfs/mutations.c
         vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c
         vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_sysevents_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_sysevents_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
-    set_property(TARGET disvm_sysevents_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
+    set_property(TARGET disvm_sysevents_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc -Wl,--wrap=dvm_provider_create")
     add_test(NAME disvm_sysevents COMMAND disvm_sysevents_test)
     set_tests_properties(disvm_sysevents PROPERTIES TIMEOUT 20 LABELS "host-unit")
+    add_test(NAME disvm_sysevents_device_control COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/vfs/test_sysevents_device_control.py" "$<TARGET_FILE:disvm_sysevents_test>")
+    set_tests_properties(disvm_sysevents_device_control PROPERTIES TIMEOUT 90 LABELS "host-unit")
     add_executable(disvm_stack_test vfs/test_stack.c vfs/stack.c vfs/stack_target.c vfs/path.c vfs/group.c vfs/mutations.c
         vfs/layer_bind.c vfs/cancel.c vfs/union_io.c vfs/directory.c vfs/directory_names.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c
         vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)

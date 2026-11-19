@@ -91,7 +91,16 @@ DVM_Provider *dvm_sysevents_device(void)
         return NULL;
     }
     *state = provider;
-    __atomic_store_n(&device, provider, __ATOMIC_RELEASE);
+    DVM_Provider *expected = NULL;
+    if (!__atomic_compare_exchange_n(&device, &expected, provider, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+    {
+        /* A concurrent constructor won. Destroy only this unpublished candidate;
+         * its identity-checked destructor must leave the published device intact.
+         * RU: Другой конструктор победил; уничтожить лишь своего кандидата,
+         * не сбрасывая опубликованное устройство в его деструкторе. */
+        dvm_provider_release(provider);
+        return NULL;
+    }
     return provider;
 }
 

@@ -40,6 +40,20 @@ FD retains its original inbox capability, as an ordinary open descriptor does.
 только виртуальные точки монтирования текущего namespace, без host source paths
 и provider-local resource addresses. Уведомление не предоставляет права на файл.
 
+Device construction publishes one fully initialized factory with an atomic
+compare/exchange. Concurrent constructors return one owned winner; unpublished
+losers release their private state without clearing the winner's identity.
+Allocation failure leaves no reserved singleton. Bound roots and opened handles
+pin the factory, so recreation is refused until the last such reference retires.
+The global identity is compared only, never dereferenced without a caller-owned
+reference. It does not select a recipient or grant access.
+
+Конкурирующие конструкторы публикуют ровно одно устройство. Проигравшие освобождают
+свои объекты, не сбрасывая регистрацию победителя. Отказ памяти не резервирует
+устройство. Пока его удерживает bind или открытый FD, повторное создание отклоняется;
+после последнего освобождения оно снова возможно. Глобальная идентичность не даёт
+прав доступа и не заменяет выбор очереди текущего потока.
+
 | Operation / Операция | Current behavior / Текущее поведение |
 | --- | --- |
 | `Sys.read` | Exactly one whole queued record / Ровно одна целая запись |
@@ -177,6 +191,19 @@ Mounting a host directory does not turn it into an OS filesystem notification so
 готовый сетевой heartbeat или наблюдатель внешних изменений host filesystem.
 
 ## Acceptance / Проверка
+
+The native unit fixture gates eight actual factory constructors immediately before
+publication, for four rounds, then checks one recognizable winner, loser cleanup,
+state/factory allocation refusal, retry and the lifetime of a real opened handle.
+An independently relinked negative control restores only the old load/store
+publication and must fail with `multiple published device factories`. Build errors,
+timeouts and sanitizer reports do not count as detection. The same fixture also
+retains its existing namespace/source races, queue and scope-isolation checks.
+
+These checks do not add module-call-boundary inbox selection. The current owner's
+inbox is still process-scoped; per-Modlink namespace selection is documented in
+[module environments](VFS-TRAVERSAL.md). Switching module-specific subscriptions
+while preserving already opened FD capabilities remains separate integration.
 
 [Native inbox tests](vfs/test_sysevents.c) prove source-to-inbox delivery before
 any owner binding or device open, independent inboxes, namespace isolation,

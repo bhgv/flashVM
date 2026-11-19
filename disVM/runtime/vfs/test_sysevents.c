@@ -10,6 +10,7 @@ void test_native_notices(void); /* Native sender/callback lifetime acceptance, n
 void test_sysevents_queue(void); /* Atomic shared inbox, failure and concurrent-reader acceptance. */
 void test_sysevents_race(void); /* Source publication versus native namespace churn. */
 void test_sysevents_subscriptions(void); /* Stable reuse, native allocation faults and scope exhaustion. */
+void test_sysevents_device(void); /* Deterministic competing constructors and retained-handle singleton lifetime. */
 static unsigned destroyed; /* Final source release count after bindings/engine watches retire. */
 
 
@@ -117,7 +118,9 @@ int main(void)
     int state = 0;
     DVM_Namespace *group = dvm_namespace_create("/", "/", NULL);
     DVM_Namespace *hidden = dvm_namespace_create("/jail", "/", NULL);
-    DVM_Provider *source = dvm_provider_create(&source_ops, &state), *device = dvm_sysevents_device();
+    DVM_Provider *source = dvm_provider_create(&source_ops, &state);
+    test_sysevents_device();
+    DVM_Provider *device = dvm_sysevents_device();
     DVM_SysEvents *first, *second;
     DVM_VfsHandle a = {0}, b = {0};
     DVM_NamespacePlan target;
