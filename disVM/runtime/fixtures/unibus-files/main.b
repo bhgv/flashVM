@@ -7,6 +7,7 @@ include "vfsnative.m";
 include "runexample.m";
 include "value.m";
 include "launchcontext.m";
+include "processctl.m";
 Check: module { init: fn(); };
 sys: Sys; # Owner-local builtin handle, no transport authority.
 
@@ -285,6 +286,29 @@ checknumbered()
 }
 
 
+# EN/RU: Include an independent expected PID in the test's opaque startup bytes.
+# Приложить независимо прочитанный PID в тестовых данных запуска.
+callerpayload(payload: array of byte): array of byte
+{
+    pc := load Processctl Processctl->PATH;
+    pid := pc->pid();
+    bytes := array[7] of byte;
+    for (i := 0; i < 4; i++) {
+        bytes[i] = byte (pid >> (24 - i*8));
+    }
+    bytes[4:] = payload;
+    return bytes;
+}
+
+
+# EN/RU: Submit the same scoped route from a different active Limbo caller.
+# Отправить запрос по тому же маршруту из другого активного процесса Limbo.
+submit_child(vfs: Vfsnative, payload: array of byte, done: chan of int)
+{
+    done <-= vfs->runargs("/payload.dis", callerpayload(payload));
+}
+
+
 # EN/RU: Open only explicitly mounted file capabilities, write independently fixed canonical frames, consume peer receipts.
 # Открыть лишь явно mounted file capabilities, записать независимые фиксированные frames, получить peer receipts.
 init()
@@ -313,13 +337,30 @@ init()
         if (vfs == nil || vfs->run("/missing.dis") != 0) {
             raise "VFS command submission failed";
         }
+        scoped := sys->fildes(2) == nil;
+        badsize := 4;
+        if (scoped) {
+            badsize = 8;
+        }
         if (vfs->runargs("/payload.dis", array[65537] of byte) == 1 ||
-            vfs->runargs("/payload.dis", array[4] of byte) == 1) {
+            vfs->runargs("/payload.dis", array[badsize] of byte) == 1) {
             raise "oversized launch payload accepted";
         }
         payload := array[] of {byte 'x', byte 0, byte 'y'};
-        if (vfs->runargs("/payload.dis", payload) != 1) {
+        scopedpayload := payload;
+        if (scoped) {
+            scopedpayload = callerpayload(payload);
+        }
+        if (vfs->runargs("/payload.dis", scopedpayload) != 1) {
             raise "binary callback refused";
+        }
+        if (scoped) {
+            delivered := chan of int;
+            spawn submit_child(vfs, payload, delivered);
+            if (<-delivered != 1) {
+                raise "spawned caller did not supply its own PID";
+            }
+            sys->print("PASS VFS launch captured two caller PIDs\n");
         }
         example := load Runexample Runexample->PATH;
         if (example == nil || example->execute("/routed.dis", "/routed.dis", "/run-result", payload) != 0) {

@@ -17,6 +17,7 @@ struct DVM_LaunchAddress
     DVM_LaunchCheck check; /* Optional bounded local policy for a wrapper, no provider/guest I/O. */
     void *context; /* Owned guard state only for wrappers; may outlive original provider factory. */
     void (*release)(void *); /* Optional nonblocking native guard cleanup, outside all source/service locks. */
+    DVM_LaunchSendProcess process_send; /* Scoped leaf requires a captured caller PID. */
     DVM_LaunchSend send; /* Optional leaf transport, separate from native ticket issuance. */
     DVM_LaunchEndpoint *endpoint; /* Independent owned submit-only wrapper through joined address retirement. */
     char module[DVM_NS_PATH_LIMIT]; /* Immutable owner-side logical label, never copied from request at submit. */

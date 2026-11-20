@@ -73,3 +73,18 @@ program and its child. Automatic VM variable publication and composite
 value operations remain separate work.
 
 The fixture uses the [callback-backed integer proxy](../native/terminal/VARIABLE-FILE.md).
+
+## PID from the active caller
+
+For a route admitting process context, create the address with
+`styxterminallaunchcalleraddress`. Ordinary `Vfsnative.run` and
+`Vfsnative.runargs` capture the current PID before native waiting. The
+address encodes it in the Styx record header. The receiver selects a
+process only within the granted loaded module root. Startup bytes form
+the separate remainder of the record. An automatic address refuses
+submission without a caller PID before writing anything to Styx.
+
+The end-to-end fixture sends on the same route from two Limbo processes
+and verifies both PIDs against `Processctl.pid()`. The launcher still
+configures the route and grants the module root. This path covers process
+launch.

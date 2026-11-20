@@ -175,6 +175,7 @@ def main():
                             f"PASS process VFS {expected_vfs}" not in guest_output or
                             "PASS process indexed array over Styx" not in guest_output or
                             "PASS process indexed table over Styx" not in guest_output or
+                            "PASS VFS launch captured two caller PIDs" not in guest_output or
                             "PASS process context hides fd 2" not in guest_output or
                             (work / "numbered-base-out.bin").read_bytes() != b"parent:"):
                         raise RuntimeError("scoped descriptor override or omission failed")

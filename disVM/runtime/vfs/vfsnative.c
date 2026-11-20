@@ -348,12 +348,13 @@ static WORD run_path(const char *name, const void *bytes, size_t size)
     if (process && group && dvm_namespace_retain(group))
     {
         unsigned role = ((DVM_RuntimeProcess *)process)->module_local_role;
+        uint32_t pid = process->pid > 0 ? (uint32_t)process->pid : 0;
         DVM_VfsWait *wait;
         int released = dvm_vfs_path_enter(&wait);
         if (released >= 0)
         {
             DVM_LaunchAddress *address = dvm_launch_route_resolve(group, name, role);
-            result = dvm_launch_address_send(address, bytes, size);
+            result = dvm_launch_address_send_process(address, pid, bytes, size);
             dvm_launch_address_free(address);
             dvm_vfs_wait_end(wait);
             dvm_runtime_gc_native_enter(released);

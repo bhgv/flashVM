@@ -18,4 +18,7 @@ DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigne
  * Как прежний адрес, с копией выбора процесса для настроенного маршрута модуля. */
 DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, unsigned long tag,
     const DVM_LaunchProgram *program);
+/* EN/RU: Opt into a process-scoped launch using the runtime caller's PID.
+ * Включить запуск с контекстом PID вызывающего процесса. */
+DVM_LaunchAddress *styxterminallaunchcalleraddress(DVM_Provider *request_file, unsigned long tag);
 #endif

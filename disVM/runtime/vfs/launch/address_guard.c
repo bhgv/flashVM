@@ -69,9 +69,25 @@ DVM_LaunchAddress *dvm_launch_address_transport(DVM_LaunchSend send, void *state
 }
 
 
+/* EN/RU: Construct an opt-in caller-scoped leaf, leaving failed ownership with the caller.
+ * Создать адрес с контекстом вызывающего, при отказе сохранив владение. */
+DVM_LaunchAddress *dvm_launch_address_process_transport(DVM_LaunchSendProcess send, void *state, void (*release)(void *))
+{
+    DVM_LaunchAddress *address = send ? calloc(1, sizeof(*address)) : NULL;
+    if (address)
+    {
+        address->process_send = send;
+        address->context = state;
+        address->release = release;
+    }
+    return address;
+}
+
+
 // EN/RU: See route.h; never retry a possibly admitted request.
 // См. route.h; не повторять запрос с неопределённым результатом.
-DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const void *arguments, size_t size)
+DVM_LaunchDelivery dvm_launch_address_send_process(DVM_LaunchAddress *address, uint32_t pid,
+    const void *arguments, size_t size)
 {
     if (!address || size > DVM_LAUNCH_ARGUMENT_LIMIT || (size && !arguments))
     {
@@ -85,6 +101,19 @@ DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const voi
         }
         address = address->inner;
     }
+    if (address->process_send)
+    {
+        return pid && !dvm_cancel_requested(dvm_cancel_current()) ?
+            address->process_send(address->context, pid, arguments, size) : DVM_LAUNCH_NOT_SENT;
+    }
     return address->send && !dvm_cancel_requested(dvm_cancel_current()) ?
         address->send(address->context, arguments, size) : DVM_LAUNCH_NOT_SENT;
+}
+
+
+/* EN/RU: Preserve existing callers that send without a process selection.
+ * Сохранить прежнюю отправку без выбора процесса. */
+DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const void *arguments, size_t size)
+{
+    return dvm_launch_address_send_process(address, 0, arguments, size);
 }

@@ -397,12 +397,33 @@ void fixtureimagesfree(void)
  * Проверить бинарные данные гостя, включая встроенный NUL. */
 static int accept_payload(void *state, const void *bytes, size_t size)
 {
-    USED(state);
-    return size == 3 && !memcmp(bytes, "x\0y", size);
+    if (!getenv("DVM_TEST_TERMINAL_SCOPED"))
+    {
+        return size == 3 && !memcmp(bytes, "x\0y", size);
+    }
+    DVM_LaunchProgram caller;
+    if (size != STYX_LAUNCH_PROGRAM_HEADER + 7 ||
+        !styxlaunchprogramdecode(bytes, size, &caller) || caller.parent_pid || caller.hidden_fds)
+    {
+        return 0;
+    }
+    const unsigned char *payload = (const unsigned char *)bytes + STYX_LAUNCH_PROGRAM_HEADER;
+    uint32_t expected = ((uint32_t)payload[0] << 24) | ((uint32_t)payload[1] << 16) |
+        ((uint32_t)payload[2] << 8) | payload[3];
+    uint32_t *previous = state;
+    if (caller.pid != expected || caller.pid == *previous || memcmp(payload + 4, "x\0y", 3))
+    {
+        return 0;
+    }
+    *previous = caller.pid;
+    return 1;
 }
 
+static uint32_t previous_pid; /* Scoped fixture requires two distinct real callers. */
+static StyxLaunchReceiver second_receiver = {.tag = 17, .start_payload = accept_payload,
+    .state = &previous_pid, .payload_limit = STYX_LAUNCH_PROGRAM_HEADER + 7}; /* Scoped second write. */
 static StyxLaunchReceiver payload_receiver = {.tag = 17, .start_payload = accept_payload,
-    .payload_limit = 3}; /* Independent payload submission after boot. */
+    .state = &previous_pid, .payload_limit = 3}; /* Independent payload submission after boot. */
 
 
 // EN/RU: Accept exactly one complete launch frame, before exposing it to the dispatcher.
@@ -411,6 +432,14 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
 {
     if (submitted)
     {
+        if (getenv("DVM_TEST_TERMINAL_SCOPED"))
+        {
+            payload_receiver.payload_limit = STYX_LAUNCH_PROGRAM_HEADER + 7;
+            if (payload_receiver.used)
+            {
+                return offset >= 0 && styxterminallaunchreceive(&second_receiver, offset, bytes, *count) ? nil : Ebadarg;
+            }
+        }
         return offset >= 0 && styxterminallaunchreceive(&payload_receiver, offset, bytes, *count) ? nil : Ebadarg;
     }
     FVM_SRecord record;

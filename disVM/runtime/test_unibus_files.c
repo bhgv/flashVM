@@ -54,6 +54,14 @@ static DVM_LaunchAddress *wire_program_address(void *request)
 }
 
 
+/* EN/RU: Bind the launch route to the VM's current caller instead of a stored PID.
+ * Связать запуск с текущим вызывающим VM без фиксированного PID. */
+static DVM_LaunchAddress *wire_caller_address(void *request)
+{
+    return styxterminallaunchcalleraddress(request, 17);
+}
+
+
 /* EN/RU: Release the route's owned request provider.
  * Освободить принадлежащий маршруту провайдер запросов. */
 static void release_request(void *request)
@@ -71,7 +79,8 @@ static void map_routed(StyxClient *client, DVM_View *code, const char *endpoint,
     DVM_Provider *request = styxmountproviderat(client, endpoint, FVM_ACCESS_WRITE);
     launch_check(request && styxclientretain(client), "guest submit node");
     DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
-        image, wire_address, request, release_request);
+        image, !strcmp(alias, "/payload.dis") && getenv("DVM_TEST_TERMINAL_SCOPED") ?
+            wire_caller_address : wire_address, request, release_request);
     launch_check(mounted && dvm_view_map(code, alias, mounted, image,
         FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "map guest launch alias");
     dvm_provider_release(mounted);

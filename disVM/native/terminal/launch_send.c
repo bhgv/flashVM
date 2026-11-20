@@ -28,13 +28,12 @@ static void release(void *opaque)
 
 /* EN/RU: Encode bytes and attempt one complete write, preserving uncertain results.
  * Закодировать аргументы и выполнить одну запись, сохранив неопределённый исход. */
-static DVM_LaunchDelivery send(void *opaque, const void *arguments, size_t size)
+static DVM_LaunchDelivery send_frame(LaunchFile *file, const DVM_LaunchProgram *program, const void *arguments, size_t size)
 {
-    LaunchFile *file = opaque;
     unsigned char header[STYX_LAUNCH_PROGRAM_HEADER];
-    size_t prefix = file->program.pid ? sizeof(header) : 0;
+    size_t prefix = program && program->pid ? sizeof(header) : 0;
     if (prefix && (size > DVM_LAUNCH_ARGUMENT_LIMIT - prefix ||
-        !styxlaunchprogramencode(header, &file->program)))
+        !styxlaunchprogramencode(header, program)))
     {
         return DVM_LAUNCH_NOT_SENT;
     }
@@ -52,10 +51,29 @@ static DVM_LaunchDelivery send(void *opaque, const void *arguments, size_t size)
 }
 
 
+/* EN/RU: Send the existing unscoped or explicitly selected frame.
+ * Отправить прежнюю запись или запись с явно выбранным процессом. */
+static DVM_LaunchDelivery send(void *opaque, const void *arguments, size_t size)
+{
+    LaunchFile *file = opaque;
+    return send_frame(file, &file->program, arguments, size);
+}
+
+
+/* EN/RU: Copy the process selector on each send with no shared mutable state.
+ * Скопировать выбор процесса при отправке, без общего изменяемого состояния. */
+static DVM_LaunchDelivery send_process(void *opaque, uint32_t pid, const void *arguments, size_t size)
+{
+    LaunchFile *file = opaque;
+    DVM_LaunchProgram program = {pid, 0, 0};
+    return send_frame(file, &program, arguments, size);
+}
+
+
 /* EN/RU: See launch_send.h; do not open the provider until actual submission.
  * См. launch_send.h; до подачи запроса не открывать provider. */
 static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long tag,
-    const DVM_LaunchProgram *program)
+    const DVM_LaunchProgram *program, int automatic)
 {
     if (!request_file || !(dvm_provider_native_flags(request_file) & DVM_PROVIDER_CANCEL_PATH) || !tag || tag > FVM_SRECORD_U32)
     {
@@ -73,7 +91,8 @@ static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long 
     {
         file->program = *program;
     }
-    DVM_LaunchAddress *address = dvm_launch_address_transport(send, file, release);
+    DVM_LaunchAddress *address = automatic ? dvm_launch_address_process_transport(send_process, file, release) :
+        dvm_launch_address_transport(send, file, release);
     if (!address)
     {
         release(file);
@@ -86,7 +105,7 @@ static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long 
  * Создать прежний адрес запуска с исходными данными запуска. */
 DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigned long tag)
 {
-    return address_for(request_file, tag, NULL);
+    return address_for(request_file, tag, NULL, 0);
 }
 
 
@@ -96,5 +115,13 @@ DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, 
     const DVM_LaunchProgram *program)
 {
     return program && program->pid && program->pid != program->parent_pid ?
-        address_for(request_file, tag, program) : NULL;
+        address_for(request_file, tag, program, 0) : NULL;
+}
+
+
+/* EN/RU: Create a Styx address that takes the active caller PID on each send.
+ * Создать адрес Styx, получающий PID активного вызывающего при каждой отправке. */
+DVM_LaunchAddress *styxterminallaunchcalleraddress(DVM_Provider *request_file, unsigned long tag)
+{
+    return address_for(request_file, tag, NULL, 1);
 }

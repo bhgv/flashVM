@@ -114,10 +114,20 @@ typedef enum DVM_LaunchDelivery
 /* EN/RU: Native transport callback; borrow argument bytes until return.
  * Native transport callback; байты заимствованы до возврата. */
 typedef DVM_LaunchDelivery (*DVM_LaunchSend)(void *, const void *, size_t);
+typedef DVM_LaunchDelivery (*DVM_LaunchSendProcess)(void *, uint32_t, const void *, size_t);
 
 /* EN/RU: Construct a transport-only address; adopts state only on success.
  * Создать адрес транспортной доставки; state принимается только при успехе. */
 DVM_LaunchAddress *dvm_launch_address_transport(DVM_LaunchSend send, void *state, void (*release)(void *));
+
+/* EN/RU: Select an opt-in transport using a caller PID captured before native wait.
+ * Выбрать транспорт с PID вызывающего, сохранённым до нативного ожидания. */
+DVM_LaunchAddress *dvm_launch_address_process_transport(DVM_LaunchSendProcess send, void *state, void (*release)(void *));
+
+/* EN/RU: Submit once with a trusted PID; unscoped addresses use the original format.
+ * Отправить один раз с доверенным PID; обычные адреса используют прежний формат. */
+DVM_LaunchDelivery dvm_launch_address_send_process(DVM_LaunchAddress *address, uint32_t pid,
+    const void *arguments, size_t size);
 
 /* EN/RU: Submit through the already resolved transport address once, honoring its guards.
  * Подать запрос через разрешённый транспортный адрес один раз с проверкой guards. */
