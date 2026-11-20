@@ -13,6 +13,7 @@
 #include "launch_receive.h"
 #include "images.h"
 #include "variable_file.h"
+#include "indexed_styx.h"
 static const struct
 {
     unsigned long qid; /* Published Styx identity for the asset. */
@@ -72,10 +73,77 @@ static int store_counter(void *state, int32_t value)
 static const StyxIntVariable variable = {&counter, load_counter, store_counter}; /* Proxies owner storage. */
 
 
+static int32_t elements[8] = {11, 22}; /* Client-owned array test storage. */
+static StyxIntArray array; /* Live collection state. */
+static StyxArrayFiles array_files; /* Reusable decoder for array qids. */
+
+
+/* EN/RU: Read the requested element from the client storage.
+ * Прочитать запрошенный элемент из хранилища клиента. */
+static int load_element(void *state, uint32_t index, int32_t *value)
+{
+    *value = ((int32_t *)state)[index];
+    return 1;
+}
+
+
+/* EN/RU: Replace the requested element in the client storage.
+ * Заменить запрошенный элемент в хранилище клиента. */
+static int store_element(void *state, uint32_t index, int32_t value)
+{
+    ((int32_t *)state)[index] = value;
+    return 1;
+}
+
+
+/* EN/RU: Insert a value and move the suffix within the fixture's capacity.
+ * Вставить значение и сдвинуть хвост в пределах ёмкости стенда. */
+static int insert_element(void *state, uint32_t index, int32_t value)
+{
+    int32_t *items = state;
+    if (array.length >= nelem(elements))
+    {
+        return 0;
+    }
+    memmove(items + index + 1, items + index, (array.length - index) * sizeof(*items));
+    items[index] = value;
+    return 1;
+}
+
+
+/* EN/RU: Return the last element; the adapter then decrements the length.
+ * Вернуть последний элемент, после чего адаптер уменьшит длину. */
+static int pop_element(void *state, int32_t *value)
+{
+    *value = ((int32_t *)state)[array.length - 1];
+    return 1;
+}
+
+
+/* EN/RU: Identify only nodes reserved for the fixture's published array.
+ * Определить только узлы опубликованного массива стенда. */
+static int array_node(Path qid)
+{
+    return array_files.server && qid >= array_files.base && qid - array_files.base < 8;
+}
+
+
+/* EN/RU: Forward array opens; let unrelated fixture nodes open normally.
+ * Передать открытия массива, сохранив обычное открытие других узлов стенда. */
+char *fixturevariableopen(Qid *qid, int mode)
+{
+    return array_node(qid->path) ? styxarrayfileopen(&array_files, qid, mode) : nil;
+}
+
+
 /* EN/RU: Apply one complete scalar update to the fixture variable.
  * Применить полное изменение скалярной переменной стенда. */
 char *fixturevariablewrite(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (array_node(qid.path))
+    {
+        return styxarrayfilewrite(&array_files, qid, bytes, count, offset);
+    }
     return qid.path == ProgramCounter && offset >= 0 &&
         styxintvariablewrite(&variable, offset, bytes, *count) ? nil : Ebadarg;
 }
@@ -114,6 +182,12 @@ Path fixtureprograminit(Styxserver *server)
         !styxadddir(server, ProgramRoot, ProgramInvalid, "43", 0555, "fixture") ||
         !styxaddfile(server, ProgramInvalid, ProgramInvalid + 1, ".vfs", 0444, "fixture") ||
         (!getenv("DVM_TEST_TERMINAL_SCOPED_BASE") && !publish_environment(server, ProgramChild, ProgramChildVfs)))
+    {
+        _exit(3);
+    }
+    array = (StyxIntArray){.state = elements, .length = 2, .load = load_element,
+        .store = store_element, .insert = insert_element, .pop = pop_element};
+    if (!styxarrayfilepublish(&array_files, server, ProgramVar, 840, "items", "fixture", &array))
     {
         _exit(3);
     }
@@ -184,6 +258,10 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (array_node(qid.path))
+    {
+        return styxarrayfileread(&array_files, qid, bytes, count, offset);
+    }
     if (qid.path == ProgramCounter && offset >= 0)
     {
         size_t size = *count;

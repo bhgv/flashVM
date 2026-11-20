@@ -119,6 +119,46 @@ counter(expected, replacement, update: int): int
 }
 
 
+# EN/RU: Check the mounted array protocol with ordinary Sys file calls.
+# Проверить протокол смонтированного массива обычными файловыми вызовами Sys.
+checkarray()
+{
+    root := "/.prog/.self/.var/items/";
+    push := sys->open(root + ".push", Sys->OWRITE);
+    ins := sys->open(root + ".ins", Sys->OWRITE);
+    data := array[] of {byte 0, byte 0, byte 0, byte 44};
+    insertion := array[] of {byte 0, byte 0, byte 0, byte 1, byte 0, byte 0, byte 0, byte 77};
+    if (push == nil || ins == nil || sys->write(push, data, 4) != 4 || sys->write(ins, insertion, 8) != 8) {
+        raise "mounted array insertion failed";
+    }
+    pop := sys->open(root + ".pop", Sys->OREAD);
+    if (pop == nil || sys->read(pop, data, 4) != 4 || int data[3] != 44) {
+        raise "mounted array pop failed";
+    }
+    length := sys->open(root + ".len", Sys->OREAD);
+    if (length == nil || sys->read(length, data, 4) != 2 || string data[0:2] != "3\n") {
+        raise "mounted array length mismatch";
+    }
+    idx := sys->open(root + ".idx", Sys->OWRITE);
+    index := array[] of {byte 0, byte 0, byte 0, byte 1};
+    if (idx == nil || sys->write(idx, index, 4) != 4) {
+        raise "mounted array selection failed";
+    }
+    val := sys->open(root + ".val", Sys->ORDWR);
+    if (val == nil || sys->read(val, data, 4) != 4 || int data[3] != 77 ||
+        sys->open(root + ".idx", Sys->OWRITE) != nil || sys->seek(val, big 0, Sys->SEEKSTART) != big 0) {
+        raise "mounted array element mismatch";
+    }
+    data[3] = byte 99;
+    if (sys->write(val, data, 4) != 4 || sys->seek(val, big 0, Sys->SEEKSTART) != big 0 ||
+        sys->read(val, data, 4) != 4 || int data[3] != 99) {
+        raise "mounted array update mismatch";
+    }
+    idx = nil;
+    sys->print("PASS process indexed array over Styx\n");
+}
+
+
 # EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
 # Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
 readchild(done: chan of string, hidestderr: int, expected: string)
@@ -193,6 +233,7 @@ checknumbered()
             clientenv("/.vfs/env/CLIENT") != environment) {
             raise "incorrect private process alias";
         }
+        checkarray();
         sys->print("PASS process context hides fd 2\n");
         sys->print("PASS process VFS %s\n", environment);
     }

@@ -142,7 +142,7 @@ static void require(int ok, const char *message)
  * Открыть выбор и проверить отзыв старого значения через Styx. */
 static void wire(void)
 {
-    static Styxops ops = {.open = open_node, .read = read_node, .write = write_node, .freefid = styxarrayfileclose};
+    static Styxops ops = {.open = open_node, .read = read_node, .write = write_node};
     int pair[2];
     require(!socketpair(AF_UNIX, SOCK_STREAM, 0, pair), "indexed carrier");
     int breaker = dup(pair[0]);

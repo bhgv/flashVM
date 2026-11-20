@@ -110,7 +110,7 @@ char *styxarrayfileopen(StyxArrayFiles *files, Qid *qid, int mode)
     {
         fid->generation = styxintarrayopen(files->array, styxclient(files->server), selector);
     }
-    if ((!mutation && !fid->generation) || styxsetaux(files->server, fid) < 0)
+    if ((!mutation && !fid->generation) || styxsetauxowned(files->server, fid, styxarrayfileclose) < 0)
     {
         if (selector)
         {

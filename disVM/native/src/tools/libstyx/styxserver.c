@@ -44,7 +44,8 @@ struct Fid
 	vlong	offset;	/* in file */
 	int		dri;		/* dirread index */
 	Qid		qid;
-	void	*aux;	/* owned by freefid callback until retirement */
+	void	*aux;	/* owned until retirement */
+	void	(*auxfree)(void*);	/* destructor picked when aux is attached */
 };
 
 struct Walkqid
@@ -406,8 +407,8 @@ deletefid(Client *c, Fid *d)
 			*f = d->next;
 			if(c->current == d)
 				c->current = nil;
-			if(d->aux != nil && c->server->ops->freefid != nil)
-				c->server->ops->freefid(d->aux);
+			if(d->aux != nil && d->auxfree != nil)
+				d->auxfree(d->aux);
 			styxfree(d);
 			return;
 		}
@@ -431,8 +432,8 @@ deletefids(Client *c)
 		decopen(f);
 		if(f->open && c->server->ops->close != nil)
 			c->server->ops->close(f->qid, f->mode);
-		if(f->aux != nil && c->server->ops->freefid != nil)
-			c->server->ops->freefid(f->aux);
+		if(f->aux != nil && f->auxfree != nil)
+			f->auxfree(f->aux);
 		styxfree(f);
 	}
 	c->server->curc = previous;
@@ -1043,16 +1044,24 @@ run(Client *c)
 
 /* No implicit sharing or replacement of a native handle is allowed. */
 int
-styxsetaux(Styxserver *server, void *aux)
+styxsetauxowned(Styxserver *server, void *aux, void (*release)(void*))
 {
 	Fid *f;
-	if(server == nil || server->curc == nil || server->ops->freefid == nil || aux == nil)
+	if(server == nil || server->curc == nil || release == nil || aux == nil)
 		return -1;
 	f = server->curc->current;
 	if(f == nil || f->aux != nil)
 		return -1;
 	f->aux = aux;
+	f->auxfree = release;
 	return 0;
+}
+
+/* Preserve the server-wide destructor for callers with homogeneous contexts. */
+int
+styxsetaux(Styxserver *server, void *aux)
+{
+	return server == nil || server->ops == nil ? -1 : styxsetauxowned(server, aux, server->ops->freefid);
 }
 
 /* Return a borrowed native context, never a VM or wire pointer. */

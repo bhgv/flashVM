@@ -35,9 +35,9 @@ publication. Keep the array and publication descriptor alive through fid
 retirement.
 
 Route the range's operations to `styxarrayfileopen`, `styxarrayfileread`
-and `styxarrayfilewrite`. Use `styxarrayfileclose` in `freefid` for these
-opens. A server with several kinds of fid contexts must dispatch their
-cleanup to the corresponding handler. With no `store` callback, `.val`
+and `styxarrayfilewrite`. The adapter registers its destructor on each
+opened fid with `styxsetauxowned`, so mixed servers can keep their existing
+server-wide `freefid` handler for other files. With no `store` callback, `.val`
 is read-only. The library publishes `.len` and `.type`.
 
 
@@ -59,3 +59,6 @@ Popping an empty array returns a Styx error. Owner callbacks must be atomic:
 return 1 after a committed change, or 0 with storage unchanged. The owner
 keeps storage consistent with the adapter's length. The example exercises
 all three operations over Styx.
+
+The [launch example](../../runtime/LAUNCH-PROGRAM-ROUTE.md) exercises the array at
+`/.prog/.self/.var/items` from Dis with ordinary Sys file operations.

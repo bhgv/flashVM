@@ -110,6 +110,8 @@ void styxsetowner(char*);
  * No automatic cloning: unopened walk clones start empty. Rebuild all consumers. */
 void *styxgetaux(Styxserver *server);
 int styxsetaux(Styxserver *server, void *aux);
+/* Attach an owned context and its individual destructor to the current fid. */
+int styxsetauxowned(Styxserver *server, void *aux, void (*release)(void *));
 
 /* Native owner-thread extension, no wire changes. Defer only inside attach callback.
  * Returned request is caller-owned; release with styxattachfree after retirement.

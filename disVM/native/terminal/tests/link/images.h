@@ -24,4 +24,5 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  */
 extern void fixtureimagesfree(void);
 extern char *fixturevariablewrite(Qid, char *, ulong *, vlong); /* Mutable variable update. */
+extern char *fixturevariableopen(Qid *, int); /* Open any fixture variable node. */
 #endif

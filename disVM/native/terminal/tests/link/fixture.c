@@ -135,7 +135,7 @@ static char *open_held(Qid *qid, int mode)
     StyxBacking *backing = held_backing(qid->path);
     if (!backing)
     {
-        return nil;
+        return fixturevariableopen(qid, mode);
     }
     StyxOpen *opened = styxfileopen(backing, mode);
     if (!opened || styxsetaux(&server, opened) < 0)

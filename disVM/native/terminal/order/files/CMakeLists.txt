@@ -9,7 +9,7 @@ target_compile_options(styx_ordered_files PRIVATE -Wall -Wextra -Wpedantic -Werr
 add_executable(terminal-ordered-files tests/main.c tests/cancel.c ../broker/tests/wire.c
     ../../tests/link/fixture.c ../../../tests/file-root/context.c)
 target_compile_definitions(terminal-ordered-files PRIVATE ORDERED_CASE=0 ORDERED_FILE_TEST=1)
-target_link_libraries(terminal-ordered-files PRIVATE styx_ordered_files styx_terminal_route infernostyx_phy remote_phy_mux)
+target_link_libraries(terminal-ordered-files PRIVATE styx_ordered_files styx_terminal_route infernostyx_phy remote_phy_mux styx_unibus_server)
 target_compile_options(terminal-ordered-files PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-unknown-pragmas)
 set_property(TARGET terminal-ordered-files APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=dvm_cancel_subscribe -Wl,--wrap=calloc -Wl,--wrap=styxorderclose")
 add_test(NAME terminal-ordered-files COMMAND terminal-ordered-files)
