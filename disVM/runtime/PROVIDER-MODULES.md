@@ -24,7 +24,7 @@ on their owning side. The reader below does not yet implement that routing.
 A trusted native launch handoff establishes `provider_execution` before process
 publication. Children inherit that immutable execution role along with their
 ordinary namespace ownership. A running guest cannot enable it. A plain local
-terminal context still refuses provider-backed code loading: mounting a remote
+terminal context still refuses ordinary provider-backed code loading: mounting a remote
 `.dis` does not implicitly download and execute it on the terminal.
 
 The role is native constructor state, not a wire flag, installation-name check,
@@ -172,3 +172,8 @@ belongs to the bound instance as well as its VFS: unbound dependencies inherit i
 and a child spawned from such a dependency retains it without parent frames.
 Two instances carry different binary arguments while the containing process
 keeps its original payload. See [module-instance launch context](LAUNCH-CONTEXT.md#module-instance-context--контекст-экземпляра-модуля).
+
+A native host can mount an immutable [local adapter](MODULE-ADAPTER.md) and bind
+it to the usual load name. This exact provider admits locally generated client
+bytecode. A regular provider exposing the same bytes keeps the ordinary
+provider execution requirement.

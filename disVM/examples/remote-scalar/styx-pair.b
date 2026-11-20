@@ -12,6 +12,9 @@ Client: module { init: fn(); };
 init()
 {
     sys := load Sys Sys->PATH;
+    if ((load Compute "/ordinary.dis") != nil) {
+        raise "ordinary provider supplied executable adapter";
+    }
     service := load Compute Compute->PATH;
     if (service == nil) {
         raise "could not load Compute";

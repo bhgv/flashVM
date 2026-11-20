@@ -120,7 +120,8 @@ static int readimage(DVM_ResourcePlan *plan, ProviderModule *image)
 Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
 {
     Prog *process = currun(); /* ACTIVE current owner only, never a remote/foreign process query. */
-    if (!process || !((DVM_RuntimeProcess *)process)->provider_execution)
+    if (!process || (!((DVM_RuntimeProcess *)process)->provider_execution &&
+        (!plan || !dvm_module_adapter_node(plan->provider, plan->relative))))
     {
         kwerrstr("provider module execution requires an accepted execution-provider launch");
         return NULL;

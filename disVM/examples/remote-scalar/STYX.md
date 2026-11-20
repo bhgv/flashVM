@@ -22,8 +22,9 @@ python3 disVM/native/terminal/tests/scalar/guest.py \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 
-The driver generates the adapter from `compute.m`, compiles it to
-`implementation.dis` and compiles the local `styxscalar.dis` helper and
+The driver generates the adapter from `compute.m`, compiles it to a staging image,
+mounts a copy via [dvm_module_adapter](../../runtime/MODULE-ADAPTER.md), and binds
+it to `implementation.dis`. It then compiles the local `styxscalar.dis` helper and
 caller. It mounts the restricted request and reply files before starting the
 caller. The two original Styx sessions share one bidirectional carrier. The
 owner fixture checks the request and sends a reply before acknowledging the

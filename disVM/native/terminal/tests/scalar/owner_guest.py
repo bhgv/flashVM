@@ -29,6 +29,7 @@ def peer(binary, directory, image, mode, carrier, owner):
 # RU: Дождаться обеих сторон, ограничить время отказа и завершить оба процесса.
 def exchange(binary, owner, caller, mode, marker):
     children = []
+    (caller / "adapter.dis").write_bytes((caller / "staging.dis").read_bytes())
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
         listener.listen(1)
@@ -73,7 +74,7 @@ def main():
                  *implementation, "/scalar/request", "/scalar/reply",
                  "4294967295", "64", str(source)], work)
         for folder, source, output in (
-            (caller, caller / "generated.b", "implementation.dis"),
+            (caller, caller / "generated.b", "staging.dis"),
             (caller, example / "styx-pair.b", "client.dis"),
             (owner, owner / "generated.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),

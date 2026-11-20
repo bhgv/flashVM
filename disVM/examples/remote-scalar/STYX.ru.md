@@ -22,8 +22,9 @@ python3 disVM/native/terminal/tests/scalar/guest.py \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 
-Драйвер генерирует адаптер из `compute.m`, собирает его как
-`implementation.dis` и компилирует локальную библиотеку `styxscalar.dis`
+Драйвер генерирует адаптер из `compute.m`, собирает промежуточный образ,
+монтирует его копию через [dvm_module_adapter](../../runtime/MODULE-ADAPTER.ru.md)
+и связывает с `implementation.dis`. Затем компилирует локальную библиотеку `styxscalar.dis`
 и клиент. Перед стартом клиента он монтирует два файла с ограниченными правами.
 Две исходные сессии Styx работают на одном двустороннем соединении. Тестовый
 владелец проверяет запрос и пишет ответ до подтверждения записи запроса.

@@ -8,6 +8,7 @@ struct Module;
 struct String;
 struct Dir;
 struct DVM_ResourcePlan;
+struct DVM_Provider;
 
 #define DVM_MODULE_IMAGE_LIMIT (8UL * 1024UL * 1024UL) /* Existing reader's exclusive image byte bound. */
 
@@ -44,14 +45,20 @@ int dvm_namespace_module_cacheable(const struct Dir *metadata);
 
 /* [GC:] EN: ACTIVE source borrows one selected provider plan/path; returns owned parsed Module/NULL.
  * Opened-handle metadata and exact bounded bytes are authoritative; no cache reuse by logical path.
- * Requires an accepted native execution-provider launch (inherited by children), provider PATH cancellation,
- * and opened-handle INFO/DATA cancellation; cleanup precedes managed reentry, caller retains/frees plan.
+ * Requires an accepted native execution-provider launch or an exact local adapter grant.
+ * Provider PATH and opened-handle INFO/DATA cancellation are required; cleanup precedes managed reentry, caller retains/frees plan.
  * Ordinary read permission semantics match Dis load; intent changes source order, not authority.
  * RU: ACTIVE source заимствует selected provider plan/path; свой parsed Module/NULL.
  * Metadata открытого handle и bounded bytes определяют образ; cache по logical path не используется.
- * Нужен принятый provider-launch, PATH и INFO/DATA cancellation; cleanup до managed reentry,
+ * Нужен принятый provider-launch или точный локальный адаптер. PATH и INFO/DATA cancellation
+ * обязательны; cleanup до managed reentry,
  * caller удерживает/освобождает plan.
  * Обычные read-права соответствуют Dis load; intent меняет порядок источников, не полномочия.
  */
 struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan);
+
+
+/* EN/RU: Check the exact local adapter provider and relative dot without I/O.
+ * Проверить точный локальный провайдер адаптера и относительную точку без I/O. */
+int dvm_module_adapter_node(struct DVM_Provider *provider, const char *relative);
 #endif
