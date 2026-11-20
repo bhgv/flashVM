@@ -12,6 +12,7 @@
 #include "launch_files.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 /* EN/RU: Immutable mapping; each occupied entry owns one native slot reference.
@@ -24,32 +25,120 @@ struct DVM_LaunchFiles
 };
 
 
-/* EN/RU: Stat one exact grant before consuming any one-use file in the batch.
- * Проверить метаданные точной выдачи до открытия одноразовых файлов. */
-static int expected_file(const DVM_TerminalChannels *terminal, unsigned number)
+/* EN/RU: Parse a canonical decimal basename in the supported descriptor range.
+ * Разобрать каноническое десятичное имя в диапазоне поддерживаемых номеров. */
+static int fd_number(const char *name)
 {
-    char absolute[DVM_LAUNCH_FD_PATH_SIZE];
-    if (!dvm_launch_fd_path(absolute, number))
+    if (name[0] < '0' || name[0] > '9')
     {
-        return 0;
+        return -1;
     }
-    const char *path = absolute + 1;
-    FVM_FileInfo info;
-    return strcmp(path, terminal->receive) && strcmp(path, terminal->send) &&
-        dvm_provider_info(terminal->provider, path, &info) == FVM_OK && !info.directory;
+    unsigned number = (unsigned)(name[0] - '0');
+    if (name[1])
+    {
+        if (!number || name[1] < '0' || name[1] > '9' || name[2])
+        {
+            return -1;
+        }
+        number = number * 10 + (unsigned)(name[1] - '0');
+    }
+    return number < DVM_LAUNCH_FD_COUNT ? (int)number : -1;
 }
 
 
-/* EN/RU: Reserve lifetime storage, then open the exact terminal file without creation.
- * Зарезервировать память, затем открыть точный файл терминала без создания. */
-static int open_slot(const DVM_TerminalChannels *terminal, unsigned number, unsigned access)
+/* EN/RU: Prove absence by listing the root when a peer's lookup error is ambiguous.
+ * Подтвердить отсутствие через чтение корня при неоднозначном ответе поиска. */
+static FVM_Result confirm_absence(DVM_Provider *source)
+{
+    DVM_VfsHandle root = {0};
+    FVM_Result status = dvm_provider_open(source, ".", "r", &root);
+    if (status != FVM_OK)
+    {
+        return FVM_ERROR;
+    }
+    size_t count;
+    do
+    {
+        FVM_FileInfo *entries = NULL;
+        count = 0;
+        status = dvm_vfs_list(&root, &entries, &count);
+        for (size_t i = 0; status == FVM_OK && i < count; i++)
+        {
+            if (!strcmp(entries[i].name, ".fd"))
+            {
+                status = FVM_ERROR;
+            }
+        }
+        fvm_port_directory_entries_free(entries);
+    }
+    while (status == FVM_OK && count);
+    dvm_vfs_close(&root);
+    return status == FVM_OK ? FVM_NOT_FOUND : FVM_ERROR;
+}
+
+
+/* EN/RU: Read a complete bounded directory into the private mode table.
+ * Прочитать ограниченный каталог целиком в частную таблицу режимов. */
+static FVM_Result discover(DVM_Provider *source, unsigned char *modes)
+{
+    if (!source)
+    {
+        return FVM_NOT_FOUND;
+    }
+    FVM_FileInfo info;
+    FVM_Result status = dvm_provider_info(source, ".fd", &info);
+    if (status == FVM_ERROR)
+    {
+        return confirm_absence(source);
+    }
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    DVM_VfsHandle directory = {0};
+    if (!info.directory || dvm_provider_open(source, ".fd", "r", &directory) != FVM_OK)
+    {
+        return FVM_ERROR;
+    }
+    size_t count;
+    do
+    {
+        FVM_FileInfo *entries = NULL;
+        count = 0;
+        status = dvm_vfs_list(&directory, &entries, &count);
+        for (size_t i = 0; status == FVM_OK && i < count; i++)
+        {
+            const FVM_FileInfo *entry = &entries[i];
+            int number = fd_number(entry->name);
+            unsigned mode = ((entry->mode & 0444) ? FVM_ACCESS_READ : 0) |
+                            ((entry->mode & 0222) ? FVM_ACCESS_WRITE : 0);
+            if (number < 0 || modes[number] || entry->directory || !mode)
+            {
+                status = FVM_ERROR;
+            }
+            else
+            {
+                modes[number] = (unsigned char)mode;
+            }
+        }
+        fvm_port_directory_entries_free(entries);
+    }
+    while (status == FVM_OK && count);
+    dvm_vfs_close(&directory);
+    return status;
+}
+
+
+/* EN/RU: Reserve lifetime storage and open one numbered file without truncation.
+ * Зарезервировать время жизни и открыть один номерной файл без усечения. */
+static int open_slot(DVM_Provider *source, unsigned number, unsigned access)
 {
     char absolute[DVM_LAUNCH_FD_PATH_SIZE];
     if (!dvm_launch_fd_path(absolute, number))
     {
         return -1;
     }
-    const char *mode = access == FVM_ACCESS_READ ? "r" : access == FVM_ACCESS_WRITE ? "w" : "rw";
+    const char *mode = access == FVM_ACCESS_READ ? "r" : access == FVM_ACCESS_WRITE ? "wo" : "rw";
     DVM_FileGate *gate = dvm_file_gate_create();
     DVM_CloseJob *job = gate ? dvm_close_prepare() : NULL;
     int slot = job ? dvm_file_slots_reserve_launch(gate, job) : -1;
@@ -60,9 +149,11 @@ static int open_slot(const DVM_TerminalChannels *terminal, unsigned number, unsi
         return -1;
     }
     DVM_VfsHandle file = {0};
-    FVM_Result status = dvm_terminal_channel_open(terminal, absolute + 1, mode, &file);
-    if (status != FVM_OK)
+    FVM_FileInfo info;
+    if (dvm_provider_open(source, absolute + 1, mode, &file) != FVM_OK ||
+        dvm_vfs_info(&file, &info) != FVM_OK || info.directory)
     {
+        dvm_vfs_close(&file);
         dvm_file_slots_drop_launch(slot);
         return -1;
     }
@@ -71,38 +162,33 @@ static int open_slot(const DVM_TerminalChannels *terminal, unsigned number, unsi
 }
 
 
-/* EN/RU: See launch_files.h; validate all requested modes before taking any open.
- * См. launch_files.h; проверить все режимы до получения открытых файлов. */
-int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out)
+/* EN/RU: Validate the selected batch and keep every open private until success.
+ * Проверить выдачу и удерживать все открытия в частной таблице до успеха. */
+static int open_batch(DVM_Provider *source, const DVM_TerminalChannels *terminal,
+    const unsigned char *modes, DVM_LaunchFiles **out)
 {
-    *out = NULL;
     uint32_t requested = 0;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
-        unsigned mode = handoff->inherited_fds[i];
-        if (mode & ~(FVM_ACCESS_READ | FVM_ACCESS_WRITE))
+        unsigned mode = modes[i];
+        if (!mode)
+        {
+            continue;
+        }
+        char absolute[DVM_LAUNCH_FD_PATH_SIZE];
+        FVM_FileInfo info;
+        if ((mode & ~(FVM_ACCESS_READ | FVM_ACCESS_WRITE)) ||
+            !dvm_launch_fd_path(absolute, i) || !source ||
+            (terminal && (!strcmp(absolute + 1, terminal->receive) || !strcmp(absolute + 1, terminal->send))) ||
+            dvm_provider_info(source, absolute + 1, &info) != FVM_OK || info.directory)
         {
             return 0;
         }
-        if (mode)
-        {
-            requested |= UINT32_C(1) << i;
-        }
+        requested |= UINT32_C(1) << i;
     }
     if (!requested)
     {
         return 1;
-    }
-    if (!dvm_terminal_channels_valid(&handoff->flashvm))
-    {
-        return 0;
-    }
-    for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
-    {
-        if (handoff->inherited_fds[i] && !expected_file(&handoff->flashvm, i))
-        {
-            return 0;
-        }
     }
     DVM_LaunchFiles *files = calloc(1, sizeof(*files));
     if (!files)
@@ -112,9 +198,9 @@ int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **ou
     files->references = 1;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
-        if (requested & (UINT32_C(1) << i))
+        if (modes[i])
         {
-            int slot = open_slot(&handoff->flashvm, i, handoff->inherited_fds[i]);
+            int slot = open_slot(source, i, modes[i]);
             if (slot < 0)
             {
                 dvm_launch_files_release(files);
@@ -126,6 +212,35 @@ int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **ou
     files->occupied = requested;
     *out = files;
     return 1;
+}
+
+
+/* EN/RU: Prefer the owner's .fd directory. Use the accepted terminal only on absence.
+ * Сначала каталог .fd владельца. Принятый терминал используется только при отсутствии. */
+int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out)
+{
+    *out = NULL;
+    const DVM_TerminalChannels *terminal = &handoff->flashvm;
+    for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
+    {
+        if (handoff->inherited_fds[i])
+        {
+            return dvm_terminal_channels_valid(terminal) &&
+                open_batch(terminal->provider, terminal, handoff->inherited_fds, out);
+        }
+    }
+    unsigned char modes[DVM_LAUNCH_FD_COUNT] = {0};
+    DVM_Provider *owner = dvm_launch_handoff_owner_root(handoff);
+    FVM_Result status = discover(owner, modes);
+    int opened = status == FVM_OK && open_batch(owner, NULL, modes, out);
+    dvm_provider_release(owner);
+    if (status != FVM_NOT_FOUND)
+    {
+        return opened;
+    }
+    status = discover(terminal->provider, modes);
+    return status == FVM_NOT_FOUND ||
+        (status == FVM_OK && open_batch(terminal->provider, terminal, modes, out));
 }
 
 

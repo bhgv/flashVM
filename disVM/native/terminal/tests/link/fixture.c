@@ -295,7 +295,8 @@ int linkfixturefd(void)
         held[1] = add_held(Qroot, held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
         if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
         {
-            if (!styxadddir(&server, Qroot, numbered_root, ".fd", 0555, "fixture"))
+            char *directory = getenv("DVM_TEST_TERMINAL_SUBMIT") ? "owner-fds" : ".fd";
+            if (!styxadddir(&server, Qroot, numbered_root, directory, 0555, "fixture"))
             {
                 _exit(3);
             }

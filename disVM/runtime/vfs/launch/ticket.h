@@ -86,6 +86,11 @@ typedef struct DVM_LaunchHandoff
 int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider *terminal);
 
 
+/* EN/RU: Return an owned pin on the accepted execution root of a private handoff.
+ * Вернуть отдельную ссылку на принятый корень исполнения частного handoff. */
+DVM_Provider *dvm_launch_handoff_owner_root(const DVM_LaunchHandoff *handoff);
+
+
 /* EN/RU: Retain a native Unibus handler in an exclusive live handoff, 1/0; no claim/guest execution.
  * Attach only once before adoption; caller keeps its reference. / Удержать native handler до adoption;
  * только один раз, 1/0; caller сохраняет свой ref, без claim/guest-кода.

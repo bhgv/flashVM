@@ -19,9 +19,11 @@ typedef struct DVM_SysFD
 } DVM_SysFD;
 
 
-/* EN/RU: Open configured files before dispatch; success returns an owned table or NULL if empty.
+/* EN/RU: Discover and open the launch's numbered files before dispatch; success returns
+ * an owned table or NULL if empty. Explicit terminal modes override discovery.
  * On failure return zero and retire any obtained files. Handoff is borrowed.
- * Открыть выданные файлы до dispatch; успех даёт свою таблицу или NULL для пустого набора.
+ * Найти и открыть номерные файлы до dispatch; успех даёт свою таблицу или NULL.
+ * Явно заданные режимы терминала заменяют автоматическое обнаружение.
  * При отказе вернуть ноль и закрыть полученные файлы. Handoff заимствован. */
 int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out);
 

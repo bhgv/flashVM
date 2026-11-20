@@ -22,6 +22,6 @@ mapping follows the regular view rule for replacing the same path. The call
 checks effective access without opening the file. Builder mutations require
 exclusive access. Freeze the view before sharing it with a Styx server.
 
-For example, map an existing read grant at number 0 and configure the receiver
-with `--inherit-fd 0 r`. After the receiver opens it during startup, Limbo
-obtains its own descriptor via `sys->fildes(0)`.
+For example, map an existing read grant at number 0. The receiver discovers
+it at `/.fd/0` during startup and Limbo obtains its local descriptor via
+`sys->fildes(0)`.

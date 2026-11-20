@@ -92,13 +92,13 @@ DVM_Namespace *dvm_launch_prepare(const DVM_LaunchOptions *options)
     return group;
 }
 
-// EN/RU: Keep the accepted execution root while replacing the terminal view.
-// Сохранить принятый execution root при подстановке представления терминала.
-int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider *terminal)
+/* EN/RU: See ticket.h; hold a provider pin across I/O after unlocking the namespace.
+ * См. ticket.h; ссылка удерживает провайдер при I/O после снятия блокировки. */
+DVM_Provider *dvm_launch_handoff_owner_root(const DVM_LaunchHandoff *handoff)
 {
-    if (!handoff || !handoff->group || !terminal)
+    if (!handoff || !handoff->group)
     {
-        return 0;
+        return NULL;
     }
     DVM_Namespace *original = handoff->group;
     DVM_Provider *execution = NULL;
@@ -114,6 +114,19 @@ int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider
         execution = provider->provider;
     }
     fvm_port_sync_unlock(original->lock);
+    return execution;
+}
+
+
+/* EN/RU: Keep the accepted execution root while replacing the terminal view.
+ * Сохранить принятый корень исполнения при подстановке представления терминала. */
+int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider *terminal)
+{
+    if (!terminal)
+    {
+        return 0;
+    }
+    DVM_Provider *execution = dvm_launch_handoff_owner_root(handoff);
     if (!execution)
     {
         return 0;
@@ -130,6 +143,7 @@ int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider
     {
         return 0;
     }
+    DVM_Namespace *original = handoff->group;
     handoff->group = projected;
     dvm_namespace_release(original);
     return 1;

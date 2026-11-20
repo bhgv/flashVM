@@ -88,6 +88,11 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_View *code = dvm_view_create(NULL, NULL, NULL); /* Do not publish the raw records node through the execution root either. */
     launch_check(assets && code && dvm_view_map(code, "/app.dis", assets, "app.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
         dvm_view_map(code, "/dep.dis", assets, "dep.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "filtered actual Styx code grants");
+    if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
+    {
+        launch_check(dvm_view_map(code, "/.fd", assets, "owner-fds", FVM_ACCESS_MASK, DVM_VIEW_TREE),
+            "publish the owner's descriptor directory in its root");
+    }
     options.provider = dvm_view_freeze(code);
     submit_mounted(connection, &options);
     DVM_TerminalChannels ingress = {0};
@@ -151,13 +156,6 @@ static DVM_LaunchHandoff *prepare_launch(void)
     files = styxorderedlaunchfileswithfds(connection, handoff, &ordered, mappings, count,
         held, sizeof(held) / sizeof(held[0]));
     launch_check(files && handoff->group, "filtered file set and private launch namespace");
-    if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
-    {
-        handoff->inherited_fds[0] = FVM_ACCESS_READ;
-        handoff->inherited_fds[1] = FVM_ACCESS_WRITE;
-        handoff->inherited_fds[2] = FVM_ACCESS_WRITE;
-        handoff->inherited_fds[3] = FVM_ACCESS_READ | FVM_ACCESS_WRITE;
-    }
     dvm_launch_ticket_free(ticket);
     dvm_launch_review_free(review);
     dvm_launch_endpoint_free(endpoint);
@@ -178,15 +176,6 @@ static int run_cli(const char *runtime, const char *mode, const char *bootstrap)
     launch_check(child >= 0, "CLI process");
     if (!child)
     {
-        if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
-        {
-            execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
-                "app.dis", "dep.dis", "--fd-grant", "/input", "held-input", "r",
-                "--fd-grant", "/output", "held-output", "w",
-                "--inherit-fd", "0", "r", "--inherit-fd", "1", "w", "--inherit-fd", "2", "w",
-                "--inherit-fd", "3", "rw", "--", mode, bootstrap, (char *)NULL);
-            _exit(3);
-        }
         if (getenv("DVM_TEST_TERMINAL_CUSTOM"))
         {
             execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
