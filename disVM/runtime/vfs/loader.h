@@ -9,11 +9,14 @@ struct String;
 struct Dir;
 struct DVM_ResourcePlan;
 struct DVM_Provider;
+struct Import;
+struct Modlink;
 
 #define DVM_MODULE_IMAGE_LIMIT (8UL * 1024UL * 1024UL) /* Existing reader's exclusive image byte bound. */
 
 #define DVM_MODULE_NO_CACHE (1UL << 30) /* Private Dir marker when native identity cannot fit retained fields. */
 #define DVM_MODULE_UNCACHEABLE_QID 1U   /* Copied into Module.qid: cannot match a later representable identity. */
+#define DVM_MODULE_ADAPTER_QID 2U /* Private opened-image provenance for the exact adapter provider. */
 
 
 /* EN: Original reader on an already frozen native path. Consumes cached module
@@ -61,4 +64,7 @@ struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan);
 /* EN/RU: Check the exact local adapter provider and relative dot without I/O.
  * Проверить точный локальный провайдер адаптера и относительную точку без I/O. */
 int dvm_module_adapter_node(struct DVM_Provider *provider, const char *relative);
+/* EN/RU: Consume the loaded module through ordinary linking and bind adapter instances.
+ * Передать модуль обычному линкеру и закрепить окружение экземпляров адаптера. */
+struct Modlink *dvm_namespace_link_loaded(struct Module *module, struct Import *imports);
 #endif

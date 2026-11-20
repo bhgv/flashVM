@@ -21,5 +21,15 @@ providers and filenames cannot confer admission. Ordinary remote code retains
 the execution-provider launch requirement.
 
 The adapter opens its configured Styx route paths at invocation under the
-active namespace. Route discovery and a per-instance route pin are separate
-from publication of the adapter image.
+instance's namespace. Discovering owner routes for arbitrary remote files
+remains a separate operation.
+
+Each successful typed load of an adapter attaches an independent copy of the
+active namespace's bindings to its module instance before returning to the
+caller. The copy retains the mounted providers. A later caller bind or unmount
+affects subsequent loads. Existing instances keep their selected bindings.
+The providers and their backing files remain live, so this does not preserve
+a closed session or freeze file contents.
+
+A namespace change during adapter loading can make the load fail. Retry the load
+against the new bindings if desired.

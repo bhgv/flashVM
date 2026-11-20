@@ -12,8 +12,10 @@
 #include "module_registry.h"
 #include "guest.h"
 #include "loader.h"
+#include "../module_interface/environment.h"
 #include "../module_interface/launch.h"
 #include "resource.h"
+#include "stack.h"
 #include "runqueue.h"
 #include "metadata_wait.h"
 #include "raise.h"
@@ -114,4 +116,30 @@ Module *readmod(char *path, Module *cached, int sync)
 int dvm_namespace_module_cacheable(const Dir *metadata)
 {
     return metadata && !(metadata->mode & DVM_MODULE_NO_CACHE);
+}
+
+
+/* [GC:] EN/RU: Link consumes module; perform no managed allocation after receiving the private link.
+ * Линкер поглощает module. После получения приватного link нет управляемых аллокаций. */
+Modlink *dvm_namespace_link_loaded(Module *module, Import *imports)
+{
+    int adapter = module && module->qid.type == DVM_MODULE_ADAPTER_QID;
+    uint64_t revision = adapter ? module->qid.path : 0; /* Native namespace revision captured during selection. */
+    Modlink *link = linkmod(module, imports, 1);
+    if (!adapter || link == H)
+    {
+        return link;
+    }
+    DVM_Namespace *active = dvm_namespace_current_group();
+    DVM_Namespace *snapshot = active ? dvm_namespace_copy(active) : NULL;
+    int attached = snapshot && dvm_stack_current(active, revision) &&
+        dvm_module_environment_bind(link, snapshot);
+    dvm_namespace_release(snapshot);
+    if (!attached)
+    {
+        destroy(link);
+        kwerrstr("cannot attach adapter namespace");
+        return H;
+    }
+    return link;
 }

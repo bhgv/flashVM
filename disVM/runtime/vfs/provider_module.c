@@ -165,6 +165,11 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     Module *answer = NULL; /* Ordinary parser returns an owned module or NULL. */
     if (released >= 0 && valid && !cancelled)
     {
+        if (dvm_module_adapter_node(plan->provider, plan->relative))
+        {
+            image->metadata.qid.type = DVM_MODULE_ADAPTER_QID;
+            image->metadata.qid.path = plan->names.version;
+        }
         answer = parsemod(path, image->bytes, (ulong)image->length, &image->metadata);
     }
     else

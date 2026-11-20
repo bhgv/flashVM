@@ -19,6 +19,20 @@ init()
     if (service == nil) {
         raise "could not load Compute";
     }
+    if (sys->bind("/blocked", "/scalar", Sys->MREPL) < 0) {
+        raise "could not rebind caller route";
+    }
+    fresh := load Compute Compute->PATH;
+    if (fresh == nil) {
+        raise "could not load second Compute instance";
+    }
+    {
+        fresh->compute(0);
+        raise "new instance used old route";
+    } exception error {
+        "remote scalar call not sent" =>
+            ;
+    }
     failing := sys->open("expect-error", Sys->OREAD) != nil;
     no_dependency := sys->open("expect-dependency-error", Sys->OREAD) != nil;
     argument := 100;

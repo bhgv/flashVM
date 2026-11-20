@@ -59,6 +59,7 @@ def adapt_loader(source, unit):
         changes = (
             ("\tn = string2c(name);", "\tn = dvm_namespace_load_name(name);"),
             ("readmod(n, lookmod(n), 1)", "readmod(n, n[0] == '$' ? lookmod(n) : nil, 1)"),
+            ("ml = linkmod(m, ldt, 1);", "ml = dvm_namespace_link_loaded(m, ldt);"),
         )
     else:
         raise ValueError("unexpected namespace loader unit: " + unit)
