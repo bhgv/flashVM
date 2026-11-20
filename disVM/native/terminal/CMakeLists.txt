@@ -122,7 +122,7 @@ endforeach()
 
 add_subdirectory(cli)
 
-add_library(styx_unibus_server STATIC unibus_server.c scalar_function_owner.c)
+add_library(styx_unibus_server STATIC unibus_server.c scalar_function_owner.c indexed_styx.c)
 target_link_libraries(styx_unibus_server PUBLIC styx_terminal infernostyx_phy)
 target_compile_options(styx_unibus_server PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
 add_dependencies(terminal-ordered-files styx_unibus_server)
@@ -149,5 +149,5 @@ if(INFERNO_DISVM_RUNTIME AND INFERNO_LIMBO_COMPILER AND CMAKE_GENERATOR STREQUAL
 endif()
 
 add_executable(terminal-indexed-variable tests/indexed_variable.c)
-target_link_libraries(terminal-indexed-variable PRIVATE styx_terminal infernostyx_phy remote_phy_mux)
+target_link_libraries(terminal-indexed-variable PRIVATE styx_unibus_server remote_phy_mux)
 add_test(NAME terminal-indexed-variable COMMAND terminal-indexed-variable)

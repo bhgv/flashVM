@@ -17,9 +17,25 @@ Serialize calls to the same object on a dispatcher or under an external lock.
 
 Keep the returned generation in each opened fid. Call `styxintarrayclose`
 only for the selector in `freefid`. A stale value fid cannot access a new
-selection. The fixture also exposes read-only `.len` and `.type`.
+selection. The adapter also exposes read-only `.len` and `.type`.
 
 Run `ctest -R '^terminal-indexed-variable$' -V`. The fixture reads and
 updates a selected element over Styx, rejects a competing selection and
 invalidates the old value fid. Native checks also cover two connections,
 out-of-range indices and partial writes.
+
+## Server integration
+
+`styxarrayfilepublish` from `styx_unibus_server` creates the array directory
+below an existing parent qid, such as a granted `.prog/<pid>/.var`.
+Include `lib9.h`, `styx.h`, `styxserver.h` and `indexed_styx.h`.
+Before running the dispatcher, supply the directory name, owner, array and
+five consecutive unused qids. Overlapping qid ranges are rejected before
+publication. Keep the array and publication descriptor alive through fid
+retirement.
+
+Route the range's operations to `styxarrayfileopen`, `styxarrayfileread`
+and `styxarrayfilewrite`. Use `styxarrayfileclose` in `freefid` for these
+opens. A server with several kinds of fid contexts must dispatch their
+cleanup to the corresponding handler. With no `store` callback, `.val`
+is read-only. The library publishes `.len` and `.type`.

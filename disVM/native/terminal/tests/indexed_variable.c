@@ -14,6 +14,7 @@
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include "indexed_variable.h"
+#include "indexed_styx.h"
 
 static int32_t values[] = {11, 22}; /* Owner storage updated through the proxy. */
 
@@ -39,92 +40,44 @@ static int store(void *state, uint32_t index, int32_t value)
 static Styxserver server; /* Dedicated native Styx dispatcher. */
 static StyxIntArray shared = {.state = values, .length = 2, .load = load, .store = store}; /* Exported array. */
 
-typedef struct Opened
+static StyxIntArray readonly = {.state = values, .length = 1, .load = load}; /* Separate read-only export. */
+static StyxArrayFiles read_files; /* Read-only adapter on the same session. */
+static StyxArrayFiles files; /* Configured library adapter. */
+
+
+/* EN/RU: Select the adapter by the fixture's qid partition.
+ * Выбрать адаптер по диапазону qid стенда. */
+static StyxArrayFiles *route(Path qid)
 {
-    uint64_t generation; /* Selection held by this fid. */
-    int selector; /* Closing .idx retires the selection. */
-} Opened;
+    return qid < read_files.base ? &files : &read_files;
+}
 
 
-/* EN/RU: Open a selector or value on the connection that owns the selection.
- * Открыть выбор или значение в соединении, которому принадлежит выбор. */
+/* EN/RU: Route root and array opens to their handlers.
+ * Передать открытия корня и массива соответствующим обработчикам. */
 static char *open_node(Qid *qid, int mode)
 {
-    if (qid->path <= 1 || qid->path == 4 || qid->path == 5)
+    if (qid->path == Qroot)
     {
         return mode == OREAD ? nil : Eperm;
     }
-    int selector = qid->path == 2;
-    if (selector && mode != OWRITE)
-    {
-        return Eperm;
-    }
-    Opened *fid = calloc(1, sizeof(*fid));
-    if (!fid)
-    {
-        return Enomem;
-    }
-    fid->selector = selector;
-    fid->generation = styxintarrayopen(&shared, styxclient(&server), selector);
-    if (!fid->generation || styxsetaux(&server, fid) < 0)
-    {
-        if (selector)
-        {
-            styxintarrayclose(&shared, fid->generation);
-        }
-        free(fid);
-        return Eperm;
-    }
-    return nil;
+    return styxarrayfileopen(route(qid->path), qid, mode);
 }
 
 
-/* EN/RU: Retire selectors on clunk or disconnect; consume the fid context.
- * Отозвать выбор при clunk или отключении и освободить контекст fid. */
-static void close_node(void *state)
-{
-    Opened *fid = state;
-    if (fid->selector)
-    {
-        styxintarrayclose(&shared, fid->generation);
-    }
-    free(fid);
-}
-
-
-/* EN/RU: Read the element selected by this value fid.
- * Прочитать элемент, выбранный этим fid значения. */
+/* EN/RU: Forward the fixture's array reads to the reusable adapter.
+ * Передать чтения массива библиотечному адаптеру. */
 static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if ((qid.path == 4 || qid.path == 5) && offset >= 0)
-    {
-        *count = styxreadstr(offset, bytes, *count, qid.path == 4 ? "2\n" : "array of int\n");
-        return nil;
-    }
-    Opened *fid = styxgetaux(&server);
-    size_t size = *count;
-    if (qid.path != 3 || !fid || offset < 0 ||
-        !styxintarrayread(&shared, fid->generation, offset, bytes, &size))
-    {
-        return Ebadarg;
-    }
-    *count = size;
-    return nil;
+    return styxarrayfileread(route(qid.path), qid, bytes, count, offset);
 }
 
 
-/* EN/RU: Write one index or update the selected value according to the opened file.
- * Записать индекс или заменить выбранное значение в зависимости от открытого файла. */
+/* EN/RU: Forward the fixture's array writes to the reusable adapter.
+ * Передать записи массива библиотечному адаптеру. */
 static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    Opened *fid = styxgetaux(&server);
-    if (!fid || offset < 0)
-    {
-        return Ebadarg;
-    }
-    int accepted = qid.path == 2 ? styxintarrayselect(&shared, fid->generation, offset, bytes, *count) :
-        styxintarraywrite(&shared, fid->generation, offset, bytes, *count);
-    return accepted ? nil : Ebadarg;
+    return styxarrayfilewrite(route(qid.path), qid, bytes, count, offset);
 }
 
 
@@ -157,18 +110,19 @@ static void require(int ok, const char *message)
  * Открыть выбор и проверить отзыв старого значения через Styx. */
 static void wire(void)
 {
-    static Styxops ops = {.open = open_node, .read = read_node, .write = write_node, .freefid = close_node};
+    static Styxops ops = {.open = open_node, .read = read_node, .write = write_node, .freefid = styxarrayfileclose};
     int pair[2];
     require(!socketpair(AF_UNIX, SOCK_STREAM, 0, pair), "indexed carrier");
     int breaker = dup(pair[0]);
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     require(breaker >= 0 && !styxphyinit(&server, &ops, phyposixfd(pair[1], caps), 0555, 1, 2),
         "indexed server");
-    require(styxadddir(&server, Qroot, 1, "values", 0555, "fixture") &&
-        styxaddfile(&server, 1, 2, ".idx", 0222, "fixture") &&
-        styxaddfile(&server, 1, 3, ".val", 0666, "fixture") &&
-        styxaddfile(&server, 1, 4, ".len", 0444, "fixture") &&
-        styxaddfile(&server, 1, 5, ".type", 0444, "fixture"), "indexed files");
+    require(styxarrayfilepublish(&files, &server, Qroot, 1, "values", "fixture", &shared), "indexed files");
+    require(styxarrayfilepublish(&read_files, &server, Qroot, 6, "readonly", "fixture", &readonly),
+        "read-only indexed files");
+    StyxArrayFiles invalid;
+    require(!styxarrayfilepublish(&invalid, &server, Qroot, 5, "overlap", "fixture", &shared),
+        "qid collision refused");
     pthread_t worker;
     require(!pthread_create(&worker, NULL, serve, NULL), "indexed dispatcher");
     StyxClient *client = styxclientmountphy(phyposixfd(pair[0], caps), 256, "fixture", "", 3000, 4);
@@ -196,6 +150,19 @@ static void wire(void)
     styxclientclunk(competing);
     styxclientread(val, 0, bytes, sizeof(bytes), &transfer);
     require(transfer.success && transfer.count == 4 && bytes[3] == 22, "read selected element");
+    StyxFid *read_index = styxclientwalk(client, "readonly/.idx");
+    StyxFid *read_value = styxclientwalk(client, "readonly/.val");
+    require(read_index && read_value && styxclientopen(read_index, OWRITE), "independent selector");
+    memset(bytes, 0, sizeof(bytes));
+    styxclientwrite(read_index, 0, bytes, sizeof(bytes), &transfer);
+    require(transfer.success && !styxclientopen(read_value, OWRITE), "read-only value refuses write access");
+    styxclientclunk(read_value);
+    read_value = styxclientwalk(client, "readonly/.val");
+    require(read_value && styxclientopen(read_value, OREAD), "read-only value open");
+    styxclientread(read_value, 0, bytes, sizeof(bytes), &transfer);
+    require(transfer.success && transfer.count == 4 && bytes[3] == 11, "read-only selected value");
+    styxclientclunk(read_value);
+    styxclientclunk(read_index);
     bytes[3] = 44;
     styxclientwrite(val, 0, bytes, sizeof(bytes), &transfer);
     require(transfer.success && transfer.count == 4, "write selected element");
