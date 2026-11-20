@@ -16,9 +16,12 @@ init()
         raise "ordinary provider supplied executable adapter";
     }
     original := sys->open(Compute->PATH, Sys->OREAD);
+    baseline := sys->open("original-prefix", Sys->OREAD);
+    expected := array[14] of byte;
     bytes := array[14] of byte;
     if (original == nil || sys->read(original, bytes, len bytes) != len bytes ||
-        string bytes != "original-image" || sys->open(Compute->PATH, Sys->OWRITE) != nil) {
+        baseline == nil || sys->read(baseline, expected, len expected) != len expected ||
+        string bytes != string expected || sys->open(Compute->PATH, Sys->OWRITE) != nil) {
         raise "publication did not preserve read-only original";
     }
     service := load Compute Compute->PATH;

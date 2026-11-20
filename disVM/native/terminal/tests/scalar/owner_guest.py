@@ -86,6 +86,7 @@ def main():
         ):
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(folder / output), str(source)], work)
+        (caller / "original-prefix").write_bytes((owner / "implementation.dis").read_bytes()[:14])
         (owner / "provider-secret").write_text("41")
         (caller / "provider-secret").write_text("900")
         binary = build_peer(runtime, sdk, work, True)

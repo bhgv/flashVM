@@ -79,3 +79,8 @@ sessions and reaps both processes.
 
 This publication serves one invocation per route pair. Mounting an arbitrary
 remote `.dis` still needs an adapter publication or runtime owner discovery.
+
+In the two-VM test, the owner publishes its actual `implementation.dis` over
+[Styx](../../native/terminal/UNIBUS-SERVER-FILE.md). The caller mounts the
+original and `.unibus` from the same session, pairs the original with its local
+adapter, and reads the original bytes through the same bound path used by `load`.

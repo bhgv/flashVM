@@ -11,6 +11,10 @@ typedef struct DVM_Provider DVM_Provider; /* Borrowed mounted file. */
  * owner selects which path is readable. Return the real runtime status.
  * RU: Запустить CLI argc/argv, заимствуя локальное чтение и удалённую запись.
  * owner выбирает доступный для чтения путь. Вернуть код runtime. */
-int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider *reader, int owner);
+int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider *reader, DVM_Provider *original, int owner);
+
+/* EN/RU: Read a borrowed fixture path into an owned image provider.
+ * Прочитать тестовый путь в собственный провайдер образа. */
+DVM_Provider *scalar_local_image(const char *path);
 
 #endif

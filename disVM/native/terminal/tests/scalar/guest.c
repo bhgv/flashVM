@@ -14,7 +14,7 @@ static int runtime_result; /* Real DisVM exit status. */
  * Запустить гостя с заимствованными разрешениями стенда. */
 void scalar_guest(DVM_Provider *request, DVM_Provider *inbox)
 {
-    runtime_result = scalar_runtime_run(runtime_argc, runtime_argv, request, inbox, 0);
+    runtime_result = scalar_runtime_run(runtime_argc, runtime_argv, request, inbox, 0, 0);
 }
 
 

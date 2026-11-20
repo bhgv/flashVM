@@ -17,6 +17,7 @@ struct StyxUnibusServer
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *inbox; /* Owner reference for local readers. */
+    StyxBacking *original; /* Optional read-only Dis image. */
     StyxBacking *file;   /* Retained backing for write fids. */
 };
 
@@ -25,17 +26,19 @@ static __thread StyxUnibusServer *current; /* Set only on the native server thre
 
 /* EN/RU: Permit root traversal and write-only access to the published file.
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
-static char *open_write(Qid *qid, int mode)
+static char *open_node(Qid *qid, int mode)
 {
     if (qid->path == Qroot)
     {
         return mode == OREAD ? nil : Eperm;
     }
-    if (qid->path != 1 || mode != OWRITE)
+    StyxBacking *node = qid->path == 1 && mode == OWRITE ? current->file :
+        qid->path == 2 && mode == OREAD ? current->original : NULL;
+    if (!node)
     {
         return Eperm;
     }
-    StyxOpen *opened = styxfileopen(current->file, mode);
+    StyxOpen *opened = styxfileopen(node, mode);
     if (!opened || styxsetaux(&current->server, opened) < 0)
     {
         styxfileclose(opened);
@@ -58,7 +61,26 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
     return result.success && result.confirmed && !result.uncertain && result.count == *count ? nil : Ebadarg;
 }
 
-static Styxops operations = {.open = open_write, .write = write_record, .freefid = styxfileclose}; /* Immutable callbacks. */
+/* EN/RU: Return a confirmed prefix from the original Dis image.
+ * Вернуть подтверждённый префикс исходного образа Dis. */
+static char *read_original(Qid qid, char *bytes, ulong *count, vlong offset)
+{
+    StyxTransfer result;
+    if (qid.path != 2 || offset < 0)
+    {
+        return Ebadarg;
+    }
+    styxfileread(styxgetaux(&current->server), offset, bytes, *count, &result);
+    if (!result.success || !result.confirmed || result.uncertain || result.count > *count)
+    {
+        return Ebadarg;
+    }
+    *count = result.count;
+    return nil;
+}
+
+
+static Styxops operations = {.open = open_node, .read = read_original, .write = write_record, .freefid = styxfileclose}; /* Immutable callbacks. */
 
 
 /* EN/RU: Dispatch all requests on the server's own thread, then retire all fids.
@@ -78,7 +100,7 @@ static void *serve(void *arg)
 
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
-StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
+StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -88,23 +110,42 @@ StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
     }
     server->inbox = styxunibusinbox(tag);
     server->file = styxbacking(server->inbox);
-    if (!server->file)
+    server->original = original ? styxbacking(original) : NULL;
+    StyxMeta details;
+    if (!server->file || (original && (!server->original ||
+        !styxbackinginfo(server->original, &details) || details.directory)))
     {
         phyfree(channel);
     }
     else if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
     {
-        if (styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus") &&
+        Styxfile *published = original ? styxaddfile(&server->server, Qroot, 2,
+            "implementation.dis", 0444, "unibus") : NULL;
+        if (published)
+        {
+            published->d.length = details.length;
+        }
+        if ((!original || published) &&
+            styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus") &&
             !pthread_create(&server->thread, NULL, serve, server))
         {
             return server;
         }
         styxend(&server->server);
     }
+    styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
     free(server);
     return NULL;
+}
+
+
+/* EN/RU: Preserve the default inbox-only server.
+ * Сохранить сервер, публикующий только приёмник. */
+StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
+{
+    return styxunibusserverstartfile(channel, tag, NULL);
 }
 
 
@@ -128,6 +169,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     {
         return 0;
     }
+    styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
     free(server);

@@ -31,14 +31,20 @@ int __wrap_main(int argc, char **argv)
         fprintf(stderr, "scalar pair: carrier initialization failed\n");
         return 2;
     }
-    StyxUnibusServer *receiver = styxunibusserverstart(phybidirchannel(mux, owner ? 0 : 1),
-        owner ? CALL_TAG : REPLY_TAG);
+    DVM_Provider *image = owner ? scalar_local_image("implementation.dis") : NULL;
+    StyxUnibusServer *receiver = !owner || image ?
+        styxunibusserverstartfile(phybidirchannel(mux, owner ? 0 : 1), owner ? CALL_TAG : REPLY_TAG, image) : NULL;
+    dvm_provider_release(image);
     StyxClient *client = receiver ? styxclientmountphy(phybidirchannel(mux, owner ? 1 : 0),
         256, "scalar", "", 3000, 4) : NULL;
+    DVM_Provider *original = !owner && client && styxclientretain(client) ?
+        styxmountproviderat(client, "implementation.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC) : NULL;
     DVM_Provider *writer = client ? styxmountproviderat(client, ".unibus", FVM_ACCESS_WRITE) : NULL;
-    if (!writer)
+    if (!writer || (!owner && !original))
     {
         fprintf(stderr, "scalar pair: file mount failed\n");
+        dvm_provider_release(writer);
+        dvm_provider_release(original);
         phybidirfree(mux);
         styxunibusserverjoin(receiver);
         return 2;
@@ -48,7 +54,8 @@ int __wrap_main(int argc, char **argv)
         const struct timespec delay = {1, 0};
         nanosleep(&delay, NULL);
     }
-    int status = scalar_runtime_run(argc, argv, writer, styxunibusserverinbox(receiver), owner);
+    int status = scalar_runtime_run(argc, argv, writer, styxunibusserverinbox(receiver), original, owner);
+    dvm_provider_release(original);
     dvm_provider_release(writer);
     if (!owner && status == 0)
     {

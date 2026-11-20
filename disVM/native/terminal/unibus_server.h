@@ -17,6 +17,11 @@ typedef struct StyxUnibusServer StyxUnibusServer; /* Owned reverse server and re
 StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag);
 
 
+/* EN/RU: Also export a borrowed exact original node as read-only implementation.dis.
+ * Также опубликовать заимствованный точный узел implementation.dis на чтение. */
+StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original);
+
+
 /* EN/RU: Borrow the local reader provider until server join.
  * Заимствовать локальный провайдер чтения до завершения сервера. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);
