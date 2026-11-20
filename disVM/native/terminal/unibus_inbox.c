@@ -13,6 +13,7 @@ typedef struct Inbox
 {
     pthread_mutex_t lock;    /* Protects the one-time record publication. */
     unsigned long tag;       /* Owner-selected tag. */
+    int reusable; /* Consume complete records for a serialized live route. */
     size_t size;             /* Zero while empty. */
     unsigned char bytes[64]; /* One immutable complete wire record after admission. */
 } Inbox;
@@ -65,6 +66,21 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *out)
     {
         out->status = FVM_ERROR;
         out->stop = DVM_IO_AGAIN;
+    }
+    else if (inbox->reusable)
+    {
+        if (size < inbox->size)
+        {
+            out->status = FVM_ERROR;
+            out->stop = DVM_IO_DENIED;
+        }
+        else
+        {
+            memcpy(bytes, inbox->bytes, inbox->size);
+            out->count = inbox->size;
+            out->flags |= DVM_IO_RECORD;
+            inbox->size = 0;
+        }
     }
     else
     {
@@ -162,7 +178,7 @@ static const DVM_ProviderOps factory = {.info = info, .open = open_file, .destro
 
 /* EN/RU: See unibus_inbox.h; the returned provider owns the inbox.
  * См. unibus_inbox.h; возвращённый провайдер владеет приёмником. */
-DVM_Provider *styxunibusinbox(unsigned long tag)
+static DVM_Provider *create_inbox(unsigned long tag, int reusable)
 {
     if (!tag || tag > FVM_SRECORD_U32)
     {
@@ -179,6 +195,7 @@ DVM_Provider *styxunibusinbox(unsigned long tag)
         return NULL;
     }
     inbox->tag = tag;
+    inbox->reusable = reusable;
     DVM_Provider *provider = dvm_provider_create_native(&factory, inbox, NULL, 1,
         DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE | DVM_PROVIDER_CANCEL_LIST);
     if (!provider)
@@ -186,4 +203,20 @@ DVM_Provider *styxunibusinbox(unsigned long tag)
         destroy(inbox);
     }
     return provider;
+}
+
+
+/* EN/RU: Preserve the original one-shot inbox.
+ * Сохранить исходный одноразовый приёмник. */
+DVM_Provider *styxunibusinbox(unsigned long tag)
+{
+    return create_inbox(tag, 0);
+}
+
+
+/* EN/RU: Open a reusable one-record slot for a serialized session.
+ * Создать переиспользуемый приёмник для последовательной сессии. */
+DVM_Provider *styxunibusmailbox(unsigned long tag)
+{
+    return create_inbox(tag, 1);
 }

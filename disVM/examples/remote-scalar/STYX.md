@@ -52,8 +52,8 @@ Start the owner with a readable request inbox and the caller's writable
 reply file. The caller gets its own readable reply inbox and the owner's
 writable request file. The grant paths may have the same names in the two
 namespaces while referring to opposite directions. Both peers use the same
-request and reply tags. The owner loads the implementation once, reads one
-request and returns its value or an error record.
+request and reply tags. The owner loads the implementation once, reads successive
+requests and returns one value or error record for each.
 
 ```sh
 python3 disVM/native/terminal/tests/scalar/owner_guest.py \
@@ -71,7 +71,9 @@ present at the caller. All three cases run with and without JIT. The owner start
 is ready so the caller exercises a pending reply. Each case closes its two
 sessions and reaps both processes.
 
-This publication serves one invocation per route pair. Mounting an arbitrary
+In the [sequential session](../../native/terminal/SCALAR-SESSION.md), one
+instance returns 142, then an error, then 144. The last value verifies that
+the implementation retained state across the error. Mounting an arbitrary
 remote `.dis` still needs an adapter publication or runtime owner discovery.
 
 In the two-VM test, the owner publishes its actual `implementation.dis` over

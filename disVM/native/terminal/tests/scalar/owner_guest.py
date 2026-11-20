@@ -13,11 +13,12 @@ from guest import build_peer, run
 
 # EN: Give each peer its own inherited carrier end and private working directory.
 # RU: Передать каждой стороне свой конец соединения и свой рабочий каталог.
-def peer(binary, directory, image, mode, carrier, owner):
+def peer(binary, directory, image, mode, carrier, owner, calls):
     env = os.environ.copy()
     env.pop("DVM_TEST_SCALAR_OWNER", None)
     if owner:
         env["DVM_TEST_SCALAR_OWNER"] = "1"
+        env["DVM_TEST_SCALAR_CALL_COUNT"] = str(calls)
         env["DVM_TEST_SCALAR_DELAY_OWNER"] = "1"
     env["DVM_TEST_SCALAR_FD"] = str(carrier.fileno())
     return subprocess.Popen([str(binary), mode, image], cwd=directory, env=env,
@@ -27,7 +28,7 @@ def peer(binary, directory, image, mode, carrier, owner):
 
 # EN: Run both sides to completion, bounding failures and always reaping both.
 # RU: Дождаться обеих сторон, ограничить время отказа и завершить оба процесса.
-def exchange(binary, owner, caller, mode, marker):
+def exchange(binary, owner, caller, mode, marker, calls=1):
     children = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -37,8 +38,8 @@ def exchange(binary, owner, caller, mode, marker):
     for carrier in (left, right):
         carrier.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
-        children.append(peer(binary, owner, "owner.dis", mode, left, True))
-        children.append(peer(binary, caller, "client.dis", mode, right, False))
+        children.append(peer(binary, owner, "owner.dis", mode, left, True, calls))
+        children.append(peer(binary, caller, "client.dis", mode, right, False, calls))
         left.close()
         right.close()
         owner_output, _ = children[0].communicate(timeout=15)
@@ -87,7 +88,7 @@ def main():
         hidden = owner / "privatevalue.hidden"
         for mode in ("--no-jit", "--jit"):
             flag.unlink(missing_ok=True)
-            exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute value")
+            exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=3)
             flag.touch()
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute exception")
             flag.unlink()

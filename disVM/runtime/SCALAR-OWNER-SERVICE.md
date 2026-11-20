@@ -8,7 +8,7 @@ VFS. It uses [Vfsnative.scalarload](VFS-SCALAR-LOAD.md) to bind the
 implementation, then calls the linked slot through the normal Dis
 instruction. Request and reply transport run in the shared C builtin.
 
-The trusted launcher supplies six tab-separated UTF-8 fields via
+The trusted launcher supplies six or seven tab-separated UTF-8 fields via
 `Launchcontext.arguments()`. The complete string is limited to 4096 bytes.
 Fields appear in this order.
 
@@ -20,8 +20,10 @@ Fields appear in this order.
 | Reply | Write path of the reverse Styx file |
 | Request tag | Decimal nonzero 32-bit route tag |
 | Reply tag | Decimal nonzero 32-bit return tag |
+| Call count | Optional decimal integer from 1 to 65536, default 1 |
 
-The service reads one request. It writes one value or error record.
+The service loads the implementation once and handles the configured number of
+requests. Each request receives one value or error record.
 An exception from the implementation maps to owner error code 1.
 Paths and tags are assigned when the host grants the route. The service
 does not dial, mount a peer or select an implementation from wire data.

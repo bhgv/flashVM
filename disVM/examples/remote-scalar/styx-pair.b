@@ -68,7 +68,17 @@ init()
         if (failing || no_dependency || result != 142) {
             raise "incorrect owner result";
         }
-        sys->print("PASS owner-local Styx Compute value\n");
+        {
+            service->compute(-1);
+            raise "expected owner exception";
+        } exception error {
+            "remote scalar owner error" =>
+                ;
+        }
+        if (service->compute(100) != 144) {
+            raise "owner state did not survive repeated calls";
+        }
+        sys->print("PASS owner-local Styx Compute sequence\n");
     } exception error {
         "remote scalar owner error" =>
             if (no_dependency) {

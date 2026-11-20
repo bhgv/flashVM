@@ -28,6 +28,12 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
     DVM_Provider *original, DVM_Provider *profile);
 
 
+/* EN/RU: Like startmodule, with a reusable single-record inbox for serialized calls.
+ * Как startmodule, с переиспользуемым приёмником для последовательных вызовов. */
+StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile);
+
+
 /* EN/RU: Borrow the local reader provider until server join.
  * Заимствовать локальный провайдер чтения до завершения сервера. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);

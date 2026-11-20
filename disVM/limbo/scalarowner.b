@@ -1,6 +1,6 @@
 # Copyright (c) 2026 bhgv
-# EN: Shared one-shot scalar service. Startup data selects the owner's implementation and Styx files.
-# RU: Общий одноразовый скалярный сервис. Стартовые данные выбирают реализацию владельца и файлы Styx.
+# EN: Shared sequential scalar service. Startup data selects the owner's implementation and Styx files.
+# RU: Общий последовательный скалярный сервис. Стартовые данные выбирают реализацию владельца и файлы Styx.
 implement Scalarowner;
 include "sys.m";
 include "vfsnative.m";
@@ -12,8 +12,8 @@ Scalarowner: module
 };
 
 
-# EN: Read one admitted argument, invoke the ordinary linked Dis export and return its result.
-# RU: Принять проверенный аргумент, вызвать обычный связанный экспорт Dis и вернуть результат.
+# EN: Load once, then serve the configured sequence through the ordinary linked Dis export.
+# RU: Загрузить один раз и обслужить последовательность обычным связанным экспортом Dis.
 init()
 {
     sys := load Sys Sys->PATH;
@@ -27,7 +27,7 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
-    if (count != 6) {
+    if (count != 6 && count != 7) {
         raise "invalid scalar owner startup configuration";
     }
     implementation := hd fields;
@@ -39,21 +39,31 @@ init()
     reply := hd fields;
     fields = tl fields;
     requesttag := big hd fields;
-    replytag := big hd tl fields;
+    fields = tl fields;
+    replytag := big hd fields;
+    calls := 1;
+    if (count == 7) {
+        calls = int hd tl fields;
+    }
+    if (calls < 1 || calls > 65536) {
+        raise "invalid scalar owner call count";
+    }
 
     target := routes->scalarload(implementation, name);
     if (target == nil) {
         raise "scalar owner implementation link failed";
     }
-    value := routes->scalartake(request, requesttag);
-    result := 0;
-    success := 1;
-    {
-        result = target->invoke(value);
-    } exception {
-        "*" =>
-            success = 0;
-            result = 1;
+    for (i := 0; i < calls; i++) {
+        value := routes->scalartake(request, requesttag);
+        result := 0;
+        success := 1;
+        {
+            result = target->invoke(value);
+        } exception {
+            "*" =>
+                success = 0;
+                result = 1;
+        }
+        routes->scalarreply(reply, replytag, success, result);
     }
-    routes->scalarreply(reply, replytag, success, result);
 }

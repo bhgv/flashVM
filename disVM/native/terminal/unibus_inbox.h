@@ -13,4 +13,7 @@
  * выдавать права чтения и записи через отдельные отображения. */
 DVM_Provider *styxunibusinbox(unsigned long tag);
 
+/* EN/RU: Return a reusable slot. Reads consume one entire record or fail without consuming.
+ * Вернуть переиспользуемый слот. Чтение принимает запись целиком либо не потребляет её. */
+DVM_Provider *styxunibusmailbox(unsigned long tag);
 #endif

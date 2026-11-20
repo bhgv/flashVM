@@ -37,6 +37,13 @@ init()
             if (!missing) {
                 raise error;
             }
+            {
+                service->compute(0);
+                raise "retired route accepted another call";
+            } exception {
+                "remote scalar route retired" =>
+                    ;
+            }
             sys->print("PASS Styx Compute missing\n");
     }
 }

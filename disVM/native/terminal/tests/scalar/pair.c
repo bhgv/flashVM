@@ -34,7 +34,7 @@ int __wrap_main(int argc, char **argv)
     DVM_Provider *image = owner ? scalar_local_image("implementation.dis") : NULL;
     DVM_Provider *owner_profile = owner ? scalar_local_profile() : NULL;
     StyxUnibusServer *receiver = !owner || (image && owner_profile) ?
-        styxunibusserverstartmodule(phybidirchannel(mux, owner ? 0 : 1),
+        styxunibusserverstartsession(phybidirchannel(mux, owner ? 0 : 1),
             owner ? CALL_TAG : REPLY_TAG, image, owner_profile) : NULL;
     dvm_provider_release(owner_profile);
     dvm_provider_release(image);

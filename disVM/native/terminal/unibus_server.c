@@ -126,8 +126,8 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
 
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
-StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile)
+static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile, int reusable)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -135,7 +135,7 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
         phyfree(channel);
         return NULL;
     }
-    server->inbox = styxunibusinbox(tag);
+    server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
     server->file = styxbacking(server->inbox);
     server->original = original ? styxbacking(original) : NULL;
     server->profile = profile ? styxbacking(profile) : NULL;
@@ -160,6 +160,24 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
     dvm_provider_release(server->inbox);
     free(server);
     return NULL;
+}
+
+
+/* EN/RU: Publish the existing one-shot module endpoint.
+ * Опубликовать прежнюю одноразовую точку входа модуля. */
+StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile)
+{
+    return start(channel, tag, original, profile, 0);
+}
+
+
+/* EN/RU: Publish a reusable endpoint for one serialized scalar session.
+ * Опубликовать переиспользуемую точку входа для последовательной сессии. */
+StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile)
+{
+    return start(channel, tag, original, profile, 1);
 }
 
 

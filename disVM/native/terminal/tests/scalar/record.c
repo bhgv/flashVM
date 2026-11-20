@@ -3,6 +3,8 @@
  * RU: Проверка формата скаляров Unibus и отклонения неверных записей.
  */
 #include "scalar_record.h"
+#include "scalar_route.h"
+#include "unibus_inbox.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +17,36 @@ static int method(void *state, int64_t argument, int64_t *result)
     ++*(int *)state;
     *result = argument < 0 ? 42 : argument;
     return argument >= 0;
+}
+
+
+/* EN/RU: Check single-slot backpressure and unchanged record after a short read.
+ * Проверить отказ записи в занятый слот и сохранение записи после короткого чтения. */
+static int mailbox(void)
+{
+    DVM_Provider *provider = styxunibusmailbox(17);
+    DVM_VfsHandle reader = {0};
+    int ok = provider && dvm_provider_open(provider, ".", "r", &reader) == FVM_OK;
+    if (ok)
+    {
+        unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY];
+        ok = styxscalarcallfile(provider, 17, 77) == DVM_LAUNCH_DELIVERED &&
+            styxscalarcallfile(provider, 17, 88) != DVM_LAUNCH_DELIVERED &&
+            dvm_vfs_read_chunk(&reader, bytes, 1).count == 0;
+        DVM_IoResult got = dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes));
+        StyxScalarKind kind;
+        int64_t value;
+        ok = ok && got.status == FVM_OK && (got.flags & DVM_IO_RECORD) &&
+            styxscalarread(17, bytes, got.count, &kind, &value) && kind == STYX_SCALAR_CALL && value == 77 &&
+            dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes)).stop == DVM_IO_AGAIN &&
+            styxscalarcallfile(provider, 17, 88) == DVM_LAUNCH_DELIVERED;
+        got = dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes));
+        ok = ok && got.status == FVM_OK &&
+            styxscalarread(17, bytes, got.count, &kind, &value) && kind == STYX_SCALAR_CALL && value == 88;
+    }
+    dvm_vfs_close(&reader);
+    dvm_provider_release(provider);
+    return ok;
 }
 
 
@@ -90,6 +122,11 @@ int main(void)
         decoded != STYX_SCALAR_VALUE || value != 99 || calls != 2)
     {
         fputs("scalar method dispatch failed\n", stderr);
+        return 1;
+    }
+    if (!mailbox())
+    {
+        fputs("reusable Unibus slot failed\n", stderr);
         return 1;
     }
     puts("PASS exact signed scalar Unibus records and method dispatch");

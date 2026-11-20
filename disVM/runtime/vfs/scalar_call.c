@@ -28,6 +28,13 @@
 extern char *dvm_runtime_file_path(String *name); /* Borrowed path while the calling frame is rooted. */
 
 
+static const char owner_error[] = "remote scalar owner error"; /* Verified reply, route remains synchronized. */
+
+#define SCALAR_IDLE 0UL /* Native route has no call in progress. */
+#define SCALAR_BUSY 1UL /* A caller owns the one outstanding exchange. */
+#define SCALAR_RETIRED 2UL /* Prior exchange ended without a verified reply. */
+
+
 /* EN/RU: Copy a validated guest spelling before releasing managed admission.
  * Скопировать проверенный путь гостя до выхода из допуска VM. */
 static int copy_path(String *name, char output[DVM_NS_PATH_LIMIT])
@@ -88,7 +95,7 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
                     return kind == STYX_SCALAR_CALL ? NULL : "invalid scalar request";
                 }
                 return kind == STYX_SCALAR_VALUE ? NULL :
-                    kind == STYX_SCALAR_ERROR ? "remote scalar owner error" : "invalid scalar reply";
+                    kind == STYX_SCALAR_ERROR ? owner_error : "invalid scalar reply";
             }
             return "remote scalar reply unavailable";
         }
@@ -136,14 +143,14 @@ static const char *exchange(DVM_Namespace *group, const char *request_path, cons
 
 /* EN/RU: Exchange a copied scalar outside admission and publish once after reentry.
  * Передать скопированный скаляр вне допуска и записать результат после возврата. */
-static void call_scalar(DVM_Namespace *group, const char *request, const char *reply,
-    unsigned long request_tag, unsigned long reply_tag, WORD argument, WORD *destination)
+static const char *scalar_value(DVM_Namespace *group, const char *request, const char *reply,
+    unsigned long request_tag, unsigned long reply_tag, WORD argument, WORD *result)
 {
     DVM_VfsWait *wait;
     int released = dvm_vfs_path_enter(&wait);
     if (released < 0)
     {
-        error("remote scalar call not sent");
+        return "remote scalar call not sent";
     }
     int64_t value = 0;
     const char *failure = exchange(group, request, reply, request_tag,
@@ -152,14 +159,15 @@ static void call_scalar(DVM_Namespace *group, const char *request, const char *r
     dvm_runtime_gc_native_enter(released);
     if (cancelled || failure)
     {
-        error((char *)(cancelled ? "remote scalar call cancelled" : failure));
+        return cancelled ? "remote scalar call cancelled" : failure;
     }
-    WORD result = (WORD)value;
-    if ((int64_t)result != value)
+    WORD narrowed = (WORD)value;
+    if ((int64_t)narrowed != value)
     {
-        error("invalid scalar reply");
+        return "invalid scalar reply";
     }
-    dvm_sys_scalar_result(&result, destination, sizeof(result));
+    *result = narrowed;
+    return NULL;
 }
 
 
@@ -177,8 +185,14 @@ void Vfsnative_scalarcall(void *frame)
     {
         error("remote scalar call not sent");
     }
-    call_scalar(group, request, reply, (unsigned long)call.requesttag, (unsigned long)call.replytag,
-        call.value, call.ret);
+    WORD result = 0;
+    const char *failure = scalar_value(group, request, reply, (unsigned long)call.requesttag,
+        (unsigned long)call.replytag, call.value, &result);
+    if (failure)
+    {
+        error((char *)failure);
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
@@ -302,7 +316,29 @@ static void scalar_entry(void *frame)
     {
         error("remote scalar call not sent");
     }
-    call_scalar(group, "/scalar/request", "/scalar/reply", request_tag, reply_tag, call.value, call.ret);
+    /* This private noncached module uses mtime for its one outstanding call. */
+    ulong expected = SCALAR_IDLE;
+    if (!__atomic_compare_exchange_n(&module->mtime, &expected, SCALAR_BUSY, 0,
+            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+    {
+        error(expected == SCALAR_BUSY ? "remote scalar route busy" : "remote scalar route retired");
+    }
+    if (waserror())
+    {
+        __atomic_store_n(&module->mtime, SCALAR_RETIRED, __ATOMIC_RELEASE);
+        nexterror();
+    }
+    WORD result = 0;
+    const char *failure = scalar_value(group, "/scalar/request", "/scalar/reply",
+        request_tag, reply_tag, call.value, &result);
+    __atomic_store_n(&module->mtime, !failure || failure == owner_error ? SCALAR_IDLE : SCALAR_RETIRED,
+        __ATOMIC_RELEASE);
+    poperror();
+    if (failure)
+    {
+        error((char *)failure);
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 

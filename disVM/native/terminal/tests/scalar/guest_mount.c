@@ -113,12 +113,19 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     }
     DVM_Provider *routes = dvm_view_freeze(view);
     DVM_LaunchHandoff handoff = {.local_role = owner ? DVM_ORIGIN_PROVIDER : DVM_ORIGIN_TERMINAL};
-    unsigned char owner_config[] = /* Test publication's copied startup configuration. */
-        "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64";
+    unsigned char owner_config[160]; /* Short trusted test launch configuration. */
     if (owner)
     {
+        const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
+        int size = snprintf((char *)owner_config, sizeof(owner_config),
+            "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64\t%s",
+            count ? count : "1");
+        if (size < 0 || (size_t)size >= sizeof(owner_config))
+        {
+            exit(2);
+        }
         handoff.arguments = owner_config;
-        handoff.description.argument_bytes = sizeof(owner_config) - 1;
+        handoff.description.argument_bytes = (size_t)size;
     }
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
     strcpy(handoff.description.module, "scalar-guest.dis");
