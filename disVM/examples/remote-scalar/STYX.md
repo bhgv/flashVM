@@ -2,6 +2,8 @@
 
 [Русский](STYX.ru.md) · [Client source](styx-client.b) · [Styx route](../../native/terminal/SCALAR-ROUTE.md) · [Transport API](../../module/STYXSCALAR-CALL.md)
 
+The [mounted function example](../../native/terminal/SCALAR-FUNCTION.md) shows the file-per-export protocol with a native callback.
+
 The caller imports the original `compute.m`, loads `Compute` from its usual
 VFS path and calls `compute`. A publisher can place a generated Dis adapter
 at that path. The adapter performs its request and reply through ordinary

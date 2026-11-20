@@ -34,6 +34,13 @@ StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long
     DVM_Provider *original, DVM_Provider *profile);
 
 
+/* EN/RU: Consume channel and publish mounted/module/name, borrowing method state through join.
+ * Принять канал и опубликовать mounted/module/name, заимствуя состояние метода до join. */
+struct StyxScalarFunction;
+StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *module,
+    const char *name, const struct StyxScalarFunction *function);
+
+
 /* EN/RU: Borrow the local reader provider until server join.
  * Заимствовать локальный провайдер чтения до завершения сервера. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);

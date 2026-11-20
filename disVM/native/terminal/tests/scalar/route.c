@@ -9,6 +9,7 @@
 #include <styxserver.h>
 #include "server.h"
 #include "scalar_route.h"
+#include "scalar_function.h"
 #include "scalar_interface.h"
 #include "scalar_gateway.h"
 #include "scalar_owner.h"
@@ -250,6 +251,61 @@ static void native_interface(DVM_Provider *request, DVM_Provider *inbox)
 }
 
 
+/* EN/RU: Interleave two live fids and read their replies in reverse order.
+ * Чередовать операции двух открытых fid и прочитать ответы в обратном порядке. */
+static void mounted_function(void)
+{
+    int pair[2];
+    check(!socketpair(AF_UNIX, SOCK_STREAM, 0, pair), "mounted function carrier");
+    int breaker = dup(pair[0]);
+    check(breaker >= 0, "mounted function shutdown descriptor");
+    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
+    StyxScalarFunction function = {REQUEST_TAG, REPLY_TAG, method, NULL};
+    StyxUnibusServer *server = styxunibusserverstartfunction(phyposixfd(pair[1], caps),
+        "compute.dis", "compute", &function);
+    check(server != NULL, "export mounted function");
+    StyxClient *client = styxclientmountphy(phyposixfd(pair[0], caps), 256, "caller", "", 3000, 4);
+    check(client != NULL, "mount function server");
+    StyxFid *first = styxclientwalk(client, "mounted/compute.dis/compute");
+    StyxFid *second = styxclientwalk(client, "mounted/compute.dis/compute");
+    check(first && second && styxclientopen(first, ORDWR) && styxclientopen(second, ORDWR),
+        "two opened fids for the same function");
+    unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY];
+    size_t size;
+    StyxTransfer transfer;
+    StyxFid *rejected = styxclientwalk(client, "mounted/compute.dis/compute");
+    check(rejected && styxclientopen(rejected, ORDWR), "open malformed request fid");
+    check(styxscalarwrite(REQUEST_TAG, STYX_SCALAR_CALL, 70, bytes, sizeof(bytes), &size), "encode value");
+    styxclientwrite(rejected, 0, bytes, size - 1, &transfer);
+    check(!transfer.success, "truncated request refused");
+    styxclientclunk(rejected);
+    styxclientwrite(first, 0, bytes, size, &transfer);
+    check(transfer.success && transfer.confirmed && transfer.count == size, "first invocation");
+    check(styxscalarwrite(REQUEST_TAG, STYX_SCALAR_CALL, -1, bytes, sizeof(bytes), &size), "encode error case");
+    styxclientwrite(second, 0, bytes, size, &transfer);
+    check(transfer.success && transfer.count == size, "second invocation");
+    StyxScalarKind kind;
+    int64_t value;
+    styxclientread(second, 0, bytes, sizeof(bytes), &transfer);
+    check(transfer.success && styxscalarread(REPLY_TAG, bytes, transfer.count, &kind, &value) &&
+        kind == STYX_SCALAR_ERROR && value == 42, "second fid retains its own error");
+    styxclientclunk(second);
+    styxclientread(first, 0, bytes, 1, &transfer);
+    check(transfer.success && transfer.count == 1, "first reply prefix");
+    styxclientread(first, 1, bytes + 1, sizeof(bytes) - 1, &transfer);
+    check(transfer.success && styxscalarread(REPLY_TAG, bytes, transfer.count + 1, &kind, &value) &&
+        kind == STYX_SCALAR_VALUE && value == 71, "first fid retains its own value");
+    check(styxscalarwrite(REQUEST_TAG, STYX_SCALAR_CALL, 70, bytes, sizeof(bytes), &size), "encode duplicate");
+    styxclientwrite(first, 0, bytes, size, &transfer);
+    check(!transfer.success, "second write refused on same fid");
+    styxclientclunk(first);
+    shutdown(breaker, SHUT_RDWR);
+    close(breaker);
+    styxclientfree(client);
+    check(styxunibusserverjoin(server), "join mounted function server");
+}
+
+
 /* EN/RU: Exercise both reply types and verify wrong requests did not invoke the method.
  * Проверить оба вида ответа и отсутствие вызовов для чужого тега. */
 int main(void)
@@ -258,6 +314,9 @@ int main(void)
     round_trip(native_value);
     round_trip(native_error);
     check(calls == 2, "exact owner method count");
+    mounted_function();
+    check(calls == 4, "exact method count after interleaved fids");
+    puts("PASS mounted scalar function with two Styx fids");
     puts("PASS scalar value and error over separate Styx Unibus routes");
     return 0;
 }

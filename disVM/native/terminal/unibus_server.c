@@ -6,14 +6,17 @@
 #include <styx.h>
 #include <styxserver.h>
 #include "server.h"
+#include "scalar_function.h"
 #include "unibus_server.h"
 #include "file_provider.h"
 #include "../launch/request.h"
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct StyxUnibusServer
 {
+    StyxScalarFunction function; /* Optional mounted scalar export. */
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *inbox; /* Owner reference for local readers. */
@@ -29,7 +32,11 @@ static __thread StyxUnibusServer *current; /* Set only on the native server thre
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
 static char *open_node(Qid *qid, int mode)
 {
-    if (qid->path == Qroot)
+    if (qid->path == 6)
+    {
+        return styxscalarfunctionopen(&current->server, mode, &current->function);
+    }
+    if (qid->path == Qroot || qid->path == 4 || qid->path == 5)
     {
         return mode == OREAD ? nil : Eperm;
     }
@@ -55,6 +62,10 @@ static char *open_node(Qid *qid, int mode)
  * Опубликовать только полностью подтверждённую запись. */
 static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == 6)
+    {
+        return styxscalarfunctionwrite(styxgetaux(&current->server), bytes, *count, offset);
+    }
     StyxTransfer result;
     if (qid.path != 1 || offset < 0)
     {
@@ -68,6 +79,10 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
  * Вернуть подтверждённый префикс исходного образа Dis. */
 static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == 6)
+    {
+        return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
+    }
     StyxTransfer result;
     if ((qid.path != 2 && qid.path != 3) || offset < 0)
     {
@@ -83,7 +98,22 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 
-static Styxops operations = {.open = open_node, .read = read_node, .write = write_record, .freefid = styxfileclose}; /* Immutable callbacks. */
+/* EN/RU: Release the open context according to the server's active export mode.
+ * Освободить контекст открытия согласно режиму экспорта сервера. */
+static void close_node(void *state)
+{
+    if (current->function.method)
+    {
+        free(state);
+    }
+    else
+    {
+        styxfileclose(state);
+    }
+}
+
+
+static Styxops operations = {.open = open_node, .read = read_node, .write = write_record, .freefid = close_node}; /* Immutable callbacks. */
 
 
 /* EN/RU: Dispatch all requests on the server's own thread, then retire all fids.
@@ -128,12 +158,30 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
 static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable)
+    DVM_Provider *original, DVM_Provider *profile, int reusable,
+    const char *module, const char *name, const StyxScalarFunction *function)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
     {
         phyfree(channel);
+        return NULL;
+    }
+    if (function)
+    {
+        server->function = *function;
+        if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
+        {
+            if (styxadddir(&server->server, Qroot, 4, "mounted", 0555, "unibus") &&
+                styxadddir(&server->server, 4, 5, (char *)module, 0555, "unibus") &&
+                styxaddfile(&server->server, 5, 6, (char *)name, 0777, "unibus") &&
+                !pthread_create(&server->thread, NULL, serve, server))
+            {
+                return server;
+            }
+            styxend(&server->server);
+        }
+        free(server);
         return NULL;
     }
     server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
@@ -169,7 +217,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
 StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 0);
+    return start(channel, tag, original, profile, 0, NULL, NULL, NULL);
 }
 
 
@@ -178,7 +226,31 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
 StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 1);
+    return start(channel, tag, original, profile, 1, NULL, NULL, NULL);
+}
+
+
+/* EN/RU: Validate a single non-special Styx path component.
+ * Проверить один обычный элемент пути Styx. */
+static int node_name(const char *name)
+{
+    return name && *name && !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..");
+}
+
+
+/* EN/RU: Publish the named module and function on a consumed channel.
+ * Опубликовать модуль и функцию с заданными именами на принятом канале. */
+StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *module,
+    const char *name, const StyxScalarFunction *function)
+{
+    if (!node_name(module) || !node_name(name) || !function || !function->method ||
+        !function->request_tag || !function->reply_tag ||
+        function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    return start(channel, 0, NULL, NULL, 0, module, name, function);
 }
 
 
