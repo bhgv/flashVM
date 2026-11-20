@@ -77,11 +77,11 @@ checkheld()
 
 # EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
 # Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
-readchild(done: chan of string)
+readchild(done: chan of string, hidestderr: int)
 {
     inherited := sys->fildes(3);
     part := array[3] of byte;
-    if (inherited == nil || sys->read(inherited, part, 3) != 3) {
+    if (inherited == nil || (sys->fildes(2) == nil) != hidestderr || sys->read(inherited, part, 3) != 3) {
         done <-= "missing";
         return;
     }
@@ -101,8 +101,8 @@ checknumbered()
     input := sys->fildes(0);
     output := sys->fildes(1);
     err := sys->fildes(2);
-    if (second == nil || input == nil || output == nil || err == nil || first.fd != 3 ||
-        second.fd != 3 || input.fd != 0 || output.fd != 1 || err.fd != 2 ||
+    if (second == nil || input == nil || output == nil || first.fd != 3 ||
+        second.fd != 3 || input.fd != 0 || output.fd != 1 || (err != nil && err.fd != 2) ||
         sys->fildes(4) != nil || sys->fildes(32) != nil) {
         raise "incorrect numbered Sys FD";
     }
@@ -111,7 +111,7 @@ checknumbered()
         raise "numbered FD aliases lost shared cursor";
     }
     done := chan of string;
-    spawn readchild(done);
+    spawn readchild(done, err == nil);
     if (<-done != "def") {
         raise "child did not inherit numbered FD cursor";
     }
@@ -122,8 +122,11 @@ checknumbered()
         raise "numbered FD mode or lifetime mismatch";
     }
     if (sys->read(input, part, 3) != 3 || string part != "xyz" ||
-        sys->fprint(err, "remote stderr\n") != 14 || sys->print("remote stdout\n") != 14) {
+        (err != nil && sys->fprint(err, "remote stderr\n") != 14) || sys->print("remote stdout\n") != 14) {
         raise "numbered stdio did not use its launch file";
+    }
+    if (err == nil) {
+        sys->print("PASS process context hides fd 2\n");
     }
     ordinary := sys->open("/nine", Sys->OREAD);
     if (ordinary == nil || ordinary.fd == 3) {

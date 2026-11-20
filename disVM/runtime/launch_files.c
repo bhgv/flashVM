@@ -20,6 +20,7 @@
 struct DVM_LaunchFiles
 {
     unsigned references;            /* Atomic ownership count through process inheritance. */
+    uint32_t hidden;                /* Explicitly absent numbers reserved in the launch view. */
     uint32_t occupied;              /* Mask of imported guest numbers. */
     int slots[DVM_LAUNCH_FD_COUNT]; /* Native slots; zero when absent. */
 };
@@ -164,29 +165,31 @@ static int open_slot(DVM_Provider *source, unsigned number, unsigned access)
 
 /* EN/RU: Validate the selected batch and keep every open private until success.
  * Проверить выдачу и удерживать все открытия в частной таблице до успеха. */
-static int open_batch(DVM_Provider *source, const DVM_TerminalChannels *terminal,
-    const unsigned char *modes, DVM_LaunchFiles **out)
+static int open_batch(DVM_Provider *source, DVM_Provider *base, uint32_t from_base,
+    uint32_t hidden, const DVM_TerminalChannels *terminal, const unsigned char *modes, DVM_LaunchFiles **out)
 {
     uint32_t requested = 0;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
         unsigned mode = modes[i];
-        if (!mode)
+        uint32_t bit = UINT32_C(1) << i;
+        DVM_Provider *selected = from_base & bit ? base : source;
+        if (!mode || (hidden & bit))
         {
             continue;
         }
         char absolute[DVM_LAUNCH_FD_PATH_SIZE];
         FVM_FileInfo info;
         if ((mode & ~(FVM_ACCESS_READ | FVM_ACCESS_WRITE)) ||
-            !dvm_launch_fd_path(absolute, i) || !source ||
+            !dvm_launch_fd_path(absolute, i) || !selected ||
             (terminal && (!strcmp(absolute + 1, terminal->receive) || !strcmp(absolute + 1, terminal->send))) ||
-            dvm_provider_info(source, absolute + 1, &info) != FVM_OK || info.directory)
+            dvm_provider_info(selected, absolute + 1, &info) != FVM_OK || info.directory)
         {
             return 0;
         }
-        requested |= UINT32_C(1) << i;
+        requested |= bit;
     }
-    if (!requested)
+    if (!requested && !hidden)
     {
         return 1;
     }
@@ -196,11 +199,14 @@ static int open_batch(DVM_Provider *source, const DVM_TerminalChannels *terminal
         return 0;
     }
     files->references = 1;
+    files->hidden = hidden;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
-        if (modes[i])
+        uint32_t bit = UINT32_C(1) << i;
+        if (requested & bit)
         {
-            int slot = open_slot(source, i, modes[i]);
+            DVM_Provider *selected = from_base & bit ? base : source;
+            int slot = open_slot(selected, i, modes[i]);
             if (slot < 0)
             {
                 dvm_launch_files_release(files);
@@ -215,24 +221,60 @@ static int open_batch(DVM_Provider *source, const DVM_TerminalChannels *terminal
 }
 
 
+/* EN/RU: Overlay per-number replacement and omission before opening any FD.
+ * Применить замены и исключения по номерам до открытия дескрипторов. */
+static int open_program(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out)
+{
+    unsigned char modes[DVM_LAUNCH_FD_COUNT] = {0};
+    unsigned char inherited[DVM_LAUNCH_FD_COUNT] = {0};
+    FVM_Result selected = discover(handoff->program, modes);
+    FVM_Result base = discover(handoff->program_parent, inherited);
+    if ((selected != FVM_OK && selected != FVM_NOT_FOUND) ||
+        (base != FVM_OK && base != FVM_NOT_FOUND))
+    {
+        return 0;
+    }
+    uint32_t from_base = 0;
+    uint32_t hidden = handoff->program_hidden_fds;
+    for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
+    {
+        if (!modes[i] && inherited[i])
+        {
+            modes[i] = inherited[i];
+            from_base |= UINT32_C(1) << i;
+        }
+        if (i < 3 && !modes[i])
+        {
+            hidden |= UINT32_C(1) << i;
+        }
+    }
+    return open_batch(handoff->program, handoff->program_parent, from_base,
+        hidden, NULL, modes, out);
+}
+
+
 /* EN/RU: Prefer the owner's .fd directory. Use the accepted terminal only on absence.
  * Сначала каталог .fd владельца. Принятый терминал используется только при отсутствии. */
 int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out)
 {
     *out = NULL;
+    if (handoff->program)
+    {
+        return open_program(handoff, out);
+    }
     const DVM_TerminalChannels *terminal = &handoff->flashvm;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
         if (handoff->inherited_fds[i])
         {
             return dvm_terminal_channels_valid(terminal) &&
-                open_batch(terminal->provider, terminal, handoff->inherited_fds, out);
+                open_batch(terminal->provider, NULL, 0, 0, terminal, handoff->inherited_fds, out);
         }
     }
     unsigned char modes[DVM_LAUNCH_FD_COUNT] = {0};
     DVM_Provider *owner = dvm_launch_handoff_owner_root(handoff);
     FVM_Result status = discover(owner, modes);
-    int opened = status == FVM_OK && open_batch(owner, NULL, modes, out);
+    int opened = status == FVM_OK && open_batch(owner, NULL, 0, 0, NULL, modes, out);
     dvm_provider_release(owner);
     if (status != FVM_NOT_FOUND)
     {
@@ -240,7 +282,7 @@ int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **ou
     }
     status = discover(terminal->provider, modes);
     return status == FVM_NOT_FOUND ||
-        (status == FVM_OK && open_batch(terminal->provider, terminal, modes, out));
+        (status == FVM_OK && open_batch(terminal->provider, NULL, 0, 0, terminal, modes, out));
 }
 
 
@@ -307,7 +349,16 @@ int dvm_launch_file_current(int number)
 uint32_t dvm_launch_file_mask(void)
 {
     DVM_LaunchFiles *files = current();
-    return files ? files->occupied : 0;
+    return files ? files->occupied | files->hidden : 0;
+}
+
+
+/* EN/RU: Check whether the launch explicitly hides the requested number.
+ * Проверить, скрывает ли запуск запрошенный номер. */
+int dvm_launch_file_hidden(unsigned number)
+{
+    DVM_LaunchFiles *files = current();
+    return files && number < DVM_LAUNCH_FD_COUNT && (files->hidden & (UINT32_C(1) << number));
 }
 
 

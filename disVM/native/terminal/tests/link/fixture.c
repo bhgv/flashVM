@@ -81,7 +81,9 @@ static const unsigned long held_output = 13; /* Qid of the transferred write fil
 static const unsigned long numbered_root = 14; /* Directory qid for .fd. */
 static const unsigned long numbered_first = 15; /* Qid base for numbered fixture files. */
 static StyxBacking *held[2];                  /* Named backings until server shutdown. */
+static const unsigned long projected_stdout = 824; /* Replacement for the base FD 1. */
 static StyxBacking *numbered[4];              /* Numbered backings until server shutdown. */
+static StyxBacking *replacement; /* Scoped stdout backing until server shutdown. */
 
 
 /* EN/RU: Publish a native open at offset five, unlinking the source of the read grant.
@@ -124,6 +126,10 @@ static StyxBacking *add_held(unsigned long parent, unsigned long qid, char *node
  * Сопоставить точные qid тестового сервера с удерживаемыми файлами. */
 static StyxBacking *held_backing(uvlong qid)
 {
+    if (qid == projected_stdout)
+    {
+        return replacement;
+    }
     if (qid == 21)
     {
         return owner_result;
@@ -376,18 +382,37 @@ int linkfixturefd(void)
         if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
         {
             char *directory = getenv("DVM_TEST_TERMINAL_SUBMIT") ? "owner-fds" : ".fd";
-            if (!styxadddir(&server, Qroot, numbered_root, directory, 0555, "fixture"))
+            int scoped = getenv("DVM_TEST_TERMINAL_SCOPED") != NULL;
+            unsigned long parent = Qroot;
+            if (scoped)
+            {
+                const unsigned long program = 820; /* Fixture's absolute process registry. */
+                const unsigned long child = 822; /* Projected child context. Time of capture pins its qid. */
+                parent = 821;
+                directory = ".fd";
+                if (!styxadddir(&server, Qroot, program, ".prog", 0555, "fixture") ||
+                    !styxadddir(&server, program, parent, "41", 0555, "fixture") ||
+                    !styxadddir(&server, program, child, "42", 0555, "fixture") ||
+                    !styxadddir(&server, child, 823, ".fd", 0555, "fixture"))
+                {
+                    _exit(3);
+                }
+                replacement = add_held(823, projected_stdout, "1", "numbered-out.bin", FVM_ACCESS_WRITE);
+            }
+            if (!styxadddir(&server, parent, numbered_root, directory, 0555, "fixture"))
             {
                 _exit(3);
             }
             numbered[0] = add_held(numbered_root, numbered_first, "0", "numbered-in.bin", FVM_ACCESS_READ);
-            numbered[1] = add_held(numbered_root, numbered_first + 1, "1", "numbered-out.bin", FVM_ACCESS_WRITE);
+            numbered[1] = add_held(numbered_root, numbered_first + 1, "1",
+                scoped ? "numbered-base-out.bin" : "numbered-out.bin", FVM_ACCESS_WRITE);
             numbered[2] = add_held(numbered_root, numbered_first + 2, "2", "numbered-err.bin", FVM_ACCESS_WRITE);
             numbered[3] = add_held(numbered_root, numbered_first + 3, "3", "numbered-rw.bin", FVM_ACCESS_READ | FVM_ACCESS_WRITE);
         }
         serve(NULL);
         styxbackingfree(held[0]);
         styxbackingfree(held[1]);
+        styxbackingfree(replacement);
         for (size_t i = 0; i < nelem(numbered); i++)
         {
             styxbackingfree(numbered[i]);

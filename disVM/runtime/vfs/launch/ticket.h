@@ -9,6 +9,7 @@
 #include "contract.h"
 #include "fd_path.h"
 #include "../changes.h"
+#include <stdint.h>
 #define DVM_LAUNCH_ARGUMENT_LIMIT 65536U /* Per-request copied startup bytes, no wire format assigned. */
 typedef struct DVM_LaunchTicket DVM_LaunchTicket; /* Requester status/cancel authority only. */
 typedef struct DVM_LaunchRequest DVM_LaunchRequest; /* Provider preparation/take authority. */
@@ -72,8 +73,17 @@ typedef struct DVM_LaunchHandoff
     DVM_TerminalChannels flashvm; /* Owned channel root, moved once at take; provider NULL when absent. */
     struct UnibusBinding *unibus; /* Optional owned native per-launch handler, never a serialized frame. */
     DVM_LaunchContract *contract; /* Owned independent copied requirements, mandatory when description.typed is one. */
+    DVM_Provider *program; /* Owned captured .prog/<pid> root, if configured. */
+    DVM_Provider *program_parent; /* Optional owned exact base for inherited entries. */
+    uint32_t program_hidden_fds; /* Explicit omissions, including standard descriptors. */
     unsigned char inherited_fds[DVM_LAUNCH_FD_COUNT]; /* Trusted native mode ceilings; zero means no import. */
 } DVM_LaunchHandoff;
+
+
+/* EN/RU: Select exact process and optional parent roots in a trusted Styx export.
+ * Выбрать точные каталоги процесса и необязательного родителя в доверенном экспорте Styx. */
+int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
+    uint32_t pid, uint32_t parent_pid, uint32_t hidden_fds);
 
 
 /* EN: Replace the terminal VFS root of an exclusive prepared handoff. Borrow the

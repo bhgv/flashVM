@@ -6,6 +6,8 @@
 #include "../internal.h"
 #include "../cancel.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 
 
@@ -146,5 +148,45 @@ int dvm_launch_handoff_project_terminal(DVM_LaunchHandoff *handoff, DVM_Provider
     DVM_Namespace *original = handoff->group;
     handoff->group = projected;
     dvm_namespace_release(original);
+    return 1;
+}
+
+
+/* EN/RU: Resolve and pin the requested decimal PID directory inside the borrowed root.
+ * Найти и удержать каталог указанного десятичного PID внутри заимствованного корня. */
+static DVM_Provider *capture_program(DVM_Provider *source, uint32_t pid)
+{
+    char path[sizeof(".prog/4294967295")];
+    snprintf(path, sizeof(path), ".prog/%" PRIu32, pid);
+    DVM_Provider *program = dvm_provider_capture(source, path);
+    FVM_FileInfo info;
+    if (program && dvm_provider_info(program, ".", &info) == FVM_OK && info.directory)
+    {
+        return program;
+    }
+    dvm_provider_release(program);
+    return NULL;
+}
+
+
+/* EN/RU: Commit both retained roots only when the whole trusted selection succeeds.
+ * Установить оба удерживаемых каталога только при полном успехе доверенного выбора. */
+int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
+    uint32_t pid, uint32_t parent_pid, uint32_t hidden_fds)
+{
+    if (!handoff || !handoff->group || handoff->program || !source || !pid || pid == parent_pid)
+    {
+        return 0;
+    }
+    DVM_Provider *program = capture_program(source, pid);
+    DVM_Provider *parent = program && parent_pid ? capture_program(source, parent_pid) : NULL;
+    if (!program || (parent_pid && !parent))
+    {
+        dvm_provider_release(program);
+        return 0;
+    }
+    handoff->program = program;
+    handoff->program_parent = parent;
+    handoff->program_hidden_fds = hidden_fds;
     return 1;
 }

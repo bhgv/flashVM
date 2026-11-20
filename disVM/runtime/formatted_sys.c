@@ -157,7 +157,15 @@ void Sys_print(void *frame)
         error("experimental stdout message limit");
     }
     int slot = dvm_launch_file_current(1);
-    result = formatted_write(NULL, slot >= 0 ? slot : 1, bytes, (size_t)count);
+    if (dvm_launch_file_hidden(1))
+    {
+        kwerrstr("stdout is closed in this launch");
+        result = -1;
+    }
+    else
+    {
+        result = formatted_write(NULL, slot >= 0 ? slot : 1, bytes, (size_t)count);
+    }
     memmove(call.ret,&result,sizeof(result));
 }
 

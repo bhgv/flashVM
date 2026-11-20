@@ -113,7 +113,8 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_View *code = dvm_view_create(NULL, NULL, NULL); /* Do not publish the raw records node through the execution root either. */
     launch_check(assets && code && dvm_view_map(code, "/app.dis", assets, "app.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
         dvm_view_map(code, "/dep.dis", assets, "dep.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "filtered actual Styx code grants");
-    if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
+    int scoped = getenv("DVM_TEST_TERMINAL_SCOPED") != NULL;
+    if (getenv("DVM_TEST_TERMINAL_NUMBERED") && !scoped)
     {
         launch_check(dvm_view_map(code, "/.fd", assets, "owner-fds", FVM_ACCESS_MASK, DVM_VIEW_TREE),
             "publish the owner's descriptor directory in its root");
@@ -138,7 +139,6 @@ static DVM_LaunchHandoff *prepare_launch(void)
     StyxBidirRoute *route = styxbidirbindingroutes(connection, &ingress, 128, 2,
         NULL, 0, &launch_type, 1);
     launch_check(route != NULL, "live launch dispatcher");
-    dvm_provider_release(assets);
     DVM_LaunchSpec spec = {0}; /* Captured terminal channels and execution source are independently authorized. */
     spec.policy = options.policy;
     spec.terminal_origin = options.terminal_origin;
@@ -169,6 +169,14 @@ static DVM_LaunchHandoff *prepare_launch(void)
         "provider received independent startup bytes");
     launch_check(ticket && request && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "actual remote request prepare");
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
+    if (scoped)
+    {
+        launch_check(!dvm_launch_handoff_program(handoff, assets, 42, 99, 0) && !handoff->program,
+            "missing parent leaves process context unset");
+        launch_check(dvm_launch_handoff_program(handoff, assets, 42, 41, UINT32_C(1) << 2),
+            "pin child and parent Styx process contexts");
+    }
+    dvm_provider_release(assets);
     unsigned long tags[] = {0, 7, 9, 17}; /* Authorized application inboxes only. */
     StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, 71, tags, sizeof(tags) / sizeof(tags[0])}; /* Same profile as native API acceptance. */
     const StyxLaunchFile invalid = {"/forbidden", 99, FVM_ACCESS_READ};

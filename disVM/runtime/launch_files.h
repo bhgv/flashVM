@@ -43,9 +43,14 @@ void dvm_launch_files_release(DVM_LaunchFiles *files);
 int dvm_launch_file_current(int number);
 
 
-/* EN/RU: Return the occupied inherited guest numbers in the current launch, or zero.
- * Вернуть маску переданных гостевых номеров текущего запуска, иначе ноль. */
+/* EN/RU: Return the occupied or intentionally hidden guest numbers in the current launch, or zero.
+ * Вернуть маску переданных или явно скрытых номеров текущего запуска, иначе ноль. */
 uint32_t dvm_launch_file_mask(void);
+
+
+/* EN/RU: Return 1 if the current launch explicitly hides this number.
+ * Вернуть 1, если текущий запуск явно скрывает этот номер. */
+int dvm_launch_file_hidden(unsigned number);
 
 
 /* EN/RU: Return the internal slot of a validated, live builtin FD, or -1 for an invalid public number.

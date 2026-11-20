@@ -201,7 +201,7 @@ void Sys_fildes(void *frame)
     old = dvm_sys_owner(call->ret);
     int slot = call->fd >= 0 && call->fd < DVM_LAUNCH_FD_COUNT ?
         dvm_launch_file_current((int)call->fd) : -1;
-    if (slot >= 0 || (call->fd >= 0 && call->fd <= 2))
+    if (slot >= 0 || (call->fd >= 0 && call->fd <= 2 && !dvm_launch_file_hidden((unsigned)call->fd)))
     {
         result = H2D(Sys_FD *, heapz(TFD));
         result->fd = -1;

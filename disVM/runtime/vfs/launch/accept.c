@@ -181,6 +181,8 @@ void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff)
     {
         dvm_namespace_release(handoff->group);
         dvm_provider_release(handoff->flashvm.provider);
+        dvm_provider_release(handoff->program);
+        dvm_provider_release(handoff->program_parent);
         dvm_movie_offer_release(handoff->flashvm.offers);
         unibusrelease(handoff->unibus);
         dvm_launch_contract_free(handoff->contract);

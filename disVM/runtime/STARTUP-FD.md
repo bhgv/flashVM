@@ -17,3 +17,5 @@ and closes it before dispatch. The startup context holds a copy for
 descriptors, missing seals, excessive size and read failures stop startup.
 The example launcher obtains the FD from the owner-configured Styx route.
 See the [runnable TCP example](../examples/vfs-run/README.md).
+
+For numbered guest descriptors, see [Styx process contexts](LAUNCH-PROGRAM-FDS.md).
