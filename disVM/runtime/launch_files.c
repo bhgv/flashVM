@@ -360,7 +360,7 @@ uint32_t dvm_launch_file_mask(void)
 int dvm_launch_file_hidden(unsigned number)
 {
     DVM_LaunchFiles *files = current();
-    return files && number < DVM_LAUNCH_FD_COUNT && (files->hidden & (UINT32_C(1) << number));
+    return dvm_launch_file_is_hidden(files, number);
 }
 
 
@@ -383,4 +383,12 @@ int dvm_launch_file_lookup(DVM_LaunchFiles *files, unsigned number, unsigned *ac
 {
     *access = files && number < DVM_LAUNCH_FD_COUNT ? files->modes[number] : 0;
     return *access ? files->slots[number] : -1;
+}
+
+
+/* EN/RU: See launch_files.h. Read only the immutable hidden mask.
+ * См. launch_files.h. Читать только неизменяемую маску скрытых номеров. */
+int dvm_launch_file_is_hidden(DVM_LaunchFiles *files, unsigned number)
+{
+    return files && number < DVM_LAUNCH_FD_COUNT && (files->hidden & (UINT32_C(1) << number));
 }

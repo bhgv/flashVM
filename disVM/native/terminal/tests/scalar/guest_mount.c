@@ -382,6 +382,32 @@ static int verify_imported_fds(void)
 }
 
 
+/* EN: Check an inherited regular stdin shares its position and stays read-only.
+ * RU: Проверить общую позицию обычного stdin и запрет записи. */
+static int verify_host_stdin(void)
+{
+    int valid;
+    DVM_Provider *directory = dvm_launch_fd_view(NULL, &valid);
+    DVM_VfsHandle reader = {0}, writer = {0};
+    valid = valid && directory &&
+        dvm_provider_open(directory, "0", "r", &reader) == FVM_OK &&
+        dvm_provider_open(directory, "0", "wo", &writer) != FVM_OK;
+    dvm_provider_release(directory);
+    if (valid)
+    {
+        char first[4], last[4];
+        DVM_IoResult result = dvm_vfs_read_chunk(&reader, first, sizeof(first));
+        valid = result.status == FVM_OK && result.count == sizeof(first) &&
+            !memcmp(first, "left", sizeof(first)) &&
+            read(STDIN_FILENO, last, sizeof(last)) == sizeof(last) &&
+            !memcmp(last, "next", sizeof(last));
+    }
+    dvm_vfs_close(&reader);
+    dvm_vfs_close(&writer);
+    return valid;
+}
+
+
 /* EN: Mount one granted fixture subtree in the guest's namespace.
  * RU: Смонтировать одно выданное поддерево в пространстве имён гостя. */
 static int mount_context(DVM_Namespace *group, const char *at, const char *leaf)
@@ -406,6 +432,15 @@ static int mount_context(DVM_Namespace *group, const char *at, const char *leaf)
  * Смонтировать заимствованный корень и запустить гостя с обычным поиском VFS. */
 int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
 {
+    if (getenv("DVM_TEST_SCALAR_HOST_STDIN"))
+    {
+        if (!verify_host_stdin())
+        {
+            fprintf(stderr, "could not verify redirected host stdin\n");
+            exit(2);
+        }
+        puts("PASS redirected host stdin shares its file position");
+    }
     if (!verify_program_view() || !verify_imported_fds())
     {
         fprintf(stderr, "could not verify the caller program tree\n");

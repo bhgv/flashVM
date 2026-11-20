@@ -61,6 +61,10 @@ int dvm_sys_fd_slot(Sys_FD *fd);
  * RU: Найти импортированный номер в удерживаемой таблице. Записать права либо ноль. */
 int dvm_launch_file_lookup(DVM_LaunchFiles *files, unsigned number, unsigned *access);
 
+/* EN: Inspect the hidden mask of a borrowed launch table, including NULL.
+ * RU: Проверить маску скрытых номеров заимствованной таблицы, включая NULL. */
+int dvm_launch_file_is_hidden(DVM_LaunchFiles *files, unsigned number);
+
 /* EN: Read the retained launch table and return an owned virtual directory or NULL when empty.
  * Writes 1 to success on a complete build including an empty table, otherwise 0.
  * RU: Построить виртуальный каталог из удерживаемой таблицы. Пустой даёт NULL.

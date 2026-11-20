@@ -142,5 +142,9 @@ provider reads two consecutive blocks over reverse Styx on the parent
 and child's calls. The parent then reads the third block locally with
 `Sys->fildes(3)` and acknowledges this read with one more typed call.
 This supports the existing numbered launch
-range 0–31. Host stdio and unnumbered managed opens are outside this
-projection. The reverse mount setup still requires an embedder.
+range 0–31. On POSIX hosts with close-on-exec duplication, unhidden standard numbers
+0–2 also project regular files when an imported slot does not replace
+them. Each alias owns a duplicate of the existing open file description
+and preserves its cursor and access mode. Pipe, socket and terminal
+stdio and ordinary managed opens remain outside this projection.
+The reverse mount setup still requires an embedder.

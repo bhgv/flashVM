@@ -6,6 +6,7 @@ from pathlib import Path
 from runpy import run_path
 import re
 import shlex
+import subprocess
 import sys
 import tempfile
 
@@ -116,6 +117,18 @@ def main():
             if "PASS captured caller program tree" not in result.stdout:
                 raise RuntimeError("caller program tree check missing\n" + result.stdout + result.stderr)
             print("PASS captured caller program tree", mode, flush=True)
+
+        redirected = work / "redirected-stdin"
+        redirected.write_bytes(b"leftnext")
+        with redirected.open("rb") as stream:
+            result = subprocess.run([str(binary), "--no-jit", str(work / "mounted.dis")],
+                                    cwd=work, stdin=stream, capture_output=True, text=True, timeout=30,
+                                    env=dict(os.environ, DVM_TEST_SCALAR_MOUNTED="1",
+                                             DVM_TEST_SCALAR_HOST_STDIN="1"))
+        marker = "PASS redirected host stdin shares its file position"
+        if result.returncode or marker not in result.stdout:
+            raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
+        print(marker, flush=True)
 
 
 if __name__ == "__main__":

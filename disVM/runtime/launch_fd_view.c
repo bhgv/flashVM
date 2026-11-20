@@ -10,13 +10,21 @@
 #include "runt.h"
 #include "launch_files.h"
 #include "vfs/export.h"
+#include "vfs/cancel.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__unix__) || defined(__APPLE__)
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 typedef struct FdGrant
 {
     int slot; /* Shared launch slot, retained by the owning provider. */
+    int host; /* Owned host duplicate, or -1 for an imported slot. */
     unsigned access; /* Original read/write ceiling. */
 } FdGrant;
 
@@ -71,11 +79,40 @@ static void release_owner(DVM_NativeContext *temporary)
 }
 
 
+#if defined(F_DUPFD_CLOEXEC)
+/* EN: Transfer once on a duplicated regular file. Preserve the kernel cursor.
+ * RU: Передать данные через дубликат обычного файла с общей позицией ядра. */
+static void host_io(FdGrant *grant, void *input, const void *output, size_t size, DVM_IoResult *result)
+{
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        *result = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_CANCELLED};
+        return;
+    }
+    ssize_t count = !size ? 0 : input ? read(grant->host, input, size) : write(grant->host, output, size);
+    if (count < 0)
+    {
+        *result = (DVM_IoResult){.status = FVM_ERROR,
+            .stop = errno == EINTR || errno == EAGAIN ? DVM_IO_AGAIN : DVM_IO_FAILURE};
+        return;
+    }
+    *result = (DVM_IoResult){.status = FVM_OK, .flags = DVM_IO_PREFIX, .count = (size_t)count};
+}
+#endif
+
+
 /* EN: Read from the existing file position, preserving the inner outcome.
  * RU: Читать с общей позиции, сохраняя исходный результат. */
 static void read_file(void *state, void *bytes, size_t count, DVM_IoResult *result)
 {
     FdGrant *grant = state;
+#if defined(F_DUPFD_CLOEXEC)
+    if (grant->host >= 0)
+    {
+        host_io(grant, bytes, NULL, count, result);
+        return;
+    }
+#endif
     DVM_NativeContext *temporary;
     DVM_FileGate *gate;
     DVM_FileTicket ticket = {0};
@@ -99,6 +136,13 @@ static void read_file(void *state, void *bytes, size_t count, DVM_IoResult *resu
 static void write_file(void *state, const void *bytes, size_t count, DVM_IoResult *result)
 {
     FdGrant *grant = state;
+#if defined(F_DUPFD_CLOEXEC)
+    if (grant->host >= 0)
+    {
+        host_io(grant, NULL, bytes, count, result);
+        return;
+    }
+#endif
     DVM_NativeContext *temporary;
     DVM_FileGate *gate;
     DVM_FileTicket ticket = {0};
@@ -182,29 +226,37 @@ static FVM_Result open_alias(void *state, const char *path, const char *mode, DV
 
 /* EN: Drop the retained slot after the last alias and provider close.
  * RU: Освободить слот после закрытия последнего псевдонима и провайдера. */
+static void close_grant(FdGrant *grant)
+{
+#if defined(F_DUPFD_CLOEXEC)
+    if (grant->host >= 0)
+    {
+        close(grant->host);
+    }
+#endif
+    if (grant->slot >= 0)
+    {
+        dvm_file_slots_drop_launch(grant->slot);
+    }
+}
+
+
+/* EN: Consume the provider's grant after all opens retire.
+ * RU: Освободить разрешение провайдера после закрытия файлов. */
 static void destroy_grant(void *state)
 {
-    FdGrant *grant = state;
-    dvm_file_slots_drop_launch(grant->slot);
-    free(grant);
+    close_grant(state);
+    free(state);
 }
 
 static const DVM_ProviderOps factory = {.info = info, .open = open_alias, .destroy = destroy_grant,
     .flags = DVM_PROVIDER_STABLE_BIND, .access = access_check}; /* Immutable exact FD grant. */
 
 
-/* EN: Retain one imported slot and map it to its decimal number.
- * RU: Удержать импортированный слот и отобразить его десятичный номер. */
-static int map_fd(DVM_View *view, unsigned number, int slot, unsigned access)
+/* EN: Consume a prepared grant and map its decimal number.
+ * RU: Принять подготовленное разрешение и отобразить его десятичный номер. */
+static int map_fd(DVM_View *view, unsigned number, FdGrant *grant)
 {
-    FdGrant *grant = calloc(1, sizeof(*grant));
-    if (!grant || !dvm_file_slots_retain_launch(slot))
-    {
-        free(grant);
-        return 0;
-    }
-    grant->slot = slot;
-    grant->access = access;
     DVM_Provider *file = dvm_provider_create_native(&factory, grant, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
     if (!file)
     {
@@ -213,9 +265,66 @@ static int map_fd(DVM_View *view, unsigned number, int slot, unsigned access)
     }
     char path[sizeof("/31")];
     snprintf(path, sizeof(path), "/%u", number);
-    int mapped = dvm_view_map(view, path, file, ".", access, 0);
+    int mapped = dvm_view_map(view, path, file, ".", grant->access, 0);
     dvm_provider_release(file);
     return mapped;
+}
+
+
+/* EN: Prepare an imported slot or a non-hidden regular standard descriptor.
+ * RU: Подготовить импортированный слот или нескрытый обычный стандартный FD. */
+static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant)
+{
+    grant->host = -1;
+    grant->slot = dvm_launch_file_lookup(files, number, &grant->access);
+    if (grant->slot >= 0)
+    {
+        return dvm_file_slots_retain_launch(grant->slot) ? 1 : -1;
+    }
+#if defined(F_DUPFD_CLOEXEC)
+    if (number < 3 && !dvm_launch_file_is_hidden(files, number))
+    {
+        int host = fcntl((int)number, F_DUPFD_CLOEXEC, 3);
+        if (host < 0)
+        {
+            return errno == EBADF ? 0 : -1;
+        }
+        struct stat metadata;
+        int flags = fcntl(host, F_GETFL);
+        if (flags < 0 || fstat(host, &metadata))
+        {
+            close(host);
+            return -1;
+        }
+        if (!S_ISREG(metadata.st_mode)
+#ifdef O_PATH
+            || (flags & O_PATH)
+#endif
+        )
+        {
+            close(host);
+            return 0;
+        }
+        switch (flags & O_ACCMODE)
+        {
+        case O_RDONLY:
+            grant->access = FVM_ACCESS_READ;
+            break;
+        case O_WRONLY:
+            grant->access = FVM_ACCESS_WRITE;
+            break;
+        case O_RDWR:
+            grant->access = FVM_ACCESS_READ | FVM_ACCESS_WRITE;
+            break;
+        default:
+            close(host);
+            return 0;
+        }
+        grant->host = host;
+        return 1;
+    }
+#endif
+    return 0;
 }
 
 
@@ -227,17 +336,35 @@ DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success)
     *success = 0;
     for (unsigned number = 0; number < DVM_LAUNCH_FD_COUNT; number++)
     {
-        unsigned access;
-        int slot = dvm_launch_file_lookup(files, number, &access);
-        if (slot < 0)
+        FdGrant candidate = {0};
+        int present = prepare(files, number, &candidate);
+        if (present < 0)
+        {
+            dvm_view_discard(view);
+            return NULL;
+        }
+        if (!present)
         {
             continue;
         }
+        FdGrant *grant = malloc(sizeof(*grant));
+        if (!grant)
+        {
+            close_grant(&candidate);
+            dvm_view_discard(view);
+            return NULL;
+        }
+        *grant = candidate;
         if (!view)
         {
             view = dvm_view_create(NULL, NULL, NULL);
         }
-        if (!view || !map_fd(view, number, slot, access))
+        if (!view)
+        {
+            destroy_grant(grant);
+            return NULL;
+        }
+        if (!map_fd(view, number, grant))
         {
             dvm_view_discard(view);
             return NULL;
