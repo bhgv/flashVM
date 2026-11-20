@@ -7,7 +7,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <inttypes.h>
 #include "vfs/export.h"
 #include "vfs/program_view.h"
 #include "vfs/loader.h"
@@ -234,9 +233,9 @@ int scalar_guest_bind_caller(DVM_Provider *mount)
 }
 
 
-/* EN: Check the received PID against the published .pid in the active context.
- * RU: Сверить полученный PID с опубликованным .pid активного контекста. */
-int scalar_guest_check_caller(uint32_t pid)
+/* EN: Copy the active virtual .pid to the reverse server's buffer.
+ * RU: Прочитать виртуальный .pid в буфер встречного сервера. */
+size_t scalar_guest_read_caller(uint32_t pid, char *bytes, size_t capacity)
 {
     pthread_mutex_lock(&caller_tree_lock);
     DVM_Provider *tree = caller_tree;
@@ -247,19 +246,19 @@ int scalar_guest_check_caller(uint32_t pid)
     pthread_mutex_unlock(&caller_tree_lock);
     DVM_Provider *program = dvm_program_capture(tree, pid);
     DVM_VfsHandle handle = {0};
-    char expected[sizeof("4294967295\n")];
-    char got[sizeof(expected)];
-    size_t length = (size_t)snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
-    int valid = program && dvm_provider_open(program, ".pid", "r", &handle) == FVM_OK;
-    if (valid)
+    size_t size = 0;
+    if (program && dvm_provider_open(program, ".pid", "r", &handle) == FVM_OK)
     {
-        DVM_IoResult read = dvm_vfs_read_chunk(&handle, got, sizeof(got));
-        valid = read.status == FVM_OK && read.count == length && !memcmp(got, expected, length);
+        DVM_IoResult result = dvm_vfs_read_chunk(&handle, bytes, capacity);
+        if (result.status == FVM_OK)
+        {
+            size = result.count;
+        }
     }
     dvm_vfs_close(&handle);
     dvm_provider_release(program);
     dvm_provider_release(tree);
-    return valid;
+    return size;
 }
 
 

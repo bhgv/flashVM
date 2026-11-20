@@ -117,7 +117,13 @@ lasts through the exchange and `end` consumes it. A refused lease prevents
 the request from being sent. Unbound mounts continue to use the existing
 PID record.
 
-The guest fixture binds the mount to an in-process publication and reads
-the published identity in its C handler. The function call itself crosses
-Styx. Wiring the binding to a reverse network export and collecting VM
-descriptor, namespace and variable grants remain open.
+The guest fixture uses two Styx sessions on one multiplexed carrier.
+The forward session carries the function request. The provider walks and
+reads `.prog/<pid>/.pid` on the reverse session, which serves the virtual
+file created by DisVM. The parent and its spawned child call the same
+loaded instance. Expected output includes `PASS typed Styx caller PID`
+with JIT enabled and disabled.
+
+The fixture installs the binding and serves the PID path. Production
+mount setup and collection of descriptor, namespace and variable grants
+remain open.

@@ -33,7 +33,9 @@ static Styxserver owner; /* One fixture owner thread dispatches the method. */
 static DVM_Provider *reply; /* Retained reverse file while owner serves requests. */
 #ifdef STYX_SCALAR_GUEST
 extern int scalar_guest_bind_caller(DVM_Provider *); /* Attach fixture reverse publication binding. */
-extern int scalar_guest_check_caller(uint32_t); /* Verify active published .pid. */
+extern int scalar_reverse_start(RemotePhy *, RemotePhy *); /* Start the reverse Styx endpoints. */
+extern int scalar_reverse_check(uint32_t); /* Read active .pid via reverse Styx. */
+extern void scalar_reverse_stop(void); /* Join the reverse fixture. */
 extern void scalar_guest_mounted(DVM_Provider *); /* Runs a guest on a plain mount. */
 extern void scalar_guest(DVM_Provider *, DVM_Provider *); /* Runtime test entry. */
 #endif
@@ -263,7 +265,7 @@ static int caller_method(void *context, uint32_t pid, int64_t argument, int64_t 
 {
     static uint32_t previous;
     (void)context;
-    if (argument != (int64_t)pid || pid == previous || !scalar_guest_check_caller(pid))
+    if (argument != (int64_t)pid || pid == previous || !scalar_reverse_check(pid))
         return 0;
     previous = pid;
     ++calls;
@@ -281,19 +283,29 @@ static void mounted_function(void)
     int breaker = dup(pair[0]);
     check(breaker >= 0, "mounted function shutdown descriptor");
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
+    RemotePhy *forward_client = phyposixfd(pair[0], caps);
+    RemotePhy *forward_server = phyposixfd(pair[1], caps);
     StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL, NULL, NULL, NULL};
 #ifdef STYX_SCALAR_GUEST
+    PhyBidir *caller = NULL, *provider = NULL;
     if (getenv("DVM_TEST_SCALAR_CALLER"))
     {
+        caller = phybidircreate(forward_client, 1024);
+        provider = phybidircreate(forward_server, 1024);
+        check(caller && provider, "multiplex forward and reverse Styx");
+        forward_client = phybidirchannel(caller, 0);
+        forward_server = phybidirchannel(provider, 0);
+        check(scalar_reverse_start(phybidirchannel(caller, 1), phybidirchannel(provider, 1)),
+            "start reverse Styx identity export");
         function.request_tag = STYX_FUNCTION_CALLER_TAG;
         function.method = NULL;
         function.caller_method = caller_method;
     }
 #endif
-    StyxUnibusServer *server = styxunibusserverstartfunction(phyposixfd(pair[1], caps),
+    StyxUnibusServer *server = styxunibusserverstartfunction(forward_server,
         "compute.dis", "compute", &function);
     check(server != NULL, "export mounted function");
-    StyxClient *client = styxclientmountphy(phyposixfd(pair[0], caps), 256, "caller", "", 3000, 4);
+    StyxClient *client = styxclientmountphy(forward_client, 256, "caller", "", 3000, 4);
     check(client != NULL, "mount function server");
 #ifdef STYX_SCALAR_GUEST
     DVM_Provider *mount = styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC);
@@ -360,6 +372,14 @@ static void mounted_function(void)
     close(breaker);
     styxclientfree(client);
     check(styxunibusserverjoin(server), "join mounted function server");
+#ifdef STYX_SCALAR_GUEST
+    if (caller)
+    {
+        scalar_reverse_stop();
+        phybidirfree(caller);
+        phybidirfree(provider);
+    }
+#endif
 }
 
 
