@@ -16,8 +16,8 @@ cursor. The file permits read and execute access and denies write access.
 Normal Dis `load` resolves the namespace once and passes the selected adapter
 through the native-cell parser and ordinary typed linker. The exact
 provider carries local adapter admission. The
-constructor trusts the host's input provenance. Remote metadata, wrapper
-providers and filenames cannot confer admission. Ordinary remote code retains
+constructor trusts the host's input provenance. Remote metadata and filenames cannot confer admission. Native directory views
+can forward the association through read-and-execute mappings. Ordinary remote code retains
 the execution-provider launch requirement.
 
 The adapter opens its configured Styx route paths at invocation under the

@@ -18,3 +18,9 @@ Dis load of the same selected VFS node uses the local adapter and its retained
 namespace. The original is never parsed as the adapter. The host associates
 the original, adapter and matching Styx route in this publication. A plain
 Styx mount does not supply that association automatically.
+
+A publisher may also map the file into a native VFS directory view and mount the
+directory. For `load`, each view traversed must allow both read and execute on
+that path. The loader follows up to 32 provider selections. Binding a file out
+of the directory retains the projection and its policy. A read-only alias
+continues to allow ordinary file reads.

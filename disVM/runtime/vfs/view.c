@@ -3,6 +3,7 @@
  * RU: Immutable explicit export trees, hidden prefixes и live per-peer policy gates.
  */
 #include "view_internal.h"
+#include "provider_internal.h"
 #include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
@@ -395,12 +396,42 @@ static void destroy(void *state)
 }
 
 
+static const DVM_ProviderOps view_stable = {info, open_view, destroy, DVM_PROVIDER_STABLE_BIND, access_check};
+static const DVM_ProviderOps view_dynamic = {info, open_view, destroy, 0, access_check};
+
+
+/* EN/RU: Follow one immutable view mapping with read and execute authority.
+ * Пройти одно неизменяемое отображение с разрешениями чтения и исполнения. */
+int dvm_view_module_source(DVM_Provider *provider, const char *relative,
+    DVM_Provider **source, char *suffix)
+{
+    if (!provider || (provider->ops != &view_stable && provider->ops != &view_dynamic) ||
+        !dvm_view_path(relative, 0) || strlen(relative) + 2 > DVM_NS_PATH_LIMIT)
+    {
+        return 0;
+    }
+    char path[DVM_NS_PATH_LIMIT];
+    strcpy(path, "/");
+    if (strcmp(relative, "."))
+    {
+        strcat(path, relative);
+    }
+    DVM_ViewRule *rule;
+    int allowed = dvm_view_route(provider->state, path, FVM_ACCESS_READ | FVM_ACCESS_EXEC,
+        &rule, suffix) == 1;
+    if (!allowed && dvm_view_route(provider->state, path, 0, &rule, suffix) != 1)
+    {
+        return 0;
+    }
+    *source = rule->source;
+    return allowed ? 1 : -1;
+}
+
+
 /* EN/RU: See export.h; immutable view never promises more identity than its sources.
  * См. export.h; immutable view не обещает больше identity, чем её sources. */
 DVM_Provider *dvm_view_freeze(DVM_View *view)
 {
-    static const DVM_ProviderOps stable = {info, open_view, destroy, DVM_PROVIDER_STABLE_BIND, access_check};
-    static const DVM_ProviderOps dynamic = {info, open_view, destroy, 0, access_check};
     int identity = 1;
     unsigned native_flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE;
     if (!view)
@@ -422,7 +453,7 @@ DVM_Provider *dvm_view_freeze(DVM_View *view)
     {
         native_flags |= DVM_PROVIDER_CANCEL_LAUNCH; /* Our dispatcher checks each selected source before scoped delegation. */
     }
-    DVM_Provider *provider = dvm_provider_create_routed(identity ? &stable : &dynamic, view,
+    DVM_Provider *provider = dvm_provider_create_routed(identity ? &view_stable : &view_dynamic, view,
         dvm_view_capture, 0, native_flags, dvm_view_launch);
     if (!provider)
     {

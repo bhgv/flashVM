@@ -93,4 +93,9 @@ DVM_Provider *dvm_view_capture(void *state, const char *relative);
  * state/relative borrowed, owned native address/NULL, без чтения code image.
  */
 struct DVM_LaunchAddress *dvm_view_launch(void *state, const char *relative);
+/* EN/RU: Follow visible mapping: 1 allowed, -1 data-only, 0 absent. Outputs borrow the view.
+ * Пройти отображение: 1 разрешено, -1 только данные, 0 отсутствует. Ссылки заимствованы. */
+int dvm_view_module_source(DVM_Provider *provider, const char *relative,
+    DVM_Provider **source, char *suffix);
+
 #endif

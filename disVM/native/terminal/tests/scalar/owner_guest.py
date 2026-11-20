@@ -68,6 +68,7 @@ def main():
         for directory in (caller, owner):
             (directory / "scalar").mkdir(parents=True)
         (caller / "blocked").mkdir()
+        (caller / "library").mkdir()
         for directory, side in ((caller, "--styx-client"), (owner, "--styx-owner")):
             source = directory / "generated.b"
             implementation = ["implementation.dis"] if directory == owner else []

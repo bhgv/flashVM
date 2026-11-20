@@ -120,13 +120,7 @@ static int readimage(DVM_Provider *provider, const char *relative, ProviderModul
 Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
 {
     Prog *process = currun(); /* ACTIVE current owner only, never a remote/foreign process query. */
-    DVM_Provider *adapter = plan ? dvm_module_adapter_source(plan->provider, plan->relative) : NULL;
-    if (!process || (!((DVM_RuntimeProcess *)process)->provider_execution &&
-        !adapter))
-    {
-        kwerrstr("provider module execution requires an accepted execution-provider launch");
-        return NULL;
-    }
+    int execution = process && ((DVM_RuntimeProcess *)process)->provider_execution;
     if (!plan || !plan->provider || !(dvm_provider_native_flags(plan->provider) & DVM_PROVIDER_CANCEL_PATH))
     {
         kwerrstr("module provider requires native cancellation support");
@@ -156,11 +150,16 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     int released = dvm_vfs_path_enter(&operation); /* ACTIVE owner publishes roots and registers cancellation before leaving. */
     int valid = 0; /* No parse is admitted on incomplete or cancelled input. */
     int cancelled = 0; /* Exact native operation outcome before managed reentry. */
+    DVM_Provider *adapter = NULL;
+    int refused = 0;
+    int denied = 0;
     if (released >= 0)
     {
+        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied) : NULL;
+        refused = denied || (!execution && !adapter);
         FVM_FileInfo original;
-        int available = !adapter || adapter == plan->provider ||
-            (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory);
+        int available = !refused && (!adapter || adapter == plan->provider ||
+            (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory));
         valid = available && readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image);
         closeimage(image);
         cancelled = dvm_vfs_wait_end(operation);
@@ -178,7 +177,10 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     }
     else
     {
-        kwerrstr(cancelled || released == -2 ? "provider module load cancelled" : "cannot read complete provider module image");
+        kwerrstr(cancelled || released == -2 ? "provider module load cancelled" :
+            denied ? "adapter projection requires read and execute" :
+            refused ? "provider module execution requires an accepted execution-provider launch" :
+            "cannot read complete provider module image");
     }
     closeimage(image);
     free(image->bytes);

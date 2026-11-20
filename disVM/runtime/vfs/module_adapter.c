@@ -4,6 +4,7 @@
  */
 #include "module_adapter.h"
 #include "provider_internal.h"
+#include "view_internal.h"
 #include "loader.h"
 #include "cancel.h"
 #include <stdlib.h>
@@ -250,15 +251,33 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
 
 /* EN/RU: Borrow the executable source from the selected exact native provider.
  * Заимствовать исполняемый источник выбранного точного нативного провайдера. */
-DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative)
+DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative, int *denied)
 {
-    if (!provider || !relative || strcmp(relative, "."))
+    char suffix[DVM_NS_PATH_LIMIT];
+    int blocked = 0;
+    *denied = 0;
+    for (unsigned depth = 0; provider && relative && depth < 32; depth++)
     {
-        return NULL;
+        if (!strcmp(relative, "."))
+        {
+            if (provider->ops == &publication_ops)
+            {
+                *denied = blocked;
+                return ((ModulePublication *)provider->state)->adapter;
+            }
+            if (provider->ops == &factory)
+            {
+                *denied = blocked;
+                return provider;
+            }
+        }
+        int step = dvm_view_module_source(provider, relative, &provider, suffix);
+        if (!step)
+        {
+            return NULL;
+        }
+        blocked |= step < 0;
+        relative = suffix;
     }
-    if (provider->ops == &publication_ops)
-    {
-        return ((ModulePublication *)provider->state)->adapter;
-    }
-    return provider->ops == &factory ? provider : NULL;
+    return NULL;
 }

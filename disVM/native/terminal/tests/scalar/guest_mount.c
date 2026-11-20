@@ -44,8 +44,21 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
     static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
     DVM_Provider *fallback = original ? NULL : dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
     DVM_Provider *publication = dvm_module_publish(original ? original : fallback, adapter);
+    DVM_View *tree = dvm_view_create(NULL, NULL, NULL);
+    DVM_Provider *modules = NULL;
+    if (tree && publication && dvm_view_map(tree, "/published.dis", publication, ".",
+            FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
+        dvm_view_map(tree, "/readonly.dis", publication, ".", FVM_ACCESS_READ, 0))
+    {
+        modules = dvm_view_freeze(tree);
+    }
+    else
+    {
+        dvm_view_discard(tree);
+    }
     int mounted = ordinary && dvm_stack_mount(group, ordinary, "/ordinary.dis", 0, 0) == 1 &&
-        publication && dvm_stack_mount(group, publication, "/published.dis", 0, 0) == 1;
+        modules && dvm_stack_mount(group, modules, "/library", 0, 0) == 1;
+    dvm_provider_release(modules);
     dvm_provider_release(publication);
     dvm_provider_release(fallback);
     dvm_provider_release(ordinary);
@@ -56,7 +69,7 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
     }
     DVM_ResourcePlan source = {0};
     DVM_ResourcePlan target = {0};
-    int bound = dvm_resource_plan(group, "/published.dis", 0, &source) &&
+    int bound = dvm_resource_plan(group, "/library/published.dis", 0, &source) &&
         dvm_resource_plan(group, "/implementation.dis", 0, &target) &&
         dvm_stack_bind(&source, &target, 0, 0) == 1;
     dvm_resource_close(&target);

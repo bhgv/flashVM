@@ -55,6 +55,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="scalar-guest-") as name:
         work = Path(name)
         (work / "scalar").mkdir()
+        (work / "library").mkdir()
         run([str(generator), "--styx-client", str(example / "compute.m"), "compute.m",
              "/scalar/request", "/scalar/reply", "4294967295", "64", str(work / "shim.b")], work)
         for source, image in [(work / "shim.b", "staging.dis"),

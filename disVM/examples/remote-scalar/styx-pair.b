@@ -15,6 +15,16 @@ init()
     if ((load Compute "/ordinary.dis") != nil) {
         raise "ordinary provider supplied executable adapter";
     }
+    if ((load Compute "/library/readonly.dis") != nil) {
+        raise "read-only projection supplied executable adapter";
+    }
+    readonly := sys->open("/library/readonly.dis", Sys->OREAD);
+    if (readonly == nil) {
+        raise "read-only projection lost ordinary access";
+    }
+    if ((load Compute "/library/published.dis") == nil) {
+        raise "directory publication did not supply adapter";
+    }
     original := sys->open(Compute->PATH, Sys->OREAD);
     baseline := sys->open("original-prefix", Sys->OREAD);
     expected := array[14] of byte;
