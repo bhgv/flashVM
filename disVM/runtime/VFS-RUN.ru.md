@@ -1,6 +1,6 @@
 # Vfsctl.run
 
-[English](VFS-RUN.md) · [Интерфейс Limbo](../module/vfsctl.m) · [Runtime](vfs/vfsnative.c)
+[English](VFS-RUN.md) · [Интерфейс Limbo](../module/vfsctl.m) · [Runtime](vfs/vfsnative.c) · [Запускаемый пример](../examples/vfs-run/README.ru.md)
 
 `run: fn(path: string): int` отправляет запрос запуска через маршрут,
 объявленный провайдером выбранного файла. Вызовите `Vfsctl.init` один раз

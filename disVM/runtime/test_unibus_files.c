@@ -117,6 +117,9 @@ static DVM_LaunchHandoff *prepare_launch(void)
         launch_check(dvm_view_map(code, "/.fd", assets, "owner-fds", FVM_ACCESS_MASK, DVM_VIEW_TREE),
             "publish the owner's descriptor directory in its root");
     }
+    launch_check(dvm_view_map(code, "/runexample.dis", assets, "runexample.dis",
+        FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) && dvm_view_map(code, "/vfsctl.dis", assets, "vfsctl.dis",
+        FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "map runnable VFS examples");
     map_routed(connection, code, "execute", "owner.dis", "/routed.dis");
     map_routed(connection, code, "submit", "app.dis", "/payload.dis");
     launch_check(dvm_view_map(code, "/run-result", assets, "execute-result", FVM_ACCESS_READ, 0),

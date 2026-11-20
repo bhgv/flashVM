@@ -9,12 +9,24 @@
 #include <stdlib.h>
 #include "flashvm/sbindings.h"
 #include "launch_receive.h"
-static unsigned char *images[3]; /* Native immutable fixture images until server join. */
+static const struct
+{
+    unsigned long qid; /* Published Styx identity for the asset. */
+    const char *source; /* File in the test workspace. */
+    const char *name; /* Name in the peer's export. */
+} assets[] = { /* Immutable table in publication order. */
+    {8, "app.dis", "app.dis"},
+    {9, "dep.dis", "dep.dis"},
+    {19, "owner/owner.dis", "owner.dis"},
+    {22, "runexample.dis", "runexample.dis"},
+    {23, "vfsctl.dis", "vfsctl.dis"}
+};
+static unsigned char *images[nelem(assets)]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
 static int require_submission; /* In routed tests the caller must post before launch is readable. */
 static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
-static size_t lengths[3]; /* Exact bytes advertised in original Styx metadata. */
+static size_t lengths[nelem(assets)]; /* Exact bytes advertised in original Styx metadata. */
 
 
 /* EN/RU: Add readonly app/dependency nodes from actual compiled fixture files before server starts.
@@ -22,10 +34,9 @@ static size_t lengths[3]; /* Exact bytes advertised in original Styx metadata. *
  */
 void fixtureimagesinit(Styxserver *server)
 {
-    const char *names[] = {"app.dis", "dep.dis", "owner/owner.dis"}; /* Independent ordinary original-Styx file names. */
-    for (unsigned i = 0; i < 3; i++)
+    for (unsigned i = 0; i < nelem(assets); i++)
     {
-        FILE *input = fopen(names[i], "rb"); /* Fixture-native acquisition only, never guest fallback. */
+        FILE *input = fopen(assets[i].source, "rb"); /* Fixture-native acquisition only, never guest fallback. */
         if (!input || fseek(input, 0, SEEK_END))
         {
             exit(3);
@@ -41,7 +52,7 @@ void fixtureimagesinit(Styxserver *server)
         {
             exit(3);
         }
-        Styxfile *file = styxaddfile(server, Qroot, i == 2 ? 19 : 8 + i, (char *)(i == 2 ? "owner.dis" : names[i]), 0444, "fixture"); /* Original fid/qid implementation. */
+        Styxfile *file = styxaddfile(server, Qroot, assets[i].qid, (char *)assets[i].name, 0444, "fixture"); /* Original fid/qid implementation. */
         if (!file)
         {
             exit(3);
@@ -81,14 +92,26 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if ((qid.path != 19 && (qid.path < 8 || qid.path > 10)) || offset < 0 ||
-        (qid.path == 10 && require_submission && !submitted))
+    if (offset < 0 || (qid.path == 10 && require_submission && !submitted))
     {
         return Ebadarg;
     }
-    unsigned index = qid.path == 19 ? 2 : qid.path - 8; /* Exact readonly fixture node. */
-    const unsigned char *source = qid.path == 10 ? launch_frame : images[index];
-    size_t length = qid.path == 10 ? launch_size : lengths[index];
+    const unsigned char *source = launch_frame;
+    size_t length = launch_size;
+    if (qid.path != 10)
+    {
+        unsigned index = 0;
+        while (index < nelem(assets) && assets[index].qid != qid.path)
+        {
+            index++;
+        }
+        if (index == nelem(assets))
+        {
+            return Ebadarg;
+        }
+        source = images[index];
+        length = lengths[index];
+    }
     if ((uvlong)offset > length)
     {
         return Ebadarg;
@@ -111,7 +134,7 @@ char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
  */
 void fixtureimagesfree(void)
 {
-    for (unsigned i = 0; i < 3; i++)
+    for (unsigned i = 0; i < nelem(assets); i++)
     {
         free(images[i]);
     }

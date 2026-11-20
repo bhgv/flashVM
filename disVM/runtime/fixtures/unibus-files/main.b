@@ -4,6 +4,7 @@
 implement Check;
 include "sys.m";
 include "vfsnative.m";
+include "runexample.m";
 include "value.m";
 include "launchcontext.m";
 Check: module { init: fn(); };
@@ -152,7 +153,7 @@ init()
     (routed, _) := sys->stat("/routed.dis");
     if (routed == 0) {
         vfs := load Vfsnative Vfsnative->PATH;
-        if (vfs == nil || vfs->run("/missing.dis") != 0 || vfs->run("/routed.dis") != 1) {
+        if (vfs == nil || vfs->run("/missing.dis") != 0) {
             raise "VFS command submission failed";
         }
         if (vfs->runargs("/payload.dis", array[65537] of byte) == 1 ||
@@ -160,8 +161,9 @@ init()
             raise "oversized launch payload accepted";
         }
         payload := array[] of {byte 'x', byte 0, byte 'y'};
-        if (vfs->runargs("/payload.dis", payload) != 1) {
-            raise "binary VFS launch payload refused";
+        example := load Runexample Runexample->PATH;
+        if (example == nil || example->execute("/routed.dis", "/payload.dis", "/run-result", payload) != 0) {
+            raise "runnable VFS launch example failed";
         }
         if (vfs->run("/routed.dis") == 1) {
             raise "owner admitted a repeated request";

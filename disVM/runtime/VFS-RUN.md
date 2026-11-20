@@ -1,6 +1,6 @@
 # Vfsctl.run
 
-[Русский](VFS-RUN.ru.md) · [Limbo interface](../module/vfsctl.m) · [Runtime](vfs/vfsnative.c)
+[Русский](VFS-RUN.ru.md) · [Limbo interface](../module/vfsctl.m) · [Runtime](vfs/vfsnative.c) · [Runnable example](../examples/vfs-run/README.md)
 
 `run: fn(path: string): int` submits a program through the route advertised
 by its selected VFS provider. Initialize `Vfsctl` once and pass the visible

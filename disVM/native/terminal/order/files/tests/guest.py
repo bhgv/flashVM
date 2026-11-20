@@ -71,7 +71,12 @@ def main():
                 raise RuntimeError("CLI accepted invalid launch configuration: " + " ".join(options))
     with tempfile.TemporaryDirectory(prefix="unibus-guest-") as name:
         work = Path(name)
-        run([str(compiler), "-I", str(include), "-o", str(work / "main.dis"),
+        examples = root / "disVM/examples/vfs-run"
+        modules = root / "disVM/module"
+        for source in [examples / "runexample.b", root / "disVM/limbo/vfsctl.b"]:
+            run([str(compiler), "-I", str(include), "-I", str(modules), "-I", str(examples),
+                 "-o", str(work / (source.stem + ".dis")), str(source)], work)
+        run([str(compiler), "-I", str(include), "-I", str(examples), "-o", str(work / "main.dis"),
              "-I", str(runtime_root / "fixtures/provider-modules"), "-I", str(root / "disVM/module"),
              str(runtime_root / "fixtures/unibus-files/main.b")], work)
         value_source = work / "value.b"
