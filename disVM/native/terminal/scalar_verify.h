@@ -9,6 +9,8 @@
 #define DVM_SCALAR_INT_SIGNATURE 0xe67bf126U /* Compiled fn(int): int signature. */
 #define STYX_FUNCTION_PROFILE_TAG 71UL /* Profile of a mounted function directory. */
 #define STYX_FUNCTION_REQUEST_TAG 72UL /* Request on an opened function. */
+#define STYX_FUNCTION_CALLER_TAG 74UL /* Request with current caller PID. */
+#define STYX_FUNCTION_CALLER_PROFILE 75UL /* Export requires caller context. */
 #define STYX_FUNCTION_REPLY_TAG 73UL /* Reply on the same open. */
 #define STYX_MOUNTED_EXPORT_LIMIT 8U /* Maximum function files per module. */
 #define INTERFACE_KIND 4U /* Distinct from call, value and error. */
@@ -30,5 +32,5 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
     const char *name, uint32_t signature);
 /* EN/RU: Return the matching record bit in a complete, bounded mounted profile.
  * Вернуть бит совпавшей записи полного ограниченного профиля модуля. */
-unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature);
+unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller);
 #endif

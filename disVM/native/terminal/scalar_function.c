@@ -24,7 +24,7 @@ typedef struct FunctionFid
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
 char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure)
 {
-    if (mode != ORDWR || !function || !function->method || !function->request_tag ||
+    if (mode != ORDWR || !function || (!function->method && !function->caller_method) || !function->request_tag ||
         !function->reply_tag || function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
     {
         return Eperm;
@@ -55,18 +55,21 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
-    int typed = function->request_tag == STYX_FUNCTION_REQUEST_TAG &&
+    int typed = (function->request_tag == STYX_FUNCTION_REQUEST_TAG || function->caller_method) &&
         function->reply_tag == STYX_FUNCTION_REPLY_TAG;
     StyxScalarKind kind;
     int64_t argument;
-    if (!styxscalarread(function->request_tag, bytes, count, &kind, &argument) ||
-        kind != STYX_SCALAR_CALL || (typed && (argument < INT32_MIN || argument > INT32_MAX)))
+    uint32_t pid = 0;
+    int admitted = function->caller_method ? styxscalarcallerread(bytes, count, &pid, &argument) :
+        styxscalarread(function->request_tag, bytes, count, &kind, &argument) && kind == STYX_SCALAR_CALL;
+    if (!admitted || (typed && (argument < INT32_MIN || argument > INT32_MAX)))
     {
         return Ebadarg;
     }
     int64_t value = 0;
     fid->submitted = 1;
-    int outcome = function->method(function->state, argument, &value);
+    int outcome = function->caller_method ? function->caller_method(function->state, pid, argument, &value) :
+        function->method(function->state, argument, &value);
     if (outcome < 0 && fid->report_transport_failure)
     {
         return Ehungup;

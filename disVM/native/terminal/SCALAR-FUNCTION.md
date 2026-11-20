@@ -50,3 +50,20 @@ Expected output includes
 for the existing typed route.
 
 For an original Dis implementation, see [styxunibusserverstartdis](SCALAR-FUNCTION-DIS.md).
+
+## Caller PID on a typed call
+
+A native export can set `caller_method` with request tag 74 and reply tag 73.
+Its `.interface` entry uses tag 75. The request is one S-record containing
+two big-endian 32-bit words, the nonzero caller PID and the signed argument.
+The reply uses the usual scalar format. Legacy entries with tag 72 retain
+their original request format.
+
+DisVM reads the active process PID for each call. The PID is scoped to the
+client session. Access to the client's live `.prog` tree and binding `.self`
+for the invocation are still pending.
+
+The `styx-caller.b` example runs as part of `terminal-scalar-guest`. The
+parent and a spawned child share one module instance. The native callback
+checks the automatically supplied PID against the PID observed by each guest
+process. Both VM modes print `PASS typed Styx caller PID`.

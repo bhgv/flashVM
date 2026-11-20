@@ -207,15 +207,17 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
     for (size_t i = 0; i < count; i++)
     {
         const char *name = imports[i].name;
+        int caller = 0;
         unsigned bit = imports[i].signature == DVM_SCALAR_INT_SIGNATURE &&
             !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
-            styxscalar_profile_match(profile, size, name, imports[i].signature) : 0;
+            styxscalar_profile_match(profile, size, name, imports[i].signature, &caller) : 0;
         if (!bit || (bit & matched) || !(*tail = dvm_scalar_function_files(directory, name)))
         {
             dvm_scalar_files_release(head);
             head = NULL;
             break;
         }
+        (*tail)->caller = caller;
         matched |= bit;
         tail = &(*tail)->next;
     }

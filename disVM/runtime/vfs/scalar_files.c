@@ -138,13 +138,15 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
 
 /* EN/RU: Encode, write once, rewind, and read bounded chunks from the same opened fid.
  * Закодировать, записать один раз, перемотать и прочитать части с того же fid. */
-int dvm_scalar_function_call(DVM_ScalarFiles *files, int64_t argument, int64_t *value)
+int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value)
 {
     unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
     size_t size;
     DVM_VfsHandle handle = {0};
-    if (!styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, argument, bytes,
-            sizeof(bytes), &size) ||
+    int encoded = files->caller ? (argument >= INT32_MIN && argument <= INT32_MAX &&
+        styxscalarcallerwrite(pid, (int32_t)argument, bytes, sizeof(bytes), &size)) :
+        styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, argument, bytes, sizeof(bytes), &size);
+    if (!encoded ||
         dvm_provider_open(files->request, ".", "rw", &handle) != FVM_OK)
     {
         return -1;

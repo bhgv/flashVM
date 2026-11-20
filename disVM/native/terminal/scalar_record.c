@@ -3,6 +3,7 @@
  * RU: Переносимые скалярные данные фиксированной ширины для выданного маршрута Unibus.
  */
 #include "scalar_record.h"
+#include "scalar_verify.h"
 #include "flashvm/srecord.h"
 
 
@@ -71,4 +72,49 @@ int styxscalarrespond(unsigned long request_tag, const void *request, size_t req
     int success = method(state, argument, &result);
     return styxscalarwrite(reply_tag, success == 1 ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
         result, reply, capacity, used);
+}
+
+
+/* EN/RU: Write exactly two big-endian words, with PID first.
+ * Записать ровно два слова старшим байтом вперёд, первым PID. */
+int styxscalarcallerwrite(uint32_t pid, int32_t argument, void *bytes, size_t capacity, size_t *used)
+{
+    if (!pid || !bytes || !used)
+    {
+        return 0;
+    }
+    unsigned char payload[8];
+    const uint32_t fields[] = {pid, (uint32_t)argument};
+    for (unsigned i = 0; i < sizeof(payload); i++)
+    {
+        payload[i] = (unsigned char)(fields[i / 4] >> (24 - 8 * (i % 4)));
+    }
+    return fvm_srecord_write(STYX_FUNCTION_CALLER_TAG, payload, sizeof(payload), bytes, capacity, used) == FVM_S_OK;
+}
+
+
+/* EN/RU: Reject malformed or anonymous requests without writing the borrowed outputs.
+ * Отклонить неверный или анонимный запрос, сохранив выходные значения. */
+int styxscalarcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t *argument)
+{
+    FVM_SRecord record;
+    size_t used;
+    if (!bytes || !pid || !argument ||
+        fvm_srecord_read(bytes, size, STYX_SCALAR_RECORD_CAPACITY, &record, &used) != FVM_S_OK ||
+        used != size || record.tag != STYX_FUNCTION_CALLER_TAG || record.size != 8)
+    {
+        return 0;
+    }
+    uint32_t fields[2] = {0};
+    for (unsigned i = 0; i < 8; i++)
+    {
+        fields[i / 4] = (fields[i / 4] << 8) | record.payload[i];
+    }
+    if (!fields[0])
+    {
+        return 0;
+    }
+    *pid = fields[0];
+    *argument = fields[1] <= INT32_MAX ? (int64_t)fields[1] : (int64_t)fields[1] - INT64_C(4294967296);
+    return 1;
 }

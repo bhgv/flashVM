@@ -16,6 +16,7 @@ typedef struct DVM_ScalarFiles
     DVM_Provider *request; /* Owned captured request node. */
     DVM_Provider *reply; /* Owned captured reply node. */
     DVM_CloseJob *close; /* Native retirement reservation. */
+    int caller; /* Frame includes a captured caller PID. */
     int duplex; /* One fresh read/write fid per call. */
     unsigned references; /* Atomic native ownership. */
     unsigned long state; /* Shared outstanding/retired exchange state. */
@@ -42,6 +43,6 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
 
 /* EN/RU: Exchange on one fid; returns 1 for value, 2 for owner error, 0 for unknown, -1 before submission.
  * Обмен через один fid. Возврат 1 для значения, 2 для ошибки владельца, 0 при неизвестном исходе, -1 до отправки. */
-int dvm_scalar_function_call(DVM_ScalarFiles *files, int64_t argument, int64_t *value);
+int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value);
 
 #endif

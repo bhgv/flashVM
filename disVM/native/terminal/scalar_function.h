@@ -12,6 +12,7 @@ typedef struct StyxScalarFunction
     unsigned long reply_tag;   /* Response frame tag. */
     int (*method)(void *, int64_t, int64_t *); /* Borrowed synchronous native method. */
     void *state; /* Borrowed method context. */
+    int (*caller_method)(void *, uint32_t, int64_t, int64_t *); /* Opt-in callback with a session-local PID. */
 } StyxScalarFunction;
 
 

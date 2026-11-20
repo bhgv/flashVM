@@ -56,30 +56,36 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
 
 /* EN/RU: Check the complete framed sequence and identify one unambiguous match.
  * Проверить всю последовательность кадров и найти единственное совпадение. */
-unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature)
+unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller)
 {
     const unsigned char *cursor = bytes;
     unsigned match = 0;
+    int scoped = 0;
     for (unsigned i = 0; size && i < STYX_MOUNTED_EXPORT_LIMIT; i++)
     {
         FVM_SRecord record;
         size_t used;
         if (fvm_srecord_read(cursor, size, STYX_SCALAR_INTERFACE_CAPACITY, &record, &used) != FVM_S_OK ||
-            record.tag != STYX_FUNCTION_PROFILE_TAG || record.size <= INTERFACE_HEADER ||
+            (record.tag != STYX_FUNCTION_PROFILE_TAG && record.tag != STYX_FUNCTION_CALLER_PROFILE) || record.size <= INTERFACE_HEADER ||
             record.size > INTERFACE_HEADER + INTERFACE_NAME_LIMIT || record.payload[0] != INTERFACE_KIND)
         {
             return 0;
         }
-        if (styxscalaraccept(STYX_FUNCTION_PROFILE_TAG, cursor, used, name, signature))
+        if (styxscalaraccept(record.tag, cursor, used, name, signature))
         {
             if (match)
             {
                 return 0;
             }
             match = 1U << i;
+            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE;
         }
         cursor += used;
         size -= used;
+    }
+    if (!size && match && caller)
+    {
+        *caller = scoped;
     }
     return size ? 0 : match;
 }

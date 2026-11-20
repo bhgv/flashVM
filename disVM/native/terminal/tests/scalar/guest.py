@@ -97,6 +97,16 @@ def main():
                 raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
             print(marker, mode, flush=True)
 
+        run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
+             "-I", str(example), "-o", str(work / "caller.dis"), str(example / "styx-caller.b")], work)
+        for mode in ("--no-jit", "--jit"):
+            result = run([str(binary), mode, str(work / "caller.dis")], work,
+                         dict(os.environ, DVM_TEST_SCALAR_MOUNTED="1", DVM_TEST_SCALAR_CALLER="1"))
+            marker = "PASS typed Styx caller PID"
+            if marker not in result.stdout:
+                raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
+            print(marker, mode, flush=True)
+
 
 if __name__ == "__main__":
     main()

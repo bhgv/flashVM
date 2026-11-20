@@ -35,4 +35,8 @@ int styxscalarrespond(unsigned long request_tag, const void *request, size_t req
     unsigned long reply_tag, int (*method)(void *, int64_t, int64_t *), void *state,
     void *reply, size_t capacity, size_t *used);
 
+/* EN/RU: Encode or decode one complete signed-int call with a nonzero process identity.
+ * Закодировать или прочитать вызов со знаковым int и ненулевым PID. */
+int styxscalarcallerwrite(uint32_t pid, int32_t argument, void *bytes, size_t capacity, size_t *used);
+int styxscalarcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t *argument);
 #endif

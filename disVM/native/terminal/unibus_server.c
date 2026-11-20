@@ -197,7 +197,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
     {
         return 0;
     }
-    if (module->function.request_tag != STYX_FUNCTION_REQUEST_TAG ||
+    if ((module->function.request_tag != STYX_FUNCTION_REQUEST_TAG && !module->function.caller_method) ||
         module->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
     {
         return 1;
@@ -206,7 +206,8 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
     styxscalar_interface_header(header, DVM_SCALAR_INT_SIGNATURE);
     size_t length = styxscalar_name_length(entry->name);
     size_t used;
-    if (!length || fvm_srecord_write_pair(STYX_FUNCTION_PROFILE_TAG, header, sizeof(header), entry->name, length,
+    unsigned long tag = module->function.caller_method ? STYX_FUNCTION_CALLER_PROFILE : STYX_FUNCTION_PROFILE_TAG;
+    if (!length || fvm_srecord_write_pair(tag, header, sizeof(header), entry->name, length,
             directory->interface + directory->interface_size,
             sizeof(directory->interface) - directory->interface_size, &used) != FVM_S_OK)
     {
@@ -316,13 +317,15 @@ static int configure(MountedExport *module, const StyxMountedScalar *entry)
     {
         module->function = *entry->native;
         const StyxScalarFunction *fn = &module->function;
-        return fn->method && fn->request_tag && fn->reply_tag &&
+        return fn->caller_method ? !fn->method && fn->request_tag == STYX_FUNCTION_CALLER_TAG &&
+            fn->reply_tag == STYX_FUNCTION_REPLY_TAG :
+            fn->method && fn->request_tag && fn->reply_tag &&
             fn->request_tag <= UINT32_MAX && fn->reply_tag <= UINT32_MAX;
     }
     module->owner.request = styxunibusmailbox(STYX_FUNCTION_REQUEST_TAG);
     module->owner.reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
     module->function = (StyxScalarFunction){
-        STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner
+        STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner, NULL
     };
     return module->owner.request && module->owner.reply;
 }

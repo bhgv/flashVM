@@ -254,6 +254,22 @@ static void native_interface(DVM_Provider *request, DVM_Provider *inbox)
 
 #endif
 
+#ifdef STYX_SCALAR_GUEST
+/* EN: Check the wire PID against the guest's independent observation.
+ * RU: Сверить PID из запроса с PID, полученным внутри гостя. */
+static int caller_method(void *context, uint32_t pid, int64_t argument, int64_t *result)
+{
+    static uint32_t previous;
+    (void)context;
+    if (argument != (int64_t)pid || pid == previous)
+        return 0;
+    previous = pid;
+    ++calls;
+    *result = pid;
+    return 1;
+}
+#endif
+
 /* EN/RU: Interleave two live fids and read their replies in reverse order.
  * Чередовать операции двух открытых fid и прочитать ответы в обратном порядке. */
 static void mounted_function(void)
@@ -263,7 +279,15 @@ static void mounted_function(void)
     int breaker = dup(pair[0]);
     check(breaker >= 0, "mounted function shutdown descriptor");
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
-    StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL};
+    StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL, NULL};
+#ifdef STYX_SCALAR_GUEST
+    if (getenv("DVM_TEST_SCALAR_CALLER"))
+    {
+        function.request_tag = STYX_FUNCTION_CALLER_TAG;
+        function.method = NULL;
+        function.caller_method = caller_method;
+    }
+#endif
     StyxUnibusServer *server = styxunibusserverstartfunction(phyposixfd(pair[1], caps),
         "compute.dis", "compute", &function);
     check(server != NULL, "export mounted function");
@@ -357,7 +381,8 @@ int scalar_round_trip(void)
     if (getenv("DVM_TEST_SCALAR_MOUNTED"))
     {
         mounted_function();
-        check(calls == 3, "three typed calls reached the mounted function");
+        check(calls == (getenv("DVM_TEST_SCALAR_CALLER") ? 2 : 3),
+            "exact typed call count at the mounted function");
         return 0;
     }
     round_trip(scalar_guest);
