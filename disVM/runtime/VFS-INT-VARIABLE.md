@@ -46,3 +46,13 @@ The fixture obtains the PID with `Processctl.pid()`. The receiving side
 captures the module directory and opens the cell via
 `/.prog/.self/.var/count`. It separately tests the original `.var/count`
 layout. See [process context](LAUNCH-PROGRAM-ROUTE.md).
+
+`styxvariableserverstartprogramfiles` publishes 1 to 64 explicit file
+grants under one `.var`. Each `StyxPublishedVariable` supplies a name
+and exact provider. The constructor retains the files until server
+retirement. A duplicate name or unsuitable file rejects the entire
+publication before dispatch starts. Each file keeps its own read and
+write permissions.
+
+The example exports writable `count` and read-only `limit` through one
+Styx mount. The owner checks that updating `count` preserves `limit`.

@@ -27,6 +27,7 @@ static StyxVariableServer *server; /* Owns the exported native provider pin. */
 static int remote_fd = -1; /* Client carrier end transferred to its thread. */
 static uint32_t pid; /* Limbo PID copied from the fixture mount spelling. */
 static int legacy; /* Exercise the original unscoped export too. */
+static DVM_Provider *readonly; /* First mounted cell, retained until publication. */
 static int result; /* Set by the remote reader, consumed after join. */
 
 
@@ -56,7 +57,7 @@ static int verify_identity(StyxClient *client)
 
 /* EN/RU: Open the remote cell through the actual receiver's scoped alias.
  * Открыть удалённую ячейку через рабочий псевдоним принимающей стороны. */
-static int open_remote(StyxClient *client, DVM_VfsHandle *file)
+static int open_remote(StyxClient *client, const char *name, const char *mode, DVM_VfsHandle *file)
 {
     if (!client || (!legacy && !verify_identity(client)) || !styxclientretain(client))
     {
@@ -71,7 +72,7 @@ static int open_remote(StyxClient *client, DVM_VfsHandle *file)
     int opened;
     if (legacy)
     {
-        opened = dvm_provider_open(root, ".", "rw", file) == FVM_OK;
+        opened = dvm_provider_open(root, ".", mode, file) == FVM_OK;
     }
     else
     {
@@ -82,15 +83,37 @@ static int open_remote(StyxClient *client, DVM_VfsHandle *file)
         }
         DVM_Namespace *group = dvm_launch_handoff_program(context, root, pid, 0, 0) ?
             dvm_launch_program_namespace(context) : NULL;
+        char path[64];
+        snprintf(path, sizeof(path), "/.prog/.self/.var/%s", name);
         DVM_ResourcePlan plan = {0};
-        opened = group && dvm_resource_plan(group, "/.prog/.self/.var/count", 0, &plan) &&
-            plan.provider && dvm_provider_open(plan.provider, plan.relative, "rw", file) == FVM_OK;
+        opened = group && dvm_resource_plan(group, path, 0, &plan) &&
+            plan.provider && dvm_provider_open(plan.provider, plan.relative, mode, file) == FVM_OK;
         dvm_resource_close(&plan);
         dvm_namespace_release(group);
         dvm_launch_handoff_free(context);
     }
     dvm_provider_release(root);
     return opened;
+}
+
+
+/* EN/RU: Verify that a second exported file is live and only readable.
+ * Проверить доступность второй ячейки и отказ записи в неё. */
+static int check_limit(StyxClient *client)
+{
+    DVM_VfsHandle file = {0};
+    int valid = 0;
+    if (open_remote(client, "limit", "r", &file))
+    {
+        unsigned char bytes[4];
+        const unsigned char expected[] = {0, 0, 0, 73};
+        DVM_IoResult got = dvm_vfs_read_chunk(&file, bytes, sizeof(bytes));
+        valid = got.status == FVM_OK && got.count == sizeof(bytes) && !memcmp(bytes, expected, sizeof(bytes));
+    }
+    dvm_vfs_close(&file);
+    int writable = open_remote(client, "limit", "wo", &file);
+    dvm_vfs_close(&file);
+    return valid && !writable;
 }
 
 
@@ -103,7 +126,7 @@ static void *exchange(void *unused)
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     StyxClient *client = styxclientmountphy(phyposixfd(remote_fd, caps), 256, "fixture", "", 1500, 4);
     DVM_VfsHandle file = {0};
-    if (open_remote(client, &file))
+    if ((legacy || check_limit(client)) && open_remote(client, "count", "rw", &file))
     {
         const unsigned char expected[] = {255, 255, 255, 254};
         unsigned char bytes[4];
@@ -143,12 +166,48 @@ static void *exchange(void *unused)
 }
 
 
+/* EN/RU: Refuse duplicate names without consuming either borrowed provider.
+ * Отказать повторяющимся именам без поглощения заимствованных провайдеров. */
+static int duplicate_refused(DVM_Provider *file, unsigned caps)
+{
+    int pair[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair))
+    {
+        return 0;
+    }
+    const StyxPublishedVariable duplicate[] = {{"count", file}, {"count", file}};
+    StyxVariableServer *failed = styxvariableserverstartprogramfiles(phyposixfd(pair[0], caps),
+        "loaded.dis", pid, duplicate, sizeof(duplicate) / sizeof(duplicate[0]));
+    shutdown(pair[1], SHUT_RDWR);
+    close(pair[1]);
+    if (failed)
+    {
+        styxvariableserverjoin(failed);
+        return 0;
+    }
+    return 1;
+}
+
+
 /* EN/RU: Observe a successful test mount and hand its same exact provider to Styx.
  * После успешного монтажа стенда передать Styx тот же точный провайдер. */
 int __wrap_dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, unsigned flags, int64_t index)
 {
     int mounted = __real_dvm_stack_bind(source, target, flags, index);
-    if (mounted != 1 || server || strncmp(target->names.path, "/cell.", 6))
+    if (mounted != 1 || server)
+    {
+        return mounted;
+    }
+    if (!strncmp(target->names.path, "/limit.", 7))
+    {
+        if (readonly || !dvm_provider_retain(source->provider))
+        {
+            exit(2);
+        }
+        readonly = source->provider;
+        return mounted;
+    }
+    if (strncmp(target->names.path, "/cell.", 6))
     {
         return mounted;
     }
@@ -167,8 +226,16 @@ int __wrap_dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, un
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     RemotePhy *channel = phyposixfd(pair[0], caps);
     legacy = getenv("DVM_TEST_VARIABLE_LEGACY") != NULL;
+    if (!legacy && !duplicate_refused(source->provider, caps))
+    {
+        exit(2);
+    }
+    const StyxPublishedVariable variables[] = {{"count", source->provider}, {"limit", readonly}};
     server = legacy ? styxvariableserverstart(channel, "count", source->provider) :
-        styxvariableserverstartprogram(channel, "loaded.dis", pid, "count", source->provider);
+        styxvariableserverstartprogramfiles(channel, "loaded.dis", pid, variables,
+            sizeof(variables) / sizeof(variables[0]));
+    dvm_provider_release(readonly);
+    readonly = NULL;
     remote_fd = pair[1];
     if (!server || pthread_create(&reader, NULL, exchange, NULL))
     {
@@ -183,6 +250,7 @@ int __wrap_dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, un
 int __wrap_main(int argc, char **argv)
 {
     int status = __real_main(argc, argv);
+    dvm_provider_release(readonly);
     if (!server || pthread_join(reader, NULL) || !styxvariableserverjoin(server) || !result)
     {
         fputs("Limbo variable Styx exchange failed\n", stderr);

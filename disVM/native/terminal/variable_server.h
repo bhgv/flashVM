@@ -22,6 +22,21 @@ StyxVariableServer *styxvariableserverstartprogram(RemotePhy *channel, const cha
     uint32_t pid, const char *name, DVM_Provider *file);
 
 
+#define STYX_VARIABLE_SERVER_LIMIT 64U /* Maximum files in one explicit publication. */
+
+typedef struct StyxPublishedVariable
+{
+    const char *name; /* Borrowed component copied by the server at startup. */
+    DVM_Provider *file; /* Borrowed exact node, retained on success. */
+} StyxPublishedVariable;
+
+
+/* EN/RU: Publish distinct exact files for one client process on a consumed channel.
+ * Опубликовать разные точные файлы одного процесса на принятом канале. */
+StyxVariableServer *styxvariableserverstartprogramfiles(RemotePhy *channel, const char *module,
+    uint32_t pid, const StyxPublishedVariable *files, size_t count);
+
+
 /* EN/RU: After carrier close, join the server and consume it on success.
  * После закрытия канала дождаться сервера и поглотить его при успехе. */
 int styxvariableserverjoin(StyxVariableServer *server);

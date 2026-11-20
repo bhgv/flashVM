@@ -18,22 +18,36 @@ struct StyxVariableServer
 {
     Styxserver server; /* Owns the original dispatcher and channel. */
     char identity[sizeof("4294967295\n")]; /* Immutable PID file for scoped mode. */
-    StyxBacking *backing; /* Pins the exact published VFS node. */
+    StyxBacking **backings; /* Exact published nodes in configuration order. */
+    size_t count; /* Number of entries, immutable during dispatch. */
     pthread_t worker; /* Dispatch thread joined before retirement. */
 };
 
 static __thread StyxVariableServer *active; /* Set on the dispatcher only. */
 
 
+#define FIRST_VARIABLE 7UL /* Qids below this value belong to the directory structure. */
+
+
+/* EN/RU: Decode an actual variable qid without accepting unrelated nodes.
+ * Разобрать qid переменной, исключая другие узлы. */
+static StyxBacking *backing(Path qid)
+{
+    return qid >= FIRST_VARIABLE && qid - FIRST_VARIABLE < active->count ?
+        active->backings[qid - FIRST_VARIABLE] : NULL;
+}
+
+
 /* EN/RU: Open an exact variable fid with its own handle and destructor.
  * Открыть точный fid переменной со своим дескриптором и освобождением. */
 static char *open_node(Qid *qid, int mode)
 {
-    if (qid->path != 2)
+    StyxBacking *node = backing(qid->path);
+    if (!node)
     {
         return mode == OREAD ? nil : Eperm;
     }
-    StyxOpen *opened = styxfileopen(active->backing, mode);
+    StyxOpen *opened = styxfileopen(node, mode);
     if (!opened || styxsetauxowned(&active->server, opened, styxfileclose) < 0)
     {
         styxfileclose(opened);
@@ -52,7 +66,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         *count = styxreadstr(offset, bytes, *count, active->identity);
         return nil;
     }
-    if (qid.path != 2 || offset < 0)
+    if (!backing(qid.path) || offset < 0)
     {
         return Ebadarg;
     }
@@ -71,7 +85,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
  * Передать одну запись и подтвердить только достоверное число байтов. */
 static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path != 2 || offset < 0)
+    if (!backing(qid.path) || offset < 0)
     {
         return Ebadarg;
     }
@@ -133,41 +147,94 @@ static int program_tree(StyxVariableServer *server, const char *module, uint32_t
 }
 
 
-/* EN/RU: Validate the file and its displayed permissions before starting dispatch.
- * Проверить файл и его права перед запуском диспетчера. */
-static StyxVariableServer *start(RemotePhy *channel, const char *module, uint32_t pid,
-    const char *name, DVM_Provider *file)
+/* EN/RU: Release every retained node, including partial startup.
+ * Снять все удерживаемые ссылки, включая частичный запуск. */
+static void release_files(StyxVariableServer *server)
 {
-    StyxVariableServer *server = channel && component(name) && (!module || (pid && component(module))) ?
-        calloc(1, sizeof(*server)) : NULL;
+    for (size_t i = 0; i < server->count; i++)
+    {
+        styxbackingfree(server->backings[i]);
+    }
+    free(server->backings);
+    free(server);
+}
+
+
+/* EN/RU: Validate and publish exactly the named node and its advertised permissions.
+ * Проверить и опубликовать точный именованный узел и его права. */
+static int publish_file(StyxVariableServer *server, const StyxPublishedVariable *file, size_t index)
+{
+    if (!component(file->name) || !file->file)
+    {
+        return 0;
+    }
+    StyxBacking *node = server->backings[index] = styxbacking(file->file);
+    StyxMeta info;
+    if (!node || !styxbackinginfo(node, &info) || info.directory || !(info.mode & 0666))
+    {
+        return 0;
+    }
+    Styxfile *entry = styxaddfile(&server->server, 1, FIRST_VARIABLE + index,
+        (char *)file->name, info.mode & 0666, "variable");
+    if (!entry)
+    {
+        return 0;
+    }
+    entry->d.length = info.length;
+    return 1;
+}
+
+
+/* EN/RU: Build the entire unpublished tree before starting the dispatcher.
+ * Построить полное неопубликованное дерево до запуска диспетчера. */
+static int publish_tree(StyxVariableServer *server, const char *module, uint32_t pid,
+    const StyxPublishedVariable *files)
+{
+    if ((module && !program_tree(server, module, pid)) ||
+        !styxadddir(&server->server, module ? 5 : Qroot, 1, ".var", 0555, "variable"))
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < server->count; i++)
+    {
+        if (!publish_file(server, &files[i], i))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: Stage all files in a consumed connection, returning an owned server on success.
+ * Подготовить все файлы в принятом соединении, вернуть сервер при успехе. */
+static StyxVariableServer *start(RemotePhy *channel, const char *module, uint32_t pid,
+    const StyxPublishedVariable *files, size_t count)
+{
+    StyxVariableServer *server = channel && files && count && count <= STYX_VARIABLE_SERVER_LIMIT &&
+        (!module || (pid && component(module))) ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
     {
         phyfree(channel);
         return NULL;
     }
-    server->backing = file ? styxbacking(file) : NULL;
-    StyxMeta info;
-    if (!server->backing || !styxbackinginfo(server->backing, &info) || info.directory || !(info.mode & 0666))
+    server->backings = calloc(count, sizeof(*server->backings));
+    if (!server->backings)
     {
         phyfree(channel);
+        free(server);
+        return NULL;
     }
-    else if (!styxphyinit(&server->server, &ops, channel, 0555, 1, 2))
+    server->count = count;
+    if (!styxphyinit(&server->server, &ops, channel, 0555, 1, 2))
     {
-        Styxfile *node = (!module || program_tree(server, module, pid)) &&
-            styxadddir(&server->server, module ? 5 : Qroot, 1, ".var", 0555, "variable") ?
-            styxaddfile(&server->server, 1, 2, (char *)name, info.mode & 0666, "variable") : NULL;
-        if (node)
+        if (publish_tree(server, module, pid, files) && !pthread_create(&server->worker, NULL, serve, server))
         {
-            node->d.length = info.length;
-            if (!pthread_create(&server->worker, NULL, serve, server))
-            {
-                return server;
-            }
+            return server;
         }
         styxend(&server->server);
     }
-    styxbackingfree(server->backing);
-    free(server);
+    release_files(server);
     return NULL;
 }
 
@@ -176,21 +243,32 @@ static StyxVariableServer *start(RemotePhy *channel, const char *module, uint32_
  * Опубликовать точный файл в существующем дереве без контекста процесса. */
 StyxVariableServer *styxvariableserverstart(RemotePhy *channel, const char *name, DVM_Provider *file)
 {
-    return start(channel, NULL, 0, name, file);
+    const StyxPublishedVariable variable = {name, file};
+    return start(channel, NULL, 0, &variable, 1);
 }
 
 
-/* EN/RU: Scope the published file to one trusted module name and client PID.
- * Ограничить опубликованный файл именем доверенной загрузки и PID клиента. */
+/* EN/RU: Scope one published file to a trusted module name and client PID.
+ * Ограничить один опубликованный файл именем доверенной загрузки и PID клиента. */
 StyxVariableServer *styxvariableserverstartprogram(RemotePhy *channel, const char *module,
     uint32_t pid, const char *name, DVM_Provider *file)
+{
+    const StyxPublishedVariable variable = {name, file};
+    return styxvariableserverstartprogramfiles(channel, module, pid, &variable, 1);
+}
+
+
+/* EN/RU: Scope the complete publication to a trusted module name and client PID.
+ * Ограничить всю публикацию именем доверенной загрузки и PID клиента. */
+StyxVariableServer *styxvariableserverstartprogramfiles(RemotePhy *channel, const char *module,
+    uint32_t pid, const StyxPublishedVariable *files, size_t count)
 {
     if (!module)
     {
         phyfree(channel);
         return NULL;
     }
-    return start(channel, module, pid, name, file);
+    return start(channel, module, pid, files, count);
 }
 
 
@@ -202,7 +280,6 @@ int styxvariableserverjoin(StyxVariableServer *server)
     {
         return 0;
     }
-    styxbackingfree(server->backing);
-    free(server);
+    release_files(server);
     return 1;
 }

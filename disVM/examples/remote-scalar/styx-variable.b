@@ -19,6 +19,12 @@ init()
         raise "could not read client process identity";
     }
     target := "/cell." + string process->pid();
+    limit := exports->intvar(73);
+    readonly := exports->overlay(nil, limit, "/", Vfsexport->Read, 0);
+    if (limit == nil || readonly == nil ||
+        exports->mount(readonly, "/limit." + string process->pid(), 0, 0) != 0) {
+        raise "could not publish read-only integer";
+    }
     cell := exports->intvar(41);
     if (cell == nil || exports->mount(cell, target, 0, 0) != 0 || !exports->intset(cell, -2)) {
         raise "could not publish live integer";
@@ -29,6 +35,10 @@ init()
             raise "lost exact integer capability";
         }
         if (value == 65539) {
+            (valid, unchanged) := exports->intget(limit);
+            if (!valid || unchanged != 73) {
+                raise "write crossed into another published variable";
+            }
             sys->print("PASS Limbo variable round trip over Styx\n");
             return;
         }
