@@ -1,6 +1,6 @@
 # Run a Dis command by VFS path
 
-[Русский](README.ru.md) · [Client](runexample.b) · [Interface](runexample.m)
+[Русский](README.ru.md) · [Client](runexample.b) · [Interface](runexample.m) · [Tutorial](TUTORIAL.md) · [Overview](../../runtime/VFS-LAUNCH.md)
 
 The example submits a mounted command to its owner, sends binary data through
 a route configured to receive it, and reads the exit status with ordinary

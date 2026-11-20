@@ -17,6 +17,8 @@
 готовность функций и ещё не подключённые службы /prog/VFS указаны отдельно.
 
 [Файлы и каталоги по ОС, пример](runtime/FILESYSTEM.ru.md).
+[Запуск через VFS](runtime/VFS-LAUNCH.ru.md) · [Запускаемый пример](examples/vfs-run/README.ru.md)
+
 
 [Проверенная синхронизация](SYNC.md) · [Профили native64](PLATFORM-PROFILES.ru.md) ·
 [Владелец кооперативных задач](../compiler/runtime/ASINC-TASKS.ru.md).

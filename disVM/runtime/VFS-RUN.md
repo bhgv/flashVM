@@ -1,28 +1,40 @@
 # Vfsctl.run
 
-[Русский](VFS-RUN.ru.md) · [Limbo interface](../module/vfsctl.m) · [Runtime](vfs/vfsnative.c) · [Runnable example](../examples/vfs-run/README.md)
+[Русский](VFS-RUN.ru.md) · [Overview](VFS-LAUNCH.md) · [Tutorial](../examples/vfs-run/TUTORIAL.md) · [Source](vfs/vfsnative.c)
 
-`run: fn(path: string): int` submits a program through the route advertised
-by its selected VFS provider. Initialize `Vfsctl` once and pass the visible
-absolute or relative path, including a bound alias.
+## Synopsis
 
 ```limbo
-status := vfs->run("/mounted/app.dis");
+include "vfsctl.m";
+# Load Vfsctl and call its init() before using run.
+run: fn(path: string): int;
 ```
 
-Returns 1 when delivery is acknowledged, 0 on refusal or an unavailable route,
-and -1 when delivery is uncertain. The operation can wait for Styx. It sends
-an empty startup payload and performs no automatic retry. Delivery acknowledges
-the request, while starting the process belongs to the owner.
+Available in hosted DisVM with [Vfsctl](../module/vfsctl.m) and the `$Vfsnative`
+builtin. `path` is a required, nonempty VFS name of at most 4095 UTF-8 bytes.
+Absolute paths, relative paths and names created by bind are accepted. Relative
+paths use the calling process's namespace and working directory.
 
-The TCP guest test submits a bound alias for a separate command image. The
-fixture owner starts the command when it accepts the request. Its `init` reads
-a file in the owner's working directory. The requesting guest then reads the
-fixture's completion file over the same live mount. The check runs in
-interpreter and JIT.
+## Result and effects
 
-`runargs(path, arguments)` follows the same route and returns the same statuses.
-It accepts a binary byte array up to 65,536 bytes. The selected transport may
-impose a smaller limit. Embedded zeros are preserved. The owner must opt in
-with a payload callback and its own size limit. The fixed-command publication
-continues to accept empty payloads only.
+| Result | Meaning |
+| --- | --- |
+| `1` | Delivery of the complete request was acknowledged. |
+| `0` | Invalid path, unavailable route, or request refused before confirmed delivery. |
+| `-1` | The transport could not establish whether the request was delivered. |
+
+The selected provider supplies the route. The call submits one empty payload
+and releases its temporary route and namespace references on return. It can
+wait for provider I/O. The runtime provides a cancellation scope and preserves
+the reported delivery outcome if cancellation races the write. The operation
+does not retry. The host controls execution and the lifetime of any result file.
+
+## Example
+
+```limbo
+delivery := vfs->run("/routed.dis");
+```
+
+A result of 1 permits the client to proceed to the separately published result
+file. See the [TCP example](../examples/vfs-run/runexample.b) and
+[`runargs`](VFS-RUNARGS.md).
