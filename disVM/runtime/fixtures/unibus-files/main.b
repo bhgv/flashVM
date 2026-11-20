@@ -155,6 +155,12 @@ init()
         if (vfs == nil || vfs->run("/missing.dis") != 0 || vfs->run("/routed.dis") != 1) {
             raise "VFS command submission failed";
         }
+        completion := sys->open("/run-result", Sys->OREAD);
+        status := array[1] of byte;
+        if (completion == nil || sys->read(completion, status, 1) != 1 ||
+            status[0] != byte '1') {
+            raise "owner command did not finish over the live mount";
+        }
         sys->print("PASS path-only Styx command submission\n");
     }
     checkheld();

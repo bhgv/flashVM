@@ -117,6 +117,8 @@ static DVM_LaunchHandoff *prepare_launch(void)
             "publish the owner's descriptor directory in its root");
     }
     map_routed(connection, code);
+    launch_check(dvm_view_map(code, "/run-result", assets, "execute-result", FVM_ACCESS_READ, 0),
+        "map owner execution result");
     options.provider = dvm_view_freeze(code);
     submit_mounted(connection, &options);
     DVM_TerminalChannels ingress = {0};

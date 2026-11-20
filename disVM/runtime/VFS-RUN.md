@@ -16,6 +16,7 @@ an empty startup payload and performs no automatic retry. Delivery acknowledges
 the request, while starting the process belongs to the owner.
 
 The TCP guest test submits a bound alias for a separate command image. The
-fixture owner accepts one request and, after the connection drains, executes
-that image in another DisVM process. Its `init` reads a file in the owner's
-working directory and emits a marker. The check runs in interpreter and JIT.
+fixture owner starts the command when it accepts the request. Its `init` reads
+a file in the owner's working directory. The requesting guest then reads the
+fixture's completion file over the same live mount. The check runs in
+interpreter and JIT.

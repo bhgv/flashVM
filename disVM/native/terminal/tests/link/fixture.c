@@ -19,6 +19,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #endif
 static Styxserver server;    /* Original native server, owned through join. */
@@ -62,7 +64,8 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
-extern int fixtureownerrequested(void); /* Owner endpoint admission after serving. */
+static pid_t owner_child; /* Owner execution process, reaped by the server. */
+static int owner_done; /* The owner process exited successfully. */
 extern char *fixtureownerwrite(char *, ulong *, vlong); /* Dedicated owner command endpoint. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
@@ -143,12 +146,78 @@ static char *open_held(Qid *qid, int mode)
 #endif
 
 
+#ifdef ORDERED_GUEST_FILE_TEST
+/* EN/RU: Start the fixed fixture command immediately after admission.
+ * Запустить фиксированную тестовую команду сразу после принятия запроса. */
+static char *start_owner(void)
+{
+    const char *runtime = getenv("DVM_TEST_OWNER_RUNTIME");
+    const char *mode = getenv("DVM_TEST_OWNER_MODE");
+    if (!runtime || !mode)
+    {
+        return Ebadarg;
+    }
+    owner_child = fork();
+    if (owner_child < 0)
+    {
+        return Ebadarg;
+    }
+    if (!owner_child)
+    {
+        if (!chdir("owner"))
+        {
+            execl(runtime, runtime, mode, "owner.dis", (char *)NULL);
+        }
+        _exit(3);
+    }
+    return nil;
+}
+
+
+/* EN/RU: Reap the admitted command once; subsequent observations reuse its status.
+ * Дождаться принятой команды один раз; повторные чтения используют сохранённый статус. */
+static int finish_owner(void)
+{
+    if (owner_child > 0)
+    {
+        int status;
+        pid_t result;
+        do
+        {
+            result = waitpid(owner_child, &status, 0);
+        }
+        while (result < 0 && errno == EINTR);
+        owner_done = result == owner_child && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+        owner_child = 0;
+    }
+    return owner_done;
+}
+#endif
+
+
 /* EN/RU: Serve only the granted records node; original core owns walk, permissions and fid lifecycle.
  * Обслужить records node; walk, права и fid lifecycle принадлежат original core.
  */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
+    if (qid.path == 21)
+    {
+        if (offset < 0 || !finish_owner())
+        {
+            return Ebadarg;
+        }
+        if (offset == 0 && *count)
+        {
+            bytes[0] = '1';
+            *count = 1;
+        }
+        else
+        {
+            *count = 0;
+        }
+        return nil;
+    }
     if (held_backing(qid.path))
     {
         StyxTransfer result;
@@ -196,7 +265,8 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.path == 20)
     {
-        return fixtureownerwrite(bytes, count, offset);
+        char *error = fixtureownerwrite(bytes, count, offset);
+        return error ? error : start_owner();
     }
     if (qid.path == 11)
     {
@@ -295,6 +365,10 @@ int linkfixturefd(void)
     {
         close(pair[0]);
         signal(SIGPIPE, SIG_IGN);
+        if (fcntl(pair[1], F_SETFD, FD_CLOEXEC) < 0)
+        {
+            _exit(3);
+        }
         server_start(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
         fixtureimagesinit(&server);
         held[0] = add_held(Qroot, held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
@@ -320,15 +394,8 @@ int linkfixturefd(void)
         }
         fixtureimagesfree();
         phybidirfree(remote);
-        if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT") && !finish_owner())
         {
-            const char *runtime = getenv("DVM_TEST_OWNER_RUNTIME");
-            const char *mode = getenv("DVM_TEST_OWNER_MODE");
-            if (!fixtureownerrequested() || !runtime || !mode || chdir("owner"))
-            {
-                _exit(3);
-            }
-            execl(runtime, runtime, mode, "owner.dis", (char *)NULL);
             _exit(3);
         }
         _exit(0);

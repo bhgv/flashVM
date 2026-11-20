@@ -68,7 +68,8 @@ void fixtureimagesinit(Styxserver *server)
     launch_size += encoded;
     request->d.length = launch_size;
     if (require_submission && (!styxaddfile(server, Qroot, 11, "submit", 0222, "fixture") ||
-        !styxaddfile(server, Qroot, 20, "execute", 0222, "fixture")))
+        !styxaddfile(server, Qroot, 20, "execute", 0222, "fixture") ||
+        !styxaddfile(server, Qroot, 21, "execute-result", 0444, "fixture")))
     {
         exit(3);
     }
@@ -162,12 +163,4 @@ char *fixtureownerwrite(char *bytes, ulong *count, vlong offset)
     }
     owner_requested = 1;
     return nil;
-}
-
-
-// EN/RU: Report the owner's completed request admission after the server drains.
-// Сообщить о принятом запросе владельца после завершения сервера.
-int fixtureownerrequested(void)
-{
-    return owner_requested;
 }
