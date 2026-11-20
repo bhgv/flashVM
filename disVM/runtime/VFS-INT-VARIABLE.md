@@ -24,3 +24,17 @@ file callbacks. Root capabilities and open descriptors keep the cell alive.
 Run `ctest -R '^disvm_native_vfs_publication$' -V`. The example creates
 a cell from Limbo, maps it at `/.var/count`, shares it with a child and
 checks updates through both APIs. This example verifies local VFS publication.
+
+## Publishing over Styx
+
+A native launcher can pass the cell's exact file provider to
+`styxvariableserverstart` from `styx_unibus_server`. The server takes ownership
+of the connected channel, retains the exact provider and exposes
+`.var/<name>` with the source read and write permissions. Each open fid
+has an independent cursor. Call `styxvariableserverjoin` after carrier close.
+
+The [example](../examples/remote-scalar/styx-variable.b) creates a Limbo cell
+and sets it to `-2`. An ordinary remote Styx client reads that value and
+writes `65539` back. The owner observes the update through `intget`.
+The native fixture gives the server the exact provider selected by the
+example. Run `ctest -R '^terminal-managed-variable-guest$' -V` in the configured SDK.

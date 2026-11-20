@@ -122,7 +122,7 @@ endforeach()
 
 add_subdirectory(cli)
 
-add_library(styx_unibus_server STATIC unibus_server.c scalar_function_owner.c indexed_styx.c)
+add_library(styx_unibus_server STATIC unibus_server.c scalar_function_owner.c indexed_styx.c variable_server.c)
 target_link_libraries(styx_unibus_server PUBLIC styx_terminal infernostyx_phy)
 target_compile_options(styx_unibus_server PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
 add_dependencies(terminal-ordered-files styx_unibus_server)
@@ -144,6 +144,10 @@ if(INFERNO_DISVM_RUNTIME AND INFERNO_LIMBO_COMPILER AND CMAKE_GENERATOR STREQUAL
     add_test(NAME terminal-scalar-owner-guest COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar/owner_guest.py"
         "${INFERNO_DISVM_RUNTIME}" "${INFERNO_LIMBO_COMPILER}" "${CMAKE_BINARY_DIR}")
+    add_test(NAME terminal-managed-variable-guest COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/variable/guest.py"
+        "${INFERNO_DISVM_RUNTIME}" "${INFERNO_LIMBO_COMPILER}" "${CMAKE_BINARY_DIR}")
+    set_tests_properties(terminal-managed-variable-guest PROPERTIES TIMEOUT 90 LABELS "native-guest")
     set_tests_properties(terminal-scalar-guest terminal-scalar-owner-guest
         PROPERTIES TIMEOUT 90 LABELS "native-guest")
 endif()
