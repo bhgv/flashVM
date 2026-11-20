@@ -10,6 +10,8 @@
 #include "flashvm/sbindings.h"
 static unsigned char *images[2]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
+static int require_submission; /* In routed tests the caller must post before launch is readable. */
+static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
 static size_t lengths[2]; /* Exact bytes advertised in original Styx metadata. */
 
@@ -46,6 +48,7 @@ void fixtureimagesinit(Styxserver *server)
         file->d.length = lengths[i];
     }
     const unsigned char arguments[] = {'r', 0, 'n'};
+    require_submission = getenv("DVM_TEST_TERMINAL_SUBMIT") != NULL;
     int custom = getenv("DVM_TEST_TERMINAL_CUSTOM") != NULL;
     const FVM_SBinding binding = {custom ? 23 : 17, 1, sizeof("disvm.launch") - 1, "disvm.launch"};
     unsigned char declaration[64];
@@ -63,6 +66,10 @@ void fixtureimagesinit(Styxserver *server)
     }
     launch_size += encoded;
     request->d.length = launch_size;
+    if (require_submission && !styxaddfile(server, Qroot, 11, "submit", 0222, "fixture"))
+    {
+        exit(3);
+    }
 }
 
 
@@ -71,7 +78,8 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path < 8 || qid.path > 10 || offset < 0)
+    if (qid.path < 8 || qid.path > 10 || offset < 0 ||
+        (qid.path == 10 && require_submission && !submitted))
     {
         return Ebadarg;
     }
@@ -104,4 +112,31 @@ void fixtureimagesfree(void)
     {
         free(images[i]);
     }
+}
+
+
+// EN/RU: Accept exactly one complete launch frame, before exposing it to the dispatcher.
+// Принять ровно один полный кадр запуска перед выдачей диспетчеру.
+char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
+{
+    FVM_SRecord record;
+    size_t consumed;
+    if (!require_submission || submitted || offset != 0 ||
+        fvm_srecord_read(bytes, *count, 128, &record, &consumed) != FVM_S_OK ||
+        consumed != *count || record.tag != 17 || record.size != 3 ||
+        record.payload[0] != 'r' || record.payload[1] != 0 || record.payload[2] != 'n')
+    {
+        return Ebadarg;
+    }
+    size_t binding_size; /* Retain the existing tag-zero binding header, replace staged launch bytes. */
+    FVM_SRecord binding;
+    if (fvm_srecord_read(launch_frame, launch_size, 128, &binding, &binding_size) != FVM_S_OK ||
+        *count > sizeof(launch_frame) - binding_size)
+    {
+        return Ebadarg;
+    }
+    memmove(launch_frame + binding_size, bytes, *count);
+    launch_size = binding_size + *count;
+    submitted = 1;
+    return nil;
 }

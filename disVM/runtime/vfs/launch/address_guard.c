@@ -3,6 +3,7 @@
  * RU: Общий native address-policy ownership, независимо от service queues и VM linkage.
  */
 #include "address_internal.h"
+#include "../cancel.h"
 #include <stdlib.h>
 
 
@@ -50,4 +51,40 @@ void dvm_launch_address_free(DVM_LaunchAddress *address)
         free(address);
         address = inner;
     }
+}
+
+
+// EN/RU: See route.h; leaf owns only its native transport context.
+// См. route.h; адрес владеет только native transport context.
+DVM_LaunchAddress *dvm_launch_address_transport(DVM_LaunchSend send, void *state, void (*release)(void *))
+{
+    DVM_LaunchAddress *address = send ? calloc(1, sizeof(*address)) : NULL;
+    if (address)
+    {
+        address->send = send;
+        address->context = state;
+        address->release = release;
+    }
+    return address;
+}
+
+
+// EN/RU: See route.h; never retry a possibly admitted request.
+// См. route.h; не повторять запрос с неопределённым результатом.
+DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const void *arguments, size_t size)
+{
+    if (!address || size > DVM_LAUNCH_ARGUMENT_LIMIT || (size && !arguments))
+    {
+        return DVM_LAUNCH_NOT_SENT;
+    }
+    while (address->inner)
+    {
+        if (dvm_cancel_requested(dvm_cancel_current()) || address->check(address->context) != 1)
+        {
+            return DVM_LAUNCH_NOT_SENT;
+        }
+        address = address->inner;
+    }
+    return address->send && !dvm_cancel_requested(dvm_cancel_current()) ?
+        address->send(address->context, arguments, size) : DVM_LAUNCH_NOT_SENT;
 }

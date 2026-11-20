@@ -59,6 +59,7 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
+extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 #endif
 
 
@@ -82,6 +83,12 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
  */
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef ORDERED_GUEST_FILE_TEST
+    if (qid.path == 11)
+    {
+        return fixturelaunchwrite(bytes, count, offset);
+    }
+#endif
     return qid.path == 7 ? terminalwrite(bytes, count, offset) : Ebadarg;
 }
 static Styxops operations = {.read = readfile, .write = writefile}; /* Server borrows static operations until join. */

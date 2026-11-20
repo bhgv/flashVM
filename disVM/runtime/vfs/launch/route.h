@@ -101,4 +101,25 @@ DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *pa
  */
 DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role);
 
+
+/* EN/RU: A transport acknowledgement covers request delivery, not guest init.
+ * Подтверждение транспорта относится к доставке запроса, а не к init гостя. */
+typedef enum DVM_LaunchDelivery
+{
+    DVM_LAUNCH_NOT_SENT = 0, /* Refused before delivery, or conclusively rejected by the peer. */
+    DVM_LAUNCH_DELIVERED = 1, /* Peer acknowledged the exact complete request. */
+    DVM_LAUNCH_UNKNOWN = -1 /* Partial/uncertain transport outcome; no automatic retry. */
+} DVM_LaunchDelivery;
+
+/* EN/RU: Native transport callback; borrow argument bytes until return.
+ * Native transport callback; байты заимствованы до возврата. */
+typedef DVM_LaunchDelivery (*DVM_LaunchSend)(void *, const void *, size_t);
+
+/* EN/RU: Construct a transport-only address; adopts state only on success.
+ * Создать адрес транспортной доставки; state принимается только при успехе. */
+DVM_LaunchAddress *dvm_launch_address_transport(DVM_LaunchSend send, void *state, void (*release)(void *));
+
+/* EN/RU: Submit through the already resolved transport address once, honoring its guards.
+ * Подать запрос через разрешённый транспортный адрес один раз с проверкой guards. */
+DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const void *arguments, size_t size);
 #endif

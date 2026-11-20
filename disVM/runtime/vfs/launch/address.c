@@ -85,6 +85,10 @@ DVM_LaunchTicket *dvm_launch_address_submit(DVM_LaunchAddress *address, const DV
     {
         return NULL;
     }
+    if (!address->endpoint)
+    {
+        return NULL;
+    }
     DVM_LaunchSpec routed = *spec; /* Borrowed native grants/argument bytes only during the ordinary copied submit. */
     memcpy(routed.expected_provider, address->endpoint->shared->system, sizeof(routed.expected_provider));
     memcpy(routed.module, address->module, sizeof(routed.module));

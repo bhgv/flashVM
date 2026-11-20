@@ -157,6 +157,29 @@ The guest's filtered union hides both raw terminal nodes.
 а гость подтверждает запуск по каналу Unibus. Оба исходных узла терминала
 скрыты из union гостя.
 
+### Send from a selected VFS name / Подача по выбранному имени VFS
+
+A resolver installed with [`styxmountproviderlaunch`](../vfs/mount.h) can return
+a [transport address](../terminal/launch_send.h) backed by an exact writable
+Styx request file. Resolve the visible application alias with
+`dvm_launch_route_resolve`, then use `dvm_launch_address_send` to send copied
+startup bytes. The resolver binds the application to the request file and tag.
+The peer supplies neither a host pathname nor a local endpoint pointer.
+
+The request file service must accept exactly one complete S-record in an
+offset-zero write and acknowledge it only after it retains the request.
+It may hand complete encoded records to `styxterminallaunchframe` or an
+existing typed dispatcher. One complete confirmed write returns DELIVERED.
+A partial or uncertain write returns UNKNOWN and is never automatically
+retried. Delivery and the guest's startup receipt are separate observations.
+
+Resolver, установленный через `styxmountproviderlaunch`, может вернуть адрес
+с правом записи в точный узел Styx. `dvm_launch_route_resolve` выбирает приложение
+по видимому алиасу. `dvm_launch_address_send` передаёт стартовые байты по
+выданному адресу. Служба принимает одну полную S-запись с нулевого смещения
+и подтверждает её после сохранения запроса. Частичный или неизвестный исход
+не вызывает повторной отправки. Подтверждение доставки и старт гостя различаются.
+
 ## Prepare, take and lifetime / Подготовка, take и lifetime
 
 1. Requester observes/cancels its ticket; it has no provider root or take authority.

@@ -14,6 +14,7 @@
 #include "vfs/export.h"
 #include "../native/terminal/order/files/launch.h"
 #include "../native/terminal/route/launch.h"
+#include "../native/terminal/launch_send.h"
 #include "../native/vfs/mount.h"
 #include "../native/tests/launch/backend.h"
 static LaunchState terminal; /* Unused local fixture root, disposed before remote preparation. */
@@ -35,11 +36,47 @@ extern int linkfixturefd(void); /* Owned fixture carrier for a separate CLI proc
 extern void linkfixturefree(void);
 
 
+/* EN/RU: Resolve the exact provisioned request file carried by this advertisement.
+ * Получить точный выданный файл запроса, связанный с объявлением. */
+static DVM_LaunchAddress *wire_address(void *request)
+{
+    return styxterminallaunchaddress(request, 17);
+}
+
+
+/* EN/RU: Select the bound remote Dis path and send to its owner over ordinary Styx.
+ * Выбрать забинженный Dis и передать запрос владельцу через обычный Styx. */
+static void submit_mounted(StyxClient *client, const DVM_LaunchOptions *options)
+{
+    launch_check(styxclientretain(client), "retain remote submit connection");
+    DVM_Provider *request = styxmountproviderat(client, "submit", FVM_ACCESS_WRITE);
+    launch_check(request && styxclientretain(client), "exact remote submit node");
+    DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
+        "app.dis", wire_address, request, NULL);
+    DVM_View *aliases = dvm_view_create(NULL, NULL, NULL);
+    launch_check(mounted && aliases && dvm_view_map(aliases, "/bound.dis", mounted, "app.dis",
+        FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "bind advertised Dis file");
+    DVM_LaunchOptions visible = *options;
+    visible.terminal = dvm_view_freeze(aliases);
+    DVM_Namespace *group = dvm_launch_prepare(&visible);
+    DVM_LaunchAddress *address = group ? dvm_launch_route_resolve(group, "/bound.dis", DVM_ORIGIN_TERMINAL) : NULL;
+    dvm_namespace_release(group);
+    dvm_provider_release(visible.terminal);
+    dvm_provider_release(mounted);
+    dvm_provider_release(request);
+    const unsigned char arguments[] = {'r', 0, 'n'};
+    launch_check(address && dvm_launch_address_send(address, arguments, sizeof(arguments)) == DVM_LAUNCH_DELIVERED,
+        "remote owner acknowledged one launch request");
+    dvm_launch_address_free(address);
+}
+
+
 /* EN/RU: Prepare actual remote-root ticket, take once, construct ordered broker, install file grants and invoke real startup.
  * Подготовить настоящий remote-root ticket, одноразовый take, ordered broker и file grants, вызвать настоящий startup.
  */
 static DVM_LaunchHandoff *prepare_launch(void)
 {
+    launch_check(setenv("DVM_TEST_TERMINAL_SUBMIT", "1", 1) == 0, "enable routed submit fixture");
     connection = linkfixture();
     launch_check(connection != NULL, "real original server/client fixture");
     DVM_LaunchOptions options = launch_options(&terminal, &execution); /* Real private live-root preparation. */
@@ -52,6 +89,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     launch_check(assets && code && dvm_view_map(code, "/app.dis", assets, "app.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) &&
         dvm_view_map(code, "/dep.dis", assets, "dep.dis", FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "filtered actual Styx code grants");
     options.provider = dvm_view_freeze(code);
+    submit_mounted(connection, &options);
     DVM_TerminalChannels ingress = {0};
     ingress.provider = assets;
     strcpy(ingress.receive, "launch");
