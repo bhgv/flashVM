@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "flashvm/sbindings.h"
+#include "launch_receive.h"
 static unsigned char *images[3]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
 static int require_submission; /* In routed tests the caller must post before launch is readable. */
@@ -117,10 +118,26 @@ void fixtureimagesfree(void)
 }
 
 
+/* EN/RU: Verify the guest's binary payload, including the embedded NUL.
+ * Проверить бинарные данные гостя, включая встроенный NUL. */
+static int accept_payload(void *state, const void *bytes, size_t size)
+{
+    USED(state);
+    return size == 3 && !memcmp(bytes, "x\0y", size);
+}
+
+static StyxLaunchReceiver payload_receiver = {.tag = 17, .start_payload = accept_payload,
+    .payload_limit = 3}; /* Independent payload submission after boot. */
+
+
 // EN/RU: Accept exactly one complete launch frame, before exposing it to the dispatcher.
 // Принять ровно один полный кадр запуска перед выдачей диспетчеру.
 char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
 {
+    if (submitted)
+    {
+        return offset >= 0 && styxterminallaunchreceive(&payload_receiver, offset, bytes, *count) ? nil : Ebadarg;
+    }
     FVM_SRecord record;
     size_t consumed;
     if (!require_submission || offset != 0 ||

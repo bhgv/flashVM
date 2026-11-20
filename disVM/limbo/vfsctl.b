@@ -165,3 +165,11 @@ run(path: string): int
 {
     return native->run(path);
 }
+
+
+# EN/RU: Send binary startup data to the selected command route.
+# Отправить бинарные стартовые данные по маршруту команды.
+runargs(path: string, arguments: array of byte): int
+{
+    return native->runargs(path, arguments);
+}

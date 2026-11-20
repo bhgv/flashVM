@@ -23,6 +23,7 @@
 #include "vfsnative_decl.h"
 #include "vfsnative_table.h"
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 extern char *dvm_runtime_file_path(String *name); /* Borrowed validated UTF-8, caller frame rooted. */
 
@@ -337,17 +338,14 @@ void Vfsnative_move(void *frame)
 }
 
 
-/* EN/RU: Resolve and submit the captured guest path while outside managed admission.
- * Разрешить путь гостя и передать запуск вне управляемого допуска. */
-void Vfsnative_run(void *frame)
+/* EN/RU: Resolve the copied path and submit native bytes outside managed admission.
+ * Разрешить скопированный путь и отправить нативные байты вне допуска VM. */
+static WORD run_path(const char *name, const void *bytes, size_t size)
 {
-    F_Vfsnative_run call;
     WORD result = DVM_LAUNCH_NOT_SENT;
-    char name[DVM_NS_PATH_LIMIT];
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_run, ret), sizeof(*call.ret));
     Prog *process = currun();
     DVM_Namespace *group = dvm_namespace_current_group();
-    if (process && group && path(call.path, name) && dvm_namespace_retain(group))
+    if (process && group && dvm_namespace_retain(group))
     {
         unsigned role = ((DVM_RuntimeProcess *)process)->module_local_role;
         DVM_VfsWait *wait;
@@ -355,12 +353,62 @@ void Vfsnative_run(void *frame)
         if (released >= 0)
         {
             DVM_LaunchAddress *address = dvm_launch_route_resolve(group, name, role);
-            result = dvm_launch_address_send(address, NULL, 0);
+            result = dvm_launch_address_send(address, bytes, size);
             dvm_launch_address_free(address);
             dvm_vfs_wait_end(wait);
             dvm_runtime_gc_native_enter(released);
         }
         dvm_namespace_release(group);
+    }
+    return result;
+}
+
+
+/* EN/RU: Submit the captured guest path with an empty payload.
+ * Отправить путь гостя с пустыми стартовыми данными. */
+void Vfsnative_run(void *frame)
+{
+    F_Vfsnative_run call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_run, ret), sizeof(*call.ret));
+    char name[DVM_NS_PATH_LIMIT];
+    WORD result = path(call.path, name) ? run_path(name, NULL, 0) : DVM_LAUNCH_NOT_SENT;
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
+/* EN/RU: Copy binary startup data before releasing managed admission.
+ * Скопировать бинарные стартовые данные до выхода из допуска VM. */
+void Vfsnative_runargs(void *frame)
+{
+    F_Vfsnative_runargs call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_runargs, ret), sizeof(*call.ret));
+    Array *arguments = call.arguments;
+    WORD result = DVM_LAUNCH_NOT_SENT;
+    char name[DVM_NS_PATH_LIMIT];
+    if (!path(call.path, name))
+    {
+        dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+        return;
+    }
+    if (arguments == H || arguments == nil)
+    {
+        result = run_path(name, NULL, 0);
+    }
+    else if (D2H(arguments)->t == &Tarray && arguments->t && arguments->t != H &&
+        arguments->t->size == 1 && !arguments->t->np && arguments->len >= 0 &&
+        arguments->len <= DVM_LAUNCH_ARGUMENT_LIMIT)
+    {
+        size_t size = (size_t)arguments->len;
+        void *copy = size ? malloc(size) : NULL;
+        if (!size || (copy && arguments->data && arguments->data != H))
+        {
+            if (size)
+            {
+                memcpy(copy, arguments->data, size);
+            }
+            result = run_path(name, copy, size);
+        }
+        free(copy);
     }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }

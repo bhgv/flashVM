@@ -49,7 +49,7 @@ int styxlaunchprocessinit(StyxLaunchProcess *process, unsigned long tag,
     memset(process, 0, sizeof(*process));
     process->directory = directory;
     process->argv = argv;
-    process->receiver = (StyxLaunchReceiver){tag, start, process, 0};
+    process->receiver = (StyxLaunchReceiver){.tag = tag, .start = start, .state = process};
     return 1;
 }
 

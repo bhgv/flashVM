@@ -20,3 +20,9 @@ fixture owner starts the command when it accepts the request. Its `init` reads
 a file in the owner's working directory. The requesting guest then reads the
 fixture's completion file over the same live mount. The check runs in
 interpreter and JIT.
+
+`runargs(path, arguments)` follows the same route and returns the same statuses.
+It accepts a binary byte array up to 65,536 bytes. The selected transport may
+impose a smaller limit. Embedded zeros are preserved. The owner must opt in
+with a payload callback and its own size limit. The fixed-command publication
+continues to accept empty payloads only.

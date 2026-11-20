@@ -155,6 +155,14 @@ init()
         if (vfs == nil || vfs->run("/missing.dis") != 0 || vfs->run("/routed.dis") != 1) {
             raise "VFS command submission failed";
         }
+        if (vfs->runargs("/payload.dis", array[65537] of byte) == 1 ||
+            vfs->runargs("/payload.dis", array[4] of byte) == 1) {
+            raise "oversized launch payload accepted";
+        }
+        payload := array[] of {byte 'x', byte 0, byte 'y'};
+        if (vfs->runargs("/payload.dis", payload) != 1) {
+            raise "binary VFS launch payload refused";
+        }
         if (vfs->run("/routed.dis") == 1) {
             raise "owner admitted a repeated request";
         }

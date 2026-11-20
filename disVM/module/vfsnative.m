@@ -27,4 +27,7 @@ Vfsnative: module
     # EN/RU: Submit the mounted program by its visible path;1 delivered,0 refused,-1 uncertain.
     # Отправить запуск по видимому пути;1 доставлено,0 отказ,-1 исход неизвестен.
     run: fn(path: string): int;
+    # EN/RU: Submit a bounded binary startup payload using the selected route.
+    # Отправить ограниченные бинарные данные через выбранный маршрут.
+    runargs: fn(path: string, arguments: array of byte): int;
 };

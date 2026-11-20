@@ -54,14 +54,15 @@ static void release_request(void *request)
 
 /* EN/RU: Add one executable alias with a retained Styx submit route.
  * Добавить исполняемый alias с удерживаемым маршрутом отправки Styx. */
-static void map_routed(StyxClient *client, DVM_View *code)
+static void map_routed(StyxClient *client, DVM_View *code, const char *endpoint,
+    const char *image, const char *alias)
 {
     launch_check(styxclientretain(client), "retain guest submit client");
-    DVM_Provider *request = styxmountproviderat(client, "execute", FVM_ACCESS_WRITE);
+    DVM_Provider *request = styxmountproviderat(client, endpoint, FVM_ACCESS_WRITE);
     launch_check(request && styxclientretain(client), "guest submit node");
     DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
-        "owner.dis", wire_address, request, release_request);
-    launch_check(mounted && dvm_view_map(code, "/routed.dis", mounted, "owner.dis",
+        image, wire_address, request, release_request);
+    launch_check(mounted && dvm_view_map(code, alias, mounted, image,
         FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "map guest launch alias");
     dvm_provider_release(mounted);
 }
@@ -116,7 +117,8 @@ static DVM_LaunchHandoff *prepare_launch(void)
         launch_check(dvm_view_map(code, "/.fd", assets, "owner-fds", FVM_ACCESS_MASK, DVM_VIEW_TREE),
             "publish the owner's descriptor directory in its root");
     }
-    map_routed(connection, code);
+    map_routed(connection, code, "execute", "owner.dis", "/routed.dis");
+    map_routed(connection, code, "submit", "app.dis", "/payload.dis");
     launch_check(dvm_view_map(code, "/run-result", assets, "execute-result", FVM_ACCESS_READ, 0),
         "map owner execution result");
     options.provider = dvm_view_freeze(code);

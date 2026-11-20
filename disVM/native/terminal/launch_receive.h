@@ -16,15 +16,17 @@ typedef struct StyxLaunchReceiver
     int (*start)(void *state);  /* Owner callback, returns 1 on admission and 0 on refusal. */
     void *state;               /* Borrowed by the callback, owned by the host. */
     int used;                  /* Initially zero; set before invoking start. */
+    int (*start_payload)(void *state, const void *bytes, size_t size); /* Optional; borrows the payload during the call. */
+    size_t payload_limit;       /* Maximum binary bytes accepted by start_payload. */
 } StyxLaunchReceiver;
 
 
-/* EN: Accept one complete empty launch frame at offset zero. Return 1 only
- * when the owner callback accepts it. Malformed frames leave the receiver
+/* EN: Accept one complete launch frame at offset zero. Return 1 only
+ * when the owner callback accepts it. The legacy start callback accepts empty payloads only. Malformed frames leave the receiver
  * available, while invoking the callback consumes it even on refusal.
  * The host serializes calls, controls who can write and pins receiver and bytes.
- * RU: Принять один полный пустой кадр запуска со смещением ноль. Вернуть 1
- * только при принятии владельцем. Некорректный кадр оставляет узел доступным,
+ * RU: Принять один полный кадр запуска со смещением ноль. Вернуть 1
+ * только при принятии владельцем. Обработчик start принимает только пустые данные. Некорректный кадр оставляет узел доступным,
  * вызов callback поглощает его даже при отказе. Хост сериализует вызовы,
  * управляет правом записи и удерживает receiver и bytes. */
 int styxterminallaunchreceive(StyxLaunchReceiver *receiver, uint64_t offset,
