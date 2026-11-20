@@ -7,7 +7,10 @@
 #include "path_cancel.h"
 #include "lib9.h"
 #include "dat.h"
+#include "isa.h"
 #include "interp.h"
+#include "runt.h"
+#include "launch_files.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/scalar_verify.h"
 #include <limits.h>
@@ -165,7 +168,8 @@ static int capture_grant(DVM_Namespace *group, const char *path, DVM_Provider **
  * The native binding owns the lease until the Styx exchange ends.
  * RU: Опубликовать текущий PID во встречной сессии на время вызова.
  * Нативная связь удерживает публикацию до завершения обмена Styx. */
-int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, uint32_t pid,
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    DVM_LaunchFiles *descriptors, uint32_t pid,
     int64_t argument, int64_t *value)
 {
     DVM_CallerBinding binding;
@@ -177,6 +181,10 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, uin
     int captured = capture_grant(group, "/.fd", &entry.fds) &&
         capture_grant(group, "/.vfs", &entry.vfs) &&
         capture_grant(group, "/.var", &entry.vars);
+    if (captured && !entry.fds)
+    {
+        entry.fds = dvm_launch_fd_view(descriptors, &captured);
+    }
     DVM_Provider *tree = captured ? dvm_program_view(&entry, 1) : NULL;
     dvm_provider_release(entry.fds);
     dvm_provider_release(entry.vfs);

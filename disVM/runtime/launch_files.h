@@ -57,4 +57,13 @@ int dvm_launch_file_hidden(unsigned number);
  * Вернуть внутренний слот проверенного живого builtin FD, либо -1 при неверном номере. */
 int dvm_sys_fd_slot(Sys_FD *fd);
 
+/* EN: Lookup one imported number in a borrowed pinned table. Writes its access or zero.
+ * RU: Найти импортированный номер в удерживаемой таблице. Записать права либо ноль. */
+int dvm_launch_file_lookup(DVM_LaunchFiles *files, unsigned number, unsigned *access);
+
+/* EN: Read the retained launch table and return an owned virtual directory or NULL when empty.
+ * Writes 1 to success on a complete build including an empty table, otherwise 0.
+ * RU: Построить виртуальный каталог из удерживаемой таблицы. Пустой даёт NULL.
+ * Записать 1 при полной сборке, включая пустую таблицу, иначе 0. */
+DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success);
 #endif

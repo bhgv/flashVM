@@ -7,6 +7,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "lib9.h"
+#include "dat.h"
+#include "isa.h"
+#include "interp.h"
+#include "runt.h"
+#include "launch_files.h"
 #include "vfs/export.h"
 #include "vfs/program_view.h"
 #include "vfs/loader.h"
@@ -324,6 +330,46 @@ static int verify_program_view(void)
 }
 
 
+/* EN: Verify two aliases retain one imported slot and advance the same cursor.
+ * RU: Проверить удержание одного слота двумя псевдонимами и продвижение общей позиции. */
+static int verify_imported_fds(void)
+{
+    DVM_Provider *file = dvm_module_adapter("leftnext", 8);
+    DVM_View *builder = dvm_view_create(NULL, NULL, NULL);
+    int mapped = file && builder && dvm_view_map(builder, "/.fd/3", file, ".", FVM_ACCESS_READ, 0);
+    dvm_provider_release(file);
+    if (!mapped)
+    {
+        dvm_view_discard(builder);
+        return 0;
+    }
+    DVM_LaunchHandoff handoff = {.program = dvm_view_freeze(builder)};
+    DVM_LaunchFiles *files = NULL;
+    int valid = handoff.program && dvm_launch_files_open(&handoff, &files);
+    dvm_provider_release(handoff.program);
+    DVM_Provider *directory = valid ? dvm_launch_fd_view(files, &valid) : NULL;
+    dvm_launch_files_release(files);
+    DVM_VfsHandle first = {0}, second = {0}, denied = {0};
+    valid = valid && directory &&
+        dvm_provider_open(directory, "3", "r", &first) == FVM_OK &&
+        dvm_provider_open(directory, "3", "r", &second) == FVM_OK &&
+        dvm_provider_open(directory, "3", "wo", &denied) != FVM_OK;
+    dvm_provider_release(directory);
+    if (valid)
+    {
+        char left[4], next[4];
+        DVM_IoResult a = dvm_vfs_read_chunk(&first, left, sizeof(left));
+        DVM_IoResult b = dvm_vfs_read_chunk(&second, next, sizeof(next));
+        valid = a.status == FVM_OK && b.status == FVM_OK && a.count == 4 && b.count == 4 &&
+            !memcmp(left, "left", 4) && !memcmp(next, "next", 4);
+    }
+    dvm_vfs_close(&first);
+    dvm_vfs_close(&second);
+    dvm_vfs_close(&denied);
+    return valid;
+}
+
+
 /* EN: Mount one granted fixture subtree in the guest's namespace.
  * RU: Смонтировать одно выданное поддерево в пространстве имён гостя. */
 static int mount_context(DVM_Namespace *group, const char *at, const char *leaf)
@@ -348,7 +394,7 @@ static int mount_context(DVM_Namespace *group, const char *at, const char *leaf)
  * Смонтировать заимствованный корень и запустить гостя с обычным поиском VFS. */
 int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
 {
-    if (!verify_program_view())
+    if (!verify_program_view() || !verify_imported_fds())
     {
         fprintf(stderr, "could not verify the caller program tree\n");
         exit(2);

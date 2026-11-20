@@ -10,6 +10,9 @@
 #include "scalar_files.h"
 #include "fns.h"
 #include "interp.h"
+#include "runt.h"
+#include "launch_files.h"
+#include "runqueue.h"
 #include "scalar_direct.h"
 #include "raise.h"
 #include "guest.h"
@@ -167,6 +170,7 @@ static const char *scalar_value(DVM_Namespace *group, const char *request, const
 {
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
+    DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
     DVM_VfsWait *wait;
     int released = dvm_vfs_path_enter(&wait);
     if (released < 0)
@@ -177,7 +181,7 @@ static const char *scalar_value(DVM_Namespace *group, const char *request, const
     DVM_Provider *writer = files ? files->request : capture(group, request, FVM_ACCESS_WRITE);
     DVM_Provider *reader = files ? files->reply : capture(group, reply, FVM_ACCESS_READ);
     int duplex = files && files->duplex;
-    int outcome = duplex ? dvm_scalar_function_invoke(files, group, pid, argument, &value) : 0;
+    int outcome = duplex ? dvm_scalar_function_invoke(files, group, descriptors, pid, argument, &value) : 0;
     const char *failure = duplex ? (outcome == 1 ? NULL : outcome == 2 ? owner_error : outcome < 0 ? "remote scalar call not sent" : "remote scalar call outcome unknown") :
         exchange(writer, reader, request_tag, reply_tag, argument, &value);
     if (!files)

@@ -48,7 +48,9 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
 
 /* EN/RU: Run a scalar call with the optional native reverse publication binding.
  * Выполнить скалярный вызов с необязательной связью встречной публикации. */
-int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, uint32_t pid,
+struct DVM_LaunchFiles;
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    struct DVM_LaunchFiles *descriptors, uint32_t pid,
     int64_t argument, int64_t *value);
 
 #endif

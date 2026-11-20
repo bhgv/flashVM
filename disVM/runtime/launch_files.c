@@ -22,6 +22,7 @@ struct DVM_LaunchFiles
     unsigned references;            /* Atomic ownership count through process inheritance. */
     uint32_t hidden;                /* Explicitly absent numbers reserved in the launch view. */
     uint32_t occupied;              /* Mask of imported guest numbers. */
+    unsigned char modes[DVM_LAUNCH_FD_COUNT]; /* Original access of each imported file. */
     int slots[DVM_LAUNCH_FD_COUNT]; /* Native slots; zero when absent. */
 };
 
@@ -213,6 +214,7 @@ static int open_batch(DVM_Provider *source, DVM_Provider *base, uint32_t from_ba
                 return 0;
             }
             files->slots[i] = slot;
+            files->modes[i] = modes[i];
         }
     }
     files->occupied = requested;
@@ -372,4 +374,13 @@ int dvm_sys_fd_slot(Sys_FD *fd)
         return imported;
     }
     return fd->fd >= 0 && fd->fd < DVM_LAUNCH_SLOT_FIRST ? (int)fd->fd : -1;
+}
+
+
+/* EN/RU: See launch_files.h. Copy the immutable mode and slot from a pinned table.
+ * См. launch_files.h. Прочитать режим и слот из удерживаемой таблицы. */
+int dvm_launch_file_lookup(DVM_LaunchFiles *files, unsigned number, unsigned *access)
+{
+    *access = files && number < DVM_LAUNCH_FD_COUNT ? files->modes[number] : 0;
+    return *access ? files->slots[number] : -1;
 }
