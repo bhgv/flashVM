@@ -9,6 +9,8 @@
 #include "mux/bidir.h"
 #include "mount.h"
 #include "unibus_server.h"
+#include "scalar_route.h"
+#include <string.h>
 #include "guest_mount.h"
 
 #define CALL_TAG 4294967295UL /* Maximum supported nonzero request tag. */
@@ -61,6 +63,13 @@ int __wrap_main(int argc, char **argv)
         nanosleep(&delay, NULL);
     }
     int status = scalar_runtime_run(argc, argv, writer, styxunibusserverinbox(receiver), original, profile, owner);
+    const char *calls = getenv("DVM_TEST_SCALAR_CALL_COUNT");
+    if (!owner && status == 0 && calls && !strcmp(calls, "0") &&
+        styxscalarclosefile(writer, CALL_TAG) != DVM_LAUNCH_DELIVERED)
+    {
+        fprintf(stderr, "scalar pair: session close not acknowledged\n");
+        status = 2;
+    }
     dvm_provider_release(original);
     dvm_provider_release(profile);
     dvm_provider_release(writer);

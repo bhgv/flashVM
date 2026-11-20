@@ -45,7 +45,7 @@ init()
     if (count == 7) {
         calls = int hd tl fields;
     }
-    if (calls < 1 || calls > 65536) {
+    if (calls < 0 || calls > 65536) {
         raise "invalid scalar owner call count";
     }
 
@@ -53,8 +53,18 @@ init()
     if (target == nil) {
         raise "scalar owner implementation link failed";
     }
-    for (i := 0; i < calls; i++) {
-        value := routes->scalartake(request, requesttag);
+    remaining := calls;
+    while (calls == 0 || remaining > 0) {
+        value: int;
+        if (calls == 0) {
+            (ready, argument) := routes->scalarnext(request, requesttag);
+            if (ready == 0) {
+                return;
+            }
+            value = argument;
+        } else {
+            value = routes->scalartake(request, requesttag);
+        }
         result := 0;
         success := 1;
         {
@@ -65,5 +75,8 @@ init()
                 result = 1;
         }
         routes->scalarreply(reply, replytag, success, result);
+        if (calls > 0) {
+            remaining--;
+        }
     }
 }

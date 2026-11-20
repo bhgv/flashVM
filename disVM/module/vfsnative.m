@@ -41,6 +41,9 @@ Vfsnative: module
     # EN/RU: Read one request from an owner inbox and write one reply through Styx.
     # Прочитать запрос из приёмника владельца и отправить ответ через Styx.
     scalartake: fn(path: string, tag: big): int;
+    # EN/RU: Persistent session: (1, argument) or (0, 0) at orderly end or EOF.
+    # Постоянная сессия: (1, аргумент) или (0, 0) при завершении либо EOF.
+    scalarnext: fn(path: string, tag: big): (int, int);
     scalarreply: fn(path: string, tag: big, success, value: int);
     # EN/RU: Load a local implementation and bind one named scalar export to invoke.
     # Загрузить локальную реализацию и связать именованный экспорт со слотом invoke.

@@ -16,4 +16,7 @@ DVM_Provider *styxunibusinbox(unsigned long tag);
 /* EN/RU: Return a reusable slot. Reads consume one entire record or fail without consuming.
  * Вернуть переиспользуемый слот. Чтение принимает запись целиком либо не потребляет её. */
 DVM_Provider *styxunibusmailbox(unsigned long tag);
+/* EN/RU: On carrier shutdown, drain any queued record then report EOF.
+ * После закрытия соединения выдать оставшуюся запись, затем EOF. */
+void styxunibusmailboxseal(DVM_Provider *provider);
 #endif

@@ -40,9 +40,12 @@ static int mailbox(void)
             styxscalarread(17, bytes, got.count, &kind, &value) && kind == STYX_SCALAR_CALL && value == 77 &&
             dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes)).stop == DVM_IO_AGAIN &&
             styxscalarcallfile(provider, 17, 88) == DVM_LAUNCH_DELIVERED;
+        styxunibusmailboxseal(provider);
+        ok = ok && styxscalarcallfile(provider, 17, 99) != DVM_LAUNCH_DELIVERED;
         got = dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes));
         ok = ok && got.status == FVM_OK &&
-            styxscalarread(17, bytes, got.count, &kind, &value) && kind == STYX_SCALAR_CALL && value == 88;
+            styxscalarread(17, bytes, got.count, &kind, &value) && kind == STYX_SCALAR_CALL && value == 88 &&
+            dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes)).stop == DVM_IO_EOF;
     }
     dvm_vfs_close(&reader);
     dvm_provider_release(provider);

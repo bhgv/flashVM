@@ -28,6 +28,7 @@
 extern char *dvm_runtime_file_path(String *name); /* Borrowed path while the calling frame is rooted. */
 
 
+static const char session_end[] = "scalar session closed"; /* Clean EOF or exact close record. */
 static const char owner_error[] = "remote scalar owner error"; /* Verified reply, route remains synchronized. */
 
 #define SCALAR_IDLE 0UL /* Native route has no call in progress. */
@@ -71,12 +72,20 @@ static DVM_Provider *capture(DVM_Namespace *group, const char *path, unsigned ac
 }
 
 
+typedef enum ScalarRead
+{
+    READ_REPLY, /* Bounded wait for the caller's result. */
+    READ_CALL, /* Bounded wait for one owner request. */
+    READ_SESSION /* Wait for a request, orderly close or carrier EOF. */
+} ScalarRead;
+
+
 /* EN/RU: Read a complete reply, repeating only empty pending reads for up to 3 seconds.
  * Прочитать полный ответ, повторяя только пустые чтения до трёх секунд. */
-static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, int request)
+static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode)
 {
     struct timespec start;
-    if (clock_gettime(CLOCK_MONOTONIC, &start))
+    if (mode != READ_SESSION && clock_gettime(CLOCK_MONOTONIC, &start))
     {
         return "remote scalar reply unavailable";
     }
@@ -84,13 +93,19 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
     {
         unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
         DVM_IoResult got = dvm_vfs_read_chunk(reply, bytes, sizeof(bytes));
+        if (mode == READ_SESSION && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
+            !(got.flags & DVM_IO_UNCERTAIN) &&
+            ((!got.count && got.stop == DVM_IO_EOF) || styxscalarclosed(tag, bytes, got.count)))
+        {
+            return session_end;
+        }
         if (got.stop != DVM_IO_AGAIN || got.count || (got.flags & DVM_IO_UNCERTAIN))
         {
             StyxScalarKind kind;
             if (got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) && !(got.flags & DVM_IO_UNCERTAIN) &&
                 styxscalarread(tag, bytes, got.count, &kind, value))
             {
-                if (request)
+                if (mode != READ_REPLY)
                 {
                     return kind == STYX_SCALAR_CALL ? NULL : "invalid scalar request";
                 }
@@ -100,8 +115,8 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
             return "remote scalar reply unavailable";
         }
         struct timespec now;
-        if (clock_gettime(CLOCK_MONOTONIC, &now) ||
-            (now.tv_sec - start.tv_sec) * INT64_C(1000) + (now.tv_nsec - start.tv_nsec) / 1000000 >= 3000)
+        if (mode != READ_SESSION && (clock_gettime(CLOCK_MONOTONIC, &now) ||
+            (now.tv_sec - start.tv_sec) * INT64_C(1000) + (now.tv_nsec - start.tv_nsec) / 1000000 >= 3000))
         {
             break;
         }
@@ -127,7 +142,7 @@ static const char *exchange(DVM_Namespace *group, const char *request_path, cons
         DVM_LaunchDelivery sent = styxscalarcallfile(request, request_tag, argument);
         if (sent == DVM_LAUNCH_DELIVERED)
         {
-            failure = receive(&handle, reply_tag, value, 0);
+            failure = receive(&handle, reply_tag, value, READ_REPLY);
         }
         else if (sent == DVM_LAUNCH_UNKNOWN)
         {
@@ -196,15 +211,13 @@ void Vfsnative_scalarcall(void *frame)
 }
 
 
-/* EN/RU: Read one admitted scalar request from the active owner's namespace.
- * Прочитать один допущенный скалярный запрос из пространства владельца. */
-void Vfsnative_scalartake(void *frame)
+/* EN/RU: Read from the checked owner inbox outside managed admission.
+ * Читать из проверенного приёмника владельца вне допуска VM. */
+static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result)
 {
-    F_Vfsnative_scalartake call;
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartake, ret), sizeof(*call.ret));
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
-    if (!group || call.tag <= 0 || call.tag > UINT32_MAX || !copy_path(call.path, path))
+    if (!group || tag <= 0 || tag > UINT32_MAX || !copy_path(name, path))
     {
         error("scalar owner route unavailable");
     }
@@ -221,7 +234,7 @@ void Vfsnative_scalartake(void *frame)
     if (provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH) &&
         dvm_provider_open(provider, ".", "r", &handle) == FVM_OK && (handle.native_flags & DVM_VFS_CANCEL_DATA))
     {
-        failure = receive(&handle, (unsigned long)call.tag, &value, 1);
+        failure = receive(&handle, (unsigned long)tag, &value, mode);
     }
     dvm_vfs_close(&handle);
     dvm_provider_release(provider);
@@ -229,14 +242,48 @@ void Vfsnative_scalartake(void *frame)
     dvm_runtime_gc_native_enter(released);
     if (cancelled || failure)
     {
-        error((char *)(cancelled ? "scalar owner request cancelled" : failure));
+        return cancelled ? "scalar owner request cancelled" : failure;
     }
-    WORD result = (WORD)value;
-    if ((int64_t)result != value)
+    WORD narrowed = (WORD)value;
+    if ((int64_t)narrowed != value)
     {
         error("invalid scalar request");
     }
+    *result = narrowed;
+    return NULL;
+}
+
+
+/* EN/RU: Read one admitted scalar request from the active owner's namespace.
+ * Прочитать один допущенный скалярный запрос из пространства владельца. */
+void Vfsnative_scalartake(void *frame)
+{
+    F_Vfsnative_scalartake call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartake, ret), sizeof(*call.ret));
+    WORD result = 0;
+    const char *failure = take_request(call.path, call.tag, READ_CALL, &result);
+    if (failure)
+    {
+        error((char *)failure);
+    }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
+/* EN/RU: Read the next session request or return clean end of session.
+ * Прочитать следующий запрос сессии или вернуть признак её завершения. */
+void Vfsnative_scalarnext(void *frame)
+{
+    F_Vfsnative_scalarnext call;
+    WORD result[2] = {0, 0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarnext, ret), sizeof(result));
+    const char *failure = take_request(call.path, call.tag, READ_SESSION, &result[1]);
+    if (failure && failure != session_end)
+    {
+        error((char *)failure);
+    }
+    result[0] = !failure;
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
 }
 
 

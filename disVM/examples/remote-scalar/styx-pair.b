@@ -69,6 +69,7 @@ init()
             raise "incorrect owner result";
         }
         {
+            sys->sleep(3100); # The persistent owner survives the old bounded wait.
             service->compute(-1);
             raise "expected owner exception";
         } exception error {

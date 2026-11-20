@@ -13,3 +13,11 @@ allows one outstanding call. A verified value or owner error permits the next
 call. Without a trustworthy reply, the entry stops accepting requests.
 Recovery requires a fresh pair of files. Old replies remain on the old route.
 Independent concurrent module instances cannot share one route in this mode.
+
+
+After receiving the last reply, the caller host may use
+`styxscalarclosefile(request, tag)`. It sends one end S-record with the
+request tag. An owner running with count zero exits on that record or EOF.
+On carrier shutdown, a mailbox drains a confirmed record before reporting
+EOF. Waiting for the next owner request can outlive the caller's three-second
+reply budget.

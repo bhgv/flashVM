@@ -20,10 +20,13 @@ Fields appear in this order.
 | Reply | Write path of the reverse Styx file |
 | Request tag | Decimal nonzero 32-bit route tag |
 | Reply tag | Decimal nonzero 32-bit return tag |
-| Call count | Optional decimal integer from 1 to 65536, default 1 |
+| Call count | Optional decimal integer from 0 to 65536, default 1. Zero waits for session end |
 
 The service loads the implementation once and handles the configured number of
 requests. Each request receives one value or error record.
 An exception from the implementation maps to owner error code 1.
 Paths and tags are assigned when the host grants the route. The service
 does not dial, mount a peer or select an implementation from wire data.
+
+With a zero count, the owner waits for calls until a close record or EOF.
+A positive count preserves the bounded mode.

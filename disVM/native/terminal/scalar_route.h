@@ -21,4 +21,11 @@ DVM_LaunchDelivery styxscalarreplyfile(DVM_Provider *peer, unsigned long call_ta
     const void *request, size_t size, unsigned long reply_tag,
     int (*method)(void *, int64_t, int64_t *), void *state);
 
+/* EN/RU: Write one orderly end marker on the exact request file.
+ * Записать признак завершения в точный файл запросов. */
+DVM_LaunchDelivery styxscalarclosefile(DVM_Provider *peer, unsigned long tag);
+
+/* EN/RU: Recognize an exact tagged end marker.
+ * Распознать точный признак завершения с тегом. */
+int styxscalarclosed(unsigned long tag, const void *bytes, size_t size);
 #endif

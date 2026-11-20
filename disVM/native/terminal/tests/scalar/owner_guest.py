@@ -16,9 +16,9 @@ from guest import build_peer, run
 def peer(binary, directory, image, mode, carrier, owner, calls):
     env = os.environ.copy()
     env.pop("DVM_TEST_SCALAR_OWNER", None)
+    env["DVM_TEST_SCALAR_CALL_COUNT"] = str(calls)
     if owner:
         env["DVM_TEST_SCALAR_OWNER"] = "1"
-        env["DVM_TEST_SCALAR_CALL_COUNT"] = str(calls)
         env["DVM_TEST_SCALAR_DELAY_OWNER"] = "1"
     env["DVM_TEST_SCALAR_FD"] = str(carrier.fileno())
     return subprocess.Popen([str(binary), mode, image], cwd=directory, env=env,
@@ -88,7 +88,7 @@ def main():
         hidden = owner / "privatevalue.hidden"
         for mode in ("--no-jit", "--jit"):
             flag.unlink(missing_ok=True)
-            exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=3)
+            exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             flag.touch()
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute exception")
             flag.unlink()

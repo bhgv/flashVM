@@ -96,6 +96,7 @@ static void *serve(void *arg)
     {
     }
     styxend(&server->server);
+    styxunibusmailboxseal(server->inbox);
     current = NULL;
     return NULL;
 }

@@ -4,6 +4,7 @@
  */
 #include "unibus_inbox.h"
 #include "cancel.h"
+#include "provider_internal.h"
 #include "flashvm/srecord.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ typedef struct Inbox
 {
     pthread_mutex_t lock;    /* Protects the one-time record publication. */
     unsigned long tag;       /* Owner-selected tag. */
+    int sealed; /* No further writes after carrier shutdown. */
     int reusable; /* Consume complete records for a serialized live route. */
     size_t size;             /* Zero while empty. */
     unsigned char bytes[64]; /* One immutable complete wire record after admission. */
@@ -64,8 +66,15 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *out)
     }
     else if (!inbox->size)
     {
-        out->status = FVM_ERROR;
-        out->stop = DVM_IO_AGAIN;
+        if (inbox->sealed)
+        {
+            out->stop = DVM_IO_EOF;
+        }
+        else
+        {
+            out->status = FVM_ERROR;
+            out->stop = DVM_IO_AGAIN;
+        }
     }
     else if (inbox->reusable)
     {
@@ -123,7 +132,7 @@ static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResul
     {
         out->stop = DVM_IO_CANCELLED;
     }
-    else if (!inbox->size)
+    else if (!inbox->sealed && !inbox->size)
     {
         memcpy(inbox->bytes, bytes, size);
         inbox->size = size;
@@ -174,6 +183,20 @@ static void destroy(void *state)
 }
 
 static const DVM_ProviderOps factory = {.info = info, .open = open_file, .destroy = destroy}; /* Exact root file. */
+
+
+/* EN/RU: Seal a reusable inbox without discarding its last confirmed record.
+ * Закрыть переиспользуемый приёмник, сохраняя последнюю подтверждённую запись. */
+void styxunibusmailboxseal(DVM_Provider *provider)
+{
+    if (provider && provider->ops == &factory)
+    {
+        Inbox *inbox = provider->state;
+        pthread_mutex_lock(&inbox->lock);
+        inbox->sealed = inbox->reusable;
+        pthread_mutex_unlock(&inbox->lock);
+    }
+}
 
 
 /* EN/RU: See unibus_inbox.h; the returned provider owns the inbox.
