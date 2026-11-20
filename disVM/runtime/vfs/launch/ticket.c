@@ -23,6 +23,7 @@ static void destroy(LaunchShared *shared)
         dvm_provider_release(shared->program);
         dvm_provider_release(shared->program_parent);
         dvm_provider_release(shared->program_vfs);
+        dvm_provider_release(shared->program_var);
         dvm_provider_release(shared->flashvm.provider);
         dvm_movie_offer_release(shared->flashvm.offers);
         dvm_cancel_release(shared->cancel);
@@ -236,6 +237,7 @@ int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
     DVM_Provider *program = NULL;
     DVM_Provider *parent = NULL;
     DVM_Provider *vfs = NULL;
+    DVM_Provider *vars = NULL;
     fvm_port_sync_lock(shared->lock);
     int changed = shared->state == DVM_LAUNCH_PENDING || shared->state == DVM_LAUNCH_PREPARING ||
         shared->state == DVM_LAUNCH_READY;
@@ -246,10 +248,12 @@ int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
         program = shared->program;
         parent = shared->program_parent;
         vfs = shared->program_vfs;
+        vars = shared->program_var;
         shared->group = NULL;
         shared->program = NULL;
         shared->program_parent = NULL;
         shared->program_vfs = NULL;
+        shared->program_var = NULL;
     }
     fvm_port_sync_unlock(shared->lock);
     if (changed)
@@ -259,6 +263,7 @@ int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
         dvm_provider_release(program);
         dvm_provider_release(parent);
         dvm_provider_release(vfs);
+        dvm_provider_release(vars);
         dvm_launch_shared_changed(shared);
     }
     return changed;

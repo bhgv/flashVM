@@ -50,7 +50,7 @@ The fixture tests an explicit client namespace and an inherited base namespace.
 Each case reads a distinct environment value from `/.vfs` in both the launched
 process and its child.
 
-The planned `.var` directory exposes shared variable proxies between
+The planned proxy layer for `.var` exposes shared variable proxies between
 Limbo/DisVM and FlashVM. Composite values appear as directories. `.type`
 and `.len` provide type and length. For indexed access the client opens
 `.idx`, writes the index, operates on `.val`, and closes `.idx`.
@@ -65,4 +65,9 @@ by a newline. The second path exposes the same effective tree as `/.vfs`,
 including the inherited case. Environment entries remain ordinary files
 under `.vfs/env`. The binding belongs to the launch namespace and survives
 local `spawn`. Numbered descriptors are available through `Sys.fildes`.
-The `.self` tree currently exposes PID and VFS.
+If the selected process publishes a `.var` directory, it is available via
+`/.prog/.self/.var` with the original Styx permissions. Reads and writes
+go directly to the published files. An absent directory does not fall back
+to the base process. The fixture checks updates to `counter` by the launched
+program and its child. Automatic VM variable publication and composite
+value operations remain separate work.

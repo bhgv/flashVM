@@ -172,7 +172,7 @@ static DVM_Provider *capture_program(DVM_Provider *source, uint32_t pid)
 
 /* EN/RU: Confirm ambiguous lookup through a complete bounded directory listing.
  * Подтвердить неоднозначный поиск полным ограниченным списком каталога. */
-static FVM_Result missing_program_vfs(DVM_Provider *program)
+static FVM_Result missing_program_child(DVM_Provider *program, const char *name)
 {
     DVM_VfsHandle directory = {0};
     if (dvm_provider_open(program, ".", "r", &directory) != FVM_OK)
@@ -189,7 +189,7 @@ static FVM_Result missing_program_vfs(DVM_Provider *program)
         int valid = read == FVM_OK && count <= remaining;
         for (size_t i = 0; valid && i < count; i++)
         {
-            valid = strcmp(entries[i].name, ".vfs") != 0;
+            valid = strcmp(entries[i].name, name) != 0;
         }
         fvm_port_directory_entries_free(entries);
         if (!valid || !count)
@@ -204,19 +204,19 @@ static FVM_Result missing_program_vfs(DVM_Provider *program)
 }
 
 
-/* EN/RU: Resolve optional .vfs, falling back only if lookup proved absence.
- * Найти необязательный .vfs, переходя к базе лишь при подтверждённом отсутствии. */
-static FVM_Result program_vfs(DVM_Provider *program, DVM_Provider **out)
+/* EN/RU: Capture one optional process subtree and preserve lookup errors.
+ * Захватить необязательное поддерево процесса, сохранив ошибки поиска. */
+static FVM_Result program_child(DVM_Provider *program, const char *name, DVM_Provider **out)
 {
     if (!program)
     {
         return FVM_NOT_FOUND;
     }
     FVM_FileInfo info;
-    FVM_Result status = dvm_provider_info(program, ".vfs", &info);
+    FVM_Result status = dvm_provider_info(program, name, &info);
     if (status == FVM_ERROR)
     {
-        return missing_program_vfs(program);
+        return missing_program_child(program, name);
     }
     if (status != FVM_OK)
     {
@@ -226,7 +226,7 @@ static FVM_Result program_vfs(DVM_Provider *program, DVM_Provider **out)
     {
         return FVM_ERROR;
     }
-    DVM_Provider *root = dvm_provider_capture(program, ".vfs");
+    DVM_Provider *root = dvm_provider_capture(program, name);
     if (!root || dvm_provider_info(root, ".", &info) != FVM_OK || !info.directory)
     {
         dvm_provider_release(root);
@@ -254,10 +254,10 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
         return 0;
     }
     DVM_Provider *vfs = NULL;
-    FVM_Result status = program_vfs(program, &vfs);
+    FVM_Result status = program_child(program, ".vfs", &vfs);
     if (status == FVM_NOT_FOUND)
     {
-        status = program_vfs(parent, &vfs);
+        status = program_child(parent, ".vfs", &vfs);
     }
     if (status != FVM_OK && status != FVM_NOT_FOUND)
     {
@@ -265,6 +265,16 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
         dvm_provider_release(program);
         return 0;
     }
+    DVM_Provider *vars = NULL;
+    status = program_child(program, ".var", &vars);
+    if (status != FVM_OK && status != FVM_NOT_FOUND)
+    {
+        dvm_provider_release(vfs);
+        dvm_provider_release(parent);
+        dvm_provider_release(program);
+        return 0;
+    }
+    handoff->program_var = vars;
     handoff->program_vfs = vfs;
     handoff->program = program;
     handoff->program_parent = parent;
@@ -305,13 +315,15 @@ static int add_program_mount(DVM_Namespace *group, const DVM_LaunchHandoff *hand
 }
 
 
-/* EN/RU: Project only the process identity and effective client namespace.
- * Спроецировать только идентификатор процесса и выданное пространство клиента. */
+/* EN/RU: Project the process identity and explicitly granted subtrees.
+ * Спроецировать идентификатор процесса и явно выданные поддеревья. */
 static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff)
 {
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !dvm_view_map(view, "/.self/.pid", handoff->program, ".pid", FVM_ACCESS_READ, 0) ||
         (handoff->program_vfs && !dvm_view_map(view, "/.self/.vfs", handoff->program_vfs,
+            ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
+        (handoff->program_var && !dvm_view_map(view, "/.self/.var", handoff->program_var,
             ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)))
     {
         dvm_view_discard(view);

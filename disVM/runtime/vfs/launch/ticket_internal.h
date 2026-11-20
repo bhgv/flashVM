@@ -24,6 +24,7 @@ typedef struct LaunchShared
     DVM_LaunchProgram selection; /* Immutable process lookup within program_root. */
     DVM_Provider *program; /* Prepared process directory, owned until take. */
     DVM_Provider *program_vfs; /* Exact optional caller namespace, owned until take. */
+    DVM_Provider *program_var; /* Exact optional variable tree, owned until take. */
     DVM_Provider *program_parent; /* Prepared base directory, owned until take. */
     DVM_Provider *terminal; /* Owned granted root, never retained by cancellation callbacks. */
     DVM_TerminalChannels flashvm; /* Owned separate FlashVM channel grant until take/final retirement. */

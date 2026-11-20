@@ -249,8 +249,10 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return fixturelaunchwrite(bytes, count, offset);
     }
-#endif
+    return qid.path == 7 ? terminalwrite(bytes, count, offset) : fixturevariablewrite(qid, bytes, count, offset);
+#else
     return qid.path == 7 ? terminalwrite(bytes, count, offset) : Ebadarg;
+#endif
 }
 static Styxops operations = { /* Server borrows static operations until join. */
     .read = readfile, .write = writefile,

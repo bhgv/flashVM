@@ -23,4 +23,5 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
+extern char *fixturevariablewrite(Qid, char *, ulong *, vlong); /* Mutable variable update. */
 #endif

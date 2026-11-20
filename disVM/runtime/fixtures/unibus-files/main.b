@@ -88,6 +88,24 @@ clientenv(path: string): string
 }
 
 
+# EN/RU: Read the current client value and optionally publish one replacement.
+# Прочитать значение клиента и при необходимости записать замену.
+counter(expected, replacement: string): int
+{
+    path := "/.prog/.self/.var/counter";
+    reader := sys->open(path, Sys->OREAD);
+    data := array[1] of byte;
+    if (reader == nil || sys->read(reader, data, 1) != 1 || string data != expected) {
+        return 0;
+    }
+    if (replacement == "") {
+        return 1;
+    }
+    writer := sys->open(path, Sys->OWRITE);
+    return writer != nil && sys->write(writer, array of byte replacement, 1) == 1;
+}
+
+
 # EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
 # Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
 readchild(done: chan of string, hidestderr: int, expected: string)
@@ -95,7 +113,7 @@ readchild(done: chan of string, hidestderr: int, expected: string)
     inherited := sys->fildes(3);
     part := array[3] of byte;
     if (inherited == nil || (sys->fildes(2) == nil) != hidestderr ||
-        (hidestderr && clientenv("/.prog/.self/.vfs/env/CLIENT") != expected) || sys->read(inherited, part, 3) != 3) {
+        (hidestderr && (clientenv("/.prog/.self/.vfs/env/CLIENT") != expected || !counter("2", "3"))) || sys->read(inherited, part, 3) != 3) {
         done <-= "missing";
         return;
     }
@@ -126,6 +144,9 @@ checknumbered()
     }
     done := chan of string;
     environment := clientenv("/.prog/.self/.vfs/env/CLIENT");
+    if (err == nil && !counter("1", "2")) {
+        raise "could not write client variable";
+    }
     spawn readchild(done, err == nil, environment);
     if (<-done != "def") {
         raise "child did not inherit numbered FD cursor";
@@ -141,6 +162,9 @@ checknumbered()
         raise "numbered stdio did not use its launch file";
     }
     if (err == nil) {
+        if (!counter("3", "")) {
+            raise "child variable write unavailable";
+        }
         if ((environment != "child" && environment != "base!") ||
             sys->open("/env/CLIENT", Sys->OREAD) != nil || sys->open("/.vfs/env/CLIENT", Sys->OWRITE) != nil) {
             raise "process namespace grant not isolated";

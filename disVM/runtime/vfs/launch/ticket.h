@@ -85,6 +85,7 @@ typedef struct DVM_LaunchHandoff
     DVM_LaunchContract *contract; /* Owned independent copied requirements, mandatory when description.typed is one. */
     DVM_Provider *program; /* Owned captured .prog/<pid> root, if configured. */
     DVM_Provider *program_vfs; /* Optional owned client namespace captured below the process. */
+    DVM_Provider *program_var; /* Optional owned client variable tree captured below the process. */
     DVM_Provider *program_parent; /* Optional owned exact base for inherited entries. */
     uint32_t program_hidden_fds; /* Explicit omissions, including standard descriptors. */
     unsigned char inherited_fds[DVM_LAUNCH_FD_COUNT]; /* Trusted native mode ceilings; zero means no import. */

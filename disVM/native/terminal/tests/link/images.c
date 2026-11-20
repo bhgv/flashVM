@@ -41,9 +41,27 @@ enum
     ProgramChildFds = 823, /* Directory for replacement descriptors. */
     ProgramChildVfs = 825, /* Optional child namespace. */
     ProgramBaseVfs = 828, /* Fallback namespace. */
+    ProgramVar = 834, /* Variable directory. */
+    ProgramCounter = 835, /* One-byte mutable fixture value. */
     ProgramPid = 833, /* Read-only PID of the selected process. */
     ProgramInvalid = 831 /* Process with an invalid .vfs node. */
 };
+
+
+static char counter[] = "1"; /* Client-owned value, accessed by the Styx dispatcher. */
+
+
+/* EN/RU: Apply one complete scalar update to the fixture variable.
+ * Применить полное изменение скалярной переменной стенда. */
+char *fixturevariablewrite(Qid qid, char *bytes, ulong *count, vlong offset)
+{
+    if (qid.path != ProgramCounter || offset || *count != 1 || *bytes < '0' || *bytes > '9')
+    {
+        return Ebadarg;
+    }
+    counter[0] = *bytes;
+    return nil;
+}
 
 
 /* EN/RU: Publish a process namespace and its ordinary environment file.
@@ -72,6 +90,8 @@ Path fixtureprograminit(Styxserver *server)
         !styxadddir(server, ProgramRoot, ProgramChild, "42", 0555, "fixture") ||
         !styxadddir(server, ProgramChild, ProgramChildFds, ".fd", 0555, "fixture") ||
         !styxaddfile(server, ProgramChild, ProgramPid, ".pid", 0444, "fixture") ||
+        !styxadddir(server, ProgramChild, ProgramVar, ".var", 0555, "fixture") ||
+        !styxaddfile(server, ProgramVar, ProgramCounter, "counter", 0666, "fixture") ||
         !publish_environment(server, ProgramBase, ProgramBaseVfs) ||
         !styxadddir(server, ProgramRoot, ProgramInvalid, "43", 0555, "fixture") ||
         !styxaddfile(server, ProgramInvalid, ProgramInvalid + 1, ".vfs", 0444, "fixture") ||
@@ -145,6 +165,11 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == ProgramCounter && offset >= 0)
+    {
+        *count = styxreadstr(offset, bytes, *count, counter);
+        return nil;
+    }
     if (qid.path == ProgramPid && offset >= 0)
     {
         *count = styxreadstr(offset, bytes, *count, "42\n");
