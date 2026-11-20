@@ -44,6 +44,29 @@ static DVM_LaunchAddress *wire_address(void *request)
 }
 
 
+/* EN/RU: Release the route's owned request provider.
+ * Освободить принадлежащий маршруту провайдер запросов. */
+static void release_request(void *request)
+{
+    dvm_provider_release(request);
+}
+
+
+/* EN/RU: Add one executable alias with a retained Styx submit route.
+ * Добавить исполняемый alias с удерживаемым маршрутом отправки Styx. */
+static void map_routed(StyxClient *client, DVM_View *code)
+{
+    launch_check(styxclientretain(client), "retain guest submit client");
+    DVM_Provider *request = styxmountproviderat(client, "submit", FVM_ACCESS_WRITE);
+    launch_check(request && styxclientretain(client), "guest submit node");
+    DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
+        "app.dis", wire_address, request, release_request);
+    launch_check(mounted && dvm_view_map(code, "/routed.dis", mounted, "app.dis",
+        FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "map guest launch alias");
+    dvm_provider_release(mounted);
+}
+
+
 /* EN/RU: Select the bound remote Dis path and send to its owner over ordinary Styx.
  * Выбрать забинженный Dis и передать запрос владельцу через обычный Styx. */
 static void submit_mounted(StyxClient *client, const DVM_LaunchOptions *options)
@@ -93,6 +116,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
         launch_check(dvm_view_map(code, "/.fd", assets, "owner-fds", FVM_ACCESS_MASK, DVM_VIEW_TREE),
             "publish the owner's descriptor directory in its root");
     }
+    map_routed(connection, code);
     options.provider = dvm_view_freeze(code);
     submit_mounted(connection, &options);
     DVM_TerminalChannels ingress = {0};

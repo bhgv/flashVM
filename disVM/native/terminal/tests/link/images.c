@@ -11,6 +11,7 @@
 static unsigned char *images[2]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
 static int require_submission; /* In routed tests the caller must post before launch is readable. */
+static int empty_submitted; /* One path-only guest request was accepted. */
 static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
 static size_t lengths[2]; /* Exact bytes advertised in original Styx metadata. */
@@ -121,9 +122,18 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
 {
     FVM_SRecord record;
     size_t consumed;
-    if (!require_submission || submitted || offset != 0 ||
+    if (!require_submission || offset != 0 ||
         fvm_srecord_read(bytes, *count, 128, &record, &consumed) != FVM_S_OK ||
-        consumed != *count || record.tag != 17 || record.size != 3 ||
+        consumed != *count || record.tag != 17)
+    {
+        return Ebadarg;
+    }
+    if (submitted && !empty_submitted && !record.size)
+    {
+        empty_submitted = 1;
+        return nil;
+    }
+    if (submitted || record.size != 3 ||
         record.payload[0] != 'r' || record.payload[1] != 0 || record.payload[2] != 'n')
     {
         return Ebadarg;

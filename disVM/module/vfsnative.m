@@ -24,4 +24,7 @@ Vfsnative: module
     # EN/RU: Move exact observed ID at revision; inherited child path gets its own stack.
     # Переставить ID по revision; return0 success,-2/stale,-1/error; no effect replay.
     move: fn(path: string, revision, id: big, index: int): int;
+    # EN/RU: Submit the mounted program by its visible path;1 delivered,0 refused,-1 uncertain.
+    # Отправить запуск по видимому пути;1 доставлено,0 отказ,-1 исход неизвестен.
+    run: fn(path: string): int;
 };

@@ -125,6 +125,8 @@ def main():
                             (work / "numbered-err.bin").read_bytes() != b"keep:remote stderr\n" or \
                             (work / "numbered-rw.bin").read_bytes() != b"keep:abcdef!":
                         raise RuntimeError("numbered stdio or shared cursor mismatch")
+                if not cli and "PASS path-only Styx command submission" not in guest_output:
+                    raise RuntimeError("guest did not submit by its VFS alias")
                 if "PASS real Dis guest file Unibus bidirectional records" not in guest_output or \
                         "PASS transferred Sys FD retained source position" not in guest_output or \
                         "PASS real Dis Unibus file native ownership drain" not in result.stdout:

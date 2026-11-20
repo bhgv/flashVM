@@ -157,3 +157,11 @@ origin(path: string, revision: big, index: int): (int,ref Origin)
     }
     return (Ready, ref Origin(int values[0], values[1], values[2], values[3], values[4]));
 }
+
+
+# EN/RU: Submit the named VFS program from the caller's namespace.
+# Передать запуск указанной программы из пространства имён вызывающего.
+run(path: string): int
+{
+    return native->run(path);
+}

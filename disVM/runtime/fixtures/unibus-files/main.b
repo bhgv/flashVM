@@ -3,6 +3,7 @@
 # RU: Настоящий переносимый консольный guest использует обычные Sys FD для записей Unibus, без display/host builtin.
 implement Check;
 include "sys.m";
+include "vfsnative.m";
 include "value.m";
 include "launchcontext.m";
 Check: module { init: fn(); };
@@ -147,6 +148,14 @@ init()
     app := load Value "/app.dis";
     if (app == nil || app->value() != 111) {
         raise "actual Styx module/dependency load failed";
+    }
+    (routed, _) := sys->stat("/routed.dis");
+    if (routed == 0) {
+        vfs := load Vfsnative Vfsnative->PATH;
+        if (vfs == nil || vfs->run("/missing.dis") != 0 || vfs->run("/routed.dis") != 1) {
+            raise "VFS command submission failed";
+        }
+        sys->print("PASS path-only Styx command submission\n");
     }
     checkheld();
     checknumbered();

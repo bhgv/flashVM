@@ -17,6 +17,9 @@
 #include "stack.h"
 #include "bind_wait.h"
 #include "cancel.h"
+#include "native_wait.h"
+#include "launch/route.h"
+#include "runqueue.h"
 #include "vfsnative_decl.h"
 #include "vfsnative_table.h"
 #include <limits.h>
@@ -329,6 +332,35 @@ void Vfsnative_move(void *frame)
             kwerrstr("native layer move cancelled");
         }
         dvm_resource_close(&target);
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
+/* EN/RU: Resolve and submit the captured guest path while outside managed admission.
+ * Разрешить путь гостя и передать запуск вне управляемого допуска. */
+void Vfsnative_run(void *frame)
+{
+    F_Vfsnative_run call;
+    WORD result = DVM_LAUNCH_NOT_SENT;
+    char name[DVM_NS_PATH_LIMIT];
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_run, ret), sizeof(*call.ret));
+    Prog *process = currun();
+    DVM_Namespace *group = dvm_namespace_current_group();
+    if (process && group && path(call.path, name) && dvm_namespace_retain(group))
+    {
+        unsigned role = ((DVM_RuntimeProcess *)process)->module_local_role;
+        DVM_VfsWait *wait;
+        int released = dvm_vfs_path_enter(&wait);
+        if (released >= 0)
+        {
+            DVM_LaunchAddress *address = dvm_launch_route_resolve(group, name, role);
+            result = dvm_launch_address_send(address, NULL, 0);
+            dvm_launch_address_free(address);
+            dvm_vfs_wait_end(wait);
+            dvm_runtime_gc_native_enter(released);
+        }
+        dvm_namespace_release(group);
     }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
