@@ -16,7 +16,7 @@
 #include "indexed_variable.h"
 #include "indexed_styx.h"
 
-static int32_t values[] = {11, 22}; /* Owner storage updated through the proxy. */
+static int32_t values[8] = {11, 22}; /* Owner storage updated through the proxy. */
 
 
 /* EN/RU: Read one checked array element from the native fixture.
@@ -37,8 +37,40 @@ static int store(void *state, uint32_t index, int32_t value)
 }
 
 
+static uint32_t used = 2; /* Actual owner storage length. */
+
+
+/* EN/RU: Move the suffix and insert one value within fixture storage.
+ * Сдвинуть хвост и вставить значение в пределах хранилища стенда. */
+static int insert(void *state, uint32_t index, int32_t value)
+{
+    int32_t *data = state;
+    if (index > used || used == 8)
+    {
+        return 0;
+    }
+    memmove(data + index + 1, data + index, (used - index) * sizeof(*data));
+    data[index] = value;
+    used++;
+    return 1;
+}
+
+
+/* EN/RU: Remove and return the last fixture value.
+ * Удалить и вернуть последний элемент стенда. */
+static int pop(void *state, int32_t *value)
+{
+    if (!used)
+    {
+        return 0;
+    }
+    *value = ((int32_t *)state)[--used];
+    return 1;
+}
+
+
 static Styxserver server; /* Dedicated native Styx dispatcher. */
-static StyxIntArray shared = {.state = values, .length = 2, .load = load, .store = store}; /* Exported array. */
+static StyxIntArray shared = {.state = values, .length = 2, .load = load, .store = store, .insert = insert, .pop = pop}; /* Exported array. */
 
 static StyxIntArray readonly = {.state = values, .length = 1, .load = load}; /* Separate read-only export. */
 static StyxArrayFiles read_files; /* Read-only adapter on the same session. */
@@ -118,7 +150,7 @@ static void wire(void)
     require(breaker >= 0 && !styxphyinit(&server, &ops, phyposixfd(pair[1], caps), 0555, 1, 2),
         "indexed server");
     require(styxarrayfilepublish(&files, &server, Qroot, 1, "values", "fixture", &shared), "indexed files");
-    require(styxarrayfilepublish(&read_files, &server, Qroot, 6, "readonly", "fixture", &readonly),
+    require(styxarrayfilepublish(&read_files, &server, Qroot, 20, "readonly", "fixture", &readonly),
         "read-only indexed files");
     StyxArrayFiles invalid;
     require(!styxarrayfilepublish(&invalid, &server, Qroot, 5, "overlap", "fixture", &shared),
@@ -166,14 +198,46 @@ static void wire(void)
     bytes[3] = 44;
     styxclientwrite(val, 0, bytes, sizeof(bytes), &transfer);
     require(transfer.success && transfer.count == 4, "write selected element");
+    StyxFid *blocked = styxclientwalk(client, "values/.push");
+    require(blocked && styxclientopen(blocked, OWRITE), "open competing push");
+    styxclientwrite(blocked, 0, bytes, sizeof(bytes), &transfer);
+    require(!transfer.success, "open .idx blocks mutation");
+    styxclientclunk(blocked);
     styxclientclunk(idx);
     styxclientread(val, 0, bytes, sizeof(bytes), &transfer);
     require(!transfer.success, "stale value refused");
     styxclientclunk(val);
+    StyxFid *push = styxclientwalk(client, "values/.push");
+    require(push && styxclientopen(push, OWRITE), "push open");
+    unsigned char negative[] = {255, 255, 255, 254};
+    styxclientwrite(push, 0, negative, sizeof(negative), &transfer);
+    require(transfer.success && transfer.count == 4, "push value");
+    styxclientwrite(push, 0, negative, sizeof(negative), &transfer);
+    require(!transfer.success, "one push per fid");
+    styxclientclunk(push);
+    StyxFid *tail = styxclientwalk(client, "values/.pop");
+    require(tail && styxclientopen(tail, OREAD), "pop open");
+    for (unsigned read = 0; read < 2; read++)
+    {
+        styxclientread(tail, 0, bytes, sizeof(bytes), &transfer);
+        require(transfer.success && transfer.count == 4 && !memcmp(bytes, negative, 4), "one pop with cached result");
+    }
+    styxclientclunk(tail);
+    StyxFid *insertion = styxclientwalk(client, "values/.ins");
+    require(insertion && styxclientopen(insertion, OWRITE), "insert open");
+    unsigned char insertion_frame[] = {0, 0, 0, 1, 0, 0, 0, 77};
+    styxclientwrite(insertion, 0, insertion_frame, sizeof(insertion_frame), &transfer);
+    require(transfer.success && transfer.count == 8, "insert at index one");
+    styxclientclunk(insertion);
+    length = styxclientwalk(client, "values/.len");
+    require(length && styxclientopen(length, OREAD), "updated length open");
+    styxclientread(length, 0, meta, sizeof(meta), &transfer);
+    require(transfer.success && transfer.count == 2 && meta[0] == '3', "updated length");
+    styxclientclunk(length);
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxclientfree(client);
-    require(!pthread_join(worker, NULL) && values[0] == 11 && values[1] == 44, "owner array update");
+    require(!pthread_join(worker, NULL) && used == 3 && values[0] == 11 && values[1] == 77 && values[2] == 44, "owner array update");
     values[1] = 22;
 }
 

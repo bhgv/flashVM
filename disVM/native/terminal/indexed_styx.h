@@ -9,7 +9,7 @@
 typedef struct StyxArrayFiles
 {
     Styxserver *server; /* Borrowed server through fid retirement. */
-    Path base; /* First of five owned qids. */
+    Path base; /* First qid of the array directory range. */
     StyxIntArray *array; /* Borrowed array through fid retirement. */
 } StyxArrayFiles;
 

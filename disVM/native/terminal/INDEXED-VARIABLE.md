@@ -30,7 +30,7 @@ out-of-range indices and partial writes.
 below an existing parent qid, such as a granted `.prog/<pid>/.var`.
 Include `lib9.h`, `styx.h`, `styxserver.h` and `indexed_styx.h`.
 Before running the dispatcher, supply the directory name, owner, array and
-five consecutive unused qids. Overlapping qid ranges are rejected before
+a range of consecutive unused qids. Overlapping qid ranges are rejected before
 publication. Keep the array and publication descriptor alive through fid
 retirement.
 
@@ -39,3 +39,23 @@ and `styxarrayfilewrite`. Use `styxarrayfileclose` in `freefid` for these
 opens. A server with several kinds of fid contexts must dispatch their
 cleanup to the corresponding handler. With no `store` callback, `.val`
 is read-only. The library publishes `.len` and `.type`.
+
+
+## Changing the length
+
+A fixed array uses five qids. An `insert` callback requires seven, and a
+`pop` callback requires eight. The library checks the entire range before
+publication.
+
+| File | Operation |
+| --- | --- |
+| `.ins` | Write eight bytes at offset zero, four for the index and four for the value. An index equal to the length inserts at the end. |
+| `.push` | Write one four-byte value at offset zero to append. |
+| `.pop` | Read four bytes at offset zero. The first successful read removes the last element. Another read at offset zero on the same fid returns the cached value. |
+
+All fields are big-endian and values are signed. Each successful mutation
+changes `.len` by one. An open `.idx` prevents new structural mutations.
+Popping an empty array returns a Styx error. Owner callbacks must be atomic:
+return 1 after a committed change, or 0 with storage unchanged. The owner
+keeps storage consistent with the adapter's length. The example exercises
+all three operations over Styx.
