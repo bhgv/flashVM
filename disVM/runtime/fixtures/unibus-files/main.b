@@ -90,19 +90,32 @@ clientenv(path: string): string
 
 # EN/RU: Read the current client value and optionally publish one replacement.
 # Прочитать значение клиента и при необходимости записать замену.
-counter(expected, replacement: string): int
+counter(expected, replacement, update: int): int
 {
     path := "/.prog/.self/.var/counter";
     reader := sys->open(path, Sys->OREAD);
-    data := array[1] of byte;
-    if (reader == nil || sys->read(reader, data, 1) != 1 || string data != expected) {
+    data := array[4] of byte;
+    if (reader == nil || sys->read(reader, data, 4) != 4) {
         return 0;
     }
-    if (replacement == "") {
+    value := int data[0];
+    if (value >= 128) {
+        value -= 256;
+    }
+    for (i := 1; i < 4; i++) {
+        value = value*256 + int data[i];
+    }
+    if (value != expected) {
+        return 0;
+    }
+    if (!update) {
         return 1;
     }
     writer := sys->open(path, Sys->OWRITE);
-    return writer != nil && sys->write(writer, array of byte replacement, 1) == 1;
+    for (i = 0; i < 4; i++) {
+        data[i] = byte (replacement >> (24 - 8*i));
+    }
+    return writer != nil && sys->write(writer, data, 4) == 4;
 }
 
 
@@ -113,7 +126,7 @@ readchild(done: chan of string, hidestderr: int, expected: string)
     inherited := sys->fildes(3);
     part := array[3] of byte;
     if (inherited == nil || (sys->fildes(2) == nil) != hidestderr ||
-        (hidestderr && (clientenv("/.prog/.self/.vfs/env/CLIENT") != expected || !counter("2", "3"))) || sys->read(inherited, part, 3) != 3) {
+        (hidestderr && (clientenv("/.prog/.self/.vfs/env/CLIENT") != expected || !counter(-2, 65539, 1))) || sys->read(inherited, part, 3) != 3) {
         done <-= "missing";
         return;
     }
@@ -144,8 +157,12 @@ checknumbered()
     }
     done := chan of string;
     environment := clientenv("/.prog/.self/.vfs/env/CLIENT");
-    if (err == nil && !counter("1", "2")) {
-        raise "could not write client variable";
+    if (err == nil) {
+        partial := sys->open("/.prog/.self/.var/counter", Sys->OWRITE);
+        if (partial == nil || sys->write(partial, array[1] of byte, 1) != -1 ||
+            !counter(1, -2, 1)) {
+            raise "invalid partial or complete client variable write";
+        }
     }
     spawn readchild(done, err == nil, environment);
     if (<-done != "def") {
@@ -162,7 +179,7 @@ checknumbered()
         raise "numbered stdio did not use its launch file";
     }
     if (err == nil) {
-        if (!counter("3", "")) {
+        if (!counter(65539, 0, 0)) {
             raise "child variable write unavailable";
         }
         if ((environment != "child" && environment != "base!") ||

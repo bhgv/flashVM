@@ -71,3 +71,5 @@ go directly to the published files. An absent directory does not fall back
 to the base process. The fixture checks updates to `counter` by the launched
 program and its child. Automatic VM variable publication and composite
 value operations remain separate work.
+
+The fixture uses the [callback-backed integer proxy](../native/terminal/VARIABLE-FILE.md).

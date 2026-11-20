@@ -12,6 +12,7 @@
 #include "../../../launch/program_record.h"
 #include "launch_receive.h"
 #include "images.h"
+#include "variable_file.h"
 static const struct
 {
     unsigned long qid; /* Published Styx identity for the asset. */
@@ -42,25 +43,41 @@ enum
     ProgramChildVfs = 825, /* Optional child namespace. */
     ProgramBaseVfs = 828, /* Fallback namespace. */
     ProgramVar = 834, /* Variable directory. */
-    ProgramCounter = 835, /* One-byte mutable fixture value. */
+    ProgramCounter = 835, /* Mutable signed integer. */
     ProgramPid = 833, /* Read-only PID of the selected process. */
     ProgramInvalid = 831 /* Process with an invalid .vfs node. */
 };
 
 
-static char counter[] = "1"; /* Client-owned value, accessed by the Styx dispatcher. */
+static int32_t counter = 1; /* Client-owned value, accessed by the Styx dispatcher. */
+
+
+/* EN/RU: Read the current owner variable into the supplied output.
+ * Прочитать текущее значение переменной владельца. */
+static int load_counter(void *state, int32_t *value)
+{
+    *value = *(int32_t *)state;
+    return 1;
+}
+
+
+/* EN/RU: Commit the new owner variable value.
+ * Записать новое значение переменной владельца. */
+static int store_counter(void *state, int32_t value)
+{
+    *(int32_t *)state = value;
+    return 1;
+}
+
+static const StyxIntVariable variable = {&counter, load_counter, store_counter}; /* Proxies owner storage. */
 
 
 /* EN/RU: Apply one complete scalar update to the fixture variable.
  * Применить полное изменение скалярной переменной стенда. */
 char *fixturevariablewrite(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path != ProgramCounter || offset || *count != 1 || *bytes < '0' || *bytes > '9')
-    {
-        return Ebadarg;
-    }
-    counter[0] = *bytes;
-    return nil;
+    return qid.path == ProgramCounter && offset >= 0 &&
+        styxintvariablewrite(&variable, offset, bytes, *count) ? nil : Ebadarg;
 }
 
 
@@ -84,6 +101,7 @@ static int publish_environment(Styxserver *server, Path process, Path vfs)
  * Опубликовать дерево выданной загрузки модуля и вернуть qid базового процесса. */
 Path fixtureprograminit(Styxserver *server)
 {
+    Styxfile *file;
     if (!styxadddir(server, Qroot, ProgramModule, "loaded.dis", 0555, "fixture") ||
         !styxadddir(server, ProgramModule, ProgramRoot, ".prog", 0555, "fixture") ||
         !styxadddir(server, ProgramRoot, ProgramBase, "41", 0555, "fixture") ||
@@ -91,7 +109,7 @@ Path fixtureprograminit(Styxserver *server)
         !styxadddir(server, ProgramChild, ProgramChildFds, ".fd", 0555, "fixture") ||
         !styxaddfile(server, ProgramChild, ProgramPid, ".pid", 0444, "fixture") ||
         !styxadddir(server, ProgramChild, ProgramVar, ".var", 0555, "fixture") ||
-        !styxaddfile(server, ProgramVar, ProgramCounter, "counter", 0666, "fixture") ||
+        !(file = styxaddfile(server, ProgramVar, ProgramCounter, "counter", 0666, "fixture")) ||
         !publish_environment(server, ProgramBase, ProgramBaseVfs) ||
         !styxadddir(server, ProgramRoot, ProgramInvalid, "43", 0555, "fixture") ||
         !styxaddfile(server, ProgramInvalid, ProgramInvalid + 1, ".vfs", 0444, "fixture") ||
@@ -99,6 +117,7 @@ Path fixtureprograminit(Styxserver *server)
     {
         _exit(3);
     }
+    file->d.length = STYX_VARIABLE_INT_SIZE;
     return ProgramBase;
 }
 
@@ -167,7 +186,12 @@ char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
     if (qid.path == ProgramCounter && offset >= 0)
     {
-        *count = styxreadstr(offset, bytes, *count, counter);
+        size_t size = *count;
+        if (!styxintvariableread(&variable, offset, bytes, &size))
+        {
+            return Ebadarg;
+        }
+        *count = size;
         return nil;
     }
     if (qid.path == ProgramPid && offset >= 0)
