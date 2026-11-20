@@ -34,5 +34,10 @@ init()
     result := <-done;
     if (result <= 0 || result == pid)
         raise "child caller PID mismatch";
-    sys->print("PASS typed Styx caller PID\n");
+    fd := sys->fildes(3);
+    tail := array[4] of byte;
+    if (fd == nil || sys->read(fd, tail, len tail) != len tail || string tail != "last")
+        raise "remote reads did not advance the local FD";
+    if (service->compute(-pid) != pid)
+        raise "could not acknowledge the local FD read";
 }

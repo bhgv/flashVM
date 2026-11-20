@@ -127,8 +127,8 @@ with JIT enabled and disabled.
 Before publishing the caller tree, DisVM captures explicit directory
 mounts at `/.fd`, `/.vfs` and `/.var` in the current caller's namespace.
 Missing mounts are omitted. A union or a mount that cannot be captured
-cancellably prevents submission. The fixture verifies `.fd/0`,
-`.vfs/env/CLIENT` and `.var/counter` through reverse Styx for both callers.
+cancellably prevents submission. The fixture verifies `.vfs/env/CLIENT` and `.var/counter` through reverse
+Styx for both callers.
 
 The fixture installs the reverse binding. Production mount setup and
 automatic projection of the VM's open descriptor table, namespace and
@@ -137,6 +137,10 @@ shared variables into those grants remain open.
 When the caller has no explicit `/.fd` mount, DisVM projects the
 numbered descriptors imported at process launch. The exported alias
 retains the open slot, uses its original read/write mode, and shares its
-cursor with local aliases. This supports the existing numbered launch
+cursor with local aliases. The guest fixture imports FD 3 at launch. The
+provider reads two consecutive blocks over reverse Styx on the parent
+and child's calls. The parent then reads the third block locally with
+`Sys->fildes(3)` and acknowledges this read with one more typed call.
+This supports the existing numbered launch
 range 0–31. Host stdio and unnumbered managed opens are outside this
 projection. The reverse mount setup still requires an embedder.

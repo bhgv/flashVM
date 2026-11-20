@@ -330,20 +330,32 @@ static int verify_program_view(void)
 }
 
 
+/* EN: Build a launch grant that imports FD 3 and labels the initial program.
+ * RU: Подготовить разрешение запуска с импортом FD 3 и меткой программы. */
+static DVM_Provider *fixture_program(const char *bytes)
+{
+    DVM_Provider *file = dvm_module_adapter(bytes, strlen(bytes));
+    DVM_Provider *identity = dvm_module_adapter("41\n", 3);
+    DVM_View *builder = dvm_view_create(NULL, NULL, NULL);
+    int mapped = file && identity && builder &&
+        dvm_view_map(builder, "/.fd/3", file, ".", FVM_ACCESS_READ, 0) &&
+        dvm_view_map(builder, "/.pid", identity, ".", FVM_ACCESS_READ, 0);
+    dvm_provider_release(file);
+    dvm_provider_release(identity);
+    if (!mapped)
+    {
+        dvm_view_discard(builder);
+        return NULL;
+    }
+    return dvm_view_freeze(builder);
+}
+
+
 /* EN: Verify two aliases retain one imported slot and advance the same cursor.
  * RU: Проверить удержание одного слота двумя псевдонимами и продвижение общей позиции. */
 static int verify_imported_fds(void)
 {
-    DVM_Provider *file = dvm_module_adapter("leftnext", 8);
-    DVM_View *builder = dvm_view_create(NULL, NULL, NULL);
-    int mapped = file && builder && dvm_view_map(builder, "/.fd/3", file, ".", FVM_ACCESS_READ, 0);
-    dvm_provider_release(file);
-    if (!mapped)
-    {
-        dvm_view_discard(builder);
-        return 0;
-    }
-    DVM_LaunchHandoff handoff = {.program = dvm_view_freeze(builder)};
+    DVM_LaunchHandoff handoff = {.program = fixture_program("leftnext")};
     DVM_LaunchFiles *files = NULL;
     int valid = handoff.program && dvm_launch_files_open(&handoff, &files);
     dvm_provider_release(handoff.program);
@@ -407,11 +419,13 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
         exit(2);
     }
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
+    int scoped = getenv("DVM_TEST_SCALAR_CALLER") != NULL;
+    handoff.program = scoped ? fixture_program("leftnextlast") : NULL;
     strcpy(handoff.description.module, "scalar-mounted.dis");
     if (!handoff.group || !dvm_namespace_pin(handoff.group) ||
         dvm_stack_mount(handoff.group, mount, "/peer", 0, 0) != 1 ||
-        (getenv("DVM_TEST_SCALAR_CALLER") &&
-            (!mount_context(handoff.group, "/.fd", "/0") ||
+        (scoped &&
+            (!handoff.program ||
              !mount_context(handoff.group, "/.vfs", "/env/CLIENT") ||
              !mount_context(handoff.group, "/.var", "/counter"))))
     {
@@ -420,5 +434,10 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
     }
     int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
     dvm_namespace_release(handoff.group);
+    dvm_provider_release(handoff.program);
+    if (scoped && result == 0)
+    {
+        puts("PASS typed Styx caller PID");
+    }
     return result;
 }

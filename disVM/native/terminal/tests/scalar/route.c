@@ -34,7 +34,7 @@ static DVM_Provider *reply; /* Retained reverse file while owner serves requests
 #ifdef STYX_SCALAR_GUEST
 extern int scalar_guest_bind_caller(DVM_Provider *); /* Attach fixture reverse publication binding. */
 extern int scalar_reverse_start(RemotePhy *, RemotePhy *); /* Start the reverse Styx endpoints. */
-extern int scalar_reverse_check(uint32_t); /* Read active .pid via reverse Styx. */
+extern int scalar_reverse_check(uint32_t, int64_t); /* Read active .pid via reverse Styx. */
 extern void scalar_reverse_stop(void); /* Join the reverse fixture. */
 extern void scalar_guest_mounted(DVM_Provider *); /* Runs a guest on a plain mount. */
 extern void scalar_guest(DVM_Provider *, DVM_Provider *); /* Runtime test entry. */
@@ -265,7 +265,7 @@ static int caller_method(void *context, uint32_t pid, int64_t argument, int64_t 
 {
     static uint32_t previous;
     (void)context;
-    if (argument != (int64_t)pid || pid == previous || !scalar_reverse_check(pid))
+    if (pid == previous || !scalar_reverse_check(pid, argument))
         return 0;
     previous = pid;
     ++calls;
@@ -487,7 +487,7 @@ int scalar_round_trip(void)
     if (getenv("DVM_TEST_SCALAR_MOUNTED"))
     {
         mounted_function();
-        check(calls == (getenv("DVM_TEST_SCALAR_CALLER") ? 2 : 3),
+        check(calls == (3),
             "exact typed call count at the mounted function");
         return 0;
     }

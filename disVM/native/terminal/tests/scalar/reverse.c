@@ -16,6 +16,7 @@
 static Styxserver server; /* One reverse fixture owner. */
 static pthread_t worker; /* Join before returning from the fixture. */
 static StyxClient *client; /* Provider's reverse mount client. */
+static int fd_reads; /* Successful shared-cursor checks. */
 static const Path prog = 1; /* Virtual .prog directory Qid. */
 extern size_t scalar_guest_read_caller(uint32_t, const char *, char *, size_t); /* Runtime reads live VFS. */
 
@@ -25,7 +26,7 @@ static const struct Route
     unsigned parent; /* Parent selector, zero for the PID directory. */
     const char *file; /* Leaf path relative to the runtime PID directory. */
 } routes[] = { /* Bounded fixture tree. */
-    {NULL, 0, NULL}, {".pid", 0, ".pid"}, {".fd", 0, NULL}, {"0", 2, ".fd/0"},
+    {NULL, 0, NULL}, {".pid", 0, ".pid"}, {".fd", 0, NULL}, {"3", 2, ".fd/3"},
     {".vfs", 0, NULL}, {"env", 4, NULL}, {"CLIENT", 5, ".vfs/env/CLIENT"},
     {".var", 0, NULL}, {"counter", 7, ".var/counter"}
 };
@@ -69,7 +70,7 @@ static char *walk(Qid *qid, char *name)
             if (routes[i].parent == (qid->path & 15) && !strcmp(routes[i].name, name))
             {
                 Path path = (qid->path & ~(Path)15) | i;
-                if (!routes[i].file || content(path, bytes))
+                if (!routes[i].file || i == 3 || content(path, bytes))
                 {
                     *qid = styxqid(path, !routes[i].file);
                     return nil;
@@ -86,7 +87,7 @@ static char *walk(Qid *qid, char *name)
 static char *open_identity(Qid *qid, int mode)
 {
     char bytes[12];
-    return mode == OREAD && content(qid->path, bytes) ? nil : Eperm;
+    return mode == OREAD && ((qid->path & 15) == 3 || content(qid->path, bytes)) ? nil : Eperm;
 }
 
 
@@ -94,6 +95,15 @@ static char *open_identity(Qid *qid, int mode)
  * RU: Прочитать часть выбранного файла runtime. */
 static char *read_identity(Qid qid, char *out, ulong *count, vlong offset)
 {
+    if ((qid.path & 15) == 3)
+    {
+        if (offset != 0 || *count != 4)
+        {
+            return Ebadarg;
+        }
+        *count = scalar_guest_read_caller((uint32_t)(qid.path >> 4), ".fd/3", out, *count);
+        return *count == 4 ? nil : Enonexist;
+    }
     char bytes[12];
     size_t length = content(qid.path, bytes);
     if (!length || offset < 0)
@@ -158,7 +168,7 @@ static int check_file(uint32_t pid, const char *relative, const char *expected)
     StyxTransfer transfer = {0};
     if (styxclientopen(fid, OREAD))
     {
-        styxclientread(fid, 0, bytes, sizeof(bytes), &transfer);
+        styxclientread(fid, 0, bytes, length, &transfer);
     }
     styxclientclunk(fid);
     return transfer.success && transfer.count == length && !memcmp(expected, bytes, length);
@@ -167,12 +177,19 @@ static int check_file(uint32_t pid, const char *relative, const char *expected)
 
 /* EN: Verify the PID and three inherited directory grants in the same call.
  * RU: Проверить PID и три унаследованных каталога в одном вызове. */
-int scalar_reverse_check(uint32_t pid)
+int scalar_reverse_check(uint32_t pid, int64_t argument)
 {
     char expected[12];
     snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
-    return check_file(pid, ".pid", expected) && check_file(pid, ".fd/0", "/.fd") &&
+    if (argument == -(int64_t)pid)
+    {
+        return fd_reads == 2 && check_file(pid, ".pid", expected);
+    }
+    int ok = argument == pid && fd_reads < 2 && check_file(pid, ".pid", expected) &&
+        check_file(pid, ".fd/3", fd_reads ? "next" : "left") &&
         check_file(pid, ".vfs/env/CLIENT", "/.vfs") && check_file(pid, ".var/counter", "/.var");
+    fd_reads += ok;
+    return ok;
 }
 
 
