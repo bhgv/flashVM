@@ -121,6 +121,7 @@ unload(Module *m)
 void
 dvm_runtime_module_finish(Module *m)
 {
+	dvm_scalar_module_retire(m);
 """
     source = replace(
         source,
@@ -128,7 +129,7 @@ dvm_runtime_module_finish(Module *m)
             (finish, finish_replacement, 1),
             (
                 '#include "interp.h"',
-                '#include "interp.h"\n#include "gc/fast/module_retirement.h"',
+                '#include "interp.h"\n#include "gc/fast/module_retirement.h"\n#include "vfs/loader.h"',
                 1,
             ),
         ),

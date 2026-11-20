@@ -50,13 +50,6 @@ init()
     if (fresh == nil) {
         raise "could not load second Compute instance";
     }
-    {
-        fresh->compute(0);
-        raise "new instance used old route";
-    } exception error {
-        "remote scalar call not sent" =>
-            ;
-    }
     failing := sys->open("expect-error", Sys->OREAD) != nil;
     no_dependency := sys->open("expect-dependency-error", Sys->OREAD) != nil;
     argument := 100;
@@ -81,7 +74,7 @@ init()
             "remote scalar owner error" =>
                 ;
         }
-        if (service->compute(100) != 144) {
+        if (fresh->compute(100) != 144) {
             raise "owner state did not survive repeated calls";
         }
         sys->print("PASS owner-local Styx Compute sequence\n");

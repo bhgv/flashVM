@@ -7,6 +7,7 @@
 #include "isa.h"
 #include "kernel.h"
 #include "loader.h"
+#include "scalar_files.h"
 #include "fns.h"
 #include "interp.h"
 #include "raise.h"
@@ -129,11 +130,9 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
 
 /* EN/RU: Use copied native arguments only; open the reply before sending.
  * Работать со скопированными аргументами. Открыть ответ до отправки. */
-static const char *exchange(DVM_Namespace *group, const char *request_path, const char *reply_path,
+static const char *exchange(DVM_Provider *request, DVM_Provider *reply,
     unsigned long request_tag, unsigned long reply_tag, int64_t argument, int64_t *value)
 {
-    DVM_Provider *reply = capture(group, reply_path, FVM_ACCESS_READ);
-    DVM_Provider *request = capture(group, request_path, FVM_ACCESS_WRITE);
     DVM_VfsHandle handle = {0};
     const char *failure = "remote scalar call not sent";
     if (request && reply && (dvm_provider_native_flags(reply) & DVM_PROVIDER_CANCEL_PATH) &&
@@ -150,8 +149,6 @@ static const char *exchange(DVM_Namespace *group, const char *request_path, cons
         }
     }
     dvm_vfs_close(&handle);
-    dvm_provider_release(request);
-    dvm_provider_release(reply);
     return failure;
 }
 
@@ -159,7 +156,7 @@ static const char *exchange(DVM_Namespace *group, const char *request_path, cons
 /* EN/RU: Exchange a copied scalar outside admission and publish once after reentry.
  * Передать скопированный скаляр вне допуска и записать результат после возврата. */
 static const char *scalar_value(DVM_Namespace *group, const char *request, const char *reply,
-    unsigned long request_tag, unsigned long reply_tag, WORD argument, WORD *result)
+    unsigned long request_tag, unsigned long reply_tag, WORD argument, WORD *result, DVM_ScalarFiles *files)
 {
     DVM_VfsWait *wait;
     int released = dvm_vfs_path_enter(&wait);
@@ -168,8 +165,14 @@ static const char *scalar_value(DVM_Namespace *group, const char *request, const
         return "remote scalar call not sent";
     }
     int64_t value = 0;
-    const char *failure = exchange(group, request, reply, request_tag,
-        reply_tag, argument, &value);
+    DVM_Provider *writer = files ? files->request : capture(group, request, FVM_ACCESS_WRITE);
+    DVM_Provider *reader = files ? files->reply : capture(group, reply, FVM_ACCESS_READ);
+    const char *failure = exchange(writer, reader, request_tag, reply_tag, argument, &value);
+    if (!files)
+    {
+        dvm_provider_release(writer);
+        dvm_provider_release(reader);
+    }
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
     if (cancelled || failure)
@@ -202,7 +205,7 @@ void Vfsnative_scalarcall(void *frame)
     }
     WORD result = 0;
     const char *failure = scalar_value(group, request, reply, (unsigned long)call.requesttag,
-        (unsigned long)call.replytag, call.value, &result);
+        (unsigned long)call.replytag, call.value, &result, NULL);
     if (failure)
     {
         error((char *)failure);
@@ -363,22 +366,24 @@ static void scalar_entry(void *frame)
     {
         error("remote scalar call not sent");
     }
-    /* This private noncached module uses mtime for its one outstanding call. */
+    DVM_ScalarFiles *files = module->scalar_files;
+    /* Exact publications share exclusivity and retirement across multiple loads. */
+    unsigned long *state = files ? &files->state : &module->mtime;
     ulong expected = SCALAR_IDLE;
-    if (!__atomic_compare_exchange_n(&module->mtime, &expected, SCALAR_BUSY, 0,
+    if (!__atomic_compare_exchange_n(state, &expected, SCALAR_BUSY, 0,
             __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
     {
         error(expected == SCALAR_BUSY ? "remote scalar route busy" : "remote scalar route retired");
     }
     if (waserror())
     {
-        __atomic_store_n(&module->mtime, SCALAR_RETIRED, __ATOMIC_RELEASE);
+        __atomic_store_n(state, SCALAR_RETIRED, __ATOMIC_RELEASE);
         nexterror();
     }
     WORD result = 0;
     const char *failure = scalar_value(group, "/scalar/request", "/scalar/reply",
-        request_tag, reply_tag, call.value, &result);
-    __atomic_store_n(&module->mtime, !failure || failure == owner_error ? SCALAR_IDLE : SCALAR_RETIRED,
+        request_tag, reply_tag, call.value, &result, files);
+    __atomic_store_n(state, !failure || failure == owner_error ? SCALAR_IDLE : SCALAR_RETIRED,
         __ATOMIC_RELEASE);
     poperror();
     if (failure)
@@ -424,7 +429,7 @@ static int build_direct(void *opaque)
 /* EN/RU: Return a private noncached module and reuse per-instance namespace attachment.
  * Вернуть приватный модуль без кэша и использовать привязку пространства экземпляра. */
 Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
-    unsigned long reply_tag, uint64_t revision)
+    unsigned long reply_tag, uint64_t revision, DVM_ScalarFiles *files)
 {
     DirectBuild build = {path, name, NULL};
     if (!kprotect(build_direct, &build))
@@ -436,6 +441,13 @@ Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
         kwerrstr("cannot construct remote scalar module");
         return NULL;
     }
+    if (!dvm_scalar_files_retain(files))
+    {
+        unload(build.module);
+        kwerrstr("cannot retain scalar file grants");
+        return NULL;
+    }
+    build.module->scalar_files = files;
     /* Private noncached descriptor: these fields carry namespace revision and route tags. */
     build.module->qid.type = DVM_MODULE_ADAPTER_QID;
     build.module->qid.path = revision;

@@ -3,6 +3,7 @@
  * RU: Опубликовать неизменяемые байты доверенного адаптера одним файлом VFS.
  */
 #include "module_adapter.h"
+#include "scalar_files.h"
 #include "provider_internal.h"
 #include "view_internal.h"
 #include "loader.h"
@@ -152,6 +153,7 @@ typedef struct ModulePublication
     DVM_Provider *profile; /* Optional owned interface grant. */
     unsigned long tag; /* Profile record tag. */
     unsigned long request_tag; /* Direct scalar request tag; zero for bytecode adapters. */
+    DVM_ScalarFiles *files; /* Optional exact request and reply grants. */
     unsigned long reply_tag; /* Direct scalar result tag. */
 } ModulePublication;
 
@@ -195,6 +197,7 @@ static void publication_destroy(void *state)
     dvm_provider_release(publication->original);
     dvm_provider_release(publication->adapter);
     dvm_provider_release(publication->profile);
+    dvm_scalar_files_release(publication->files);
     free(publication);
 }
 
@@ -220,7 +223,7 @@ static const DVM_ProviderOps publication_ops = { /* Exact node with separate cod
 /* EN/RU: Capture the original before publication and retain the exact local adapter.
  * Захватить исходный файл до публикации и удержать точный локальный адаптер. */
 static DVM_Provider *publish(DVM_Provider *original, DVM_Provider *adapter,
-    DVM_Provider *profile, unsigned long tag, unsigned long request_tag, unsigned long reply_tag)
+    DVM_Provider *profile, unsigned long tag, unsigned long request_tag, unsigned long reply_tag, DVM_ScalarFiles *files)
 {
     if ((profile && (!tag || tag > UINT32_MAX)) || (adapter && adapter->ops != &factory) ||
         (!adapter && (!profile || !request_tag || request_tag > UINT32_MAX ||
@@ -247,6 +250,12 @@ static DVM_Provider *publish(DVM_Provider *original, DVM_Provider *adapter,
     publication->adapter = adapter;
     publication->request_tag = request_tag;
     publication->reply_tag = reply_tag;
+    if (!dvm_scalar_files_retain(files))
+    {
+        publication_destroy(publication);
+        return NULL;
+    }
+    publication->files = files;
     if (profile)
     {
         publication->profile = dvm_provider_capture(profile, ".");
@@ -274,7 +283,7 @@ static DVM_Provider *publish(DVM_Provider *original, DVM_Provider *adapter,
 DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
     DVM_Provider *profile, unsigned long tag)
 {
-    return publish(original, adapter, profile, tag, 0, 0);
+    return publish(original, adapter, profile, tag, 0, 0, NULL);
 }
 
 
@@ -283,7 +292,21 @@ DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *a
 DVM_Provider *dvm_module_publish_scalar(DVM_Provider *original, DVM_Provider *profile,
     unsigned long profile_tag, unsigned long request_tag, unsigned long reply_tag)
 {
-    return publish(original, NULL, profile, profile_tag, request_tag, reply_tag);
+    return publish(original, NULL, profile, profile_tag, request_tag, reply_tag, NULL);
+}
+
+
+/* EN/RU: Publish one route bound to exact files, independent of namespace aliases.
+ * Опубликовать маршрут с точными файлами, независимо от имён VFS. */
+DVM_Provider *dvm_module_publish_scalar_files(DVM_Provider *original, DVM_Provider *profile,
+    unsigned long profile_tag, DVM_Provider *request, unsigned long request_tag,
+    DVM_Provider *reply, unsigned long reply_tag)
+{
+    DVM_ScalarFiles *files = dvm_scalar_files(request, reply);
+    DVM_Provider *provider = files ?
+        publish(original, NULL, profile, profile_tag, request_tag, reply_tag, files) : NULL;
+    dvm_scalar_files_release(files);
+    return provider;
 }
 
 
@@ -298,7 +321,7 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
 /* EN/RU: Borrow the executable source from the selected exact native provider.
  * Заимствовать исполняемый источник выбранного точного нативного провайдера. */
 DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative, int *denied,
-    DVM_Provider **profile, unsigned long *tag, unsigned long *request_tag, unsigned long *reply_tag)
+    DVM_Provider **profile, unsigned long *tag, unsigned long *request_tag, unsigned long *reply_tag, DVM_ScalarFiles **files)
 {
     char suffix[DVM_NS_PATH_LIMIT];
     int blocked = 0;
@@ -307,6 +330,7 @@ DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *rela
     *tag = 0;
     *request_tag = 0;
     *reply_tag = 0;
+    *files = NULL;
     for (unsigned depth = 0; provider && relative && depth < 32; depth++)
     {
         if (!strcmp(relative, "."))
@@ -319,6 +343,7 @@ DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *rela
                 *tag = publication->tag;
                 *request_tag = publication->request_tag;
                 *reply_tag = publication->reply_tag;
+                *files = publication->files;
                 return publication->adapter;
             }
             if (provider->ops == &factory)

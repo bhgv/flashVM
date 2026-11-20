@@ -24,4 +24,9 @@ DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *a
  * Опубликовать удалённую fn(int):int без локального адаптера Dis. */
 DVM_Provider *dvm_module_publish_scalar(DVM_Provider *original, DVM_Provider *profile,
     unsigned long profile_tag, unsigned long request_tag, unsigned long reply_tag);
+/* EN/RU: Publish scalar library with exact borrowed route grants captured on success.
+ * Опубликовать скалярную библиотеку с захваченными файлами маршрута. */
+DVM_Provider *dvm_module_publish_scalar_files(DVM_Provider *original, DVM_Provider *profile,
+    unsigned long profile_tag, DVM_Provider *request, unsigned long request_tag,
+    DVM_Provider *reply, unsigned long reply_tag);
 #endif

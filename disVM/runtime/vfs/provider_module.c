@@ -195,11 +195,12 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     int denied = 0;
     int mismatch = 0;
     unsigned long request_tag = 0, reply_tag = 0;
+    struct DVM_ScalarFiles *files = NULL;
     if (released >= 0)
     {
         DVM_Provider *profile = NULL;
         unsigned long tag = 0;
-        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag) : NULL;
+        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag, &files) : NULL;
         refused = denied || (!execution && !adapter && !request_tag);
         FVM_FileInfo original;
         int available = !refused && ((!adapter && !request_tag) || adapter == plan->provider ||
@@ -217,7 +218,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     {
         if (request_tag)
         {
-            answer = dvm_scalar_module(path, name, request_tag, reply_tag, plan->names.version);
+            answer = dvm_scalar_module(path, name, request_tag, reply_tag, plan->names.version, files);
         }
         else
         {

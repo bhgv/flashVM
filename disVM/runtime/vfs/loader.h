@@ -10,6 +10,7 @@ struct String;
 struct Dir;
 struct DVM_ResourcePlan;
 struct DVM_Provider;
+struct DVM_ScalarFiles;
 struct Import;
 struct Modlink;
 
@@ -64,7 +65,7 @@ struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan, c
 
 /* EN/RU: Borrow the associated local adapter, reporting denied execution separately.
  * Заимствовать локальный адаптер и отдельно сообщить об отказе исполнения. */
-struct DVM_Provider *dvm_module_adapter_source(struct DVM_Provider *provider, const char *relative, int *denied, struct DVM_Provider **profile, unsigned long *tag, unsigned long *request_tag, unsigned long *reply_tag);
+struct DVM_Provider *dvm_module_adapter_source(struct DVM_Provider *provider, const char *relative, int *denied, struct DVM_Provider **profile, unsigned long *tag, unsigned long *request_tag, unsigned long *reply_tag, struct DVM_ScalarFiles **files);
 /* EN/RU: Consume the loaded module through ordinary linking and bind adapter instances.
  * Передать модуль обычному линкеру и закрепить окружение экземпляров адаптера. */
 struct Modlink *dvm_namespace_link_loaded(struct Module *module, struct Import *imports);
@@ -75,6 +76,7 @@ struct Module *dvm_namespace_read_imports(char *path, struct Module *cached, int
 /* EN/RU: Build one private native scalar module after admitting its interface.
  * Создать приватный нативный скалярный модуль после проверки интерфейса. */
 struct Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
-    unsigned long reply_tag, uint64_t revision);
+    unsigned long reply_tag, uint64_t revision, struct DVM_ScalarFiles *files);
+void dvm_scalar_module_retire(struct Module *module);
 #define DVM_SCALAR_INT_SIGNATURE 0xe67bf126U /* Compiler signature of fn(int): int. */
 #endif

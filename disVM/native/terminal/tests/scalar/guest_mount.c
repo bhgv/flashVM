@@ -50,7 +50,8 @@ DVM_Provider *scalar_local_profile(void)
 
 /* EN/RU: Mount the supplied original with its local adapter and bind the ordinary name.
  * Смонтировать исходный файл с локальным адаптером и привязать обычное имя. */
-static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Provider *profile)
+static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Provider *profile,
+    DVM_Provider *writer, DVM_Provider *reader)
 {
     DVM_ResourcePlan plain = {0};
     DVM_Provider *ordinary = dvm_resource_plan(group, "/client.dis", 0, &plain) ?
@@ -59,9 +60,9 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Pro
     static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
     DVM_Provider *fallback = original ? NULL : dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
     DVM_Provider *local_profile = profile ? NULL : scalar_local_profile();
-    DVM_Provider *publication = profile || local_profile ?
-        dvm_module_publish_scalar(original ? original : fallback, profile ? profile : local_profile,
-            61, 4294967295UL, 64) : NULL;
+    DVM_Provider *publication = original ?
+        dvm_module_publish_scalar_files(original, profile, 61, writer, 4294967295UL, reader, 64) :
+        dvm_module_publish_scalar(fallback, local_profile, 61, 4294967295UL, 64);
     dvm_provider_release(local_profile);
     DVM_View *tree = dvm_view_create(NULL, NULL, NULL);
     DVM_Provider *modules = NULL;
@@ -135,7 +136,7 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
         exit(2);
     }
     dvm_provider_release(routes);
-    if (!owner && !publish_adapter(handoff.group, original, profile))
+    if (!owner && !publish_adapter(handoff.group, original, profile, writer, reader))
     {
         fprintf(stderr, "scalar test could not bind trusted adapter\n");
         exit(2);

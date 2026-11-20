@@ -52,3 +52,11 @@ and retains its namespace. A normal typed call then uses the shared C
 transport. Data reads of the published file still use the original node.
 The paired test compiles the caller and the shared owner service from existing
 sources. It supplies no per-library generated dispatch module on either side.
+
+`dvm_module_publish_scalar_files(original, profile, profile_tag, request,
+request_tag, reply, reply_tag)` captures the request and reply files at
+publication. Provide a writable request file and a readable reply inbox, both
+with cancellable path operations. The result retains both providers. Typed
+loads of that publication share one outstanding call slot and keep using the
+captured files across later namespace changes. Use a fresh inbox for each
+independent publication.

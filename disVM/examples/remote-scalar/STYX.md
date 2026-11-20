@@ -37,9 +37,10 @@ fresh reply inbox and enforce one outstanding call for each route pair.
 The first driver uses a native test method. The separate DisVM example below
 loads and calls the original owner implementation.
 
-The paired test also binds an empty directory over the caller's route after loading
-the first instance. A second load sees the empty directory. The original instance
-still reaches the owner through the bindings retained when it was loaded.
+The paired test binds an empty directory over `/scalar` after the first load.
+Both that instance and one loaded after the bind reach the same owner using
+the exact files retained by the publication. The final call uses the second
+instance and checks that the owner kept its state.
 
 ## Run the owner in a separate DisVM
 
