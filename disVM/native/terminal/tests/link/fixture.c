@@ -17,6 +17,7 @@
 #include "file_provider.h"
 #include "held_export.h"
 #include "launch_publication.h"
+#include "../../../launch/request.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
@@ -264,6 +265,7 @@ static void server_start(int fd, unsigned caps)
 {
     const char *records = "records";
 #ifdef ORDERED_GUEST_FILE_TEST
+    records = STYX_UNIBUS_NODE;
     if (getenv("DVM_TEST_TERMINAL_CUSTOM"))
     {
         records = "job-records";

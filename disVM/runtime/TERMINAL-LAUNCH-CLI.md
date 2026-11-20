@@ -50,7 +50,7 @@ Optional arguments go before the separator.
 | Option / Параметр | Default / По умолчанию | Effect / Действие |
 | --- | --- | --- |
 | `--request PATH TAG` | `launch 17` | Read the request from a separate Styx file under a nonzero negotiated tag / Читать запрос из отдельного файла Styx под указанным тегом |
-| `--records RX TX` | `records records` | Choose the ordered Unibus input and output files / Выбрать входной и выходной файлы ordered Unibus |
+| `--records RX TX` | `.unibus .unibus` | Choose the ordered Unibus input and output files / Выбрать входной и выходной файлы ordered Unibus |
 | `--lane TAG` | `71` | Select the nonzero ordered TX lane / Задать ненулевой тег исходящего ordered-канала |
 | `--timeout-ms MS` | `5000` | Set each connection and mailbox wait budget, 1–120000 ms / Задать срок отдельного ожидания подключения и запроса |
 | `--grant PATH TAG MODE` | `/zero 0 rw`, `/seven 7 rw`, `/nine 9 r` | First explicit grant replaces all defaults. Repeat up to 32 times with distinct paths/tags and mode `r`, `w` or `rw` / Первая выдача заменяет все значения по умолчанию. До 32 уникальных путей и тегов |
@@ -111,6 +111,10 @@ Runtime ищет каталог `/.fd` в принятом корне владе
 либо оба права без усечения. Если открыть один из файлов не удалось, гость
 не запускается. Полученные ранее в этой попытке файлы закрываются, а
 поглощённая одноразовая выдача остаётся поглощённой.
+
+The default S-record endpoint is `.unibus` in the granted Styx root. For an older peer exposing `records`, select `--records records records`.
+
+По умолчанию S-записи идут через `.unibus` выданного корня Styx. Для старого узла `records` задайте `--records records records`.
 
 The peer serves P9MX channel 0 and declares the selected request tag with type
 `disvm.launch`, version 1. It sends one launch record on that tag. The request

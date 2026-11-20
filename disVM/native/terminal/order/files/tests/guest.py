@@ -83,7 +83,7 @@ def main():
             ["--grant", "/zero", "7", "r", "--grant", "/seven", "7", "rw"],
             ["--grant", "/app.dis/sub", "7", "r"],
             ["--fd-grant", "/nine/child", "held-input", "r"],
-            ["--fd-grant", "/input", "records", "r"],
+            ["--fd-grant", "/input", ".unibus", "r"],
             ["--fd-grant", "/input", "app.dis", "r"],
             ["--fd-grant", "/input", "../held-input", "r"],
             ["--fd-grant", "/input", "held-input", "r", "--fd-grant", "/again", "held-input", "r"],

@@ -204,7 +204,7 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
     config->code = argv[4];
     config->dependency = argv[5];
     config->request = "launch";
-    config->paths = (StyxTerminalPaths){"records", "records", NULL};
+    config->paths = (StyxTerminalPaths){STYX_UNIBUS_NODE, STYX_UNIBUS_NODE, NULL};
     config->tag = 17;
     config->lane = 71;
     config->timeout = 5000;

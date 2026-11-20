@@ -188,7 +188,7 @@ init()
     seven := sys->open("/seven", Sys->ORDWR);
     nine := sys->open("/nine", Sys->OREAD);
     zero := sys->open("/zero", Sys->ORDWR);
-    if (sys->open("/records", Sys->OREAD) != nil || sys->open("/launch", Sys->OREAD) != nil ||
+    if (sys->open("/.unibus", Sys->OREAD) != nil || sys->open("/records", Sys->OREAD) != nil || sys->open("/launch", Sys->OREAD) != nil ||
         sys->open("/job-records", Sys->OREAD) != nil || sys->open("/job-request", Sys->OREAD) != nil) {
         raise "raw transport leaked into application namespace";
     }

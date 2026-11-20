@@ -129,7 +129,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_TerminalChannels ingress = {0};
     ingress.provider = assets;
     strcpy(ingress.receive, "launch");
-    strcpy(ingress.send, "records");
+    strcpy(ingress.send, STYX_UNIBUS_NODE);
     const StyxRouteType launch_type = {"disvm.launch", 1}; /* Dedicated fixture schema. */
     StyxBidirRoute *route = styxbidirbindingroutes(connection, &ingress, 128, 2,
         NULL, 0, &launch_type, 1);
@@ -140,7 +140,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     spec.terminal_origin = options.terminal_origin;
     strcpy(spec.expected_provider, options.provider_origin.system);
     strcpy(spec.module, "provider/unibus-files.dis");
-    StyxTerminalPaths paths = {"records", "records", NULL}; /* Existing granted original-Styx endpoints. */
+    StyxTerminalPaths paths = {STYX_UNIBUS_NODE, STYX_UNIBUS_NODE, NULL}; /* Existing granted original-Styx endpoints. */
     DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
     launch_check(service != NULL, "provider launch service");
     DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);

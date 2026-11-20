@@ -29,6 +29,9 @@
 DVM_LaunchTicket *styxlaunchrequest(StyxClient *terminal, const DVM_LaunchSpec *spec,
     unsigned access, DVM_LaunchRequest **request);
 
+#define STYX_UNIBUS_NODE ".unibus" /* Conventional Styx file for S-record traffic. */
+
+
 /* EN/RU: Borrow explicit FlashVM endpoint names/offer source through constructor return.
  * Names identify the already granted live terminal VFS; no protocol/type inference.
  * Borrow explicit FlashVM names/offers до return; только granted terminal VFS. */
