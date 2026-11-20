@@ -15,6 +15,12 @@ init()
     if ((load Compute "/ordinary.dis") != nil) {
         raise "ordinary provider supplied executable adapter";
     }
+    original := sys->open(Compute->PATH, Sys->OREAD);
+    bytes := array[14] of byte;
+    if (original == nil || sys->read(original, bytes, len bytes) != len bytes ||
+        string bytes != "original-image" || sys->open(Compute->PATH, Sys->OWRITE) != nil) {
+        raise "publication did not preserve read-only original";
+    }
     service := load Compute Compute->PATH;
     if (service == nil) {
         raise "could not load Compute";

@@ -13,4 +13,7 @@
  * Вызывающий владеет возвращённым провайдером. */
 DVM_Provider *dvm_module_adapter(const void *bytes, size_t size);
 
+/* EN/RU: Pair an exact read-only original node with a trusted local adapter.
+ * Связать исходный узел только для чтения с доверенным локальным адаптером. */
+DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter);
 #endif

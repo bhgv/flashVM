@@ -34,8 +34,13 @@ static int publish_adapter(DVM_Namespace *group)
     DVM_Provider *ordinary = dvm_resource_plan(group, "/staging.dis", 0, &plain) ?
         dvm_export_native(&plain, 0) : NULL;
     dvm_resource_close(&plain);
+    static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
+    DVM_Provider *original = dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
+    DVM_Provider *publication = dvm_module_publish(original, adapter);
     int mounted = ordinary && dvm_stack_mount(group, ordinary, "/ordinary.dis", 0, 0) == 1 &&
-        adapter && dvm_stack_mount(group, adapter, "/published.dis", 0, 0) == 1;
+        publication && dvm_stack_mount(group, publication, "/published.dis", 0, 0) == 1;
+    dvm_provider_release(publication);
+    dvm_provider_release(original);
     dvm_provider_release(ordinary);
     dvm_provider_release(adapter);
     if (!mounted)

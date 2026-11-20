@@ -144,9 +144,121 @@ DVM_Provider *dvm_module_adapter(const void *bytes, size_t size)
 }
 
 
-/* EN/RU: See module_adapter.h; identity cannot be supplied as a wire flag.
- * См. module_adapter.h; wire-флаг не устанавливает эту идентичность. */
-int dvm_module_adapter_node(DVM_Provider *provider, const char *relative)
+typedef struct ModulePublication
 {
-    return provider && provider->ops == &factory && relative && !strcmp(relative, ".");
+    DVM_Provider *original; /* Owned fixed-root original file. */
+    DVM_Provider *adapter; /* Owned exact local executable adapter. */
+} ModulePublication;
+
+
+/* EN/RU: Return the original file's current metadata.
+ * Вернуть текущие метаданные исходного файла. */
+static FVM_Result publication_info(void *state, const char *path, FVM_FileInfo *out)
+{
+    ModulePublication *publication = state;
+    return strcmp(path, ".") ? FVM_NOT_FOUND : dvm_provider_info(publication->original, ".", out);
+}
+
+
+/* EN/RU: Open the original for data reads only.
+ * Открыть исходный файл только для чтения данных. */
+static FVM_Result publication_open(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
+{
+    ModulePublication *publication = state;
+    if (strcmp(path, "."))
+    {
+        return FVM_NOT_FOUND;
+    }
+    return strcmp(mode, "r") ? FVM_ERROR : dvm_provider_open(publication->original, ".", mode, out);
+}
+
+
+/* EN/RU: Keep ordinary executable launch discovery on the original node.
+ * Сохранить обычный поиск маршрута запуска на исходном узле. */
+static struct DVM_LaunchAddress *publication_launch(void *state, const char *path)
+{
+    ModulePublication *publication = state;
+    return strcmp(path, ".") ? NULL : dvm_provider_launch(publication->original, ".");
+}
+
+
+/* EN/RU: Release the retained original file and local adapter.
+ * Освободить удерживаемые исходный файл и локальный адаптер. */
+static void publication_destroy(void *state)
+{
+    ModulePublication *publication = state;
+    dvm_provider_release(publication->original);
+    dvm_provider_release(publication->adapter);
+    free(publication);
+}
+
+/* EN/RU: Preserve the original's read/execute policy and deny write access.
+ * Сохранить права чтения и исполнения исходного узла и запретить запись. */
+static FVM_Result publication_access(void *state, const char *path, unsigned access)
+{
+    ModulePublication *publication = state;
+    if (strcmp(path, "."))
+    {
+        return FVM_NOT_FOUND;
+    }
+    return (access & FVM_ACCESS_WRITE) ? FVM_ERROR :
+        dvm_provider_access(publication->original, ".", access);
+}
+
+static const DVM_ProviderOps publication_ops = { /* Exact node with separate code and data views. */
+    .info = publication_info, .open = publication_open, .destroy = publication_destroy,
+    .access = publication_access
+};
+
+
+/* EN/RU: Capture the original before publication and retain the exact local adapter.
+ * Захватить исходный файл до публикации и удержать точный локальный адаптер. */
+DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
+{
+    if (!adapter || adapter->ops != &factory ||
+        !(dvm_provider_native_flags(original) & DVM_PROVIDER_CANCEL_PATH))
+    {
+        return NULL;
+    }
+    ModulePublication *publication = calloc(1, sizeof(*publication));
+    if (!publication)
+    {
+        return NULL;
+    }
+    publication->original = dvm_provider_capture(original, ".");
+    FVM_FileInfo info;
+    if (!publication->original ||
+        !(dvm_provider_native_flags(publication->original) & DVM_PROVIDER_CANCEL_PATH) ||
+        dvm_provider_info(publication->original, ".", &info) != FVM_OK || info.directory ||
+        !dvm_provider_retain(adapter))
+    {
+        publication_destroy(publication);
+        return NULL;
+    }
+    publication->adapter = adapter;
+    unsigned flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE |
+        (dvm_provider_native_flags(publication->original) & DVM_PROVIDER_CANCEL_LAUNCH);
+    DVM_Provider *provider = dvm_provider_create_routed(&publication_ops, publication, NULL, 1,
+        flags, publication_launch);
+    if (!provider)
+    {
+        publication_destroy(publication);
+    }
+    return provider;
+}
+
+
+/* EN/RU: Borrow the executable source from the selected exact native provider.
+ * Заимствовать исполняемый источник выбранного точного нативного провайдера. */
+DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative)
+{
+    if (!provider || !relative || strcmp(relative, "."))
+    {
+        return NULL;
+    }
+    if (provider->ops == &publication_ops)
+    {
+        return ((ModulePublication *)provider->state)->adapter;
+    }
+    return provider->ops == &factory ? provider : NULL;
 }

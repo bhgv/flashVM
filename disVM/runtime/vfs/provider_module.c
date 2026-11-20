@@ -65,11 +65,11 @@ static void closeimage(ProviderModule *image)
  * Заимствовать selected plan/image на native source; один open, stat его handle и чтение точного bounded extent.
  * Без нового path lookup и другого provider; reads используют текущий native cancellation scope.
  */
-static int readimage(DVM_ResourcePlan *plan, ProviderModule *image)
+static int readimage(DVM_Provider *provider, const char *relative, ProviderModule *image)
 {
     FVM_FileInfo metadata; /* Opened object's actual metadata, not earlier path metadata. */
     if (dvm_cancel_requested(dvm_cancel_current()) ||
-        dvm_provider_open(plan->provider, plan->relative, "r", &image->handle) != FVM_OK ||
+        dvm_provider_open(provider, relative, "r", &image->handle) != FVM_OK ||
         (image->handle.native_flags & (DVM_VFS_CANCEL_INFO | DVM_VFS_CANCEL_DATA)) !=
             (DVM_VFS_CANCEL_INFO | DVM_VFS_CANCEL_DATA) ||
         dvm_vfs_info(&image->handle, &metadata) != FVM_OK || metadata.directory ||
@@ -120,8 +120,9 @@ static int readimage(DVM_ResourcePlan *plan, ProviderModule *image)
 Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
 {
     Prog *process = currun(); /* ACTIVE current owner only, never a remote/foreign process query. */
+    DVM_Provider *adapter = plan ? dvm_module_adapter_source(plan->provider, plan->relative) : NULL;
     if (!process || (!((DVM_RuntimeProcess *)process)->provider_execution &&
-        (!plan || !dvm_module_adapter_node(plan->provider, plan->relative))))
+        !adapter))
     {
         kwerrstr("provider module execution requires an accepted execution-provider launch");
         return NULL;
@@ -157,7 +158,10 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     int cancelled = 0; /* Exact native operation outcome before managed reentry. */
     if (released >= 0)
     {
-        valid = readimage(plan, image);
+        FVM_FileInfo original;
+        int available = !adapter || adapter == plan->provider ||
+            (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory);
+        valid = available && readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image);
         closeimage(image);
         cancelled = dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
@@ -165,7 +169,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     Module *answer = NULL; /* Ordinary parser returns an owned module or NULL. */
     if (released >= 0 && valid && !cancelled)
     {
-        if (dvm_module_adapter_node(plan->provider, plan->relative))
+        if (adapter)
         {
             image->metadata.qid.type = DVM_MODULE_ADAPTER_QID;
             image->metadata.qid.path = plan->names.version;

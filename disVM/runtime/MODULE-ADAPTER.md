@@ -14,8 +14,8 @@ provider reference after mounting. Each read open gets an independent
 cursor. The file permits read and execute access and denies write access.
 
 Normal Dis `load` resolves the namespace once and passes the selected adapter
-through the native-cell parser and ordinary typed linker. Only the concrete
-provider returned by this constructor has local adapter admission. The
+through the native-cell parser and ordinary typed linker. The exact
+provider carries local adapter admission. The
 constructor trusts the host's input provenance. Remote metadata, wrapper
 providers and filenames cannot confer admission. Ordinary remote code retains
 the execution-provider launch requirement.
@@ -33,3 +33,5 @@ a closed session or freeze file contents.
 
 A namespace change during adapter loading can make the load fail. Retry the load
 against the new bindings if desired.
+
+To keep the original file visible to reads, use [dvm_module_publish](MODULE-PUBLISH.md).

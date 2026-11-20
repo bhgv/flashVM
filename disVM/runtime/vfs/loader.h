@@ -63,7 +63,7 @@ struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan);
 
 /* EN/RU: Check the exact local adapter provider and relative dot without I/O.
  * Проверить точный локальный провайдер адаптера и относительную точку без I/O. */
-int dvm_module_adapter_node(struct DVM_Provider *provider, const char *relative);
+struct DVM_Provider *dvm_module_adapter_source(struct DVM_Provider *provider, const char *relative);
 /* EN/RU: Consume the loaded module through ordinary linking and bind adapter instances.
  * Передать модуль обычному линкеру и закрепить окружение экземпляров адаптера. */
 struct Modlink *dvm_namespace_link_loaded(struct Module *module, struct Import *imports);
