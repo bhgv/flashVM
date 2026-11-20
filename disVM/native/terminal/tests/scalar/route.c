@@ -10,6 +10,7 @@
 #include "server.h"
 #include "scalar_route.h"
 #include "scalar_interface.h"
+#include "scalar_gateway.h"
 #include "unibus_server.h"
 #include "mount.h"
 #include "mux/bidir.h"
@@ -140,16 +141,26 @@ static void exchange(DVM_Provider *request, DVM_Provider *inbox, int64_t argumen
     StyxScalarKind expected_kind, int64_t expected)
 {
     check(styxscalarcallfile(request, 18, argument) != DVM_LAUNCH_DELIVERED, "wrong request tag");
-    check(styxscalarcallfile(request, REQUEST_TAG, argument) == DVM_LAUNCH_DELIVERED, "admitted scalar call");
-    DVM_VfsHandle received = {0};
-    check(dvm_provider_open(inbox, ".", "r", &received) == FVM_OK, "open reply inbox");
-    unsigned char frame[STYX_SCALAR_RECORD_CAPACITY];
-    DVM_IoResult result = dvm_vfs_read_chunk(&received, frame, sizeof(frame));
-    StyxScalarKind kind;
-    int64_t value;
-    check(result.status == FVM_OK && styxscalarread(REPLY_TAG, frame, result.count, &kind, &value) &&
-        kind == expected_kind && value == expected, "decode reverse scalar reply");
-    dvm_vfs_close(&received);
+    const uint32_t signature = UINT32_C(0xf1234567); /* Fixture compiled signature bits. */
+    DVM_Provider *profile = styxunibusinbox(61);
+    check(profile && styxscalaroffer(profile, 61, "compute", signature) == DVM_LAUNCH_DELIVERED,
+        "publish exact interface file");
+    check(styxscalargateway(profile, 61, "compute", signature ^ 1U, request, REQUEST_TAG,
+        inbox, REPLY_TAG) == NULL, "interface mismatch refuses gateway");
+    StyxScalarGateway *gateway = styxscalargateway(profile, 61, "compute", signature, request,
+        REQUEST_TAG, inbox, REPLY_TAG);
+    dvm_provider_release(profile);
+    check(gateway != NULL, "interface admits gateway");
+    int64_t value = 99;
+    check(styxscalargatewayreceive(gateway, &value) == STYX_GATEWAY_UNKNOWN && value == 99,
+        "no reply before submission");
+    check(styxscalargatewaysend(gateway, argument) == DVM_LAUNCH_DELIVERED, "admitted scalar call");
+    check(styxscalargatewaysend(gateway, argument) == DVM_LAUNCH_NOT_SENT, "gateway never resends");
+    StyxScalarOutcome outcome = expected_kind == STYX_SCALAR_VALUE ? STYX_GATEWAY_VALUE : STYX_GATEWAY_ERROR;
+    check(styxscalargatewayreceive(gateway, &value) == outcome && value == expected, "decode reverse scalar reply");
+    check(styxscalargatewayreceive(gateway, &value) == STYX_GATEWAY_UNKNOWN && value == expected,
+        "reply consumed exactly once");
+    styxscalargatewayfree(gateway);
 }
 
 
