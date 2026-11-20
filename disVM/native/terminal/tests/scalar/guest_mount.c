@@ -34,9 +34,23 @@ DVM_Provider *scalar_local_image(const char *path)
 }
 
 
+/* EN/RU: Construct an owned profile with one published scalar offer.
+ * Создать собственный профиль с одним предложением скалярного интерфейса. */
+DVM_Provider *scalar_local_profile(void)
+{
+    DVM_Provider *profile = styxunibusinbox(61);
+    if (!profile || styxscalaroffer(profile, 61, "compute", SCALAR_FIXTURE_SIGNATURE) != DVM_LAUNCH_DELIVERED)
+    {
+        dvm_provider_release(profile);
+        return NULL;
+    }
+    return profile;
+}
+
+
 /* EN/RU: Mount the supplied original with its local adapter and bind the ordinary name.
  * Смонтировать исходный файл с локальным адаптером и привязать обычное имя. */
-static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
+static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Provider *profile)
 {
     DVM_Provider *adapter = scalar_local_image("adapter.dis");
     DVM_ResourcePlan plain = {0};
@@ -45,13 +59,10 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
     dvm_resource_close(&plain);
     static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
     DVM_Provider *fallback = original ? NULL : dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
-    DVM_Provider *profile = styxunibusinbox(61);
-    DVM_Provider *publication = NULL;
-    if (profile && styxscalaroffer(profile, 61, "compute", SCALAR_FIXTURE_SIGNATURE) == DVM_LAUNCH_DELIVERED)
-    {
-        publication = dvm_module_publish_profile(original ? original : fallback, adapter, profile, 61);
-    }
-    dvm_provider_release(profile);
+    DVM_Provider *local_profile = profile ? NULL : scalar_local_profile();
+    DVM_Provider *publication = profile || local_profile ?
+        dvm_module_publish_profile(original ? original : fallback, adapter, profile ? profile : local_profile, 61) : NULL;
+    dvm_provider_release(local_profile);
     DVM_View *tree = dvm_view_create(NULL, NULL, NULL);
     DVM_Provider *modules = NULL;
     if (tree && publication && dvm_view_map(tree, "/published.dis", publication, ".",
@@ -88,7 +99,7 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
 
 /* EN/RU: Mount the borrowed routes in a private test namespace with local code.
  * Смонтировать заимствованные маршруты в отдельном VFS с локальным кодом. */
-int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider *reader, DVM_Provider *original, int owner)
+int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider *reader, DVM_Provider *original, DVM_Provider *profile, int owner)
 {
     char cwd[DVM_NS_PATH_LIMIT];
     if (!getcwd(cwd, sizeof(cwd)))
@@ -111,7 +122,7 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
         exit(2);
     }
     dvm_provider_release(routes);
-    if (!owner && !publish_adapter(handoff.group, original))
+    if (!owner && !publish_adapter(handoff.group, original, profile))
     {
         fprintf(stderr, "scalar test could not bind trusted adapter\n");
         exit(2);

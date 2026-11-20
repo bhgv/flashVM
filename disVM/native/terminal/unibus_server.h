@@ -22,6 +22,12 @@ StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag);
 StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original);
 
 
+/* EN/RU: Also export the optional borrowed profile as read-only .interface.
+ * Также опубликовать заимствованный профиль как .interface на чтение. */
+StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile);
+
+
 /* EN/RU: Borrow the local reader provider until server join.
  * Заимствовать локальный провайдер чтения до завершения сервера. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);

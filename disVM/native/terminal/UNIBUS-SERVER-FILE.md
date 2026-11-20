@@ -20,3 +20,10 @@ returns an owned server or NULL if publication fails. The original provider
 must remain valid through construction. The server then owns a separate
 reference. After the carrier shuts down, join with `styxunibusserverjoin`.
 The single inbox accepts one complete record with the given tag.
+
+`styxunibusserverstartmodule(channel, tag, original, profile)` also optionally
+retains and exports a read-only `.interface` file. The profile is a borrowed
+exact file provider. Passing NULL omits that file. Channel ownership, startup
+failure and shutdown follow `styxunibusserverstartfile`. The server reads only
+the supplied profile provider. The host associates it with the original module
+and the configured request inbox.

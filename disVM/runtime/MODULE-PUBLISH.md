@@ -33,6 +33,7 @@ before reading the adapter image. This profile supports exactly one named import
 Unavailable, invalid or mismatched profiles fail the load. The previous
 constructor still publishes without a profile.
 
-The paired DisVM test seeds the profile from the signature the compiler emits
-for the sample's `.m`. An incompatible `big` import is refused before the call.
+In the paired DisVM test, the owner exports `.interface` alongside the original
+`.dis` on the same Styx session. The profile contains the signature emitted by
+the compiler for the sample's `.m`. The caller reads that S-record during `load`. An incompatible `big` import is refused before the call.
 The owner and client still use the sample's generated scalar dispatch path.

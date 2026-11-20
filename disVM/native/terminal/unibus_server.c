@@ -17,6 +17,7 @@ struct StyxUnibusServer
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *inbox; /* Owner reference for local readers. */
+    StyxBacking *profile; /* Optional compiled interface record. */
     StyxBacking *original; /* Optional read-only Dis image. */
     StyxBacking *file;   /* Retained backing for write fids. */
 };
@@ -33,7 +34,9 @@ static char *open_node(Qid *qid, int mode)
         return mode == OREAD ? nil : Eperm;
     }
     StyxBacking *node = qid->path == 1 && mode == OWRITE ? current->file :
-        qid->path == 2 && mode == OREAD ? current->original : NULL;
+        mode != OREAD ? NULL :
+        qid->path == 2 ? current->original :
+        qid->path == 3 ? current->profile : NULL;
     if (!node)
     {
         return Eperm;
@@ -63,10 +66,10 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
 
 /* EN/RU: Return a confirmed prefix from the original Dis image.
  * Вернуть подтверждённый префикс исходного образа Dis. */
-static char *read_original(Qid qid, char *bytes, ulong *count, vlong offset)
+static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
     StyxTransfer result;
-    if (qid.path != 2 || offset < 0)
+    if ((qid.path != 2 && qid.path != 3) || offset < 0)
     {
         return Ebadarg;
     }
@@ -80,7 +83,7 @@ static char *read_original(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 
-static Styxops operations = {.open = open_node, .read = read_original, .write = write_record, .freefid = styxfileclose}; /* Immutable callbacks. */
+static Styxops operations = {.open = open_node, .read = read_node, .write = write_record, .freefid = styxfileclose}; /* Immutable callbacks. */
 
 
 /* EN/RU: Dispatch all requests on the server's own thread, then retire all fids.
@@ -98,9 +101,33 @@ static void *serve(void *arg)
 }
 
 
+/* EN/RU: Add one optional readable file with its advertised native length.
+ * Добавить необязательный читаемый файл с его нативной длиной. */
+static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, const char *name)
+{
+    if (!backing)
+    {
+        return 1;
+    }
+    StyxMeta details;
+    if (!styxbackinginfo(backing, &details) || details.directory)
+    {
+        return 0;
+    }
+    Styxfile *node = styxaddfile(server, Qroot, qid, (char *)name, 0444, "unibus");
+    if (!node)
+    {
+        return 0;
+    }
+    node->d.length = details.length;
+    return 1;
+}
+
+
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
-StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original)
+StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -111,21 +138,15 @@ StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long ta
     server->inbox = styxunibusinbox(tag);
     server->file = styxbacking(server->inbox);
     server->original = original ? styxbacking(original) : NULL;
-    StyxMeta details;
-    if (!server->file || (original && (!server->original ||
-        !styxbackinginfo(server->original, &details) || details.directory)))
+    server->profile = profile ? styxbacking(profile) : NULL;
+    if (!server->file || (original && !server->original) || (profile && !server->profile))
     {
         phyfree(channel);
     }
     else if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
     {
-        Styxfile *published = original ? styxaddfile(&server->server, Qroot, 2,
-            "implementation.dis", 0444, "unibus") : NULL;
-        if (published)
-        {
-            published->d.length = details.length;
-        }
-        if ((!original || published) &&
+        if (export_file(&server->server, server->original, 2, "implementation.dis") &&
+            export_file(&server->server, server->profile, 3, ".interface") &&
             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus") &&
             !pthread_create(&server->thread, NULL, serve, server))
         {
@@ -133,11 +154,20 @@ StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long ta
         }
         styxend(&server->server);
     }
+    styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
     free(server);
     return NULL;
+}
+
+
+/* EN/RU: Export only the original file and inbox.
+ * Опубликовать исходный файл и приёмник. */
+StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original)
+{
+    return styxunibusserverstartmodule(channel, tag, original, NULL);
 }
 
 
@@ -169,6 +199,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     {
         return 0;
     }
+    styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
