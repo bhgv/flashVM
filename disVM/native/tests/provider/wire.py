@@ -13,15 +13,51 @@ from loopback import rpc, connection, openfile, read, stat, exact
 
 # EN/RU: A denied write must be a tagged Rerror, never fabricated EOF/progress.
 # Отказ записи должен быть Rerror с tag, а не ложный EOF или прогресс.
-def denied(sock, fid, payload_bytes=b'Q', offset=3):
-    payload = struct.pack('<IQI', fid, offset, len(payload_bytes)) + payload_bytes
-    sock.sendall(struct.pack('<IBH', 7+len(payload), 118, 17)+payload)
+def refused(sock, kind, payload):
+    sock.sendall(struct.pack('<IBH', 7+len(payload), kind, 17)+payload)
     size = struct.unpack('<I', exact(sock, 4))[0]
     if size < 7 or size > 1024:
         raise RuntimeError('invalid denied response size')
     response = exact(sock, size-4)
     if struct.unpack_from('<BH', response) != (107, 17):
-        raise RuntimeError('write refusal was not Rerror')
+        raise RuntimeError(f'refusal for {kind} was not Rerror')
+
+
+# EN/RU: Send a write which the current fid must reject.
+# Отправить запись, которую текущий fid должен отклонить.
+def denied(sock, fid, payload_bytes=b'Q', offset=3):
+    refused(sock, 118, struct.pack('<IQI', fid, offset, len(payload_bytes)) + payload_bytes)
+
+
+# EN/RU: Read the rest of one transferred cursor and reject other claims.
+# Прочитать остаток переданного файла и отклонить другие попытки открытия.
+def held(sock):
+    openfile(sock, 5, 'ctl', 1)
+    walk = struct.pack('<IIH', 1, 3, 1) + b'\x04\x00file'
+    rpc(sock, 110, walk)
+    refused(sock, 112, struct.pack('<IB', 3, 2))
+    rpc(sock, 112, struct.pack('<IB', 3, 0))
+    rpc(sock, 110, struct.pack('<IIH', 1, 4, 1) + b'\x04\x00file')
+    refused(sock, 112, struct.pack('<IB', 4, 0))
+    denied(sock, 3)
+    reply = rpc(sock, 116, struct.pack('<IQI', 3, 0, 2))
+    if reply != b'\x02\x00\x00\x00de':
+        raise RuntimeError('initial read restarted the source cursor')
+    refused(sock, 116, struct.pack('<IQI', 3, 0, 2))
+    rpc(sock, 120, struct.pack('<I', 3))
+    refused(sock, 112, struct.pack('<IB', 4, 0))
+    rpc(sock, 118, struct.pack('<IQI', 5, 0, 9)+b'unpublish')
+
+
+# EN/RU: Verify the accepted open survives publication removal mid-stream.
+# Проверить, что снятие публикации не закрывает открытый файл.
+def held_retained(sock):
+    openfile(sock, 5, 'ctl', 1)
+    openfile(sock, 3, 'file', 0)
+    rpc(sock, 118, struct.pack('<IQI', 5, 0, 9)+b'unpublish')
+    if read(sock, 3) != b'defgh' or read(sock, 3, 5) != b'':
+        raise RuntimeError('retained open lost cursor or EOF after unpublish')
+    rpc(sock, 120, struct.pack('<I', 3))
 
 
 # EN/RU: Observe partial effects, live mode changes and retained handles after unpublish.
@@ -40,9 +76,13 @@ def main():
             raise RuntimeError('native startup: '+child.stderr.read())
         sock = connection(int(line), 'fixture', 1024)
         fields, mode, _ = stat(read(sock, 2))
-        if fields[0] != 'file' or mode != (0o444 if scenario == 'readonly' else 0o666):
+        if fields[0] != 'file' or mode != (0o444 if scenario in ('readonly', 'held', 'held-retained') else 0o666):
             raise RuntimeError('prepared VFS metadata')
-        if scenario == 'readonly':
+        if scenario == 'held':
+            held(sock)
+        elif scenario == 'held-retained':
+            held_retained(sock)
+        elif scenario == 'readonly':
             payload = struct.pack('<IIH', 1, 3, 1) + b'\x04\x00file'
             rpc(sock, 110, payload)
             sock.sendall(struct.pack('<IBHIB', 12, 112, 17, 3, 2))
@@ -84,7 +124,10 @@ def main():
             rpc(sock, 120, struct.pack('<I', 4))
         rpc(sock, 118, struct.pack('<IQI', 5, 0, 4)+b'stop')
         output, errors = child.communicate(timeout=5)
-        expected = f'{1 if scenario == 'readonly' else 2} opens closed, one factory destroyed, {0 if scenario == 'readonly' else 1 if scenario == 'uncertain' else 2} writes attempted'
+        expected = (f'{1 if scenario == "readonly" else 2} opens closed, one factory destroyed, '
+                    f'{0 if scenario == "readonly" else 1 if scenario == "uncertain" else 2} writes attempted')
+        if scenario in ('held', 'held-retained'):
+            expected = 'held open closed once'
         if child.returncode or expected not in output:
             raise RuntimeError(f'ownership/effects {child.returncode}: {output} {errors}')
         print('PASS native VFS grant over original Styx TCP: '+scenario)

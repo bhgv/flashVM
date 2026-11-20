@@ -2,6 +2,8 @@
 
 [Русский](OPEN-FID-LIFETIME.ru.md) · [Mount retirement](MOUNT-RETIREMENT.md) · [Client I/O](mount_io.c)
 
+[Publication of an already-open file](HELD-EXPORT.md)
+
 A pathname selects an object when it is opened. The resulting native
 `DVM_VfsHandle` retains a remote opened fid and its client/provider lifetime.
 Unbinding the pathname, destroying the calling namespace or releasing the factory

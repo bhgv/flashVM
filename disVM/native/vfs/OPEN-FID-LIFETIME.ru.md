@@ -2,6 +2,8 @@
 
 [English](OPEN-FID-LIFETIME.md) · [Завершение mount](MOUNT-RETIREMENT.md) · [Код I/O](mount_io.c)
 
+[Публикация уже открытого файла](HELD-EXPORT.ru.md)
+
 Путь выбирает объект при открытии. Полученный `DVM_VfsHandle` удерживает открытый
 удалённый fid и время жизни клиента/provider. Unbind имени, удаление namespace
 вызывающего или освобождение ссылки на фабрику не переоткрывают путь и не

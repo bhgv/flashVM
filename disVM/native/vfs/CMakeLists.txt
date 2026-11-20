@@ -6,7 +6,7 @@ set(ports "${INFERNO_VFS_SUPPORT}/flashVM/ports")
 if(NOT EXISTS "${vfs}/cancel.c" OR NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${vfs}/provider_capture.c" OR NOT EXISTS "${vfs}/provider_walk.c" OR NOT EXISTS "${vfs}/provider_launch.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
-add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_launch.c mount_capture.c mount_root.c mount_cancel.c mount_io.c mount_notice.c
+add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_launch.c mount_capture.c mount_root.c held_export.c mount_cancel.c mount_io.c mount_notice.c
     feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
     subscriptions/lifetime.c subscriptions/open.c
@@ -24,7 +24,7 @@ add_test(NAME vfs-file-wire COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOUR
     "$<TARGET_FILE:vfs-file-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-file-wire PROPERTIES TIMEOUT 20)
 
-foreach(scenario uncertain readonly)
+foreach(scenario uncertain readonly held held-retained)
     add_test(NAME vfs-file-wire-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/provider/wire.py"
         "$<TARGET_FILE:vfs-file-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-file-wire-${scenario} PROPERTIES TIMEOUT 20)

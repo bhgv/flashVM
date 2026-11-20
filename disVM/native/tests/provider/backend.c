@@ -4,6 +4,7 @@
  */
 #include "file_provider.h"
 #include "export.h"
+#include "held_export.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,6 +135,30 @@ static int authorize(void *state, const DVM_ExportRequest *request)
 	return request->flags == 0 && !strcmp(request->name, "fixture-file");
 }
 
+
+/* EN/RU: Move one pre-positioned open into the TCP fixture and check exact retirement.
+ * Передать TCP-тесту открытый файл с установленной позицией и проверить закрытие. */
+static int held_fixture(DVM_Provider *provider)
+{
+    DVM_VfsHandle source = {0};
+    char prefix[3];
+    check(dvm_provider_open(provider, ".", "rw", &source) == FVM_OK, "source open");
+    DVM_IoResult read = dvm_vfs_read_chunk(&source, prefix, sizeof(prefix));
+    check(read.status == FVM_OK && read.count == sizeof(prefix) &&
+          !memcmp(prefix, "abc", sizeof(prefix)), "source cursor");
+    check(styxheldexport(&source, FVM_ACCESS_EXEC) == NULL && source.ops, "rejected grant consumed source");
+    DVM_Provider *grant = styxheldexport(&source, FVM_ACCESS_READ);
+    check(grant && !source.ops && !source.state, "move held file");
+    StyxBacking *backing = styxbacking(grant);
+    check(backing != NULL, "held file backing");
+    dvm_provider_release(grant);
+    dvm_provider_release(provider);
+    int status = wirefixture(backing);
+    check(status == 0 && opened == 1 && closed == 1 && destroyed == 1 && writes == 0, "held ownership/effects");
+    puts("held open closed once");
+    return 0;
+}
+
 /* EN/RU: Consume a real publication ticket and expose only its bounded file grant.
  * Получить настоящий ticket publication и выдать только ограниченный file grant. */
 int main(int argc, char **argv)
@@ -155,6 +180,10 @@ int main(int argc, char **argv)
 	store->uncertain = uncertain;
 	provider = dvm_provider_create(&factory, store);
 	check(provider != NULL, "provider");
+    if (argc > 1 && (!strcmp(argv[1], "held") || !strcmp(argv[1], "held-retained")))
+    {
+        return held_fixture(provider);
+    }
 	memset(&options, 0, sizeof(options));
 	options.limit = 4;
 	options.direct = provider;
