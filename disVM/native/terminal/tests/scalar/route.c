@@ -9,6 +9,7 @@
 #include <styxserver.h>
 #include "server.h"
 #include "scalar_route.h"
+#include "scalar_interface.h"
 #include "unibus_server.h"
 #include "mount.h"
 #include "mux/bidir.h"
@@ -168,10 +169,34 @@ static void native_error(DVM_Provider *request, DVM_Provider *inbox)
 }
 
 
+/* EN/RU: Admit a compiled import through the actual reverse Styx file.
+ * Допустить компилированный импорт через встречный файл Styx. */
+static void native_interface(DVM_Provider *request, DVM_Provider *inbox)
+{
+    const uint32_t signature = UINT32_C(0xf1234567); /* Exact unsigned compiled signature bits. */
+    const char *name = "compute"; /* Fixture export name. */
+    check(styxscalaroffer(reply, REPLY_TAG, name, signature) == DVM_LAUNCH_DELIVERED, "deliver interface");
+    DVM_VfsHandle received = {0};
+    check(dvm_provider_open(inbox, ".", "r", &received) == FVM_OK, "open interface inbox");
+    unsigned char bytes[STYX_SCALAR_INTERFACE_CAPACITY];
+    DVM_IoResult result = dvm_vfs_read_chunk(&received, bytes, sizeof(bytes));
+    check(result.status == FVM_OK && styxscalaraccept(REPLY_TAG, bytes, result.count, name, signature),
+        "match compiled import");
+    check(!styxscalaraccept(REPLY_TAG, bytes, result.count, name, signature ^ 1U) &&
+        !styxscalaraccept(REPLY_TAG, bytes, result.count, "other", signature) &&
+        !styxscalaraccept(REPLY_TAG, bytes, result.count - 1, name, signature) &&
+        !styxscalaraccept(REPLY_TAG + 1, bytes, result.count, name, signature), "reject mismatches");
+    check(styxscalarcallchecked(request, REQUEST_TAG, REPLY_TAG, bytes, result.count,
+        name, signature ^ 1U, 123) == DVM_LAUNCH_NOT_SENT, "mismatch prevents submission");
+    dvm_vfs_close(&received);
+}
+
+
 /* EN/RU: Exercise both reply types and verify wrong requests did not invoke the method.
  * Проверить оба вида ответа и отсутствие вызовов для чужого тега. */
 int main(void)
 {
+    round_trip(native_interface);
     round_trip(native_value);
     round_trip(native_error);
     check(calls == 2, "exact owner method count");
