@@ -184,7 +184,8 @@ int fixtureownerresult(const FVM_SOrdinal *ordinal, void *bytes, size_t capacity
     {
         return 0;
     }
-    if (styxlaunchpublicationdeliver(&owner_process, 1, reverse_unibus, 17) != DVM_LAUNCH_DELIVERED)
+    if (styxlaunchpublicationdeliver(&owner_process, 1, reverse_unibus, 17) != DVM_LAUNCH_DELIVERED ||
+        styxlaunchpublicationdeliver(&owner_process, 0, reverse_unibus, 17) == DVM_LAUNCH_DELIVERED)
     {
         return -1;
     }

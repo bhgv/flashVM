@@ -7,23 +7,50 @@
 #include <styxserver.h>
 #include "server.h"
 #include "../../../launch/request.h"
-#include "flashvm/srecord.h"
+#include "unibus_inbox.h"
+#include "file_provider.h"
 #include <pthread.h>
 
 static Styxserver reverse_server; /* Caller-owned export on logical channel 1. */
 static pthread_t reverse_worker; /* Processes writes from the command owner. */
 static int reverse_active; /* Thread must be joined before freeing the mux. */
+static DVM_Provider *inbox; /* Owner reference retained through server shutdown. */
+static StyxBacking *backing; /* Write-only export enforced by the Styx open handler. */
 static int reverse_received; /* Updated only by server thread, read after join. */
 
-/* EN/RU: Accept exactly one completion S-record on the caller's own .unibus file.
- * Принять одну S-запись завершения на собственном .unibus вызывающего. */
+/* EN/RU: Grant reverse clients only a write fid on the inbox.
+ * Выдавать встречным клиентам только fid записи в приёмник. */
+static char *reverse_open(Qid *qid, int mode)
+{
+    if (qid->path == Qroot)
+    {
+        return mode == OREAD ? nil : Eperm;
+    }
+    if (qid->path != 1 || mode != OWRITE)
+    {
+        return Eperm;
+    }
+    StyxOpen *opened = styxfileopen(backing, mode);
+    if (!opened || styxsetaux(&reverse_server, opened) < 0)
+    {
+        styxfileclose(opened);
+        return Eperm;
+    }
+    return nil;
+}
+
+
+/* EN/RU: Publish the complete S-record in the same inbox that Limbo reads.
+ * Опубликовать полную S-запись в том же приёмнике, который читает Limbo. */
 static char *reverse_write(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    FVM_SRecord record;
-    size_t used;
-    if (qid.path != 1 || offset || reverse_received ||
-        fvm_srecord_read(bytes, *count, 32, &record, &used) != FVM_S_OK ||
-        used != *count || record.tag != 17 || record.size != 2 || memcmp(record.payload, "0\n", 2))
+    StyxTransfer result;
+    if (qid.path != 1 || offset < 0)
+    {
+        return Ebadarg;
+    }
+    styxfilewrite(styxgetaux(&reverse_server), offset, bytes, *count, &result);
+    if (!result.success || !result.confirmed || result.uncertain || result.count != *count)
     {
         return Ebadarg;
     }
@@ -31,7 +58,17 @@ static char *reverse_write(Qid qid, char *bytes, ulong *count, vlong offset)
     return nil;
 }
 
-static Styxops reverse_ops = {.write = reverse_write}; /* Caller-side one-shot export. */
+static Styxops reverse_ops = {
+    .open = reverse_open, .write = reverse_write, .freefid = styxfileclose
+}; /* Caller-side one-shot export. */
+
+
+/* EN/RU: Borrow the provider until the reverse server joins.
+ * Заимствовать провайдер до завершения встречного сервера. */
+DVM_Provider *fixturereverseinbox(void)
+{
+    return inbox;
+}
 
 
 /* EN/RU: Serve the caller-side logical Styx channel until the carrier closes.
@@ -55,10 +92,14 @@ int fixturereversestart(RemotePhy *channel)
     {
         return 0;
     }
-    if (!styxaddfile(&reverse_server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "fixture") ||
+    inbox = styxunibusinbox(17);
+    backing = styxbacking(inbox);
+    if (!backing || !styxaddfile(&reverse_server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "fixture") ||
         pthread_create(&reverse_worker, nil, serve_reverse, nil))
     {
         styxend(&reverse_server);
+        styxbackingfree(backing);
+        dvm_provider_release(inbox);
         return 0;
     }
     reverse_active = 1;
@@ -70,5 +111,18 @@ int fixturereversestart(RemotePhy *channel)
  * Дождаться сервера после закрытия транспорта и проверить полученный результат. */
 int fixturereversefinish(void)
 {
-    return !reverse_active || (!pthread_join(reverse_worker, nil) && reverse_received);
+    if (!reverse_active)
+    {
+        return 1;
+    }
+    if (pthread_join(reverse_worker, nil))
+    {
+        return 0;
+    }
+    reverse_active = 0;
+    styxbackingfree(backing);
+    dvm_provider_release(inbox);
+    backing = NULL;
+    inbox = NULL;
+    return reverse_received;
 }

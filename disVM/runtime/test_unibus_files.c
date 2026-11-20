@@ -27,6 +27,7 @@ static StyxOrderedFiles *files; /* Explicit lifecycle owner after namespace/FD d
  * Исходный fixture client, owned до явной native-очистки, без guest/имитации протокола.
  */
 extern StyxClient *linkfixture(void);
+extern DVM_Provider *fixturereverseinbox(void); /* Borrowed caller reply inbox. */
 extern int linkfixturefd(void); /* Owned fixture carrier for a separate CLI process. */
 
 
@@ -124,6 +125,9 @@ static DVM_LaunchHandoff *prepare_launch(void)
     map_routed(connection, code, "submit", "app.dis", "/payload.dis");
     launch_check(dvm_view_map(code, "/run-result", assets, "execute-result", FVM_ACCESS_READ, 0),
         "map owner execution result");
+    DVM_Provider *inbox = fixturereverseinbox();
+    launch_check(inbox && dvm_view_map(code, "/reverse-exit", inbox, ".", FVM_ACCESS_READ, 0),
+        "map read-only caller completion inbox");
     options.provider = dvm_view_freeze(code);
     submit_mounted(connection, &options);
     DVM_TerminalChannels ingress = {0};

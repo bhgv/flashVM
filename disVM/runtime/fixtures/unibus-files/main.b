@@ -152,6 +152,10 @@ init()
     }
     (routed, _) := sys->stat("/routed.dis");
     if (routed == 0) {
+        pending := sys->open("/reverse-exit", Sys->OREAD);
+        if (pending == nil || sys->read(pending, array[1] of byte, 1) != -1) {
+            raise "empty reverse completion should be pending";
+        }
         vfs := load Vfsnative Vfsnative->PATH;
         if (vfs == nil || vfs->run("/missing.dis") != 0) {
             raise "VFS command submission failed";
@@ -210,6 +214,17 @@ init()
             raise "missing Unibus command completion file";
         }
         take(outcome, 17, "0\n");
+        if (sys->open("/reverse-exit", Sys->OWRITE) != nil) {
+            raise "caller completion inbox permits guest writes";
+        }
+        reverse := sys->open("/reverse-exit", Sys->OREAD);
+        if (reverse == nil) {
+            raise "missing reverse Styx completion";
+        }
+        take(reverse, 17, "0\n");
+        if (sys->read(reverse, array[1] of byte, 1) != 0) {
+            raise "reverse completion did not reach EOF";
+        }
     }
     take(zero, 0, "local-in");
     take(seven, 7, "zero");

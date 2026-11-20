@@ -1,6 +1,6 @@
 # styxlaunchpublicationdeliver
 
-[Русский](LAUNCH-DELIVER.ru.md) · [API](launch_publication.h) · [TCP example](../../examples/vfs-run/TUTORIAL.md)
+[Русский](LAUNCH-DELIVER.ru.md) · [API](launch_publication.h) · [TCP example](../../examples/vfs-run/TUTORIAL.md) · [Receiving inbox](UNIBUS-INBOX.md)
 
 `DVM_LaunchDelivery styxlaunchpublicationdeliver(StyxLaunchPublication *publication, int wait, DVM_Provider *peer_unibus, unsigned long tag);`
 
