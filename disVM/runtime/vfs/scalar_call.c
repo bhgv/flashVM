@@ -177,7 +177,7 @@ static const char *scalar_value(DVM_Namespace *group, const char *request, const
     DVM_Provider *writer = files ? files->request : capture(group, request, FVM_ACCESS_WRITE);
     DVM_Provider *reader = files ? files->reply : capture(group, reply, FVM_ACCESS_READ);
     int duplex = files && files->duplex;
-    int outcome = duplex ? dvm_scalar_function_invoke(files, pid, argument, &value) : 0;
+    int outcome = duplex ? dvm_scalar_function_invoke(files, group, pid, argument, &value) : 0;
     const char *failure = duplex ? (outcome == 1 ? NULL : outcome == 2 ? owner_error : outcome < 0 ? "remote scalar call not sent" : "remote scalar call outcome unknown") :
         exchange(writer, reader, request_tag, reply_tag, argument, &value);
     if (!files)

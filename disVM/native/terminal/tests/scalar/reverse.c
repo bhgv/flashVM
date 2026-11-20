@@ -17,19 +17,32 @@ static Styxserver server; /* One reverse fixture owner. */
 static pthread_t worker; /* Join before returning from the fixture. */
 static StyxClient *client; /* Provider's reverse mount client. */
 static const Path prog = 1; /* Virtual .prog directory Qid. */
-extern size_t scalar_guest_read_caller(uint32_t, char *, size_t); /* Runtime reads the live VFS. */
+extern size_t scalar_guest_read_caller(uint32_t, const char *, char *, size_t); /* Runtime reads live VFS. */
 
-
-/* EN: Translate test Qids and verify that the runtime still publishes the PID.
- * RU: Перевести Qid стенда и проверить, что runtime ещё публикует PID. */
-static size_t identity(Path path, char output[12])
+static const struct Route
 {
-    return path >= 2 ? scalar_guest_read_caller((uint32_t)(path >> 1), output, 12) : 0;
+    const char *name; /* One relative component. */
+    unsigned parent; /* Parent selector, zero for the PID directory. */
+    const char *file; /* Leaf path relative to the runtime PID directory. */
+} routes[] = { /* Bounded fixture tree. */
+    {NULL, 0, NULL}, {".pid", 0, ".pid"}, {".fd", 0, NULL}, {"0", 2, ".fd/0"},
+    {".vfs", 0, NULL}, {"env", 4, NULL}, {"CLIENT", 5, ".vfs/env/CLIENT"},
+    {".var", 0, NULL}, {"counter", 7, ".var/counter"}
+};
+
+
+/* EN: Read one known leaf from the published VFS, using the PID in the Qid.
+ * RU: Прочитать лист опубликованной VFS по PID из Qid. */
+static size_t content(Path path, char output[12])
+{
+    unsigned node = path & 15;
+    return node < nelem(routes) && routes[node].file ?
+        scalar_guest_read_caller((uint32_t)(path >> 4), routes[node].file, output, 12) : 0;
 }
 
 
-/* EN: Walk one component in the fixture's virtual caller tree.
- * RU: Обойти один компонент виртуального дерева клиента. */
+/* EN: Walk one component, verifying the selected PID against the runtime.
+ * RU: Обойти компонент и сверить выбранный PID с runtime. */
 static char *walk(Qid *qid, char *name)
 {
     if (qid->path == Qroot && !strcmp(name, ".prog"))
@@ -43,36 +56,46 @@ static char *walk(Qid *qid, char *name)
         char *end;
         unsigned long long pid = strtoull(name, &end, 10);
         if (*name >= '1' && *name <= '9' && !*end && pid <= UINT32_MAX &&
-            identity((Path)pid << 1, bytes))
+            content(((Path)pid << 4) | 1, bytes))
         {
-            *qid = styxqid((Path)pid << 1, 1);
+            *qid = styxqid((Path)pid << 4, 1);
             return nil;
         }
     }
-    else if (qid->path >= 2 && !(qid->path & 1) && !strcmp(name, ".pid") && identity(qid->path, bytes))
+    else if (qid->path >= 16)
     {
-        *qid = styxqid(qid->path | 1, 0);
-        return nil;
+        for (unsigned i = 1; i < nelem(routes); i++)
+        {
+            if (routes[i].parent == (qid->path & 15) && !strcmp(routes[i].name, name))
+            {
+                Path path = (qid->path & ~(Path)15) | i;
+                if (!routes[i].file || content(path, bytes))
+                {
+                    *qid = styxqid(path, !routes[i].file);
+                    return nil;
+                }
+            }
+        }
     }
     return Enonexist;
 }
 
 
-/* EN: Open an active identity file read-only.
- * RU: Открыть активный файл идентификатора только для чтения. */
+/* EN: Open a file through the active context in read-only mode.
+ * RU: Открыть файл активного контекста только для чтения. */
 static char *open_identity(Qid *qid, int mode)
 {
     char bytes[12];
-    return mode == OREAD && qid->path >= 3 && (qid->path & 1) && identity(qid->path, bytes) ? nil : Eperm;
+    return mode == OREAD && content(qid->path, bytes) ? nil : Eperm;
 }
 
 
-/* EN: Read a slice from the runtime VFS identity file.
- * RU: Прочитать часть файла идентификатора из VFS runtime. */
+/* EN: Read a slice from the selected runtime file.
+ * RU: Прочитать часть выбранного файла runtime. */
 static char *read_identity(Qid qid, char *out, ulong *count, vlong offset)
 {
     char bytes[12];
-    size_t length = identity(qid.path, bytes);
+    size_t length = content(qid.path, bytes);
     if (!length || offset < 0)
     {
         return Enonexist;
@@ -119,15 +142,14 @@ int scalar_reverse_start(RemotePhy *caller, RemotePhy *provider)
 }
 
 
-/* EN: Walk and read the runtime-published identity through ordinary Styx.
- * RU: Пройти по пути и прочитать опубликованный runtime идентификатор через Styx. */
-int scalar_reverse_check(uint32_t pid)
+/* EN: Compare an exact virtual file to its expected fixture value over Styx.
+ * RU: Сверить виртуальный файл с ожидаемым значением через Styx. */
+static int check_file(uint32_t pid, const char *relative, const char *expected)
 {
-    char path[sizeof(".prog/4294967295/.pid")];
-    char expected[12];
+    char path[sizeof(".prog/4294967295/.vfs/env/CLIENT")];
     char bytes[12];
-    snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.pid", pid);
-    size_t length = (size_t)snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
+    snprintf(path, sizeof(path), ".prog/%" PRIu32 "/%s", pid, relative);
+    size_t length = strlen(expected);
     StyxFid *fid = styxclientwalk(client, path);
     if (!fid)
     {
@@ -140,6 +162,17 @@ int scalar_reverse_check(uint32_t pid)
     }
     styxclientclunk(fid);
     return transfer.success && transfer.count == length && !memcmp(expected, bytes, length);
+}
+
+
+/* EN: Verify the PID and three inherited directory grants in the same call.
+ * RU: Проверить PID и три унаследованных каталога в одном вызове. */
+int scalar_reverse_check(uint32_t pid)
+{
+    char expected[12];
+    snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
+    return check_file(pid, ".pid", expected) && check_file(pid, ".fd/0", "/.fd") &&
+        check_file(pid, ".vfs/env/CLIENT", "/.vfs") && check_file(pid, ".var/counter", "/.var");
 }
 
 

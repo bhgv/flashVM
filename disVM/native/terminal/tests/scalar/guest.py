@@ -92,6 +92,8 @@ def main():
         (work / "alias.dis").mkdir()
         (work / "peer").mkdir()
         (work / "blocked").mkdir()
+        for name in (".fd", ".vfs", ".var"):
+            (work / name).mkdir()
         run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
              "-I", str(example), "-o", str(work / "mounted.dis"), str(example / "styx-mounted.b")], work)
         for mode in ("--no-jit", "--jit"):

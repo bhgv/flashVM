@@ -4,6 +4,7 @@
  */
 #include "scalar_files.h"
 #include "program_view.h"
+#include "path_cancel.h"
 #include "lib9.h"
 #include "dat.h"
 #include "interp.h"
@@ -137,11 +138,35 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
 }
 
 
+/* EN: Capture an explicitly mounted caller subtree in native wait scope.
+ * Missing mounts are optional. Present but unrepresentable mounts fail closed.
+ * RU: Захватить явно смонтированное поддерево в нативном ожидании.
+ * Отсутствие допустимо. Неподдерживаемый маунт отменяет вызов. */
+static int capture_grant(DVM_Namespace *group, const char *path, DVM_Provider **out)
+{
+    DVM_ResourcePlan plan = {0};
+    if (!dvm_resource_plan(group, path, 0, &plan))
+    {
+        return 0;
+    }
+    int valid = 1;
+    if (plan.mount_root)
+    {
+        *out = !plan.union_root && dvm_capture_cancellable(&plan) ?
+            dvm_provider_capture(plan.provider, plan.relative) : NULL;
+        valid = *out != NULL;
+    }
+    dvm_resource_close(&plan);
+    return valid;
+}
+
+
 /* EN: Publish the active PID on an explicitly bound reverse session for this call.
  * The native binding owns the lease until the Styx exchange ends.
  * RU: Опубликовать текущий PID во встречной сессии на время вызова.
  * Нативная связь удерживает публикацию до завершения обмена Styx. */
-int dvm_scalar_function_invoke(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value)
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, uint32_t pid,
+    int64_t argument, int64_t *value)
 {
     DVM_CallerBinding binding;
     if (!files->caller || !dvm_provider_caller_binding(files->request, &binding))
@@ -149,7 +174,13 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, uint32_t pid, int64_t arg
         return dvm_scalar_function_call(files, pid, argument, value);
     }
     DVM_ProgramView entry = {.pid = pid};
-    DVM_Provider *tree = dvm_program_view(&entry, 1);
+    int captured = capture_grant(group, "/.fd", &entry.fds) &&
+        capture_grant(group, "/.vfs", &entry.vfs) &&
+        capture_grant(group, "/.var", &entry.vars);
+    DVM_Provider *tree = captured ? dvm_program_view(&entry, 1) : NULL;
+    dvm_provider_release(entry.fds);
+    dvm_provider_release(entry.vfs);
+    dvm_provider_release(entry.vars);
     void *lease = tree ? binding.begin(binding.state, files->request, tree) : NULL;
     if (!lease)
     {

@@ -5,6 +5,7 @@
 #ifndef DVM_SCALAR_FILES_H
 #define DVM_SCALAR_FILES_H
 #include "provider.h"
+#include "namespace.h"
 #include <stdint.h>
 #include "close_worker.h"
 #include "../../native/terminal/scalar_verify.h"
@@ -47,6 +48,7 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
 
 /* EN/RU: Run a scalar call with the optional native reverse publication binding.
  * Выполнить скалярный вызов с необязательной связью встречной публикации. */
-int dvm_scalar_function_invoke(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value);
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, uint32_t pid,
+    int64_t argument, int64_t *value);
 
 #endif

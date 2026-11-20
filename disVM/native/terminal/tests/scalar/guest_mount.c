@@ -235,7 +235,7 @@ int scalar_guest_bind_caller(DVM_Provider *mount)
 
 /* EN: Copy the active virtual .pid to the reverse server's buffer.
  * RU: Прочитать виртуальный .pid в буфер встречного сервера. */
-size_t scalar_guest_read_caller(uint32_t pid, char *bytes, size_t capacity)
+size_t scalar_guest_read_caller(uint32_t pid, const char *path, char *bytes, size_t capacity)
 {
     pthread_mutex_lock(&caller_tree_lock);
     DVM_Provider *tree = caller_tree;
@@ -247,7 +247,7 @@ size_t scalar_guest_read_caller(uint32_t pid, char *bytes, size_t capacity)
     DVM_Provider *program = dvm_program_capture(tree, pid);
     DVM_VfsHandle handle = {0};
     size_t size = 0;
-    if (program && dvm_provider_open(program, ".pid", "r", &handle) == FVM_OK)
+    if (program && dvm_provider_open(program, path, "r", &handle) == FVM_OK)
     {
         DVM_IoResult result = dvm_vfs_read_chunk(&handle, bytes, capacity);
         if (result.status == FVM_OK)
@@ -324,6 +324,26 @@ static int verify_program_view(void)
 }
 
 
+/* EN: Mount one granted fixture subtree in the guest's namespace.
+ * RU: Смонтировать одно выданное поддерево в пространстве имён гостя. */
+static int mount_context(DVM_Namespace *group, const char *at, const char *leaf)
+{
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    DVM_Provider *file = dvm_module_adapter(at, strlen(at));
+    int mapped = view && file && dvm_view_map(view, leaf, file, ".", FVM_ACCESS_READ, 0);
+    dvm_provider_release(file);
+    if (!mapped)
+    {
+        dvm_view_discard(view);
+        return 0;
+    }
+    DVM_Provider *tree = dvm_view_freeze(view);
+    int mounted = tree && dvm_stack_mount(group, tree, at, 0, 0) == 1;
+    dvm_provider_release(tree);
+    return mounted;
+}
+
+
 /* EN/RU: Mount the borrowed remote root and run the guest with ordinary VFS lookup.
  * Смонтировать заимствованный корень и запустить гостя с обычным поиском VFS. */
 int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
@@ -343,7 +363,11 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
     strcpy(handoff.description.module, "scalar-mounted.dis");
     if (!handoff.group || !dvm_namespace_pin(handoff.group) ||
-        dvm_stack_mount(handoff.group, mount, "/peer", 0, 0) != 1)
+        dvm_stack_mount(handoff.group, mount, "/peer", 0, 0) != 1 ||
+        (getenv("DVM_TEST_SCALAR_CALLER") &&
+            (!mount_context(handoff.group, "/.fd", "/0") ||
+             !mount_context(handoff.group, "/.vfs", "/env/CLIENT") ||
+             !mount_context(handoff.group, "/.var", "/counter"))))
     {
         fprintf(stderr, "could not install the plain Styx root at /peer\n");
         exit(2);

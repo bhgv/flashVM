@@ -124,6 +124,12 @@ file created by DisVM. The parent and its spawned child call the same
 loaded instance. Expected output includes `PASS typed Styx caller PID`
 with JIT enabled and disabled.
 
-The fixture installs the binding and serves the PID path. Production
-mount setup and collection of descriptor, namespace and variable grants
-remain open.
+Before publishing the caller tree, DisVM captures explicit directory
+mounts at `/.fd`, `/.vfs` and `/.var` in the current caller's namespace.
+Missing mounts are omitted. A union or a mount that cannot be captured
+cancellably prevents submission. The fixture verifies `.fd/0`,
+`.vfs/env/CLIENT` and `.var/counter` through reverse Styx for both callers.
+
+The fixture installs the reverse binding. Production mount setup and
+automatic projection of the VM's open descriptor table, namespace and
+shared variables into those grants remain open.
