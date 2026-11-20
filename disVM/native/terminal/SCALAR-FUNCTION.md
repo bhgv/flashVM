@@ -97,3 +97,10 @@ Run `ctest -R '^terminal-scalar-guest$' -V` to exercise construction,
 capture lifetime and grant visibility. Look for
 `PASS captured caller program tree`. The builder still requires the caller
 entries and grants from its embedder.
+
+For a persistent reverse export, `dvm_program_publication` returns an
+empty module root and update control. Keep the root mounted while calling
+`dvm_program_publication_replace` with the current entries. A successful
+update changes what fresh lookups from the module root see. A zero count
+removes all entries. Failed updates and existing captures keep their
+previous contents. An embedder still supplies the updates.

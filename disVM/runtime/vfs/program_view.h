@@ -33,4 +33,25 @@ DVM_Provider *dvm_program_view(const DVM_ProgramView *programs, size_t count);
  * RU: Захватить каталог PID из заимствованного дерева модуля. Результат
  * удерживает точный каталог независимо от ссылки на исходное дерево. */
 DVM_Provider *dvm_program_capture(DVM_Provider *root, uint32_t pid);
+
+typedef struct DVM_ProgramPublication DVM_ProgramPublication; /* Control borrowed from a live root. */
+
+
+/* EN: Return an owned empty stable module root and a borrowed update control.
+ * Keep a root reference for the lifetime of every update. Failure clears control.
+ * RU: Вернуть свой пустой корень модуля и заимствованное управление.
+ * На время обновления удерживать корень. Ошибка обнуляет управление. */
+DVM_Provider *dvm_program_publication(DVM_ProgramPublication **control);
+
+
+/* EN: Atomically replace the published entries. A zero count clears the root.
+ * The array is borrowed for this call. Failure preserves the current generation.
+ * Previously captured PID directories stay valid. Concurrent updates publish in
+ * commit order. Provider callbacks may block while constructing a replacement.
+ * RU: Атомарно заменить опубликованные записи. Нулевой count очищает корень.
+ * Массив заимствуется. Ошибка сохраняет текущее поколение, прошлые захваты
+ * остаются действительными. Параллельные обновления применяются в порядке
+ * фиксации. Сборка нового дерева может ждать провайдеров. */
+int dvm_program_publication_replace(DVM_ProgramPublication *control,
+    const DVM_ProgramView *entries, size_t count);
 #endif

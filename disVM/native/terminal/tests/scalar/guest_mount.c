@@ -208,16 +208,22 @@ static int verify_program_view(void)
         return 0;
     }
     DVM_ProgramView entries[] = {{.pid = 41}, {.pid = 42, .vfs = vfs}};
-    DVM_Provider *root = dvm_program_view(entries, 2);
+    DVM_ProgramPublication *control;
+    DVM_Provider *root = dvm_program_publication(&control);
+    int valid = root && dvm_program_publication_replace(control, entries, 2);
     dvm_provider_release(vfs);
     entries[1] = entries[0];
-    DVM_Provider *duplicate = dvm_program_view(entries, 2);
+    valid = valid && !dvm_program_publication_replace(control, entries, 2);
     DVM_Provider *missing = dvm_program_capture(root, 43);
     DVM_Provider *program = dvm_program_capture(root, 42);
-    int valid = program && !duplicate && !missing;
-    dvm_provider_release(root);
-    dvm_provider_release(duplicate);
+    valid = valid && program && !missing && dvm_program_publication_replace(control, entries, 1);
     dvm_provider_release(missing);
+    DVM_Provider *retired = dvm_program_capture(root, 42);
+    DVM_Provider *remaining = dvm_program_capture(root, 41);
+    valid = valid && !retired && remaining && dvm_program_publication_replace(control, NULL, 0);
+    dvm_provider_release(retired);
+    dvm_provider_release(remaining);
+    dvm_provider_release(root);
     if (!valid)
     {
         dvm_provider_release(program);
