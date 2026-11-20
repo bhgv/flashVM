@@ -84,6 +84,19 @@ def main():
                     raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
                 print(marker, mode, flush=True)
 
+        (work / "alias.dis").mkdir()
+        (work / "peer").mkdir()
+        (work / "blocked").mkdir()
+        run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
+             "-I", str(example), "-o", str(work / "mounted.dis"), str(example / "styx-mounted.b")], work)
+        for mode in ("--no-jit", "--jit"):
+            result = run([str(binary), mode, str(work / "mounted.dis")], work,
+                         dict(os.environ, DVM_TEST_SCALAR_MOUNTED="1"))
+            marker = "PASS typed Styx mounted function"
+            if marker not in result.stdout:
+                raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
+            print(marker, mode, flush=True)
+
 
 if __name__ == "__main__":
     main()

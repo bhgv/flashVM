@@ -7,6 +7,8 @@
 #include <styxserver.h>
 #include "server.h"
 #include "scalar_function.h"
+#include "scalar_verify.h"
+#include "flashvm/srecord.h"
 #include "unibus_server.h"
 #include "file_provider.h"
 #include "../launch/request.h"
@@ -16,6 +18,8 @@
 
 struct StyxUnibusServer
 {
+    size_t interface_size; /* Byte count advertised for the mounted profile. */
+    unsigned char interface[STYX_SCALAR_INTERFACE_CAPACITY]; /* Immutable profile. */
     StyxScalarFunction function; /* Optional mounted scalar export. */
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
@@ -36,7 +40,7 @@ static char *open_node(Qid *qid, int mode)
     {
         return styxscalarfunctionopen(&current->server, mode, &current->function);
     }
-    if (qid->path == Qroot || qid->path == 4 || qid->path == 5)
+    if (qid->path == Qroot || qid->path == 4 || qid->path == 5 || qid->path == 7)
     {
         return mode == OREAD ? nil : Eperm;
     }
@@ -82,6 +86,20 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     if (qid.path == 6)
     {
         return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
+    }
+    if (qid.path == 7 && offset >= 0)
+    {
+        size_t available = (uvlong)offset < current->interface_size ?
+            current->interface_size - (size_t)offset : 0;
+        if (*count > available)
+        {
+            *count = available;
+        }
+        if (*count)
+        {
+            memcpy(bytes, current->interface + offset, *count);
+        }
+        return nil;
     }
     StyxTransfer result;
     if ((qid.path != 2 && qid.path != 3) || offset < 0)
@@ -155,6 +173,39 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
 }
 
 
+/* EN/RU: Add the function directory and its compiler-signature record.
+ * Добавить каталог функции и запись сигнатуры компилятора. */
+static int export_function(StyxUnibusServer *server, const char *module, const char *name)
+{
+    if (!styxadddir(&server->server, Qroot, 4, "mounted", 0555, "unibus") ||
+        !styxadddir(&server->server, 4, 5, (char *)module, 0555, "unibus") ||
+        !styxaddfile(&server->server, 5, 6, (char *)name, 0777, "unibus"))
+    {
+        return 0;
+    }
+    if (server->function.request_tag != STYX_FUNCTION_REQUEST_TAG ||
+        server->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
+    {
+        return 1;
+    }
+    unsigned char header[INTERFACE_HEADER];
+    styxscalar_interface_header(header, DVM_SCALAR_INT_SIGNATURE);
+    size_t length = styxscalar_name_length(name);
+    if (!length || fvm_srecord_write_pair(STYX_FUNCTION_PROFILE_TAG, header, sizeof(header),
+            name, length, server->interface, sizeof(server->interface), &server->interface_size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    Styxfile *profile = styxaddfile(&server->server, 5, 7, ".interface", 0444, "unibus");
+    if (!profile)
+    {
+        return 0;
+    }
+    profile->d.length = server->interface_size;
+    return 1;
+}
+
+
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
 static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
@@ -172,9 +223,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
         server->function = *function;
         if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
         {
-            if (styxadddir(&server->server, Qroot, 4, "mounted", 0555, "unibus") &&
-                styxadddir(&server->server, 4, 5, (char *)module, 0555, "unibus") &&
-                styxaddfile(&server->server, 5, 6, (char *)name, 0777, "unibus") &&
+            if (export_function(server, module, name) &&
                 !pthread_create(&server->thread, NULL, serve, server))
             {
                 return server;
@@ -244,7 +293,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
     const char *name, const StyxScalarFunction *function)
 {
     if (!node_name(module) || !node_name(name) || !function || !function->method ||
-        !function->request_tag || !function->reply_tag ||
+        !strcmp(name, ".interface") || !function->request_tag || !function->reply_tag ||
         function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
     {
         phyfree(channel);

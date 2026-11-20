@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "raise.h"
 #include "loader.h"
+#include "scalar_files.h"
 #include "../../native/terminal/scalar_verify.h"
 #include "resource.h"
 #include "native_wait.h"
@@ -31,6 +32,7 @@ typedef struct ProviderModule
     DVM_CloseJob *close;  /* Preallocated cleanup reservation, no allocation after open. */
     unsigned char *bytes; /* Owned bounded full image through original parsemod call. */
     size_t length;        /* Exact advertised opened-object length. */
+    DVM_ScalarFiles *mounted; /* Owned discovered route until descriptor construction. */
     Dir metadata;         /* Private uncached loader metadata, never a global cache identity. */
 } ProviderModule;
 
@@ -143,6 +145,28 @@ static int check_profile(DVM_Provider *profile, unsigned long tag, const char *n
 }
 
 
+/* EN/RU: Validate the selected module directory and resolve both children inside it.
+ * Проверить выбранный каталог модуля и найти оба файла внутри него. */
+static DVM_ScalarFiles *mounted_function(DVM_ResourcePlan *plan, const char *name, uint32_t signature)
+{
+    FVM_FileInfo info;
+    if (signature != DVM_SCALAR_INT_SIGNATURE || !name[0] || strchr(name, '/') ||
+        !strcmp(name, ".") || !strcmp(name, "..") || !strcmp(name, ".interface") ||
+        dvm_provider_info(plan->provider, plan->relative, &info) != FVM_OK ||
+        !info.directory || !(info.mode & 0444) || !(info.mode & 0111))
+    {
+        return NULL;
+    }
+    DVM_Provider *directory = dvm_provider_capture(plan->provider, plan->relative);
+    DVM_Provider *profile = dvm_provider_capture(directory, ".interface");
+    DVM_ScalarFiles *files = profile && check_profile(profile, STYX_FUNCTION_PROFILE_TAG, name, signature) ?
+        dvm_scalar_function_files(directory, name) : NULL;
+    dvm_provider_release(profile);
+    dvm_provider_release(directory);
+    return files;
+}
+
+
 /* [GC:] EN/RU: See loader.h; cleanup native image before propagating a managed reentry/parser exception.
  * См. loader.h; очистить native image до передачи exception managed reentry/parser.
  */
@@ -171,6 +195,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     if (waserror())
     {
         closeimage(image);
+        dvm_scalar_files_release(image->mounted);
         free(image->bytes);
         free(image);
         nexterror();
@@ -201,9 +226,19 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
         DVM_Provider *profile = NULL;
         unsigned long tag = 0;
         adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag, &files) : NULL;
+        if (process && !denied && !adapter && !request_tag)
+        {
+            image->mounted = mounted_function(plan, name, signature);
+            if (image->mounted)
+            {
+                files = image->mounted;
+                request_tag = STYX_FUNCTION_REQUEST_TAG;
+                reply_tag = STYX_FUNCTION_REPLY_TAG;
+            }
+        }
         refused = denied || (!execution && !adapter && !request_tag);
         FVM_FileInfo original;
-        int available = !refused && ((!adapter && !request_tag) || adapter == plan->provider ||
+        int available = !refused && (image->mounted || (!adapter && !request_tag) || adapter == plan->provider ||
             (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory));
         mismatch = available && profile &&
             ((request_tag && signature != DVM_SCALAR_INT_SIGNATURE) || !check_profile(profile, tag, name, signature));
@@ -239,6 +274,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
             "cannot read complete provider module image");
     }
     closeimage(image);
+    dvm_scalar_files_release(image->mounted);
     free(image->bytes);
     free(image);
     poperror();

@@ -6,6 +6,7 @@
 #include <styx.h>
 #include <styxserver.h>
 #include "scalar_function.h"
+#include "scalar_verify.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,8 +52,23 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
-    return styxscalarrespond(function->request_tag, bytes, count, function->reply_tag,
-        function->method, function->state, fid->reply, sizeof(fid->reply), &fid->size) ? nil : Ebadarg;
+    int typed = function->request_tag == STYX_FUNCTION_REQUEST_TAG &&
+        function->reply_tag == STYX_FUNCTION_REPLY_TAG;
+    StyxScalarKind kind;
+    int64_t argument;
+    if (!styxscalarread(function->request_tag, bytes, count, &kind, &argument) ||
+        kind != STYX_SCALAR_CALL || (typed && (argument < INT32_MIN || argument > INT32_MAX)))
+    {
+        return Ebadarg;
+    }
+    int64_t value = 0;
+    int success = function->method(function->state, argument, &value) == 1;
+    if (typed && (value < INT32_MIN || value > INT32_MAX))
+    {
+        success = 0;
+    }
+    return styxscalarwrite(function->reply_tag, success ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
+        value, fid->reply, sizeof(fid->reply), &fid->size) ? nil : Ebadarg;
 }
 
 

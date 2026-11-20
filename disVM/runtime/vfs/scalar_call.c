@@ -20,6 +20,7 @@
 #include "sys_capture.h"
 #include "vfsnative_decl.h"
 #include "../../native/terminal/scalar_route.h"
+#include "../../native/terminal/scalar_verify.h"
 #include "../../native/terminal/record_write.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -31,7 +32,6 @@ extern char *dvm_runtime_file_path(String *name); /* Borrowed path while the cal
 
 static const char session_end[] = "scalar session closed"; /* Clean EOF or exact close record. */
 static const char owner_error[] = "remote scalar owner error"; /* Verified reply, route remains synchronized. */
-
 #define SCALAR_IDLE 0UL /* Native route has no call in progress. */
 #define SCALAR_BUSY 1UL /* A caller owns the one outstanding exchange. */
 #define SCALAR_RETIRED 2UL /* Prior exchange ended without a verified reply. */
@@ -167,7 +167,10 @@ static const char *scalar_value(DVM_Namespace *group, const char *request, const
     int64_t value = 0;
     DVM_Provider *writer = files ? files->request : capture(group, request, FVM_ACCESS_WRITE);
     DVM_Provider *reader = files ? files->reply : capture(group, reply, FVM_ACCESS_READ);
-    const char *failure = exchange(writer, reader, request_tag, reply_tag, argument, &value);
+    int duplex = files && files->duplex;
+    int outcome = duplex ? dvm_scalar_function_call(files, argument, &value) : 0;
+    const char *failure = duplex ? (outcome == 1 ? NULL : outcome == 2 ? owner_error : outcome < 0 ? "remote scalar call not sent" : "remote scalar call outcome unknown") :
+        exchange(writer, reader, request_tag, reply_tag, argument, &value);
     if (!files)
     {
         dvm_provider_release(writer);
@@ -367,8 +370,8 @@ static void scalar_entry(void *frame)
         error("remote scalar call not sent");
     }
     DVM_ScalarFiles *files = module->scalar_files;
-    /* Exact publications share exclusivity and retirement across multiple loads. */
-    unsigned long *state = files ? &files->state : &module->mtime;
+    unsigned long independent = SCALAR_IDLE;
+    unsigned long *state = !files ? &module->mtime : files->duplex ? &independent : &files->state;
     ulong expected = SCALAR_IDLE;
     if (!__atomic_compare_exchange_n(state, &expected, SCALAR_BUSY, 0,
             __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))

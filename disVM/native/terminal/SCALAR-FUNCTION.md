@@ -1,6 +1,6 @@
 # styxunibusserverstartfunction
 
-[Русский](SCALAR-FUNCTION.ru.md) · [Header](unibus_server.h) · [Example](tests/scalar/route.c)
+[Русский](SCALAR-FUNCTION.ru.md) · [Header](unibus_server.h) · [C example](tests/scalar/route.c) · [Limbo example](../../examples/remote-scalar/styx-mounted.b)
 
 ```c
 StyxUnibusServer *styxunibusserverstartfunction(
@@ -26,11 +26,25 @@ offset zero, advancing the read offset by the confirmed byte count. A result
 or method error is encoded as one record. A malformed request, a read before
 the request, or a second accepted-call attempt on the same fid gets a Styx
 error. Closing the fid discards its response. The endpoint uses the existing
-scalar codec. Typed Dis loading, `.interface` discovery and compound arguments
-are separate integration work.
+scalar codec.
+
+With request tag `STYX_FUNCTION_REQUEST_TAG` (72) and reply tag
+`STYX_FUNCTION_REPLY_TAG` (73), the server also publishes a read-only
+`.interface` profile. It describes the single named export with the compiled
+signature of `fn(int): int`. DisVM checks that profile when a typed `load`
+selects the directory on a cancellable VFS mount. It captures the export
+through that directory and opens a fresh read/write fid for each call.
+A `bind` alias of the directory works the same way. Other tag pairs continue
+to work for explicit C clients.
 
 Build and run `terminal-scalar-route` from the native SDK. The example opens
 `mounted/compute.dis/compute` twice, submits two scalar calls and reads the
 responses in reverse order. It checks that a truncated frame and a duplicate
-write do not run the callback. See the [paired DisVM tutorial](../../examples/remote-scalar/STYX.md)
+write do not run the callback. Run `ctest -R '^terminal-scalar-guest$' -V`
+with the SDK configured for the hosted DisVM and Limbo compiler. The Limbo
+example checks a wrong compiled import, a result and an exception through
+a direct mount and a `bind` alias. It covers the original mount with an empty
+directory to verify that both loaded instances retain their captured export.
+Expected output includes
+`PASS typed Styx mounted function` for each VM mode. See the [paired DisVM tutorial](../../examples/remote-scalar/STYX.md)
 for the existing typed route.

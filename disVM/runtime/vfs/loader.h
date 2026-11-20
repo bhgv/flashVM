@@ -78,5 +78,4 @@ struct Module *dvm_namespace_read_imports(char *path, struct Module *cached, int
 struct Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
     unsigned long reply_tag, uint64_t revision, struct DVM_ScalarFiles *files);
 void dvm_scalar_module_retire(struct Module *module);
-#define DVM_SCALAR_INT_SIGNATURE 0xe67bf126U /* Compiler signature of fn(int): int. */
 #endif

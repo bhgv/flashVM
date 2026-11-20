@@ -6,6 +6,10 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_SCALAR_INT_SIGNATURE 0xe67bf126U /* Compiled fn(int): int signature. */
+#define STYX_FUNCTION_PROFILE_TAG 71UL /* Profile of a mounted function directory. */
+#define STYX_FUNCTION_REQUEST_TAG 72UL /* Request on an opened function. */
+#define STYX_FUNCTION_REPLY_TAG 73UL /* Reply on the same open. */
 #define INTERFACE_KIND 4U /* Distinct from call, value and error. */
 #define INTERFACE_HEADER 5U /* One kind byte and a network-order signature. */
 #define INTERFACE_NAME_LIMIT 48U /* Name bytes excluding NUL. */
