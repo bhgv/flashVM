@@ -45,6 +45,14 @@ Existing sequence-engine rules still decide which received records are ready.
 
 ## Authority and namespace / Полномочия и namespace
 
+For a prepared launch, [`styxorderedlaunchfileswithfds`](LAUNCH-FDS.md) also
+projects exact terminal files beside the ordered record files. A guest obtains
+its local FD with `Sys->open`.
+
+В подготовленном запуске [`styxorderedlaunchfileswithfds`](LAUNCH-FDS.ru.md)
+выдаёт отдельные файлы терминала рядом с файлами записей. Гость получает
+локальный FD через `Sys->open`.
+
 [`styxorderedfile`](files.h) accepts only an existing grant and a nonempty subset
 of `FVM_ACCESS_READ | FVM_ACCESS_WRITE`. It exposes only dot, with mode0444 and/or
 0222. No execute, seek, directory listing, root-control command or arbitrary tag

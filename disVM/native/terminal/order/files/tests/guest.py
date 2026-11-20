@@ -54,6 +54,11 @@ def main():
             ["--records", "launch", "records"],
             ["--grant", "/zero", "7", "r", "--grant", "/seven", "7", "rw"],
             ["--grant", "/app.dis/sub", "7", "r"],
+            ["--fd-grant", "/nine/child", "held-input", "r"],
+            ["--fd-grant", "/input", "records", "r"],
+            ["--fd-grant", "/input", "app.dis", "r"],
+            ["--fd-grant", "/input", "../held-input", "r"],
+            ["--fd-grant", "/input", "held-input", "r", "--fd-grant", "/again", "held-input", "r"],
         ]:
             refused = subprocess.run([cli, "--terminal-launch-fd", "0", "fixture", "app.dis", "-",
                                       *options, "--", "main.dis"], capture_output=True, text=True, timeout=5)
@@ -96,11 +101,16 @@ def main():
             if profile == "custom":
                 env["DVM_TEST_TERMINAL_CUSTOM"] = "1"
             for mode in ["--no-jit", "--jit"]:
+                (work / "held-source.bin").write_bytes(b"skip:from-held-cursor")
+                (work / "held-target.bin").write_bytes(b"keep:")
                 result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")],
                              work, env)
                 if "PASS real Dis guest file Unibus bidirectional records" not in result.stdout or \
+                        "PASS transferred Sys FD retained source position" not in result.stdout or \
                         "PASS real Dis Unibus file native ownership drain" not in result.stdout:
                     raise RuntimeError("missing guest/lifetime evidence: " + result.stdout + result.stderr)
+                if (work / "held-target.bin").read_bytes() != b"keep:written-with-held-fd":
+                    raise RuntimeError("write to transferred FD reset or truncated its original cursor")
                 print("PASS actual portable Dis guest record files " + profile + " " + mode, flush=True)
 
 

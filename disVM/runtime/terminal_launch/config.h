@@ -23,6 +23,8 @@ typedef struct TerminalLaunchConfig
     StyxLaunchFile files[DVM_TERMINAL_GRANTS_MAX]; /* Exact guest file grants. */
     unsigned long tags[DVM_TERMINAL_GRANTS_MAX];   /* Corresponding ordered tags. */
     size_t count;             /* Active entries in files and tags. */
+    StyxLaunchFd fds[STYX_LAUNCH_FDS_MAX]; /* Exact guest aliases for terminal files. */
+    size_t fd_count;          /* Active entries in fds. */
     int separator;            /* Index of --, forwarded as the VM program name. */
 } TerminalLaunchConfig;
 

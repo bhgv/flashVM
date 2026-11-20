@@ -47,20 +47,28 @@ static int guest_path(const char *path)
 }
 
 
-/* EN/RU: Append one unique path/tag and translate its exact access spelling, 1/0.
- * Добавить уникальный путь и тег с заданными правами, вернуть 1/0. */
+/* EN/RU: Parse one exact mode spelling into READ/WRITE bits, or zero on refusal.
+ * Преобразовать режим в права READ/WRITE, при отказе вернуть ноль. */
+static unsigned grant_access(const char *mode)
+{
+    if (!strcmp(mode, "r"))
+    {
+        return FVM_ACCESS_READ;
+    }
+    if (!strcmp(mode, "w"))
+    {
+        return FVM_ACCESS_WRITE;
+    }
+    return !strcmp(mode, "rw") ? FVM_ACCESS_READ | FVM_ACCESS_WRITE : 0;
+}
+
+
+/* EN/RU: Append one unique path and ordered tag to the borrowed configuration.
+ * Добавить уникальный путь и ordered-тег в заимствованную конфигурацию. */
 static int grant(TerminalLaunchConfig *config, char **fields)
 {
     unsigned long tag;
-    unsigned access = 0;
-    if (!strcmp(fields[2], "r") || !strcmp(fields[2], "rw"))
-    {
-        access |= FVM_ACCESS_READ;
-    }
-    if (!strcmp(fields[2], "w") || !strcmp(fields[2], "rw"))
-    {
-        access |= FVM_ACCESS_WRITE;
-    }
+    unsigned access = grant_access(fields[2]);
     if (!access || !guest_path(fields[0]) || !number(fields[1], 0xffffffffUL, &tag) ||
         config->count == DVM_TERMINAL_GRANTS_MAX)
     {
@@ -77,6 +85,55 @@ static int grant(TerminalLaunchConfig *config, char **fields)
     size_t index = config->count++;
     config->tags[index] = tag;
     config->files[index] = (StyxLaunchFile){fields[0], tag, access};
+    return 1;
+}
+
+
+/* EN/RU: Append one canonical terminal file grant, preserving argv ownership.
+ * Добавить выдачу канонического файла терминала, сохраняя владение argv. */
+static int fd_grant(TerminalLaunchConfig *config, char **fields)
+{
+    unsigned access = grant_access(fields[2]);
+    if (!access || !guest_path(fields[0]) || !strcmp(fields[1], ".") ||
+        !dvm_terminal_channel_paths_valid(fields[1], fields[1]) || config->fd_count == STYX_LAUNCH_FDS_MAX)
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < config->fd_count; i++)
+    {
+        const StyxLaunchFd *fd = &config->fds[i];
+        if (!strcmp(fd->node, fields[1]) || covers(fd->path, fields[0]) || covers(fields[0], fd->path))
+        {
+            return 0;
+        }
+    }
+    config->fds[config->fd_count++] = (StyxLaunchFd){fields[0], fields[1], access};
+    return 1;
+}
+
+
+/* EN/RU: Check final FD mappings after decoding all paths and applying defaults.
+ * Проверить выдачи FD после разбора всех путей и применения значений по умолчанию. */
+static int compatible_fds(const TerminalLaunchConfig *config)
+{
+    for (size_t i = 0; i < config->fd_count; i++)
+    {
+        const StyxLaunchFd *fd = &config->fds[i];
+        if (!strcmp(fd->node, config->request) || !strcmp(fd->node, config->paths.receive) ||
+            !strcmp(fd->node, config->paths.send) || !strcmp(fd->node, config->code) ||
+            (strcmp(config->dependency, "-") && !strcmp(fd->node, config->dependency)))
+        {
+            return 0;
+        }
+        for (size_t j = 0; j < config->count; j++)
+        {
+            const char *path = config->files[j].path;
+            if (covers(path, fd->path) || covers(fd->path, path))
+            {
+                return 0;
+            }
+        }
+    }
     return 1;
 }
 
@@ -141,6 +198,10 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
         {
             at += 4;
         }
+        else if (!strcmp(argv[at], "--fd-grant") && at + 3 < argc && fd_grant(config, argv + at + 1))
+        {
+            at += 4;
+        }
         else
         {
             return 0;
@@ -156,7 +217,10 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
         char *zero[] = {"/zero", "0", "rw"};
         char *seven[] = {"/seven", "7", "rw"};
         char *nine[] = {"/nine", "9", "r"};
-        return grant(config, zero) && grant(config, seven) && grant(config, nine);
+        if (!grant(config, zero) || !grant(config, seven) || !grant(config, nine))
+        {
+            return 0;
+        }
     }
-    return 1;
+    return compatible_fds(config);
 }

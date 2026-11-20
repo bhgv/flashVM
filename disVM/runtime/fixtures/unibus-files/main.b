@@ -43,6 +43,36 @@ take(fd: ref Sys->FD, tag: int, expected: string)
 }
 
 
+# EN/RU: Read the retained file using an ordinary local Sys FD and verify its access.
+# Прочитать удерживаемый файл обычным локальным Sys FD и проверить права.
+checkheld()
+{
+    if (sys->open("/held-input", Sys->OREAD) != nil ||
+        sys->open("/input", Sys->ORDWR) != nil) {
+        raise "opened undelegated held input mode or path";
+    }
+    input := sys->open("/input", Sys->OREAD);
+    if (input == nil || sys->open("/input", Sys->OREAD) != nil) {
+        raise "held input was not granted exactly once";
+    }
+    bytes := array[32] of byte;
+    n := sys->read(input, bytes, len bytes);
+    if (n <= 0 || string bytes[:n] != "from-held-cursor" ||
+        sys->read(input, bytes, len bytes) != 0) {
+        raise "held input lost its initial cursor or EOF";
+    }
+    if (sys->open("/output", Sys->OREAD) != nil) {
+        raise "output grant widened to read";
+    }
+    output := sys->open("/output", Sys->OWRITE);
+    payload := array of byte "written-with-held-fd";
+    if (output == nil || sys->write(output, payload, len payload) != len payload) {
+        raise "held output refused";
+    }
+    sys->print("PASS transferred Sys FD retained source position\n");
+}
+
+
 # EN/RU: Open only explicitly mounted file capabilities, write independently fixed canonical frames, consume peer receipts.
 # Открыть лишь явно mounted file capabilities, записать независимые фиксированные frames, получить peer receipts.
 init()
@@ -61,6 +91,7 @@ init()
     if (app == nil || app->value() != 111) {
         raise "actual Styx module/dependency load failed";
     }
+    checkheld();
     seven := sys->open("/seven", Sys->ORDWR);
     nine := sys->open("/nine", Sys->OREAD);
     zero := sys->open("/zero", Sys->ORDWR);

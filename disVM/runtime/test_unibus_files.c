@@ -140,8 +140,16 @@ static DVM_LaunchHandoff *prepare_launch(void)
         {"/nine", 9, FVM_ACCESS_READ},
         {"/zero", 0, FVM_ACCESS_READ | FVM_ACCESS_WRITE}
     };
-    files = styxorderedlaunchfiles(connection, handoff, &ordered, mappings,
-        sizeof(mappings) / sizeof(mappings[0]));
+    const StyxLaunchFd absent = {"/input", "missing-file", FVM_ACCESS_READ};
+    size_t count = sizeof(mappings) / sizeof(mappings[0]);
+    launch_check(!styxorderedlaunchfileswithfds(connection, handoff, &ordered, mappings, count, &absent, 1) &&
+        handoff->group == original, "missing FD grant preserves original handoff and broker");
+    const StyxLaunchFd held[] = {
+        {"/input", "held-input", FVM_ACCESS_READ},
+        {"/output", "held-output", FVM_ACCESS_WRITE}
+    };
+    files = styxorderedlaunchfileswithfds(connection, handoff, &ordered, mappings, count,
+        held, sizeof(held) / sizeof(held[0]));
     launch_check(files && handoff->group, "filtered file set and private launch namespace");
     dvm_launch_ticket_free(ticket);
     dvm_launch_review_free(review);
@@ -169,11 +177,14 @@ static int run_cli(const char *runtime, const char *mode, const char *bootstrap)
                 "app.dis", "dep.dis", "--request", "job-request", "23",
                 "--records", "job-records", "job-records", "--lane", "71", "--timeout-ms", "3000",
                 "--grant", "/nine", "9", "r", "--grant", "/zero", "0", "rw", "--grant", "/seven", "7", "rw",
+                "--fd-grant", "/input", "held-input", "r",
+                "--fd-grant", "/output", "held-output", "w",
                 "--", mode, bootstrap, (char *)NULL);
             _exit(3);
         }
         execl(runtime, runtime, "--terminal-launch-fd", descriptor, "provider/unibus-files.dis",
-            "app.dis", "dep.dis", "--", mode, bootstrap, (char *)NULL);
+            "app.dis", "dep.dis", "--fd-grant", "/input", "held-input", "r",
+            "--fd-grant", "/output", "held-output", "w", "--", mode, bootstrap, (char *)NULL);
         _exit(3);
     }
     close(fd);

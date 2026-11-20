@@ -170,7 +170,7 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     {
         fprintf(stderr, "usage: disvm --terminal-launch-fd FD LABEL CODE-FILE DEP-FILE-OR-DASH "
             "[--request PATH TAG] [--records RX TX] [--lane TAG] [--timeout-ms MS] "
-            "[--grant PATH TAG r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+            "[--grant PATH TAG r|w|rw]... [--fd-grant PATH NODE r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = connected(config.fd);
@@ -195,8 +195,8 @@ int dvm_terminal_launch_cli(int argc, char **argv)
         styxmountproviderat(client, ".", FVM_ACCESS_MASK) : NULL;
     DVM_LaunchHandoff *handoff = root ? receive_launch(client, root, &config) : NULL;
     const StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, config.lane, config.tags, config.count};
-    StyxOrderedFiles *files = handoff ? styxorderedlaunchfiles(client, handoff, &ordered,
-        config.files, config.count) : NULL;
+    StyxOrderedFiles *files = handoff ? styxorderedlaunchfileswithfds(client, handoff, &ordered,
+        config.files, config.count, config.fds, config.fd_count) : NULL;
     int status = 1;
     if (files)
     {

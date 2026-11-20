@@ -7,12 +7,24 @@
 #include "files.h"
 #include "broker/attach.h"
 
+#define STYX_LAUNCH_FDS_MAX 32U /* Maximum explicit open-file aliases per launch. */
+
 typedef struct StyxLaunchFile
 {
     const char *path;    /* Borrowed canonical absolute guest path. */
     unsigned long tag;  /* Application tag already granted in broker options. */
     unsigned access;    /* Nonempty READ/WRITE subset. */
 } StyxLaunchFile;
+
+
+/* EN/RU: Select an exact file under the accepted terminal root and its guest alias.
+ * Выбрать точный файл в принятом корне терминала и его имя у гостя. */
+typedef struct StyxLaunchFd
+{
+    const char *path;    /* Borrowed canonical absolute guest path. */
+    const char *node;    /* Borrowed canonical relative terminal filename. */
+    unsigned access;    /* Nonempty READ/WRITE subset. */
+} StyxLaunchFd;
 
 
 /* EN: Borrow client, exclusive handoff, options and mappings through return.
@@ -26,4 +38,15 @@ typedef struct StyxLaunchFile
  * При отказе вернуть NULL, сохранив handoff. Подготовка может блокировать. */
 StyxOrderedFiles *styxorderedlaunchfiles(StyxClient *client, DVM_LaunchHandoff *handoff,
     const StyxOrderedOptions *options, const StyxLaunchFile *mappings, size_t count);
+
+
+/* EN/RU: Also project explicitly delegated file nodes from the same captured terminal.
+ * Borrow fd mappings (up to 32) through return; capture and stat do not open them.
+ * All aliases are prepared before replacement. Guest Sys->open obtains its own FD.
+ * Дополнительно выдать указанные файлы принятого корня терминала. Заимствовать
+ * до 32 mappings; capture и stat не открывают файлы. При отказе handoff цел.
+ * Sys->open у гостя получает собственный FD. */
+StyxOrderedFiles *styxorderedlaunchfileswithfds(StyxClient *client, DVM_LaunchHandoff *handoff,
+    const StyxOrderedOptions *options, const StyxLaunchFile *mappings, size_t count,
+    const StyxLaunchFd *fds, size_t fd_count);
 #endif

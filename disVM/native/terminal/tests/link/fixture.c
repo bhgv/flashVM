@@ -13,6 +13,9 @@
 #include "drivers/posix/fd.h"
 #include <pthread.h>
 #ifdef ORDERED_GUEST_FILE_TEST
+#include "file.h"
+#include "file_provider.h"
+#include "held_export.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
@@ -60,6 +63,57 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  */
 extern void fixtureimagesfree(void);
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
+
+static const unsigned long held_input = 12;  /* Qid of the transferred read file. */
+static const unsigned long held_output = 13; /* Qid of the transferred write file. */
+static StyxBacking *held[2];                 /* Owner's one-use backings until server shutdown. */
+
+
+/* EN/RU: Publish a native open at offset five, unlinking the source of the read grant.
+ * Опубликовать открытый файл с позиции пять, удалив исходное имя файла для чтения. */
+static StyxBacking *add_held(unsigned long qid, char *node, const char *path, unsigned access)
+{
+    FVM_PortFile *file = NULL;
+    DVM_VfsHandle source = {0};
+    int reading = access == FVM_ACCESS_READ;
+    long position;
+    if (fvm_port_file_open(path, reading ? "r" : "wo", &file) != FVM_OK ||
+        !dvm_vfs_adopt(&source, file, NULL) ||
+        dvm_vfs_seek(&source, 5, FVM_FILE_SEEK_START, &position) != FVM_OK ||
+        position != 5 || (reading && unlink(path)))
+    {
+        exit(3);
+    }
+    DVM_Provider *grant = styxheldexport(&source, access);
+    StyxBacking *backing = styxbacking(grant);
+    dvm_provider_release(grant);
+    Styxfile *endpoint = backing ? styxaddfile(&server, Qroot, qid, node, reading ? 0444 : 0222, "fixture") : NULL;
+    StyxMeta info;
+    if (!endpoint || !styxbackinginfo(backing, &info))
+    {
+        exit(3);
+    }
+    endpoint->d.length = info.length;
+    return backing;
+}
+
+
+/* EN/RU: Transfer the one permitted open to the current Styx fid.
+ * Передать единственное допустимое открытие текущему Styx fid. */
+static char *open_held(Qid *qid, int mode)
+{
+    if (qid->path != held_input && qid->path != held_output)
+    {
+        return nil;
+    }
+    StyxOpen *opened = styxfileopen(held[qid->path == held_output], mode);
+    if (!opened || styxsetaux(&server, opened) < 0)
+    {
+        styxfileclose(opened);
+        return Eperm;
+    }
+    return nil;
+}
 #endif
 
 
@@ -69,6 +123,21 @@ extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
+    if (qid.path == held_input)
+    {
+        StyxTransfer result;
+        if (offset < 0)
+        {
+            return Ebadarg;
+        }
+        styxfileread(styxgetaux(&server), offset, bytes, *count, &result);
+        if (!result.success || !result.confirmed)
+        {
+            return Eperm;
+        }
+        *count = result.count;
+        return nil;
+    }
     if (qid.path != 7)
     {
         return fixtureimagesread(qid, bytes, count, offset);
@@ -84,6 +153,21 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
+    if (qid.path == held_output)
+    {
+        StyxTransfer result;
+        if (offset < 0)
+        {
+            return Ebadarg;
+        }
+        styxfilewrite(styxgetaux(&server), offset, bytes, *count, &result);
+        if (!result.success || !result.confirmed || result.uncertain)
+        {
+            return Eperm;
+        }
+        *count = result.count;
+        return nil;
+    }
     if (qid.path == 11)
     {
         return fixturelaunchwrite(bytes, count, offset);
@@ -91,7 +175,12 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 #endif
     return qid.path == 7 ? terminalwrite(bytes, count, offset) : Ebadarg;
 }
-static Styxops operations = {.read = readfile, .write = writefile}; /* Server borrows static operations until join. */
+static Styxops operations = { /* Server borrows static operations until join. */
+    .read = readfile, .write = writefile,
+#ifdef ORDERED_GUEST_FILE_TEST
+    .open = open_held, .freefid = styxfileclose,
+#endif
+};
 
 
 /* EN/RU: Own original server callbacks until physical/logical teardown, consume server PHY once.
@@ -178,7 +267,11 @@ int linkfixturefd(void)
         signal(SIGPIPE, SIG_IGN);
         server_start(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
         fixtureimagesinit(&server);
+        held[0] = add_held(held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
+        held[1] = add_held(held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
         serve(NULL);
+        styxbackingfree(held[0]);
+        styxbackingfree(held[1]);
         fixtureimagesfree();
         phybidirfree(remote);
         _exit(0);

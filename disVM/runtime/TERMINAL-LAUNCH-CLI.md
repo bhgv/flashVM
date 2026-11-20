@@ -54,6 +54,28 @@ Optional arguments go before the separator.
 | `--lane TAG` | `71` | Select the nonzero ordered TX lane / Задать ненулевой тег исходящего ordered-канала |
 | `--timeout-ms MS` | `5000` | Set each connection and mailbox wait budget, 1–120000 ms / Задать срок отдельного ожидания подключения и запроса |
 | `--grant PATH TAG MODE` | `/zero 0 rw`, `/seven 7 rw`, `/nine 9 r` | First explicit grant replaces all defaults. Repeat up to 32 times with distinct paths/tags and mode `r`, `w` or `rw` / Первая выдача заменяет все значения по умолчанию. До 32 уникальных путей и тегов |
+| `--fd-grant PATH NODE MODE` | None / Нет | Expose one terminal file at an absolute guest path. Up to 32 distinct aliases and relative source nodes with mode `r`, `w` or `rw` / Выдать файл терминала по абсолютному пути гостя. До 32 разных путей и относительных исходных имён |
+
+```sh
+build/disvm-terminal/disvm --terminal-launch-fd 3 my-app app.dis dep.dis \
+  --fd-grant /input held-input r --fd-grant /output held-output w \
+  -- --jit /trusted/bootstrap.dis
+```
+
+The launcher takes an exact file fid for each `NODE` from the accepted terminal
+root. It checks file metadata before starting the guest. The guest obtains its
+local `Sys->FD` by opening `PATH`. When the peer publishes an already-open
+source with [`styxheldexport`](../native/vfs/HELD-EXPORT.md), that open takes the
+retained cursor exactly once. The peer controls the lifetime and access to its
+published node. These aliases are configured by the host before launch. Request
+bytes carry application arguments.
+
+Лаунчер закрепляет точный fid каждого `NODE` в принятом корне терминала и
+проверяет метаданные до запуска. Гость открывает `PATH` и получает локальный
+`Sys->FD`. Если терминал опубликовал открытый файл через
+[`styxheldexport`](../native/vfs/HELD-EXPORT.ru.md), гость один раз получает
+его текущую позицию. Терминал управляет доступом к опубликованному узлу.
+Имена выдачи задаёт хост до запуска, а байты запроса содержат аргументы приложения.
 
 The peer serves P9MX channel 0 and declares the selected request tag with type
 `disvm.launch`, version 1. It sends one launch record on that tag. The request
