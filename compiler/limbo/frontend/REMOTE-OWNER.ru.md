@@ -57,3 +57,11 @@ limbo_remote_owner --styx-client compute.m compute.m /svc/request /svc/reply 17 
 монтирование и команды проверки.
 
 [C API этого режима](STYX-CLIENT.ru.md)
+
+## Генерация исполняемого владельца Styx
+
+`--styx-owner INPUT.m INCLUDE.m IMPLEMENTATION.dis REQUEST REPLY REQUESTTAG REPLYTAG OUTPUT.b`
+добавляет путь реализации к параметрам маршрута клиента Styx. Соберите
+сгенерированный исходник с оригинальным интерфейсом и запустите с приёмником
+на чтение и встречным файлом на запись. См. [limbo_styx_owner](STYX-OWNER.ru.md)
+и пример с двумя DisVM.

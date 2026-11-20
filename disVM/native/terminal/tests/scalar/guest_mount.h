@@ -1,0 +1,16 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Test-only DisVM bootstrap with live Styx mounts.
+ * RU: Запуск DisVM с живыми монтированиями Styx для тестов.
+ */
+#ifndef STYX_SCALAR_GUEST_MOUNT_H
+#define STYX_SCALAR_GUEST_MOUNT_H
+typedef struct DVM_Provider DVM_Provider; /* Borrowed mounted file. */
+
+
+/* EN: Run CLI argc/argv once, borrowing the local reader and remote writer.
+ * owner selects which path is readable. Return the real runtime status.
+ * RU: Запустить CLI argc/argv, заимствуя локальное чтение и удалённую запись.
+ * owner выбирает доступный для чтения путь. Вернуть код runtime. */
+int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider *reader, int owner);
+
+#endif

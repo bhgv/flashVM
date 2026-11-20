@@ -66,28 +66,49 @@ frame(tag: big, kind: byte, value: big): array of byte
 }
 
 
-# EN: Exchange one record using preauthorized VFS names. Both opens precede submission.
-# A short write or unusable reply leaves the outcome unknown. This call never replays.
-# RU: Обменять одну запись по выданным именам VFS. Оба файла открываются до отправки.
-# При короткой записи или негодном ответе исход неизвестен. Повторов нет.
-call(request, reply: string, requesttag, replytag: big, value: int): int
+# EN: Validate the route tag before constructing a record.
+# RU: Проверить тег маршрута перед построением записи.
+validate(tag: big)
 {
-    if (requesttag <= big 0 || requesttag > big 16rFFFFFFFF ||
-        replytag <= big 0 || replytag > big 16rFFFFFFFF) {
+    if (tag <= big 0 || tag > big 16rFFFFFFFF) {
         raise "invalid scalar route tag";
     }
-    sys := load Sys Sys->PATH;
-    input := sys->open(reply, Sys->OREAD);
-    output := sys->open(request, Sys->OWRITE);
-    if (input == nil || output == nil) {
-        raise "remote scalar call not sent";
+}
+
+
+# EN: Send one record on a borrowed write FD. No replay after a write failure.
+# RU: Отправить одну запись через заимствованный FD записи. Без повтора при ошибке.
+send(sys: Sys, fd: ref Sys->FD, tag: big, kind, value: int)
+{
+    validate(tag);
+    if (kind < 1 || kind > 3 || fd == nil || sys == nil) {
+        raise "invalid scalar send";
     }
-    outgoing := frame(requesttag, byte 1, big value);
-    if (sys->write(output, outgoing, len outgoing) != len outgoing) {
+    outgoing := frame(tag, byte kind, big value);
+    if (sys->write(fd, outgoing, len outgoing) != len outgoing) {
         raise "remote scalar call outcome unknown";
     }
+}
+
+
+# EN: Receive one checked scalar from a borrowed read FD. Wait only while the
+# native inbox reports pending, up to three seconds between provider reads.
+# RU: Принять проверенный scalar через заимствованный FD чтения. Ожидать до
+# трёх секунд между чтениями, пока нативный приёмник сообщает об ожидании.
+take(sys: Sys, fd: ref Sys->FD, tag: big): (int, int)
+{
+    validate(tag);
+    if (fd == nil || sys == nil) {
+        raise "invalid scalar receive";
+    }
     incoming := array[32] of byte;
-    n := sys->read(input, incoming, len incoming);
+    start := sys->millisec();
+    n := sys->read(fd, incoming, len incoming);
+    while (n < 0 && sys->sprint("%r") == "native input temporarily unavailable" &&
+           sys->millisec() - start < 3000) {
+        sys->sleep(10);
+        n = sys->read(fd, incoming, len incoming);
+    }
     if (n < 12 || n > 16) {
         raise "remote scalar reply unavailable";
     }
@@ -95,9 +116,9 @@ call(request, reply: string, requesttag, replytag: big, value: int): int
     for (i := n - 8; i < n; i++) {
         result = (result << 8) | big incoming[i];
     }
-    kind := incoming[n-9];
-    expected := frame(replytag, kind, result);
-    if (len expected != n) {
+    kind := int incoming[n-9];
+    expected := frame(tag, byte kind, result);
+    if (len expected != n || kind < 1 || kind > 3 || big int result != result) {
         raise "invalid scalar reply";
     }
     for (i = 0; i < n; i++) {
@@ -105,11 +126,29 @@ call(request, reply: string, requesttag, replytag: big, value: int): int
             raise "invalid scalar reply";
         }
     }
-    if (kind == byte 3) {
+    return (kind, int result);
+}
+
+
+# EN: Exchange one record using preauthorized VFS names. Both opens precede submission.
+# RU: Обменять одну запись по выданным именам VFS. Оба файла открываются до отправки.
+call(request, reply: string, requesttag, replytag: big, value: int): int
+{
+    validate(requesttag);
+    validate(replytag);
+    sys := load Sys Sys->PATH;
+    input := sys->open(reply, Sys->OREAD);
+    output := sys->open(request, Sys->OWRITE);
+    if (input == nil || output == nil) {
+        raise "remote scalar call not sent";
+    }
+    send(sys, output, requesttag, 1, value);
+    (kind, result) := take(sys, input, replytag);
+    if (kind == 3) {
         raise "remote scalar owner error";
     }
-    if (kind != byte 2 || big int result != result) {
+    if (kind != 2) {
         raise "invalid scalar reply";
     }
-    return int result;
+    return result;
 }

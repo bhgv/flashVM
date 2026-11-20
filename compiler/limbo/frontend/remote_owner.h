@@ -37,6 +37,13 @@ int limbo_remote_client(FILE *output, const LimboInterface *catalog, const char 
 int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *include_name,
     const char *request, const char *reply, const char *request_tag, const char *reply_tag,
     char *error, size_t capacity);
+
+
+/* EN/RU: Emit or preflight one owner Prog. The implementation path is owner-local.
+ * Выдать или проверить одноразового владельца. Путь реализации локален владельцу. */
+int limbo_styx_owner(FILE *output, const LimboInterface *catalog, const char *include_name,
+    const char *implementation, const char *request, const char *reply,
+    const char *request_tag, const char *reply_tag, char *error, size_t capacity);
 #ifdef __cplusplus
 }
 #endif

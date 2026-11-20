@@ -43,6 +43,8 @@ def main():
                           server / (name + '.dis'))
             shutil.copyfile(server / (name + '.dis'), client / (name + '.dis'))
         compile_image(compiler, include, root, generated, server / 'handler.dis', (server,))
+        compile_image(compiler, include, root, fixture / 'privatevalue.b',
+                      server / 'privatevalue.dis', (fixture,))
         compile_image(compiler, include, root, fixture / 'implementation.b',
                       server / 'implementation.dis', (fixture,))
         compile_image(compiler, include, root, root / 'fixtures/proxy-network/server.b', server / 'server.dis')

@@ -14,6 +14,11 @@
 static int generate(FILE *out, const LimboInterface *catalog, char **argv,
     int styx, int client, int interface_only, char *error, size_t capacity)
 {
+    if (styx == 2)
+    {
+        return limbo_styx_owner(out, catalog, argv[3], argv[4], argv[5], argv[6], argv[7], argv[8],
+            error, capacity);
+    }
     if (styx)
     {
         return limbo_styx_client(out, catalog, argv[3], argv[4], argv[5], argv[6], argv[7], error, capacity);
@@ -46,14 +51,16 @@ int main(int argc, char **argv)
     int success = 0;
     int interface_only = argc == 4 && !strcmp(argv[1], "--client-interface");
     int client = interface_only || (argc == 5 && !strcmp(argv[1], "--client"));
-    int styx = argc == 9 && !strcmp(argv[1], "--styx-client");
+    int styx = argc == 10 && !strcmp(argv[1], "--styx-owner") ? 2 :
+        argc == 9 && !strcmp(argv[1], "--styx-client");
     const char *input_path = (argc >= 4) ? argv[(client || styx) ? 2 : 1] : NULL;
     if (!input_path || (argc != 5 && !interface_only && !styx) || !strcmp(input_path, argv[argc - 1]))
     {
         fputs("usage: limbo_remote_owner INPUT.m INCLUDE.m IMPLEMENTATION.dis OUTPUT.b\n"
               "       limbo_remote_owner --client-interface INPUT.m OUTPUT.m\n"
               "       limbo_remote_owner --client INPUT.m GENERATED.m OUTPUT.b\n"
-              "       limbo_remote_owner --styx-client INPUT.m INCLUDE.m REQUEST REPLY SENDTAG REPLYTAG OUTPUT.b\n", stderr);
+              "       limbo_remote_owner --styx-client INPUT.m INCLUDE.m REQUEST REPLY SENDTAG REPLYTAG OUTPUT.b\n"
+              "       limbo_remote_owner --styx-owner INPUT.m INCLUDE.m IMPLEMENTATION.dis REQUEST REPLY REQUESTTAG REPLYTAG OUTPUT.b\n", stderr);
         return 2;
     }
     input = fopen(input_path, "rb");

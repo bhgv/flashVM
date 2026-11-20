@@ -2,7 +2,7 @@
 # EN: Provider-local implementation with private resource and persistent state.
 # RU: Provider-local реализация с приватным ресурсом и постоянным состоянием.
 implement Compute;
-include "sys.m";
+include "privatevalue.m";
 include "compute.m";
 calls: int; # Owned by the original serving Prog / Состояние original serving Prog.
 
@@ -17,11 +17,9 @@ compute(value: int): int
     if (value == -1) {
         raise "provider implementation failure";
     }
-    sys := load Sys Sys->PATH;
-    file := sys->open("provider-secret", Sys->OREAD);
-    if (file == nil) { raise "provider resource absent"; }
-    bytes := array[16] of byte;
-    n := sys->read(file, bytes, len bytes);
-    if (n <= 0) { raise "provider resource unreadable"; }
-    return value + int string bytes[:n] + calls;
+    dependency := load Privatevalue Privatevalue->PATH;
+    if (dependency == nil) {
+        raise "provider dependency absent";
+    }
+    return value + dependency->read() + calls;
 }

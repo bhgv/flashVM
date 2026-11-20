@@ -57,3 +57,11 @@ output intact. See the [Styx example](../../../disVM/examples/remote-scalar/STYX
 for mount setup and test commands.
 
 [C API for this mode](STYX-CLIENT.md)
+
+## Generate the executable Styx owner
+
+`--styx-owner INPUT.m INCLUDE.m IMPLEMENTATION.dis REQUEST REPLY REQUESTTAG REPLYTAG OUTPUT.b`
+adds an implementation path to the route arguments used by the Styx client.
+Compile the generated source against the original interface. Run it with a
+readable request inbox and a writable return route. See
+[limbo_styx_owner](STYX-OWNER.md) and the two-DisVM example.

@@ -3,12 +3,45 @@
 # RU: Собрать совместимые клиенты Dis и запустить их с настоящими сторонами Styx.
 import os
 from pathlib import Path
+from runpy import run_path
 import shlex
 import sys
 import tempfile
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "order/files/tests"))
-from guest import flags, run
+ordered_tools = run_path(str(Path(__file__).resolve().parents[2] / "order/files/tests/guest.py"))
+flags = ordered_tools["flags"]
+run = ordered_tools["run"]
+
+
+# EN: Relink one runtime with fixture bootstrap and source-matched SDK.
+# RU: Связать runtime с тестовым bootstrap и совпадающим SDK.
+def build_peer(runtime, sdk, work, paired):
+    here = Path(__file__).resolve().parent
+    native = sdk / "terminal/CMakeFiles/terminal-scalar-route.dir"
+    runtime_target = runtime.parent / "CMakeFiles/disvm.dir"
+    rt = flags(runtime_target)
+    styx = flags(native)
+    link = shlex.split((runtime_target / "link.txt").read_text())
+    native_link = shlex.split((native / "link.txt").read_text())
+    objects = []
+    transport_source = "pair.c" if paired else "route.c"
+    transport = work / "transport.o"
+    run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
+         "-DSTYX_SCALAR_GUEST", "-c", str(here / transport_source), "-o", str(transport)], work)
+    objects.append(str(transport))
+    for source in (("guest_mount.c",) if paired else ("guest_mount.c", "guest.c")):
+        obj = work / (source + ".o")
+        run([link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *rt["C_FLAGS"],
+             "-c", str(here / source), "-o", str(obj)], work)
+        objects.append(str(obj))
+    binary = work / "disvm-scalar"
+    link = [arg for arg in link if not arg.startswith("-Wl,--dependency-file=")]
+    link[link.index("-o") + 1] = str(binary)
+    libraries = [str((sdk / "terminal" / arg).resolve()) for arg in native_link if arg.endswith(".a")]
+    link += [*objects, "-Wl,--wrap=main", "-Wl,--start-group", *libraries,
+             "-Wl,--end-group", *[arg for arg in native_link if arg.startswith("-l") or arg == "-pthread"]]
+    run(link, runtime.parent)
+    return binary
 
 
 # EN: Link the test mounts into the source-matched runtime; own temporary products.
@@ -19,36 +52,18 @@ def main():
     root = here.parents[4]
     disvm = root / "disVM"
     example = disvm / "examples/remote-scalar"
-    native = sdk / "terminal/CMakeFiles/terminal-scalar-route.dir"
-    runtime_target = runtime.parent / "CMakeFiles/disvm.dir"
-    rt = flags(runtime_target)
-    styx = flags(native)
-    link = shlex.split((runtime_target / "link.txt").read_text())
-    native_link = shlex.split((native / "link.txt").read_text())
     with tempfile.TemporaryDirectory(prefix="scalar-guest-") as name:
         work = Path(name)
         (work / "scalar").mkdir()
         run([str(generator), "--styx-client", str(example / "compute.m"), "compute.m",
-             str(work / "scalar/request"), str(work / "scalar/reply"), "4294967295", "64", str(work / "shim.b")], work)
+             "/scalar/request", "/scalar/reply", "4294967295", "64", str(work / "shim.b")], work)
         for source, image in [(work / "shim.b", "implementation.dis"),
                               (disvm / "limbo/styxscalar.b", "styxscalar.dis"),
                               (example / "styx-client.b", "client.dis")]:
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(work / image), str(source)], work)
 
-        route = work / "route.o"
-        wrapper = work / "wrapper.o"
-        run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
-             "-DSTYX_SCALAR_GUEST", "-c", str(here / "route.c"), "-o", str(route)], work)
-        run([link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *rt["C_FLAGS"],
-             "-c", str(here / "guest.c"), "-o", str(wrapper)], work)
-        binary = work / "disvm-scalar"
-        link = [arg for arg in link if not arg.startswith("-Wl,--dependency-file=")]
-        link[link.index("-o") + 1] = str(binary)
-        libraries = [str((sdk / "terminal" / arg).resolve()) for arg in native_link if arg.endswith(".a")]
-        link += [str(wrapper), str(route), "-Wl,--wrap=main", "-Wl,--start-group", *libraries,
-                 "-Wl,--end-group", *[arg for arg in native_link if arg.startswith("-l") or arg == "-pthread"]]
-        run(link, runtime.parent)
+        binary = build_peer(runtime, sdk, work, False)
         for mode in ("--no-jit", "--jit"):
             for case in ("value", "error", "missing"):
                 markers = {"error": work / "expect-error", "missing": work / "expect-missing"}

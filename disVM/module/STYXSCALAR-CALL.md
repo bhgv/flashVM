@@ -14,9 +14,11 @@ caller's `int`. The module holds no persistent state and the two opened
 descriptors are scoped to the call.
 
 This blocking call opens both files before submission and attempts one record
-write. The owner should publish the reply before acknowledging that write.
+write. After acknowledgement, it waits for a reply with [Styxscalar.take](STYXSCALAR-TAKE.md).
 The host serializes callers and supplies a fresh one-shot reply route. Open
 failure means the request was never submitted. A failed or short write, missing
 reply, invalid frame or cancellation can leave execution uncertain. A validated
 owner error raises `remote scalar owner error`. The routine never retries.
 Cancellation follows the ordinary Sys file operations of the mounted provider.
+
+Related [Styxscalar.send](STYXSCALAR-SEND.md).

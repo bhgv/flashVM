@@ -4,5 +4,7 @@
 Styxscalar: module
 {
     PATH: con "styxscalar.dis"; # Installed local transport helper / Локальный транспорт.
+    send: fn(sys: Sys, fd: ref Sys->FD, tag: big, kind, value: int);
+    take: fn(sys: Sys, fd: ref Sys->FD, tag: big): (int, int);
     call: fn(request, reply: string, requesttag, replytag: big, value: int): int;
 };

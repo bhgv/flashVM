@@ -321,6 +321,18 @@ static unsigned long route_tag(const char *text)
 }
 
 
+/* EN: Validate borrowed route spellings and return checked numeric tags.
+ * RU: Проверить заимствованные имена и вернуть числовые теги маршрута. */
+static int styx_route(const char *include_name, const char *request, const char *reply,
+    const char *request_tag, const char *reply_tag, unsigned long *request_id, unsigned long *reply_id)
+{
+    *request_id = request_tag ? route_tag(request_tag) : 0;
+    *reply_id = reply_tag ? route_tag(reply_tag) : 0;
+    return spelling(include_name, 0) && spelling(request, 1) && spelling(reply, 1) &&
+        request[0] == '/' && reply[0] == '/' && strcmp(request, reply) && *request_id && *reply_id;
+}
+
+
 /* EN/RU: See remote_owner.h. Preflight inputs before any write.
  * См. remote_owner.h. Проверить параметры до записи. */
 int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *include_name,
@@ -328,10 +340,8 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
     char *error, size_t capacity)
 {
     LimboDeclaration module, function;
-    unsigned long send = request_tag ? route_tag(request_tag) : 0;
-    unsigned long receive = reply_tag ? route_tag(reply_tag) : 0;
-    if (!spelling(include_name, 0) || !spelling(request, 1) || !spelling(reply, 1) ||
-        request[0] != '/' || reply[0] != '/' || !strcmp(request, reply) || !send || !receive)
+    unsigned long send, receive;
+    if (!styx_route(include_name, request, reply, request_tag, reply_tag, &send, &receive))
     {
         return refused(error, capacity, "invalid Styx route paths or tags");
     }
@@ -340,7 +350,8 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
         return 0;
     }
     if (!strcmp(module.name, "Styxscalar") || !strcmp(function.name, "Styxscalar") ||
-        !strcmp(function.name, "route") || !strcmp(include_name, "styxscalar.m"))
+        !strcmp(function.name, "route") || !strcmp(function.name, "Sys") ||
+        !strcmp(include_name, "styxscalar.m") || !strcmp(include_name, "sys.m"))
     {
         return refused(error, capacity, "interface collides with generated transport name");
     }
@@ -352,7 +363,7 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
         "# Copyright (c) 2026 bhgv\n"
         "# EN: Original module ABI backed by mounted Unibus routes.\n"
         "# RU: Исходный ABI модуля через смонтированные маршруты Unibus.\n"
-        "implement %s;\ninclude \"styxscalar.m\";\ninclude \"%s\";\n\n"
+        "implement %s;\ninclude \"sys.m\";\ninclude \"styxscalar.m\";\ninclude \"%s\";\n\n"
         "# EN/RU: Invoke via the published routes / Вызвать через опубликованные маршруты.\n"
         "%s(value: int): int\n{\n"
         "    route := load Styxscalar Styxscalar->PATH;\n"
@@ -360,4 +371,62 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
         "    return route->call(\"%s\", \"%s\", big %lu, big %lu, value);\n}\n",
         module.name, include_name, function.name, request, reply, send, receive);
     return ferror(output) ? refused(error, capacity, "client output failed") : 1;
+}
+
+
+/* EN/RU: Generate a one-shot owner that loads its original typed implementation.
+ * Сгенерировать одноразового владельца, который загружает исходную реализацию. */
+int limbo_styx_owner(FILE *output, const LimboInterface *catalog, const char *include_name,
+    const char *implementation, const char *request, const char *reply,
+    const char *request_tag, const char *reply_tag, char *error, size_t capacity)
+{
+    LimboDeclaration module, function;
+    unsigned long receive, send;
+    if (!spelling(implementation, 1))
+    {
+        return refused(error, capacity, "invalid owner implementation path");
+    }
+    if (!styx_route(include_name, request, reply, request_tag, reply_tag, &receive, &send))
+    {
+        return refused(error, capacity, "invalid Styx route paths or tags");
+    }
+    if (!remote_signature(catalog, &module, &function, error, capacity))
+    {
+        return 0;
+    }
+    if (!strcmp(module.name, "StyxScalarOwner") || !strcmp(module.name, "Styxscalar") ||
+        !strcmp(module.name, "init") || !strcmp(include_name, "styxscalar.m") ||
+        !strcmp(include_name, "sys.m"))
+    {
+        return refused(error, capacity, "interface collides with generated owner");
+    }
+    if (!output)
+    {
+        return 1;
+    }
+    fprintf(output,
+        "# Copyright (c) 2026 bhgv\n"
+        "# EN: Serve one call in the installation owning the original Dis module.\n"
+        "# RU: Обслужить один вызов там, где опубликован исходный модуль Dis.\n"
+        "implement StyxScalarOwner;\ninclude \"sys.m\";\ninclude \"styxscalar.m\";\n"
+        "include \"%s\";\nStyxScalarOwner: module { init: fn(); };\n\n"
+        "# EN/RU: Serve one granted request / Обслужить один выданный запрос.\n"
+        "init()\n{\n"
+        "    target := load %s \"%s\";\n"
+        "    route := load Styxscalar Styxscalar->PATH;\n"
+        "    if (target == nil || route == nil) { raise \"scalar owner load failed\"; }\n"
+        "    sys := load Sys Sys->PATH;\n"
+        "    input := sys->open(\"%s\", Sys->OREAD);\n"
+        "    output := sys->open(\"%s\", Sys->OWRITE);\n"
+        "    if (input == nil || output == nil) { raise \"scalar owner route unavailable\"; }\n"
+        "    (kind, value) := route->take(sys, input, big %lu);\n"
+        "    if (kind != 1) { raise \"invalid scalar request\"; }\n"
+        "    result := 0;\n"
+        "    kind = 2;\n"
+        "    {\n        result = target->%s(value);\n"
+        "    } exception {\n        \"*\" => kind = 3; result = 1;\n    }\n"
+        "    route->send(sys, output, big %lu, kind, result);\n"
+        "}\n", include_name, module.name, implementation, request, reply,
+        receive, function.name, send);
+    return ferror(output) ? refused(error, capacity, "owner output failed") : 1;
 }

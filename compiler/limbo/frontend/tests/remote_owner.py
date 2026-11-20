@@ -93,6 +93,15 @@ def main():
                                     capture_output=True)
             if result.returncode != 2 or output.read_text() != 'preserve prior output':
                 raise RuntimeError('invalid Styx grant damaged output')
+        owner = [str(generator), '--styx-owner', str(source), 'compute.m']
+        route = ['/svc/request', '/svc/reply', '4294967295', '64', str(output)]
+        result = subprocess.run([*owner, 'implementation.dis', *route], capture_output=True)
+        if result.returncode or 'result = target->compute(value);' not in output.read_text():
+            raise RuntimeError('Styx owner generation failed')
+        output.write_text('preserve prior output')
+        result = subprocess.run([*owner, 'bad".dis', *route], capture_output=True)
+        if result.returncode != 2 or output.read_text() != 'preserve prior output':
+            raise RuntimeError('invalid Styx owner implementation damaged output')
     print('PASS generated owner: Coco/R signature selection, unsupported types and output preservation')
 
 

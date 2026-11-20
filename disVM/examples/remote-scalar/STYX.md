@@ -34,6 +34,42 @@ owner invocation, and joins both sessions after DisVM shutdown. Expect
 The [generator command](../../../compiler/limbo/frontend/REMOTE-OWNER.md)
 takes the route paths and tags at publication. Each deployment must supply a
 fresh reply inbox and enforce one outstanding call for each route pair.
-The owner in this example is a native test method. Automatic owner discovery
-from an arbitrary mounted `.dis` and invoking owner Limbo over this route
-still require runtime integration.
+The first driver uses a native test method. The separate DisVM example below
+loads and calls the original owner implementation.
+
+## Run the owner in a separate DisVM
+
+Use the same `.m` for both adapters. Generate the owner with an implementation
+path in the owner's namespace, then compile it with the original interface and
+the local `styxscalar.m`.
+
+```sh
+limbo_remote_owner --styx-owner compute.m compute.m implementation.dis \
+  /scalar/request /scalar/reply 4294967295 64 owner.b
+```
+
+Start the owner with a readable request inbox and the caller's writable
+reply file. The caller gets its own readable reply inbox and the owner's
+writable request file. The grant paths may have the same names in the two
+namespaces while referring to opposite directions. Both peers use the same
+request and reply tags. The owner loads the implementation once, reads one
+request and returns its value or an error record.
+
+```sh
+python3 disVM/native/terminal/tests/scalar/owner_guest.py \
+  build/scalar-frontend/limbo_remote_owner build/scalar-runtime/disvm \
+  build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
+```
+
+The test starts two separate DisVM processes with separate VFS roots and
+Styx sessions over a loopback TCP connection. The owner loads `implementation.dis`, which loads
+[privatevalue.dis](privatevalue.b) and reads the owner's `provider-secret`
+through it. The caller has a file with the same name and a different value.
+A successful call returns 142. A call with -1 returns an error record.
+Removing the owner's dependency also returns an error, even with the dependency
+present at the caller. All three cases run with and without JIT. The owner starts after the request path
+is ready so the caller exercises a pending reply. Each case closes its two
+sessions and reaps both processes.
+
+This publication serves one invocation per route pair. Mounting an arbitrary
+remote `.dis` still needs an adapter publication or runtime owner discovery.
