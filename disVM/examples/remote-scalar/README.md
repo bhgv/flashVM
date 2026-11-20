@@ -115,3 +115,5 @@ selects the authorized route. See [writing](../../native/terminal/SCALAR-WRITE.m
 [reading](../../native/terminal/SCALAR-READ.md) and
 [dispatch](../../native/terminal/SCALAR-RESPOND.md). The generated client in
 this example currently uses Proxynet.
+
+[Native Styx round-trip example](../../native/terminal/SCALAR-ROUTE.md)

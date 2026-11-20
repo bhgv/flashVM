@@ -105,3 +105,5 @@ endpoint и вызывает функцию через сгенерирован�
 [чтение](../../native/terminal/SCALAR-READ.ru.md),
 [обработчик](../../native/terminal/SCALAR-RESPOND.ru.md). Генерируемый клиент
 этого примера пока использует Proxynet.
+
+[Пример обмена через Styx](../../native/terminal/SCALAR-ROUTE.ru.md)
