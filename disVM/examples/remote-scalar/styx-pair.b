@@ -68,6 +68,11 @@ init()
         if (failing || no_dependency || result != 142) {
             raise "incorrect owner result";
         }
+        if (sys->open("expect-disconnect", Sys->OREAD) != nil) {
+            sys->sleep(200);
+            sys->print("PASS owner-local Styx before carrier EOF\n");
+            return;
+        }
         {
             sys->sleep(3100); # The persistent owner survives the old bounded wait.
             service->compute(-1);

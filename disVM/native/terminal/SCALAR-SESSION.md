@@ -21,3 +21,7 @@ request tag. An owner running with count zero exits on that record or EOF.
 On carrier shutdown, a mailbox drains a confirmed record before reporting
 EOF. Waiting for the next owner request can outlive the caller's three-second
 reply budget.
+
+The two-VM test also aborts TCP after a confirmed value, with no end record.
+It checks that the owner exits its pending read and both runtimes complete
+with no live file handles, pending closes or active dispatch claims.

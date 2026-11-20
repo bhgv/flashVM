@@ -3,6 +3,7 @@
 # RU: Запустить сгенерированные клиент и владельца в отдельных DisVM через Styx.
 import os
 from pathlib import Path
+import re
 import socket
 import subprocess
 import sys
@@ -10,25 +11,47 @@ import tempfile
 
 from guest import build_peer, run
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "runtime"))
+from native_gc_evidence import require_concurrent_gc
+
+
+# EN: Check retirement of a single-root VM, including file and worker cleanup.
+# RU: Проверить завершение однопроцессной VM, включая файлы и рабочие потоки.
+def retirement(output):
+    require_concurrent_gc(output)
+    counters = (
+        r"NATIVEFILES created=(\d+) closed=\1 live=0 operations=\d+ waits=0 pending=0",
+        r"NATIVECLOSE submitted=(\d+) completed=\1 pending=0 peak=\d+ joined=1",
+        r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0",
+        r"NATIVEWORKERS threads=\d+ joined=1 failed=0",
+    )
+    if "PASS Dis application completed" not in output or not all(
+        re.search(pattern, output) for pattern in counters
+    ):
+        raise RuntimeError("scalar VM did not retire cleanly:\n" + output)
+
 
 # EN: Give each peer its own inherited carrier end and private working directory.
 # RU: Передать каждой стороне свой конец соединения и свой рабочий каталог.
-def peer(binary, directory, image, mode, carrier, owner, calls):
+def peer(binary, directory, image, mode, carrier, owner, calls, disconnect):
     env = os.environ.copy()
     env.pop("DVM_TEST_SCALAR_OWNER", None)
+    env.pop("DVM_TEST_SCALAR_DISCONNECT", None)
+    if disconnect:
+        env["DVM_TEST_SCALAR_DISCONNECT"] = "1"
     env["DVM_TEST_SCALAR_CALL_COUNT"] = str(calls)
     if owner:
         env["DVM_TEST_SCALAR_OWNER"] = "1"
         env["DVM_TEST_SCALAR_DELAY_OWNER"] = "1"
     env["DVM_TEST_SCALAR_FD"] = str(carrier.fileno())
-    return subprocess.Popen([str(binary), mode, image], cwd=directory, env=env,
+    return subprocess.Popen([str(binary), "--stats", mode, image], cwd=directory, env=env,
                             pass_fds=(carrier.fileno(),), stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True)
 
 
 # EN: Run both sides to completion, bounding failures and always reaping both.
 # RU: Дождаться обеих сторон, ограничить время отказа и завершить оба процесса.
-def exchange(binary, owner, caller, mode, marker, calls=1):
+def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False):
     children = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -38,14 +61,16 @@ def exchange(binary, owner, caller, mode, marker, calls=1):
     for carrier in (left, right):
         carrier.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
-        children.append(peer(binary, owner, "owner.dis", mode, left, True, calls))
-        children.append(peer(binary, caller, "client.dis", mode, right, False, calls))
+        children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect))
+        children.append(peer(binary, caller, "client.dis", mode, right, False, calls, disconnect))
         left.close()
         right.close()
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
         if any(child.returncode for child in children) or marker not in caller_output:
             raise RuntimeError(f"{mode}: Styx pair failed\n{owner_output}{caller_output}")
+        retirement(owner_output)
+        retirement(caller_output)
         print(marker, mode, flush=True)
     finally:
         left.close()
@@ -89,6 +114,13 @@ def main():
         for mode in ("--no-jit", "--jit"):
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
+            disconnect = caller / "expect-disconnect"
+            disconnect.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS owner-local Styx before carrier EOF",
+                         calls=0, disconnect=True)
+            finally:
+                disconnect.unlink()
             flag.touch()
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute exception")
             flag.unlink()

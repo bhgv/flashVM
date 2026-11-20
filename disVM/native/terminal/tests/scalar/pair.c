@@ -64,7 +64,8 @@ int __wrap_main(int argc, char **argv)
     }
     int status = scalar_runtime_run(argc, argv, writer, styxunibusserverinbox(receiver), original, profile, owner);
     const char *calls = getenv("DVM_TEST_SCALAR_CALL_COUNT");
-    if (!owner && status == 0 && calls && !strcmp(calls, "0") &&
+    int disconnect = getenv("DVM_TEST_SCALAR_DISCONNECT") != NULL;
+    if (!owner && !disconnect && status == 0 && calls && !strcmp(calls, "0") &&
         styxscalarclosefile(writer, CALL_TAG) != DVM_LAUNCH_DELIVERED)
     {
         fprintf(stderr, "scalar pair: session close not acknowledged\n");
@@ -73,7 +74,7 @@ int __wrap_main(int argc, char **argv)
     dvm_provider_release(original);
     dvm_provider_release(profile);
     dvm_provider_release(writer);
-    if (!owner && status == 0)
+    if (!owner && !disconnect && status == 0)
     {
         /* Keep the reverse server alive until the owner's Rwrite drains. */
         if (!styxunibusserverjoin(receiver))
