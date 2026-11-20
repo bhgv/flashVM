@@ -16,6 +16,7 @@
 #include "file.h"
 #include "file_provider.h"
 #include "held_export.h"
+#include "mount.h"
 #include "launch_publication.h"
 #include "../../../launch/request.h"
 #include <netinet/in.h>
@@ -65,6 +66,10 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
+extern int fixturereversestart(RemotePhy *channel); /* Consume local reply channel. */
+extern int fixturereversefinish(void); /* Join server and require the reply. */
+static DVM_Provider *reverse_unibus; /* Owner's retained writable peer file. */
+
 static StyxLaunchPublication owner_process;
 static StyxBacking *owner_result; /* Published exit-status stream. */
 static char *owner_argv[4]; /* Borrowed environment and fixed test command. */
@@ -178,6 +183,10 @@ int fixtureownerresult(const FVM_SOrdinal *ordinal, void *bytes, size_t capacity
     if (!owner_result)
     {
         return 0;
+    }
+    if (styxlaunchpublicationdeliver(&owner_process, 1, reverse_unibus, 17) != DVM_LAUNCH_DELIVERED)
+    {
+        return -1;
     }
     return styxlaunchpublicationresultrecord(&owner_process, 1, ordinal, 17, bytes, capacity, used);
 }
@@ -350,6 +359,15 @@ int linkfixturefd(void)
         {
             _exit(3);
         }
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
+        {
+            StyxClient *reverse = styxclientmountphy(phybidirchannel(remote, 1), 256, "fixture", "", 3000, 4);
+            reverse_unibus = reverse ? styxmountproviderat(reverse, STYX_UNIBUS_NODE, FVM_ACCESS_WRITE) : NULL;
+            if (!reverse_unibus)
+            {
+                _exit(3);
+            }
+        }
         fixtureimagesinit(&server);
         held[0] = add_held(Qroot, held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
         held[1] = add_held(Qroot, held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
@@ -373,6 +391,7 @@ int linkfixturefd(void)
             styxbackingfree(numbered[i]);
         }
         fixtureimagesfree();
+        dvm_provider_release(reverse_unibus);
         phybidirfree(remote);
         if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
         {
@@ -417,6 +436,15 @@ StyxClient *linkfixture(void)
     {
         exit(3);
     }
+#ifdef ORDERED_GUEST_FILE_TEST
+    if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
+    {
+        if (!fixturereversestart(phybidirchannel(local, 1)))
+        {
+            exit(3);
+        }
+    }
+#endif
     return styxclientmountphy(phybidirchannel(local, 0), 256, "fixture", "", 3000, 4);
 }
 
@@ -442,6 +470,10 @@ void linkfixturefree(void)
     if (breaker >= 0)
     {
         shutdown(breaker, SHUT_RDWR); /* Wake the remote process before joining it. */
+        if (!fixturereversefinish())
+        {
+            exit(3);
+        }
         phybidirfree(local);
         close(breaker);
     }

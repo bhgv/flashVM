@@ -3,6 +3,7 @@
  * RU: Узлы запроса и результата VFS для фиксированной локальной команды Dis.
  */
 #include "launch_publication.h"
+#include "launch_send.h"
 #include "flashvm/srecord.h"
 #include "launch/ticket.h"
 #include <stdio.h>
@@ -210,6 +211,39 @@ int styxlaunchpublicationresultrecord(StyxLaunchPublication *publication, int wa
         return -1;
     }
     return fvm_sordered_write(ordinal, tag, text, (size_t)length, bytes, capacity, used) == FVM_S_OK ? 1 : -1;
+}
+
+
+/* EN/RU: Observe completion and send it through the reverse peer's retained file.
+ * Получить завершение и отправить его через удерживаемый встречный файл. */
+DVM_LaunchDelivery styxlaunchpublicationdeliver(StyxLaunchPublication *publication, int wait,
+    DVM_Provider *peer_unibus, unsigned long tag)
+{
+    if (!publication)
+    {
+        return DVM_LAUNCH_NOT_SENT;
+    }
+    DVM_LaunchAddress *address = styxterminallaunchaddress(peer_unibus, tag);
+    if (!address)
+    {
+        return DVM_LAUNCH_NOT_SENT;
+    }
+    int status;
+    pthread_mutex_lock(&publication->lock);
+    int ready = styxlaunchprocessstatus(&publication->process, wait, &status);
+    pthread_mutex_unlock(&publication->lock);
+    DVM_LaunchDelivery delivery = DVM_LAUNCH_NOT_SENT;
+    if (ready == 1)
+    {
+        char payload[16];
+        int length = snprintf(payload, sizeof(payload), "%d\n", status);
+        if (length > 0 && (size_t)length < sizeof(payload))
+        {
+            delivery = dvm_launch_address_send(address, payload, (size_t)length);
+        }
+    }
+    dvm_launch_address_free(address);
+    return delivery;
 }
 
 

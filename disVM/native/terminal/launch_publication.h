@@ -5,6 +5,7 @@
 #ifndef STYX_LAUNCH_PUBLICATION_H
 #define STYX_LAUNCH_PUBLICATION_H
 #include "launch_process.h"
+#include "launch/route.h"
 #include "provider.h"
 #include "flashvm/sorder.h"
 #include <pthread.h>
@@ -41,6 +42,12 @@ int styxlaunchpublicationdispatch(StyxLaunchPublication *publication, uint64_t o
  * Вернуть 1 при записи, 0 в ожидании, -1 при ошибке. */
 int styxlaunchpublicationresultrecord(StyxLaunchPublication *publication, int wait,
     const FVM_SOrdinal *ordinal, unsigned long tag, void *bytes, size_t capacity, size_t *used);
+
+
+/* EN/RU: Send one status S-record to the peer's granted writable Unibus file.
+ * Отправить S-запись статуса в выданный узел Unibus другой стороны. */
+DVM_LaunchDelivery styxlaunchpublicationdeliver(StyxLaunchPublication *publication, int wait,
+    DVM_Provider *peer_unibus, unsigned long tag);
 
 
 /* EN/RU: Retire publication after all providers and opens close. Reap any child, possibly blocking.

@@ -1,6 +1,6 @@
 # styxlaunchpublicationresultrecord
 
-[Русский](LAUNCH-RESULT-RECORD.ru.md) · [API](launch_publication.h) · [Publication](LAUNCH-PUBLICATION.md) · [TCP example](../../examples/vfs-run/TUTORIAL.md)
+[Русский](LAUNCH-RESULT-RECORD.ru.md) · [API](launch_publication.h) · [Publication](LAUNCH-PUBLICATION.md) · [TCP example](../../examples/vfs-run/TUTORIAL.md) · [Reverse Styx delivery](LAUNCH-DELIVER.md)
 
 `int styxlaunchpublicationresultrecord(StyxLaunchPublication *publication, int wait, const FVM_SOrdinal *ordinal, unsigned long tag, void *bytes, size_t capacity, size_t *used);`
 

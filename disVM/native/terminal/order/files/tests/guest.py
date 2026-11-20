@@ -124,7 +124,8 @@ def main():
         objects = [wrapper]
         for source in [root / "disVM/native/terminal/tests/link/fixture.c",
                        root / "disVM/native/terminal/order/broker/tests/wire.c",
-                       root / "disVM/native/terminal/tests/link/images.c"]:
+                       root / "disVM/native/terminal/tests/link/images.c",
+                       root / "disVM/native/terminal/tests/link/reverse.c"]:
             obj = work / (source.stem + ".o")
             run([sdk_link[0], *native["C_DEFINES"], *native["C_INCLUDES"], *native["C_FLAGS"],
                  "-DORDERED_GUEST_FILE_TEST=1", "-c", str(source), "-o", str(obj)], work)
