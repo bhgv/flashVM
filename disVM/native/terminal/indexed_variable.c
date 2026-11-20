@@ -56,7 +56,7 @@ int styxintarrayselect(StyxIntArray *array, uint64_t generation, uint64_t offset
     }
     const unsigned char *in = bytes;
     uint32_t index = ((uint32_t)in[0] << 24) | ((uint32_t)in[1] << 16) | ((uint32_t)in[2] << 8) | in[3];
-    if (index >= array->length)
+    if (array->contains ? array->contains(array->state, index) != 1 : index >= array->length)
     {
         return 0;
     }

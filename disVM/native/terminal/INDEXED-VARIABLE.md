@@ -62,3 +62,21 @@ all three operations over Styx.
 
 The [launch example](../../runtime/LAUNCH-PROGRAM-ROUTE.md) exercises the array at
 `/.prog/.self/.var/items` from Dis with ordinary Sys file operations.
+
+## Table with numeric keys
+
+Supplying `contains` selects keyed mode. Write an unsigned 32-bit key to
+`.idx`, then use `.val` to read or update its entry. The `.len` file
+reports the entry count and `.type` reads `table of int`.
+
+If `add` is supplied, the gateway publishes `.add` at qid offset 8 from the
+directory. It allows one successful eight-byte write at offset zero per
+open. Send the four-byte key followed by the four-byte signed value, both
+big-endian. A duplicate is refused and retains its existing value. A
+successful creation increments `.len`. Changes to existing keys use
+`.idx` and `.val`. An open selector blocks creation, as with structural
+array changes. Keyed mode provides only keyed operations.
+
+The [launch example](../../runtime/LAUNCH-PROGRAM-ROUTE.md) opens
+`/.prog/.self/.var/lookup` from Dis, creates key `4294967295`, checks
+duplicate refusal and updates the value through `.val`.

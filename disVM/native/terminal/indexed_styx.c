@@ -20,7 +20,8 @@ enum
     ArrayType = 4, /* .type metadata. */
     ArrayInsert = 5, /* .ins indexed insertion. */
     ArrayPush = 6, /* .push append. */
-    ArrayPop = 7 /* .pop removal and result. */
+    ArrayPop = 7, /* .pop removal and result. */
+    TableAdd = 8 /* .add new key and value. */
 };
 
 
@@ -30,7 +31,8 @@ static int add_mutations(Styxserver *server, Path base, const char *owner, const
 {
     return (!array->insert || (styxaddfile(server, base, base + ArrayInsert, ".ins", 0222, (char *)owner) &&
         styxaddfile(server, base, base + ArrayPush, ".push", 0222, (char *)owner))) &&
-        (!array->pop || styxaddfile(server, base, base + ArrayPop, ".pop", 0444, (char *)owner));
+        (!array->pop || styxaddfile(server, base, base + ArrayPop, ".pop", 0444, (char *)owner)) &&
+        (!array->add || styxaddfile(server, base, base + TableAdd, ".add", 0222, (char *)owner));
 }
 
 
@@ -39,9 +41,14 @@ static int add_mutations(Styxserver *server, Path base, const char *owner, const
 int styxarrayfilepublish(StyxArrayFiles *files, Styxserver *server, Path parent, Path base,
     const char *name, const char *owner, StyxIntArray *array)
 {
-    Path last = array && array->pop ? ArrayPop : array && array->insert ? ArrayPush : ArrayType;
+    if (!array || !array->load || (array->contains && (array->insert || array->pop)) ||
+        (array->add && !array->contains))
+    {
+        return 0;
+    }
+    Path last = array->add ? TableAdd : array->pop ? ArrayPop : array->insert ? ArrayPush : ArrayType;
     if (!files || !server || !base || base >= UINT64_MAX - last || !name || !*name || strchr(name, '/') ||
-        !strcmp(name, ".") || !strcmp(name, "..") || !owner || !*owner || !array || !array->load)
+        !strcmp(name, ".") || !strcmp(name, "..") || !owner || !*owner)
     {
         return 0;
     }
@@ -83,9 +90,9 @@ char *styxarrayfileopen(StyxArrayFiles *files, Qid *qid, int mode)
     {
         return mode == OREAD ? nil : Eperm;
     }
-    int mutation = qid->path >= files->base + ArrayInsert && qid->path <= files->base + ArrayPop;
+    int mutation = qid->path >= files->base + ArrayInsert && qid->path <= files->base + TableAdd;
     if (mutation && (qid->path == files->base + ArrayPop ? !files->array->pop || mode != OREAD :
-        !files->array->insert || mode != OWRITE))
+        (qid->path == files->base + TableAdd ? !files->array->add : !files->array->insert) || mode != OWRITE))
     {
         return Eperm;
     }
@@ -166,9 +173,10 @@ static uint32_t word(const unsigned char *bytes)
 
 /* EN/RU: Decode one insertion and commit only when no selection is open.
  * Декодировать одну вставку и выполнить её без открытого выбора. */
-static int insert_value(Opened *fid, int append, const unsigned char *bytes, size_t size, uint64_t offset)
+static int insert_value(Opened *fid, Path operation, const unsigned char *bytes, size_t size, uint64_t offset)
 {
     StyxIntArray *array = fid->array;
+    int append = operation == ArrayPush;
     if (offset || fid->completed || array->client || array->length == UINT32_MAX ||
         size != (append ? 4U : 8U))
     {
@@ -182,7 +190,16 @@ static int insert_value(Opened *fid, int append, const unsigned char *bytes, siz
     }
     uint32_t bits = word(bytes);
     int32_t value = bits <= INT32_MAX ? (int32_t)bits : -1 - (int32_t)(UINT32_MAX - bits);
-    if (index > array->length || array->insert(array->state, index, value) != 1)
+    int accepted;
+    if (operation == TableAdd)
+    {
+        accepted = array->contains(array->state, index) == 0 && array->add(array->state, index, value) == 1;
+    }
+    else
+    {
+        accepted = index <= array->length && array->insert(array->state, index, value) == 1;
+    }
+    if (!accepted)
     {
         return 0;
     }
@@ -200,7 +217,7 @@ char *styxarrayfileread(StyxArrayFiles *files, Qid qid, char *bytes, ulong *coun
     {
         if (qid.path == files->base + ArrayType)
         {
-            *count = styxreadstr(offset, bytes, *count, "array of int\n");
+            *count = styxreadstr(offset, bytes, *count, files->array->contains ? "table of int\n" : "array of int\n");
         }
         else
         {
@@ -237,9 +254,9 @@ char *styxarrayfilewrite(StyxArrayFiles *files, Qid qid, char *bytes, ulong *cou
     {
         return Ebadarg;
     }
-    if (qid.path == files->base + ArrayInsert || qid.path == files->base + ArrayPush)
+    if (qid.path == files->base + ArrayInsert || qid.path == files->base + ArrayPush || qid.path == files->base + TableAdd)
     {
-        return insert_value(fid, qid.path == files->base + ArrayPush,
+        return insert_value(fid, qid.path - files->base,
             (const unsigned char *)bytes, *count, offset) ? nil : Ebadarg;
     }
     if (qid.path != files->base + ArrayIndex && qid.path != files->base + ArrayValue)

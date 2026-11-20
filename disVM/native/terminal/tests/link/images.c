@@ -75,6 +75,10 @@ static const StyxIntVariable variable = {&counter, load_counter, store_counter};
 
 static int32_t elements[8] = {11, 22}; /* Client-owned array test storage. */
 static StyxIntArray array; /* Live collection state. */
+static StyxIntArray table; /* Live keyed collection. */
+static StyxArrayFiles table_files; /* Reusable decoder for table qids. */
+static uint32_t table_key; /* Key of the fixture's single live entry. */
+static int32_t table_value; /* Owner storage for that entry. */
 static StyxArrayFiles array_files; /* Reusable decoder for array qids. */
 
 
@@ -120,11 +124,63 @@ static int pop_element(void *state, int32_t *value)
 }
 
 
-/* EN/RU: Identify only nodes reserved for the fixture's published array.
- * Определить только узлы опубликованного массива стенда. */
-static int array_node(Path qid)
+/* EN/RU: Match the stored unsigned key, independent of the entry count.
+ * Найти сохранённый беззнаковый ключ независимо от числа записей. */
+static int contains_key(void *state, uint32_t key)
 {
-    return array_files.server && qid >= array_files.base && qid - array_files.base < 8;
+    return table.length && key == *(uint32_t *)state;
+}
+
+
+/* EN/RU: Copy the fixture's value only for its live key.
+ * Скопировать значение стенда только для существующего ключа. */
+static int load_key(void *state, uint32_t key, int32_t *value)
+{
+    if (!contains_key(state, key))
+    {
+        return 0;
+    }
+    *value = table_value;
+    return 1;
+}
+
+
+/* EN/RU: Replace the value of the fixture's live key.
+ * Обновить значение существующего ключа стенда. */
+static int store_key(void *state, uint32_t key, int32_t value)
+{
+    if (!contains_key(state, key))
+    {
+        return 0;
+    }
+    table_value = value;
+    return 1;
+}
+
+
+/* EN/RU: Create the fixture's single supported entry.
+ * Создать единственную поддерживаемую запись стенда. */
+static int add_key(void *state, uint32_t key, int32_t value)
+{
+    if (table.length)
+    {
+        return 0;
+    }
+    *(uint32_t *)state = key;
+    table_value = value;
+    return 1;
+}
+
+
+/* EN/RU: Route exact indexed nodes to their library descriptor.
+ * Передать точные узлы коллекций библиотечному описанию. */
+static StyxArrayFiles *indexed_node(Path qid)
+{
+    if (array_files.server && qid >= array_files.base && qid - array_files.base < 8)
+    {
+        return &array_files;
+    }
+    return table_files.server && qid >= table_files.base && qid - table_files.base < 9 ? &table_files : NULL;
 }
 
 
@@ -132,7 +188,8 @@ static int array_node(Path qid)
  * Передать открытия массива, сохранив обычное открытие других узлов стенда. */
 char *fixturevariableopen(Qid *qid, int mode)
 {
-    return array_node(qid->path) ? styxarrayfileopen(&array_files, qid, mode) : nil;
+    StyxArrayFiles *files = indexed_node(qid->path);
+    return files ? styxarrayfileopen(files, qid, mode) : nil;
 }
 
 
@@ -140,9 +197,10 @@ char *fixturevariableopen(Qid *qid, int mode)
  * Применить полное изменение скалярной переменной стенда. */
 char *fixturevariablewrite(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (array_node(qid.path))
+    StyxArrayFiles *files = indexed_node(qid.path);
+    if (files)
     {
-        return styxarrayfilewrite(&array_files, qid, bytes, count, offset);
+        return styxarrayfilewrite(files, qid, bytes, count, offset);
     }
     return qid.path == ProgramCounter && offset >= 0 &&
         styxintvariablewrite(&variable, offset, bytes, *count) ? nil : Ebadarg;
@@ -187,7 +245,10 @@ Path fixtureprograminit(Styxserver *server)
     }
     array = (StyxIntArray){.state = elements, .length = 2, .load = load_element,
         .store = store_element, .insert = insert_element, .pop = pop_element};
-    if (!styxarrayfilepublish(&array_files, server, ProgramVar, 840, "items", "fixture", &array))
+    table = (StyxIntArray){.state = &table_key, .load = load_key, .store = store_key,
+        .contains = contains_key, .add = add_key};
+    if (!styxarrayfilepublish(&array_files, server, ProgramVar, 840, "items", "fixture", &array) ||
+        !styxarrayfilepublish(&table_files, server, ProgramVar, 848, "lookup", "fixture", &table))
     {
         _exit(3);
     }
@@ -258,9 +319,10 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (array_node(qid.path))
+    StyxArrayFiles *files = indexed_node(qid.path);
+    if (files)
     {
-        return styxarrayfileread(&array_files, qid, bytes, count, offset);
+        return styxarrayfileread(files, qid, bytes, count, offset);
     }
     if (qid.path == ProgramCounter && offset >= 0)
     {

@@ -242,6 +242,15 @@ static void wire(void)
 }
 
 
+/* EN/RU: Model a real key outside the ordinal range of a one-entry table.
+ * Представить ключ вне диапазона порядковых индексов таблицы из одной записи. */
+static int contains(void *state, uint32_t key)
+{
+    (void)state;
+    return key == UINT32_MAX;
+}
+
+
 /* EN/RU: Interleave two clients and reject out-of-range and stale operations.
  * Чередовать два клиента и отклонить неверные индексы и старые открытия. */
 int main(void)
@@ -279,5 +288,15 @@ int main(void)
         return 1;
     }
     styxintarrayclose(&array, b);
+    StyxIntArray keyed = {.length = 1, .contains = contains};
+    unsigned char key[] = {255, 255, 255, 255};
+    uint64_t selected = styxintarrayopen(&keyed, &first, 1);
+    if (!selected || styxintarrayselect(&keyed, selected, 0, index, sizeof(index)) ||
+        !styxintarrayselect(&keyed, selected, 0, key, sizeof(key)))
+    {
+        fputs("key selection ignored actual membership\n", stderr);
+        return 1;
+    }
+    styxintarrayclose(&keyed, selected);
     return 0;
 }

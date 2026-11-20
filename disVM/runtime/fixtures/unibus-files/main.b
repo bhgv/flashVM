@@ -159,6 +159,46 @@ checkarray()
 }
 
 
+# EN/RU: Verify keyed creation and value update through the mounted client table.
+# Проверить создание записи и обновление значения в смонтированной таблице.
+checktable()
+{
+    root := "/.prog/.self/.var/lookup/";
+    key := array[] of {byte 255, byte 255, byte 255, byte 255};
+    add := sys->open(root + ".add", Sys->OWRITE);
+    pair := array[] of {byte 255, byte 255, byte 255, byte 255, byte 0, byte 0, byte 0, byte 45};
+    if (add == nil || sys->write(add, pair, 8) != 8) {
+        raise "mounted table add failed";
+    }
+    duplicate := sys->open(root + ".add", Sys->OWRITE);
+    pair[7] = byte 11;
+    if (duplicate == nil || sys->write(duplicate, pair, 8) != -1) {
+        raise "duplicate table key was admitted";
+    }
+    length := sys->open(root + ".len", Sys->OREAD);
+    data := array[4] of byte;
+    if (length == nil || sys->read(length, data, 4) != 2 || string data[0:2] != "1\n") {
+        raise "mounted table length mismatch";
+    }
+    idx := sys->open(root + ".idx", Sys->OWRITE);
+    if (idx == nil || sys->write(idx, key, 4) != 4) {
+        raise "mounted table key selection failed";
+    }
+    val := sys->open(root + ".val", Sys->ORDWR);
+    if (val == nil || sys->read(val, data, 4) != 4 || int data[3] != 45 ||
+        sys->seek(val, big 0, Sys->SEEKSTART) != big 0) {
+        raise "mounted table value mismatch";
+    }
+    data[3] = byte 99;
+    if (sys->write(val, data, 4) != 4 || sys->seek(val, big 0, Sys->SEEKSTART) != big 0 ||
+        sys->read(val, data, 4) != 4 || int data[3] != 99) {
+        raise "mounted table update mismatch";
+    }
+    idx = nil;
+    sys->print("PASS process indexed table over Styx\n");
+}
+
+
 # EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
 # Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
 readchild(done: chan of string, hidestderr: int, expected: string)
@@ -234,6 +274,7 @@ checknumbered()
             raise "incorrect private process alias";
         }
         checkarray();
+        checktable();
         sys->print("PASS process context hides fd 2\n");
         sys->print("PASS process VFS %s\n", environment);
     }
