@@ -12,11 +12,24 @@
 #include "mount.h"
 #include "unibus_server.h"
 #include "scalar_route.h"
+#include <lib9.h>
+#include "scalar_function.h"
+#include "scalar_verify.h"
 #include <string.h>
 #include "guest_mount.h"
 
 #define CALL_TAG 4294967295UL /* Maximum supported nonzero request tag. */
 #define REPLY_TAG 64UL        /* First tag needing a leading magnitude group. */
+
+
+/* EN/RU: Give the alternate module a distinct native result for the same input.
+ * Выдать альтернативному модулю отдельный нативный результат для того же входа. */
+static int adjust(void *context, int64_t input, int64_t *result)
+{
+    (void)context;
+    *result = input - 7;
+    return 1;
+}
 
 
 /* EN/RU: Run the owner service or mount its directory over the inherited TCP channel.
@@ -33,11 +46,19 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
     int result = 2;
     if (owner)
     {
-        StyxUnibusServer *server = styxunibusserverstartdis(channel, "compute.dis", "compute");
+        const StyxScalarFunction alternate = {
+            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL
+        };
+        const StyxMountedScalar entries[] = {
+            {"helper.dis", "adjust", &alternate},
+            {"compute.dis", "compute", NULL}
+        };
+        StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries,
+            sizeof(entries) / sizeof(entries[0]));
         if (server)
         {
-            result = scalar_runtime_run(argc, argv, styxunibusserverreply(server),
-                styxunibusserverinbox(server), NULL, NULL, 1);
+            result = scalar_runtime_run(argc, argv, styxunibusservermailbox(server, 1, 1),
+                styxunibusservermailbox(server, 1, 0), NULL, NULL, 1);
             shutdown(breaker, SHUT_RDWR);
             if (!styxunibusserverjoin(server))
             {

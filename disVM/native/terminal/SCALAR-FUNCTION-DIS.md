@@ -37,3 +37,5 @@ shared owner in separate DisVM processes. Expect
 `PASS mounted Styx original Dis` in interpreter and JIT modes. The result
 depends on the owner's private file and persistent state, and the example
 checks exception propagation.
+
+To publish several module directories on one channel, use [styxunibusserverstartmounted](SCALAR-FUNCTION-MOUNTED.md).

@@ -41,6 +41,27 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
     const char *name, const struct StyxScalarFunction *function);
 
 
+#define STYX_MOUNTED_SCALAR_LIMIT 64U /* Maximum module directories per server. */
+
+typedef struct StyxMountedScalar
+{
+    const char *module; /* Borrowed directory name. */
+    const char *name; /* Borrowed export name. */
+    const struct StyxScalarFunction *native; /* Optional copied native method; NULL selects Dis. */
+} StyxMountedScalar;
+
+
+/* EN/RU: Consume channel and publish count borrowed entries with distinct module names.
+ * Принять канал и опубликовать count заимствованных записей с разными именами модулей. */
+StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count);
+
+
+/* EN/RU: Borrow indexed Dis request (reply=0) or reply mailbox until join.
+ * Заимствовать приёмник запроса (reply=0) или ответа Dis по индексу до join. */
+DVM_Provider *styxunibusservermailbox(StyxUnibusServer *server, size_t index, int reply);
+
+
 /* EN/RU: Consume channel and expose a typed function serviced by the owner VM.
  * Принять канал и открыть типизированную функцию, обслуживаемую VM владельца. */
 StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name);

@@ -37,3 +37,5 @@ StyxUnibusServer *styxunibusserverstartdis(
 ожидается `PASS mounted Styx original Dis`. Результат зависит от
 приватного файла и состояния владельца. Пример также проверяет
 передачу исключения.
+
+Для публикации нескольких каталогов модулей на одном канале используйте [styxunibusserverstartmounted](SCALAR-FUNCTION-MOUNTED.ru.md).

@@ -17,12 +17,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MOUNTED_ROOT 4UL /* Shared directory for mounted modules. */
+#define FIRST_MODULE 5UL /* Three consecutive qids per module. */
+
+typedef struct MountedModule
+{
+    StyxScalarFunctionOwner owner; /* Owned routes when the endpoint uses Dis. */
+    size_t interface_size; /* Advertised size of the immutable profile. */
+    unsigned char interface[STYX_SCALAR_INTERFACE_CAPACITY]; /* Encoded profile. */
+    StyxScalarFunction function; /* Copied dispatch descriptor. */
+} MountedModule;
+
 struct StyxUnibusServer
 {
-    StyxScalarFunctionOwner *owner; /* Optional owned Dis service routes. */
-    size_t interface_size; /* Byte count advertised for the mounted profile. */
-    unsigned char interface[STYX_SCALAR_INTERFACE_CAPACITY]; /* Immutable profile. */
-    StyxScalarFunction function; /* Optional mounted scalar export. */
+    MountedModule *modules; /* Immutable array after server start. */
+    size_t count; /* Number of mounted modules. */
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *inbox; /* Owner reference for local readers. */
@@ -34,15 +43,31 @@ struct StyxUnibusServer
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
 
+/* EN/RU: Identify a mounted entry by qid and its offset within the module.
+ * Найти запись смонтированного модуля по qid и смещению внутри модуля. */
+static MountedModule *mounted_node(Path path, unsigned offset)
+{
+    if (path < FIRST_MODULE)
+    {
+        return NULL;
+    }
+    Path index = path - FIRST_MODULE;
+    return index % 3 == offset && index / 3 < current->count ?
+        &current->modules[index / 3] : NULL;
+}
+
+
 /* EN/RU: Permit root traversal and write-only access to the published file.
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
 static char *open_node(Qid *qid, int mode)
 {
-    if (qid->path == 6)
+    MountedModule *module = mounted_node(qid->path, 1);
+    if (module)
     {
-        return styxscalarfunctionopen(&current->server, mode, &current->function, current->owner != NULL);
+        return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL);
     }
-    if (qid->path == Qroot || qid->path == 4 || qid->path == 5 || qid->path == 7)
+    if (qid->path == Qroot || qid->path == MOUNTED_ROOT ||
+        mounted_node(qid->path, 0) || mounted_node(qid->path, 2))
     {
         return mode == OREAD ? nil : Eperm;
     }
@@ -68,7 +93,7 @@ static char *open_node(Qid *qid, int mode)
  * Опубликовать только полностью подтверждённую запись. */
 static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path == 6)
+    if (mounted_node(qid.path, 1))
     {
         return styxscalarfunctionwrite(styxgetaux(&current->server), bytes, *count, offset);
     }
@@ -85,21 +110,22 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
  * Вернуть подтверждённый префикс исходного образа Dis. */
 static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path == 6)
+    if (mounted_node(qid.path, 1))
     {
         return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
     }
-    if (qid.path == 7 && offset >= 0)
+    MountedModule *module = mounted_node(qid.path, 2);
+    if (module && offset >= 0)
     {
-        size_t available = (uvlong)offset < current->interface_size ?
-            current->interface_size - (size_t)offset : 0;
+        size_t available = (uvlong)offset < module->interface_size ?
+            module->interface_size - (size_t)offset : 0;
         if (*count > available)
         {
             *count = available;
         }
         if (*count)
         {
-            memcpy(bytes, current->interface + offset, *count);
+            memcpy(bytes, module->interface + offset, *count);
         }
         return nil;
     }
@@ -122,7 +148,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
  * Освободить контекст открытия согласно режиму экспорта сервера. */
 static void close_node(void *state)
 {
-    if (current->function.method)
+    if (current->count)
     {
         free(state);
     }
@@ -146,7 +172,11 @@ static void *serve(void *arg)
     {
     }
     styxend(&server->server);
-    styxunibusmailboxseal(server->owner ? server->owner->request : server->inbox);
+    styxunibusmailboxseal(server->inbox);
+    for (size_t i = 0; i < server->count; i++)
+    {
+        styxunibusmailboxseal(server->modules[i].owner.request);
+    }
     current = NULL;
     return NULL;
 }
@@ -177,33 +207,34 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
 
 /* EN/RU: Add the function directory and its compiler-signature record.
  * Добавить каталог функции и запись сигнатуры компилятора. */
-static int export_function(StyxUnibusServer *server, const char *module, const char *name)
+static int export_function(StyxUnibusServer *server, size_t index, const StyxMountedScalar *entry)
 {
-    if (!styxadddir(&server->server, Qroot, 4, "mounted", 0555, "unibus") ||
-        !styxadddir(&server->server, 4, 5, (char *)module, 0555, "unibus") ||
-        !styxaddfile(&server->server, 5, 6, (char *)name, 0777, "unibus"))
+    MountedModule *module = &server->modules[index];
+    Path qid = FIRST_MODULE + index * 3;
+    if (!styxadddir(&server->server, MOUNTED_ROOT, qid, (char *)entry->module, 0555, "unibus") ||
+        !styxaddfile(&server->server, qid, qid + 1, (char *)entry->name, 0777, "unibus"))
     {
         return 0;
     }
-    if (server->function.request_tag != STYX_FUNCTION_REQUEST_TAG ||
-        server->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
+    if (module->function.request_tag != STYX_FUNCTION_REQUEST_TAG ||
+        module->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
     {
         return 1;
     }
     unsigned char header[INTERFACE_HEADER];
     styxscalar_interface_header(header, DVM_SCALAR_INT_SIGNATURE);
-    size_t length = styxscalar_name_length(name);
+    size_t length = styxscalar_name_length(entry->name);
     if (!length || fvm_srecord_write_pair(STYX_FUNCTION_PROFILE_TAG, header, sizeof(header),
-            name, length, server->interface, sizeof(server->interface), &server->interface_size) != FVM_S_OK)
+            entry->name, length, module->interface, sizeof(module->interface), &module->interface_size) != FVM_S_OK)
     {
         return 0;
     }
-    Styxfile *profile = styxaddfile(&server->server, 5, 7, ".interface", 0444, "unibus");
+    Styxfile *profile = styxaddfile(&server->server, qid, qid + 2, ".interface", 0444, "unibus");
     if (!profile)
     {
         return 0;
     }
-    profile->d.length = server->interface_size;
+    profile->d.length = module->interface_size;
     return 1;
 }
 
@@ -211,29 +242,12 @@ static int export_function(StyxUnibusServer *server, const char *module, const c
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
 static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable,
-    const char *module, const char *name, const StyxScalarFunction *function, StyxScalarFunctionOwner *owner)
+    DVM_Provider *original, DVM_Provider *profile, int reusable)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
     {
         phyfree(channel);
-        return NULL;
-    }
-    if (function)
-    {
-        server->function = *function;
-        server->owner = owner;
-        if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
-        {
-            if (export_function(server, module, name) &&
-                !pthread_create(&server->thread, NULL, serve, server))
-            {
-                return server;
-            }
-            styxend(&server->server);
-        }
-        free(server);
         return NULL;
     }
     server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
@@ -269,7 +283,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
 StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 0, NULL, NULL, NULL, NULL);
+    return start(channel, tag, original, profile, 0);
 }
 
 
@@ -278,7 +292,7 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
 StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 1, NULL, NULL, NULL, NULL);
+    return start(channel, tag, original, profile, 1);
 }
 
 
@@ -290,32 +304,119 @@ static int node_name(const char *name)
 }
 
 
-/* EN/RU: Publish the named module and function on a consumed channel.
- * Опубликовать модуль и функцию с заданными именами на принятом канале. */
-StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *module,
-    const char *name, const StyxScalarFunction *function)
+/* EN/RU: Drop all allocated routes and the array after server stop or setup refusal.
+ * Освободить все выделенные маршруты и массив после остановки или отказа запуска. */
+static void free_modules(StyxUnibusServer *server)
 {
-    if (!node_name(module) || !node_name(name) || !function || !function->method ||
-        !strcmp(name, ".interface") || !function->request_tag || !function->reply_tag ||
-        function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
+    for (size_t i = 0; i < server->count; i++)
+    {
+        dvm_provider_release(server->modules[i].owner.request);
+        dvm_provider_release(server->modules[i].owner.reply);
+    }
+    free(server->modules);
+}
+
+
+/* EN/RU: Validate one borrowed entry and reserve its private dispatch routes.
+ * Проверить заимствованную запись и зарезервировать её собственные маршруты. */
+static int configure(MountedModule *module, const StyxMountedScalar *entry)
+{
+    if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface"))
+    {
+        return 0;
+    }
+    if (entry->native)
+    {
+        module->function = *entry->native;
+        const StyxScalarFunction *fn = &module->function;
+        return fn->method && fn->request_tag && fn->reply_tag &&
+            fn->request_tag <= UINT32_MAX && fn->reply_tag <= UINT32_MAX;
+    }
+    module->owner.request = styxunibusmailbox(STYX_FUNCTION_REQUEST_TAG);
+    module->owner.reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
+    module->function = (StyxScalarFunction){
+        STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner
+    };
+    return module->owner.request && module->owner.reply;
+}
+
+
+/* EN/RU: Export all distinct entries before making the dispatcher visible.
+ * Опубликовать различные записи до запуска диспетчера. */
+static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *entries)
+{
+    if (!styxadddir(&server->server, Qroot, MOUNTED_ROOT, "mounted", 0555, "unibus"))
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < server->count; i++)
+    {
+        if (!configure(&server->modules[i], &entries[i]))
+        {
+            return 0;
+        }
+        for (size_t j = 0; j < i; j++)
+        {
+            if (!strcmp(entries[i].module, entries[j].module))
+            {
+                return 0;
+            }
+        }
+        if (!export_function(server, i, &entries[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: Consume the channel and publish a bounded table on one Styx session.
+ * Принять канал и опубликовать ограниченную таблицу в одной сессии Styx. */
+StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count)
+{
+    StyxUnibusServer *server = channel && entries && count && count <= STYX_MOUNTED_SCALAR_LIMIT ?
+        calloc(1, sizeof(*server)) : NULL;
+    if (!server)
     {
         phyfree(channel);
         return NULL;
     }
-    return start(channel, 0, NULL, NULL, 0, module, name, function, NULL);
+    server->modules = calloc(count, sizeof(*server->modules));
+    if (!server->modules)
+    {
+        phyfree(channel);
+        free(server);
+        return NULL;
+    }
+    server->count = count;
+    if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
+    {
+        if (export_modules(server, entries) && !pthread_create(&server->thread, NULL, serve, server))
+        {
+            return server;
+        }
+        styxend(&server->server);
+    }
+    free_modules(server);
+    free(server);
+    return NULL;
 }
 
 
-/* EN/RU: Release owner inboxes after the dispatcher has stopped.
- * Освободить приёмники владельца после остановки диспетчера. */
-static void free_owner(StyxScalarFunctionOwner *owner)
+/* EN/RU: Publish the copied native function on a consumed channel.
+ * Опубликовать скопированную нативную функцию на принятом канале. */
+StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *module,
+    const char *name, const StyxScalarFunction *function)
 {
-    if (owner)
+    if (!function)
     {
-        dvm_provider_release(owner->request);
-        dvm_provider_release(owner->reply);
-        free(owner);
+        phyfree(channel);
+        return NULL;
     }
+    const StyxMountedScalar entry = {module, name, function};
+    return styxunibusserverstartmounted(channel, &entry, 1);
 }
 
 
@@ -323,36 +424,29 @@ static void free_owner(StyxScalarFunctionOwner *owner)
  * Опубликовать один именованный экспорт через общий сервис Dis. */
 StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name)
 {
-    StyxScalarFunctionOwner *owner = calloc(1, sizeof(*owner));
-    if (owner)
-    {
-        owner->request = styxunibusmailbox(STYX_FUNCTION_REQUEST_TAG);
-        owner->reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
-    }
-    if (!owner || !owner->request || !owner->reply || !node_name(module) ||
-        !node_name(name) || !strcmp(name, ".interface"))
-    {
-        phyfree(channel);
-        free_owner(owner);
-        return NULL;
-    }
-    const StyxScalarFunction function = {
-        STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, owner
-    };
-    StyxUnibusServer *server = start(channel, 0, NULL, NULL, 0, module, name, &function, owner);
-    if (!server)
-    {
-        free_owner(owner);
-    }
-    return server;
+    const StyxMountedScalar entry = {module, name, NULL};
+    return styxunibusserverstartmounted(channel, &entry, 1);
 }
 
 
-/* EN/RU: Borrow the service's write mailbox through server join.
- * Заимствовать приёмник записи сервиса до завершения сервера. */
+/* EN/RU: Borrow either mailbox of one indexed Dis entry through join.
+ * Заимствовать один из приёмников записи Dis по индексу до завершения сервера. */
+DVM_Provider *styxunibusservermailbox(StyxUnibusServer *server, size_t index, int reply)
+{
+    if (!server || index >= server->count)
+    {
+        return NULL;
+    }
+    StyxScalarFunctionOwner *owner = &server->modules[index].owner;
+    return reply ? owner->reply : owner->request;
+}
+
+
+/* EN/RU: Borrow the first entry's service reply mailbox through join.
+ * Заимствовать приёмник ответов первой записи до завершения сервера. */
 DVM_Provider *styxunibusserverreply(StyxUnibusServer *server)
 {
-    return server && server->owner ? server->owner->reply : NULL;
+    return styxunibusservermailbox(server, 0, 1);
 }
 
 
@@ -376,7 +470,7 @@ StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
  * См. unibus_server.h; сервер удерживает исходную фабрику. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server)
 {
-    return !server ? NULL : server->owner ? server->owner->request : server->inbox;
+    return !server ? NULL : server->count ? styxunibusservermailbox(server, 0, 0) : server->inbox;
 }
 
 
@@ -396,7 +490,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
-    free_owner(server->owner);
+    free_modules(server);
     free(server);
     return 1;
 }

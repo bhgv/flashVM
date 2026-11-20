@@ -6,6 +6,7 @@ include "sys.m";
 include "compute.m";
 Client: module { init: fn(); };
 Wrong: module { compute: fn(value: big): big; };
+Helper: module { adjust: fn(value: int): int; };
 
 
 # EN/RU: Check compiled import admission, normal results and a remote exception.
@@ -21,6 +22,17 @@ init()
         last = 55;
     }
     path := "/peer/mounted/compute.dis";
+    helper: Helper;
+    if (disowner) {
+        helperpath := "/peer/mounted/helper.dis";
+        if ((load Compute helperpath) != nil || (load Helper path) != nil) {
+            raise "profile from another module was admitted";
+        }
+        helper = load Helper helperpath;
+        if (helper == nil || helper->adjust(70) != 63) {
+            raise "alternate Styx module failed";
+        }
+    }
     if ((load Wrong path) != nil) {
         raise "wrong import admitted";
     }
@@ -47,6 +59,9 @@ init()
         raise "mounted Compute alias result failed";
     }
     if (disowner) {
+        if (helper->adjust(11) != 4) {
+            raise "alternate Styx route changed after rebind";
+        }
         sys->print("PASS mounted Styx original Dis\n");
     } else {
         sys->print("PASS typed Styx mounted function\n");
