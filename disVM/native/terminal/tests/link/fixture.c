@@ -16,11 +16,10 @@
 #include "file.h"
 #include "file_provider.h"
 #include "held_export.h"
-#include "launch_receive.h"
+#include "launch_process.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 #endif
@@ -65,8 +64,8 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
-static pid_t owner_child; /* Owner execution process, reaped by the server. */
-static int owner_done; /* The owner process exited successfully. */
+static StyxLaunchProcess owner_process; /* Fixed owner route and its child. */
+static char *owner_argv[4]; /* Borrowed environment and fixed test command. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
 static const unsigned long held_input = 12;  /* Qid of the transferred read file. */
@@ -147,54 +146,23 @@ static char *open_held(Qid *qid, int mode)
 
 
 #ifdef ORDERED_GUEST_FILE_TEST
-/* EN/RU: Start the fixed fixture command immediately after admission.
- * Запустить фиксированную тестовую команду сразу после принятия запроса. */
-static int start_owner(void *state)
+/* EN/RU: Configure the owner's fixed command before exposing its request file.
+ * Настроить фиксированную команду владельца до публикации узла запуска. */
+static int prepare_owner(void)
 {
-    USED(state);
-    const char *runtime = getenv("DVM_TEST_OWNER_RUNTIME");
-    const char *mode = getenv("DVM_TEST_OWNER_MODE");
-    if (!runtime || !mode)
-    {
-        return 0;
-    }
-    owner_child = fork();
-    if (owner_child < 0)
-    {
-        return 0;
-    }
-    if (!owner_child)
-    {
-        if (!chdir("owner"))
-        {
-            execl(runtime, runtime, mode, "owner.dis", (char *)NULL);
-        }
-        _exit(3);
-    }
-    return 1;
+    owner_argv[0] = getenv("DVM_TEST_OWNER_RUNTIME");
+    owner_argv[1] = getenv("DVM_TEST_OWNER_MODE");
+    owner_argv[2] = "owner.dis";
+    return owner_argv[1] && styxlaunchprocessinit(&owner_process, 17, "owner", owner_argv);
 }
 
 
-static StyxLaunchReceiver owner_request = {17, start_owner, NULL, 0}; /* Fixed owner route. */
-
-
-/* EN/RU: Reap the admitted command once; subsequent observations reuse its status.
- * Дождаться принятой команды один раз; повторные чтения используют сохранённый статус. */
+/* EN/RU: Wait for a successful completion through the library-owned child.
+ * Дождаться успешного завершения через процесс, удерживаемый библиотекой. */
 static int finish_owner(void)
 {
-    if (owner_child > 0)
-    {
-        int status;
-        pid_t result;
-        do
-        {
-            result = waitpid(owner_child, &status, 0);
-        }
-        while (result < 0 && errno == EINTR);
-        owner_done = result == owner_child && WIFEXITED(status) && WEXITSTATUS(status) == 0;
-        owner_child = 0;
-    }
-    return owner_done;
+    int status;
+    return styxlaunchprocessstatus(&owner_process, 1, &status) == 1 && status == 0;
 }
 #endif
 
@@ -269,7 +237,7 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.path == 20)
     {
-        return offset >= 0 && styxterminallaunchreceive(&owner_request, offset, bytes, *count) ? nil : Ebadarg;
+        return offset >= 0 && styxterminallaunchreceive(&owner_process.receiver, offset, bytes, *count) ? nil : Ebadarg;
     }
     if (qid.path == 11)
     {
@@ -373,6 +341,10 @@ int linkfixturefd(void)
             _exit(3);
         }
         server_start(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT") && !prepare_owner())
+        {
+            _exit(3);
+        }
         fixtureimagesinit(&server);
         held[0] = add_held(Qroot, held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
         held[1] = add_held(Qroot, held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
