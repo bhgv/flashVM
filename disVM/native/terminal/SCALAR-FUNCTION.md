@@ -104,3 +104,20 @@ empty module root and update control. Keep the root mounted while calling
 update changes what fresh lookups from the module root see. A zero count
 removes all entries. Failed updates and existing captures keep their
 previous contents. An embedder still supplies the updates.
+
+## Publishing the active caller at invocation
+
+An embedder can install a trusted `DVM_CallerBinding` on a fresh native
+mount provider with `dvm_provider_bind_caller` before publishing the mount.
+Captured function nodes inherit that binding. During the ordinary typed
+call, DisVM builds a tree for the active caller and calls `begin` before
+sending the request. The tree contains `.prog/<pid>/.pid`. The exact
+function provider and tree are borrowed during the callback. The lease
+lasts through the exchange and `end` consumes it. A refused lease prevents
+the request from being sent. Unbound mounts continue to use the existing
+PID record.
+
+The guest fixture binds the mount to an in-process publication and reads
+the published identity in its C handler. The function call itself crosses
+Styx. Wiring the binding to a reverse network export and collecting VM
+descriptor, namespace and variable grants remain open.

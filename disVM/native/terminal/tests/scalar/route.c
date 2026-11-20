@@ -32,6 +32,8 @@
 static Styxserver owner; /* One fixture owner thread dispatches the method. */
 static DVM_Provider *reply; /* Retained reverse file while owner serves requests. */
 #ifdef STYX_SCALAR_GUEST
+extern int scalar_guest_bind_caller(DVM_Provider *); /* Attach fixture reverse publication binding. */
+extern int scalar_guest_check_caller(uint32_t); /* Verify active published .pid. */
 extern void scalar_guest_mounted(DVM_Provider *); /* Runs a guest on a plain mount. */
 extern void scalar_guest(DVM_Provider *, DVM_Provider *); /* Runtime test entry. */
 #endif
@@ -261,7 +263,7 @@ static int caller_method(void *context, uint32_t pid, int64_t argument, int64_t 
 {
     static uint32_t previous;
     (void)context;
-    if (argument != (int64_t)pid || pid == previous)
+    if (argument != (int64_t)pid || pid == previous || !scalar_guest_check_caller(pid))
         return 0;
     previous = pid;
     ++calls;
@@ -296,6 +298,10 @@ static void mounted_function(void)
 #ifdef STYX_SCALAR_GUEST
     DVM_Provider *mount = styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC);
     check(mount != NULL, "ordinary Styx mount");
+    if (getenv("DVM_TEST_SCALAR_CALLER"))
+    {
+        check(scalar_guest_bind_caller(mount), "bind the fixture caller publication");
+    }
     scalar_guest_mounted(mount);
     dvm_provider_release(mount);
 #else

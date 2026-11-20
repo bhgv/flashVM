@@ -45,4 +45,8 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
  * Обмен через один fid. Возврат 1 для значения, 2 для ошибки владельца, 0 при неизвестном исходе, -1 до отправки. */
 int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value);
 
+/* EN/RU: Run a scalar call with the optional native reverse publication binding.
+ * Выполнить скалярный вызов с необязательной связью встречной публикации. */
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value);
+
 #endif

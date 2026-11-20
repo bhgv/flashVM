@@ -54,6 +54,34 @@ typedef struct DVM_ProviderOps
 } DVM_ProviderOps;
 
 
+/* EN: Trusted native binding between a mounted function and its reverse session.
+ * Begin borrows the exact target and module tree, returning a lease or NULL.
+ * End consumes the lease. Both callbacks execute in native wait scope.
+ * RU: Доверенная связь файла функции со встречной сессией.
+ * Begin заимствует точный узел и дерево модуля, возвращает аренду или NULL.
+ * End завершает аренду. Оба вызова выполняются в области нативного ожидания. */
+typedef struct DVM_CallerBinding
+{
+    void *(*begin)(void *state, DVM_Provider *target, DVM_Provider *tree); /* Start reverse publication. */
+    void (*end)(void *state, void *lease); /* Retire one active publication. */
+    void *state; /* Borrowed context valid through the bound provider. */
+} DVM_CallerBinding;
+
+
+/* EN: Install once on an exclusively owned unpublished native provider.
+ * The host keeps callback context alive through the provider and its captures.
+ * RU: Установить один раз на свой неопубликованный нативный провайдер.
+ * Хост удерживает контекст до освобождения провайдера и его захватов. */
+int dvm_provider_bind_caller(DVM_Provider *provider, const DVM_CallerBinding *binding);
+
+
+/* EN: Copy the trusted binding inherited by a captured node, or return zero.
+ * Keep a reference to the input provider while calling the copied callbacks.
+ * RU: Скопировать доверенную связь захваченного узла либо вернуть ноль.
+ * Удерживать входной провайдер при обращении к скопированным callback. */
+int dvm_provider_caller_binding(DVM_Provider *provider, DVM_CallerBinding *binding);
+
+
 /* EN/RU: Set stable logical projection/node identity on an exclusively owned unpublished factory;1/0.
  * entity is native trusted metadata, never permission. Refuse after any callback/get or shared publication.
  * Установить logical projection/node identity в exclusive unpublished factory;1/0, не permission.

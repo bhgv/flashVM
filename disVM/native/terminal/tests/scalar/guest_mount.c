@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <inttypes.h>
 #include "vfs/export.h"
 #include "vfs/program_view.h"
 #include "vfs/loader.h"
@@ -184,6 +186,80 @@ int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, 
     int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
     dvm_namespace_release(handoff.group);
     return result;
+}
+
+
+static pthread_mutex_t caller_tree_lock = PTHREAD_MUTEX_INITIALIZER; /* Fixture publication lock. */
+static DVM_Provider *caller_tree; /* Borrowed through the fixture callback lease. */
+
+
+/* EN: Publish the complete context for this one fixture call.
+ * RU: Опубликовать полный контекст на время вызова стенда. */
+static void *begin_caller(void *state, DVM_Provider *target, DVM_Provider *tree)
+{
+    (void)state;
+    (void)target;
+    pthread_mutex_lock(&caller_tree_lock);
+    void *lease = NULL;
+    if (!caller_tree)
+    {
+        caller_tree = tree;
+        lease = tree;
+    }
+    pthread_mutex_unlock(&caller_tree_lock);
+    return lease;
+}
+
+
+/* EN: Remove the borrowed tree after the matching exchange finishes.
+ * RU: Снять заимствованное дерево по завершении соответствующего обмена. */
+static void end_caller(void *state, void *lease)
+{
+    (void)state;
+    pthread_mutex_lock(&caller_tree_lock);
+    if (caller_tree == lease)
+    {
+        caller_tree = NULL;
+    }
+    pthread_mutex_unlock(&caller_tree_lock);
+}
+
+
+/* EN: Install the fixture's native binding before sharing the mount.
+ * RU: Установить нативную связь стенда до публикации маунта. */
+int scalar_guest_bind_caller(DVM_Provider *mount)
+{
+    DVM_CallerBinding binding = {.begin = begin_caller, .end = end_caller};
+    return dvm_provider_bind_caller(mount, &binding);
+}
+
+
+/* EN: Check the received PID against the published .pid in the active context.
+ * RU: Сверить полученный PID с опубликованным .pid активного контекста. */
+int scalar_guest_check_caller(uint32_t pid)
+{
+    pthread_mutex_lock(&caller_tree_lock);
+    DVM_Provider *tree = caller_tree;
+    if (!dvm_provider_retain(tree))
+    {
+        tree = NULL;
+    }
+    pthread_mutex_unlock(&caller_tree_lock);
+    DVM_Provider *program = dvm_program_capture(tree, pid);
+    DVM_VfsHandle handle = {0};
+    char expected[sizeof("4294967295\n")];
+    char got[sizeof(expected)];
+    size_t length = (size_t)snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
+    int valid = program && dvm_provider_open(program, ".pid", "r", &handle) == FVM_OK;
+    if (valid)
+    {
+        DVM_IoResult read = dvm_vfs_read_chunk(&handle, got, sizeof(got));
+        valid = read.status == FVM_OK && read.count == length && !memcmp(got, expected, length);
+    }
+    dvm_vfs_close(&handle);
+    dvm_provider_release(program);
+    dvm_provider_release(tree);
+    return valid;
 }
 
 

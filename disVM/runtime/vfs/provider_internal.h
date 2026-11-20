@@ -22,6 +22,7 @@ struct DVM_Provider
     void *state; /* Owned native factory state. */
     DVM_Changes *changes; /* Owned local invalidation journal. */
     DVM_ProviderLaunch launch; /* Optional immutable per-node address discovery, never copied blindly to captured roots. */
+    DVM_CallerBinding caller; /* Optional immutable reverse publication binding. */
     DVM_ProviderCapture capture; /* Optional immutable native node-capture callback. */
     unsigned native_flags; /* Immutable native control-operation cancellation promises. */
     int anchored; /* Dot names a fixed captured root; descendants still require capture. */

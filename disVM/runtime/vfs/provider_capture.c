@@ -121,3 +121,45 @@ DVM_Provider *dvm_provider_capture(DVM_Provider *provider, const char *relative)
     captured->anchored = 1;
     return captured;
 }
+
+
+/* EN/RU: See provider.h. Seal caller binding before a factory escapes.
+ * См. provider.h. Закрепить связь до публикации фабрики. */
+int dvm_provider_bind_caller(DVM_Provider *provider, const DVM_CallerBinding *binding)
+{
+    if (!provider || !binding || !binding->begin || !binding->end)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(provider->lock);
+    int valid = provider->references == 1 && !provider->walk_used &&
+        !provider->origin && !provider->caller.begin;
+    if (valid)
+    {
+        provider->caller = *binding;
+    }
+    fvm_port_sync_unlock(provider->lock);
+    return valid;
+}
+
+
+/* EN/RU: See provider.h. The retained node owns its origin chain.
+ * См. provider.h. Удерживаемый узел владеет цепочкой источников. */
+int dvm_provider_caller_binding(DVM_Provider *provider, DVM_CallerBinding *binding)
+{
+    if (!binding)
+    {
+        return 0;
+    }
+    for (; provider; provider = provider->origin)
+    {
+        fvm_port_sync_lock(provider->lock);
+        *binding = provider->caller;
+        fvm_port_sync_unlock(provider->lock);
+        if (binding->begin)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}

@@ -3,6 +3,7 @@
  * RU: Нативное владение точными файлами запроса и ответа.
  */
 #include "scalar_files.h"
+#include "program_view.h"
 #include "lib9.h"
 #include "dat.h"
 #include "interp.h"
@@ -133,6 +134,32 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
         strcpy(files->name, name);
     }
     return files;
+}
+
+
+/* EN: Publish the active PID on an explicitly bound reverse session for this call.
+ * The native binding owns the lease until the Styx exchange ends.
+ * RU: Опубликовать текущий PID во встречной сессии на время вызова.
+ * Нативная связь удерживает публикацию до завершения обмена Styx. */
+int dvm_scalar_function_invoke(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value)
+{
+    DVM_CallerBinding binding;
+    if (!files->caller || !dvm_provider_caller_binding(files->request, &binding))
+    {
+        return dvm_scalar_function_call(files, pid, argument, value);
+    }
+    DVM_ProgramView entry = {.pid = pid};
+    DVM_Provider *tree = dvm_program_view(&entry, 1);
+    void *lease = tree ? binding.begin(binding.state, files->request, tree) : NULL;
+    if (!lease)
+    {
+        dvm_provider_release(tree);
+        return -1;
+    }
+    int result = dvm_scalar_function_call(files, pid, argument, value);
+    binding.end(binding.state, lease);
+    dvm_provider_release(tree);
+    return result;
 }
 
 
