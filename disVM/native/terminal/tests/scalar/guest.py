@@ -106,6 +106,9 @@ def main():
             if marker not in result.stdout:
                 raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
             print(marker, mode, flush=True)
+            if "PASS captured caller program tree" not in result.stdout:
+                raise RuntimeError("caller program tree check missing\n" + result.stdout + result.stderr)
+            print("PASS captured caller program tree", mode, flush=True)
 
 
 if __name__ == "__main__":

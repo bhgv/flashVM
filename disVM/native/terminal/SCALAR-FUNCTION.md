@@ -81,3 +81,19 @@ The `styx-caller.b` example runs as part of `terminal-scalar-guest`. The
 parent and a spawned child share one module instance. The native callback
 checks the automatically supplied PID against the PID observed by each guest
 process. Both VM modes print `PASS typed Styx caller PID`.
+
+## Building the reverse caller tree
+
+Native DisVM embedders can assemble the module root with
+`dvm_program_view`. Supply one `DVM_ProgramView` per process. Each entry
+creates a read-only decimal `.pid` file with a trailing newline and maps
+only the supplied `.fd`, `.vfs` and `.var` directory grants. The mapping
+retains access to the underlying providers with their original permissions.
+A duplicate PID or invalid directory rejects the entire construction.
+The embedder owns the result and can use it as the root of its reverse
+publication. A captured PID directory stays valid after releasing that root.
+
+Run `ctest -R '^terminal-scalar-guest$' -V` to exercise construction,
+capture lifetime and grant visibility. Look for
+`PASS captured caller program tree`. The builder still requires the caller
+entries and grants from its embedder.

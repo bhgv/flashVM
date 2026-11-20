@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "vfs/export.h"
+#include "vfs/program_view.h"
 #include "vfs/loader.h"
 #include "vfs/module_adapter.h"
 #include "vfs/launch/runtime.h"
@@ -186,10 +187,72 @@ int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, 
 }
 
 
+/* EN: Verify a captured PID survives the module root release and keeps its
+ * own read-only identity and explicit namespace grant.
+ * RU: Проверить, что захваченный PID сохраняет свой идентификатор на чтение
+ * и выданное пространство имён после освобождения корня модуля. */
+static int verify_program_view(void)
+{
+    DVM_Provider *marker = dvm_module_adapter("test", 4);
+    DVM_View *builder = dvm_view_create(NULL, NULL, NULL);
+    if (!builder || !marker || !dvm_view_map(builder, "/env/CLIENT", marker, ".", FVM_ACCESS_READ, 0))
+    {
+        dvm_provider_release(marker);
+        dvm_view_discard(builder);
+        return 0;
+    }
+    dvm_provider_release(marker);
+    DVM_Provider *vfs = dvm_view_freeze(builder);
+    if (!vfs)
+    {
+        return 0;
+    }
+    DVM_ProgramView entries[] = {{.pid = 41}, {.pid = 42, .vfs = vfs}};
+    DVM_Provider *root = dvm_program_view(entries, 2);
+    dvm_provider_release(vfs);
+    entries[1] = entries[0];
+    DVM_Provider *duplicate = dvm_program_view(entries, 2);
+    DVM_Provider *missing = dvm_program_capture(root, 43);
+    DVM_Provider *program = dvm_program_capture(root, 42);
+    int valid = program && !duplicate && !missing;
+    dvm_provider_release(root);
+    dvm_provider_release(duplicate);
+    dvm_provider_release(missing);
+    if (!valid)
+    {
+        dvm_provider_release(program);
+        return 0;
+    }
+    DVM_VfsHandle reader = {0};
+    DVM_VfsHandle writer = {0};
+    FVM_FileInfo info;
+    char text[4] = {0};
+    valid = dvm_provider_open(program, ".pid", "r", &reader) == FVM_OK;
+    if (valid)
+    {
+        DVM_IoResult got = dvm_vfs_read_chunk(&reader, text, sizeof(text));
+        valid = got.status == FVM_OK && got.count == 3 && !memcmp(text, "42\n", 3) &&
+            dvm_provider_open(program, ".pid", "wo", &writer) != FVM_OK &&
+            dvm_provider_info(program, ".vfs/env/CLIENT", &info) == FVM_OK &&
+            dvm_provider_info(program, ".fd", &info) == FVM_NOT_FOUND;
+    }
+    dvm_vfs_close(&reader);
+    dvm_vfs_close(&writer);
+    dvm_provider_release(program);
+    return valid;
+}
+
+
 /* EN/RU: Mount the borrowed remote root and run the guest with ordinary VFS lookup.
  * Смонтировать заимствованный корень и запустить гостя с обычным поиском VFS. */
 int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
 {
+    if (!verify_program_view())
+    {
+        fprintf(stderr, "could not verify the caller program tree\n");
+        exit(2);
+    }
+    puts("PASS captured caller program tree");
     char cwd[DVM_NS_PATH_LIMIT];
     DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_TERMINAL};
     if (!getcwd(cwd, sizeof(cwd)))
