@@ -84,6 +84,7 @@ typedef struct DVM_LaunchHandoff
     struct UnibusBinding *unibus; /* Optional owned native per-launch handler, never a serialized frame. */
     DVM_LaunchContract *contract; /* Owned independent copied requirements, mandatory when description.typed is one. */
     DVM_Provider *program; /* Owned captured .prog/<pid> root, if configured. */
+    DVM_Provider *program_vfs; /* Optional owned client namespace captured below the process. */
     DVM_Provider *program_parent; /* Optional owned exact base for inherited entries. */
     uint32_t program_hidden_fds; /* Explicit omissions, including standard descriptors. */
     unsigned char inherited_fds[DVM_LAUNCH_FD_COUNT]; /* Trusted native mode ceilings; zero means no import. */
@@ -94,6 +95,11 @@ typedef struct DVM_LaunchHandoff
  * Выбрать точные каталоги процесса и необязательного родителя в доверенном экспорте Styx. */
 int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
     uint32_t pid, uint32_t parent_pid, uint32_t hidden_fds);
+
+
+/* EN/RU: Return a private launch namespace or a retained original without .vfs.
+ * Вернуть частное пространство запуска или удержать исходное без .vfs. */
+DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff);
 
 
 /* EN: Replace the terminal VFS root of an exclusive prepared handoff. Borrow the

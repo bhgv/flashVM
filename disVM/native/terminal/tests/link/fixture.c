@@ -14,6 +14,7 @@
 #include <pthread.h>
 #ifdef ORDERED_GUEST_FILE_TEST
 #include "file.h"
+#include "images.h"
 #include "file_provider.h"
 #include "held_export.h"
 #include "mount.h"
@@ -50,22 +51,6 @@ extern char *terminalwrite(char *, ulong *, vlong);
 #ifdef ORDERED_GUEST_FILE_TEST
 
 
-/* EN/RU: Own actual compiled readonly asset storage through original server join.
- * Владеть настоящим compiled readonly asset-storage до join original server.
- */
-extern void fixtureimagesinit(Styxserver *);
-
-
-/* EN/RU: Serve one original remote offset/count, borrowed buffers, short prefixes only.
- * Обслужить исходные remote offset/count, buffers borrowed, только short prefixes.
- */
-extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
-
-
-/* EN/RU: Release image storage after every original server callback has retired.
- * Освободить image-storage после завершения всех original server callbacks.
- */
-extern void fixtureimagesfree(void);
 extern int fixturereversestart(RemotePhy *channel); /* Consume local reply channel. */
 extern int fixturereversecli(DVM_Provider *provider); /* Exercise the CLI reverse export. */
 extern int fixturereversefinish(void); /* Join server and require the reply. */
@@ -386,19 +371,8 @@ int linkfixturefd(void)
             unsigned long parent = Qroot;
             if (scoped)
             {
-                const unsigned long module = 819; /* Granted directory of one loaded module. */
-                const unsigned long program = 820; /* Current client process registry. */
-                const unsigned long child = 822; /* Projected child context. Time of capture pins its qid. */
-                parent = 821;
+                parent = fixtureprograminit(&server);
                 directory = ".fd";
-                if (!styxadddir(&server, Qroot, module, "loaded.dis", 0555, "fixture") ||
-                    !styxadddir(&server, module, program, ".prog", 0555, "fixture") ||
-                    !styxadddir(&server, program, parent, "41", 0555, "fixture") ||
-                    !styxadddir(&server, program, child, "42", 0555, "fixture") ||
-                    !styxadddir(&server, child, 823, ".fd", 0555, "fixture"))
-                {
-                    _exit(3);
-                }
                 replacement = add_held(823, projected_stdout, "1", "numbered-out.bin", FVM_ACCESS_WRITE);
             }
             if (!styxadddir(&server, parent, numbered_root, directory, 0555, "fixture"))

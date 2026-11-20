@@ -75,13 +75,27 @@ checkheld()
 }
 
 
+# EN/RU: Read the client's environment through normal file operations.
+# Прочитать окружение клиента обычными файловыми операциями.
+clientenv(): string
+{
+    file := sys->open("/.vfs/env/CLIENT", Sys->OREAD);
+    bytes := array[5] of byte;
+    if (file == nil || sys->read(file, bytes, len bytes) != len bytes) {
+        return "";
+    }
+    return string bytes;
+}
+
+
 # EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
 # Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
-readchild(done: chan of string, hidestderr: int)
+readchild(done: chan of string, hidestderr: int, expected: string)
 {
     inherited := sys->fildes(3);
     part := array[3] of byte;
-    if (inherited == nil || (sys->fildes(2) == nil) != hidestderr || sys->read(inherited, part, 3) != 3) {
+    if (inherited == nil || (sys->fildes(2) == nil) != hidestderr ||
+        (hidestderr && clientenv() != expected) || sys->read(inherited, part, 3) != 3) {
         done <-= "missing";
         return;
     }
@@ -111,7 +125,8 @@ checknumbered()
         raise "numbered FD aliases lost shared cursor";
     }
     done := chan of string;
-    spawn readchild(done, err == nil);
+    environment := clientenv();
+    spawn readchild(done, err == nil, environment);
     if (<-done != "def") {
         raise "child did not inherit numbered FD cursor";
     }
@@ -126,7 +141,12 @@ checknumbered()
         raise "numbered stdio did not use its launch file";
     }
     if (err == nil) {
+        if ((environment != "child" && environment != "base!") ||
+            sys->open("/env/CLIENT", Sys->OREAD) != nil || sys->open("/.vfs/env/CLIENT", Sys->OWRITE) != nil) {
+            raise "process namespace grant not isolated";
+        }
         sys->print("PASS process context hides fd 2\n");
+        sys->print("PASS process VFS %s\n", environment);
     }
     ordinary := sys->open("/nine", Sys->OREAD);
     if (ordinary == nil || ordinary.fd == 3) {

@@ -169,6 +169,73 @@ static DVM_Provider *capture_program(DVM_Provider *source, uint32_t pid)
 }
 
 
+/* EN/RU: Confirm ambiguous lookup through a complete bounded directory listing.
+ * Подтвердить неоднозначный поиск полным ограниченным списком каталога. */
+static FVM_Result missing_program_vfs(DVM_Provider *program)
+{
+    DVM_VfsHandle directory = {0};
+    if (dvm_provider_open(program, ".", "r", &directory) != FVM_OK)
+    {
+        return FVM_ERROR;
+    }
+    FVM_Result status = FVM_ERROR;
+    size_t remaining = 4096;
+    while (!dvm_cancel_requested(dvm_cancel_current()))
+    {
+        FVM_FileInfo *entries = NULL;
+        size_t count = 0;
+        FVM_Result read = dvm_vfs_list(&directory, &entries, &count);
+        int valid = read == FVM_OK && count <= remaining;
+        for (size_t i = 0; valid && i < count; i++)
+        {
+            valid = strcmp(entries[i].name, ".vfs") != 0;
+        }
+        fvm_port_directory_entries_free(entries);
+        if (!valid || !count)
+        {
+            status = valid ? FVM_NOT_FOUND : FVM_ERROR;
+            break;
+        }
+        remaining -= count;
+    }
+    dvm_vfs_close(&directory);
+    return status;
+}
+
+
+/* EN/RU: Resolve optional .vfs, falling back only if lookup proved absence.
+ * Найти необязательный .vfs, переходя к базе лишь при подтверждённом отсутствии. */
+static FVM_Result program_vfs(DVM_Provider *program, DVM_Provider **out)
+{
+    if (!program)
+    {
+        return FVM_NOT_FOUND;
+    }
+    FVM_FileInfo info;
+    FVM_Result status = dvm_provider_info(program, ".vfs", &info);
+    if (status == FVM_ERROR)
+    {
+        return missing_program_vfs(program);
+    }
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    if (!info.directory)
+    {
+        return FVM_ERROR;
+    }
+    DVM_Provider *root = dvm_provider_capture(program, ".vfs");
+    if (!root || dvm_provider_info(root, ".", &info) != FVM_OK || !info.directory)
+    {
+        dvm_provider_release(root);
+        return FVM_ERROR;
+    }
+    *out = root;
+    return FVM_OK;
+}
+
+
 /* EN/RU: Commit both retained roots only when the whole trusted selection succeeds.
  * Установить оба удерживаемых каталога только при полном успехе доверенного выбора. */
 int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
@@ -185,8 +252,64 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
         dvm_provider_release(program);
         return 0;
     }
+    DVM_Provider *vfs = NULL;
+    FVM_Result status = program_vfs(program, &vfs);
+    if (status == FVM_NOT_FOUND)
+    {
+        status = program_vfs(parent, &vfs);
+    }
+    if (status != FVM_OK && status != FVM_NOT_FOUND)
+    {
+        dvm_provider_release(parent);
+        dvm_provider_release(program);
+        return 0;
+    }
+    handoff->program_vfs = vfs;
     handoff->program = program;
     handoff->program_parent = parent;
     handoff->program_hidden_fds = hidden_fds;
     return 1;
+}
+
+
+/* EN/RU: Stage a dedicated caller subtree while preserving the accepted root stack.
+ * Подготовить отдельное дерево клиента, сохраняя принятый корневой стек. */
+DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
+{
+    if (!handoff || !handoff->group)
+    {
+        return NULL;
+    }
+    if (!handoff->program_vfs)
+    {
+        return dvm_namespace_retain(handoff->group) ? handoff->group : NULL;
+    }
+    DVM_Namespace *group = dvm_namespace_copy(handoff->group);
+    DVM_NamespaceBinding *entry = group ? calloc(1, sizeof(*entry)) : NULL;
+    if (!entry || group->next_binding == UINT64_MAX || group->version == UINT64_MAX ||
+        !dvm_provider_retain(handoff->program_vfs))
+    {
+        free(entry);
+        dvm_namespace_release(group);
+        return NULL;
+    }
+    for (const DVM_NamespaceBinding *old = group->bindings; old; old = old->next)
+    {
+        if (!strncmp(old->on, "/.vfs", 5) && (!old->on[5] || old->on[5] == '/'))
+        {
+            dvm_provider_release(handoff->program_vfs);
+            free(entry);
+            dvm_namespace_release(group);
+            return NULL;
+        }
+    }
+    strcpy(entry->on, "/.vfs");
+    strcpy(entry->source, "/.vfs");
+    entry->origin = handoff->description.terminal_origin;
+    entry->provider = handoff->program_vfs;
+    entry->identity = entry->head_identity = ++group->next_binding;
+    entry->next = group->bindings;
+    group->bindings = entry;
+    group->version++;
+    return group;
 }

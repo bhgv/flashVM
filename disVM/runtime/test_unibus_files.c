@@ -158,17 +158,22 @@ static DVM_LaunchHandoff *prepare_launch(void)
     strcpy(spec.module, "provider/unibus-files.dis");
     if (scoped)
     {
-        DVM_LaunchSpec invalid_scope = spec;
-        invalid_scope.terminal = assets;
-        invalid_scope.program.pid = 99;
-        DVM_LaunchRequest *missing = NULL;
-        DVM_LaunchTicket *refusal = dvm_launch_request_create(&invalid_scope, &missing);
-        launch_check(refusal && missing &&
-            !dvm_launch_request_prepare(missing, options.provider, &options.provider_origin) &&
-            dvm_launch_ticket_status(refusal) == DVM_LAUNCH_DENIED && !dvm_launch_request_take(missing),
-            "missing process is refused without a legacy launch");
-        dvm_launch_request_free(missing);
-        dvm_launch_ticket_free(refusal);
+        const uint32_t denied_pids[] = {99, 43};
+        for (size_t i = 0; i < sizeof(denied_pids) / sizeof(denied_pids[0]); i++)
+        {
+            DVM_LaunchSpec invalid_scope = spec;
+            invalid_scope.terminal = assets;
+            invalid_scope.program.pid = denied_pids[i];
+            invalid_scope.program.parent_pid = 41;
+            DVM_LaunchRequest *missing = NULL;
+            DVM_LaunchTicket *refusal = dvm_launch_request_create(&invalid_scope, &missing);
+            launch_check(refusal && missing &&
+                !dvm_launch_request_prepare(missing, options.provider, &options.provider_origin) &&
+                dvm_launch_ticket_status(refusal) == DVM_LAUNCH_DENIED && !dvm_launch_request_take(missing),
+                "missing process or malformed namespace is refused");
+            dvm_launch_request_free(missing);
+            dvm_launch_ticket_free(refusal);
+        }
     }
     StyxTerminalPaths paths = {STYX_UNIBUS_NODE, STYX_UNIBUS_NODE, NULL}; /* Existing granted original-Styx endpoints. */
     DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
@@ -198,7 +203,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
     if (scoped)
     {
-        launch_check(handoff && handoff->program && handoff->program_parent &&
+        launch_check(handoff && handoff->program && handoff->program_parent && handoff->program_vfs &&
             handoff->program_hidden_fds == (UINT32_C(1) << 2),
             "wire request pinned child and parent beneath the loaded module");
     }

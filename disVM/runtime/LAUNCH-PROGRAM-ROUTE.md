@@ -37,12 +37,23 @@ exports `loaded.dis/.prog/41` and `loaded.dis/.prog/42`. Run
 `ctest -R '^terminal-ordered-files-guest$' -V` and look for
 `PASS actual portable Dis guest record files scoped` in both VM modes.
 
-The remaining design places `.vfs` and `.var` alongside `.fd`. The
-former exposes the granted client namespace, including ordinary environment
-files. The latter exposes shared variable proxies between Limbo/DisVM and
-FlashVM. Composite values appear as directories. `.type` and `.len` provide
-type and length. For indexed access the client opens `.idx`, writes the
-index, operates on `.val`, and closes `.idx`. The dispatcher must associate
-selection with the open operation so concurrent accesses retain separate
-indices. `.ins`, `.add`, `.push` and `.pop` are planned collection
-operations. These nodes remain to be connected.
+If the selected process exports `.vfs`, preparation captures that directory.
+Only a confirmed absence permits inheritance of the base process's entire
+`.vfs`. A non-directory or failed lookup denies preparation. Before `init`,
+DisVM installs the captured directory at `/.vfs` in the new process. Existing
+explicit mounts at or under that path cause adoption to fail. Local `spawn`
+inherits the namespace and ordinary file permissions. Client environment
+entries are ordinary files such as `/.vfs/env/CLIENT`. The execution provider
+keeps its accepted root and launch context alongside this subtree.
+
+The fixture tests an explicit client namespace and an inherited base namespace.
+Each case reads a distinct environment value from `/.vfs` in both the launched
+process and its child.
+
+The planned `.var` directory exposes shared variable proxies between
+Limbo/DisVM and FlashVM. Composite values appear as directories. `.type`
+and `.len` provide type and length. For indexed access the client opens
+`.idx`, writes the index, operates on `.val`, and closes `.idx`.
+The dispatcher must associate selection with the open operation so concurrent
+accesses retain separate indices. `.ins`, `.add`, `.push` and `.pop`
+are planned collection operations.

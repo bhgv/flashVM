@@ -107,9 +107,11 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
             shared->group = context.group;
             shared->program = context.program;
             shared->program_parent = context.program_parent;
+            shared->program_vfs = context.program_vfs;
             context.group = NULL;
             context.program = NULL;
             context.program_parent = NULL;
+            context.program_vfs = NULL;
             shared->provider_origin = accepted;
             shared->state = DVM_LAUNCH_READY;
             ready = 1;
@@ -123,6 +125,7 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
     dvm_namespace_release(context.group);
     dvm_provider_release(context.program);
     dvm_provider_release(context.program_parent);
+    dvm_provider_release(context.program_vfs);
     dvm_launch_shared_changed(shared);
     return ready;
 }
@@ -169,9 +172,11 @@ DVM_LaunchHandoff *dvm_launch_request_take(DVM_LaunchRequest *request)
         handoff->group = shared->group;
         handoff->program = shared->program;
         handoff->program_parent = shared->program_parent;
+        handoff->program_vfs = shared->program_vfs;
         handoff->program_hidden_fds = shared->selection.hidden_fds;
         shared->program = NULL;
         shared->program_parent = NULL;
+        shared->program_vfs = NULL;
         shared->group = NULL;
         handoff->provider_origin = shared->provider_origin;
         handoff->flashvm = shared->flashvm;
@@ -199,6 +204,7 @@ void dvm_launch_handoff_free(DVM_LaunchHandoff *handoff)
         dvm_provider_release(handoff->flashvm.provider);
         dvm_provider_release(handoff->program);
         dvm_provider_release(handoff->program_parent);
+        dvm_provider_release(handoff->program_vfs);
         dvm_movie_offer_release(handoff->flashvm.offers);
         unibusrelease(handoff->unibus);
         dvm_launch_contract_free(handoff->contract);

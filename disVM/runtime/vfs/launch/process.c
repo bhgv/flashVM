@@ -139,17 +139,20 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         }
         *channels = handoff->flashvm;
     }
-    DVM_SysEvents *events = dvm_sysevents_create(handoff->group);
+    DVM_Namespace *group = dvm_launch_program_namespace(handoff);
+    DVM_SysEvents *events = group ? dvm_sysevents_create(group) : NULL;
     if (!events)
     {
+        dvm_namespace_release(group);
         free(channels);
         return 0;
     }
-    DVM_Provider *movie = channels ? styxmovieservice(handoff->group) : NULL;
+    DVM_Provider *movie = channels ? styxmovieservice(group) : NULL;
     if (channels && !movie)
     {
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
+        dvm_namespace_release(group);
         free(channels);
         return 0;
     }
@@ -159,6 +162,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         dvm_provider_release(movie);
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
+        dvm_namespace_release(group);
         free(channels);
         return 0;
     }
@@ -176,6 +180,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         dvm_provider_release(movie);
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
+        dvm_namespace_release(group);
         free(channels);
         return 0;
     }
@@ -187,7 +192,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->unibus = handoff->unibus;
     owner->unibus_isolated = 1;
     handoff->unibus = NULL;
-    owner->namespace_group = handoff->group;
+    owner->namespace_group = group;
     owner->system_events = events;
     owner->terminal_channels = channels;
     owner->movie_provider = movie;
@@ -197,6 +202,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->module_local_role = handoff->local_role ? handoff->local_role : DVM_ORIGIN_PROVIDER;
     owner->provider_execution = 1; /* Trusted handoff establishes this runtime as the execution provider before publication. */
     owner->launch_adopted = 1;
+    dvm_namespace_release(handoff->group);
     handoff->group = NULL;
     memset(&handoff->flashvm, 0, sizeof(handoff->flashvm));
     dvm_sysevents_retire(previous_events);

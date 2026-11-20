@@ -7,9 +7,11 @@
 #include <styxserver.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "flashvm/sbindings.h"
 #include "../../../launch/program_record.h"
 #include "launch_receive.h"
+#include "images.h"
 static const struct
 {
     unsigned long qid; /* Published Styx identity for the asset. */
@@ -28,6 +30,55 @@ static int require_submission; /* In routed tests the caller must post before la
 static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
 static size_t lengths[nelem(assets)]; /* Exact bytes advertised in original Styx metadata. */
+
+
+enum
+{
+    ProgramModule = 819, /* Directory of this client's loaded module. */
+    ProgramRoot = 820,   /* Process registry within that module. */
+    ProgramBase = 821,   /* Base process 41. */
+    ProgramChild = 822,  /* Selected process 42. */
+    ProgramChildFds = 823, /* Directory for replacement descriptors. */
+    ProgramChildVfs = 825, /* Optional child namespace. */
+    ProgramBaseVfs = 828, /* Fallback namespace. */
+    ProgramInvalid = 831 /* Process with an invalid .vfs node. */
+};
+
+
+/* EN/RU: Publish a process namespace and its ordinary environment file.
+ * Опубликовать пространство процесса и обычный файл его окружения. */
+static int publish_environment(Styxserver *server, Path process, Path vfs)
+{
+    Styxfile *file;
+    if (!styxadddir(server, process, vfs, ".vfs", 0555, "fixture") ||
+        !styxadddir(server, vfs, vfs + 1, "env", 0555, "fixture") ||
+        !(file = styxaddfile(server, vfs + 1, vfs + 2, "CLIENT", 0444, "fixture")))
+    {
+        return 0;
+    }
+    file->d.length = 5;
+    return 1;
+}
+
+
+/* EN/RU: Publish the granted loaded module tree and return its base process qid.
+ * Опубликовать дерево выданной загрузки модуля и вернуть qid базового процесса. */
+Path fixtureprograminit(Styxserver *server)
+{
+    if (!styxadddir(server, Qroot, ProgramModule, "loaded.dis", 0555, "fixture") ||
+        !styxadddir(server, ProgramModule, ProgramRoot, ".prog", 0555, "fixture") ||
+        !styxadddir(server, ProgramRoot, ProgramBase, "41", 0555, "fixture") ||
+        !styxadddir(server, ProgramRoot, ProgramChild, "42", 0555, "fixture") ||
+        !styxadddir(server, ProgramChild, ProgramChildFds, ".fd", 0555, "fixture") ||
+        !publish_environment(server, ProgramBase, ProgramBaseVfs) ||
+        !styxadddir(server, ProgramRoot, ProgramInvalid, "43", 0555, "fixture") ||
+        !styxaddfile(server, ProgramInvalid, ProgramInvalid + 1, ".vfs", 0444, "fixture") ||
+        (!getenv("DVM_TEST_TERMINAL_SCOPED_BASE") && !publish_environment(server, ProgramChild, ProgramChildVfs)))
+    {
+        _exit(3);
+    }
+    return ProgramBase;
+}
 
 
 /* EN/RU: Add readonly app/dependency nodes from actual compiled fixture files before server starts.
@@ -92,6 +143,11 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if ((qid.path == ProgramChildVfs + 2 || qid.path == ProgramBaseVfs + 2) && offset >= 0)
+    {
+        *count = styxreadstr(offset, bytes, *count, qid.path == ProgramChildVfs + 2 ? "child" : "base!");
+        return nil;
+    }
     if (offset < 0 || (qid.path == 10 && require_submission && !submitted))
     {
         return Ebadarg;

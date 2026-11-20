@@ -141,21 +141,23 @@ def main():
                  "-Wl,--start-group", *libraries, "-Wl,--end-group",
                  *[value for value in sdk_link if value.startswith("-l") or value == "-pthread"]]
         run(link, runtime.parent)
-        profiles = ["default", "custom", "numbered"] if cli else ["default", "numbered", "scoped"]
+        profiles = ["default", "custom", "numbered"] if cli else ["default", "numbered", "scoped", "scoped-base"]
         for profile in profiles:
             env = os.environ.copy()
             if profile == "custom":
                 env["DVM_TEST_TERMINAL_CUSTOM"] = "1"
-            if profile in ("numbered", "scoped"):
+            if profile in ("numbered", "scoped", "scoped-base"):
                 env["DVM_TEST_TERMINAL_NUMBERED"] = "1"
-            if profile == "scoped":
+            if profile.startswith("scoped"):
                 env["DVM_TEST_TERMINAL_SCOPED"] = "1"
+            if profile == "scoped-base":
+                env["DVM_TEST_TERMINAL_SCOPED_BASE"] = "1"
             for mode in ["--no-jit", "--jit"]:
                 env["DVM_TEST_OWNER_RUNTIME"] = str(runtime)
                 env["DVM_TEST_OWNER_MODE"] = mode
                 (work / "held-source.bin").write_bytes(b"skip:from-held-cursor")
                 (work / "held-target.bin").write_bytes(b"keep:")
-                if profile in ("numbered", "scoped"):
+                if profile in ("numbered", "scoped", "scoped-base"):
                     (work / "numbered-in.bin").write_bytes(b"skip:xyz")
                     (work / "numbered-out.bin").write_bytes(b"keep:")
                     (work / "numbered-base-out.bin").write_bytes(b"parent:")
@@ -164,10 +166,13 @@ def main():
                 result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")],
                              work, env)
                 guest_output = result.stdout
-                if profile in ("numbered", "scoped"):
+                if profile in ("numbered", "scoped", "scoped-base"):
                     guest_output = (work / "numbered-out.bin").read_text()
-                    expected_stderr = b"keep:" if profile == "scoped" else b"keep:remote stderr\n"
-                    if profile == "scoped" and (
+                    scoped = profile.startswith("scoped")
+                    expected_stderr = b"keep:" if scoped else b"keep:remote stderr\n"
+                    expected_vfs = "base!" if profile == "scoped-base" else "child"
+                    if scoped and (
+                            f"PASS process VFS {expected_vfs}" not in guest_output or
                             "PASS process context hides fd 2" not in guest_output or
                             (work / "numbered-base-out.bin").read_bytes() != b"parent:"):
                         raise RuntimeError("scoped descriptor override or omission failed")
