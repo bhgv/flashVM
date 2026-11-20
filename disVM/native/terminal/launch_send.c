@@ -3,6 +3,7 @@
  * RU: Кодирование и доставка одной записи запуска по выданному файловому полномочию.
  */
 #include "record_write.h"
+#include "../launch/program_record.h"
 #include "flashvm/srecord.h"
 #include "cancel.h"
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 typedef struct LaunchFile
 {
     DVM_Provider *provider; /* Owned exact request file, independent of VFS aliases. */
+    DVM_LaunchProgram program; /* Optional copied client context. */
     unsigned long tag;      /* Configured application launch route. */
 } LaunchFile;
 
@@ -29,11 +31,19 @@ static void release(void *opaque)
 static DVM_LaunchDelivery send(void *opaque, const void *arguments, size_t size)
 {
     LaunchFile *file = opaque;
-    size_t capacity = size + 32;
+    unsigned char header[STYX_LAUNCH_PROGRAM_HEADER];
+    size_t prefix = file->program.pid ? sizeof(header) : 0;
+    if (prefix && (size > DVM_LAUNCH_ARGUMENT_LIMIT - prefix ||
+        !styxlaunchprogramencode(header, &file->program)))
+    {
+        return DVM_LAUNCH_NOT_SENT;
+    }
+    size_t capacity = size + prefix + 32;
     unsigned char *bytes = malloc(capacity);
     size_t used;
     DVM_LaunchDelivery delivery = DVM_LAUNCH_NOT_SENT;
-    if (bytes && fvm_srecord_write(file->tag, arguments, size, bytes, capacity, &used) == FVM_S_OK)
+    if (bytes && (prefix ? fvm_srecord_write_pair(file->tag, header, prefix, arguments, size, bytes, capacity, &used) :
+        fvm_srecord_write(file->tag, arguments, size, bytes, capacity, &used)) == FVM_S_OK)
     {
         delivery = styxterminalrecordwrite(file->provider, bytes, used);
     }
@@ -44,7 +54,8 @@ static DVM_LaunchDelivery send(void *opaque, const void *arguments, size_t size)
 
 /* EN/RU: See launch_send.h; do not open the provider until actual submission.
  * См. launch_send.h; до подачи запроса не открывать provider. */
-DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigned long tag)
+static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long tag,
+    const DVM_LaunchProgram *program)
 {
     if (!request_file || !(dvm_provider_native_flags(request_file) & DVM_PROVIDER_CANCEL_PATH) || !tag || tag > FVM_SRECORD_U32)
     {
@@ -58,10 +69,32 @@ DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigne
     }
     file->provider = request_file;
     file->tag = tag;
+    if (program)
+    {
+        file->program = *program;
+    }
     DVM_LaunchAddress *address = dvm_launch_address_transport(send, file, release);
     if (!address)
     {
         release(file);
     }
     return address;
+}
+
+
+/* EN/RU: Create the original launch address with raw startup payloads.
+ * Создать прежний адрес запуска с исходными данными запуска. */
+DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigned long tag)
+{
+    return address_for(request_file, tag, NULL);
+}
+
+
+/* EN/RU: Retain the route and copy the process selector for subsequent sends.
+ * Удержать маршрут и скопировать выбор процесса для последующих отправок. */
+DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, unsigned long tag,
+    const DVM_LaunchProgram *program)
+{
+    return program && program->pid && program->pid != program->parent_pid ?
+        address_for(request_file, tag, program) : NULL;
 }

@@ -386,11 +386,13 @@ int linkfixturefd(void)
             unsigned long parent = Qroot;
             if (scoped)
             {
-                const unsigned long program = 820; /* Fixture's absolute process registry. */
+                const unsigned long module = 819; /* Granted directory of one loaded module. */
+                const unsigned long program = 820; /* Current client process registry. */
                 const unsigned long child = 822; /* Projected child context. Time of capture pins its qid. */
                 parent = 821;
                 directory = ".fd";
-                if (!styxadddir(&server, Qroot, program, ".prog", 0555, "fixture") ||
+                if (!styxadddir(&server, Qroot, module, "loaded.dis", 0555, "fixture") ||
+                    !styxadddir(&server, module, program, ".prog", 0555, "fixture") ||
                     !styxadddir(&server, program, parent, "41", 0555, "fixture") ||
                     !styxadddir(&server, program, child, "42", 0555, "fixture") ||
                     !styxadddir(&server, child, 823, ".fd", 0555, "fixture"))

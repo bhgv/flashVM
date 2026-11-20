@@ -45,6 +45,15 @@ static DVM_LaunchAddress *wire_address(void *request)
 }
 
 
+/* EN/RU: Attach the test process identity to the selected module's launch request.
+ * Добавить идентификатор тестового процесса к запросу запуска выбранного модуля. */
+static DVM_LaunchAddress *wire_program_address(void *request)
+{
+    const DVM_LaunchProgram program = {42, 41, UINT32_C(1) << 2};
+    return styxterminallaunchprogramaddress(request, 17, &program);
+}
+
+
 /* EN/RU: Release the route's owned request provider.
  * Освободить принадлежащий маршруту провайдер запросов. */
 static void release_request(void *request)
@@ -77,7 +86,8 @@ static void submit_mounted(StyxClient *client, const DVM_LaunchOptions *options)
     DVM_Provider *request = styxmountproviderat(client, "submit", FVM_ACCESS_WRITE);
     launch_check(request && styxclientretain(client), "exact remote submit node");
     DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
-        "app.dis", wire_address, request, NULL);
+        "app.dis", getenv("DVM_TEST_TERMINAL_SCOPED") ? wire_program_address : wire_address,
+        request, NULL);
     DVM_View *aliases = dvm_view_create(NULL, NULL, NULL);
     launch_check(mounted && aliases && dvm_view_map(aliases, "/bound.dis", mounted, "app.dis",
         FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "bind advertised Dis file");
@@ -140,22 +150,39 @@ static DVM_LaunchHandoff *prepare_launch(void)
         NULL, 0, &launch_type, 1);
     launch_check(route != NULL, "live launch dispatcher");
     DVM_LaunchSpec spec = {0}; /* Captured terminal channels and execution source are independently authorized. */
+    spec.program_root = scoped ? dvm_provider_capture(assets, "loaded.dis") : NULL;
+    launch_check(!scoped || spec.program_root, "grant the loaded module root");
     spec.policy = options.policy;
     spec.terminal_origin = options.terminal_origin;
     strcpy(spec.expected_provider, options.provider_origin.system);
     strcpy(spec.module, "provider/unibus-files.dis");
+    if (scoped)
+    {
+        DVM_LaunchSpec invalid_scope = spec;
+        invalid_scope.terminal = assets;
+        invalid_scope.program.pid = 99;
+        DVM_LaunchRequest *missing = NULL;
+        DVM_LaunchTicket *refusal = dvm_launch_request_create(&invalid_scope, &missing);
+        launch_check(refusal && missing &&
+            !dvm_launch_request_prepare(missing, options.provider, &options.provider_origin) &&
+            dvm_launch_ticket_status(refusal) == DVM_LAUNCH_DENIED && !dvm_launch_request_take(missing),
+            "missing process is refused without a legacy launch");
+        dvm_launch_request_free(missing);
+        dvm_launch_ticket_free(refusal);
+    }
     StyxTerminalPaths paths = {STYX_UNIBUS_NODE, STYX_UNIBUS_NODE, NULL}; /* Existing granted original-Styx endpoints. */
     DVM_LaunchService *service = dvm_launch_service_create(options.provider_origin.system, 1);
     launch_check(service != NULL, "provider launch service");
     DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
     launch_check(endpoint != NULL, "submit-only terminal endpoint");
-    unsigned char startup[3]; /* Private copy made by the live typed mailbox. */
+    unsigned char startup[32]; /* Private copy made by the live typed mailbox. */
     size_t startup_size = 0;
     DVM_LaunchTicket *ticket = NULL;
     launch_check(styxbidirroutetypedwait(route, 0, 5000), "live launch frame received");
     launch_check(styxbidirroutelaunchnext(route, 0, &spec, FVM_ACCESS_MASK, &paths, endpoint, 17,
         startup, sizeof(startup), &startup_size, &ticket) == STYX_CONTROL_RECORD &&
-        startup_size == sizeof(startup), "dispatcher delivered complete launch request");
+        startup_size == (scoped ? 16U : 3U), "dispatcher delivered complete launch request");
+    dvm_provider_release(spec.program_root);
     styxbidirroutefree(route); /* The independent application record channel opens next. */
     launch_check(ticket && dvm_launch_ticket_status(ticket) == DVM_LAUNCH_PENDING, "queued terminal request");
     DVM_LaunchReview *review = dvm_launch_service_next(service);
@@ -171,10 +198,9 @@ static DVM_LaunchHandoff *prepare_launch(void)
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
     if (scoped)
     {
-        launch_check(!dvm_launch_handoff_program(handoff, assets, 42, 99, 0) && !handoff->program,
-            "missing parent leaves process context unset");
-        launch_check(dvm_launch_handoff_program(handoff, assets, 42, 41, UINT32_C(1) << 2),
-            "pin child and parent Styx process contexts");
+        launch_check(handoff && handoff->program && handoff->program_parent &&
+            handoff->program_hidden_fds == (UINT32_C(1) << 2),
+            "wire request pinned child and parent beneath the loaded module");
     }
     dvm_provider_release(assets);
     unsigned long tags[] = {0, 7, 9, 17}; /* Authorized application inboxes only. */

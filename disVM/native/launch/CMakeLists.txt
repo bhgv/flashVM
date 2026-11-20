@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Native pre-init root adapter and actual ordinary/bidir Styx launch-environment acceptance.
 # RU: Native pre-init root adapter и actual ordinary/bidir Styx launch-environment acceptance.
-add_library(styx_launch STATIC prepare.c request.c)
+add_library(styx_launch STATIC prepare.c request.c program_record.c)
 target_include_directories(styx_launch PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_launch PUBLIC styx_namespace)
 target_compile_options(styx_launch PRIVATE -Wall -Wextra)

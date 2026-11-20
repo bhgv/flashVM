@@ -3,6 +3,7 @@
  * RU: Preflight launch description, capture granted terminal root и публикация двух native authorities.
  */
 #include "request.h"
+#include "program_record.h"
 #include "mount.h"
 #include "cancel.h"
 #include <string.h>
@@ -144,8 +145,18 @@ DVM_LaunchTicket *styxbidirlaunchrecord(StyxClient *terminal, const DVM_LaunchSp
         styxclientfree(terminal);
         return NULL;
     }
-    DVM_LaunchSpec submitted = *spec; /* Only arguments come from the peer. */
+    DVM_LaunchSpec submitted = *spec; /* The peer can only select within a granted module. */
     submitted.arguments = record->payload;
     submitted.argument_bytes = record->size;
+    if (spec->program_root)
+    {
+        if (!styxlaunchprogramdecode(record->payload, record->size, &submitted.program))
+        {
+            styxclientfree(terminal);
+            return NULL;
+        }
+        submitted.arguments = (const unsigned char *)record->payload + STYX_LAUNCH_PROGRAM_HEADER;
+        submitted.argument_bytes -= STYX_LAUNCH_PROGRAM_HEADER;
+    }
     return styxbidirlaunchsubmit(terminal, &submitted, access, paths, endpoint);
 }

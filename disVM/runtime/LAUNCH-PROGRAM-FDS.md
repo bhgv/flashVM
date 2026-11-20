@@ -33,3 +33,5 @@ it, proving the shared cursor. The test checks file bytes for both the
 unused base FD 1 and the hidden FD 2. This API imports descriptor contexts
 from a trusted host selection. Process advertisement, launch-wire PID
 selection and environment groups are outside this entry point.
+
+See [the module-scoped Styx route](LAUNCH-PROGRAM-ROUTE.md) for selecting a context in a launch record.

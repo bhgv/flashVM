@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "flashvm/sbindings.h"
+#include "../../../launch/program_record.h"
 #include "launch_receive.h"
 static const struct
 {
@@ -168,8 +169,13 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    if (submitted || record.size != 3 ||
-        record.payload[0] != 'r' || record.payload[1] != 0 || record.payload[2] != 'n')
+    int scoped = getenv("DVM_TEST_TERMINAL_SCOPED") != NULL;
+    size_t prefix = scoped ? STYX_LAUNCH_PROGRAM_HEADER : 0;
+    DVM_LaunchProgram program;
+    if (submitted || record.size != prefix + 3 ||
+        (scoped && (!styxlaunchprogramdecode(record.payload, record.size, &program) ||
+            program.pid != 42 || program.parent_pid != 41 || program.hidden_fds != (UINT32_C(1) << 2))) ||
+        memcmp(record.payload + prefix, "r\0n", 3))
     {
         return Ebadarg;
     }

@@ -19,6 +19,9 @@ static void destroy(LaunchShared *shared)
         }
         dvm_namespace_release(shared->group);
         dvm_provider_release(shared->terminal);
+        dvm_provider_release(shared->program_root);
+        dvm_provider_release(shared->program);
+        dvm_provider_release(shared->program_parent);
         dvm_provider_release(shared->flashvm.provider);
         dvm_movie_offer_release(shared->flashvm.offers);
         dvm_cancel_release(shared->cancel);
@@ -88,6 +91,9 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
         !dvm_origin_id_valid(spec->expected_provider) || !spec->module[0] ||
         !memchr(spec->module, 0, sizeof(spec->module)) || spec->argument_bytes > DVM_LAUNCH_ARGUMENT_LIMIT ||
         (spec->argument_bytes && !spec->arguments) ||
+        (spec->program_root ? (!dvm_launch_root_cancellable(spec->program_root) ||
+            !spec->program.pid || spec->program.pid == spec->program.parent_pid) :
+            (spec->program.pid || spec->program.parent_pid || spec->program.hidden_fds)) ||
         (spec->flashvm && !dvm_terminal_channels_valid(spec->flashvm)))
     {
         return NULL;
@@ -118,6 +124,15 @@ DVM_LaunchTicket *dvm_launch_request_create(const DVM_LaunchSpec *spec, DVM_Laun
         return NULL;
     }
     shared->terminal = spec->terminal;
+    if (spec->program_root && !dvm_provider_retain(spec->program_root))
+    {
+        destroy(shared);
+        free(ticket);
+        free(request);
+        return NULL;
+    }
+    shared->program_root = spec->program_root;
+    shared->selection = spec->program;
     if (spec->flashvm)
     {
         if (!dvm_provider_retain(spec->flashvm->provider))
@@ -217,6 +232,8 @@ DVM_Changes *dvm_launch_observe(DVM_LaunchTicket *ticket)
 int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
 {
     DVM_Namespace *group = NULL;
+    DVM_Provider *program = NULL;
+    DVM_Provider *parent = NULL;
     fvm_port_sync_lock(shared->lock);
     int changed = shared->state == DVM_LAUNCH_PENDING || shared->state == DVM_LAUNCH_PREPARING ||
         shared->state == DVM_LAUNCH_READY;
@@ -224,13 +241,19 @@ int dvm_launch_shared_terminate(LaunchShared *shared, DVM_LaunchState state)
     {
         shared->state = state;
         group = shared->group;
+        program = shared->program;
+        parent = shared->program_parent;
         shared->group = NULL;
+        shared->program = NULL;
+        shared->program_parent = NULL;
     }
     fvm_port_sync_unlock(shared->lock);
     if (changed)
     {
         dvm_cancel_request(shared->cancel);
         dvm_namespace_release(group);
+        dvm_provider_release(program);
+        dvm_provider_release(parent);
         dvm_launch_shared_changed(shared);
     }
     return changed;

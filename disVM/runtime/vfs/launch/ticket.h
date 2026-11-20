@@ -29,6 +29,14 @@ typedef enum DVM_LaunchState
 } DVM_LaunchState;
 
 
+typedef struct DVM_LaunchProgram
+{
+    uint32_t pid; /* Nonzero client process name inside the loaded module. */
+    uint32_t parent_pid; /* Optional base process in the same module directory. */
+    uint32_t hidden_fds; /* Omitted inherited descriptor numbers. */
+} DVM_LaunchProgram;
+
+
 /* EN/RU: Borrowed inputs through create only. Trusted adapter associates identities with grants;
  * strings are not credentials. Module is a logical name, never implicitly resolved on the host.
  * Inputs borrowed до create; trusted adapter связывает identities/grants, строки не credentials. */
@@ -42,6 +50,8 @@ typedef struct DVM_LaunchSpec
     const void *arguments; /* Copied bounded startup bytes, never native/managed pointer authority. */
     size_t argument_bytes; /* 0..DVM_LAUNCH_ARGUMENT_LIMIT. */
     const DVM_TerminalChannels *flashvm; /* Optional borrowed channel grant, copied/retained at creation. */
+    DVM_Provider *program_root; /* Optional trusted root of the client's loaded module. */
+    DVM_LaunchProgram program; /* Copied selector within that root only. */
     const DVM_LaunchContract *contract; /* Optional borrowed immutable requirements, cloned at request creation. */
 } DVM_LaunchSpec;
 

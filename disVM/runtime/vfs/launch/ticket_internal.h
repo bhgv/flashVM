@@ -20,6 +20,10 @@ typedef struct LaunchShared
     DVM_LaunchContract *contract; /* Owned immutable requirements, NULL preserves legacy untyped admission. */
     int contract_checked; /* Lock-protected one-way match acceptance while PENDING, initially true only for untyped. */
     unsigned char *arguments; /* Immutable owned request bytes. */
+    DVM_Provider *program_root; /* Immutable client module grant for scoped preparation. */
+    DVM_LaunchProgram selection; /* Immutable process lookup within program_root. */
+    DVM_Provider *program; /* Prepared process directory, owned until take. */
+    DVM_Provider *program_parent; /* Prepared base directory, owned until take. */
     DVM_Provider *terminal; /* Owned granted root, never retained by cancellation callbacks. */
     DVM_TerminalChannels flashvm; /* Owned separate FlashVM channel grant until take/final retirement. */
     DVM_Cancel *cancel; /* Independent native preparation signal. */

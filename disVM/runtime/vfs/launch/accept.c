@@ -73,7 +73,8 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
         }
     }
     DVM_CancelScope scope = {0};
-    DVM_Namespace *group = NULL;
+    DVM_LaunchHandoff context = {0};
+    int prepared = 0;
     if (connected && dvm_cancel_enter(&scope, shared->cancel))
     {
         DVM_LaunchOptions options = {0};
@@ -82,7 +83,11 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
         options.provider = provider;
         options.terminal_origin = shared->description.terminal_origin;
         options.provider_origin = accepted;
-        group = dvm_launch_prepare(&options);
+        context.group = dvm_launch_prepare(&options);
+        const DVM_LaunchProgram *selected = &shared->selection;
+        prepared = context.group && (!shared->program_root ||
+            dvm_launch_handoff_program(&context, shared->program_root, selected->pid,
+                selected->parent_pid, selected->hidden_fds));
         if (!dvm_cancel_leave(&scope))
         {
             abort();
@@ -97,10 +102,14 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
         {
             shared->state = DVM_LAUNCH_CANCELLED;
         }
-        else if (group)
+        else if (prepared)
         {
-            shared->group = group;
-            group = NULL;
+            shared->group = context.group;
+            shared->program = context.program;
+            shared->program_parent = context.program_parent;
+            context.group = NULL;
+            context.program = NULL;
+            context.program_parent = NULL;
             shared->provider_origin = accepted;
             shared->state = DVM_LAUNCH_READY;
             ready = 1;
@@ -111,7 +120,9 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
         }
     }
     fvm_port_sync_unlock(shared->lock);
-    dvm_namespace_release(group);
+    dvm_namespace_release(context.group);
+    dvm_provider_release(context.program);
+    dvm_provider_release(context.program_parent);
     dvm_launch_shared_changed(shared);
     return ready;
 }
@@ -156,6 +167,11 @@ DVM_LaunchHandoff *dvm_launch_request_take(DVM_LaunchRequest *request)
     if (taken)
     {
         handoff->group = shared->group;
+        handoff->program = shared->program;
+        handoff->program_parent = shared->program_parent;
+        handoff->program_hidden_fds = shared->selection.hidden_fds;
+        shared->program = NULL;
+        shared->program_parent = NULL;
         shared->group = NULL;
         handoff->provider_origin = shared->provider_origin;
         handoff->flashvm = shared->flashvm;
