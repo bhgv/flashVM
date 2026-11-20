@@ -21,4 +21,8 @@ DVM_Provider *scalar_local_profile(void);
  * Прочитать тестовый путь в собственный провайдер образа. */
 DVM_Provider *scalar_local_image(const char *path);
 
+/* EN/RU: Borrow a plain peer mount for one VM invocation.
+ * Заимствовать обычный монт другой стороны на время одного запуска VM. */
+int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount);
+
 #endif

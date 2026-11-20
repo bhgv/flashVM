@@ -48,3 +48,5 @@ directory to verify that both loaded instances retain their captured export.
 Expected output includes
 `PASS typed Styx mounted function` for each VM mode. See the [paired DisVM tutorial](../../examples/remote-scalar/STYX.md)
 for the existing typed route.
+
+For an original Dis implementation, see [styxunibusserverstartdis](SCALAR-FUNCTION-DIS.md).

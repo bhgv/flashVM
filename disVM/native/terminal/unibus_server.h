@@ -41,6 +41,16 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
     const char *name, const struct StyxScalarFunction *function);
 
 
+/* EN/RU: Consume channel and expose a typed function serviced by the owner VM.
+ * Принять канал и открыть типизированную функцию, обслуживаемую VM владельца. */
+StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name);
+
+
+/* EN/RU: Borrow the write mailbox of a Dis endpoint through server join.
+ * Заимствовать приёмник записи конечной точки Dis до завершения сервера. */
+DVM_Provider *styxunibusserverreply(StyxUnibusServer *server);
+
+
 /* EN/RU: Borrow the local reader provider until server join.
  * Заимствовать локальный провайдер чтения до завершения сервера. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);

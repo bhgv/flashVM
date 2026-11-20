@@ -13,6 +13,8 @@
 typedef struct FunctionFid
 {
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
+    int report_transport_failure; /* Interpret negative service status as missing reply. */
+    int submitted;              /* A validated request reached the method. */
     size_t size;                 /* Reply length, zero before an accepted request. */
     unsigned char reply[STYX_SCALAR_RECORD_CAPACITY]; /* Immutable encoded response. */
 } FunctionFid;
@@ -20,7 +22,7 @@ typedef struct FunctionFid
 
 /* EN/RU: Install private state on the current server fid for ORDWR only.
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
-char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function)
+char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure)
 {
     if (mode != ORDWR || !function || !function->method || !function->request_tag ||
         !function->reply_tag || function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
@@ -33,6 +35,7 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
         return Enomem;
     }
     fid->function = *function;
+    fid->report_transport_failure = report_transport_failure;
     if (styxsetaux(server, fid) < 0)
     {
         free(fid);
@@ -47,7 +50,7 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
 {
     FunctionFid *fid = state;
-    if (!fid || fid->size || offset || count > STYX_SCALAR_RECORD_CAPACITY)
+    if (!fid || fid->submitted || offset || count > STYX_SCALAR_RECORD_CAPACITY)
     {
         return Ebadarg;
     }
@@ -62,7 +65,13 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     int64_t value = 0;
-    int success = function->method(function->state, argument, &value) == 1;
+    fid->submitted = 1;
+    int outcome = function->method(function->state, argument, &value);
+    if (outcome < 0 && fid->report_transport_failure)
+    {
+        return Ehungup;
+    }
+    int success = outcome == 1;
     if (typed && (value < INT32_MIN || value > INT32_MAX))
     {
         success = 0;

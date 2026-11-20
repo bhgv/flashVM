@@ -7,6 +7,7 @@
 #include <styxserver.h>
 #include "server.h"
 #include "scalar_function.h"
+#include "scalar_function_owner.h"
 #include "scalar_verify.h"
 #include "flashvm/srecord.h"
 #include "unibus_server.h"
@@ -18,6 +19,7 @@
 
 struct StyxUnibusServer
 {
+    StyxScalarFunctionOwner *owner; /* Optional owned Dis service routes. */
     size_t interface_size; /* Byte count advertised for the mounted profile. */
     unsigned char interface[STYX_SCALAR_INTERFACE_CAPACITY]; /* Immutable profile. */
     StyxScalarFunction function; /* Optional mounted scalar export. */
@@ -38,7 +40,7 @@ static char *open_node(Qid *qid, int mode)
 {
     if (qid->path == 6)
     {
-        return styxscalarfunctionopen(&current->server, mode, &current->function);
+        return styxscalarfunctionopen(&current->server, mode, &current->function, current->owner != NULL);
     }
     if (qid->path == Qroot || qid->path == 4 || qid->path == 5 || qid->path == 7)
     {
@@ -144,7 +146,7 @@ static void *serve(void *arg)
     {
     }
     styxend(&server->server);
-    styxunibusmailboxseal(server->inbox);
+    styxunibusmailboxseal(server->owner ? server->owner->request : server->inbox);
     current = NULL;
     return NULL;
 }
@@ -210,7 +212,7 @@ static int export_function(StyxUnibusServer *server, const char *module, const c
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
 static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile, int reusable,
-    const char *module, const char *name, const StyxScalarFunction *function)
+    const char *module, const char *name, const StyxScalarFunction *function, StyxScalarFunctionOwner *owner)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -221,6 +223,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
     if (function)
     {
         server->function = *function;
+        server->owner = owner;
         if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
         {
             if (export_function(server, module, name) &&
@@ -266,7 +269,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
 StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 0, NULL, NULL, NULL);
+    return start(channel, tag, original, profile, 0, NULL, NULL, NULL, NULL);
 }
 
 
@@ -275,7 +278,7 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
 StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 1, NULL, NULL, NULL);
+    return start(channel, tag, original, profile, 1, NULL, NULL, NULL, NULL);
 }
 
 
@@ -299,7 +302,57 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
         phyfree(channel);
         return NULL;
     }
-    return start(channel, 0, NULL, NULL, 0, module, name, function);
+    return start(channel, 0, NULL, NULL, 0, module, name, function, NULL);
+}
+
+
+/* EN/RU: Release owner inboxes after the dispatcher has stopped.
+ * Освободить приёмники владельца после остановки диспетчера. */
+static void free_owner(StyxScalarFunctionOwner *owner)
+{
+    if (owner)
+    {
+        dvm_provider_release(owner->request);
+        dvm_provider_release(owner->reply);
+        free(owner);
+    }
+}
+
+
+/* EN/RU: Publish one named export backed by the shared Dis service.
+ * Опубликовать один именованный экспорт через общий сервис Dis. */
+StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name)
+{
+    StyxScalarFunctionOwner *owner = calloc(1, sizeof(*owner));
+    if (owner)
+    {
+        owner->request = styxunibusmailbox(STYX_FUNCTION_REQUEST_TAG);
+        owner->reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
+    }
+    if (!owner || !owner->request || !owner->reply || !node_name(module) ||
+        !node_name(name) || !strcmp(name, ".interface"))
+    {
+        phyfree(channel);
+        free_owner(owner);
+        return NULL;
+    }
+    const StyxScalarFunction function = {
+        STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, owner
+    };
+    StyxUnibusServer *server = start(channel, 0, NULL, NULL, 0, module, name, &function, owner);
+    if (!server)
+    {
+        free_owner(owner);
+    }
+    return server;
+}
+
+
+/* EN/RU: Borrow the service's write mailbox through server join.
+ * Заимствовать приёмник записи сервиса до завершения сервера. */
+DVM_Provider *styxunibusserverreply(StyxUnibusServer *server)
+{
+    return server && server->owner ? server->owner->reply : NULL;
 }
 
 
@@ -323,7 +376,7 @@ StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
  * См. unibus_server.h; сервер удерживает исходную фабрику. */
 DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server)
 {
-    return server ? server->inbox : NULL;
+    return !server ? NULL : server->owner ? server->owner->request : server->inbox;
 }
 
 
@@ -343,6 +396,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     styxbackingfree(server->original);
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
+    free_owner(server->owner);
     free(server);
     return 1;
 }

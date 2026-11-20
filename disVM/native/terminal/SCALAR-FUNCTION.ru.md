@@ -51,3 +51,5 @@ StyxUnibusServer *styxunibusserverstartfunction(
 Ожидаемая строка `PASS typed Styx mounted function` появляется
 для обоих режимов VM. Существующий типизированный
 маршрут описан в [примере с двумя DisVM](../../examples/remote-scalar/STYX.ru.md).
+
+Для исходной реализации Dis см. [styxunibusserverstartdis](SCALAR-FUNCTION-DIS.ru.md).

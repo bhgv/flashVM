@@ -118,9 +118,11 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     if (owner)
     {
         const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
+        int mounted = getenv("DVM_TEST_SCALAR_MOUNTED_OWNER") != NULL;
         int size = snprintf((char *)owner_config, sizeof(owner_config),
-            "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64\t%s",
-            count ? count : "1");
+            "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t%lu\t%lu\t%s",
+            mounted ? STYX_FUNCTION_REQUEST_TAG : 4294967295UL,
+            mounted ? STYX_FUNCTION_REPLY_TAG : 64UL, count ? count : "1");
         if (size < 0 || (size_t)size >= sizeof(owner_config))
         {
             exit(2);
@@ -139,6 +141,30 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     if (!owner && !publish_adapter(handoff.group, original, profile, writer, reader))
     {
         fprintf(stderr, "scalar test could not bind trusted adapter\n");
+        exit(2);
+    }
+    int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
+    dvm_namespace_release(handoff.group);
+    return result;
+}
+
+
+/* EN/RU: Mount the borrowed remote root and run the guest with ordinary VFS lookup.
+ * Смонтировать заимствованный корень и запустить гостя с обычным поиском VFS. */
+int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
+{
+    char cwd[DVM_NS_PATH_LIMIT];
+    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_TERMINAL};
+    if (!getcwd(cwd, sizeof(cwd)))
+    {
+        exit(2);
+    }
+    handoff.group = dvm_namespace_create(cwd, "/", NULL);
+    strcpy(handoff.description.module, "scalar-mounted.dis");
+    if (!handoff.group || !dvm_namespace_pin(handoff.group) ||
+        dvm_stack_mount(handoff.group, mount, "/peer", 0, 0) != 1)
+    {
+        fprintf(stderr, "could not install the plain Styx root at /peer\n");
         exit(2);
     }
     int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);

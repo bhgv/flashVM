@@ -38,6 +38,7 @@ typedef struct CloseService
     int joined;                 /* One after a successfully started worker joins. */
 } CloseService;
 
+static __thread int draining; /* The single closer may enqueue dependent retirement jobs. */
 static CloseService service; /* One runtime lifetime; cleared only at explicit start. */
 
 
@@ -72,6 +73,7 @@ static void dispose(DVM_CloseJob *job)
 static void execute(void *unused)
 {
     (void)unused;
+    draining = 1;
     fvm_port_sync_lock(service.sync);
     for (;;)
     {
@@ -97,6 +99,7 @@ static void execute(void *unused)
         service.pending--;
     }
     fvm_port_sync_unlock(service.sync);
+    draining = 0;
 }
 
 
@@ -185,7 +188,7 @@ void dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource)
         return;
     }
     fvm_port_sync_lock(service.sync);
-    if (service.stopping)
+    if (service.stopping && !draining)
     {
         fvm_port_sync_unlock(service.sync);
         fprintf(stderr, "disvm: native close producer survived shutdown\n");
@@ -212,9 +215,11 @@ void dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource)
 
 
 /* EN/RU: See header; all producers must be joined. Signal outside the queue mutex,
- * join without heap admission, then release the service source and sync. Idempotent.
+ * join without heap admission; the closer may enqueue dependent work while draining.
+ * Release the service source and sync after join. Idempotent.
  * См. header; producers уже joined. Signal вне mutex, join без heap admission,
- * затем освободить source/sync. Повторный вызов безопасен. */
+ * closer может поставить зависимые закрытия в очередь до выхода. После join
+ * освободить source/sync. Повторный вызов безопасен. */
 void dvm_close_worker_stop(void)
 {
     if (!service.sync)

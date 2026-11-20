@@ -16,7 +16,7 @@ typedef struct StyxScalarFunction
 
 
 struct Styxserver;
-char *styxscalarfunctionopen(struct Styxserver *server, int mode, const StyxScalarFunction *function);
+char *styxscalarfunctionopen(struct Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure);
 char *styxscalarfunctionwrite(void *fid, const char *bytes, ulong count, vlong offset);
 char *styxscalarfunctionread(void *fid, char *bytes, ulong *count, vlong offset);
 

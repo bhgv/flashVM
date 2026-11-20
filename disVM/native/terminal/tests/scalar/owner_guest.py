@@ -33,10 +33,12 @@ def retirement(output):
 
 # EN: Give each peer its own inherited carrier end and private working directory.
 # RU: Передать каждой стороне свой конец соединения и свой рабочий каталог.
-def peer(binary, directory, image, mode, carrier, owner, calls, disconnect):
+def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, mounted):
     env = os.environ.copy()
     env.pop("DVM_TEST_SCALAR_OWNER", None)
     env.pop("DVM_TEST_SCALAR_DISCONNECT", None)
+    if mounted:
+        env["DVM_TEST_SCALAR_MOUNTED_OWNER"] = "1"
     if disconnect:
         env["DVM_TEST_SCALAR_DISCONNECT"] = "1"
     env["DVM_TEST_SCALAR_CALL_COUNT"] = str(calls)
@@ -51,7 +53,7 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect):
 
 # EN: Run both sides to completion, bounding failures and always reaping both.
 # RU: Дождаться обеих сторон, ограничить время отказа и завершить оба процесса.
-def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False):
+def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mounted=False):
     children = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -61,8 +63,9 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False):
     for carrier in (left, right):
         carrier.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
-        children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect))
-        children.append(peer(binary, caller, "client.dis", mode, right, False, calls, disconnect))
+        children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect, mounted))
+        children.append(peer(binary, caller, "mounted.dis" if mounted else "client.dis",
+                             mode, right, False, calls, disconnect, mounted))
         left.close()
         right.close()
         owner_output, _ = children[0].communicate(timeout=15)
@@ -94,8 +97,11 @@ def main():
             (directory / "scalar").mkdir(parents=True)
         (caller / "blocked").mkdir()
         (caller / "library").mkdir()
+        (caller / "alias.dis").mkdir()
+        (caller / "peer").mkdir()
         for folder, source, output in (
             (caller, example / "styx-pair.b", "client.dis"),
+            (caller, example / "styx-mounted.b", "mounted.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
@@ -111,7 +117,10 @@ def main():
         missing = caller / "expect-dependency-error"
         dependency = owner / "privatevalue.dis"
         hidden = owner / "privatevalue.hidden"
+        (caller / "expect-dis-owner").touch()
         for mode in ("--no-jit", "--jit"):
+            exchange(binary, owner, caller, mode, "PASS mounted Styx original Dis",
+                     calls=0, mounted=True)
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             disconnect = caller / "expect-disconnect"

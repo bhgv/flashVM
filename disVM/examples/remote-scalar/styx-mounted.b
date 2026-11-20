@@ -13,6 +13,13 @@ Wrong: module { compute: fn(value: big): big; };
 init()
 {
     sys := load Sys Sys->PATH;
+    disowner := sys->open("expect-dis-owner", Sys->OREAD) != nil;
+    first := 71;
+    last := 12;
+    if (disowner) {
+        first = 112;
+        last = 55;
+    }
     path := "/peer/mounted/compute.dis";
     if ((load Wrong path) != nil) {
         raise "wrong import admitted";
@@ -26,7 +33,7 @@ init()
     }
     alias := load Compute "/alias.dis";
     if (alias == nil || sys->bind("/blocked", "/peer", Sys->MREPL) < 0 ||
-        (load Compute path) != nil || service->compute(70) != 71) {
+        (load Compute path) != nil || service->compute(70) != first) {
         raise "mounted Compute result or alias load failed";
     }
     {
@@ -36,8 +43,12 @@ init()
         "remote scalar owner error" =>
             ;
     }
-    if (alias->compute(11) != 12) {
+    if (alias->compute(11) != last) {
         raise "mounted Compute alias result failed";
     }
-    sys->print("PASS typed Styx mounted function\n");
+    if (disowner) {
+        sys->print("PASS mounted Styx original Dis\n");
+    } else {
+        sys->print("PASS typed Styx mounted function\n");
+    }
 }

@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
 #include "mount.h"
@@ -17,6 +19,49 @@
 #define REPLY_TAG 64UL        /* First tag needing a leading magnitude group. */
 
 
+/* EN/RU: Run the owner service or mount its directory over the inherited TCP channel.
+ * Запустить сервис владельца или смонтировать его каталог по унаследованному TCP. */
+static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
+{
+    int breaker = dup(fd);
+    if (breaker < 0)
+    {
+        close(fd);
+        return 2;
+    }
+    RemotePhy *channel = phyposixfd(fd, caps);
+    int result = 2;
+    if (owner)
+    {
+        StyxUnibusServer *server = styxunibusserverstartdis(channel, "compute.dis", "compute");
+        if (server)
+        {
+            result = scalar_runtime_run(argc, argv, styxunibusserverreply(server),
+                styxunibusserverinbox(server), NULL, NULL, 1);
+            shutdown(breaker, SHUT_RDWR);
+            if (!styxunibusserverjoin(server))
+            {
+                result = 2;
+            }
+        }
+    }
+    else
+    {
+        StyxClient *client = styxclientmountphy(channel, 256, "scalar", "", 3000, 4);
+        DVM_Provider *mount = client ?
+            styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC) : NULL;
+        if (mount)
+        {
+            result = scalar_runtime_mounted(argc, argv, mount);
+            dvm_provider_release(mount);
+        }
+        shutdown(breaker, SHUT_RDWR);
+    }
+    close(breaker);
+    return result;
+}
+
+
 /* EN: Borrow ordinary runtime arguments and consume the inherited test carrier.
  * Serve incoming records and mount the peer's outgoing file before guest init.
  * RU: Заимствовать параметры runtime и принять унаследованный носитель теста.
@@ -27,6 +72,10 @@ int __wrap_main(int argc, char **argv)
     int owner = getenv("DVM_TEST_SCALAR_OWNER") != NULL;
     int fd = descriptor ? atoi(descriptor) : -1;
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
+    if (fd >= 3 && getenv("DVM_TEST_SCALAR_MOUNTED_OWNER"))
+    {
+        return mounted_pair(argc, argv, fd, caps, owner);
+    }
     PhyBidir *mux = fd >= 3 ? phybidircreate(phyposixfd(fd, caps), 1024) : NULL;
     if (!mux)
     {
