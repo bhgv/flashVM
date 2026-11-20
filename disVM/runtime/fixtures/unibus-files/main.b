@@ -204,6 +204,13 @@ init()
         raise "Unibus startup record refused";
     }
     take(nine, 9, "started");
+    if (routed == 0) {
+        outcome := sys->open("/launch-exit", Sys->OREAD);
+        if (outcome == nil) {
+            raise "missing Unibus command completion file";
+        }
+        take(outcome, 17, "0\n");
+    }
     take(zero, 0, "local-in");
     take(seven, 7, "zero");
     take(seven, 7, "one");

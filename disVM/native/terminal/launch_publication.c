@@ -185,6 +185,34 @@ int styxlaunchpublicationdispatch(StyxLaunchPublication *publication, uint64_t o
 }
 
 
+/* EN/RU: Encode one owner-selected reply tag/ordinal with the decimal exit status.
+ * Закодировать десятичный статус с заданными владельцем тегом и номером ответа. */
+int styxlaunchpublicationresultrecord(StyxLaunchPublication *publication, int wait,
+    const FVM_SOrdinal *ordinal, unsigned long tag, void *bytes, size_t capacity, size_t *used)
+{
+    if (!publication || !ordinal || !tag || tag > FVM_SRECORD_U32 || !bytes || !used)
+    {
+        return -1;
+    }
+    *used = 0;
+    int status;
+    pthread_mutex_lock(&publication->lock);
+    int ready = styxlaunchprocessstatus(&publication->process, wait, &status);
+    pthread_mutex_unlock(&publication->lock);
+    if (ready != 1)
+    {
+        return ready;
+    }
+    char text[16];
+    int length = snprintf(text, sizeof(text), "%d\n", status);
+    if (length <= 0 || (size_t)length >= sizeof(text))
+    {
+        return -1;
+    }
+    return fvm_sordered_write(ordinal, tag, text, (size_t)length, bytes, capacity, used) == FVM_S_OK ? 1 : -1;
+}
+
+
 /* EN/RU: See launch_publication.h; return the same status contract as processstatus.
  * См. launch_publication.h; результат по контракту processstatus. */
 int styxlaunchpublicationfinish(StyxLaunchPublication *publication, int *status)

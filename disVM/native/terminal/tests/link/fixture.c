@@ -169,6 +169,18 @@ static int prepare_owner(void)
     dvm_provider_release(file);
     return owner_result != NULL;
 }
+
+
+/* EN/RU: Provide completion on the fixture's ordered reply lane when a route is published.
+ * Выдать завершение на ответной линии теста при опубликованном маршруте. */
+int fixtureownerresult(const FVM_SOrdinal *ordinal, void *bytes, size_t capacity, size_t *used)
+{
+    if (!owner_result)
+    {
+        return 0;
+    }
+    return styxlaunchpublicationresultrecord(&owner_process, 1, ordinal, 17, bytes, capacity, used);
+}
 #endif
 
 

@@ -165,8 +165,8 @@ static DVM_LaunchHandoff *prepare_launch(void)
         "provider received independent startup bytes");
     launch_check(ticket && request && dvm_launch_request_prepare(request, options.provider, &options.provider_origin), "actual remote request prepare");
     DVM_LaunchHandoff *handoff = dvm_launch_request_take(request); /* Owned actual one-use environment. */
-    unsigned long tags[] = {0, 7, 9}; /* Authorized application inboxes only. */
-    StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, 71, tags, 3}; /* Same profile as native API acceptance. */
+    unsigned long tags[] = {0, 7, 9, 17}; /* Authorized application inboxes only. */
+    StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, 71, tags, sizeof(tags) / sizeof(tags[0])}; /* Same profile as native API acceptance. */
     const StyxLaunchFile invalid = {"/forbidden", 99, FVM_ACCESS_READ};
     DVM_Namespace *original = handoff->group;
     launch_check(!styxorderedlaunchfiles(connection, handoff, &ordered, &invalid, 1) &&
@@ -174,6 +174,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     const StyxLaunchFile mappings[] = {
         {"/seven", 7, FVM_ACCESS_READ | FVM_ACCESS_WRITE},
         {"/nine", 9, FVM_ACCESS_READ},
+        {"/launch-exit", 17, FVM_ACCESS_READ},
         {"/zero", 0, FVM_ACCESS_READ | FVM_ACCESS_WRITE}
     };
     const StyxLaunchFd absent = {"/input", "missing-file", FVM_ACCESS_READ};

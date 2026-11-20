@@ -1,6 +1,6 @@
 # Публикация команды запуска в Styx
 
-[English](LAUNCH-PUBLICATION.md) · [API](launch_publication.h) · [Исполнение](LAUNCH-PROCESS.ru.md) · [Диспетчеризация Unibus](LAUNCH-DISPATCH.ru.md)
+[English](LAUNCH-PUBLICATION.md) · [API](launch_publication.h) · [Исполнение](LAUNCH-PROCESS.ru.md) · [Диспетчеризация Unibus](LAUNCH-DISPATCH.ru.md) · [Результат в Unibus](LAUNCH-RESULT-RECORD.ru.md)
 
 `styxlaunchpublicationinit` инициализирует принадлежащее вызывающему состояние
 одноразовой команды. Передайте ненулевой тег S-записи, рабочий каталог владельца

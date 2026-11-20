@@ -7,6 +7,9 @@
 #include <styx.h>
 #include <styxserver.h>
 #include "flashvm/sordctl.h"
+#ifdef ORDERED_GUEST_FILE_TEST
+extern int fixtureownerresult(const FVM_SOrdinal *, void *, size_t, size_t *); /* Published owner completion. */
+#endif
 static unsigned char output[8192]; /* Server-owner immutable published prefix. */
 static size_t extent; /* Published bytes. */
 static unsigned char storage[1024]; /* Original command decoder storage. */
@@ -194,6 +197,15 @@ static void packet(const FVM_SRecord *outer)
          * Подтвердить точный маркер init до вывода приложения. */
         check(host_records == 1 && view.record.size == 4 && !memcmp(view.record.payload, "out0", 4));
         data(9, 2, "started");
+        unsigned char result[64];
+        size_t used;
+        FVM_SOrdinal first = number(0);
+        int ready = fixtureownerresult(&first, result, sizeof(result), &used);
+        check(ready >= 0);
+        if (ready)
+        {
+            append(91, result, used);
+        }
 #endif
         if (host_records == (ORDERED_CASE == 5 ? 3U : 2U))
         {

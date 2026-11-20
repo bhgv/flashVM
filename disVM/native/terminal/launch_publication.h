@@ -6,6 +6,7 @@
 #define STYX_LAUNCH_PUBLICATION_H
 #include "launch_process.h"
 #include "provider.h"
+#include "flashvm/sorder.h"
 #include <pthread.h>
 
 typedef struct StyxLaunchPublication
@@ -32,6 +33,14 @@ DVM_Provider *styxlaunchpublicationfile(StyxLaunchPublication *publication, int 
  * Вернуть 1 при приёме, -1 при отказе запуска, 0 для обработки потоком Unibus. */
 int styxlaunchpublicationdispatch(StyxLaunchPublication *publication, uint64_t offset,
     const void *bytes, size_t size);
+
+
+/* EN/RU: Encode a cached or reaped exit status as one ordered Unibus record.
+ * Return 1 for output, 0 pending, -1 on invalid input, wait or encoding error.
+ * Закодировать код выхода в упорядоченную запись Unibus.
+ * Вернуть 1 при записи, 0 в ожидании, -1 при ошибке. */
+int styxlaunchpublicationresultrecord(StyxLaunchPublication *publication, int wait,
+    const FVM_SOrdinal *ordinal, unsigned long tag, void *bytes, size_t capacity, size_t *used);
 
 
 /* EN/RU: Retire publication after all providers and opens close. Reap any child, possibly blocking.
