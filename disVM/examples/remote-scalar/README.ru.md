@@ -97,3 +97,11 @@ endpoint и вызывает функцию через сгенерирован�
 [C API: limbo_remote_owner](../../../compiler/limbo/frontend/REMOTE-OWNER.ru.md)
 
 Константы, включая PATH, сохраняются в исходном интерфейсе и не становятся transport authority. Unqualified aliases аргумента/результата разрешает существующий C-resolver с lexical scope: module scope выше file scope, цепочки сохраняют scope объявления. Использованные циклы, неизвестные/qualified types и итоговый non-int дают отказ до output. Constant expressions не вычисляются генератором; весь интерфейс проверяет обычный Dis compiler. Path реализации по-прежнему явно выбирает trusted launcher.
+
+## Формат скаляров Unibus
+
+Нативный формат содержит вид записи и знаковое 64-битное значение. Тег
+определяет выданный маршрут. Справка: [запись](../../native/terminal/SCALAR-WRITE.ru.md),
+[чтение](../../native/terminal/SCALAR-READ.ru.md),
+[обработчик](../../native/terminal/SCALAR-RESPOND.ru.md). Генерируемый клиент
+этого примера пока использует Proxynet.

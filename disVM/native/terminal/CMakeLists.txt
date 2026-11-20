@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Generic native terminal record transport reuses original FlashVM codecs, no graphics.
 # RU: Generic native terminal record transport использует FlashVM codecs, без графики.
-add_library(styx_terminal STATIC life.c link.c queue.c send_wait.c io.c launch_frame.c launch_send.c launch_receive.c launch_process.c launch_publication.c unibus_inbox.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
+add_library(styx_terminal STATIC life.c link.c queue.c send_wait.c io.c launch_frame.c launch_send.c launch_receive.c launch_process.c launch_publication.c unibus_inbox.c scalar_record.c "${INFERNO_VFS_SUPPORT}/flashVM/src/protocol/sstream.c")
 target_include_directories(styx_terminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(styx_terminal PUBLIC styx_launch styx_movie_protocol)
 target_compile_options(styx_terminal PRIVATE -Wall -Wextra)
@@ -126,3 +126,7 @@ add_library(styx_unibus_server STATIC unibus_server.c)
 target_link_libraries(styx_unibus_server PUBLIC styx_terminal infernostyx_phy)
 target_compile_options(styx_unibus_server PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
 add_dependencies(terminal-ordered-files styx_unibus_server)
+
+add_executable(terminal-scalar-record tests/scalar/record.c)
+target_link_libraries(terminal-scalar-record PRIVATE styx_terminal)
+add_test(NAME terminal-scalar-record COMMAND terminal-scalar-record)

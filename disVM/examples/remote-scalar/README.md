@@ -107,3 +107,11 @@ working bounded path, not a placeholder claiming arbitrary signatures.
 [C API: limbo_remote_owner](../../../compiler/limbo/frontend/REMOTE-OWNER.md)
 
 Constants, including PATH, remain source declarations and grant no transport authority. The existing C resolver resolves unqualified argument/result aliases lexically: module scope precedes file scope and each alias uses its declaration scope. Used cycles, unknown/qualified types and a non-int resolved type refuse before output. The generator does not evaluate constant expressions; the normal Dis compiler checks the whole interface. The trusted launcher still explicitly chooses the implementation path.
+
+## Unibus scalar record format
+
+The native format contains a record kind and a signed 64-bit value. The tag
+selects the authorized route. See [writing](../../native/terminal/SCALAR-WRITE.md),
+[reading](../../native/terminal/SCALAR-READ.md) and
+[dispatch](../../native/terminal/SCALAR-RESPOND.md). The generated client in
+this example currently uses Proxynet.
