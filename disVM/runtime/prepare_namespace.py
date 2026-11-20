@@ -58,7 +58,7 @@ def adapt_loader(source, unit):
     elif unit == "xec.c":
         changes = (
             ("\tn = string2c(name);", "\tn = dvm_namespace_load_name(name);"),
-            ("readmod(n, lookmod(n), 1)", "readmod(n, n[0] == '$' ? lookmod(n) : nil, 1)"),
+            ("readmod(n, lookmod(n), 1)", "dvm_namespace_read_imports(n, n[0] == '$' ? lookmod(n) : nil, 1, ldt)"),
             ("ml = linkmod(m, ldt, 1);", "ml = dvm_namespace_link_loaded(m, ldt);"),
         )
     else:

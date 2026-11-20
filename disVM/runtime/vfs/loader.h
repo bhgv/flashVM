@@ -58,13 +58,17 @@ int dvm_namespace_module_cacheable(const struct Dir *metadata);
  * caller удерживает/освобождает plan.
  * Обычные read-права соответствуют Dis load; intent меняет порядок источников, не полномочия.
  */
-struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan);
+struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan, const struct Import *imports);
 
 
 /* EN/RU: Borrow the associated local adapter, reporting denied execution separately.
  * Заимствовать локальный адаптер и отдельно сообщить об отказе исполнения. */
-struct DVM_Provider *dvm_module_adapter_source(struct DVM_Provider *provider, const char *relative, int *denied);
+struct DVM_Provider *dvm_module_adapter_source(struct DVM_Provider *provider, const char *relative, int *denied, struct DVM_Provider **profile, unsigned long *tag);
 /* EN/RU: Consume the loaded module through ordinary linking and bind adapter instances.
  * Передать модуль обычному линкеру и закрепить окружение экземпляров адаптера. */
 struct Modlink *dvm_namespace_link_loaded(struct Module *module, struct Import *imports);
+/* EN/RU: Resolve once and propagate the instruction's borrowed import table.
+ * Разрешить путь один раз и передать заимствованную таблицу импортов инструкции. */
+struct Module *dvm_namespace_read_imports(char *path, struct Module *cached, int sync,
+    const struct Import *imports);
 #endif

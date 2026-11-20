@@ -90,7 +90,7 @@ def main():
         (caller / "original-prefix").write_bytes((owner / "implementation.dis").read_bytes()[:14])
         (owner / "provider-secret").write_text("41")
         (caller / "provider-secret").write_text("900")
-        binary = build_peer(runtime, sdk, work, True)
+        binary = build_peer(runtime, sdk, work, True, compiler)
         flag = caller / "expect-error"
         missing = caller / "expect-dependency-error"
         dependency = owner / "privatevalue.dis"

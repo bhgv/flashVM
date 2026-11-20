@@ -12,6 +12,8 @@
 #include "vfs/launch/runtime.h"
 
 #include "guest_mount.h"
+#include "../../scalar_interface.h"
+#include "../../unibus_inbox.h"
 
 
 /* EN/RU: Read a bounded fixture image and return an owned immutable provider.
@@ -43,7 +45,13 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original)
     dvm_resource_close(&plain);
     static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
     DVM_Provider *fallback = original ? NULL : dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
-    DVM_Provider *publication = dvm_module_publish(original ? original : fallback, adapter);
+    DVM_Provider *profile = styxunibusinbox(61);
+    DVM_Provider *publication = NULL;
+    if (profile && styxscalaroffer(profile, 61, "compute", SCALAR_FIXTURE_SIGNATURE) == DVM_LAUNCH_DELIVERED)
+    {
+        publication = dvm_module_publish_profile(original ? original : fallback, adapter, profile, 61);
+    }
+    dvm_provider_release(profile);
     DVM_View *tree = dvm_view_create(NULL, NULL, NULL);
     DVM_Provider *modules = NULL;
     if (tree && publication && dvm_view_map(tree, "/published.dis", publication, ".",

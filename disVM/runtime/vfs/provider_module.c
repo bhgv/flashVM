@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "raise.h"
 #include "loader.h"
+#include "../../native/terminal/scalar_verify.h"
 #include "resource.h"
 #include "native_wait.h"
 #include "cancel.h"
@@ -114,10 +115,38 @@ static int readimage(DVM_Provider *provider, const char *relative, ProviderModul
 }
 
 
+/* EN/RU: Read one profile record in the native operation scope, closing asynchronously.
+ * Прочитать профиль в области нативной операции и закрыть асинхронно. */
+static int check_profile(DVM_Provider *profile, unsigned long tag, const char *name, uint32_t signature)
+{
+    DVM_CloseJob *close = name[0] ? dvm_close_prepare() : NULL;
+    if (!close)
+    {
+        return 0;
+    }
+    DVM_VfsHandle reader = {0};
+    if (dvm_provider_open(profile, ".", "r", &reader) != FVM_OK)
+    {
+        dvm_close_discard(close);
+        return 0;
+    }
+    int matched = 0;
+    if (reader.native_flags & DVM_VFS_CANCEL_DATA)
+    {
+        unsigned char frame[STYX_SCALAR_INTERFACE_CAPACITY + 1];
+        DVM_IoResult got = dvm_vfs_read_chunk(&reader, frame, sizeof(frame));
+        matched = got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
+            !(got.flags & DVM_IO_UNCERTAIN) && styxscalaraccept(tag, frame, got.count, name, signature);
+    }
+    dvm_close_submit_resource(close, &reader);
+    return matched;
+}
+
+
 /* [GC:] EN/RU: See loader.h; cleanup native image before propagating a managed reentry/parser exception.
  * См. loader.h; очистить native image до передачи exception managed reentry/parser.
  */
-Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
+Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *imports)
 {
     Prog *process = currun(); /* ACTIVE current owner only, never a remote/foreign process query. */
     int execution = process && ((DVM_RuntimeProcess *)process)->provider_execution;
@@ -146,6 +175,17 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
         free(image);
         nexterror();
     }
+    char name[INTERFACE_NAME_LIMIT + 1] = {0}; /* Copied before releasing managed admission. */
+    uint32_t signature = 0;
+    if (imports && imports != H && imports[0].name && !imports[1].name)
+    {
+        size_t length = styxscalar_name_length(imports[0].name);
+        if (length)
+        {
+            memcpy(name, imports[0].name, length);
+            signature = (uint32_t)imports[0].sig;
+        }
+    }
     DVM_VfsWait *operation = NULL; /* Source-owned wait/scope; removed before managed reentry. */
     int released = dvm_vfs_path_enter(&operation); /* ACTIVE owner publishes roots and registers cancellation before leaving. */
     int valid = 0; /* No parse is admitted on incomplete or cancelled input. */
@@ -153,14 +193,18 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     DVM_Provider *adapter = NULL;
     int refused = 0;
     int denied = 0;
+    int mismatch = 0;
     if (released >= 0)
     {
-        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied) : NULL;
+        DVM_Provider *profile = NULL;
+        unsigned long tag = 0;
+        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag) : NULL;
         refused = denied || (!execution && !adapter);
         FVM_FileInfo original;
         int available = !refused && (!adapter || adapter == plan->provider ||
             (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory));
-        valid = available && readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image);
+        mismatch = available && profile && !check_profile(profile, tag, name, signature);
+        valid = available && !mismatch && readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image);
         closeimage(image);
         cancelled = dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
@@ -178,6 +222,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan)
     else
     {
         kwerrstr(cancelled || released == -2 ? "provider module load cancelled" :
+            mismatch ? "remote scalar interface mismatch" :
             denied ? "adapter projection requires read and execute" :
             refused ? "provider module execution requires an accepted execution-provider launch" :
             "cannot read complete provider module image");

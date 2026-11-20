@@ -6,7 +6,7 @@
 #define STYX_SCALAR_INTERFACE_H
 #include "scalar_route.h"
 
-#define STYX_SCALAR_INTERFACE_CAPACITY 64U /* One 48-byte name and bounded framing. */
+#include "scalar_verify.h"
 
 
 /* EN: Borrow the export name and link signature, writing one complete offer to peer.
@@ -15,12 +15,6 @@
 DVM_LaunchDelivery styxscalaroffer(DVM_Provider *peer, unsigned long tag,
     const char *name, uint32_t signature);
 
-
-/* EN: Check the complete borrowed record against the caller's compiled import.
- * On mismatch return zero without opening or writing any route.
- * RU: Сверить запись с компилированным импортом. При несовпадении вернуть ноль без I/O. */
-int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
-    const char *name, uint32_t signature);
 
 /* EN/RU: Submit one call only after accepting the borrowed interface record.
  * Отправить один вызов только после сверки заимствованной записи интерфейса. */

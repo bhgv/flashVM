@@ -45,3 +45,5 @@ if(NOT TARGET vfs_walk)
     add_subdirectory("${root}/disVM/host/traversal" "${CMAKE_CURRENT_BINARY_DIR}/walk")
 endif()
 target_link_libraries(disvm PRIVATE vfs_walk)
+
+target_sources(disvm PRIVATE "${root}/disVM/native/terminal/scalar_verify.c")

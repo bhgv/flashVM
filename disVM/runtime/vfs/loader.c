@@ -50,7 +50,7 @@ char *dvm_namespace_load_name(String *name)
  * получают один frozen native name. Provider-образы читаются через выбранный
  * opened-object без cache по имени; sync передаётся native-reader, provider I/O
  * создаёт собственное source-ожидание. Вернуть свой Module/NULL с обычными errors. */
-Module *readmod(char *path, Module *cached, int sync)
+Module *dvm_namespace_read_imports(char *path, Module *cached, int sync, const Import *imports)
 {
     DVM_ResourcePlan *plan;
     DVM_Namespace *group;
@@ -96,7 +96,7 @@ Module *readmod(char *path, Module *cached, int sync)
     }
     if (plan->provider)
     {
-        Module *answer = dvm_provider_readmod(path, plan); /* Same chosen provider, no lower-layer retry. */
+        Module *answer = dvm_provider_readmod(path, plan, imports); /* Same chosen provider, no lower-layer retry. */
         dvm_resource_close(plan);
         free(plan);
         poperror();
@@ -108,6 +108,14 @@ Module *readmod(char *path, Module *cached, int sync)
     free(plan);
     poperror();
     return dvm_launch_module_checked(path, answer);
+}
+
+
+/* EN/RU: Preserve the original untyped native entry point.
+ * Сохранить исходную нетипизированную точку входа. */
+Module *readmod(char *path, Module *cached, int sync)
+{
+    return dvm_namespace_read_imports(path, cached, sync, NULL);
 }
 
 

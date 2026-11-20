@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 from runpy import run_path
+import re
 import shlex
 import sys
 import tempfile
@@ -15,10 +16,15 @@ run = ordered_tools["run"]
 
 # EN: Relink one runtime with fixture bootstrap and source-matched SDK.
 # RU: Связать runtime с тестовым bootstrap и совпадающим SDK.
-def build_peer(runtime, sdk, work, paired):
+def build_peer(runtime, sdk, work, paired, compiler):
     here = Path(__file__).resolve().parent
     native = sdk / "terminal/CMakeFiles/terminal-scalar-route.dir"
     runtime_target = runtime.parent / "CMakeFiles/disvm.dir"
+    interface = here.parents[3] / "examples/remote-scalar/compute.m"
+    table = run([str(compiler), "-t", "Compute", str(interface)], work)
+    signature = re.search(r'"compute",\s*(0x[0-9a-fA-F]+),', table.stdout)
+    if signature is None:
+        raise RuntimeError("could not read compiled Compute signature")
     rt = flags(runtime_target)
     styx = flags(native)
     link = shlex.split((runtime_target / "link.txt").read_text())
@@ -32,6 +38,7 @@ def build_peer(runtime, sdk, work, paired):
     for source in (("guest_mount.c",) if paired else ("guest_mount.c", "guest.c")):
         obj = work / (source + ".o")
         run([link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *rt["C_FLAGS"],
+             "-DSCALAR_FIXTURE_SIGNATURE=" + signature[1],
              "-c", str(here / source), "-o", str(obj)], work)
         objects.append(str(obj))
     binary = work / "disvm-scalar"
@@ -64,7 +71,7 @@ def main():
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(work / image), str(source)], work)
 
-        binary = build_peer(runtime, sdk, work, False)
+        binary = build_peer(runtime, sdk, work, False, compiler)
         for mode in ("--no-jit", "--jit"):
             for case in ("value", "error", "missing"):
                 markers = {"error": work / "expect-error", "missing": work / "expect-missing"}

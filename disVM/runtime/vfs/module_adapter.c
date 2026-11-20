@@ -149,6 +149,8 @@ typedef struct ModulePublication
 {
     DVM_Provider *original; /* Owned fixed-root original file. */
     DVM_Provider *adapter; /* Owned exact local executable adapter. */
+    DVM_Provider *profile; /* Optional owned interface grant. */
+    unsigned long tag; /* Profile record tag. */
 } ModulePublication;
 
 
@@ -190,6 +192,7 @@ static void publication_destroy(void *state)
     ModulePublication *publication = state;
     dvm_provider_release(publication->original);
     dvm_provider_release(publication->adapter);
+    dvm_provider_release(publication->profile);
     free(publication);
 }
 
@@ -214,9 +217,10 @@ static const DVM_ProviderOps publication_ops = { /* Exact node with separate cod
 
 /* EN/RU: Capture the original before publication and retain the exact local adapter.
  * Захватить исходный файл до публикации и удержать точный локальный адаптер. */
-DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
+DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
+    DVM_Provider *profile, unsigned long tag)
 {
-    if (!adapter || adapter->ops != &factory ||
+    if ((profile && (!tag || tag > UINT32_MAX)) || !adapter || adapter->ops != &factory ||
         !(dvm_provider_native_flags(original) & DVM_PROVIDER_CANCEL_PATH))
     {
         return NULL;
@@ -237,6 +241,16 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
         return NULL;
     }
     publication->adapter = adapter;
+    if (profile)
+    {
+        publication->profile = dvm_provider_capture(profile, ".");
+        if (!(dvm_provider_native_flags(publication->profile) & DVM_PROVIDER_CANCEL_PATH))
+        {
+            publication_destroy(publication);
+            return NULL;
+        }
+        publication->tag = tag;
+    }
     unsigned flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE |
         (dvm_provider_native_flags(publication->original) & DVM_PROVIDER_CANCEL_LAUNCH);
     DVM_Provider *provider = dvm_provider_create_routed(&publication_ops, publication, NULL, 1,
@@ -249,13 +263,24 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
 }
 
 
+/* EN/RU: Retain the legacy publication form with no profile.
+ * Сохранить прежнюю публикацию без профиля. */
+DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
+{
+    return dvm_module_publish_profile(original, adapter, NULL, 0);
+}
+
+
 /* EN/RU: Borrow the executable source from the selected exact native provider.
  * Заимствовать исполняемый источник выбранного точного нативного провайдера. */
-DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative, int *denied)
+DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative, int *denied,
+    DVM_Provider **profile, unsigned long *tag)
 {
     char suffix[DVM_NS_PATH_LIMIT];
     int blocked = 0;
     *denied = 0;
+    *profile = NULL;
+    *tag = 0;
     for (unsigned depth = 0; provider && relative && depth < 32; depth++)
     {
         if (!strcmp(relative, "."))
@@ -263,7 +288,10 @@ DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *rela
             if (provider->ops == &publication_ops)
             {
                 *denied = blocked;
-                return ((ModulePublication *)provider->state)->adapter;
+                ModulePublication *publication = provider->state;
+                *profile = publication->profile;
+                *tag = publication->tag;
+                return publication->adapter;
             }
             if (provider->ops == &factory)
             {

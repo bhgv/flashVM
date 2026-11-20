@@ -24,3 +24,15 @@ directory. For `load`, each view traversed must allow both read and execute on
 that path. The loader follows up to 32 provider selections. Binding a file out
 of the directory retains the projection and its policy. A read-only alias
 continues to allow ordinary file reads.
+
+For the scalar profile, `dvm_module_publish_profile(original, adapter, profile,
+tag)` additionally borrows a fixed-root readable profile provider and a nonzero
+32-bit tag. Publication retains the captured profile provider. Ordinary typed
+`load` compares the profile record to the instruction's compiled import table
+before reading the adapter image. This profile supports exactly one named import.
+Unavailable, invalid or mismatched profiles fail the load. The previous
+constructor still publishes without a profile.
+
+The paired DisVM test seeds the profile from the signature the compiler emits
+for the sample's `.m`. An incompatible `big` import is refused before the call.
+The owner and client still use the sample's generated scalar dispatch path.

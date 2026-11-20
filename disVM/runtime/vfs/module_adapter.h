@@ -16,4 +16,8 @@ DVM_Provider *dvm_module_adapter(const void *bytes, size_t size);
 /* EN/RU: Pair an exact read-only original node with a trusted local adapter.
  * Связать исходный узел только для чтения с доверенным локальным адаптером. */
 DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter);
+/* EN/RU: Also require an exact cancellable profile file on typed load.
+ * Также требовать точный файл профиля с отменой при типизированном load. */
+DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
+    DVM_Provider *profile, unsigned long tag);
 #endif

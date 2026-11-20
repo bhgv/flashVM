@@ -4,6 +4,7 @@
 implement Client;
 include "sys.m";
 include "compute.m";
+Wrongcompute: module { compute: fn(value: big): big; };
 Client: module { init: fn(); };
 
 
@@ -33,6 +34,10 @@ init()
         baseline == nil || sys->read(baseline, expected, len expected) != len expected ||
         string bytes != string expected || sys->open(Compute->PATH, Sys->OWRITE) != nil) {
         raise "publication did not preserve read-only original";
+    }
+    if ((load Wrongcompute "/library/published.dis") != nil ||
+        sys->sprint("%r") != "remote scalar interface mismatch") {
+        raise "compiled import mismatch did not stop load";
     }
     service := load Compute Compute->PATH;
     if (service == nil) {
