@@ -46,6 +46,26 @@ unsupported and fail before the destination opens. A syntax error also preserves
 existing output. Write/close errors may leave an output prefix; the CLI returns2
 on failure and0 on success. This is a host C tool, with no VM/network dependency.
 
+## Generate the typed client
+
+Use the same input interface as the provider. The first command emits the
+client module declaration. The second emits the implementation that includes
+that declaration. Compile both the generated implementation and the caller
+with the generated include directory.
+
+```sh
+build/remote-owner-compiler/limbo_remote_owner --client-interface   disVM/examples/remote-scalar/compute.m compute-remote.m
+build/remote-owner-compiler/limbo_remote_owner --client   disVM/examples/remote-scalar/compute.m compute-remote.m compute-remote.b
+```
+
+The caller includes `compute-remote.m` after its Proxynet dependencies and loads
+`ComputeRemote`. Call `remote_bind(endpoint, function, timeout)` once before
+sharing the module. The endpoint and function come from the same admitted
+Proxynet session. The timeout is 1–60000 ms. After binding, `remote->compute(x)`
+has the original function's resolved scalar signature. The adapter issues one
+call and distinguishes owner errors, refusal before send, unknown outcomes
+and disconnect. The launcher still selects the matching authorized export.
+
 ## Execute the complete test
 
 ```sh
@@ -73,11 +93,10 @@ assign new public wire fields, operation IDs or S-record tags.
 
 ## Current boundary
 
-This delivers generated **owner dispatch**, not automatic remote `load` or a
-complete client module proxy. The test client still calls the existing Proxynet
-API explicitly. It does not yet marshal strings, ADTs, arbitrary argument lists,
-channels or FDs; generated unsupported handler operations raise explicitly.
-Implementation selection and transport admission remain host responsibilities.
+The generated client requires explicit session binding. Ordinary `load` of the
+original interface does not discover a remote owner automatically. The
+supported profile remains one `fn(int): int`. Strings, ADTs, additional
+arguments, channels and FDs are outside that profile.
 No VFS root is reset, no remote tree is snapshotted, and no code/device dependency
 is moved to the terminal.
 

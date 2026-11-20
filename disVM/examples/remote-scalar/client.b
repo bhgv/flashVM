@@ -9,6 +9,7 @@ include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxynet.m";
+include "compute-remote.m";
 RemoteScalarClient: module { init: fn(); };
 net: Proxynet; # Initialized before spawn / Инициализируется до spawn.
 
@@ -46,15 +47,43 @@ init()
     (connected, endpoint, variable, function) := <-ready;
     if (connected != 0) { raise "remote scalar greeting failed"; }
     empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
-    for (i := 0; i < 4; i++) {
-        input := (i + 1) * 10;
-        if (i == 2) { input = -1; }
-        (status, value) := net->call(endpoint, Proxyowner->Invoke, function, empty, empty, 0, input, 10000);
-        if (i == 2) {
-            if (status != Proxyowner->OwnerError) { raise "provider error lost"; }
-        } else {
-            if (status != 0 || value != input + 41 + i + 1) { raise "provider value/state lost"; }
-        }
+    remote := load ComputeRemote "compute-remote.dis";
+    if (remote == nil) { raise "generated client module unavailable"; }
+    unbound := 0;
+    {
+        remote->compute(10);
+    } exception {
+        "remote client is unbound" => unbound = 1;
+    }
+    if (!unbound) { raise "unbound client performed a call"; }
+    refused := 0;
+    foreign := function;
+    foreign.high = big 0;
+    {
+        remote->remote_bind(endpoint, foreign, 10000);
+    } exception {
+        "remote client binding refused" => refused = 1;
+    }
+    if (!refused) { raise "foreign session accepted"; }
+    remote->remote_bind(endpoint, function, 10000);
+    refused = 0;
+    {
+        remote->remote_bind(endpoint, function, 10000);
+    } exception {
+        "remote client binding refused" => refused = 1;
+    }
+    if (!refused) { raise "live binding replaced"; }
+    if (remote->compute(10) != 52 || remote->compute(20) != 63) {
+        raise "provider value/state lost";
+    }
+    caught := 0;
+    {
+        remote->compute(-1);
+    } exception {
+        "remote owner error" => caught = 1;
+    }
+    if (!caught || remote->compute(40) != 85) {
+        raise "provider error or recovery lost";
     }
     (status, unused) := net->call(endpoint, Proxyowner->Stop, empty, empty, empty, 0, 0, 10000);
     if (status != 0 || <-stopped != 1) { raise "remote scalar stop failed"; }

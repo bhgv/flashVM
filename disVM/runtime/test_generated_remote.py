@@ -31,6 +31,12 @@ def main():
         generated = server / 'handler.b'
         subprocess.run([str(generator), str(server / 'compute.m'), 'compute.m',
                         'implementation.dis', str(generated)], check=True)
+        client_interface = client / 'compute-remote.m'
+        client_source = client / 'compute-remote.b'
+        subprocess.run([str(generator), '--client-interface', str(server / 'compute.m'),
+                        str(client_interface)], check=True)
+        subprocess.run([str(generator), '--client', str(server / 'compute.m'),
+                        client_interface.name, str(client_source)], check=True)
         for name in ('proxyref', 'proxyowner', 'proxyframe', 'proxystream', 'proxynetio',
                      'proxynet', 'proxyregistry', 'proxyserver', 'proxyroute'):
             compile_image(compiler, include, root, root.parent / 'limbo' / (name + '.b'),
@@ -40,7 +46,8 @@ def main():
         compile_image(compiler, include, root, fixture / 'implementation.b',
                       server / 'implementation.dis', (fixture,))
         compile_image(compiler, include, root, root / 'fixtures/proxy-network/server.b', server / 'server.dis')
-        compile_image(compiler, include, root, fixture / 'client.b', client / 'client.dis')
+        compile_image(compiler, include, root, client_source, client / 'compute-remote.dis', (client,))
+        compile_image(compiler, include, root, fixture / 'client.b', client / 'client.dis', (client,))
         (server / 'provider-secret').write_text('41')
         for mode in ('--no-jit', '--jit'):
             for locked in (False, True):

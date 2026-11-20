@@ -137,14 +137,11 @@ static int integer_type(const LimboInterface *catalog, size_t scope, size_t type
 }
 
 
-/* EN/RU: See remote_owner.h. Preflight the complete supported shape, then emit.
- * См. remote_owner.h. Сначала проверить весь supported shape, затем генерировать.
- */
-int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
-                       const char *include_name, const char *implementation,
-                       char *error, size_t capacity)
+/* EN/RU: Borrow the parsed ABI and copy the two supported declarations on success.
+ * Заимствовать разобранный ABI, скопировать два объявления при успехе. */
+static int remote_signature(const LimboInterface *catalog, LimboDeclaration *module,
+    LimboDeclaration *function, char *error, size_t capacity)
 {
-    LimboDeclaration module, function;
     LimboSignature signature;
     LimboParameter parameter;
     LimboDiagnostic diagnostic;
@@ -154,10 +151,9 @@ int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
     {
         error[0] = 0;
     }
-    if (!catalog || !spelling(include_name, 0) || !spelling(implementation, 1) ||
-        !selection(catalog, &module_index, &function_index) ||
-        !limbo_interface_declaration(catalog, module_index, &module) ||
-        !limbo_interface_declaration(catalog, function_index, &function) ||
+    if (!catalog || !selection(catalog, &module_index, &function_index) ||
+        !limbo_interface_declaration(catalog, module_index, module) ||
+        !limbo_interface_declaration(catalog, function_index, function) ||
         !limbo_interface_validate_functions(catalog, &diagnostic) ||
         !limbo_interface_signature(catalog, function_index, &signature) ||
         signature.parameter_count != 1 || signature.variadic || signature.polymorphic ||
@@ -165,12 +161,30 @@ int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
     {
         return refused(error, capacity, "requires one module with one fn(int):int export");
     }
-    if (!integer_type(catalog, function.scope, parameter.type_node) ||
+    if (!integer_type(catalog, function->scope, parameter.type_node) ||
         signature.result_node == SIZE_MAX ||
-        !integer_type(catalog, function.scope, signature.result_node) ||
-        reserved(module.name))
+        !integer_type(catalog, function->scope, signature.result_node) ||
+        reserved(module->name))
     {
         return refused(error, capacity, "unsupported type or adapter module-name collision");
+    }
+    return 1;
+}
+
+
+/* EN/RU: See remote_owner.h; preflight the complete supported shape.
+ * См. remote_owner.h; проверить поддерживаемую форму до записи. */
+int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
+    const char *include_name, const char *implementation, char *error, size_t capacity)
+{
+    LimboDeclaration module, function;
+    if (!spelling(include_name, 0) || !spelling(implementation, 1))
+    {
+        return refused(error, capacity, "invalid include or implementation name");
+    }
+    if (!remote_signature(catalog, &module, &function, error, capacity))
+    {
+        return 0;
     }
     if (!out)
     {
@@ -216,4 +230,75 @@ int limbo_remote_owner(FILE *out, const LimboInterface *catalog,
         "             refs, value, deadline: int): ref Proxyref->Ref\n"
         "{\n    raise \"scalar owner has no routed results\";\n}\n", out);
     return ferror(out) ? refused(error, capacity, "owner output failed") : 1;
+}
+
+
+// EN/RU: See remote_owner.h; generate a typed client with explicit binding.
+// См. remote_owner.h; сгенерировать typed client с явной привязкой.
+int limbo_remote_client(FILE *out, const LimboInterface *catalog, const char *include_name,
+    int interface_only, char *error, size_t capacity)
+{
+    LimboDeclaration module, function;
+    if ((!interface_only && !spelling(include_name, 0)) ||
+        !remote_signature(catalog, &module, &function, error, capacity))
+    {
+        return 0;
+    }
+    if (!strcmp(function.name, "remote_bind") || !strcmp(function.name, "remote_net") ||
+        !strcmp(function.name, "remote_endpoint") || !strcmp(function.name, "remote_image") ||
+        !strcmp(function.name, "remote_timeout"))
+    {
+        return refused(error, capacity, "export collides with generated client state");
+    }
+    if (!out)
+    {
+        return 1;
+    }
+    fputs("# Copyright (c) 2026 bhgv\n"
+          "# EN: Generated typed remote client.\n"
+          "# RU: Сгенерированный типизированный удалённый клиент.\n", out);
+    if (interface_only)
+    {
+        fprintf(out, "%sRemote: module\n{\n"
+            "    # Bind once before sharing; timeout is in milliseconds.\n"
+            "    # Привязать до передачи другим владельцам; время в мс.\n"
+            "    remote_bind: fn(endpoint: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int);\n"
+            "    %s: fn(value: int): int; # Signature resolved from the original interface.\n"
+            "};\n", module.name, function.name);
+    }
+    else
+    {
+        fprintf(out,
+            "implement %sRemote;\n"
+            "include \"sys.m\";\ninclude \"proxyhost.m\";\ninclude \"proxyref.m\";\n"
+            "include \"proxyhandler.m\";\ninclude \"proxyowner.m\";\ninclude \"proxynet.m\";\n"
+            "include \"%s\";\n"
+            "remote_net: Proxynet; # Owned implementation / Собственный module.\n"
+            "remote_endpoint: ref Proxynet->Endpoint; # Retained endpoint / Удержанный endpoint.\n"
+            "remote_image: Proxynet->Image; # Retained target / Удержанный target.\n"
+            "remote_timeout: int; # Per-call timeout in ms / Срок вызова в мс.\n\n"
+            "# Bind one live target before sharing / Привязать одну цель до передачи.\n"
+            "remote_bind(endpoint: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int)\n{\n"
+            "    if (remote_endpoint != nil || endpoint == nil || timeout < 1 || timeout > 60000 ||\n"
+            "        image.high != endpoint.high || image.low != endpoint.low) {\n"
+            "        raise \"remote client binding refused\";\n    }\n"
+            "    net := load Proxynet Proxynet->PATH;\n"
+            "    if (net == nil) { raise \"remote client broker unavailable\"; }\n"
+            "    net->init();\n"
+            "    remote_net = net;\n    remote_image = image;\n    remote_timeout = timeout;\n"
+            "    remote_endpoint = endpoint;\n}\n\n"
+            "# Invoke the typed export once / Один вызов типизированного экспорта.\n"
+            "%s(value: int): int\n{\n"
+            "    if (remote_endpoint == nil) { raise \"remote client is unbound\"; }\n"
+            "    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);\n"
+            "    (status, result) := remote_net->call(remote_endpoint, Proxyowner->Invoke,\n"
+            "        remote_image, empty, empty, 0, value, remote_timeout);\n"
+            "    if (status == Proxyowner->OwnerError) { raise \"remote owner error\"; }\n"
+            "    if (status == Proxyowner->NotSent) { raise \"remote call not sent\"; }\n"
+            "    if (status == Proxyowner->Unknown) { raise \"remote call outcome unknown\"; }\n"
+            "    if (status == Proxynet->Disconnected) { raise \"remote client disconnected\"; }\n"
+            "    if (status != 0) { raise \"remote call failed\"; }\n"
+            "    return result;\n}\n", module.name, include_name, function.name);
+    }
+    return ferror(out) ? refused(error, capacity, "client output failed") : 1;
 }

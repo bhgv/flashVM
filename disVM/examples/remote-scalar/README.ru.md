@@ -44,6 +44,23 @@ destination. Syntax error также сохраняет прежний output. W
 может оставить prefix; exit2 — ошибка, exit0 — успех. Это host C tool без
 зависимости от VM и сети.
 
+## Генерация типизированного клиента
+
+Обе команды используют тот же исходный `.m`, что и генератор владельца.
+
+```sh
+build/remote-owner-compiler/limbo_remote_owner --client-interface   disVM/examples/remote-scalar/compute.m compute-remote.m
+build/remote-owner-compiler/limbo_remote_owner --client   disVM/examples/remote-scalar/compute.m compute-remote.m compute-remote.b
+```
+
+Компилируйте адаптер и вызывающий модуль с каталогом сгенерированного `.m`.
+Клиент подключает `compute-remote.m` после зависимостей Proxynet и загружает
+`ComputeRemote`. До передачи модуля другим владельцам он один раз вызывает
+`remote_bind(endpoint, function, timeout)` с функцией из той же допущенной
+сессии. Допустимый срок ожидания составляет 1–60000 мс. После привязки обычный
+вызов `remote->compute(x)` использует сигнатуру исходного `.m`. Адаптер различает
+ошибку владельца, отказ до отправки, неизвестный исход и разрыв соединения.
+
 ## Полная проверка
 
 ```sh
@@ -71,17 +88,11 @@ operation IDs и S-record tags не назначаются.
 
 ## Текущая граница
 
-Реализован generated **owner dispatch**, не автоматический remote `load` и не
-полный клиентский module proxy. Клиент примера пока явно вызывает Proxynet API.
-Strings, ADT, произвольные argument lists, channels и FD ещё не маршалируются;
-неподдержанные handler operations явно бросают exception. Выбор реализации и
-transport admission остаются ответственностью host.
-
-VFS root не сбрасывается, remote tree не фиксируется, code/device dependencies
-не переносятся на терминал. Следующий участок — связать проверенную генерацию
-интерфейса с клиентским module binding и расширять marshalling по поддержанным
-категориям типов. Сейчас это работающий ограниченный путь, а не заглушка,
-объявляющая поддержку любых сигнатур.
+Генератор выпускает адаптеры обеих сторон. Клиент явно привязывает готовый
+endpoint и вызывает функцию через сгенерированный интерфейс. Автоматический
+поиск владельца при обычном `load` исходного `.m` ещё открыт. Текущий профиль
+принимает одну функцию `fn(int): int`. Строки, ADT, дополнительные аргументы,
+каналы и FD в этот профиль не входят.
 
 [C API: limbo_remote_owner](../../../compiler/limbo/frontend/REMOTE-OWNER.ru.md)
 

@@ -58,6 +58,16 @@ def main():
                                      'implementation.dis', str(output)], capture_output=True)
             if result.returncode != 2 or output.read_text() != 'preserve prior output':
                 raise RuntimeError('unsupported interface damaged output: ' + text)
+        for text in (
+            'Compute: module { compute: fn(value: ref Sys->FD): int; };',
+            'Compute: module { remote_bind: fn(value: int): int; };',
+        ):
+            source.write_text(text)
+            for options in (['--client-interface', str(source)], ['--client', str(source), 'compute-remote.m']):
+                output.write_text('preserve prior output')
+                result = subprocess.run([str(generator), *options, str(output)], capture_output=True)
+                if result.returncode != 2 or output.read_text() != 'preserve prior output':
+                    raise RuntimeError('unsupported client interface damaged output: ' + text)
         source.write_text(positive)
         for include, path in (('bad".m', 'implementation.dis'),
                               ('../compute.m', 'implementation.dis'),

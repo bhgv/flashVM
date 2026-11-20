@@ -24,6 +24,11 @@ extern "C" {
 int limbo_remote_owner(FILE *output, const LimboInterface *catalog,
                        const char *include_name, const char *implementation,
                        char *error, size_t capacity);
+/* EN/RU: Emit client interface or implementation for the same scalar ABI.
+ * Emit implementation using the generated include basename. NULL preflights.
+ * Выдать клиентский интерфейс или реализацию scalar ABI, NULL только проверяет. */
+int limbo_remote_client(FILE *output, const LimboInterface *catalog, const char *include_name,
+    int interface_only, char *error, size_t capacity);
 #ifdef __cplusplus
 }
 #endif
