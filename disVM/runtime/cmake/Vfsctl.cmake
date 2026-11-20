@@ -26,7 +26,7 @@ add_custom_command(OUTPUT "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h"
     DEPENDS limbo-bootstrap prepare_proxyhost.py "${root}/disVM/module/vfsexport.m" VERBATIM)
 add_custom_target(disvm_vfsexport_sources DEPENDS "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h")
 add_dependencies(disvm disvm_vfsexport_sources)
-target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
+target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_variable.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
 target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/cap_launch.c)
 target_sources(disvm PRIVATE vfs/intent.c)
 
@@ -46,7 +46,7 @@ if(NOT TARGET vfs_walk)
 endif()
 target_link_libraries(disvm PRIVATE vfs_walk)
 
-target_sources(disvm PRIVATE "${root}/disVM/native/terminal/scalar_verify.c")
+target_sources(disvm PRIVATE "${root}/disVM/native/terminal/scalar_verify.c" "${root}/disVM/native/terminal/variable_file.c")
 
 target_sources(disvm PRIVATE vfs/scalar_call.c vfs/scalar_files.c vfs/scalar_direct.c
     "${root}/disVM/native/terminal/record_write.c"

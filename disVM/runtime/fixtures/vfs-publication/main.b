@@ -155,6 +155,48 @@ construction()
 }
 
 
+# EN/RU: Change a shared exact capability from another Limbo process.
+# Изменить общую точную ссылку из другого процесса Limbo.
+setvariable(cell: ref Vfsexport->Root, done: chan of int)
+{
+    done <-= api->intset(cell, -2);
+}
+
+
+# EN/RU: Verify live scalar sharing between typed calls and the published file.
+# Проверить общий скаляр между типизированными вызовами и опубликованным файлом.
+variables()
+{
+    cell := api->intvar(41);
+    check(cell != nil, "create integer variable");
+    (status, initial) := api->intget(cell);
+    check(status == 1 && initial == 41, "initial integer variable");
+    tree := api->overlay(nil, cell, "/.var/count", Vfsexport->Read | Vfsexport->Write, 0);
+    readonly := api->overlay(nil, cell, "/.var/count", Vfsexport->Read, 0);
+    check(tree != nil && readonly != nil, "compose integer publication");
+    read := api->open(readonly, ".var/count", Sys->OREAD);
+    file := api->open(tree, ".var/count", Sys->ORDWR);
+    check(read != nil && file != nil && api->open(readonly, ".var/count", Sys->OWRITE) == nil &&
+        !api->intset(tree, 999), "integer projection rights");
+    done := chan of int;
+    spawn setvariable(cell, done);
+    check(<-done == 1, "child sets integer variable");
+    bytes := array[4] of byte;
+    check(sys->read(read, bytes, 4) == 4 && int bytes[0] == 255 && int bytes[3] == 254,
+        "opened file observes typed update");
+    bytes = array[] of {byte 0, byte 1, byte 0, byte 3};
+    check(sys->write(file, bytes, 3) == -1, "partial integer write accepted");
+    (status, initial) = api->intget(cell);
+    check(status == 1 && initial == -2, "partial integer write changed value");
+    check(sys->write(file, bytes, 4) == 4 && sys->seek(read, big 0, Sys->SEEKSTART) == big 0 &&
+        sys->read(read, bytes, 4) == 4 && int bytes[1] == 1 && int bytes[3] == 3,
+        "file aliases share update");
+    (status, initial) = api->intget(cell);
+    check(status == 1 && initial == 65539, "typed read observes file update");
+    sys->print("PASS Limbo integer variable publication\n");
+}
+
+
 # EN/RU: Complete actual API handoff; the grant is a different ordinary prepared tree.
 # Полная передача через API; grant — другое ordinary prepared tree.
 init()
@@ -166,6 +208,7 @@ init()
     check(sys != nil && api != nil && pub != nil && pc != nil, "load publication API");
     pub->init();
     construction();
+    variables();
     forgery();
     check(api->capture("data", 99, 5) == nil && api->capture("data", 0, 0) == nil, "invalid capture accepted");
     base := api->capture("data", 0, 5);

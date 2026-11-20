@@ -26,6 +26,12 @@ Vfsexport: module
     # Открыть relative name без namespace lookup; owned FD/nil, без create/truncate/fallback.
     open: fn(root: ref Root, path: string, mode: int): ref Sys->FD;
 
+    # EN/RU: Create an exact native int32 file capability.
+    # Создать точную файловую ссылку на ячейку int32.
+    intvar: fn(initial: int): ref Root;
+    intget: fn(root: ref Root): (int,int);
+    intset: fn(root: ref Root, value: int): int;
+
     # EN/RU: Current process's inherited native launch channel grant; owned root/nil, no mount/lookup.
     # Grant своего process из native handoff; owned root/nil, без mount/namespace lookup.
     terminal: fn(): ref Root;

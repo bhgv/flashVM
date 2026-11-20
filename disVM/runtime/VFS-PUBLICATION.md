@@ -189,3 +189,5 @@ The planned Styx export is a [live per-connection root](STYX-SERVING.md), not re
 namespace snapshot transfer. Preparation assigns an ordinary authorized directory;
 walk/read operate on its changing contents. Immutable local overlay descriptors
 remain a separate existing capability operation, not the Styx serving model.
+
+Limbo can create a writable scalar root with [Vfsexport.intvar](VFS-INT-VARIABLE.md).
