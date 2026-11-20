@@ -55,6 +55,7 @@ Optional arguments go before the separator.
 | `--timeout-ms MS` | `5000` | Set each connection and mailbox wait budget, 1–120000 ms / Задать срок отдельного ожидания подключения и запроса |
 | `--grant PATH TAG MODE` | `/zero 0 rw`, `/seven 7 rw`, `/nine 9 r` | First explicit grant replaces all defaults. Repeat up to 32 times with distinct paths/tags and mode `r`, `w` or `rw` / Первая выдача заменяет все значения по умолчанию. До 32 уникальных путей и тегов |
 | `--fd-grant PATH NODE MODE` | None / Нет | Expose one terminal file at an absolute guest path. Up to 32 distinct aliases and relative source nodes with mode `r`, `w` or `rw` / Выдать файл терминала по абсолютному пути гостя. До 32 разных путей и относительных исходных имён |
+| `--inherit-fd NUMBER MODE` | None / Нет | Open `/.fd/NUMBER` on the terminal before guest `init`, with mode `r`, `w` or `rw`. One entry per number from 0 to 31 / До `init` открыть `/.fd/NUMBER` на терминале один раз в заданном режиме. Номера от 0 до 31 |
 
 ```sh
 build/disvm-terminal/disvm --terminal-launch-fd 3 my-app app.dis dep.dis \
@@ -76,6 +77,35 @@ bytes carry application arguments.
 [`styxheldexport`](../native/vfs/HELD-EXPORT.ru.md), гость один раз получает
 его текущую позицию. Терминал управляет доступом к опубликованному узлу.
 Имена выдачи задаёт хост до запуска, а байты запроса содержат аргументы приложения.
+
+### Numbered descriptors / Номерные дескрипторы
+
+```sh
+build/disvm-terminal/disvm --terminal-launch-fd 3 my-app app.dis dep.dis \
+  --inherit-fd 0 r --inherit-fd 1 w --inherit-fd 2 w --inherit-fd 3 rw \
+  -- --jit /trusted/bootstrap.dis
+```
+
+The terminal host publishes the selected opens with
+[`styxheldfdmap`](../native/vfs/HELD-FD-MAP.md). The launcher checks the selected
+nodes and opens them once before `init`. In Limbo, `sys->fildes(3)` has
+`fd == 3`. Repeated calls and spawned children share the same open cursor.
+Ordinary guest opens skip inherited numbers. `sys->print` uses inherited 1 when
+present. Unspecified 0–2 use the host's standard streams; other unspecified
+numbers return nil from `fildes`. The modes grant read, write, or both without
+truncation. If an open fails, the guest does not start. Any earlier opens in
+that batch are closed and a consumed one-use grant stays consumed.
+
+Хост терминала публикует выбранные открытые файлы через
+[`styxheldfdmap`](../native/vfs/HELD-FD-MAP.ru.md). Лаунчер проверяет узлы и
+открывает их один раз до `init`. В Limbo у результата `sys->fildes(3)` поле
+`fd` равно 3. Повторные вызовы и дочерние процессы используют общую позицию.
+Обычные открытия гостя обходят унаследованные номера. `sys->print` пишет в
+выданный FD 1. Для непереданных 0–2 используются стандартные потоки хоста,
+для остальных номеров `fildes` возвращает nil. Режимы задают чтение, запись
+либо оба права без усечения. Если открыть один из файлов не удалось, гость
+не запускается. Полученные ранее в этой попытке файлы закрываются, а
+поглощённая одноразовая выдача остаётся поглощённой.
 
 The peer serves P9MX channel 0 and declares the selected request tag with type
 `disvm.launch`, version 1. It sends one launch record on that tag. The request

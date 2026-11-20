@@ -7,6 +7,7 @@
 #include "prepare.h"
 #include "terminal.h"
 #include "contract.h"
+#include "fd_path.h"
 #include "../changes.h"
 #define DVM_LAUNCH_ARGUMENT_LIMIT 65536U /* Per-request copied startup bytes, no wire format assigned. */
 typedef struct DVM_LaunchTicket DVM_LaunchTicket; /* Requester status/cancel authority only. */
@@ -71,6 +72,7 @@ typedef struct DVM_LaunchHandoff
     DVM_TerminalChannels flashvm; /* Owned channel root, moved once at take; provider NULL when absent. */
     struct UnibusBinding *unibus; /* Optional owned native per-launch handler, never a serialized frame. */
     DVM_LaunchContract *contract; /* Owned independent copied requirements, mandatory when description.typed is one. */
+    unsigned char inherited_fds[DVM_LAUNCH_FD_COUNT]; /* Trusted native mode ceilings; zero means no import. */
 } DVM_LaunchHandoff;
 
 

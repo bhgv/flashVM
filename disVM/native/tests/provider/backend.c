@@ -5,6 +5,7 @@
 #include "file_provider.h"
 #include "export.h"
 #include "held_export.h"
+#include "tree.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -149,8 +150,18 @@ static int held_fixture(DVM_Provider *provider)
     check(styxheldexport(&source, FVM_ACCESS_EXEC) == NULL && source.ops, "rejected grant consumed source");
     DVM_Provider *grant = styxheldexport(&source, FVM_ACCESS_READ);
     check(grant && !source.ops && !source.state, "move held file");
-    StyxBacking *backing = styxbacking(grant);
-    check(backing != NULL, "held file backing");
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    check(view && !styxheldfdmap(view, 32, grant, FVM_ACCESS_READ) &&
+        !styxheldfdmap(view, 31, grant, FVM_ACCESS_WRITE) &&
+        styxheldfdmap(view, 31, grant, FVM_ACCESS_READ), "bounded numbered export");
+    DVM_Provider *projected = dvm_view_freeze(view);
+    StyxBacking *root = styxtree(projected);
+    StyxBacking *directory = styxwalknode(root, ".fd");
+    StyxBacking *backing = styxwalknode(directory, "31");
+    check(backing && !styxwalknode(directory, "0"), "exact numbered file backing");
+    styxbackingfree(directory);
+    styxbackingfree(root);
+    dvm_provider_release(projected);
     dvm_provider_release(grant);
     dvm_provider_release(provider);
     int status = wirefixture(backing);

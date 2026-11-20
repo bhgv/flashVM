@@ -16,6 +16,7 @@
 #include "file_port.h"
 #include "io_buffer.h"
 #include "file_slots.h"
+#include "launch_files.h"
 #include "managed_workers.h"
 #include <limits.h>
 #include <stdio.h>
@@ -45,7 +46,8 @@ void Sys_seek(void *frame)
     {
         error(exNilref);
     }
-    if (call.fd->fd < 3 || call.fd->fd >= 32)
+    descriptor = dvm_sys_fd_slot(call.fd);
+    if (descriptor < 3)
     {
         kwerrstr("seek requires an ordinary live file");
     }
@@ -56,7 +58,6 @@ void Sys_seek(void *frame)
     }
     else
     {
-        descriptor = (int)call.fd->fd;
         resource = dvm_runtime_resource(descriptor);
         gate = dvm_runtime_file_gate(descriptor);
         if (!resource || !gate)

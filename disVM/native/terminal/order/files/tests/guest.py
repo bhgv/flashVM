@@ -59,6 +59,11 @@ def main():
             ["--fd-grant", "/input", "app.dis", "r"],
             ["--fd-grant", "/input", "../held-input", "r"],
             ["--fd-grant", "/input", "held-input", "r", "--fd-grant", "/again", "held-input", "r"],
+            ["--inherit-fd", "32", "r"],
+            ["--inherit-fd", "03", "r"],
+            ["--inherit-fd", "1", "r", "--inherit-fd", "1", "w"],
+            ["--inherit-fd", "0", "r", "--request", ".fd/0", "17"],
+            ["--fd-grant", "/input", ".fd/0", "r", "--inherit-fd", "0", "r"],
         ]:
             refused = subprocess.run([cli, "--terminal-launch-fd", "0", "fixture", "app.dis", "-",
                                       *options, "--", "main.dis"], capture_output=True, text=True, timeout=5)
@@ -95,18 +100,33 @@ def main():
                  "-Wl,--start-group", *libraries, "-Wl,--end-group",
                  *[value for value in sdk_link if value.startswith("-l") or value == "-pthread"]]
         run(link, runtime.parent)
-        profiles = ["default", "custom"] if cli else ["default"]
+        profiles = ["default", "custom", "numbered"] if cli else ["default", "numbered"]
         for profile in profiles:
             env = os.environ.copy()
             if profile == "custom":
                 env["DVM_TEST_TERMINAL_CUSTOM"] = "1"
+            if profile == "numbered":
+                env["DVM_TEST_TERMINAL_NUMBERED"] = "1"
             for mode in ["--no-jit", "--jit"]:
                 (work / "held-source.bin").write_bytes(b"skip:from-held-cursor")
                 (work / "held-target.bin").write_bytes(b"keep:")
+                if profile == "numbered":
+                    (work / "numbered-in.bin").write_bytes(b"skip:xyz")
+                    (work / "numbered-out.bin").write_bytes(b"keep:")
+                    (work / "numbered-err.bin").write_bytes(b"keep:")
+                    (work / "numbered-rw.bin").write_bytes(b"keep:abcdef")
                 result = run([str(work / "disvm-files"), "--native-spawn", mode, str(work / "main.dis")],
                              work, env)
-                if "PASS real Dis guest file Unibus bidirectional records" not in result.stdout or \
-                        "PASS transferred Sys FD retained source position" not in result.stdout or \
+                guest_output = result.stdout
+                if profile == "numbered":
+                    guest_output = (work / "numbered-out.bin").read_text()
+                    if not guest_output.startswith("keep:") or "remote stdout\n" not in guest_output or \
+                            "remote stdout\n" in result.stdout or \
+                            (work / "numbered-err.bin").read_bytes() != b"keep:remote stderr\n" or \
+                            (work / "numbered-rw.bin").read_bytes() != b"keep:abcdef!":
+                        raise RuntimeError("numbered stdio or shared cursor mismatch")
+                if "PASS real Dis guest file Unibus bidirectional records" not in guest_output or \
+                        "PASS transferred Sys FD retained source position" not in guest_output or \
                         "PASS real Dis Unibus file native ownership drain" not in result.stdout:
                     raise RuntimeError("missing guest/lifetime evidence: " + result.stdout + result.stderr)
                 if (work / "held-target.bin").read_bytes() != b"keep:written-with-held-fd":

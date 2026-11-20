@@ -8,20 +8,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-static DVM_FileSlot slots[32]; /* Registry mutex protects every access; 0..2 are stdio. */
+static DVM_FileSlot slots[DVM_FILE_SLOT_LIMIT]; /* Registry mutex protects slots; 0..2 are host stdio. */
+static unsigned references[DVM_FILE_SLOT_LIMIT - DVM_LAUNCH_SLOT_FIRST]; /* Shared launch-slot owners under registry mutex. */
 
 
 /* EN: Return whether descriptor is in 3..31 without accessing registry storage.
  * RU: Вернуть принадлежность descriptor диапазону 3..31 без доступа к реестру. */
 static int valid(int descriptor)
 {
-    return descriptor >= 3 && descriptor < 32;
+    return descriptor >= 3 && descriptor < DVM_FILE_SLOT_LIMIT;
 }
 
 
-/* EN: Reserve caller-owned gate/job atomically; see header for ownership/failure.
- * RU: Атомарно занять слот для gate/job; владение и отказ описаны в заголовке. */
-int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job)
+/* EN/RU: Reserve gate/job in [first, limit), skipping excluded ordinary slots.
+ * Зарезервировать gate/job в [first, limit), исключая занятые обычные номера. */
+static int reserve(DVM_FileGate *gate, DVM_CloseJob *job, int first, int limit, uint32_t excluded)
 {
     if (!gate || !job)
     {
@@ -30,17 +31,101 @@ int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job)
     }
     int index;
     fvm_port_registry_lock();
-    for (index = 3; index < 32; index++)
+    for (index = first; index < limit; index++)
     {
-        if (!slots[index].gate)
+        if (!slots[index].gate && (index >= DVM_LAUNCH_SLOT_FIRST || !(excluded & (UINT32_C(1) << index))))
         {
             slots[index].gate = gate;
             slots[index].job = job;
+            if (index >= DVM_LAUNCH_SLOT_FIRST)
+            {
+                references[index - DVM_LAUNCH_SLOT_FIRST] = 1;
+            }
             break;
         }
     }
     fvm_port_registry_unlock();
-    return index == 32 ? -1 : index;
+    return index == limit ? -1 : index;
+}
+
+
+/* EN/RU: Reserve an ordinary slot with no excluded guest numbers.
+ * Зарезервировать обычный слот без исключений номеров гостя. */
+int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job)
+{
+    return dvm_file_slots_reserve_masked(gate, job, 0);
+}
+
+
+/* EN/RU: See file_slots.h; excluded applies only to ordinary slots.
+ * См. file_slots.h; исключения применяются только к обычным слотам. */
+int dvm_file_slots_reserve_masked(DVM_FileGate *gate, DVM_CloseJob *job, uint32_t excluded)
+{
+    return reserve(gate, job, 3, DVM_LAUNCH_SLOT_FIRST, excluded);
+}
+
+
+/* EN/RU: See file_slots.h; this range is separate from ordinary open and loader slots.
+ * См. file_slots.h; этот диапазон отдельный от обычных открытий и загрузчика. */
+int dvm_file_slots_reserve_launch(DVM_FileGate *gate, DVM_CloseJob *job)
+{
+    return reserve(gate, job, DVM_LAUNCH_SLOT_FIRST, DVM_FILE_SLOT_LIMIT, 0);
+}
+
+
+/* EN/RU: See file_slots.h; the caller's existing pin prevents slot reuse.
+ * См. file_slots.h; удерживаемая ссылка исключает повторное применение слота. */
+int dvm_file_slots_retain_launch(int descriptor)
+{
+    if (descriptor < DVM_LAUNCH_SLOT_FIRST || !valid(descriptor))
+    {
+        return 0;
+    }
+    fvm_port_registry_lock();
+    unsigned *count = &references[descriptor - DVM_LAUNCH_SLOT_FIRST];
+    int retained = slots[descriptor].resource.ops && *count && *count != (unsigned)-1;
+    if (retained)
+    {
+        ++*count;
+    }
+    fvm_port_registry_unlock();
+    return retained;
+}
+
+
+/* EN/RU: See file_slots.h; use the reserved close job after the registry detach.
+ * См. file_slots.h; использовать резерв закрытия после снятия с реестра. */
+void dvm_file_slots_drop_launch(int descriptor)
+{
+    DVM_FileSlot retired = {0};
+    if (descriptor < DVM_LAUNCH_SLOT_FIRST || !valid(descriptor))
+    {
+        abort();
+    }
+    fvm_port_registry_lock();
+    unsigned *count = &references[descriptor - DVM_LAUNCH_SLOT_FIRST];
+    if (!*count)
+    {
+        abort();
+    }
+    if (!--*count)
+    {
+        retired = slots[descriptor];
+        memset(&slots[descriptor], 0, sizeof(slots[descriptor]));
+    }
+    fvm_port_registry_unlock();
+    if (retired.gate && !dvm_file_gate_destroy(retired.gate))
+    {
+        abort();
+    }
+    if (retired.resource.ops)
+    {
+        dvm_close_submit_resource(retired.job, &retired.resource);
+    }
+    else
+    {
+        dvm_close_discard(retired.job);
+    }
 }
 
 
@@ -82,7 +167,7 @@ void dvm_file_slots_publish_resource(int descriptor, DVM_VfsHandle *resource)
 int dvm_file_slots_take(int descriptor, int published, DVM_FileSlot *output)
 {
     fvm_port_registry_lock();
-    if (!valid(descriptor) || !slots[descriptor].gate ||
+    if (!valid(descriptor) || descriptor >= DVM_LAUNCH_SLOT_FIRST || !slots[descriptor].gate ||
         (published && !slots[descriptor].resource.ops))
     {
         fvm_port_registry_unlock();

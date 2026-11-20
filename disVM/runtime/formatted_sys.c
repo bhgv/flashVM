@@ -17,6 +17,8 @@
 #include "file_gate.h"
 #include "io_buffer.h"
 #include "file_slots.h"
+#include "launch_files.h"
+#include "vfs/native_wait.h"
 #include "formatted_sys.h"
 extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
     size_t capacity, size_t *written, int *released);
@@ -85,7 +87,9 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     }
     else
     {
-        released = dvm_file_gate_try_release(gate, &ticket);
+        DVM_VfsWait *operation = NULL;
+        released = resource && (resource->native_flags & DVM_VFS_CANCEL_DATA) ?
+            dvm_vfs_gate_enter(gate, &ticket, &operation) : dvm_file_gate_try_release(gate, &ticket);
         if (released < 0)
         {
             if (fd)
@@ -106,6 +110,7 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
             fprintf(stderr, "disvm: native file admission lost\n");
             exit(1);
         }
+        dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
     }
     fvm_port_registry_lock();
@@ -151,7 +156,8 @@ void Sys_print(void *frame)
     {
         error("experimental stdout message limit");
     }
-    result = formatted_write(NULL,1,bytes,(size_t)count);
+    int slot = dvm_launch_file_current(1);
+    result = formatted_write(NULL, slot >= 0 ? slot : 1, bytes, (size_t)count);
     memmove(call.ret,&result,sizeof(result));
 }
 
@@ -164,7 +170,7 @@ void Sys_fprint(void *frame)
 {
     F_Sys_fprint call;
     char bytes[FORMAT_BYTES];
-    WORD descriptor;
+    int descriptor;
     WORD result;
     int count;
     dvm_sys_capture(frame,&call,sizeof(call),offsetof(F_Sys_fprint,ret),sizeof(*call.ret));
@@ -172,14 +178,14 @@ void Sys_fprint(void *frame)
     {
         error(exNilref);
     }
-    memmove(&descriptor,&call.fd->fd,sizeof(descriptor));
+    descriptor = dvm_sys_fd_slot(call.fd);
     count = xprint(currun(),frame,(uchar *)frame+offsetof(F_Sys_fprint,vargs),call.s,bytes,sizeof(bytes));
     if (count < 0 || count >= sizeof(bytes)-UTFmax-2)
     {
         error("experimental formatted FD message limit");
     }
     /* Reject native WORD narrowing rather than mapping a bad FD onto stdout. */
-    if (descriptor < 0 || descriptor >= 32)
+    if (descriptor < 0)
     {
         kwerrstr("formatted descriptor write failed");
         result = -1;

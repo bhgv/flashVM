@@ -189,7 +189,8 @@ static void publish_descriptor(void *slot, Sys_FD *result, Sys_FD *old)
 }
 
 
-/* Borrow standard descriptors 0/1/2 without taking ownership of their OS handles. */
+/* EN/RU: Return an alias of a preopened launch file or borrow host stdio.
+ * Вернуть ссылку на уже открытый файл запуска либо заимствовать stdio хоста. */
 void Sys_fildes(void *frame)
 {
     F_Sys_fildes local;
@@ -198,14 +199,27 @@ void Sys_fildes(void *frame)
     Sys_FD *old;
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_fildes, ret), sizeof(*call->ret));
     old = dvm_sys_owner(call->ret);
-    if (call->fd >= 0 && call->fd <= 2)
+    int slot = call->fd >= 0 && call->fd < DVM_LAUNCH_FD_COUNT ?
+        dvm_launch_file_current((int)call->fd) : -1;
+    if (slot >= 0 || (call->fd >= 0 && call->fd <= 2))
     {
         result = H2D(Sys_FD *, heapz(TFD));
-        result->fd = call->fd;
+        result->fd = -1;
+        if (slot >= 0 && !dvm_file_slots_retain_launch(slot))
+        {
+            destroy(result);
+            result = H;
+            kwerrstr("cannot retain inherited descriptor");
+        }
+        else
+        {
+            result->fd = call->fd;
+            ((DVM_SysFD *)result)->launch_slot = slot >= 0 ? slot : 0;
+        }
     }
     else
     {
-        kwerrstr("only standard descriptors 0, 1 and 2 can be borrowed");
+        kwerrstr("descriptor is not inherited by this launch");
     }
     publish_descriptor(call->ret, result, old);
 }

@@ -7,7 +7,10 @@
 #include "file_gate.h"
 #include "close_worker.h"
 #include "vfs/handle.h"
+#include <stdint.h>
 
+#define DVM_FILE_SLOT_LIMIT 64 /* Ordinary slots 3..31, retained launch files 32..63. */
+#define DVM_LAUNCH_SLOT_FIRST 32 /* First internal slot for a shared launch file. */
 
 /* EN: One reserved/open descriptor's detached native ownership, without VM roots.
  * RU: Отделённое владение одним занятым/открытым дескриптором, без корней VM. */
@@ -26,6 +29,26 @@ typedef struct DVM_FileSlot
  * Передать владение при успехе (3..31); при заполнении вернуть -1 без передачи.
  * В мьютексе нет выделения памяти, портовых вызовов или доступа к GC. */
 int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job);
+
+
+/* EN/RU: Reserve an ordinary slot excluding the caller's imported guest numbers.
+ * Зарезервировать обычный слот, исключив гостевые номера этого запуска. */
+int dvm_file_slots_reserve_masked(DVM_FileGate *gate, DVM_CloseJob *job, uint32_t occupied);
+
+
+/* EN/RU: Reserve a shared launch slot with one reference; consume gate/job on success only.
+ * Зарезервировать слот запуска с одной ссылкой; принять gate/job только при успехе. */
+int dvm_file_slots_reserve_launch(DVM_FileGate *gate, DVM_CloseJob *job);
+
+
+/* EN/RU: Retain a published launch slot under a live reference; return 1/0.
+ * Удержать опубликованный слот запуска при живой ссылке; вернуть 1/0. */
+int dvm_file_slots_retain_launch(int descriptor);
+
+
+/* EN/RU: Drop one launch reference; the last retires its gate and queues native close.
+ * Освободить ссылку на слот запуска; последняя удаляет gate и ставит закрытие в очередь. */
+void dvm_file_slots_drop_launch(int descriptor);
 
 
 /* EN: Publish file/directory into the caller's exclusively reserved descriptor.

@@ -428,17 +428,20 @@ void dvm_runtime_channel_finalize(Channel *channel, int swept)
 
 
 /* [GC:] EN: Legacy Sys.FD callback for independently live heap; swept is unused.
- * Close only hosted descriptors 3..31 through platform ports. This is not a
- * declaration of arbitrary-callback safety under shared admission.
- * RU: Старый callback Sys.FD живого heap; swept не используется. Закрыть лишь
- * hosted-дескрипторы 3..31 через порты. Безопасность произвольных shared-callback
- * этим не объявляется. */
+ * Drop a launch slot reference or close an ordinary hosted descriptor.
+ * RU: Финализатор Sys.FD живого heap; swept не используется. Освободить ссылку
+ * слота запуска либо закрыть обычный файловый дескриптор. */
 static void free_fd(Heap *heap, int swept)
 {
     Sys_FD *fd = H2D(Sys_FD *, heap);
     USED(swept);
-    if (fd->fd >= 3 && fd->fd < 32)
+    int slot = dvm_sys_fd_slot(fd);
+    if (slot >= DVM_LAUNCH_SLOT_FIRST)
     {
-        kclose(fd->fd);
+        dvm_file_slots_drop_launch(slot);
+    }
+    else if (slot >= 3)
+    {
+        kclose(slot);
     }
 }

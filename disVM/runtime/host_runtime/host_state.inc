@@ -32,6 +32,7 @@
 #include "vfs/launch/startup_internal.h"
 #include "vfs/native_wait.h"
 #include "file_slots.h"
+#include "launch_files.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
 #include "open_wait.h"

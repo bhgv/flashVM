@@ -7,6 +7,7 @@
 #include "runt.h"
 #include "raise.h"
 #include "io_buffer.h"
+#include "launch_files.h"
 
 extern Type *TFD; /* Runtime descriptor type, initialized before application execution. */
 
@@ -17,13 +18,12 @@ extern Type *TFD; /* Runtime descriptor type, initialized before application exe
 int dvm_io_span(Sys_FD *descriptor, Array *bytes, WORD count, int *native, uchar **data)
 {
     Array view;
-    WORD number;
     if (descriptor == H || descriptor == nil || D2H(descriptor)->t != TFD)
     {
         error(exNilref);
     }
-    memmove(&number, &descriptor->fd, sizeof(number));
-    if (number < 0 || number >= 32)
+    int number = dvm_sys_fd_slot(descriptor);
+    if (number < 0)
     {
         kwerrstr("invalid native file descriptor");
         return -1;
@@ -45,7 +45,7 @@ int dvm_io_span(Sys_FD *descriptor, Array *bytes, WORD count, int *native, uchar
     {
         count = view.len;
     }
-    *native = (int)number;
+    *native = number;
     *data = view.data;
     return (int)count;
 }

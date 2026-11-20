@@ -73,6 +73,63 @@ checkheld()
 }
 
 
+# EN/RU: Read the child's inherited aliases and confirm the parent's cursor continues.
+# Прочитать выданный дочернему процессу FD с той же позиции, что и у родителя.
+readchild(done: chan of string)
+{
+    inherited := sys->fildes(3);
+    part := array[3] of byte;
+    if (inherited == nil || sys->read(inherited, part, 3) != 3) {
+        done <-= "missing";
+        return;
+    }
+    done <-= string part;
+}
+
+
+# EN/RU: Use inherited numbers without opening their Styx names; check one shared cursor.
+# Использовать переданные номера без открытия имён Styx и проверить общую позицию.
+checknumbered()
+{
+    first := sys->fildes(3);
+    if (first == nil) {
+        return;
+    }
+    second := sys->fildes(3);
+    input := sys->fildes(0);
+    output := sys->fildes(1);
+    err := sys->fildes(2);
+    if (second == nil || input == nil || output == nil || err == nil || first.fd != 3 ||
+        second.fd != 3 || input.fd != 0 || output.fd != 1 || err.fd != 2 ||
+        sys->fildes(4) != nil || sys->fildes(32) != nil) {
+        raise "incorrect numbered Sys FD";
+    }
+    part := array[3] of byte;
+    if (sys->read(first, part, 3) != 3 || string part != "abc") {
+        raise "numbered FD aliases lost shared cursor";
+    }
+    done := chan of string;
+    spawn readchild(done);
+    if (<-done != "def") {
+        raise "child did not inherit numbered FD cursor";
+    }
+    first = nil;
+    text := array of byte "!";
+    if (sys->write(second, text, 1) != 1 || sys->write(input, text, 1) != -1 ||
+        sys->read(output, part, 3) != -1) {
+        raise "numbered FD mode or lifetime mismatch";
+    }
+    if (sys->read(input, part, 3) != 3 || string part != "xyz" ||
+        sys->fprint(err, "remote stderr\n") != 14 || sys->print("remote stdout\n") != 14) {
+        raise "numbered stdio did not use its launch file";
+    }
+    ordinary := sys->open("/nine", Sys->OREAD);
+    if (ordinary == nil || ordinary.fd == 3) {
+        raise "ordinary Sys open reused an inherited number";
+    }
+}
+
+
 # EN/RU: Open only explicitly mounted file capabilities, write independently fixed canonical frames, consume peer receipts.
 # Открыть лишь явно mounted file capabilities, записать независимые фиксированные frames, получить peer receipts.
 init()
@@ -92,6 +149,7 @@ init()
         raise "actual Styx module/dependency load failed";
     }
     checkheld();
+    checknumbered();
     seven := sys->open("/seven", Sys->ORDWR);
     nine := sys->open("/nine", Sys->OREAD);
     zero := sys->open("/zero", Sys->ORDWR);

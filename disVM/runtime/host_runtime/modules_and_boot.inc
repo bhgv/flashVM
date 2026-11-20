@@ -11,7 +11,7 @@ void sysinit(void)
     {
         return;
     }
-    TFD = dtype(free_fd, sizeof(Sys_FD), nil, 0);
+    TFD = dtype(free_fd, sizeof(DVM_SysFD), nil, 0);
     if (!TFD)
     {
         error(exNomem);
@@ -71,7 +71,7 @@ int dvm_runtime_open_selected(const char *path, const char *mode, int asynchrono
         kwerrstr("cannot reserve native handle lifetime");
         return -1;
     }
-    index = dvm_file_slots_reserve(gate, job);
+    index = dvm_file_slots_reserve_masked(gate, job, asynchronous ? dvm_launch_file_mask() : 0);
     if (index < 0)
     {
         dvm_file_gate_destroy(gate);

@@ -5,8 +5,11 @@
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
+#include "isa.h"
 #include "interp.h"
+#include "runt.h"
 #include "runqueue.h"
+#include "../../launch_files.h"
 #include "runtime.h"
 #include "context.h"
 #include "../../module_interface/environment.h"
@@ -25,11 +28,18 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
     DVM_TerminalChannels *source = parent ? ((DVM_RuntimeProcess *)parent)->terminal_channels : NULL;
     DVM_LaunchContext *context = parent ? (parent == currun() ? dvm_module_launch_current(parent) :
         ((DVM_RuntimeProcess *)parent)->launch_context) : NULL;
+    DVM_LaunchFiles *files = parent ? ((DVM_RuntimeProcess *)parent)->launch_files : NULL;
     if (context && !dvm_launch_context_retain(context))
     {
         return 0;
     }
+    if (!dvm_launch_files_retain(files))
+    {
+        dvm_launch_context_release(context);
+        return 0;
+    }
     owner->launch_context = context;
+    owner->launch_files = files;
     if (!source)
     {
         return 1;
@@ -40,6 +50,8 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
         free(copy);
         dvm_launch_context_release(owner->launch_context);
         owner->launch_context = NULL;
+        dvm_launch_files_release(owner->launch_files);
+        owner->launch_files = NULL;
         return 0;
     }
     *copy = *source;
@@ -51,6 +63,8 @@ int dvm_launch_process_inherit(Prog *process, Prog *parent)
         free(copy);
         dvm_launch_context_release(owner->launch_context);
         owner->launch_context = NULL;
+        dvm_launch_files_release(owner->launch_files);
+        owner->launch_files = NULL;
         return 0;
     }
     owner->movie_provider = movie;
@@ -70,6 +84,8 @@ void dvm_launch_process_release(Prog *process)
         DVM_Provider *movie = owner->movie_provider;
         dvm_launch_context_release(owner->launch_context);
         owner->launch_context = NULL;
+        dvm_launch_files_release(owner->launch_files);
+        owner->launch_files = NULL;
         owner->movie_provider = NULL;
         owner->terminal_channels = NULL;
         if (channels && channels->offers)
@@ -147,8 +163,11 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         return 0;
     }
     DVM_LaunchContext *context = dvm_launch_context_create(handoff);
-    if (!context || (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process)))
+    DVM_LaunchFiles *files = NULL;
+    if (!context || !dvm_launch_files_open(handoff, &files) ||
+        (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process)))
     {
+        dvm_launch_files_release(files);
         dvm_launch_context_release(context);
         if (staged)
         {
@@ -174,6 +193,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
     owner->movie_provider = movie;
     owner->movie_offer_staged = staged;
     owner->launch_context = context;
+    owner->launch_files = files;
     owner->module_local_role = handoff->local_role ? handoff->local_role : DVM_ORIGIN_PROVIDER;
     owner->provider_execution = 1; /* Trusted handoff establishes this runtime as the execution provider before publication. */
     owner->launch_adopted = 1;

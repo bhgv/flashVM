@@ -138,6 +138,56 @@ static int compatible_fds(const TerminalLaunchConfig *config)
 }
 
 
+/* EN/RU: Parse one explicitly inherited descriptor and its nontruncating mode.
+ * Разобрать номер передаваемого дескриптора и его режим без усечения. */
+static int inherit_fd(TerminalLaunchConfig *config, char **fields)
+{
+    unsigned long descriptor;
+    unsigned access = grant_access(fields[1]);
+    if (!access || !number(fields[0], DVM_LAUNCH_FD_COUNT - 1, &descriptor) ||
+        config->inherited_fds[descriptor])
+    {
+        return 0;
+    }
+    config->inherited_fds[descriptor] = (unsigned char)access;
+    return 1;
+}
+
+
+/* EN/RU: Keep each numbered import distinct from code, transport and named file routes.
+ * Проверить, что номерные файлы отделены от кода, транспорта и именных выдач. */
+static int compatible_inherited(const TerminalLaunchConfig *config)
+{
+    for (unsigned number = 0; number < DVM_LAUNCH_FD_COUNT; number++)
+    {
+        if (!config->inherited_fds[number])
+        {
+            continue;
+        }
+        char path[DVM_LAUNCH_FD_PATH_SIZE];
+        if (!dvm_launch_fd_path(path, number))
+        {
+            return 0;
+        }
+        const char *node = path + 1;
+        if (!strcmp(node, config->request) || !strcmp(node, config->paths.receive) ||
+            !strcmp(node, config->paths.send) || !strcmp(node, config->code) ||
+            !strcmp(node, config->dependency))
+        {
+            return 0;
+        }
+        for (size_t i = 0; i < config->fd_count; i++)
+        {
+            if (!strcmp(node, config->fds[i].node))
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
 /* EN/RU: See config.h; defaults preserve the original one-shot profile.
  * См. config.h; значения по умолчанию сохраняют прежний профиль. */
 int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *config)
@@ -202,6 +252,10 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
         {
             at += 4;
         }
+        else if (!strcmp(argv[at], "--inherit-fd") && at + 2 < argc && inherit_fd(config, argv + at + 1))
+        {
+            at += 3;
+        }
         else
         {
             return 0;
@@ -222,5 +276,5 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
             return 0;
         }
     }
-    return compatible_fds(config);
+    return compatible_fds(config) && compatible_inherited(config);
 }

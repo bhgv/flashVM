@@ -66,18 +66,22 @@ extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request
 
 static const unsigned long held_input = 12;  /* Qid of the transferred read file. */
 static const unsigned long held_output = 13; /* Qid of the transferred write file. */
-static StyxBacking *held[2];                 /* Owner's one-use backings until server shutdown. */
+static const unsigned long numbered_root = 14; /* Directory qid for .fd. */
+static const unsigned long numbered_first = 15; /* Qid base for numbered fixture files. */
+static StyxBacking *held[2];                  /* Named backings until server shutdown. */
+static StyxBacking *numbered[4];              /* Numbered backings until server shutdown. */
 
 
 /* EN/RU: Publish a native open at offset five, unlinking the source of the read grant.
  * Опубликовать открытый файл с позиции пять, удалив исходное имя файла для чтения. */
-static StyxBacking *add_held(unsigned long qid, char *node, const char *path, unsigned access)
+static StyxBacking *add_held(unsigned long parent, unsigned long qid, char *node, const char *path, unsigned access)
 {
     FVM_PortFile *file = NULL;
     DVM_VfsHandle source = {0};
     int reading = access == FVM_ACCESS_READ;
     long position;
-    if (fvm_port_file_open(path, reading ? "r" : "wo", &file) != FVM_OK ||
+    const char *mode = reading ? "r" : access == FVM_ACCESS_WRITE ? "wo" : "rwo";
+    if (fvm_port_file_open(path, mode, &file) != FVM_OK ||
         !dvm_vfs_adopt(&source, file, NULL) ||
         dvm_vfs_seek(&source, 5, FVM_FILE_SEEK_START, &position) != FVM_OK ||
         position != 5 || (reading && unlink(path)))
@@ -87,9 +91,15 @@ static StyxBacking *add_held(unsigned long qid, char *node, const char *path, un
     DVM_Provider *grant = styxheldexport(&source, access);
     StyxBacking *backing = styxbacking(grant);
     dvm_provider_release(grant);
-    Styxfile *endpoint = backing ? styxaddfile(&server, Qroot, qid, node, reading ? 0444 : 0222, "fixture") : NULL;
     StyxMeta info;
-    if (!endpoint || !styxbackinginfo(backing, &info))
+    if (!backing || !styxbackinginfo(backing, &info))
+    {
+        exit(3);
+    }
+    int permissions = ((access & FVM_ACCESS_READ) ? 0444 : 0) |
+                      ((access & FVM_ACCESS_WRITE) ? 0222 : 0);
+    Styxfile *endpoint = styxaddfile(&server, parent, qid, node, permissions, "fixture");
+    if (!endpoint)
     {
         exit(3);
     }
@@ -98,15 +108,29 @@ static StyxBacking *add_held(unsigned long qid, char *node, const char *path, un
 }
 
 
+/* EN/RU: Map the test server's exact qids to retained single-file backings.
+ * Сопоставить точные qid тестового сервера с удерживаемыми файлами. */
+static StyxBacking *held_backing(uvlong qid)
+{
+    if (qid == held_input || qid == held_output)
+    {
+        return held[qid == held_output];
+    }
+    return qid >= numbered_first && qid < numbered_first + nelem(numbered) ?
+        numbered[qid - numbered_first] : NULL;
+}
+
+
 /* EN/RU: Transfer the one permitted open to the current Styx fid.
  * Передать единственное допустимое открытие текущему Styx fid. */
 static char *open_held(Qid *qid, int mode)
 {
-    if (qid->path != held_input && qid->path != held_output)
+    StyxBacking *backing = held_backing(qid->path);
+    if (!backing)
     {
         return nil;
     }
-    StyxOpen *opened = styxfileopen(held[qid->path == held_output], mode);
+    StyxOpen *opened = styxfileopen(backing, mode);
     if (!opened || styxsetaux(&server, opened) < 0)
     {
         styxfileclose(opened);
@@ -123,7 +147,7 @@ static char *open_held(Qid *qid, int mode)
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
-    if (qid.path == held_input)
+    if (held_backing(qid.path))
     {
         StyxTransfer result;
         if (offset < 0)
@@ -153,7 +177,7 @@ static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
-    if (qid.path == held_output)
+    if (held_backing(qid.path))
     {
         StyxTransfer result;
         if (offset < 0)
@@ -267,11 +291,26 @@ int linkfixturefd(void)
         signal(SIGPIPE, SIG_IGN);
         server_start(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
         fixtureimagesinit(&server);
-        held[0] = add_held(held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
-        held[1] = add_held(held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
+        held[0] = add_held(Qroot, held_input, "held-input", "held-source.bin", FVM_ACCESS_READ);
+        held[1] = add_held(Qroot, held_output, "held-output", "held-target.bin", FVM_ACCESS_WRITE);
+        if (getenv("DVM_TEST_TERMINAL_NUMBERED"))
+        {
+            if (!styxadddir(&server, Qroot, numbered_root, ".fd", 0555, "fixture"))
+            {
+                _exit(3);
+            }
+            numbered[0] = add_held(numbered_root, numbered_first, "0", "numbered-in.bin", FVM_ACCESS_READ);
+            numbered[1] = add_held(numbered_root, numbered_first + 1, "1", "numbered-out.bin", FVM_ACCESS_WRITE);
+            numbered[2] = add_held(numbered_root, numbered_first + 2, "2", "numbered-err.bin", FVM_ACCESS_WRITE);
+            numbered[3] = add_held(numbered_root, numbered_first + 3, "3", "numbered-rw.bin", FVM_ACCESS_READ | FVM_ACCESS_WRITE);
+        }
         serve(NULL);
         styxbackingfree(held[0]);
         styxbackingfree(held[1]);
+        for (size_t i = 0; i < nelem(numbered); i++)
+        {
+            styxbackingfree(numbered[i]);
+        }
         fixtureimagesfree();
         phybidirfree(remote);
         _exit(0);

@@ -34,10 +34,13 @@ struct Prog *dvm_runtime_launch_module(struct Module *module, DVM_LaunchHandoff 
 
 
 /* EN/RU: Adopt once into initialized unpublished process;1 success/0 invalid/OOM, no guest execution.
- * Validate/stage namespace, channels and startup label/bytes before mutation.
- * On failure leave process and handoff unchanged.
- * Caller exclusively owns fresh process/handoff; no running owner, messages or native wait allowed.
- * Принять один раз в private process;1/0, до commit ничего не меняется, process/handoff exclusive. */
+ * Stage namespace, channels and startup data before mutation. Explicit numbered files
+ * can block in native opens. Failure leaves the process and handoff unchanged and closes
+ * files already acquired, which may have consumed their one-use grants.
+ * Caller exclusively owns fresh process/handoff before any guest dispatch.
+ * Принять один раз до dispatch;1/0, process/handoff exclusive. Открытие номерных
+ * файлов может ждать. При отказе process/handoff сохраняются, открытые файлы закрываются,
+ * уже полученные одноразовые выдачи остаются поглощёнными. */
 int dvm_launch_process_adopt(struct Prog *process, DVM_LaunchHandoff *handoff);
 
 

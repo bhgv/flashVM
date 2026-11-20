@@ -4,6 +4,7 @@
  */
 #include "held_export.h"
 #include "cancel.h"
+#include "launch/fd_path.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -285,4 +286,15 @@ DVM_Provider *styxheldexport(DVM_VfsHandle *source, unsigned access)
         return NULL;
     }
     return provider;
+}
+
+
+/* EN/RU: See held_export.h; the builder keeps the one-use provider without opening it.
+ * См. held_export.h; builder удерживает одноразовый провайдер без открытия. */
+int styxheldfdmap(DVM_View *view, unsigned number, DVM_Provider *grant, unsigned access)
+{
+    char path[DVM_LAUNCH_FD_PATH_SIZE];
+    return view && grant && access && !(access & ~(FVM_ACCESS_READ | FVM_ACCESS_WRITE)) &&
+        dvm_launch_fd_path(path, number) && dvm_provider_access(grant, ".", access) == FVM_OK &&
+        dvm_view_map(view, path, grant, ".", access, 0);
 }

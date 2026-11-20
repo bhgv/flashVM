@@ -25,6 +25,7 @@ typedef struct TerminalLaunchConfig
     size_t count;             /* Active entries in files and tags. */
     StyxLaunchFd fds[STYX_LAUNCH_FDS_MAX]; /* Exact guest aliases for terminal files. */
     size_t fd_count;          /* Active entries in fds. */
+    unsigned char inherited_fds[DVM_LAUNCH_FD_COUNT]; /* Modes for numbered .fd nodes. */
     int separator;            /* Index of --, forwarded as the VM program name. */
 } TerminalLaunchConfig;
 

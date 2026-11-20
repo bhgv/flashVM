@@ -170,7 +170,8 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     {
         fprintf(stderr, "usage: disvm --terminal-launch-fd FD LABEL CODE-FILE DEP-FILE-OR-DASH "
             "[--request PATH TAG] [--records RX TX] [--lane TAG] [--timeout-ms MS] "
-            "[--grant PATH TAG r|w|rw]... [--fd-grant PATH NODE r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+            "[--grant PATH TAG r|w|rw]... [--fd-grant PATH NODE r|w|rw]... "
+            "[--inherit-fd NUMBER r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = connected(config.fd);
@@ -200,6 +201,7 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     int status = 1;
     if (files)
     {
+        memcpy(handoff->inherited_fds, config.inherited_fds, sizeof(config.inherited_fds));
         status = dvm_runtime_main_with_handoff(argc - config.separator, argv + config.separator, handoff);
     }
     else

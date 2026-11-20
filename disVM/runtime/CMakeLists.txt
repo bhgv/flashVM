@@ -229,6 +229,7 @@ add_executable(disvm
     vfs/io_result.c
     vfs/handle.c
     file_slots.c
+    launch_files.c
     seek_sys.c
     metadata_wait.c
     open_wait.c

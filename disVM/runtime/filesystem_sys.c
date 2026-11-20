@@ -13,6 +13,7 @@
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
 #include "file_slots.h"
+#include "launch_files.h"
 #include "sys_capture.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -149,11 +150,8 @@ static int filesystem_descriptor(Sys_FD *descriptor)
     {
         error(exNilref);
     }
-    if (descriptor->fd < 3 || descriptor->fd >= 32)
-    {
-        return -1;
-    }
-    return (int)descriptor->fd;
+    int slot = dvm_sys_fd_slot(descriptor);
+    return slot >= 3 ? slot : -1;
 }
 
 /* Initialize a status/record result before native I/O; failure leaves empty roots. */
