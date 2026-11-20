@@ -194,17 +194,20 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     int refused = 0;
     int denied = 0;
     int mismatch = 0;
+    unsigned long request_tag = 0, reply_tag = 0;
     if (released >= 0)
     {
         DVM_Provider *profile = NULL;
         unsigned long tag = 0;
-        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag) : NULL;
-        refused = denied || (!execution && !adapter);
+        adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag) : NULL;
+        refused = denied || (!execution && !adapter && !request_tag);
         FVM_FileInfo original;
-        int available = !refused && (!adapter || adapter == plan->provider ||
+        int available = !refused && ((!adapter && !request_tag) || adapter == plan->provider ||
             (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory));
-        mismatch = available && profile && !check_profile(profile, tag, name, signature);
-        valid = available && !mismatch && readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image);
+        mismatch = available && profile &&
+            ((request_tag && signature != DVM_SCALAR_INT_SIGNATURE) || !check_profile(profile, tag, name, signature));
+        valid = available && !mismatch &&
+            (request_tag || readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image));
         closeimage(image);
         cancelled = dvm_vfs_wait_end(operation);
         dvm_runtime_gc_native_enter(released);
@@ -212,12 +215,19 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     Module *answer = NULL; /* Ordinary parser returns an owned module or NULL. */
     if (released >= 0 && valid && !cancelled)
     {
-        if (adapter)
+        if (request_tag)
         {
-            image->metadata.qid.type = DVM_MODULE_ADAPTER_QID;
-            image->metadata.qid.path = plan->names.version;
+            answer = dvm_scalar_module(path, name, request_tag, reply_tag, plan->names.version);
         }
-        answer = parsemod(path, image->bytes, (ulong)image->length, &image->metadata);
+        else
+        {
+            if (adapter)
+            {
+                image->metadata.qid.type = DVM_MODULE_ADAPTER_QID;
+                image->metadata.qid.path = plan->names.version;
+            }
+            answer = parsemod(path, image->bytes, (ulong)image->length, &image->metadata);
+        }
     }
     else
     {

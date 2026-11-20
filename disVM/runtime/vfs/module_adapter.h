@@ -20,4 +20,8 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter);
  * Также требовать точный файл профиля с отменой при типизированном load. */
 DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
     DVM_Provider *profile, unsigned long tag);
+/* EN/RU: Publish one remote fn(int):int without a local bytecode adapter.
+ * Опубликовать удалённую fn(int):int без локального адаптера Dis. */
+DVM_Provider *dvm_module_publish_scalar(DVM_Provider *original, DVM_Provider *profile,
+    unsigned long profile_tag, unsigned long request_tag, unsigned long reply_tag);
 #endif

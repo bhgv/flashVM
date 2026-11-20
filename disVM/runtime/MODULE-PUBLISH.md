@@ -36,4 +36,20 @@ constructor still publishes without a profile.
 In the paired DisVM test, the owner exports `.interface` alongside the original
 `.dis` on the same Styx session. The profile contains the signature emitted by
 the compiler for the sample's `.m`. The caller reads that S-record during `load`. An incompatible `big` import is refused before the call.
-The owner and client still use the sample's generated scalar dispatch path.
+The publication with a supplied adapter remains available. The direct scalar API is described below.
+
+## Direct scalar modules
+
+`dvm_module_publish_scalar(original, profile, profile_tag, request_tag, reply_tag)`
+publishes a remote `fn(int): int` without caller adapter bytecode. All tags
+are nonzero 32-bit values. Both providers are borrowed and captured on
+success. The host grants the request and reply paths at `/scalar/request`
+and `/scalar/reply` in the calling namespace and pairs them with the profile.
+
+Ordinary typed `load` requires one matching compiled import and verifies
+the profile through Styx. DisVM constructs a private native module entry
+and retains its namespace. A normal typed call then uses the shared C
+transport. Data reads of the published file still use the original node.
+The paired test compiles the caller and the existing generic-test owner
+program, including its generated owner-side dispatch, and supplies no
+generated caller module.

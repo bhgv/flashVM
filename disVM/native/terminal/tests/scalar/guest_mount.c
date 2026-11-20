@@ -52,16 +52,16 @@ DVM_Provider *scalar_local_profile(void)
  * Смонтировать исходный файл с локальным адаптером и привязать обычное имя. */
 static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Provider *profile)
 {
-    DVM_Provider *adapter = scalar_local_image("adapter.dis");
     DVM_ResourcePlan plain = {0};
-    DVM_Provider *ordinary = dvm_resource_plan(group, "/staging.dis", 0, &plain) ?
+    DVM_Provider *ordinary = dvm_resource_plan(group, "/client.dis", 0, &plain) ?
         dvm_export_native(&plain, 0) : NULL;
     dvm_resource_close(&plain);
     static const char original_bytes[] = "original-image"; /* Distinct data-side fixture image. */
     DVM_Provider *fallback = original ? NULL : dvm_module_adapter(original_bytes, sizeof(original_bytes) - 1);
     DVM_Provider *local_profile = profile ? NULL : scalar_local_profile();
     DVM_Provider *publication = profile || local_profile ?
-        dvm_module_publish_profile(original ? original : fallback, adapter, profile ? profile : local_profile, 61) : NULL;
+        dvm_module_publish_scalar(original ? original : fallback, profile ? profile : local_profile,
+            61, 4294967295UL, 64) : NULL;
     dvm_provider_release(local_profile);
     DVM_View *tree = dvm_view_create(NULL, NULL, NULL);
     DVM_Provider *modules = NULL;
@@ -81,7 +81,6 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Pro
     dvm_provider_release(publication);
     dvm_provider_release(fallback);
     dvm_provider_release(ordinary);
-    dvm_provider_release(adapter);
     if (!mounted)
     {
         return 0;
@@ -93,7 +92,7 @@ static int publish_adapter(DVM_Namespace *group, DVM_Provider *original, DVM_Pro
         dvm_stack_bind(&source, &target, 0, 0) == 1;
     dvm_resource_close(&target);
     dvm_resource_close(&source);
-    return bound && unlink("adapter.dis") == 0;
+    return bound;
 }
 
 

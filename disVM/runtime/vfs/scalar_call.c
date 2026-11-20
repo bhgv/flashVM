@@ -5,6 +5,8 @@
 #include "lib9.h"
 #include "dat.h"
 #include "isa.h"
+#include "kernel.h"
+#include "loader.h"
 #include "fns.h"
 #include "interp.h"
 #include "raise.h"
@@ -19,6 +21,7 @@
 #include "../../native/terminal/scalar_route.h"
 #include "../../native/terminal/record_write.h"
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -131,6 +134,35 @@ static const char *exchange(DVM_Namespace *group, const char *request_path, cons
 }
 
 
+/* EN/RU: Exchange a copied scalar outside admission and publish once after reentry.
+ * Передать скопированный скаляр вне допуска и записать результат после возврата. */
+static void call_scalar(DVM_Namespace *group, const char *request, const char *reply,
+    unsigned long request_tag, unsigned long reply_tag, WORD argument, WORD *destination)
+{
+    DVM_VfsWait *wait;
+    int released = dvm_vfs_path_enter(&wait);
+    if (released < 0)
+    {
+        error("remote scalar call not sent");
+    }
+    int64_t value = 0;
+    const char *failure = exchange(group, request, reply, request_tag,
+        reply_tag, argument, &value);
+    int cancelled = dvm_vfs_wait_end(wait);
+    dvm_runtime_gc_native_enter(released);
+    if (cancelled || failure)
+    {
+        error((char *)(cancelled ? "remote scalar call cancelled" : failure));
+    }
+    WORD result = (WORD)value;
+    if ((int64_t)result != value)
+    {
+        error("invalid scalar reply");
+    }
+    dvm_sys_scalar_result(&result, destination, sizeof(result));
+}
+
+
 /* [GC:] EN/RU: Capture the compiled builtin frame, perform native exchange, publish one scalar.
  * Захватить скомпилированный кадр builtin, выполнить обмен и записать скаляр. */
 void Vfsnative_scalarcall(void *frame)
@@ -145,27 +177,8 @@ void Vfsnative_scalarcall(void *frame)
     {
         error("remote scalar call not sent");
     }
-    DVM_VfsWait *wait;
-    int released = dvm_vfs_path_enter(&wait);
-    if (released < 0)
-    {
-        error("remote scalar call not sent");
-    }
-    int64_t value = 0;
-    const char *failure = exchange(group, request, reply, (unsigned long)call.requesttag,
-        (unsigned long)call.replytag, call.value, &value);
-    int cancelled = dvm_vfs_wait_end(wait);
-    dvm_runtime_gc_native_enter(released);
-    if (cancelled || failure)
-    {
-        error((char *)(cancelled ? "remote scalar call cancelled" : failure));
-    }
-    WORD result = (WORD)value;
-    if ((int64_t)result != value)
-    {
-        error("invalid scalar reply");
-    }
-    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+    call_scalar(group, request, reply, (unsigned long)call.requesttag, (unsigned long)call.replytag,
+        call.value, call.ret);
 }
 
 
@@ -249,4 +262,101 @@ void Vfsnative_scalarreply(void *frame)
     {
         error("scalar owner reply outcome unknown");
     }
+}
+
+
+/* EN/RU: Hosted compiler frame for one fn(int):int; no managed argument slots.
+ * Кадр компилятора hosted для одной fn(int):int, без управляемых аргументов. */
+typedef struct DirectFrame
+{
+    WORD regs[NREG-1]; /* VM linkage cells. */
+    WORD *ret; /* Borrowed result slot. */
+    unsigned char temps[24]; /* Compiler ABI temporary area. */
+    WORD value; /* One scalar argument. */
+} DirectFrame;
+
+
+/* EN/RU: Receive a regular typed Dis call and return through its original frame.
+ * Принять обычный типизированный вызов Dis и вернуть число через исходный кадр. */
+static void scalar_entry(void *frame)
+{
+    DirectFrame call;
+    Module *module = DVM_R.M->m;
+    uintptr_t address = (uintptr_t)frame;
+    uintptr_t end = (uintptr_t)DVM_R.SP;
+    if (!frame || frame == H || frame != (void *)DVM_R.FP || address > end || end - address < sizeof(call))
+    {
+        error(exBounds);
+    }
+    Type *frame_type;
+    memcpy(&frame_type, (unsigned char *)frame + offsetof(Frame, t), sizeof(frame_type));
+    if (frame_type && frame_type != module->type[0])
+    {
+        error(exModule);
+    }
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(DirectFrame, ret), sizeof(*call.ret));
+    unsigned long request_tag = module->dev;
+    unsigned long reply_tag = module->qid.vers;
+    DVM_Namespace *group = dvm_namespace_current_group();
+    if (!group)
+    {
+        error("remote scalar call not sent");
+    }
+    call_scalar(group, "/scalar/request", "/scalar/reply", request_tag, reply_tag, call.value, call.ret);
+}
+
+
+typedef struct DirectBuild
+{
+    char *path; /* Borrowed logical path through construction. */
+    char *name; /* Borrowed checked import name. */
+    Module *module; /* Owned partial allocation through kprotect. */
+} DirectBuild;
+
+
+/* EN/RU: Construct one private native module with the compiler's scalar frame.
+ * Создать собственный нативный модуль с компилированным скалярным кадром. */
+static int build_direct(void *opaque)
+{
+    DirectBuild *build = opaque;
+    Module *module = build->module = newmod(build->path);
+    module->type = calloc(1, sizeof(*module->type));
+    module->ext = calloc(2, sizeof(*module->ext));
+    if (!module->type || !module->ext)
+    {
+        return 0;
+    }
+    Type *frame = dtype(freeheap, sizeof(DirectFrame), NULL, 0);
+    if (!frame)
+    {
+        return 0;
+    }
+    module->type[0] = frame;
+    module->ntype = 1;
+    runtime(module, module->ext, build->name, (int32_t)DVM_SCALAR_INT_SIGNATURE, scalar_entry, frame);
+    return 1;
+}
+
+
+/* EN/RU: Return a private noncached module and reuse per-instance namespace attachment.
+ * Вернуть приватный модуль без кэша и использовать привязку пространства экземпляра. */
+Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
+    unsigned long reply_tag, uint64_t revision)
+{
+    DirectBuild build = {path, name, NULL};
+    if (!kprotect(build_direct, &build))
+    {
+        if (build.module)
+        {
+            unload(build.module);
+        }
+        kwerrstr("cannot construct remote scalar module");
+        return NULL;
+    }
+    /* Private noncached descriptor: these fields carry namespace revision and route tags. */
+    build.module->qid.type = DVM_MODULE_ADAPTER_QID;
+    build.module->qid.path = revision;
+    build.module->qid.vers = reply_tag;
+    build.module->dev = request_tag;
+    return build.module;
 }

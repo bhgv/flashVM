@@ -63,12 +63,8 @@ def main():
         work = Path(name)
         (work / "scalar").mkdir()
         (work / "library").mkdir()
-        run([str(generator), "--styx-client", str(example / "compute.m"), "compute.m",
-             "/scalar/request", "/scalar/reply", "4294967295", "64", str(work / "shim.b")], work)
-        for source, image in [(work / "shim.b", "staging.dis"),
-                              (example / "styx-client.b", "client.dis")]:
-            run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
-                 "-I", str(example), "-o", str(work / image), str(source)], work)
+        run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
+             "-I", str(example), "-o", str(work / "client.dis"), str(example / "styx-client.b")], work)
 
         binary = build_peer(runtime, sdk, work, False, compiler)
         for mode in ("--no-jit", "--jit"):
@@ -82,7 +78,6 @@ def main():
                 env = os.environ.copy()
                 if case == "missing":
                     env["DVM_TEST_SCALAR_DROP_REPLY"] = "1"
-                (work / "adapter.dis").write_bytes((work / "staging.dis").read_bytes())
                 result = run([str(binary), mode, str(work / "client.dis")], work, env)
                 marker = "PASS Styx Compute " + case
                 if marker not in result.stdout:

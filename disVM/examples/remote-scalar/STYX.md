@@ -22,11 +22,11 @@ python3 disVM/native/terminal/tests/scalar/guest.py \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 
-The driver generates the adapter from `compute.m`, compiles it to a staging image,
-pairs it with an original file using
-[dvm_module_publish](../../runtime/MODULE-PUBLISH.md), mounts the publication
-and binds it to `implementation.dis`. It then compiles the caller. Transfer uses the builtin `$Vfsnative`. It mounts the restricted request and reply files before starting the
-caller. The two original Styx sessions share one bidirectional carrier. The
+The driver compiles the caller, publishes the original and its profile
+with `dvm_module_publish_scalar`, and binds the publication to
+`implementation.dis`. It mounts the restricted request and reply files before
+starting the caller. The loader provides a native entry without caller adapter
+bytecode. The two original Styx sessions share one bidirectional carrier. The
 owner fixture checks the request and sends a reply before acknowledging the
 write. The driver starts a fresh route pair for each case, checks exactly one
 owner invocation, and joins both sessions after DisVM shutdown. Expect
@@ -44,7 +44,7 @@ still reaches the owner through the bindings retained when it was loaded.
 
 ## Run the owner in a separate DisVM
 
-Use the same `.m` for both adapters. Generate the owner with an implementation
+Use the same `.m` for the caller and owner. Generate the owner with an implementation
 path in the owner's namespace, then compile it with the original interface and
 the local `vfsnative.m`.
 

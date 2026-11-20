@@ -151,6 +151,8 @@ typedef struct ModulePublication
     DVM_Provider *adapter; /* Owned exact local executable adapter. */
     DVM_Provider *profile; /* Optional owned interface grant. */
     unsigned long tag; /* Profile record tag. */
+    unsigned long request_tag; /* Direct scalar request tag; zero for bytecode adapters. */
+    unsigned long reply_tag; /* Direct scalar result tag. */
 } ModulePublication;
 
 
@@ -217,10 +219,12 @@ static const DVM_ProviderOps publication_ops = { /* Exact node with separate cod
 
 /* EN/RU: Capture the original before publication and retain the exact local adapter.
  * Захватить исходный файл до публикации и удержать точный локальный адаптер. */
-DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
-    DVM_Provider *profile, unsigned long tag)
+static DVM_Provider *publish(DVM_Provider *original, DVM_Provider *adapter,
+    DVM_Provider *profile, unsigned long tag, unsigned long request_tag, unsigned long reply_tag)
 {
-    if ((profile && (!tag || tag > UINT32_MAX)) || !adapter || adapter->ops != &factory ||
+    if ((profile && (!tag || tag > UINT32_MAX)) || (adapter && adapter->ops != &factory) ||
+        (!adapter && (!profile || !request_tag || request_tag > UINT32_MAX ||
+            !reply_tag || reply_tag > UINT32_MAX)) ||
         !(dvm_provider_native_flags(original) & DVM_PROVIDER_CANCEL_PATH))
     {
         return NULL;
@@ -241,6 +245,8 @@ DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *a
         return NULL;
     }
     publication->adapter = adapter;
+    publication->request_tag = request_tag;
+    publication->reply_tag = reply_tag;
     if (profile)
     {
         publication->profile = dvm_provider_capture(profile, ".");
@@ -263,6 +269,24 @@ DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *a
 }
 
 
+/* EN/RU: Publish a checked local bytecode adapter.
+ * Опубликовать проверяемый локальный адаптер. */
+DVM_Provider *dvm_module_publish_profile(DVM_Provider *original, DVM_Provider *adapter,
+    DVM_Provider *profile, unsigned long tag)
+{
+    return publish(original, adapter, profile, tag, 0, 0);
+}
+
+
+/* EN/RU: Publish a direct scalar route with a required profile.
+ * Опубликовать прямой скалярный маршрут с обязательным профилем. */
+DVM_Provider *dvm_module_publish_scalar(DVM_Provider *original, DVM_Provider *profile,
+    unsigned long profile_tag, unsigned long request_tag, unsigned long reply_tag)
+{
+    return publish(original, NULL, profile, profile_tag, request_tag, reply_tag);
+}
+
+
 /* EN/RU: Retain the legacy publication form with no profile.
  * Сохранить прежнюю публикацию без профиля. */
 DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
@@ -274,13 +298,15 @@ DVM_Provider *dvm_module_publish(DVM_Provider *original, DVM_Provider *adapter)
 /* EN/RU: Borrow the executable source from the selected exact native provider.
  * Заимствовать исполняемый источник выбранного точного нативного провайдера. */
 DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *relative, int *denied,
-    DVM_Provider **profile, unsigned long *tag)
+    DVM_Provider **profile, unsigned long *tag, unsigned long *request_tag, unsigned long *reply_tag)
 {
     char suffix[DVM_NS_PATH_LIMIT];
     int blocked = 0;
     *denied = 0;
     *profile = NULL;
     *tag = 0;
+    *request_tag = 0;
+    *reply_tag = 0;
     for (unsigned depth = 0; provider && relative && depth < 32; depth++)
     {
         if (!strcmp(relative, "."))
@@ -291,6 +317,8 @@ DVM_Provider *dvm_module_adapter_source(DVM_Provider *provider, const char *rela
                 ModulePublication *publication = provider->state;
                 *profile = publication->profile;
                 *tag = publication->tag;
+                *request_tag = publication->request_tag;
+                *reply_tag = publication->reply_tag;
                 return publication->adapter;
             }
             if (provider->ops == &factory)
