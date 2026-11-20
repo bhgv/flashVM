@@ -40,3 +40,20 @@ Generated Dis load проверяет actual provider implementation; automatic 
 module binding остаётся отдельным участком работы.
 
 Constants и unqualified scalar aliases допускаются рядом с единственным function export. Типы разрешает существующий lexical C-resolver; PATH не меняет явно заданный implementation path.
+
+## Публикация клиента Styx с исходным ABI
+
+```sh
+limbo_remote_owner --styx-client compute.m compute.m /svc/request /svc/reply 17 29 shim.b
+```
+
+Первый файл — разбираемый интерфейс. Второй аргумент — имя файла для
+сгенерированного include. Укажите два разных абсолютных пути VFS для запроса
+и ответа, их десятичные теги маршрута от 1 до 4294967295 и путь исходника
+на выходе. Соберите адаптер с исходным интерфейсом и `styxscalar.m`.
+Опубликуйте байткод по пути, который использует обычный типизированный
+`load`. Неверные интерфейсы, пути и теги сохраняют прежний файл.
+[Пример Styx](../../../disVM/examples/remote-scalar/STYX.ru.md) описывает
+монтирование и команды проверки.
+
+[C API этого режима](STYX-CLIENT.ru.md)

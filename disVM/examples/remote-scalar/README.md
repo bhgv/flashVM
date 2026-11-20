@@ -117,3 +117,5 @@ selects the authorized route. See [writing](../../native/terminal/SCALAR-WRITE.m
 this example currently uses Proxynet.
 
 [Native Styx round-trip example](../../native/terminal/SCALAR-ROUTE.md)
+
+[Ordinary typed load with Styx](STYX.md)

@@ -107,3 +107,5 @@ endpoint и вызывает функцию через сгенерирован�
 этого примера пока использует Proxynet.
 
 [Пример обмена через Styx](../../native/terminal/SCALAR-ROUTE.ru.md)
+
+[Обычный типизированный load через Styx](STYX.ru.md)

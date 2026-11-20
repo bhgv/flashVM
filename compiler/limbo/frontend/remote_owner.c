@@ -302,3 +302,62 @@ int limbo_remote_client(FILE *out, const LimboInterface *catalog, const char *in
     }
     return ferror(out) ? refused(error, capacity, "client output failed") : 1;
 }
+
+
+/* EN: Parse a nonzero decimal wire tag without accepting signs or overflow.
+ * RU: Прочитать ненулевой десятичный тег без знака и переполнения. */
+static unsigned long route_tag(const char *text)
+{
+    unsigned long tag = 0;
+    for (; *text; text++)
+    {
+        if (*text < '0' || *text > '9' || tag > (0xffffffffUL - (unsigned)(*text - '0')) / 10)
+        {
+            return 0;
+        }
+        tag = tag * 10 + (unsigned)(*text - '0');
+    }
+    return tag;
+}
+
+
+/* EN/RU: See remote_owner.h. Preflight inputs before any write.
+ * См. remote_owner.h. Проверить параметры до записи. */
+int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *include_name,
+    const char *request, const char *reply, const char *request_tag, const char *reply_tag,
+    char *error, size_t capacity)
+{
+    LimboDeclaration module, function;
+    unsigned long send = request_tag ? route_tag(request_tag) : 0;
+    unsigned long receive = reply_tag ? route_tag(reply_tag) : 0;
+    if (!spelling(include_name, 0) || !spelling(request, 1) || !spelling(reply, 1) ||
+        request[0] != '/' || reply[0] != '/' || !strcmp(request, reply) || !send || !receive)
+    {
+        return refused(error, capacity, "invalid Styx route paths or tags");
+    }
+    if (!remote_signature(catalog, &module, &function, error, capacity))
+    {
+        return 0;
+    }
+    if (!strcmp(module.name, "Styxscalar") || !strcmp(function.name, "Styxscalar") ||
+        !strcmp(function.name, "route") || !strcmp(include_name, "styxscalar.m"))
+    {
+        return refused(error, capacity, "interface collides with generated transport name");
+    }
+    if (!output)
+    {
+        return 1;
+    }
+    fprintf(output,
+        "# Copyright (c) 2026 bhgv\n"
+        "# EN: Original module ABI backed by mounted Unibus routes.\n"
+        "# RU: Исходный ABI модуля через смонтированные маршруты Unibus.\n"
+        "implement %s;\ninclude \"styxscalar.m\";\ninclude \"%s\";\n\n"
+        "# EN/RU: Invoke via the published routes / Вызвать через опубликованные маршруты.\n"
+        "%s(value: int): int\n{\n"
+        "    route := load Styxscalar Styxscalar->PATH;\n"
+        "    if (route == nil) { raise \"scalar transport unavailable\"; }\n"
+        "    return route->call(\"%s\", \"%s\", big %lu, big %lu, value);\n}\n",
+        module.name, include_name, function.name, request, reply, send, receive);
+    return ferror(output) ? refused(error, capacity, "client output failed") : 1;
+}

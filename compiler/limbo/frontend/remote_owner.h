@@ -29,6 +29,14 @@ int limbo_remote_owner(FILE *output, const LimboInterface *catalog,
  * Выдать клиентский интерфейс или реализацию scalar ABI, NULL только проверяет. */
 int limbo_remote_client(FILE *output, const LimboInterface *catalog, const char *include_name,
     int interface_only, char *error, size_t capacity);
+
+
+
+/* EN/RU: Emit a same-interface shim for a trusted pair of VFS routes.
+ * Сгенерировать модуль исходного интерфейса для выданной пары путей VFS. */
+int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *include_name,
+    const char *request, const char *reply, const char *request_tag, const char *reply_tag,
+    char *error, size_t capacity);
 #ifdef __cplusplus
 }
 #endif

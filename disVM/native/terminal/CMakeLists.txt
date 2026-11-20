@@ -136,3 +136,15 @@ target_link_libraries(terminal-scalar-route PRIVATE styx_unibus_server remote_ph
 target_compile_options(terminal-scalar-route PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
 add_test(NAME terminal-scalar-route COMMAND terminal-scalar-route)
 set_tests_properties(terminal-scalar-route PROPERTIES TIMEOUT 20)
+
+set(INFERNO_SCALAR_GENERATOR "" CACHE FILEPATH "Optional built limbo_remote_owner for the scalar Dis guest test")
+if(INFERNO_SCALAR_GENERATOR)
+    if(NOT EXISTS "${INFERNO_SCALAR_GENERATOR}" OR NOT INFERNO_DISVM_RUNTIME OR NOT INFERNO_LIMBO_COMPILER
+        OR NOT CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+        message(FATAL_ERROR "Scalar guest test requires the generator, matched runtime/compiler and Unix Makefiles")
+    endif()
+    add_test(NAME terminal-scalar-guest COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar/guest.py" "${INFERNO_SCALAR_GENERATOR}"
+        "${INFERNO_DISVM_RUNTIME}" "${INFERNO_LIMBO_COMPILER}" "${CMAKE_BINARY_DIR}")
+    set_tests_properties(terminal-scalar-guest PROPERTIES TIMEOUT 90 LABELS "native-guest")
+endif()

@@ -77,6 +77,22 @@ def main():
                                     capture_output=True)
             if result.returncode != 2 or output.read_text() != 'preserve prior output':
                 raise RuntimeError('invalid path damaged output')
+        args = [str(generator), '--styx-client', str(source), 'compute.m']
+        result = subprocess.run([*args, '/svc/write', '/svc/read', '4294967295', '64', str(output)],
+                                capture_output=True)
+        if result.returncode or 'implement Compute;' not in output.read_text() or \
+                'big 4294967295, big 64' not in output.read_text():
+            raise RuntimeError('same-interface Styx client generation failed')
+        for request, reply, tag in (('relative', '/svc/read', '17'),
+                                    ('/svc/read', '/svc/read', '17'),
+                                    ('/svc/write', '/svc/read', '4294967296'),
+                                    ('/svc/write', '/svc/read', '-1'),
+                                    ('/svc/write', '/svc/read', '0')):
+            output.write_text('preserve prior output')
+            result = subprocess.run([*args, request, reply, tag, '29', str(output)],
+                                    capture_output=True)
+            if result.returncode != 2 or output.read_text() != 'preserve prior output':
+                raise RuntimeError('invalid Styx grant damaged output')
     print('PASS generated owner: Coco/R signature selection, unsupported types and output preservation')
 
 

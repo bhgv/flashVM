@@ -17,8 +17,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef STYX_SCALAR_GUEST
+#define REQUEST_TAG 4294967295UL /* Exercise the maximum unsigned tag from Limbo. */
+#define REPLY_TAG 64UL /* The first tag needing a leading zero magnitude group. */
+#else
+#define REQUEST_TAG 17UL /* Native fixture request tag. */
+#define REPLY_TAG 29UL /* Native fixture reply tag. */
+#endif
+
 static Styxserver owner; /* One fixture owner thread dispatches the method. */
 static DVM_Provider *reply; /* Retained reverse file while owner serves requests. */
+#ifdef STYX_SCALAR_GUEST
+extern void scalar_guest(DVM_Provider *, DVM_Provider *); /* Runtime test entry. */
+#endif
 static int calls; /* Updated by owner and checked after join. */
 
 
@@ -49,8 +60,23 @@ static int method(void *state, int64_t argument, int64_t *result)
  * Проверить запрос и отправить отдельную S-запись через встречную сессию. */
 static char *receive_call(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+#ifdef STYX_SCALAR_GUEST
+    if (getenv("DVM_TEST_SCALAR_DROP_REPLY"))
+    {
+        StyxScalarKind kind;
+        int64_t argument;
+        int64_t result;
+        if (qid.path == 1 && offset == 0 &&
+            styxscalarread(REQUEST_TAG, bytes, *count, &kind, &argument) && kind == STYX_SCALAR_CALL)
+        {
+            method(NULL, argument, &result);
+            return nil;
+        }
+        return Ebadarg;
+    }
+#endif
     return qid.path == 1 && offset == 0 &&
-        styxscalarreplyfile(reply, 17, bytes, *count, 29, method, NULL) == DVM_LAUNCH_DELIVERED ? nil : Ebadarg;
+        styxscalarreplyfile(reply, REQUEST_TAG, bytes, *count, REPLY_TAG, method, NULL) == DVM_LAUNCH_DELIVERED ? nil : Ebadarg;
 }
 
 static Styxops operations = {.write = receive_call}; /* Native launch test callbacks. */
@@ -71,7 +97,7 @@ static void *serve(void *state)
 
 /* EN/RU: Run one isolated call with its own request and reply capabilities.
  * Выполнить один изолированный вызов с собственными файлами запроса и ответа. */
-static void round_trip(int64_t argument, StyxScalarKind expected_kind, int64_t expected)
+static void round_trip(void (*exercise)(DVM_Provider *, DVM_Provider *))
 {
     int pair[2];
     check(socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "connected socketpair");
@@ -81,7 +107,7 @@ static void round_trip(int64_t argument, StyxScalarKind expected_kind, int64_t e
     PhyBidir *caller_mux = phybidircreate(phyposixfd(pair[0], caps), 1024);
     PhyBidir *owner_mux = phybidircreate(phyposixfd(pair[1], caps), 1024);
     check(caller_mux && owner_mux, "bidirectional carrier");
-    StyxUnibusServer *receiver = styxunibusserverstart(phybidirchannel(caller_mux, 1), 29);
+    StyxUnibusServer *receiver = styxunibusserverstart(phybidirchannel(caller_mux, 1), REPLY_TAG);
     check(receiver != NULL, "caller reverse .unibus");
     StyxClient *reverse = styxclientmountphy(phybidirchannel(owner_mux, 1), 256, "owner", "", 3000, 4);
     reply = reverse ? styxmountproviderat(reverse, ".unibus", FVM_ACCESS_WRITE) : NULL;
@@ -94,17 +120,7 @@ static void round_trip(int64_t argument, StyxScalarKind expected_kind, int64_t e
     StyxClient *forward = styxclientmountphy(phybidirchannel(caller_mux, 0), 256, "caller", "", 3000, 4);
     DVM_Provider *request = forward ? styxmountproviderat(forward, ".unibus", FVM_ACCESS_WRITE) : NULL;
     check(request != NULL, "mount owner request file");
-    check(styxscalarcallfile(request, 18, argument) != DVM_LAUNCH_DELIVERED, "wrong request tag");
-    check(styxscalarcallfile(request, 17, argument) == DVM_LAUNCH_DELIVERED, "admitted scalar call");
-    DVM_VfsHandle received = {0};
-    check(dvm_provider_open(styxunibusserverinbox(receiver), ".", "r", &received) == FVM_OK, "open reply inbox");
-    unsigned char frame[STYX_SCALAR_RECORD_CAPACITY];
-    DVM_IoResult result = dvm_vfs_read_chunk(&received, frame, sizeof(frame));
-    StyxScalarKind kind;
-    int64_t value;
-    check(result.status == FVM_OK && styxscalarread(29, frame, result.count, &kind, &value) &&
-        kind == expected_kind && value == expected, "decode reverse scalar reply");
-    dvm_vfs_close(&received);
+    exercise(request, styxunibusserverinbox(receiver));
     shutdown(breaker, SHUT_RDWR);
     check(!pthread_join(worker, NULL) && styxunibusserverjoin(receiver), "join both Styx roles");
     dvm_provider_release(request);
@@ -115,13 +131,61 @@ static void round_trip(int64_t argument, StyxScalarKind expected_kind, int64_t e
 }
 
 
+#ifndef STYX_SCALAR_GUEST
+
+/* EN/RU: Exchange one value or method error over the supplied route.
+ * Обменять значение или ошибку через переданную пару маршрутов. */
+static void exchange(DVM_Provider *request, DVM_Provider *inbox, int64_t argument,
+    StyxScalarKind expected_kind, int64_t expected)
+{
+    check(styxscalarcallfile(request, 18, argument) != DVM_LAUNCH_DELIVERED, "wrong request tag");
+    check(styxscalarcallfile(request, REQUEST_TAG, argument) == DVM_LAUNCH_DELIVERED, "admitted scalar call");
+    DVM_VfsHandle received = {0};
+    check(dvm_provider_open(inbox, ".", "r", &received) == FVM_OK, "open reply inbox");
+    unsigned char frame[STYX_SCALAR_RECORD_CAPACITY];
+    DVM_IoResult result = dvm_vfs_read_chunk(&received, frame, sizeof(frame));
+    StyxScalarKind kind;
+    int64_t value;
+    check(result.status == FVM_OK && styxscalarread(REPLY_TAG, frame, result.count, &kind, &value) &&
+        kind == expected_kind && value == expected, "decode reverse scalar reply");
+    dvm_vfs_close(&received);
+}
+
+
+/* EN/RU: Validate the success case with an independent native client.
+ * Проверить результат независимым нативным клиентом. */
+static void native_value(DVM_Provider *request, DVM_Provider *inbox)
+{
+    exchange(request, inbox, 123, STYX_SCALAR_VALUE, 124);
+}
+
+
+/* EN/RU: Validate explicit owner refusal with an independent native client.
+ * Проверить ошибку владельца независимым нативным клиентом. */
+static void native_error(DVM_Provider *request, DVM_Provider *inbox)
+{
+    exchange(request, inbox, -7, STYX_SCALAR_ERROR, 42);
+}
+
+
 /* EN/RU: Exercise both reply types and verify wrong requests did not invoke the method.
  * Проверить оба вида ответа и отсутствие вызовов для чужого тега. */
 int main(void)
 {
-    round_trip(123, STYX_SCALAR_VALUE, 124);
-    round_trip(-7, STYX_SCALAR_ERROR, 42);
+    round_trip(native_value);
+    round_trip(native_error);
     check(calls == 2, "exact owner method count");
     puts("PASS scalar value and error over separate Styx Unibus routes");
     return 0;
 }
+#else
+
+/* EN/RU: Run one embedded guest, with exactly one accepted invocation.
+ * Запустить одного встроенного гостя с одним принятым вызовом. */
+int scalar_round_trip(void)
+{
+    round_trip(scalar_guest);
+    check(calls == 1, "one guest call at owner");
+    return 0;
+}
+#endif

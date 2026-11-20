@@ -40,3 +40,20 @@ transport authentication. The generated Dis load checks the actual provider
 implementation; client-side automatic module binding remains separate work.
 
 Constants and unqualified scalar aliases may accompany the single function export. Types use the existing lexical C resolver; PATH does not override the explicit implementation path.
+
+## Publish a Styx client with the original ABI
+
+```sh
+limbo_remote_owner --styx-client compute.m compute.m /svc/request /svc/reply 17 29 shim.b
+```
+
+The first file is the parsed interface. The second argument is the basename
+used in the generated include. Supply distinct absolute VFS paths for the
+request and reply, followed by their decimal route tags (1 to 4294967295) and
+the output source path. Compile the adapter with the unchanged input interface
+and `styxscalar.m`. Publish its bytecode at the path used by the ordinary typed
+load. Invalid interfaces, invalid paths and out-of-range tags leave existing
+output intact. See the [Styx example](../../../disVM/examples/remote-scalar/STYX.md)
+for mount setup and test commands.
+
+[C API for this mode](STYX-CLIENT.md)
