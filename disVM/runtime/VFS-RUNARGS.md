@@ -15,7 +15,9 @@ Available in hosted DisVM with [Vfsctl](../module/vfsctl.m) and `$Vfsnative`.
 as [`run`](VFS-RUN.md), with a maximum of 4095 UTF-8 bytes. `arguments`
 contains zero to 65,536 bytes. `nil` and an empty array send an empty payload.
 Embedded zero bytes are preserved. The owner callback and transport can impose
-smaller limits. The fixed-command publication accepts an empty payload.
+smaller limits. Fixed-command publications accept empty payloads by default.
+The [owner can opt in](../native/terminal/LAUNCH-PROCESS-PAYLOAD.md) to deliver
+data to the command’s `Launchcontext.arguments()`.
 
 ## Result and effects
 

@@ -9,13 +9,14 @@ a route configured to receive it, and reads the exit status with ordinary
 ```limbo
 example := load Runexample Runexample->PATH;
 payload := array[] of {byte 'x', byte 0, byte 'y'};
-code := example->execute("/routed.dis", "/payload.dis", "/run-result", payload);
+code := example->execute("/routed.dis", "/routed.dis", "/run-result", payload);
 ```
 
 Here `/routed.dis` is the visible command name. The owner publishes its result
-at `/run-result`. The separate `/payload.dis` route demonstrates an owner
-callback configured to receive bytes. Pass `nil` instead of `/payload.dis`
-to omit the independent payload submission.
+at `/run-result`. Using the command path twice sends bytes with the command request. The
+owner's `init` reads them through `Launchcontext.arguments()`. The separate
+`/payload.dis` route remains available to exercise a callback. Pass `nil` to
+send an empty request.
 
 ## Run the example
 

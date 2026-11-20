@@ -10,7 +10,39 @@ typedef struct RuntimeEntry
 {
     const char *path; /* Host-selected local bootstrap path. */
     DVM_LaunchHandoff *handoff; /* Optional exclusive native environment. */
+    const char *startup_hex; /* Validated lowercase hex from the native launcher. */
 } RuntimeEntry;
+
+
+/* EN/RU: Decode validated owner arguments into a startup context without changing VFS authority.
+ * Декодировать проверенные аргументы владельца в контекст запуска без изменения прав VFS. */
+static DVM_LaunchContext *local_startup_context(const RuntimeEntry *entry)
+{
+    DVM_LaunchHandoff input = {0};
+    size_t size = strlen(entry->startup_hex) / 2;
+    if (strlen(entry->path) >= sizeof(input.description.module))
+    {
+        return NULL;
+    }
+    unsigned char *bytes = size ? malloc(size) : NULL;
+    if (size && !bytes)
+    {
+        return NULL;
+    }
+    for (size_t i = 0; i < size; i++)
+    {
+        unsigned char high = entry->startup_hex[2 * i];
+        unsigned char low = entry->startup_hex[2 * i + 1];
+        bytes[i] = ((high <= '9' ? high - '0' : high - 'a' + 10) << 4) |
+            (low <= '9' ? low - '0' : low - 'a' + 10);
+    }
+    strcpy(input.description.module, entry->path);
+    input.description.argument_bytes = size;
+    input.arguments = bytes;
+    DVM_LaunchContext *context = dvm_launch_context_create(&input);
+    free(bytes);
+    return context;
+}
 
 
 /* EN: Initialize the runtime and drive its controller on the bound native owner.
@@ -105,6 +137,15 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
     poperror();
     unload(module);
     initial_guest = process;
+    if (argument->startup_hex)
+    {
+        DVM_LaunchContext *launch = local_startup_context(argument);
+        if (!launch)
+        {
+            error("cannot prepare startup arguments");
+        }
+        ((DVM_RuntimeProcess *)process)->launch_context = launch;
+    }
     if (inspect_requested)
     {
         inspect_retain(process);

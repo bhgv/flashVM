@@ -161,8 +161,11 @@ init()
             raise "oversized launch payload accepted";
         }
         payload := array[] of {byte 'x', byte 0, byte 'y'};
+        if (vfs->runargs("/payload.dis", payload) != 1) {
+            raise "binary callback refused";
+        }
         example := load Runexample Runexample->PATH;
-        if (example == nil || example->execute("/routed.dis", "/payload.dis", "/run-result", payload) != 0) {
+        if (example == nil || example->execute("/routed.dis", "/routed.dis", "/run-result", payload) != 0) {
             raise "runnable VFS launch example failed";
         }
         if (vfs->run("/routed.dis") == 1) {

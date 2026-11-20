@@ -57,9 +57,13 @@ execute(command, payloadroute, result: string, payload: array of byte): int
         raise "missing Sys or Vfsctl module";
     }
     vfs->init();
-    delivered(vfs->run(command));
-    if (payloadroute != nil) {
-        delivered(vfs->runargs(payloadroute, payload));
+    if (payloadroute == command) {
+        delivered(vfs->runargs(command, payload));
+    } else {
+        delivered(vfs->run(command));
+        if (payloadroute != nil) {
+            delivered(vfs->runargs(payloadroute, payload));
+        }
     }
     return exitstatus(sys, result);
 }

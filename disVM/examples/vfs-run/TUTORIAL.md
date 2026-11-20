@@ -9,9 +9,10 @@
    operations and `Vfsctl` for route submission. `vfs->init()` opens access to
    the hosted builtin. `vfs->run(command)` resolves the command in the calling
    namespace and sends one empty request to its owner.
-3. The optional branch calls `vfs->runargs(payloadroute, payload)`. In this
-   fixture the separate owner callback checks each byte of `x\0y`. Pass
-   `nil` for `payloadroute` to skip this branch.
+3. Use the command path as `payloadroute` to call `vfs->runargs(command, payload)`
+   once. The command reads `x\0y` from `Launchcontext.arguments()` in
+   `init`. A separate route receives its payload through its own callback.
+   Passing `nil` starts the command with an empty payload.
 4. `delivered` raises on definitive refusal or an uncertain delivery. The
    example leaves retry decisions to the caller because a lost acknowledgement
    can follow an already admitted request.

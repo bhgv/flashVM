@@ -158,7 +158,8 @@ static int prepare_owner(void)
     owner_argv[0] = getenv("DVM_TEST_OWNER_RUNTIME");
     owner_argv[1] = getenv("DVM_TEST_OWNER_MODE");
     owner_argv[2] = "owner.dis";
-    if (!owner_argv[1] || !styxlaunchpublicationinit(&owner_process, 17, "owner", owner_argv))
+    if (!owner_argv[1] || !styxlaunchpublicationinit(&owner_process, 17, "owner", owner_argv) ||
+        !styxlaunchprocesspayload(&owner_process.process, 3))
     {
         return 0;
     }

@@ -9,14 +9,13 @@
 ```limbo
 example := load Runexample Runexample->PATH;
 payload := array[] of {byte 'x', byte 0, byte 'y'};
-code := example->execute("/routed.dis", "/payload.dis", "/run-result", payload);
+code := example->execute("/routed.dis", "/routed.dis", "/run-result", payload);
 ```
 
 В этом сценарии `/routed.dis` — имя команды в VFS клиента, `/run-result` —
-выданный владельцем файл её результата. `/payload.dis` демонстрирует отдельный
-маршрут, на котором владелец разрешил получение данных. Эти байты приходят
-callback владельца. Для запуска без отдельной отправки передайте `nil`
-вместо пути `/payload.dis`.
+выданный владельцем файл её результата. Повторение пути команды отправляет байты в тот же запрос. У владельца
+`init` читает их через `Launchcontext.arguments()`. Отдельный маршрут
+`/payload.dis` доступен для проверки callback; `nil` отправляет пустой запрос.
 
 ## Запустить проверку
 

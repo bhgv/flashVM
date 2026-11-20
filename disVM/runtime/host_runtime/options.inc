@@ -13,6 +13,7 @@
 int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff)
 {
     struct sigaction pipe_action = {0};
+    const char *startup_hex = NULL; /* Optional owner-supplied binary arguments. */
     int gc_selected = 0;
     int debug_input = -1; /* Explicit debugger pipe read end. */
     int debug_output = -1; /* Explicit debugger pipe write end. */
@@ -243,6 +244,18 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
             gc_worker = 1;
             gc_selected = 1;
         }
+        else if (!strncmp(argv[1], "--startup-hex=", 14))
+        {
+            const char *hex = argv[1] + 14;
+            size_t length = strlen(hex);
+            if (handoff || startup_hex || length > 65536 || (length & 1) ||
+                strspn(hex, "0123456789abcdef") != length)
+            {
+                fprintf(stderr, "disvm: invalid --startup-hex data\n");
+                return 2;
+            }
+            startup_hex = hex;
+        }
         else if (strcmp(argv[1], "--no-jit") == 0)
         {
             cflag = 0;
@@ -430,7 +443,7 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
         fprintf(stderr, "cannot start private debugger socket: %s\n", debug_path);
         return 2;
     }
-    RuntimeEntry entry = {argv[1], handoff};
+    RuntimeEntry entry = {argv[1], handoff, startup_hex};
 #ifdef DVM_RUNTIME_EDITOR
     if (threaded)
     {

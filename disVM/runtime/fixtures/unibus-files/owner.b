@@ -3,6 +3,7 @@
 # RU: Проверка исполнения у владельца по файлу в его рабочем каталоге.
 implement Owner;
 include "sys.m";
+include "launchcontext.m";
 Owner: module { init: fn(); };
 
 
@@ -16,6 +17,11 @@ init()
     if (fd == nil || sys->read(fd, bytes, len bytes) != len bytes ||
         string bytes != "owner") {
         raise "missing owner namespace";
+    }
+    context := load Launchcontext Launchcontext->PATH;
+    args := context->arguments();
+    if (len args != 3 || args[0] != byte 'x' || args[1] != byte 0 || args[2] != byte 'y') {
+        raise "missing owner startup payload";
     }
     sys->print("PASS owner Dis init\n");
 }

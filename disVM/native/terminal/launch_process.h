@@ -29,6 +29,11 @@ int styxlaunchprocessinit(StyxLaunchProcess *process, unsigned long tag,
     const char *directory, char *const *argv);
 
 
+/* EN/RU: Opt in before publication; the DisVM executable will receive up to limit bytes, max 32768.
+ * Включить до публикации; исполняемый DisVM получит до limit байт, максимум 32768. */
+int styxlaunchprocesspayload(StyxLaunchProcess *process, size_t limit);
+
+
 /* EN/RU: Observe cached status or reap the owned child. Return 1 with status,
  * 0 while pending (or unstarted), -1 on observation failure. wait blocks if nonzero.
  * Получить сохранённый статус или дождаться своего процесса. Вернуть 1 со

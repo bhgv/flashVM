@@ -20,6 +20,6 @@ original call.
 | [Owner publication](../native/terminal/LAUNCH-PUBLICATION.md) | Publish a fixed command and its exit status. |
 
 The TCP example exercises a bound route, owner-side `init` and exit-status
-reading in interpreter and JIT. It also sends binary bytes to a separate
-callback. Forwarding those bytes into the command's `init`, ordinary command
-integration and transparent remote library calls remain open.
+reading in interpreter and JIT. An opted-in owner delivers binary bytes to the command's
+`Launchcontext.arguments()` in `init`. Ordinary command integration and
+transparent remote library calls remain open.

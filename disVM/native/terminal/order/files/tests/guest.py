@@ -87,7 +87,7 @@ def main():
         owner = work / "owner"
         owner.mkdir()
         (owner / "owner-only.txt").write_bytes(b"owner")
-        run([str(compiler), "-I", str(include), "-o", str(owner / "owner.dis"),
+        run([str(compiler), "-I", str(include), "-I", str(modules), "-o", str(owner / "owner.dis"),
              str(runtime_root / "fixtures/unibus-files/owner.b")], work)
         wrapper = work / "wrapper.o"
         run([runtime_link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *native["C_INCLUDES"], *rt["C_FLAGS"],
