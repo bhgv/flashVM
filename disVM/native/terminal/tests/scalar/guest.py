@@ -66,7 +66,6 @@ def main():
         run([str(generator), "--styx-client", str(example / "compute.m"), "compute.m",
              "/scalar/request", "/scalar/reply", "4294967295", "64", str(work / "shim.b")], work)
         for source, image in [(work / "shim.b", "staging.dis"),
-                              (disvm / "limbo/styxscalar.b", "styxscalar.dis"),
                               (example / "styx-client.b", "client.dis")]:
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(work / image), str(source)], work)

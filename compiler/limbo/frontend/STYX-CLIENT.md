@@ -12,7 +12,7 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog,
 Available in the C99 `limbo_remote_owner_lib`. The borrowed `catalog` describes
 one module exporting one `fn(int): int`, with optional scalar aliases and
 constants. `include_name` names the original interface in the generated source,
-which also includes `styxscalar.m`. `request` and `reply` name distinct absolute
+which also includes `vfsnative.m`. `request` and `reply` name distinct absolute
 VFS paths. Paths are limited to 255 ASCII bytes, with letters, digits, dots,
 hyphens, underscores and slashes. The include basename follows the same rules
 without slashes. Route tags are nonzero decimal strings with a maximum value

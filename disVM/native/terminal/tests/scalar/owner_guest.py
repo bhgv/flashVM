@@ -82,8 +82,6 @@ def main():
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
             (caller, example / "privatevalue.b", "privatevalue.dis"),
-            (caller, disvm / "limbo/styxscalar.b", "styxscalar.dis"),
-            (owner, disvm / "limbo/styxscalar.b", "styxscalar.dis"),
         ):
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(folder / output), str(source)], work)

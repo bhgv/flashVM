@@ -349,9 +349,9 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
     {
         return 0;
     }
-    if (!strcmp(module.name, "Styxscalar") || !strcmp(function.name, "Styxscalar") ||
+    if (!strcmp(module.name, "Vfsnative") || !strcmp(function.name, "Vfsnative") ||
         !strcmp(function.name, "route") || !strcmp(function.name, "Sys") ||
-        !strcmp(include_name, "styxscalar.m") || !strcmp(include_name, "sys.m"))
+        !strcmp(include_name, "vfsnative.m") || !strcmp(include_name, "sys.m"))
     {
         return refused(error, capacity, "interface collides with generated transport name");
     }
@@ -363,12 +363,12 @@ int limbo_styx_client(FILE *output, const LimboInterface *catalog, const char *i
         "# Copyright (c) 2026 bhgv\n"
         "# EN: Original module ABI backed by mounted Unibus routes.\n"
         "# RU: Исходный ABI модуля через смонтированные маршруты Unibus.\n"
-        "implement %s;\ninclude \"sys.m\";\ninclude \"styxscalar.m\";\ninclude \"%s\";\n\n"
+        "implement %s;\ninclude \"sys.m\";\ninclude \"vfsnative.m\";\ninclude \"%s\";\n\n"
         "# EN/RU: Invoke via the published routes / Вызвать через опубликованные маршруты.\n"
         "%s(value: int): int\n{\n"
-        "    route := load Styxscalar Styxscalar->PATH;\n"
+        "    route := load Vfsnative Vfsnative->PATH;\n"
         "    if (route == nil) { raise \"scalar transport unavailable\"; }\n"
-        "    return route->call(\"%s\", \"%s\", big %lu, big %lu, value);\n}\n",
+        "    return route->scalarcall(\"%s\", \"%s\", big %lu, big %lu, value);\n}\n",
         module.name, include_name, function.name, request, reply, send, receive);
     return ferror(output) ? refused(error, capacity, "client output failed") : 1;
 }
@@ -394,8 +394,8 @@ int limbo_styx_owner(FILE *output, const LimboInterface *catalog, const char *in
     {
         return 0;
     }
-    if (!strcmp(module.name, "StyxScalarOwner") || !strcmp(module.name, "Styxscalar") ||
-        !strcmp(module.name, "init") || !strcmp(include_name, "styxscalar.m") ||
+    if (!strcmp(module.name, "StyxScalarOwner") || !strcmp(module.name, "Vfsnative") ||
+        !strcmp(module.name, "init") || !strcmp(include_name, "vfsnative.m") ||
         !strcmp(include_name, "sys.m"))
     {
         return refused(error, capacity, "interface collides with generated owner");
@@ -408,25 +408,20 @@ int limbo_styx_owner(FILE *output, const LimboInterface *catalog, const char *in
         "# Copyright (c) 2026 bhgv\n"
         "# EN: Serve one call in the installation owning the original Dis module.\n"
         "# RU: Обслужить один вызов там, где опубликован исходный модуль Dis.\n"
-        "implement StyxScalarOwner;\ninclude \"sys.m\";\ninclude \"styxscalar.m\";\n"
+        "implement StyxScalarOwner;\ninclude \"sys.m\";\ninclude \"vfsnative.m\";\n"
         "include \"%s\";\nStyxScalarOwner: module { init: fn(); };\n\n"
         "# EN/RU: Serve one granted request / Обслужить один выданный запрос.\n"
         "init()\n{\n"
         "    target := load %s \"%s\";\n"
-        "    route := load Styxscalar Styxscalar->PATH;\n"
+        "    route := load Vfsnative Vfsnative->PATH;\n"
         "    if (target == nil || route == nil) { raise \"scalar owner load failed\"; }\n"
-        "    sys := load Sys Sys->PATH;\n"
-        "    input := sys->open(\"%s\", Sys->OREAD);\n"
-        "    output := sys->open(\"%s\", Sys->OWRITE);\n"
-        "    if (input == nil || output == nil) { raise \"scalar owner route unavailable\"; }\n"
-        "    (kind, value) := route->take(sys, input, big %lu);\n"
-        "    if (kind != 1) { raise \"invalid scalar request\"; }\n"
+        "    value := route->scalartake(\"%s\", big %lu);\n"
         "    result := 0;\n"
-        "    kind = 2;\n"
+        "    success := 1;\n"
         "    {\n        result = target->%s(value);\n"
-        "    } exception {\n        \"*\" => kind = 3; result = 1;\n    }\n"
-        "    route->send(sys, output, big %lu, kind, result);\n"
-        "}\n", include_name, module.name, implementation, request, reply,
-        receive, function.name, send);
+        "    } exception {\n        \"*\" => success = 0; result = 1;\n    }\n"
+        "    route->scalarreply(\"%s\", big %lu, success, result);\n"
+        "}\n", include_name, module.name, implementation, request,
+        receive, function.name, reply, send);
     return ferror(output) ? refused(error, capacity, "owner output failed") : 1;
 }

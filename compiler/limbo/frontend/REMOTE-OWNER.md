@@ -51,7 +51,7 @@ The first file is the parsed interface. The second argument is the basename
 used in the generated include. Supply distinct absolute VFS paths for the
 request and reply, followed by their decimal route tags (1 to 4294967295) and
 the output source path. Compile the adapter with the unchanged input interface
-and `styxscalar.m`. Publish its bytecode at the path used by the ordinary typed
+and `vfsnative.m`. Publish its bytecode at the path used by the ordinary typed
 load. Invalid interfaces, invalid paths and out-of-range tags leave existing
 output intact. See the [Styx example](../../../disVM/examples/remote-scalar/STYX.md)
 for mount setup and test commands.

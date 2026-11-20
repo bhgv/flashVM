@@ -30,4 +30,11 @@ Vfsnative: module
     # EN/RU: Submit a bounded binary startup payload using the selected route.
     # Отправить ограниченные бинарные данные через выбранный маршрут.
     runargs: fn(path: string, arguments: array of byte): int;
+    # EN/RU: Send one scalar through the current mounted route and await its reply.
+    # Отправить скаляр через текущий смонтированный маршрут и дождаться ответа.
+    scalarcall: fn(request, reply: string, requesttag, replytag: big, value: int): int;
+    # EN/RU: Read one request from an owner inbox and write one reply through Styx.
+    # Прочитать запрос из приёмника владельца и отправить ответ через Styx.
+    scalartake: fn(path: string, tag: big): int;
+    scalarreply: fn(path: string, tag: big, success, value: int);
 };
