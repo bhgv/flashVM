@@ -77,9 +77,9 @@ checkheld()
 
 # EN/RU: Read the client's environment through normal file operations.
 # Прочитать окружение клиента обычными файловыми операциями.
-clientenv(): string
+clientenv(path: string): string
 {
-    file := sys->open("/.vfs/env/CLIENT", Sys->OREAD);
+    file := sys->open(path, Sys->OREAD);
     bytes := array[5] of byte;
     if (file == nil || sys->read(file, bytes, len bytes) != len bytes) {
         return "";
@@ -95,7 +95,7 @@ readchild(done: chan of string, hidestderr: int, expected: string)
     inherited := sys->fildes(3);
     part := array[3] of byte;
     if (inherited == nil || (sys->fildes(2) == nil) != hidestderr ||
-        (hidestderr && clientenv() != expected) || sys->read(inherited, part, 3) != 3) {
+        (hidestderr && clientenv("/.prog/.self/.vfs/env/CLIENT") != expected) || sys->read(inherited, part, 3) != 3) {
         done <-= "missing";
         return;
     }
@@ -125,7 +125,7 @@ checknumbered()
         raise "numbered FD aliases lost shared cursor";
     }
     done := chan of string;
-    environment := clientenv();
+    environment := clientenv("/.prog/.self/.vfs/env/CLIENT");
     spawn readchild(done, err == nil, environment);
     if (<-done != "def") {
         raise "child did not inherit numbered FD cursor";
@@ -144,6 +144,13 @@ checknumbered()
         if ((environment != "child" && environment != "base!") ||
             sys->open("/env/CLIENT", Sys->OREAD) != nil || sys->open("/.vfs/env/CLIENT", Sys->OWRITE) != nil) {
             raise "process namespace grant not isolated";
+        }
+        pid := sys->open("/.prog/.self/.pid", Sys->OREAD);
+        id := array[3] of byte;
+        if (pid == nil || sys->read(pid, id, 3) != 3 || string id != "42\n" ||
+            sys->open("/.prog/.self/.pid", Sys->OWRITE) != nil ||
+            clientenv("/.vfs/env/CLIENT") != environment) {
+            raise "incorrect private process alias";
         }
         sys->print("PASS process context hides fd 2\n");
         sys->print("PASS process VFS %s\n", environment);

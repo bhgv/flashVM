@@ -5,6 +5,7 @@
 #include "ticket.h"
 #include "../internal.h"
 #include "../cancel.h"
+#include "../export.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -272,44 +273,75 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
 }
 
 
-/* EN/RU: Stage a dedicated caller subtree while preserving the accepted root stack.
- * Подготовить отдельное дерево клиента, сохраняя принятый корневой стек. */
+/* EN/RU: Add a retained subtree to the unpublished namespace, refusing existing mounts.
+ * Добавить удерживаемое поддерево в неопубликованное пространство, исключая конфликт привязок. */
+static int add_program_mount(DVM_Namespace *group, const DVM_LaunchHandoff *handoff,
+    DVM_Provider *provider, const char *target)
+{
+    size_t length = strlen(target);
+    for (const DVM_NamespaceBinding *old = group->bindings; old; old = old->next)
+    {
+        if (!strncmp(old->on, target, length) && (!old->on[length] || old->on[length] == '/'))
+        {
+            return 0;
+        }
+    }
+    DVM_NamespaceBinding *entry = calloc(1, sizeof(*entry));
+    if (!entry || group->next_binding == UINT64_MAX || group->version == UINT64_MAX ||
+        !dvm_provider_retain(provider))
+    {
+        free(entry);
+        return 0;
+    }
+    strcpy(entry->on, target);
+    strcpy(entry->source, target);
+    entry->origin = handoff->description.terminal_origin;
+    entry->provider = provider;
+    entry->identity = entry->head_identity = ++group->next_binding;
+    entry->next = group->bindings;
+    group->bindings = entry;
+    group->version++;
+    return 1;
+}
+
+
+/* EN/RU: Project only the process identity and effective client namespace.
+ * Спроецировать только идентификатор процесса и выданное пространство клиента. */
+static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff)
+{
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    if (!view || !dvm_view_map(view, "/.self/.pid", handoff->program, ".pid", FVM_ACCESS_READ, 0) ||
+        (handoff->program_vfs && !dvm_view_map(view, "/.self/.vfs", handoff->program_vfs,
+            ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)))
+    {
+        dvm_view_discard(view);
+        return NULL;
+    }
+    return dvm_view_freeze(view);
+}
+
+
+/* EN/RU: Stage private aliases before publishing the launched process.
+ * Подготовить частные пути до публикации запущенного процесса. */
 DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
 {
     if (!handoff || !handoff->group)
     {
         return NULL;
     }
-    if (!handoff->program_vfs)
+    if (!handoff->program)
     {
         return dvm_namespace_retain(handoff->group) ? handoff->group : NULL;
     }
     DVM_Namespace *group = dvm_namespace_copy(handoff->group);
-    DVM_NamespaceBinding *entry = group ? calloc(1, sizeof(*entry)) : NULL;
-    if (!entry || group->next_binding == UINT64_MAX || group->version == UINT64_MAX ||
-        !dvm_provider_retain(handoff->program_vfs))
+    DVM_Provider *self = group ? program_self(handoff) : NULL;
+    int mounted = self && add_program_mount(group, handoff, self, "/.prog") &&
+        (!handoff->program_vfs || add_program_mount(group, handoff, handoff->program_vfs, "/.vfs"));
+    dvm_provider_release(self);
+    if (!mounted)
     {
-        free(entry);
         dvm_namespace_release(group);
         return NULL;
     }
-    for (const DVM_NamespaceBinding *old = group->bindings; old; old = old->next)
-    {
-        if (!strncmp(old->on, "/.vfs", 5) && (!old->on[5] || old->on[5] == '/'))
-        {
-            dvm_provider_release(handoff->program_vfs);
-            free(entry);
-            dvm_namespace_release(group);
-            return NULL;
-        }
-    }
-    strcpy(entry->on, "/.vfs");
-    strcpy(entry->source, "/.vfs");
-    entry->origin = handoff->description.terminal_origin;
-    entry->provider = handoff->program_vfs;
-    entry->identity = entry->head_identity = ++group->next_binding;
-    entry->next = group->bindings;
-    group->bindings = entry;
-    group->version++;
     return group;
 }

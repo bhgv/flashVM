@@ -41,6 +41,7 @@ enum
     ProgramChildFds = 823, /* Directory for replacement descriptors. */
     ProgramChildVfs = 825, /* Optional child namespace. */
     ProgramBaseVfs = 828, /* Fallback namespace. */
+    ProgramPid = 833, /* Read-only PID of the selected process. */
     ProgramInvalid = 831 /* Process with an invalid .vfs node. */
 };
 
@@ -70,6 +71,7 @@ Path fixtureprograminit(Styxserver *server)
         !styxadddir(server, ProgramRoot, ProgramBase, "41", 0555, "fixture") ||
         !styxadddir(server, ProgramRoot, ProgramChild, "42", 0555, "fixture") ||
         !styxadddir(server, ProgramChild, ProgramChildFds, ".fd", 0555, "fixture") ||
+        !styxaddfile(server, ProgramChild, ProgramPid, ".pid", 0444, "fixture") ||
         !publish_environment(server, ProgramBase, ProgramBaseVfs) ||
         !styxadddir(server, ProgramRoot, ProgramInvalid, "43", 0555, "fixture") ||
         !styxaddfile(server, ProgramInvalid, ProgramInvalid + 1, ".vfs", 0444, "fixture") ||
@@ -143,6 +145,11 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == ProgramPid && offset >= 0)
+    {
+        *count = styxreadstr(offset, bytes, *count, "42\n");
+        return nil;
+    }
     if ((qid.path == ProgramChildVfs + 2 || qid.path == ProgramBaseVfs + 2) && offset >= 0)
     {
         *count = styxreadstr(offset, bytes, *count, qid.path == ProgramChildVfs + 2 ? "child" : "base!");

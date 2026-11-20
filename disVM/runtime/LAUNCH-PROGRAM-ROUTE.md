@@ -57,3 +57,12 @@ and `.len` provide type and length. For indexed access the client opens
 The dispatcher must associate selection with the open operation so concurrent
 accesses retain separate indices. `.ins`, `.add`, `.push` and `.pop`
 are planned collection operations.
+
+On launch, DisVM projects `/.prog/.self/.pid` and `/.prog/.self/.vfs`
+into the new process's private namespace. The first path reads the selected
+client's read-only `.pid` file. The publisher uses a decimal PID followed
+by a newline. The second path exposes the same effective tree as `/.vfs`,
+including the inherited case. Environment entries remain ordinary files
+under `.vfs/env`. The binding belongs to the launch namespace and survives
+local `spawn`. Numbered descriptors are available through `Sys.fildes`.
+The `.self` tree currently exposes PID and VFS.
