@@ -1,6 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Source-built SDK plus actual runtime interpreter/JIT acceptance, private linking only.
 # RU: Проверка source-built SDK с настоящим runtime interpreter/JIT, только private-linking.
+import fcntl
 import os
 from pathlib import Path
 import shlex
@@ -27,6 +28,33 @@ def run(command, cwd, env=None):
     if result.returncode:
         raise RuntimeError("command failed: " + " ".join(map(str, command)) + "\n" + result.stdout + result.stderr)
     return result
+
+
+# EN/RU: Exercise the full local descriptor budget and reject an unsealed file.
+# Проверить полный размер данных через FD и отклонение незапечатанного файла.
+def startup_fd(runtime, work):
+    fd = os.memfd_create("disvm-startup-test", os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
+    try:
+        payload = bytes(range(256)) * 256
+        with os.fdopen(os.dup(fd), "wb") as stream:
+            stream.write(payload)
+        command = [str(runtime), f"--startup-fd={fd}", "--no-jit", "owner.dis"]
+        refused = subprocess.run(command, cwd=work, pass_fds=(fd,), capture_output=True, timeout=5)
+        if refused.returncode == 0 or b"PASS owner Dis init" in refused.stdout:
+            raise RuntimeError("DisVM accepted an unsealed startup file")
+        # EN/RU: Linux UAPI values for Python builds without exported seal constants.
+        # Значения Linux UAPI для сборок Python без констант seals.
+        add_seals = getattr(fcntl, "F_ADD_SEALS", 1033)
+        seals = (getattr(fcntl, "F_SEAL_SEAL", 1) | getattr(fcntl, "F_SEAL_SHRINK", 2) |
+                 getattr(fcntl, "F_SEAL_GROW", 4) | getattr(fcntl, "F_SEAL_WRITE", 8))
+        fcntl.fcntl(fd, add_seals, seals)
+        for mode in ("--no-jit", "--jit"):
+            command[2] = mode
+            accepted = subprocess.run(command, cwd=work, pass_fds=(fd,), capture_output=True, timeout=5)
+            if accepted.returncode or b"PASS owner Dis init" not in accepted.stdout:
+                raise RuntimeError("DisVM lost sealed startup bytes: " + accepted.stderr.decode())
+    finally:
+        os.close(fd)
 
 
 # EN/RU: Compile a portable guest and link actual production objects with native launch/wire instrumentation.
@@ -89,6 +117,7 @@ def main():
         (owner / "owner-only.txt").write_bytes(b"owner")
         run([str(compiler), "-I", str(include), "-I", str(modules), "-o", str(owner / "owner.dis"),
              str(runtime_root / "fixtures/unibus-files/owner.b")], work)
+        startup_fd(runtime, owner)
         wrapper = work / "wrapper.o"
         run([runtime_link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *native["C_INCLUDES"], *rt["C_FLAGS"],
              "-c", str(runtime_root / "test_unibus_files.c"), "-o", str(wrapper)], work)

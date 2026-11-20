@@ -13,6 +13,7 @@
 int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff)
 {
     struct sigaction pipe_action = {0};
+    int startup_fd = -1; /* Owner-delegated sealed file, consumed at startup. */
     const char *startup_hex = NULL; /* Optional owner-supplied binary arguments. */
     int gc_selected = 0;
     int debug_input = -1; /* Explicit debugger pipe read end. */
@@ -244,11 +245,27 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
             gc_worker = 1;
             gc_selected = 1;
         }
+        else if (!strncmp(argv[1], "--startup-fd=", 13))
+        {
+            const char *number = argv[1] + 13;
+            char *end;
+            errno = 0;
+            long fd = strtol(number, &end, 10);
+            if (handoff || startup_hex || startup_fd >= 0 || !*number || *end ||
+                strspn(number, "0123456789") != strlen(number) || errno ||
+                fd < 3 || fd > INT_MAX || fcntl((int)fd, F_GET_SEALS) < 0 ||
+                fcntl((int)fd, F_SETFD, FD_CLOEXEC) < 0)
+            {
+                fprintf(stderr, "disvm: invalid --startup-fd descriptor\n");
+                return 2;
+            }
+            startup_fd = (int)fd;
+        }
         else if (!strncmp(argv[1], "--startup-hex=", 14))
         {
             const char *hex = argv[1] + 14;
             size_t length = strlen(hex);
-            if (handoff || startup_hex || length > 65536 || (length & 1) ||
+            if (handoff || startup_hex || startup_fd >= 0 || length > 65536 || (length & 1) ||
                 strspn(hex, "0123456789abcdef") != length)
             {
                 fprintf(stderr, "disvm: invalid --startup-hex data\n");
@@ -443,7 +460,7 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
         fprintf(stderr, "cannot start private debugger socket: %s\n", debug_path);
         return 2;
     }
-    RuntimeEntry entry = {argv[1], handoff, startup_hex};
+    RuntimeEntry entry = {argv[1], handoff, startup_hex, startup_fd};
 #ifdef DVM_RUNTIME_EDITOR
     if (threaded)
     {

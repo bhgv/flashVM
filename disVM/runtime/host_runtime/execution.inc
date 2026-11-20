@@ -11,35 +11,81 @@ typedef struct RuntimeEntry
     const char *path; /* Host-selected local bootstrap path. */
     DVM_LaunchHandoff *handoff; /* Optional exclusive native environment. */
     const char *startup_hex; /* Validated lowercase hex from the native launcher. */
+    int startup_fd; /* Optional sealed owner payload, consumed before dispatch. */
 } RuntimeEntry;
 
 
-/* EN/RU: Decode validated owner arguments into a startup context without changing VFS authority.
- * Декодировать проверенные аргументы владельца в контекст запуска без изменения прав VFS. */
+/* EN/RU: Read one sealed startup file from offset zero and consume its descriptor.
+ * Прочитать запечатанный файл запуска с нулевого смещения и закрыть FD. */
+static int read_startup_file(int fd, unsigned char *bytes, size_t *size)
+{
+    struct stat metadata;
+    int seals = fcntl(fd, F_GET_SEALS);
+    const int required = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK;
+    int valid = seals >= 0 && (seals & required) == required && !fstat(fd, &metadata) &&
+        S_ISREG(metadata.st_mode) && metadata.st_size >= 0 && metadata.st_size <= DVM_LAUNCH_ARGUMENT_LIMIT;
+    if (valid)
+    {
+        *size = (size_t)metadata.st_size;
+        size_t used = 0;
+        while (used < *size)
+        {
+            ssize_t n = pread(fd, bytes + used, *size - used, (off_t)used);
+            if (n > 0)
+            {
+                used += (size_t)n;
+            }
+            else if (!n || errno != EINTR)
+            {
+                valid = 0;
+                break;
+            }
+        }
+    }
+    close(fd);
+    return valid;
+}
+
+
+/* EN/RU: Copy validated arguments into a startup context without changing VFS authority.
+ * Скопировать проверенные аргументы в контекст запуска без изменения прав VFS. */
 static DVM_LaunchContext *local_startup_context(const RuntimeEntry *entry)
 {
     DVM_LaunchHandoff input = {0};
-    size_t size = strlen(entry->startup_hex) / 2;
-    if (strlen(entry->path) >= sizeof(input.description.module))
+    unsigned char *bytes = malloc(DVM_LAUNCH_ARGUMENT_LIMIT);
+    size_t size = 0;
+    if (!bytes)
     {
+        if (entry->startup_fd >= 0)
+        {
+            close(entry->startup_fd);
+        }
         return NULL;
     }
-    unsigned char *bytes = size ? malloc(size) : NULL;
-    if (size && !bytes)
+    int valid = 1;
+    if (entry->startup_fd >= 0)
     {
-        return NULL;
+        valid = read_startup_file(entry->startup_fd, bytes, &size);
     }
-    for (size_t i = 0; i < size; i++)
+    else
     {
-        unsigned char high = entry->startup_hex[2 * i];
-        unsigned char low = entry->startup_hex[2 * i + 1];
-        bytes[i] = ((high <= '9' ? high - '0' : high - 'a' + 10) << 4) |
-            (low <= '9' ? low - '0' : low - 'a' + 10);
+        size = strlen(entry->startup_hex) / 2;
+        for (size_t i = 0; i < size; i++)
+        {
+            unsigned char high = entry->startup_hex[2 * i];
+            unsigned char low = entry->startup_hex[2 * i + 1];
+            bytes[i] = ((high <= '9' ? high - '0' : high - 'a' + 10) << 4) |
+                (low <= '9' ? low - '0' : low - 'a' + 10);
+        }
     }
-    strcpy(input.description.module, entry->path);
-    input.description.argument_bytes = size;
-    input.arguments = bytes;
-    DVM_LaunchContext *context = dvm_launch_context_create(&input);
+    DVM_LaunchContext *context = NULL;
+    if (valid && strlen(entry->path) < sizeof(input.description.module))
+    {
+        strcpy(input.description.module, entry->path);
+        input.description.argument_bytes = size;
+        input.arguments = bytes;
+        context = dvm_launch_context_create(&input);
+    }
     free(bytes);
     return context;
 }
@@ -137,7 +183,7 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
     poperror();
     unload(module);
     initial_guest = process;
-    if (argument->startup_hex)
+    if (argument->startup_hex || argument->startup_fd >= 0)
     {
         DVM_LaunchContext *launch = local_startup_context(argument);
         if (!launch)

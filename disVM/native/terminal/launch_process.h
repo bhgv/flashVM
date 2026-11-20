@@ -29,8 +29,8 @@ int styxlaunchprocessinit(StyxLaunchProcess *process, unsigned long tag,
     const char *directory, char *const *argv);
 
 
-/* EN/RU: Opt in before publication; the DisVM executable will receive up to limit bytes, max 32768.
- * Включить до публикации; исполняемый DisVM получит до limit байт, максимум 32768. */
+/* EN/RU: Opt in before publication; the DisVM executable will receive up to limit bytes, max 65536.
+ * Включить до публикации; исполняемый DisVM получит до limit байт, максимум 65536. */
 int styxlaunchprocesspayload(StyxLaunchProcess *process, size_t limit);
 
 
