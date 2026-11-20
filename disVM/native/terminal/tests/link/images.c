@@ -79,7 +79,6 @@ void fixtureimagesinit(Styxserver *server)
     launch_size += encoded;
     request->d.length = launch_size;
     if (require_submission && (!styxaddfile(server, Qroot, 11, "submit", 0222, "fixture") ||
-        !styxaddfile(server, Qroot, 20, "execute", 0222, "fixture") ||
         !styxaddfile(server, Qroot, 21, "execute-result", 0444, "fixture")))
     {
         exit(3);

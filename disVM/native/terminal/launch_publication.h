@@ -26,6 +26,14 @@ int styxlaunchpublicationinit(StyxLaunchPublication *publication, unsigned long 
 DVM_Provider *styxlaunchpublicationfile(StyxLaunchPublication *publication, int completion);
 
 
+/* EN/RU: Route a complete first write by the reserved launch tag. Return 1 for
+ * admission, -1 for a refused launch, 0 to leave the write to the Unibus stream.
+ * Направить полную первую запись по зарезервированному тегу запуска.
+ * Вернуть 1 при приёме, -1 при отказе запуска, 0 для обработки потоком Unibus. */
+int styxlaunchpublicationdispatch(StyxLaunchPublication *publication, uint64_t offset,
+    const void *bytes, size_t size);
+
+
 /* EN/RU: Retire publication after all providers and opens close. Reap any child, possibly blocking.
  * Освободить публикацию после закрытия провайдеров и файлов, дождавшись дочернего процесса. */
 int styxlaunchpublicationfinish(StyxLaunchPublication *publication, int *status);

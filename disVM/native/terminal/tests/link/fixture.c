@@ -66,7 +66,7 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  */
 extern void fixtureimagesfree(void);
 static StyxLaunchPublication owner_process;
-static StyxBacking *owner_files[2]; /* Fixed owner route and its child. */
+static StyxBacking *owner_result; /* Published exit-status stream. */
 static char *owner_argv[4]; /* Borrowed environment and fixed test command. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
@@ -118,9 +118,9 @@ static StyxBacking *add_held(unsigned long parent, unsigned long qid, char *node
  * Сопоставить точные qid тестового сервера с удерживаемыми файлами. */
 static StyxBacking *held_backing(uvlong qid)
 {
-    if (qid == 20 || qid == 21)
+    if (qid == 21)
     {
-        return owner_files[qid - 20];
+        return owner_result;
     }
     if (qid == held_input || qid == held_output)
     {
@@ -164,17 +164,10 @@ static int prepare_owner(void)
     {
         return 0;
     }
-    for (int i = 0; i < 2; i++)
-    {
-        DVM_Provider *file = styxlaunchpublicationfile(&owner_process, i);
-        owner_files[i] = styxbacking(file);
-        dvm_provider_release(file);
-        if (!owner_files[i])
-        {
-            return 0;
-        }
-    }
-    return 1;
+    DVM_Provider *file = styxlaunchpublicationfile(&owner_process, 1);
+    owner_result = styxbacking(file);
+    dvm_provider_release(file);
+    return owner_result != NULL;
 }
 #endif
 
@@ -229,6 +222,14 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         *count = result.count;
         return nil;
+    }
+    if (qid.path == 7 && offset >= 0 && owner_result)
+    {
+        int decision = styxlaunchpublicationdispatch(&owner_process, offset, bytes, *count);
+        if (decision)
+        {
+            return decision > 0 ? nil : Ebadarg;
+        }
     }
     if (qid.path == 11)
     {
@@ -364,8 +365,7 @@ int linkfixturefd(void)
         if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
         {
             int status;
-            styxbackingfree(owner_files[0]);
-            styxbackingfree(owner_files[1]);
+            styxbackingfree(owner_result);
             if (styxlaunchpublicationfinish(&owner_process, &status) != 1 || status != 0)
             {
                 _exit(3);

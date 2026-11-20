@@ -3,6 +3,8 @@
  * RU: Узлы запроса и результата VFS для фиксированной локальной команды Dis.
  */
 #include "launch_publication.h"
+#include "flashvm/srecord.h"
+#include "launch/ticket.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,6 +161,27 @@ DVM_Provider *styxlaunchpublicationfile(StyxLaunchPublication *publication, int 
         free(file);
     }
     return provider;
+}
+
+
+/* EN/RU: See launch_publication.h; classify only an entire initial frame.
+ * См. launch_publication.h; классифицировать только целый первый кадр. */
+int styxlaunchpublicationdispatch(StyxLaunchPublication *publication, uint64_t offset,
+    const void *bytes, size_t size)
+{
+    FVM_SRecord record;
+    size_t consumed;
+    if (!publication || offset || !bytes || !size ||
+        fvm_srecord_read(bytes, size, DVM_LAUNCH_ARGUMENT_LIMIT + FVM_SRECORD_INTEGER_MAX,
+            &record, &consumed) != FVM_S_OK || consumed != size ||
+        record.tag != publication->process.receiver.tag)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&publication->lock);
+    int accepted = styxterminallaunchreceive(&publication->process.receiver, offset, bytes, size);
+    pthread_mutex_unlock(&publication->lock);
+    return accepted ? 1 : -1;
 }
 
 

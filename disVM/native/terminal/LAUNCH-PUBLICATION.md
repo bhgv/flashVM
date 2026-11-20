@@ -1,6 +1,6 @@
 # Styx launch publication
 
-[Русский](LAUNCH-PUBLICATION.ru.md) · [API](launch_publication.h) · [Execution](LAUNCH-PROCESS.md)
+[Русский](LAUNCH-PUBLICATION.ru.md) · [API](launch_publication.h) · [Execution](LAUNCH-PROCESS.md) · [Unibus dispatch](LAUNCH-DISPATCH.md)
 
 `styxlaunchpublicationinit` initializes caller-owned storage for an authorized,
 one-shot command. Supply a nonzero S-record tag, the owner's working directory
