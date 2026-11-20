@@ -10,6 +10,7 @@
 #define STYX_FUNCTION_PROFILE_TAG 71UL /* Profile of a mounted function directory. */
 #define STYX_FUNCTION_REQUEST_TAG 72UL /* Request on an opened function. */
 #define STYX_FUNCTION_REPLY_TAG 73UL /* Reply on the same open. */
+#define STYX_MOUNTED_EXPORT_LIMIT 8U /* Maximum function files per module. */
 #define INTERFACE_KIND 4U /* Distinct from call, value and error. */
 #define INTERFACE_HEADER 5U /* One kind byte and a network-order signature. */
 #define INTERFACE_NAME_LIMIT 48U /* Name bytes excluding NUL. */
@@ -27,4 +28,7 @@ void styxscalar_interface_header(unsigned char *data, uint32_t signature);
  * Сверить полную запись с заимствованным импортом и тегом. */
 int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
     const char *name, uint32_t signature);
+/* EN/RU: Return the matching record bit in a complete, bounded mounted profile.
+ * Вернуть бит совпавшей записи полного ограниченного профиля модуля. */
+unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature);
 #endif

@@ -10,6 +10,7 @@
 #include "../../native/terminal/scalar_verify.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 /* EN/RU: Consume route storage and its two file owners.
@@ -19,6 +20,7 @@ static void destroy_files(void *state)
     DVM_ScalarFiles *files = state;
     dvm_provider_release(files->request);
     dvm_provider_release(files->reply);
+    dvm_scalar_files_release(files->next);
     free(files);
 }
 
@@ -113,6 +115,10 @@ void dvm_scalar_module_retire(Module *module)
  * Полномочия открытия держит захваченный файл. До захвата проверить rwx. */
 DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *name)
 {
+    if (!styxscalar_name_length(name))
+    {
+        return NULL;
+    }
     DVM_Provider *file = dvm_provider_capture(directory, name);
     FVM_FileInfo info;
     if (!file || dvm_provider_info(file, ".", &info) != FVM_OK || info.directory ||
@@ -121,7 +127,12 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
         dvm_provider_release(file);
         return NULL;
     }
-    return new_files(file, NULL, 1);
+    DVM_ScalarFiles *files = new_files(file, NULL, 1);
+    if (files)
+    {
+        strcpy(files->name, name);
+    }
+    return files;
 }
 
 

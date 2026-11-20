@@ -6,7 +6,19 @@ include "sys.m";
 include "compute.m";
 Client: module { init: fn(); };
 Wrong: module { compute: fn(value: big): big; };
-Helper: module { adjust: fn(value: int): int; };
+Helper: module { offset: fn(value: int): int; };
+Combined: module {
+    adjust: fn(value: int): int;
+    compute: fn(value: int): int;
+};
+Missing: module {
+    adjust: fn(value: int): int;
+    absent: fn(value: int): int;
+};
+Bad: module {
+    adjust: fn(value: int): int;
+    compute: fn(value: big): big;
+};
 
 
 # EN/RU: Check compiled import admission, normal results and a remote exception.
@@ -23,13 +35,21 @@ init()
     }
     path := "/peer/mounted/compute.dis";
     helper: Helper;
+    combined: Combined;
     if (disowner) {
         helperpath := "/peer/mounted/helper.dis";
         if ((load Compute helperpath) != nil || (load Helper path) != nil) {
             raise "profile from another module was admitted";
         }
+        if ((load Missing path) != nil || (load Bad path) != nil) {
+            raise "partially matching import accepted";
+        }
+        combined = load Combined path;
+        if (combined == nil || combined->adjust(70) != 63) {
+            raise "multi-export module load failed";
+        }
         helper = load Helper helperpath;
-        if (helper == nil || helper->adjust(70) != 63) {
+        if (helper == nil || helper->offset(70) != 63) {
             raise "alternate Styx module failed";
         }
     }
@@ -59,7 +79,7 @@ init()
         raise "mounted Compute alias result failed";
     }
     if (disowner) {
-        if (helper->adjust(11) != 4) {
+        if (helper->offset(11) != 4 || combined->adjust(16) != 9 || combined->compute(1) != 46) {
             raise "alternate Styx route changed after rebind";
         }
         sys->print("PASS mounted Styx original Dis\n");

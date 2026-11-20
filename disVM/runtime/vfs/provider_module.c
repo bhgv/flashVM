@@ -145,25 +145,82 @@ static int check_profile(DVM_Provider *profile, unsigned long tag, const char *n
 }
 
 
-/* EN/RU: Validate the selected module directory and resolve both children inside it.
- * Проверить выбранный каталог модуля и найти оба файла внутри него. */
-static DVM_ScalarFiles *mounted_function(DVM_ResourcePlan *plan, const char *name, uint32_t signature)
+typedef struct ScalarImport
+{
+    char name[INTERFACE_NAME_LIMIT + 1]; /* Copied compiled export name. */
+    uint32_t signature; /* Copied compiled type signature. */
+} ScalarImport;
+
+
+/* EN/RU: Read the complete bounded profile with a fresh, cancellable native handle.
+ * Прочитать полный ограниченный профиль через новый нативный handle с отменой. */
+static size_t mounted_profile(DVM_Provider *directory, unsigned char *bytes, size_t capacity)
+{
+    DVM_CloseJob *close = dvm_close_prepare();
+    DVM_VfsHandle reader = {0};
+    if (!close || dvm_provider_open(directory, ".interface", "r", &reader) != FVM_OK)
+    {
+        dvm_close_discard(close);
+        return 0;
+    }
+    size_t result = 0, used = 0;
+    while ((reader.native_flags & DVM_VFS_CANCEL_DATA) && used < capacity)
+    {
+        DVM_IoResult got = dvm_vfs_read_chunk(&reader, bytes + used, capacity - used);
+        if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) ||
+            (got.flags & DVM_IO_UNCERTAIN) || got.count > capacity - used)
+        {
+            break;
+        }
+        used += got.count;
+        if (!got.count || got.stop == DVM_IO_EOF)
+        {
+            result = used < capacity ? used : 0;
+            break;
+        }
+    }
+    dvm_close_submit_resource(close, &reader);
+    return result;
+}
+
+
+/* EN/RU: Capture every requested function on one verified directory generation.
+ * Захватить все запрошенные функции из одного проверенного поколения каталога. */
+static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarImport *imports, size_t count)
 {
     FVM_FileInfo info;
-    if (signature != DVM_SCALAR_INT_SIGNATURE || !name[0] || strchr(name, '/') ||
-        !strcmp(name, ".") || !strcmp(name, "..") || !strcmp(name, ".interface") ||
-        dvm_provider_info(plan->provider, plan->relative, &info) != FVM_OK ||
+    if (!count || dvm_provider_info(plan->provider, plan->relative, &info) != FVM_OK ||
         !info.directory || !(info.mode & 0444) || !(info.mode & 0111))
     {
         return NULL;
     }
     DVM_Provider *directory = dvm_provider_capture(plan->provider, plan->relative);
-    DVM_Provider *profile = dvm_provider_capture(directory, ".interface");
-    DVM_ScalarFiles *files = profile && check_profile(profile, STYX_FUNCTION_PROFILE_TAG, name, signature) ?
-        dvm_scalar_function_files(directory, name) : NULL;
-    dvm_provider_release(profile);
+    if (!directory)
+    {
+        return NULL;
+    }
+    unsigned char profile[STYX_MOUNTED_EXPORT_LIMIT * STYX_SCALAR_INTERFACE_CAPACITY + 1];
+    size_t size = mounted_profile(directory, profile, sizeof(profile));
+    DVM_ScalarFiles *head = NULL;
+    DVM_ScalarFiles **tail = &head;
+    unsigned matched = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        const char *name = imports[i].name;
+        unsigned bit = imports[i].signature == DVM_SCALAR_INT_SIGNATURE &&
+            !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
+            styxscalar_profile_match(profile, size, name, imports[i].signature) : 0;
+        if (!bit || (bit & matched) || !(*tail = dvm_scalar_function_files(directory, name)))
+        {
+            dvm_scalar_files_release(head);
+            head = NULL;
+            break;
+        }
+        matched |= bit;
+        tail = &(*tail)->next;
+    }
     dvm_provider_release(directory);
-    return files;
+    return head;
 }
 
 
@@ -200,17 +257,26 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
         free(image);
         nexterror();
     }
-    char name[INTERFACE_NAME_LIMIT + 1] = {0}; /* Copied before releasing managed admission. */
-    uint32_t signature = 0;
-    if (imports && imports != H && imports[0].name && !imports[1].name)
+    ScalarImport copied[STYX_MOUNTED_EXPORT_LIMIT] = {0};
+    size_t count = 0;
+    if (imports && imports != H)
     {
-        size_t length = styxscalar_name_length(imports[0].name);
-        if (length)
+        for (; count < STYX_MOUNTED_EXPORT_LIMIT && imports[count].name; count++)
         {
-            memcpy(name, imports[0].name, length);
-            signature = (uint32_t)imports[0].sig;
+            size_t length = styxscalar_name_length(imports[count].name);
+            if (length)
+            {
+                memcpy(copied[count].name, imports[count].name, length);
+                copied[count].signature = (uint32_t)imports[count].sig;
+            }
+        }
+        if (imports[count].name)
+        {
+            count = 0;
         }
     }
+    char *name = count == 1 ? copied[0].name : "";
+    uint32_t signature = count == 1 ? copied[0].signature : 0;
     DVM_VfsWait *operation = NULL; /* Source-owned wait/scope; removed before managed reentry. */
     int released = dvm_vfs_path_enter(&operation); /* ACTIVE owner publishes roots and registers cancellation before leaving. */
     int valid = 0; /* No parse is admitted on incomplete or cancelled input. */
@@ -228,7 +294,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
         adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag, &files) : NULL;
         if (process && !denied && !adapter && !request_tag)
         {
-            image->mounted = mounted_function(plan, name, signature);
+            image->mounted = mounted_functions(plan, copied, count);
             if (image->mounted)
             {
                 files = image->mounted;

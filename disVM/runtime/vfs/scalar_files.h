@@ -7,9 +7,12 @@
 #include "provider.h"
 #include <stdint.h>
 #include "close_worker.h"
+#include "../../native/terminal/scalar_verify.h"
 
 typedef struct DVM_ScalarFiles
 {
+    struct DVM_ScalarFiles *next; /* Owned next mounted export, in compiled import order. */
+    char name[INTERFACE_NAME_LIMIT + 1]; /* Mounted export name. */
     DVM_Provider *request; /* Owned captured request node. */
     DVM_Provider *reply; /* Owned captured reply node. */
     DVM_CloseJob *close; /* Native retirement reservation. */

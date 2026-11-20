@@ -48,7 +48,7 @@ target_link_libraries(disvm PRIVATE vfs_walk)
 
 target_sources(disvm PRIVATE "${root}/disVM/native/terminal/scalar_verify.c")
 
-target_sources(disvm PRIVATE vfs/scalar_call.c vfs/scalar_files.c
+target_sources(disvm PRIVATE vfs/scalar_call.c vfs/scalar_files.c vfs/scalar_direct.c
     "${root}/disVM/native/terminal/record_write.c"
     "${root}/disVM/native/terminal/scalar_record.c"
     "${root}/disVM/native/terminal/scalar_route.c")

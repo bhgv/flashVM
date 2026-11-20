@@ -41,7 +41,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
     const char *name, const struct StyxScalarFunction *function);
 
 
-#define STYX_MOUNTED_SCALAR_LIMIT 64U /* Maximum module directories per server. */
+#define STYX_MOUNTED_SCALAR_LIMIT 64U /* Maximum export entries per server. */
 
 typedef struct StyxMountedScalar
 {
@@ -51,8 +51,8 @@ typedef struct StyxMountedScalar
 } StyxMountedScalar;
 
 
-/* EN/RU: Consume channel and publish count borrowed entries with distinct module names.
- * Принять канал и опубликовать count заимствованных записей с разными именами модулей. */
+/* EN/RU: Consume channel and publish count borrowed entries grouped by module name.
+ * Принять канал и опубликовать count заимствованных записей с группировкой по имени модуля. */
 StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count);
 

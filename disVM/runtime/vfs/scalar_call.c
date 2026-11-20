@@ -10,6 +10,7 @@
 #include "scalar_files.h"
 #include "fns.h"
 #include "interp.h"
+#include "scalar_direct.h"
 #include "raise.h"
 #include "guest.h"
 #include "resource.h"
@@ -334,18 +335,9 @@ void Vfsnative_scalarreply(void *frame)
 
 /* EN/RU: Hosted compiler frame for one fn(int):int; no managed argument slots.
  * Кадр компилятора hosted для одной fn(int):int, без управляемых аргументов. */
-typedef struct DirectFrame
-{
-    WORD regs[NREG-1]; /* VM linkage cells. */
-    WORD *ret; /* Borrowed result slot. */
-    unsigned char temps[24]; /* Compiler ABI temporary area. */
-    WORD value; /* One scalar argument. */
-} DirectFrame;
-
-
 /* EN/RU: Receive a regular typed Dis call and return through its original frame.
  * Принять обычный типизированный вызов Dis и вернуть число через исходный кадр. */
-static void scalar_entry(void *frame)
+void dvm_scalar_entry(void *frame, unsigned index)
 {
     DirectFrame call;
     Module *module = DVM_R.M->m;
@@ -370,6 +362,14 @@ static void scalar_entry(void *frame)
         error("remote scalar call not sent");
     }
     DVM_ScalarFiles *files = module->scalar_files;
+    for (; files && index; index--)
+    {
+        files = files->next;
+    }
+    if (index)
+    {
+        error(exModule);
+    }
     unsigned long independent = SCALAR_IDLE;
     unsigned long *state = !files ? &module->mtime : files->duplex ? &independent : &files->state;
     ulong expected = SCALAR_IDLE;
@@ -394,69 +394,6 @@ static void scalar_entry(void *frame)
         error((char *)failure);
     }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));
-}
-
-
-typedef struct DirectBuild
-{
-    char *path; /* Borrowed logical path through construction. */
-    char *name; /* Borrowed checked import name. */
-    Module *module; /* Owned partial allocation through kprotect. */
-} DirectBuild;
-
-
-/* EN/RU: Construct one private native module with the compiler's scalar frame.
- * Создать собственный нативный модуль с компилированным скалярным кадром. */
-static int build_direct(void *opaque)
-{
-    DirectBuild *build = opaque;
-    Module *module = build->module = newmod(build->path);
-    module->type = calloc(1, sizeof(*module->type));
-    module->ext = calloc(2, sizeof(*module->ext));
-    if (!module->type || !module->ext)
-    {
-        return 0;
-    }
-    Type *frame = dtype(freeheap, sizeof(DirectFrame), NULL, 0);
-    if (!frame)
-    {
-        return 0;
-    }
-    module->type[0] = frame;
-    module->ntype = 1;
-    runtime(module, module->ext, build->name, (int32_t)DVM_SCALAR_INT_SIGNATURE, scalar_entry, frame);
-    return 1;
-}
-
-
-/* EN/RU: Return a private noncached module and reuse per-instance namespace attachment.
- * Вернуть приватный модуль без кэша и использовать привязку пространства экземпляра. */
-Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
-    unsigned long reply_tag, uint64_t revision, DVM_ScalarFiles *files)
-{
-    DirectBuild build = {path, name, NULL};
-    if (!kprotect(build_direct, &build))
-    {
-        if (build.module)
-        {
-            unload(build.module);
-        }
-        kwerrstr("cannot construct remote scalar module");
-        return NULL;
-    }
-    if (!dvm_scalar_files_retain(files))
-    {
-        unload(build.module);
-        kwerrstr("cannot retain scalar file grants");
-        return NULL;
-    }
-    build.module->scalar_files = files;
-    /* Private noncached descriptor: these fields carry namespace revision and route tags. */
-    build.module->qid.type = DVM_MODULE_ADAPTER_QID;
-    build.module->qid.path = revision;
-    build.module->qid.vers = reply_tag;
-    build.module->dev = request_tag;
-    return build.module;
 }
 
 

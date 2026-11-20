@@ -10,9 +10,9 @@ DVM_Provider *styxunibusservermailbox(
 ```
 
 Include `unibus_server.h` and link `styx_unibus_server`. The constructor
-consumes the connected channel on every outcome. Pass 1 to 64 entries with
-distinct module directory names. Each entry names one function. Directory and
-function names are single path components, and `.interface` is reserved.
+consumes the connected channel on every outcome. Pass 1 to 64 export entries. Entries with the same module name share a
+directory. Each directory supports up to eight distinct names. Directory
+and function names are single path components, and `.interface` is reserved.
 The input table is borrowed during startup. Native method contexts are
 borrowed until join. Invalid input or setup failure returns NULL and
 publishes no partial session.
@@ -24,13 +24,16 @@ It is NULL for a native entry, invalid server or out-of-range index. See
 [service configuration](SCALAR-FUNCTION-DIS.md) for the paths and tags to
 supply to the owner.
 
-The resulting Styx root has one `mounted` directory. Each module has its
-own function file and, for typed endpoints, its own read-only `.interface`.
+The resulting Styx root has one `mounted` directory. Each module has one file per export. Its read-only
+`.interface` contains one S-record per typed export. The loader reads the
+complete profile and verifies every compiled import before exposing the
+module. The profile order and the compiled import order can differ.
 The common dispatcher admits requests sequentially. Each opened function fid
 retains its own response. When the carrier closes, all Dis request mailboxes
 are sealed. Join with `styxunibusserverjoin` to release the server.
 
 Run `ctest -R '^terminal-scalar-owner-guest$' -V` in an SDK configured for
 the hosted VM and Limbo compiler. The sample uses one Styx mount for a native
-helper and an original Dis export. It checks both results and rejects attempts
-to load either directory with the other's compiled import.
+helper and an original Dis export. The `compute.dis` directory provides both
+`compute` and `adjust`. The example tests a two-function import, a one-function
+subset, and rejection of missing or mismatched imports.

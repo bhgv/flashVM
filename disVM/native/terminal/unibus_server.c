@@ -17,35 +17,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MOUNTED_ROOT 4UL /* Shared directory for mounted modules. */
-#define FIRST_MODULE 5UL /* Three consecutive qids per module. */
-
-typedef struct MountedModule
-{
-    StyxScalarFunctionOwner owner; /* Owned routes when the endpoint uses Dis. */
-    size_t interface_size; /* Advertised size of the immutable profile. */
-    unsigned char interface[STYX_SCALAR_INTERFACE_CAPACITY]; /* Encoded profile. */
-    StyxScalarFunction function; /* Copied dispatch descriptor. */
-} MountedModule;
-
-struct StyxUnibusServer
-{
-    MountedModule *modules; /* Immutable array after server start. */
-    size_t count; /* Number of mounted modules. */
-    Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
-    pthread_t thread;    /* Exclusive native dispatcher. */
-    DVM_Provider *inbox; /* Owner reference for local readers. */
-    StyxBacking *profile; /* Optional compiled interface record. */
-    StyxBacking *original; /* Optional read-only Dis image. */
-    StyxBacking *file;   /* Retained backing for write fids. */
-};
+#include "unibus_server_state.h"
 
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
 
 /* EN/RU: Identify a mounted entry by qid and its offset within the module.
  * Найти запись смонтированного модуля по qid и смещению внутри модуля. */
-static MountedModule *mounted_node(Path path, unsigned offset)
+static MountedExport *mounted_node(Path path, unsigned offset)
 {
     if (path < FIRST_MODULE)
     {
@@ -61,7 +40,7 @@ static MountedModule *mounted_node(Path path, unsigned offset)
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
 static char *open_node(Qid *qid, int mode)
 {
-    MountedModule *module = mounted_node(qid->path, 1);
+    MountedExport *module = mounted_node(qid->path, 1);
     if (module)
     {
         return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL);
@@ -114,7 +93,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
     }
-    MountedModule *module = mounted_node(qid.path, 2);
+    MountedExport *module = mounted_node(qid.path, 2);
     if (module && offset >= 0)
     {
         size_t available = (uvlong)offset < module->interface_size ?
@@ -207,12 +186,14 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
 
 /* EN/RU: Add the function directory and its compiler-signature record.
  * Добавить каталог функции и запись сигнатуры компилятора. */
-static int export_function(StyxUnibusServer *server, size_t index, const StyxMountedScalar *entry)
+static int export_function(StyxUnibusServer *server, size_t index, size_t leader, const StyxMountedScalar *entry)
 {
-    MountedModule *module = &server->modules[index];
+    MountedExport *module = &server->modules[index];
+    MountedExport *directory = &server->modules[leader];
     Path qid = FIRST_MODULE + index * 3;
-    if (!styxadddir(&server->server, MOUNTED_ROOT, qid, (char *)entry->module, 0555, "unibus") ||
-        !styxaddfile(&server->server, qid, qid + 1, (char *)entry->name, 0777, "unibus"))
+    Path parent = FIRST_MODULE + leader * 3;
+    if ((leader == index && !styxadddir(&server->server, MOUNTED_ROOT, parent, (char *)entry->module, 0555, "unibus")) ||
+        !styxaddfile(&server->server, parent, qid + 1, (char *)entry->name, 0777, "unibus"))
     {
         return 0;
     }
@@ -224,17 +205,23 @@ static int export_function(StyxUnibusServer *server, size_t index, const StyxMou
     unsigned char header[INTERFACE_HEADER];
     styxscalar_interface_header(header, DVM_SCALAR_INT_SIGNATURE);
     size_t length = styxscalar_name_length(entry->name);
-    if (!length || fvm_srecord_write_pair(STYX_FUNCTION_PROFILE_TAG, header, sizeof(header),
-            entry->name, length, module->interface, sizeof(module->interface), &module->interface_size) != FVM_S_OK)
+    size_t used;
+    if (!length || fvm_srecord_write_pair(STYX_FUNCTION_PROFILE_TAG, header, sizeof(header), entry->name, length,
+            directory->interface + directory->interface_size,
+            sizeof(directory->interface) - directory->interface_size, &used) != FVM_S_OK)
     {
         return 0;
     }
-    Styxfile *profile = styxaddfile(&server->server, qid, qid + 2, ".interface", 0444, "unibus");
-    if (!profile)
+    if (!directory->profile_node)
     {
-        return 0;
+        directory->profile_node = styxaddfile(&server->server, parent, parent + 2, ".interface", 0444, "unibus");
+        if (!directory->profile_node)
+        {
+            return 0;
+        }
     }
-    profile->d.length = module->interface_size;
+    directory->interface_size += used;
+    directory->profile_node->d.length = directory->interface_size;
     return 1;
 }
 
@@ -319,7 +306,7 @@ static void free_modules(StyxUnibusServer *server)
 
 /* EN/RU: Validate one borrowed entry and reserve its private dispatch routes.
  * Проверить заимствованную запись и зарезервировать её собственные маршруты. */
-static int configure(MountedModule *module, const StyxMountedScalar *entry)
+static int configure(MountedExport *module, const StyxMountedScalar *entry)
 {
     if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface"))
     {
@@ -355,14 +342,22 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
         {
             return 0;
         }
+        size_t leader = i, exports = 1;
         for (size_t j = 0; j < i; j++)
         {
             if (!strcmp(entries[i].module, entries[j].module))
             {
-                return 0;
+                if (++exports > STYX_MOUNTED_EXPORT_LIMIT || !strcmp(entries[i].name, entries[j].name))
+                {
+                    return 0;
+                }
+                if (leader == i)
+                {
+                    leader = j;
+                }
             }
         }
-        if (!export_function(server, i, &entries[i]))
+        if (!export_function(server, i, leader, &entries[i]))
         {
             return 0;
         }
