@@ -18,3 +18,5 @@ Run `ctest -R '^terminal-ordered-files-guest$' -V`. The Dis parent writes a
 negative value through `/.prog/.self/.var/counter`. Its child reads that
 value and writes a positive value spanning multiple bytes. The parent reads
 the update. See the [process context route](../../runtime/LAUNCH-PROGRAM-ROUTE.md).
+
+For array elements, see [indexed variable files](INDEXED-VARIABLE.md).
