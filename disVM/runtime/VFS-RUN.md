@@ -14,3 +14,8 @@ Returns 1 when delivery is acknowledged, 0 on refusal or an unavailable route,
 and -1 when delivery is uncertain. The operation can wait for Styx. It sends
 an empty startup payload and performs no automatic retry. Delivery acknowledges
 the request, while starting the process belongs to the owner.
+
+The TCP guest test submits a bound alias for a separate command image. The
+fixture owner accepts one request and, after the connection drains, executes
+that image in another DisVM process. Its `init` reads a file in the owner's
+working directory and emits a marker. The check runs in interpreter and JIT.

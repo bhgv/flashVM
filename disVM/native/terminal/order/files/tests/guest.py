@@ -79,6 +79,11 @@ def main():
         for source, output in [(value_source, "dep.dis"), (runtime_root / "fixtures/provider-modules/app.b", "app.dis")]:
             run([str(compiler), "-I", str(include), "-I", str(runtime_root / "fixtures/provider-modules"),
                  "-o", str(work / output), str(source)], work)
+        owner = work / "owner"
+        owner.mkdir()
+        (owner / "owner-only.txt").write_bytes(b"owner")
+        run([str(compiler), "-I", str(include), "-o", str(owner / "owner.dis"),
+             str(runtime_root / "fixtures/unibus-files/owner.b")], work)
         wrapper = work / "wrapper.o"
         run([runtime_link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *native["C_INCLUDES"], *rt["C_FLAGS"],
              "-c", str(runtime_root / "test_unibus_files.c"), "-o", str(wrapper)], work)
@@ -108,6 +113,8 @@ def main():
             if profile == "numbered":
                 env["DVM_TEST_TERMINAL_NUMBERED"] = "1"
             for mode in ["--no-jit", "--jit"]:
+                env["DVM_TEST_OWNER_RUNTIME"] = str(runtime)
+                env["DVM_TEST_OWNER_MODE"] = mode
                 (work / "held-source.bin").write_bytes(b"skip:from-held-cursor")
                 (work / "held-target.bin").write_bytes(b"keep:")
                 if profile == "numbered":
@@ -125,6 +132,8 @@ def main():
                             (work / "numbered-err.bin").read_bytes() != b"keep:remote stderr\n" or \
                             (work / "numbered-rw.bin").read_bytes() != b"keep:abcdef!":
                         raise RuntimeError("numbered stdio or shared cursor mismatch")
+                if not cli and result.stdout.count("PASS owner Dis init") != 1:
+                    raise RuntimeError("owner VM did not initialize the published command exactly once")
                 if not cli and "PASS path-only Styx command submission" not in guest_output:
                     raise RuntimeError("guest did not submit by its VFS alias")
                 if "PASS real Dis guest file Unibus bidirectional records" not in guest_output or \

@@ -8,13 +8,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "flashvm/sbindings.h"
-static unsigned char *images[2]; /* Native immutable fixture images until server join. */
+static unsigned char *images[3]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
 static int require_submission; /* In routed tests the caller must post before launch is readable. */
-static int empty_submitted; /* One path-only guest request was accepted. */
+static int owner_requested; /* One owner execution request was accepted. */
 static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
-static size_t lengths[2]; /* Exact bytes advertised in original Styx metadata. */
+static size_t lengths[3]; /* Exact bytes advertised in original Styx metadata. */
 
 
 /* EN/RU: Add readonly app/dependency nodes from actual compiled fixture files before server starts.
@@ -22,8 +22,8 @@ static size_t lengths[2]; /* Exact bytes advertised in original Styx metadata. *
  */
 void fixtureimagesinit(Styxserver *server)
 {
-    const char *names[] = {"app.dis", "dep.dis"}; /* Independent ordinary original-Styx file names. */
-    for (unsigned i = 0; i < 2; i++)
+    const char *names[] = {"app.dis", "dep.dis", "owner/owner.dis"}; /* Independent ordinary original-Styx file names. */
+    for (unsigned i = 0; i < 3; i++)
     {
         FILE *input = fopen(names[i], "rb"); /* Fixture-native acquisition only, never guest fallback. */
         if (!input || fseek(input, 0, SEEK_END))
@@ -41,7 +41,7 @@ void fixtureimagesinit(Styxserver *server)
         {
             exit(3);
         }
-        Styxfile *file = styxaddfile(server, Qroot, 8 + i, (char *)names[i], 0444, "fixture"); /* Original fid/qid implementation. */
+        Styxfile *file = styxaddfile(server, Qroot, i == 2 ? 19 : 8 + i, (char *)(i == 2 ? "owner.dis" : names[i]), 0444, "fixture"); /* Original fid/qid implementation. */
         if (!file)
         {
             exit(3);
@@ -67,7 +67,8 @@ void fixtureimagesinit(Styxserver *server)
     }
     launch_size += encoded;
     request->d.length = launch_size;
-    if (require_submission && !styxaddfile(server, Qroot, 11, "submit", 0222, "fixture"))
+    if (require_submission && (!styxaddfile(server, Qroot, 11, "submit", 0222, "fixture") ||
+        !styxaddfile(server, Qroot, 20, "execute", 0222, "fixture")))
     {
         exit(3);
     }
@@ -79,14 +80,14 @@ void fixtureimagesinit(Styxserver *server)
  */
 char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    if (qid.path < 8 || qid.path > 10 || offset < 0 ||
+    if ((qid.path != 19 && (qid.path < 8 || qid.path > 10)) || offset < 0 ||
         (qid.path == 10 && require_submission && !submitted))
     {
         return Ebadarg;
     }
-    unsigned index = qid.path - 8; /* Exact readonly fixture node. */
-    const unsigned char *source = index == 2 ? launch_frame : images[index];
-    size_t length = index == 2 ? launch_size : lengths[index];
+    unsigned index = qid.path == 19 ? 2 : qid.path - 8; /* Exact readonly fixture node. */
+    const unsigned char *source = qid.path == 10 ? launch_frame : images[index];
+    size_t length = qid.path == 10 ? launch_size : lengths[index];
     if ((uvlong)offset > length)
     {
         return Ebadarg;
@@ -109,7 +110,7 @@ char *fixtureimagesread(Qid qid, char *bytes, ulong *count, vlong offset)
  */
 void fixtureimagesfree(void)
 {
-    for (unsigned i = 0; i < 2; i++)
+    for (unsigned i = 0; i < 3; i++)
     {
         free(images[i]);
     }
@@ -128,11 +129,6 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    if (submitted && !empty_submitted && !record.size)
-    {
-        empty_submitted = 1;
-        return nil;
-    }
     if (submitted || record.size != 3 ||
         record.payload[0] != 'r' || record.payload[1] != 0 || record.payload[2] != 'n')
     {
@@ -149,4 +145,29 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
     launch_size = binding_size + *count;
     submitted = 1;
     return nil;
+}
+
+
+// EN/RU: Accept exactly one empty request on the owner's dedicated command endpoint.
+// Принять один пустой запрос на отдельном узле команды владельца.
+char *fixtureownerwrite(char *bytes, ulong *count, vlong offset)
+{
+    FVM_SRecord record;
+    size_t consumed;
+    if (owner_requested || offset != 0 ||
+        fvm_srecord_read(bytes, *count, 128, &record, &consumed) != FVM_S_OK ||
+        consumed != *count || record.tag != 17 || record.size)
+    {
+        return Ebadarg;
+    }
+    owner_requested = 1;
+    return nil;
+}
+
+
+// EN/RU: Report the owner's completed request admission after the server drains.
+// Сообщить о принятом запросе владельца после завершения сервера.
+int fixtureownerrequested(void)
+{
+    return owner_requested;
 }

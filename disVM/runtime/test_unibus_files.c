@@ -57,11 +57,11 @@ static void release_request(void *request)
 static void map_routed(StyxClient *client, DVM_View *code)
 {
     launch_check(styxclientretain(client), "retain guest submit client");
-    DVM_Provider *request = styxmountproviderat(client, "submit", FVM_ACCESS_WRITE);
+    DVM_Provider *request = styxmountproviderat(client, "execute", FVM_ACCESS_WRITE);
     launch_check(request && styxclientretain(client), "guest submit node");
     DVM_Provider *mounted = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
-        "app.dis", wire_address, request, release_request);
-    launch_check(mounted && dvm_view_map(code, "/routed.dis", mounted, "app.dis",
+        "owner.dis", wire_address, request, release_request);
+    launch_check(mounted && dvm_view_map(code, "/routed.dis", mounted, "owner.dis",
         FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "map guest launch alias");
     dvm_provider_release(mounted);
 }

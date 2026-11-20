@@ -62,6 +62,8 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
+extern int fixtureownerrequested(void); /* Owner endpoint admission after serving. */
+extern char *fixtureownerwrite(char *, ulong *, vlong); /* Dedicated owner command endpoint. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
 static const unsigned long held_input = 12;  /* Qid of the transferred read file. */
@@ -192,6 +194,10 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
         *count = result.count;
         return nil;
     }
+    if (qid.path == 20)
+    {
+        return fixtureownerwrite(bytes, count, offset);
+    }
     if (qid.path == 11)
     {
         return fixturelaunchwrite(bytes, count, offset);
@@ -314,6 +320,17 @@ int linkfixturefd(void)
         }
         fixtureimagesfree();
         phybidirfree(remote);
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
+        {
+            const char *runtime = getenv("DVM_TEST_OWNER_RUNTIME");
+            const char *mode = getenv("DVM_TEST_OWNER_MODE");
+            if (!fixtureownerrequested() || !runtime || !mode || chdir("owner"))
+            {
+                _exit(3);
+            }
+            execl(runtime, runtime, mode, "owner.dis", (char *)NULL);
+            _exit(3);
+        }
         _exit(0);
     }
     close(pair[1]);
