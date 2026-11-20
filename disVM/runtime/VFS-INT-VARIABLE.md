@@ -38,3 +38,11 @@ and sets it to `-2`. An ordinary remote Styx client reads that value and
 writes `65539` back. The owner observes the update through `intget`.
 The native fixture gives the server the exact provider selected by the
 example. Run `ctest -R '^terminal-managed-variable-guest$' -V` in the configured SDK.
+
+Use `styxvariableserverstartprogram` to scope the file to a loaded module.
+It accepts the module name and a nonzero PID from the trusted launcher and
+publishes `<module>/.prog/<pid>/.var/<name>` and a read-only `.pid` file.
+The fixture obtains the PID with `Processctl.pid()`. The receiving side
+captures the module directory and opens the cell via
+`/.prog/.self/.var/count`. It separately tests the original `.var/count`
+layout. See [process context](LAUNCH-PROGRAM-ROUTE.md).

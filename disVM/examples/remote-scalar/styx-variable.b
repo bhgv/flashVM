@@ -4,6 +4,7 @@
 implement Example;
 include "sys.m";
 include "vfsexport.m";
+include "processctl.m";
 Example: module { init: fn(); };
 
 
@@ -13,8 +14,13 @@ init()
 {
     sys := load Sys Sys->PATH;
     exports := load Vfsexport Vfsexport->PATH;
+    process := load Processctl Processctl->PATH;
+    if (process == nil || process->pid() <= 0) {
+        raise "could not read client process identity";
+    }
+    target := "/cell." + string process->pid();
     cell := exports->intvar(41);
-    if (cell == nil || exports->mount(cell, "/cell", 0, 0) != 0 || !exports->intset(cell, -2)) {
+    if (cell == nil || exports->mount(cell, target, 0, 0) != 0 || !exports->intset(cell, -2)) {
         raise "could not publish live integer";
     }
     for (attempt := 0; attempt < 400; attempt++) {

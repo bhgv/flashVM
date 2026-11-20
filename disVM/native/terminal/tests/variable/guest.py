@@ -1,6 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Relink a source-matched runtime with the explicit Styx publication fixture.
 # RU: Связать runtime с явным стендом публикации Styx.
+import os
 from pathlib import Path
 from runpy import run_path
 import shlex
@@ -25,7 +26,6 @@ def main():
     options = flags(native)
     with tempfile.TemporaryDirectory(prefix="styx-variable-") as directory:
         work = Path(directory)
-        (work / "cell").touch()
         program = work / "variable.dis"
         run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
              "-o", str(program), str(disvm / "examples/remote-scalar/styx-variable.b")], work)
@@ -42,6 +42,7 @@ def main():
         run(link, runtime.parent)
         for mode in ("--no-jit", "--jit"):
             result = run([str(executable), mode, str(program)], work)
+            run([str(executable), mode, str(program)], work, dict(os.environ, DVM_TEST_VARIABLE_LEGACY="1"))
             marker = "PASS Limbo variable round trip over Styx"
             if marker not in result.stdout:
                 raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
