@@ -34,6 +34,6 @@ are sealed. Join with `styxunibusserverjoin` to release the server.
 
 Run `ctest -R '^terminal-scalar-owner-guest$' -V` in an SDK configured for
 the hosted VM and Limbo compiler. The sample uses one Styx mount for a native
-helper and an original Dis export. The `compute.dis` directory provides both
-`compute` and `adjust`. The example tests a two-function import, a one-function
+helper and two exports of one original Dis instance. The `compute.dis`
+directory provides both `compute` and `adjust`, which share one call counter. The example tests a two-function import, a one-function
 subset, and rejection of missing or mismatched imports.

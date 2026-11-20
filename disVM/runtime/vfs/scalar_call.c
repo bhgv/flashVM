@@ -32,6 +32,7 @@ extern char *dvm_runtime_file_path(String *name); /* Borrowed path while the cal
 
 
 static const char session_end[] = "scalar session closed"; /* Clean EOF or exact close record. */
+static const char session_idle[] = "scalar session idle"; /* Nonblocking empty read. */
 static const char owner_error[] = "remote scalar owner error"; /* Verified reply, route remains synchronized. */
 #define SCALAR_IDLE 0UL /* Native route has no call in progress. */
 #define SCALAR_BUSY 1UL /* A caller owns the one outstanding exchange. */
@@ -78,6 +79,7 @@ typedef enum ScalarRead
 {
     READ_REPLY, /* Bounded wait for the caller's result. */
     READ_CALL, /* Bounded wait for one owner request. */
+    READ_POLL, /* One read of a local session mailbox. */
     READ_SESSION /* Wait for a request, orderly close or carrier EOF. */
 } ScalarRead;
 
@@ -87,7 +89,7 @@ typedef enum ScalarRead
 static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode)
 {
     struct timespec start;
-    if (mode != READ_SESSION && clock_gettime(CLOCK_MONOTONIC, &start))
+    if (mode != READ_SESSION && mode != READ_POLL && clock_gettime(CLOCK_MONOTONIC, &start))
     {
         return "remote scalar reply unavailable";
     }
@@ -95,7 +97,7 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
     {
         unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
         DVM_IoResult got = dvm_vfs_read_chunk(reply, bytes, sizeof(bytes));
-        if (mode == READ_SESSION && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
+        if ((mode == READ_SESSION || mode == READ_POLL) && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
             !(got.flags & DVM_IO_UNCERTAIN) &&
             ((!got.count && got.stop == DVM_IO_EOF) || styxscalarclosed(tag, bytes, got.count)))
         {
@@ -115,6 +117,10 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
                     kind == STYX_SCALAR_ERROR ? owner_error : "invalid scalar reply";
             }
             return "remote scalar reply unavailable";
+        }
+        if (mode == READ_POLL)
+        {
+            return session_idle;
         }
         struct timespec now;
         if (mode != READ_SESSION && (clock_gettime(CLOCK_MONOTONIC, &now) ||
@@ -294,6 +300,23 @@ void Vfsnative_scalarnext(void *frame)
 }
 
 
+/* EN/RU: Read the local mailbox once and distinguish idle from EOF.
+ * Прочитать локальный приёмник один раз и отличить ожидание от EOF. */
+void Vfsnative_scalarpoll(void *frame)
+{
+    F_Vfsnative_scalarpoll call;
+    WORD result[2] = {0, 0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarpoll, ret), sizeof(result));
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1]);
+    if (failure && failure != session_idle && failure != session_end)
+    {
+        error((char *)failure);
+    }
+    result[0] = !failure ? 1 : failure == session_idle ? -1 : 0;
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
 /* EN/RU: Send one result or owner error from the active namespace.
  * Отправить результат или ошибку из пространства владельца. */
 void Vfsnative_scalarreply(void *frame)
@@ -397,26 +420,14 @@ void dvm_scalar_entry(void *frame, unsigned index)
 }
 
 
-/* [GC:] EN: Use the ordinary Dis reader and linker to bind one named export into
- * the generic owner service's scalar slot. The result owns the returned Modlink.
- * RU: Обычный загрузчик и линкер Dis связывают именованный экспорт со скалярным
- * слотом общего сервиса владельца. Возвращённая ссылка владеет Modlink. */
-void Vfsnative_scalarload(void *frame)
+/* [GC:] EN/RU: Bind requested scalar exports on one ordinary local Modlink.
+ * Связать запрошенные скалярные экспорты в одном обычном локальном Modlink. */
+static void load_owner(char *path, Import *imports, Modlink **result)
 {
-    F_Vfsnative_scalarload call;
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarload, ret), sizeof(*call.ret));
-    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
-    if (!copy_path(call.path, path) || !copy_path(call.exportname, name) || strlen(name) > 48)
-    {
-        error("scalar owner implementation unavailable");
-    }
-
     Modlink *empty = H;
-    void *previous = dvm_sys_owner(call.ret);
-    memmove(call.ret, &empty, sizeof(empty));
+    void *previous = dvm_sys_owner(result);
+    memmove(result, &empty, sizeof(empty));
     destroy(previous);
-
-    Import imports[] = {{(int32_t)DVM_SCALAR_INT_SIGNATURE, name}, {0, NULL}};
     Module *module = dvm_namespace_read_imports(path, NULL, 1, imports);
     if (!module)
     {
@@ -432,6 +443,53 @@ void Vfsnative_scalarload(void *frame)
     if (link != H)
     {
         Setmark(D2H(link));
-        memmove(call.ret, &link, sizeof(link));
+        memmove(result, &link, sizeof(link));
     }
+}
+
+
+/* EN/RU: Load the existing one-slot owner ABI into the caller's result.
+ * Загрузить прежний однослотовый ABI владельца в результат вызова. */
+void Vfsnative_scalarload(void *frame)
+{
+    F_Vfsnative_scalarload call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarload, ret), sizeof(*call.ret));
+    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
+    if (!copy_path(call.path, path) || !copy_path(call.exportname, name) || strlen(name) > INTERFACE_NAME_LIMIT)
+    {
+        error("scalar owner implementation unavailable");
+    }
+    Import imports[] = {{(int32_t)DVM_SCALAR_INT_SIGNATURE, name}, {0, NULL}};
+    load_owner(path, imports, call.ret);
+}
+
+
+/* EN/RU: Bind up to eight names in request order, sharing one cloned data area.
+ * Связать до восьми имён в порядке запроса с одной копией данных модуля. */
+void Vfsnative_scalarloadset(void *frame)
+{
+    F_Vfsnative_scalarloadset call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarloadset, ret), sizeof(*call.ret));
+    char path[DVM_NS_PATH_LIMIT], names[DVM_NS_PATH_LIMIT];
+    if (!copy_path(call.path, path) || !copy_path(call.names, names))
+    {
+        error("scalar owner implementation unavailable");
+    }
+    Import imports[STYX_MOUNTED_EXPORT_LIMIT + 1] = {0};
+    char *name = names;
+    for (size_t i = 0; name; i++)
+    {
+        char *separator = strchr(name, '\t');
+        if (separator)
+        {
+            *separator = '\0';
+        }
+        if (i == STYX_MOUNTED_EXPORT_LIMIT || !styxscalar_name_length(name))
+        {
+            error("invalid scalar owner export list");
+        }
+        imports[i] = (Import){(int32_t)DVM_SCALAR_INT_SIGNATURE, name};
+        name = separator ? separator + 1 : NULL;
+    }
+    load_owner(path, imports, call.ret);
 }

@@ -30,3 +30,23 @@ does not dial, mount a peer or select an implementation from wire data.
 
 With a zero count, the owner waits for calls until a close record or EOF.
 A positive count preserves the bounded mode.
+
+## Several exports of one implementation
+
+Start the same service with tab-separated fields in this order:
+
+```text
+set  implementation  export  request  reply  [export request reply ...]
+```
+
+Supply one to eight export triples. Each request and reply path points to the
+corresponding local mailbox from [the mounted server](../native/terminal/SCALAR-FUNCTION-MOUNTED.md).
+The service uses request tag 72 and reply tag 73 for all triples. It links all
+names to one instance before reading requests. Module globals are shared across
+calls to any of its exports. The service checks routes in configuration order,
+waits briefly when all live routes are idle, and exits after every request
+mailbox reaches EOF. The single-export startup format above remains available.
+
+The two-DisVM example serves `compute` and `adjust` from the same implementation.
+Alternating the functions, including a call that raises, verifies that both
+observe the same counter. See [the runnable mounted example](../native/terminal/SCALAR-FUNCTION-MOUNTED.md).

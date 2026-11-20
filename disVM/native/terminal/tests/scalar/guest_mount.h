@@ -25,4 +25,8 @@ DVM_Provider *scalar_local_image(const char *path);
  * Заимствовать обычный монт другой стороны на время одного запуска VM. */
 int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount);
 
+/* EN/RU: Borrow two request/reply pairs through one owner VM invocation.
+ * Заимствовать две пары запросов и ответов на время работы VM владельца. */
+int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, DVM_Provider *const *replies);
+
 #endif

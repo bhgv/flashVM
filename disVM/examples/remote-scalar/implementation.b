@@ -1,9 +1,12 @@
 # Copyright (c) 2026 bhgv
 # EN: Provider-local implementation with private resource and persistent state.
 # RU: Provider-local реализация с приватным ресурсом и постоянным состоянием.
-implement Compute;
+implement ComputeOwner;
 include "privatevalue.m";
-include "compute.m";
+ComputeOwner: module {
+    compute: fn(value: int): int;
+    adjust: fn(value: int): int;
+};
 calls: int; # Owned by the original serving Prog / Состояние original serving Prog.
 
 
@@ -22,4 +25,13 @@ compute(value: int): int
         raise "provider dependency absent";
     }
     return value + dependency->read() + calls;
+}
+
+
+# EN/RU: Adjust the value using the same call counter as compute.
+# Скорректировать значение по тому же счётчику, что использует compute.
+adjust(value: int): int
+{
+    calls++;
+    return value - 7 + calls;
 }

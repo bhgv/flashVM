@@ -118,11 +118,9 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     if (owner)
     {
         const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
-        int mounted = getenv("DVM_TEST_SCALAR_MOUNTED_OWNER") != NULL;
         int size = snprintf((char *)owner_config, sizeof(owner_config),
-            "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t%lu\t%lu\t%s",
-            mounted ? STYX_FUNCTION_REQUEST_TAG : 4294967295UL,
-            mounted ? STYX_FUNCTION_REPLY_TAG : 64UL, count ? count : "1");
+            "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64\t%s",
+            count ? count : "1");
         if (size < 0 || (size_t)size >= sizeof(owner_config))
         {
             exit(2);
@@ -143,6 +141,45 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
         fprintf(stderr, "scalar test could not bind trusted adapter\n");
         exit(2);
     }
+    int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
+    dvm_namespace_release(handoff.group);
+    return result;
+}
+
+
+/* EN/RU: Mount both export routes in one owner namespace and run the shared service.
+ * Смонтировать маршруты двух экспортов в одном пространстве владельца и запустить сервис. */
+int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, DVM_Provider *const *replies)
+{
+    char cwd[DVM_NS_PATH_LIMIT];
+    const char *request_paths[] = {"/request0", "/request1"};
+    const char *reply_paths[] = {"/reply0", "/reply1"};
+    unsigned char arguments[] = "set\timplementation.dis\tadjust\t/scalar/request0\t/scalar/reply0"
+        "\tcompute\t/scalar/request1\t/scalar/reply1";
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    if (!view || !getcwd(cwd, sizeof(cwd)))
+    {
+        exit(2);
+    }
+    for (size_t i = 0; i < 2; i++)
+    {
+        if (!dvm_view_map(view, request_paths[i], requests[i], ".", FVM_ACCESS_READ, 0) ||
+            !dvm_view_map(view, reply_paths[i], replies[i], ".", FVM_ACCESS_WRITE, 0))
+        {
+            exit(2);
+        }
+    }
+    DVM_Provider *routes = dvm_view_freeze(view);
+    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_PROVIDER, .arguments = arguments};
+    handoff.description.argument_bytes = sizeof(arguments) - 1;
+    strcpy(handoff.description.module, "scalar-owner-set.dis");
+    handoff.group = dvm_namespace_create(cwd, "/", NULL);
+    if (!routes || !handoff.group || !dvm_namespace_pin(handoff.group) ||
+        dvm_stack_mount(handoff.group, routes, "/scalar", 0, 0) != 1)
+    {
+        exit(2);
+    }
+    dvm_provider_release(routes);
     int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
     dvm_namespace_release(handoff.group);
     return result;

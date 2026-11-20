@@ -30,8 +30,8 @@ init()
     first := 71;
     last := 12;
     if (disowner) {
-        first = 112;
-        last = 55;
+        first = 113;
+        last = 56;
     }
     path := "/peer/mounted/compute.dis";
     helper: Helper;
@@ -45,7 +45,7 @@ init()
             raise "partially matching import accepted";
         }
         combined = load Combined path;
-        if (combined == nil || combined->adjust(70) != 63) {
+        if (combined == nil || combined->adjust(70) != 64) {
             raise "multi-export module load failed";
         }
         helper = load Helper helperpath;
@@ -79,7 +79,7 @@ init()
         raise "mounted Compute alias result failed";
     }
     if (disowner) {
-        if (helper->offset(11) != 4 || combined->adjust(16) != 9 || combined->compute(1) != 46) {
+        if (helper->offset(11) != 4 || combined->adjust(16) != 14 || combined->compute(1) != 48) {
             raise "alternate Styx route changed after rebind";
         }
         sys->print("PASS mounted Styx original Dis\n");

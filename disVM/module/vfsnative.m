@@ -6,6 +6,18 @@ Scalarimplementation: module
     invoke: fn(value: int): int; # Single linked slot; the native loader selects its export.
 };
 
+ScalarimplementationSet: module
+{
+    invoke0: fn(value: int): int; # Slot 0 of one linked module instance.
+    invoke1: fn(value: int): int; # Slot 1 of one linked module instance.
+    invoke2: fn(value: int): int; # Slot 2 of one linked module instance.
+    invoke3: fn(value: int): int; # Slot 3 of one linked module instance.
+    invoke4: fn(value: int): int; # Slot 4 of one linked module instance.
+    invoke5: fn(value: int): int; # Slot 5 of one linked module instance.
+    invoke6: fn(value: int): int; # Slot 6 of one linked module instance.
+    invoke7: fn(value: int): int; # Slot 7 of one linked module instance.
+};
+
 Vfsnative: module
 {
     PATH: con "$Vfsnative"; # Hosted builtin, no foreign namespace/PID input.
@@ -47,5 +59,11 @@ Vfsnative: module
     scalarreply: fn(path: string, tag: big, success, value: int);
     # EN/RU: Load a local implementation and bind one named scalar export to invoke.
     # Загрузить локальную реализацию и связать именованный экспорт со слотом invoke.
+    # EN/RU: Check up to eight tab-separated exports and bind one shared instance.
+    # Проверить до восьми экспортов через табуляцию и связать один общий экземпляр.
+    scalarloadset: fn(path, names: string): ScalarimplementationSet;
+    # EN/RU: Return 1 for a request, 0 at EOF, or -1 if idle.
+    # Вернуть 1 для запроса, 0 при EOF или -1 при ожидании.
+    scalarpoll: fn(path: string, tag: big): (int, int);
     scalarload: fn(path, exportname: string): Scalarimplementation;
 };

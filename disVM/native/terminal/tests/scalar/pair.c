@@ -52,14 +52,19 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         const StyxMountedScalar entries[] = {
             {"helper.dis", "offset", &alternate},
             {"compute.dis", "compute", NULL},
-            {"compute.dis", "adjust", &alternate}
+            {"compute.dis", "adjust", NULL}
         };
         StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries,
             sizeof(entries) / sizeof(entries[0]));
         if (server)
         {
-            result = scalar_runtime_run(argc, argv, styxunibusservermailbox(server, 1, 1),
-                styxunibusservermailbox(server, 1, 0), NULL, NULL, 1);
+            DVM_Provider *requests[] = {
+                styxunibusservermailbox(server, 2, 0), styxunibusservermailbox(server, 1, 0)
+            };
+            DVM_Provider *replies[] = {
+                styxunibusservermailbox(server, 2, 1), styxunibusservermailbox(server, 1, 1)
+            };
+            result = scalar_runtime_shared(argc, argv, requests, replies);
             shutdown(breaker, SHUT_RDWR);
             if (!styxunibusserverjoin(server))
             {
