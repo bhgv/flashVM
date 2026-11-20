@@ -158,10 +158,14 @@ init()
         if (vfs->run("/routed.dis") == 1) {
             raise "owner admitted a repeated request";
         }
+        if (sys->open("/run-result", Sys->OWRITE) != nil) {
+            raise "writable owner completion";
+        }
         completion := sys->open("/run-result", Sys->OREAD);
         status := array[1] of byte;
         if (completion == nil || sys->read(completion, status, 1) != 1 ||
-            status[0] != byte '1') {
+            status[0] != byte '0' || sys->read(completion, status, 1) != 1 ||
+            status[0] != byte '\n' || sys->read(completion, status, 1) != 0) {
             raise "owner command did not finish over the live mount";
         }
         sys->print("PASS path-only Styx command submission\n");

@@ -16,7 +16,7 @@
 #include "file.h"
 #include "file_provider.h"
 #include "held_export.h"
-#include "launch_process.h"
+#include "launch_publication.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
@@ -64,7 +64,8 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  * Освободить image-storage после завершения всех original server callbacks.
  */
 extern void fixtureimagesfree(void);
-static StyxLaunchProcess owner_process; /* Fixed owner route and its child. */
+static StyxLaunchPublication owner_process;
+static StyxBacking *owner_files[2]; /* Fixed owner route and its child. */
 static char *owner_argv[4]; /* Borrowed environment and fixed test command. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
@@ -116,6 +117,10 @@ static StyxBacking *add_held(unsigned long parent, unsigned long qid, char *node
  * Сопоставить точные qid тестового сервера с удерживаемыми файлами. */
 static StyxBacking *held_backing(uvlong qid)
 {
+    if (qid == 20 || qid == 21)
+    {
+        return owner_files[qid - 20];
+    }
     if (qid == held_input || qid == held_output)
     {
         return held[qid == held_output];
@@ -153,16 +158,21 @@ static int prepare_owner(void)
     owner_argv[0] = getenv("DVM_TEST_OWNER_RUNTIME");
     owner_argv[1] = getenv("DVM_TEST_OWNER_MODE");
     owner_argv[2] = "owner.dis";
-    return owner_argv[1] && styxlaunchprocessinit(&owner_process, 17, "owner", owner_argv);
-}
-
-
-/* EN/RU: Wait for a successful completion through the library-owned child.
- * Дождаться успешного завершения через процесс, удерживаемый библиотекой. */
-static int finish_owner(void)
-{
-    int status;
-    return styxlaunchprocessstatus(&owner_process, 1, &status) == 1 && status == 0;
+    if (!owner_argv[1] || !styxlaunchpublicationinit(&owner_process, 17, "owner", owner_argv))
+    {
+        return 0;
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        DVM_Provider *file = styxlaunchpublicationfile(&owner_process, i);
+        owner_files[i] = styxbacking(file);
+        dvm_provider_release(file);
+        if (!owner_files[i])
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 #endif
 
@@ -173,23 +183,6 @@ static int finish_owner(void)
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
 #ifdef ORDERED_GUEST_FILE_TEST
-    if (qid.path == 21)
-    {
-        if (offset < 0 || !finish_owner())
-        {
-            return Ebadarg;
-        }
-        if (offset == 0 && *count)
-        {
-            bytes[0] = '1';
-            *count = 1;
-        }
-        else
-        {
-            *count = 0;
-        }
-        return nil;
-    }
     if (held_backing(qid.path))
     {
         StyxTransfer result;
@@ -234,10 +227,6 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         *count = result.count;
         return nil;
-    }
-    if (qid.path == 20)
-    {
-        return offset >= 0 && styxterminallaunchreceive(&owner_process.receiver, offset, bytes, *count) ? nil : Ebadarg;
     }
     if (qid.path == 11)
     {
@@ -369,9 +358,15 @@ int linkfixturefd(void)
         }
         fixtureimagesfree();
         phybidirfree(remote);
-        if (getenv("DVM_TEST_TERMINAL_SUBMIT") && !finish_owner())
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
         {
-            _exit(3);
+            int status;
+            styxbackingfree(owner_files[0]);
+            styxbackingfree(owner_files[1]);
+            if (styxlaunchpublicationfinish(&owner_process, &status) != 1 || status != 0)
+            {
+                _exit(3);
+            }
         }
         _exit(0);
     }
