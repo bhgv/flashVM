@@ -155,6 +155,9 @@ init()
         if (vfs == nil || vfs->run("/missing.dis") != 0 || vfs->run("/routed.dis") != 1) {
             raise "VFS command submission failed";
         }
+        if (vfs->run("/routed.dis") == 1) {
+            raise "owner admitted a repeated request";
+        }
         completion := sys->open("/run-result", Sys->OREAD);
         status := array[1] of byte;
         if (completion == nil || sys->read(completion, status, 1) != 1 ||

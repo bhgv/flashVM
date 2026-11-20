@@ -11,7 +11,6 @@
 static unsigned char *images[3]; /* Native immutable fixture images until server join. */
 static unsigned char launch_frame[128]; /* Encoded fixture request, shared read-only. */
 static int require_submission; /* In routed tests the caller must post before launch is readable. */
-static int owner_requested; /* One owner execution request was accepted. */
 static int submitted; /* Exactly one verified request was accepted by the original server. */
 static size_t launch_size; /* Complete frame extent exposed by the original server. */
 static size_t lengths[3]; /* Exact bytes advertised in original Styx metadata. */
@@ -145,22 +144,5 @@ char *fixturelaunchwrite(char *bytes, ulong *count, vlong offset)
     memmove(launch_frame + binding_size, bytes, *count);
     launch_size = binding_size + *count;
     submitted = 1;
-    return nil;
-}
-
-
-// EN/RU: Accept exactly one empty request on the owner's dedicated command endpoint.
-// Принять один пустой запрос на отдельном узле команды владельца.
-char *fixtureownerwrite(char *bytes, ulong *count, vlong offset)
-{
-    FVM_SRecord record;
-    size_t consumed;
-    if (owner_requested || offset != 0 ||
-        fvm_srecord_read(bytes, *count, 128, &record, &consumed) != FVM_S_OK ||
-        consumed != *count || record.tag != 17 || record.size)
-    {
-        return Ebadarg;
-    }
-    owner_requested = 1;
     return nil;
 }

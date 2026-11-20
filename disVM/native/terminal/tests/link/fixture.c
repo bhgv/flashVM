@@ -16,6 +16,7 @@
 #include "file.h"
 #include "file_provider.h"
 #include "held_export.h"
+#include "launch_receive.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
@@ -66,7 +67,6 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
 extern void fixtureimagesfree(void);
 static pid_t owner_child; /* Owner execution process, reaped by the server. */
 static int owner_done; /* The owner process exited successfully. */
-extern char *fixtureownerwrite(char *, ulong *, vlong); /* Dedicated owner command endpoint. */
 extern char *fixturelaunchwrite(char *, ulong *, vlong); /* Exact launch request writer. */
 
 static const unsigned long held_input = 12;  /* Qid of the transferred read file. */
@@ -149,18 +149,19 @@ static char *open_held(Qid *qid, int mode)
 #ifdef ORDERED_GUEST_FILE_TEST
 /* EN/RU: Start the fixed fixture command immediately after admission.
  * Запустить фиксированную тестовую команду сразу после принятия запроса. */
-static char *start_owner(void)
+static int start_owner(void *state)
 {
+    USED(state);
     const char *runtime = getenv("DVM_TEST_OWNER_RUNTIME");
     const char *mode = getenv("DVM_TEST_OWNER_MODE");
     if (!runtime || !mode)
     {
-        return Ebadarg;
+        return 0;
     }
     owner_child = fork();
     if (owner_child < 0)
     {
-        return Ebadarg;
+        return 0;
     }
     if (!owner_child)
     {
@@ -170,8 +171,11 @@ static char *start_owner(void)
         }
         _exit(3);
     }
-    return nil;
+    return 1;
 }
+
+
+static StyxLaunchReceiver owner_request = {17, start_owner, NULL, 0}; /* Fixed owner route. */
 
 
 /* EN/RU: Reap the admitted command once; subsequent observations reuse its status.
@@ -265,8 +269,7 @@ static char *writefile(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.path == 20)
     {
-        char *error = fixtureownerwrite(bytes, count, offset);
-        return error ? error : start_owner();
+        return offset >= 0 && styxterminallaunchreceive(&owner_request, offset, bytes, *count) ? nil : Ebadarg;
     }
     if (qid.path == 11)
     {
