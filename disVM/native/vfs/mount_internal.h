@@ -7,6 +7,7 @@
 #include "mount.h"
 #include "channel_sync.h"
 
+typedef struct StyxLaunchGrant StyxLaunchGrant; /* Immutable advertisement pinned by mount captures. */
 typedef struct StyxRootLife StyxRootLife; /* Owned detached native root-fid cleanup context. */
 
 
@@ -20,6 +21,7 @@ struct Mount
     StyxMountCtl *control; /* Owned subscription authority, permanently closed on factory retirement. */
     StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
     int file_root; /* Immutable attached file root forbids every descendant, even with a misbehaving peer. */
+    StyxLaunchGrant *launch; /* Optional owned endpoint and selected remote identity. */
     unsigned access; /* Fixed native host ceiling. */
 };
 
@@ -66,7 +68,7 @@ DVM_Provider *styxmountcapture(void *state, const char *relative);
 
 /* EN/RU: Consume root/client owners always; construct fresh provider with optional own health watch.
  * Поглотить root/client owners всегда; fresh provider с optional own health watch. */
-DVM_Provider *styxmountroot(StyxClient *client, StyxFid *root, unsigned access, int directory, int watch);
+DVM_Provider *styxmountroot(StyxClient *client, StyxFid *root, unsigned access, int directory, int watch, StyxLaunchGrant *launch);
 
 
 /* EN/RU: Adopt root on success only; detached native worker owns cleanup, owned control/NULL.
@@ -77,4 +79,13 @@ StyxRootLife *styxmountrootlife(StyxFid *root);
 /* EN/RU: Consume cleanup control nonwaiting; native worker clunks fid and frees its own context.
  * Поглотить cleanup control без ожидания; native worker clunk fid и освобождает context. */
 void styxmountrootretire(StyxRootLife *life);
+
+/* EN/RU: Borrow mounted state and relative name, return one owned route or NULL.
+ * Заимствовать mount и имя, вернуть свой маршрут либо NULL. */
+struct DVM_LaunchAddress *styxmountlaunch(void *state, const char *relative);
+
+/* EN/RU: Retain/drop the immutable advertisement, NULL is harmless.
+ * Удержать или освободить объявление, NULL допустим. */
+int styxmountlaunchretain(StyxLaunchGrant *grant);
+void styxmountlaunchfree(StyxLaunchGrant *grant);
 #endif

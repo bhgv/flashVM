@@ -17,16 +17,17 @@ StyxFid *styxmountwalk(struct Mount *mount, const char *relative)
 
 /* EN/RU: Consume owned client/root after stat; failure does not publish a partial provider.
  * Поглотить owned client/root после stat; failure не публикует partial provider. */
-static DVM_Provider *create(StyxClient *client, StyxFid *root, unsigned access, int watch)
+static DVM_Provider *create(StyxClient *client, StyxFid *root, unsigned access, int watch, StyxLaunchGrant *launch)
 {
     StyxMeta meta;
     if (!root || !styxmountstat(client, root, &meta))
     {
         styxmountclunk(client, root);
         styxclientfree(client);
+        styxmountlaunchfree(launch);
         return NULL;
     }
-    return styxmountroot(client, root, access, meta.directory, watch);
+    return styxmountroot(client, root, access, meta.directory, watch, launch);
 }
 
 
@@ -39,7 +40,12 @@ DVM_Provider *styxmountcapture(void *state, const char *relative)
     {
         return NULL;
     }
-    return create(mount->client, styxmountwalk(mount, relative), mount->access, 0);
+    if (!styxmountlaunchretain(mount->launch))
+    {
+        styxclientfree(mount->client);
+        return NULL;
+    }
+    return create(mount->client, styxmountwalk(mount, relative), mount->access, 0, mount->launch);
 }
 
 
@@ -52,5 +58,5 @@ DVM_Provider *styxmountproviderat(StyxClient *client, const char *relative, unsi
         styxclientfree(client);
         return NULL;
     }
-    return create(client, styxmountwalkcancel(client, NULL, relative), access, 1);
+    return create(client, styxmountwalkcancel(client, NULL, relative), access, 1, NULL);
 }

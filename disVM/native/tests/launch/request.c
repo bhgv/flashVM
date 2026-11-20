@@ -3,8 +3,11 @@
  * RU: Реальные remote-root launch tickets, private copied payloads и one-use provider handoff.
  */
 #include "request.h"
+#include "mount.h"
+#include "launch/route.h"
 #include "../../../runtime/vfs/cancel.h"
 #include "../../../runtime/vfs/stack.h"
+#include "../../../runtime/vfs/export.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -261,10 +264,62 @@ static void lifecycle(StyxClient *client, const DVM_LaunchOptions *options,
 }
 
 
+/* EN/RU: Use the provisioned native entry for the advertised remote file.
+ * Использовать выданную native очередь для объявленного удалённого файла. */
+static DVM_LaunchAddress *published(void *endpoint)
+{
+    return dvm_launch_address_create(endpoint, "provider/mounted.dis");
+}
+
+
+/* EN/RU: Select a real Styx file through a bound alias and retain its launch route.
+ * Выбрать настоящий Styx file через bind-алиас и удержать адрес запуска. */
+static void mounted_launch(StyxClient *client, const DVM_LaunchOptions *options, const char *path)
+{
+    DVM_LaunchService *service = dvm_launch_service_create(options->provider_origin.system, 1);
+    DVM_LaunchEndpoint *endpoint = dvm_launch_service_endpoint(service);
+    check(endpoint && styxclientretain(client), "mounted launch endpoint");
+    DVM_Provider *mount = styxmountproviderlaunch(client, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC,
+        path + 1, published, endpoint, NULL);
+    check(mount != NULL, "pin original Styx advertisement");
+    check(!dvm_provider_launch(mount, "."), "unadvertised root does not resolve");
+    DVM_Provider *file = dvm_provider_capture(mount, path + 1);
+    check(file != NULL, "capture remote file from advertised mount");
+    DVM_View *aliases = dvm_view_create(NULL, NULL, NULL);
+    check(aliases && dvm_view_map(aliases, "/alias.dis", file, ".",
+        FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0), "bind advertised file at guest alias");
+    DVM_Provider *visible = dvm_view_freeze(aliases);
+    dvm_provider_release(file);
+    DVM_LaunchOptions configured = *options;
+    configured.terminal = visible;
+    DVM_Namespace *group = dvm_launch_prepare(&configured);
+    dvm_provider_release(visible);
+    check(group != NULL, "namespace with advertised alias");
+    DVM_LaunchAddress *address = dvm_launch_route_resolve(group, "/alias.dis", DVM_ORIGIN_TERMINAL);
+    check(address != NULL, "discover owner from selected alias");
+    dvm_namespace_release(group);
+    unsigned char bytes[] = {0, 1, 128, 255};
+    DVM_LaunchSpec input = spec(options, bytes);
+    input.terminal = mount;
+    DVM_LaunchTicket *ticket = dvm_launch_address_submit(address, &input);
+    dvm_launch_address_free(address);
+    DVM_LaunchReview *review = dvm_launch_service_next(service);
+    DVM_LaunchDescription description;
+    check(ticket && review && dvm_launch_describe(dvm_launch_review_request(review), &description) &&
+        !strcmp(description.module, "provider/mounted.dis"), "retained address submits exact owner label");
+    dvm_launch_review_free(review);
+    dvm_launch_ticket_free(ticket);
+    dvm_provider_release(mount);
+    dvm_launch_endpoint_free(endpoint);
+    dvm_launch_service_free(service);
+}
+
+
 /* EN/RU: Borrow all inputs; real remote-root constructor and prepare/take are exercised before events.
  * Borrow inputs; real remote-root constructor и prepare/take проверены до event tests. */
 void launchrequests(StyxClient *client, const DVM_LaunchOptions *options, const char *path, const char *expected)
 {
+    mounted_launch(client, options, path);
     invalid(client, options);
     for (unsigned kind = 0; kind < (styxclientbidir(client) ? 5U : 4U); kind++)
     {

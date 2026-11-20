@@ -37,4 +37,17 @@ DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
  * No prepared tree snapshot, implicit reconnect or guessed event endpoint is introduced.
  * Native I/O захватывает relative root fid; client принят всегда, свой provider/NULL. */
 DVM_Provider *styxmountproviderat(StyxClient *client, const char *relative, unsigned access);
+
+/* EN: Bind one advertised file to a trusted local launch resolver. The resolver
+ * returns an independently owned address on demand. It may not use managed
+ * state. The mount consumes client and resolver state on every outcome; release
+ * may be NULL and otherwise must be nonblocking. Captures retain the association.
+ * The remote node is pinned and compared by native identity before each resolve.
+ * RU: Связать объявленный файл с доверенным native resolver. Он выдаёт отдельный
+ * owned address. Client и state потребляются при любом исходе. Release может
+ * быть NULL, иначе не блокирует. Capture сохраняет привязку. Удалённый объект
+ * удерживается и сверяется по identity перед каждым разрешением. */
+DVM_Provider *styxmountproviderlaunch(StyxClient *client, const char *relative_root,
+    unsigned access, const char *advertised_file, struct DVM_LaunchAddress *(*resolve)(void *),
+    void *state, void (*release)(void *));
 #endif

@@ -28,13 +28,18 @@ static void retired(void *state)
     if (route)
     {
         int reason = styxbidircontrolstate(route->control); /* Sticky native transport reason. */
-        pthread_mutex_lock(&route->lock);
-        if (!route->reason)
+        /* EN: At clean EOF the dispatcher still owns complete buffered records.
+         * RU: При штатном EOF диспетчер ещё должен выдать полные записи. */
+        if (reason != STYX_CONTROL_EOF)
         {
-            route->reason = reason ? reason : STYX_CONTROL_READ_FAILED;
+            pthread_mutex_lock(&route->lock);
+            if (!route->reason)
+            {
+                route->reason = reason ? reason : STYX_CONTROL_READ_FAILED;
+            }
+            pthread_cond_broadcast(&route->changed);
+            pthread_mutex_unlock(&route->lock);
         }
-        pthread_cond_broadcast(&route->changed);
-        pthread_mutex_unlock(&route->lock);
     }
     pthread_mutex_unlock(&notice->lock);
 }

@@ -149,3 +149,31 @@ becomes FVM_NOT_FOUND. Default opaque errors, partial walks, stat/open failures,
 denial and transport failures stay conservative. Select the vocabulary before
 sharing the client or creating a mount; later changes refuse. No pathname is
 reopened after a failed data operation and no unknown effect is replayed.
+
+## Advertise a launchable file / Объявить запускаемый файл
+
+[`styxmountproviderlaunch`](mount.h) captures a directory and one advertised
+file on an already authorized Styx connection. The host supplies a trusted
+native resolver for that file. Discovery checks the current walk/stat against
+the held remote node identity before calling it. Capturing or binding an alias
+keeps the association. A different file or directory does not acquire it.
+The returned launch address keeps a separate connection reference and refuses
+submission after disconnect. The resolver supplies the admission capability
+and logical owner label. File names and Qids do not confer launch authority.
+
+[`styxmountproviderlaunch`](mount.h) захватывает каталог и один объявленный файл
+в уже разрешённой сессии Styx. Host задаёт native resolver для этого файла.
+Перед его вызовом поиск сверяет текущий walk/stat с удерживаемым объектом.
+Capture и VFS-алиас сохраняют привязку. Другой файл или каталог её не получает.
+Адрес запуска удерживает соединение отдельно и отклоняет подачу после разрыва.
+Полномочие очереди и логическое имя предоставляет resolver.
+
+The launch request tests resolve an alias via the original 9P peer, delete the
+caller namespace and submit the retained address into the provisioned owner
+queue. This adapter consumes a host-provisioned resolver. It does not assign a
+wire advertisement format or discover a queue endpoint from an unauthenticated
+peer.
+
+Проверка на оригинальном 9P получает адрес через алиас, удаляет namespace
+вызывающего и подаёт запрос по удержанному адресу. Resolver задаётся host.
+Получение адреса очереди по сетевому объявлению остаётся отдельным стыком.
