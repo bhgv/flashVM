@@ -11,6 +11,7 @@
 #include "scalar_route.h"
 #include "scalar_interface.h"
 #include "scalar_gateway.h"
+#include "scalar_owner.h"
 #include "unibus_server.h"
 #include "mount.h"
 #include "mux/bidir.h"
@@ -58,11 +59,32 @@ static int method(void *state, int64_t argument, int64_t *result)
 }
 
 
+#ifndef STYX_SCALAR_GUEST
+static DVM_Provider *dispatch_inbox; /* Immutable during the native server thread. */
+
+
+/* EN/RU: Queue a request without executing the owner method on the Styx thread.
+ * Поставить запрос в очередь без вызова метода на потоке Styx. */
+static char *queue_call(Qid qid, char *bytes, ulong *count, vlong offset)
+{
+    DVM_VfsHandle writer = {0};
+    if (qid.path != 1 || offset != 0 ||
+        dvm_provider_open(dispatch_inbox, ".", "wo", &writer) != FVM_OK)
+    {
+        return Ebadarg;
+    }
+    DVM_IoResult got = dvm_vfs_write_chunk(&writer, bytes, *count);
+    dvm_vfs_close(&writer);
+    return got.status == FVM_OK && got.count == *count ? nil : Ebadarg;
+}
+#endif
+
+
+#ifdef STYX_SCALAR_GUEST
 /* EN/RU: Validate the request and send a separate S-record through the reverse session.
  * Проверить запрос и отправить отдельную S-запись через встречную сессию. */
 static char *receive_call(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-#ifdef STYX_SCALAR_GUEST
     if (getenv("DVM_TEST_SCALAR_DROP_REPLY"))
     {
         StyxScalarKind kind;
@@ -76,12 +98,17 @@ static char *receive_call(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         return Ebadarg;
     }
-#endif
     return qid.path == 1 && offset == 0 &&
         styxscalarreplyfile(reply, REQUEST_TAG, bytes, *count, REPLY_TAG, method, NULL) == DVM_LAUNCH_DELIVERED ? nil : Ebadarg;
 }
 
-static Styxops operations = {.write = receive_call}; /* Native launch test callbacks. */
+#endif
+
+#ifndef STYX_SCALAR_GUEST
+static Styxops operations = {.write = queue_call};
+#else
+static Styxops operations = {.write = receive_call};
+#endif
 
 
 /* EN/RU: Run the original owner dispatcher until the carrier closes.
@@ -117,6 +144,10 @@ static void round_trip(void (*exercise)(DVM_Provider *, DVM_Provider *))
     memset(&owner, 0, sizeof(owner));
     check(!styxphyinit(&owner, &operations, phybidirchannel(owner_mux, 0), 0555, 1, 2) &&
         styxaddfile(&owner, Qroot, 1, ".unibus", 0222, "owner"), "owner request .unibus");
+#ifndef STYX_SCALAR_GUEST
+    dispatch_inbox = styxunibusinbox(REQUEST_TAG);
+    check(dispatch_inbox != NULL, "owner inbox");
+#endif
     pthread_t worker;
     check(!pthread_create(&worker, NULL, serve, NULL), "start owner server");
     StyxClient *forward = styxclientmountphy(phybidirchannel(caller_mux, 0), 256, "caller", "", 3000, 4);
@@ -125,6 +156,9 @@ static void round_trip(void (*exercise)(DVM_Provider *, DVM_Provider *))
     exercise(request, styxunibusserverinbox(receiver));
     shutdown(breaker, SHUT_RDWR);
     check(!pthread_join(worker, NULL) && styxunibusserverjoin(receiver), "join both Styx roles");
+#ifndef STYX_SCALAR_GUEST
+    dvm_provider_release(dispatch_inbox);
+#endif
     dvm_provider_release(request);
     dvm_provider_release(reply);
     phybidirfree(caller_mux);
@@ -151,11 +185,24 @@ static void exchange(DVM_Provider *request, DVM_Provider *inbox, int64_t argumen
         REQUEST_TAG, inbox, REPLY_TAG);
     dvm_provider_release(profile);
     check(gateway != NULL, "interface admits gateway");
+    StyxScalarOwner *owner = styxscalarowner(dispatch_inbox, REQUEST_TAG, reply, REPLY_TAG);
+    int64_t input = 0;
+    check(owner && styxscalarownertake(owner, &input) == STYX_GATEWAY_PENDING && input == 0,
+        "owner inbox pending");
     int64_t value = 99;
     check(styxscalargatewayreceive(gateway, &value) == STYX_GATEWAY_UNKNOWN && value == 99,
         "no reply before submission");
     check(styxscalargatewaysend(gateway, argument) == DVM_LAUNCH_DELIVERED, "admitted scalar call");
     check(styxscalargatewaysend(gateway, argument) == DVM_LAUNCH_NOT_SENT, "gateway never resends");
+    check(styxscalargatewayreceive(gateway, &value) == STYX_GATEWAY_PENDING && value == 99,
+        "Styx acknowledgement precedes method execution");
+    check(styxscalarownertake(owner, &input) == STYX_GATEWAY_VALUE && input == argument &&
+        styxscalarownertake(owner, &input) == STYX_GATEWAY_UNKNOWN, "admit request exactly once");
+    int64_t result;
+    int success = method(NULL, input, &result);
+    check(styxscalarownersend(owner, success, result) == DVM_LAUNCH_DELIVERED &&
+        styxscalarownersend(owner, success, result) == DVM_LAUNCH_NOT_SENT, "send reply once");
+    styxscalarownerfree(owner);
     StyxScalarOutcome outcome = expected_kind == STYX_SCALAR_VALUE ? STYX_GATEWAY_VALUE : STYX_GATEWAY_ERROR;
     check(styxscalargatewayreceive(gateway, &value) == outcome && value == expected, "decode reverse scalar reply");
     check(styxscalargatewayreceive(gateway, &value) == STYX_GATEWAY_UNKNOWN && value == expected,
