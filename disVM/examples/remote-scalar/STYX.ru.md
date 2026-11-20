@@ -10,15 +10,14 @@
 
 ## Подготовка и проверка публикации
 
-Соберите [генератор Coco/R](../../../compiler/limbo/frontend/README.ru.md),
-[нативный SDK Styx](../../native/README.md) с поддержкой VFS, а также
+Соберите [нативный SDK Styx](../../native/README.md) с поддержкой VFS, а также
 [совпадающие по исходникам runtime и Limbo bootstrap](../../runtime/README.md)
 с генератором CMake Unix Makefiles. В SDK соберите `terminal-scalar-route`.
-Из корня репозитория запустите драйвер, подставив четыре пути к своим сборкам.
+Из корня репозитория запустите драйвер, подставив три пути к своим сборкам.
 
 ```sh
 python3 disVM/native/terminal/tests/scalar/guest.py \
-  build/scalar-frontend/limbo_remote_owner build/scalar-runtime/disvm \
+  build/scalar-runtime/disvm \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 
@@ -43,14 +42,10 @@ python3 disVM/native/terminal/tests/scalar/guest.py \
 
 ## Запуск владельца в отдельном DisVM
 
-Используйте один `.m` для клиента и владельца. Сгенерируйте владельца с путём
-реализации в его пространстве имён. Соберите его с исходным интерфейсом
-и локальным `vfsnative.m`.
-
-```sh
-limbo_remote_owner --styx-owner compute.m compute.m implementation.dis \
-  /scalar/request /scalar/reply 4294967295 64 owner.b
-```
+Обе стороны используют совместимый профиль из исходного `.m`. Владелец
+запускает общий [scalarowner.dis](../../runtime/SCALAR-OWNER-SERVICE.ru.md).
+Хост передаёт ему через `Launchcontext` путь реализации, имя экспорта,
+пути запроса и ответа и два тега.
 
 Владельцу выдайте приёмник запросов на чтение и файл ответов клиента на
 запись. Клиенту выдайте собственный приёмник ответов на чтение и файл запросов
@@ -61,7 +56,7 @@ limbo_remote_owner --styx-owner compute.m compute.m implementation.dis \
 
 ```sh
 python3 disVM/native/terminal/tests/scalar/owner_guest.py \
-  build/scalar-frontend/limbo_remote_owner build/scalar-runtime/disvm \
+  build/scalar-runtime/disvm \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 

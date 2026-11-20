@@ -58,7 +58,7 @@ def exchange(binary, owner, caller, mode, marker):
 # EN: Generate both ends from the original interface and compile the actual owner.
 # RU: Сгенерировать обе стороны по исходному интерфейсу и собрать реализацию владельца.
 def main():
-    generator, runtime, compiler, sdk = [Path(arg).resolve() for arg in sys.argv[1:5]]
+    runtime, compiler, sdk = [Path(arg).resolve() for arg in sys.argv[1:4]]
     disvm = Path(__file__).resolve().parents[5] / "disVM"
     example = disvm / "examples/remote-scalar"
     with tempfile.TemporaryDirectory(prefix="scalar-pair-") as name:
@@ -68,12 +68,9 @@ def main():
             (directory / "scalar").mkdir(parents=True)
         (caller / "blocked").mkdir()
         (caller / "library").mkdir()
-        run([str(generator), "--styx-owner", str(example / "compute.m"), "compute.m",
-             "implementation.dis", "/scalar/request", "/scalar/reply", "4294967295", "64",
-             str(owner / "generated.b")], work)
         for folder, source, output in (
             (caller, example / "styx-pair.b", "client.dis"),
-            (owner, owner / "generated.b", "owner.dis"),
+            (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
             (caller, example / "privatevalue.b", "privatevalue.dis"),

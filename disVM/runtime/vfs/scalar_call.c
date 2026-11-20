@@ -360,3 +360,43 @@ Module *dvm_scalar_module(char *path, char *name, unsigned long request_tag,
     build.module->dev = request_tag;
     return build.module;
 }
+
+
+/* [GC:] EN: Use the ordinary Dis reader and linker to bind one named export into
+ * the generic owner service's scalar slot. The result owns the returned Modlink.
+ * RU: Обычный загрузчик и линкер Dis связывают именованный экспорт со скалярным
+ * слотом общего сервиса владельца. Возвращённая ссылка владеет Modlink. */
+void Vfsnative_scalarload(void *frame)
+{
+    F_Vfsnative_scalarload call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarload, ret), sizeof(*call.ret));
+    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
+    if (!copy_path(call.path, path) || !copy_path(call.exportname, name) || strlen(name) > 48)
+    {
+        error("scalar owner implementation unavailable");
+    }
+
+    Modlink *empty = H;
+    void *previous = dvm_sys_owner(call.ret);
+    memmove(call.ret, &empty, sizeof(empty));
+    destroy(previous);
+
+    Import imports[] = {{(int32_t)DVM_SCALAR_INT_SIGNATURE, name}, {0, NULL}};
+    Module *module = dvm_namespace_read_imports(path, NULL, 1, imports);
+    if (!module)
+    {
+        return;
+    }
+    if (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID)
+    {
+        unload(module);
+        kwerrstr("scalar owner requires a local Dis implementation");
+        return;
+    }
+    Modlink *link = linkmod(module, imports, 1);
+    if (link != H)
+    {
+        Setmark(D2H(link));
+        memmove(call.ret, &link, sizeof(link));
+    }
+}

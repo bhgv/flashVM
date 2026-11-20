@@ -10,9 +10,9 @@ add_custom_command(OUTPUT "${view}/vfsnative_decl.h" "${view}/vfsnative_table.h"
 add_custom_target(disvm_vfsnative_sources DEPENDS "${view}/vfsnative_decl.h" "${view}/vfsnative_table.h")
 add_dependencies(disvm disvm_vfsnative_sources)
 target_sources(disvm PRIVATE vfs/provider_module.c vfs/module_adapter.c vfs/vfsnative.c vfs/stack.c vfs/stack_target.c)
-list(APPEND module_names vfsctl vfspublish terminal styxscalar)
+list(APPEND module_names vfsctl vfspublish terminal styxscalar scalarowner)
 list(APPEND module_sources "${root}/disVM/limbo/vfsctl.b" "${root}/disVM/limbo/vfspublish.b" "${root}/disVM/limbo/terminal.b"
-    "${root}/disVM/limbo/styxscalar.b")
+    "${root}/disVM/limbo/styxscalar.b" "${root}/disVM/limbo/scalarowner.b")
 
 # EN/RU: Native embedding SDK; separate from standard Styx/Sys interfaces.
 # Native embedding SDK, отдельно от standard Styx/Sys interfaces.

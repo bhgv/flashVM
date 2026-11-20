@@ -50,6 +50,5 @@ Ordinary typed `load` requires one matching compiled import and verifies
 the profile through Styx. DisVM constructs a private native module entry
 and retains its namespace. A normal typed call then uses the shared C
 transport. Data reads of the published file still use the original node.
-The paired test compiles the caller and the existing generic-test owner
-program, including its generated owner-side dispatch, and supplies no
-generated caller module.
+The paired test compiles the caller and the shared owner service from existing
+sources. It supplies no per-library generated dispatch module on either side.

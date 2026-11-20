@@ -113,6 +113,13 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     }
     DVM_Provider *routes = dvm_view_freeze(view);
     DVM_LaunchHandoff handoff = {.local_role = owner ? DVM_ORIGIN_PROVIDER : DVM_ORIGIN_TERMINAL};
+    unsigned char owner_config[] = /* Test publication's copied startup configuration. */
+        "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64";
+    if (owner)
+    {
+        handoff.arguments = owner_config;
+        handoff.description.argument_bytes = sizeof(owner_config) - 1;
+    }
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
     strcpy(handoff.description.module, "scalar-guest.dis");
     if (!routes || !handoff.group || !dvm_namespace_pin(handoff.group) || dvm_stack_mount(handoff.group, routes, "/scalar", 0, 0) != 1)

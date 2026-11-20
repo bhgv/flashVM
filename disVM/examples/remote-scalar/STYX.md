@@ -10,15 +10,14 @@ projection of a `.unibus` file.
 
 ## Prepare and exercise the publication
 
-Build the [Coco/R generator](../../../compiler/limbo/frontend/README.md),
-the [native Styx SDK](../../native/README.md) with VFS support, and the
+Build the [native Styx SDK](../../native/README.md) with VFS support, and the
 [source-matched runtime and Limbo bootstrap](../../runtime/README.md) with
 CMake's Unix Makefiles generator. Build `terminal-scalar-route` in the SDK.
-Run the driver from the repository root, substituting your four build paths.
+Run the driver from the repository root, substituting your three build paths.
 
 ```sh
 python3 disVM/native/terminal/tests/scalar/guest.py \
-  build/scalar-frontend/limbo_remote_owner build/scalar-runtime/disvm \
+  build/scalar-runtime/disvm \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 
@@ -44,14 +43,10 @@ still reaches the owner through the bindings retained when it was loaded.
 
 ## Run the owner in a separate DisVM
 
-Use the same `.m` for the caller and owner. Generate the owner with an implementation
-path in the owner's namespace, then compile it with the original interface and
-the local `vfsnative.m`.
-
-```sh
-limbo_remote_owner --styx-owner compute.m compute.m implementation.dis \
-  /scalar/request /scalar/reply 4294967295 64 owner.b
-```
+Both sides use a compatible profile from the original `.m`. The owner
+runs the shared [scalarowner.dis](../../runtime/SCALAR-OWNER-SERVICE.md).
+The host uses `Launchcontext` to pass the implementation path, export name,
+request and reply paths and the two route tags.
 
 Start the owner with a readable request inbox and the caller's writable
 reply file. The caller gets its own readable reply inbox and the owner's
@@ -62,7 +57,7 @@ request and returns its value or an error record.
 
 ```sh
 python3 disVM/native/terminal/tests/scalar/owner_guest.py \
-  build/scalar-frontend/limbo_remote_owner build/scalar-runtime/disvm \
+  build/scalar-runtime/disvm \
   build/scalar-runtime/bootstrap/limbo-bootstrap build/scalar-sdk
 ```
 

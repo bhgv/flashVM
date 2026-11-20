@@ -54,7 +54,7 @@ def build_peer(runtime, sdk, work, paired, compiler):
 # EN: Link the test mounts into the source-matched runtime; own temporary products.
 # RU: Связать тестовые точки монтирования с совпадающим runtime и удалить временные продукты.
 def main():
-    generator, runtime, compiler, sdk = map(lambda arg: Path(arg).resolve(), sys.argv[1:5])
+    runtime, compiler, sdk = map(lambda arg: Path(arg).resolve(), sys.argv[1:4])
     here = Path(__file__).resolve().parent
     root = here.parents[4]
     disvm = root / "disVM"

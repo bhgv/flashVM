@@ -1,6 +1,11 @@
 # Copyright (c) 2026 bhgv
 # EN: Scalar native bridge for caller-namespace layer control; prefer Vfsctl wrapper.
 # RU: Scalar native bridge управления слоями своего namespace; удобный wrapper Vfsctl.
+Scalarimplementation: module
+{
+    invoke: fn(value: int): int; # Single linked slot; the native loader selects its export.
+};
+
 Vfsnative: module
 {
     PATH: con "$Vfsnative"; # Hosted builtin, no foreign namespace/PID input.
@@ -37,4 +42,7 @@ Vfsnative: module
     # Прочитать запрос из приёмника владельца и отправить ответ через Styx.
     scalartake: fn(path: string, tag: big): int;
     scalarreply: fn(path: string, tag: big, success, value: int);
+    # EN/RU: Load a local implementation and bind one named scalar export to invoke.
+    # Загрузить локальную реализацию и связать именованный экспорт со слотом invoke.
+    scalarload: fn(path, exportname: string): Scalarimplementation;
 };
