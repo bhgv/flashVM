@@ -8,6 +8,7 @@
 #include "server.h"
 #include "../../../launch/request.h"
 #include "unibus_inbox.h"
+#include "launch_send.h"
 #include "file_provider.h"
 #include <pthread.h>
 
@@ -125,4 +126,18 @@ int fixturereversefinish(void)
     backing = NULL;
     inbox = NULL;
     return reverse_received;
+}
+
+/* EN/RU: Send a fixture completion to the actual CLI's caller-side export.
+ * Отправить тестовое завершение во встречный экспорт штатного CLI. */
+int fixturereversecli(DVM_Provider *provider)
+{
+    if (!provider)
+    {
+        return 0;
+    }
+    DVM_LaunchAddress *address = styxterminallaunchaddress(provider, 17);
+    DVM_LaunchDelivery result = dvm_launch_address_send(address, "0\n", 2);
+    dvm_launch_address_free(address);
+    return result == DVM_LAUNCH_DELIVERED ? 0 : -1;
 }

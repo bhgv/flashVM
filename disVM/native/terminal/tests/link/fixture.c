@@ -67,6 +67,7 @@ extern char *fixtureimagesread(Qid, char *, ulong *, vlong);
  */
 extern void fixtureimagesfree(void);
 extern int fixturereversestart(RemotePhy *channel); /* Consume local reply channel. */
+extern int fixturereversecli(DVM_Provider *provider); /* Exercise the CLI reverse export. */
 extern int fixturereversefinish(void); /* Join server and require the reply. */
 static DVM_Provider *reverse_unibus; /* Owner's retained writable peer file. */
 
@@ -182,7 +183,7 @@ int fixtureownerresult(const FVM_SOrdinal *ordinal, void *bytes, size_t capacity
 {
     if (!owner_result)
     {
-        return 0;
+        return fixturereversecli(reverse_unibus);
     }
     if (styxlaunchpublicationdeliver(&owner_process, 1, reverse_unibus, 17) != DVM_LAUNCH_DELIVERED ||
         styxlaunchpublicationdeliver(&owner_process, 0, reverse_unibus, 17) == DVM_LAUNCH_DELIVERED)
@@ -360,7 +361,7 @@ int linkfixturefd(void)
         {
             _exit(3);
         }
-        if (getenv("DVM_TEST_TERMINAL_SUBMIT"))
+        if (getenv("DVM_TEST_TERMINAL_SUBMIT") || getenv("DVM_TEST_TERMINAL_CLI"))
         {
             StyxClient *reverse = styxclientmountphy(phybidirchannel(remote, 1), 256, "fixture", "", 3000, 4);
             reverse_unibus = reverse ? styxmountproviderat(reverse, STYX_UNIBUS_NODE, FVM_ACCESS_WRITE) : NULL;

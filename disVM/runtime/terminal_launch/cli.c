@@ -3,6 +3,7 @@
  * RU: Один запуск по заранее выданному соединению Styx.
  */
 #include "config.h"
+#include "unibus_server.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "../../native/terminal/route/launch.h"
@@ -93,10 +94,11 @@ static int launch_id(char id[DVM_ORIGIN_ID_BYTES])
 
 /* EN/RU: Provide one explicit readonly file from the authorized code export.
  * Выдать один явно указанный файл из разрешённого экспорта кода. */
-static DVM_Provider *code_root(DVM_Provider *root, const char *file, const char *dependency)
+static DVM_Provider *code_root(DVM_Provider *root, const char *file, const char *dependency, DVM_Provider *inbox)
 {
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
-    if (!view || !dvm_view_map(view, "/app.dis", root, file, FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) ||
+    if (!view || !dvm_view_map(view, "/reverse-exit", inbox, ".", FVM_ACCESS_READ, 0) ||
+        !dvm_view_map(view, "/app.dis", root, file, FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0) ||
         (strcmp(dependency, "-") && !dvm_view_map(view, "/dep.dis", root, dependency,
             FVM_ACCESS_READ | FVM_ACCESS_EXEC, 0)))
     {
@@ -110,7 +112,7 @@ static DVM_Provider *code_root(DVM_Provider *root, const char *file, const char 
 /* EN/RU: Read one configured launch route and atomically take its reviewed environment.
  * Принять одну запись заданного маршрута, проверить запрос и забрать окружение. */
 static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
-    const TerminalLaunchConfig *config)
+    const TerminalLaunchConfig *config, DVM_Provider *inbox)
 {
     DVM_LaunchSpec spec = {0};
     spec.policy = DVM_LAUNCH_OWNER_FIRST;
@@ -132,7 +134,7 @@ static DVM_LaunchHandoff *receive_launch(StyxClient *client, DVM_Provider *root,
     strcpy(ingress.receive, config->request);
     strcpy(ingress.send, config->paths.send);
     const StyxRouteType type = {"disvm.launch", 1};
-    DVM_Provider *code = code_root(root, config->code, config->dependency);
+    DVM_Provider *code = code_root(root, config->code, config->dependency, inbox);
     DVM_LaunchService *service = code ? dvm_launch_service_create(spec.expected_provider, 1) : NULL;
     DVM_LaunchEndpoint *endpoint = service ? dvm_launch_service_endpoint(service) : NULL;
     StyxBidirRoute *route = endpoint ? styxbidirbindingroutes(client, &ingress, 4096, 2, NULL, 0, &type, 1) : NULL;
@@ -187,14 +189,18 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     }
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
     StyxClient *client = NULL;
+    StyxUnibusServer *reverse = NULL;
     if (mux)
     {
-        phyfree(phybidirchannel(mux, 1));
-        client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "", "", config.timeout, 8);
+        reverse = styxunibusserverstart(phybidirchannel(mux, 1), STYX_UNIBUS_REPLY_TAG);
+        if (reverse)
+        {
+            client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "", "", config.timeout, 8);
+        }
     }
     DVM_Provider *root = client && styxclientretain(client) ?
         styxmountproviderat(client, ".", FVM_ACCESS_MASK) : NULL;
-    DVM_LaunchHandoff *handoff = root ? receive_launch(client, root, &config) : NULL;
+    DVM_LaunchHandoff *handoff = root ? receive_launch(client, root, &config, styxunibusserverinbox(reverse)) : NULL;
     const StyxOrderedOptions ordered = {sizeof(ordered), 128, 16, config.lane, config.tags, config.count};
     StyxOrderedFiles *files = handoff ? styxorderedlaunchfileswithfds(client, handoff, &ordered,
         config.files, config.count, config.fds, config.fd_count) : NULL;
@@ -219,6 +225,14 @@ int dvm_terminal_launch_cli(int argc, char **argv)
     {
         styxclientshutdown(client);
         styxclientfree(client);
+    }
+    if (reverse)
+    {
+        shutdown(fd, SHUT_RDWR);
+        if (!styxunibusserverjoin(reverse))
+        {
+            status = 1;
+        }
     }
     phybidirfree(mux);
     return status;

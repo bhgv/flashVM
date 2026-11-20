@@ -121,3 +121,8 @@ foreach(route_case RANGE 0 6)
 endforeach()
 
 add_subdirectory(cli)
+
+add_library(styx_unibus_server STATIC unibus_server.c)
+target_link_libraries(styx_unibus_server PUBLIC styx_terminal infernostyx_phy)
+target_compile_options(styx_unibus_server PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
+add_dependencies(terminal-ordered-files styx_unibus_server)

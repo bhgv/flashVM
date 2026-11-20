@@ -87,6 +87,7 @@ def main():
             ["--fd-grant", "/input", "app.dis", "r"],
             ["--fd-grant", "/input", "../held-input", "r"],
             ["--fd-grant", "/input", "held-input", "r", "--fd-grant", "/again", "held-input", "r"],
+            ["--grant", "/reverse-exit", "7", "r"],
             ["--inherit-fd", "32", "r"],
             ["--inherit-fd", "03", "r"],
             ["--inherit-fd", "1", "r", "--inherit-fd", "1", "w"],

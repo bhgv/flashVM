@@ -43,7 +43,7 @@ static int guest_path(const char *path)
 {
     return path[0] == '/' && path[1] && strlen(path) < DVM_NS_PATH_LIMIT &&
         strcmp(path + 1, ".") && dvm_terminal_channel_paths_valid(path + 1, path + 1) &&
-        !covers("/app.dis", path) && !covers("/dep.dis", path);
+        !covers("/app.dis", path) && !covers("/dep.dis", path) && !covers("/reverse-exit", path);
 }
 
 

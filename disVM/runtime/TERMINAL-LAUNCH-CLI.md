@@ -133,3 +133,19 @@ existing guest runtime and compiler settings to select the CLI binary.
 Для проверки укажите `INFERNO_DISVM_TERMINAL_CLI` вместе с путями runtime и
 компилятора. CTest `terminal-ordered-files-cli` запустит отдельный Styx-сервер
 через TCP loopback.
+
+### Reverse Unibus completion / Встречный результат Unibus
+
+The launcher automatically serves a write-only `.unibus` on P9MX channel 1.
+The authorized peer can write one completion S-record with tag 17. The guest
+reads that record through `Sys->open("/reverse-exit", Sys->OREAD)` and
+`Sys->read`. The reserved alias belongs to the launcher. Before delivery,
+a nonempty read returns an error indicating that data is pending.
+
+Лаунчер автоматически публикует `.unibus` для записи на канале 1 P9MX.
+Выданная сторона может отправить одну S-запись завершения с тегом 17.
+Гость открывает `/reverse-exit` через `Sys->open` в режиме чтения и читает
+запись через `Sys->read`. Имя зарезервировано лаунчером. До доставки
+непустое чтение сообщает, что запись ещё не поступила.
+
+[Native inbox](../native/terminal/UNIBUS-INBOX.md) · [Приёмник](../native/terminal/UNIBUS-INBOX.ru.md)

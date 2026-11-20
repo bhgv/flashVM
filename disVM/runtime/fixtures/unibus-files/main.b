@@ -214,17 +214,17 @@ init()
             raise "missing Unibus command completion file";
         }
         take(outcome, 17, "0\n");
-        if (sys->open("/reverse-exit", Sys->OWRITE) != nil) {
-            raise "caller completion inbox permits guest writes";
-        }
-        reverse := sys->open("/reverse-exit", Sys->OREAD);
-        if (reverse == nil) {
-            raise "missing reverse Styx completion";
-        }
-        take(reverse, 17, "0\n");
-        if (sys->read(reverse, array[1] of byte, 1) != 0) {
-            raise "reverse completion did not reach EOF";
-        }
+    }
+    if (sys->open("/reverse-exit", Sys->OWRITE) != nil) {
+        raise "caller completion inbox permits guest writes";
+    }
+    reverse := sys->open("/reverse-exit", Sys->OREAD);
+    if (reverse == nil) {
+        raise "missing reverse Styx completion";
+    }
+    take(reverse, 17, "0\n");
+    if (sys->read(reverse, array[1] of byte, 1) != 0) {
+        raise "reverse completion did not reach EOF";
     }
     take(zero, 0, "local-in");
     take(seven, 7, "zero");

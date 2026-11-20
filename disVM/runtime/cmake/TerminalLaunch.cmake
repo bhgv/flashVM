@@ -10,6 +10,8 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         terminal/order/libstyx_terminal_order.a
         terminal/libstyx_terminal_ui.a
         terminal/libstyx_terminal.a
+        terminal/libstyx_unibus_server.a
+        server/phy/libinfernostyx_phy.a
         movie/libstyx_movie_protocol.a
         launch/libstyx_launch.a
         vfs/libstyx_namespace_fixture.a
