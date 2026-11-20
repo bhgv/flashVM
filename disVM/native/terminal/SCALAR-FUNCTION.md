@@ -60,8 +60,22 @@ The reply uses the usual scalar format. Legacy entries with tag 72 retain
 their original request format.
 
 DisVM reads the active process PID for each call. The PID is scoped to the
-client session. Access to the client's live `.prog` tree and binding `.self`
-for the invocation are still pending.
+client session.
+
+For context-aware native dispatch, set `program_method` instead of
+`caller_method` and supply `program_root`, the granted module directory on
+the reverse Styx mount. Keep that root alive until the server joins.
+The dispatcher captures `.prog/<pid>` before calling the method and gives
+the method that exact directory as its private `.self` root. It can open
+children such as `.pid`, `.fd`, `.vfs` and `.var` as granted by that root.
+The reference is borrowed for the callback. A failed lookup or a non-directory
+returns a Styx permission error before dispatch. Each invocation has its
+own capture. Automatic publication of the client VM's live tree by
+`load` remains pending.
+
+The native reverse Styx example in `terminal-scalar-route` selects two
+directories by PID and refuses a third, absent PID. Expected output includes
+`PASS mounted scalar .self over reverse Styx`.
 
 The `styx-caller.b` example runs as part of `terminal-scalar-guest`. The
 parent and a spawned child share one module instance. The native callback

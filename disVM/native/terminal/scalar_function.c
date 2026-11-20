@@ -7,6 +7,8 @@
 #include <styxserver.h>
 #include "scalar_function.h"
 #include "scalar_verify.h"
+#include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,7 +26,7 @@ typedef struct FunctionFid
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
 char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure)
 {
-    if (mode != ORDWR || !function || (!function->method && !function->caller_method) || !function->request_tag ||
+    if (mode != ORDWR || !function || (!function->method && !function->caller_method && !function->program_method) || !function->request_tag ||
         !function->reply_tag || function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
     {
         return Eperm;
@@ -45,6 +47,23 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
 }
 
 
+/* EN: Capture the selected process from a borrowed reverse root, returning an owned directory.
+ * RU: Захватить выбранный процесс из заимствованного обратного корня и вернуть свой каталог. */
+static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid)
+{
+    char path[sizeof(".prog/4294967295")];
+    snprintf(path, sizeof(path), ".prog/%" PRIu32, pid);
+    DVM_Provider *self = dvm_provider_capture(root, path);
+    FVM_FileInfo info;
+    if (self && dvm_provider_info(self, ".", &info) == FVM_OK && info.directory)
+    {
+        return self;
+    }
+    dvm_provider_release(self);
+    return NULL;
+}
+
+
 /* EN/RU: Validate one whole request at offset zero and store the method's reply.
  * Проверить полный запрос по смещению ноль и сохранить ответ метода. */
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
@@ -55,21 +74,29 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
-    int typed = (function->request_tag == STYX_FUNCTION_REQUEST_TAG || function->caller_method) &&
+    int scoped = function->caller_method || function->program_method;
+    int typed = (function->request_tag == STYX_FUNCTION_REQUEST_TAG || scoped) &&
         function->reply_tag == STYX_FUNCTION_REPLY_TAG;
     StyxScalarKind kind;
     int64_t argument;
     uint32_t pid = 0;
-    int admitted = function->caller_method ? styxscalarcallerread(bytes, count, &pid, &argument) :
+    int admitted = scoped ? styxscalarcallerread(bytes, count, &pid, &argument) :
         styxscalarread(function->request_tag, bytes, count, &kind, &argument) && kind == STYX_SCALAR_CALL;
     if (!admitted || (typed && (argument < INT32_MIN || argument > INT32_MAX)))
     {
         return Ebadarg;
     }
+    DVM_Provider *self = function->program_method ? capture_self(function->program_root, pid) : NULL;
+    if (function->program_method && !self)
+    {
+        return Eperm;
+    }
     int64_t value = 0;
     fid->submitted = 1;
-    int outcome = function->caller_method ? function->caller_method(function->state, pid, argument, &value) :
+    int outcome = self ? function->program_method(function->state, self, argument, &value) :
+        function->caller_method ? function->caller_method(function->state, pid, argument, &value) :
         function->method(function->state, argument, &value);
+    dvm_provider_release(self);
     if (outcome < 0 && fid->report_transport_failure)
     {
         return Ehungup;

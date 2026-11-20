@@ -5,6 +5,7 @@
 #ifndef STYX_SCALAR_FUNCTION_H
 #define STYX_SCALAR_FUNCTION_H
 #include "scalar_record.h"
+#include "provider.h"
 
 typedef struct StyxScalarFunction
 {
@@ -13,6 +14,8 @@ typedef struct StyxScalarFunction
     int (*method)(void *, int64_t, int64_t *); /* Borrowed synchronous native method. */
     void *state; /* Borrowed method context. */
     int (*caller_method)(void *, uint32_t, int64_t, int64_t *); /* Opt-in callback with a session-local PID. */
+    DVM_Provider *program_root; /* Borrowed reverse module root through server join. */
+    int (*program_method)(void *, DVM_Provider *, int64_t, int64_t *); /* Borrow the exact .self during dispatch. */
 } StyxScalarFunction;
 
 
