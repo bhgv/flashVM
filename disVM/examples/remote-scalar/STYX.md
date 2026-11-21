@@ -105,6 +105,10 @@ The client loads `/peer/mounted/blend.dis` and calls
 `blend(40, (-2, min), max)`. The provider receives three arguments and
 adds the two narrow fields and the two wide fields. The client assigns
 the nested return to `(count, (narrow, wide))` and checks `(1, (38, -1))`.
+The driver compiles the owner with
+[`-D R`](../../../tools/limbo-bootstrap/STYX-TYPE-TABLE.md) and reads
+the resolved argument and result lists from `.interface`. It checks
+that the same loader rejects a copy whose embedded signature was altered.
 A zero seed raises an error. The next successful call verifies the
 original instance kept its call count. Expect
 `PASS mounted original argument list Dis` with and without JIT.

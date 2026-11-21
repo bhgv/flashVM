@@ -12,6 +12,7 @@
 #include "../../native/terminal/tuple_record.h"
 #include "../../native/terminal/call_record.h"
 #include "../../native/terminal/ref_pair_record.h"
+#include "../../native/terminal/load_profile.h"
 
 typedef struct DVM_ScalarFiles
 {
@@ -21,6 +22,7 @@ typedef struct DVM_ScalarFiles
     DVM_Provider *reply; /* Owned captured reply node. */
     DVM_CloseJob *close; /* Native retirement reservation. */
     uint32_t signature; /* Verified compiled import for this exact function. */
+    StyxCallShape shape; /* Optional checked typed export from the same publication. */
     int caller; /* Frame includes a captured caller PID. */
     int duplex; /* One fresh read/write fid per call. */
     unsigned references; /* Atomic native ownership. */

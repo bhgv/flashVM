@@ -24,7 +24,7 @@ int styxunibusprepareload(StyxUnibusServer *server, MountedExport *module, const
         return 0;
     }
     strcpy(server->load_name, name);
-    server->load_offer = styxunibusmailbox(STYX_FUNCTION_PROFILE_TAG);
+    server->load_offer = styxunibusprofilemailbox();
     module->owner.request = styxunibusloadmailbox();
     module->owner.reply = styxunibusloadmailbox();
     return server->load_offer && module->owner.request && module->owner.reply;

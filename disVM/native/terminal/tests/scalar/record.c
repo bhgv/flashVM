@@ -172,6 +172,35 @@ static int loaded_profile(void)
 }
 
 
+/* EN: Bind a wide shaped profile and reject a contradictory schema with valid framing.
+ * RU: Связать расширенный профиль и отказать противоречивой схеме в корректном кадре. */
+static int shaped_profile(void)
+{
+    const char name[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const StyxCallShape shape = {"(i(ib)b)", "((i(ib)))"};
+    StyxCallShape decoded;
+    unsigned char bytes[STYX_SHAPED_OFFER_MAX], changed[STYX_SHAPED_OFFER_MAX];
+    size_t size, used;
+    FVM_SRecord record;
+    int caller = 1;
+    if (!styxshapedoffer(name, DVM_CALL_LIST_SIGNATURE, &shape, bytes, sizeof(bytes), &size) ||
+        size <= STYX_SCALAR_INTERFACE_CAPACITY || styxloadedaccept(name, bytes, size) != STYX_CALL_LIST_REQUEST_TAG ||
+        !styxscalar_profile_match_shape(bytes, size, name, DVM_CALL_LIST_SIGNATURE, &caller, &decoded) ||
+        caller || strcmp(decoded.arguments, shape.arguments) || strcmp(decoded.result, shape.result) ||
+        fvm_srecord_read(bytes, size, sizeof(bytes), &record, &used) != FVM_S_OK)
+    {
+        return 0;
+    }
+    unsigned char payload[STYX_SHAPED_OFFER_MAX];
+    memcpy(payload, record.payload, record.size);
+    payload[INTERFACE_HEADER + 3 + strlen(name) + 1] = 'b';
+    return fvm_srecord_write(STYX_SHAPED_OFFER_TAG, payload, record.size, changed, sizeof(changed), &used) == FVM_S_OK &&
+        !styxloadedaccept(name, changed, used) &&
+        !styxscalar_profile_match_shape(changed, used, name, DVM_CALL_LIST_SIGNATURE, &caller, &decoded) &&
+        !strcmp(decoded.arguments, shape.arguments) && !strcmp(decoded.result, shape.result);
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -244,6 +273,11 @@ int main(void)
         decoded != STYX_SCALAR_VALUE || value != 99 || calls != 2)
     {
         fputs("scalar method dispatch failed\n", stderr);
+        return 1;
+    }
+    if (!shaped_profile())
+    {
+        fputs("compiled type offer failed\n", stderr);
         return 1;
     }
     if (!loaded_profile())

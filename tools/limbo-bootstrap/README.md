@@ -138,3 +138,8 @@ callbacks run after unlock and may format recursively. The build-owned
 `prepare_errstr.py` keeps native custom-error bytes in OS-thread TLS alongside
 errno. The format/error thread tests cover cold registration, callback reentry,
 private output, custom error text and ordinary OS error fallback.
+
+## Styx export types
+
+For the hosted eight-byte target, [`-D R`](STYX-TYPE-TABLE.md) adds
+resolved call types to the same Dis image at compile time.

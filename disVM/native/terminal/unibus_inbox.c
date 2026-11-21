@@ -4,6 +4,7 @@
  */
 #include "unibus_inbox.h"
 #include "cancel.h"
+#include "load_profile.h"
 #include "provider_internal.h"
 #include "flashvm/srecord.h"
 #include <pthread.h>
@@ -17,7 +18,8 @@ typedef struct Inbox
     int sealed; /* No further writes after carrier shutdown. */
     int reusable; /* Consume complete records for a serialized live route. */
     size_t size;             /* Zero while empty. */
-    unsigned char bytes[64]; /* One immutable complete wire record after admission. */
+    size_t capacity; /* Exact accepted wire record limit. */
+    unsigned char bytes[]; /* One immutable complete wire record after admission. */
 } Inbox;
 
 typedef struct Cursor
@@ -121,8 +123,8 @@ static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResul
     FVM_SRecord record;
     size_t consumed;
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
-    if (!size || size > sizeof(inbox->bytes) ||
-        fvm_srecord_read(bytes, size, sizeof(inbox->bytes), &record, &consumed) != FVM_S_OK ||
+    if (!size || size > inbox->capacity ||
+        fvm_srecord_read(bytes, size, inbox->capacity, &record, &consumed) != FVM_S_OK ||
         consumed != size || (inbox->tag && record.tag != inbox->tag))
     {
         return;
@@ -201,13 +203,13 @@ void styxunibusmailboxseal(DVM_Provider *provider)
 
 /* EN/RU: See unibus_inbox.h; the returned provider owns the inbox.
  * См. unibus_inbox.h; возвращённый провайдер владеет приёмником. */
-static DVM_Provider *create_inbox(unsigned long tag, int reusable)
+static DVM_Provider *create_inbox(unsigned long tag, int reusable, size_t capacity)
 {
     if (tag > FVM_SRECORD_U32)
     {
         return NULL;
     }
-    Inbox *inbox = calloc(1, sizeof(*inbox));
+    Inbox *inbox = calloc(1, sizeof(*inbox) + capacity);
     if (!inbox)
     {
         return NULL;
@@ -218,6 +220,7 @@ static DVM_Provider *create_inbox(unsigned long tag, int reusable)
         return NULL;
     }
     inbox->tag = tag;
+    inbox->capacity = capacity;
     inbox->reusable = reusable;
     DVM_Provider *provider = dvm_provider_create_native(&factory, inbox, NULL, 1,
         DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE | DVM_PROVIDER_CANCEL_LIST);
@@ -233,7 +236,7 @@ static DVM_Provider *create_inbox(unsigned long tag, int reusable)
  * Сохранить исходный одноразовый приёмник. */
 DVM_Provider *styxunibusinbox(unsigned long tag)
 {
-    return tag ? create_inbox(tag, 0) : NULL;
+    return tag ? create_inbox(tag, 0, 64) : NULL;
 }
 
 
@@ -241,7 +244,7 @@ DVM_Provider *styxunibusinbox(unsigned long tag)
  * Создать переиспользуемый приёмник для последовательной сессии. */
 DVM_Provider *styxunibusmailbox(unsigned long tag)
 {
-    return tag ? create_inbox(tag, 1) : NULL;
+    return tag ? create_inbox(tag, 1, 64) : NULL;
 }
 
 
@@ -249,5 +252,13 @@ DVM_Provider *styxunibusmailbox(unsigned long tag)
 /* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
 DVM_Provider *styxunibusloadmailbox(void)
 {
-    return create_inbox(0, 1);
+    return create_inbox(0, 1, 64);
+}
+
+
+
+/* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
+DVM_Provider *styxunibusprofilemailbox(void)
+{
+    return create_inbox(0, 1, STYX_SHAPED_OFFER_MAX);
 }

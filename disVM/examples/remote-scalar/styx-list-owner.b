@@ -13,6 +13,10 @@ Client: module { init: fn(); };
 init()
 {
     sys := load Sys Sys->PATH;
+    bad := load Blend "invalid-shape.dis";
+    if (bad != nil) {
+        raise "load accepted a type table with a different export signature";
+    }
     owner := load Blend "/peer/mounted/blend.dis";
     if (owner == nil) {
         raise "could not load original argument-list module";

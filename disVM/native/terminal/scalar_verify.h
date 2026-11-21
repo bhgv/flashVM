@@ -50,6 +50,14 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
 /* EN/RU: Return the matching record bit in a complete, bounded mounted profile.
  * Вернуть бит совпавшей записи полного ограниченного профиля модуля. */
 unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller);
+struct StyxCallShape;
+
+
+/* EN: Match a verified export and copy its optional advertised shape on success.
+ * RU: Сверить экспорт и при успехе скопировать необязательную объявленную схему. */
+unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, struct StyxCallShape *shape);
+
 /* EN/RU: Identify a supported request tag by compiled signature, or zero.
  * Сопоставить поддерживаемый тег с сигнатурой либо вернуть ноль. */
 uint32_t styxscalar_request_signature(unsigned long tag);

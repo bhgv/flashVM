@@ -3,6 +3,7 @@
  * RU: Допуск скалярного интерфейса через существующие файлы Unibus.
  */
 #include "scalar_verify.h"
+#include "load_profile.h"
 #include "flashvm/srecord.h"
 #include <string.h>
 
@@ -56,22 +57,44 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
 
 /* EN/RU: Check the complete framed sequence and identify one unambiguous match.
  * Проверить всю последовательность кадров и найти единственное совпадение. */
-unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller)
+unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, StyxCallShape *shape)
 {
     const unsigned char *cursor = bytes;
     unsigned match = 0;
     int scoped = 0;
+    StyxCallShape decoded = {{0}, {0}};
     for (unsigned i = 0; size && i < STYX_MOUNTED_EXPORT_LIMIT; i++)
     {
         FVM_SRecord record;
         size_t used;
-        if (fvm_srecord_read(cursor, size, STYX_SCALAR_INTERFACE_CAPACITY, &record, &used) != FVM_S_OK ||
-            (record.tag != STYX_FUNCTION_PROFILE_TAG && record.tag != STYX_FUNCTION_CALLER_PROFILE) || record.size <= INTERFACE_HEADER ||
-            record.size > INTERFACE_HEADER + INTERFACE_NAME_LIMIT || record.payload[0] != INTERFACE_KIND)
+        if (fvm_srecord_read(cursor, size, STYX_SHAPED_OFFER_MAX, &record, &used) != FVM_S_OK)
         {
             return 0;
         }
-        if (styxscalaraccept(record.tag, cursor, used, name, signature))
+        int selected;
+        StyxCallShape types = {{0}, {0}};
+        if (record.tag == STYX_SHAPED_OFFER_TAG)
+        {
+            char offered_name[INTERFACE_NAME_LIMIT + 1];
+            uint32_t offered_sig;
+            if (!styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types))
+            {
+                return 0;
+            }
+            selected = name && offered_sig == signature && !strcmp(name, offered_name);
+        }
+        else
+        {
+            if ((record.tag != STYX_FUNCTION_PROFILE_TAG && record.tag != STYX_FUNCTION_CALLER_PROFILE) ||
+                record.size <= INTERFACE_HEADER || record.size > INTERFACE_HEADER + INTERFACE_NAME_LIMIT ||
+                record.payload[0] != INTERFACE_KIND)
+            {
+                return 0;
+            }
+            selected = styxscalaraccept(record.tag, cursor, used, name, signature);
+        }
+        if (selected)
         {
             if (match)
             {
@@ -79,17 +102,33 @@ unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *na
             }
             match = 1U << i;
             scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE;
+            decoded = types;
         }
         cursor += used;
         size -= used;
     }
-    if (!size && match && caller)
+    if (size || !match)
+    {
+        return 0;
+    }
+    if (caller)
     {
         *caller = scoped;
     }
-    return size ? 0 : match;
+    if (shape)
+    {
+        *shape = decoded;
+    }
+    return match;
 }
 
+
+/* EN: Match a compiled import without retaining its optional shape metadata.
+ * RU: Сверить компилированный импорт без сохранения необязательной схемы. */
+unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller)
+{
+    return styxscalar_profile_match_shape(bytes, size, name, signature, caller, NULL);
+}
 
 
 /* EN/RU: See scalar_verify.h; typed tags fix the scalar width on the wire.

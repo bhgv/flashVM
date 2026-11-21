@@ -200,7 +200,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
     {
         return NULL;
     }
-    unsigned char profile[STYX_MOUNTED_EXPORT_LIMIT * STYX_SCALAR_INTERFACE_CAPACITY + 1];
+    unsigned char profile[STYX_MOUNTED_EXPORT_LIMIT * STYX_SHAPED_OFFER_MAX + 1];
     size_t size = mounted_profile(directory, profile, sizeof(profile));
     DVM_ScalarFiles *head = NULL;
     DVM_ScalarFiles **tail = &head;
@@ -209,10 +209,11 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
     {
         const char *name = imports[i].name;
         int caller = 0;
+        StyxCallShape shape;
         uint32_t signature = imports[i].signature;
         unsigned bit = styxloadedrequest(signature) &&
             !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
-            styxscalar_profile_match(profile, size, name, imports[i].signature, &caller) : 0;
+            styxscalar_profile_match_shape(profile, size, name, signature, &caller, &shape) : 0;
         if (!bit || (bit & matched) || !(*tail = dvm_scalar_function_files(directory, name)))
         {
             dvm_scalar_files_release(head);
@@ -221,6 +222,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         }
         (*tail)->signature = signature;
         (*tail)->caller = caller;
+        (*tail)->shape = shape;
         matched |= bit;
         tail = &(*tail)->next;
     }

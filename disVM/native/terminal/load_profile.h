@@ -8,6 +8,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define STYX_SHAPE_MAX 48U /* Bytes of one shape excluding NUL. */
+#define STYX_SHAPED_OFFER_MAX 192U /* Capacity of a complete typed profile record. */
+#define STYX_SHAPED_OFFER_TAG 88UL /* Ordinary export signature and resolved call types. */
+
 
 /* EN: Select a supported unscoped call profile for the compiled signature.
  * RU: Выбрать профиль вызова без PID по скомпилированной сигнатуре. */
@@ -22,5 +26,29 @@ int styxloadedoffer(const char *name, uint32_t signature, void *bytes, size_t ca
 /* EN: Verify a complete export offer for name, and return its request tag.
  * RU: Проверить полное предложение для name и вернуть тег запроса. */
 unsigned long styxloadedaccept(const char *name, const void *bytes, size_t size);
+
+typedef struct StyxCallShape
+{
+    char arguments[STYX_SHAPE_MAX + 1]; /* Ordered list of argument types. */
+    char result[STYX_SHAPE_MAX + 1]; /* List containing zero or one return type. */
+} StyxCallShape;
+
+
+/* EN: Verify the grammar and bounds of both NUL-terminated lists in shape.
+ * RU: Проверить грамматику и границы двух NUL-терминированных списков shape. */
+int styxshapevalid(const StyxCallShape *shape);
+
+
+/* EN: Encode a checked shape plus the existing compiled identity into bytes.
+ * RU: Записать проверенную схему и имеющуюся скомпилированную сигнатуру в bytes. */
+int styxshapedoffer(const char *name, uint32_t signature, const StyxCallShape *shape,
+    void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Validate a complete shaped payload and return its wired request tag.
+ * name and signature outputs are optional. A refused record changes no outputs.
+ * RU: Проверить полную полезную нагрузку и вернуть тег запроса. name и signature
+ * необязательны. При отказе выходные значения сохраняются. */
+unsigned long styxshapedpayload(const void *payload, size_t length, char *name, uint32_t *signature, StyxCallShape *shape);
 
 #endif

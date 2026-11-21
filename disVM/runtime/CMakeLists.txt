@@ -83,6 +83,7 @@ string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}"
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
 string(REPLACE "\tuchar *code; // Generated instructions" "\tunsigned long generation; /* Host loaded-code identity, never reused. */\n\tuchar *code; // Generated instructions" native_interp "${native_interp}")
 string(REPLACE "\tint\tmptype;" "\tstruct DVM_ScalarFiles *scalar_files; /* Native Styx route grant. */\n\tint\tmptype;" native_interp "${native_interp}")
+string(REPLACE "\tint\tmptype;" "\tstruct DVM_ExportShapes *export_shapes; /* Owned immutable compiler metadata. */\n\tint\tmptype;" native_interp "${native_interp}")
 # Route hosted C write barriers through the same scalar fields as the collector.
 string(APPEND native_interp "\n#ifdef DVM_RUNTIME_GC_FIELDS\n#include \"gc_fields.h\"\n#undef Setmark\n#define Setmark(h) dvm_runtime_gc_mark(&(h)->color, &mutator, &nprop)\n#endif\n")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern int dvm_runtime_fast(int, int (*)(REG *), REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")

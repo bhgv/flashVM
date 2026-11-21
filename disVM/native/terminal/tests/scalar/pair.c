@@ -14,6 +14,7 @@
 #include "scalar_route.h"
 #include <lib9.h>
 #include "scalar_function.h"
+#include "load_profile.h"
 #include "scalar_verify.h"
 #include <string.h>
 #include "guest_mount.h"
@@ -29,6 +30,41 @@ static int adjust(void *context, int64_t input, int64_t *result)
     (void)context;
     *result = input - 7;
     return 1;
+}
+
+
+/* EN: Inspect the live compiled profile independently of ordinary load.
+ * RU: Проверить опубликованную схему отдельно от обычного load. */
+static int verify_compiled_profile(DVM_Provider *mount)
+{
+    DVM_VfsHandle handle = {0};
+    unsigned char bytes[STYX_SHAPED_OFFER_MAX + 1];
+    if (dvm_provider_open(mount, "mounted/blend.dis/.interface", "r", &handle) != FVM_OK)
+    {
+        return 0;
+    }
+    size_t size = 0;
+    int complete = 0;
+    while (size < sizeof(bytes))
+    {
+        DVM_IoResult got = dvm_vfs_read_chunk(&handle, bytes + size, sizeof(bytes) - size);
+        if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) ||
+            (got.flags & DVM_IO_UNCERTAIN) || got.count > sizeof(bytes) - size)
+        {
+            break;
+        }
+        size += got.count;
+        if (!got.count || got.stop == DVM_IO_EOF)
+        {
+            complete = 1;
+            break;
+        }
+    }
+    dvm_vfs_close(&handle);
+    StyxCallShape shape;
+    int scoped;
+    return complete && styxscalar_profile_match_shape(bytes, size, "blend", DVM_CALL_LIST_SIGNATURE, &scoped, &shape) &&
+        !scoped && !strcmp(shape.arguments, "(i(ib)b)") && !strcmp(shape.result, "((i(ib)))");
 }
 
 
@@ -121,7 +157,14 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC) : NULL;
         if (mount)
         {
-            result = scalar_runtime_mounted(argc, argv, mount);
+            if (!getenv("DVM_TEST_SCALAR_COMPILED_TYPES") || verify_compiled_profile(mount))
+            {
+                result = scalar_runtime_mounted(argc, argv, mount);
+            }
+            else
+            {
+                fputs("could not verify the exported compiled call types\n", stderr);
+            }
             dvm_provider_release(mount);
         }
         shutdown(breaker, SHUT_RDWR);

@@ -45,6 +45,14 @@ def adapt_load(source):
             "if(!dvm_runtime_module_release(&m->ref))\n\t\treturn;",
             1,
         ),
+        (
+            "\tdisc_attach(m, code, length);",
+            "\tif(!dvm_module_read_shapes(m, istream, end)) {\n"
+            '\t\tkwerrstr("invalid compiled Styx type table");\n\t\tgoto bad;\n\t}\n'
+            "\tdisc_attach(m, code, length);",
+            1,
+        ),
+        ("\tfree(m->pctab);", "\tfree(m->pctab);\n\tfree(m->export_shapes);", 1),
         ("h->t->ref++;", "dvm_runtime_type_retain(&h->t->ref);", 1),
         ("pt->ref <= 0", "dvm_refcount_load_i(&pt->ref) <= 0", 1),
         ("pt->ref > 0x7ffffffe", "dvm_refcount_load_i(&pt->ref) > 0x7ffffffe", 1),
@@ -129,7 +137,7 @@ dvm_runtime_module_finish(Module *m)
             (finish, finish_replacement, 1),
             (
                 '#include "interp.h"',
-                '#include "interp.h"\n#include "gc/fast/module_retirement.h"\n#include "vfs/loader.h"',
+                '#include "interp.h"\n#include "gc/fast/module_retirement.h"\n#include "vfs/loader.h"\n#include "vfs/module_shapes.h"',
                 1,
             ),
         ),

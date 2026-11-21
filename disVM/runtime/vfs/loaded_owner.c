@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "runt.h"
 #include "loader.h"
+#include "module_shapes.h"
 #include "namespace.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
@@ -67,7 +68,7 @@ static int view_slot(unsigned long tag)
  * export. On success return its owned link and copy the signature to signature.
  * RU: Один раз загрузить модуль в namespace и связать фактический экспорт.
  * При успехе вернуть свою связь и записать сигнатуру в signature. */
-static Modlink *load_export(char *path, char *name, uint32_t *signature)
+static Modlink *load_export(char *path, char *name, uint32_t *signature, StyxCallShape *shape)
 {
     Module *module = dvm_namespace_read_imports(path, NULL, 1, NULL);
     if (!module)
@@ -83,6 +84,7 @@ static Modlink *load_export(char *path, char *name, uint32_t *signature)
             {
                 Import imports[] = {{export->sig, name}, {0, NULL}};
                 *signature = (uint32_t)export->sig;
+                dvm_module_export_shape(module, (size_t)(export - module->ext), shape);
                 return linkmod(module, imports, 1);
             }
         }
@@ -93,9 +95,9 @@ static Modlink *load_export(char *path, char *name, uint32_t *signature)
 
 
 /* EN: Return one typed view rooted in the caller frame before offering its
- * exact export to the dispatcher. Only the copied name/signature reach Styx.
+ * exact export to the dispatcher. Only copied export metadata reaches Styx.
  * RU: Укоренить одно типизированное представление в кадре до предложения
- * точного экспорта диспетчеру. Через Styx идут только скопированные имя и сигнатура. */
+ * точного экспорта диспетчеру. Через Styx идут только скопированные метаданные экспорта. */
 void Vfsnative_scalarloaded(void *frame)
 {
     F_Vfsnative_scalarloaded call;
@@ -118,14 +120,18 @@ void Vfsnative_scalarloaded(void *frame)
         destroy(previous.views[i]);
     }
     uint32_t signature = 0;
-    Modlink *link = load_export(path, name, &signature);
-    unsigned char bytes[STYX_SCALAR_INTERFACE_CAPACITY];
+    StyxCallShape shape = {{0}, {0}};
+    Modlink *link = load_export(path, name, &signature, &shape);
+    unsigned char bytes[STYX_SHAPED_OFFER_MAX];
     size_t size;
     if (link != H)
     {
         result.tag = styxloadedrequest(signature);
         int slot = view_slot(result.tag);
-        if (slot < 0 || !styxloadedoffer(name, signature, bytes, sizeof(bytes), &size))
+        int offered = shape.arguments[0] ?
+            styxshapedoffer(name, signature, &shape, bytes, sizeof(bytes), &size) :
+            styxloadedoffer(name, signature, bytes, sizeof(bytes), &size);
+        if (slot < 0 || !offered)
         {
             destroy(link);
             error("invalid loaded owner profile");

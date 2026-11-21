@@ -48,6 +48,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         "refpair": ("refpair.dis", "refpair-owner.dis", "exchange"),
         "load-mismatch": ("blend.dis", "blend-scalar-owner.dis", "blend"),
     }
+    if mounted == "list":
+        env["DVM_TEST_SCALAR_COMPILED_TYPES"] = "1"
     if mounted in loaded_exports:
         publication, implementation, export = loaded_exports[mounted]
         env["DVM_TEST_SCALAR_LOAD_NAME"] = publication
@@ -155,8 +157,15 @@ def main():
             (owner, example / "privatevalue.b", "privatevalue.dis"),
             (caller, example / "privatevalue.b", "privatevalue.dis"),
         ):
-            run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
+            shape_flags = ["-D", "R"] if folder == owner and output in (
+                "wide-owner.dis", "tuple-owner.dis", "ref-owner.dis", "refpair-owner.dis", "blend-owner.dis"
+            ) else []
+            run([str(compiler), *shape_flags, "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(folder / output), str(source)], work)
+        corrupted = bytearray((owner / "blend-owner.dis").read_bytes())
+        trailer = corrupted.rindex(b"STYXCS1!")
+        corrupted[trailer + 12] ^= 1
+        (caller / "invalid-shape.dis").write_bytes(corrupted)
         (caller / "original-prefix").write_bytes((owner / "implementation.dis").read_bytes()[:14])
         (owner / "provider-secret").write_text("41")
         (caller / "provider-secret").write_text("900")

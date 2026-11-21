@@ -204,9 +204,15 @@ add_custom_command(OUTPUT "${limbo_parser}"
   COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_parser.py"
     --source "${raw_limbo_parser}" --output "${limbo_parser}"
   DEPENDS "${raw_limbo_parser}" prepare_parser.py VERBATIM)
+set(limbo_com "${CMAKE_CURRENT_BINARY_DIR}/prepared-styx-com.c")
+add_custom_command(OUTPUT "${limbo_com}"
+  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_styx_export.py"
+    --source "${u}/limbo/com.c" --output "${limbo_com}"
+  DEPENDS "${u}/limbo/com.c" prepare_styx_export.py VERBATIM)
 add_executable(limbo-bootstrap
   upstream/limbo/asm.c
-  upstream/limbo/com.c
+  "${limbo_com}"
+  host/styx_export.c
   upstream/limbo/decls.c
   upstream/limbo/dis.c
   upstream/limbo/dis64.c
@@ -226,7 +232,7 @@ add_executable(limbo-bootstrap
   upstream/limbo/types.c
   "${limbo_parser}"
 )
-target_include_directories(limbo-bootstrap PRIVATE "${u}/limbo")
+target_include_directories(limbo-bootstrap PRIVATE "${u}/limbo" "${CMAKE_CURRENT_SOURCE_DIR}/host")
 target_compile_definitions(limbo-bootstrap PRIVATE "INCPATH=\"${u}/module\"")
 # Repeat support archives to resolve the old mutually dependent lib9/math helpers.
 target_link_libraries(limbo-bootstrap PRIVATE limbo_bootstrap_bio limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support m)

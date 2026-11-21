@@ -339,7 +339,9 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *
 {
     unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
     size_t size, received = 0;
-    if (files->caller || !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args,
+    const char *shape_args = files->shape.arguments[0] ? files->shape.arguments : styxcall_list_args;
+    const char *shape_result = files->shape.result[0] ? files->shape.result : styxcall_list_result;
+    if (files->caller || !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, shape_args,
             arguments, bytes, sizeof(bytes), &size))
     {
         return -1;
@@ -349,7 +351,7 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *
     {
         return exchanged;
     }
-    if (styxcallrecordread(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, bytes, received, result))
+    if (styxcallrecordread(STYX_CALL_LIST_REPLY_TAG, shape_result, bytes, received, result))
     {
         return 1;
     }

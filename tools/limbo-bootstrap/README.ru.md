@@ -123,3 +123,8 @@ callback вызывается после снятия mutex и может фор
 `prepare_errstr.py` хранит native-текст ошибки в TLS потока ОС вместе с errno.
 Тесты format/error threads проверяют холодную регистрацию, reentry callback,
 личный вывод, свой текст ошибки и обычный fallback OS errno.
+
+## Типы экспортов Styx
+
+Для восьмибайтового hosted-таргета [`-D R`](STYX-TYPE-TABLE.ru.md)
+добавляет разрешённые типы вызова в тот же образ Dis при компиляции.

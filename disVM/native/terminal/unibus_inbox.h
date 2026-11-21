@@ -24,4 +24,8 @@ void styxunibusmailboxseal(DVM_Provider *provider);
  * RU: Служебный приёмник до выбора тега через load. Принимает одну полную
  * S-запись, тег проверяет связанный диспетчер. */
 DVM_Provider *styxunibusloadmailbox(void);
+/* EN: Reserve a private slot for one complete shaped profile or refusal.
+ * RU: Зарезервировать служебный приёмник расширенного профиля или отказа. */
+DVM_Provider *styxunibusprofilemailbox(void);
+
 #endif
