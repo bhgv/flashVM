@@ -76,6 +76,7 @@ void dvm_cap_abandon(void *value);
 DVM_CapState *dvm_cap_get(void *value, unsigned kind);
 DVM_CapState *dvm_cap_try_root(void *value);
 int dvm_cap_is_integer(const DVM_CapState *state);
+int dvm_cap_map_metadata(DVM_View *view, const char *path, const char *text);
 
 
 /* EN/RU: Validate/copy borrowed guest string before native release;1/0.

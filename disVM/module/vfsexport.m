@@ -30,6 +30,7 @@ Vfsexport: module
     # Создать точную файловую ссылку на ячейку int32.
     intvar: fn(initial: int): ref Root;
     intarray: fn(cells: list of ref Root): ref Root;
+    record: fn(fields: list of (string, ref Root)): ref Root;
     intget: fn(root: ref Root): (int,int);
     intset: fn(root: ref Root, value: int): int;
 

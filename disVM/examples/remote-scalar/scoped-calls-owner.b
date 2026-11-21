@@ -323,7 +323,12 @@ pause_ref(sys: Sys, prefix: string)
 # RU: Прочитать метаданные и изменить один элемент через обратный Styx.
 edit_vector(sys: Sys)
 {
-    path := Caller + ".var/vector/";
+    record := Caller + ".var/record/";
+    path := record + "nested/vector/";
+    if (contents(sys, record + ".type", 24) != "record\n" ||
+        contents(sys, record + ".len", 8) != "2\n" || !live_value(sys, record + "value", 0, 7)) {
+        raise "invalid nested record directory";
+    }
     if (contents(sys, path + ".type", 24) != "array of int\n" ||
         contents(sys, path + ".len", 8) != "3\n" ||
         sys->open(path + ".len", Sys->OWRITE) != nil ||
@@ -341,7 +346,7 @@ edit_vector(sys: Sys)
     member := sys->open(path + ".val", Sys->ORDWR);
     bytes := array[] of {byte 0, byte 0, byte 0, byte 19};
     if (member == nil || sys->write(member, bytes, len bytes) != len bytes ||
-        !live_value(sys, path + "2", 0, 19)) {
+        !live_value(sys, path + "2", 0, 19) || !live_value(sys, record + "value", 0, 19)) {
         raise "live array update lost its aliased cell";
     }
     selector = nil;

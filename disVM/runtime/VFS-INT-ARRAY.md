@@ -27,3 +27,5 @@ While that FD remains open, open `.val` for reading or writing. Its cursor
 belongs to the selected cell. Closing `.idx` revokes that selection and
 its opened `.val` fids. Another local process or reverse Styx grant can
 hold an independent selection.
+
+Arrays can be fields of a [VFS record](VFS-VARIABLE-RECORD.md).

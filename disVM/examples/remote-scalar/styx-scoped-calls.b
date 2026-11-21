@@ -48,6 +48,14 @@ init()
     }
     collection := exports->intarray(first_cell :: second_cell :: first_cell :: nil);
     vars = exports->overlay(vars, collection, "/vector", rights | Vfsexport->Write, Vfsexport->Tree);
+    nested := exports->record(("vector", collection) :: nil);
+    record := exports->record(("value", first_cell) :: ("nested", nested) :: nil);
+    if (nested == nil || record == nil ||
+        exports->record(("dup", first_cell) :: ("dup", second_cell) :: nil) != nil ||
+        exports->record((".len", first_cell) :: nil) != nil) {
+        raise "record accepted invalid fields or did not compose";
+    }
+    vars = exports->overlay(vars, record, "/record", rights | Vfsexport->Write, Vfsexport->Tree);
     if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
         raise "could not mount live variable for event test";
     }

@@ -111,16 +111,21 @@ static FVM_Result meta_open(void *state, const char *path, const char *mode, DVM
 
 /* EN: Copy text into a read-only node and transfer the view's reference.
  * RU: Копировать текст в файл только для чтения и передать ссылку представлению. */
-static int map_meta(DVM_View *view, const char *path, const char *text)
+int dvm_cap_map_metadata(DVM_View *view, const char *path, const char *text)
 {
     static const DVM_ProviderOps ops = {.info = meta_info, .open = meta_open, .destroy = free,
         .flags = DVM_PROVIDER_STABLE_BIND};
+    size_t length = strlen(text);
+    if (length >= sizeof(((ArrayMetadata *)0)->text))
+    {
+        return 0;
+    }
     ArrayMetadata *file = calloc(1, sizeof(*file));
     if (!file)
     {
         return 0;
     }
-    file->length = strlen(text);
+    file->length = length;
     memcpy(file->text, text, file->length + 1);
     DVM_Provider *provider = dvm_provider_create_native(&ops, file, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
     if (!provider)
@@ -162,7 +167,7 @@ static DVM_Provider *array_view(List *cells)
     }
     char length[16];
     snprintf(length, sizeof(length), "%u\n", count);
-    if (!map_meta(view, "/.type", "array of int\n") || !map_meta(view, "/.len", length) ||
+    if (!dvm_cap_map_metadata(view, "/.type", "array of int\n") || !dvm_cap_map_metadata(view, "/.len", length) ||
         !dvm_intarray_map_index(view, providers, count))
     {
         dvm_view_discard(view);
