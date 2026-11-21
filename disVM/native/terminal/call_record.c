@@ -12,6 +12,7 @@
 #define CALL_BIG 2UL /* Signed big leaf. */
 #define CALL_PID 3UL /* Session-local caller PID. */
 #define CALL_TUPLE 4UL /* Nested tuple. */
+#define CALL_REAL 5UL /* IEEE 754 binary64 bit pattern. */
 
 const char styxcall_list_args[] = "(i(ib)b)"; /* Argument list: int, tuple, big. */
 const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,big)). */
@@ -21,7 +22,8 @@ const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,
  * RU: Сопоставить токен схемы с тегом вложенной записи. */
 static unsigned long node_tag(char type)
 {
-    return type == 'i' ? CALL_INT : type == 'b' ? CALL_BIG : type == 'p' ? CALL_PID : CALL_TUPLE;
+    return type == 'i' ? CALL_INT : type == 'b' ? CALL_BIG : type == 'f' ? CALL_REAL :
+        type == 'p' ? CALL_PID : CALL_TUPLE;
 }
 
 
@@ -29,7 +31,7 @@ static unsigned long node_tag(char type)
  * RU: Проверить диапазон скалярной ячейки по токену схемы. */
 static int scalar_valid(char type, int64_t value)
 {
-    return type == 'b' || (type == 'i' && value >= INT32_MIN && value <= INT32_MAX) ||
+    return type == 'b' || type == 'f' || (type == 'i' && value >= INT32_MIN && value <= INT32_MAX) ||
         (type == 'p' && value > 0 && value <= UINT32_MAX);
 }
 

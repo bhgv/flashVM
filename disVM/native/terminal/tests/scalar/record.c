@@ -202,6 +202,26 @@ static int shaped_profile(void)
 }
 
 
+/* EN: Preserve real bit patterns and reject treating real leaves as integer leaves.
+ * RU: Сохранить биты real и отклонить чтение записей real как целых.
+ */
+static int real_record(void)
+{
+    /* Binary64 negative zero, quiet NaN with a payload, and positive infinity. */
+    const StyxCallShape shape = {"((ff)f)", "(f)"};
+    const StyxCallValues input = {.count = 3, .cells = {
+        INT64_MIN, INT64_C(0x7ff8000000000042), INT64_C(0x7ff0000000000000)}};
+    unsigned char raw[STYX_FUNCTION_FRAME_CAPACITY];
+    StyxCallValues output = {0};
+    size_t args, result, used;
+    return styxshapecells(&shape, &args, &result) && args == 3 && result == 1 &&
+        styxcallrecordwrite(STYX_DYNAMIC_REQUEST_TAG, shape.arguments, &input, raw, sizeof(raw), &used) &&
+        !styxcallrecordread(STYX_DYNAMIC_REQUEST_TAG, "((bb)b)", raw, used, &output) && !output.count &&
+        styxcallrecordread(STYX_DYNAMIC_REQUEST_TAG, shape.arguments, raw, used, &output) &&
+        output.count == input.count && !memcmp(output.cells, input.cells, input.count * sizeof(input.cells[0]));
+}
+
+
 /* EN: Check the separate admission rules for scalar values and copy-back refs.
  * RU: Проверить отдельные условия допуска скаляров и ref с обратной записью. */
 static int dynamic_profile(void)
@@ -369,7 +389,7 @@ int main(void)
     {
         return 1;
     }
-    if (!dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
+    if (!real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

@@ -44,6 +44,8 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
         return token(shape, 'i');
     case Tbig:
         return token(shape, 'b');
+    case Treal:
+        return token(shape, 'f');
     case Ttuple:
         if (!token(shape, '('))
         {

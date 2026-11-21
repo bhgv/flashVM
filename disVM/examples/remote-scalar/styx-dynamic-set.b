@@ -59,6 +59,10 @@ init()
     if (target->tally(0) != 9 || target->status() != 9) {
         raise "dynamic route lost state after exception";
     }
+    (multiplier, (fraction, original)) := target->fractional((-1.25, 3), 0.5);
+    if (multiplier != 3 || fraction != -3.25 || original != -1.25) {
+        raise "dynamic real argument or nested result lost its bits";
+    }
     target->clear();
     if (target->tally(2) != 2 || target->status() != 2) {
         raise "dynamic empty call or fixed profile state failed";

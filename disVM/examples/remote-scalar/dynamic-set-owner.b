@@ -71,3 +71,12 @@ tally(amount: int): int
     total += amount;
     return total;
 }
+
+
+# EN: Compute a fraction in the owning VM and return the original real alongside it.
+# RU: Вычислить дробное значение в VM владельца и рядом вернуть исходное.
+fractional(input: (real,int), shift: real): (int,(real,real))
+{
+    (value, multiplier) := input;
+    return (multiplier, (value * real multiplier + shift, value));
+}

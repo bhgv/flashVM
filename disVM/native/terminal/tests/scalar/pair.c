@@ -117,7 +117,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             int rejected = !strcmp(set, "reject");
             int dynamic = !strcmp(set, "dynamic");
             const char *concrete_names[] = {"tally", "wide", "pair", "revise", "blend", rejected ? "missing" : "exchange"};
-            const char *dynamic_names[] = {"status", "adjust", "project", "fold", "quad", "clear", "tally"};
+            const char *dynamic_names[] = {"status", "adjust", "project", "fold", "quad", "fractional", "clear", "tally"};
             const char *ref_names[] = {"bump", "revise", "inspect"};
             const char *const *names = dynamic ? dynamic_names : concrete_names;
             size_t count = dynamic ? sizeof(dynamic_names) / sizeof(dynamic_names[0]) :
