@@ -375,3 +375,5 @@ Profile 98 adds S-record 97 before the argument record. Ordinary
 `load` writes the relative selector `.prog/.self`. An explicit
 `.prog/<pid>` must match the PID in the scoped request. Profiles 91
 and 96 retain their earlier formats. The same fid carries the end and reply.
+
+The native route test keeps two staged requests on the same connection, clunks one before the end record, and confirms that only the surviving request executes.

@@ -30,7 +30,6 @@
 #define REQUEST_TAG 17UL /* Native fixture request tag. */
 #define REPLY_TAG 29UL /* Native fixture reply tag. */
 #endif
-
 static Styxserver owner; /* One fixture owner thread dispatches the method. */
 static DVM_Provider *reply; /* Retained reverse file while owner serves requests. */
 #ifdef STYX_SCALAR_GUEST
@@ -276,13 +275,13 @@ static int caller_method(void *context, DVM_Provider *self, int64_t argument, in
  * Чередовать операции двух открытых fid и прочитать ответы в обратном порядке. */
 static void mounted_function(void)
 {
+    const int prior_calls = calls;
     int pair[2];
     check(!socketpair(AF_UNIX, SOCK_STREAM, 0, pair), "mounted function carrier");
     int breaker = dup(pair[0]);
     check(breaker >= 0, "mounted function shutdown descriptor");
-    unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
-    RemotePhy *forward_client = phyposixfd(pair[0], caps);
-    RemotePhy *forward_server = phyposixfd(pair[1], caps);
+    RemotePhy *forward_client = phyposixfd(pair[0], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
+    RemotePhy *forward_server = phyposixfd(pair[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
     StyxScalarFunction function = {.request_tag = STYX_FUNCTION_REQUEST_TAG, .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = method};
 #ifdef STYX_SCALAR_GUEST
     PhyBidir *caller = NULL, *provider = NULL;
@@ -343,7 +342,7 @@ static void mounted_function(void)
     styxclientclunk(rejected);
     check(styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, 70, bytes, sizeof(bytes), &size),
         "restore valid request");
-    check(staged_call(first, bytes, size), "explicit end dispatches on the same fid");
+    check(staged_call(client, first, bytes, size), "clunk staged sibling and commit the original fid");
     check(styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, -1, bytes, sizeof(bytes), &size), "encode error case");
     styxclientwrite(second, 0, bytes, size, &transfer);
     check(transfer.success && transfer.count == size, "second invocation");
@@ -367,7 +366,10 @@ static void mounted_function(void)
     close(breaker);
     styxclientfree(client);
     check(styxunibusserverjoin(server), "join mounted function server");
-#ifdef STYX_SCALAR_GUEST
+#ifndef STYX_SCALAR_GUEST
+    check(calls - prior_calls == 2, "clunked request did not execute");
+#else
+    (void)prior_calls;
     if (caller)
     {
         dvm_provider_release(function.program_root);
