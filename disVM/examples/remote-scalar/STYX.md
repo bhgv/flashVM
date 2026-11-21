@@ -232,8 +232,9 @@ The same example opens `/.prog/.self/.sysevents`, reads the first
 namespace record over reverse Styx, and checks that opening it for
 writing is refused. See [the event view](../../runtime/SYSTEM-EVENTS.md#reverse-event-view).
 
-The live event check mounts an integer capability in the shared `.var`
-tree before loading the remote module. The caller changes it from 41
-to 65539 once the provider has opened the reverse stream. The provider
-checks the content-change record on that same fid and reads the new
-four-byte value through `/.prog/.self/.var/live`.
+The live event check publishes integer files under both `.var` and
+`.vfs` before loading the remote module. Once the provider opens the
+reverse stream, the client uses `intset` to change `.var/live` from 41
+to 65539 and `Sys->write` to change `.vfs/live` from 42 to 131077.
+The provider checks a content-change record for each tree on the same
+open fid, then reads both four-byte values through `/.prog/.self`.

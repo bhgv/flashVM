@@ -53,20 +53,23 @@ inspect(fail: int): (int,big)
     if (value == "left") {
         set_marker(sys, "refpair-entered");
         wait_marker(sys, "refpair-edited");
-        changed := 0;
-        for (i := 0; i < 3 && !changed; i++) {
+        variables := 0;
+        filesystem := 0;
+        for (i := 0; i < 4 && !(variables && filesystem); i++) {
             n := sys->read(reverse, event, len event);
             if (n < 22) {
                 break;
             }
-            changed = string event[0:11] == "system 1 4 " &&
-                string event[n-11:n] == "2f2e766172\n";
+            if (string event[0:11] == "system 1 4 ") {
+                path := string event[n-11:n];
+                variables |= path == "2f2e766172\n";
+                filesystem |= path == "2f2e766673\n";
+            }
         }
-        live := sys->open(Caller + ".var/live", Sys->OREAD);
-        encoded := array[4] of byte;
-        if (!changed || live == nil || sys->read(live, encoded, 4) != 4 ||
-            encoded[0] != byte 0 || encoded[1] != byte 1 || encoded[2] != byte 0 || encoded[3] != byte 3) {
-            raise "did not receive live caller .var event and value";
+        if (!variables || !filesystem ||
+            !live_value(sys, Caller + ".var/live", 1, 3) ||
+            !live_value(sys, Caller + ".vfs/live", 2, 5)) {
+            raise "did not receive both live caller events and values";
         }
         saved = sys->open(Caller + ".pid", Sys->OREAD);
         if (saved == nil) {
@@ -174,3 +177,14 @@ retired_events(sys: Sys, inbox: ref Sys->FD)
 }
 
 include "refpair-sync.b";
+
+# EN: Check the updated four-byte big-endian value in the named caller file.
+# RU: Проверить новое четырёхбайтовое значение в указанном файле клиента.
+live_value(sys: Sys, path: string, high, low: int): int
+{
+    live := sys->open(path, Sys->OREAD);
+    encoded := array[4] of byte;
+    return live != nil && sys->read(live, encoded, 4) == 4 &&
+        encoded[0] == byte 0 && encoded[1] == byte high &&
+        encoded[2] == byte 0 && encoded[3] == byte low;
+}

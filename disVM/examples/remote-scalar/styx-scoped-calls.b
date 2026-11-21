@@ -43,6 +43,12 @@ init()
     if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
         raise "could not mount live variable for event test";
     }
+    vfs_cell := exports->intvar(42);
+    vfs_base := exports->capture("/.vfs", 0, rights);
+    vfs := exports->overlay(vfs_base, vfs_cell, "/live", Vfsexport->Read | Vfsexport->Write, 0);
+    if (vfs_base == nil || vfs_cell == nil || vfs == nil || exports->mount(vfs, "/.vfs", 0, 0) != 0) {
+        raise "could not mount live VFS file for event test";
+    }
     service := load Scopedcalls "/peer/mounted/scoped-calls.dis";
     if (service == nil) {
         raise "scoped compiled load failed: " + sys->sprint("%r");
@@ -123,6 +129,11 @@ change_live(sys: Sys, exports: Vfsexport, cell: ref Vfsexport->Root, done: chan 
 {
     wait_marker(sys, "refpair-entered");
     success := exports->intset(cell, 65539);
+    file := sys->open("/.vfs/live", Sys->OWRITE);
+    encoded := array[] of {byte 0, byte 2, byte 0, byte 5};
+    if (file == nil || sys->write(file, encoded, len encoded) != len encoded) {
+        success = 0;
+    }
     set_marker(sys, "refpair-edited");
     done <-= success;
 }
