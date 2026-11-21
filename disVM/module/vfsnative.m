@@ -174,6 +174,9 @@ Vfsnative: module
     scalarrefdispatchnext: fn(path: string): (int,int,big);
     scalarrefpairdispatchnext: fn(path: string): (int,int,big,int,big);
     scalarcallstart: fn();
+    scalarcallstage: fn(worker: int);
+    scalarcalltake: fn();
+    scalarcallkey: fn(): (big,big,big,big,int);
     scalarcallabort: fn();
     scalarrawreply: fn(path: string, success, count: int, value: (big,big,big,big));
 };

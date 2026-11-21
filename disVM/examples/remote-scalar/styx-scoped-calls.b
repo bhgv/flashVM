@@ -175,20 +175,24 @@ checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
 {
     ctl := load Processctl Processctl->PATH;
     started := chan of int;
-    spawn cancel_worker(service, ctl, started, mode);
+    resumed := chan of int;
+    spawn cancel_worker(service, ctl, started, resumed, mode);
     child := <-started;
     wait_marker(sys, prefix + "entered");
     (companion, workerpid) := service->inspect(5);
     if (companion != ctl->pid() || workerpid <= big 0) {
         raise "same export could not run for a second caller";
     }
-    if (ctl->kill(child) <= 0) {
-        raise "could not stop the child caller";
+    if (ctl->cancelwait(child) != Processctl->Cancelled) {
+        raise "could not cancel the child caller wait";
     }
     wait_marker(sys, prefix + "observed");
+    if (<-resumed != 1) {
+        raise "same caller did not receive a replacement provider executor";
+    }
     (again, replacement) := service->inspect(5);
-    if (again != companion || replacement <= big 0 || replacement == workerpid) {
-        raise "provider reused the retired invocation process";
+    if (again != companion || replacement <= big 0 || replacement != workerpid) {
+        raise "unaffected caller lost its provider executor";
     }
     {
         service->inspect(1);
@@ -205,10 +209,21 @@ checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
 
 # EN: Publish the caller PID before entering the remote function.
 # RU: Передать PID клиента перед входом в удалённую функцию.
-cancel_worker(service: Scopedcalls, ctl: Processctl, started: chan of int, mode: int)
+cancel_worker(service: Scopedcalls, ctl: Processctl, started, resumed: chan of int, mode: int)
 {
-    started <-= ctl->pid();
-    service->inspect(mode);
+    pid := ctl->pid();
+    (before_pid, before) := service->inspect(5);
+    started <-= pid;
+    cancelled := 0;
+    {
+        service->inspect(mode);
+    } exception {
+        "*" =>
+            cancelled = 1;
+    }
+    (after_pid, after) := service->inspect(5);
+    resumed <-= cancelled && before_pid == pid && after_pid == pid &&
+        before > big 0 && after > big 0 && before != after;
 }
 
 # EN: Run a second ref call on the same export while the first is asleep.

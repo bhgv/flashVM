@@ -112,32 +112,129 @@ invoke_raw(target: Scalarrawinvoke, inputs: int, a,b,c,d: big): (big,big,big,big
 }
 
 
-# EN: Use ordinary Dis calls after marshaling four local scalar input cells.
-# RU: Выполнять обычные вызовы Dis после получения локальных скалярных ячеек.
+Rawkey: type (big,big,big,big,int);
+Rawargs: type (big,big,big,big);
+
+Rawworker: adt {
+    key: Rawkey;
+    pid: int;
+    jobs: chan of (int, Rawargs);
+    completed: chan of int;
+    claimed: chan of int;
+};
+
+
+# EN: Compare every cell of the checked session and caller identity.
+# RU: Сравнить все ячейки проверенных идентификаторов сессии и клиента.
+same_raw_key(left, right: Rawkey): int
+{
+    (a,b,c,d,p) := left;
+    (e,f,g,h,q) := right;
+    return a == e && b == f && c == g && d == h && p == q;
+}
+
+
+# EN: Dispatch each scoped call to the worker for that session and caller PID.
+# RU: Передать каждый вызов исполнителю с ключом сессии и PID клиента.
 run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inputs, outputs: int)
 {
+    sys := load Sys Sys->PATH;
+    workers: list of ref Rawworker;
     for (;;) {
         (ready, a, b, c, d) := routes->scalarrawdispatchnext(request);
         if (ready == 0) {
+            break;
+        }
+        if (ready != 2) {
+            finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
+            continue;
+        }
+        key := routes->scalarcallkey();
+        worker: ref Rawworker;
+        for (remaining := workers; remaining != nil; remaining = tl remaining) {
+            current := hd remaining;
+            if (same_raw_key(current.key, key)) {
+                worker = current;
+                break;
+            }
+        }
+        {
+            if (worker == nil) {
+                worker = ref Rawworker(key, 0, chan of (int, Rawargs), chan[1] of int, chan of int);
+                workers = worker :: workers;
+            }
+            if (worker.pid != 0 && <-worker.completed == 0) {
+                worker.pid = 0;
+            }
+            if (worker.pid == 0) {
+                started := chan[1] of int;
+                spawn raw_worker(sys, routes, target, reply, inputs, outputs, worker.jobs, worker.completed,
+                    worker.claimed, started, (a,b,c,d));
+                worker.pid = <-started;
+            } else {
+                routes->scalarcallstage(worker.pid);
+                worker.jobs <-= (1, (a,b,c,d));
+                if (<-worker.claimed == 0) {
+                    routes->scalarcallabort();
+                }
+            }
+        } exception {
+            "*" =>
+                routes->scalarcallabort();
+        }
+    }
+    for (remaining := workers; remaining != nil; remaining = tl remaining) {
+        worker := hd remaining;
+        if (worker.pid != 0 && <-worker.completed != 0) {
+            worker.jobs <-= (0, (big 0,big 0,big 0,big 0));
+        }
+    }
+}
+
+
+# EN: Keep an idle worker until its dispatcher shuts down or the call is revoked.
+# RU: Сохранять исполнителя в ожидании до остановки диспетчера или отмены вызова.
+raw_worker(sys: Sys, routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, outputs: int,
+    jobs: chan of (int, Rawargs), completed, claimed, started: chan of int, args: Rawargs)
+{
+    started <-= sys->pctl(0, nil);
+    for (;;) {
+        reusable := 0;
+        {
+            (a,b,c,d) := args;
+            reusable = !finish_raw(routes, target, reply, inputs, outputs, 2, a, b, c, d);
+        } exception {
+            "*" =>
+                reusable = 0;
+        }
+        completed <-= reusable;
+        if (!reusable) {
             return;
         }
-        if (ready == 2) {
-            {
-                spawn finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
-            } exception {
-                "*" =>
-                    routes->scalarcallabort();
-            }
-        } else {
-            finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
+        (continuecall, next) := <-jobs;
+        if (!continuecall) {
+            return;
         }
+        accepted := 1;
+        {
+            routes->scalarcalltake();
+        } exception {
+            "*" =>
+                accepted = 0;
+        }
+        claimed <-= accepted;
+        if (!accepted) {
+            completed <-= 0;
+            return;
+        }
+        args = next;
     }
 }
 
 
 # EN: Invoke one admitted call and send its response through the worker's scope.
 # RU: Выполнить один принятый вызов и отправить ответ через контекст исполнителя.
-finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, outputs, ready: int, a,b,c,d: big)
+finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, outputs, ready: int, a,b,c,d: big): int
 {
     result := (big 0, big 0, big 0, big 0);
     success := 0;
@@ -153,7 +250,9 @@ finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, ou
                 success = 0;
         }
     }
+    cancelled := routes->callcancelled();
     routes->scalarrawreply(reply, success, outputs, result);
+    return cancelled;
 }
 
 

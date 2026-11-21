@@ -262,6 +262,29 @@ static Prog *find_child(Prog *caller, int pid)
 }
 
 
+/* EN: Claim the parent’s staged scope while its registered Prog is pinned.
+ * RU: Забрать ожидающий контекст, пока Prog родителя удерживается реестром. */
+int dvm_runtime_scalar_take(Prog *child)
+{
+    if (native_spawn)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+    }
+    int parent_pid = ((DVM_RuntimeProcess *)child)->parent_pid;
+    Prog *parent = dvm_runtime_process_roots();
+    while (parent && parent->pid != parent_pid)
+    {
+        parent = parent->next;
+    }
+    int claimed = parent && dvm_scalar_take_staged(parent, child);
+    if (native_spawn)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+    }
+    return claimed;
+}
+
+
 /* Authorize the hosted builtin against immutable spawning identity. */
 int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 {

@@ -27,6 +27,8 @@
 #include "../../native/terminal/tuple_record.h"
 #include "../../native/terminal/unibus_inbox.h"
 #include <string.h>
+#include <stdlib.h>
+#include <limits.h>
 
 
 /* EN: Install the boot VM's contextual device in this private native group.
@@ -235,6 +237,138 @@ void Vfsnative_scalarcallabort(void *frame)
     {
         dvm_scalar_caller_end((Prog *)owner);
     }
+    if (owner)
+    {
+        dvm_scalar_discard_staged((Prog *)owner);
+    }
+}
+
+
+/* EN/RU: Detached native ownership, published by one dispatcher to one worker.
+ * Отсоединённый контекст одного диспетчера для одного исполнителя. */
+typedef struct DVM_ScalarHandoff
+{
+    DVM_StyxCallerKey key; /* Caller identity. */
+    DVM_Namespace *group; /* Owned call namespace. */
+    DVM_SysEvents *events; /* Owned namespace event stream. */
+    DVM_Provider *reply; /* Owned private reply mailbox. */
+    DVM_Cancel *cancel; /* Owned fid cancellation token. */
+} DVM_ScalarHandoff;
+
+
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+void dvm_scalar_discard_staged(Prog *process)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    DVM_ScalarHandoff *stage = __atomic_exchange_n(&owner->remote_call_staged, NULL, __ATOMIC_ACQ_REL);
+    if (stage)
+    {
+        dvm_sysevents_retire(stage->events);
+        dvm_sysevents_release(stage->events);
+        styxunibusmailboxseal(stage->reply);
+        dvm_provider_release(stage->reply);
+        dvm_cancel_release(stage->cancel);
+        dvm_namespace_release(stage->group);
+        free(stage);
+    }
+}
+
+
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+int dvm_scalar_take_staged(Prog *parent, Prog *child)
+{
+    DVM_RuntimeProcess *source = (DVM_RuntimeProcess *)parent;
+    DVM_RuntimeProcess *target = (DVM_RuntimeProcess *)child;
+    if (target->remote_call_group ||
+        __atomic_load_n(&source->remote_call_staged_worker, __ATOMIC_ACQUIRE) != child->pid)
+    {
+        return 0;
+    }
+    DVM_ScalarHandoff *stage = __atomic_exchange_n(&source->remote_call_staged, NULL, __ATOMIC_ACQ_REL);
+    if (!stage)
+    {
+        return 0;
+    }
+    target->remote_call_key = stage->key;
+    target->remote_call_group = stage->group;
+    target->remote_call_events = stage->events;
+    target->remote_call_reply = stage->reply;
+    target->remote_call_cancel = stage->cancel;
+    target->remote_call_handoff = 2;
+    target->remote_call_cancel_delivered = 1;
+    free(stage);
+    return 1;
+}
+
+
+/* EN: Publish the armed scope for one already running child and detach it.
+ * RU: Передать подготовленный контекст существующему потомку и отсоединить его. */
+void Vfsnative_scalarcallstage(void *frame)
+{
+    F_Vfsnative_scalarcallstage call;
+    if (!frame || frame == H || (uintptr_t)frame > UINTPTR_MAX - sizeof(call))
+    {
+        error(exBounds);
+    }
+    memcpy(&call, frame, sizeof(call));
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (!owner || owner->remote_call_handoff != 1 || call.worker <= 0 ||
+        call.worker > INT_MAX || __atomic_load_n(&owner->remote_call_staged, __ATOMIC_ACQUIRE))
+    {
+        error("invalid scalar call handoff");
+    }
+    DVM_ScalarHandoff *stage = malloc(sizeof(*stage));
+    if (!stage)
+    {
+        error(exNomem);
+    }
+    *stage = (DVM_ScalarHandoff){owner->remote_call_key, owner->remote_call_group, owner->remote_call_events,
+        owner->remote_call_reply, owner->remote_call_cancel};
+    owner->remote_call_key = (DVM_StyxCallerKey){0};
+    owner->remote_call_group = NULL;
+    owner->remote_call_events = NULL;
+    owner->remote_call_reply = NULL;
+    owner->remote_call_cancel = NULL;
+    owner->remote_call_handoff = 0;
+    __atomic_store_n(&owner->remote_call_staged_worker, (int)call.worker, __ATOMIC_RELEASE);
+    __atomic_store_n(&owner->remote_call_staged, stage, __ATOMIC_RELEASE);
+}
+
+
+extern int dvm_runtime_scalar_take(Prog *child);
+
+
+/* EN: Install the detached scope on the worker before enabling cancellation.
+ * RU: Установить отсоединённый контекст до включения отмены. */
+void Vfsnative_scalarcalltake(void *frame)
+{
+    (void)frame;
+    if (!dvm_runtime_scalar_take(currun()))
+    {
+        error("scalar call handoff missing");
+    }
+}
+
+
+/* EN: Copy the full session identity and checked PID to the dispatcher.
+ * RU: Скопировать полную идентичность сессии и проверенный PID диспетчеру. */
+void Vfsnative_scalarcallkey(void *frame)
+{
+    F_Vfsnative_scalarcallkey call;
+    WORD fields[5] = {0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarcallkey, ret), sizeof(fields));
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (owner && owner->remote_call_handoff == 1)
+    {
+        const DVM_StyxCallerKey *key = &owner->remote_call_key;
+        for (size_t i = 0; i < 2; i++)
+        {
+            fields[i] = (uint64_t)key->session.domain[2*i] << 32 | key->session.domain[2*i+1];
+            fields[i+2] = (uint64_t)key->session.object[2*i] << 32 | key->session.object[2*i+1];
+        }
+        fields[4] = key->pid;
+    }
+    dvm_sys_scalar_result(fields, call.ret, sizeof(fields));
 }
 
 

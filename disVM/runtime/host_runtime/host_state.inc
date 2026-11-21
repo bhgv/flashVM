@@ -51,6 +51,7 @@
 #include "shared_access.h"
 #include "shared_string_branch.h"
 #include "runqueue.h"
+#include "vfs/scalar_owner_internal.h"
 #include "queue_probe.h"
 #include "channel_sync.h"
 #include "managed_owner_probe.h"

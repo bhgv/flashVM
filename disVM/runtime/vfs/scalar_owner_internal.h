@@ -37,6 +37,8 @@ void dvm_scalar_caller_end(Prog *process);
 /* EN: Reserve the current private call for a dispatcher spawn. Return 1 if armed.
  * RU: Зарезервировать частный вызов для spawn диспетчера. Вернуть 1 при успехе. */
 int dvm_scalar_arm_handoff(void);
+void dvm_scalar_discard_staged(Prog *process);
+int dvm_scalar_take_staged(Prog *parent, Prog *child);
 
 
 /* EN: Decode an ordinary or locally wrapped request. Mark context as required for a wrapper.
