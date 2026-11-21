@@ -213,12 +213,18 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         int caller = 0;
         StyxCallShape shape;
         uint32_t signature = imports[i].signature;
-        unsigned bit = styxloadedrequest(signature) &&
-            !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
+        unsigned bit = !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
             styxscalar_profile_match_shape(profile, size, name, signature, &caller, &shape) : 0;
         const StyxCallShape *local = &imports[i].shape;
         int shape_conflict = bit && shape.arguments[0] && local->arguments[0] &&
             (strcmp(shape.arguments, local->arguments) || strcmp(shape.result, local->result));
+        int dynamic = !styxloadedrequest(signature);
+        size_t arguments = 0, result = 0;
+        if (dynamic && bit && (caller || !local->arguments[0] ||
+            !styxshapecells(&shape, &arguments, &result)))
+        {
+            bit = 0;
+        }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
         {
             dvm_scalar_files_release(head);
@@ -227,6 +233,9 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         }
         (*tail)->signature = signature;
         (*tail)->caller = caller;
+        (*tail)->dynamic = dynamic;
+        (*tail)->argument_cells = arguments;
+        (*tail)->result_cells = result;
         (*tail)->shape = local->arguments[0] && shape.arguments[0] ? *local : shape;
         matched |= bit;
         tail = &(*tail)->next;

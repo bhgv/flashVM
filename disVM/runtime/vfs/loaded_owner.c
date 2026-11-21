@@ -42,6 +42,36 @@ typedef struct LoadedOwner
 } LoadedOwner;
 
 
+typedef struct GatewayOwner
+{
+    LoadedOwner typed; /* Existing profile, or dynamic tag with empty typed views. */
+    Modlink *raw; /* Owned scalar-only view when the shape selects a dynamic call. */
+    WORD arguments; /* Flattened input cells, selects the one allowed slot. */
+    WORD results; /* Flattened scalar result cells to publish. */
+} GatewayOwner;
+
+
+/* EN: Verify that the original export reserves all incoming scalar words and
+ * that none of those words occupies a pointer position in its frame map.
+ * RU: Проверить место для входных скаляров и отсутствие указателей в их ячейках. */
+static int scalar_frame(const Type *frame, size_t arguments)
+{
+    const size_t first_cell = 8;
+    if (frame->size < 0 || (size_t)frame->size < (first_cell + arguments) * sizeof(WORD) || frame->np < 0)
+    {
+        return 0;
+    }
+    for (size_t i = first_cell; i < first_cell + arguments; i++)
+    {
+        if (i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8))))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* EN: Map a recognized unscoped request tag to its typed Limbo view.
  * RU: Сопоставить известный тег запроса с типизированным представлением Limbo. */
 static int view_slot(unsigned long tag)
@@ -84,7 +114,7 @@ static Module *read_original(char *path)
  * the new view retains the same MP after normal linking and does no cloning.
  * RU: Связать однослотовое представление, поглотив module. При заданном anchor
  * представление удерживает тот же MP после обычного связывания без копирования. */
-static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_t *signature, StyxCallShape *shape)
+static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_t *signature, StyxCallShape *shape, GatewayOwner *gateway)
 {
     if (!module)
     {
@@ -92,12 +122,37 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
     }
     for (Link *export = module->ext; export && export->name; export++)
     {
-        if (!strcmp(export->name, name) && export->frame && export->u.pc && styxloadedrequest((uint32_t)export->sig))
+        if (!strcmp(export->name, name) && export->frame && export->u.pc)
         {
-            Import imports[] = {{export->sig, name}, {0, NULL}};
+            size_t slot = 0;
             *signature = (uint32_t)export->sig;
             dvm_module_export_shape(module, (size_t)(export - module->ext), shape);
+            unsigned long tag = shape->arguments[0] ? styxshaperequest(*signature, shape) : styxloadedrequest(*signature);
+            if (!tag)
+            {
+                break;
+            }
+            if (tag == STYX_DYNAMIC_REQUEST_TAG)
+            {
+                size_t result;
+                if (!gateway || !styxshapecells(shape, &slot, &result) || !scalar_frame(export->frame, slot))
+                {
+                    break;
+                }
+                gateway->arguments = slot;
+                gateway->results = result;
+            }
+            Import imports[STYX_DYNAMIC_CELLS + 2] = {{0, NULL}};
+            for (size_t i = 0; i <= slot; i++)
+            {
+                imports[i] = (Import){export->sig, name};
+            }
             Modlink *link = linkmod(module, imports, anchor == H);
+            if (link != H && slot)
+            {
+                /* Only the compiler-matched arity slot may be entered. */
+                memset(link->links, 0, slot * sizeof(*link->links));
+            }
             if (link != H && anchor != H && anchor->MP != H)
             {
                 Heap *data = D2H(anchor->MP);
@@ -136,6 +191,28 @@ static LoadedOwner reset_result(void *ret)
 }
 
 
+/* EN: Encode the exact export offer from the selected compiled identity.
+ * RU: Закодировать предложение из выбранной компилированной сигнатуры. */
+static int encode_offer(const char *name, uint32_t signature, const StyxCallShape *shape, unsigned char *bytes,
+    size_t capacity, size_t *size)
+{
+    return shape->arguments[0] ? styxshapedoffer(name, signature, shape, bytes, capacity, size) :
+        styxloadedoffer(name, signature, bytes, capacity, size);
+}
+
+
+/* EN: Send the staged profile or a refusal through the captured private route.
+ * RU: Отправить профиль либо отказ через захваченный служебный маршрут. */
+static void send_offer(String *offer, unsigned char *bytes, size_t capacity, size_t size)
+{
+    if (!size && !styxscalarwrite(STYX_FUNCTION_PROFILE_TAG, STYX_SCALAR_ERROR, 0, bytes, capacity, &size))
+    {
+        error("cannot encode loaded owner refusal");
+    }
+    dvm_scalar_owner_record(offer, bytes, size);
+}
+
+
 /* EN: Root the accepted typed view in ret before publishing a complete
  * profile through offer. Consume link and preserve nil views on refusal.
  * RU: Укоренить принятое представление в ret до отправки полного профиля
@@ -149,9 +226,7 @@ static void publish_view(void *ret, LoadedOwner result, String *offer, const cha
     {
         unsigned long tag = styxloadedrequest(signature);
         int slot = view_slot(tag);
-        int offered = shape->arguments[0] ?
-            styxshapedoffer(name, signature, shape, bytes, sizeof(bytes), &size) :
-            styxloadedoffer(name, signature, bytes, sizeof(bytes), &size);
+        int offered = encode_offer(name, signature, shape, bytes, sizeof(bytes), &size);
         if (slot >= 0 && offered)
         {
             result.tag = tag;
@@ -165,11 +240,7 @@ static void publish_view(void *ret, LoadedOwner result, String *offer, const cha
             size = 0;
         }
     }
-    if (!size && !styxscalarwrite(STYX_FUNCTION_PROFILE_TAG, STYX_SCALAR_ERROR, 0, bytes, sizeof(bytes), &size))
-    {
-        error("cannot encode loaded owner refusal");
-    }
-    dvm_scalar_owner_record(offer, bytes, size);
+    send_offer(offer, bytes, sizeof(bytes), size);
 }
 
 
@@ -188,7 +259,7 @@ void Vfsnative_scalarloaded(void *frame)
     LoadedOwner result = reset_result(call.ret);
     uint32_t signature = 0;
     StyxCallShape shape = {{0}, {0}};
-    Modlink *link = link_export(read_original(path), H, name, &signature, &shape);
+    Modlink *link = link_export(read_original(path), H, name, &signature, &shape, NULL);
     publish_view(call.ret, result, call.offer, name, link, signature, &shape);
 }
 
@@ -217,6 +288,23 @@ void Vfsnative_scalarloadanchor(void *frame)
 }
 
 
+/* EN: Retain the original Module belonging to a rooted data anchor.
+ * RU: Удержать исходный Module укоренённого экземпляра данных. */
+static Module *retain_anchor(Modlink *anchor)
+{
+    Module *module = anchor != H && !anchor->nlinks ? anchor->m : NULL;
+    if (module && (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID))
+    {
+        return NULL;
+    }
+    if (module)
+    {
+        dvm_runtime_module_retain(&module->ref);
+    }
+    return module;
+}
+
+
 /* EN: Bind a typed view of a rooted data instance and publish its profile.
  * RU: Связать типизированное представление укоренённого экземпляра и выдать его профиль. */
 void Vfsnative_scalarloadedview(void *frame)
@@ -230,17 +318,54 @@ void Vfsnative_scalarloadedview(void *frame)
     }
     LoadedOwner result = reset_result(call.ret);
     Modlink *anchor = dvm_sys_owner(&call.anchor);
-    Module *module = anchor != H && !anchor->nlinks ? anchor->m : NULL;
-    if (module && (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID))
-    {
-        module = NULL;
-    }
-    if (module)
-    {
-        dvm_runtime_module_retain(&module->ref);
-    }
     uint32_t signature = 0;
     StyxCallShape shape = {{0}, {0}};
-    Modlink *link = link_export(module, anchor, name, &signature, &shape);
+    Modlink *link = link_export(retain_anchor(anchor), anchor, name, &signature, &shape, NULL);
     publish_view(call.ret, result, call.offer, name, link, signature, &shape);
+}
+
+
+
+/* EN: Publish one exact compiled export through the shared owner dispatcher.
+ * RU: Опубликовать фактический скомпилированный экспорт через общий диспетчер. */
+void Vfsnative_scalarloadedslot(void *frame)
+{
+    F_Vfsnative_scalarloadedslot call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarloadedslot, ret), sizeof(GatewayOwner));
+    char name[DVM_NS_PATH_LIMIT];
+    if (!dvm_scalar_copy_path(call.exportname, name) || !styxscalar_name_length(name))
+    {
+        error("loaded owner export unavailable");
+    }
+    GatewayOwner result = {.raw = H};
+    unsigned char *destination = (unsigned char *)call.ret;
+    Modlink *previous = dvm_sys_owner(destination + offsetof(GatewayOwner, raw));
+    memcpy(destination + offsetof(GatewayOwner, raw), &result.raw, sizeof(result.raw));
+    destroy(previous);
+    result.typed = reset_result(destination);
+    memcpy(destination, &result, sizeof(result));
+    Modlink *anchor = dvm_sys_owner(&call.anchor);
+    uint32_t signature = 0;
+    StyxCallShape shape = {{0}, {0}};
+    Modlink *link = link_export(retain_anchor(anchor), anchor, name, &signature, &shape, &result);
+    if (link == H || styxloadedrequest(signature))
+    {
+        publish_view(destination, result.typed, call.offer, name, link, signature, &shape);
+        return;
+    }
+    unsigned char bytes[STYX_SHAPED_OFFER_MAX];
+    size_t size = 0;
+    if (encode_offer(name, signature, &shape, bytes, sizeof(bytes), &size))
+    {
+        result.typed.tag = STYX_DYNAMIC_REQUEST_TAG;
+        Setmark(D2H(link));
+        result.raw = link;
+        memcpy(destination, &result, sizeof(result));
+    }
+    else
+    {
+        destroy(link);
+        size = 0;
+    }
+    send_offer(call.offer, bytes, sizeof(bytes), size);
 }

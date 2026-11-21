@@ -10,6 +10,9 @@
 
 #define STYX_SHAPE_MAX 48U /* Bytes of one shape excluding NUL. */
 #define STYX_SHAPED_OFFER_MAX 192U /* Capacity of a complete typed profile record. */
+#define STYX_DYNAMIC_CELLS 4U /* Maximum flattened arguments or result cells. */
+#define STYX_DYNAMIC_REQUEST_TAG 89UL /* Shape-driven request. */
+#define STYX_DYNAMIC_REPLY_TAG 90UL /* Shape-driven successful reply. */
 #define STYX_SHAPED_OFFER_TAG 88UL /* Ordinary export signature and resolved call types. */
 
 
@@ -37,6 +40,21 @@ typedef struct StyxCallShape
 /* EN: Verify the grammar and bounds of both NUL-terminated lists in shape.
  * RU: Проверить грамматику и границы двух NUL-терминированных списков shape. */
 int styxshapevalid(const StyxCallShape *shape);
+
+
+/* EN: Count the scalar cells and prove both lists fit the generic call codec.
+ * RU: Посчитать скалярные ячейки и проверить вместимость обеих записей. */
+int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result);
+
+
+/* EN: Choose a wire tag for a shaped export. Existing profiles retain their tag.
+ * RU: Выбрать тег по типам экспорта. Прежние профили сохраняют свои теги. */
+unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape);
+
+
+/* EN: Read a complete owner offer and optionally copy its validated schema.
+ * RU: Прочитать полное предложение владельца и скопировать его схему. */
+unsigned long styxloadedacceptshape(const char *name, const void *bytes, size_t size, StyxCallShape *shape);
 
 
 /* EN: Encode a checked shape plus the existing compiled identity into bytes.

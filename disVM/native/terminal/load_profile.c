@@ -5,6 +5,7 @@
 #include "load_profile.h"
 #include "scalar_verify.h"
 #include "call_record.h"
+#include "tuple_record.h"
 #include "flashvm/srecord.h"
 #include <string.h>
 
@@ -45,7 +46,7 @@ int styxloadedoffer(const char *name, uint32_t signature, void *bytes, size_t ca
 
 
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
-unsigned long styxloadedaccept(const char *name, const void *bytes, size_t size)
+unsigned long styxloadedacceptshape(const char *name, const void *bytes, size_t size, StyxCallShape *shape)
 {
     size_t length = styxscalar_name_length(name), used;
     FVM_SRecord record;
@@ -57,8 +58,17 @@ unsigned long styxloadedaccept(const char *name, const void *bytes, size_t size)
     if (record.tag == STYX_SHAPED_OFFER_TAG)
     {
         char actual[INTERFACE_NAME_LIMIT + 1];
-        unsigned long request = styxshapedpayload(record.payload, record.size, actual, NULL, NULL);
-        return request && !strcmp(name, actual) ? request : 0;
+        StyxCallShape decoded;
+        unsigned long request = styxshapedpayload(record.payload, record.size, actual, NULL, &decoded);
+        if (!request || strcmp(name, actual))
+        {
+            return 0;
+        }
+        if (shape)
+        {
+            *shape = decoded;
+        }
+        return request;
     }
     if (record.tag != STYX_FUNCTION_PROFILE_TAG || record.size != INTERFACE_HEADER + length ||
         record.payload[0] != INTERFACE_KIND || memcmp(record.payload + INTERFACE_HEADER, name, length))
@@ -73,6 +83,13 @@ unsigned long styxloadedaccept(const char *name, const void *bytes, size_t size)
     return styxloadedrequest(signature);
 }
 
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+unsigned long styxloadedaccept(const char *name, const void *bytes, size_t size)
+{
+    return styxloadedacceptshape(name, bytes, size, NULL);
+}
 
 
 /* EN: Advance cursor past one bounded type token or compound type.
@@ -148,6 +165,49 @@ int styxshapevalid(const StyxCallShape *shape)
 }
 
 
+/* EN: Check one scalar-only list and compute its flattened cell count.
+ * RU: Проверить список скалярных типов и посчитать ячейки после раскрытия кортежей. */
+static int scalar_cells(const char *shape, size_t *count)
+{
+    StyxCallValues cells = {0};
+    for (const char *type = shape; *type; type++)
+    {
+        if (*type == 'i' || *type == 'b')
+        {
+            cells.count++;
+        }
+        else if (*type != '(' && *type != ')')
+        {
+            return 0;
+        }
+    }
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t used;
+    if (cells.count > STYX_DYNAMIC_CELLS ||
+        !styxcallrecordwrite(STYX_DYNAMIC_REQUEST_TAG, shape, &cells, bytes, sizeof(bytes), &used))
+    {
+        return 0;
+    }
+    *count = cells.count;
+    return 1;
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result)
+{
+    size_t a, r;
+    if (!arguments || !result || !styxshapevalid(shape) ||
+        !scalar_cells(shape->arguments, &a) || !scalar_cells(shape->result, &r))
+    {
+        return 0;
+    }
+    *arguments = a;
+    *result = r;
+    return 1;
+}
+
+
 /* EN: Match portable types to the supported native ABI for signature.
  * RU: Сверить переносимые типы с поддерживаемым нативным ABI сигнатуры. */
 static int signature_shape(uint32_t signature, const StyxCallShape *shape)
@@ -184,11 +244,24 @@ static int signature_shape(uint32_t signature, const StyxCallShape *shape)
 
 
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
+unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
+{
+    unsigned long existing = styxloadedrequest(signature);
+    if (existing)
+    {
+        return signature_shape(signature, shape) ? existing : 0;
+    }
+    size_t args, results;
+    return signature && styxshapecells(shape, &args, &results) ? STYX_DYNAMIC_REQUEST_TAG : 0;
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
 int styxshapedoffer(const char *name, uint32_t signature, const StyxCallShape *shape,
     void *bytes, size_t capacity, size_t *used)
 {
     size_t length = styxscalar_name_length(name);
-    if (!length || !signature_shape(signature, shape))
+    if (!length || !styxshaperequest(signature, shape))
     {
         return 0;
     }
@@ -230,7 +303,8 @@ unsigned long styxshapedpayload(const void *payload, size_t length, char *name, 
     StyxCallShape types = {{0}, {0}};
     memcpy(types.arguments, data + n, a);
     memcpy(types.result, data + n + a, r);
-    if (!signature_shape(sig, &types))
+    unsigned long request = styxshaperequest(sig, &types);
+    if (!request)
     {
         return 0;
     }
@@ -247,5 +321,5 @@ unsigned long styxshapedpayload(const void *payload, size_t length, char *name, 
     {
         *shape = types;
     }
-    return styxloadedrequest(sig);
+    return request;
 }

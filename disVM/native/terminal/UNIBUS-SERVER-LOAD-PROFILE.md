@@ -32,5 +32,6 @@ The owner validates the schema against the supported gateway, and client
 `load` verifies the schema and its compiled name and signature before
 binding. The three-argument gateway uses the received lists to encode the
 call and decode the result. Images without a type table continue to use
-tag 71, which carries the compiled name and signature. The supported
-runtime signatures are the six established gateway profiles.
+tag 71, which carries the compiled name and signature for the six fixed
+profiles. Additional [compiled scalar shapes](SCALAR-FUNCTION.md#calls-with-compiled-scalar-types)
+require type metadata from both images.

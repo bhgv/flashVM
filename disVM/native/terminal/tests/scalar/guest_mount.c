@@ -412,16 +412,21 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
 
 /* EN: Start the shared owner service with three local grants per selected export.
  * RU: Запустить общий сервис владельца с тремя разрешениями на каждый экспорт. */
-int scalar_runtime_loaded_set(int argc, char **argv, const char *const *names, size_t count,
+int scalar_runtime_loaded_set(int argc, char **argv, const char *implementation, const char *const *names, size_t count,
     DVM_Provider *const *requests, DVM_Provider *const *replies, DVM_Provider *const *offers)
 {
-    char cwd[DVM_NS_PATH_LIMIT], config[1024] = "loaded-set\tloaded-set-owner.dis";
+    char cwd[DVM_NS_PATH_LIMIT], config[1024];
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !getcwd(cwd, sizeof(cwd)))
     {
         exit(2);
     }
-    size_t used = strlen(config);
+    int prefix = snprintf(config, sizeof(config), "loaded-set\t%s", implementation);
+    if (prefix < 0 || (size_t)prefix >= sizeof(config))
+    {
+        exit(2);
+    }
+    size_t used = (size_t)prefix;
     for (size_t i = 0; i < count; i++)
     {
         char request[24], reply[24], offer[24];

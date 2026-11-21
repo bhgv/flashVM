@@ -120,8 +120,9 @@ instance and sends the compiled export name and signature to the C
 dispatcher through `offer`. The dispatcher selects the matching gateway
 and makes the same S-record available as `.interface`. Ordinary client
 `load` compares it with its compiled import without reading a source
-`.m` over the network. This mode covers one export and the existing six
-gateway profiles. The launcher's other modes still cover export sets.
+`.m` over the network. This mode covers one export. It accepts the six
+fixed profiles and [additional scalar shapes](../native/terminal/SCALAR-FUNCTION.md#calls-with-compiled-scalar-types).
+The loaded directory can mix both kinds of export.
 
 ## One load for several exports
 
@@ -143,4 +144,4 @@ dispatch on each server remains sequential. The service waits for its
 request loops to reach EOF before exiting.
 
 The [two-VM example](../examples/remote-scalar/STYX.md#load-six-exports-that-share-state)
-checks all six supported profiles in one directory.
+checks all six fixed profiles in one directory.

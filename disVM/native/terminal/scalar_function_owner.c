@@ -135,18 +135,31 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
 static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallValues *value)
 {
     StyxScalarFunctionOwner *owner = state;
+    int dynamic = owner->request_tag == STYX_DYNAMIC_REQUEST_TAG;
+    unsigned long reply_tag = styxfunction_reply_tag(owner->request_tag);
+    const char *input_shape = dynamic ? "(bbbb)" : styxcall_list_args;
+    const char *output_shape = dynamic ? "(bbbb)" : styxcall_list_result;
+    StyxCallValues local = *arguments;
+    if (dynamic)
+    {
+        local.count = STYX_DYNAMIC_CELLS;
+    }
     unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
     size_t size, received;
     StyxScalarKind kind;
     int64_t code;
-    if (styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, arguments, record, sizeof(record), &size) &&
+    if (styxcallrecordwrite(owner->request_tag, input_shape, &local, record, sizeof(record), &size) &&
         exchange(owner, record, size, &received))
     {
-        if (styxcallrecordread(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, record, received, value))
+        if (styxcallrecordread(reply_tag, output_shape, record, received, value))
         {
+            if (dynamic)
+            {
+                value->count = owner->result_cells;
+            }
             return 1;
         }
-        if (styxscalarread(STYX_CALL_LIST_REPLY_TAG, record, received, &kind, &code) && kind == STYX_SCALAR_ERROR)
+        if (styxscalarread(reply_tag, record, received, &kind, &code) && kind == STYX_SCALAR_ERROR)
         {
             return 0;
         }
@@ -216,6 +229,17 @@ int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *func
     function->state = owner;
     switch (tag)
     {
+    case STYX_DYNAMIC_REQUEST_TAG:
+    {
+        size_t arguments;
+        if (!styxshapecells(&owner->shape, &arguments, &owner->result_cells))
+        {
+            return 0;
+        }
+        function->dynamic_shape = &owner->shape;
+        function->call_method = list_dispatch;
+        break;
+    }
     case STYX_REF_PAIR_REQUEST_TAG:
         function->ref_pair_method = ref_pair_dispatch;
         break;

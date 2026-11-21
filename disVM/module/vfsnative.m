@@ -63,6 +63,15 @@ ScalarbigimplementationSet: module
 
 Scalarloadedanchor: module {}; # Owns the one module data instance for a published set.
 
+Scalarrawinvoke: module
+{
+    call0: fn(): (big,big,big,big); # Verified zero-cell entry.
+    call1: fn(a: big): (big,big,big,big); # Verified one-cell entry.
+    call2: fn(a,b: big): (big,big,big,big); # Verified two-cell entry.
+    call3: fn(a,b,c: big): (big,big,big,big); # Verified three-cell entry.
+    call4: fn(a,b,c,d: big): (big,big,big,big); # Verified four-cell entry.
+};
+
 Vfsnative: module
 {
     PATH: con "$Vfsnative"; # Hosted builtin, no foreign namespace/PID input.
@@ -151,4 +160,11 @@ Vfsnative: module
     scalarloadedview: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
               Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation);
+    # EN: Bind a named export to the typed or shape-driven shared owner.
+    # RU: Связать именованный экспорт с типизированным или общим шлюзом владельца.
+    scalarloadedslot: fn(anchor: Scalarloadedanchor, exportname, offer: string):
+        (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
+            Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int);
+    scalarrawnext: fn(path: string): (int,big,big,big,big);
+    scalarrawreply: fn(path: string, success, count: int, value: (big,big,big,big));
 };

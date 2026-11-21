@@ -59,12 +59,12 @@ static int build_direct(void *opaque)
 {
     DirectBuild *build = opaque;
     Module *module = build->module = newmod(build->path);
-    module->type = calloc(5, sizeof(*module->type));
     size_t count = 1;
     for (DVM_ScalarFiles *entry = build->files; entry && entry->next; entry = entry->next)
     {
         count++;
     }
+    module->type = calloc(count, sizeof(*module->type));
     module->ext = calloc(count + 1, sizeof(*module->ext));
     if (!module->type || !module->ext)
     {
@@ -78,6 +78,19 @@ static int build_direct(void *opaque)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
+        if (entry && entry->dynamic)
+        {
+            size_t size = offsetof(DirectCallListFrame, arguments) + entry->argument_cells * sizeof(WORD);
+            Type *type = dtype(freeheap, size, NULL, 0);
+            if (!type)
+            {
+                return 0;
+            }
+            module->type[module->ntype++] = type;
+            runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i], type);
+            entry = entry->next;
+            continue;
+        }
         size_t profile = signature == DVM_REF_PAIR_SIGNATURE ? 4 : signature == DVM_CALL_LIST_SIGNATURE ? 3 :
             signature == DVM_REF_SIGNATURE ? 2 : signature == DVM_TUPLE_SIGNATURE ? 1 : 0;
         if (!frames[profile])

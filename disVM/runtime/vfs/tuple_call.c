@@ -74,8 +74,12 @@ void dvm_tuple_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectCallListFrame call;
+    size_t arguments_count = files->dynamic ? files->argument_cells : 4;
+    size_t result_count = files->dynamic ? files->result_cells : 3;
+    size_t extent = offsetof(DirectCallListFrame, arguments) + arguments_count * sizeof(WORD);
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
-        (uintptr_t)DVM_R.SP - (uintptr_t)frame < sizeof(call))
+        (uintptr_t)DVM_R.SP - (uintptr_t)frame < extent || extent > sizeof(call) ||
+        result_count > STYX_DYNAMIC_CELLS)
     {
         error(exBounds);
     }
@@ -85,9 +89,16 @@ void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *file
     {
         error(exModule);
     }
-    WORD cells[3];
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(DirectCallListFrame, ret), sizeof(cells));
-    StyxCallValues arguments = {.count = 4}, answer;
+    WORD cells[STYX_DYNAMIC_CELLS];
+    if (result_count)
+    {
+        dvm_sys_capture(frame, &call, extent, offsetof(DirectCallListFrame, ret), result_count * sizeof(WORD));
+    }
+    else
+    {
+        memcpy(&call, frame, extent);
+    }
+    StyxCallValues arguments = {.count = arguments_count}, answer;
     for (size_t i = 0; i < arguments.count; i++)
     {
         arguments.cells[i] = call.arguments[i];
@@ -106,9 +117,16 @@ void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *file
         error(cancelled ? "remote argument-list call cancelled" : outcome == 2 ? "remote scalar owner error" :
             outcome < 0 ? "remote argument-list call not sent" : "remote argument-list call outcome unknown");
     }
-    for (size_t i = 0; i < answer.count; i++)
+    if (answer.count != result_count)
+    {
+        error("invalid remote argument-list result width");
+    }
+    for (size_t i = 0; i < result_count; i++)
     {
         cells[i] = answer.cells[i];
     }
-    dvm_sys_scalar_result(cells, call.ret, sizeof(cells));
+    if (result_count)
+    {
+        dvm_sys_scalar_result(cells, call.ret, result_count * sizeof(WORD));
+    }
 }

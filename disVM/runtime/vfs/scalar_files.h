@@ -23,6 +23,9 @@ typedef struct DVM_ScalarFiles
     DVM_CloseJob *close; /* Native retirement reservation. */
     uint32_t signature; /* Verified compiled import for this exact function. */
     StyxCallShape shape; /* Optional checked typed export from the same publication. */
+    int dynamic; /* Both compiled sides verified the scalar schema. */
+    size_t argument_cells; /* Dynamic ABI arguments after tuple flattening. */
+    size_t result_cells; /* Dynamic ABI result after tuple flattening. */
     int caller; /* Frame includes a captured caller PID. */
     int duplex; /* One fresh read/write fid per call. */
     unsigned references; /* Atomic native ownership. */

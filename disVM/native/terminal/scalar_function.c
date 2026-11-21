@@ -39,9 +39,13 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     }
     if (fn->call_method)
     {
-        return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
-            !fn->ref_method && !fn->program_root && fn->request_tag == STYX_CALL_LIST_REQUEST_TAG &&
-            fn->reply_tag == STYX_CALL_LIST_REPLY_TAG;
+        size_t args, result;
+        int profile = fn->dynamic_shape ?
+            fn->request_tag == STYX_DYNAMIC_REQUEST_TAG && fn->reply_tag == STYX_DYNAMIC_REPLY_TAG &&
+                styxshapecells(fn->dynamic_shape, &args, &result) :
+            fn->request_tag == STYX_CALL_LIST_REQUEST_TAG && fn->reply_tag == STYX_CALL_LIST_REPLY_TAG;
+        return profile && !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
+            !fn->ref_method && !fn->program_root;
     }
     if (fn->ref_method)
     {
@@ -59,7 +63,7 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     }
     uint32_t signature = styxscalar_request_signature(fn->request_tag);
     if (signature == DVM_TUPLE_SIGNATURE || signature == DVM_REF_SIGNATURE || signature == DVM_CALL_LIST_SIGNATURE ||
-        signature == DVM_REF_PAIR_SIGNATURE ||
+        signature == DVM_REF_PAIR_SIGNATURE || fn->request_tag == STYX_DYNAMIC_REQUEST_TAG ||
         !!fn->program_root != !!fn->program_method || (fn->caller_method && fn->program_method))
     {
         return 0;
@@ -151,7 +155,10 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
 static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
 {
     StyxCallValues arguments, result = {0};
-    if (!styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, bytes, count, &arguments))
+    const StyxScalarFunction *fn = &fid->function;
+    const char *input_shape = fn->dynamic_shape ? fn->dynamic_shape->arguments : styxcall_list_args;
+    const char *output_shape = fn->dynamic_shape ? fn->dynamic_shape->result : styxcall_list_result;
+    if (!styxcallrecordread(fn->request_tag, input_shape, bytes, count, &arguments))
     {
         return Ebadarg;
     }
@@ -162,7 +169,7 @@ static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
         return Ehungup;
     }
     int encoded = outcome == 1 ?
-        styxcallrecordwrite(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, &result,
+        styxcallrecordwrite(fn->reply_tag, output_shape, &result,
             fid->reply, sizeof(fid->reply), &fid->size) :
         styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
     return encoded ? nil : Ebadarg;

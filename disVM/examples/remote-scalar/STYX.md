@@ -162,3 +162,22 @@ second run reserves a missing export and checks that even the valid
 subset fails to load. The driver closes the carriers and removes the
 temporary roots. Expect `PASS mounted loaded export set shares state`
 and `PASS loaded export set refused as a whole` in both execution modes.
+
+## Call by compiled scalar shape
+
+Run the same `owner_guest.py` command. It compiles
+[the interface](dynamic-set.m), [the implementation](dynamic-set-owner.b)
+and [the client](styx-dynamic-set.b) with `-D R`. The owner loads the
+original implementation once. The client opens `/peer/mounted/dynamic.dis`
+using ordinary Limbo `load`, then calls the exports with ordinary module
+syntax. Both paths to those exports share one counter in the owner's VM.
+
+The client exercises calls with zero through four scalar cells, nested
+return tuples, the signed `big` limits, a void return and an owner exception
+followed by a successful call. The expected line is
+`PASS mounted dynamic scalar call layouts`. A second client build
+omits `-D R`. Its full load is refused and it can still load the fixed
+`tally` profile from the same mounted module.
+The harness closes the Styx connections and removes the temporary roots.
+
+See the [wire format](../../native/terminal/SCALAR-FUNCTION.md#calls-with-compiled-scalar-types).

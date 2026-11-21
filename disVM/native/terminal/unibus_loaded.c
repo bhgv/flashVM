@@ -90,7 +90,7 @@ int styxunibusawaitload(StyxUnibusServer *server)
             return 0;
         }
         styxunibusmailboxseal(module->load_offer);
-        unsigned long tag = styxloadedaccept(module->load_name, offer, size);
+        unsigned long tag = styxloadedacceptshape(module->load_name, offer, size, &module->owner.shape);
         if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))
         {
             server->load_state = -1;

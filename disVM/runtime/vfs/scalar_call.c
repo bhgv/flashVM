@@ -387,7 +387,7 @@ void dvm_scalar_entry(void *frame, unsigned index)
         dvm_ref_pair_entry(frame, expected_type, files);
         return;
     }
-    if (files && files->signature == DVM_CALL_LIST_SIGNATURE)
+    if (files && (files->dynamic || files->signature == DVM_CALL_LIST_SIGNATURE))
     {
         dvm_call_list_entry(frame, expected_type, files);
         return;

@@ -201,6 +201,24 @@ static int shaped_profile(void)
 }
 
 
+/* EN: Admit bounded scalar layouts and reject pointers or a fifth cell.
+ * RU: Допустить ограниченные скалярные раскладки и отклонить указатели или пятую ячейку. */
+static int dynamic_profile(void)
+{
+    const StyxCallShape good = {"((bi)ib)", "((b(ii)b))"};
+    const StyxCallShape empty = {"()", "()"};
+    const StyxCallShape too_wide = {"(iiiii)", "(b)"};
+    const StyxCallShape reference = {"(r[ib])", "(b)"};
+    unsigned char bytes[STYX_SHAPED_OFFER_MAX];
+    size_t a, r, used;
+    return styxshapecells(&good, &a, &r) && a == 4 && r == 4 &&
+        styxshapecells(&empty, &a, &r) && !a && !r &&
+        !styxshapecells(&too_wide, &a, &r) && !styxshapecells(&reference, &a, &r) &&
+        styxshapedoffer("sample", 17, &good, bytes, sizeof(bytes), &used) &&
+        styxloadedaccept("sample", bytes, used) == STYX_DYNAMIC_REQUEST_TAG;
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -275,7 +293,7 @@ int main(void)
         fputs("scalar method dispatch failed\n", stderr);
         return 1;
     }
-    if (!shaped_profile())
+    if (!dynamic_profile() || !shaped_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

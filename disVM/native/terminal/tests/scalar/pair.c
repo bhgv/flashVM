@@ -86,9 +86,15 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         if (set)
         {
             int rejected = !strcmp(set, "reject");
-            const char *names[] = {"tally", "wide", "pair", "revise", "blend", rejected ? "missing" : "exchange"};
-            size_t count = sizeof(names) / sizeof(names[0]);
-            StyxUnibusServer *server = styxunibusserverstartloadedset(channel, "set.dis", names, count);
+            int dynamic = !strcmp(set, "dynamic");
+            const char *concrete_names[] = {"tally", "wide", "pair", "revise", "blend", rejected ? "missing" : "exchange"};
+            const char *dynamic_names[] = {"status", "adjust", "project", "fold", "quad", "clear", "tally"};
+            const char *const *names = dynamic ? dynamic_names : concrete_names;
+            size_t count = dynamic ? sizeof(dynamic_names) / sizeof(dynamic_names[0]) :
+                sizeof(concrete_names) / sizeof(concrete_names[0]);
+            const char *module = dynamic ? "dynamic.dis" : "set.dis";
+            const char *implementation = dynamic ? "dynamic-set-owner.dis" : "loaded-set-owner.dis";
+            StyxUnibusServer *server = styxunibusserverstartloadedset(channel, module, names, count);
             if (server)
             {
                 DVM_Provider *requests[STYX_MOUNTED_EXPORT_LIMIT];
@@ -100,7 +106,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                     replies[i] = styxunibusservermailbox(server, i, 1);
                     offers[i] = styxunibusserverloadprofileat(server, i);
                 }
-                result = scalar_runtime_loaded_set(argc, argv, names, count, requests, replies, offers);
+                result = scalar_runtime_loaded_set(argc, argv, implementation, names, count, requests, replies, offers);
                 if (!rejected)
                 {
                     shutdown(breaker, SHUT_RDWR);
@@ -156,7 +162,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             return result;
         }
         const StyxScalarFunction alternate = {
-            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
         };
         const StyxMountedScalar entries[] = {
             {"helper.dis", "offset", &alternate, 0, 0, 0, 0, 0},

@@ -275,3 +275,32 @@ replies and owner exceptions also prevent copy-back. The IDs belong
 to one invocation on the function fid. This profile has no caller PID
 and supports two arguments with this scalar-only ADT layout.
 See the [runnable two-VM example](../../examples/remote-scalar/STYX.md#pass-one-object-in-two-ref-arguments).
+
+## Calls with compiled scalar types
+
+An export outside the fixed profiles can use the shared dispatcher when
+both compiled images include type metadata. At `load`, DisVM compares the
+export name, signature and complete argument and result shapes before it
+links the remote slot. The owner uses the same shape to validate each call.
+
+The arguments form one ordered list. A tuple nests a list inside it.
+The result is an empty list for a function returning no value, or a list
+describing one scalar or tuple. Each side can hold up to four scalar
+leaves, with signed `int` and `big` leaves in network byte order. The
+tuple codec permits four levels including the outer list and a frame
+of up to 64 bytes. The shared dispatcher handles value arguments.
+The existing reference profiles retain their copy-back behavior.
+
+| Outer S-record tag | Payload |
+| --- | --- |
+| 89 | Typed argument list |
+| 90 | Typed result list |
+| 73 | Scalar error |
+
+Nested S-record tags 1, 2 and 4 denote `int`, `big` and tuple,
+respectively. Both scalar leaf records carry the value-kind byte 2
+followed by an eight-byte signed value. An `int` must fit in 32 bits.
+
+These tags apply to unscoped packed requests on the loaded function's Styx
+file. The owner links and calls the original Dis export in its VM.
+See the [two-VM example](../../examples/remote-scalar/STYX.md#call-by-compiled-scalar-shape).

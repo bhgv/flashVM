@@ -163,6 +163,10 @@ uint32_t styxscalar_request_signature(unsigned long tag)
 /* EN/RU: See scalar_verify.h. / См. scalar_verify.h. */
 unsigned long styxfunction_reply_tag(unsigned long request)
 {
+    if (request == STYX_DYNAMIC_REQUEST_TAG)
+    {
+        return STYX_DYNAMIC_REPLY_TAG;
+    }
     uint32_t signature = styxscalar_request_signature(request);
     return signature == DVM_REF_PAIR_SIGNATURE ? STYX_REF_PAIR_REPLY_TAG :
         signature == DVM_CALL_LIST_SIGNATURE ? STYX_CALL_LIST_REPLY_TAG :

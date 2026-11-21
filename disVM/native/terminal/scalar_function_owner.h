@@ -5,6 +5,7 @@
 #ifndef STYX_SCALAR_FUNCTION_OWNER_H
 #define STYX_SCALAR_FUNCTION_OWNER_H
 #include "unibus_inbox.h"
+#include "load_profile.h"
 struct StyxScalarFunction;
 #include <stdint.h>
 
@@ -13,6 +14,8 @@ typedef struct StyxScalarFunctionOwner
     DVM_Provider *request; /* Owned mailbox read by the Dis service. */
     DVM_Provider *reply;   /* Owned mailbox written by the service. */
     unsigned long request_tag; /* Compiled-width mailbox tag, fixed at publication. */
+    StyxCallShape shape; /* Stored schema for a dynamic owner route. */
+    size_t result_cells; /* Number of meaningful results in the local four-cell reply. */
     int retired;           /* Dispatcher-only flag after an ambiguous exchange. */
 } StyxScalarFunctionOwner;
 

@@ -59,6 +59,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_LOAD_EXPORT"] = export
     if mounted in ("loaded-set", "loaded-set-reject"):
         env["DVM_TEST_SCALAR_LOADED_SET"] = "reject" if mounted.endswith("reject") else "accept"
+    if mounted in ("dynamic", "legacy-dynamic"):
+        env["DVM_TEST_SCALAR_LOADED_SET"] = "dynamic"
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -109,6 +111,8 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
             image = "legacy-import.dis"
         if mounted == "import-shape-mismatch":
             image = "mismatched-import.dis"
+        if mounted in ("dynamic", "legacy-dynamic"):
+            image = "legacy-dynamic.dis" if mounted == "legacy-dynamic" else "dynamic.dis"
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -189,6 +193,8 @@ def main():
             (owner, example / "wide-owner.b", "wide-owner.dis"),
             (caller, example / "styx-loaded-set.b", "set.dis"),
             (owner, example / "loaded-set-owner.b", "loaded-set-owner.dis"),
+            (caller, example / "styx-dynamic-set.b", "dynamic.dis"),
+            (owner, example / "dynamic-set-owner.b", "dynamic-set-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
@@ -208,6 +214,8 @@ def main():
         mismatch_import_shape(caller / "blend.dis", caller / "mismatched-import.dis")
         client = (caller / "blend.dis").read_bytes()
         (caller / "legacy-import.dis").write_bytes(client[:client.rindex(b"STYXCS2!")])
+        dynamic = (caller / "dynamic.dis").read_bytes()
+        (caller / "legacy-dynamic.dis").write_bytes(dynamic[:dynamic.rindex(b"STYXCS2!")])
         invalid_import = caller / "invalid-import.dis"
         mismatch_import_shape(caller / "blend.dis", invalid_import, change_signature=True)
         refused = subprocess.run([str(runtime), "--no-jit", invalid_import.name], cwd=caller,
@@ -254,6 +262,14 @@ def main():
                          calls=0, mounted="loaded-set-reject")
             finally:
                 refusal.unlink()
+            exchange(binary, owner, caller, mode, "PASS mounted dynamic scalar call layouts", calls=0, mounted="dynamic")
+            legacy_refusal = caller / "expect-legacy-dynamic-refusal"
+            legacy_refusal.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS dynamic export requires compiled import types",
+                         calls=0, mounted="legacy-dynamic")
+            finally:
+                legacy_refusal.unlink()
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             disconnect = caller / "expect-disconnect"
