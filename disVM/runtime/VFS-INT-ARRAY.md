@@ -29,3 +29,5 @@ its opened `.val` fids. Another local process or reverse Styx grant can
 hold an independent selection.
 
 Arrays can be fields of a [VFS record](VFS-VARIABLE-RECORD.md).
+
+See also [live hybrid tables in VFS](VFS-HYBRID-TABLE.md).

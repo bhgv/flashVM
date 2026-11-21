@@ -21,7 +21,7 @@ typedef enum
     FVM_TABLE_ADD      /* Insert a key only if absent. */
 } FvmTableOperation;
 
-typedef struct
+typedef struct FvmTableRequest
 {
     FvmTableOperation operation; /* Selected operation, never interpreted as a VM opcode. */
     FhtKey key;                  /* Borrowed input key; RESOLVE replaces it on success. */

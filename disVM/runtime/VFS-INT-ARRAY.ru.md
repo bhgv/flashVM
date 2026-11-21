@@ -29,3 +29,5 @@ intarray: fn(cells: list of ref Root): ref Root;
 процесс или встречный Styx-контекст может независимо выбрать свой индекс.
 
 Массив можно вложить в поле [записи VFS](VFS-VARIABLE-RECORD.ru.md).
+
+См. также [живые гибридные таблицы в VFS](VFS-HYBRID-TABLE.ru.md).

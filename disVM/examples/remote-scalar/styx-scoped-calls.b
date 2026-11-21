@@ -6,6 +6,7 @@ include "sys.m";
 include "processctl.m";
 include "scoped-calls.m";
 include "vfsexport.m";
+include "bigtable.m";
 
 Client: module { init: fn(); };
 
@@ -56,6 +57,14 @@ init()
         raise "record accepted invalid fields or did not compose";
     }
     vars = exports->overlay(vars, record, "/record", rights | Vfsexport->Write, Vfsexport->Tree);
+    tables := load Bigtable Bigtable->PATH;
+    tab := tables->create();
+    if (tables->push(tab, big 10) != tables->Ok || tables->push(tab, big 20) != tables->Ok ||
+        tables->addindex(tab, big 5, big 50) != tables->Ok || tables->addtext(tab, "1", big 90) != tables->Ok) {
+        raise "could not seed a live hybrid table";
+    }
+    shared_table := exports->table(tab);
+    vars = exports->overlay(vars, shared_table, "/table", rights | Vfsexport->Write, Vfsexport->Tree);
     if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
         raise "could not mount live variable for event test";
     }
@@ -129,6 +138,21 @@ init()
     (valid2, unchanged) := exports->intget(second_cell);
     if (arraypid != pid || !valid || updated != 19 || !valid2 || unchanged != 9) {
         raise "remote array change did not update the local live cells";
+    }
+    (tablepid, nil) := service->inspect(7);
+    (dense_status, dense) := tables->getindex(tab, big 1);
+    (sparse_status, sparse) := tables->getindex(tab, big 5);
+    (text_status, text) := tables->gettext(tab, "1");
+    (added_status, added) := tables->gettext(tab, "x");
+    if (tablepid != pid || tables->length(tab) != big 3 || tables->count(tab) != big 6 ||
+        dense_status != tables->Ok || dense != big 15 || sparse_status != tables->Ok || sparse != big 50 ||
+        text_status != tables->Ok || text != big 90 || added_status != tables->Ok || added != big 77) {
+        raise "reverse VFS edits did not reach the live hybrid table";
+    }
+    tab = nil;
+    (retained_pid, retained_count) := service->inspect(8);
+    if (retained_pid != pid || retained_count != big 6) {
+        raise "VFS did not retain table storage independently";
     }
     report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
 }

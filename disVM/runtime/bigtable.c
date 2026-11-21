@@ -28,18 +28,27 @@ typedef struct TableActor TableActor; /* One live process's trusted lease contex
 typedef struct TableWait TableWait;   /* One parked native call, never a wire record. */
 
 
+/* EN: Native table storage shared by the managed owner and VFS projections.
+ * RU: Нативное хранилище общее для управляемого владельца и представлений VFS. */
+typedef struct TableStorage
+{
+    FvmTableOwner native; /* Scalar payload and operation guard. */
+    unsigned references; /* Managed owner and native roots. */
+    unsigned wait_count; /* Managed FIFO waiters, under the scheduler lock. */
+} TableStorage;
+
+
 /* Private table payload and scheduler-owned retained lease; no wire ownership. */
 struct TableOwner
 {
     WORD reserved;          /* Public ADT prefix; never native authority. */
-    FvmTableOwner owned;    /* [GC:] Scalar storage and operation guard. */
+    TableStorage *storage; /* Owned native storage independent of the managed handle. */
     int ready;              /* Exact once-only initialization/finalization flag. */
     Prog *lease_owner;      /* Borrowed live scheduler process while pinned. */
     unsigned lease_depth;   /* Nested retained entries, excluding primitive calls. */
     TableOwner *lease_next; /* Borrowed next owner in its actor's held list. */
     TableWait *wait_head;   /* Owned resident wait nodes in FIFO order. */
     TableWait *wait_tail;   /* Borrowed final wait node. */
-    unsigned wait_count;    /* VM waiters, separate from native condition waiters. */
 };
 
 
@@ -119,7 +128,7 @@ int dvm_bigtable_native_quiet(const Heap *heap)
     const TableOwner *owner = H2D(const TableOwner *, heap);
     pthread_mutex_lock(&table_scheduler_lock);
     int quiet = !owner->lease_owner && !owner->lease_depth && !owner->lease_next &&
-        !owner->wait_head && !owner->wait_tail && !owner->wait_count;
+        !owner->wait_head && !owner->wait_tail && (!owner->storage || !owner->storage->wait_count);
     pthread_mutex_unlock(&table_scheduler_lock);
     return quiet;
 }
@@ -136,10 +145,7 @@ static void free_table(Heap *heap, int swept)
     USED(swept);
     if (owner->ready)
     {
-        if (fvm_table_owner_destroy(&owner->owned))
-        {
-            sysfatal("finalizing an active native table owner");
-        }
+        dvm_bigtable_storage_release(owner->storage);
         fvm_port_registry_lock();
         table_owners--;
         fvm_port_registry_unlock();
@@ -173,7 +179,7 @@ static FvmTableOwner *table_owner(Bigtable_Handle *handle)
     {
         error("invalid native big table owner");
     }
-    return &owner->owned;
+    return &owner->storage->native;
 }
 
 /* EN: Serialize table scheduling metadata and unlock before propagating errors.
@@ -198,14 +204,10 @@ static void table_schedule(int (*operation)(void *), void *argument)
  * handle/request заимствуют укоренённые аргументы. Запрос рекурсивно входит
  * в свои мьютексы, не отказывает конкуренции и не блокирует VM. Снять только
  * неявные уровни перед обработкой нативной ошибки. */
-static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
+static void table_apply_pair(Bigtable_Handle *handle, Bigtable_Handle *replacement, FvmTableRequest *request)
 {
     FvmTableOwner *owner = table_owner(handle);
-    FvmTableOwner *source = request->operation == FVM_TABLE_SPLICE ? request->replacement : owner;
-    TableOperationOwners operation = {
-        (TableOwner *)handle,
-        (TableOwner *)((uchar *)source - offsetof(TableOwner, owned))
-    };
+    TableOperationOwners operation = {(TableOwner *)handle, (TableOwner *)replacement};
     pthread_mutex_lock(&table_scheduler_lock);
     TableActor *actor = table_actor(currun(), 0);
     uint64_t token = actor && actor->held ? actor->token : 0;
@@ -224,15 +226,29 @@ static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
     }
 }
 
+/* EN: Apply a primitive that owns one implicit table guard.
+ * RU: Выполнить примитив под одним неявным guard таблицы. */
+static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
+{
+    table_apply_pair(handle, handle, request);
+}
+
+
+#include "bigtable_projection.inc"
+
 /* Initialize an unpublished private owner; finalization can retire partial
  * construction after a VM exception. No heap reference escapes into C storage. */
 static void initialize_table(TableOwner *owner)
 {
-    int failure = fvm_table_owner_init(&owner->owned, NULL);
+    TableStorage *storage = calloc(1, sizeof(*storage));
+    int failure = storage ? fvm_table_owner_init(&storage->native, NULL) : ENOMEM;
     if (failure)
     {
+        free(storage);
         error(failure == ENOMEM ? exNomem : "native table guard initialization failure");
     }
+    storage->references = 1;
+    owner->storage = storage;
     owner->ready = 1;
     fvm_port_registry_lock();
     table_owners++;
@@ -406,8 +422,8 @@ void Bigtable_slice(void *frame)
     }
     /* This destination is private to the current builtin; no other task can
      * observe it before return. Adopt the independently allocated source copy. */
-    fht_destroy(owner->owned.payload);
-    owner->owned.payload = request.table;
+    fht_destroy(owner->storage->native.payload);
+    owner->storage->native.payload = request.table;
 }
 
 /* Resolve signed relative bounds against a validated live owner before RHS.
@@ -439,7 +455,7 @@ void Bigtable_splice(void *frame)
     request.first = call->first;
     request.end = call->end;
     request.replacement = table_owner(call->replacement);
-    table_apply(call->tab, &request);
+    table_apply_pair(call->tab, call->replacement, &request);
     *call->ret = request.status;
 }
 
@@ -881,7 +897,7 @@ void Bigtable_guardstate(void *frame)
     memmove(&call->ret->t0, &token, sizeof(token));
     call->ret->t1 = depth;
     pthread_mutex_lock(&table_scheduler_lock);
-    call->ret->t2 = (WORD)waiters + ((TableOwner *)call->tab)->wait_count;
+    call->ret->t2 = (WORD)waiters + ((TableOwner *)call->tab)->storage->wait_count;
     pthread_mutex_unlock(&table_scheduler_lock);
 }
 
@@ -1037,7 +1053,7 @@ static void table_enqueue(TableOwner *owner, TableActor *actor)
         owner->wait_head = waiter;
     }
     owner->wait_tail = waiter;
-    owner->wait_count++;
+    owner->storage->wait_count++;
     actor->waiting = waiter;
 }
 
@@ -1091,14 +1107,14 @@ static int table_call_ready(void (*function)(void *), void *frame)
         TableOwner *held;
         for (held = actor->held; held; held = held->lease_next)
         {
-            if ((uintptr)&held->owned.guard > highest)
+            if ((uintptr)&held->storage->native.guard > highest)
             {
-                highest = (uintptr)&held->owned.guard;
+                highest = (uintptr)&held->storage->native.guard;
             }
         }
     }
     if (function == Bigtable_acquire && owners[0]->lease_owner != process && highest &&
-        (uintptr)&owners[0]->owned.guard < highest)
+        (uintptr)&owners[0]->storage->native.guard < highest)
     {
         error("table lease order violation");
     }
@@ -1108,7 +1124,7 @@ static int table_call_ready(void (*function)(void *), void *frame)
         if ((!owner->lease_owner || owner->lease_owner != process) &&
             (owner->lease_owner || (owner->wait_head && owner->wait_head->actor != actor)))
         {
-            if (highest && (uintptr)&owner->owned.guard < highest)
+            if (highest && (uintptr)&owner->storage->native.guard < highest)
             {
                 error("table lease order violation");
             }
@@ -1147,7 +1163,7 @@ static void table_lease_drop(TableOwner *owner, TableActor *actor)
 {
     while (owner->lease_depth)
     {
-        if (fvm_owned_leave(&owner->owned.guard, actor->token))
+        if (fvm_owned_leave(&owner->storage->native.guard, actor->token))
         {
             sysfatal("unbalanced native table lease");
         }
@@ -1176,7 +1192,7 @@ static void table_remove_wait(TableActor *actor)
         {
             last = *slot;
         }
-        if (!*slot || !owner->wait_count)
+        if (!*slot || !owner->storage->wait_count)
         {
             sysfatal("table wait record is not linked");
         }
@@ -1185,7 +1201,7 @@ static void table_remove_wait(TableActor *actor)
         {
             owner->wait_tail = last;
         }
-        owner->wait_count--;
+        owner->storage->wait_count--;
         actor->waiting = nil;
         dvm_runtime_table_retry_pending(actor->process, 0);
         free(waiter);
@@ -1298,7 +1314,7 @@ static int table_acquire(void *frame)
         }
         Setmark(heap);
     }
-    failure = fvm_owned_try_enter(&owner->owned.guard, actor->token);
+    failure = fvm_owned_try_enter(&owner->storage->native.guard, actor->token);
     if (failure)
     {
         if (!owner->lease_depth)
@@ -1334,7 +1350,7 @@ static int table_release(void *frame)
     }
     if (owner->lease_depth > 1)
     {
-        if (fvm_owned_leave(&owner->owned.guard, actor->token))
+        if (fvm_owned_leave(&owner->storage->native.guard, actor->token))
         {
             error("table lease release failure");
         }

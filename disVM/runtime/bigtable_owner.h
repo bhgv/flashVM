@@ -29,4 +29,9 @@ int dvm_bigtable_native_kind(const Heap *heap);
  * heap уже захвачен GC без живых заёмщиков. Взять только мьютекс метаданных;
  * не входить в payload и не освобождать его. Вернуть 1 при покое. */
 int dvm_bigtable_native_quiet(const Heap *heap);
+struct TableStorage;
+struct FvmTableRequest;
+struct TableStorage *dvm_bigtable_storage_retain(void *value);
+void dvm_bigtable_storage_release(struct TableStorage *storage);
+int dvm_bigtable_storage_request(struct TableStorage *storage, struct FvmTableRequest *request);
 #endif

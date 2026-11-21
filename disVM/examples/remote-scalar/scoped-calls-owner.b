@@ -52,6 +52,13 @@ inspect(fail: int): (int,big)
         wait_cancel(sys, fail == 3);
         raise "remote handler stopped at a cancellation checkpoint";
     }
+    if (fail == 8) {
+        return (pid, big int contents(sys, Caller + ".var/table/.count", 8));
+    }
+    if (fail == 7) {
+        edit_hybrid_table(sys);
+        return (pid, big 0);
+    }
     if (fail == 6) {
         edit_vector(sys);
         return (pid, big 0);
@@ -361,4 +368,48 @@ edit_vector(sys: Sys)
         sys->sleep(10);
     }
     raise "selector clunk did not retire the array selection";
+}
+
+# EN: Submit one complete table command through a fresh reverse Styx fid.
+# RU: Передать полную операцию с таблицей через новый встречный fid.
+table_write(sys: Sys, path: string, bytes: array of byte): int
+{
+    fd := sys->open(path, Sys->OWRITE);
+    return fd != nil && sys->write(fd, bytes, len bytes) == len bytes;
+}
+
+
+# EN: Mutate both halves of the same table and read the popped value exactly once.
+# RU: Изменить обе части одной таблицы и прочитать извлечённое значение один раз.
+edit_hybrid_table(sys: Sys)
+{
+    path := Caller + ".var/table/";
+    insert := array[16] of byte;
+    value := array[8] of byte;
+    add := array[10] of byte;
+    for (i := 0; i < len insert; i++) {
+        insert[i] = byte 0;
+    }
+    for (i = 0; i < len value; i++) {
+        value[i] = byte 0;
+        add[i+2] = byte 0;
+    }
+    insert[7] = byte 1;
+    insert[15] = byte 15;
+    value[7] = byte 9;
+    add[0] = byte 1;
+    add[1] = byte 'x';
+    add[9] = byte 77;
+    if (contents(sys, path + ".type", 24) != "table of big\n" ||
+        contents(sys, path + ".len", 8) != "2\n" ||
+        !table_write(sys, path + ".ins", insert) || !table_write(sys, path + ".push", value) ||
+        !table_write(sys, path + ".add", add) || table_write(sys, path + ".add", add)) {
+        raise "hybrid table command failed";
+    }
+    pop := sys->open(path + ".pop", Sys->OREAD);
+    if (pop == nil || sys->read(pop, value, 3) != 3 || sys->read(pop, value[3:8], 5) != 5 ||
+        value[7] != byte 9 || sys->read(pop, value, 8) != 0 ||
+        contents(sys, path + ".len", 8) != "3\n" || contents(sys, path + ".count", 8) != "6\n") {
+        raise "hybrid table pop repeated or changed keyed values";
+    }
 }
