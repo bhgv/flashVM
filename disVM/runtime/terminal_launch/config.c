@@ -278,3 +278,14 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
     }
     return compatible_fds(config) && compatible_inherited(config);
 }
+
+
+/* EN: Admit a canonical mount path outside the launch context and descriptor trees.
+ * RU: Допустить каноническую точку маунта вне деревьев контекста и дескрипторов. */
+int dvm_terminal_mount_path_valid(const char *path)
+{
+    return path && path[0] == '/' && path[1] && strlen(path) < DVM_NS_PATH_LIMIT &&
+        strcmp(path + 1, ".") && dvm_terminal_channel_paths_valid(path + 1, path + 1) &&
+        !covers("/.prog", path) && !covers("/.fd", path) &&
+        !covers("/.vfs", path) && !covers("/.var", path);
+}

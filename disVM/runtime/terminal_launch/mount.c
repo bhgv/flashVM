@@ -27,7 +27,7 @@
 
 /* EN: Install the mount as a capability in a fresh hosted namespace and run the guest.
  * RU: Установить маунт в новом пространстве имён и запустить программу. */
-static int run_mounted(int argc, char **argv, DVM_Provider *mount, int extra)
+static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path, int extra)
 {
     char cwd[DVM_NS_PATH_LIMIT];
     if (!getcwd(cwd, sizeof(cwd)))
@@ -39,7 +39,7 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, int extra)
     strcpy(handoff.description.module, "styx-mounted");
     DVM_NamespacePlan target;
     int installed = handoff.group && dvm_namespace_pin(handoff.group) &&
-        dvm_namespace_plan(handoff.group, "/peer", &target) &&
+        dvm_namespace_plan(handoff.group, path, &target) &&
         dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
     if (installed && extra >= 3)
     {
@@ -52,7 +52,7 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, int extra)
     int result = installed ? dvm_runtime_main_with_handoff(argc, argv, &handoff) : 1;
     if (!installed)
     {
-        fprintf(stderr, "disvm: cannot mount Styx at /peer\n");
+        fprintf(stderr, "disvm: cannot mount Styx at %s\n", path);
     }
     dvm_namespace_release(handoff.group);
     return result;
@@ -274,6 +274,17 @@ int dvm_styx_mount_cli(int argc, char **argv)
         }
         separator = 7;
     }
+    const char *path = "/peer";
+    if (argc > separator + 1 && !strcmp(argv[separator], "--at"))
+    {
+        path = argv[separator + 1];
+        separator += 2;
+        if (!dvm_terminal_mount_path_valid(path))
+        {
+            fprintf(stderr, "disvm: --at requires a canonical absolute Styx mount path\n");
+            return 2;
+        }
+    }
     int extra = -1;
     if (argc > separator + 1 && !strcmp(argv[separator], "--fd3"))
     {
@@ -291,7 +302,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--fd3 FD] -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -313,7 +324,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - separator, argv + separator, mount, extra);
+        result = run_mounted(argc - separator, argv + separator, mount, path, extra);
     }
     else
     {

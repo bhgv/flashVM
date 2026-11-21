@@ -269,9 +269,27 @@ def chain(runtime, compiler, provider, disvm, example, work):
                         peer.kill()
 
 
+# EN: Refuse ambiguous paths before emitting any data on the delegated stream.
+# RU: Отклонить неоднозначные пути до отправки данных по выданному потоку.
+def reject_mount_path(runtime, work):
+    caller, peer = tcp_pair()
+    with caller, peer:
+        for path in ("relative", "/", "/.", "/route/../other", "/route//other", "/.fd/alias", "/.prog"):
+            result = subprocess.run(
+                [runtime, "--styx-mount-fd", str(caller.fileno()), "--at", path, "--", "unused.dis"],
+                pass_fds=(caller.fileno(),), cwd=work, capture_output=True, timeout=5)
+            if result.returncode != 2 or b"canonical absolute Styx mount path" not in result.stderr:
+                raise RuntimeError(f"accepted invalid Styx mount path {path!r}: {result.stderr!r}")
+            if select.select((peer,), (), (), 0)[0]:
+                raise RuntimeError(f"invalid Styx mount path {path!r} touched the carrier")
+
+
 # EN: Boot both stock CLIs and load two exports through one delegated carrier.
 # RU: Запустить два штатных CLI и загрузить два экспорта по одному транспорту.
 def library_cli(runtime, compiler, disvm, example, work):
+    (work / "libraries").mkdir()
+    (work / "libraries/local-marker").touch()
+    reject_mount_path(runtime, work)
     for source, image in (
         (disvm / "limbo/scalarowner.b", "scalarowner.dis"),
         (example / "scoped-calls-owner.b", "first-owner.dis"),
@@ -292,7 +310,7 @@ def library_cli(runtime, compiler, disvm, example, work):
             owner.close()
             try:
                 client = subprocess.run(
-                    [runtime, "--styx-mount-fd", str(caller.fileno()), "--", mode, "library-cli.dis"],
+                    [runtime, "--styx-mount-fd", str(caller.fileno()), "--at", "/transport", "--", mode, "library-cli.dis"],
                     pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=15)
                 caller.close()
                 output, _ = server.communicate(timeout=10)

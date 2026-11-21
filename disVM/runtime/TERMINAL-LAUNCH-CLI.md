@@ -159,8 +159,9 @@ local bootstrap that loads libraries from a peer.
 disvm --styx-mount-fd 3 -- --no-jit caller.dis
 ```
 
-The command mounts the peer at `/peer` in the guest VFS. The host directory
-does not need a `peer` entry. The multiplexed carrier uses channel 0 for
+The default mount point is `/peer`. Pass `--at /transport` before `--fd3` or
+`--` to choose a canonical absolute guest path. The host directory does
+not need an entry at the mount point. The multiplexed carrier uses channel 0 for
 the forward Styx mount and channel 1 for the caller's virtual context.
 The peer mounts channel 1 and supplies that root to its scoped function
 handler. An ordinary typed `load` and function call then publish the active
@@ -295,9 +296,11 @@ with `limbo -D R` for scoped export type metadata. `scalarowner.dis` is
 the dispatcher built from [scalarowner.b](../limbo/scalarowner.b). Arguments
 after `--` are ordinary VM options followed by the dispatcher image.
 
-The caller starts `disvm --styx-mount-fd 3 -- caller.dis` on its end of
-the delegated stream. The [example caller](../examples/remote-scalar/styx-library-cli.b)
-uses ordinary Limbo `load` for both public paths. The [integration test](../native/terminal/tests/scalar/mount_cli.py)
+The caller starts `disvm --styx-mount-fd 3 --at /transport -- caller.dis`
+on its end of the delegated stream. Create a local `libraries` directory
+in the caller working directory. The [example caller](../examples/remote-scalar/styx-library-cli.b)
+appends `/transport/mounted` to `/libraries` with `Sys->bind` and `MAFTER`,
+then uses ordinary Limbo `load` for both public paths. The [integration test](../native/terminal/tests/scalar/mount_cli.py)
 compiles the images, connects the two processes, checks ref copy-back and
 compares the provider PIDs. Disconnecting the caller drains the provider's
 export inboxes and retires its idle workers.

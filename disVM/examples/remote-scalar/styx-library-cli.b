@@ -16,8 +16,14 @@ Librarycli: module
 init()
 {
     sys := load Sys Sys->PATH;
-    first := load Scopedcalls "/peer/mounted/first.dis";
-    second := load Scopedcalls "/peer/mounted/second.dis";
+    if (sys->bind("/transport/mounted", "/libraries", Sys->MAFTER) < 0) {
+        raise "could not add the Styx library directory to the local union: " + sys->sprint("%r");
+    }
+    if (sys->open("/libraries/local-marker", Sys->OREAD) == nil) {
+        raise "local member of the library union disappeared";
+    }
+    first := load Scopedcalls "/libraries/first.dis";
+    second := load Scopedcalls "/libraries/second.dis";
     if (first == nil || second == nil) {
         raise "could not load both mounted libraries: " + sys->sprint("%r");
     }

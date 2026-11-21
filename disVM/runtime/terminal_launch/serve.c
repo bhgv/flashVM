@@ -122,22 +122,6 @@ static int mount_library(DVM_Namespace *group, const char *descriptor, const cha
 }
 
 
-/* EN: Admit a canonical mount path outside the launch context and descriptor trees.
- * RU: Допустить каноническую точку маунта вне деревьев контекста и дескрипторов. */
-static int library_path_valid(const char *path)
-{
-    if (path[0] != '/' || strlen(path) >= DVM_NS_PATH_LIMIT || !path[1] ||
-        !dvm_terminal_channel_paths_valid(path + 1, path + 1))
-    {
-        return 0;
-    }
-    size_t component = strcspn(path + 1, "/");
-    return !(component == 5 && !memcmp(path + 1, ".prog", 5)) &&
-        !(component == 3 && !memcmp(path + 1, ".fd", 3)) &&
-        !(component == 4 && (!memcmp(path + 1, ".vfs", 4) || !memcmp(path + 1, ".var", 4)));
-}
-
-
 #define LIBRARY_MOUNT_LIMIT 8U /* Maximum library mounts admitted before startup. */
 
 typedef struct LibraryMount
@@ -165,7 +149,7 @@ static int admit_library(LibraryMount *mounts, size_t count, const char *launch,
     char *end;
     long number = strtol(fd, &end, 10);
     if (*end || number < 3 || number > INT_MAX || number == strtol(launch, NULL, 10) ||
-        !library_path_valid(path))
+        !dvm_terminal_mount_path_valid(path))
     {
         return 0;
     }
