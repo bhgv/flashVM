@@ -5,9 +5,10 @@
 #include "cap_internal.h"
 #include "cancel.h"
 #include "view_internal.h"
+#include "cap_array_index.h"
 #include <stdio.h>
 
-#define DVM_INT_ARRAY_LIMIT (DVM_VIEW_RULE_LIMIT - 2U) /* Two mappings are reserved for metadata. */
+#define DVM_INT_ARRAY_LIMIT (DVM_VIEW_RULE_LIMIT - 4U) /* Reserve two metadata and two selector nodes. */
 
 typedef struct ArrayMetadata
 {
@@ -142,6 +143,7 @@ static DVM_Provider *array_view(List *cells)
     {
         return NULL;
     }
+    DVM_Provider *providers[DVM_INT_ARRAY_LIMIT];
     unsigned count = 0;
     for (List *cell = cells; cell != H; cell = cell->tail)
     {
@@ -156,11 +158,12 @@ static DVM_Provider *array_view(List *cells)
             dvm_view_discard(view);
             return NULL;
         }
-        count++;
+        providers[count++] = state->root;
     }
     char length[16];
     snprintf(length, sizeof(length), "%u\n", count);
-    if (!map_meta(view, "/.type", "array of int\n") || !map_meta(view, "/.len", length))
+    if (!map_meta(view, "/.type", "array of int\n") || !map_meta(view, "/.len", length) ||
+        !dvm_intarray_map_index(view, providers, count))
     {
         dvm_view_discard(view);
         return NULL;

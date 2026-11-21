@@ -230,4 +230,15 @@ int dvm_provider_set_styx_caller(DVM_Provider *context, DVM_Provider *session, u
  * RU: Скопировать доверенный ключ заимствованного контекста. 0 при отсутствии. */
 int dvm_provider_styx_caller(DVM_Provider *context, DVM_StyxCallerKey *key);
 
+/* EN: Native identity of a reverse open, copied only for the callback interval.
+ * RU: Нативная идентичность встречного open в пределах вызова callback. */
+typedef struct DVM_ProviderOpenScope
+{
+    const void *domain; /* Borrowed native server identity. */
+    uint64_t generation; /* Grant generation within that server. */
+} DVM_ProviderOpenScope;
+
+DVM_ProviderOpenScope dvm_provider_open_scope(DVM_ProviderOpenScope next);
+DVM_ProviderOpenScope dvm_provider_current_open_scope(void);
+
 #endif

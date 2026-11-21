@@ -6,7 +6,7 @@
 intarray: fn(cells: list of ref Root): ref Root;
 ```
 
-Load `Vfsexport` from `Vfsexport->PATH`. Pass 0–254 native integer
+Load `Vfsexport` from `Vfsexport->PATH`. Pass 0–252 native integer
 roots created by [intvar](VFS-INT-VARIABLE.md). The result is a directory
 with zero-based decimal filenames, a read-only `.len` containing a decimal
 count and newline, and a read-only `.type` containing `array of int\n`.
@@ -19,3 +19,11 @@ beneath a published `.var`. Directory membership is fixed at creation.
 The [scoped Styx example](../examples/remote-scalar/styx-scoped-calls.b)
 exports three positions backed by two cells and checks a remote write
 through the ordinary caller VFS.
+
+### Select an element through an open FD
+
+Open `.idx` for writing and send one four-byte unsigned big-endian index.
+While that FD remains open, open `.val` for reading or writing. Its cursor
+belongs to the selected cell. Closing `.idx` revokes that selection and
+its opened `.val` fids. Another local process or reverse Styx grant can
+hold an independent selection.

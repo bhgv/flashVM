@@ -233,12 +233,15 @@ static char *open_node(Qid *qid, int mode)
         }
         return Enomem;
     }
+    opened->generation = cache ? cache->generation : 0;
+    DVM_ProviderOpenScope previous = dvm_provider_open_scope(
+        (DVM_ProviderOpenScope){owner, opened->generation});
     opened->file = styxfileopen(node, mode);
+    dvm_provider_open_scope(previous);
     if (shared)
     {
         styxbackingfree(node);
     }
-    opened->generation = cache ? cache->generation : 0;
     if (!opened->file || styxsetaux(&owner->server, opened) < 0)
     {
         close_node(opened);

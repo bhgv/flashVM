@@ -128,3 +128,23 @@ int dvm_provider_styx_caller(DVM_Provider *context, DVM_StyxCallerKey *key)
     fvm_port_sync_unlock(context->lock);
     return present;
 }
+
+static _Thread_local DVM_ProviderOpenScope open_scope; /* Borrowed reverse dispatch identity. */
+
+
+/* EN: Replace the current callback identity and return the previous identity.
+ * RU: Заменить идентичность callback и вернуть предыдущую. */
+DVM_ProviderOpenScope dvm_provider_open_scope(DVM_ProviderOpenScope next)
+{
+    DVM_ProviderOpenScope previous = open_scope;
+    open_scope = next;
+    return previous;
+}
+
+
+/* EN: Copy the caller identity active on this native thread.
+ * RU: Скопировать идентичность клиента в текущем нативном потоке. */
+DVM_ProviderOpenScope dvm_provider_current_open_scope(void)
+{
+    return open_scope;
+}

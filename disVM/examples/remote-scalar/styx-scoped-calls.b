@@ -106,7 +106,17 @@ init()
     if (slowpid != pid || slowvalue != big 44) {
         raise "slow scoped call lost its private reply";
     }
+    local_idx := sys->open("/.var/vector/.idx", Sys->OWRITE);
+    selected := array[] of {byte 0, byte 0, byte 0, byte 1};
+    if (local_idx == nil || sys->write(local_idx, selected, len selected) != len selected) {
+        raise "could not select a local array cell";
+    }
     (arraypid, nil) := service->inspect(6);
+    local_val := sys->open("/.var/vector/.val", Sys->OREAD);
+    if (local_val == nil || sys->read(local_val, selected, len selected) != len selected || selected[3] != byte 9) {
+        raise "reverse selection replaced the local selection";
+    }
+    local_idx = nil;
     (valid, updated) := exports->intget(first_cell);
     (valid2, unchanged) := exports->intget(second_cell);
     if (arraypid != pid || !valid || updated != 19 || !valid2 || unchanged != 9) {

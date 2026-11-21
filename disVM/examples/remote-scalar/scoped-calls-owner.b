@@ -330,10 +330,30 @@ edit_vector(sys: Sys)
         !live_value(sys, path + "0", 0, 7) || !live_value(sys, path + "1", 0, 9)) {
         raise "invalid live array directory";
     }
-    member := sys->open(path + "0", Sys->OWRITE);
+    if (sys->open(path + ".val", Sys->OREAD) != nil) {
+        raise "reverse scope inherited a different selector";
+    }
+    selector := sys->open(path + ".idx", Sys->OWRITE);
+    index := array[] of {byte 0, byte 0, byte 0, byte 0};
+    if (selector == nil || sys->write(selector, index, len index) != len index) {
+        raise "could not select the remote array cell";
+    }
+    member := sys->open(path + ".val", Sys->ORDWR);
     bytes := array[] of {byte 0, byte 0, byte 0, byte 19};
     if (member == nil || sys->write(member, bytes, len bytes) != len bytes ||
         !live_value(sys, path + "2", 0, 19)) {
         raise "live array update lost its aliased cell";
     }
+    selector = nil;
+    for (i := 0; i < 100; i++) {
+        if (sys->open(path + ".val", Sys->OREAD) == nil) {
+            if (sys->seek(member, big 0, Sys->SEEKSTART) >= big 0 &&
+                sys->read(member, bytes, len bytes) >= 0) {
+                raise "closed selector left a readable value fid";
+            }
+            return;
+        }
+        sys->sleep(10);
+    }
+    raise "selector clunk did not retire the array selection";
 }
