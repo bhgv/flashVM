@@ -18,12 +18,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #endif
 
 typedef struct FdGrant
 {
     int slot; /* Shared launch slot, retained by the owning provider. */
+    int socket_stream; /* Transfer without waiting or changing descriptor flags. */
     int host; /* Owned host duplicate, or -1 for an imported slot. */
     unsigned access; /* Original read/write ceiling. */
 } FdGrant;
@@ -80,7 +82,7 @@ static void release_owner(DVM_NativeContext *temporary)
 
 
 #if defined(F_DUPFD_CLOEXEC)
-/* EN: Transfer once on a duplicated regular file. Preserve the kernel cursor.
+/* EN: Transfer once on a duplicated regular file or socket. Preserve the kernel cursor.
  * RU: Передать данные через дубликат обычного файла с общей позицией ядра. */
 static void host_io(FdGrant *grant, void *input, const void *output, size_t size, DVM_IoResult *result)
 {
@@ -89,14 +91,29 @@ static void host_io(FdGrant *grant, void *input, const void *output, size_t size
         *result = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_CANCELLED};
         return;
     }
-    ssize_t count = !size ? 0 : input ? read(grant->host, input, size) : write(grant->host, output, size);
+    ssize_t count = 0;
+    if (size)
+    {
+#if defined(MSG_DONTWAIT) && defined(MSG_NOSIGNAL)
+        if (grant->socket_stream)
+        {
+            count = input ? recv(grant->host, input, size, MSG_DONTWAIT) :
+                send(grant->host, output, size, MSG_DONTWAIT | MSG_NOSIGNAL);
+        }
+        else
+#endif
+        {
+            count = input ? read(grant->host, input, size) : write(grant->host, output, size);
+        }
+    }
     if (count < 0)
     {
         *result = (DVM_IoResult){.status = FVM_ERROR,
-            .stop = errno == EINTR || errno == EAGAIN ? DVM_IO_AGAIN : DVM_IO_FAILURE};
+            .stop = errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK ? DVM_IO_AGAIN : DVM_IO_FAILURE};
         return;
     }
-    *result = (DVM_IoResult){.status = FVM_OK, .flags = DVM_IO_PREFIX, .count = (size_t)count};
+    *result = (DVM_IoResult){.status = FVM_OK, .flags = DVM_IO_PREFIX, .count = (size_t)count,
+        .stop = input && size && !count ? DVM_IO_EOF : DVM_IO_NONE};
 }
 #endif
 
@@ -219,7 +236,9 @@ static FVM_Result open_alias(void *state, const char *path, const char *mode, DV
     }
     out->ops = access == FVM_ACCESS_READ ? &read_ops : access == FVM_ACCESS_WRITE ? &write_ops : &both_ops;
     out->state = state;
-    out->native_flags = DVM_VFS_CANCEL_INFO | DVM_VFS_CANCEL_CLOSE;
+    FdGrant *grant = state;
+    out->native_flags = DVM_VFS_CANCEL_INFO | DVM_VFS_CANCEL_CLOSE |
+        (grant->socket_stream ? DVM_VFS_CANCEL_DATA : 0);
     return FVM_OK;
 }
 
@@ -271,8 +290,8 @@ static int map_fd(DVM_View *view, unsigned number, FdGrant *grant)
 }
 
 
-/* EN: Prepare an imported slot or a non-hidden regular standard descriptor.
- * RU: Подготовить импортированный слот или нескрытый обычный стандартный FD. */
+/* EN: Prepare an imported slot or a supported non-hidden standard descriptor.
+ * RU: Подготовить импортированный слот или нескрытый стандартный FD. */
 static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant)
 {
     grant->host = -1;
@@ -296,7 +315,19 @@ static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant)
             close(host);
             return -1;
         }
-        if (!S_ISREG(metadata.st_mode)
+#if defined(MSG_DONTWAIT) && defined(MSG_NOSIGNAL)
+        if (S_ISSOCK(metadata.st_mode))
+        {
+            int type;
+            socklen_t length = sizeof(type);
+            struct sockaddr_storage peer;
+            socklen_t peer_length = sizeof(peer);
+            grant->socket_stream = !getsockopt(host, SOL_SOCKET, SO_TYPE, &type, &length) &&
+                length == sizeof(type) && type == SOCK_STREAM &&
+                !getpeername(host, (struct sockaddr *)&peer, &peer_length);
+        }
+#endif
+        if ((!S_ISREG(metadata.st_mode) && !grant->socket_stream)
 #ifdef O_PATH
             || (flags & O_PATH)
 #endif

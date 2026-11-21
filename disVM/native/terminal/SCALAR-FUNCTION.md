@@ -145,6 +145,8 @@ This supports the existing numbered launch
 range 0–31. On POSIX hosts with close-on-exec duplication, unhidden standard numbers
 0–2 also project regular files when an imported slot does not replace
 them. Each alias owns a duplicate of the existing open file description
-and preserves its cursor and access mode. Pipe, socket and terminal
-stdio and ordinary managed opens remain outside this projection.
+and preserves its cursor and access mode. Connected stream sockets are also supported on hosts with per-operation
+nonblocking I/O and SIGPIPE suppression. An empty socket reports temporary
+unavailability. Socket I/O preserves the original descriptor flags.
+Pipe and terminal stdio and ordinary managed opens remain outside this projection.
 The reverse mount setup still requires an embedder.

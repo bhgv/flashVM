@@ -7,6 +7,7 @@ from runpy import run_path
 import re
 import shlex
 import subprocess
+import socket
 import sys
 import tempfile
 
@@ -41,7 +42,7 @@ def build_peer(runtime, sdk, work, paired, compiler):
         run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
              "-c", str(here / "reverse.c"), "-o", str(reverse)], work)
         objects.append(str(reverse))
-    for source in (("guest_mount.c",) if paired else ("guest_mount.c", "guest.c")):
+    for source in (("guest_mount.c", "guest_stdio.c") if paired else ("guest_mount.c", "guest_stdio.c", "guest.c")):
         obj = work / (source + ".o")
         run([link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *rt["C_FLAGS"],
              "-DSCALAR_FIXTURE_SIGNATURE=" + signature[1],
@@ -129,6 +130,22 @@ def main():
         if result.returncode or marker not in result.stdout:
             raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
         print(marker, flush=True)
+
+        if sys.platform.startswith("linux"):
+            client, peer = socket.socketpair()
+            with client, peer:
+                peer.sendall(b"left")
+                result = subprocess.run([str(binary), "--no-jit", str(work / "mounted.dis")],
+                                        cwd=work, stdin=client, capture_output=True, text=True, timeout=30,
+                                        env=dict(os.environ, DVM_TEST_SCALAR_MOUNTED="1",
+                                                 DVM_TEST_SCALAR_HOST_SOCKET="1"))
+                marker = "PASS socket stdio preserves blocking flags"
+                if result.returncode or marker not in result.stdout:
+                    raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
+                peer.settimeout(2)
+                if peer.recv(4, socket.MSG_WAITALL) != b"next":
+                    raise RuntimeError("socket stdio reply missing")
+            print(marker, flush=True)
 
 
 if __name__ == "__main__":
