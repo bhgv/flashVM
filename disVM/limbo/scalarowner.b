@@ -341,34 +341,6 @@ serve_ref(routes: Vfsnative, fields: list of string)
 }
 
 
-# EN: Serve the linked ref export until its request inbox closes.
-# RU: Обслуживать связанный экспорт ref до закрытия приёмника запросов.
-run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string, outputs: int)
-{
-    for (;;) {
-        (ready, narrow, wide) := routes->scalarrefnext(request);
-        if (ready == 0) {
-            return;
-        }
-        if (ready < 0) {
-            routes->scalarrefreply(reply, 0, (0, big 0), (0, big 0));
-            continue;
-        }
-        cell := ref Scalarrefcell(narrow, wide);
-        result := (0, big 0);
-        success := 1;
-        {
-            result = target->invoke(cell);
-        } exception {
-            "*" =>
-                success = 0;
-        }
-        routes->scalarrefreply(reply, success, ref_result(result, outputs), (cell.narrow, cell.wide));
-    }
-}
-
-
-
 # EN: Invoke the verified multi-argument export on one linked Dis instance.
 # RU: Вызвать проверенный экспорт с несколькими аргументами в одном экземпляре Dis.
 serve_list(routes: Vfsnative, fields: list of string)
@@ -427,39 +399,6 @@ serve_ref_pair(routes: Vfsnative, fields: list of string)
     }
     run_ref_pair(routes, target, request, reply, 2);
 }
-
-
-# EN: Serve the linked ref pair export until its request inbox closes.
-# RU: Обслуживать связанный экспорт ref pair до закрытия приёмника запросов.
-run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string, outputs: int)
-{
-    for (;;) {
-        (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairnext(request);
-        if (count == 0) {
-            return;
-        }
-        if (count < 0) {
-            routes->scalarrefpairreply(reply, 0, 0, (0, big 0), (0, big 0), (0, big 0));
-            continue;
-        }
-        first := ref Scalarrefcell(firstn, firstw);
-        second := first;
-        if (count == 2) {
-            second = ref Scalarrefcell(secondn, secondw);
-        }
-        result := (0, big 0);
-        success := 1;
-        {
-            result = target->invoke(first, second);
-        } exception {
-            "*" =>
-                success = 0;
-        }
-        routes->scalarrefpairreply(reply, success, count, ref_result(result, outputs),
-            (first.narrow, first.wide), (second.narrow, second.wide));
-    }
-}
-
 
 
 # EN: Zero unused cells in the two-cell wire result after the original call.

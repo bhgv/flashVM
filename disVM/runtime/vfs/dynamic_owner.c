@@ -157,11 +157,8 @@ static void scalar_raw_next(void *frame, int handoff)
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrawnext, ret), sizeof(result));
     StyxCallValues decoded = {0};
     result[0] = dvm_scalar_owner_next(call.path, STYX_DYNAMIC_REQUEST_TAG, decode_words, &decoded, 1);
-    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
-    if (handoff && result[0] > 0 && owner && owner->remote_call_reply)
+    if (handoff && result[0] > 0 && dvm_scalar_arm_handoff())
     {
-        owner->remote_call_handoff = 1;
-        owner->remote_call_cancel_delivered = 1;
         result[0] = 2;
     }
     for (size_t i = 0; i < STYX_DYNAMIC_CELLS; i++)
@@ -169,6 +166,20 @@ static void scalar_raw_next(void *frame, int handoff)
         result[i + 1] = decoded.cells[i];
     }
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+int dvm_scalar_arm_handoff(void)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (!owner || !owner->remote_call_reply || owner->remote_call_handoff)
+    {
+        return 0;
+    }
+    owner->remote_call_handoff = 1;
+    owner->remote_call_cancel_delivered = 1;
+    return 1;
 }
 
 

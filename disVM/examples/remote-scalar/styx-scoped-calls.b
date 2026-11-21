@@ -82,6 +82,8 @@ init()
         raise "scoped child calls lost PID or shared fd cursor";
     }
     checkrefs(service, pid);
+    concurrent_refs(sys, service, pid, 0);
+    concurrent_refs(sys, service, pid, 1);
     checkcancel(sys, service, 3, "compute-cancel-");
     checkcancel(sys, service, 2, "cancel-");
     (slowpid, slowvalue) := service->inspect(4);
@@ -207,4 +209,49 @@ cancel_worker(service: Scopedcalls, ctl: Processctl, started: chan of int, mode:
 {
     started <-= ctl->pid();
     service->inspect(mode);
+}
+
+# EN: Run a second ref call on the same export while the first is asleep.
+# RU: Выполнить второй вызов ref того же экспорта, пока первый спит.
+concurrent_refs(sys: Sys, service: Scopedcalls, pid, pair: int)
+{
+    ctl := load Processctl Processctl->PATH;
+    started := chan of int;
+    pending := ref Cell(-50, big 0);
+    spawn hold_ref(service, ctl, started, pending, pair);
+    child := <-started;
+    prefix := "single-ref";
+    if (pair) {
+        prefix = "pair-ref";
+    }
+    wait_marker(sys, prefix + "-pending");
+    cell := ref Cell(0, big 0);
+    if (pair) {
+        service->updatepair((cell, cell));
+        if (cell.narrow != pid+2) {
+            raise "concurrent ref pair lost its alias update";
+        }
+    } else if (service->update(cell) != pid || cell.narrow != pid) {
+        raise "concurrent ref lost its update";
+    }
+    if (ctl->killwait(child) != Processctl->Retired) {
+        raise "ref caller did not retire";
+    }
+    wait_marker(sys, prefix + "-cancelled");
+    if (pending.narrow != -50 || pending.wide != big 0) {
+        raise "cancelled ref call changed the caller snapshot";
+    }
+}
+
+
+# EN: Publish the caller PID and hold the selected ref export open.
+# RU: Сообщить PID клиента и удерживать выбранный экспорт ref открытым.
+hold_ref(service: Scopedcalls, ctl: Processctl, started: chan of int, pending: ref Cell, pair: int)
+{
+    started <-= ctl->pid();
+    if (pair) {
+        service->updatepair((pending, pending));
+    } else {
+        service->update(pending);
+    }
 }

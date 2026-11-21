@@ -285,10 +285,14 @@ static int decode_tuple(unsigned long tag, const void *bytes, size_t size, void 
 
 /* EN: Publish readiness and two tuple fields only after a complete read.
  * RU: Выдать признак готовности и два поля только после полного чтения. */
-static void tuple_next(String *path, unsigned long tag, void *ret, int scoped)
+static void tuple_next(String *path, unsigned long tag, void *ret, int scoped, int handoff)
 {
     StyxTuple tuple = {0};
     int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple, scoped);
+    if (handoff && ready > 0 && dvm_scalar_arm_handoff())
+    {
+        ready = 2;
+    }
     const WORD cells[] = {ready, tuple.narrow, tuple.wide};
     dvm_sys_scalar_result(cells, ret, sizeof(cells));
 }
@@ -300,7 +304,17 @@ void Vfsnative_scalarrefnext(void *frame)
 {
     F_Vfsnative_scalarrefnext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefnext, ret), 3 * sizeof(WORD));
-    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret, 1);
+    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret, 1, 0);
+}
+
+
+/* EN: Receive a ref snapshot and reserve its private context for a worker.
+ * RU: Принять снимок ref и зарезервировать частный контекст для исполнителя. */
+void Vfsnative_scalarrefdispatchnext(void *frame)
+{
+    F_Vfsnative_scalarrefdispatchnext call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefdispatchnext, ret), 3 * sizeof(WORD));
+    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret, 1, 1);
 }
 
 
@@ -310,7 +324,7 @@ void Vfsnative_scalartuplenext(void *frame)
 {
     F_Vfsnative_scalartuplenext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartuplenext, ret), 3 * sizeof(WORD));
-    tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret, 0);
+    tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret, 0, 0);
 }
 
 

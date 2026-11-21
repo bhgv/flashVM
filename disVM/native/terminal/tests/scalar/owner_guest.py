@@ -96,6 +96,10 @@ def relay_ref_pair(owner, caller, overflow=False):
             (caller, owner, "overflow-done"),
             (owner, caller, "recovery-ready"),
             (caller, owner, "recovery-done"),
+            (owner, caller, "single-ref-pending"),
+            (owner, caller, "single-ref-cancelled"),
+            (owner, caller, "pair-ref-pending"),
+            (owner, caller, "pair-ref-cancelled"),
             (owner, caller, "compute-cancel-entered"),
             (owner, caller, "compute-cancel-observed"),
             (owner, caller, "cancel-entered"),
@@ -270,7 +274,9 @@ def main():
                         for marker in ("refpair-entered", "refpair-edited", "overflow-ready",
                                        "overflow-done", "recovery-ready", "recovery-done",
                                        "cancel-entered", "cancel-observed",
-                                       "compute-cancel-entered", "compute-cancel-observed")]
+                                       "compute-cancel-entered", "compute-cancel-observed",
+                                       "single-ref-pending", "single-ref-cancelled",
+                                       "pair-ref-pending", "pair-ref-cancelled")]
         for mode in ("--no-jit", "--jit"):
             exchange(binary, owner, caller, mode, "PASS mounted Styx original Dis",
                      calls=0, mounted=True)

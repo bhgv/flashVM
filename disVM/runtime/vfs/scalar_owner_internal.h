@@ -34,6 +34,10 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
  * RU: Завершить частный контекст до ответа либо при отмене. */
 void dvm_scalar_caller_end(Prog *process);
 
+/* EN: Reserve the current private call for a dispatcher spawn. Return 1 if armed.
+ * RU: Зарезервировать частный вызов для spawn диспетчера. Вернуть 1 при успехе. */
+int dvm_scalar_arm_handoff(void);
+
 
 /* EN: Decode an ordinary or locally wrapped request. Mark context as required for a wrapper.
  * RU: Декодировать обычный или обёрнутый локальный запрос. Оболочка требует контекст. */

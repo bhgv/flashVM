@@ -121,6 +121,9 @@ update(value: ref Cell): int
 {
     sys := load Sys Sys->PATH;
     pid := int contents(sys, Caller + ".pid", 32);
+    if (value.narrow == -50) {
+        pause_ref(sys, "single-ref");
+    }
     value.narrow = pid;
     return pid;
 }
@@ -132,6 +135,9 @@ updatepair(values: (ref Cell, ref Cell))
 {
     sys := load Sys Sys->PATH;
     (first, second) := values;
+    if (first.narrow == -50) {
+        pause_ref(sys, "pair-ref");
+    }
     fail := first.narrow < 0;
     inbox := sys->open("/dev/sysevents", Sys->OREAD);
     bytes := array[16384] of byte;
@@ -284,5 +290,20 @@ wait_cancel(sys: Sys, compute: int)
     } exception {
         "remote call cancelled" =>
             set_marker(sys, prefix + "observed");
+    }
+}
+
+# EN: Keep a ref invocation active until the VM delivers cancellation.
+# RU: Удерживать вызов ref до получения отмены от VM.
+pause_ref(sys: Sys, prefix: string)
+{
+    set_marker(sys, prefix + "-pending");
+    {
+        sys->sleep(30000);
+        raise "ref cancellation timed out";
+    } exception {
+        "remote call cancelled" =>
+            set_marker(sys, prefix + "-cancelled");
+            raise "remote call cancelled";
     }
 }

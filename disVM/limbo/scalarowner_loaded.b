@@ -155,3 +155,104 @@ finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, ou
     }
     routes->scalarrawreply(reply, success, outputs, result);
 }
+
+
+# EN: Dispatch one-ref snapshots until EOF, preserving the unscoped call path.
+# RU: Раздавать снимки ref до EOF, сохраняя вызовы без контекста.
+run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string, outputs: int)
+{
+    for (;;) {
+        (ready, narrow, wide) := routes->scalarrefdispatchnext(request);
+        if (ready == 0) {
+            return;
+        }
+        if (ready == 2) {
+            {
+                spawn finish_ref(routes, target, reply, outputs, ready, narrow, wide);
+            } exception {
+                "*" =>
+                    routes->scalarcallabort();
+            }
+        } else {
+            finish_ref(routes, target, reply, outputs, ready, narrow, wide);
+        }
+    }
+}
+
+
+# EN: Call the linked one-ref export and publish its updated snapshot.
+# RU: Вызвать связанный экспорт ref и отправить изменённый снимок.
+finish_ref(routes: Vfsnative, target: Scalarrefimplementation, reply: string, outputs, ready, narrow: int, wide: big)
+{
+    if (ready < 0) {
+        routes->scalarrefreply(reply, 0, (0, big 0), (0, big 0));
+        return;
+    }
+    cell := ref Scalarrefcell(narrow, wide);
+    result := (0, big 0);
+    success := 1;
+    {
+        if (ready == 2) {
+            routes->scalarcallstart();
+        }
+        result = target->invoke(cell);
+    } exception {
+        "*" =>
+            success = 0;
+    }
+    routes->scalarrefreply(reply, success, ref_result(result, outputs), (cell.narrow, cell.wide));
+}
+
+
+# EN: Dispatch one or two unique ref snapshots until EOF. Counts above two
+# carry the worker handoff marker, removed before reconstructing aliases.
+# RU: Раздавать один или два снимка ref до EOF. Счётчик выше двух включает
+# признак передачи исполнителю, который снимается перед восстановлением алиасов.
+run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string, outputs: int)
+{
+    for (;;) {
+        (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairdispatchnext(request);
+        if (count == 0) {
+            return;
+        }
+        if (count > 2) {
+            {
+                spawn finish_ref_pair(routes, target, reply, outputs, count-2, 1, firstn, firstw, secondn, secondw);
+            } exception {
+                "*" =>
+                    routes->scalarcallabort();
+            }
+        } else {
+            finish_ref_pair(routes, target, reply, outputs, count, 0, firstn, firstw, secondn, secondw);
+        }
+    }
+}
+
+
+# EN: Reconstruct ref aliases in the executing Prog and return successful updates.
+# RU: Восстановить алиасы ref в выполняющем Prog и отправить успешные изменения.
+finish_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, reply: string, outputs, count, worker, firstn: int, firstw: big, secondn: int, secondw: big)
+{
+    if (count < 0) {
+        routes->scalarrefpairreply(reply, 0, 0, (0, big 0), (0, big 0), (0, big 0));
+        return;
+    }
+    first := ref Scalarrefcell(firstn, firstw);
+    second := first;
+    if (count == 2) {
+        second = ref Scalarrefcell(secondn, secondw);
+    }
+    result := (0, big 0);
+    success := 1;
+    {
+        if (worker) {
+            routes->scalarcallstart();
+        }
+        result = target->invoke(first, second);
+    } exception {
+        "*" =>
+            success = 0;
+    }
+    routes->scalarrefpairreply(reply, success, count, ref_result(result, outputs),
+        (first.narrow, first.wide), (second.narrow, second.wide));
+}

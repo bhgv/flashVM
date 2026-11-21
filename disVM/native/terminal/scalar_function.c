@@ -345,30 +345,24 @@ static void *run_async(void *state)
     FunctionFid *fid = state;
     int *workers = fid->workers;
     const struct timespec pause = {0, 1000000};
-    /* EN: Scoped raw exports have independent reply routes and one Prog per invocation.
-     * RU: У scoped raw экспортов отдельные ответы и самостоятельный Prog на вызов. */
-    if (fid->function.program_root && fid->function.dynamic_shape)
-    {
-        if (!__atomic_load_n(&fid->closed, __ATOMIC_ACQUIRE))
-        {
-            fid->failure = dispatch(fid, fid->staged, fid->staged_size);
-            __atomic_store_n(&fid->ready, 1, __ATOMIC_RELEASE);
-        }
-        release_fid(fid);
-        __atomic_sub_fetch(workers, 1, __ATOMIC_RELEASE);
-        return NULL;
-    }
+    /* EN: Scoped exports with worker handoff have independent reply routes.
+     * RU: У экспортов с передачей вызова исполнителю отдельные маршруты ответа. */
+    int independent = fid->function.program_root && (fid->function.dynamic_shape ||
+        fid->function.ref_method || fid->function.scoped_ref_pair_method);
     while (!__atomic_load_n(&fid->closed, __ATOMIC_ACQUIRE))
     {
         int idle = 0;
-        if (__atomic_compare_exchange_n(fid->busy, &idle, 1, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        if (independent || __atomic_compare_exchange_n(fid->busy, &idle, 1, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
         {
             if (!__atomic_load_n(&fid->closed, __ATOMIC_ACQUIRE))
             {
                 fid->failure = dispatch(fid, fid->staged, fid->staged_size);
                 __atomic_store_n(&fid->ready, 1, __ATOMIC_RELEASE);
             }
-            __atomic_store_n(fid->busy, 0, __ATOMIC_RELEASE);
+            if (!independent)
+            {
+                __atomic_store_n(fid->busy, 0, __ATOMIC_RELEASE);
+            }
             break;
         }
         nanosleep(&pause, NULL);

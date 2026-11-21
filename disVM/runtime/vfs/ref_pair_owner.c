@@ -39,15 +39,36 @@ static int decode_pair(unsigned long tag, const void *bytes, size_t size, void *
 
 /* EN: Return the unique object count followed by their snapshots. EOF is zero.
  * RU: Вернуть число уникальных объектов и их снимки. Ноль означает EOF. */
-void Vfsnative_scalarrefpairnext(void *frame)
+static void ref_pair_next(void *frame, int handoff)
 {
     F_Vfsnative_scalarrefpairnext call;
     StyxRefPair pair = {0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefpairnext, ret), 5 * sizeof(WORD));
     int ready = dvm_scalar_owner_next(call.path, STYX_REF_PAIR_REQUEST_TAG, decode_pair, &pair, 1);
-    const WORD cells[] = {ready == 1 ? (WORD)pair.count : ready, pair.objects[0].narrow, pair.objects[0].wide,
+    WORD count = ready == 1 ? (WORD)pair.count : ready;
+    if (handoff && count > 0 && dvm_scalar_arm_handoff())
+    {
+        count += 2;
+    }
+    const WORD cells[] = {count, pair.objects[0].narrow, pair.objects[0].wide,
         pair.objects[1].narrow, pair.objects[1].wide};
     dvm_sys_scalar_result(cells, call.ret, sizeof(cells));
+}
+
+
+/* EN: Receive a pair on the current worker through the original ABI.
+ * RU: Принять пару в текущем исполнителе через исходный ABI. */
+void Vfsnative_scalarrefpairnext(void *frame)
+{
+    ref_pair_next(frame, 0);
+}
+
+
+/* EN: Receive a pair and reserve its private context for a worker.
+ * RU: Принять пару и зарезервировать частный контекст для исполнителя. */
+void Vfsnative_scalarrefpairdispatchnext(void *frame)
+{
+    ref_pair_next(frame, 1);
 }
 
 
