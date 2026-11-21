@@ -50,5 +50,7 @@ to 65,536 bytes.
 
 The NC64 layout calculation identifies field offsets and roots for strings,
 arrays, and references. Styx invocation still uses the existing profiles.
-The new path still needs object allocation in the receiving VM, integration
-with the root map, and reference copy-back.
+The [DisVM decoder](../../runtime/vfs/managed_value.h) constructs strings and
+byte arrays in the local heap. Its test keeps only GC roots before collecting
+and checking the values. Connecting the decoded values to call frames,
+encoding results, and reference copy-back remain open.

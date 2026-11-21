@@ -49,13 +49,13 @@ init() {
                 )
                 if result.returncode or any(marker not in text for marker in required):
                     raise RuntimeError(text[-6000:])
-                if not re.search(r'MANAGEDOWNERS captured=5 released=5 live=0 pending=0 tickets=0 producers=0 failed=0 rooted_until_fast=1', text):
+                if not re.search(r'MANAGEDOWNERS captured=7 released=7 live=0 pending=0 tickets=0 producers=0 failed=0 rooted_until_fast=1', text):
                     raise RuntimeError('ticket/root retirement mismatch: ' + text[-6000:])
                 if not re.search(r'NATIVEGC .*joined=1 failed=0', text):
                     raise RuntimeError('collector lifecycle mismatch: ' + text[-6000:])
         refused = subprocess.run([str(runtime), *options, '--gc-inline', '--managed-owner-probe', str(image)],
                                  capture_output=True, text=True, timeout=15, env=env)
-        if refused.returncode != 2 or '--managed-owner-probe requires --gc-worker' not in refused.stderr:
+        if refused.returncode != 2 or 'single-threaded and exclusive execution modes have been removed' not in refused.stderr:
             raise RuntimeError('missing inline refusal: ' + refused.stdout + refused.stderr)
     print('PASS managed roots: C/JIT, atomic/locked polling, 8 native receivers, 32 retained cycles, native error/Fast retirement')
 

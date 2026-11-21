@@ -64,6 +64,7 @@ void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCa
  * RU: Записать поля без указателей в буфер NC64 и обнулить заполнители. */
 void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *values, void *frame);
 
+#define STYX_CALL_BYTE_TAG 6UL /* Unsigned Limbo byte leaf. */
 #define STYX_MANAGED_LIST_LIMIT 65536U /* Maximum complete managed value record. */
 #define STYX_MANAGED_STRING_TAG 7UL /* Counted UTF-8 bytes. */
 #define STYX_MANAGED_ARRAY_TAG 8UL /* Sequence of nested records of one declared element type. */

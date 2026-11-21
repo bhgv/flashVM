@@ -15,7 +15,6 @@
 #define CALL_PID 3UL /* Session-local caller PID. */
 #define CALL_TUPLE 4UL /* Nested tuple. */
 #define CALL_REAL 5UL /* IEEE 754 binary64 bit pattern. */
-#define CALL_BYTE 6UL /* Unsigned Limbo byte. */
 
 const char styxcall_list_args[] = "(i(ib)b)"; /* Argument list: int, tuple, big. */
 const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,big)). */
@@ -26,7 +25,7 @@ const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,
 static unsigned long node_tag(char type)
 {
     return type == 'i' ? CALL_INT : type == 'b' ? CALL_BIG : type == 'f' ? CALL_REAL :
-        type == 'p' ? CALL_PID : type == 'y' ? CALL_BYTE : CALL_TUPLE;
+        type == 'p' ? CALL_PID : type == 'y' ? STYX_CALL_BYTE_TAG : CALL_TUPLE;
 }
 
 

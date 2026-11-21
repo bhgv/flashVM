@@ -19,6 +19,9 @@
 #include "disvm/owner_slot.h"
 #include "thread_port.h"
 #include "channel_sync.h"
+#include "vfs/managed_value.h"
+#include "../native/terminal/call_record.h"
+#include "../native/terminal/scalar_record.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +139,51 @@ static int error_scope(void *argument)
 }
 
 
+/* [GC:] EN: Decode borrowed wire bytes, retain local values, and collect with only ticket roots.
+ * RU: Декодировать записи, удержать локальные значения и запустить GC с корнями билетов. */
+static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
+{
+    const unsigned char utf8[] = {0xd0, 0x96, 0, 0x61};
+    unsigned char encoded[64];
+    size_t first, second;
+    void *text = H;
+    void *bytes = H;
+    DVM_OwnerScope scope = {0};
+    DVM_OwnerEntry text_root = {0}, bytes_root = {0};
+    FVM_SRecord string = {.tag = STYX_MANAGED_STRING_TAG, .payload = utf8, .size = sizeof(utf8)};
+    check(dvm_styx_managed_new("s", &string, &text) && text != H, "construct counted Styx string");
+    check(styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, 255, encoded, sizeof(encoded), &first) &&
+        styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, 0, encoded + first, sizeof(encoded) - first, &second),
+        "encode typed bytes");
+    FVM_SRecord array = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = encoded, .size = first + second};
+    check(dvm_styx_managed_new("a[y]", &array, &bytes) && bytes != H, "construct Styx byte array");
+    FVM_SRecord truncated = array;
+    truncated.size--;
+    void *unchanged = text;
+    check(!dvm_styx_managed_new("a[y]", &truncated, &unchanged) && unchanged == text, "malformed array preserves output");
+    FVM_SRecord absent = {.tag = STYX_MANAGED_NIL_TAG};
+    check(dvm_styx_managed_new("s", &absent, &unchanged) && unchanged == H, "nil string remains nil");
+    check(dvm_owner_scope_open(&scope) &&
+        dvm_managed_owner_capture_into(text, &scope, &text_root) &&
+        dvm_managed_owner_capture_into(bytes, &scope, &bytes_root), "root decoded Styx values");
+    destroy(text);
+    destroy(bytes);
+    memset(encoded, 0, sizeof(encoded));
+    check(dvm_native_owner_leave(owner), "leave with only Styx value roots");
+    check(dvm_gc_workers_request(workers, DVM_GC_CYCLES) &&
+        dvm_gc_workers_wait_idle(workers), "collect while decoded values are rooted");
+    check(dvm_native_owner_enter(owner), "reenter with Styx ticket roots");
+    text = dvm_managed_owner_value(&text_root);
+    Array *restored = dvm_managed_owner_value(&bytes_root);
+    check(text && text != H && !memcmp(string2c(text), utf8, sizeof(utf8)) &&
+        restored && restored != H && restored->len == 2 && restored->data[0] == 255 && restored->data[1] == 0,
+        "decoded values are independent of transport storage and survive collection");
+    check(dvm_owner_scope_close(&scope), "retire decoded values");
+    check(dvm_native_owner_leave(owner) && dvm_gc_workers_wait_idle(workers) &&
+        dvm_native_owner_enter(owner), "finish native root retirement");
+}
+
+
 /* [GC:] Only ticket roots hold the created managed String during actual cycle
  * collection. Controller drops its ordinary creation owner, leaves ACTIVE world
  * admission, waits collectors, then borrows through its still-owned ticket only
@@ -160,6 +208,7 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     dvm_runtime_service_probe(workers);
     dvm_runtime_pointer_builder_probe(workers);
     dvm_runtime_root_registry_probe(workers);
+    styx_value_probe(owner, workers);
     value = c2string("managed-ticket-root", 19);
     check(world && workers && value != H && value != nil, "real managed String");
     probe.slot = dvm_owner_slot_create();
