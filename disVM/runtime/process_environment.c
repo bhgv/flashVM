@@ -19,6 +19,7 @@
 #include "disvm/native_process.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
+#include "../native/terminal/unibus_inbox.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,6 +101,9 @@ void dvm_process_environment_destroy(Prog *process)
         owner->remote_call_events = NULL;
         dvm_cancel_release(owner->remote_call_cancel);
         owner->remote_call_cancel = NULL;
+        styxunibusmailboxseal(owner->remote_call_reply);
+        dvm_provider_release(owner->remote_call_reply);
+        owner->remote_call_reply = NULL;
         dvm_namespace_release(owner->remote_call_group);
         owner->remote_call_group = NULL;
         dvm_namespace_release(owner->namespace_group);

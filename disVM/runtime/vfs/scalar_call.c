@@ -348,11 +348,19 @@ void Vfsnative_scalarbigpoll(void *frame)
 
 /* EN: Send a complete pre-encoded owner result through the selected mailbox.
  * RU: Отправить полную закодированную запись в приёмник владельца. */
-void dvm_scalar_owner_record(String *name, const void *bytes, size_t used)
+void dvm_scalar_owner_record(String *name, const void *bytes, size_t used, int scoped)
 {
+    Prog *process = scoped ? currun() : NULL;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    DVM_Provider *reply = owner ? owner->remote_call_reply : NULL;
+    if (owner)
+    {
+        owner->remote_call_reply = NULL;
+        dvm_scalar_caller_end(process);
+    }
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
-    if (!group || !dvm_scalar_copy_path(name, path))
+    if (!reply && (!group || !dvm_scalar_copy_path(name, path)))
     {
         error("scalar owner route unavailable");
     }
@@ -360,9 +368,10 @@ void dvm_scalar_owner_record(String *name, const void *bytes, size_t used)
     int released = dvm_vfs_path_enter(&wait);
     if (released < 0)
     {
+        dvm_provider_release(reply);
         error("scalar owner route unavailable");
     }
-    DVM_Provider *provider = capture(group, path, FVM_ACCESS_WRITE);
+    DVM_Provider *provider = reply ? reply : capture(group, path, FVM_ACCESS_WRITE);
     DVM_LaunchDelivery delivery = styxterminalrecordwrite(provider, bytes, used);
     dvm_provider_release(provider);
     int cancelled = dvm_vfs_wait_end(wait);

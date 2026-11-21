@@ -25,6 +25,7 @@
 #include "../../native/terminal/load_profile.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/tuple_record.h"
+#include "../../native/terminal/unibus_inbox.h"
 #include <string.h>
 
 
@@ -78,15 +79,19 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
     DVM_Provider *caller = handle->ops->take_context ? handle->ops->take_context(handle->state) : NULL;
     DVM_Namespace *scope = caller ? caller_namespace(group, caller) : NULL;
     DVM_Cancel *cancel = caller ? dvm_provider_call_cancel(caller) : NULL;
+    DVM_Provider *reply = dvm_provider_call_reply(caller);
     dvm_provider_release(caller);
     DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
     if (!events)
     {
         dvm_namespace_release(scope);
         dvm_cancel_release(cancel);
+        styxunibusmailboxseal(reply);
+        dvm_provider_release(reply);
         return 0;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    owner->remote_call_reply = reply;
     owner->remote_call_cancel_delivered = 0;
     owner->remote_call_cancel = cancel;
     owner->remote_call_group = scope;
@@ -107,6 +112,9 @@ void dvm_scalar_caller_end(Prog *process)
     DVM_SysEvents *events = owner->remote_call_events;
     dvm_cancel_release(owner->remote_call_cancel);
     owner->remote_call_cancel = NULL;
+    styxunibusmailboxseal(owner->remote_call_reply);
+    dvm_provider_release(owner->remote_call_reply);
+    owner->remote_call_reply = NULL;
     owner->remote_call_group = NULL;
     owner->remote_call_events = NULL;
     dvm_sysevents_retire(events);
@@ -191,8 +199,7 @@ void Vfsnative_scalarrawreply(void *frame)
     {
         error("invalid remote scalar reply");
     }
-    dvm_scalar_caller_end(currun());
-    dvm_scalar_owner_record(call.path, bytes, used);
+    dvm_scalar_owner_record(call.path, bytes, used, 1);
 }
 
 

@@ -84,6 +84,10 @@ init()
     checkrefs(service, pid);
     checkcancel(sys, service, 3, "compute-cancel-");
     checkcancel(sys, service, 2, "cancel-");
+    (slowpid, slowvalue) := service->inspect(4);
+    if (slowpid != pid || slowvalue != big 44) {
+        raise "slow scoped call lost its private reply";
+    }
     report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
 }
 

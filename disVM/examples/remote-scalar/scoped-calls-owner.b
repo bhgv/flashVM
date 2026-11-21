@@ -52,6 +52,10 @@ inspect(fail: int): (int,big)
         wait_cancel(sys, fail == 3);
         raise "remote handler stopped at a cancellation checkpoint";
     }
+    if (fail == 4) {
+        sys->sleep(3500);
+        return (pid, big 44);
+    }
     if (fail != 0) {
         raise "requested scoped owner failure";
     }

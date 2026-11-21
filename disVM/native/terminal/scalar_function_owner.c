@@ -8,19 +8,32 @@
 #include "record_write.h"
 #include "scalar_verify.h"
 #include "call_scope.h"
+#include "cancel.h"
 #include "flashvm/srecord.h"
 #include <time.h>
 
 
-/* EN: Exchange one complete request and capture the reply, at most once.
- * RU: Обменять полную запись и захватить ответ без повторной отправки. */
+/* EN: Exchange one complete request. A scoped call receives on its own mailbox.
+ * Calls with a cancellation source wait until reply or revocation. Revocation
+ * gives the owner a bounded interval to unwind and finish its local handoff.
+ * RU: Передать полную запись. Вызов с контекстом принимает ответ в своём приёмнике.
+ * При наличии токена ждать ответ либо отзыв. После отзыва дать владельцу
+ * ограниченное время на разворачивание стека и завершение локального обмена. */
 static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_t size, size_t *received, DVM_Provider *context)
 {
     DVM_VfsHandle reader = {0};
-    struct timespec start;
-    if (owner->retired || clock_gettime(CLOCK_MONOTONIC, &start) ||
-        dvm_provider_open(owner->reply, ".", "r", &reader) != FVM_OK)
+    struct timespec start = {0};
+    DVM_Provider *private_reply = context ? styxunibusloadmailbox() : NULL;
+    int bound = !context || dvm_provider_set_call_reply(context, private_reply);
+    DVM_Provider *reply = context ? private_reply : owner->reply;
+    DVM_Cancel *cancel = dvm_provider_call_cancel(context);
+    int bounded = !cancel;
+    int opened = bound && !owner->retired && (!bounded || !clock_gettime(CLOCK_MONOTONIC, &start)) &&
+        dvm_provider_open(reply, ".", "r", &reader) == FVM_OK;
+    dvm_provider_release(private_reply);
+    if (!opened)
     {
+        dvm_cancel_release(cancel);
         return 0;
     }
     int ready = 0;
@@ -31,9 +44,21 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
         styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED)
     {
         struct timespec now;
-        while (!clock_gettime(CLOCK_MONOTONIC, &now) &&
-            (now.tv_sec - start.tv_sec) * INT64_C(1000) + (now.tv_nsec - start.tv_nsec) / 1000000 < 3000)
+        for (;;)
         {
+            if (!bounded && dvm_cancel_requested(cancel))
+            {
+                if (clock_gettime(CLOCK_MONOTONIC, &start))
+                {
+                    break;
+                }
+                bounded = 1;
+            }
+            if (bounded && (clock_gettime(CLOCK_MONOTONIC, &now) ||
+                (now.tv_sec - start.tv_sec) * INT64_C(1000) + (now.tv_nsec - start.tv_nsec) / 1000000 >= 3000))
+            {
+                break;
+            }
             DVM_IoResult got = dvm_vfs_read_chunk(&reader, record, STYX_FUNCTION_FRAME_CAPACITY);
             if (got.status == FVM_OK && (got.flags & DVM_IO_RECORD) && !(got.flags & DVM_IO_UNCERTAIN))
             {
@@ -49,6 +74,7 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
             nanosleep(&delay, NULL);
         }
     }
+    dvm_cancel_release(cancel);
     dvm_vfs_close(&reader);
     return ready;
 }
@@ -131,7 +157,7 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
             return 0;
         }
     }
-    return retire(owner);
+    return self ? -1 : retire(owner);
 }
 
 
@@ -169,7 +195,7 @@ static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *
             return 0;
         }
     }
-    return retire(owner);
+    return self ? -1 : retire(owner);
 }
 
 
@@ -206,7 +232,7 @@ static int ref_pair_dispatch(void *state, DVM_Provider *self, StyxRefPair *value
             return 0;
         }
     }
-    return retire(owner);
+    return self ? -1 : retire(owner);
 }
 
 

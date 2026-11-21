@@ -138,6 +138,7 @@ void dvm_provider_release(DVM_Provider *provider)
     {
         dvm_provider_capture_detach(provider);
         dvm_cancel_release(provider->call_cancel);
+        dvm_provider_release(provider->call_reply);
         provider->ops->destroy(provider->state);
         if (provider->caller.release)
         {
@@ -447,4 +448,40 @@ DVM_Cancel *dvm_provider_call_cancel(DVM_Provider *provider)
     }
     fvm_port_sync_unlock(provider->lock);
     return token;
+}
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+int dvm_provider_set_call_reply(DVM_Provider *context, DVM_Provider *reply)
+{
+    if (!context || context == reply || !dvm_provider_retain(reply))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(context->lock);
+    int installed = context->references == 1 && !context->call_reply;
+    if (installed)
+    {
+        context->call_reply = reply;
+    }
+    fvm_port_sync_unlock(context->lock);
+    if (!installed)
+    {
+        dvm_provider_release(reply);
+    }
+    return installed;
+}
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+DVM_Provider *dvm_provider_call_reply(DVM_Provider *context)
+{
+    if (!context)
+    {
+        return NULL;
+    }
+    fvm_port_sync_lock(context->lock);
+    DVM_Provider *reply = context->call_reply;
+    fvm_port_sync_unlock(context->lock);
+    return dvm_provider_retain(reply) ? reply : NULL;
 }

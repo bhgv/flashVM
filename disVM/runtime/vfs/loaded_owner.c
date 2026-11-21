@@ -224,7 +224,7 @@ static void send_offer(String *offer, unsigned char *bytes, size_t capacity, siz
     {
         error("cannot encode loaded owner refusal");
     }
-    dvm_scalar_owner_record(offer, bytes, size);
+    dvm_scalar_owner_record(offer, bytes, size, 0);
 }
 
 

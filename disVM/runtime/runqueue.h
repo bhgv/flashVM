@@ -68,6 +68,7 @@ typedef struct DVM_RuntimeProcess
     struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
     struct DVM_ModuleOverride *module_namespaces; /* Process-local namespace variants and inboxes keyed by never-reused binding identity. */
     struct DVM_SysEvents *remote_call_events; /* Owned event inbox for the temporary namespace. */
+    struct DVM_Provider *remote_call_reply; /* Owned private return mailbox of the active call. */
     int remote_call_cancel_delivered;     /* The owner has raised cancellation for this call. */
     struct DVM_Cancel *remote_call_cancel; /* Owned cancellation source of the active remote call. */
     DVM_Namespace *remote_call_group; /* Owned temporary namespace of this remote call, if active. */

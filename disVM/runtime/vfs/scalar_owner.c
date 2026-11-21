@@ -233,7 +233,7 @@ void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t val
     {
         error("invalid scalar reply");
     }
-    dvm_scalar_owner_record(name, bytes, size);
+    dvm_scalar_owner_record(name, bytes, size, 0);
 }
 
 
@@ -337,7 +337,7 @@ void Vfsnative_scalartuplereply(void *frame)
     {
         error("invalid tuple reply");
     }
-    dvm_scalar_owner_record(call.path, bytes, size);
+    dvm_scalar_owner_record(call.path, bytes, size, 0);
 }
 
 
@@ -369,8 +369,7 @@ void Vfsnative_scalarrefreply(void *frame)
     {
         error("invalid ref reply");
     }
-    dvm_scalar_caller_end(currun());
-    dvm_scalar_owner_record(call.path, bytes, size);
+    dvm_scalar_owner_record(call.path, bytes, size, 1);
 }
 
 
@@ -405,7 +404,7 @@ void Vfsnative_scalarlistreply(void *frame)
     {
         error("invalid argument-list reply");
     }
-    dvm_scalar_owner_record(call.path, bytes, size);
+    dvm_scalar_owner_record(call.path, bytes, size, 0);
 }
 
 

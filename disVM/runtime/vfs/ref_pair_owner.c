@@ -98,6 +98,5 @@ void Vfsnative_scalarrefpairreply(void *frame)
     {
         error("invalid ref pair owner reply");
     }
-    dvm_scalar_caller_end(currun());
-    dvm_scalar_owner_record(call.path, bytes, size);
+    dvm_scalar_owner_record(call.path, bytes, size, 1);
 }

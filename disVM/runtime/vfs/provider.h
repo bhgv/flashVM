@@ -206,4 +206,12 @@ int dvm_provider_set_call_cancel(DVM_Provider *provider, struct DVM_Cancel *toke
  * RU: Удержать неизменяемый токен контекста, если он задан. */
 struct DVM_Cancel *dvm_provider_call_cancel(DVM_Provider *provider);
 
+/* EN: Retain the private reply on an unpublished context. Both inputs are borrowed.
+ * RU: Удержать частный ответ у неопубликованного контекста. Оба объекта заимствованы. */
+int dvm_provider_set_call_reply(DVM_Provider *context, DVM_Provider *reply);
+
+/* EN: Retain the private reply capability of this borrowed context, or return NULL.
+ * RU: Вернуть свою ссылку на частный маршрут ответа контекста либо NULL. */
+DVM_Provider *dvm_provider_call_reply(DVM_Provider *context);
+
 #endif
