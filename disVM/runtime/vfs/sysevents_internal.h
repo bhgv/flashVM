@@ -89,4 +89,8 @@ int dvm_sysevents_post(DVM_SysEvents *events, unsigned kind, uint64_t source,
 /* EN/RU: Open native readonly stream capturing retained inbox; empty output.
  * Открыть readonly stream с retained inbox; empty output. */
 FVM_Result dvm_sysevents_open(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output);
+
+/* EN: Open a readonly poll stream. An idle read returns zero without moving its cursor.
+ * RU: Открыть поток опроса только для чтения. Пустое чтение возвращает ноль без сдвига. */
+FVM_Result dvm_sysevents_poll_open(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output);
 #endif

@@ -308,6 +308,11 @@ not consume events from the client's `/dev/sysevents`. The reverse Styx
 lease bounds access to the current call. This stream observes provider
 notices from the shared trees.
 
+An idle reverse read returns zero bytes. Poll the same open fid again
+while the call lease is active. The zero-byte read consumes nothing and
+keeps the offset unchanged. When the lease ends, the reverse server
+refuses subsequent reads.
+
 ### Встречная очередь событий
 
 В VM провайдера через `/.prog/.self/.sysevents` доступна отдельная очередь
@@ -315,3 +320,8 @@ notices from the shared trees.
 выданные деревья `.vfs` и `.var`. Чтение через Styx не расходует очередь
 `/dev/sysevents` клиента. Доступ действует в пределах текущего вызова.
 Очередь получает уведомления от провайдеров расшаренных деревьев.
+
+Пустое чтение встречной очереди возвращает ноль байтов. Пока действует
+контекст вызова, повторяйте чтение через тот же fid. Пустое чтение
+ничего не потребляет и сохраняет смещение. После окончания выдачи
+встречный сервер отклоняет дальнейшее чтение.

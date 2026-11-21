@@ -150,7 +150,7 @@ static FVM_Result events_info(void *state, const char *path, FVM_FileInfo *info)
  * RU: Открыть FD очереди этой выдачи в режиме чтения. */
 static FVM_Result events_open(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    return strcmp(path, ".") ? FVM_NOT_FOUND : dvm_sysevents_open(state, mode, out);
+    return strcmp(path, ".") ? FVM_NOT_FOUND : dvm_sysevents_poll_open(state, mode, out);
 }
 
 

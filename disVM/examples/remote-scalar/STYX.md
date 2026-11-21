@@ -238,3 +238,9 @@ reverse stream, the client uses `intset` to change `.var/live` from 41
 to 65539 and `Sys->write` to change `.vfs/live` from 42 to 131077.
 The provider checks a content-change record for each tree on the same
 open fid, then reads both four-byte values through `/.prog/.self`.
+
+The provider also polls the same fid while the queue is empty. The
+caller changes a third, unshared variable before the two visible
+updates. The test checks that only the two shared notifications arrive.
+
+After the reply, the test also checks that reads on a saved fid are refused.

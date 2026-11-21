@@ -13,6 +13,7 @@
  * Открытый FD удерживает только inbox; queued records никогда не принадлежат FD. */
 typedef struct SysStream
 {
+    int poll; /* Return a successful empty read while a reverse inbox is idle. */
     DVM_SysEvents *events; /* Retained inbox, independent from owning Prog retirement. */
 } SysStream;
 
@@ -131,7 +132,7 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *resu
         {
             result->stop = DVM_IO_EOF;
         }
-        else
+        else if (!stream->poll)
         {
             result->status = FVM_ERROR;
             result->stop = DVM_IO_AGAIN;
@@ -166,7 +167,7 @@ static const DVM_VfsOps ops = {info, NULL, NULL, NULL, NULL, close_stream, NULL,
 
 /* EN/RU: See internal header; native allocation precedes publication.
  * См. internal header; native allocation до publication. */
-FVM_Result dvm_sysevents_open(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output)
+static FVM_Result open_stream(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output, int poll)
 {
     SysStream *stream;
     if (!events || strcmp(mode, "r"))
@@ -184,7 +185,22 @@ FVM_Result dvm_sysevents_open(DVM_SysEvents *events, const char *mode, DVM_VfsHa
         return FVM_ERROR;
     }
     stream->events = events;
+    stream->poll = poll;
     output->ops = &ops;
     output->state = stream;
     return FVM_OK;
+}
+
+
+/* EN/RU: Local inbox semantics. / Семантика локальной очереди. */
+FVM_Result dvm_sysevents_open(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output)
+{
+    return open_stream(events, mode, output, 0);
+}
+
+
+/* EN/RU: Reverse Styx polling semantics. / Семантика опроса через встречный Styx. */
+FVM_Result dvm_sysevents_poll_open(DVM_SysEvents *events, const char *mode, DVM_VfsHandle *output)
+{
+    return open_stream(events, mode, output, 1);
 }

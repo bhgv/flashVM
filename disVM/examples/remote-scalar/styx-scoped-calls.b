@@ -49,12 +49,16 @@ init()
     if (vfs_base == nil || vfs_cell == nil || vfs == nil || exports->mount(vfs, "/.vfs", 0, 0) != 0) {
         raise "could not mount live VFS file for event test";
     }
+    private_cell := exports->intvar(17);
+    if (private_cell == nil || exports->mount(private_cell, "/private-live", 0, 0) != 0) {
+        raise "could not mount unshared variable";
+    }
     service := load Scopedcalls "/peer/mounted/scoped-calls.dis";
     if (service == nil) {
         raise "scoped compiled load failed: " + sys->sprint("%r");
     }
     edited := chan of int;
-    spawn change_live(sys, exports, cell, edited);
+    spawn change_live(sys, exports, cell, private_cell, edited);
     pid := sys->pctl(0, nil);
     (seen, code) := service->inspect(0);
     if (<-edited != 1 || service->baseline(18) != 18 || seen != pid || code != big 1) {
@@ -125,10 +129,10 @@ report(sys: Sys, message: string)
 
 # EN: Mutate the published variable only after the provider opens its event stream.
 # RU: Изменить опубликованную переменную после открытия потока у провайдера.
-change_live(sys: Sys, exports: Vfsexport, cell: ref Vfsexport->Root, done: chan of int)
+change_live(sys: Sys, exports: Vfsexport, cell, private_cell: ref Vfsexport->Root, done: chan of int)
 {
     wait_marker(sys, "refpair-entered");
-    success := exports->intset(cell, 65539);
+    success := exports->intset(private_cell, 23) && exports->intset(cell, 65539);
     file := sys->open("/.vfs/live", Sys->OWRITE);
     encoded := array[] of {byte 0, byte 2, byte 0, byte 5};
     if (file == nil || sys->write(file, encoded, len encoded) != len encoded) {

@@ -6,6 +6,7 @@ include "sys.m";
 include "scoped-calls.m";
 
 Caller: con "/.prog/.self/"; # Alias set in the private namespace of one call.
+saved_reverse: ref Sys->FD; # Caller stream retained across reply to test revocation.
 saved_events: ref Sys->FD; # Event FD retained for a post-reply retirement check.
 saved: ref Sys->FD; # An unread caller fid from the first completed inspection.
 
@@ -51,26 +52,40 @@ inspect(fail: int): (int,big)
     }
     value := contents(sys, Caller + ".fd/3", 4);
     if (value == "left") {
+        initial_grants(sys, reverse, event);
+        if (sys->read(reverse, event, len event) != 0) {
+            raise "idle reverse queue did not report pending";
+        }
+        if (sys->open(Caller + ".vfs/private-live", Sys->OREAD) != nil) {
+            raise "unshared variable visible through caller VFS";
+        }
         set_marker(sys, "refpair-entered");
         wait_marker(sys, "refpair-edited");
         variables := 0;
         filesystem := 0;
-        for (i := 0; i < 4 && !(variables && filesystem); i++) {
+        for (i := 0; i < 2; i++) {
             n := sys->read(reverse, event, len event);
             if (n < 22) {
                 break;
             }
             if (string event[0:11] == "system 1 4 ") {
                 path := string event[n-11:n];
-                variables |= path == "2f2e766172\n";
-                filesystem |= path == "2f2e766673\n";
+                if (path == "2f2e766172\n") {
+                    variables++;
+                } else if (path == "2f2e766673\n") {
+                    filesystem++;
+                }
             }
         }
-        if (!variables || !filesystem ||
+        if (variables != 1 || filesystem != 1 ||
             !live_value(sys, Caller + ".var/live", 1, 3) ||
             !live_value(sys, Caller + ".vfs/live", 2, 5)) {
             raise "did not receive both live caller events and values";
         }
+        if (sys->read(reverse, event, len event) != 0) {
+            raise "unexpected record after both granted notifications";
+        }
+        saved_reverse = reverse;
         saved = sys->open(Caller + ".pid", Sys->OREAD);
         if (saved == nil) {
             raise "could not save the scoped fid";
@@ -138,6 +153,13 @@ baseline(flag: int): int
         }
         saved = nil;
     }
+    if (saved_reverse != nil) {
+        data := array[4096] of byte;
+        if (sys->read(saved_reverse, data, len data) >= 0) {
+            raise "saved reverse event fid survived the reply";
+        }
+        saved_reverse = nil;
+    }
     if (saved_events != nil) {
         retired_events(sys, saved_events);
         saved_events = nil;
@@ -187,4 +209,16 @@ live_value(sys: Sys, path: string, high, low: int): int
     return live != nil && sys->read(live, encoded, 4) == 4 &&
         encoded[0] == byte 0 && encoded[1] == byte high &&
         encoded[2] == byte 0 && encoded[3] == byte low;
+}
+
+# EN: Drain the two initial grant snapshots before testing an idle read.
+# RU: Прочитать два начальных снимка выдач перед проверкой пустой очереди.
+initial_grants(sys: Sys, inbox: ref Sys->FD, bytes: array of byte)
+{
+    for (i := 0; i < 2; i++) {
+        n := sys->read(inbox, bytes, len bytes);
+        if (n < 12 || string bytes[0:12] != "system 1 63 ") {
+            raise "missing initial grant snapshot";
+        }
+    }
 }
