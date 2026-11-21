@@ -4,6 +4,7 @@
  */
 #include "cap_internal.h"
 #include "bigtable_owner.h"
+#include "cap_array_index.h"
 #include "table_request.h"
 #include "cancel.h"
 #include <errno.h>
@@ -13,13 +14,26 @@
 
 typedef enum TableNodeKind
 {
-    Length, Count, Insert, Push, Pop, Add
+    Length, Count, Insert, Push, Pop, Add, Index, Value
 } TableNodeKind;
+
+typedef struct TableSelection
+{
+    struct TableSelection *next; /* Active index in this projection. */
+    DVM_ProviderOpenScope scope; /* One local process or reverse grant. */
+    FhtKey key; /* Canonical selected key. */
+    char text[TABLE_KEY_LIMIT]; /* Copied text key bytes. */
+    size_t references; /* Selector and value fids, protected by the projection lock. */
+    int alive; /* Atomic revocation checked by value I/O. */
+    int selected; /* Canonical key installed under the projection lock. */
+} TableSelection;
 
 typedef struct TableProjection
 {
     struct TableStorage *storage; /* Owned native table reference. */
     unsigned references; /* One builder reference plus one per provider. */
+    FVM_PortSync *lock; /* Serializes selection admission and pins. */
+    TableSelection *selectors; /* Open selectors. */
 } TableProjection;
 
 typedef struct TableNode
@@ -27,12 +41,14 @@ typedef struct TableNode
     TableProjection *table; /* Owned projection. */
     TableNodeKind kind; /* Immutable file operation. */
     const char *name; /* Static basename. */
-    int readable; /* Exact read versus write access. */
+    unsigned access; /* Permitted open modes. */
 } TableNode;
 
 typedef struct TableCursor
 {
     TableNode *node; /* Borrowed from the pinned provider. */
+    TableSelection *selection; /* Optional fid-owned selection reference. */
+    unsigned access; /* Actual open access. */
     unsigned char data[32]; /* Metadata snapshot or cached pop result. */
     size_t size; /* Cached extent. */
     size_t offset; /* Individual cursor. */
@@ -53,6 +69,8 @@ static int64_t word(const unsigned char *bytes)
 }
 
 
+#include "cap_bigtable_selection.inc"
+
 /* EN: Describe the exact command file.
  * RU: Описать точный файл операции. */
 static FVM_Result table_info(void *state, const char *path, FVM_FileInfo *out)
@@ -64,8 +82,8 @@ static FVM_Result table_info(void *state, const char *path, FVM_FileInfo *out)
     }
     *out = (FVM_FileInfo){0};
     strcpy(out->name, node->name);
-    out->mode = node->readable ? 0444 : 0222;
-    out->length.low = node->kind == Pop ? 8 : 0;
+    out->mode = node->access * 0111;
+    out->length.low = node->kind == Pop || node->kind == Value ? 8 : 0;
     return FVM_OK;
 }
 
@@ -103,7 +121,7 @@ static void table_read(void *state, void *bytes, size_t size, DVM_IoResult *out)
 {
     TableCursor *cursor = state;
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
-    if (!cursor->node->readable)
+    if (!(cursor->access & FVM_ACCESS_READ) || !selection_lives(cursor))
     {
         return;
     }
@@ -111,12 +129,16 @@ static void table_read(void *state, void *bytes, size_t size, DVM_IoResult *out)
     {
         TableNodeKind kind = cursor->node->kind;
         FvmTableRequest request = {.operation = kind == Pop ? FVM_TABLE_POP :
-            kind == Length ? FVM_TABLE_LENGTH : FVM_TABLE_COUNT};
+            kind == Value ? FVM_TABLE_GET : kind == Length ? FVM_TABLE_LENGTH : FVM_TABLE_COUNT};
+        if (kind == Value)
+        {
+            request.key = cursor->selection->key;
+        }
         if (!apply_request(cursor, &request, out))
         {
             return;
         }
-        if (kind == Pop)
+        if (kind == Pop || kind == Value)
         {
             uint64_t bits = (uint64_t)request.value;
             for (unsigned i = 0; i < 8; i++)
@@ -151,7 +173,8 @@ static void table_write(void *state, const void *data, size_t size, DVM_IoResult
     TableCursor *cursor = state;
     const unsigned char *bytes = data;
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
-    if (cursor->completed || cursor->node->readable)
+    if (!(cursor->access & FVM_ACCESS_WRITE) || !selection_lives(cursor) ||
+        (cursor->node->kind == Value ? cursor->offset != 0 : cursor->completed))
     {
         return;
     }
@@ -174,23 +197,32 @@ static void table_write(void *state, const void *data, size_t size, DVM_IoResult
         request.first = word(bytes);
         break;
     case Add:
-        if (size < 9 || size > TABLE_KEY_LIMIT + 9)
+        if (size < 9 || !decode_key(bytes, size - 8, &request.key))
         {
             return;
         }
         request.operation = FVM_TABLE_ADD;
-        if (bytes[0] == 0 && size == 17)
-        {
-            request.key = (FhtKey){.kind = FHT_INDEX, .index = word(bytes + 1)};
-        }
-        else if (bytes[0] == 1)
-        {
-            request.key = (FhtKey){.kind = FHT_TEXT, .text = (const char *)bytes + 1, .size = size - 9};
-        }
-        else
+        break;
+    case Index:
+        if (!decode_key(bytes, size, &request.key))
         {
             return;
         }
+        request.operation = FVM_TABLE_SELECT;
+        if (apply_request(cursor, &request, out))
+        {
+            publish_selection(cursor, request.key);
+            cursor->completed = 1;
+            *out = (DVM_IoResult){.status = FVM_OK, .count = size, .flags = DVM_IO_PREFIX};
+        }
+        return;
+    case Value:
+        if (size != 8)
+        {
+            return;
+        }
+        request.operation = FVM_TABLE_UPDATE;
+        request.key = cursor->selection->key;
         break;
     default:
         return;
@@ -199,6 +231,11 @@ static void table_write(void *state, const void *data, size_t size, DVM_IoResult
     if (apply_request(cursor, &request, out))
     {
         cursor->completed = 1;
+        if (cursor->node->kind == Value)
+        {
+            memcpy(cursor->data, bytes, size);
+            cursor->size = cursor->offset = size;
+        }
         *out = (DVM_IoResult){.status = FVM_OK, .count = size, .flags = DVM_IO_PREFIX};
     }
 }
@@ -212,7 +249,7 @@ static FVM_Result table_seek(void *state, long offset, int origin, long *positio
     long length = (long)cursor->size;
     long base = origin == FVM_FILE_SEEK_START ? 0 :
         origin == FVM_FILE_SEEK_CURRENT ? (long)cursor->offset : origin == FVM_FILE_SEEK_END ? length : -1;
-    if (base < 0 || offset < -base || offset > length - base)
+    if (!selection_lives(cursor) || base < 0 || offset < -base || offset > length - base)
     {
         return FVM_ERROR;
     }
@@ -226,10 +263,13 @@ static FVM_Result table_seek(void *state, long offset, int origin, long *positio
  * RU: Открыть курсор файла операции с проверкой режима. */
 static FVM_Result table_open(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    static const DVM_VfsOps ops = {.info = table_stat, .seek = table_seek, .close = free,
+    static const DVM_VfsOps ops = {.info = table_stat, .seek = table_seek, .close = close_table_cursor,
         .read_chunk = table_read, .write_chunk = table_write};
     TableNode *node = state;
-    if (strcmp(path, ".") || strcmp(mode, node->readable ? "r" : "wo"))
+    unsigned access = !strcmp(mode, "r") ? FVM_ACCESS_READ :
+        !strcmp(mode, "wo") ? FVM_ACCESS_WRITE : !strcmp(mode, "rw") || !strcmp(mode, "rwo") ?
+        FVM_ACCESS_READ | FVM_ACCESS_WRITE : 0;
+    if (strcmp(path, ".") || !access || (access & node->access) != access)
     {
         return FVM_ERROR;
     }
@@ -239,6 +279,12 @@ static FVM_Result table_open(void *state, const char *path, const char *mode, DV
         return FVM_OUT_OF_MEMORY;
     }
     cursor->node = node;
+    cursor->access = access;
+    if ((node->kind == Index || node->kind == Value) && !open_selection(cursor))
+    {
+        free(cursor);
+        return FVM_ERROR;
+    }
     out->state = cursor;
     out->ops = &ops;
     out->native_flags = DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_INFO | DVM_VFS_CANCEL_SEEK | DVM_VFS_CANCEL_CLOSE;
@@ -253,6 +299,7 @@ static void release_projection(TableProjection *table)
     if (__atomic_sub_fetch(&table->references, 1, __ATOMIC_ACQ_REL) == 0)
     {
         dvm_bigtable_storage_release(table->storage);
+        fvm_port_sync_destroy(table->lock);
         free(table);
     }
 }
@@ -270,7 +317,7 @@ static void destroy_node(void *state)
 
 /* EN: Map one local operation file into the virtual table directory.
  * RU: Отобразить файл операции в виртуальном каталоге таблицы. */
-static int map_node(DVM_View *view, TableProjection *table, TableNodeKind kind, const char *path, int readable)
+static int map_node(DVM_View *view, TableProjection *table, TableNodeKind kind, const char *path, unsigned access)
 {
     static const DVM_ProviderOps ops = {.info = table_info, .open = table_open,
         .destroy = destroy_node, .flags = DVM_PROVIDER_STABLE_BIND};
@@ -279,7 +326,7 @@ static int map_node(DVM_View *view, TableProjection *table, TableNodeKind kind, 
     {
         return 0;
     }
-    *node = (TableNode){table, kind, path + 1, readable};
+    *node = (TableNode){table, kind, path + 1, access};
     __atomic_add_fetch(&table->references, 1, __ATOMIC_RELAXED);
     DVM_Provider *provider = dvm_provider_create_native(&ops, node, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
     if (!provider)
@@ -287,7 +334,7 @@ static int map_node(DVM_View *view, TableProjection *table, TableNodeKind kind, 
         destroy_node(node);
         return 0;
     }
-    int mapped = dvm_view_map(view, path, provider, ".", readable ? FVM_ACCESS_READ : FVM_ACCESS_WRITE, 0);
+    int mapped = dvm_view_map(view, path, provider, ".", access, 0);
     dvm_provider_release(provider);
     return mapped;
 }
@@ -302,13 +349,24 @@ static DVM_Provider *table_view(void *source)
     {
         return NULL;
     }
+    table->lock = fvm_port_sync_create();
+    if (!table->lock)
+    {
+        free(table);
+        return NULL;
+    }
     table->storage = dvm_bigtable_storage_retain(source);
     table->references = 1;
     DVM_View *view = table->storage ? dvm_view_create(NULL, NULL, NULL) : NULL;
     int mapped = view && dvm_cap_map_metadata(view, "/.type", "table of big\n") &&
-        map_node(view, table, Length, "/.len", 1) && map_node(view, table, Count, "/.count", 1) &&
-        map_node(view, table, Insert, "/.ins", 0) && map_node(view, table, Push, "/.push", 0) &&
-        map_node(view, table, Pop, "/.pop", 1) && map_node(view, table, Add, "/.add", 0);
+        map_node(view, table, Length, "/.len", FVM_ACCESS_READ) &&
+        map_node(view, table, Count, "/.count", FVM_ACCESS_READ) &&
+        map_node(view, table, Insert, "/.ins", FVM_ACCESS_WRITE) &&
+        map_node(view, table, Push, "/.push", FVM_ACCESS_WRITE) &&
+        map_node(view, table, Pop, "/.pop", FVM_ACCESS_READ) &&
+        map_node(view, table, Add, "/.add", FVM_ACCESS_WRITE) &&
+        map_node(view, table, Index, "/.idx", FVM_ACCESS_WRITE) &&
+        map_node(view, table, Value, "/.val", FVM_ACCESS_READ | FVM_ACCESS_WRITE);
     release_projection(table);
     if (!mapped)
     {

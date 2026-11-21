@@ -145,8 +145,8 @@ init()
     (text_status, text) := tables->gettext(tab, "1");
     (added_status, added) := tables->gettext(tab, "x");
     if (tablepid != pid || tables->length(tab) != big 3 || tables->count(tab) != big 6 ||
-        dense_status != tables->Ok || dense != big 15 || sparse_status != tables->Ok || sparse != big 50 ||
-        text_status != tables->Ok || text != big 90 || added_status != tables->Ok || added != big 77) {
+        dense_status != tables->Ok || dense != big 17 || sparse_status != tables->Ok || sparse != big 50 ||
+        text_status != tables->Ok || text != big 91 || added_status != tables->Ok || added != big 77) {
         raise "reverse VFS edits did not reach the live hybrid table";
     }
     tab = nil;

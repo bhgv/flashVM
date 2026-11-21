@@ -18,7 +18,9 @@ typedef enum
     FVM_TABLE_INSERT,  /* Insert in the dense positional part. */
     FVM_TABLE_PUSH,    /* Append to the dense positional part. */
     FVM_TABLE_POP,     /* Remove and return the final dense element. */
-    FVM_TABLE_ADD      /* Insert a key only if absent. */
+    FVM_TABLE_ADD,     /* Insert a key only if absent. */
+    FVM_TABLE_SELECT,  /* Resolve an existing key without changing its value. */
+    FVM_TABLE_UPDATE   /* Replace only an existing key. */
 } FvmTableOperation;
 
 typedef struct FvmTableRequest

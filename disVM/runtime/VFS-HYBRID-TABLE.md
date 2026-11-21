@@ -20,10 +20,17 @@ table still has one dense sequence, sparse numeric keys and text keys.
 | `.push` | Write one signed big-endian 64-bit value. |
 | `.pop` | Read the last dense value as a signed big-endian 64-bit value. An empty dense part refuses the read. |
 | `.add` | Write tag byte 0 plus an eight-byte signed numeric key, or tag byte 1 plus 0–255 text bytes. Append one eight-byte signed value. All words are big-endian. |
+| `.idx` | Write an existing key in the same format as `.add`, omitting the trailing value. |
+| `.val` | Read or write the selected signed big-endian 64-bit value while `.idx` remains open. |
 
-Each mutation uses a fresh FD. A successful write consumes its operation.
+Each `.ins`, `.push`, or `.add` command uses a fresh FD. A successful write consumes its operation.
 The first nonempty read of `.pop` removes the entry. Short reads return
 the rest of that same cached value. Insertion and pop preserve sparse and
 text keys. Adding an existing key fails. A held native guard can defer a
 VFS operation. The [scoped Styx example](../examples/remote-scalar/styx-scoped-calls.b)
 checks remote positional and hash changes against local Bigtable reads.
+
+Numeric key `1` and text key `"1"` select different entries. Writing a
+negative key to `.idx` resolves it relative to the dense part at selection
+time. Seek to offset zero before updating `.val` after a read, then write
+eight bytes. Closing `.idx` revokes its open `.val` fids.

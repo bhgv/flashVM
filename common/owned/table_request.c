@@ -226,6 +226,27 @@ static FhtStatus execute(FvmTableOwner *owner, FvmTableRequest *request)
         return found == FHT_MISSING ? fht_set(owner->payload, request->key, request->value) :
             found == FHT_OK ? FHT_INVALID : found;
     }
+    case FVM_TABLE_SELECT:
+    case FVM_TABLE_UPDATE:
+    {
+        FhtKey key;
+        FhtStatus found = fht_resolve(owner->payload, request->key, &key);
+        int64_t old;
+        if (found == FHT_OK)
+        {
+            found = fht_get(owner->payload, key, &old);
+        }
+        if (found != FHT_OK)
+        {
+            return found;
+        }
+        if (request->operation == FVM_TABLE_UPDATE)
+        {
+            return fht_set(owner->payload, key, request->value);
+        }
+        request->key = key;
+        return FHT_OK;
+    }
     default:
         return FHT_INVALID;
     }

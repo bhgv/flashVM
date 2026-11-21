@@ -49,7 +49,7 @@ typedef struct IndexCursor
 
 /* EN: Capture the reverse grant or the active local Dis process.
  * RU: Определить встречное разрешение или текущий локальный процесс Dis. */
-static DVM_ProviderOpenScope caller_scope(void)
+DVM_ProviderOpenScope dvm_collection_open_scope(void)
 {
     DVM_ProviderOpenScope scope = dvm_provider_current_open_scope();
     if (!scope.generation)
@@ -211,7 +211,7 @@ static FVM_Result index_open(void *state, const char *path, const char *mode, DV
     static const DVM_VfsOps ops = {.info = index_stat, .seek = index_seek, .close = index_close,
         .read_chunk = index_read, .write_chunk = index_write};
     IndexNode *node = state;
-    DVM_ProviderOpenScope scope = caller_scope();
+    DVM_ProviderOpenScope scope = dvm_collection_open_scope();
     if (strcmp(path, ".") || !scope.domain || (node->selector && strcmp(mode, "wo")) ||
         dvm_cancel_requested(dvm_cancel_current()))
     {

@@ -379,6 +379,40 @@ table_write(sys: Sys, path: string, bytes: array of byte): int
 }
 
 
+# EN: Update an existing typed key and check that closing .idx revokes its value fid.
+# RU: Обновить запись по типизированному ключу и проверить отзыв .val при закрытии .idx.
+edit_table_entry(sys: Sys, path: string, key: array of byte, old: int, replacement: int)
+{
+    if (sys->open(path + ".val", Sys->OREAD) != nil)
+        raise "table value opened without a selector";
+    selector := sys->open(path + ".idx", Sys->OWRITE);
+    if (selector == nil || sys->write(selector, key, len key) != len key)
+        raise "could not select table key";
+    member := sys->open(path + ".val", Sys->ORDWR);
+    value := array[8] of byte;
+    if (member == nil || sys->read(member, value, 3) != 3 ||
+        sys->read(member, value[3:8], 5) != 5 || value[7] != byte old)
+        raise "table selector read the wrong entry";
+    if (replacement >= 0) {
+        value[7] = byte replacement;
+        if (sys->seek(member, big 0, Sys->SEEKSTART) < big 0 ||
+            sys->write(member, value, len value) != len value)
+            raise "table selector could not update the entry";
+    }
+    selector = nil;
+    for (i := 0; i < 100; i++) {
+        if (sys->open(path + ".val", Sys->OREAD) == nil) {
+            if (sys->seek(member, big 0, Sys->SEEKSTART) >= big 0 &&
+                sys->read(member, value, len value) >= 0)
+                raise "closed table selector left a readable value fid";
+            return;
+        }
+        sys->sleep(10);
+    }
+    raise "selector clunk did not retire the table selection";
+}
+
+
 # EN: Mutate both halves of the same table and read the popped value exactly once.
 # RU: Изменить обе части одной таблицы и прочитать извлечённое значение один раз.
 edit_hybrid_table(sys: Sys)
@@ -412,4 +446,17 @@ edit_hybrid_table(sys: Sys)
         contents(sys, path + ".len", 8) != "3\n" || contents(sys, path + ".count", 8) != "6\n") {
         raise "hybrid table pop repeated or changed keyed values";
     }
+    numeric := array[9] of byte;
+    relative := array[9] of byte;
+    for (i = 0; i < len numeric; i++) {
+        numeric[i] = byte 0;
+        relative[i] = byte 255;
+    }
+    relative[0] = byte 0;
+    numeric[8] = byte 1;
+    edit_table_entry(sys, path, numeric, 15, 17);
+    edit_table_entry(sys, path, array[] of {byte 1, byte '1'}, 90, 91);
+    edit_table_entry(sys, path, relative, 20, -1);
+    numeric[8] = byte 5;
+    edit_table_entry(sys, path, numeric, 50, -1);
 }
