@@ -3,6 +3,7 @@
 # RU: Запустить штатный DisVM и отдельного провайдера по выданному транспорту.
 import os
 from pathlib import Path
+import select
 import socket
 import subprocess
 import sys
@@ -130,6 +131,27 @@ def start_library(peer, directory, mode, carrier):
     )
 
 
+# EN: Pass distinct FD numbers for the same open socket and require refusal before wire I/O.
+# RU: Передать разные номера одного открытого сокета и проверить отказ до обмена.
+def reject_carrier_alias(runtime, owner_image):
+    client, owner = tcp_pair()
+    peer, library = tcp_pair()
+    with client, owner, peer, library, library.dup() as copy, owner.dup() as launch_copy:
+        for descriptor in (copy, launch_copy):
+            refused = subprocess.run(
+                [runtime, "--styx-serve-fd", str(owner.fileno()),
+                 "--library-fd", str(library.fileno()), "--library-at", "/first",
+                 "--library-fd", str(descriptor.fileno()), "--library-at", "/second",
+                 "--", owner_image],
+                pass_fds=(owner.fileno(), library.fileno(), descriptor.fileno()),
+                capture_output=True, timeout=5
+            )
+            if refused.returncode != 2 or b"must be distinct connected sockets" not in refused.stderr:
+                raise RuntimeError(f"duplicate carrier accepted: {refused.stderr!r}")
+            if select.select((client, peer), (), (), 0)[0]:
+                raise RuntimeError("refused carrier emitted Styx bytes")
+
+
 # EN: Run A, the executing DisVM B, and the separate Styx library peer C.
 # RU: Запустить A, исполняющую DisVM B и отдельного провайдера библиотеки C.
 def chain(runtime, compiler, provider, disvm, example, work):
@@ -174,6 +196,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
         )
         if invalid.returncode != 2 or b"usage:" not in invalid.stderr:
             raise RuntimeError(f"conflicting library delegation accepted: {fd}, {path}")
+    reject_carrier_alias(runtime, owner_image)
     for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
                           ("--no-jit", b"drop"), ("--jit", b"drop")):
         stdin.write_bytes(payload)

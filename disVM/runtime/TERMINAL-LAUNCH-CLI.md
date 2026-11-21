@@ -273,3 +273,5 @@ Repeat the `--library-fd FD --library-at PATH` pair for up to eight
 library mounts. Each FD and mount path must be distinct. Nested mount
 paths are rejected before any connection is opened. All mounts must
 succeed before the owner accepts a launch.
+
+Different descriptor numbers that alias the same socket are rejected before any Styx handshake.

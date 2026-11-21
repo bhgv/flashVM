@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -180,6 +181,41 @@ static int admit_library(LibraryMount *mounts, size_t count, const char *launch,
 }
 
 
+/* EN: Reject aliases of the same socket before any Styx handshake starts.
+ * RU: Отклонить дубликаты одного сокета до начала обмена Styx. */
+static int distinct_carriers(int launch, const LibraryMount *mounts, size_t count)
+{
+    struct stat identities[LIBRARY_MOUNT_LIMIT + 1];
+    if (fstat(launch, &identities[0]))
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < count; i++)
+    {
+        struct stat *current = &identities[i + 1];
+        int descriptor = dvm_terminal_connected(mounts[i].descriptor);
+        if (descriptor < 0)
+        {
+            return 0;
+        }
+        int failed = fstat(descriptor, current);
+        close(descriptor);
+        if (failed)
+        {
+            return 0;
+        }
+        for (size_t j = 0; j <= i; j++)
+        {
+            if (current->st_dev == identities[j].st_dev && current->st_ino == identities[j].st_ino)
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
 /* EN: Take one delegated launch and boot only the locally configured Dis image.
  * RU: Принять один запрос и запустить только локально заданный образ Dis. */
 int dvm_styx_serve_cli(int argc, char **argv)
@@ -219,6 +255,13 @@ int dvm_styx_serve_cli(int argc, char **argv)
             close(fd);
         }
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
+        return 2;
+    }
+    if (!distinct_carriers(fd, libraries, count))
+    {
+        close(breaker);
+        close(fd);
+        fprintf(stderr, "disvm: launch and library carriers must be distinct connected sockets\n");
         return 2;
     }
     const char *program = argv[argc - 1];
