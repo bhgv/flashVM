@@ -120,6 +120,9 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string, table: i
         (view, request, reply) := hd pending;
         spawn serve_loaded_view(routes, view, request, reply, pool, done);
     }
+    if (table == 2) {
+        spawn accept_shared_launch(routes);
+    }
     for (i = 0; i < count; i += stride) {
         <-done;
     }
@@ -294,3 +297,10 @@ finish_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, reply: s
 }
 
 include "scalarowner_pool.b";
+
+# EN: Accept an optional hosted launch while the export workers serve the table.
+# RU: Принять опциональный запуск параллельно обслуживанию таблицы экспортов.
+accept_shared_launch(routes: Vfsnative)
+{
+    routes->acceptsharedlaunch();
+}

@@ -131,7 +131,10 @@ static int runtime_dispatch_turn(void)
             owner_error()[0] = 0;
         }
         dvm_proxyhost_retire();
-        if (owner_error()[0])
+        DVM_RuntimeProcess *launch = (DVM_RuntimeProcess *)process;
+        int failed_launch = launch->report_launch_exit &&
+            (owner_error()[0] || (__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled));
+        if (owner_error()[0] && !launch->report_launch_exit)
         {
             const char *path;
             long pc;
@@ -196,6 +199,10 @@ static int runtime_dispatch_turn(void)
             if (native_spawn)
             {
                 dvm_managed_workers_guest_retired(child_pid);
+            }
+            if (retired->report_launch_exit)
+            {
+                retired->report_launch_exit(retired->report_launch_state, failed_launch);
             }
             drop_guest_messages(process);
             dvm_jit_signal_thread_stop();

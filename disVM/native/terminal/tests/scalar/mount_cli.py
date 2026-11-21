@@ -297,18 +297,21 @@ def library_cli(runtime, compiler, disvm, example, work):
     caller_root.mkdir()
     (caller_root / "libraries").mkdir()
     (caller_root / "libraries/local-marker").touch()
+    (caller_root / "shared-launch.dis").touch()
     reject_mount_path(runtime, caller_root)
     for source, image in (
         (disvm / "limbo/scalarowner.b", owner_root / "scalarowner.dis"),
         (example / "scoped-calls-owner.b", owner_root / "first-owner.dis"),
         (example / "scoped-calls-owner.b", owner_root / "second-owner.dis"),
         (example / "styx-library-cli.b", caller_root / "library-cli.dis"),
+        (example / "styx-shared-launch-owner.b", owner_root / "launch.dis"),
     ):
         subprocess.run([compiler, "-D", "R", "-I", disvm / "upstream/module", "-I", disvm / "module",
                         "-I", example, "-o", image, source], cwd=work, check=True)
     library_cli_pair(runtime, owner_root, caller_root, "--no-jit", missing=True)
     for mode in ("--no-jit", "--jit"):
         library_cli_pair(runtime, owner_root, caller_root, mode)
+    library_cli_pair(runtime, owner_root, caller_root, "--no-jit", fail=True)
 
 
 # EN: Relay only test markers between the independent owner and caller roots.
@@ -325,15 +328,21 @@ def relay_library_markers(owner_root, caller_root, markers, client):
 
 # EN: Run both commands on one carrier with separate local roots.
 # RU: Запустить обе команды на одном транспорте с раздельными локальными корнями.
-def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False):
+def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail=False):
+    for flag in (owner_root / "launch-fail", caller_root / "expect-launch-fail"):
+        if fail:
+            flag.touch()
+        else:
+            flag.unlink(missing_ok=True)
     markers = ("single-ref-pending", "single-ref-cancelled")
     for root in (owner_root, caller_root):
         for mark in markers:
             (root / mark).write_bytes(b"")
     caller, owner = tcp_pair()
     export = "missing" if missing else "update"
+    (owner_root / "launch-marker").write_bytes(b"")
     with caller, owner, subprocess.Popen(
-        [runtime, "--styx-library-serve-fd", str(owner.fileno()),
+        [runtime, "--styx-library-serve-fd", str(owner.fileno()), "--execute", "launch.dis",
          "--export", "first.dis", "first-owner.dis", "update",
          "--export", "second.dis", "second-owner.dis", export, "--", mode, "scalarowner.dis"],
         pass_fds=(owner.fileno(),), cwd=owner_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -353,7 +362,8 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False):
             if missing:
                 if not client.returncode or not server.returncode or "cannot publish loaded export second-owner.dis missing" not in output:
                     raise RuntimeError(reported + output)
-            elif client.returncode or server.returncode or "PASS two libraries" not in reported:
+            elif (client.returncode or server.returncode or "PASS two libraries" not in reported or
+                  (owner_root / "launch-marker").read_bytes() != b"ran\n"):
                 raise RuntimeError(reported + output)
             else:
                 print(reported.strip(), mode, flush=True)

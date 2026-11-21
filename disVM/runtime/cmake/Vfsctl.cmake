@@ -27,7 +27,7 @@ add_custom_command(OUTPUT "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h"
 add_custom_target(disvm_vfsexport_sources DEPENDS "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h")
 add_dependencies(disvm disvm_vfsexport_sources)
 target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_variable.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
-target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/cap_launch.c)
+target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/launch/hosted.c vfs/cap_launch.c)
 target_sources(disvm PRIVATE vfs/intent.c)
 
 # EN/RU: Automatic job movie endpoint uses scalar VFS/S-record code only, not a second lib9/GUI.

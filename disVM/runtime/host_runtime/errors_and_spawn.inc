@@ -255,7 +255,8 @@ int dvm_runtime_prepare_resident(Prog *process)
  * Raise on setup failure after disposing private process; caller owns its initial frame/link.
  * RU: Parent/module/registers borrowed; prepared поглощается, optional handoff принят до publication.
  * При отказе private process освобождается; caller владеет исходным frame/link. */
-static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared, DVM_LaunchHandoff *handoff)
+static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared, DVM_LaunchHandoff *handoff,
+    const DVM_LaunchCompletion *completion)
 {
     Prog *process = prepared;
     if (!process)
@@ -285,6 +286,11 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         error(exHeap);
     }
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+    if (completion)
+    {
+        resident->report_launch_exit = completion->report;
+        resident->report_launch_state = completion->state;
+    }
     if (native_spawn && parent)
     {
         __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
@@ -347,7 +353,16 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
  * См. launch/startup_internal.h; при construction guest instructions не выполняются. */
 Prog *dvm_runtime_create_initial(Modlink *link, const REG *initial, DVM_LaunchHandoff *handoff)
 {
-    return create_process(nil, link, initial, NULL, handoff);
+    return create_process(nil, link, initial, NULL, handoff, NULL);
+}
+
+
+/* EN: Admit a child with its private launch namespace before publication.
+ * RU: Принять потомка с частным пространством запуска до публикации. */
+Prog *dvm_runtime_create_hosted_child(Modlink *link, const REG *initial, DVM_LaunchHandoff *handoff,
+    const DVM_LaunchCompletion *completion)
+{
+    return create_process(currun(), link, initial, NULL, handoff, completion);
 }
 
 
@@ -355,7 +370,7 @@ Prog *dvm_runtime_create_initial(Modlink *link, const REG *initial, DVM_LaunchHa
  * RU: Вход для вызывающих без подготовленного образа регистров. */
 Prog *newprog(Prog *parent, Modlink *module)
 {
-    return create_process(parent, module, NULL, NULL, NULL);
+    return create_process(parent, module, NULL, NULL, NULL, NULL);
 }
 
 
@@ -457,5 +472,5 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
         source->remote_call_cancel = NULL;
         source->remote_call_handoff = 0;
     }
-    (void)create_process(parent, module, NULL, request.storage, NULL);
+    (void)create_process(parent, module, NULL, request.storage, NULL, NULL);
 }

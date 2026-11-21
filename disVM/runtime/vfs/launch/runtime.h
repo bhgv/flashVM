@@ -32,6 +32,17 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
  * поздние exceptions не возвращают group/channels; caller освобождает handoff shell/metadata. */
 struct Prog *dvm_runtime_launch_module(struct Module *module, DVM_LaunchHandoff *handoff);
 
+/* EN: Start a hosted child image under the active guest with an owned handoff.
+ * RU: Запустить дочерний образ у активного гостя с передачей окружения. */
+typedef struct DVM_LaunchCompletion
+{
+    void (*report)(void *, int); /* Native callback receiving zero on success. */
+    void *state; /* Borrowed callback target through child retirement. */
+} DVM_LaunchCompletion;
+
+struct Prog *dvm_runtime_launch_child(struct Module *module, DVM_LaunchHandoff *handoff,
+    const DVM_LaunchCompletion *completion);
+
 
 /* EN/RU: Adopt once into initialized unpublished process;1 success/0 invalid/OOM, no guest execution.
  * Stage namespace, channels and startup data before mutation. Explicit numbered files

@@ -31,6 +31,10 @@ init()
         serve_loaded_set(routes, count-1, tl fields, 0);
         return;
     }
+    if (count > 0 && hd fields == "loaded-launch-table") {
+        serve_loaded_set(routes, count-1, tl fields, 2);
+        return;
+    }
     if (count > 0 && hd fields == "loaded-table") {
         serve_loaded_set(routes, count-1, tl fields, 1);
         return;

@@ -322,3 +322,24 @@ A scoped launch also exposes the adopted numbers under `/.prog/.self/.fd`.
 Opening one of these files uses the same slot, cursor and mode as
 `Sys->fildes(N)`. An existing caller `/env` directory is visible under
 `/.vfs/env` when it is part of the caller's VFS grant.
+
+### Serve a program and libraries together
+
+Place `--execute PROGRAM.dis` before the export table:
+
+```sh
+disvm --styx-library-serve-fd 3 --execute launch.dis \
+  --export first.dis first-owner.dis update \
+  --export second.dis second-owner.dis update -- scalarowner.dis
+```
+
+The same Styx mount publishes the program at `implementation.dis` and
+libraries under `mounted`. The caller can bind the program to another VFS
+path and submit it with `Vfsnative.run`. The provider runs the configured
+image once in a child Dis process with the caller context. Read `.exit`
+for its result. The library dispatcher stays available after program
+success or failure until the caller disconnects.
+
+The [stock CLI test](../native/terminal/tests/scalar/mount_cli.py) runs
+the [example program](../examples/remote-scalar/styx-shared-launch-owner.b),
+checks the result and makes library calls on the same mount.

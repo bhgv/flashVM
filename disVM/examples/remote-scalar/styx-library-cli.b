@@ -5,6 +5,7 @@ implement Librarycli;
 
 include "sys.m";
 include "processctl.m";
+include "vfsnative.m";
 include "scoped-calls.m";
 
 Librarycli: module
@@ -35,6 +36,7 @@ init()
         a.narrow != pid || b.narrow != pid || a.wide <= big 0 || a.wide != b.wide) {
         raise "mounted libraries did not share the expected executor";
     }
+    run_shared(sys);
     check_cancel(sys, first, second, a.wide);
     sys->print("PASS two libraries on one stock Styx session\n");
 }
@@ -86,4 +88,28 @@ interrupted_ref(first, second: Scopedcalls, control: Processctl, started, done: 
     valid = second->update(after) == pid && valid;
     done <-= valid && cancelled && pending.narrow == -50 && pending.wide == big 0 &&
         before.wide > big 0 && after.wide > big 0 && before.wide != after.wide;
+}
+
+# EN: Launch the bound program and verify its result without remounting.
+# RU: Запустить забинженную программу и проверить результат без нового маунта.
+run_shared(sys: Sys)
+{
+    vfs := load Vfsnative Vfsnative->PATH;
+    if (sys->bind("/transport/implementation.dis", "/shared-launch.dis", Sys->MREPL) < 0 ||
+        vfs->run("/shared-launch.dis") != 1) {
+        raise "could not launch the shared Styx program";
+    }
+    status := sys->open("/transport/.exit", Sys->OREAD);
+    result := array[8] of byte;
+    expected := "ok\n";
+    if (sys->open("/expect-launch-fail", Sys->OREAD) != nil) {
+        expected = "error\n";
+    }
+    n := -1;
+    if (status != nil) {
+        n = sys->read(status, result, len result);
+    }
+    if (n != len expected || string result[0:n] != expected) {
+        raise "shared Styx launch did not complete";
+    }
 }

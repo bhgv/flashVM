@@ -5,6 +5,7 @@
 #include "config.h"
 #include "offer.h"
 #include "vfs/module_adapter.h"
+#include "vfs/cancel.h"
 #include "unibus_server.h"
 #include "launch_receive.h"
 #include "program_record.h"
@@ -55,7 +56,7 @@ static int save_startup(void *state, const void *bytes, size_t size)
 
 /* EN: Wait for one validated inbox record or a bounded refusal/EOF.
  * RU: Дождаться одной проверенной записи либо ограниченного отказа или EOF. */
-static int receive_startup(DVM_Provider *inbox, Startup *startup)
+static int receive_startup(DVM_Provider *inbox, Startup *startup, unsigned seconds)
 {
     DVM_VfsHandle reader = {0};
     struct timespec start, now;
@@ -82,8 +83,8 @@ static int receive_startup(DVM_Provider *inbox, Startup *startup)
         const struct timespec pause = {0, 10000000};
         nanosleep(&pause, NULL);
     }
-    while (!clock_gettime(CLOCK_MONOTONIC, &now) &&
-        now.tv_sec - start.tv_sec < OWNER_WAIT_SECONDS);
+    while (!dvm_cancel_requested(dvm_cancel_current()) &&
+        (!seconds || (!clock_gettime(CLOCK_MONOTONIC, &now) && now.tv_sec - start.tv_sec < seconds)));
     dvm_vfs_close(&reader);
     return accepted;
 }
@@ -91,7 +92,7 @@ static int receive_startup(DVM_Provider *inbox, Startup *startup)
 
 /* EN: Export the host-selected executable relative to the host working directory.
  * RU: Выдать выбранный владельцем файл относительно рабочего каталога хоста. */
-static DVM_Provider *publish_program(DVM_Namespace *group, const char *path)
+DVM_Provider *dvm_terminal_publish_program(DVM_Namespace *group, const char *path)
 {
     DVM_ResourcePlan selection = {0};
     if (!dvm_resource_plan(group, path, 0, &selection))
@@ -254,7 +255,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     handoff.group = getcwd(cwd, sizeof(cwd)) ? dvm_namespace_create(cwd, "/", NULL) : NULL;
     DVM_Namespace *host = handoff.group ? dvm_namespace_create("/", cwd, NULL) : NULL;
     DVM_Provider *image = host && dvm_namespace_pin(host) && dvm_namespace_pin(handoff.group) ?
-        publish_program(host, program) : NULL;
+        dvm_terminal_publish_program(host, program) : NULL;
     dvm_namespace_release(host);
     PhyBidir *mux = image ? phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536) : NULL;
     if (!image)
@@ -279,7 +280,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     {
         library_ready = mount_library(handoff.group, libraries[i].descriptor, libraries[i].path);
     }
-    if (library_ready && receive_startup(styxunibusserverinbox(server), &startup) &&
+    if (library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS) &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
     {
@@ -307,4 +308,22 @@ int dvm_styx_serve_cli(int argc, char **argv)
     phybidirfree(mux);
     dvm_namespace_release(handoff.group);
     return result;
+}
+
+/* EN: Acquire the one-shot launch and populate the borrowed startup buffer.
+ * RU: Принять одноразовый запуск и заполнить заимствованный буфер параметров. */
+int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
+    DVM_LaunchHandoff *handoff, unsigned char *arguments)
+{
+    Startup startup = {.scoped = 1};
+    if (!receive_startup(styxunibusserverinbox(server), &startup, 0) ||
+        !dvm_launch_handoff_program(handoff, root, startup.program.pid,
+            startup.program.parent_pid, startup.program.hidden_fds))
+    {
+        return 0;
+    }
+    memcpy(arguments, startup.bytes, startup.size);
+    handoff->arguments = arguments;
+    handoff->description.argument_bytes = startup.size;
+    return 1;
 }

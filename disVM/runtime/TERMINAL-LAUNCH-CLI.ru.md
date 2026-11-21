@@ -170,3 +170,24 @@ disvm --styx-library-serve-fd 3 \
 `Sys->fildes(N)`, с тем же курсором и режимом. Если `/env` уже входит в
 переданное дерево VFS клиента, провайдер видит его как обычный каталог
 `/.vfs/env`.
+
+### Публикация программы и библиотек вместе
+
+Укажите `--execute PROGRAM.dis` перед таблицей экспортов:
+
+```sh
+disvm --styx-library-serve-fd 3 --execute launch.dis \
+  --export first.dis first-owner.dis update \
+  --export second.dis second-owner.dis update -- scalarowner.dis
+```
+
+Один Styx-маунт публикует программу как `implementation.dis`, а библиотеки
+под `mounted`. Клиент может привязать программу к другому пути в VFS
+через `bind` и запустить её через `Vfsnative.run`. Провайдер запускает
+настроенный образ один раз в дочернем процессе Dis с контекстом клиента.
+Результат доступен в `.exit`. После успеха или ошибки программы библиотеки
+продолжают обслуживаться до отсоединения клиента.
+
+[Тест штатного CLI](../native/terminal/tests/scalar/mount_cli.py) запускает
+[пример программы](../examples/remote-scalar/styx-shared-launch-owner.b),
+проверяет результат и вызывает библиотеки через тот же маунт.

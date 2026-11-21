@@ -28,7 +28,9 @@ typedef struct InitialLaunch
 
 /* [GC:] EN/RU: See launch/runtime.h; reserve entry frame, adopt handoff, then publish process.
  * См. launch/runtime.h; entry frame и adoption до публикации process. */
-Prog *dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *handoff)
+extern Prog *dvm_runtime_create_hosted_child(Modlink *, const REG *, DVM_LaunchHandoff *, const DVM_LaunchCompletion *);
+
+static Prog *launch_module(Module *module, DVM_LaunchHandoff *handoff, const DVM_LaunchCompletion *completion)
 {
     Import empty;
     Prog *process;
@@ -73,7 +75,8 @@ Prog *dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *handoff)
     DVM_R.s = &state->frame;
     newstack(&state->initial);
     initmem(module->entryt, state->initial.R.FP);
-    process = dvm_runtime_create_initial(state->link, &state->initial.R, handoff);
+    process = completion ? dvm_runtime_create_hosted_child(state->link, &state->initial.R, handoff, completion) :
+        dvm_runtime_create_initial(state->link, &state->initial.R, handoff);
     state->initial.R.EX = NULL;
     Modlink *link = state->link;
     state->link = NULL;
@@ -86,4 +89,18 @@ Prog *dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *handoff)
     free(state->frame);
     free(state);
     return process;
+}
+
+
+/* EN/RU: See runtime.h. / См. runtime.h. */
+Prog *dvm_runtime_launch_module(Module *module, DVM_LaunchHandoff *handoff)
+{
+    return launch_module(module, handoff, NULL);
+}
+
+
+/* EN/RU: See runtime.h. / См. runtime.h. */
+Prog *dvm_runtime_launch_child(Module *module, DVM_LaunchHandoff *handoff, const DVM_LaunchCompletion *completion)
+{
+    return launch_module(module, handoff, completion);
 }
