@@ -132,4 +132,12 @@ DVM_LaunchDelivery dvm_launch_address_send_process(DVM_LaunchAddress *address, u
 /* EN/RU: Submit through the already resolved transport address once, honoring its guards.
  * Подать запрос через разрешённый транспортный адрес один раз с проверкой guards. */
 DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const void *arguments, size_t size);
+/* EN: Resolve a launch and retain the selected provider in source on success.
+ * RU: Разрешить запуск и вернуть удерживаемый провайдер в source. */
+DVM_LaunchAddress *dvm_launch_route_resolve_source(DVM_Namespace *group, const char *path,
+    unsigned local_role, DVM_Provider **source);
+
+/* EN/RU: Test whether a borrowed address uses process framing, without I/O.
+ * Проверить формат процесса у заимствованного адреса, без I/O. */
+int dvm_launch_address_uses_process(const DVM_LaunchAddress *address);
 #endif

@@ -19,6 +19,7 @@
 #include "cancel.h"
 #include "native_wait.h"
 #include "launch/route.h"
+#include "program_view.h"
 #include "runqueue.h"
 #include "vfsnative_decl.h"
 #include "vfsnative_table.h"
@@ -338,6 +339,30 @@ void Vfsnative_move(void *frame)
 }
 
 
+/* EN: Publish the caller only for a bound process-scoped destination.
+ * RU: Опубликовать клиентский контекст для привязанного запуска с PID. */
+static DVM_LaunchDelivery send_launch(DVM_LaunchAddress *address, DVM_Provider *source,
+    DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid,
+    const void *bytes, size_t size)
+{
+    DVM_CallerBinding binding;
+    if (!dvm_launch_address_uses_process(address) || !dvm_provider_caller_binding(source, &binding))
+    {
+        return dvm_launch_address_send_process(address, pid, bytes, size);
+    }
+    DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
+    void *lease = tree ? binding.begin(binding.state, source, tree) : NULL;
+    DVM_LaunchDelivery result = lease ? dvm_launch_address_send_process(address, pid, bytes, size) :
+        DVM_LAUNCH_NOT_SENT;
+    if (lease)
+    {
+        binding.end(binding.state, lease);
+    }
+    dvm_provider_release(tree);
+    return result;
+}
+
+
 /* EN/RU: Resolve the copied path and submit native bytes outside managed admission.
  * Разрешить скопированный путь и отправить нативные байты вне допуска VM. */
 static WORD run_path(const char *name, const void *bytes, size_t size)
@@ -349,12 +374,15 @@ static WORD run_path(const char *name, const void *bytes, size_t size)
     {
         unsigned role = ((DVM_RuntimeProcess *)process)->module_local_role;
         uint32_t pid = process->pid > 0 ? (uint32_t)process->pid : 0;
+        struct DVM_LaunchFiles *descriptors = ((DVM_RuntimeProcess *)process)->launch_files;
         DVM_VfsWait *wait;
         int released = dvm_vfs_path_enter(&wait);
         if (released >= 0)
         {
-            DVM_LaunchAddress *address = dvm_launch_route_resolve(group, name, role);
-            result = dvm_launch_address_send_process(address, pid, bytes, size);
+            DVM_Provider *source = NULL;
+            DVM_LaunchAddress *address = dvm_launch_route_resolve_source(group, name, role, &source);
+            result = send_launch(address, source, group, descriptors, pid, bytes, size);
+            dvm_provider_release(source);
             dvm_launch_address_free(address);
             dvm_vfs_wait_end(wait);
             dvm_runtime_gc_native_enter(released);

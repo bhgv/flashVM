@@ -4,7 +4,6 @@
  */
 #include "scalar_files.h"
 #include "program_view.h"
-#include "path_cancel.h"
 #include "lib9.h"
 #include "dat.h"
 #include "isa.h"
@@ -141,29 +140,6 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
 }
 
 
-/* EN: Capture an explicitly mounted caller subtree in native wait scope.
- * Missing mounts are optional. Present but unrepresentable mounts fail closed.
- * RU: Захватить явно смонтированное поддерево в нативном ожидании.
- * Отсутствие допустимо. Неподдерживаемый маунт отменяет вызов. */
-static int capture_grant(DVM_Namespace *group, const char *path, DVM_Provider **out)
-{
-    DVM_ResourcePlan plan = {0};
-    if (!dvm_resource_plan(group, path, 0, &plan))
-    {
-        return 0;
-    }
-    int valid = 1;
-    if (plan.mount_root)
-    {
-        *out = !plan.union_root && dvm_capture_cancellable(&plan) ?
-            dvm_provider_capture(plan.provider, plan.relative) : NULL;
-        valid = *out != NULL;
-    }
-    dvm_resource_close(&plan);
-    return valid;
-}
-
-
 /* EN: Publish the active PID on an explicitly bound reverse session for this call.
  * The native binding owns the lease until the Styx exchange ends.
  * RU: Опубликовать текущий PID во встречной сессии на время вызова.
@@ -177,18 +153,7 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     {
         return dvm_scalar_function_call(files, pid, argument, value);
     }
-    DVM_ProgramView entry = {.pid = pid};
-    int captured = capture_grant(group, "/.fd", &entry.fds) &&
-        capture_grant(group, "/.vfs", &entry.vfs) &&
-        capture_grant(group, "/.var", &entry.vars);
-    if (captured && !entry.fds)
-    {
-        entry.fds = dvm_launch_fd_view(descriptors, &captured);
-    }
-    DVM_Provider *tree = captured ? dvm_program_view(&entry, 1) : NULL;
-    dvm_provider_release(entry.fds);
-    dvm_provider_release(entry.vfs);
-    dvm_provider_release(entry.vars);
+    DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
     void *lease = tree ? binding.begin(binding.state, files->request, tree) : NULL;
     if (!lease)
     {

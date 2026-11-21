@@ -68,6 +68,34 @@ def main():
                     if peer.poll() is None:
                         peer.kill()
 
+        input_file = work / "caller-stdin"
+        input_file.write_bytes(b"live")
+        for mode in ("--no-jit", "--jit"):
+            output = work / "caller-stdout"
+            caller, owner = socket.socketpair()
+            with caller, owner, input_file.open("rb") as input_stream, output.open("wb") as output_stream, subprocess.Popen(
+                [runtime, "--styx-serve-fd", str(owner.fileno()), "--context", "--", mode, owner_image],
+                pass_fds=(owner.fileno(),), cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            ) as peer:
+                owner.close()
+                try:
+                    result = subprocess.run(
+                        [runtime, "--styx-mount-fd", str(caller.fileno()),
+                         "--launch-context", "implementation.dis", ".unibus", "17", "--", mode, image],
+                        pass_fds=(caller.fileno(),), cwd=work, stdin=input_stream, stdout=output_stream,
+                        stderr=subprocess.PIPE, text=True, timeout=40)
+                    caller.close()
+                    out, err = peer.communicate(timeout=10)
+                    marker = "PASS scoped owner reads live caller FD"
+                    actual = output.read_text()
+                    if result.returncode or peer.returncode or marker not in actual or \
+                            "PASS mounted Styx launch submission" not in actual:
+                        raise RuntimeError(actual + result.stderr + out + err)
+                    print(marker, mode, flush=True)
+                finally:
+                    if peer.poll() is None:
+                        peer.kill()
+
 
 if __name__ == "__main__":
     main()

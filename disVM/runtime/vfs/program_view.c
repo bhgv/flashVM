@@ -5,6 +5,13 @@
 #include "program_view.h"
 #include "export.h"
 #include "module_adapter.h"
+#include "path_cancel.h"
+#include "lib9.h"
+#include "dat.h"
+#include "isa.h"
+#include "interp.h"
+#include "runt.h"
+#include "launch_files.h"
 #include <inttypes.h>
 #include <stdio.h>
 
@@ -93,4 +100,47 @@ DVM_Provider *dvm_program_capture(DVM_Provider *root, uint32_t pid)
     }
     dvm_provider_release(program);
     return NULL;
+}
+
+
+/* EN: Capture an explicitly mounted caller subtree in native wait scope.
+ * Missing mounts are optional. Present but unrepresentable mounts fail closed.
+ * RU: Захватить явно смонтированное поддерево в нативном ожидании.
+ * Отсутствие допустимо. Неподдерживаемый маунт отменяет вызов. */
+static int capture_grant(DVM_Namespace *group, const char *path, DVM_Provider **out)
+{
+    DVM_ResourcePlan plan = {0};
+    if (!dvm_resource_plan(group, path, 0, &plan))
+    {
+        return 0;
+    }
+    int valid = 1;
+    if (plan.mount_root)
+    {
+        *out = !plan.union_root && dvm_capture_cancellable(&plan) ?
+            dvm_provider_capture(plan.provider, plan.relative) : NULL;
+        valid = *out != NULL;
+    }
+    dvm_resource_close(&plan);
+    return valid;
+}
+
+
+/* EN/RU: See program_view.h. Return an owned tree built from the caller's grants.
+ * См. program_view.h. Вернуть своё дерево из полномочий клиента. */
+DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descriptors, uint32_t pid)
+{
+    DVM_ProgramView entry = {.pid = pid};
+    int captured = capture_grant(group, "/.fd", &entry.fds) &&
+        capture_grant(group, "/.vfs", &entry.vfs) &&
+        capture_grant(group, "/.var", &entry.vars);
+    if (captured && !entry.fds)
+    {
+        entry.fds = dvm_launch_fd_view(descriptors, &captured);
+    }
+    DVM_Provider *tree = captured ? dvm_program_view(&entry, 1) : NULL;
+    dvm_provider_release(entry.fds);
+    dvm_provider_release(entry.vfs);
+    dvm_provider_release(entry.vars);
+    return tree;
 }

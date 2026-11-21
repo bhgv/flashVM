@@ -5,6 +5,8 @@
 #include "config.h"
 #include "unibus_server.h"
 #include "launch_receive.h"
+#include "program_record.h"
+#include "mount.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
@@ -22,6 +24,8 @@ typedef struct Startup
 {
     unsigned char bytes[64]; /* The one-shot inbox bounds the complete record to 64 bytes. */
     size_t size; /* Exact accepted payload, excluding record header. */
+    int scoped; /* Expect the process header before the startup bytes. */
+    DVM_LaunchProgram program; /* Decoded caller selector. */
 } Startup;
 
 
@@ -30,6 +34,15 @@ typedef struct Startup
 static int save_startup(void *state, const void *bytes, size_t size)
 {
     Startup *startup = state;
+    if (startup->scoped)
+    {
+        if (!styxlaunchprogramdecode(bytes, size, &startup->program))
+        {
+            return 0;
+        }
+        bytes = (const unsigned char *)bytes + STYX_LAUNCH_PROGRAM_HEADER;
+        size -= STYX_LAUNCH_PROGRAM_HEADER;
+    }
     memcpy(startup->bytes, bytes, size);
     startup->size = size;
     return 1;
@@ -93,9 +106,11 @@ static DVM_Provider *publish_program(DVM_Namespace *group, const char *path)
  * RU: Принять один запрос и запустить только локально заданный образ Dis. */
 int dvm_styx_serve_cli(int argc, char **argv)
 {
-    if (argc < 5 || strcmp(argv[3], "--"))
+    int scoped = argc > 3 && !strcmp(argv[3], "--context");
+    int separator = scoped ? 4 : 3;
+    if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -126,14 +141,19 @@ int dvm_styx_serve_cli(int argc, char **argv)
         styxunibusserverstartfile(phybidirchannel(mux, 0), OWNER_LAUNCH_TAG, image) : NULL;
     int published = image != NULL;
     dvm_provider_release(image);
-    Startup startup = {0};
+    StyxClient *reverse = server && scoped ?
+        styxclientmountphy(phybidirchannel(mux, 1), 4096, "provider", "", 5000, 8) : NULL;
+    DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_MASK) : NULL;
+    Startup startup = {.scoped = scoped};
     int result = 1;
-    if (server && receive_startup(styxunibusserverinbox(server), &startup))
+    if (server && (!scoped || root) && receive_startup(styxunibusserverinbox(server), &startup) &&
+        (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
+            startup.program.parent_pid, startup.program.hidden_fds)))
     {
         strcpy(handoff.description.module, "implementation.dis");
         handoff.description.argument_bytes = startup.size;
         handoff.arguments = startup.bytes;
-        result = dvm_runtime_main_with_handoff(argc - 3, argv + 3, &handoff);
+        result = dvm_runtime_main_with_handoff(argc - separator, argv + separator, &handoff);
     }
     else
     {
@@ -143,6 +163,11 @@ int dvm_styx_serve_cli(int argc, char **argv)
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxunibusserverjoin(server);
+    dvm_provider_release(handoff.program);
+    dvm_provider_release(handoff.program_parent);
+    dvm_provider_release(handoff.program_vfs);
+    dvm_provider_release(handoff.program_var);
+    dvm_provider_release(root);
     phybidirfree(mux);
     dvm_namespace_release(handoff.group);
     return result;

@@ -6,6 +6,7 @@
 #include "caller_styx.h"
 #include "launch_send.h"
 #include "mount.h"
+#include "vfs/cancel.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
@@ -16,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 
@@ -49,6 +51,8 @@ typedef struct MountedLaunch
 {
     DVM_Provider *request; /* Owned exact remote request file. */
     unsigned long tag; /* Record type selected at mount setup. */
+    StyxClient *client; /* Borrowed while the routed mount is retained. */
+    int scoped; /* Keep the callback tree alive through owner shutdown. */
 } MountedLaunch;
 
 
@@ -62,19 +66,73 @@ static void release_launch(void *state)
 }
 
 
+typedef struct ScopedAddress
+{
+    StyxClient *client; /* Owned connection pin. */
+    DVM_LaunchAddress *request; /* Owned process-framed sender. */
+} ScopedAddress;
+
+
+/* EN: Retire the sender and the carrier pin.
+ * RU: Освободить отправителя и ссылку на транспорт. */
+static void release_scoped(void *state)
+{
+    ScopedAddress *scope = state;
+    dvm_launch_address_free(scope->request);
+    styxclientfree(scope->client);
+    free(scope);
+}
+
+
+/* EN: Send once and keep the caller scope available until the one-shot peer exits.
+ * RU: Отправить один раз и удерживать контекст до выхода одноразового провайдера. */
+static DVM_LaunchDelivery send_scoped(void *state, uint32_t pid, const void *bytes, size_t size)
+{
+    ScopedAddress *scope = state;
+    DVM_LaunchDelivery result = dvm_launch_address_send_process(scope->request, pid, bytes, size);
+    if (result != DVM_LAUNCH_NOT_SENT)
+    {
+        const struct timespec pause = {0, 10000000};
+        while (styxclientalive(scope->client) && !dvm_cancel_requested(dvm_cancel_current()))
+        {
+            nanosleep(&pause, NULL);
+        }
+    }
+    return result;
+}
+
+
 /* EN: Return a fresh address for the same pinned request file.
  * RU: Выдать адрес для того же закреплённого файла запросов. */
 static DVM_LaunchAddress *resolve_launch(void *state)
 {
     MountedLaunch *launch = state;
-    return styxterminallaunchaddress(launch->request, launch->tag);
+    if (!launch->scoped)
+    {
+        return styxterminallaunchaddress(launch->request, launch->tag);
+    }
+    ScopedAddress *scope = calloc(1, sizeof(*scope));
+    if (!scope || !styxclientretain(launch->client))
+    {
+        free(scope);
+        return NULL;
+    }
+    scope->client = launch->client;
+    scope->request = styxterminallaunchcalleraddress(launch->request, launch->tag);
+    DVM_LaunchAddress *address = scope->request ?
+        dvm_launch_address_process_transport(send_scoped, scope, release_scoped) : NULL;
+    if (!address)
+    {
+        release_scoped(scope);
+    }
+    return address;
 }
 
 
 /* EN: Consume an attached client and configure an exact optional launch route.
  * RU: Принять подключённый клиент и настроить точный маршрут запуска. */
 static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
-    const char *entry, const char *request, unsigned long tag)
+    const char *entry, const char *request, unsigned long tag, int scoped)
 {
     if (!entry)
     {
@@ -88,6 +146,8 @@ static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
         return NULL;
     }
     launch->tag = tag;
+    launch->client = client;
+    launch->scoped = scoped;
     launch->request = styxmountproviderat(client, request, FVM_ACCESS_WRITE);
     if (!launch->request)
     {
@@ -114,7 +174,8 @@ int dvm_styx_mount_cli(int argc, char **argv)
     const char *entry = NULL;
     const char *request = NULL;
     unsigned long tag = 0;
-    if (argc >= 8 && !strcmp(argv[3], "--launch"))
+    int scoped = argc > 3 && !strcmp(argv[3], "--launch-context");
+    if (argc >= 8 && (scoped || !strcmp(argv[3], "--launch")))
     {
         entry = argv[4];
         request = argv[5];
@@ -130,7 +191,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch ENTRY REQUEST TAG] -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -148,7 +209,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     StyxCallerServer *reverse = mux ? styxcallerserver(phybidirchannel(mux, 1)) : NULL;
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
-    DVM_Provider *mount = client ? mount_launch(reverse, client, entry, request, tag) : NULL;
+    DVM_Provider *mount = client ? mount_launch(reverse, client, entry, request, tag, scoped) : NULL;
     int result = 1;
     if (mount)
     {

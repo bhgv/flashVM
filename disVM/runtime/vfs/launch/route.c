@@ -82,15 +82,43 @@ DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *pa
 /* EN/RU: See route.h; the owned address replaces the temporary source plan, never retaining the caller namespace.
  * См. route.h; owned address заменяет временный source plan, не удерживая namespace caller.
  */
-DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role)
+DVM_LaunchAddress *dvm_launch_route_resolve_source(DVM_Namespace *group, const char *path,
+    unsigned local_role, DVM_Provider **selected)
 {
     DVM_ResourcePlan source = {0};
     DVM_LaunchAddress *address = select_address(group, path, local_role, discover, NULL, &source);
+    if (selected)
+    {
+        *selected = NULL;
+        if (address && !dvm_provider_retain(source.provider))
+        {
+            dvm_launch_address_free(address);
+            address = NULL;
+        }
+        if (address)
+        {
+            *selected = source.provider;
+        }
+    }
     dvm_resource_close(&source);
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
+        if (selected)
+        {
+            dvm_provider_release(*selected);
+            *selected = NULL;
+        }
         dvm_launch_address_free(address);
         return NULL;
     }
     return address;
+}
+
+
+
+/* EN/RU: See route.h; compatibility entry returns only the address.
+ * См. route.h; обычный вход возвращает только адрес. */
+DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role)
+{
+    return dvm_launch_route_resolve_source(group, path, local_role, NULL);
 }

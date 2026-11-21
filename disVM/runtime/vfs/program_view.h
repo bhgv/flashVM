@@ -5,6 +5,7 @@
 #ifndef DVM_PROGRAM_VIEW_H
 #define DVM_PROGRAM_VIEW_H
 #include "provider.h"
+#include "namespace.h"
 #include <stdint.h>
 
 
@@ -54,4 +55,10 @@ DVM_Provider *dvm_program_publication(DVM_ProgramPublication **control);
  * фиксации. Сборка нового дерева может ждать провайдеров. */
 int dvm_program_publication_replace(DVM_ProgramPublication *control,
     const DVM_ProgramView *entries, size_t count);
+struct DVM_LaunchFiles; /* Borrowed numbered table pinned by the active caller. */
+
+
+/* EN: Capture the caller's borrowed namespace and numbered files during native wait.
+ * RU: Захватить пространство имён и номерные файлы клиента при нативном ожидании. */
+DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
 #endif

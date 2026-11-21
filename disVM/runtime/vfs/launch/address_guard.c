@@ -117,3 +117,16 @@ DVM_LaunchDelivery dvm_launch_address_send(DVM_LaunchAddress *address, const voi
 {
     return dvm_launch_address_send_process(address, 0, arguments, size);
 }
+
+
+
+/* EN/RU: See route.h; inspect the immutable leaf only.
+ * См. route.h; проверить только неизменяемый конечный адрес. */
+int dvm_launch_address_uses_process(const DVM_LaunchAddress *address)
+{
+    while (address && address->inner)
+    {
+        address = address->inner;
+    }
+    return address && address->process_send;
+}

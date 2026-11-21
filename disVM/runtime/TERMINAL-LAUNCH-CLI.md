@@ -213,3 +213,24 @@ The owner runs its configured image and exposes the accepted bytes to
 select the caller's process context. The [owner example](../examples/remote-scalar/styx-owner.b)
 checks an embedded NUL. The acceptance test starts two separate DisVM
 processes with these commands.
+
+### Launch with the live caller context
+
+Use the context profile on both ends of the same delegated connection:
+
+```sh
+disvm --styx-serve-fd 3 --context -- owner.dis
+disvm --styx-mount-fd 3 --launch-context implementation.dis .unibus 17 -- caller.dis
+```
+
+The Limbo caller uses the same `Vfsnative.runargs` call. DisVM publishes
+its virtual `.prog/<pid>` before sending the request. The owner mounts
+the reverse channel, pins the PID directory and adopts its available
+context before `init`. The scoped send holds the export until the
+one-shot owner closes the carrier or the caller cancels. The return
+value still reports submission status.
+
+The two-process example reads the caller PID and consumes redirected
+stdin from the owner with `Sys->fildes(0)`. It also writes through the
+caller's redirected stdout. The 64-byte inbox limit includes the S-record
+and process headers.
