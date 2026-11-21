@@ -100,6 +100,7 @@ def main():
                         peer.kill()
 
         chain(runtime, compiler, provider, disvm, example, work)
+        library_cli(runtime, compiler, disvm, example, work)
 
 
 # EN: Create an owned TCP connection for one link between the peers.
@@ -266,6 +267,41 @@ def chain(runtime, compiler, provider, disvm, example, work):
                 for peer in (owner, library, other):
                     if peer.poll() is None:
                         peer.kill()
+
+
+# EN: Boot both stock CLIs and load two exports through one delegated carrier.
+# RU: Запустить два штатных CLI и загрузить два экспорта по одному транспорту.
+def library_cli(runtime, compiler, disvm, example, work):
+    for source, image in (
+        (disvm / "limbo/scalarowner.b", "scalarowner.dis"),
+        (example / "scoped-calls-owner.b", "first-owner.dis"),
+        (example / "scoped-calls-owner.b", "second-owner.dis"),
+        (example / "styx-library-cli.b", "library-cli.dis"),
+    ):
+        subprocess.run([compiler, "-D", "R", "-I", disvm / "upstream/module", "-I", disvm / "module",
+                        "-I", example, "-o", work / image, source], cwd=work, check=True)
+    for mode in ("--no-jit", "--jit"):
+        caller, owner = tcp_pair()
+        with caller, owner, subprocess.Popen(
+            [runtime, "--styx-library-serve-fd", str(owner.fileno()),
+             "--export", "first.dis", "first-owner.dis", "update",
+             "--export", "second.dis", "second-owner.dis", "update", "--", mode, "scalarowner.dis"],
+            pass_fds=(owner.fileno(),), cwd=work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True
+        ) as server:
+            owner.close()
+            try:
+                client = subprocess.run(
+                    [runtime, "--styx-mount-fd", str(caller.fileno()), "--", mode, "library-cli.dis"],
+                    pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=15)
+                caller.close()
+                output, _ = server.communicate(timeout=10)
+                if client.returncode or server.returncode or "PASS two libraries" not in client.stdout:
+                    raise RuntimeError(client.stdout + client.stderr + output)
+                print(client.stdout.strip(), mode, flush=True)
+            finally:
+                if server.poll() is None:
+                    server.kill()
 
 
 if __name__ == "__main__":

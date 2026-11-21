@@ -275,3 +275,29 @@ paths are rejected before any connection is opened. All mounts must
 succeed before the owner accepts a launch.
 
 Different descriptor numbers that alias the same socket are rejected before any Styx handshake.
+
+## Serve several loaded libraries over one Styx session
+
+Run the provider with one connected stream delegated by the host. Repeat
+`--export PUBLIC.dis OWNER.dis NAME` for each export the provider publishes.
+
+```sh
+disvm --styx-library-serve-fd 3 \
+  --export first.dis first-owner.dis update \
+  --export second.dis second-owner.dis update \
+  -- scalarowner.dis
+```
+
+`PUBLIC.dis` is the name under `/peer/mounted` on the caller.
+`OWNER.dis` is the provider's implementation path, and `NAME` is the
+export name in that image. Compile the owner implementations and caller
+with `limbo -D R` for scoped export type metadata. `scalarowner.dis` is
+the dispatcher built from [scalarowner.b](../limbo/scalarowner.b). Arguments
+after `--` are ordinary VM options followed by the dispatcher image.
+
+The caller starts `disvm --styx-mount-fd 3 -- caller.dis` on its end of
+the delegated stream. The [example caller](../examples/remote-scalar/styx-library-cli.b)
+uses ordinary Limbo `load` for both public paths. The [integration test](../native/terminal/tests/scalar/mount_cli.py)
+compiles the images, connects the two processes, checks ref copy-back and
+compares the provider PIDs. Disconnecting the caller drains the provider's
+export inboxes and retires its idle workers.
