@@ -304,3 +304,25 @@ followed by an eight-byte signed value. An `int` must fit in 32 bits.
 These tags apply to unscoped packed requests on the loaded function's Styx
 file. The owner links and calls the original Dis export in its VM.
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-by-compiled-scalar-shape).
+
+## Calls with compiled reference types
+
+The owner can select the existing reference protocol from the compiled
+schema. The argument list may contain one or two references to ADTs with
+an `int` field followed by a `big` field. A two-reference list may also
+be passed as a single tuple. The return may be empty, `int`, or
+`(int,big)`. Both sides must supply type metadata for these additional
+signatures. The owner checks the original Dis frame's pointer map before
+publishing the export.
+
+The one-reference and two-reference protocols keep their existing tags
+and snapshots. For an empty return both result fields on the wire are
+zero. For an `int` return the second field is zero. The client verifies
+the padding before claiming the object and result spans. It writes only
+the declared result cells and applies the reference updates in the same
+transaction. A void call claims only the object spans. Two positions
+referring to one object still produce one snapshot and one update.
+No copy-back occurs on cancellation, an owner exception, an invalid reply
+or a conflicting local edit. These calls use unscoped function fids.
+
+See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-compiled-reference-types).

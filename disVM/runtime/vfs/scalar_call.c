@@ -382,17 +382,17 @@ void dvm_scalar_entry(void *frame, unsigned index)
         error(exModule);
     }
     Type *expected_type = module->ext[ordinal].frame;
-    if (files && files->signature == DVM_REF_PAIR_SIGNATURE)
+    if (files && (files->signature == DVM_REF_PAIR_SIGNATURE || files->ref_profile == STYX_REF_PAIR_REQUEST_TAG))
     {
         dvm_ref_pair_entry(frame, expected_type, files);
         return;
     }
-    if (files && (files->dynamic || files->signature == DVM_CALL_LIST_SIGNATURE))
+    if (files && ((files->dynamic && !files->ref_profile) || files->signature == DVM_CALL_LIST_SIGNATURE))
     {
         dvm_call_list_entry(frame, expected_type, files);
         return;
     }
-    if (files && files->signature == DVM_REF_SIGNATURE)
+    if (files && (files->signature == DVM_REF_SIGNATURE || files->ref_profile == STYX_REF_REQUEST_TAG))
     {
         dvm_ref_entry(frame, expected_type, files);
         return;

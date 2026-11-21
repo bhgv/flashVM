@@ -38,11 +38,11 @@ run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string)
     } else if (pair != nil) {
         run_tuple(routes, pair, request, reply);
     } else if (single != nil) {
-        run_ref(routes, single, request, reply);
+        run_ref(routes, single, request, reply, outputs);
     } else if (arguments != nil) {
         run_list(routes, arguments, request, reply);
     } else if (aliases != nil) {
-        run_ref_pair(routes, aliases, request, reply);
+        run_ref_pair(routes, aliases, request, reply, outputs);
     } else if (raw != nil) {
         run_raw(routes, raw, request, reply, inputs, outputs);
     }

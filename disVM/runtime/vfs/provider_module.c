@@ -220,10 +220,14 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             (strcmp(shape.arguments, local->arguments) || strcmp(shape.result, local->result));
         int dynamic = !styxloadedrequest(signature);
         size_t arguments = 0, result = 0;
-        if (dynamic && bit && (caller || !local->arguments[0] ||
-            !styxshapecells(&shape, &arguments, &result)))
+        unsigned long ref_profile = 0;
+        if (dynamic && bit)
         {
-            bit = 0;
+            ref_profile = styxshaperef(&shape, &result);
+            if (caller || !local->arguments[0] || (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
+            {
+                bit = 0;
+            }
         }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
         {
@@ -234,6 +238,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->signature = signature;
         (*tail)->caller = caller;
         (*tail)->dynamic = dynamic;
+        (*tail)->ref_profile = ref_profile;
         (*tail)->argument_cells = arguments;
         (*tail)->result_cells = result;
         (*tail)->shape = local->arguments[0] && shape.arguments[0] ? *local : shape;

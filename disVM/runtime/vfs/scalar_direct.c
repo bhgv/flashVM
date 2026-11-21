@@ -78,7 +78,7 @@ static int build_direct(void *opaque)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
-        if (entry && entry->dynamic)
+        if (entry && entry->dynamic && !entry->ref_profile)
         {
             size_t size = offsetof(DirectCallListFrame, arguments) + entry->argument_cells * sizeof(WORD);
             Type *type = dtype(freeheap, size, NULL, 0);
@@ -91,12 +91,15 @@ static int build_direct(void *opaque)
             entry = entry->next;
             continue;
         }
-        size_t profile = signature == DVM_REF_PAIR_SIGNATURE ? 4 : signature == DVM_CALL_LIST_SIGNATURE ? 3 :
-            signature == DVM_REF_SIGNATURE ? 2 : signature == DVM_TUPLE_SIGNATURE ? 1 : 0;
+        unsigned long ref_profile = entry ? entry->ref_profile : 0;
+        size_t profile = signature == DVM_REF_PAIR_SIGNATURE || ref_profile == STYX_REF_PAIR_REQUEST_TAG ? 4 :
+            signature == DVM_CALL_LIST_SIGNATURE ? 3 :
+            signature == DVM_REF_SIGNATURE || ref_profile == STYX_REF_REQUEST_TAG ? 2 :
+            signature == DVM_TUPLE_SIGNATURE ? 1 : 0;
         if (!frames[profile])
         {
-            uchar map[] = {0, signature == DVM_REF_PAIR_SIGNATURE ? 0xc0 : 0x80};
-            int mapped = signature == DVM_REF_SIGNATURE || signature == DVM_REF_PAIR_SIGNATURE;
+            uchar map[] = {0, profile == 4 ? 0xc0 : 0x80};
+            int mapped = profile == 2 || profile == 4;
             frames[profile] = dtype(freeheap, sizes[profile], mapped ? map : NULL, mapped ? sizeof(map) : 0);
             if (!frames[profile])
             {

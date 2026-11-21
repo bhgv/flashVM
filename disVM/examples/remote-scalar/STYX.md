@@ -181,3 +181,24 @@ omits `-D R`. Its full load is refused and it can still load the fixed
 The harness closes the Styx connections and removes the temporary roots.
 
 See the [wire format](../../native/terminal/SCALAR-FUNCTION.md#calls-with-compiled-scalar-types).
+
+## Call with compiled reference types
+
+Run the same `owner_guest.py` command. It compiles
+[the interface](compiled-ref.m), [the original implementation](compiled-ref-owner.b)
+and [the client](styx-compiled-ref.b). The client uses `load` on
+`/peer/mounted/compiled-ref.dis`. It calls `bump` with a single reference
+and receives one `int`. It calls `revise` with a tuple of two references
+and receives only the object updates. It calls `inspect` to read a
+return tuple and check whether both references pointed to the same object
+at the owner.
+
+The harness coordinates one concurrent client edit with the owner through
+test markers in the two temporary roots. It checks that the client keeps
+its edit and that neither copy-back is applied. It also checks owner
+exceptions, nil rejection and shared module state after failure. Expect
+`PASS mounted compiled ref argument layouts` with and without JIT. A
+second caller image without a type table is refused. The harness closes
+the connections and removes both roots.
+
+See the [wire format](../../native/terminal/SCALAR-FUNCTION.md#calls-with-compiled-reference-types).

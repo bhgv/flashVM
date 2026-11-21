@@ -61,6 +61,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_LOADED_SET"] = "reject" if mounted.endswith("reject") else "accept"
     if mounted in ("dynamic", "legacy-dynamic"):
         env["DVM_TEST_SCALAR_LOADED_SET"] = "dynamic"
+    if mounted in ("compiled-ref", "legacy-compiled-ref"):
+        env["DVM_TEST_SCALAR_LOADED_SET"] = "compiled-ref"
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -113,11 +115,13 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
             image = "mismatched-import.dis"
         if mounted in ("dynamic", "legacy-dynamic"):
             image = "legacy-dynamic.dis" if mounted == "legacy-dynamic" else "dynamic.dis"
+        if mounted in ("compiled-ref", "legacy-compiled-ref"):
+            image = mounted + ".dis"
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
         right.close()
-        if mounted == "refpair":
+        if mounted in ("refpair", "compiled-ref"):
             relay_ref_pair(owner, caller)
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
@@ -195,6 +199,8 @@ def main():
             (owner, example / "loaded-set-owner.b", "loaded-set-owner.dis"),
             (caller, example / "styx-dynamic-set.b", "dynamic.dis"),
             (owner, example / "dynamic-set-owner.b", "dynamic-set-owner.dis"),
+            (caller, example / "styx-compiled-ref.b", "compiled-ref.dis"),
+            (owner, example / "compiled-ref-owner.b", "compiled-ref-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
@@ -216,6 +222,8 @@ def main():
         (caller / "legacy-import.dis").write_bytes(client[:client.rindex(b"STYXCS2!")])
         dynamic = (caller / "dynamic.dis").read_bytes()
         (caller / "legacy-dynamic.dis").write_bytes(dynamic[:dynamic.rindex(b"STYXCS2!")])
+        ref_client = (caller / "compiled-ref.dis").read_bytes()
+        (caller / "legacy-compiled-ref.dis").write_bytes(ref_client[:ref_client.rindex(b"STYXCS2!")])
         invalid_import = caller / "invalid-import.dis"
         mismatch_import_shape(caller / "blend.dis", invalid_import, change_signature=True)
         refused = subprocess.run([str(runtime), "--no-jit", invalid_import.name], cwd=caller,
@@ -263,6 +271,17 @@ def main():
             finally:
                 refusal.unlink()
             exchange(binary, owner, caller, mode, "PASS mounted dynamic scalar call layouts", calls=0, mounted="dynamic")
+            for marker in marker_paths:
+                marker.write_bytes(b"0")
+            exchange(binary, owner, caller, mode, "PASS mounted compiled ref argument layouts",
+                     calls=0, mounted="compiled-ref")
+            legacy_ref = caller / "expect-legacy-compiled-ref-refusal"
+            legacy_ref.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS compiled ref requires local import types",
+                         calls=0, mounted="legacy-compiled-ref")
+            finally:
+                legacy_ref.unlink()
             legacy_refusal = caller / "expect-legacy-dynamic-refusal"
             legacy_refusal.touch()
             try:

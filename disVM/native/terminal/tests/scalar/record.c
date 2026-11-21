@@ -201,21 +201,31 @@ static int shaped_profile(void)
 }
 
 
-/* EN: Admit bounded scalar layouts and reject pointers or a fifth cell.
- * RU: Допустить ограниченные скалярные раскладки и отклонить указатели или пятую ячейку. */
+/* EN: Check the separate admission rules for scalar values and copy-back refs.
+ * RU: Проверить отдельные условия допуска скаляров и ref с обратной записью. */
 static int dynamic_profile(void)
 {
     const StyxCallShape good = {"((bi)ib)", "((b(ii)b))"};
     const StyxCallShape empty = {"()", "()"};
     const StyxCallShape too_wide = {"(iiiii)", "(b)"};
-    const StyxCallShape reference = {"(r[ib])", "(b)"};
+    const StyxCallShape reference = {"(r[ib])", "(i)"};
+    const StyxCallShape aliases = {"((r[ib]r[ib]))", "()"};
+    const StyxCallShape mixed = {"((r[ib]i))", "(i)"};
+    const StyxCallShape wrong_fields = {"(r[bi])", "(i)"};
+    const StyxCallShape wrong_result = {"(r[ib])", "(b)"};
     unsigned char bytes[STYX_SHAPED_OFFER_MAX];
     size_t a, r, used;
     return styxshapecells(&good, &a, &r) && a == 4 && r == 4 &&
         styxshapecells(&empty, &a, &r) && !a && !r &&
         !styxshapecells(&too_wide, &a, &r) && !styxshapecells(&reference, &a, &r) &&
         styxshapedoffer("sample", 17, &good, bytes, sizeof(bytes), &used) &&
-        styxloadedaccept("sample", bytes, used) == STYX_DYNAMIC_REQUEST_TAG;
+        styxloadedaccept("sample", bytes, used) == STYX_DYNAMIC_REQUEST_TAG &&
+        styxshaperef(&reference, &r) == STYX_REF_REQUEST_TAG && r == 1 &&
+        styxshaperef(&aliases, &r) == STYX_REF_PAIR_REQUEST_TAG && r == 0 &&
+        !styxshaperef(&mixed, &r) && !styxshaperef(&wrong_fields, &r) && !styxshaperef(&wrong_result, &r) &&
+        !styxshaperequest(DVM_REF_PAIR_SIGNATURE, &aliases) &&
+        styxshapedoffer("sample", 18, &aliases, bytes, sizeof(bytes), &used) &&
+        styxloadedaccept("sample", bytes, used) == STYX_REF_PAIR_REQUEST_TAG;
 }
 
 

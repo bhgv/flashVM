@@ -89,11 +89,19 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             int dynamic = !strcmp(set, "dynamic");
             const char *concrete_names[] = {"tally", "wide", "pair", "revise", "blend", rejected ? "missing" : "exchange"};
             const char *dynamic_names[] = {"status", "adjust", "project", "fold", "quad", "clear", "tally"};
+            const char *ref_names[] = {"bump", "revise", "inspect"};
             const char *const *names = dynamic ? dynamic_names : concrete_names;
             size_t count = dynamic ? sizeof(dynamic_names) / sizeof(dynamic_names[0]) :
                 sizeof(concrete_names) / sizeof(concrete_names[0]);
             const char *module = dynamic ? "dynamic.dis" : "set.dis";
             const char *implementation = dynamic ? "dynamic-set-owner.dis" : "loaded-set-owner.dis";
+            if (!strcmp(set, "compiled-ref"))
+            {
+                names = ref_names;
+                count = sizeof(ref_names) / sizeof(ref_names[0]);
+                module = "compiled-ref.dis";
+                implementation = "compiled-ref-owner.dis";
+            }
             StyxUnibusServer *server = styxunibusserverstartloadedset(channel, module, names, count);
             if (server)
             {

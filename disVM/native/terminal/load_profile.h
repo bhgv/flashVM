@@ -47,6 +47,13 @@ int styxshapevalid(const StyxCallShape *shape);
 int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result);
 
 
+/* EN: Select the existing ref wire format for a validated compiled reference layout.
+ * RU: Выбрать существующий формат ref для проверенной компилированной раскладки.
+ * Return zero on refusal; results receives the number of scalar return cells.
+ * При отказе вернуть ноль; results получает число скалярных ячеек результата. */
+unsigned long styxshaperef(const StyxCallShape *shape, size_t *results);
+
+
 /* EN: Choose a wire tag for a shaped export. Existing profiles retain their tag.
  * RU: Выбрать тег по типам экспорта. Прежние профили сохраняют свои теги. */
 unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape);

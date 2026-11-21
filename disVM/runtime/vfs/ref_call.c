@@ -32,14 +32,14 @@ typedef struct RefCells
 
 /* EN: Claim up to two rooted objects and a return span in one ordered union.
  * RU: Захватить до двух укоренённых объектов и результат в одном упорядоченном наборе.
- * Retry busy admission before any reads or writes. NULL omits a span.
- * Повторять занятый захват до чтения или записи. NULL пропускает область. */
-static void claim(RefCells *first, RefCells *second, RefCells *ret, DVM_RangeAccess *access)
+ * Retry busy admission before any reads or writes. NULL and zero omit the result.
+ * Повторять занятый захват до чтения или записи. NULL и ноль пропускают результат. */
+static void claim(RefCells *first, RefCells *second, void *ret, size_t width, DVM_RangeAccess *access)
 {
     for (;;)
     {
         DVM_CellResult result = dvm_managed_three_begin(first, sizeof(*first),
-            second, second ? sizeof(*second) : 0, ret, ret ? sizeof(*ret) : 0, access);
+            second, second ? sizeof(*second) : 0, ret, width, access);
         if (result == DVM_CELL_ACQUIRED)
         {
             return;
@@ -69,7 +69,7 @@ static void release_claim(DVM_RangeAccess *access)
 static void snapshot(RefCells *const *objects, RefCells *before, StyxRefPair *call)
 {
     DVM_RangeAccess access = {0};
-    claim(objects[0], objects[1], NULL, &access);
+    claim(objects[0], objects[1], NULL, 0, &access);
     for (size_t i = 0; i < call->count; i++)
     {
         memcpy(&before[i], objects[i], sizeof(before[i]));
@@ -88,18 +88,19 @@ static void snapshot(RefCells *const *objects, RefCells *before, StyxRefPair *ca
 
 /* EN: Publish result and every update together after comparing all old fields.
  * RU: Вместе выдать результат и все обновления после сверки исходных полей. */
-static void commit_ref(RefCells *const *objects, RefCells *ret, const RefCells *before, const StyxRefPair *reply)
+static void commit_ref(RefCells *const *objects, void *ret, size_t width,
+    const RefCells *before, const StyxRefPair *reply)
 {
-    for (size_t i = 0; i < reply->count; i++)
+    for (size_t i = 0; width && i < reply->count; i++)
     {
         uintptr_t from = (uintptr_t)objects[i], to = (uintptr_t)ret;
-        if (from <= to ? to - from < sizeof(*ret) : from - to < sizeof(*ret))
+        if (from <= to ? to - from < sizeof(RefCells) : from - to < width)
         {
             error("overlapping remote ref result");
         }
     }
     DVM_RangeAccess access = {0};
-    claim(objects[0], objects[1], ret, &access);
+    claim(objects[0], objects[1], ret, width, &access);
     int matches = 1;
     for (size_t i = 0; i < reply->count; i++)
     {
@@ -116,8 +117,11 @@ static void commit_ref(RefCells *const *objects, RefCells *ret, const RefCells *
             const RefCells updated = {reply->objects[i].narrow, reply->objects[i].wide};
             memcpy(objects[i], &updated, sizeof(updated));
         }
-        const RefCells value = {reply->result.narrow, reply->result.wide};
-        memcpy(ret, &value, sizeof(value));
+        if (width)
+        {
+            const RefCells value = {reply->result.narrow, reply->result.wide};
+            memcpy(ret, &value, width);
+        }
     }
     release_claim(&access);
     if (!matches)
@@ -129,7 +133,8 @@ static void commit_ref(RefCells *const *objects, RefCells *ret, const RefCells *
 
 /* EN: Check that both managed pointers will stay rooted by the actual frame map.
  * RU: Проверить, что карта активного кадра удерживает управляемые указатели. */
-static void capture_frame(void *frame, Type *expected_type, void *output, size_t size, size_t ret_offset)
+static void capture_frame(void *frame, Type *expected_type, void *output,
+    size_t size, size_t ret_offset, size_t width)
 {
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
         (uintptr_t)DVM_R.SP - (uintptr_t)frame < size)
@@ -142,7 +147,14 @@ static void capture_frame(void *frame, Type *expected_type, void *output, size_t
     {
         error(exModule);
     }
-    dvm_sys_capture(frame, output, size, ret_offset, sizeof(RefCells));
+    if (width)
+    {
+        dvm_sys_capture(frame, output, size, ret_offset, width);
+    }
+    else
+    {
+        memcpy(output, frame, size);
+    }
 }
 
 
@@ -163,7 +175,7 @@ static RefCells *ref_object(void *const *slot)
  * RU: Удерживать снимок локально на время обмена и применить только проверенный ответ.
  * objects contains one or two distinct rooted objects. NULL second means one object.
  * objects содержит один или два разных объекта. NULL во второй позиции означает один. */
-static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, RefCells *ret, int paired)
+static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, void *ret, size_t width, int paired)
 {
     StyxRefPair value = {.count = objects[1] ? 2 : 1};
     RefCells before[2];
@@ -193,7 +205,12 @@ static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, RefCells *r
         value.objects[0] = single.updated;
         value.result = single.result;
     }
-    commit_ref(objects, ret, before, &value);
+    if (files->ref_profile && ((files->result_cells < 2 && value.result.wide) ||
+        (!files->result_cells && value.result.narrow)))
+    {
+        error("invalid remote ref result padding");
+    }
+    commit_ref(objects, ret, width, before, &value);
 }
 
 
@@ -202,9 +219,10 @@ static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, RefCells *r
 void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectRefFrame call;
-    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefFrame, ret));
+    size_t width = files->ref_profile ? files->result_cells * sizeof(WORD) : sizeof(RefCells);
+    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefFrame, ret), width);
     RefCells *objects[] = {ref_object(&call.object), NULL};
-    invoke(files, objects, call.ret, 0);
+    invoke(files, objects, width ? call.ret : NULL, width, 0);
 }
 
 
@@ -213,9 +231,10 @@ void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 void dvm_ref_pair_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectRefPairFrame call;
-    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefPairFrame, ret));
+    size_t width = files->ref_profile ? files->result_cells * sizeof(WORD) : sizeof(RefCells);
+    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefPairFrame, ret), width);
     RefCells *first = ref_object(&call.objects[0]);
     RefCells *second = ref_object(&call.objects[1]);
     RefCells *objects[] = {first, first == second ? NULL : second};
-    invoke(files, objects, call.ret, 1);
+    invoke(files, objects, width ? call.ret : NULL, width, 1);
 }

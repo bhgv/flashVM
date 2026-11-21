@@ -208,6 +208,54 @@ int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result
 }
 
 
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+unsigned long styxshaperef(const StyxCallShape *shape, size_t *results)
+{
+    if (!results || !styxshapevalid(shape))
+    {
+        return 0;
+    }
+    size_t refs = 0;
+    for (const char *token = shape->arguments; *token; )
+    {
+        if (*token == '(' || *token == ')')
+        {
+            token++;
+        }
+        else if (!strncmp(token, "r[ib]", 5))
+        {
+            refs++;
+            token += 5;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (!refs || refs > 2)
+    {
+        return 0;
+    }
+    if (!strcmp(shape->result, "()"))
+    {
+        *results = 0;
+    }
+    else if (!strcmp(shape->result, "(i)"))
+    {
+        *results = 1;
+    }
+    else if (!strcmp(shape->result, "((ib))"))
+    {
+        *results = 2;
+    }
+    else
+    {
+        return 0;
+    }
+    return refs == 1 ? STYX_REF_REQUEST_TAG : STYX_REF_PAIR_REQUEST_TAG;
+}
+
+
 /* EN: Match portable types to the supported native ABI for signature.
  * RU: Сверить переносимые типы с поддерживаемым нативным ABI сигнатуры. */
 static int signature_shape(uint32_t signature, const StyxCallShape *shape)
@@ -252,7 +300,11 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
         return signature_shape(signature, shape) ? existing : 0;
     }
     size_t args, results;
-    return signature && styxshapecells(shape, &args, &results) ? STYX_DYNAMIC_REQUEST_TAG : 0;
+    if (!signature)
+    {
+        return 0;
+    }
+    return styxshapecells(shape, &args, &results) ? STYX_DYNAMIC_REQUEST_TAG : styxshaperef(shape, &results);
 }
 
 

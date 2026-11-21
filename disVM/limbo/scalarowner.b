@@ -337,13 +337,13 @@ serve_ref(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref owner implementation link failed";
     }
-    run_ref(routes, target, request, reply);
+    run_ref(routes, target, request, reply, 2);
 }
 
 
 # EN: Serve the linked ref export until its request inbox closes.
 # RU: Обслуживать связанный экспорт ref до закрытия приёмника запросов.
-run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string)
+run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string, outputs: int)
 {
     for (;;) {
         (ready, narrow, wide) := routes->scalarrefnext(request);
@@ -359,7 +359,7 @@ run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: stri
             "*" =>
                 success = 0;
         }
-        routes->scalarrefreply(reply, success, result, (cell.narrow, cell.wide));
+        routes->scalarrefreply(reply, success, ref_result(result, outputs), (cell.narrow, cell.wide));
     }
 }
 
@@ -421,13 +421,13 @@ serve_ref_pair(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref pair owner implementation link failed";
     }
-    run_ref_pair(routes, target, request, reply);
+    run_ref_pair(routes, target, request, reply, 2);
 }
 
 
 # EN: Serve the linked ref pair export until its request inbox closes.
 # RU: Обслуживать связанный экспорт ref pair до закрытия приёмника запросов.
-run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string)
+run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string, outputs: int)
 {
     for (;;) {
         (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairnext(request);
@@ -447,9 +447,25 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
             "*" =>
                 success = 0;
         }
-        routes->scalarrefpairreply(reply, success, count, result,
+        routes->scalarrefpairreply(reply, success, count, ref_result(result, outputs),
             (first.narrow, first.wide), (second.narrow, second.wide));
     }
+}
+
+
+
+# EN: Zero unused cells in the two-cell wire result after the original call.
+# RU: Обнулить неиспользованные ячейки двухъячеечного ответа после вызова.
+ref_result(result: (int,big), outputs: int): (int,big)
+{
+    if (outputs == 2) {
+        return result;
+    }
+    if (outputs == 1) {
+        (value, nil) := result;
+        return (value, big 0);
+    }
+    return (0, big 0);
 }
 
 include "scalarowner_loaded.b";

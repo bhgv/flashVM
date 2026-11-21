@@ -52,9 +52,9 @@ typedef struct GatewayOwner
 
 
 /* EN: Verify that the original export reserves all incoming scalar words and
- * that none of those words occupies a pointer position in its frame map.
- * RU: Проверить место для входных скаляров и отсутствие указателей в их ячейках. */
-static int scalar_frame(const Type *frame, size_t arguments)
+ * that the pointer bits match the expected scalar-only or ref-only layout.
+ * RU: Проверить размер кадра и соответствие карты раскладке скаляров или ref. */
+static int gateway_frame(const Type *frame, size_t arguments, int references)
 {
     const size_t first_cell = 8;
     if (frame->size < 0 || (size_t)frame->size < (first_cell + arguments) * sizeof(WORD) || frame->np < 0)
@@ -63,7 +63,8 @@ static int scalar_frame(const Type *frame, size_t arguments)
     }
     for (size_t i = first_cell; i < first_cell + arguments; i++)
     {
-        if (i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8))))
+        int pointer = i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8)));
+        if (pointer != references)
         {
             return 0;
         }
@@ -135,12 +136,26 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
             if (tag == STYX_DYNAMIC_REQUEST_TAG)
             {
                 size_t result;
-                if (!gateway || !styxshapecells(shape, &slot, &result) || !scalar_frame(export->frame, slot))
+                if (!gateway || !styxshapecells(shape, &slot, &result) || !gateway_frame(export->frame, slot, 0))
                 {
                     break;
                 }
                 gateway->arguments = slot;
                 gateway->results = result;
+            }
+            else if (tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG)
+            {
+                size_t refs = tag == STYX_REF_REQUEST_TAG ? 1 : 2;
+                if (!styxloadedrequest(*signature) && (!gateway || !gateway_frame(export->frame, refs, 1)))
+                {
+                    break;
+                }
+                if (gateway)
+                {
+                    size_t results = 2;
+                    styxshaperef(shape, &results);
+                    gateway->results = results;
+                }
             }
             Import imports[STYX_DYNAMIC_CELLS + 2] = {{0, NULL}};
             for (size_t i = 0; i <= slot; i++)
@@ -224,7 +239,7 @@ static void publish_view(void *ret, LoadedOwner result, String *offer, const cha
     size_t size = 0;
     if (link != H)
     {
-        unsigned long tag = styxloadedrequest(signature);
+        unsigned long tag = shape->arguments[0] ? styxshaperequest(signature, shape) : styxloadedrequest(signature);
         int slot = view_slot(tag);
         int offered = encode_offer(name, signature, shape, bytes, sizeof(bytes), &size);
         if (slot >= 0 && offered)
@@ -348,8 +363,9 @@ void Vfsnative_scalarloadedslot(void *frame)
     uint32_t signature = 0;
     StyxCallShape shape = {{0}, {0}};
     Modlink *link = link_export(retain_anchor(anchor), anchor, name, &signature, &shape, &result);
-    if (link == H || styxloadedrequest(signature))
+    if (link == H || styxshaperequest(signature, &shape) != STYX_DYNAMIC_REQUEST_TAG)
     {
+        memcpy(destination, &result, sizeof(result));
         publish_view(destination, result.typed, call.offer, name, link, signature, &shape);
         return;
     }
