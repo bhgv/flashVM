@@ -191,6 +191,43 @@ def mismatch_import_shape(source, target, change_signature=False):
     target.write_bytes(image)
 
 
+# EN: Exercise the compiler's optional managed trailer and load the resulting Dis image.
+# RU: Проверить необязательные метаданные управляемых типов и загрузить образ Dis.
+def managed_metadata(runtime, compiler, directory):
+    source = directory / "managed-types.b"
+    image = directory / "managed-types.dis"
+    source.write_text(
+        """implement ManagedTypes;
+ManagedTypes: module {
+    Cell: adt {name: string; bytes: array of byte;};
+    init: fn();
+    shapes: fn(text: string, cells: array of ref Cell): (string, array of ref Cell);
+};
+
+init()
+{
+}
+
+shapes(text: string, cells: array of ref Cell): (string, array of ref Cell)
+{
+    return (text, cells);
+}
+"""
+    )
+    options = ["-o", str(image), str(source)]
+    run([str(compiler), *options], directory)
+    plain = image.read_bytes()
+    marker = b"STYXCS1!"
+    if b"(sa[r[sa[y]]])" in plain[plain.rindex(marker):]:
+        raise RuntimeError("managed metadata changed default compiler output")
+    run([str(compiler), "-D", "G", *options], directory)
+    compiled = image.read_bytes()
+    trailer = compiled[compiled.rindex(marker):]
+    if b"(sa[r[sa[y]]])((sa[r[sa[y]]]))" not in trailer:
+        raise RuntimeError("compiler omitted the managed export shape")
+    run([str(runtime), "--no-jit", image.name], directory)
+
+
 # EN: Generate both ends from the original interface and compile the actual owner.
 # RU: Сгенерировать обе стороны по исходному интерфейсу и собрать реализацию владельца.
 def main():
@@ -206,6 +243,7 @@ def main():
         (caller / "library").mkdir()
         (caller / "alias.dis").mkdir()
         (caller / "peer").mkdir()
+        managed_metadata(runtime, compiler, caller)
         for path in (".vfs", ".var"):
             (caller / path).mkdir()
         for folder, source, output in (

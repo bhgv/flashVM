@@ -48,6 +48,12 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
         return token(shape, 'y');
     case Treal:
         return token(shape, 'f');
+    case Tstring:
+        /* Keep ordinary images readable by loaders with the scalar grammar. */
+        return debug['G'] && token(shape, 's');
+    case Tarray:
+        return debug['G'] && token(shape, 'a') && token(shape, '[') &&
+            shape_type(shape, type->tof, depth + 1) && token(shape, ']');
     case Ttuple:
         if (!token(shape, '('))
         {
@@ -70,11 +76,9 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
         }
         for (const Decl *field = type->ids; field; field = field->next)
         {
-            if (field->store == Dfield && (field->ty->kind != Tint && field->ty->kind != Tbig))
-            {
-                return 0;
-            }
-            if (field->store == Dfield && !shape_type(shape, field->ty, depth + 1))
+            if (field->store == Dfield &&
+                ((!debug['G'] && field->ty->kind != Tint && field->ty->kind != Tbig) ||
+                    !shape_type(shape, field->ty, depth + 1)))
             {
                 return 0;
             }

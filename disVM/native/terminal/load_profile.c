@@ -101,16 +101,23 @@ static int shape_type(const char **cursor, unsigned depth)
         return 0;
     }
     char type = *(*cursor)++;
-    if (type == 'i' || type == 'b' || type == 'f' || type == 'y')
+    if (type == 'i' || type == 'b' || type == 'f' || type == 'y' || type == 's')
     {
         return 1;
     }
-    if (type == 'r' && **cursor == '[')
+    if ((type == 'r' || type == 'a') && **cursor == '[')
     {
         ++*cursor;
-        while (**cursor == 'i' || **cursor == 'b')
+        if (type == 'a' && !shape_type(cursor, depth + 1))
         {
-            ++*cursor;
+            return 0;
+        }
+        while (type == 'r' && **cursor != ']')
+        {
+            if (!shape_type(cursor, depth + 1))
+            {
+                return 0;
+            }
         }
         if (**cursor != ']')
         {

@@ -56,3 +56,16 @@ offered by the provider when both are present. Identical name and
 32-bit signature remain required. Existing images without import
 shapes still use the original check for the existing gateway profiles.
 See the [two-VM mismatch case](../../disVM/examples/remote-scalar/STYX.md#call-with-three-arguments).
+
+
+## Experimental managed type metadata
+
+Build both images with `-D G` to inspect the expanded format. The compiler
+writes `s` for `string`, `a[T]` for an array of elements of type `T`, and
+`r[...]` with field shapes for references to untagged, non-polymorphic ADTs.
+The existing depth and length limits apply to tuples and nested elements.
+Recursive shapes that exceed those limits are omitted.
+
+DisVM validates these shapes when reading an image. The remote gateway
+continues to admit the supported scalar and reference call profiles.
+Compilation without `-D G` preserves the existing set of types.

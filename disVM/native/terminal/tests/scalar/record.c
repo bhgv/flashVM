@@ -251,6 +251,20 @@ static int byte_record(void)
 }
 
 
+/* EN: Validate nested managed metadata while keeping it outside scalar call admission.
+ * RU: Проверить вложенные управляемые типы и отказ скалярного шлюза для них. */
+static int managed_profile(void)
+{
+    const StyxCallShape good = {"(sa[(ys)]r[sa[b]r[i]])", "(a[s])"};
+    const StyxCallShape empty_array = {"(a[])", "(s)"};
+    const StyxCallShape two_elements = {"(a[si])", "(s)"};
+    const StyxCallShape broken_ref = {"(r[a[s])", "(s)"};
+    const StyxCallShape too_deep = {"(a[a[a[a[a[a[s]]]]]])", "(s)"};
+    return styxshapevalid(&good) && !styxshaperequest(17, &good) && !styxshapevalid(&empty_array) &&
+        !styxshapevalid(&two_elements) && !styxshapevalid(&broken_ref) && !styxshapevalid(&too_deep);
+}
+
+
 /* EN: Check the separate admission rules for scalar values and copy-back refs.
  * RU: Проверить отдельные условия допуска скаляров и ref с обратной записью. */
 static int dynamic_profile(void)
@@ -418,7 +432,7 @@ int main(void)
     {
         return 1;
     }
-    if (!byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
+    if (!managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;
