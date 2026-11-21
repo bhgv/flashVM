@@ -87,6 +87,7 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
         return 0;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    owner->remote_call_cancel_delivered = 0;
     owner->remote_call_cancel = cancel;
     owner->remote_call_group = scope;
     owner->remote_call_events = events;

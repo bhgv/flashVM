@@ -16,6 +16,7 @@
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "runqueue.h"
+#include "vfs/cancel.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
 #include "pool.h"
@@ -1302,12 +1303,16 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
          * alone does not end the trace. The counter bounds accumulation. */
         limit = INT_MAX;
     }
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)dvm_native_context_process(dvm_native_context_current());
+    DVM_Cancel *cancel = owner && !owner->remote_call_cancel_delivered ? owner->remote_call_cancel : NULL;
     released = dvm_runtime_gc_shared_try_enter();
     if (released <= 0)
     {
         return 0;
     }
-    while (completed < limit)
+    /* EN: Return to xec to raise only after publishing roots and releasing the shared lease.
+     * RU: Вернуться в xec для исключения после публикации корней и освобождения общей аренды. */
+    while (completed < limit && (!cancel || !dvm_cancel_requested(cancel)))
     {
         /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();

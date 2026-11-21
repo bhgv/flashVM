@@ -1145,8 +1145,11 @@ static int fetch_for_dispatch(VmFetch *instruction)
 
 """
     code = relative_replace(code, "void\nxec(Prog *p)\n{",
-        dispatch_fetch + "void\nxec(Prog *p)\n{")
-    code = relative_replace(code, "if(!vmfetch(&fetched))", "if(!fetch_for_dispatch(&fetched))")
+        dispatch_fetch + "extern void dvm_runtime_remote_call_checkpoint(Prog *);\nvoid\nxec(Prog *p)\n{")
+    code = relative_replace(code, "if(!vmfetch(&fetched))", """dvm_runtime_remote_call_checkpoint(p);
+		if(!fetch_for_dispatch(&fetched))""")
+    code = relative_replace(code, "\t\t\tvmnative();", """			vmnative();
+			dvm_runtime_remote_call_checkpoint(p);""")
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()
     for operation in ("icase", "casel", "igoto"):

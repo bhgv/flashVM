@@ -13,9 +13,9 @@
  * Native source lifetime не зависит от guest/provider lifetime. */
 struct DVM_Cancel
 {
-    FVM_PortSync *lock; /* Protects references and sticky request. */
+    FVM_PortSync *lock; /* Protects references. */
     size_t references; /* Caller, scopes and attached tap handles. */
-    int requested; /* Monotonic cancellation predicate. */
+    int requested; /* Atomic monotonic cancellation predicate. */
     DVM_NoticeHub *notices; /* Owned native callback dispatcher. */
 };
 
@@ -132,19 +132,15 @@ void dvm_cancel_release(DVM_Cancel *cancel)
 }
 
 
-/* EN/RU: See cancel.h; publish once outside the source mutex.
- * См. cancel.h; публикация один раз вне source mutex. */
+/* EN/RU: See cancel.h; publish once after the atomic transition.
+ * См. cancel.h; публикация один раз после атомарного перехода. */
 void dvm_cancel_request(DVM_Cancel *cancel)
 {
     if (!cancel)
     {
         return;
     }
-    fvm_port_sync_lock(cancel->lock);
-    int first = !cancel->requested;
-    cancel->requested = 1;
-    fvm_port_sync_unlock(cancel->lock);
-    if (first)
+    if (!__atomic_exchange_n(&cancel->requested, 1, __ATOMIC_ACQ_REL))
     {
         DVM_ChangeEvent event = {0};
         dvm_notice_publish(cancel->notices, &event);
@@ -160,10 +156,7 @@ int dvm_cancel_requested(DVM_Cancel *cancel)
     {
         return 0;
     }
-    fvm_port_sync_lock(cancel->lock);
-    int requested = cancel->requested;
-    fvm_port_sync_unlock(cancel->lock);
-    return requested;
+    return __atomic_load_n(&cancel->requested, __ATOMIC_ACQUIRE);
 }
 
 

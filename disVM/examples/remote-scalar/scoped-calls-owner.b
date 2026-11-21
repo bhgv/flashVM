@@ -48,8 +48,8 @@ inspect(fail: int): (int,big)
         contents(sys, Caller + ".var/counter", 8) != "/.var") {
         raise "wrong caller scope";
     }
-    if (fail == 2) {
-        wait_cancel(sys);
+    if (fail == 2 || fail == 3) {
+        wait_cancel(sys, fail == 3);
         raise "remote handler stopped at a cancellation checkpoint";
     }
     if (fail != 0) {
@@ -258,16 +258,24 @@ check_overflow(sys: Sys, reverse: ref Sys->FD, event: array of byte)
 
 # EN: Observe revocation after entering the actual Dis function.
 # RU: Увидеть отзыв fid уже после входа в функцию Dis.
-wait_cancel(sys: Sys)
+wait_cancel(sys: Sys, compute: int)
 {
-    vfs := load Vfsnative Vfsnative->PATH;
-    set_marker(sys, "cancel-entered");
-    for (i := 0; i < 180; i++) {
-        if (vfs->callcancelled()) {
-            set_marker(sys, "cancel-observed");
-            return;
-        }
-        sys->sleep(10);
+    prefix := "cancel-";
+    if (compute) {
+        prefix = "compute-cancel-";
     }
-    raise "remote call cancellation timed out";
+    set_marker(sys, prefix + "entered");
+    {
+        if (compute) {
+            for (i := 0; i < 2147483647; i++) {
+                ;
+            }
+        } else {
+            sys->sleep(30000);
+        }
+        raise "remote call cancellation timed out";
+    } exception {
+        "remote call cancelled" =>
+            set_marker(sys, prefix + "observed");
+    }
 }

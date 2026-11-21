@@ -249,10 +249,26 @@ int dvm_runtime_channel_wait_change(uint64_t generation)
 
 /* Wait for a monotonic duration on the native cancellation ledger. The
  * scalar duration is private and all VM state stays in the saved frame. */
+/* EN: Deliver once so the gateway can unwind and release the call context.
+ * RU: Доставить один раз, чтобы шлюз мог завершить вызов и освободить контекст. */
+void dvm_runtime_remote_call_checkpoint(Prog *process)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (owner && !owner->remote_call_cancel_delivered &&
+        dvm_cancel_requested(owner->remote_call_cancel))
+    {
+        owner->remote_call_cancel_delivered = 1;
+        error("remote call cancelled");
+    }
+}
+
+
 int dvm_runtime_guest_sleep(unsigned long milliseconds)
 {
     NativeGuestWait wait;
     uint64_t started, now, elapsed;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)dvm_native_context_process(dvm_native_context_current());
+    DVM_Cancel *cancel = owner && !owner->remote_call_cancel_delivered ? owner->remote_call_cancel : NULL;
     int released, completed = milliseconds == 0;
 
 
@@ -264,7 +280,7 @@ int dvm_runtime_guest_sleep(unsigned long milliseconds)
         if (milliseconds && dvm_host_clock_ms(&started))
         {
             now = started;
-            while (!native_waits_stopping && !wait.cancelled)
+            while (!native_waits_stopping && !wait.cancelled && !dvm_cancel_requested(cancel))
             {
                 elapsed = now - started;
                 if (elapsed > milliseconds)
@@ -272,7 +288,13 @@ int dvm_runtime_guest_sleep(unsigned long milliseconds)
                     completed = 1;
                     break;
                 }
-                if (!fvm_port_sync_wait_ms(channel_queue_mutex, milliseconds - elapsed + 1) || !dvm_host_clock_ms(&now))
+                unsigned long delay = milliseconds - elapsed + 1;
+                /* EN/RU: Bound remote cancellation latency. / Ограничить задержку отмены. */
+                if (cancel && delay > 20)
+                {
+                    delay = 20;
+                }
+                if (!fvm_port_sync_wait_ms(channel_queue_mutex, delay) || !dvm_host_clock_ms(&now))
                 {
                     break;
                 }

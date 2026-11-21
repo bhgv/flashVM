@@ -82,7 +82,8 @@ init()
         raise "scoped child calls lost PID or shared fd cursor";
     }
     checkrefs(service, pid);
-    checkcancel(sys, service);
+    checkcancel(sys, service, 3, "compute-cancel-");
+    checkcancel(sys, service, 2, "cancel-");
     report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
 }
 
@@ -164,17 +165,17 @@ include "refpair-sync.b";
 
 # EN: Revoke an active call by killing its caller, then reuse the same mount.
 # RU: Отозвать активный вызов завершением клиента и повторно использовать маунт.
-checkcancel(sys: Sys, service: Scopedcalls)
+checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
 {
     ctl := load Processctl Processctl->PATH;
     started := chan of int;
-    spawn cancel_worker(service, ctl, started);
+    spawn cancel_worker(service, ctl, started, mode);
     child := <-started;
-    wait_marker(sys, "cancel-entered");
+    wait_marker(sys, prefix + "entered");
     if (ctl->kill(child) <= 0) {
         raise "could not stop the child caller";
     }
-    wait_marker(sys, "cancel-observed");
+    wait_marker(sys, prefix + "observed");
     {
         service->inspect(1);
         raise "expected owner error after cancellation";
@@ -190,8 +191,8 @@ checkcancel(sys: Sys, service: Scopedcalls)
 
 # EN: Publish the caller PID before entering the remote function.
 # RU: Передать PID клиента перед входом в удалённую функцию.
-cancel_worker(service: Scopedcalls, ctl: Processctl, started: chan of int)
+cancel_worker(service: Scopedcalls, ctl: Processctl, started: chan of int, mode: int)
 {
     started <-= ctl->pid();
-    service->inspect(2);
+    service->inspect(mode);
 }
