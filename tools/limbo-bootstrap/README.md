@@ -141,5 +141,5 @@ private output, custom error text and ordinary OS error fallback.
 
 ## Styx export types
 
-For the hosted eight-byte target, [`-D R`](STYX-TYPE-TABLE.md) adds
-resolved call types to the same Dis image at compile time.
+The hosted eight-byte target adds [resolved call types](STYX-TYPE-TABLE.md)
+to ordinary Dis images by default.

@@ -106,7 +106,7 @@ void limbo_styx_export(Decl *module)
 {
     if (IBY2WD != 8)
     {
-        fatal("Styx export types require the hosted 8-byte cell target");
+        return;
     }
     if (Bwrite(bout, "STYXCS1!", 8) != 8)
     {
@@ -121,11 +121,12 @@ void limbo_styx_export(Decl *module)
         {
             continue;
         }
-        bytes += 10 + args.size + result.size;
-        if (index >= 0xffffffffUL || bytes > 65536)
+        size_t record = 10 + args.size + result.size;
+        if (index >= 0xffffffffUL || record > 65536 - bytes)
         {
-            fatal("too many exports for Styx type table");
+            break;
         }
+        bytes += record;
         disword(index);
         disword(sign(entry));
         if (Bputc(bout, args.size) < 0 || Bputc(bout, result.size) < 0 ||

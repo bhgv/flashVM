@@ -8,8 +8,8 @@
 struct Decl;
 
 
-/* EN: Append an optional hosted type table to the currently emitted image.
- * RU: Добавить необязательную таблицу типов в текущий образ. */
+/* EN: Append the type table when the emitted image targets NC64.
+ * RU: Добавить таблицу типов в образ для цели NC64. */
 void limbo_styx_export(struct Decl *module);
 
 #endif

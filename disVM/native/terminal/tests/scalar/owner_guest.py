@@ -157,11 +157,13 @@ def main():
             (owner, example / "privatevalue.b", "privatevalue.dis"),
             (caller, example / "privatevalue.b", "privatevalue.dis"),
         ):
-            shape_flags = ["-D", "R"] if folder == owner and output in (
-                "wide-owner.dis", "tuple-owner.dis", "ref-owner.dis", "refpair-owner.dis", "blend-owner.dis"
-            ) else []
-            run([str(compiler), *shape_flags, "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
+            run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(folder / output), str(source)], work)
+        # Exercise the old profile with the exact pre-table prefix of the same compiler image.
+        # Проверить старый профиль на точном префиксе образа до таблицы.
+        legacy_owner = owner / "blend-scalar-owner.dis"
+        legacy_image = legacy_owner.read_bytes()
+        legacy_owner.write_bytes(legacy_image[:legacy_image.rindex(b"STYXCS1!")])
         corrupted = bytearray((owner / "blend-owner.dis").read_bytes())
         trailer = corrupted.rindex(b"STYXCS1!")
         corrupted[trailer + 12] ^= 1
