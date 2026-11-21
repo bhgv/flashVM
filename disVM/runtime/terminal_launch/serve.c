@@ -105,17 +105,33 @@ static DVM_Provider *publish_program(DVM_Namespace *group, const char *path)
 
 /* EN: Consume an optional library carrier and mount its root in the owner namespace.
  * RU: Принять соединение библиотек и смонтировать его в namespace владельца. */
-static int mount_library(DVM_Namespace *group, const char *descriptor)
+static int mount_library(DVM_Namespace *group, const char *descriptor, const char *path)
 {
     int fd = dvm_terminal_connected(descriptor);
     StyxClient *client = fd >= 3 ? styxclientmountphy(
         phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "owner", "", 5000, 8) : NULL;
     DVM_Provider *root = client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
     DVM_NamespacePlan target;
-    int installed = root && dvm_namespace_plan(group, "/libraries", &target) &&
+    int installed = root && dvm_namespace_plan(group, path, &target) &&
         dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;
     dvm_provider_release(root);
     return installed;
+}
+
+
+/* EN: Admit a canonical mount path outside the launch context and descriptor trees.
+ * RU: Допустить каноническую точку маунта вне деревьев контекста и дескрипторов. */
+static int library_path_valid(const char *path)
+{
+    if (path[0] != '/' || strlen(path) >= DVM_NS_PATH_LIMIT || !path[1] ||
+        !dvm_terminal_channel_paths_valid(path + 1, path + 1))
+    {
+        return 0;
+    }
+    size_t component = strcspn(path + 1, "/");
+    return !(component == 5 && !memcmp(path + 1, ".prog", 5)) &&
+        !(component == 3 && !memcmp(path + 1, ".fd", 3)) &&
+        !(component == 4 && (!memcmp(path + 1, ".vfs", 4) || !memcmp(path + 1, ".var", 4)));
 }
 
 
@@ -126,15 +142,21 @@ int dvm_styx_serve_cli(int argc, char **argv)
     int scoped = argc > 3 && !strcmp(argv[3], "--context");
     int separator = scoped ? 4 : 3;
     const char *library = NULL;
+    const char *library_path = "/libraries";
     if (argc > separator + 1 && !strcmp(argv[separator], "--library-fd"))
     {
         library = argv[separator + 1];
         separator += 2;
+        if (argc > separator + 1 && !strcmp(argv[separator], "--library-at"))
+        {
+            library_path = argv[separator + 1];
+            separator += 2;
+        }
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--") ||
-        (library && !strcmp(library, argv[2])))
+        (library && (!strcmp(library, argv[2]) || !library_path_valid(library_path))))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD] -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD [--library-at PATH]] -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -174,7 +196,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     Startup startup = {.scoped = scoped};
     int result = 1;
     int ready = server && (!scoped || root);
-    int library_ready = ready && (!library || mount_library(handoff.group, library));
+    int library_ready = ready && (!library || mount_library(handoff.group, library, library_path));
     if (library_ready && receive_startup(styxunibusserverinbox(server), &startup) &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
@@ -190,7 +212,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
         fprintf(stderr, "%s\n", !published ? "disvm: cannot publish the owner program" :
             !server ? "disvm: cannot start the Styx launch server" :
             !ready ? "disvm: cannot mount reverse launch context" :
-            !library_ready ? "disvm: cannot mount Styx library at /libraries" : "disvm: no accepted Styx launch request");
+            !library_ready ? "disvm: cannot mount Styx library at the configured path" : "disvm: no accepted Styx launch request");
     }
     shutdown(breaker, SHUT_RDWR);
     close(breaker);

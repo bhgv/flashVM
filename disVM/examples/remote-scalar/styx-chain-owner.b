@@ -31,12 +31,12 @@ init()
         sys->readn(extra, data, len data) != len data || string data != "more") {
         raise "chain FD 3 mismatch";
     }
-    if (sys->bind("/libraries/mounted", "/deps", Sys->MAFTER) < 0) {
+    if (sys->bind("/remote-libs/mounted", "/deps", Sys->MAFTER) < 0) {
         raise sys->sprint("could not add library union: %r");
     }
     local := load Wide "/deps/wide.dis";
     if (local == nil || local->echo(big 7) != big 17 ||
-        sys->bind("/libraries/mounted", "/deps", Sys->MBEFORE) < 0) {
+        sys->bind("/remote-libs/mounted", "/deps", Sys->MBEFORE) < 0) {
         raise "local library precedence failed";
     }
     library := load Wide "/deps/wide.dis";

@@ -262,3 +262,9 @@ At client bootstrap, `--styx-mount-fd FD --fd3 EXTRA -- APP.dis`
 exposes a separately delegated regular file as guest FD 3 alongside
 the standard streams. It shares the supplied open file's access mode
 and position. The guest launch command still supplies only its VFS path.
+
+Add `--library-at /remote-libs` after `--library-fd LIBFD` to choose the
+owner's VFS mount point. The default is `/libraries`. Use a canonical
+absolute path outside the reserved `/.prog`, `/.fd`, `/.vfs` and
+`/.var` trees. The three-peer example uses `/remote-libs` and binds
+its `mounted` directory into the application's library union.

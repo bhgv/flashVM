@@ -146,6 +146,14 @@ def chain(runtime, compiler, provider, disvm, example, work):
     stderr = work / "chain-stderr"
     extra = work / "chain-fd3"
     extra.write_bytes(b"skipmore")
+    for path in ("/", "/remote/../libs", "/.prog", "/.fd/sub", "/.vfs", "/.var", "relative"):
+        invalid = subprocess.run(
+            [runtime, "--styx-serve-fd", "3", "--library-fd", "4",
+             "--library-at", path, "--", owner_image],
+            capture_output=True, timeout=5
+        )
+        if invalid.returncode != 2 or b"usage:" not in invalid.stderr:
+            raise RuntimeError(f"invalid library mount path accepted: {path}")
     for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
                           ("--no-jit", b"drop"), ("--jit", b"drop")):
         stdin.write_bytes(payload)
@@ -159,7 +167,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
                      DVM_TEST_SCALAR_LOAD_FILE="wide-owner.dis", DVM_TEST_SCALAR_LOAD_EXPORT="echo")
         ) as library, subprocess.Popen(
             [runtime, "--styx-serve-fd", str(b.fileno()), "--context", "--library-fd",
-             str(lib.fileno()), "--", mode, owner_image],
+             str(lib.fileno()), "--library-at", "/remote-libs", "--", mode, owner_image],
             pass_fds=(b.fileno(), lib.fileno()), cwd=owner_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         ) as owner:
             fourth.seek(4)
