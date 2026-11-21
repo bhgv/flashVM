@@ -115,7 +115,8 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     }
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !dvm_view_map(view, owner ? "/reply" : "/request", writer, ".", FVM_ACCESS_WRITE, 0) ||
-        !dvm_view_map(view, owner ? "/request" : "/reply", reader, ".", FVM_ACCESS_READ, 0))
+        !dvm_view_map(view, owner ? "/request" : "/reply", reader, ".", FVM_ACCESS_READ, 0) ||
+        (owner && profile && !dvm_view_map(view, "/load.interface", profile, ".", FVM_ACCESS_WRITE, 0)))
     {
         exit(2);
     }
@@ -125,19 +126,24 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     if (owner)
     {
         const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
-        int size = snprintf((char *)owner_config, sizeof(owner_config),
-            getenv("DVM_TEST_SCALAR_REF_PAIR_OWNER") ?
-                "refpair\trefpair-owner.dis\texchange\t/scalar/request\t/scalar/reply" :
-            getenv("DVM_TEST_SCALAR_LIST_OWNER") ?
-                "list\tblend-owner.dis\tblend\t/scalar/request\t/scalar/reply" :
-            getenv("DVM_TEST_SCALAR_REF_OWNER") ?
-                "ref\tref-owner.dis\trevise\t/scalar/request\t/scalar/reply" :
-            getenv("DVM_TEST_SCALAR_TUPLE_OWNER") ?
-                "tuple\ttuple-owner.dis\ttransform\t/scalar/request\t/scalar/reply" :
-            getenv("DVM_TEST_SCALAR_BIG_OWNER") ?
-                "big\twide-owner.dis\techo\t/scalar/request\t/scalar/reply\t76\t73" :
+        int size;
+        if (profile)
+        {
+            const char *implementation = getenv("DVM_TEST_SCALAR_LOAD_FILE");
+            const char *name = getenv("DVM_TEST_SCALAR_LOAD_EXPORT");
+            if (!implementation || !name)
+            {
+                exit(2);
+            }
+            size = snprintf((char *)owner_config, sizeof(owner_config),
+                "loaded\t%s\t%s\t/scalar/request\t/scalar/reply\t/scalar/load.interface", implementation, name);
+        }
+        else
+        {
+            size = snprintf((char *)owner_config, sizeof(owner_config),
                 "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64\t%s",
-            count ? count : "1");
+                count ? count : "1");
+        }
         if (size < 0 || (size_t)size >= sizeof(owner_config))
         {
             exit(2);

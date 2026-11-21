@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 6 && hd fields == "loaded") {
+        serve_loaded(routes, tl fields);
+        return;
+    }
     if (count == 5 && hd fields == "refpair") {
         serve_ref_pair(routes, tl fields);
         return;
@@ -77,6 +81,14 @@ init()
     if (target == nil) {
         raise "scalar owner implementation link failed";
     }
+    run_int(routes, target, request, reply, requesttag, replytag, calls);
+}
+
+
+# EN: Serve a linked int export on the selected request and reply routes.
+# RU: Обслуживать связанный экспорт int на выбранных маршрутах запроса и ответа.
+run_int(routes: Vfsnative, target: Scalarimplementation, request, reply: string, requesttag, replytag: big, calls: int)
+{
     remaining := calls;
     while (calls == 0 || remaining > 0) {
         value: int;
@@ -238,6 +250,14 @@ serve_big(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "big owner implementation link failed";
     }
+    run_big(routes, target, request, reply, requesttag, replytag);
+}
+
+
+# EN: Serve the linked big export until its request inbox closes.
+# RU: Обслуживать связанный экспорт big до закрытия приёмника запросов.
+run_big(routes: Vfsnative, target: Scalarbigimplementation, request, reply: string, requesttag, replytag: big)
+{
     for (;;) {
         (ready, value) := routes->scalarbignext(request, requesttag);
         if (ready == 0) {
@@ -272,6 +292,14 @@ serve_tuple(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "tuple owner implementation link failed";
     }
+    run_tuple(routes, target, request, reply);
+}
+
+
+# EN: Serve the linked tuple export until its request inbox closes.
+# RU: Обслуживать связанный экспорт tuple до закрытия приёмника запросов.
+run_tuple(routes: Vfsnative, target: Scalartupleimplementation, request, reply: string)
+{
     for (;;) {
         (ready, narrow, wide) := routes->scalartuplenext(request);
         if (ready == 0) {
@@ -305,6 +333,14 @@ serve_ref(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref owner implementation link failed";
     }
+    run_ref(routes, target, request, reply);
+}
+
+
+# EN: Serve the linked ref export until its request inbox closes.
+# RU: Обслуживать связанный экспорт ref до закрытия приёмника запросов.
+run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string)
+{
     for (;;) {
         (ready, narrow, wide) := routes->scalarrefnext(request);
         if (ready == 0) {
@@ -339,6 +375,14 @@ serve_list(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "argument-list owner implementation link failed";
     }
+    run_list(routes, target, request, reply);
+}
+
+
+# EN: Serve the linked argument-list export until its request inbox closes.
+# RU: Обслуживать связанный экспорт argument-list до закрытия приёмника запросов.
+run_list(routes: Vfsnative, target: Scalarlistimplementation, request, reply: string)
+{
     for (;;) {
         (ready, seed, narrow, wide, delta) := routes->scalarlistnext(request);
         if (ready == 0) {
@@ -373,6 +417,14 @@ serve_ref_pair(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref pair owner implementation link failed";
     }
+    run_ref_pair(routes, target, request, reply);
+}
+
+
+# EN: Serve the linked ref pair export until its request inbox closes.
+# RU: Обслуживать связанный экспорт ref pair до закрытия приёмника запросов.
+run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string)
+{
     for (;;) {
         (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairnext(request);
         if (count == 0) {
@@ -393,5 +445,38 @@ serve_ref_pair(routes: Vfsnative, fields: list of string)
         }
         routes->scalarrefpairreply(reply, success, count, result,
             (first.narrow, first.wide), (second.narrow, second.wide));
+    }
+}
+
+
+
+# EN: Load one export, publish its qualified wire profile and dispatch its typed view.
+# RU: Загрузить экспорт, опубликовать проверенный профиль и использовать его тип.
+serve_loaded(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    fields = tl fields;
+    reply := hd fields;
+    offer := hd tl fields;
+    (tag, narrow, wide, pair, single, arguments, aliases) := routes->scalarloaded(implementation, name, offer);
+    if (tag == 0) {
+        return;
+    }
+    if (narrow != nil) {
+        run_int(routes, narrow, request, reply, big tag, big 73, 0);
+    } else if (wide != nil) {
+        run_big(routes, wide, request, reply, big tag, big 73);
+    } else if (pair != nil) {
+        run_tuple(routes, pair, request, reply);
+    } else if (single != nil) {
+        run_ref(routes, single, request, reply);
+    } else if (arguments != nil) {
+        run_list(routes, arguments, request, reply);
+    } else if (aliases != nil) {
+        run_ref_pair(routes, aliases, request, reply);
     }
 }

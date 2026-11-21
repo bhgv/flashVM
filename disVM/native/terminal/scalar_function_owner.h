@@ -22,4 +22,7 @@ int styxscalarfunctiondispatch(void *state, int64_t argument, int64_t *value);
  * RU: Создать локальную пару приёмников и выбрать callback по ABI. */
 int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, struct StyxScalarFunction *function,
     int big, int tuple, int ref, int call, int ref_pair);
+/* EN: Select the exact owner callback for an unscoped tag. The caller owns routes.
+ * RU: Выбрать обработчик владельца по тегу без PID. Маршруты принадлежат вызывающему. */
+int styxscalarownerbind(StyxScalarFunctionOwner *owner, struct StyxScalarFunction *function, unsigned long tag);
 #endif

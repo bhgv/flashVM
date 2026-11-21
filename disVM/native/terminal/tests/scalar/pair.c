@@ -70,23 +70,15 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             close(breaker);
             return result;
         }
-        int tuple = getenv("DVM_TEST_SCALAR_TUPLE_OWNER") != NULL;
-        int ref = getenv("DVM_TEST_SCALAR_REF_OWNER") != NULL;
-        int list = getenv("DVM_TEST_SCALAR_LIST_OWNER") != NULL;
-        int ref_pair = getenv("DVM_TEST_SCALAR_REF_PAIR_OWNER") != NULL;
-        if (ref_pair || list || ref || tuple || getenv("DVM_TEST_SCALAR_BIG_OWNER"))
+        const char *published = getenv("DVM_TEST_SCALAR_LOAD_NAME");
+        const char *export_name = getenv("DVM_TEST_SCALAR_LOAD_EXPORT");
+        if (published && export_name)
         {
-            const StyxMountedScalar entry = ref_pair ?
-                (StyxMountedScalar){.module = "refpair.dis", .name = "exchange", .dis_ref_pair = 1} : list ?
-                (StyxMountedScalar){.module = "blend.dis", .name = "blend", .dis_call = 1} : ref ?
-                (StyxMountedScalar){"ref.dis", "revise", NULL, 0, 0, 1, 0, 0} : tuple ?
-                (StyxMountedScalar){"tuple.dis", "transform", NULL, 0, 1, 0, 0, 0} :
-                (StyxMountedScalar){"wide.dis", "echo", NULL, 1, 0, 0, 0, 0};
-            StyxUnibusServer *server = styxunibusserverstartmounted(channel, &entry, 1);
+            StyxUnibusServer *server = styxunibusserverstartloaded(channel, published, export_name);
             if (server)
             {
                 result = scalar_runtime_run(argc, argv, styxunibusserverreply(server),
-                    styxunibusserverinbox(server), NULL, NULL, 1);
+                    styxunibusserverinbox(server), NULL, styxunibusserverloadprofile(server), 1);
                 shutdown(breaker, SHUT_RDWR);
                 if (!styxunibusserverjoin(server))
                 {

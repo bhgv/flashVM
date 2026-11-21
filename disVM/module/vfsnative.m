@@ -138,4 +138,9 @@ Vfsnative: module
     scalarrefpairload: fn(path, exportname: string): Scalarrefpairimplementation;
     scalarrefpairnext: fn(path: string): (int,int,big,int,big);
     scalarrefpairreply: fn(path: string, success, count: int, value, first, second: (int,big));
+    # EN: Link one actual export and return exactly one typed view once advertised.
+    # RU: Связать фактический экспорт и вернуть одно представление после публикации.
+    scalarloaded: fn(path, exportname, offer: string):
+        (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
+              Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation);
 };

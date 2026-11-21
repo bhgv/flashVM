@@ -123,7 +123,7 @@ static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResul
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
     if (!size || size > sizeof(inbox->bytes) ||
         fvm_srecord_read(bytes, size, sizeof(inbox->bytes), &record, &consumed) != FVM_S_OK ||
-        consumed != size || record.tag != inbox->tag)
+        consumed != size || (inbox->tag && record.tag != inbox->tag))
     {
         return;
     }
@@ -203,7 +203,7 @@ void styxunibusmailboxseal(DVM_Provider *provider)
  * См. unibus_inbox.h; возвращённый провайдер владеет приёмником. */
 static DVM_Provider *create_inbox(unsigned long tag, int reusable)
 {
-    if (!tag || tag > FVM_SRECORD_U32)
+    if (tag > FVM_SRECORD_U32)
     {
         return NULL;
     }
@@ -233,7 +233,7 @@ static DVM_Provider *create_inbox(unsigned long tag, int reusable)
  * Сохранить исходный одноразовый приёмник. */
 DVM_Provider *styxunibusinbox(unsigned long tag)
 {
-    return create_inbox(tag, 0);
+    return tag ? create_inbox(tag, 0) : NULL;
 }
 
 
@@ -241,5 +241,13 @@ DVM_Provider *styxunibusinbox(unsigned long tag)
  * Создать переиспользуемый приёмник для последовательной сессии. */
 DVM_Provider *styxunibusmailbox(unsigned long tag)
 {
-    return create_inbox(tag, 1);
+    return tag ? create_inbox(tag, 1) : NULL;
+}
+
+
+
+/* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
+DVM_Provider *styxunibusloadmailbox(void)
+{
+    return create_inbox(0, 1);
 }

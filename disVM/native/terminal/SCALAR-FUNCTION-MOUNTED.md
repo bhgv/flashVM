@@ -37,3 +37,7 @@ the hosted VM and Limbo compiler. The sample uses one Styx mount for a native
 helper and two exports of one original Dis instance. The `compute.dis`
 directory provides both `compute` and `adjust`, which share one call counter. The example tests a two-function import, a one-function
 subset, and rejection of missing or mismatched imports.
+
+For one original export with automatic profile selection, see
+[styxunibusserverstartloaded](UNIBUS-SERVER-LOADED.md). The owner links the
+implementation before the dispatcher offers its signature to the client.

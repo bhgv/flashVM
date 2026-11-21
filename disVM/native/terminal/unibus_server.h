@@ -86,4 +86,15 @@ DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server);
  * После закрытия другой стороны или соединения дождаться и освободить сервер; NULL допустим. */
 int styxunibusserverjoin(StyxUnibusServer *server);
 
+/* EN: Consume channel and reserve one export. Its function and interface are
+ * admitted only after the owner VM publishes the linked export to loadprofile.
+ * RU: Принять канал и зарезервировать один экспорт. Функция и интерфейс
+ * доступны после публикации связанного экспорта VM владельца в loadprofile. */
+StyxUnibusServer *styxunibusserverstartloaded(RemotePhy *channel, const char *module, const char *name);
+
+
+/* EN: Borrow the private writable profile mailbox through server join.
+ * RU: Заимствовать служебный приёмник профиля на запись до join. */
+DVM_Provider *styxunibusserverloadprofile(StyxUnibusServer *server);
+
 #endif

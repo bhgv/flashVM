@@ -19,4 +19,9 @@ DVM_Provider *styxunibusmailbox(unsigned long tag);
 /* EN/RU: On carrier shutdown, drain any queued record then report EOF.
  * После закрытия соединения выдать оставшуюся запись, затем EOF. */
 void styxunibusmailboxseal(DVM_Provider *provider);
+/* EN: Private mailbox before load selects the request tag. Accept one complete
+ * S-record, leaving tag validation to the linked dispatcher.
+ * RU: Служебный приёмник до выбора тега через load. Принимает одну полную
+ * S-запись, тег проверяет связанный диспетчер. */
+DVM_Provider *styxunibusloadmailbox(void);
 #endif

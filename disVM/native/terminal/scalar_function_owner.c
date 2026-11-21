@@ -191,32 +191,49 @@ int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction 
     {
         return 0;
     }
-    owner->request_tag = ref_pair ? STYX_REF_PAIR_REQUEST_TAG :
-        call ? STYX_CALL_LIST_REQUEST_TAG : ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
-    function->request_tag = owner->request_tag;
-    function->reply_tag = styxfunction_reply_tag(owner->request_tag);
-    function->state = owner;
-    if (ref_pair)
+    unsigned long tag = ref_pair ? STYX_REF_PAIR_REQUEST_TAG : call ? STYX_CALL_LIST_REQUEST_TAG :
+        ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG :
+        big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
+    if (!styxscalarownerbind(owner, function, tag))
     {
-        function->ref_pair_method = ref_pair_dispatch;
-    }
-    else if (call)
-    {
-        function->call_method = list_dispatch;
-    }
-    else if (ref)
-    {
-        function->ref_method = ref_dispatch;
-    }
-    else if (tuple)
-    {
-        function->tuple_method = tuple_dispatch;
-    }
-    else
-    {
-        function->method = styxscalarfunctiondispatch;
+        return 0;
     }
     owner->request = styxunibusmailbox(function->request_tag);
     owner->reply = styxunibusmailbox(function->reply_tag);
     return owner->request && owner->reply;
+}
+
+
+/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
+int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, unsigned long tag)
+{
+    function->reply_tag = styxfunction_reply_tag(tag);
+    if (!function->reply_tag)
+    {
+        return 0;
+    }
+    owner->request_tag = function->request_tag = tag;
+    function->state = owner;
+    switch (tag)
+    {
+    case STYX_REF_PAIR_REQUEST_TAG:
+        function->ref_pair_method = ref_pair_dispatch;
+        break;
+    case STYX_CALL_LIST_REQUEST_TAG:
+        function->call_method = list_dispatch;
+        break;
+    case STYX_REF_REQUEST_TAG:
+        function->ref_method = ref_dispatch;
+        break;
+    case STYX_TUPLE_REQUEST_TAG:
+        function->tuple_method = tuple_dispatch;
+        break;
+    case STYX_FUNCTION_BIG_TAG:
+    case STYX_FUNCTION_REQUEST_TAG:
+        function->method = styxscalarfunctiondispatch;
+        break;
+    default:
+        return 0;
+    }
+    return 1;
 }

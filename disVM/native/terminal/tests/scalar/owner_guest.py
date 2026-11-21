@@ -40,16 +40,19 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
     env.pop("DVM_TEST_SCALAR_DISCONNECT", None)
     if mounted:
         env["DVM_TEST_SCALAR_MOUNTED_OWNER"] = "1"
-    if mounted == "wide":
-        env["DVM_TEST_SCALAR_BIG_OWNER"] = "1"
-    if mounted == "tuple":
-        env["DVM_TEST_SCALAR_TUPLE_OWNER"] = "1"
-    if mounted == "refpair":
-        env["DVM_TEST_SCALAR_REF_PAIR_OWNER"] = "1"
-    if mounted == "list":
-        env["DVM_TEST_SCALAR_LIST_OWNER"] = "1"
-    if mounted == "ref":
-        env["DVM_TEST_SCALAR_REF_OWNER"] = "1"
+    loaded_exports = {
+        "wide": ("wide.dis", "wide-owner.dis", "echo"),
+        "tuple": ("tuple.dis", "tuple-owner.dis", "transform"),
+        "ref": ("ref.dis", "ref-owner.dis", "revise"),
+        "list": ("blend.dis", "blend-owner.dis", "blend"),
+        "refpair": ("refpair.dis", "refpair-owner.dis", "exchange"),
+        "load-mismatch": ("blend.dis", "blend-scalar-owner.dis", "blend"),
+    }
+    if mounted in loaded_exports:
+        publication, implementation, export = loaded_exports[mounted]
+        env["DVM_TEST_SCALAR_LOAD_NAME"] = publication
+        env["DVM_TEST_SCALAR_LOAD_FILE"] = implementation
+        env["DVM_TEST_SCALAR_LOAD_EXPORT"] = export
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -93,7 +96,7 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
     try:
         children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect, mounted))
         image = {"wide": "wide.dis", "mixed": "mixed.dis", "tuple": "tuple.dis",
-                 "ref": "ref.dis", "list": "blend.dis", "refpair": "refpair.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
+                 "ref": "ref.dis", "list": "blend.dis", "refpair": "refpair.dis", "load-mismatch": "wrong-profile.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -142,6 +145,8 @@ def main():
             (owner, example / "ref-owner.b", "ref-owner.dis"),
             (caller, example / "styx-list-owner.b", "blend.dis"),
             (owner, example / "blend-owner.b", "blend-owner.dis"),
+            (owner, example / "blend-scalar-owner.b", "blend-scalar-owner.dis"),
+            (caller, example / "styx-loaded-profile.b", "wrong-profile.dis"),
             (caller, example / "styx-refpair-owner.b", "refpair.dis"),
             (owner, example / "refpair-owner.b", "refpair-owner.dis"),
             (owner, example / "wide-owner.b", "wide-owner.dis"),
@@ -171,6 +176,7 @@ def main():
             exchange(binary, owner, caller, mode, "PASS mounted original tuple Dis", calls=0, mounted="tuple")
             exchange(binary, owner, caller, mode, "PASS mounted original ref Dis", calls=0, mounted="ref")
             exchange(binary, owner, caller, mode, "PASS mounted original argument list Dis", calls=0, mounted="list")
+            exchange(binary, owner, caller, mode, "PASS Styx profile from loaded export", calls=0, mounted="load-mismatch")
             for marker in marker_paths:
                 marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS mounted original ref pair Dis", calls=0, mounted="refpair")

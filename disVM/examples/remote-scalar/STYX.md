@@ -126,3 +126,16 @@ snapshots. It verifies that the conflict preserves the local edit,
 the first object and the previous return values. The test driver relays
 the markers and removes its temporary roots. Expect
 `PASS mounted original ref pair Dis` in both modes.
+
+## Use the owner's actual compiled profile
+
+The `owner_guest.py` command also pairs
+[styx-loaded-profile.b](styx-loaded-profile.b) with an
+[alternative original implementation](blend-scalar-owner.b). Both
+the ordinary and alternative implementations export `blend`, but
+their compiled signatures differ. The owner links the alternative
+through the [shared service](../../runtime/SCALAR-OWNER-SERVICE.md#profile-from-the-original-load).
+The client tries the three-argument import first and gets nil. At the
+same VFS path it then loads the actual `fn(int): int` interface and
+gets 42 from `blend(40)`. Both JIT and interpreter mode should print
+`PASS Styx profile from loaded export`.

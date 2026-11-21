@@ -8,6 +8,7 @@
 #include "tuple_record.h"
 #include "call_record.h"
 #include "ref_pair_record.h"
+#include "load_profile.h"
 #include "unibus_inbox.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
@@ -148,6 +149,29 @@ static int ref_pair(void)
 }
 
 
+/* EN: Round-trip every admitted load signature and reject incomplete or foreign offers.
+ * RU: Проверить все допустимые сигнатуры load и отклонение неполных или чужих предложений. */
+static int loaded_profile(void)
+{
+    const unsigned long tags[] = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_BIG_TAG,
+        STYX_TUPLE_REQUEST_TAG, STYX_REF_REQUEST_TAG, STYX_CALL_LIST_REQUEST_TAG, STYX_REF_PAIR_REQUEST_TAG};
+    unsigned char bytes[STYX_SCALAR_INTERFACE_CAPACITY];
+    size_t used;
+    for (size_t i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
+    {
+        uint32_t signature = styxscalar_request_signature(tags[i]);
+        if (!styxloadedoffer("blend", signature, bytes, sizeof(bytes), &used) ||
+            styxloadedaccept("blend", bytes, used) != tags[i] ||
+            !styxscalaraccept(STYX_FUNCTION_PROFILE_TAG, bytes, used, "blend", signature) ||
+            styxloadedaccept("other", bytes, used) || styxloadedaccept("blend", bytes, used - 1))
+        {
+            return 0;
+        }
+    }
+    return !styxloadedoffer("blend", 0, bytes, sizeof(bytes), &used);
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -220,6 +244,11 @@ int main(void)
         decoded != STYX_SCALAR_VALUE || value != 99 || calls != 2)
     {
         fputs("scalar method dispatch failed\n", stderr);
+        return 1;
+    }
+    if (!loaded_profile())
+    {
+        fputs("loaded export offer failed\n", stderr);
         return 1;
     }
     if (!argument_list())

@@ -98,3 +98,27 @@ owner-local ADT per object ID. When the two IDs match, the ordinary Dis
 call receives the same reference twice. On success it returns the result
 and each object's final state once. An exception sends an error through
 the reply mailbox. The request mailbox reaching EOF ends the service.
+
+## Profile from the original load
+
+Use [styxunibusserverstartloaded](../native/terminal/UNIBUS-SERVER-LOADED.md)
+to reserve one export before the owner's VM starts. Supply the following
+six tab-separated fields to the shared service.
+
+```text
+loaded  implementation  export  request  reply  offer
+```
+
+`implementation` and `export` select an original Dis image and its
+named function. `request` grants read access to the local request inbox.
+`reply` grants write access to the local response inbox. `offer` grants
+write access to the [private profile mailbox](../native/terminal/UNIBUS-SERVER-LOAD-PROFILE.md).
+
+The normal Dis loader reads the local image and the linker creates a
+module instance for the selected export. The shared service reuses that
+instance and sends the compiled export name and signature to the C
+dispatcher through `offer`. The dispatcher selects the matching gateway
+and makes the same S-record available as `.interface`. Ordinary client
+`load` compares it with its compiled import without reading a source
+`.m` over the network. This mode covers one export and the existing six
+gateway profiles. The launcher's other modes still cover export sets.
