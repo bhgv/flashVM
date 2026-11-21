@@ -16,6 +16,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include "vfs/program_view.h"
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -24,7 +27,7 @@
 
 /* EN: Install the mount as a capability in a fresh hosted namespace and run the guest.
  * RU: Установить маунт в новом пространстве имён и запустить программу. */
-static int run_mounted(int argc, char **argv, DVM_Provider *mount)
+static int run_mounted(int argc, char **argv, DVM_Provider *mount, int extra)
 {
     char cwd[DVM_NS_PATH_LIMIT];
     if (!getcwd(cwd, sizeof(cwd)))
@@ -38,6 +41,14 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount)
     int installed = handoff.group && dvm_namespace_pin(handoff.group) &&
         dvm_namespace_plan(handoff.group, "/peer", &target) &&
         dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
+    if (installed && extra >= 3)
+    {
+        int captured;
+        DVM_Provider *fds = dvm_launch_host_fd3_view(extra, &captured);
+        installed = captured && fds && dvm_namespace_plan(handoff.group, "/.fd", &target) &&
+            dvm_namespace_mount_provider(handoff.group, &target, fds, "/launch-descriptors") == 1;
+        dvm_provider_release(fds);
+    }
     int result = installed ? dvm_runtime_main_with_handoff(argc, argv, &handoff) : 1;
     if (!installed)
     {
@@ -71,6 +82,7 @@ typedef struct ScopedAddress
 {
     StyxClient *client; /* Owned connection pin. */
     DVM_LaunchAddress *request; /* Owned process-framed sender. */
+    DVM_Provider *completion; /* Optional one-shot status file. */
 } ScopedAddress;
 
 
@@ -79,6 +91,7 @@ typedef struct ScopedAddress
 static void release_scoped(void *state)
 {
     ScopedAddress *scope = state;
+    dvm_provider_release(scope->completion);
     dvm_launch_address_free(scope->request);
     styxclientfree(scope->client);
     free(scope);
@@ -93,11 +106,23 @@ static DVM_LaunchDelivery send_scoped(void *state, uint32_t pid, const void *byt
     DVM_LaunchDelivery result = dvm_launch_address_send_process(scope->request, pid, bytes, size);
     if (result != DVM_LAUNCH_NOT_SENT)
     {
+        DVM_VfsHandle reader = {0};
+        int opened = scope->completion && dvm_provider_open(scope->completion, ".", "r", &reader) == FVM_OK;
         const struct timespec pause = {0, 10000000};
         while (styxclientalive(scope->client) && !dvm_cancel_requested(dvm_cancel_current()))
         {
+            if (opened)
+            {
+                char bytes[8];
+                DVM_IoResult status = dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes));
+                if (status.status != FVM_OK || status.count)
+                {
+                    break;
+                }
+            }
             nanosleep(&pause, NULL);
         }
+        dvm_vfs_close(&reader);
     }
     return result;
 }
@@ -119,6 +144,10 @@ static DVM_LaunchAddress *resolve_launch(void *state)
         return NULL;
     }
     scope->client = launch->client;
+    if (styxclientretain(launch->client))
+    {
+        scope->completion = styxmountproviderat(launch->client, ".exit", FVM_ACCESS_READ);
+    }
     scope->request = styxterminallaunchcalleraddress(launch->request, launch->tag);
     DVM_LaunchAddress *address = scope->request ?
         dvm_launch_address_process_transport(send_scoped, scope, release_scoped) : NULL;
@@ -245,9 +274,24 @@ int dvm_styx_mount_cli(int argc, char **argv)
         }
         separator = 7;
     }
+    int extra = -1;
+    if (argc > separator + 1 && !strcmp(argv[separator], "--fd3"))
+    {
+        char *end;
+        long supplied = strtol(argv[separator + 1], &end, 10);
+        struct stat metadata;
+        if (*end || supplied < 3 || supplied > INT_MAX || fstat((int)supplied, &metadata) ||
+            !S_ISREG(metadata.st_mode))
+        {
+            fprintf(stderr, "disvm: --fd3 requires a delegated regular file FD >= 3\n");
+            return 2;
+        }
+        extra = (int)supplied;
+        separator += 2;
+    }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--fd3 FD] -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -269,7 +313,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - separator, argv + separator, mount);
+        result = run_mounted(argc - separator, argv + separator, mount, extra);
     }
     else
     {

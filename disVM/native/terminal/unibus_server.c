@@ -17,7 +17,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "unibus_server_state.h"
 
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
@@ -120,6 +119,11 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         return nil;
     }
+    if (current->completion && qid.path == MOUNTED_ROOT && offset >= 0)
+    {
+        *count = styxunibusexitread(current, bytes, *count, offset);
+        return nil;
+    }
     StyxTransfer result;
     if ((qid.path != 2 && qid.path != 3) || offset < 0)
     {
@@ -148,8 +152,6 @@ static void close_node(void *state)
         styxfileclose(state);
     }
 }
-
-
 static Styxops operations = {.open = open_node, .read = read_node, .write = write_record, .freefid = close_node}; /* Immutable callbacks. */
 
 
@@ -170,6 +172,7 @@ static void *serve(void *arg)
         styxunibusmailboxseal(server->modules[i].load_offer);
     }
     current = NULL;
+    __atomic_store_n(&server->stopped, 1, __ATOMIC_RELEASE);
     return NULL;
 }
 
@@ -250,8 +253,8 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
 
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
-static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable)
+StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -259,6 +262,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
         phyfree(channel);
         return NULL;
     }
+    server->completion = completion;
     server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
     server->file = styxbacking(server->inbox);
     server->original = original ? styxbacking(original) : NULL;
@@ -271,6 +275,7 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
     {
         if (export_file(&server->server, server->original, 2, "implementation.dis") &&
             export_file(&server->server, server->profile, 3, ".interface") &&
+            (!completion || styxaddfile(&server->server, Qroot, MOUNTED_ROOT, ".exit", 0444, "unibus")) &&
             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus") &&
             !pthread_create(&server->thread, NULL, serve, server))
         {
@@ -287,12 +292,10 @@ static StyxUnibusServer *start(RemotePhy *channel, unsigned long tag,
 }
 
 
-/* EN/RU: Publish the existing one-shot module endpoint.
- * Опубликовать прежнюю одноразовую точку входа модуля. */
 StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 0);
+    return styxunibusstart(channel, tag, original, profile, 0, 0);
 }
 
 
@@ -301,7 +304,7 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
 StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return start(channel, tag, original, profile, 1);
+    return styxunibusstart(channel, tag, original, profile, 1, 0);
 }
 
 
@@ -383,7 +386,6 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
     }
     return 1;
 }
-
 
 /* EN/RU: Consume the channel and publish a bounded table on one Styx session.
  * Принять канал и опубликовать ограниченную таблицу в одной сессии Styx. */

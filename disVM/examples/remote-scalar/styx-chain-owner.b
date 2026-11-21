@@ -18,7 +18,20 @@ init()
     if (input == nil || sys->readn(input, data, len data) != len data || string data != "live") {
         raise "chain input mismatch";
     }
-    library := load Wide "/libraries/mounted/wide.dis";
+    extra := sys->fildes(3);
+    if (extra == nil || sys->write(extra, data, 1) >= 0 ||
+        sys->readn(extra, data, len data) != len data || string data != "more") {
+        raise "chain FD 3 mismatch";
+    }
+    if (sys->bind("/libraries/mounted", "/deps", Sys->MAFTER) < 0) {
+        raise sys->sprint("could not add library union: %r");
+    }
+    local := load Wide "/deps/wide.dis";
+    if (local == nil || local->echo(big 7) != big 17 ||
+        sys->bind("/libraries/mounted", "/deps", Sys->MBEFORE) < 0) {
+        raise "local library precedence failed";
+    }
+    library := load Wide "/deps/wide.dis";
     if (library == nil || library->echo(big 4294967296) != big 4294967296 ||
         library->echo(big 1) != big 2) {
         raise "chain library call failed";

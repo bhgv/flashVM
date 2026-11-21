@@ -232,3 +232,40 @@ StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *modul
     const StyxMountedScalar entry = {module, name, NULL, 0, 0, 0, 0, 0};
     return styxunibusserverstartmounted(channel, &entry, 1);
 }
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+void styxunibusserverexit(StyxUnibusServer *server, int status)
+{
+    __atomic_store_n(&server->exit_value, status ? 2 : 1, __ATOMIC_RELEASE);
+    const struct timespec pause = {0, 10000000};
+    for (unsigned attempt = 0; attempt < 500 && !__atomic_load_n(&server->stopped, __ATOMIC_ACQUIRE); attempt++)
+    {
+        nanosleep(&pause, NULL);
+    }
+}
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartexit(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile)
+{
+    return styxunibusstart(channel, tag, original, profile, 0, 1);
+}
+
+
+/* EN: Read the immutable result, or an empty prefix while pending.
+ * RU: Прочитать неизменяемый результат или пустой префикс в ожидании. */
+size_t styxunibusexitread(StyxUnibusServer *server, char *bytes, size_t count, uint64_t offset)
+{
+    int value = __atomic_load_n(&server->exit_value, __ATOMIC_ACQUIRE);
+    const char *status = value == 1 ? "ok\n" : value == 2 ? "error\n" : "";
+    size_t size = strlen(status);
+    if (offset >= size)
+    {
+        return 0;
+    }
+    size_t available = size - (size_t)offset;
+    count = count < available ? count : available;
+    memcpy(bytes, status + offset, count);
+    return count;
+}

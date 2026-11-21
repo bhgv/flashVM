@@ -248,3 +248,17 @@ plain Styx session. The owner mounts it at `/libraries` before accepting
 the launch. An unavailable library mount makes the server refuse startup.
 The library is resolved by ordinary Dis `load` in the owner's namespace.
 See the [three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch).
+
+### Launch result and an extra descriptor
+
+The one-shot Dis owner publishes a read-only `/peer/.exit` on the
+client mount. A read returns zero bytes while pending, then `ok\n`
+or `error\n`. Treat a read error as a transport failure. A context
+launch retains the caller grants until it sees the result or the
+connection closes. After publishing a result, the owner waits up to
+five seconds for the client to close the connection.
+
+At client bootstrap, `--styx-mount-fd FD --fd3 EXTRA -- APP.dis`
+exposes a separately delegated regular file as guest FD 3 alongside
+the standard streams. It shares the supplied open file's access mode
+and position. The guest launch command still supplies only its VFS path.

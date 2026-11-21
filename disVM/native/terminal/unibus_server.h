@@ -115,4 +115,13 @@ StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel, const char 
  * RU: Заимствовать приёмник профиля экспорта по индексу до join. */
 DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t index);
 
+/* EN: Publish a one-shot module with an additional read-only exit file.
+ * RU: Опубликовать одноразовый модуль с файлом результата только для чтения. */
+StyxUnibusServer *styxunibusserverstartexit(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile);
+
+/* EN: Publish the exit status and keep the server available until EOF or timeout.
+ * RU: Опубликовать статус и оставить сервер доступным до EOF или таймаута. */
+void styxunibusserverexit(StyxUnibusServer *server, int status);
+
 #endif

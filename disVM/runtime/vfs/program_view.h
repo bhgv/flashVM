@@ -72,4 +72,8 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *
 int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, const char *target,
     const DVM_Origin *origin);
 
+/* EN: Capture standard descriptors and the explicitly delegated host FD as guest FD 3.
+ * RU: Захватить стандартные дескрипторы и выданный хостовый FD как гостевой FD 3. */
+DVM_Provider *dvm_launch_host_fd3_view(int descriptor, int *success);
+
 #endif

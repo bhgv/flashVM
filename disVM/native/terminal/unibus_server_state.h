@@ -26,6 +26,9 @@ struct StyxUnibusServer
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven calls. */
+    int completion; /* Whether this one-shot endpoint exports .exit. */
+    int exit_value; /* Atomic encoded status; zero while pending. */
+    int stopped; /* Atomic flag set after the dispatch transport stops. */
     int loaded; /* Load-backed directory; all profiles arrive from the owner. */
     size_t load_ready; /* Dispatcher-owned checked prefix of the export list. */
     int load_state; /* Dispatcher-owned: pending zero, ready one, rejected minus one. */
@@ -46,4 +49,8 @@ int styxunibusprepareload(MountedExport *module, const char *name);
  * RU: Запустить смонтированную таблицу. loaded выбирает один каталог связанных экспортов владельца. */
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse);
+/* EN/RU: Private one-shot constructor and result reader. / Конструктор и чтение результата. */
+StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion);
+size_t styxunibusexitread(StyxUnibusServer *server, char *bytes, size_t count, uint64_t offset);
 #endif

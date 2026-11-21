@@ -272,3 +272,9 @@ to load C's original Dis export with the shared `wide.m` declaration.
 B reads A's FD 0 and writes distinct messages to A's FD 1 and FD 2.
 The harness checks all three process exit statuses and reaps the peers.
 Expect `PASS A-B-C Styx launch and library call` in both VM modes.
+
+The chain also changes the ordering of a library union on B. The same
+`load` path resolves the local candidate first and the Styx candidate
+after rebinding. B confirms that FD 3 is read-only and reads from its
+existing offset. A reads the outcome from `/peer/.exit`, including
+an owner error in the invalid-input case.

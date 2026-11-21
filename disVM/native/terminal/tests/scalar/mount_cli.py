@@ -97,7 +97,7 @@ def main():
                     if peer.poll() is None:
                         peer.kill()
 
-        chain(runtime, compiler, provider, disvm, example, work, image)
+        chain(runtime, compiler, provider, disvm, example, work)
 
 
 # EN: Create an owned TCP connection for one link between the peers.
@@ -119,7 +119,10 @@ def tcp_pair():
 
 # EN: Run A, the executing DisVM B, and the separate Styx library peer C.
 # RU: Запустить A, исполняющую DisVM B и отдельного провайдера библиотеки C.
-def chain(runtime, compiler, provider, disvm, example, work, caller_image):
+def chain(runtime, compiler, provider, disvm, example, work):
+    caller_image = work / "chain-client.dis"
+    subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
+                    "-o", caller_image, example / "styx-chain-client.b"], cwd=work, check=True)
     library_dir = work / "library-peer"
     library_dir.mkdir()
     (library_dir / "scalar").mkdir()
@@ -130,18 +133,24 @@ def chain(runtime, compiler, provider, disvm, example, work, caller_image):
                         "-I", example, "-o", library_dir / target, source], cwd=library_dir, check=True)
     owner_dir = work / "execution-peer"
     owner_dir.mkdir()
+    deps = owner_dir / "deps"
+    deps.mkdir()
+    subprocess.run([compiler, "-I", example, "-o", deps / "wide.dis",
+                    example / "styx-chain-local.b"], cwd=owner_dir, check=True)
     owner_image = owner_dir / "chain-owner.dis"
     subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
                     "-I", example, "-o", owner_image, example / "styx-chain-owner.b"], cwd=work, check=True)
     stdin = work / "chain-stdin"
     stdout = work / "chain-stdout"
     stderr = work / "chain-stderr"
-    stdin.write_bytes(b"live")
-    for mode in ("--no-jit", "--jit"):
+    extra = work / "chain-fd3"
+    extra.write_bytes(b"skipmore")
+    for mode, fail in (("--no-jit", False), ("--jit", False), ("--no-jit", True)):
+        stdin.write_bytes(b"fail" if fail else b"live")
         a, b = tcp_pair()
         lib, c = tcp_pair()
         with a, b, lib, c, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
-                stderr.open("wb") as errors, subprocess.Popen(
+                stderr.open("wb") as errors, extra.open("rb") as fourth, subprocess.Popen(
             [library_peer, mode, "owner.dis"], pass_fds=(c.fileno(),), cwd=library_dir,
             env=dict(os.environ, DVM_TEST_SCALAR_FD=str(c.fileno()), DVM_TEST_SCALAR_OWNER="1",
                      DVM_TEST_SCALAR_MOUNTED_OWNER="1", DVM_TEST_SCALAR_LOAD_NAME="wide.dis",
@@ -151,18 +160,27 @@ def chain(runtime, compiler, provider, disvm, example, work, caller_image):
              str(lib.fileno()), "--", mode, owner_image],
             pass_fds=(b.fileno(), lib.fileno()), cwd=owner_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         ) as owner:
+            fourth.seek(4)
             b.close()
             lib.close()
             c.close()
             try:
                 result = subprocess.run(
-                    [runtime, "--styx-mount-fd", str(a.fileno()), "--", mode, caller_image],
-                    pass_fds=(a.fileno(),), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors, timeout=40)
+                    [runtime, "--styx-mount-fd", str(a.fileno()), "--fd3", str(fourth.fileno()), "--", mode, caller_image],
+                    pass_fds=(a.fileno(), fourth.fileno()), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors, timeout=40)
                 a.close()
                 out, err = owner.communicate(timeout=10)
-                if (result.returncode or owner.returncode or library.wait(timeout=10) or
+                library_status = library.wait(timeout=10)
+                if fail:
+                    if (not result.returncode or not owner.returncode or
+                            b"chain owner reported failure" not in stderr.read_bytes() or
+                            b"chain input mismatch" not in err):
+                        raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
+                    print("PASS A receives B's launch failure", mode, flush=True)
+                    continue
+                if (result.returncode or owner.returncode or library_status or fourth.tell() != 8 or
                         b"chain stdout\n" not in stdout.read_bytes() or
-                        b"PASS mounted Styx launch submission\n" not in stdout.read_bytes() or
+                        b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):
                     raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
                 print("PASS A-B-C Styx launch and library call", mode, flush=True)

@@ -164,7 +164,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     const char *declaration = scoped ? DVM_STYX_LAUNCH_CONTEXT : DVM_STYX_LAUNCH_RAW;
     DVM_Provider *profile = mux ? dvm_module_adapter(declaration, strlen(declaration)) : NULL;
     StyxUnibusServer *server = profile ?
-        styxunibusserverstartmodule(phybidirchannel(mux, 0), DVM_STYX_LAUNCH_TAG, image, profile) : NULL;
+        styxunibusserverstartexit(phybidirchannel(mux, 0), DVM_STYX_LAUNCH_TAG, image, profile) : NULL;
     dvm_provider_release(profile);
     int published = image != NULL;
     dvm_provider_release(image);
@@ -183,6 +183,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
         handoff.description.argument_bytes = startup.size;
         handoff.arguments = startup.bytes;
         result = dvm_runtime_main_with_handoff(argc - separator, argv + separator, &handoff);
+        styxunibusserverexit(server, result);
     }
     else
     {
