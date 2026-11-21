@@ -29,3 +29,6 @@ StyxUnibusServer *styxunibusserverstartloaded(
 
 Явную публикацию и каталоги нескольких экспортов описывает
 [styxunibusserverstartmounted](SCALAR-FUNCTION-MOUNTED.ru.md).
+
+Для нескольких экспортов используйте
+[styxunibusserverstartloadedset](UNIBUS-SERVER-LOADED-SET.ru.md).

@@ -61,6 +61,8 @@ ScalarbigimplementationSet: module
     invoke7: fn(value: big): big;
 };
 
+Scalarloadedanchor: module {}; # Owns the one module data instance for a published set.
+
 Vfsnative: module
 {
     PATH: con "$Vfsnative"; # Hosted builtin, no foreign namespace/PID input.
@@ -141,6 +143,12 @@ Vfsnative: module
     # EN: Link one actual export and return exactly one typed view once advertised.
     # RU: Связать фактический экспорт и вернуть одно представление после публикации.
     scalarloaded: fn(path, exportname, offer: string):
+        (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
+              Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation);
+    # EN: Create one data instance and bind single-slot views to it.
+    # RU: Создать один экземпляр данных и связать с ним однослотовые представления.
+    scalarloadanchor: fn(path: string): Scalarloadedanchor;
+    scalarloadedview: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
               Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation);
 };

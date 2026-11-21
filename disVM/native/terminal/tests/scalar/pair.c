@@ -82,6 +82,37 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
     int result = 2;
     if (owner)
     {
+        const char *set = getenv("DVM_TEST_SCALAR_LOADED_SET");
+        if (set)
+        {
+            int rejected = !strcmp(set, "reject");
+            const char *names[] = {"tally", "wide", "pair", "revise", "blend", rejected ? "missing" : "exchange"};
+            size_t count = sizeof(names) / sizeof(names[0]);
+            StyxUnibusServer *server = styxunibusserverstartloadedset(channel, "set.dis", names, count);
+            if (server)
+            {
+                DVM_Provider *requests[STYX_MOUNTED_EXPORT_LIMIT];
+                DVM_Provider *replies[STYX_MOUNTED_EXPORT_LIMIT];
+                DVM_Provider *offers[STYX_MOUNTED_EXPORT_LIMIT];
+                for (size_t i = 0; i < count; i++)
+                {
+                    requests[i] = styxunibusservermailbox(server, i, 0);
+                    replies[i] = styxunibusservermailbox(server, i, 1);
+                    offers[i] = styxunibusserverloadprofileat(server, i);
+                }
+                result = scalar_runtime_loaded_set(argc, argv, names, count, requests, replies, offers);
+                if (!rejected)
+                {
+                    shutdown(breaker, SHUT_RDWR);
+                }
+                if (!styxunibusserverjoin(server))
+                {
+                    result = 2;
+                }
+            }
+            close(breaker);
+            return result;
+        }
         if (getenv("DVM_TEST_SCALAR_MIXED_OWNER"))
         {
             const StyxMountedScalar entries[] = {

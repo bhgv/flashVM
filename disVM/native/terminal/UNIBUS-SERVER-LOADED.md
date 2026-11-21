@@ -29,3 +29,6 @@ After the carrier closes, call `styxunibusserverjoin` to release it.
 
 For declared exports and multi-export directories see
 [styxunibusserverstartmounted](SCALAR-FUNCTION-MOUNTED.md).
+
+For multiple exports, use
+[styxunibusserverstartloadedset](UNIBUS-SERVER-LOADED-SET.md).

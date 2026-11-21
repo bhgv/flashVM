@@ -9,6 +9,7 @@
 #include "scalar_function.h"
 #include "scalar_function_owner.h"
 #include "scalar_verify.h"
+#include "load_profile.h"
 #include "flashvm/srecord.h"
 #include "unibus_server.h"
 #include "file_provider.h"
@@ -103,6 +104,10 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     MountedExport *module = mounted_node(qid.path, 2);
     if (module && offset >= 0)
     {
+        if (current->loaded && current->load_state != 1)
+        {
+            return Eperm;
+        }
         size_t available = (uvlong)offset < module->interface_size ?
             module->interface_size - (size_t)offset : 0;
         if (*count > available)
@@ -159,10 +164,10 @@ static void *serve(void *arg)
     }
     styxend(&server->server);
     styxunibusmailboxseal(server->inbox);
-    styxunibusmailboxseal(server->load_offer);
     for (size_t i = 0; i < server->count; i++)
     {
         styxunibusmailboxseal(server->modules[i].owner.request);
+        styxunibusmailboxseal(server->modules[i].load_offer);
     }
     current = NULL;
     return NULL;
@@ -205,9 +210,12 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
     {
         return 0;
     }
-    if (server->load_offer)
+    if (server->loaded)
     {
-        directory->profile_node = styxaddfile(&server->server, parent, parent + 2, ".interface", 0444, "unibus");
+        if (!directory->profile_node)
+        {
+            directory->profile_node = styxaddfile(&server->server, parent, parent + 2, ".interface", 0444, "unibus");
+        }
         return directory->profile_node != NULL;
     }
     uint32_t signature = styxscalar_request_signature(module->function.request_tag);
@@ -313,15 +321,15 @@ static void free_modules(StyxUnibusServer *server)
     {
         dvm_provider_release(server->modules[i].owner.request);
         dvm_provider_release(server->modules[i].owner.reply);
+        dvm_provider_release(server->modules[i].load_offer);
     }
-    dvm_provider_release(server->load_offer);
     free(server->modules);
 }
 
 
 /* EN/RU: Validate one borrowed entry and reserve its private dispatch routes.
  * Проверить заимствованную запись и зарезервировать её собственные маршруты. */
-static int configure(StyxUnibusServer *server, MountedExport *module, const StyxMountedScalar *entry, int loaded)
+static int configure(MountedExport *module, const StyxMountedScalar *entry, int loaded)
 {
     if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface"))
     {
@@ -329,7 +337,7 @@ static int configure(StyxUnibusServer *server, MountedExport *module, const Styx
     }
     if (loaded)
     {
-        return styxunibusprepareload(server, module, entry->name);
+        return styxunibusprepareload(module, entry->name);
     }
     if (entry->native)
     {
@@ -349,7 +357,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
     }
     for (size_t i = 0; i < server->count; i++)
     {
-        if (!configure(server, &server->modules[i], &entries[i], loaded))
+        if (!configure(&server->modules[i], &entries[i], loaded))
         {
             return 0;
         }
@@ -382,7 +390,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, int loaded)
 {
-    StyxUnibusServer *server = channel && entries && count && count <= STYX_MOUNTED_SCALAR_LIMIT && (!loaded || count == 1) ?
+    StyxUnibusServer *server = channel && entries && count && count <= (loaded ? STYX_MOUNTED_EXPORT_LIMIT : STYX_MOUNTED_SCALAR_LIMIT) ?
         calloc(1, sizeof(*server)) : NULL;
     if (!server)
     {
@@ -397,6 +405,7 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
         return NULL;
     }
     server->count = count;
+    server->loaded = loaded;
     if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
     {
         if (export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))

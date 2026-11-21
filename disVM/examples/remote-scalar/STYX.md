@@ -143,3 +143,18 @@ The client tries the three-argument import first and gets nil. At the
 same VFS path it then loads the actual `fn(int): int` interface and
 gets 42 from `blend(40)`. Both JIT and interpreter mode should print
 `PASS Styx profile from loaded export`.
+
+## Load six exports that share state
+
+Run the same `owner_guest.py` command. It builds
+[the interface](loaded-set.m), [the owner](loaded-set-owner.b) and
+[the client](styx-loaded-set.b). The owner publishes the selected names
+from one original image. The client uses ordinary `load` of
+`/peer/mounted/set.dis` with both the full interface and a subset.
+Calls alternate between `int`, `big`, a tuple, one `ref`, a nested
+argument list and two aliases of the same object. They observe the same
+counter through both imports, including after an owner exception. A
+second run reserves a missing export and checks that even the valid
+subset fails to load. The driver closes the carriers and removes the
+temporary roots. Expect `PASS mounted loaded export set shares state`
+and `PASS loaded export set refused as a whole` in both execution modes.

@@ -122,3 +122,25 @@ and makes the same S-record available as `.interface`. Ordinary client
 `load` compares it with its compiled import without reading a source
 `.m` over the network. This mode covers one export and the existing six
 gateway profiles. The launcher's other modes still cover export sets.
+
+## One load for several exports
+
+Use [styxunibusserverstartloadedset](../native/terminal/UNIBUS-SERVER-LOADED-SET.md)
+to reserve a directory of selected exports. Supply these tab-separated
+fields in the names array's original order.
+
+```text
+loaded-set  implementation  export  request  reply  offer  [export request reply offer ...]
+```
+
+Supply one to eight export groups. Each group has the same permissions
+as the single-export `loaded` mode. The service loads the original
+image once and creates one local module data instance. Each one-slot
+typed view holds a reference to the same module data. All views are linked
+before starting their request loops. Missing or unsupported exports refuse
+the directory before the client can call any function. Native Styx
+dispatch on each server remains sequential. The service waits for its
+request loops to reach EOF before exiting.
+
+The [two-VM example](../examples/remote-scalar/STYX.md#load-six-exports-that-share-state)
+checks all six supported profiles in one directory.

@@ -97,4 +97,14 @@ StyxUnibusServer *styxunibusserverstartloaded(RemotePhy *channel, const char *mo
  * RU: Заимствовать служебный приёмник профиля на запись до join. */
 DVM_Provider *styxunibusserverloadprofile(StyxUnibusServer *server);
 
+/* EN: Consume channel and reserve an atomic directory of one to eight exports.
+ * RU: Принять канал и зарезервировать каталог из одного–восьми экспортов. */
+StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char *module,
+    const char *const *names, size_t count);
+
+
+/* EN: Borrow the writable load offer for the indexed export until join.
+ * RU: Заимствовать приёмник профиля экспорта по индексу до join. */
+DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t index);
+
 #endif

@@ -4,6 +4,7 @@
  */
 #ifndef STYX_SCALAR_GUEST_MOUNT_H
 #define STYX_SCALAR_GUEST_MOUNT_H
+#include <stddef.h>
 typedef struct DVM_Provider DVM_Provider; /* Borrowed mounted file. */
 
 
@@ -28,5 +29,10 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount);
 /* EN/RU: Borrow two request/reply pairs through one owner VM invocation.
  * Заимствовать две пары запросов и ответов на время работы VM владельца. */
 int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, DVM_Provider *const *replies);
+
+/* EN: Borrow the server routes for one automatic loaded set.
+ * RU: Заимствовать маршруты сервера для одного автоматически связанного набора. */
+int scalar_runtime_loaded_set(int argc, char **argv, const char *const *names, size_t count,
+    DVM_Provider *const *requests, DVM_Provider *const *replies, DVM_Provider *const *offers);
 
 #endif

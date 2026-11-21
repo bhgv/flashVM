@@ -12,22 +12,23 @@
 #include "load_profile.h"
 #include "file_provider.h"
 #include "unibus_server_state.h"
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 
 /* EN/RU: See unibus_server_state.h. / См. unibus_server_state.h. */
-int styxunibusprepareload(StyxUnibusServer *server, MountedExport *module, const char *name)
+int styxunibusprepareload(MountedExport *module, const char *name)
 {
     if (!styxscalar_name_length(name))
     {
         return 0;
     }
-    strcpy(server->load_name, name);
-    server->load_offer = styxunibusprofilemailbox();
+    strcpy(module->load_name, name);
+    module->load_offer = styxunibusprofilemailbox();
     module->owner.request = styxunibusloadmailbox();
     module->owner.reply = styxunibusloadmailbox();
-    return server->load_offer && module->owner.request && module->owner.reply;
+    return module->load_offer && module->owner.request && module->owner.reply;
 }
 
 
@@ -35,20 +36,21 @@ int styxunibusprepareload(StyxUnibusServer *server, MountedExport *module, const
  * the unopened interface eligible for a later attempt.
  * RU: Ждать полное локальное предложение до трёх секунд. При истечении срока
  * разрешить новую попытку открытия интерфейса. */
-static size_t read_offer(DVM_Provider *offer, void *bytes, size_t capacity)
+static size_t read_offer(DVM_Provider *offer, void *bytes, size_t capacity, const struct timespec *start)
 {
     DVM_VfsHandle reader = {0};
-    struct timespec start, clock;
-    if (clock_gettime(CLOCK_MONOTONIC, &start) || dvm_provider_open(offer, ".", "r", &reader) != FVM_OK)
+    struct timespec clock;
+    if (dvm_provider_open(offer, ".", "r", &reader) != FVM_OK)
     {
         return 0;
     }
     size_t size = 0;
     while (!clock_gettime(CLOCK_MONOTONIC, &clock) &&
-        (clock.tv_sec - start.tv_sec) * INT64_C(1000) + (clock.tv_nsec - start.tv_nsec) / 1000000 < 3000)
+        (clock.tv_sec - start->tv_sec) * INT64_C(1000) + (clock.tv_nsec - start->tv_nsec) / 1000000 < 3000)
     {
         const DVM_IoResult got = dvm_vfs_read_chunk(&reader, bytes, capacity);
-        if (got.status == FVM_OK && (got.flags & DVM_IO_RECORD) && !(got.flags & DVM_IO_UNCERTAIN))
+        if (got.status == FVM_OK && (got.flags & DVM_IO_RECORD) && !(got.flags & DVM_IO_UNCERTAIN) &&
+            got.count <= capacity)
         {
             size = got.count;
             break;
@@ -68,25 +70,41 @@ static size_t read_offer(DVM_Provider *offer, void *bytes, size_t capacity)
 /* EN/RU: See unibus_server_state.h. / См. unibus_server_state.h. */
 int styxunibusawaitload(StyxUnibusServer *server)
 {
-    if (!server->load_offer || server->load_state)
+    if (!server->loaded || server->load_state)
     {
-        return !server->load_offer || server->load_state == 1;
+        return !server->loaded || server->load_state == 1;
     }
-    MountedExport *module = &server->modules[0];
-    size_t size = read_offer(server->load_offer, module->interface, sizeof(module->interface));
-    if (!size)
+    struct timespec start;
+    if (clock_gettime(CLOCK_MONOTONIC, &start))
     {
         return 0;
     }
-    styxunibusmailboxseal(server->load_offer);
-    unsigned long tag = styxloadedaccept(server->load_name, module->interface, size);
-    if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))
+    MountedExport *directory = &server->modules[0];
+    while (server->load_ready < server->count)
     {
-        server->load_state = -1;
-        return 0;
+        MountedExport *module = &server->modules[server->load_ready];
+        unsigned char offer[STYX_SHAPED_OFFER_MAX];
+        size_t size = read_offer(module->load_offer, offer, sizeof(offer), &start);
+        if (!size)
+        {
+            return 0;
+        }
+        styxunibusmailboxseal(module->load_offer);
+        unsigned long tag = styxloadedaccept(module->load_name, offer, size);
+        if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))
+        {
+            server->load_state = -1;
+            for (size_t i = 0; i < server->count; i++)
+            {
+                styxunibusmailboxseal(server->modules[i].owner.request);
+            }
+            return 0;
+        }
+        memcpy(directory->interface + directory->interface_size, offer, size);
+        directory->interface_size += size;
+        server->load_ready++;
     }
-    module->interface_size = size;
-    module->profile_node->d.length = size;
+    directory->profile_node->d.length = directory->interface_size;
     server->load_state = 1;
     return 1;
 }
@@ -95,7 +113,7 @@ int styxunibusawaitload(StyxUnibusServer *server)
 /* EN/RU: See unibus_server.h. / См. unibus_server.h. */
 DVM_Provider *styxunibusserverloadprofile(StyxUnibusServer *server)
 {
-    return server ? server->load_offer : NULL;
+    return styxunibusserverloadprofileat(server, 0);
 }
 
 
@@ -111,8 +129,33 @@ StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
 /* EN/RU: See unibus_server.h. / См. unibus_server.h. */
 StyxUnibusServer *styxunibusserverstartloaded(RemotePhy *channel, const char *module, const char *name)
 {
-    const StyxMountedScalar entry = {.module = module, .name = name};
-    return styxunibusstarttable(channel, &entry, 1, 1);
+    return styxunibusserverstartloadedset(channel, module, &name, 1);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char *module,
+    const char *const *names, size_t count)
+{
+    if (!names || !count || count > STYX_MOUNTED_EXPORT_LIMIT)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    StyxMountedScalar entries[STYX_MOUNTED_EXPORT_LIMIT] = {0};
+    for (size_t i = 0; i < count; i++)
+    {
+        entries[i].module = module;
+        entries[i].name = names[i];
+    }
+    return styxunibusstarttable(channel, entries, count, 1);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t index)
+{
+    return server && index < server->count ? server->modules[index].load_offer : NULL;
 }
 
 

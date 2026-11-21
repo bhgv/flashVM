@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count > 0 && hd fields == "loaded-set") {
+        serve_loaded_set(routes, count-1, tl fields);
+        return;
+    }
     if (count == 6 && hd fields == "loaded") {
         serve_loaded(routes, tl fields);
         return;
@@ -448,35 +452,4 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
     }
 }
 
-
-
-# EN: Load one export, publish its qualified wire profile and dispatch its typed view.
-# RU: Загрузить экспорт, опубликовать проверенный профиль и использовать его тип.
-serve_loaded(routes: Vfsnative, fields: list of string)
-{
-    implementation := hd fields;
-    fields = tl fields;
-    name := hd fields;
-    fields = tl fields;
-    request := hd fields;
-    fields = tl fields;
-    reply := hd fields;
-    offer := hd tl fields;
-    (tag, narrow, wide, pair, single, arguments, aliases) := routes->scalarloaded(implementation, name, offer);
-    if (tag == 0) {
-        return;
-    }
-    if (narrow != nil) {
-        run_int(routes, narrow, request, reply, big tag, big 73, 0);
-    } else if (wide != nil) {
-        run_big(routes, wide, request, reply, big tag, big 73);
-    } else if (pair != nil) {
-        run_tuple(routes, pair, request, reply);
-    } else if (single != nil) {
-        run_ref(routes, single, request, reply);
-    } else if (arguments != nil) {
-        run_list(routes, arguments, request, reply);
-    } else if (aliases != nil) {
-        run_ref_pair(routes, aliases, request, reply);
-    }
-}
+include "scalarowner_loaded.b";

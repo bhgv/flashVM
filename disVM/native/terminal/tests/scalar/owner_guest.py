@@ -55,6 +55,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_LOAD_NAME"] = publication
         env["DVM_TEST_SCALAR_LOAD_FILE"] = implementation
         env["DVM_TEST_SCALAR_LOAD_EXPORT"] = export
+    if mounted in ("loaded-set", "loaded-set-reject"):
+        env["DVM_TEST_SCALAR_LOADED_SET"] = "reject" if mounted.endswith("reject") else "accept"
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -99,6 +101,8 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
         children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect, mounted))
         image = {"wide": "wide.dis", "mixed": "mixed.dis", "tuple": "tuple.dis",
                  "ref": "ref.dis", "list": "blend.dis", "refpair": "refpair.dis", "load-mismatch": "wrong-profile.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
+        if mounted in ("loaded-set", "loaded-set-reject"):
+            image = "set.dis"
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -152,6 +156,8 @@ def main():
             (caller, example / "styx-refpair-owner.b", "refpair.dis"),
             (owner, example / "refpair-owner.b", "refpair-owner.dis"),
             (owner, example / "wide-owner.b", "wide-owner.dis"),
+            (caller, example / "styx-loaded-set.b", "set.dis"),
+            (owner, example / "loaded-set-owner.b", "loaded-set-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
@@ -191,6 +197,14 @@ def main():
             for marker in marker_paths:
                 marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS mounted original ref pair Dis", calls=0, mounted="refpair")
+            exchange(binary, owner, caller, mode, "PASS mounted loaded export set shares state", calls=0, mounted="loaded-set")
+            refusal = caller / "expect-set-refusal"
+            refusal.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS loaded export set refused as a whole",
+                         calls=0, mounted="loaded-set-reject")
+            finally:
+                refusal.unlink()
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             disconnect = caller / "expect-disconnect"

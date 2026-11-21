@@ -407,3 +407,50 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
     }
     return result;
 }
+
+
+
+/* EN: Start the shared owner service with three local grants per selected export.
+ * RU: Запустить общий сервис владельца с тремя разрешениями на каждый экспорт. */
+int scalar_runtime_loaded_set(int argc, char **argv, const char *const *names, size_t count,
+    DVM_Provider *const *requests, DVM_Provider *const *replies, DVM_Provider *const *offers)
+{
+    char cwd[DVM_NS_PATH_LIMIT], config[1024] = "loaded-set\tloaded-set-owner.dis";
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    if (!view || !getcwd(cwd, sizeof(cwd)))
+    {
+        exit(2);
+    }
+    size_t used = strlen(config);
+    for (size_t i = 0; i < count; i++)
+    {
+        char request[24], reply[24], offer[24];
+        snprintf(request, sizeof(request), "/in%u", (unsigned)i);
+        snprintf(reply, sizeof(reply), "/out%u", (unsigned)i);
+        snprintf(offer, sizeof(offer), "/offer%u", (unsigned)i);
+        int added = snprintf(config + used, sizeof(config) - used, "\t%s\t/scalar%s\t/scalar%s\t/scalar%s",
+            names[i], request, reply, offer);
+        if (added < 0 || (size_t)added >= sizeof(config) - used ||
+            !dvm_view_map(view, request, requests[i], ".", FVM_ACCESS_READ, 0) ||
+            !dvm_view_map(view, reply, replies[i], ".", FVM_ACCESS_WRITE, 0) ||
+            !dvm_view_map(view, offer, offers[i], ".", FVM_ACCESS_WRITE, 0))
+        {
+            exit(2);
+        }
+        used += (size_t)added;
+    }
+    DVM_Provider *routes = dvm_view_freeze(view);
+    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_PROVIDER, .arguments = (unsigned char *)config};
+    handoff.description.argument_bytes = used;
+    strcpy(handoff.description.module, "loaded-set-service.dis");
+    handoff.group = dvm_namespace_create(cwd, "/", NULL);
+    if (!routes || !handoff.group || !dvm_namespace_pin(handoff.group) ||
+        dvm_stack_mount(handoff.group, routes, "/scalar", 0, 0) != 1)
+    {
+        exit(2);
+    }
+    dvm_provider_release(routes);
+    int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
+    dvm_namespace_release(handoff.group);
+    return result;
+}
