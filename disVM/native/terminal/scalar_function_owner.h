@@ -11,6 +11,7 @@ typedef struct StyxScalarFunctionOwner
 {
     DVM_Provider *request; /* Owned mailbox read by the Dis service. */
     DVM_Provider *reply;   /* Owned mailbox written by the service. */
+    unsigned long request_tag; /* Compiled-width mailbox tag, fixed at publication. */
     int retired;           /* Dispatcher-only flag after an ambiguous exchange. */
 } StyxScalarFunctionOwner;
 

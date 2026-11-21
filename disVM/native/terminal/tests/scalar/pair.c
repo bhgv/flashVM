@@ -46,13 +46,30 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
     int result = 2;
     if (owner)
     {
+        if (getenv("DVM_TEST_SCALAR_BIG_OWNER"))
+        {
+            const StyxMountedScalar entry = {"wide.dis", "echo", NULL, 1};
+            StyxUnibusServer *server = styxunibusserverstartmounted(channel, &entry, 1);
+            if (server)
+            {
+                result = scalar_runtime_run(argc, argv, styxunibusserverreply(server),
+                    styxunibusserverinbox(server), NULL, NULL, 1);
+                shutdown(breaker, SHUT_RDWR);
+                if (!styxunibusserverjoin(server))
+                {
+                    result = 2;
+                }
+            }
+            close(breaker);
+            return result;
+        }
         const StyxScalarFunction alternate = {
             STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL
         };
         const StyxMountedScalar entries[] = {
-            {"helper.dis", "offset", &alternate},
-            {"compute.dis", "compute", NULL},
-            {"compute.dis", "adjust", NULL}
+            {"helper.dis", "offset", &alternate, 0},
+            {"compute.dis", "compute", NULL, 0},
+            {"compute.dis", "adjust", NULL, 0}
         };
         StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries,
             sizeof(entries) / sizeof(entries[0]));

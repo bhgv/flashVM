@@ -21,7 +21,7 @@ int styxscalarfunctiondispatch(void *state, int64_t argument, int64_t *value)
         return -1;
     }
     int result = -1;
-    if (styxscalarcallfile(owner->request, STYX_FUNCTION_REQUEST_TAG, argument) == DVM_LAUNCH_DELIVERED)
+    if (styxscalarcallfile(owner->request, owner->request_tag, argument) == DVM_LAUNCH_DELIVERED)
     {
         struct timespec now;
         while (!clock_gettime(CLOCK_MONOTONIC, &now) &&

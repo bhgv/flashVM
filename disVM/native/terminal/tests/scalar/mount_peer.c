@@ -183,8 +183,8 @@ int main(int argc, char **argv)
     StyxScalarFunction raw_function = {.request_tag = STYX_FUNCTION_BIG_TAG,
         .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = raw};
     const StyxMountedScalar entries[] = {
-        {"compute.dis", "compute", &function}, {"compute.dis", "wide", &big_function},
-        {"compute.dis", "raw", &raw_function}
+        {"compute.dis", "compute", &function, 0}, {"compute.dis", "wide", &big_function, 0},
+        {"compute.dis", "raw", &raw_function, 0}
     };
     StyxUnibusServer *server = root ?
         styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 3) : NULL;

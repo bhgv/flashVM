@@ -6,6 +6,11 @@ Scalarimplementation: module
     invoke: fn(value: int): int; # Single linked slot; the native loader selects its export.
 };
 
+Scalarbigimplementation: module
+{
+    invoke: fn(value: big): big; # Single linked full-width export.
+};
+
 ScalarimplementationSet: module
 {
     invoke0: fn(value: int): int; # Slot 0 of one linked module instance.
@@ -66,4 +71,9 @@ Vfsnative: module
     # Вернуть 1 для запроса, 0 при EOF или -1 при ожидании.
     scalarpoll: fn(path: string, tag: big): (int, int);
     scalarload: fn(path, exportname: string): Scalarimplementation;
+    # EN: Owner-side full-width loading and mailbox I/O.
+    # RU: Полноразрядные загрузка и обмен с приёмником владельца.
+    scalarbigload: fn(path, exportname: string): Scalarbigimplementation;
+    scalarbignext: fn(path: string, tag: big): (int, big);
+    scalarbigreply: fn(path: string, tag: big, success: int, value: big);
 };

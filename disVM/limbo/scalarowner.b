@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 7 && hd fields == "big") {
+        serve_big(routes, tl fields);
+        return;
+    }
     if (count > 0 && hd fields == "set") {
         serve_set(sys, routes, count-1, tl fields);
         return;
@@ -162,4 +166,42 @@ invoke(target: ScalarimplementationSet, slot, value: int): int
     7 => return target->invoke7(value);
     }
     raise "invalid owner export slot";
+}
+
+
+
+# EN: Serve a full-width export using the same native mailbox and ordinary Dis link.
+# RU: Обслужить полноразрядный экспорт через тот же приёмник и обычную связь Dis.
+serve_big(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    fields = tl fields;
+    reply := hd fields;
+    fields = tl fields;
+    requesttag := big hd fields;
+    replytag := big hd tl fields;
+    target := routes->scalarbigload(implementation, name);
+    if (target == nil) {
+        raise "big owner implementation link failed";
+    }
+    for (;;) {
+        (ready, value) := routes->scalarbignext(request, requesttag);
+        if (ready == 0) {
+            return;
+        }
+        result := big 0;
+        success := 1;
+        {
+            result = target->invoke(value);
+        } exception {
+            "*" =>
+                success = 0;
+                result = big 1;
+        }
+        routes->scalarbigreply(reply, replytag, success, result);
+    }
 }

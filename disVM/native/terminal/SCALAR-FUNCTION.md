@@ -174,7 +174,7 @@ order. The ordinary request uses the existing signed scalar record body.
 The loader can bind `int` and `big` exports in the same module. It
 compares the compiled signature for each imported name before creating
 the instance. The 32-bit `int` path validates its width at both ends.
-The original-Dis owner service still provides its existing `int` ABI.
+The original-Dis owner service also supports a single `big` export.
 
 The [mixed interface](../../examples/remote-scalar/mixed.m) and
 `terminal-caller-mount-cli` exercise both big profiles, the signed

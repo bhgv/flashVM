@@ -39,3 +39,19 @@ depends on the owner's private file and persistent state, and the example
 checks exception propagation.
 
 To publish several module directories on one channel, use [styxunibusserverstartmounted](SCALAR-FUNCTION-MOUNTED.md).
+
+## Full-width Dis export
+
+To publish one original `fn(big): big` export, use
+`styxunibusserverstartmounted` with a NULL `native` field and
+`dis_big = 1`. Mount the indexed request and reply mailboxes in the
+owner's namespace. Start the same scalar owner service with the
+tab-separated fields `big`, implementation path, export name, request
+path, reply path, `76`, `73`. The service links the original export once
+with its compiled signature and serves requests until EOF. The caller
+uses the ordinary Limbo interface and `load`.
+
+The [caller](../../examples/remote-scalar/styx-wide-owner.b) and
+[owner](../../examples/remote-scalar/wide-owner.b) exercise the signed
+limits, an exception and persistent instance state in
+`terminal-scalar-owner-guest`.
