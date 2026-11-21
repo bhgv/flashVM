@@ -292,7 +292,7 @@ static int map_fd(DVM_View *view, unsigned number, FdGrant *grant)
 
 /* EN: Prepare an imported slot or a supported non-hidden standard descriptor.
  * RU: Подготовить импортированный слот или нескрытый стандартный FD. */
-static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int extra)
+static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int delegated)
 {
     grant->host = -1;
     grant->slot = dvm_launch_file_lookup(files, number, &grant->access);
@@ -301,9 +301,9 @@ static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int 
         return dvm_file_slots_retain_launch(grant->slot) ? 1 : -1;
     }
 #if defined(F_DUPFD_CLOEXEC)
-    if ((number < 3 || (number == 3 && extra >= 3)) && !dvm_launch_file_is_hidden(files, number))
+    if ((number < 3 || delegated >= 3) && !dvm_launch_file_is_hidden(files, number))
     {
-        int host = fcntl(number == 3 ? extra : (int)number, F_DUPFD_CLOEXEC, 3);
+        int host = fcntl(delegated >= 3 ? delegated : (int)number, F_DUPFD_CLOEXEC, 3);
         if (host < 0)
         {
             return errno == EBADF ? 0 : -1;
@@ -361,15 +361,16 @@ static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int 
 
 /* EN/RU: See launch_files.h. Publish the directory only after mapping all slots.
  * См. launch_files.h. Опубликовать каталог после отображения всех слотов. */
-static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, int extra)
+static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, const int *delegated)
 {
     DVM_View *view = NULL;
     *success = 0;
     for (unsigned number = 0; number < DVM_LAUNCH_FD_COUNT; number++)
     {
         FdGrant candidate = {0};
-        int present = prepare(files, number, &candidate, extra);
-        if (present < 0 || (number == 3 && extra >= 3 && !present))
+        int host = delegated ? delegated[number] : -1;
+        int present = prepare(files, number, &candidate, host);
+        if (present < 0 || (host >= 3 && !present))
         {
             dvm_view_discard(view);
             return NULL;
@@ -409,12 +410,12 @@ static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, int extra)
 /* EN/RU: See launch_files.h. / См. launch_files.h. */
 DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success)
 {
-    return fd_view(files, success, -1);
+    return fd_view(files, success, NULL);
 }
 
 
 /* EN/RU: See launch_files.h. / См. launch_files.h. */
-DVM_Provider *dvm_launch_host_fd3_view(int descriptor, int *success)
+DVM_Provider *dvm_launch_host_fd_view(const int descriptors[DVM_LAUNCH_FD_COUNT], int *success)
 {
-    return fd_view(NULL, success, descriptor);
+    return fd_view(NULL, success, descriptors);
 }

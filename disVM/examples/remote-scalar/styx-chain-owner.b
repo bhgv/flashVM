@@ -31,6 +31,17 @@ init()
         sys->readn(extra, data, len data) != len data || string data != "more") {
         raise "chain FD 3 mismatch";
     }
+    alias := sys->fildes(7);
+    alias2 := sys->fildes(8);
+    bytebuf := array[1] of byte;
+    if (alias == nil || alias2 == nil || sys->read(alias, bytebuf, 1) != 1 || string bytebuf != "A" ||
+        sys->read(alias2, bytebuf, 1) != 1 || string bytebuf != "B") {
+        raise "chain FD aliases did not share the read cursor";
+    }
+    bytebuf[0] = byte 'C';
+    if (sys->write(alias, bytebuf, 1) != 1) {
+        raise "chain FD alias lost write access";
+    }
     if (sys->bind("/remote-libs/mounted", "/deps", Sys->MAFTER) < 0) {
         raise sys->sprint("could not add library union: %r");
     }

@@ -4,6 +4,7 @@
  */
 #ifndef DVM_PROGRAM_VIEW_H
 #define DVM_PROGRAM_VIEW_H
+#include "launch/fd_path.h"
 #include "provider.h"
 #include "namespace.h"
 #include "launch/origin.h"
@@ -72,8 +73,10 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *
 int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, const char *target,
     const DVM_Origin *origin);
 
-/* EN: Capture standard descriptors and the explicitly delegated host FD as guest FD 3.
- * RU: Захватить стандартные дескрипторы и выданный хостовый FD как гостевой FD 3. */
-DVM_Provider *dvm_launch_host_fd3_view(int descriptor, int *success);
+/* EN: Capture standard descriptors and the borrowed table of host FDs by guest number.
+ * Entries below 3 leave the corresponding slot unspecified. Returns an owned provider.
+ * RU: Захватить стандартные дескрипторы и таблицу хостовых FD по гостевому номеру.
+ * Значения меньше 3 пропускают явное назначение. Возвращает свою ссылку. */
+DVM_Provider *dvm_launch_host_fd_view(const int descriptors[DVM_LAUNCH_FD_COUNT], int *success);
 
 #endif

@@ -306,3 +306,14 @@ compares the provider PIDs. After cancellation, the same caller PID gets
 a new executor in the other library. A missing export fails provider startup
 and reports the implementation and export name. Disconnecting the caller drains the provider's
 export inboxes and retires its idle workers.
+
+
+### Additional numbered FDs
+
+Repeat `--fd N HOSTFD` before `--` to delegate an open regular file to a
+guest descriptor number from 3 through 31. `--fd3 HOSTFD` is shorthand
+for number 3. The open descriptor determines read and write access.
+Two guest numbers can refer to the same host FD and share its read and
+write position. Guest numbers 0, 1 and 2 come from the standard streams.
+The [launch example](../examples/remote-scalar/styx-chain-owner.b) checks
+successive reads through two numbers and a write through one of them.

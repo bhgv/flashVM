@@ -181,6 +181,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
     stderr = work / "chain-stderr"
     extra = work / "chain-fd3"
     extra.write_bytes(b"skipmore")
+    shared = work / "chain-shared-fd"
     for path in ("/", "/remote/../libs", "/.prog", "/.fd/sub", "/.vfs", "/.var", "relative"):
         invalid = subprocess.run(
             [runtime, "--styx-serve-fd", "3", "--library-fd", "4",
@@ -201,11 +202,12 @@ def chain(runtime, compiler, provider, disvm, example, work):
     for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
                           ("--no-jit", b"drop"), ("--jit", b"drop")):
         stdin.write_bytes(payload)
+        shared.write_bytes(b"skipAB")
         a, b = tcp_pair()
         lib, c = tcp_pair()
         alternate, d = tcp_pair()
         with a, b, lib, c, alternate, d, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
-                stderr.open("wb") as errors, extra.open("rb") as fourth, \
+                stderr.open("wb") as errors, extra.open("rb") as fourth, shared.open("r+b") as aliases, \
                 start_library(library_peer, library_dir, mode, c) as library, \
                 start_library(library_peer, library_dir, mode, d) as other, subprocess.Popen(
             [runtime, "--styx-serve-fd", str(b.fileno()), "--context", "--library-fd",
@@ -215,6 +217,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         ) as owner:
             fourth.seek(4)
+            aliases.seek(4)
             b.close()
             lib.close()
             c.close()
@@ -222,8 +225,9 @@ def chain(runtime, compiler, provider, disvm, example, work):
             d.close()
             try:
                 with subprocess.Popen(
-                    [runtime, "--styx-mount-fd", str(a.fileno()), "--fd3", str(fourth.fileno()), "--", mode, caller_image],
-                    pass_fds=(a.fileno(), fourth.fileno()), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors
+                    [runtime, "--styx-mount-fd", str(a.fileno()), "--fd3", str(fourth.fileno()),
+                     "--fd", "7", str(aliases.fileno()), "--fd", "8", str(aliases.fileno()), "--", mode, caller_image],
+                    pass_fds=(a.fileno(), fourth.fileno(), aliases.fileno()), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors
                 ) as caller:
                     try:
                         if payload == b"drop":
@@ -258,6 +262,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
                     print("PASS A receives B's launch failure", mode, flush=True)
                     continue
                 if (caller_status or owner.returncode or library_status or other_status or fourth.tell() != 8 or
+                        aliases.tell() != 7 or shared.read_bytes() != b"skipABC" or
                         b"chain stdout\n" not in stdout.read_bytes() or
                         b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):

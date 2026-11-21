@@ -27,7 +27,7 @@
 
 /* EN: Install the mount as a capability in a fresh hosted namespace and run the guest.
  * RU: Установить маунт в новом пространстве имён и запустить программу. */
-static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path, int extra)
+static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path, const int *descriptors)
 {
     char cwd[DVM_NS_PATH_LIMIT];
     if (!getcwd(cwd, sizeof(cwd)))
@@ -41,10 +41,10 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *p
     int installed = handoff.group && dvm_namespace_pin(handoff.group) &&
         dvm_namespace_plan(handoff.group, path, &target) &&
         dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
-    if (installed && extra >= 3)
+    if (installed && descriptors)
     {
         int captured;
-        DVM_Provider *fds = dvm_launch_host_fd3_view(extra, &captured);
+        DVM_Provider *fds = dvm_launch_host_fd_view(descriptors, &captured);
         installed = captured && fds && dvm_namespace_plan(handoff.group, "/.fd", &target) &&
             dvm_namespace_mount_provider(handoff.group, &target, fds, "/launch-descriptors") == 1;
         dvm_provider_release(fds);
@@ -285,24 +285,40 @@ int dvm_styx_mount_cli(int argc, char **argv)
             return 2;
         }
     }
-    int extra = -1;
-    if (argc > separator + 1 && !strcmp(argv[separator], "--fd3"))
+    int descriptors[DVM_LAUNCH_FD_COUNT] = {0};
+    int granted = 0;
+    while (argc > separator + 1 && (!strcmp(argv[separator], "--fd3") || !strcmp(argv[separator], "--fd")))
     {
+        int legacy = !strcmp(argv[separator], "--fd3");
         char *end;
-        long supplied = strtol(argv[separator + 1], &end, 10);
-        struct stat metadata;
-        if (*end || supplied < 3 || supplied > INT_MAX || fstat((int)supplied, &metadata) ||
-            !S_ISREG(metadata.st_mode))
+        long number = 3;
+        if (!legacy)
         {
-            fprintf(stderr, "disvm: --fd3 requires a delegated regular file FD >= 3\n");
+            const char *number_text = argv[++separator];
+            number = strtol(number_text, &end, 10);
+            if (!*number_text || *end || number < 3 || number >= DVM_LAUNCH_FD_COUNT || argc <= separator + 1)
+            {
+                fprintf(stderr, "disvm: --fd requires a guest FD 3 through %u and a host FD\n",
+                    DVM_LAUNCH_FD_COUNT - 1);
+                return 2;
+            }
+        }
+        const char *descriptor = argv[separator + 1];
+        long supplied = strtol(descriptor, &end, 10);
+        struct stat metadata;
+        if (!*descriptor || *end || supplied < 3 || supplied > INT_MAX || descriptors[number] ||
+            fstat((int)supplied, &metadata) || !S_ISREG(metadata.st_mode))
+        {
+            fprintf(stderr, "disvm: --fd/--fd3 requires a unique guest number and a delegated regular file FD >= 3\n");
             return 2;
         }
-        extra = (int)supplied;
+        descriptors[number] = (int)supplied;
+        granted = 1;
         separator += 2;
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -324,7 +340,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - separator, argv + separator, mount, path, extra);
+        result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL);
     }
     else
     {
