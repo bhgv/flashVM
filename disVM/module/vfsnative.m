@@ -6,6 +6,11 @@ Scalarimplementation: module
     invoke: fn(value: int): int; # Single linked slot; the native loader selects its export.
 };
 
+Scalartupleimplementation: module
+{
+    invoke: fn(value: (int,big)): (int,big); # One linked tuple export.
+};
+
 Scalarbigimplementation: module
 {
     invoke: fn(value: big): big; # Single linked full-width export.
@@ -92,4 +97,9 @@ Vfsnative: module
     # RU: Проверить знаковый приёмник и связать смешанные типы с одним экземпляром.
     scalarbigpoll: fn(path: string, tag: big): (int, big);
     scalarmixedload: fn(path, names: string): (ScalarimplementationSet, ScalarbigimplementationSet);
+    # EN: Original Dis tuple export and its local mailboxes.
+    # RU: Исходный экспорт кортежа Dis и его локальные приёмники.
+    scalartupleload: fn(path, exportname: string): Scalartupleimplementation;
+    scalartuplenext: fn(path: string): (int, int, big);
+    scalartuplereply: fn(path: string, success: int, value: (int,big));
 };

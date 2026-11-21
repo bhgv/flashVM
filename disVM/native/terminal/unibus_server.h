@@ -49,6 +49,7 @@ typedef struct StyxMountedScalar
     const char *name; /* Borrowed export name. */
     const struct StyxScalarFunction *native; /* Optional copied native method; NULL selects Dis. */
     int dis_big; /* Select the full-width signature for a Dis-backed entry. */
+    int dis_tuple; /* Select the composed ABI for a Dis-backed entry. */
 } StyxMountedScalar;
 
 

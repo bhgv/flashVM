@@ -195,4 +195,4 @@ field order. Errors keep the existing scalar error record.
 
 The [mixed interface](../../examples/remote-scalar/mixed.m) exercises
 signed limits, the reversed-type import and a call following a remote
-exception. The tuple profile currently uses a native C handler.
+exception. The tuple profile also supports an original Dis owner in the unscoped mode.

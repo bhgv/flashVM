@@ -208,8 +208,8 @@ int main(int argc, char **argv)
     StyxScalarFunction pair_function = {.request_tag = STYX_TUPLE_CALLER_TAG,
         .reply_tag = STYX_TUPLE_REPLY_TAG, .program_root = root, .tuple_method = pair};
     const StyxMountedScalar entries[] = {
-        {"compute.dis", "compute", &function, 0}, {"compute.dis", "wide", &big_function, 0},
-        {"compute.dis", "raw", &raw_function, 0}, {"compute.dis", "pair", &pair_function, 0}
+        {"compute.dis", "compute", &function, 0, 0}, {"compute.dis", "wide", &big_function, 0, 0},
+        {"compute.dis", "raw", &raw_function, 0, 0}, {"compute.dis", "pair", &pair_function, 0, 0}
     };
     StyxUnibusServer *server = root ?
         styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 4) : NULL;

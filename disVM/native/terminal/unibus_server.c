@@ -318,13 +318,7 @@ static int configure(MountedExport *module, const StyxMountedScalar *entry)
         module->function = *entry->native;
         return styxscalarfunctionvalid(&module->function);
     }
-    module->owner.request_tag = entry->dis_big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
-    module->owner.request = styxunibusmailbox(module->owner.request_tag);
-    module->owner.reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
-    module->function = (StyxScalarFunction){
-        module->owner.request_tag, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner, NULL, NULL, NULL, NULL
-    };
-    return module->owner.request && module->owner.reply;
+    return styxscalarownerconfigure(&module->owner, &module->function, entry->dis_big, entry->dis_tuple);
 }
 
 /* EN/RU: Export all distinct entries before making the dispatcher visible.
@@ -409,7 +403,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
         phyfree(channel);
         return NULL;
     }
-    const StyxMountedScalar entry = {module, name, function, 0};
+    const StyxMountedScalar entry = {module, name, function, 0, 0};
     return styxunibusserverstartmounted(channel, &entry, 1);
 }
 
@@ -418,7 +412,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
  * Опубликовать один именованный экспорт через общий сервис Dis. */
 StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name)
 {
-    const StyxMountedScalar entry = {module, name, NULL, 0};
+    const StyxMountedScalar entry = {module, name, NULL, 0, 0};
     return styxunibusserverstartmounted(channel, &entry, 1);
 }
 

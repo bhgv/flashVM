@@ -49,7 +49,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         if (getenv("DVM_TEST_SCALAR_MIXED_OWNER"))
         {
             const StyxMountedScalar entries[] = {
-                {"wide.dis", "count", NULL, 0}, {"wide.dis", "echo", NULL, 1}
+                {"wide.dis", "count", NULL, 0, 0}, {"wide.dis", "echo", NULL, 1, 0}
             };
             StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries, 2);
             if (server)
@@ -70,9 +70,12 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             close(breaker);
             return result;
         }
-        if (getenv("DVM_TEST_SCALAR_BIG_OWNER"))
+        int tuple = getenv("DVM_TEST_SCALAR_TUPLE_OWNER") != NULL;
+        if (tuple || getenv("DVM_TEST_SCALAR_BIG_OWNER"))
         {
-            const StyxMountedScalar entry = {"wide.dis", "echo", NULL, 1};
+            const StyxMountedScalar entry = tuple ?
+                (StyxMountedScalar){"tuple.dis", "transform", NULL, 0, 1} :
+                (StyxMountedScalar){"wide.dis", "echo", NULL, 1, 0};
             StyxUnibusServer *server = styxunibusserverstartmounted(channel, &entry, 1);
             if (server)
             {
@@ -91,9 +94,9 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL
         };
         const StyxMountedScalar entries[] = {
-            {"helper.dis", "offset", &alternate, 0},
-            {"compute.dis", "compute", NULL, 0},
-            {"compute.dis", "adjust", NULL, 0}
+            {"helper.dis", "offset", &alternate, 0, 0},
+            {"compute.dis", "compute", NULL, 0, 0},
+            {"compute.dis", "adjust", NULL, 0, 0}
         };
         StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries,
             sizeof(entries) / sizeof(entries[0]));

@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 5 && hd fields == "tuple") {
+        serve_tuple(routes, tl fields);
+        return;
+    }
     if (count == 7 && hd fields == "big") {
         serve_big(routes, tl fields);
         return;
@@ -237,5 +241,38 @@ serve_big(routes: Vfsnative, fields: list of string)
                 result = big 1;
         }
         routes->scalarbigreply(reply, replytag, success, result);
+    }
+}
+
+
+
+# EN: Serve tuple requests through a single linked original Dis instance.
+# RU: Обслуживать запросы кортежей одним связанным экземпляром исходного Dis.
+serve_tuple(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    reply := hd tl fields;
+    target := routes->scalartupleload(implementation, name);
+    if (target == nil) {
+        raise "tuple owner implementation link failed";
+    }
+    for (;;) {
+        (ready, narrow, wide) := routes->scalartuplenext(request);
+        if (ready == 0) {
+            return;
+        }
+        result := (0, big 0);
+        success := 1;
+        {
+            result = target->invoke((narrow, wide));
+        } exception {
+            "*" =>
+                success = 0;
+        }
+        routes->scalartuplereply(reply, success, result);
     }
 }

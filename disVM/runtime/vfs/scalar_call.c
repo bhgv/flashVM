@@ -73,7 +73,7 @@ typedef enum ScalarRead
 
 /* EN/RU: Read a complete reply, repeating only empty pending reads for up to 3 seconds.
  * Прочитать полный ответ, повторяя только пустые чтения до трёх секунд. */
-static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode)
+static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode, StyxTuple *tuple)
 {
     struct timespec start;
     if (mode != READ_SESSION && mode != READ_POLL && clock_gettime(CLOCK_MONOTONIC, &start))
@@ -82,7 +82,7 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
     }
     while (!dvm_cancel_requested(dvm_cancel_current()))
     {
-        unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
+        unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
         DVM_IoResult got = dvm_vfs_read_chunk(reply, bytes, sizeof(bytes));
         if ((mode == READ_SESSION || mode == READ_POLL) && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
             !(got.flags & DVM_IO_UNCERTAIN) &&
@@ -92,8 +92,14 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
         }
         if (got.stop != DVM_IO_AGAIN || got.count || (got.flags & DVM_IO_UNCERTAIN))
         {
+            uint32_t pid;
+            if (tuple && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
+                !(got.flags & DVM_IO_UNCERTAIN) && styxtupleread(tag, bytes, got.count, &pid, tuple))
+            {
+                return NULL;
+            }
             StyxScalarKind kind;
-            if (got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) && !(got.flags & DVM_IO_UNCERTAIN) &&
+            if (!tuple && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) && !(got.flags & DVM_IO_UNCERTAIN) &&
                 styxscalarread(tag, bytes, got.count, &kind, value))
             {
                 if (mode != READ_REPLY)
@@ -135,7 +141,7 @@ static const char *exchange(DVM_Provider *request, DVM_Provider *reply,
         DVM_LaunchDelivery sent = styxscalarcallfile(request, request_tag, argument);
         if (sent == DVM_LAUNCH_DELIVERED)
         {
-            failure = receive(&handle, reply_tag, value, READ_REPLY);
+            failure = receive(&handle, reply_tag, value, READ_REPLY, NULL);
         }
         else if (sent == DVM_LAUNCH_UNKNOWN)
         {
@@ -216,7 +222,7 @@ void Vfsnative_scalarcall(void *frame)
 
 /* EN/RU: Read from the checked owner inbox outside managed admission.
  * Читать из проверенного приёмника владельца вне допуска VM. */
-static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result)
+static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result, StyxTuple *tuple)
 {
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
@@ -237,7 +243,7 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     if (provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH) &&
         dvm_provider_open(provider, ".", "r", &handle) == FVM_OK && (handle.native_flags & DVM_VFS_CANCEL_DATA))
     {
-        failure = receive(&handle, (unsigned long)tag, &value, mode);
+        failure = receive(&handle, (unsigned long)tag, &value, mode, tuple);
     }
     dvm_vfs_close(&handle);
     dvm_provider_release(provider);
@@ -247,12 +253,10 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     {
         return cancelled ? "scalar owner request cancelled" : failure;
     }
-    WORD narrowed = (WORD)value;
-    if ((int64_t)narrowed != value)
+    if (result)
     {
-        error("invalid scalar request");
+        *result = (WORD)value;
     }
-    *result = narrowed;
     return NULL;
 }
 
@@ -264,7 +268,7 @@ void Vfsnative_scalartake(void *frame)
     F_Vfsnative_scalartake call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartake, ret), sizeof(*call.ret));
     WORD result = 0;
-    const char *failure = take_request(call.path, call.tag, READ_CALL, &result);
+    const char *failure = take_request(call.path, call.tag, READ_CALL, &result, NULL);
     if (failure)
     {
         error((char *)failure);
@@ -278,7 +282,7 @@ void Vfsnative_scalartake(void *frame)
 static void next_result(String *path, LONG tag, void *ret)
 {
     WORD result[2] = {0};
-    const char *failure = take_request(path, tag, READ_SESSION, &result[1]);
+    const char *failure = take_request(path, tag, READ_SESSION, &result[1], NULL);
     if (failure && failure != session_end)
     {
         error((char *)failure);
@@ -305,7 +309,7 @@ void Vfsnative_scalarpoll(void *frame)
     F_Vfsnative_scalarpoll call;
     WORD result[2] = {0, 0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarpoll, ret), sizeof(result));
-    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1]);
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL);
     if (failure && failure != session_idle && failure != session_end)
     {
         error((char *)failure);
@@ -322,7 +326,7 @@ void Vfsnative_scalarbigpoll(void *frame)
     F_Vfsnative_scalarbigpoll call;
     WORD result[2] = {0, 0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarbigpoll, ret), sizeof(result));
-    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1]);
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL);
     if (failure && failure != session_idle && failure != session_end)
     {
         error((char *)failure);
@@ -332,17 +336,13 @@ void Vfsnative_scalarbigpoll(void *frame)
 }
 
 
-/* EN/RU: Send one result or owner error from the active namespace.
- * Отправить результат или ошибку из пространства владельца. */
-void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t value)
+/* EN: Send a complete pre-encoded owner result through the selected mailbox.
+ * RU: Отправить полную закодированную запись в приёмник владельца. */
+void dvm_scalar_owner_record(String *name, const void *bytes, size_t used)
 {
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
-    unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY];
-    size_t used;
-    StyxScalarKind kind = success == 1 ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR;
-    if (!group || tag <= 0 || tag > UINT32_MAX || !dvm_scalar_copy_path(name, path) ||
-        !styxscalarwrite((unsigned long)tag, kind, value, bytes, sizeof(bytes), &used))
+    if (!group || !dvm_scalar_copy_path(name, path))
     {
         error("scalar owner route unavailable");
     }
@@ -364,53 +364,6 @@ void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t val
 }
 
 
-/* EN: Copy a composed native frame, perform one Styx exchange and publish its result.
- * RU: Скопировать составной кадр, выполнить обмен Styx и записать результат. */
-static void tuple_entry(void *frame, Module *module, DVM_ScalarFiles *files)
-{
-    DirectTupleFrame call;
-    if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
-        (uintptr_t)DVM_R.SP - (uintptr_t)frame < sizeof(call))
-    {
-        error(exBounds);
-    }
-    Type *type;
-    memcpy(&type, (unsigned char *)frame + offsetof(Frame, t), sizeof(type));
-    if (type && type != module->type[1])
-    {
-        error(exModule);
-    }
-    WORD result[2];
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(DirectTupleFrame, ret), sizeof(result));
-    Prog *process = currun();
-    uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
-    DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
-    DVM_Namespace *group = dvm_namespace_current_group();
-    if (!group || call.narrow < INT32_MIN || call.narrow > INT32_MAX)
-    {
-        error("remote tuple call not sent");
-    }
-    DVM_VfsWait *wait;
-    int released = dvm_vfs_path_enter(&wait);
-    if (released < 0)
-    {
-        error("remote tuple call not sent");
-    }
-    StyxTuple argument = {.narrow = (int32_t)call.narrow, .wide = call.wide}, answer;
-    int outcome = dvm_tuple_function_invoke(files, group, descriptors, pid, &argument, &answer);
-    int cancelled = dvm_vfs_wait_end(wait);
-    dvm_runtime_gc_native_enter(released);
-    if (cancelled || outcome != 1)
-    {
-        error(cancelled ? "remote tuple call cancelled" : outcome == 2 ? (char *)owner_error :
-            outcome < 0 ? "remote tuple call not sent" : "remote tuple call outcome unknown");
-    }
-    result[0] = answer.narrow;
-    result[1] = answer.wide;
-    dvm_sys_scalar_result(result, call.ret, sizeof(result));
-}
-
-
 /* EN/RU: Receive a regular typed Dis call and return through its original frame.
  * Принять обычный типизированный вызов Dis и вернуть число через исходный кадр. */
 void dvm_scalar_entry(void *frame, unsigned index)
@@ -428,7 +381,7 @@ void dvm_scalar_entry(void *frame, unsigned index)
     }
     if (files && files->signature == DVM_TUPLE_SIGNATURE)
     {
-        tuple_entry(frame, module, files);
+        dvm_tuple_entry(frame, module, files);
         return;
     }
     uintptr_t address = (uintptr_t)frame;
@@ -475,6 +428,21 @@ void dvm_scalar_entry(void *frame, unsigned index)
         error((char *)failure);
     }
     dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
+/* EN: Publish readiness and two tuple fields only after a complete read.
+ * RU: Выдать готовность и два поля только после полного чтения. */
+void dvm_scalar_tuple_next(String *path, void *ret)
+{
+    StyxTuple tuple = {0};
+    const char *failure = take_request(path, STYX_TUPLE_REQUEST_TAG, READ_SESSION, NULL, &tuple);
+    if (failure && failure != session_end)
+    {
+        error((char *)failure);
+    }
+    WORD cells[] = {!failure, tuple.narrow, tuple.wide};
+    dvm_sys_scalar_result(cells, ret, sizeof(cells));
 }
 
 

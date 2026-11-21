@@ -14,6 +14,8 @@
 #include "disvm/refcount.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
+#include "../../native/terminal/scalar_record.h"
+#include "../../native/terminal/tuple_record.h"
 #include "raise.h"
 #include "vfsnative_decl.h"
 #include "../../native/terminal/scalar_verify.h"
@@ -214,4 +216,74 @@ void Vfsnative_scalarbigreply(void *frame)
     }
     memmove(&call, frame, sizeof(call));
     dvm_scalar_owner_reply(call.path, call.tag, call.success, call.value);
+}
+
+
+
+/* EN: Encode a scalar reply and use the common owner mailbox sender.
+ * RU: Закодировать скалярный ответ и использовать общий приёмник. */
+void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t value)
+{
+    unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY];
+    size_t size;
+    if (tag <= 0 || tag > UINT32_MAX || !styxscalarwrite((unsigned long)tag,
+            success == 1 ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR, value, bytes, sizeof(bytes), &size))
+    {
+        error("invalid scalar reply");
+    }
+    dvm_scalar_owner_record(name, bytes, size);
+}
+
+
+/* EN: Link a local owner export with the compiler's exact tuple signature.
+ * RU: Связать локальный экспорт по точной сигнатуре кортежа. */
+void Vfsnative_scalartupleload(void *frame)
+{
+    F_Vfsnative_scalartupleload call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartupleload, ret), sizeof(*call.ret));
+    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
+    if (!dvm_scalar_copy_path(call.path, path) || !dvm_scalar_copy_path(call.exportname, name) ||
+        !styxscalar_name_length(name))
+    {
+        error("tuple owner implementation unavailable");
+    }
+    Import imports[] = {{(int32_t)DVM_TUPLE_SIGNATURE, name}, {0, NULL}};
+    load_owner(path, imports, call.ret);
+}
+
+
+/* EN: Read one original-Dis tuple request or return clean EOF.
+ * RU: Прочитать один запрос кортежа исходного Dis либо вернуть EOF. */
+void Vfsnative_scalartuplenext(void *frame)
+{
+    F_Vfsnative_scalartuplenext call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartuplenext, ret), 3 * sizeof(WORD));
+    dvm_scalar_tuple_next(call.path, call.ret);
+}
+
+
+/* EN: Send a tuple result or a typed error on the same owner mailbox.
+ * RU: Отправить кортеж или типизированную ошибку в тот же приёмник владельца. */
+void Vfsnative_scalartuplereply(void *frame)
+{
+    F_Vfsnative_scalartuplereply call;
+    if (!frame || frame == H || (uintptr_t)frame > UINTPTR_MAX - sizeof(call))
+    {
+        error(exBounds);
+    }
+    memmove(&call, frame, sizeof(call));
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size;
+    if (call.success == 1 && (call.value.t0 < INT32_MIN || call.value.t0 > INT32_MAX))
+    {
+        error("invalid tuple result width");
+    }
+    StyxTuple tuple = {.narrow = (int32_t)call.value.t0, .wide = call.value.t1};
+    int encoded = call.success == 1 ? styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &tuple, bytes, sizeof(bytes), &size) :
+        styxscalarwrite(STYX_TUPLE_REPLY_TAG, STYX_SCALAR_ERROR, 0, bytes, sizeof(bytes), &size);
+    if (!encoded)
+    {
+        error("invalid tuple reply");
+    }
+    dvm_scalar_owner_record(call.path, bytes, size);
 }

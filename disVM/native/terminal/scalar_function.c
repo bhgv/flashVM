@@ -110,6 +110,10 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
     fid->submitted = 1;
     int outcome = fn->tuple_method(fn->state, self, &argument, &result);
     dvm_provider_release(self);
+    if (outcome < 0 && fid->report_transport_failure)
+    {
+        return Ehungup;
+    }
     int encoded = outcome == 1 ?
         styxtuplewrite(fn->reply_tag, 0, &result, fid->reply, sizeof(fid->reply), &fid->size) :
         styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);

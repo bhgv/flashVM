@@ -126,6 +126,8 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     {
         const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
         int size = snprintf((char *)owner_config, sizeof(owner_config),
+            getenv("DVM_TEST_SCALAR_TUPLE_OWNER") ?
+                "tuple\ttuple-owner.dis\ttransform\t/scalar/request\t/scalar/reply" :
             getenv("DVM_TEST_SCALAR_BIG_OWNER") ?
                 "big\twide-owner.dis\techo\t/scalar/request\t/scalar/reply\t76\t73" :
                 "implementation.dis\tcompute\t/scalar/request\t/scalar/reply\t4294967295\t64\t%s",

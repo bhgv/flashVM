@@ -26,4 +26,8 @@ typedef struct DirectTupleFrame
  * Передать компилированный кадр через слот нативного экспорта. */
 void dvm_scalar_entry(void *frame, unsigned index);
 
+struct DVM_ScalarFiles;
+
+/* EN: Dispatch one compiled composed frame. / RU: Вызвать один составной кадр. */
+void dvm_tuple_entry(void *frame, Module *module, struct DVM_ScalarFiles *files);
 #endif

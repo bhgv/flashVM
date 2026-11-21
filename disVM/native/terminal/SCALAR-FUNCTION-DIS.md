@@ -69,3 +69,18 @@ The service dispatches each mailbox with the corresponding typed frame
 and preserves one module data area across both widths. The
 [mixed caller](../../examples/remote-scalar/styx-mixed-owner.b) checks
 shared state and rejects an incompatible compiled import.
+
+## Tuple export
+
+Set `dis_tuple = 1` on a Dis-backed entry to publish
+`fn((int,big)): (int,big)`. Configure the same owner service with
+the tab-separated fields `tuple`, implementation path, export name,
+request path and reply path. The service links the original function
+once and exchanges composed records with the native dispatcher using
+local mailboxes. The mounted caller uses an ordinary typed `load`.
+
+The [caller](../../examples/remote-scalar/styx-tuple-owner.b) and
+[implementation](../../examples/remote-scalar/tuple-owner.b) verify
+signed extremes, a remote exception and state retained across calls
+in two DisVM processes. The original-Dis tuple route currently has no
+reverse caller context.
