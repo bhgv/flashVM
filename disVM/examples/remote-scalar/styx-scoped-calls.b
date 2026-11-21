@@ -139,6 +139,18 @@ change_live(sys: Sys, exports: Vfsexport, cell, private_cell: ref Vfsexport->Roo
         success = 0;
     }
     set_marker(sys, "refpair-edited");
+    wait_marker(sys, "overflow-ready");
+    for (i := 1; i <= 33; i++) {
+        if (!exports->intset(cell, 65536+i)) {
+            success = 0;
+        }
+    }
+    set_marker(sys, "overflow-done");
+    wait_marker(sys, "recovery-ready");
+    if (!exports->intset(cell, 65536+99)) {
+        success = 0;
+    }
+    set_marker(sys, "recovery-done");
     done <-= success;
 }
 

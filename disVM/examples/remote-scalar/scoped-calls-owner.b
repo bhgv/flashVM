@@ -85,6 +85,7 @@ inspect(fail: int): (int,big)
         if (sys->read(reverse, event, len event) != 0) {
             raise "unexpected record after both granted notifications";
         }
+        check_overflow(sys, reverse, event);
         saved_reverse = reverse;
         saved = sys->open(Caller + ".pid", Sys->OREAD);
         if (saved == nil) {
@@ -220,5 +221,32 @@ initial_grants(sys: Sys, inbox: ref Sys->FD, bytes: array of byte)
         if (n < 12 || string bytes[0:12] != "system 1 63 ") {
             raise "missing initial grant snapshot";
         }
+    }
+}
+
+# EN: Verify overflow, authoritative reread and a subsequent notice on this same fid.
+# RU: Проверить переполнение, повторное чтение значения и следующее уведомление на том же fid.
+check_overflow(sys: Sys, reverse: ref Sys->FD, event: array of byte)
+{
+    set_marker(sys, "overflow-ready");
+    wait_marker(sys, "overflow-done");
+    n := sys->read(reverse, event, len event);
+    if (n < 9 || string event[0:9] != "system 3 " ||
+        !live_value(sys, Caller + ".var/live", 1, 33)) {
+        raise "reverse event overflow did not resync";
+    }
+    n = sys->read(reverse, event, len event);
+    if (n < 22 || string event[0:11] != "system 1 4 " ||
+        string event[n-11:n] != "2f2e766172\n" ||
+        sys->read(reverse, event, len event) != 0) {
+        raise "overflow did not preserve the triggering notice";
+    }
+    set_marker(sys, "recovery-ready");
+    wait_marker(sys, "recovery-done");
+    n = sys->read(reverse, event, len event);
+    if (n < 22 || string event[0:11] != "system 1 4 " ||
+        string event[n-11:n] != "2f2e766172\n" ||
+        !live_value(sys, Caller + ".var/live", 1, 99)) {
+        raise "reverse event stream failed to recover";
     }
 }

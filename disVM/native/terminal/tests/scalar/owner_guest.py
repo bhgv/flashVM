@@ -84,12 +84,20 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
 
 # EN: Relay private test markers between roots in order, bounding the wait.
 # RU: Передать тестовые маркеры между корнями по порядку с ограничением ожидания.
-def relay_ref_pair(owner, caller):
+def relay_ref_pair(owner, caller, overflow=False):
     deadline = time.monotonic() + 3
-    for source, target, name in (
+    markers = (
         (owner, caller, "refpair-entered"),
         (caller, owner, "refpair-edited"),
-    ):
+    )
+    if overflow:
+        markers += (
+            (owner, caller, "overflow-ready"),
+            (caller, owner, "overflow-done"),
+            (owner, caller, "recovery-ready"),
+            (caller, owner, "recovery-done"),
+        )
+    for source, target, name in markers:
         while (source / name).read_bytes() != b"1":
             if time.monotonic() >= deadline:
                 return
@@ -132,7 +140,7 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
         left.close()
         right.close()
         if mounted in ("refpair", "compiled-ref", "scoped-calls"):
-            relay_ref_pair(owner, caller)
+            relay_ref_pair(owner, caller, overflow=mounted == "scoped-calls")
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
         reported = scope_result.read_text() if scope_result else caller_output
@@ -255,7 +263,8 @@ def main():
         hidden = owner / "privatevalue.hidden"
         (caller / "expect-dis-owner").touch()
         marker_paths = [root / marker for root in (owner, caller)
-                        for marker in ("refpair-entered", "refpair-edited")]
+                        for marker in ("refpair-entered", "refpair-edited", "overflow-ready",
+                                       "overflow-done", "recovery-ready", "recovery-done")]
         for mode in ("--no-jit", "--jit"):
             exchange(binary, owner, caller, mode, "PASS mounted Styx original Dis",
                      calls=0, mounted=True)

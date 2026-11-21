@@ -244,3 +244,8 @@ caller changes a third, unshared variable before the two visible
 updates. The test checks that only the two shared notifications arrive.
 
 After the reply, the test also checks that reads on a saved fid are refused.
+
+For the overflow check, the caller makes 33 changes while the provider
+pauses event reads. The provider reads `system 3`, fetches the current
+value from `.var/live` and drains the notice that triggered overflow.
+The next mutation produces a regular content notice on the same fid.
