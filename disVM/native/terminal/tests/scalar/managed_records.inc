@@ -52,3 +52,26 @@ static int managed_layout(void)
         layout.size == 40 && layout.count == 5 && layout.pointers == 0x16 &&
         !memcmp(layout.offset, offsets, sizeof(offsets));
 }
+
+
+/* EN: Verify independent result and update slots and reject an extra child.
+ * RU: Проверить отдельные позиции результата и обновлений и отклонить третью. */
+static int reply_fields(void)
+{
+    unsigned char result[32], updates[32], reply[96], payload[96];
+    size_t a, b, used;
+    StyxReplyField fields[2];
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "abc", 3, result, sizeof(result), &a) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, updates, sizeof(updates), &b) != FVM_S_OK ||
+        !styxcall_reply_write(90, result, a, updates, b, reply, sizeof(reply), &used) ||
+        !styxcall_reply_read(90, reply, used, fields) || fields[0].size != a || fields[1].size != b ||
+        memcmp(fields[0].bytes, result, a) || memcmp(fields[1].bytes, updates, b))
+    {
+        return 0;
+    }
+    memcpy(payload, result, a);
+    memcpy(payload + a, updates, b);
+    memcpy(payload + a + b, updates, b);
+    return fvm_srecord_write(90, payload, a + b + b, reply, sizeof(reply), &used) == FVM_S_OK &&
+        !styxcall_reply_read(90, reply, used, fields) && fields[0].size == a && fields[1].size == b;
+}

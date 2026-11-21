@@ -85,4 +85,23 @@ int styxmanaged_list_read(unsigned long tag, const char *shape, const void *byte
  * Payload и приёмник не пересекаются. Ошибка не меняет used. */
 int styxmanaged_list_write(unsigned long tag, const char *shape, const void *payload, size_t size,
     void *bytes, size_t capacity, size_t *used);
+
+/* EN: Pack exactly two complete records, result first and updates second.
+ * RU: Упаковать ровно две полные записи, результат первым, обновления вторыми. */
+int styxcall_reply_write(unsigned long tag, const void *result, size_t result_size,
+    const void *updates, size_t updates_size, void *bytes, size_t capacity, size_t *used);
+
+
+typedef struct StyxReplyField
+{
+    const void *bytes; /* Borrowed complete encoded field. */
+    size_t size; /* Byte extent of that field. */
+} StyxReplyField;
+
+
+/* EN: Borrow the two encoded fields of a complete checked reply, in order.
+ * RU: Заимствовать два закодированных поля проверенного ответа по порядку.
+ * On failure fields stay unchanged. Callers still validate value types.
+ * При отказе fields сохраняется. Типы значений проверяет вызывающий. */
+int styxcall_reply_read(unsigned long tag, const void *bytes, size_t size, StyxReplyField fields[2]);
 #endif

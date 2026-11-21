@@ -428,3 +428,40 @@ int styxmanaged_list_write(unsigned long tag, const char *shape, const void *pay
     return size <= capacity && managed_payload(shape, payload, size) &&
         fvm_srecord_write(tag, payload, size, bytes, capacity, used) == FVM_S_OK;
 }
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxcall_reply_write(unsigned long tag, const void *result, size_t result_size,
+    const void *updates, size_t updates_size, void *bytes, size_t capacity, size_t *used)
+{
+    FVM_SRecord item;
+    size_t length;
+    if (capacity > STYX_MANAGED_LIST_LIMIT)
+    {
+        capacity = STYX_MANAGED_LIST_LIMIT;
+    }
+    return result_size <= capacity && updates_size <= capacity - result_size &&
+        fvm_srecord_read(result, result_size, capacity, &item, &length) == FVM_S_OK && length == result_size &&
+        fvm_srecord_read(updates, updates_size, capacity, &item, &length) == FVM_S_OK && length == updates_size &&
+        fvm_srecord_write_pair(tag, result, result_size, updates, updates_size, bytes, capacity, used) == FVM_S_OK;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxcall_reply_read(unsigned long tag, const void *bytes, size_t size, StyxReplyField fields[2])
+{
+    FVM_SRecord outer, item;
+    size_t used, first, second;
+    if (!fields || size > STYX_MANAGED_LIST_LIMIT ||
+        fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &outer, &used) != FVM_S_OK ||
+        used != size || outer.tag != tag ||
+        fvm_srecord_read(outer.payload, outer.size, STYX_MANAGED_LIST_LIMIT, &item, &first) != FVM_S_OK ||
+        fvm_srecord_read(outer.payload + first, outer.size - first, STYX_MANAGED_LIST_LIMIT, &item, &second) != FVM_S_OK ||
+        second != outer.size - first)
+    {
+        return 0;
+    }
+    fields[0] = (StyxReplyField){outer.payload, first};
+    fields[1] = (StyxReplyField){outer.payload + first, second};
+    return 1;
+}

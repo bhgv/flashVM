@@ -38,6 +38,8 @@ and [reference layouts](SCALAR-FUNCTION.md#calls-with-compiled-reference-types)
 require type metadata from both images.
 
 
+The single-reference profile uses the [two-position reply envelope](call_record.h). The first record contains the return value and the second contains the updated object. Both are checked before copy-back.
+
 ## Value records for gateway development
 
 The [codec](call_record.h) validates an entire typed list before exposing a

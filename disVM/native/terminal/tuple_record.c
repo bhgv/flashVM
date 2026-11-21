@@ -60,12 +60,12 @@ int styxtupleread(unsigned long tag, const void *bytes, size_t size, uint32_t *p
  * RU: Поместить результат и обновлённый ADT в одну внешнюю запись. */
 int styxrefreplywrite(const StyxRefReply *reply, void *bytes, size_t capacity, size_t *used)
 {
-    unsigned char payload[STYX_FUNCTION_FRAME_CAPACITY];
+    unsigned char result[STYX_FUNCTION_FRAME_CAPACITY], updated[STYX_FUNCTION_FRAME_CAPACITY];
     size_t first, second;
     return reply && bytes && used &&
-        styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &reply->result, payload, sizeof(payload), &first) &&
-        styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &reply->updated, payload + first, sizeof(payload) - first, &second) &&
-        fvm_srecord_write(STYX_REF_REPLY_TAG, payload, first + second, bytes, capacity, used) == FVM_S_OK;
+        styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &reply->result, result, sizeof(result), &first) &&
+        styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &reply->updated, updated, sizeof(updated), &second) &&
+        styxcall_reply_write(STYX_REF_REPLY_TAG, result, first, updated, second, bytes, capacity, used);
 }
 
 
@@ -73,16 +73,12 @@ int styxrefreplywrite(const StyxRefReply *reply, void *bytes, size_t capacity, s
  * RU: Сверить оба снимка и точный кадр до изменения результата. */
 int styxrefreplyread(const void *bytes, size_t size, StyxRefReply *reply)
 {
-    FVM_SRecord outer, first;
-    size_t used, length;
+    StyxReplyField fields[2];
     uint32_t pid;
     StyxRefReply decoded;
-    if (!reply || !bytes ||
-        fvm_srecord_read(bytes, size, STYX_FUNCTION_FRAME_CAPACITY, &outer, &used) != FVM_S_OK ||
-        used != size || outer.tag != STYX_REF_REPLY_TAG ||
-        fvm_srecord_read(outer.payload, outer.size, STYX_FUNCTION_FRAME_CAPACITY, &first, &length) != FVM_S_OK ||
-        !styxtupleread(STYX_TUPLE_REPLY_TAG, outer.payload, length, &pid, &decoded.result) ||
-        !styxtupleread(STYX_TUPLE_REPLY_TAG, outer.payload + length, outer.size - length, &pid, &decoded.updated))
+    if (!reply || size > STYX_FUNCTION_FRAME_CAPACITY || !styxcall_reply_read(STYX_REF_REPLY_TAG, bytes, size, fields) ||
+        !styxtupleread(STYX_TUPLE_REPLY_TAG, fields[0].bytes, fields[0].size, &pid, &decoded.result) ||
+        !styxtupleread(STYX_TUPLE_REPLY_TAG, fields[1].bytes, fields[1].size, &pid, &decoded.updated))
     {
         return 0;
     }
