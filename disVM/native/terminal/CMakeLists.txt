@@ -155,3 +155,12 @@ endif()
 add_executable(terminal-indexed-variable tests/indexed_variable.c)
 target_link_libraries(terminal-indexed-variable PRIVATE styx_unibus_server remote_phy_mux)
 add_test(NAME terminal-indexed-variable COMMAND terminal-indexed-variable)
+
+if(INFERNO_DISVM_TERMINAL_CLI AND INFERNO_LIMBO_COMPILER)
+    add_executable(terminal-caller-mount-peer tests/scalar/mount_peer.c)
+    target_link_libraries(terminal-caller-mount-peer PRIVATE styx_unibus_server remote_phy_mux)
+    add_test(NAME terminal-caller-mount-cli COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar/mount_cli.py"
+        "${INFERNO_DISVM_TERMINAL_CLI}" "${INFERNO_LIMBO_COMPILER}" "$<TARGET_FILE:terminal-caller-mount-peer>")
+    set_tests_properties(terminal-caller-mount-cli PROPERTIES TIMEOUT 75 LABELS "native-guest")
+endif()

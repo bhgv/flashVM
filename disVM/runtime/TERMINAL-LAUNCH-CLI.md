@@ -149,3 +149,24 @@ a nonempty read returns an error indicating that data is pending.
 непустое чтение сообщает, что запись ещё не поступила.
 
 [Native inbox](../native/terminal/UNIBUS-INBOX.md) · [Приёмник](../native/terminal/UNIBUS-INBOX.ru.md)
+
+## Bidirectional mount for a local program
+
+The same SDK-enabled build supports a delegated connected stream for a
+local bootstrap that loads libraries from a peer.
+
+```sh
+disvm --styx-mount-fd 3 -- --no-jit caller.dis
+```
+
+The command mounts the peer at `/peer` in the guest VFS. The host directory
+does not need a `peer` entry. The multiplexed carrier uses channel 0 for
+the forward Styx mount and channel 1 for the caller's virtual context.
+The peer mounts channel 1 and supplies that root to its scoped function
+handler. An ordinary typed `load` and function call then publish the active
+caller automatically. The peer is selected by the delegated connection.
+
+The [Limbo example](../examples/remote-scalar/styx-cli.b) and
+`terminal-caller-mount-cli` check the command with two OS processes and
+both VM execution modes. Configure the native SDK test build with
+`INFERNO_DISVM_TERMINAL_CLI` pointing to the SDK-enabled DisVM executable.

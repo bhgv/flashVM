@@ -25,7 +25,7 @@
 
 /* EN/RU: Duplicate a delegated connected socket, preserving the original FD.
  * Дублировать выданный подключённый сокет, сохранив исходный FD. */
-static int connected(const char *value)
+int dvm_terminal_connected(const char *value)
 {
     char *end;
     long number = strtol(value, &end, 10);
@@ -176,7 +176,7 @@ int dvm_terminal_launch_cli(int argc, char **argv)
             "[--inherit-fd NUMBER r|w|rw]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
-    int fd = connected(config.fd);
+    int fd = dvm_terminal_connected(config.fd);
     if (fd < 0)
     {
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");

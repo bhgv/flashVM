@@ -29,9 +29,9 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         endif()
         list(APPEND terminal_launch_libraries "${path}")
     endforeach()
-    target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c)
+    target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c)
     target_compile_definitions(disvm PRIVATE DVM_TERMINAL_LAUNCH=1)
-    set_property(SOURCE terminal_launch/cli.c terminal_launch/config.c APPEND PROPERTY INCLUDE_DIRECTORIES
+    set_property(SOURCE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c APPEND PROPERTY INCLUDE_DIRECTORIES
         "${root}/disVM/native/client" "${root}/disVM/native/terminal"
         "${root}/disVM/native/terminal/order" "${root}/disVM/native/vfs"
         "${root}/disVM/native/launch" "${CMAKE_CURRENT_SOURCE_DIR}/vfs"

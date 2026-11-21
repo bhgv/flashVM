@@ -33,4 +33,7 @@ typedef struct TerminalLaunchConfig
 /* EN/RU: Parse borrowed argv without I/O; config is caller owned, returns 1/0.
  * Разобрать заимствованные argv без I/O; config принадлежит вызывающему, 1/0. */
 int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *config);
+/* EN: Duplicate the borrowed delegated stream descriptor, or return -1.
+ * RU: Дублировать выданный потоковый FD либо вернуть -1. */
+int dvm_terminal_connected(const char *value);
 #endif
