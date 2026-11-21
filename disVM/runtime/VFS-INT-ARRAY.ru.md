@@ -31,3 +31,5 @@ intarray: fn(cells: list of ref Root): ref Root;
 Массив можно вложить в поле [записи VFS](VFS-VARIABLE-RECORD.ru.md).
 
 См. также [живые гибридные таблицы в VFS](VFS-HYBRID-TABLE.ru.md).
+
+Массив с изменяемой длиной описан в [Vfsexport.bigvector](VFS-BIG-VECTOR.ru.md).

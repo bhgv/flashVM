@@ -33,6 +33,9 @@ Vfsexport: module
     record: fn(fields: list of (string, ref Root)): ref Root;
     # Source uses the opaque reference layout of Bigtable.Handle.
     table: fn(source: ref Root): ref Root;
+    # EN: Allocate an empty growable vector of big values shared through VFS.
+    # RU: Создать пустой растущий массив значений big с общим доступом через VFS.
+    bigvector: fn(): ref Root;
     intget: fn(root: ref Root): (int,int);
     intset: fn(root: ref Root, value: int): int;
 

@@ -33,6 +33,7 @@ typedef struct TableProjection
     struct TableStorage *storage; /* Owned native table reference. */
     unsigned references; /* One builder reference plus one per provider. */
     FVM_PortSync *lock; /* Serializes selection admission and pins. */
+    int vector; /* Only the dense part is exposed and populated. */
     TableSelection *selectors; /* Open selectors. */
 } TableProjection;
 
@@ -204,7 +205,15 @@ static void table_write(void *state, const void *data, size_t size, DVM_IoResult
         request.operation = FVM_TABLE_ADD;
         break;
     case Index:
-        if (!decode_key(bytes, size, &request.key))
+        if (cursor->node->table->vector)
+        {
+            if (size != 8)
+            {
+                return;
+            }
+            request.key = (FhtKey){.kind = FHT_INDEX, .index = word(bytes)};
+        }
+        else if (!decode_key(bytes, size, &request.key))
         {
             return;
         }
@@ -340,31 +349,38 @@ static int map_node(DVM_View *view, TableProjection *table, TableNodeKind kind, 
 }
 
 
-/* EN: Pin an exact source table and publish a live VFS directory for it.
- * RU: Удержать точную таблицу и опубликовать её живой каталог VFS. */
-static DVM_Provider *table_view(void *source)
+/* EN: Consume storage and publish its live directory. Vector mode exposes only positional operations.
+ * RU: Принять владение хранилищем и опубликовать живой каталог. Массив открывает только позиционные операции. */
+static DVM_Provider *table_view(struct TableStorage *storage, int vector)
 {
+    if (!storage)
+    {
+        return NULL;
+    }
     TableProjection *table = calloc(1, sizeof(*table));
     if (!table)
     {
+        dvm_bigtable_storage_release(storage);
         return NULL;
     }
     table->lock = fvm_port_sync_create();
     if (!table->lock)
     {
+        dvm_bigtable_storage_release(storage);
         free(table);
         return NULL;
     }
-    table->storage = dvm_bigtable_storage_retain(source);
+    table->storage = storage;
+    table->vector = vector;
     table->references = 1;
-    DVM_View *view = table->storage ? dvm_view_create(NULL, NULL, NULL) : NULL;
-    int mapped = view && dvm_cap_map_metadata(view, "/.type", "table of big\n") &&
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    int mapped = view && dvm_cap_map_metadata(view, "/.type", vector ? "vector of big\n" : "table of big\n") &&
         map_node(view, table, Length, "/.len", FVM_ACCESS_READ) &&
-        map_node(view, table, Count, "/.count", FVM_ACCESS_READ) &&
+        (vector || map_node(view, table, Count, "/.count", FVM_ACCESS_READ)) &&
         map_node(view, table, Insert, "/.ins", FVM_ACCESS_WRITE) &&
         map_node(view, table, Push, "/.push", FVM_ACCESS_WRITE) &&
         map_node(view, table, Pop, "/.pop", FVM_ACCESS_READ) &&
-        map_node(view, table, Add, "/.add", FVM_ACCESS_WRITE) &&
+        (vector || map_node(view, table, Add, "/.add", FVM_ACCESS_WRITE)) &&
         map_node(view, table, Index, "/.idx", FVM_ACCESS_WRITE) &&
         map_node(view, table, Value, "/.val", FVM_ACCESS_READ | FVM_ACCESS_WRITE);
     release_projection(table);
@@ -387,7 +403,29 @@ void Vfsexport_table(void *frame)
     void *value = dvm_cap_new(DVM_CAP_ROOT, &state);
     if (state)
     {
-        state->root = table_view(call.source);
+        state->root = table_view(dvm_bigtable_storage_retain(call.source), 0);
+        if (!state->root)
+        {
+            dvm_cap_abandon(value);
+            value = H;
+        }
+    }
+    dvm_cap_publish(value, call.ret);
+}
+
+
+/* EN: Return a GC-owned capability for private growable big storage, or nil on allocation failure.
+ * RU: Вернуть управляемую возможность растущего массива big либо nil при ошибке выделения. */
+void Vfsexport_bigvector(void *frame)
+{
+    F_Vfsexport_bigvector call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsexport_bigvector, ret), sizeof(*call.ret));
+    DVM_CapState *state;
+    void *value = dvm_cap_new(DVM_CAP_ROOT, &state);
+    if (state)
+    {
+        int status;
+        state->root = table_view(dvm_bigtable_storage_create(&status), 1);
         if (!state->root)
         {
             dvm_cap_abandon(value);

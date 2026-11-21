@@ -57,6 +57,7 @@ inspect(fail: int): (int,big)
     }
     if (fail == 7) {
         edit_hybrid_table(sys);
+        grow_vector(sys);
         return (pid, big 0);
     }
     if (fail == 6) {
@@ -459,4 +460,41 @@ edit_hybrid_table(sys: Sys)
     edit_table_entry(sys, path, relative, 20, -1);
     numeric[8] = byte 5;
     edit_table_entry(sys, path, numeric, 50, -1);
+}
+
+
+# EN: Exercise growth, positional selection, update, and shrink on the caller's vector.
+# RU: Проверить рост, выбор позиции, обновление и уменьшение массива клиента.
+grow_vector(sys: Sys)
+{
+    path := Caller + ".var/growing/";
+    value := array[8] of byte;
+    insert := array[16] of byte;
+    for (i := 0; i < len value; i++) {
+        insert[i] = byte 0;
+        insert[i+8] = byte 0;
+    }
+    if (contents(sys, path + ".type", 24) != "vector of big\n" ||
+        contents(sys, path + ".len", 8) != "0\n" ||
+        sys->open(path + ".add", Sys->OWRITE) != nil) {
+        raise "invalid growable vector directory";
+    }
+    if (!table_write(sys, path + ".push", array[] of {byte 0, byte 0, byte 0, byte 0,
+        byte 0, byte 0, byte 0, byte 10})) {
+        raise "vector push failed";
+    }
+    insert[7] = byte 1;
+    insert[15] = byte 20;
+    if (!table_write(sys, path + ".ins", insert) || contents(sys, path + ".len", 8) != "2\n") {
+        raise "vector insert did not extend the dense part";
+    }
+    edit_table_entry(sys, path, array[] of {byte 255, byte 255, byte 255, byte 255,
+        byte 255, byte 255, byte 255, byte 255}, 20, 21);
+    pop := sys->open(path + ".pop", Sys->OREAD);
+    if (pop == nil || sys->read(pop, value, 8) != 8 || value[7] != byte 21 ||
+        sys->read(pop, value, 8) != 0 || contents(sys, path + ".len", 8) != "1\n") {
+        raise "vector pop lost the updated last element or repeated";
+    }
+    edit_table_entry(sys, path, array[] of {byte 0, byte 0, byte 0, byte 0,
+        byte 0, byte 0, byte 0, byte 0}, 10, -1);
 }

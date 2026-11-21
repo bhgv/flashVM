@@ -3,6 +3,22 @@
  * RU: Удерживать скалярное хранилище таблицы между операциями VFS.
  */
 
+/* EN: Allocate private, empty scalar storage. Report initialization failure through status.
+ * RU: Выделить пустое частное скалярное хранилище. Ошибку инициализации вернуть в status. */
+TableStorage *dvm_bigtable_storage_create(int *status)
+{
+    TableStorage *storage = calloc(1, sizeof(*storage));
+    *status = storage ? fvm_table_owner_init(&storage->native, NULL) : ENOMEM;
+    if (*status)
+    {
+        free(storage);
+        return NULL;
+    }
+    storage->references = 1;
+    return storage;
+}
+
+
 /* EN: Pin storage from a borrowed exact managed handle.
  * RU: Удержать хранилище заимствованного точного дескриптора VM. */
 TableStorage *dvm_bigtable_storage_retain(void *value)

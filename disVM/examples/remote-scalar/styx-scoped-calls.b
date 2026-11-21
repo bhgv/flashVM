@@ -63,6 +63,11 @@ init()
         tables->addindex(tab, big 5, big 50) != tables->Ok || tables->addtext(tab, "1", big 90) != tables->Ok) {
         raise "could not seed a live hybrid table";
     }
+    growing := exports->bigvector();
+    if (growing == nil) {
+        raise "could not allocate growable vector";
+    }
+    vars = exports->overlay(vars, growing, "/growing", rights | Vfsexport->Write, Vfsexport->Tree);
     shared_table := exports->table(tab);
     vars = exports->overlay(vars, shared_table, "/table", rights | Vfsexport->Write, Vfsexport->Tree);
     if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
@@ -148,6 +153,12 @@ init()
         dense_status != tables->Ok || dense != big 17 || sparse_status != tables->Ok || sparse != big 50 ||
         text_status != tables->Ok || text != big 91 || added_status != tables->Ok || added != big 77) {
         raise "reverse VFS edits did not reach the live hybrid table";
+    }
+    lengthfd := sys->open("/.var/growing/.len", Sys->OREAD);
+    lengthbytes := array[2] of byte;
+    if (lengthfd == nil || sys->read(lengthfd, lengthbytes, 2) != 2 ||
+        lengthbytes[0] != byte '1' || lengthbytes[1] != byte 10) {
+        raise "remote vector growth is missing in the caller namespace";
     }
     tab = nil;
     (retained_pid, retained_count) := service->inspect(8);

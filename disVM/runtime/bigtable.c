@@ -240,14 +240,12 @@ static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
  * construction after a VM exception. No heap reference escapes into C storage. */
 static void initialize_table(TableOwner *owner)
 {
-    TableStorage *storage = calloc(1, sizeof(*storage));
-    int failure = storage ? fvm_table_owner_init(&storage->native, NULL) : ENOMEM;
-    if (failure)
+    int failure;
+    TableStorage *storage = dvm_bigtable_storage_create(&failure);
+    if (!storage)
     {
-        free(storage);
         error(failure == ENOMEM ? exNomem : "native table guard initialization failure");
     }
-    storage->references = 1;
     owner->storage = storage;
     owner->ready = 1;
     fvm_port_registry_lock();
