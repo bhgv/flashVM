@@ -355,3 +355,12 @@ inbox. See [remote call events](../../runtime/SYSTEM-EVENTS.md#remote-call-names
 The scoped form is available for additional signatures selected by
 the compiled shape.
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount).
+
+### Explicit end of a request
+
+A native client may write tag 94 with one complete ordinary function
+request as its payload, then write an empty tag 95 at the next byte
+offset on the same open fid. The first write stages bytes without
+dispatch. The second validates and dispatches the staged request.
+Reads at offset zero before dispatch return zero bytes. Closing the fid before tag 95
+discards the staged request. Existing single-write clients still work.

@@ -10,6 +10,8 @@
 #define STYX_SCOPED_OFFER_TAG 91UL /* Shaped export requiring a caller lease. */
 #define STYX_SCOPED_CALL_TAG 92UL /* PID and one original call request. */
 #define STYX_LOCAL_CONTEXT_TAG 93UL /* Private envelope with a native provider attached. */
+#define STYX_CALL_STAGE_TAG 94UL /* Bounded request staged on one open function fid. */
+#define STYX_CALL_END_TAG 95UL /* Empty record committing the staged request. */
 #define STYX_SCOPED_CALL_OVERHEAD 8U /* Four PID bytes plus S-record framing. */
 
 

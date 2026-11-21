@@ -16,6 +16,7 @@
 #include "unibus_server.h"
 #include "caller_styx.h"
 #include "mount.h"
+#include "staged_call.h"
 #include "mux/bidir.h"
 #include "drivers/posix/fd.h"
 #include <pthread.h>
@@ -342,8 +343,7 @@ static void mounted_function(void)
     styxclientclunk(rejected);
     check(styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, 70, bytes, sizeof(bytes), &size),
         "restore valid request");
-    styxclientwrite(first, 0, bytes, size, &transfer);
-    check(transfer.success && transfer.confirmed && transfer.count == size, "first invocation");
+    check(staged_call(first, bytes, size), "explicit end dispatches on the same fid");
     check(styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, -1, bytes, sizeof(bytes), &size), "encode error case");
     styxclientwrite(second, 0, bytes, size, &transfer);
     check(transfer.success && transfer.count == size, "second invocation");

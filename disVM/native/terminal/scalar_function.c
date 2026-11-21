@@ -8,6 +8,7 @@
 #include "scalar_function.h"
 #include "scalar_verify.h"
 #include "call_scope.h"
+#include "flashvm/srecord.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,9 @@ typedef struct FunctionFid
 {
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
     int report_transport_failure; /* Interpret negative service status as missing reply. */
+    size_t staged_size; /* Bytes of the legacy request awaiting the end record. */
+    size_t write_offset; /* Exact offset after the staged envelope. */
+    unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD]; /* Request owned by this fid. */
     int submitted;              /* A validated request reached the method. */
     size_t size;                 /* Reply length, zero before an accepted request. */
     unsigned char reply[STYX_FUNCTION_FRAME_CAPACITY]; /* Immutable encoded response. */
@@ -224,15 +228,10 @@ static char *ref_pair_call(FunctionFid *fid, const void *bytes, size_t count, ui
 }
 
 
-/* EN/RU: Validate one whole request at offset zero and store the method's reply.
- * Проверить полный запрос по смещению ноль и сохранить ответ метода. */
-char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
+/* EN: Validate and dispatch one complete legacy-format request.
+ * RU: Проверить и передать один полный запрос прежнего формата. */
+static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
 {
-    FunctionFid *fid = state;
-    if (!fid || fid->submitted || offset || count > STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD)
-    {
-        return Ebadarg;
-    }
     const StyxScalarFunction *function = &fid->function;
     uint32_t scoped_pid = 0;
     const void *request = bytes;
@@ -295,11 +294,53 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
 }
 
 
+/* EN: Accept legacy requests or a staged request followed by an explicit end record.
+ * RU: Принять прежний запрос либо отложенный запрос с отдельной записью конца. */
+char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
+{
+    FunctionFid *fid = state;
+    if (!fid || fid->submitted || offset < 0 || (uint64_t)offset != fid->write_offset)
+    {
+        return Ebadarg;
+    }
+    FVM_SRecord record;
+    size_t used;
+    int complete = count <= sizeof(fid->staged) + STYX_SCOPED_CALL_OVERHEAD &&
+        fvm_srecord_read(bytes, count, sizeof(fid->staged) + STYX_SCOPED_CALL_OVERHEAD,
+            &record, &used) == FVM_S_OK && used == count;
+    if (fid->staged_size)
+    {
+        if (!complete || record.tag != STYX_CALL_END_TAG || record.size)
+        {
+            return Ebadarg;
+        }
+        return dispatch(fid, fid->staged, fid->staged_size);
+    }
+    if (complete && record.tag == STYX_CALL_STAGE_TAG)
+    {
+        if (!record.size || record.size > sizeof(fid->staged))
+        {
+            return Ebadarg;
+        }
+        memcpy(fid->staged, record.payload, record.size);
+        fid->staged_size = record.size;
+        fid->write_offset = count;
+        return nil;
+    }
+    return count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
+}
+
+
 /* EN/RU: Copy a reply slice to bytes and report its count; reject reads before a request.
  * Копировать часть ответа в bytes и вернуть размер; отказать до получения запроса. */
 char *styxscalarfunctionread(void *state, char *bytes, ulong *count, vlong offset)
 {
     FunctionFid *fid = state;
+    if (fid && fid->staged_size && !fid->submitted && offset == 0)
+    {
+        *count = 0;
+        return nil;
+    }
     if (!fid || !fid->size || offset < 0)
     {
         return Ebadarg;
