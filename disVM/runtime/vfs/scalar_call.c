@@ -379,6 +379,11 @@ void dvm_scalar_entry(void *frame, unsigned index)
     {
         error(exModule);
     }
+    if (files && files->signature == DVM_REF_SIGNATURE)
+    {
+        dvm_ref_entry(frame, module, files);
+        return;
+    }
     if (files && files->signature == DVM_TUPLE_SIGNATURE)
     {
         dvm_tuple_entry(frame, module, files);
@@ -433,10 +438,10 @@ void dvm_scalar_entry(void *frame, unsigned index)
 
 /* EN: Publish readiness and two tuple fields only after a complete read.
  * RU: Выдать готовность и два поля только после полного чтения. */
-void dvm_scalar_tuple_next(String *path, void *ret)
+void dvm_scalar_tuple_next(String *path, unsigned long tag, void *ret)
 {
     StyxTuple tuple = {0};
-    const char *failure = take_request(path, STYX_TUPLE_REQUEST_TAG, READ_SESSION, NULL, &tuple);
+    const char *failure = take_request(path, tag, READ_SESSION, NULL, &tuple);
     if (failure && failure != session_end)
     {
         error((char *)failure);

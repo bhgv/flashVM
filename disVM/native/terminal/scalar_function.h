@@ -18,6 +18,7 @@ typedef struct StyxScalarFunction
     DVM_Provider *program_root; /* Borrowed reverse module root through server join. */
     int (*program_method)(void *, DVM_Provider *, int64_t, int64_t *); /* Borrow the exact .self during dispatch. */
     int (*tuple_method)(void *, DVM_Provider *, const StyxTuple *, StyxTuple *); /* One typed tuple call. */
+    int (*ref_method)(void *, DVM_Provider *, const StyxTuple *, StyxRefReply *); /* Return and copy-back fields. */
 } StyxScalarFunction;
 
 

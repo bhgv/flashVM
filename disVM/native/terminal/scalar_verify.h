@@ -6,6 +6,10 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_REF_SIGNATURE 0xadb273baU /* Compiled fn(ref Cell): (int,big). */
+#define STYX_REF_REQUEST_TAG 81UL /* ADT snapshot argument. */
+#define STYX_REF_CALLER_TAG 82UL /* ADT snapshot with caller context. */
+#define STYX_REF_REPLY_TAG 83UL /* Return tuple followed by the updated ADT fields. */
 #define DVM_TUPLE_SIGNATURE 0xbbfc530eU /* Compiled fn((int,big)): (int,big). */
 #define STYX_TUPLE_REQUEST_TAG 78UL /* Tuple argument. */
 #define STYX_TUPLE_REPLY_TAG 79UL /* Tuple result. */

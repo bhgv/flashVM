@@ -104,18 +104,48 @@ static int tuple_dispatch(void *state, DVM_Provider *self, const StyxTuple *argu
 }
 
 
-/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
-int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple)
+/* EN: Exchange the input fields and two validated output snapshots with owner.
+ * RU: Обменять поля аргумента и два проверенных снимка с владельцем. */
+static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argument, StyxRefReply *value)
 {
-    if (big && tuple)
+    (void)self;
+    StyxScalarFunctionOwner *owner = state;
+    unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size, received;
+    StyxScalarKind kind;
+    int64_t code;
+    if (styxtuplewrite(STYX_REF_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
+        exchange(owner, record, size, &received))
+    {
+        if (styxrefreplyread(record, received, value))
+        {
+            return 1;
+        }
+        if (styxscalarread(STYX_REF_REPLY_TAG, record, received, &kind, &code) && kind == STYX_SCALAR_ERROR)
+        {
+            return 0;
+        }
+    }
+    return retire(owner);
+}
+
+
+/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
+int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple, int ref)
+{
+    if (!!big + !!tuple + !!ref > 1)
     {
         return 0;
     }
-    owner->request_tag = tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
+    owner->request_tag = ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
     function->request_tag = owner->request_tag;
     function->reply_tag = styxfunction_reply_tag(owner->request_tag);
     function->state = owner;
-    if (tuple)
+    if (ref)
+    {
+        function->ref_method = ref_dispatch;
+    }
+    else if (tuple)
     {
         function->tuple_method = tuple_dispatch;
     }

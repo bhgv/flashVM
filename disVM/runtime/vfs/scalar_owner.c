@@ -235,20 +235,49 @@ void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t val
 }
 
 
+/* EN: Bind the chosen named export to one slot with the required signature.
+ * RU: Связать выбранный именованный экспорт с одним слотом по сигнатуре. */
+static void load_composed(String *path_input, String *name_input, uint32_t signature, Modlink **ret)
+{
+    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
+    if (!dvm_scalar_copy_path(path_input, path) || !dvm_scalar_copy_path(name_input, name) ||
+        !styxscalar_name_length(name))
+    {
+        error(signature == DVM_REF_SIGNATURE ? "ref owner implementation unavailable" :
+            "tuple owner implementation unavailable");
+    }
+    Import imports[] = {{(int32_t)signature, name}, {0, NULL}};
+    load_owner(path, imports, ret);
+}
+
+
 /* EN: Link a local owner export with the compiler's exact tuple signature.
  * RU: Связать локальный экспорт по точной сигнатуре кортежа. */
 void Vfsnative_scalartupleload(void *frame)
 {
     F_Vfsnative_scalartupleload call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartupleload, ret), sizeof(*call.ret));
-    char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
-    if (!dvm_scalar_copy_path(call.path, path) || !dvm_scalar_copy_path(call.exportname, name) ||
-        !styxscalar_name_length(name))
-    {
-        error("tuple owner implementation unavailable");
-    }
-    Import imports[] = {{(int32_t)DVM_TUPLE_SIGNATURE, name}, {0, NULL}};
-    load_owner(path, imports, call.ret);
+    load_composed(call.path, call.exportname, DVM_TUPLE_SIGNATURE, call.ret);
+}
+
+
+/* EN: Link a local owner export with the exact scalar-field ref signature.
+ * RU: Связать локальный экспорт по точной сигнатуре скалярного ref. */
+void Vfsnative_scalarrefload(void *frame)
+{
+    F_Vfsnative_scalarrefload call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefload, ret), sizeof(*call.ret));
+    load_composed(call.path, call.exportname, DVM_REF_SIGNATURE, call.ret);
+}
+
+
+/* EN: Read one snapshot of the client's scalar fields or return clean EOF.
+ * RU: Прочитать один снимок полей клиента либо вернуть EOF. */
+void Vfsnative_scalarrefnext(void *frame)
+{
+    F_Vfsnative_scalarrefnext call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefnext, ret), 3 * sizeof(WORD));
+    dvm_scalar_tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret);
 }
 
 
@@ -258,7 +287,7 @@ void Vfsnative_scalartuplenext(void *frame)
 {
     F_Vfsnative_scalartuplenext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartuplenext, ret), 3 * sizeof(WORD));
-    dvm_scalar_tuple_next(call.path, call.ret);
+    dvm_scalar_tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret);
 }
 
 
@@ -284,6 +313,38 @@ void Vfsnative_scalartuplereply(void *frame)
     if (!encoded)
     {
         error("invalid tuple reply");
+    }
+    dvm_scalar_owner_record(call.path, bytes, size);
+}
+
+
+
+/* EN: Send one complete success record or a typed error on the owner mailbox.
+ * RU: Отправить полную запись успеха или типизированную ошибку в приёмник. */
+void Vfsnative_scalarrefreply(void *frame)
+{
+    F_Vfsnative_scalarrefreply call;
+    if (!frame || frame == H || (uintptr_t)frame > UINTPTR_MAX - sizeof(call))
+    {
+        error(exBounds);
+    }
+    memmove(&call, frame, sizeof(call));
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size;
+    if (call.success == 1 && (call.value.t0 < INT32_MIN || call.value.t0 > INT32_MAX ||
+        call.updated.t0 < INT32_MIN || call.updated.t0 > INT32_MAX))
+    {
+        error("invalid ref result width");
+    }
+    const StyxRefReply reply = {
+        .result = {(int32_t)call.value.t0, call.value.t1},
+        .updated = {(int32_t)call.updated.t0, call.updated.t1}
+    };
+    int encoded = call.success == 1 ? styxrefreplywrite(&reply, bytes, sizeof(bytes), &size) :
+        styxscalarwrite(STYX_REF_REPLY_TAG, STYX_SCALAR_ERROR, 0, bytes, sizeof(bytes), &size);
+    if (!encoded)
+    {
+        error("invalid ref reply");
     }
     dvm_scalar_owner_record(call.path, bytes, size);
 }

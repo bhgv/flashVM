@@ -11,6 +11,17 @@ Scalartupleimplementation: module
     invoke: fn(value: (int,big)): (int,big); # One linked tuple export.
 };
 
+Scalarrefcell: adt
+{
+    narrow: int; # Copied signed int.
+    wide: big;   # Copied signed big.
+};
+
+Scalarrefimplementation: module
+{
+    invoke: fn(value: ref Scalarrefcell): (int,big); # One linked ref export.
+};
+
 Scalarbigimplementation: module
 {
     invoke: fn(value: big): big; # Single linked full-width export.
@@ -102,4 +113,9 @@ Vfsnative: module
     scalartupleload: fn(path, exportname: string): Scalartupleimplementation;
     scalartuplenext: fn(path: string): (int, int, big);
     scalartuplereply: fn(path: string, success: int, value: (int,big));
+    # EN: Original Dis ref export and its local copy-back mailboxes.
+    # RU: Исходный экспорт ref Dis и его локальные приёмники обновлений.
+    scalarrefload: fn(path, exportname: string): Scalarrefimplementation;
+    scalarrefnext: fn(path: string): (int, int, big);
+    scalarrefreply: fn(path: string, success: int, value, updated: (int,big));
 };

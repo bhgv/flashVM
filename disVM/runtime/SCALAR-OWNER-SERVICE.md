@@ -50,3 +50,20 @@ mailbox reaches EOF. The single-export startup format above remains available.
 The two-DisVM example serves `compute` and `adjust` from the same implementation.
 Alternating the functions, including a call that raises, verifies that both
 observe the same counter. See [the runnable mounted example](../native/terminal/SCALAR-FUNCTION-MOUNTED.md).
+
+## One referenced ADT export
+
+For a mounted export with the [scalar-field ref profile](../native/terminal/SCALAR-FUNCTION.md#copy-back-a-referenced-adt),
+the publisher sets `dis_ref` on its `StyxMountedScalar` entry. Start the shared
+service with five tab-separated fields.
+
+```text
+ref  implementation  export  request  reply
+```
+
+The service binds the named export once and waits for requests until EOF.
+For each request it allocates an owner-local ADT from the input snapshot
+and invokes the linked export. On success the service sends the return
+tuple and the ADT's final scalar fields. An exception sends an error record
+and the caller keeps its original field values. The startup format uses
+the unscoped request. See the [runnable example](../examples/remote-scalar/STYX.md#copy-back-from-an-original-dis-export).

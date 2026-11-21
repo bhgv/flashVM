@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 5 && hd fields == "ref") {
+        serve_ref(routes, tl fields);
+        return;
+    }
     if (count == 5 && hd fields == "tuple") {
         serve_tuple(routes, tl fields);
         return;
@@ -274,5 +278,39 @@ serve_tuple(routes: Vfsnative, fields: list of string)
                 success = 0;
         }
         routes->scalartuplereply(reply, success, result);
+    }
+}
+
+
+
+# EN: Link the configured export once and pass one temporary managed cell per request.
+# RU: Связать настроенный экспорт один раз и выделить временный объект на каждый запрос.
+serve_ref(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    reply := hd tl fields;
+    target := routes->scalarrefload(implementation, name);
+    if (target == nil) {
+        raise "ref owner implementation link failed";
+    }
+    for (;;) {
+        (ready, narrow, wide) := routes->scalarrefnext(request);
+        if (ready == 0) {
+            return;
+        }
+        cell := ref Scalarrefcell(narrow, wide);
+        result := (0, big 0);
+        success := 1;
+        {
+            result = target->invoke(cell);
+        } exception {
+            "*" =>
+                success = 0;
+        }
+        routes->scalarrefreply(reply, success, result, (cell.narrow, cell.wide));
     }
 }

@@ -4,6 +4,8 @@
  */
 #include "scalar_record.h"
 #include "scalar_route.h"
+#include "scalar_verify.h"
+#include "tuple_record.h"
 #include "unibus_inbox.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
@@ -50,6 +52,29 @@ static int mailbox(void)
     dvm_vfs_close(&reader);
     dvm_provider_release(provider);
     return ok;
+}
+
+
+/* EN: A valid return followed by a missing update must leave both outputs intact.
+ * RU: При корректном результате без обновления оба выходных значения сохраняются. */
+static int ref_reply(void)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY], payload[STYX_FUNCTION_FRAME_CAPACITY];
+    const StyxRefReply expected = {{INT32_MIN, INT64_MIN}, {INT32_MAX, INT64_MAX}};
+    StyxRefReply decoded = {0};
+    size_t size, first;
+    if (!styxrefreplywrite(&expected, bytes, sizeof(bytes), &size) ||
+        !styxrefreplyread(bytes, size, &decoded) ||
+        decoded.result.narrow != expected.result.narrow || decoded.result.wide != expected.result.wide ||
+        decoded.updated.narrow != expected.updated.narrow || decoded.updated.wide != expected.updated.wide ||
+        !styxtuplewrite(STYX_TUPLE_REPLY_TAG, 0, &expected.updated, payload, sizeof(payload), &first) ||
+        fvm_srecord_write(STYX_REF_REPLY_TAG, payload, first, bytes, sizeof(bytes), &size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    return !styxrefreplyread(bytes, size, &decoded) &&
+        decoded.result.narrow == expected.result.narrow && decoded.result.wide == expected.result.wide &&
+        decoded.updated.narrow == expected.updated.narrow && decoded.updated.wide == expected.updated.wide;
 }
 
 
@@ -125,6 +150,11 @@ int main(void)
         decoded != STYX_SCALAR_VALUE || value != 99 || calls != 2)
     {
         fputs("scalar method dispatch failed\n", stderr);
+        return 1;
+    }
+    if (!ref_reply())
+    {
+        fputs("ref reply round trip or staging failed\n", stderr);
         return 1;
     }
     if (!mailbox())

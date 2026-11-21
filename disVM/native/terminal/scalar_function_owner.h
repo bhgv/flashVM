@@ -21,5 +21,5 @@ int styxscalarfunctiondispatch(void *state, int64_t argument, int64_t *value);
 /* EN: Create the local mailbox pair and select the compiled callback.
  * RU: Создать локальную пару приёмников и выбрать callback по ABI. */
 int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, struct StyxScalarFunction *function,
-    int big, int tuple);
+    int big, int tuple, int ref);
 #endif

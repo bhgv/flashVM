@@ -83,3 +83,16 @@ In the two-VM test, the owner publishes its actual `implementation.dis` over
 [Styx](../../native/terminal/UNIBUS-SERVER-FILE.md). The caller mounts the
 original and `.unibus` from the same session, pairs the original with its local
 adapter, and reads the original bytes through the same bound path used by `load`.
+
+## Copy-back from an original Dis export
+
+The same `owner_guest.py` command compiles [the shared interface](ref.m),
+[the caller](styx-ref-owner.b) and [the provider implementation](ref-owner.b).
+The caller uses ordinary `load Refexample "/peer/mounted/ref.dis"` and invokes
+`revise`. The return tuple carries the owner's call counter and the original
+`big` field. The provider changes both fields and the caller checks them
+through a second reference to its object. It also checks that an exception
+after the provider's writes leaves the caller's fields intact, that a nil
+reference is rejected locally, and that the next call observes the counter
+in the same loaded module. Expect `PASS mounted original ref Dis` in both
+execution modes. The driver closes both VM processes and their temporary roots.

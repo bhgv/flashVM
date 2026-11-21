@@ -67,5 +67,22 @@ init()
     if (narrow != 2 || wide != -big 9223372036854775807 - big 1) {
         raise "remote tuple did not recover after exception";
     }
+    object := ref Cell(40, -big 9223372036854775807 - big 1);
+    alias := object;
+    (narrow, wide) = service->revise(object);
+    if (narrow != 40 || wide != -big 9223372036854775807 - big 1 ||
+        alias.narrow != 41 || alias.wide != big 9223372036854775807) {
+        raise "remote ref did not copy back into the original object";
+    }
+    {
+        service->revise(object);
+        raise "expected remote ref exception";
+    } exception {
+        "remote scalar owner error" =>
+            ;
+    }
+    if (alias.narrow != 41 || alias.wide != big 9223372036854775807) {
+        raise "remote ref exception changed caller data";
+    }
     sys->print("PASS bidirectional Styx CLI mount\n");
 }

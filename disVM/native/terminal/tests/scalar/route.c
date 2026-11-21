@@ -282,7 +282,7 @@ static void mounted_function(void)
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     RemotePhy *forward_client = phyposixfd(pair[0], caps);
     RemotePhy *forward_server = phyposixfd(pair[1], caps);
-    StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL, NULL, NULL, NULL, NULL};
+    StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL, NULL, NULL, NULL, NULL, NULL};
 #ifdef STYX_SCALAR_GUEST
     PhyBidir *caller = NULL, *provider = NULL;
     StyxCallerServer *reverse = NULL;

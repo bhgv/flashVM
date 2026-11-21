@@ -59,4 +59,8 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
  * RU: Обменять составное значение через настроенный маршрут. */
 int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxTuple *result);
+/* EN: Exchange one ref snapshot and stage the return and copy-back.
+ * RU: Обменять снимок ref и подготовить результат и обновление. */
+int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    struct DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxRefReply *result);
 #endif

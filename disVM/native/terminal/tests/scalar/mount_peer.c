@@ -132,6 +132,31 @@ static int pair(void *state, DVM_Provider *self, const StyxTuple *argument, Styx
 }
 
 
+static int ref_calls; /* Verified ref dispatch count. */
+
+
+/* EN: Return the old value and propose an update, even for the expected error.
+ * RU: Вернуть прежнее значение и предложить обновление, включая ожидаемую ошибку. */
+static int revise(void *state, DVM_Provider *self, const StyxTuple *argument, StyxRefReply *reply)
+{
+    (void)state;
+    FVM_FileInfo metadata;
+    if (dvm_provider_info(self, ".pid", &metadata) != FVM_OK || metadata.directory)
+    {
+        return 0;
+    }
+    ++ref_calls;
+    reply->result = *argument;
+    reply->updated = (StyxTuple){.narrow = 41, .wide = INT64_MAX};
+    if (argument->narrow != 40)
+    {
+        reply->updated.narrow = -1;
+        return 0;
+    }
+    return 1;
+}
+
+
 /* EN: Confirm the launch bytes accepted by the provider's ordinary request file.
  * RU: Проверить стартовые байты, принятые обычным файлом запросов провайдера. */
 static int launch_payload(void *unused, const void *bytes, size_t size)
@@ -207,14 +232,17 @@ int main(int argc, char **argv)
         .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = raw};
     StyxScalarFunction pair_function = {.request_tag = STYX_TUPLE_CALLER_TAG,
         .reply_tag = STYX_TUPLE_REPLY_TAG, .program_root = root, .tuple_method = pair};
+    StyxScalarFunction ref_function = {.request_tag = STYX_REF_CALLER_TAG,
+        .reply_tag = STYX_REF_REPLY_TAG, .program_root = root, .ref_method = revise};
     const StyxMountedScalar entries[] = {
-        {"compute.dis", "compute", &function, 0, 0}, {"compute.dis", "wide", &big_function, 0, 0},
-        {"compute.dis", "raw", &raw_function, 0, 0}, {"compute.dis", "pair", &pair_function, 0, 0}
+        {"compute.dis", "compute", &function, 0, 0, 0}, {"compute.dis", "wide", &big_function, 0, 0, 0},
+        {"compute.dis", "raw", &raw_function, 0, 0, 0}, {"compute.dis", "pair", &pair_function, 0, 0, 0},
+        {"compute.dis", "revise", &ref_function, 0, 0, 0}
     };
     StyxUnibusServer *server = root ?
-        styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 4) : NULL;
+        styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 5) : NULL;
     int success = server && styxunibusserverjoin(server);
     dvm_provider_release(root);
     phybidirfree(mux);
-    return success && calls == 2 && wide_calls == 2 && raw_calls == 1 && pair_calls == 3 ? 0 : 1;
+    return success && calls == 2 && wide_calls == 2 && raw_calls == 1 && pair_calls == 3 && ref_calls == 2 ? 0 : 1;
 }

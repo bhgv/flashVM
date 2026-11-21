@@ -43,6 +43,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_BIG_OWNER"] = "1"
     if mounted == "tuple":
         env["DVM_TEST_SCALAR_TUPLE_OWNER"] = "1"
+    if mounted == "ref":
+        env["DVM_TEST_SCALAR_REF_OWNER"] = "1"
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -70,7 +72,8 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
         carrier.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
         children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect, mounted))
-        image = {"wide": "wide.dis", "mixed": "mixed.dis", "tuple": "tuple.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
+        image = {"wide": "wide.dis", "mixed": "mixed.dis", "tuple": "tuple.dis",
+                 "ref": "ref.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -113,6 +116,8 @@ def main():
             (caller, example / "styx-mixed-owner.b", "mixed.dis"),
             (caller, example / "styx-tuple-owner.b", "tuple.dis"),
             (owner, example / "tuple-owner.b", "tuple-owner.dis"),
+            (caller, example / "styx-ref-owner.b", "ref.dis"),
+            (owner, example / "ref-owner.b", "ref-owner.dis"),
             (owner, example / "wide-owner.b", "wide-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
@@ -136,6 +141,7 @@ def main():
             exchange(binary, owner, caller, mode, "PASS mounted original big Dis", calls=0, mounted="wide")
             exchange(binary, owner, caller, mode, "PASS mounted original mixed Dis state", calls=0, mounted="mixed")
             exchange(binary, owner, caller, mode, "PASS mounted original tuple Dis", calls=0, mounted="tuple")
+            exchange(binary, owner, caller, mode, "PASS mounted original ref Dis", calls=0, mounted="ref")
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             disconnect = caller / "expect-disconnect"

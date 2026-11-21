@@ -14,5 +14,5 @@ void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t val
 /* EN: Publish one exact native record and return one tuple request respectively.
  * RU: Отправить точную запись и получить один запрос кортежа соответственно. */
 void dvm_scalar_owner_record(String *path, const void *bytes, size_t size);
-void dvm_scalar_tuple_next(String *path, void *ret);
+void dvm_scalar_tuple_next(String *path, unsigned long tag, void *ret);
 #endif

@@ -196,3 +196,31 @@ field order. Errors keep the existing scalar error record.
 The [mixed interface](../../examples/remote-scalar/mixed.m) exercises
 signed limits, the reversed-type import and a call following a remote
 exception. The tuple profile also supports an original Dis owner in the unscoped mode.
+
+## Copy back a referenced ADT
+
+A mounted export can accept `ref Cell`, where `Cell` contains `int` and
+`big` fields in that order, and return `(int,big)`. The loader checks the
+compiled signature before binding the export. A nil argument fails locally.
+
+| S-record tag | Payload |
+| --- | --- |
+| 81 | Two typed input fields |
+| 82 | Caller PID followed by the same fields |
+| 83 | Return tuple followed by the updated fields |
+| 73 | Scalar error |
+
+The success reply contains two complete nested tuple records. The caller
+validates both, then publishes the result and updates the original managed
+object together. Other references to that object see the new fields. If
+either field differs from the snapshot taken before the call, publication
+fails with `remote ref changed during call`. An exception, a malformed
+reply or cancellation prevents copy-back. Effects already performed by
+the owner may persist.
+
+A C provider registers `ref_method` and supplies `program_root` when it
+uses the caller PID. An original Dis export uses the unscoped
+[owner service](../../runtime/SCALAR-OWNER-SERVICE.md#one-referenced-adt-export).
+See the [two-VM example](../../examples/remote-scalar/STYX.md#copy-back-from-an-original-dis-export).
+This profile supports one reference to the two scalar fields. References
+inside the object and live sharing during a call are outside its scope.

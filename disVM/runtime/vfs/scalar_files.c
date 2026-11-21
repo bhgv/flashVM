@@ -250,15 +250,14 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
 }
 
 
-/* EN/RU: Reuse the function-file exchange for one scoped or ordinary tuple.
- * Повторно использовать обмен файла функции для кортежа с контекстом или без. */
-int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
-    DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxTuple *result)
+/* EN: Exchange a composed frame while holding its optional caller lease.
+ * RU: Обменять составную запись, удерживая контекст клиента. */
+static int composed(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_LaunchFiles *descriptors,
+    uint32_t pid, unsigned long tag, const StyxTuple *argument, unsigned char *bytes, size_t capacity,
+    size_t *received)
 {
-    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
-    size_t size, received = 0;
-    if (!styxtuplewrite(files->caller ? STYX_TUPLE_CALLER_TAG : STYX_TUPLE_REQUEST_TAG,
-            files->caller ? pid : 0, argument, bytes, sizeof(bytes), &size))
+    size_t size;
+    if (!styxtuplewrite(tag, files->caller ? pid : 0, argument, bytes, capacity, &size))
     {
         return -1;
     }
@@ -275,18 +274,55 @@ int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
             return -1;
         }
     }
-    int exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    int exchanged = exchange_frame(files, bytes, size, capacity, received);
     if (lease)
     {
         binding.end(binding.state, lease);
     }
     dvm_provider_release(tree);
+    return exchanged;
+}
+
+
+/* EN: Decode a single tuple result or a verified owner error.
+ * RU: Прочитать один кортеж результата или проверенную ошибку владельца. */
+int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxTuple *result)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
+    size_t received = 0;
+    int exchanged = composed(files, group, descriptors, pid,
+        files->caller ? STYX_TUPLE_CALLER_TAG : STYX_TUPLE_REQUEST_TAG, argument, bytes, sizeof(bytes), &received);
     if (exchanged != 1)
     {
         return exchanged;
     }
     uint32_t response_pid;
     if (styxtupleread(STYX_TUPLE_REPLY_TAG, bytes, received, &response_pid, result))
+    {
+        return 1;
+    }
+    StyxScalarKind kind;
+    int64_t code;
+    return styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, received, &kind, &code) &&
+        kind == STYX_SCALAR_ERROR ? 2 : 0;
+}
+
+
+/* EN: Decode the ordinary result and copy-back as one verified response.
+ * RU: Прочитать результат и обновление как единый проверенный ответ. */
+int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxRefReply *result)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
+    size_t received = 0;
+    int exchanged = composed(files, group, descriptors, pid,
+        files->caller ? STYX_REF_CALLER_TAG : STYX_REF_REQUEST_TAG, argument, bytes, sizeof(bytes), &received);
+    if (exchanged != 1)
+    {
+        return exchanged;
+    }
+    if (styxrefreplyread(bytes, received, result))
     {
         return 1;
     }

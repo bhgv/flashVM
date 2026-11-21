@@ -31,6 +31,13 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     {
         return 0;
     }
+    if (fn->ref_method)
+    {
+        return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
+            fn->reply_tag == STYX_REF_REPLY_TAG &&
+            (fn->program_root ? fn->request_tag == STYX_REF_CALLER_TAG :
+                fn->request_tag == STYX_REF_REQUEST_TAG);
+    }
     if (fn->tuple_method)
     {
         return !fn->method && !fn->caller_method && !fn->program_method &&
@@ -38,7 +45,8 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
             (fn->program_root ? fn->request_tag == STYX_TUPLE_CALLER_TAG :
                 fn->request_tag == STYX_TUPLE_REQUEST_TAG);
     }
-    if (styxscalar_request_signature(fn->request_tag) == DVM_TUPLE_SIGNATURE ||
+    uint32_t signature = styxscalar_request_signature(fn->request_tag);
+    if (signature == DVM_TUPLE_SIGNATURE || signature == DVM_REF_SIGNATURE ||
         !!fn->program_root != !!fn->program_method || (fn->caller_method && fn->program_method))
     {
         return 0;
@@ -96,7 +104,8 @@ static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid)
 static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
 {
     const StyxScalarFunction *fn = &fid->function;
-    StyxTuple argument, result = {0};
+    StyxTuple argument;
+    StyxRefReply result = {0};
     uint32_t pid;
     if (!styxtupleread(fn->request_tag, bytes, count, &pid, &argument))
     {
@@ -108,14 +117,17 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
         return Eperm;
     }
     fid->submitted = 1;
-    int outcome = fn->tuple_method(fn->state, self, &argument, &result);
+    result.updated = argument;
+    int outcome = fn->ref_method ? fn->ref_method(fn->state, self, &argument, &result) :
+        fn->tuple_method(fn->state, self, &argument, &result.result);
     dvm_provider_release(self);
     if (outcome < 0 && fid->report_transport_failure)
     {
         return Ehungup;
     }
     int encoded = outcome == 1 ?
-        styxtuplewrite(fn->reply_tag, 0, &result, fid->reply, sizeof(fid->reply), &fid->size) :
+        (fn->ref_method ? styxrefreplywrite(&result, fid->reply, sizeof(fid->reply), &fid->size) :
+            styxtuplewrite(fn->reply_tag, 0, &result.result, fid->reply, sizeof(fid->reply), &fid->size)) :
         styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
     return encoded ? nil : Ebadarg;
 }
@@ -131,7 +143,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
-    if (function->tuple_method)
+    if (function->tuple_method || function->ref_method)
     {
         return tuple_call(fid, bytes, count);
     }
