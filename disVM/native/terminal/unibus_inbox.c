@@ -5,6 +5,7 @@
 #include "unibus_inbox.h"
 #include "cancel.h"
 #include "load_profile.h"
+#include "call_scope.h"
 #include "provider_internal.h"
 #include "flashvm/srecord.h"
 #include <pthread.h>
@@ -309,7 +310,7 @@ DVM_Provider *styxunibusmailbox(unsigned long tag)
 /* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
 DVM_Provider *styxunibusloadmailbox(void)
 {
-    return create_inbox(0, 1, 64);
+    return create_inbox(0, 1, 64 + STYX_SCOPED_CALL_OVERHEAD);
 }
 
 

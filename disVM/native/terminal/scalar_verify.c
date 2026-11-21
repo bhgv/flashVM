@@ -80,7 +80,7 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
             char offered_name[INTERFACE_NAME_LIMIT + 1];
             uint32_t offered_sig;
             unsigned long request = styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types);
-            if (!request || (record.tag == STYX_SCOPED_OFFER_TAG && request != STYX_DYNAMIC_REQUEST_TAG))
+            if (!request || (record.tag == STYX_SCOPED_OFFER_TAG && styxloadedrequest(offered_sig)))
             {
                 return 0;
             }

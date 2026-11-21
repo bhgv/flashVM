@@ -323,11 +323,12 @@ the declared result cells and applies the reference updates in the same
 transaction. A void call claims only the object spans. Two positions
 referring to one object still produce one snapshot and one update.
 No copy-back occurs on cancellation, an owner exception, an invalid reply
-or a conflicting local edit. These calls use unscoped function fids.
+or a conflicting local edit. A bidirectional publication can attach the
+[caller scope](#caller-context-for-compiled-calls) to these profiles.
 
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-compiled-reference-types).
 
-## Caller context for compiled value calls
+## Caller context for compiled calls
 
 A provider started with [styxunibusserverstartscopedset](UNIBUS-SERVER-SCOPED-SET.md)
 uses two Styx directions. The client still calls ordinary Limbo `load` and
@@ -338,14 +339,19 @@ request is written through the end of its read reply.
 | S-record tag | Payload |
 | --- | --- |
 | 91 | Same payload as shaped interface tag 88, requiring a reverse mount |
-| 92 | Four PID bytes in network order followed by one complete tag 89 record |
-| 90 | Ordinary typed success reply |
+| 92 | Four PID bytes in network order, then one complete request for the selected profile |
+| 90 | Typed value reply. Reference calls use the success tag of their own profile. |
 | 73 | Ordinary owner error reply |
 
 The dispatcher validates the argument record and captures `.prog/<pid>`
 from that session's reverse root before submitting the call. It keeps the
 captured native provider with the local request. The provider VM exposes its
 root at `/.prog/.self` in a private namespace for the original Dis export.
-Its files and subtrees come from the caller's grant. No host directory is
-created. Existing fixed and reference profiles retain their current behavior.
+Its files and subtrees come from the caller's grant. The inner request uses
+tag 89 for value lists, 81 for one reference, or 86 for an object map.
+The reference snapshots, reply tags and atomic copy-back rules still
+apply. The VM creates the alias in VFS and attaches a private Sysevents
+inbox. See [remote call events](../../runtime/SYSTEM-EVENTS.md#remote-call-namespace).
+The scoped form is available for additional signatures selected by
+the compiled shape.
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount).

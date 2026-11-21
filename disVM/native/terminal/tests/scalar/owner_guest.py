@@ -290,7 +290,7 @@ def main():
                 marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS mounted compiled ref argument layouts",
                      calls=0, mounted="compiled-ref")
-            exchange(binary, owner, caller, mode, "PASS compiled call sees scoped caller VFS",
+            exchange(binary, owner, caller, mode, "PASS compiled call sees scoped caller VFS, refs and Sysevents",
                      calls=0, mounted="scoped-calls")
             unbound = caller / "expect-unbound-refusal"
             unbound.touch()

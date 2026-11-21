@@ -94,6 +94,9 @@ void dvm_process_environment_destroy(Prog *process)
         dvm_sysevents_release(owner->system_events);
         owner->system_events = NULL;
         dvm_module_environment_release(process);
+        dvm_sysevents_retire(owner->remote_call_events);
+        dvm_sysevents_release(owner->remote_call_events);
+        owner->remote_call_events = NULL;
         dvm_namespace_release(owner->remote_call_group);
         owner->remote_call_group = NULL;
         dvm_namespace_release(owner->namespace_group);

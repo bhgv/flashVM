@@ -224,8 +224,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         if (dynamic && bit)
         {
             ref_profile = styxshaperef(&shape, &result);
-            if (!local->arguments[0] || (caller && ref_profile) ||
-                (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
+            if (!local->arguments[0] || (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
             {
                 bit = 0;
             }

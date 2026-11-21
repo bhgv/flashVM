@@ -10,7 +10,7 @@ StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel,
 Include `unibus_server.h` and link `styx_unibus_server`.
 Use the same publication and private mailbox setup as
 [styxunibusserverstartloadedset](UNIBUS-SERVER-LOADED.md).
-The difference is that the additional compiled value profiles require
+Additional compiled value and reference profiles require
 a caller lease, and their Dis exports receive the private `/.prog/.self`
 namespace view during execution.
 
@@ -35,8 +35,10 @@ The dispatcher serializes requests on its forward session. A grant is
 valid for one invocation, including reverse reads before the reply.
 A new reverse operation through a saved fid is refused after the lease
 ends. Close the carrier and call `styxunibusserverjoin` to reap the server.
-This form scopes compiled value calls. Existing fixed profiles,
-reference calls, and Sysevents retain their current routing.
+The scoped profiles select a private Sysevents inbox for the duration
+of the call. An opened event FD can drain its queue and receive the
+exit event and EOF after the reply. The other direction's client event
+stream is independent.
 
 See the [runnable example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount)
-and the [wire format](SCALAR-FUNCTION.md#caller-context-for-compiled-value-calls).
+and the [wire format](SCALAR-FUNCTION.md#caller-context-for-compiled-calls).

@@ -131,7 +131,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                 module = "compiled-ref.dis";
                 implementation = "compiled-ref-owner.dis";
             }
-            const char *scoped_names[] = {"inspect", "baseline"};
+            const char *scoped_names[] = {"inspect", "update", "updatepair", "baseline"};
             if (scoped)
             {
                 names = scoped_names;

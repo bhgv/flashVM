@@ -350,6 +350,10 @@ run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: stri
         if (ready == 0) {
             return;
         }
+        if (ready < 0) {
+            routes->scalarrefreply(reply, 0, (0, big 0), (0, big 0));
+            continue;
+        }
         cell := ref Scalarrefcell(narrow, wide);
         result := (0, big 0);
         success := 1;
@@ -433,6 +437,10 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
         (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairnext(request);
         if (count == 0) {
             return;
+        }
+        if (count < 0) {
+            routes->scalarrefpairreply(reply, 0, 0, (0, big 0), (0, big 0), (0, big 0));
+            continue;
         }
         first := ref Scalarrefcell(firstn, firstw);
         second := first;

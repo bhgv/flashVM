@@ -272,3 +272,29 @@ forced epoch exhaustion and final native lifetimes. Source info/open callbacks
 are forbidden. The guest fixture also checks that real Sys.chdir does not produce
 fake provider changes. The concurrent source/namespace test now alternates100
 rebinds with100 cwd mutations while another inbox changes groups200 times.
+
+## Remote call namespace
+
+For a [scoped compiled Styx call](../native/terminal/UNIBUS-SERVER-SCOPED-SET.md),
+the provider VM installs the normal `/dev/sysevents` device in the same
+private namespace as `/.prog/.self`. It selects a call-local inbox for
+new opens. A successful `Sys->pctl` namespace change switches that
+inbox to the new group and publishes a namespace event.
+
+The provider retires the inbox when finishing the call, including when
+the called function raises an exception. A retained FD can drain queued
+records, read the exit event and then receive EOF. This inbox reports
+changes observed by the provider's call namespace.
+
+## Пространство имён удалённого вызова
+
+Для [вызова по схеме с контекстом Styx](../native/terminal/UNIBUS-SERVER-SCOPED-SET.ru.md)
+VM провайдера подключает обычное устройство `/dev/sysevents` в том же
+частном namespace, где виден `/.prog/.self`. Новое открытие выбирает
+отдельную очередь вызова. Смена пространства имён через `Sys->pctl`
+переключает очередь на новую группу и создаёт событие namespace.
+
+Провайдер закрывает очередь по завершении вызова, в том числе при
+исключении функции. Через удерживаемый FD можно дочитать накопленные
+записи, событие завершения и EOF. Очередь сообщает об изменениях, которые
+наблюдает пространство имён вызова на стороне провайдера.

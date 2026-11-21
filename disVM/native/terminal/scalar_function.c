@@ -36,10 +36,12 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     {
         return 0;
     }
-    if (fn->ref_pair_method)
+    if (fn->ref_pair_method || fn->scoped_ref_pair_method)
     {
         return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
-            !fn->ref_method && !fn->call_method && !fn->program_root &&
+            !fn->ref_method && !fn->call_method && !fn->scoped_call_method &&
+            (fn->program_root ? fn->scoped_ref_pair_method && !fn->ref_pair_method :
+                fn->ref_pair_method && !fn->scoped_ref_pair_method) &&
             fn->request_tag == STYX_REF_PAIR_REQUEST_TAG && fn->reply_tag == STYX_REF_PAIR_REPLY_TAG;
     }
     if (fn->call_method || fn->scoped_call_method)
@@ -56,8 +58,8 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     {
         return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
             fn->reply_tag == STYX_REF_REPLY_TAG &&
-            (fn->program_root ? fn->request_tag == STYX_REF_CALLER_TAG :
-                fn->request_tag == STYX_REF_REQUEST_TAG);
+            (fn->request_tag == STYX_REF_REQUEST_TAG ||
+                (fn->program_root && fn->request_tag == STYX_REF_CALLER_TAG));
     }
     if (fn->tuple_method)
     {
@@ -123,7 +125,7 @@ static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid)
 
 /* EN: Decode a complete tuple before dispatch, then encode its result or error.
  * RU: Проверить полный кортеж перед вызовом, затем закодировать результат или ошибку. */
-static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
+static char *tuple_call(FunctionFid *fid, const void *bytes, size_t count, uint32_t scoped_pid)
 {
     const StyxScalarFunction *fn = &fid->function;
     StyxTuple argument;
@@ -133,6 +135,7 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
     {
         return Ebadarg;
     }
+    pid = scoped_pid ? scoped_pid : pid;
     DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
     if (pid && !self)
     {
@@ -157,17 +160,13 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
 
 /* EN: Validate the full argument list before invoking and retain only the encoded fid reply.
  * RU: Проверить весь список аргументов перед вызовом, сохранить только ответ в fid. */
-static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
+static char *call_list(FunctionFid *fid, const void *bytes, size_t count, uint32_t pid)
 {
     StyxCallValues arguments, result = {0};
     const StyxScalarFunction *fn = &fid->function;
     const char *input_shape = fn->dynamic_shape ? fn->dynamic_shape->arguments : styxcall_list_args;
     const char *output_shape = fn->dynamic_shape ? fn->dynamic_shape->result : styxcall_list_result;
-    uint32_t pid = 0;
-    const void *request = bytes;
-    size_t length = count;
-    if ((fn->program_root && !styxcall_scope_read(bytes, count, &pid, &request, &length)) ||
-        !styxcallrecordread(fn->request_tag, input_shape, request, length, &arguments))
+    if (!styxcallrecordread(fn->request_tag, input_shape, bytes, count, &arguments))
     {
         return Ebadarg;
     }
@@ -196,16 +195,23 @@ static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
  * may update cells and return, while object count and order belong to the request.
  * RU: Выполнить один принятый вызов и сохранить ответ в fid. Обработчик меняет
  * поля и результат, а количество и порядок объектов задаёт запрос. */
-static char *ref_pair_call(FunctionFid *fid, const char *bytes, size_t count)
+static char *ref_pair_call(FunctionFid *fid, const void *bytes, size_t count, uint32_t pid)
 {
     StyxRefPair pair;
     if (!styxrefpairread(STYX_REF_PAIR_REQUEST_TAG, bytes, count, &pair))
     {
         return Ebadarg;
     }
+    const StyxScalarFunction *fn = &fid->function;
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    if (pid && !self)
+    {
+        return Eperm;
+    }
     size_t objects = pair.count;
     fid->submitted = 1;
-    int outcome = fid->function.ref_pair_method(fid->function.state, &pair);
+    int outcome = self ? fn->scoped_ref_pair_method(fn->state, self, &pair) : fn->ref_pair_method(fn->state, &pair);
+    dvm_provider_release(self);
     if (outcome < 0 && fid->report_transport_failure)
     {
         return Ehungup;
@@ -228,17 +234,27 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
-    if (function->ref_pair_method)
+    uint32_t scoped_pid = 0;
+    const void *request = bytes;
+    size_t length = count;
+    int envelope = function->scoped_call_method || function->scoped_ref_pair_method ||
+        (function->ref_method && function->program_root && function->request_tag == STYX_REF_REQUEST_TAG);
+    if ((envelope && !styxcall_scope_read(bytes, count, &scoped_pid, &request, &length)) ||
+        (!envelope && count > STYX_FUNCTION_FRAME_CAPACITY))
     {
-        return ref_pair_call(fid, bytes, count);
+        return Ebadarg;
+    }
+    if (function->ref_pair_method || function->scoped_ref_pair_method)
+    {
+        return ref_pair_call(fid, request, length, scoped_pid);
     }
     if (function->call_method || function->scoped_call_method)
     {
-        return call_list(fid, bytes, count);
+        return call_list(fid, request, length, scoped_pid);
     }
     if (function->tuple_method || function->ref_method)
     {
-        return tuple_call(fid, bytes, count);
+        return tuple_call(fid, request, length, scoped_pid);
     }
     int scoped = function->caller_method || function->program_method;
     uint32_t signature = styxscalar_request_signature(function->request_tag);

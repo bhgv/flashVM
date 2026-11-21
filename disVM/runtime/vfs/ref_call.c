@@ -191,7 +191,7 @@ static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, void *ret, 
         error("remote ref call not sent");
     }
     StyxRefReply single;
-    int outcome = paired ? dvm_ref_pair_invoke(files, &value) :
+    int outcome = paired ? dvm_ref_pair_invoke(files, group, descriptors, pid, &value) :
         dvm_ref_function_invoke(files, group, descriptors, pid, &value.objects[0], &single);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);

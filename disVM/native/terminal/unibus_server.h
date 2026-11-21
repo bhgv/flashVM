@@ -103,9 +103,9 @@ StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char 
     const char *const *names, size_t count);
 
 
-/* EN: Like loadedset; require a caller scope for shape-driven value calls.
+/* EN: Like loadedset; require a caller scope for shape-driven calls.
  * Borrow reverse, retaining it through join. Consume channel on all outcomes.
- * RU: Как loadedset, требовать контекст для вызовов по схеме со значениями.
+ * RU: Как loadedset, требовать контекст для вызовов по схеме.
  * Заимствовать reverse с удержанием до join. Всегда принять channel. */
 StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel, const char *module,
     const char *const *names, size_t count, DVM_Provider *reverse);

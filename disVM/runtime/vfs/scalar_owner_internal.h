@@ -25,9 +25,20 @@ typedef int (*DVM_OwnerDecode)(unsigned long, const void *, size_t, void *); /* 
 int dvm_scalar_owner_next(String *path, unsigned long tag, DVM_OwnerDecode decoder, void *decoded, int scoped);
 
 
-/* EN: Build a private copy of group exposing context at /.prog/.self.
- * RU: Создать частную копию group с context в /.prog/.self. */
-DVM_Namespace *dvm_scalar_caller_namespace(DVM_Namespace *group, DVM_Provider *context);
+/* EN: Install a private namespace and event inbox from the last read on handle.
+ * RU: Установить частный namespace и очередь событий из последнего чтения handle. */
+int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *handle);
+
+
+/* EN: Retire the private scope before replying or on cancellation.
+ * RU: Завершить частный контекст до ответа либо при отмене. */
+void dvm_scalar_caller_end(Prog *process);
+
+
+/* EN: Decode an ordinary or locally wrapped request. Mark context as required for a wrapper.
+ * RU: Декодировать обычный или обёрнутый локальный запрос. Оболочка требует контекст. */
+int dvm_scalar_owner_decode(DVM_OwnerDecode decode, unsigned long tag, const void *bytes, size_t size,
+    void *decoded, int *required);
 /* EN: Link the named local export with the required Dis signature into ret.
  * RU: Связать именованный локальный экспорт по сигнатуре Dis и записать в ret. */
 void dvm_scalar_load_composed(String *path, String *name, uint32_t signature, Modlink **ret);

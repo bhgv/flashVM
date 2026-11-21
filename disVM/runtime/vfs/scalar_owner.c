@@ -285,10 +285,10 @@ static int decode_tuple(unsigned long tag, const void *bytes, size_t size, void 
 
 /* EN: Publish readiness and two tuple fields only after a complete read.
  * RU: Выдать признак готовности и два поля только после полного чтения. */
-static void tuple_next(String *path, unsigned long tag, void *ret)
+static void tuple_next(String *path, unsigned long tag, void *ret, int scoped)
 {
     StyxTuple tuple = {0};
-    int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple, 0);
+    int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple, scoped);
     const WORD cells[] = {ready, tuple.narrow, tuple.wide};
     dvm_sys_scalar_result(cells, ret, sizeof(cells));
 }
@@ -300,7 +300,7 @@ void Vfsnative_scalarrefnext(void *frame)
 {
     F_Vfsnative_scalarrefnext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefnext, ret), 3 * sizeof(WORD));
-    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret);
+    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret, 1);
 }
 
 
@@ -310,7 +310,7 @@ void Vfsnative_scalartuplenext(void *frame)
 {
     F_Vfsnative_scalartuplenext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartuplenext, ret), 3 * sizeof(WORD));
-    tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret);
+    tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret, 0);
 }
 
 
@@ -369,6 +369,7 @@ void Vfsnative_scalarrefreply(void *frame)
     {
         error("invalid ref reply");
     }
+    dvm_scalar_caller_end(currun());
     dvm_scalar_owner_record(call.path, bytes, size);
 }
 

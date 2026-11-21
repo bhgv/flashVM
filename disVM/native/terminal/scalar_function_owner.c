@@ -8,6 +8,7 @@
 #include "record_write.h"
 #include "scalar_verify.h"
 #include "call_scope.h"
+#include "flashvm/srecord.h"
 #include <time.h>
 
 
@@ -23,7 +24,10 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
         return 0;
     }
     int ready = 0;
-    if (context ? styxunibusmailboxcontext(owner->request, record, size, context) :
+    unsigned char attached[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
+    size_t length;
+    if (context ? fvm_srecord_write(STYX_LOCAL_CONTEXT_TAG, record, size, attached, sizeof(attached), &length) == FVM_S_OK &&
+            styxunibusmailboxcontext(owner->request, attached, length, context) :
         styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED)
     {
         struct timespec now;
@@ -110,14 +114,13 @@ static int tuple_dispatch(void *state, DVM_Provider *self, const StyxTuple *argu
  * RU: Обменять поля аргумента и два проверенных снимка с владельцем. */
 static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argument, StyxRefReply *value)
 {
-    (void)self;
     StyxScalarFunctionOwner *owner = state;
     unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
     size_t size, received;
     StyxScalarKind kind;
     int64_t code;
     if (styxtuplewrite(STYX_REF_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, NULL))
+        exchange(owner, record, size, &received, self))
     {
         if (styxrefreplyread(record, received, value))
         {
@@ -150,8 +153,7 @@ static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *
     size_t size, received;
     StyxScalarKind kind;
     int64_t code;
-    unsigned long local_tag = self ? STYX_SCOPED_CALL_TAG : owner->request_tag;
-    if (styxcallrecordwrite(local_tag, input_shape, &local, record, sizeof(record), &size) &&
+    if (styxcallrecordwrite(owner->request_tag, input_shape, &local, record, sizeof(record), &size) &&
         exchange(owner, record, size, &received, self))
     {
         if (styxcallrecordread(reply_tag, output_shape, record, received, value))
@@ -183,7 +185,7 @@ static int plain_list_dispatch(void *state, const StyxCallValues *arguments, Sty
  * changed identity map as an ambiguous owner response and retire its mailbox.
  * RU: Обменять снимки со связанным сервисом Dis. При изменении таблицы
  * идентичности закрыть приёмник, поскольку ответ владельца неоднозначен. */
-static int ref_pair_dispatch(void *state, StyxRefPair *value)
+static int ref_pair_dispatch(void *state, DVM_Provider *self, StyxRefPair *value)
 {
     StyxScalarFunctionOwner *owner = state;
     unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
@@ -192,7 +194,7 @@ static int ref_pair_dispatch(void *state, StyxRefPair *value)
     StyxScalarKind kind;
     int64_t code;
     if (styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, NULL))
+        exchange(owner, record, size, &received, self))
     {
         if (styxrefpairread(STYX_REF_PAIR_REPLY_TAG, record, received, &result) && result.count == value->count)
         {
@@ -205,6 +207,14 @@ static int ref_pair_dispatch(void *state, StyxRefPair *value)
         }
     }
     return retire(owner);
+}
+
+
+/* EN: Dispatch a plain pair without a caller context.
+ * RU: Выполнить обычный парный вызов без контекста клиента. */
+static int plain_ref_pair_dispatch(void *state, StyxRefPair *value)
+{
+    return ref_pair_dispatch(state, NULL, value);
 }
 
 
@@ -259,7 +269,14 @@ int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *func
         break;
     }
     case STYX_REF_PAIR_REQUEST_TAG:
-        function->ref_pair_method = ref_pair_dispatch;
+        if (function->program_root)
+        {
+            function->scoped_ref_pair_method = ref_pair_dispatch;
+        }
+        else
+        {
+            function->ref_pair_method = plain_ref_pair_dispatch;
+        }
         break;
     case STYX_CALL_LIST_REQUEST_TAG:
         function->call_method = plain_list_dispatch;

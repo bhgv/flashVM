@@ -93,22 +93,31 @@ int styxunibusawaitload(StyxUnibusServer *server)
         }
         styxunibusmailboxseal(module->load_offer);
         unsigned long tag = styxloadedacceptshape(module->load_name, offer, size, &module->owner.shape);
-        if (tag == STYX_DYNAMIC_REQUEST_TAG && server->caller_root)
+        if (server->caller_root && (tag == STYX_DYNAMIC_REQUEST_TAG ||
+            tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG) && module->owner.shape.arguments[0])
         {
             FVM_SRecord profile;
             size_t used;
+            uint32_t signature;
             if (fvm_srecord_read(offer, size, sizeof(offer), &profile, &used) != FVM_S_OK ||
-                fvm_srecord_write(STYX_SCOPED_OFFER_TAG, profile.payload, profile.size,
-                    directory->interface + directory->interface_size, sizeof(directory->interface) -
-                        directory->interface_size, &used) != FVM_S_OK)
+                !styxshapedpayload(profile.payload, profile.size, NULL, &signature, NULL))
             {
                 tag = 0;
             }
-            else
+            else if (!styxloadedrequest(signature))
             {
-                memcpy(offer, directory->interface + directory->interface_size, used);
-                size = used;
-                module->function.program_root = server->caller_root;
+                if (fvm_srecord_write(STYX_SCOPED_OFFER_TAG, profile.payload, profile.size,
+                    directory->interface + directory->interface_size, sizeof(directory->interface) -
+                        directory->interface_size, &used) != FVM_S_OK)
+                {
+                    tag = 0;
+                }
+                else
+                {
+                    memcpy(offer, directory->interface + directory->interface_size, used);
+                    size = used;
+                    module->function.program_root = server->caller_root;
+                }
             }
         }
         if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))

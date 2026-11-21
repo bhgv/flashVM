@@ -217,7 +217,11 @@ check who was selected.
 The parent and two spawned callers share their inherited descriptor's
 cursor, with distinct PIDs. An owner exception leaves the next call
 usable. A fid saved by the owner becomes unreadable after the reply.
-The caller reports `PASS compiled call sees scoped caller VFS`. A second
+`update` exercises a single reference and `updatepair` checks aliases,
+distinct objects and failure before copy-back. The owner also checks
+that `FORKNS` posts a namespace event to the per-call inbox. After reply
+a saved event FD drains through its exit record to EOF.
+The caller reports `PASS compiled call sees scoped caller VFS, refs and Sysevents`. A second
 mount with the reverse binding deliberately absent refuses the scoped
 import and reports `PASS scoped compiled load requires reverse mount`.
 The harness closes both channels and removes the temporary directories.

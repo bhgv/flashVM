@@ -1,5 +1,5 @@
 /* Copyright (c) 2026 bhgv
- * EN: Caller PID envelope around a shaped Styx value request.
+ * EN: Caller PID envelope around a shaped Styx call request.
  * RU: Оболочка PID клиента для типизированного запроса Styx.
  */
 #ifndef STYX_CALL_SCOPE_H
@@ -8,7 +8,8 @@
 #include <stdint.h>
 
 #define STYX_SCOPED_OFFER_TAG 91UL /* Shaped export requiring a caller lease. */
-#define STYX_SCOPED_CALL_TAG 92UL /* PID and one original value request. */
+#define STYX_SCOPED_CALL_TAG 92UL /* PID and one original call request. */
+#define STYX_LOCAL_CONTEXT_TAG 93UL /* Private envelope with a native provider attached. */
 #define STYX_SCOPED_CALL_OVERHEAD 8U /* Four PID bytes plus S-record framing. */
 
 

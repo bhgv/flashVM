@@ -255,8 +255,12 @@ DVM_SysEvents *dvm_module_events_current(Prog *process)
     {
         return NULL;
     }
-    ModuleEnvironment *entry = current(process, 0);
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (owner->remote_call_events)
+    {
+        return owner->remote_call_events;
+    }
+    ModuleEnvironment *entry = current(process, 0);
     if (!entry)
     {
         return owner->system_events;

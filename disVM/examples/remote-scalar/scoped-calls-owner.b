@@ -6,6 +6,7 @@ include "sys.m";
 include "scoped-calls.m";
 
 Caller: con "/.prog/.self/"; # Alias set in the private namespace of one call.
+saved_events: ref Sys->FD; # Event FD retained for a post-reply retirement check.
 saved: ref Sys->FD; # An unread caller fid from the first completed inspection.
 
 
@@ -60,6 +61,42 @@ inspect(fail: int): (int,big)
 }
 
 
+# EN: Apply an update sourced from the caller's actual scoped identity.
+# RU: Применить изменение из фактического PID в контексте клиента.
+update(value: ref Cell): int
+{
+    sys := load Sys Sys->PATH;
+    pid := int contents(sys, Caller + ".pid", 32);
+    value.narrow = pid;
+    return pid;
+}
+
+
+# EN: Check a private event inbox before and after detaching the call namespace.
+# RU: Проверить частную очередь событий до и после отделения namespace вызова.
+updatepair(values: (ref Cell, ref Cell))
+{
+    sys := load Sys Sys->PATH;
+    (first, second) := values;
+    fail := first.narrow < 0;
+    inbox := sys->open("/dev/sysevents", Sys->OREAD);
+    bytes := array[16384] of byte;
+    if (inbox == nil || !namespace_event(sys, inbox, bytes)) {
+        raise "call event inbox unavailable";
+    }
+    if (sys->pctl(Sys->FORKNS, nil) <= 0 || !namespace_event(sys, inbox, bytes)) {
+        raise "call event inbox did not follow forked namespace";
+    }
+    pid := int contents(sys, Caller + ".pid", 32);
+    first.narrow = pid;
+    second.narrow += 2;
+    saved_events = inbox;
+    if (fail) {
+        raise "requested scoped ref failure";
+    }
+}
+
+
 # EN: Look for a leaked caller alias from a control call with no scope.
 # RU: Проверить отсутствие утечки алиаса в контрольном вызове без контекста.
 baseline(flag: int): int
@@ -75,5 +112,40 @@ baseline(flag: int): int
         }
         saved = nil;
     }
+    if (saved_events != nil) {
+        retired_events(sys, saved_events);
+        saved_events = nil;
+    }
     return flag;
+}
+
+
+# EN: Require a namespace notification on the inbox selected by this call.
+# RU: Проверить уведомление namespace из очереди этого вызова.
+namespace_event(sys: Sys, inbox: ref Sys->FD, bytes: array of byte): int
+{
+    n := sys->read(inbox, bytes, len bytes);
+    return n >= 9 && string bytes[0:9] == "system 2 ";
+}
+
+
+# EN: Drain a saved call inbox, validating its retirement event and EOF.
+# RU: Дочитать сохранённую очередь вызова и проверить завершение и EOF.
+retired_events(sys: Sys, inbox: ref Sys->FD)
+{
+    bytes := array[16384] of byte;
+    exited := 0;
+    for (i := 0; i < 34; i++) {
+        n := sys->read(inbox, bytes, len bytes);
+        if (n == 0 && exited) {
+            return;
+        }
+        if (n < 9) {
+            break;
+        }
+        if (string bytes[0:9] == "system 4 ") {
+            exited = 1;
+        }
+    }
+    raise "saved call event inbox did not retire";
 }

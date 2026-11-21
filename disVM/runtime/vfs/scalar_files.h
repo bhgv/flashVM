@@ -77,5 +77,6 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, 
     uint32_t pid, const StyxCallValues *arguments, StyxCallValues *result);
 /* EN: Exchange one object map and stage its matching reply through files.
  * RU: Обменять таблицу объектов через files и сохранить соответствующий ответ. */
-int dvm_ref_pair_invoke(DVM_ScalarFiles *files, StyxRefPair *value);
+int dvm_ref_pair_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, struct DVM_LaunchFiles *descriptors,
+    uint32_t pid, StyxRefPair *value);
 #endif

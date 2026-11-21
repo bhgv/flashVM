@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Copy scalar call words between the owner VM and its local Styx dispatcher.
- * RU: Обмен скалярными ячейками между VM владельца и локальным диспетчером Styx.
+ * EN: Install the local call scope and move scalar words through the owner mailbox.
+ * RU: Установить локальный контекст вызова и передать скаляры через приёмник владельца.
  */
 #include "lib9.h"
 #include "dat.h"
@@ -10,8 +10,11 @@
 #include "runt.h"
 #include "namespace.h"
 #include "runqueue.h"
+#include "boot.h"
 #include "export.h"
 #include "program_view.h"
+#include "sysevents.h"
+#include "flashvm/srecord.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
 #include "vfsnative_decl.h"
@@ -24,11 +27,30 @@
 #include <string.h>
 
 
+/* EN: Install the boot VM's contextual device in this private native group.
+ * RU: Установить контекстное устройство начальной VM в частный namespace. */
+static int install_events(DVM_Namespace *scope)
+{
+    const char *path = "/dev/sysevents";
+    DVM_ResourcePlan source = {0};
+    DVM_NamespacePlan target;
+    if (!dvm_resource_plan(dvm_namespace_boot_group(), path, 0, &source))
+    {
+        return 0;
+    }
+    int installed = dvm_sysevents_is_device(source.provider) &&
+        dvm_namespace_plan(scope, path, &target) &&
+        dvm_namespace_mount_provider(scope, &target, source.provider, "/system-events") == 1;
+    dvm_resource_close(&source);
+    return installed;
+}
+
+
 /* EN: Clone the borrowed owner's namespace and overlay only the pinned caller.
  * Return a private owned namespace or NULL before any Dis call runs.
  * RU: Копировать namespace владельца и наложить только закреплённого клиента.
  * Вернуть свою копию либо NULL до выполнения Dis. */
-DVM_Namespace *dvm_scalar_caller_namespace(DVM_Namespace *group, DVM_Provider *context)
+static DVM_Namespace *caller_namespace(DVM_Namespace *group, DVM_Provider *context)
 {
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !dvm_view_map(view, "/.self", context, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE))
@@ -38,7 +60,7 @@ DVM_Namespace *dvm_scalar_caller_namespace(DVM_Namespace *group, DVM_Provider *c
     }
     DVM_Provider *projection = dvm_view_freeze(view);
     DVM_Namespace *copy = projection ? dvm_namespace_copy(group) : NULL;
-    int installed = copy && dvm_program_mount_private(copy, projection, "/.prog", NULL);
+    int installed = copy && dvm_program_mount_private(copy, projection, "/.prog", NULL) && install_events(copy);
     dvm_provider_release(projection);
     if (!installed)
     {
@@ -49,20 +71,64 @@ DVM_Namespace *dvm_scalar_caller_namespace(DVM_Namespace *group, DVM_Provider *c
 }
 
 
-typedef struct RawRequest
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *handle)
 {
-    StyxCallValues values; /* Four staged words consumed by the local ABI. */
-    int scoped;            /* The record requires an independently captured provider. */
-} RawRequest;
+    DVM_Provider *caller = handle->ops->take_context ? handle->ops->take_context(handle->state) : NULL;
+    DVM_Namespace *scope = caller ? caller_namespace(group, caller) : NULL;
+    dvm_provider_release(caller);
+    DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
+    if (!events)
+    {
+        dvm_namespace_release(scope);
+        return 0;
+    }
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    owner->remote_call_group = scope;
+    owner->remote_call_events = events;
+    return 1;
+}
+
+
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+void dvm_scalar_caller_end(Prog *process)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    if (!owner || !owner->remote_call_group)
+    {
+        return;
+    }
+    DVM_Namespace *scope = owner->remote_call_group;
+    DVM_SysEvents *events = owner->remote_call_events;
+    owner->remote_call_group = NULL;
+    owner->remote_call_events = NULL;
+    dvm_sysevents_retire(events);
+    dvm_sysevents_release(events);
+    dvm_namespace_release(scope);
+}
+
+
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+int dvm_scalar_owner_decode(DVM_OwnerDecode decode, unsigned long tag, const void *bytes, size_t size,
+    void *decoded, int *required)
+{
+    FVM_SRecord envelope;
+    size_t used;
+    if (required && fvm_srecord_read(bytes, size, STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD,
+        &envelope, &used) == FVM_S_OK && used == size && envelope.tag == STYX_LOCAL_CONTEXT_TAG)
+    {
+        *required = 1;
+        return decode(tag, envelope.payload, envelope.size, decoded);
+    }
+    return decode(tag, bytes, size, decoded);
+}
 
 
 /* EN: Read the dispatcher's complete four-word local argument record.
  * RU: Прочитать полную локальную запись из четырёх ячеек аргументов. */
 static int decode_words(unsigned long tag, const void *bytes, size_t size, void *result)
 {
-    RawRequest *request = result;
-    request->scoped = styxcallrecordread(STYX_SCOPED_CALL_TAG, "(bbbb)", bytes, size, &request->values);
-    return request->scoped || styxcallrecordread(tag, "(bbbb)", bytes, size, &request->values);
+    return styxcallrecordread(tag, "(bbbb)", bytes, size, result);
 }
 
 
@@ -73,16 +139,11 @@ void Vfsnative_scalarrawnext(void *frame)
     F_Vfsnative_scalarrawnext call;
     WORD result[STYX_DYNAMIC_CELLS + 1];
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrawnext, ret), sizeof(result));
-    RawRequest decoded = {0};
+    StyxCallValues decoded = {0};
     result[0] = dvm_scalar_owner_next(call.path, STYX_DYNAMIC_REQUEST_TAG, decode_words, &decoded, 1);
-    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
-    if (result[0] == 1 && decoded.scoped && !owner->remote_call_group)
-    {
-        result[0] = -1;
-    }
     for (size_t i = 0; i < STYX_DYNAMIC_CELLS; i++)
     {
-        result[i + 1] = decoded.values.cells[i];
+        result[i + 1] = decoded.cells[i];
     }
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
 }
@@ -123,9 +184,6 @@ void Vfsnative_scalarrawreply(void *frame)
     {
         error("invalid remote scalar reply");
     }
-    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
-    DVM_Namespace *scope = owner->remote_call_group;
-    owner->remote_call_group = NULL;
-    dvm_namespace_release(scope);
+    dvm_scalar_caller_end(currun());
     dvm_scalar_owner_record(call.path, bytes, used);
 }

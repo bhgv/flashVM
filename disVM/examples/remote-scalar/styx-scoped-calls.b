@@ -58,7 +58,39 @@ init()
         !((a == big 2 && b == big 3) || (a == big 3 && b == big 2)) || service->baseline(19) != 19) {
         raise "scoped child calls lost PID or shared fd cursor";
     }
-    report(sys, "PASS compiled call sees scoped caller VFS");
+    checkrefs(service, pid);
+    report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
+}
+
+
+# EN: Check ref copy-back, aliasing, owner failure and event-inbox retirement.
+# RU: Проверить обратную запись ref, алиас, отказ владельца и закрытие очереди.
+checkrefs(service: Scopedcalls, pid: int)
+{
+    a := ref Cell(21, big 0);
+    if (service->update(a) != pid || a.narrow != pid) {
+        raise "single ref did not use caller scope";
+    }
+    service->updatepair((a, a));
+    if (a.narrow != pid+2 || service->baseline(30) != 30) {
+        raise "aliased refs or private event retirement failed";
+    }
+    b := ref Cell(8, big 0);
+    service->updatepair((a, b));
+    if (a.narrow != pid || b.narrow != 10 || service->baseline(31) != 31) {
+        raise "distinct refs or private event retirement failed";
+    }
+    a.narrow = -1;
+    {
+        service->updatepair((a, b));
+        raise "expected scoped ref failure";
+    } exception {
+        "remote scalar owner error" =>
+            ;
+    }
+    if (a.narrow != -1 || b.narrow != 10 || service->baseline(32) != 32) {
+        raise "failed scoped ref applied copy-back or retained event scope";
+    }
 }
 
 

@@ -25,7 +25,7 @@ struct StyxUnibusServer
     size_t count; /* Number of mounted modules. */
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
-    DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven value calls. */
+    DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven calls. */
     int loaded; /* Load-backed directory; all profiles arrive from the owner. */
     size_t load_ready; /* Dispatcher-owned checked prefix of the export list. */
     int load_state; /* Dispatcher-owned: pending zero, ready one, rejected minus one. */

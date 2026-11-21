@@ -262,6 +262,29 @@ static int scoped_call(void)
 }
 
 
+/* EN: Check that the scoped offer accepts shaped refs and rejects a fixed profile.
+ * RU: Проверить допуск ref по схеме и отказ фиксированного контекстного профиля. */
+static int scoped_ref_profile(void)
+{
+    const StyxCallShape shape = {"((r[ib]r[ib]))", "()"};
+    const StyxCallShape fixed = {"(r[ib]r[ib])", "((ib))"};
+    unsigned char owner[STYX_SHAPED_OFFER_MAX], published[STYX_SHAPED_OFFER_MAX];
+    FVM_SRecord offer;
+    size_t size, used;
+    int caller = 0;
+    StyxCallShape decoded;
+    return styxshapedoffer("sample", 18, &shape, owner, sizeof(owner), &size) &&
+        fvm_srecord_read(owner, size, sizeof(owner), &offer, &used) == FVM_S_OK &&
+        fvm_srecord_write(STYX_SCOPED_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
+        styxscalar_profile_match_shape(published, size, "sample", 18, &caller, &decoded) && caller &&
+        !strcmp(shape.arguments, decoded.arguments) && !strcmp(shape.result, decoded.result) &&
+        styxshapedoffer("sample", DVM_REF_PAIR_SIGNATURE, &fixed, owner, sizeof(owner), &size) &&
+        fvm_srecord_read(owner, size, sizeof(owner), &offer, &used) == FVM_S_OK &&
+        fvm_srecord_write(STYX_SCOPED_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
+        !styxscalar_profile_match_shape(published, size, "sample", DVM_REF_PAIR_SIGNATURE, &caller, &decoded);
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -336,7 +359,7 @@ int main(void)
         fputs("scalar method dispatch failed\n", stderr);
         return 1;
     }
-    if (!dynamic_profile() || !shaped_profile() || !scoped_call())
+    if (!dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

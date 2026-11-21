@@ -33,4 +33,4 @@ StyxUnibusServer *styxunibusserverstartloaded(
 Для нескольких экспортов используйте
 [styxunibusserverstartloadedset](UNIBUS-SERVER-LOADED-SET.ru.md).
 
-См. [styxunibusserverstartscopedset](UNIBUS-SERVER-SCOPED-SET.ru.md) для вызовов по скалярной схеме с контекстом клиента.
+См. [styxunibusserverstartscopedset](UNIBUS-SERVER-SCOPED-SET.ru.md) для вызовов по схеме с контекстом клиента.

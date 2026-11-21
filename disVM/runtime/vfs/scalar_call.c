@@ -27,6 +27,7 @@
 #include "../../native/terminal/scalar_route.h"
 #include "../../native/terminal/scalar_verify.h"
 #include "../../native/terminal/record_write.h"
+#include "../../native/terminal/call_scope.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,7 +75,7 @@ typedef enum ScalarRead
 
 /* EN/RU: Read a complete reply, repeating only empty pending reads for up to 3 seconds.
  * Прочитать полный ответ, повторяя только пустые чтения до трёх секунд. */
-static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode, DVM_OwnerDecode decoder, void *decoded)
+static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode, DVM_OwnerDecode decoder, void *decoded, int *required)
 {
     struct timespec start;
     if (mode != READ_SESSION && mode != READ_POLL && clock_gettime(CLOCK_MONOTONIC, &start))
@@ -83,7 +84,7 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
     }
     while (!dvm_cancel_requested(dvm_cancel_current()))
     {
-        unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
+        unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD + 1];
         DVM_IoResult got = dvm_vfs_read_chunk(reply, bytes, sizeof(bytes));
         if ((mode == READ_SESSION || mode == READ_POLL) && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
             !(got.flags & DVM_IO_UNCERTAIN) &&
@@ -99,7 +100,7 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
             }
             if (decoder)
             {
-                return decoder(tag, bytes, got.count, decoded) ? NULL : "invalid typed owner request";
+                return dvm_scalar_owner_decode(decoder, tag, bytes, got.count, decoded, required) ? NULL : "invalid typed owner request";
             }
             StyxScalarKind kind;
             if (!styxscalarread(tag, bytes, got.count, &kind, value))
@@ -143,7 +144,7 @@ static const char *exchange(DVM_Provider *request, DVM_Provider *reply,
         DVM_LaunchDelivery sent = styxscalarcallfile(request, request_tag, argument);
         if (sent == DVM_LAUNCH_DELIVERED)
         {
-            failure = receive(&handle, reply_tag, value, READ_REPLY, NULL, NULL);
+            failure = receive(&handle, reply_tag, value, READ_REPLY, NULL, NULL, NULL);
         }
         else if (sent == DVM_LAUNCH_UNKNOWN)
         {
@@ -225,7 +226,7 @@ void Vfsnative_scalarcall(void *frame)
 /* EN/RU: Read from the checked owner inbox outside managed admission.
  * Читать из проверенного приёмника владельца вне допуска VM. */
 static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result,
-    DVM_OwnerDecode decoder, void *decoded, DVM_Namespace **scoped)
+    DVM_OwnerDecode decoder, void *decoded, Prog *scoped)
 {
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
@@ -246,14 +247,11 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     if (provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH) &&
         dvm_provider_open(provider, ".", "r", &handle) == FVM_OK && (handle.native_flags & DVM_VFS_CANCEL_DATA))
     {
-        failure = receive(&handle, (unsigned long)tag, &value, mode, decoder, decoded);
-        DVM_Provider *caller = !failure && scoped && handle.ops->take_context ?
-            handle.ops->take_context(handle.state) : NULL;
-        if (caller)
+        int required = 0;
+        failure = receive(&handle, (unsigned long)tag, &value, mode, decoder, decoded, scoped ? &required : NULL);
+        if (!failure && required && !dvm_scalar_caller_begin(scoped, group, &handle))
         {
-            *scoped = dvm_scalar_caller_namespace(group, caller);
-            dvm_provider_release(caller);
-            failure = *scoped ? NULL : scope_failed;
+            failure = scope_failed;
         }
     }
     dvm_vfs_close(&handle);
@@ -262,11 +260,7 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     dvm_runtime_gc_native_enter(released);
     if (cancelled || failure)
     {
-        if (scoped)
-        {
-            dvm_namespace_release(*scoped);
-            *scoped = NULL;
-        }
+        dvm_scalar_caller_end(scoped);
         return cancelled ? "scalar owner request cancelled" : failure;
     }
     if (result)
@@ -472,8 +466,7 @@ int dvm_scalar_owner_next(String *path, unsigned long tag, DVM_OwnerDecode decod
     {
         error("invalid scalar owner scope");
     }
-    const char *failure = take_request(path, tag, READ_SESSION, NULL, decoder, decoded,
-        owner ? &owner->remote_call_group : NULL);
+    const char *failure = take_request(path, tag, READ_SESSION, NULL, decoder, decoded, (Prog *)owner);
     if (failure == scope_failed)
     {
         return -1;

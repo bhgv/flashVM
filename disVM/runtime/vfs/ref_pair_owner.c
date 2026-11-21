@@ -44,8 +44,8 @@ void Vfsnative_scalarrefpairnext(void *frame)
     F_Vfsnative_scalarrefpairnext call;
     StyxRefPair pair = {0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefpairnext, ret), 5 * sizeof(WORD));
-    int ready = dvm_scalar_owner_next(call.path, STYX_REF_PAIR_REQUEST_TAG, decode_pair, &pair, 0);
-    const WORD cells[] = {ready ? (WORD)pair.count : 0, pair.objects[0].narrow, pair.objects[0].wide,
+    int ready = dvm_scalar_owner_next(call.path, STYX_REF_PAIR_REQUEST_TAG, decode_pair, &pair, 1);
+    const WORD cells[] = {ready == 1 ? (WORD)pair.count : ready, pair.objects[0].narrow, pair.objects[0].wide,
         pair.objects[1].narrow, pair.objects[1].wide};
     dvm_sys_scalar_result(cells, call.ret, sizeof(cells));
 }
@@ -98,5 +98,6 @@ void Vfsnative_scalarrefpairreply(void *frame)
     {
         error("invalid ref pair owner reply");
     }
+    dvm_scalar_caller_end(currun());
     dvm_scalar_owner_record(call.path, bytes, size);
 }

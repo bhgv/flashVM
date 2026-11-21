@@ -213,6 +213,43 @@ static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t s
 }
 
 
+/* EN: Wrap a compiled call and publish the current process through its reverse lease.
+ * RU: Упаковать вызов по схеме и опубликовать текущий процесс во встречной сессии. */
+static int exchange_compiled(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_LaunchFiles *descriptors,
+    uint32_t pid, unsigned char *bytes, size_t size, size_t capacity, size_t *received)
+{
+    if (!files->caller)
+    {
+        return exchange_frame(files, bytes, size, capacity, received);
+    }
+    unsigned char scoped[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
+    size_t used;
+    DVM_CallerBinding binding;
+    if (!files->dynamic || !styxcall_scope_write(pid, bytes, size, scoped, sizeof(scoped), &used) ||
+        !dvm_provider_caller_binding(files->request, &binding))
+    {
+        return -1;
+    }
+    DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
+    void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
+    int result = lease ? exchange_frame(files, scoped, used, sizeof(scoped), received) : -1;
+    if (lease)
+    {
+        binding.end(binding.state, lease);
+    }
+    dvm_provider_release(tree);
+    if (result == 1)
+    {
+        if (*received >= capacity)
+        {
+            return 0;
+        }
+        memcpy(bytes, scoped, *received);
+    }
+    return result;
+}
+
+
 /* EN/RU: Encode, write once, rewind, and read bounded chunks from the same opened fid.
  * Закодировать, записать один раз, перемотать и прочитать части с того же fid. */
 int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value)
@@ -317,8 +354,20 @@ int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
 {
     unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
     size_t received = 0;
-    int exchanged = composed(files, group, descriptors, pid,
-        files->caller ? STYX_REF_CALLER_TAG : STYX_REF_REQUEST_TAG, argument, bytes, sizeof(bytes), &received);
+    int exchanged = -1;
+    if (files->ref_profile)
+    {
+        size_t size;
+        if (styxtuplewrite(STYX_REF_REQUEST_TAG, 0, argument, bytes, sizeof(bytes), &size))
+        {
+            exchanged = exchange_compiled(files, group, descriptors, pid, bytes, size, sizeof(bytes), &received);
+        }
+    }
+    else
+    {
+        exchanged = composed(files, group, descriptors, pid,
+            files->caller ? STYX_REF_CALLER_TAG : STYX_REF_REQUEST_TAG, argument, bytes, sizeof(bytes), &received);
+    }
     if (exchanged != 1)
     {
         return exchanged;
@@ -349,38 +398,7 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, 
     {
         return -1;
     }
-    int exchanged;
-    if (files->caller)
-    {
-        unsigned char scoped[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
-        size_t used;
-        DVM_CallerBinding binding;
-        if (!files->dynamic || !styxcall_scope_write(pid, bytes, size, scoped, sizeof(scoped), &used) ||
-            !dvm_provider_caller_binding(files->request, &binding))
-        {
-            return -1;
-        }
-        DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
-        void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
-        exchanged = lease ? exchange_frame(files, scoped, used, sizeof(scoped), &received) : -1;
-        if (lease)
-        {
-            binding.end(binding.state, lease);
-        }
-        dvm_provider_release(tree);
-        if (exchanged == 1)
-        {
-            if (received >= sizeof(bytes))
-            {
-                return 0;
-            }
-            memcpy(bytes, scoped, received);
-        }
-    }
-    else
-    {
-        exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
-    }
+    int exchanged = exchange_compiled(files, group, descriptors, pid, bytes, size, sizeof(bytes), &received);
     if (exchanged != 1)
     {
         return exchanged;
@@ -398,15 +416,16 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, 
 
 
 /* EN/RU: See scalar_files.h. / См. scalar_files.h. */
-int dvm_ref_pair_invoke(DVM_ScalarFiles *files, StyxRefPair *value)
+int dvm_ref_pair_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_LaunchFiles *descriptors,
+    uint32_t pid, StyxRefPair *value)
 {
     unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
     size_t size, received = 0;
-    if (files->caller || !styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, bytes, sizeof(bytes), &size))
+    if (!styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, bytes, sizeof(bytes), &size))
     {
         return -1;
     }
-    int exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    int exchanged = exchange_compiled(files, group, descriptors, pid, bytes, size, sizeof(bytes), &received);
     if (exchanged != 1)
     {
         return exchanged;

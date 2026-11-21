@@ -121,6 +121,13 @@ void Sys_pctl(void *frame)
     }
     if (owner->remote_call_group)
     {
+        if (!dvm_sysevents_group(owner->remote_call_events, replacement))
+        {
+            dvm_namespace_release(replacement);
+            kwerrstr("cannot replace remote call namespace and system-event scope");
+            publish(call.ret, -1);
+            return;
+        }
         DVM_Namespace *previous = owner->remote_call_group;
         owner->remote_call_group = replacement;
         dvm_namespace_release(previous);
