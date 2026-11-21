@@ -135,6 +135,7 @@ static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid, DVM_Cancel *
     DVM_Provider *self = dvm_provider_capture(root, path);
     FVM_FileInfo info;
     if (self && dvm_provider_info(self, ".", &info) == FVM_OK && info.directory &&
+        dvm_provider_set_styx_caller(self, root, pid) &&
         (!cancel || dvm_provider_set_call_cancel(self, cancel)))
     {
         return self;

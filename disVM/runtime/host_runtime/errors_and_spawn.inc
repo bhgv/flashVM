@@ -443,6 +443,8 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
     if (source && source->remote_call_handoff == 1)
     {
         DVM_RuntimeProcess *child = (DVM_RuntimeProcess *)request.storage;
+        child->remote_call_key = source->remote_call_key;
+        source->remote_call_key = (DVM_StyxCallerKey){0};
         child->remote_call_group = source->remote_call_group;
         child->remote_call_events = source->remote_call_events;
         child->remote_call_reply = source->remote_call_reply;

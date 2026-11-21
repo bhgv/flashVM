@@ -9,6 +9,7 @@
 #include "owner_messages.h"
 #include "channel_sync.h"
 #include "vfs/namespace.h"
+#include "vfs/provider.h"
 #ifndef DVM_RUNTIME_PROCESS_MAX
 #define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
 #endif
@@ -68,6 +69,7 @@ typedef struct DVM_RuntimeProcess
     struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
     struct DVM_ModuleOverride *module_namespaces; /* Process-local namespace variants and inboxes keyed by never-reused binding identity. */
     struct DVM_SysEvents *remote_call_events; /* Owned event inbox for the temporary namespace. */
+    DVM_StyxCallerKey remote_call_key; /* Identity tied to the active caller scope. */
     struct DVM_Provider *remote_call_reply; /* Owned private return mailbox of the active call. */
     int remote_call_handoff; /* 1 transfers on spawn, 2 waits for worker cancellation activation. */
     int remote_call_cancel_delivered;     /* The owner has raised cancellation for this call. */

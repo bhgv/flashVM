@@ -90,3 +90,41 @@ FVM_Result dvm_vfs_walk_enter(const WalkEntity *entity, const char *path, unsign
     return status == WALK_OK ? FVM_OK : status == WALK_CYCLE ? DVM_VFS_CYCLE :
         status == WALK_NOMEM ? FVM_OUT_OF_MEMORY : status == WALK_INVALID ? FVM_INVALID_ARGUMENT : FVM_ERROR;
 }
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+int dvm_provider_set_styx_caller(DVM_Provider *context, DVM_Provider *session, uint32_t pid)
+{
+    DVM_StyxCallerKey key;
+    if (!context || context == session || !pid || !dvm_provider_walk_get(session, &key.session))
+    {
+        return 0;
+    }
+    key.pid = pid;
+    fvm_port_sync_lock(context->lock);
+    int installed = context->references == 1 && !context->styx_caller.pid;
+    if (installed)
+    {
+        context->styx_caller = key;
+    }
+    fvm_port_sync_unlock(context->lock);
+    return installed;
+}
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+int dvm_provider_styx_caller(DVM_Provider *context, DVM_StyxCallerKey *key)
+{
+    if (!context || !key)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(context->lock);
+    int present = context->styx_caller.pid != 0;
+    if (present)
+    {
+        *key = context->styx_caller;
+    }
+    fvm_port_sync_unlock(context->lock);
+    return present;
+}

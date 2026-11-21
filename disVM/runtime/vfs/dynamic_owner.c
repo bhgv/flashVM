@@ -80,10 +80,14 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
     DVM_Namespace *scope = caller ? caller_namespace(group, caller) : NULL;
     DVM_Cancel *cancel = caller ? dvm_provider_call_cancel(caller) : NULL;
     DVM_Provider *reply = dvm_provider_call_reply(caller);
+    DVM_StyxCallerKey key = {0};
+    int identified = dvm_provider_styx_caller(caller, &key);
     dvm_provider_release(caller);
     DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
-    if (!events)
+    if (!events || (reply && !identified))
     {
+        dvm_sysevents_retire(events);
+        dvm_sysevents_release(events);
         dvm_namespace_release(scope);
         dvm_cancel_release(cancel);
         styxunibusmailboxseal(reply);
@@ -91,6 +95,7 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
         return 0;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    owner->remote_call_key = key;
     owner->remote_call_reply = reply;
     owner->remote_call_cancel_delivered = 0;
     owner->remote_call_cancel = cancel;
@@ -112,6 +117,7 @@ void dvm_scalar_caller_end(Prog *process)
     DVM_SysEvents *events = owner->remote_call_events;
     dvm_cancel_release(owner->remote_call_cancel);
     owner->remote_call_cancel = NULL;
+    owner->remote_call_key = (DVM_StyxCallerKey){0};
     owner->remote_call_handoff = 0;
     styxunibusmailboxseal(owner->remote_call_reply);
     dvm_provider_release(owner->remote_call_reply);

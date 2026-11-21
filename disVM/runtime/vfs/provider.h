@@ -16,6 +16,14 @@
 #define DVM_PROVIDER_CANCEL_LIST 2U /* Requires PATH; directory open/list and all returned stream closes consume scope. */
 #define DVM_PROVIDER_CANCEL_PATH 1U /* Native factory info/open/access consume current cancellation scope. */
 #define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
+/* EN: Caller identity across per-call reverse grants.
+ * RU: Идентичность клиента между обратными контекстами отдельных вызовов. */
+typedef struct DVM_StyxCallerKey
+{
+    WalkEntity session; /* Logical identity of the reverse Styx mount. */
+    uint32_t pid;       /* Validated client PID, or zero for no caller. */
+} DVM_StyxCallerKey;
+
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
 
@@ -213,5 +221,13 @@ int dvm_provider_set_call_reply(DVM_Provider *context, DVM_Provider *reply);
 /* EN: Retain the private reply capability of this borrowed context, or return NULL.
  * RU: Вернуть свою ссылку на частный маршрут ответа контекста либо NULL. */
 DVM_Provider *dvm_provider_call_reply(DVM_Provider *context);
+
+/* EN: Set a key from the borrowed session root on a private captured context.
+ * RU: Записать ключ заимствованного корня сессии в частный захваченный контекст. */
+int dvm_provider_set_styx_caller(DVM_Provider *context, DVM_Provider *session, uint32_t pid);
+
+/* EN: Copy the trusted native key from a borrowed context; return 0 if absent.
+ * RU: Скопировать доверенный ключ заимствованного контекста. 0 при отсутствии. */
+int dvm_provider_styx_caller(DVM_Provider *context, DVM_StyxCallerKey *key);
 
 #endif

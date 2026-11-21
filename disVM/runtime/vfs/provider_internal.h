@@ -20,6 +20,7 @@ struct DVM_Provider
     size_t references; /* Owning native capabilities/handles. */
     const DVM_ProviderOps *ops; /* Immutable callback table/code through destruction. */
     void *state; /* Owned native factory state. */
+    DVM_StyxCallerKey styx_caller; /* Immutable caller identity after publication. */
     DVM_Provider *call_reply; /* Optional private reply capability bound before publication. */
     struct DVM_Cancel *call_cancel; /* Optional token bound to an unpublished call context. */
     DVM_Changes *changes; /* Owned local invalidation journal. */
