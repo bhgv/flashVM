@@ -302,5 +302,7 @@ in the caller working directory. The [example caller](../examples/remote-scalar/
 appends `/transport/mounted` to `/libraries` with `Sys->bind` and `MAFTER`,
 then uses ordinary Limbo `load` for both public paths. The [integration test](../native/terminal/tests/scalar/mount_cli.py)
 compiles the images, connects the two processes, checks ref copy-back and
-compares the provider PIDs. Disconnecting the caller drains the provider's
+compares the provider PIDs. After cancellation, the same caller PID gets
+a new executor in the other library. A missing export fails provider startup
+and reports the implementation and export name. Disconnecting the caller drains the provider's
 export inboxes and retires its idle workers.

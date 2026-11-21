@@ -287,39 +287,75 @@ def reject_mount_path(runtime, work):
 # EN: Boot both stock CLIs and load two exports through one delegated carrier.
 # RU: Запустить два штатных CLI и загрузить два экспорта по одному транспорту.
 def library_cli(runtime, compiler, disvm, example, work):
-    (work / "libraries").mkdir()
-    (work / "libraries/local-marker").touch()
-    reject_mount_path(runtime, work)
+    owner_root, caller_root = work / "library-owner", work / "library-caller"
+    owner_root.mkdir()
+    caller_root.mkdir()
+    (caller_root / "libraries").mkdir()
+    (caller_root / "libraries/local-marker").touch()
+    reject_mount_path(runtime, caller_root)
     for source, image in (
-        (disvm / "limbo/scalarowner.b", "scalarowner.dis"),
-        (example / "scoped-calls-owner.b", "first-owner.dis"),
-        (example / "scoped-calls-owner.b", "second-owner.dis"),
-        (example / "styx-library-cli.b", "library-cli.dis"),
+        (disvm / "limbo/scalarowner.b", owner_root / "scalarowner.dis"),
+        (example / "scoped-calls-owner.b", owner_root / "first-owner.dis"),
+        (example / "scoped-calls-owner.b", owner_root / "second-owner.dis"),
+        (example / "styx-library-cli.b", caller_root / "library-cli.dis"),
     ):
         subprocess.run([compiler, "-D", "R", "-I", disvm / "upstream/module", "-I", disvm / "module",
-                        "-I", example, "-o", work / image, source], cwd=work, check=True)
+                        "-I", example, "-o", image, source], cwd=work, check=True)
+    library_cli_pair(runtime, owner_root, caller_root, "--no-jit", missing=True)
     for mode in ("--no-jit", "--jit"):
-        caller, owner = tcp_pair()
-        with caller, owner, subprocess.Popen(
-            [runtime, "--styx-library-serve-fd", str(owner.fileno()),
-             "--export", "first.dis", "first-owner.dis", "update",
-             "--export", "second.dis", "second-owner.dis", "update", "--", mode, "scalarowner.dis"],
-            pass_fds=(owner.fileno(),), cwd=work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True
-        ) as server:
-            owner.close()
-            try:
-                client = subprocess.run(
-                    [runtime, "--styx-mount-fd", str(caller.fileno()), "--at", "/transport", "--", mode, "library-cli.dis"],
-                    pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=15)
-                caller.close()
-                output, _ = server.communicate(timeout=10)
-                if client.returncode or server.returncode or "PASS two libraries" not in client.stdout:
-                    raise RuntimeError(client.stdout + client.stderr + output)
-                print(client.stdout.strip(), mode, flush=True)
-            finally:
-                if server.poll() is None:
-                    server.kill()
+        library_cli_pair(runtime, owner_root, caller_root, mode)
+
+
+# EN: Relay only test markers between the independent owner and caller roots.
+# RU: Передать только тестовые маркеры между независимыми корнями сторон.
+def relay_library_markers(owner_root, caller_root, markers, client):
+    deadline = time.monotonic() + 7
+    for name in markers:
+        while (owner_root / name).read_bytes() != b"1":
+            if time.monotonic() >= deadline or client.poll() is not None:
+                return
+            time.sleep(0.005)
+        (caller_root / name).write_bytes(b"1")
+
+
+# EN: Run both commands on one carrier with separate local roots.
+# RU: Запустить обе команды на одном транспорте с раздельными локальными корнями.
+def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False):
+    markers = ("single-ref-pending", "single-ref-cancelled")
+    for root in (owner_root, caller_root):
+        for mark in markers:
+            (root / mark).write_bytes(b"")
+    caller, owner = tcp_pair()
+    export = "missing" if missing else "update"
+    with caller, owner, subprocess.Popen(
+        [runtime, "--styx-library-serve-fd", str(owner.fileno()),
+         "--export", "first.dis", "first-owner.dis", "update",
+         "--export", "second.dis", "second-owner.dis", export, "--", mode, "scalarowner.dis"],
+        pass_fds=(owner.fileno(),), cwd=owner_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True
+    ) as server, subprocess.Popen(
+        [runtime, "--styx-mount-fd", str(caller.fileno()), "--at", "/transport", "--", mode, "library-cli.dis"],
+        pass_fds=(caller.fileno(),), cwd=caller_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True
+    ) as client:
+        caller.close()
+        owner.close()
+        try:
+            if not missing:
+                relay_library_markers(owner_root, caller_root, markers, client)
+            reported, _ = client.communicate(timeout=10)
+            output, _ = server.communicate(timeout=10)
+            if missing:
+                if not client.returncode or not server.returncode or "cannot publish loaded export second-owner.dis missing" not in output:
+                    raise RuntimeError(reported + output)
+            elif client.returncode or server.returncode or "PASS two libraries" not in reported:
+                raise RuntimeError(reported + output)
+            else:
+                print(reported.strip(), mode, flush=True)
+        finally:
+            for child in (client, server):
+                if child.poll() is None:
+                    child.kill()
 
 
 if __name__ == "__main__":

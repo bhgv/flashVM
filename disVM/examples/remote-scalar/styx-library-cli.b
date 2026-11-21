@@ -4,6 +4,7 @@
 implement Librarycli;
 
 include "sys.m";
+include "processctl.m";
 include "scoped-calls.m";
 
 Librarycli: module
@@ -34,5 +35,55 @@ init()
         a.narrow != pid || b.narrow != pid || a.wide <= big 0 || a.wide != b.wide) {
         raise "mounted libraries did not share the expected executor";
     }
+    check_cancel(sys, first, second, a.wide);
     sys->print("PASS two libraries on one stock Styx session\n");
+}
+
+include "refpair-sync.b";
+
+
+# EN: Cancel a child call, then compare replacement and unaffected worker IDs.
+# RU: Отменить вызов потомка и сверить PID нового и незатронутого исполнителей.
+check_cancel(sys: Sys, first, second: Scopedcalls, parent_worker: big)
+{
+    control := load Processctl Processctl->PATH;
+    started := chan of int;
+    done := chan of int;
+    spawn interrupted_ref(first, second, control, started, done);
+    child := <-started;
+    wait_marker(sys, "single-ref-pending");
+    cell := ref Cell(-51, big 0);
+    if (second->update(cell) != control->pid() || cell.wide != parent_worker) {
+        raise "parallel caller lost its executor";
+    }
+    if (control->cancelwait(child) != Processctl->Cancelled) {
+        raise "could not cancel the remote ref wait";
+    }
+    wait_marker(sys, "single-ref-cancelled");
+    if (<-done != 1) {
+        raise "cancelled caller did not get a fresh executor on the second library";
+    }
+}
+
+
+# EN: Reuse the same caller PID after cancellation and inspect the new Prog.
+# RU: Повторно вызвать с тем же PID клиента после отмены и проверить новый Prog.
+interrupted_ref(first, second: Scopedcalls, control: Processctl, started, done: chan of int)
+{
+    pid := control->pid();
+    before := ref Cell(-51, big 0);
+    valid := first->update(before) == pid;
+    started <-= pid;
+    pending := ref Cell(-50, big 0);
+    cancelled := 0;
+    {
+        first->update(pending);
+    } exception {
+        "*" =>
+            cancelled = 1;
+    }
+    after := ref Cell(-51, big 0);
+    valid = second->update(after) == pid && valid;
+    done <-= valid && cancelled && pending.narrow == -50 && pending.wide == big 0 &&
+        before.wide > big 0 && after.wide > big 0 && before.wide != after.wide;
 }

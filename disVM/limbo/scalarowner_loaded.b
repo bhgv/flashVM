@@ -107,6 +107,9 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string, table: i
         view := routes->scalarloadedslot(anchor, name, offer);
         (tag, nil, nil, nil, nil, nil, nil, nil, nil, nil) := view;
         if (tag == 0) {
+            if (table) {
+                raise "cannot publish loaded export " + implementation + " " + name;
+            }
             return;
         }
         planned = (view, request, reply) :: planned;
