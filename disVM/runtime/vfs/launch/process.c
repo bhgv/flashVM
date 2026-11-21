@@ -139,11 +139,21 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         }
         *channels = handoff->flashvm;
     }
-    DVM_Namespace *group = dvm_launch_program_namespace(handoff);
+    DVM_LaunchFiles *files = NULL;
+    if (!dvm_launch_files_open(handoff, &files))
+    {
+        free(channels);
+        return 0;
+    }
+    int projected = 1;
+    DVM_Provider *fds = handoff->program ? dvm_launch_imported_fd_view(files, &projected) : NULL;
+    DVM_Namespace *group = projected ? dvm_launch_program_namespace_with_fds(handoff, fds) : NULL;
+    dvm_provider_release(fds);
     DVM_SysEvents *events = group ? dvm_sysevents_create(group) : NULL;
     if (!events)
     {
         dvm_namespace_release(group);
+        dvm_launch_files_release(files);
         free(channels);
         return 0;
     }
@@ -153,6 +163,7 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
         dvm_namespace_release(group);
+        dvm_launch_files_release(files);
         free(channels);
         return 0;
     }
@@ -163,12 +174,12 @@ int dvm_launch_process_adopt(Prog *process, DVM_LaunchHandoff *handoff)
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
         dvm_namespace_release(group);
+        dvm_launch_files_release(files);
         free(channels);
         return 0;
     }
     DVM_LaunchContext *context = dvm_launch_context_create(handoff);
-    DVM_LaunchFiles *files = NULL;
-    if (!context || !dvm_launch_files_open(handoff, &files) ||
+    if (!context ||
         (handoff->unibus && !unibusclaim(handoff->unibus, (uintptr_t)process)))
     {
         dvm_launch_files_release(files);

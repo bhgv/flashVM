@@ -317,3 +317,8 @@ Two guest numbers can refer to the same host FD and share its read and
 write position. Guest numbers 0, 1 and 2 come from the standard streams.
 The [launch example](../examples/remote-scalar/styx-chain-owner.b) checks
 successive reads through two numbers and a write through one of them.
+
+A scoped launch also exposes the adopted numbers under `/.prog/.self/.fd`.
+Opening one of these files uses the same slot, cursor and mode as
+`Sys->fildes(N)`. An existing caller `/env` directory is visible under
+`/.vfs/env` when it is part of the caller's VFS grant.

@@ -326,10 +326,11 @@ int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, cons
 
 /* EN/RU: Project the process identity and explicitly granted subtrees.
  * Спроецировать идентификатор процесса и явно выданные поддеревья. */
-static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff)
+static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff, DVM_Provider *fds)
 {
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !dvm_view_map(view, "/.self/.pid", handoff->program, ".pid", FVM_ACCESS_READ, 0) ||
+        (fds && !dvm_view_map(view, "/.self/.fd", fds, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
         (handoff->program_vfs && !dvm_view_map(view, "/.self/.vfs", handoff->program_vfs,
             ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
         (handoff->program_var && !dvm_view_map(view, "/.self/.var", handoff->program_var,
@@ -344,7 +345,7 @@ static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff)
 
 /* EN/RU: Stage private aliases before publishing the launched process.
  * Подготовить частные пути до публикации запущенного процесса. */
-DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
+DVM_Namespace *dvm_launch_program_namespace_with_fds(const DVM_LaunchHandoff *handoff, DVM_Provider *fds)
 {
     if (!handoff || !handoff->group)
     {
@@ -355,7 +356,7 @@ DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
         return dvm_namespace_retain(handoff->group) ? handoff->group : NULL;
     }
     DVM_Namespace *group = dvm_namespace_copy(handoff->group);
-    DVM_Provider *self = group ? program_self(handoff) : NULL;
+    DVM_Provider *self = group ? program_self(handoff, fds) : NULL;
     int mounted = self && dvm_program_mount_private(group, self, "/.prog", &handoff->description.terminal_origin) &&
         (!handoff->program_vfs || dvm_program_mount_private(group, handoff->program_vfs, "/.vfs", &handoff->description.terminal_origin));
     dvm_provider_release(self);
@@ -365,4 +366,10 @@ DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
         return NULL;
     }
     return group;
+}
+
+/* EN/RU: See ticket.h. / См. ticket.h. */
+DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
+{
+    return dvm_launch_program_namespace_with_fds(handoff, NULL);
 }

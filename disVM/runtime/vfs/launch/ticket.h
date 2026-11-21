@@ -102,6 +102,10 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
  * Вернуть частное пространство запуска или удержать исходное без .vfs. */
 DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff);
 
+/* EN: Stage the scoped namespace with the borrowed view of adopted numbered slots.
+ * RU: Подготовить namespace с заимствованным деревом принятых номерных слотов. */
+DVM_Namespace *dvm_launch_program_namespace_with_fds(const DVM_LaunchHandoff *handoff, DVM_Provider *fds);
+
 
 /* EN: Replace the terminal VFS root of an exclusive prepared handoff. Borrow the
  * new terminal provider through return. Preserve accepted execution authority,

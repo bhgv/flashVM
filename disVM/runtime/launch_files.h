@@ -70,4 +70,8 @@ int dvm_launch_file_is_hidden(DVM_LaunchFiles *files, unsigned number);
  * RU: Построить виртуальный каталог из удерживаемой таблицы. Пустой даёт NULL.
  * Записать 1 при полной сборке, включая пустую таблицу, иначе 0. */
 DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success);
+
+/* EN: Project only adopted slots, preserving modes, omissions and cursors.
+ * RU: Отобразить принятые слоты с их режимами, исключениями и курсорами. */
+DVM_Provider *dvm_launch_imported_fd_view(DVM_LaunchFiles *files, int *success);
 #endif
