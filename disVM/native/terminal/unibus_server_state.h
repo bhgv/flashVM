@@ -12,6 +12,7 @@ typedef struct MountedExport
 {
     int busy; /* Atomic gate for the export mailbox. */
     StyxScalarFunctionOwner owner; /* Owned routes when the endpoint uses Dis. */
+    size_t directory_leader; /* Entry owning this module directory and its profile. */
     size_t interface_size; /* Advertised size of the immutable profile. */
     unsigned char interface[STYX_SHAPED_OFFER_MAX * STYX_MOUNTED_EXPORT_LIMIT]; /* Encoded profile. */
     Styxfile *profile_node; /* Directory leader owns the profile listing entry. */

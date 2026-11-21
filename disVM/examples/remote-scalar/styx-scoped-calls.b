@@ -81,11 +81,20 @@ init()
         !((a == big 2 && b == big 3) || (a == big 3 && b == big 2)) || service->baseline(19) != 19) {
         raise "scoped child calls lost PID or shared fd cursor";
     }
+    other := load Scopedcalls "/peer/mounted/scoped-extra.dis";
+    if (other == nil) {
+        raise "second scoped module failed to load";
+    }
+    (caller, executor) := service->inspect(5);
+    across := ref Cell(-51, big 0);
+    if (caller != pid || executor <= big 0 || other->update(across) != pid || across.wide != executor) {
+        raise "different module did not reuse the caller executor";
+    }
     checkrefs(service, pid);
     concurrent_refs(sys, service, pid, 0);
     concurrent_refs(sys, service, pid, 1);
-    checkcancel(sys, service, 3, "compute-cancel-");
-    checkcancel(sys, service, 2, "cancel-");
+    checkcancel(sys, service, other, 3, "compute-cancel-");
+    checkcancel(sys, service, other, 2, "cancel-");
     (slowpid, slowvalue) := service->inspect(4);
     if (slowpid != pid || slowvalue != big 44) {
         raise "slow scoped call lost its private reply";
@@ -181,12 +190,12 @@ include "refpair-sync.b";
 
 # EN: Revoke an active call by killing its caller, then reuse the same mount.
 # RU: Отозвать активный вызов завершением клиента и повторно использовать маунт.
-checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
+checkcancel(sys: Sys, service, other: Scopedcalls, mode: int, prefix: string)
 {
     ctl := load Processctl Processctl->PATH;
     started := chan of int;
     resumed := chan of int;
-    spawn cancel_worker(service, ctl, started, resumed, mode);
+    spawn cancel_worker(service, other, ctl, started, resumed, mode);
     child := <-started;
     wait_marker(sys, prefix + "entered");
     (companion, workerpid) := service->inspect(5);
@@ -219,7 +228,7 @@ checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
 
 # EN: Publish the caller PID before entering the remote function.
 # RU: Передать PID клиента перед входом в удалённую функцию.
-cancel_worker(service: Scopedcalls, ctl: Processctl, started, resumed: chan of int, mode: int)
+cancel_worker(service, other: Scopedcalls, ctl: Processctl, started, resumed: chan of int, mode: int)
 {
     pid := ctl->pid();
     (before_pid, before) := service->inspect(5);
@@ -232,7 +241,7 @@ cancel_worker(service: Scopedcalls, ctl: Processctl, started, resumed: chan of i
             cancelled = 1;
     }
     cell := ref Cell(-51, big 0);
-    after_pid := service->update(cell);
+    after_pid := other->update(cell);
     (raw_pid, after) := service->inspect(5);
     resumed <-= cancelled && before_pid == pid && after_pid == pid && raw_pid == pid &&
         before > big 0 && after > big 0 && before != after && cell.wide == after;

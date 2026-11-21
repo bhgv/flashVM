@@ -379,6 +379,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
                 }
             }
         }
+        server->modules[i].directory_leader = leader;
         if (!export_function(server, i, leader, &entries[i]))
         {
             return 0;
@@ -392,7 +393,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse)
 {
-    StyxUnibusServer *server = channel && entries && count && count <= (loaded ? STYX_MOUNTED_EXPORT_LIMIT : STYX_MOUNTED_SCALAR_LIMIT) ?
+    StyxUnibusServer *server = channel && entries && count && count <= STYX_MOUNTED_SCALAR_LIMIT ?
         calloc(1, sizeof(*server)) : NULL;
     if (!server)
     {

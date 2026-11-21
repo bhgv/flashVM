@@ -41,3 +41,5 @@ StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel,
 
 См. [рабочий пример](../../examples/remote-scalar/STYX.ru.md#вызов-через-встречный-маунт-styx)
 и [формат обмена](SCALAR-FUNCTION.ru.md#контекст-клиента-для-вызовов-по-схеме).
+
+Для нескольких модулей см. [styxunibusserverstartscopedtable](UNIBUS-SERVER-SCOPED-TABLE.ru.md).

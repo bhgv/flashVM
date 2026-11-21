@@ -131,16 +131,32 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                 module = "compiled-ref.dis";
                 implementation = "compiled-ref-owner.dis";
             }
-            const char *scoped_names[] = {"inspect", "update", "updatepair", "baseline"};
+            const char *scoped_names[] = {"inspect", "update", "updatepair", "baseline",
+                "inspect", "update", "updatepair", "baseline"};
+            const char *second = NULL;
             if (scoped)
             {
                 names = scoped_names;
                 count = sizeof(scoped_names) / sizeof(scoped_names[0]);
                 module = "scoped-calls.dis";
                 implementation = "scoped-calls-owner.dis";
+                second = "scoped-extra-owner.dis";
             }
-            StyxUnibusServer *server = scoped ? styxunibusserverstartscopedset(channel, module, names, count, reverse) :
-                styxunibusserverstartloadedset(channel, module, names, count);
+            StyxUnibusServer *server;
+            if (scoped)
+            {
+                StyxMountedScalar entries[STYX_MOUNTED_EXPORT_LIMIT] = {0};
+                for (size_t i = 0; i < count; i++)
+                {
+                    entries[i].module = i < count / 2 ? module : "scoped-extra.dis";
+                    entries[i].name = names[i];
+                }
+                server = styxunibusserverstartscopedtable(channel, entries, count, reverse);
+            }
+            else
+            {
+                server = styxunibusserverstartloadedset(channel, module, names, count);
+            }
             if (server)
             {
                 DVM_Provider *requests[STYX_MOUNTED_EXPORT_LIMIT];
@@ -152,7 +168,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                     replies[i] = styxunibusservermailbox(server, i, 1);
                     offers[i] = styxunibusserverloadprofileat(server, i);
                 }
-                result = scalar_runtime_loaded_set(argc, argv, implementation, names, count, requests, replies, offers);
+                result = scalar_runtime_loaded_set(argc, argv, implementation, second, names, count, requests, replies, offers);
                 if (!rejected)
                 {
                     shutdown(breaker, SHUT_RDWR);

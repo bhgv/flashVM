@@ -413,7 +413,8 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
 
 /* EN: Start the shared owner service with three local grants per selected export.
  * RU: Запустить общий сервис владельца с тремя разрешениями на каждый экспорт. */
-int scalar_runtime_loaded_set(int argc, char **argv, const char *implementation, const char *const *names, size_t count,
+int scalar_runtime_loaded_set(int argc, char **argv, const char *implementation, const char *second,
+    const char *const *names, size_t count,
     DVM_Provider *const *requests, DVM_Provider *const *replies, DVM_Provider *const *offers)
 {
     char cwd[DVM_NS_PATH_LIMIT], config[1024];
@@ -422,7 +423,8 @@ int scalar_runtime_loaded_set(int argc, char **argv, const char *implementation,
     {
         exit(2);
     }
-    int prefix = snprintf(config, sizeof(config), "loaded-set\t%s", implementation);
+    int prefix = second ? snprintf(config, sizeof(config), "loaded-table") :
+        snprintf(config, sizeof(config), "loaded-set\t%s", implementation);
     if (prefix < 0 || (size_t)prefix >= sizeof(config))
     {
         exit(2);
@@ -434,8 +436,9 @@ int scalar_runtime_loaded_set(int argc, char **argv, const char *implementation,
         snprintf(request, sizeof(request), "/in%u", (unsigned)i);
         snprintf(reply, sizeof(reply), "/out%u", (unsigned)i);
         snprintf(offer, sizeof(offer), "/offer%u", (unsigned)i);
-        int added = snprintf(config + used, sizeof(config) - used, "\t%s\t/scalar%s\t/scalar%s\t/scalar%s",
-            names[i], request, reply, offer);
+        const char *owner = i < count / 2 ? implementation : second;
+        int added = snprintf(config + used, sizeof(config) - used, "\t%s%s%s\t/scalar%s\t/scalar%s\t/scalar%s",
+            second ? owner : "", second ? "\t" : "", names[i], request, reply, offer);
         if (added < 0 || (size_t)added >= sizeof(config) - used ||
             !dvm_view_map(view, request, requests[i], ".", FVM_ACCESS_READ, 0) ||
             !dvm_view_map(view, reply, replies[i], ".", FVM_ACCESS_WRITE, 0) ||

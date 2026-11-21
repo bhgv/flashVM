@@ -81,10 +81,10 @@ int styxunibusawaitload(StyxUnibusServer *server)
     {
         return 0;
     }
-    MountedExport *directory = &server->modules[0];
     while (server->load_ready < server->count)
     {
         MountedExport *module = &server->modules[server->load_ready];
+        MountedExport *directory = &server->modules[module->directory_leader];
         unsigned char offer[STYX_SHAPED_OFFER_MAX];
         size_t size = read_offer(module->load_offer, offer, sizeof(offer), &start);
         if (!size)
@@ -120,7 +120,7 @@ int styxunibusawaitload(StyxUnibusServer *server)
                 }
             }
         }
-        if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))
+        if (size > sizeof(directory->interface) - directory->interface_size || !tag || !styxscalarownerbind(&module->owner, &module->function, tag))
         {
             server->load_state = -1;
             for (size_t i = 0; i < server->count; i++)
@@ -131,9 +131,9 @@ int styxunibusawaitload(StyxUnibusServer *server)
         }
         memcpy(directory->interface + directory->interface_size, offer, size);
         directory->interface_size += size;
+        directory->profile_node->d.length = directory->interface_size;
         server->load_ready++;
     }
-    directory->profile_node->d.length = directory->interface_size;
     server->load_state = 1;
     return 1;
 }
@@ -200,6 +200,19 @@ StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel, const char 
         return NULL;
     }
     return start_loaded_set(channel, module, names, count, reverse);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartscopedtable(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse)
+{
+    if (!reverse)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    return styxunibusstarttable(channel, entries, count, 1, reverse);
 }
 
 

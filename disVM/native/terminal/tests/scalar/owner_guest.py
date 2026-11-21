@@ -239,6 +239,7 @@ def main():
         ):
             run([str(compiler), "-I", str(disvm / "upstream/module"), "-I", str(disvm / "module"),
                  "-I", str(example), "-o", str(folder / output), str(source)], work)
+        (owner / "scoped-extra-owner.dis").write_bytes((owner / "scoped-calls-owner.dis").read_bytes())
         # Exercise the old profile with the exact pre-table prefix of the same compiler image.
         # Проверить старый профиль на точном префиксе образа до таблицы.
         legacy_owner = owner / "blend-scalar-owner.dis"

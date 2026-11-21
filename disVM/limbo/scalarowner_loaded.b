@@ -63,15 +63,39 @@ serve_loaded_view(routes: Vfsnative, view: Scalarloadedview, request, reply: str
 
 # EN: Stage all typed views before dispatch, then retain them through client shutdown.
 # RU: Связать все типизированные представления до вызовов и сохранить до завершения.
-serve_loaded_set(routes: Vfsnative, count: int, fields: list of string)
+serve_loaded_set(routes: Vfsnative, count: int, fields: list of string, table: int)
 {
-    if (count < 5 || count > 33 || (count-1)%4 != 0) {
+    stride := 4;
+    implementation := "";
+    if (table) {
+        stride = 5;
+    } else {
+        if (count < 5) {
+            raise "missing loaded owner implementation";
+        }
+        implementation = hd fields;
+        fields = tl fields;
+        count--;
+    }
+    limit := 8;
+    if (table) {
+        limit = 64;
+    }
+    if (count < stride || count > limit*stride || count%stride != 0) {
         raise "invalid loaded owner export set";
     }
-    anchor := routes->scalarloadanchor(hd fields);
-    fields = tl fields;
+    anchors: list of (string, Scalarloadedanchor);
     planned: list of (Scalarloadedview, string, string);
-    for (i := 1; i < count; i += 4) {
+    for (i := 0; i < count; i += stride) {
+        if (table) {
+            implementation = hd fields;
+            fields = tl fields;
+        }
+        anchor := find_loaded_anchor(anchors, implementation);
+        if (anchor == nil) {
+            anchor = routes->scalarloadanchor(implementation);
+            anchors = (implementation, anchor) :: anchors;
+        }
         name := hd fields;
         fields = tl fields;
         request := hd fields;
@@ -93,12 +117,26 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string)
         (view, request, reply) := hd pending;
         spawn serve_loaded_view(routes, view, request, reply, pool, done);
     }
-    for (i = 1; i < count; i += 4) {
+    for (i = 0; i < count; i += stride) {
         <-done;
     }
     close_call_pool(pool);
 }
 
+
+
+# EN: Reuse the retained data instance for an implementation path.
+# RU: Переиспользовать удерживаемый экземпляр данных по пути реализации.
+find_loaded_anchor(anchors: list of (string, Scalarloadedanchor), implementation: string): Scalarloadedanchor
+{
+    for (; anchors != nil; anchors = tl anchors) {
+        (path, anchor) := hd anchors;
+        if (path == implementation) {
+            return anchor;
+        }
+    }
+    return nil;
+}
 
 
 # EN: Invoke the single validated raw slot for this flattened argument count.

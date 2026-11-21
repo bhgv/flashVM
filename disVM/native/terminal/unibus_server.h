@@ -111,6 +111,14 @@ StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel, const char 
     const char *const *names, size_t count, DVM_Provider *reverse);
 
 
+/* EN: Publish loaded exports from multiple modules on one caller-aware session.
+ * Borrow entries and reverse; retain reverse through join and consume channel on return.
+ * RU: Опубликовать экспорты нескольких модулей в одной сессии с контекстом клиента.
+ * Заимствовать entries и reverse, удерживать reverse до join, принять channel. */
+StyxUnibusServer *styxunibusserverstartscopedtable(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse);
+
+
 /* EN: Borrow the writable load offer for the indexed export until join.
  * RU: Заимствовать приёмник профиля экспорта по индексу до join. */
 DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t index);

@@ -42,3 +42,5 @@ stream is independent.
 
 See the [runnable example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount)
 and the [wire format](SCALAR-FUNCTION.md#caller-context-for-compiled-calls).
+
+For multiple modules, see [styxunibusserverstartscopedtable](UNIBUS-SERVER-SCOPED-TABLE.md).

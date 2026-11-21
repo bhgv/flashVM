@@ -28,7 +28,11 @@ init()
     }
     (count, fields) := sys->tokenize(string startup, "\t");
     if (count > 0 && hd fields == "loaded-set") {
-        serve_loaded_set(routes, count-1, tl fields);
+        serve_loaded_set(routes, count-1, tl fields, 0);
+        return;
+    }
+    if (count > 0 && hd fields == "loaded-table") {
+        serve_loaded_set(routes, count-1, tl fields, 1);
         return;
     }
     if (count == 6 && hd fields == "loaded") {
