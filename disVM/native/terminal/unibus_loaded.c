@@ -151,7 +151,7 @@ DVM_Provider *styxunibusserverloadprofile(StyxUnibusServer *server)
 StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count)
 {
-    return styxunibusstarttable(channel, entries, count, 0, NULL);
+    return styxunibusstarttable(channel, entries, count, 0, NULL, NULL);
 }
 
 
@@ -178,7 +178,7 @@ static StyxUnibusServer *start_loaded_set(RemotePhy *channel, const char *module
         entries[i].module = module;
         entries[i].name = names[i];
     }
-    return styxunibusstarttable(channel, entries, count, 1, reverse);
+    return styxunibusstarttable(channel, entries, count, 1, reverse, NULL);
 }
 
 
@@ -212,7 +212,33 @@ StyxUnibusServer *styxunibusserverstartscopedtable(RemotePhy *channel,
         phyfree(channel);
         return NULL;
     }
-    return styxunibusstarttable(channel, entries, count, 1, reverse);
+    return styxunibusstarttable(channel, entries, count, 1, reverse, NULL);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartlaunchmounted(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, const StyxUnibusLaunch *launch)
+{
+    if (!launch)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    return styxunibusstarttable(channel, entries, count, 0, NULL, launch);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartscopedlaunchtable(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse, const StyxUnibusLaunch *launch)
+{
+    if (!reverse || !launch)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    return styxunibusstarttable(channel, entries, count, 1, reverse, launch);
 }
 
 
@@ -248,9 +274,18 @@ StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *modul
 
 
 /* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+void styxunibusserverlaunchstatus(StyxUnibusServer *server, int status)
+{
+    int pending = 0;
+    __atomic_compare_exchange_n(&server->exit_value, &pending, status ? 2 : 1, 0,
+        __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
 void styxunibusserverexit(StyxUnibusServer *server, int status)
 {
-    __atomic_store_n(&server->exit_value, status ? 2 : 1, __ATOMIC_RELEASE);
+    styxunibusserverlaunchstatus(server, status);
     const struct timespec pause = {0, 10000000};
     for (unsigned attempt = 0; attempt < 500 && !__atomic_load_n(&server->stopped, __ATOMIC_ACQUIRE); attempt++)
     {

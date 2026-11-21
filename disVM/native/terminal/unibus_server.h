@@ -119,6 +119,34 @@ StyxUnibusServer *styxunibusserverstartscopedtable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse);
 
 
+/* EN: Provider-owned launch publication on the same carrier as library exports.
+ * RU: Публикация программы провайдера на одном транспорте с библиотеками. */
+typedef struct StyxUnibusLaunch
+{
+    unsigned long tag; /* Nonzero S-record tag accepted by .unibus. */
+    DVM_Provider *original; /* Borrowed original Dis image. */
+    DVM_Provider *profile; /* Borrowed launch declaration. */
+} StyxUnibusLaunch;
+
+/* EN: Publish a launch inbox, exit result and mounted native/Dis functions.
+ * Consume channel; retain the launch files through join.
+ * RU: Опубликовать запуск, результат и функции. Принять channel и удерживать
+ * файлы запуска до join. */
+StyxUnibusServer *styxunibusserverstartlaunchmounted(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, const StyxUnibusLaunch *launch);
+
+/* EN: Publish the launch endpoint with loaded, caller-scoped Dis exports.
+ * Consume channel; retain reverse and both launch files through join.
+ * RU: Опубликовать запуск и загруженные экспорты с контекстом клиента.
+ * Принять channel, удерживать reverse и оба файла запуска до join. */
+StyxUnibusServer *styxunibusserverstartscopedlaunchtable(RemotePhy *channel,
+    const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse, const StyxUnibusLaunch *launch);
+
+/* EN: Publish one launch exit status while continuing to serve the session.
+ * RU: Опубликовать результат запуска и продолжить обслуживание сессии. */
+void styxunibusserverlaunchstatus(StyxUnibusServer *server, int status);
+
+
 /* EN: Borrow the writable load offer for the indexed export until join.
  * RU: Заимствовать приёмник профиля экспорта по индексу до join. */
 DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t index);

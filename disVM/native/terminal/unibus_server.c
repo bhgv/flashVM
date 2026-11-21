@@ -35,6 +35,14 @@ static MountedExport *mounted_node(Path path, unsigned offset)
 }
 
 
+/* EN: Consume the file context attached to a launch fid.
+ * RU: Освободить файловый контекст, прикреплённый к fid запуска. */
+static void close_launch_file(void *state)
+{
+    styxfileclose(state);
+}
+
+
 /* EN/RU: Permit root traversal and write-only access to the published file.
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
 static char *open_node(Qid *qid, int mode)
@@ -53,7 +61,7 @@ static char *open_node(Qid *qid, int mode)
     {
         return mode == OREAD && styxunibusawaitload(current) ? nil : Eperm;
     }
-    if (qid->path == Qroot || qid->path == MOUNTED_ROOT || mounted_node(qid->path, 0))
+    if (qid->path == Qroot || qid->path == MOUNTED_ROOT || (current->completion && qid->path == LAUNCH_EXIT) || mounted_node(qid->path, 0))
     {
         return mode == OREAD ? nil : Eperm;
     }
@@ -66,7 +74,7 @@ static char *open_node(Qid *qid, int mode)
         return Eperm;
     }
     StyxOpen *opened = styxfileopen(node, mode);
-    if (!opened || styxsetaux(&current->server, opened) < 0)
+    if (!opened || styxsetauxowned(&current->server, opened, close_launch_file) < 0)
     {
         styxfileclose(opened);
         return Eperm;
@@ -119,7 +127,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         return nil;
     }
-    if (current->completion && qid.path == MOUNTED_ROOT && offset >= 0)
+    if (current->completion && qid.path == (current->count ? LAUNCH_EXIT : MOUNTED_ROOT) && offset >= 0)
     {
         *count = styxunibusexitread(current, bytes, *count, offset);
         return nil;
@@ -139,20 +147,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 
-/* EN/RU: Release the open context according to the server's active export mode.
- * Освободить контекст открытия согласно режиму экспорта сервера. */
-static void close_node(void *state)
-{
-    if (current->count)
-    {
-        styxscalarfunctionclose(state);
-    }
-    else
-    {
-        styxfileclose(state);
-    }
-}
-static Styxops operations = {.open = open_node, .read = read_node, .write = write_record, .freefid = close_node}; /* Immutable callbacks. */
+static Styxops operations = {.open = open_node, .read = read_node, .write = write_record}; /* Immutable callbacks. */
 
 
 /* EN/RU: Dispatch all requests on the server's own thread, then retire all fids.
@@ -391,7 +386,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
 /* EN/RU: Consume the channel and publish a bounded table on one Styx session.
  * Принять канал и опубликовать ограниченную таблицу в одной сессии Styx. */
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
-    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse)
+    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse, const StyxUnibusLaunch *launch)
 {
     StyxUnibusServer *server = channel && entries && count && count <= STYX_MOUNTED_SCALAR_LIMIT ?
         calloc(1, sizeof(*server)) : NULL;
@@ -417,79 +412,31 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
         return NULL;
     }
     server->caller_root = reverse;
-    if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
+    if (launch)
     {
-        if (export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))
+        server->completion = 1;
+        server->inbox = styxunibusinbox(launch->tag);
+        server->file = server->inbox ? styxbacking(server->inbox) : NULL;
+        server->original = launch->original ? styxbacking(launch->original) : NULL;
+        server->profile = launch->profile ? styxbacking(launch->profile) : NULL;
+    }
+    if (launch && (!server->file || !server->original || !server->profile))
+    {
+        phyfree(channel);
+    }
+    else if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
+    {
+        int launch_nodes = !launch ||
+            (export_file(&server->server, server->original, 2, "implementation.dis") &&
+             export_file(&server->server, server->profile, 3, ".interface") &&
+             styxaddfile(&server->server, Qroot, LAUNCH_EXIT, ".exit", 0444, "unibus") &&
+             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus"));
+        if (launch_nodes && export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))
         {
             return server;
         }
         styxend(&server->server);
     }
-    free_modules(server);
-    dvm_provider_release(server->caller_root);
-    free(server);
-    return NULL;
-}
-
-
-/* EN/RU: Borrow either mailbox of one indexed Dis entry through join.
- * Заимствовать один из приёмников записи Dis по индексу до завершения сервера. */
-DVM_Provider *styxunibusservermailbox(StyxUnibusServer *server, size_t index, int reply)
-{
-    if (!server || index >= server->count)
-    {
-        return NULL;
-    }
-    StyxScalarFunctionOwner *owner = &server->modules[index].owner;
-    return reply ? owner->reply : owner->request;
-}
-
-
-/* EN/RU: Borrow the first entry's service reply mailbox through join.
- * Заимствовать приёмник ответов первой записи до завершения сервера. */
-DVM_Provider *styxunibusserverreply(StyxUnibusServer *server)
-{
-    return styxunibusservermailbox(server, 0, 1);
-}
-
-
-/* EN/RU: Export only the original file and inbox.
- * Опубликовать исходный файл и приёмник. */
-StyxUnibusServer *styxunibusserverstartfile(RemotePhy *channel, unsigned long tag, DVM_Provider *original)
-{
-    return styxunibusserverstartmodule(channel, tag, original, NULL);
-}
-
-
-/* EN/RU: Preserve the default inbox-only server.
- * Сохранить сервер, публикующий только приёмник. */
-StyxUnibusServer *styxunibusserverstart(RemotePhy *channel, unsigned long tag)
-{
-    return styxunibusserverstartfile(channel, tag, NULL);
-}
-
-
-/* EN/RU: See unibus_server.h; the server retains the original factory.
- * См. unibus_server.h; сервер удерживает исходную фабрику. */
-DVM_Provider *styxunibusserverinbox(StyxUnibusServer *server)
-{
-    return !server ? NULL : server->count ? styxunibusservermailbox(server, 0, 0) : server->inbox;
-}
-
-
-/* EN/RU: See unibus_server.h; join before releasing the export and factory.
- * См. unibus_server.h; дождаться потока до освобождения экспорта и фабрики. */
-int styxunibusserverjoin(StyxUnibusServer *server)
-{
-    if (!server)
-    {
-        return 1;
-    }
-    if (pthread_join(server->thread, NULL))
-    {
-        return 0;
-    }
-    styxunibusdrainfunctions(server);
     styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);
@@ -497,5 +444,8 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     free_modules(server);
     dvm_provider_release(server->caller_root);
     free(server);
-    return 1;
+    return NULL;
 }
+
+
+#include "unibus_server_lifetime.inc"

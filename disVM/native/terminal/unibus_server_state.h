@@ -6,6 +6,7 @@
 #define STYX_UNIBUS_SERVER_STATE_H
 
 #define MOUNTED_ROOT 4UL /* Shared directory for mounted modules. */
+#define LAUNCH_EXIT 197UL /* After all 64 mounted export qid triples. */
 #define FIRST_MODULE 5UL /* Three consecutive qids per module. */
 
 typedef struct MountedExport
@@ -48,10 +49,10 @@ int styxunibusawaitload(StyxUnibusServer *server);
 /* EN: Reserve local readiness and call mailboxes before starting the dispatcher.
  * RU: Зарезервировать локальные приёмники готовности и вызова до запуска диспетчера. */
 int styxunibusprepareload(MountedExport *module, const char *name);
-/* EN: Start the mounted table. loaded selects one directory of owner-linked exports.
- * RU: Запустить смонтированную таблицу. loaded выбирает один каталог связанных экспортов владельца. */
+/* EN: Start the mounted table, with optional owner-bound profiles and launch endpoint.
+ * RU: Запустить таблицу с опциональными связанными профилями и точкой запуска. */
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
-    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse);
+    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse, const StyxUnibusLaunch *launch);
 /* EN/RU: Private one-shot constructor and result reader. / Конструктор и чтение результата. */
 StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile, int reusable, int completion);

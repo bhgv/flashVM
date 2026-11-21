@@ -117,7 +117,7 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
     fid->busy = busy;
     fid->function = *function;
     fid->report_transport_failure = report_transport_failure;
-    if (styxsetaux(server, fid) < 0)
+    if (styxsetauxowned(server, fid, styxscalarfunctionclose) < 0)
     {
         free(fid);
         return Eperm;

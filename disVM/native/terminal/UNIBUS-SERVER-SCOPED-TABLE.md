@@ -38,3 +38,19 @@ The [two-module fixture](tests/scalar/pair.c) publishes the table.
 The [Limbo client](../../examples/remote-scalar/styx-scoped-calls.b)
 checks that calls across both modules reuse the executor and that
 cancellation replaces it.
+
+## Share the session with a launch endpoint
+
+`styxunibusserverstartscopedlaunchtable` adds `implementation.dis`,
+the root `.interface`, `.unibus`, and `.exit` to the same session.
+Pass a `StyxUnibusLaunch` containing the nonzero launch S-record tag,
+the original image provider and the launch declaration provider.
+The server retains both providers until join. The module-specific
+interfaces remain under `mounted`.
+
+The host reads the one-shot launch request from
+`styxunibusserverinbox` and manages execution. Call
+`styxunibusserverlaunchstatus` with the process status to publish a
+result while keeping the library session available. The first status
+wins. The [wire test](tests/scalar/route_launch.inc) exercises launch
+submission, result and library requests on a single connection.

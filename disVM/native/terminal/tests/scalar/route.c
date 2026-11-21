@@ -14,6 +14,7 @@
 #include "scalar_gateway.h"
 #include "scalar_owner.h"
 #include "unibus_server.h"
+#include "unibus_inbox.h"
 #include "caller_styx.h"
 #include "mount.h"
 #include "staged_call.h"
@@ -271,6 +272,11 @@ static int caller_method(void *context, DVM_Provider *self, int64_t argument, in
 }
 #endif
 
+#ifndef STYX_SCALAR_GUEST
+#include "route_launch.inc"
+#endif
+
+
 /* EN/RU: Interleave two live fids and read their replies in reverse order.
  * Чередовать операции двух открытых fid и прочитать ответы в обратном порядке. */
 static void mounted_function(void)
@@ -301,8 +307,17 @@ static void mounted_function(void)
         function.program_method = caller_method;
     }
 #endif
-    StyxUnibusServer *server = styxunibusserverstartfunction(forward_server,
-        "compute.dis", "compute", &function);
+#ifdef STYX_SCALAR_GUEST
+    StyxUnibusServer *server = styxunibusserverstartfunction(forward_server, "compute.dis", "compute", &function);
+#else
+    DVM_Provider *image = styxunibusinbox(REQUEST_TAG);
+    DVM_Provider *declaration = styxunibusinbox(REQUEST_TAG);
+    const StyxUnibusLaunch launch = {.tag = REQUEST_TAG, .original = image, .profile = declaration};
+    const StyxMountedScalar exports[] = {{.module = "compute.dis", .name = "compute", .native = &function}};
+    StyxUnibusServer *server = styxunibusserverstartlaunchmounted(forward_server, exports, 1, &launch);
+    dvm_provider_release(image);
+    dvm_provider_release(declaration);
+#endif
     check(server != NULL, "export mounted function");
     StyxClient *client = styxclientmountphy(forward_client, 256, "caller", "", 3000, 4);
     check(client != NULL, "mount function server");
@@ -312,6 +327,7 @@ static void mounted_function(void)
     check(mount != NULL, "ordinary or bidirectional Styx mount");
     scalar_guest_mounted(mount);
 #else
+    check_shared_launch(server, client);
     StyxFid *profile = styxclientwalk(client, "mounted/compute.dis/.interface");
     unsigned char offer[STYX_SCALAR_INTERFACE_CAPACITY];
     StyxTransfer profile_read;
