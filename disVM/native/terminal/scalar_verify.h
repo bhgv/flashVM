@@ -64,4 +64,9 @@ uint32_t styxscalar_request_signature(unsigned long tag);
 /* EN: Return the required reply tag or zero for an unknown request.
  * RU: Вернуть тег ответа либо ноль для неизвестного запроса. */
 unsigned long styxfunction_reply_tag(unsigned long request);
+/* EN: Match the compiled import and optionally report explicit request framing.
+ * RU: Сверить компилированный импорт и выдать признак явного конца запроса. */
+unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, struct StyxCallShape *shape, int *explicit_end);
+
 #endif

@@ -271,16 +271,17 @@ static int scoped_ref_profile(void)
     unsigned char owner[STYX_SHAPED_OFFER_MAX], published[STYX_SHAPED_OFFER_MAX];
     FVM_SRecord offer;
     size_t size, used;
-    int caller = 0;
+    int caller = 0, explicit_end = 0;
     StyxCallShape decoded;
     return styxshapedoffer("sample", 18, &shape, owner, sizeof(owner), &size) &&
         fvm_srecord_read(owner, size, sizeof(owner), &offer, &used) == FVM_S_OK &&
-        fvm_srecord_write(STYX_SCOPED_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
-        styxscalar_profile_match_shape(published, size, "sample", 18, &caller, &decoded) && caller &&
+        fvm_srecord_write(STYX_SCOPED_END_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
+        styxscalar_profile_match_protocol(published, size, "sample", 18, &caller, &decoded, &explicit_end) &&
+        caller && explicit_end &&
         !strcmp(shape.arguments, decoded.arguments) && !strcmp(shape.result, decoded.result) &&
         styxshapedoffer("sample", DVM_REF_PAIR_SIGNATURE, &fixed, owner, sizeof(owner), &size) &&
         fvm_srecord_read(owner, size, sizeof(owner), &offer, &used) == FVM_S_OK &&
-        fvm_srecord_write(STYX_SCOPED_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
+        fvm_srecord_write(STYX_SCOPED_END_OFFER_TAG, offer.payload, offer.size, published, sizeof(published), &size) == FVM_S_OK &&
         !styxscalar_profile_match_shape(published, size, "sample", DVM_REF_PAIR_SIGNATURE, &caller, &decoded);
 }
 

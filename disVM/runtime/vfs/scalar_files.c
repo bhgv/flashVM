@@ -4,6 +4,7 @@
  */
 #include "scalar_files.h"
 #include "../../native/terminal/call_scope.h"
+#include "flashvm/srecord.h"
 #include "program_view.h"
 #include "lib9.h"
 #include "dat.h"
@@ -168,6 +169,33 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
 }
 
 
+/* EN: Write an exact frame and require a confirmed full acknowledgement.
+ * RU: Записать точный кадр и потребовать подтверждения всех байтов. */
+static int write_frame(DVM_VfsHandle *handle, const void *bytes, size_t size)
+{
+    DVM_IoResult sent = dvm_vfs_write_chunk(handle, bytes, size);
+    return sent.status == FVM_OK && (sent.flags & DVM_IO_PREFIX) &&
+        !(sent.flags & DVM_IO_UNCERTAIN) && sent.count == size;
+}
+
+
+/* EN: Stage and commit on one fid when explicitly advertised by the owner.
+ * RU: Сохранить и завершить запрос на одном fid, если владелец объявил этот режим. */
+static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, int explicit_end)
+{
+    if (!explicit_end)
+    {
+        return write_frame(handle, bytes, size);
+    }
+    unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + 2 * STYX_SCOPED_CALL_OVERHEAD];
+    unsigned char end[STYX_SCOPED_CALL_OVERHEAD];
+    size_t count, end_size;
+    return fvm_srecord_write(STYX_CALL_STAGE_TAG, bytes, size, staged, sizeof(staged), &count) == FVM_S_OK &&
+        fvm_srecord_write(STYX_CALL_END_TAG, NULL, 0, end, sizeof(end), &end_size) == FVM_S_OK &&
+        write_frame(handle, staged, count) && write_frame(handle, end, end_size);
+}
+
+
 /* EN: Exchange one native function frame and return the exact reply.
  * RU: Обменять кадр функции и вернуть точный ответ. */
 static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t size, size_t capacity,
@@ -182,11 +210,9 @@ static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t s
     if ((handle.native_flags & (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK)) ==
         (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK))
     {
-        DVM_IoResult sent = dvm_vfs_write_chunk(&handle, bytes, size);
         result = 0;
         long position;
-        if (sent.status == FVM_OK && (sent.flags & DVM_IO_PREFIX) &&
-            !(sent.flags & DVM_IO_UNCERTAIN) && sent.count == size &&
+        if (submit_frame(&handle, bytes, size, files->explicit_end) &&
             dvm_vfs_seek(&handle, 0, FVM_FILE_SEEK_START, &position) == FVM_OK)
         {
             size_t used = 0;

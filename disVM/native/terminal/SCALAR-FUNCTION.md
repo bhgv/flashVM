@@ -364,3 +364,9 @@ offset on the same open fid. The first write stages bytes without
 dispatch. The second validates and dispatches the staged request.
 Reads at offset zero before dispatch return zero bytes. Closing the fid before tag 95
 discards the staged request. Existing single-write clients still work.
+
+A scoped compiled export can advertise tag 96 with the same profile
+payload as tag 91. Ordinary Limbo `load` selects staged writes for tag
+96. The runtime keeps the reverse PID lease across both writes and the
+read of the reply. Tag 91 still selects the single-write protocol.
+Older loaders need an update to import a directory advertising tag 96.

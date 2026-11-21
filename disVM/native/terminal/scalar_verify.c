@@ -58,12 +58,12 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
 
 /* EN/RU: Check the complete framed sequence and identify one unambiguous match.
  * Проверить всю последовательность кадров и найти единственное совпадение. */
-unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const char *name, uint32_t signature,
-    int *caller, StyxCallShape *shape)
+unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, StyxCallShape *shape, int *explicit_end)
 {
     const unsigned char *cursor = bytes;
     unsigned match = 0;
-    int scoped = 0;
+    int scoped = 0, staged = 0;
     StyxCallShape decoded = {{0}, {0}};
     for (unsigned i = 0; size && i < STYX_MOUNTED_EXPORT_LIMIT; i++)
     {
@@ -75,12 +75,13 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
         }
         int selected;
         StyxCallShape types = {{0}, {0}};
-        if (record.tag == STYX_SHAPED_OFFER_TAG || record.tag == STYX_SCOPED_OFFER_TAG)
+        int scoped_shape = record.tag == STYX_SCOPED_OFFER_TAG || record.tag == STYX_SCOPED_END_OFFER_TAG;
+        if (record.tag == STYX_SHAPED_OFFER_TAG || scoped_shape)
         {
             char offered_name[INTERFACE_NAME_LIMIT + 1];
             uint32_t offered_sig;
             unsigned long request = styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types);
-            if (!request || (record.tag == STYX_SCOPED_OFFER_TAG && styxloadedrequest(offered_sig)))
+            if (!request || (scoped_shape && styxloadedrequest(offered_sig)))
             {
                 return 0;
             }
@@ -103,7 +104,8 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
                 return 0;
             }
             match = 1U << i;
-            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || record.tag == STYX_SCOPED_OFFER_TAG;
+            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || scoped_shape;
+            staged = record.tag == STYX_SCOPED_END_OFFER_TAG;
             decoded = types;
         }
         cursor += used;
@@ -121,7 +123,19 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
     {
         *shape = decoded;
     }
+    if (explicit_end)
+    {
+        *explicit_end = staged;
+    }
     return match;
+}
+
+
+/* EN/RU: Match an import without the framing flag. / Сверить импорт без флага кадров. */
+unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, StyxCallShape *shape)
+{
+    return styxscalar_profile_match_protocol(bytes, size, name, signature, caller, shape, NULL);
 }
 
 

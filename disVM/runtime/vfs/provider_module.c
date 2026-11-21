@@ -210,11 +210,11 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
     for (size_t i = 0; i < count; i++)
     {
         const char *name = imports[i].name;
-        int caller = 0;
+        int caller = 0, explicit_end = 0;
         StyxCallShape shape;
         uint32_t signature = imports[i].signature;
         unsigned bit = !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
-            styxscalar_profile_match_shape(profile, size, name, signature, &caller, &shape) : 0;
+            styxscalar_profile_match_protocol(profile, size, name, signature, &caller, &shape, &explicit_end) : 0;
         const StyxCallShape *local = &imports[i].shape;
         int shape_conflict = bit && shape.arguments[0] && local->arguments[0] &&
             (strcmp(shape.arguments, local->arguments) || strcmp(shape.result, local->result));
@@ -244,6 +244,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         }
         (*tail)->signature = signature;
         (*tail)->caller = caller;
+        (*tail)->explicit_end = explicit_end;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;
         (*tail)->argument_cells = arguments;
