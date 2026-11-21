@@ -280,3 +280,7 @@ existing offset. A reads the outcome from `/peer/.exit`, including
 an owner error in the invalid-input case.
 
 The disconnect case terminates B only after its Dis code confirms startup. A reports a transport failure and receives no completion status.
+
+The chain also mounts a second library peer at `/other-libs`. Both peers
+export `wide.dis`. B verifies that the second peer starts with its own
+counter and that the first retains its earlier state.

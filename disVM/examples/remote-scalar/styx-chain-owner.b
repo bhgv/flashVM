@@ -44,6 +44,10 @@ init()
         library->echo(big 1) != big 2) {
         raise "chain library call failed";
     }
+    other := load Wide "/other-libs/mounted/wide.dis";
+    if (other == nil || other->echo(big 1) != big 1 || library->echo(big 1) != big 3) {
+        raise "library mount instances shared state";
+    }
     if (sys->fprint(sys->fildes(1), "chain stdout\n") <= 0 ||
         sys->fprint(sys->fildes(2), "chain stderr\n") <= 0) {
         raise "chain output failed";

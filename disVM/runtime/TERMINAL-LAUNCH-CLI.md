@@ -268,3 +268,8 @@ owner's VFS mount point. The default is `/libraries`. Use a canonical
 absolute path outside the reserved `/.prog`, `/.fd`, `/.vfs` and
 `/.var` trees. The three-peer example uses `/remote-libs` and binds
 its `mounted` directory into the application's library union.
+
+Repeat the `--library-fd FD --library-at PATH` pair for up to eight
+library mounts. Each FD and mount path must be distinct. Nested mount
+paths are rejected before any connection is opened. All mounts must
+succeed before the owner accepts a launch.

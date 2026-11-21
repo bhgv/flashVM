@@ -118,6 +118,18 @@ def tcp_pair():
         return client, server
 
 
+# EN: Start a separate Dis owner on the delegated library connection.
+# RU: Запустить отдельного владельца Dis по выданному соединению библиотеки.
+def start_library(peer, directory, mode, carrier):
+    fd = carrier.fileno()
+    return subprocess.Popen(
+        [peer, mode, "owner.dis"], pass_fds=(fd,), cwd=directory,
+        env=dict(os.environ, DVM_TEST_SCALAR_FD=str(fd), DVM_TEST_SCALAR_OWNER="1",
+                 DVM_TEST_SCALAR_MOUNTED_OWNER="1", DVM_TEST_SCALAR_LOAD_NAME="wide.dis",
+                 DVM_TEST_SCALAR_LOAD_FILE="wide-owner.dis", DVM_TEST_SCALAR_LOAD_EXPORT="echo")
+    )
+
+
 # EN: Run A, the executing DisVM B, and the separate Styx library peer C.
 # RU: Запустить A, исполняющую DisVM B и отдельного провайдера библиотеки C.
 def chain(runtime, compiler, provider, disvm, example, work):
@@ -154,26 +166,36 @@ def chain(runtime, compiler, provider, disvm, example, work):
         )
         if invalid.returncode != 2 or b"usage:" not in invalid.stderr:
             raise RuntimeError(f"invalid library mount path accepted: {path}")
+    for fd, path in (("04", "/second"), ("5", "/first"), ("5", "/first/sub"), ("03", "/second")):
+        invalid = subprocess.run(
+            [runtime, "--styx-serve-fd", "3", "--library-fd", "4", "--library-at", "/first",
+             "--library-fd", fd, "--library-at", path, "--", owner_image],
+            capture_output=True, timeout=5
+        )
+        if invalid.returncode != 2 or b"usage:" not in invalid.stderr:
+            raise RuntimeError(f"conflicting library delegation accepted: {fd}, {path}")
     for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
                           ("--no-jit", b"drop"), ("--jit", b"drop")):
         stdin.write_bytes(payload)
         a, b = tcp_pair()
         lib, c = tcp_pair()
-        with a, b, lib, c, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
-                stderr.open("wb") as errors, extra.open("rb") as fourth, subprocess.Popen(
-            [library_peer, mode, "owner.dis"], pass_fds=(c.fileno(),), cwd=library_dir,
-            env=dict(os.environ, DVM_TEST_SCALAR_FD=str(c.fileno()), DVM_TEST_SCALAR_OWNER="1",
-                     DVM_TEST_SCALAR_MOUNTED_OWNER="1", DVM_TEST_SCALAR_LOAD_NAME="wide.dis",
-                     DVM_TEST_SCALAR_LOAD_FILE="wide-owner.dis", DVM_TEST_SCALAR_LOAD_EXPORT="echo")
-        ) as library, subprocess.Popen(
+        alternate, d = tcp_pair()
+        with a, b, lib, c, alternate, d, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
+                stderr.open("wb") as errors, extra.open("rb") as fourth, \
+                start_library(library_peer, library_dir, mode, c) as library, \
+                start_library(library_peer, library_dir, mode, d) as other, subprocess.Popen(
             [runtime, "--styx-serve-fd", str(b.fileno()), "--context", "--library-fd",
-             str(lib.fileno()), "--library-at", "/remote-libs", "--", mode, owner_image],
-            pass_fds=(b.fileno(), lib.fileno()), cwd=owner_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+             str(lib.fileno()), "--library-at", "/remote-libs", "--library-fd",
+             str(alternate.fileno()), "--library-at", "/other-libs", "--", mode, owner_image],
+            pass_fds=(b.fileno(), lib.fileno(), alternate.fileno()), cwd=owner_dir,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
         ) as owner:
             fourth.seek(4)
             b.close()
             lib.close()
             c.close()
+            alternate.close()
+            d.close()
             try:
                 with subprocess.Popen(
                     [runtime, "--styx-mount-fd", str(a.fileno()), "--fd3", str(fourth.fileno()), "--", mode, caller_image],
@@ -194,6 +216,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
                 a.close()
                 out, err = owner.communicate(timeout=10)
                 library_status = library.wait(timeout=10)
+                other_status = other.wait(timeout=10)
                 if payload == b"drop":
                     diagnostic = stderr.read_bytes()
                     if (not caller_status or not owner.returncode or
@@ -210,14 +233,14 @@ def chain(runtime, compiler, provider, disvm, example, work):
                         raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
                     print("PASS A receives B's launch failure", mode, flush=True)
                     continue
-                if (caller_status or owner.returncode or library_status or fourth.tell() != 8 or
+                if (caller_status or owner.returncode or library_status or other_status or fourth.tell() != 8 or
                         b"chain stdout\n" not in stdout.read_bytes() or
                         b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):
                     raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
                 print("PASS A-B-C Styx launch and library call", mode, flush=True)
             finally:
-                for peer in (owner, library):
+                for peer in (owner, library, other):
                     if peer.poll() is None:
                         peer.kill()
 

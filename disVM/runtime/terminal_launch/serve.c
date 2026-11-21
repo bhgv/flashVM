@@ -14,6 +14,8 @@
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -135,28 +137,77 @@ static int library_path_valid(const char *path)
 }
 
 
+#define LIBRARY_MOUNT_LIMIT 8U /* Maximum library mounts admitted before startup. */
+
+typedef struct LibraryMount
+{
+    const char *descriptor; /* Borrowed argument naming the delegated stream. */
+    const char *path; /* Borrowed owner-side absolute mount path. */
+    long number; /* Parsed descriptor used to detect duplicates. */
+} LibraryMount;
+
+
+/* EN: Reject the same path and nested mounts before touching any carrier.
+ * RU: Отклонить одинаковые и вложенные точки маунта до обращения к соединениям. */
+static int overlaps(const char *first, const char *second)
+{
+    size_t a = strlen(first), b = strlen(second);
+    size_t prefix = a < b ? a : b;
+    return !memcmp(first, second, prefix) && (a == b || (a < b ? second[a] : first[b]) == '/');
+}
+
+
+/* EN: Parse and check one mount against the previously accepted prefix.
+ * RU: Разобрать и сверить маунт с ранее проверенными параметрами. */
+static int admit_library(LibraryMount *mounts, size_t count, const char *launch, const char *fd, const char *path)
+{
+    char *end;
+    long number = strtol(fd, &end, 10);
+    if (*end || number < 3 || number > INT_MAX || number == strtol(launch, NULL, 10) ||
+        !library_path_valid(path))
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < count; i++)
+    {
+        if (number == mounts[i].number || overlaps(path, mounts[i].path))
+        {
+            return 0;
+        }
+    }
+    mounts[count] = (LibraryMount){fd, path, number};
+    return 1;
+}
+
+
 /* EN: Take one delegated launch and boot only the locally configured Dis image.
  * RU: Принять один запрос и запустить только локально заданный образ Dis. */
 int dvm_styx_serve_cli(int argc, char **argv)
 {
     int scoped = argc > 3 && !strcmp(argv[3], "--context");
     int separator = scoped ? 4 : 3;
-    const char *library = NULL;
-    const char *library_path = "/libraries";
-    if (argc > separator + 1 && !strcmp(argv[separator], "--library-fd"))
+    LibraryMount libraries[LIBRARY_MOUNT_LIMIT];
+    size_t count = 0;
+    int valid = 1;
+    while (valid && argc > separator + 1 && !strcmp(argv[separator], "--library-fd"))
     {
-        library = argv[separator + 1];
+        const char *library = argv[separator + 1];
+        const char *path = "/libraries";
         separator += 2;
         if (argc > separator + 1 && !strcmp(argv[separator], "--library-at"))
         {
-            library_path = argv[separator + 1];
+            path = argv[separator + 1];
             separator += 2;
         }
+        valid = count < LIBRARY_MOUNT_LIMIT && admit_library(libraries, count, argv[2], library, path);
+        if (valid)
+        {
+            count++;
+        }
     }
-    if (argc <= separator + 1 || strcmp(argv[separator], "--") ||
-        (library && (!strcmp(library, argv[2]) || !library_path_valid(library_path))))
+    if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD [--library-at PATH]] -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -196,7 +247,11 @@ int dvm_styx_serve_cli(int argc, char **argv)
     Startup startup = {.scoped = scoped};
     int result = 1;
     int ready = server && (!scoped || root);
-    int library_ready = ready && (!library || mount_library(handoff.group, library, library_path));
+    int library_ready = ready;
+    for (size_t i = 0; library_ready && i < count; i++)
+    {
+        library_ready = mount_library(handoff.group, libraries[i].descriptor, libraries[i].path);
+    }
     if (library_ready && receive_startup(styxunibusserverinbox(server), &startup) &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
