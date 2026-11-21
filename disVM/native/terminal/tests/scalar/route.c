@@ -14,6 +14,7 @@
 #include "scalar_gateway.h"
 #include "scalar_owner.h"
 #include "unibus_server.h"
+#include "caller_styx.h"
 #include "mount.h"
 #include "mux/bidir.h"
 #include "drivers/posix/fd.h"
@@ -32,10 +33,8 @@
 static Styxserver owner; /* One fixture owner thread dispatches the method. */
 static DVM_Provider *reply; /* Retained reverse file while owner serves requests. */
 #ifdef STYX_SCALAR_GUEST
-extern int scalar_guest_bind_caller(DVM_Provider *); /* Attach fixture reverse publication binding. */
-extern int scalar_reverse_start(RemotePhy *, RemotePhy *); /* Start the reverse Styx endpoints. */
-extern int scalar_reverse_check(uint32_t, int64_t); /* Read active .pid via reverse Styx. */
-extern void scalar_reverse_stop(void); /* Join the reverse fixture. */
+extern DVM_Provider *scalar_reverse_mount(RemotePhy *); /* Mount reverse Styx. */
+extern int scalar_reverse_check(DVM_Provider *, int64_t); /* Check active .self. */
 extern void scalar_guest_mounted(DVM_Provider *); /* Runs a guest on a plain mount. */
 extern void scalar_guest(DVM_Provider *, DVM_Provider *); /* Runtime test entry. */
 #endif
@@ -261,15 +260,13 @@ static void native_interface(DVM_Provider *request, DVM_Provider *inbox)
 #ifdef STYX_SCALAR_GUEST
 /* EN: Check the wire PID against the guest's independent observation.
  * RU: Сверить PID из запроса с PID, полученным внутри гостя. */
-static int caller_method(void *context, uint32_t pid, int64_t argument, int64_t *result)
+static int caller_method(void *context, DVM_Provider *self, int64_t argument, int64_t *result)
 {
-    static uint32_t previous;
     (void)context;
-    if (pid == previous || !scalar_reverse_check(pid, argument))
+    if (!scalar_reverse_check(self, argument))
         return 0;
-    previous = pid;
     ++calls;
-    *result = pid;
+    *result = argument < 0 ? -argument : argument;
     return 1;
 }
 #endif
@@ -288,6 +285,7 @@ static void mounted_function(void)
     StyxScalarFunction function = {STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, method, NULL, NULL, NULL, NULL};
 #ifdef STYX_SCALAR_GUEST
     PhyBidir *caller = NULL, *provider = NULL;
+    StyxCallerServer *reverse = NULL;
     if (getenv("DVM_TEST_SCALAR_CALLER"))
     {
         caller = phybidircreate(forward_client, 1024);
@@ -295,11 +293,12 @@ static void mounted_function(void)
         check(caller && provider, "multiplex forward and reverse Styx");
         forward_client = phybidirchannel(caller, 0);
         forward_server = phybidirchannel(provider, 0);
-        check(scalar_reverse_start(phybidirchannel(caller, 1), phybidirchannel(provider, 1)),
-            "start reverse Styx identity export");
+        reverse = styxcallerserver(phybidirchannel(caller, 1));
+        function.program_root = reverse ? scalar_reverse_mount(phybidirchannel(provider, 1)) : NULL;
+        check(function.program_root != NULL, "mount reverse Styx export");
         function.request_tag = STYX_FUNCTION_CALLER_TAG;
         function.method = NULL;
-        function.caller_method = caller_method;
+        function.program_method = caller_method;
     }
 #endif
     StyxUnibusServer *server = styxunibusserverstartfunction(forward_server,
@@ -312,7 +311,7 @@ static void mounted_function(void)
     check(mount != NULL, "ordinary Styx mount");
     if (getenv("DVM_TEST_SCALAR_CALLER"))
     {
-        check(scalar_guest_bind_caller(mount), "bind the fixture caller publication");
+        check(styxcallerbind(reverse, mount), "bind the fixture caller publication");
     }
     scalar_guest_mounted(mount);
     dvm_provider_release(mount);
@@ -375,7 +374,8 @@ static void mounted_function(void)
 #ifdef STYX_SCALAR_GUEST
     if (caller)
     {
-        scalar_reverse_stop();
+        dvm_provider_release(function.program_root);
+        styxcallerjoin(reverse);
         phybidirfree(caller);
         phybidirfree(provider);
     }

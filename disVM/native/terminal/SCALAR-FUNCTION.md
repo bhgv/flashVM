@@ -130,9 +130,17 @@ Missing mounts are omitted. A union or a mount that cannot be captured
 cancellably prevents submission. The fixture verifies `.vfs/env/CLIENT` and `.var/counter` through reverse
 Styx for both callers.
 
-The fixture installs the reverse binding. Production mount setup and
-automatic projection of the VM's open descriptor table, namespace and
-shared variables into those grants remain open.
+The SDK supplies a generic reverse server. Start it with
+`styxcallerserver` on the reverse carrier channel and use `styxcallerbind`
+on the fresh forward provider. Mount the reverse channel at the provider
+and pass its root to `program_method`. On carrier shutdown, retire the
+forward mount and call `styxcallerjoin`. The test uses these same APIs
+and reads the granted files through the provider's selected `.self`.
+
+Each reverse session admits one scoped call at a time, with up to 511
+walked nodes per call. Open fids cannot issue new I/O after their call
+ends. The host must provision both transport channels. Automatic
+collection of ordinary managed FD and variable grants remains open.
 
 When the caller has no explicit `/.fd` mount, DisVM projects the
 numbered descriptors imported at process launch. The exported alias
