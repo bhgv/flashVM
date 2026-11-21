@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 
 from guest import build_peer, run
 
@@ -43,6 +44,8 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_BIG_OWNER"] = "1"
     if mounted == "tuple":
         env["DVM_TEST_SCALAR_TUPLE_OWNER"] = "1"
+    if mounted == "refpair":
+        env["DVM_TEST_SCALAR_REF_PAIR_OWNER"] = "1"
     if mounted == "list":
         env["DVM_TEST_SCALAR_LIST_OWNER"] = "1"
     if mounted == "ref":
@@ -61,6 +64,21 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
                             stderr=subprocess.STDOUT, text=True)
 
 
+# EN: Relay private test markers between roots in order, bounding the wait.
+# RU: Передать тестовые маркеры между корнями по порядку с ограничением ожидания.
+def relay_ref_pair(owner, caller):
+    deadline = time.monotonic() + 3
+    for source, target, name in (
+        (owner, caller, "refpair-entered"),
+        (caller, owner, "refpair-edited"),
+    ):
+        while (source / name).read_bytes() != b"1":
+            if time.monotonic() >= deadline:
+                return
+            time.sleep(0.005)
+        (target / name).write_bytes(b"1")
+
+
 # EN: Run both sides to completion, bounding failures and always reaping both.
 # RU: Дождаться обеих сторон, ограничить время отказа и завершить оба процесса.
 def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mounted=False):
@@ -75,11 +93,13 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
     try:
         children.append(peer(binary, owner, "owner.dis", mode, left, True, calls, disconnect, mounted))
         image = {"wide": "wide.dis", "mixed": "mixed.dis", "tuple": "tuple.dis",
-                 "ref": "ref.dis", "list": "blend.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
+                 "ref": "ref.dis", "list": "blend.dis", "refpair": "refpair.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
         right.close()
+        if mounted == "refpair":
+            relay_ref_pair(owner, caller)
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
         if any(child.returncode for child in children) or marker not in caller_output:
@@ -122,6 +142,8 @@ def main():
             (owner, example / "ref-owner.b", "ref-owner.dis"),
             (caller, example / "styx-list-owner.b", "blend.dis"),
             (owner, example / "blend-owner.b", "blend-owner.dis"),
+            (caller, example / "styx-refpair-owner.b", "refpair.dis"),
+            (owner, example / "refpair-owner.b", "refpair-owner.dis"),
             (owner, example / "wide-owner.b", "wide-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
@@ -139,6 +161,8 @@ def main():
         dependency = owner / "privatevalue.dis"
         hidden = owner / "privatevalue.hidden"
         (caller / "expect-dis-owner").touch()
+        marker_paths = [root / marker for root in (owner, caller)
+                        for marker in ("refpair-entered", "refpair-edited")]
         for mode in ("--no-jit", "--jit"):
             exchange(binary, owner, caller, mode, "PASS mounted Styx original Dis",
                      calls=0, mounted=True)
@@ -147,6 +171,9 @@ def main():
             exchange(binary, owner, caller, mode, "PASS mounted original tuple Dis", calls=0, mounted="tuple")
             exchange(binary, owner, caller, mode, "PASS mounted original ref Dis", calls=0, mounted="ref")
             exchange(binary, owner, caller, mode, "PASS mounted original argument list Dis", calls=0, mounted="list")
+            for marker in marker_paths:
+                marker.write_bytes(b"0")
+            exchange(binary, owner, caller, mode, "PASS mounted original ref pair Dis", calls=0, mounted="refpair")
             flag.unlink(missing_ok=True)
             exchange(binary, owner, caller, mode, "PASS owner-local Styx Compute sequence", calls=0)
             disconnect = caller / "expect-disconnect"

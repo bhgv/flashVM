@@ -108,3 +108,21 @@ the nested return to `(count, (narrow, wide))` and checks `(1, (38, -1))`.
 A zero seed raises an error. The next successful call verifies the
 original instance kept its call count. Expect
 `PASS mounted original argument list Dis` with and without JIT.
+
+## Pass one object in two ref arguments
+
+The same `owner_guest.py` command compiles [ref.m](ref.m) with the
+[caller](styx-refpair-owner.b) and [original owner](refpair-owner.b).
+The caller loads `/peer/mounted/refpair.dis` and calls `exchange` with
+the same object in both positions. The owner increments the first
+argument's `narrow` by two, reads through the second, then increments
+the second by three. Starting at 7, the two increments leave one
+object at 12. A second call passes two objects with identical field
+values and verifies independent updates. The following calls verify
+exception isolation, local nil rejection and the owner's persistent
+call counter. A final call uses two test marker files to make a helper
+in the caller change the second object after the owner received both
+snapshots. It verifies that the conflict preserves the local edit,
+the first object and the previous return values. The test driver relays
+the markers and removes its temporary roots. Expect
+`PASS mounted original ref pair Dis` in both modes.

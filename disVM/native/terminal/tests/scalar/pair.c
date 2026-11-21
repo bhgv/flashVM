@@ -49,7 +49,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         if (getenv("DVM_TEST_SCALAR_MIXED_OWNER"))
         {
             const StyxMountedScalar entries[] = {
-                {"wide.dis", "count", NULL, 0, 0, 0, 0}, {"wide.dis", "echo", NULL, 1, 0, 0, 0}
+                {"wide.dis", "count", NULL, 0, 0, 0, 0, 0}, {"wide.dis", "echo", NULL, 1, 0, 0, 0, 0}
             };
             StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries, 2);
             if (server)
@@ -73,13 +73,15 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         int tuple = getenv("DVM_TEST_SCALAR_TUPLE_OWNER") != NULL;
         int ref = getenv("DVM_TEST_SCALAR_REF_OWNER") != NULL;
         int list = getenv("DVM_TEST_SCALAR_LIST_OWNER") != NULL;
-        if (list || ref || tuple || getenv("DVM_TEST_SCALAR_BIG_OWNER"))
+        int ref_pair = getenv("DVM_TEST_SCALAR_REF_PAIR_OWNER") != NULL;
+        if (ref_pair || list || ref || tuple || getenv("DVM_TEST_SCALAR_BIG_OWNER"))
         {
-            const StyxMountedScalar entry = list ?
+            const StyxMountedScalar entry = ref_pair ?
+                (StyxMountedScalar){.module = "refpair.dis", .name = "exchange", .dis_ref_pair = 1} : list ?
                 (StyxMountedScalar){.module = "blend.dis", .name = "blend", .dis_call = 1} : ref ?
-                (StyxMountedScalar){"ref.dis", "revise", NULL, 0, 0, 1, 0} : tuple ?
-                (StyxMountedScalar){"tuple.dis", "transform", NULL, 0, 1, 0, 0} :
-                (StyxMountedScalar){"wide.dis", "echo", NULL, 1, 0, 0, 0};
+                (StyxMountedScalar){"ref.dis", "revise", NULL, 0, 0, 1, 0, 0} : tuple ?
+                (StyxMountedScalar){"tuple.dis", "transform", NULL, 0, 1, 0, 0, 0} :
+                (StyxMountedScalar){"wide.dis", "echo", NULL, 1, 0, 0, 0, 0};
             StyxUnibusServer *server = styxunibusserverstartmounted(channel, &entry, 1);
             if (server)
             {
@@ -95,12 +97,12 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             return result;
         }
         const StyxScalarFunction alternate = {
-            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
         };
         const StyxMountedScalar entries[] = {
-            {"helper.dis", "offset", &alternate, 0, 0, 0, 0},
-            {"compute.dis", "compute", NULL, 0, 0, 0, 0},
-            {"compute.dis", "adjust", NULL, 0, 0, 0, 0}
+            {"helper.dis", "offset", &alternate, 0, 0, 0, 0, 0},
+            {"compute.dis", "compute", NULL, 0, 0, 0, 0, 0},
+            {"compute.dis", "adjust", NULL, 0, 0, 0, 0, 0}
         };
         StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries,
             sizeof(entries) / sizeof(entries[0]));

@@ -52,6 +52,7 @@ typedef struct StyxMountedScalar
     int dis_tuple; /* Select the tuple ABI for a Dis-backed entry. */
     int dis_ref;   /* Select the scalar-field ref ABI for a Dis-backed entry. */
     int dis_call;  /* Select the argument-list ABI for a Dis-backed entry. */
+    int dis_ref_pair; /* Select the two-ref ABI for a Dis-backed entry. */
 } StyxMountedScalar;
 
 

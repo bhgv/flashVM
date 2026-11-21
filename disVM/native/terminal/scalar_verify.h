@@ -6,6 +6,9 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_REF_PAIR_SIGNATURE 0x3e25bebbU /* Compiled fn(ref Cell,ref Cell): (int,big). */
+#define STYX_REF_PAIR_REQUEST_TAG 86UL /* Argument identity map and initial snapshots. */
+#define STYX_REF_PAIR_REPLY_TAG 87UL /* Return plus numbered copy-back snapshots. */
 #define DVM_CALL_LIST_SIGNATURE 0xff407097U /* Compiled fn(int,(int,big),big): (int,(int,big)). */
 #define STYX_CALL_LIST_REQUEST_TAG 84UL /* Ordered typed argument list. */
 #define STYX_CALL_LIST_REPLY_TAG 85UL /* One nested Limbo result. */

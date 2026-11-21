@@ -42,7 +42,19 @@ typedef struct DirectCallListFrame
     WORD arguments[4]; /* Two scalar parameters and two fields in the tuple parameter. */
 } DirectCallListFrame;
 
+typedef struct DirectRefPairFrame
+{
+    WORD regs[NREG-1]; /* VM linkage cells. */
+    void *ret; /* Borrowed two-cell return destination. */
+    unsigned char temps[24]; /* Compiler ABI temporary area. */
+    void *objects[2]; /* Two rooted references, possibly aliased. */
+} DirectRefPairFrame;
+
 struct DVM_ScalarFiles;
+
+/* EN: Transfer two mapped references with their identity map.
+ * RU: Передать две ссылки из карты кадра с сохранением идентичности. */
+void dvm_ref_pair_entry(void *frame, Type *expected_type, struct DVM_ScalarFiles *files);
 
 /* EN: Dispatch the compiled pointer-free argument-list frame on files.
  * RU: Вызвать скомпилированный кадр списка без ссылок через files. */

@@ -7,6 +7,7 @@
 #include "scalar_verify.h"
 #include "tuple_record.h"
 #include "call_record.h"
+#include "ref_pair_record.h"
 #include "unibus_inbox.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
@@ -108,6 +109,45 @@ static int argument_list(void)
 }
 
 
+/* EN: Test both maps and exact rejection of an impossible argument ID.
+ * RU: Проверить обе таблицы и отказ при невозможном номере аргумента. */
+static int ref_pair(void)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size;
+    StyxRefPair value = {.count = 1, .objects = {{INT32_MIN, INT64_MIN}, {INT32_MAX, INT64_MAX}},
+        .result = {INT32_MAX, INT64_MIN}}, decoded;
+    if (!styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, &value, bytes, sizeof(bytes), &size) ||
+        !styxrefpairread(STYX_REF_PAIR_REQUEST_TAG, bytes, size, &decoded) || decoded.count != 1 ||
+        decoded.objects[0].narrow != INT32_MIN || decoded.objects[0].wide != INT64_MIN || decoded.objects[1].wide)
+    {
+        return 0;
+    }
+    value.count = 2;
+    if (!styxrefpairwrite(STYX_REF_PAIR_REPLY_TAG, &value, bytes, sizeof(bytes), &size) ||
+        !styxrefpairread(STYX_REF_PAIR_REPLY_TAG, bytes, size, &decoded) || decoded.count != 2 ||
+        decoded.objects[1].narrow != INT32_MAX || decoded.objects[1].wide != INT64_MAX ||
+        decoded.result.narrow != INT32_MAX || decoded.result.wide != INT64_MIN ||
+        styxrefpairread(STYX_REF_PAIR_REPLY_TAG, bytes, size - 1, &decoded))
+    {
+        return 0;
+    }
+    unsigned char bad[STYX_FUNCTION_FRAME_CAPACITY];
+    unsigned char invalid[STYX_FUNCTION_FRAME_CAPACITY];
+    const unsigned char impossible[] = {0, 2};
+    FVM_SRecord outer, map;
+    size_t used, map_size;
+    return styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, &value, bytes, sizeof(bytes), &size) &&
+        fvm_srecord_read(bytes, size, sizeof(bytes), &outer, &used) == FVM_S_OK &&
+        fvm_srecord_read(outer.payload, outer.size, sizeof(bytes), &map, &map_size) == FVM_S_OK &&
+        fvm_srecord_write(1, impossible, sizeof(impossible), bad, sizeof(bad), &used) == FVM_S_OK &&
+        fvm_srecord_write_pair(STYX_REF_PAIR_REQUEST_TAG, bad, used, outer.payload + map_size,
+            outer.size - map_size, invalid, sizeof(invalid), &size) == FVM_S_OK &&
+        !styxrefpairread(STYX_REF_PAIR_REQUEST_TAG, invalid, size, &decoded) &&
+        decoded.count == 2 && decoded.objects[1].wide == INT64_MAX && decoded.result.wide == INT64_MIN;
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -185,6 +225,11 @@ int main(void)
     if (!argument_list())
     {
         fputs("ordered argument list failed\n", stderr);
+        return 1;
+    }
+    if (!ref_pair())
+    {
+        fputs("ref pair identity or framing failed\n", stderr);
         return 1;
     }
     if (!ref_reply())

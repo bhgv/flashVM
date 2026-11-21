@@ -22,6 +22,11 @@ Scalarrefcell: adt
     wide: big;   # Copied signed big.
 };
 
+Scalarrefpairimplementation: module
+{
+    invoke: fn(first, second: ref Scalarrefcell): (int,big); # One linked two-ref export.
+};
+
 Scalarrefimplementation: module
 {
     invoke: fn(value: ref Scalarrefcell): (int,big); # One linked ref export.
@@ -128,4 +133,9 @@ Vfsnative: module
     scalarlistload: fn(path, exportname: string): Scalarlistimplementation;
     scalarlistnext: fn(path: string): (int,int,int,big,big);
     scalarlistreply: fn(path: string, success, outer, inner: int, wide: big);
+    # EN: Bind a two-ref export and exchange its numbered snapshots.
+    # RU: Связать экспорт с двумя ref и обменять нумерованные снимки.
+    scalarrefpairload: fn(path, exportname: string): Scalarrefpairimplementation;
+    scalarrefpairnext: fn(path: string): (int,int,big,int,big);
+    scalarrefpairreply: fn(path: string, success, count: int, value, first, second: (int,big));
 };

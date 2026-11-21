@@ -17,6 +17,7 @@
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/tuple_record.h"
 #include "../../native/terminal/call_record.h"
+#include "../../native/terminal/ref_pair_record.h"
 #include "raise.h"
 #include "vfsnative_decl.h"
 #include "../../native/terminal/scalar_verify.h"
@@ -238,14 +239,14 @@ void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t val
 
 /* EN: Bind the chosen named export to one slot with the required signature.
  * RU: Связать выбранный именованный экспорт с одним слотом по сигнатуре. */
-static void load_composed(String *path_input, String *name_input, uint32_t signature, Modlink **ret)
+void dvm_scalar_load_composed(String *path_input, String *name_input, uint32_t signature, Modlink **ret)
 {
     char path[DVM_NS_PATH_LIMIT], name[DVM_NS_PATH_LIMIT];
     if (!dvm_scalar_copy_path(path_input, path) || !dvm_scalar_copy_path(name_input, name) ||
         !styxscalar_name_length(name))
     {
         error(signature == DVM_CALL_LIST_SIGNATURE ? "argument-list owner implementation unavailable" :
-            signature == DVM_REF_SIGNATURE ? "ref owner implementation unavailable" :
+            (signature == DVM_REF_SIGNATURE || signature == DVM_REF_PAIR_SIGNATURE) ? "ref owner implementation unavailable" :
             "tuple owner implementation unavailable");
     }
     Import imports[] = {{(int32_t)signature, name}, {0, NULL}};
@@ -259,7 +260,7 @@ void Vfsnative_scalartupleload(void *frame)
 {
     F_Vfsnative_scalartupleload call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartupleload, ret), sizeof(*call.ret));
-    load_composed(call.path, call.exportname, DVM_TUPLE_SIGNATURE, call.ret);
+    dvm_scalar_load_composed(call.path, call.exportname, DVM_TUPLE_SIGNATURE, call.ret);
 }
 
 
@@ -269,7 +270,27 @@ void Vfsnative_scalarrefload(void *frame)
 {
     F_Vfsnative_scalarrefload call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefload, ret), sizeof(*call.ret));
-    load_composed(call.path, call.exportname, DVM_REF_SIGNATURE, call.ret);
+    dvm_scalar_load_composed(call.path, call.exportname, DVM_REF_SIGNATURE, call.ret);
+}
+
+
+/* EN: Decode one complete tuple in the tag selected by the owner service.
+ * RU: Прочитать полный кортеж с тегом, выбранным сервисом владельца. */
+static int decode_tuple(unsigned long tag, const void *bytes, size_t size, void *result)
+{
+    uint32_t pid;
+    return styxtupleread(tag, bytes, size, &pid, result);
+}
+
+
+/* EN: Publish readiness and two tuple fields only after a complete read.
+ * RU: Выдать признак готовности и два поля только после полного чтения. */
+static void tuple_next(String *path, unsigned long tag, void *ret)
+{
+    StyxTuple tuple = {0};
+    int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple);
+    const WORD cells[] = {ready, tuple.narrow, tuple.wide};
+    dvm_sys_scalar_result(cells, ret, sizeof(cells));
 }
 
 
@@ -279,7 +300,7 @@ void Vfsnative_scalarrefnext(void *frame)
 {
     F_Vfsnative_scalarrefnext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrefnext, ret), 3 * sizeof(WORD));
-    dvm_scalar_tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret);
+    tuple_next(call.path, STYX_REF_REQUEST_TAG, call.ret);
 }
 
 
@@ -289,7 +310,7 @@ void Vfsnative_scalartuplenext(void *frame)
 {
     F_Vfsnative_scalartuplenext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartuplenext, ret), 3 * sizeof(WORD));
-    dvm_scalar_tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret);
+    tuple_next(call.path, STYX_TUPLE_REQUEST_TAG, call.ret);
 }
 
 
@@ -359,7 +380,7 @@ void Vfsnative_scalarlistload(void *frame)
 {
     F_Vfsnative_scalarlistload call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarlistload, ret), sizeof(*call.ret));
-    load_composed(call.path, call.exportname, DVM_CALL_LIST_SIGNATURE, call.ret);
+    dvm_scalar_load_composed(call.path, call.exportname, DVM_CALL_LIST_SIGNATURE, call.ret);
 }
 
 
@@ -384,4 +405,30 @@ void Vfsnative_scalarlistreply(void *frame)
         error("invalid argument-list reply");
     }
     dvm_scalar_owner_record(call.path, bytes, size);
+}
+
+
+
+/* EN: Decode a complete argument list using the verified owner profile.
+ * RU: Прочитать список аргументов по проверенному профилю владельца. */
+static int decode_list(unsigned long tag, const void *bytes, size_t size, void *result)
+{
+    return styxcallrecordread(tag, styxcall_list_args, bytes, size, result);
+}
+
+
+/* EN: Return readiness followed by the four validated call cells to the owner.
+ * RU: Вернуть признак готовности и четыре проверенных ячейки владельцу. */
+void Vfsnative_scalarlistnext(void *frame)
+{
+    F_Vfsnative_scalarlistnext call;
+    WORD result[5] = {0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarlistnext, ret), sizeof(result));
+    StyxCallValues arguments = {0};
+    result[0] = dvm_scalar_owner_next(call.path, STYX_CALL_LIST_REQUEST_TAG, decode_list, &arguments);
+    for (size_t i = 0; i < arguments.count; i++)
+    {
+        result[i + 1] = arguments.cells[i];
+    }
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
 }

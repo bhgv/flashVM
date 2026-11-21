@@ -15,6 +15,8 @@
 
 _Static_assert(sizeof(LONG) == sizeof(WORD), "mounted big and int use the same NC64 frame cell");
 _Static_assert(offsetof(DirectRefFrame, object) == 64, "compiled NC64 ref map");
+_Static_assert(offsetof(DirectRefPairFrame, objects) == 64 && sizeof(DirectRefPairFrame) == 80,
+    "compiled NC64 ref-pair frame");
 _Static_assert(offsetof(DirectCallListFrame, arguments) == 64 && sizeof(DirectCallListFrame) == 96,
     "compiled NC64 argument-list frame");
 
@@ -57,7 +59,7 @@ static int build_direct(void *opaque)
 {
     DirectBuild *build = opaque;
     Module *module = build->module = newmod(build->path);
-    module->type = calloc(4, sizeof(*module->type));
+    module->type = calloc(5, sizeof(*module->type));
     size_t count = 1;
     for (DVM_ScalarFiles *entry = build->files; entry && entry->next; entry = entry->next)
     {
@@ -68,20 +70,20 @@ static int build_direct(void *opaque)
     {
         return 0;
     }
-    Type *frames[4] = {0};
+    Type *frames[5] = {0};
     const size_t sizes[] = {sizeof(DirectFrame), sizeof(DirectTupleFrame), sizeof(DirectRefFrame),
-        sizeof(DirectCallListFrame)};
+        sizeof(DirectCallListFrame), sizeof(DirectRefPairFrame)};
     DVM_ScalarFiles *entry = build->files;
     for (size_t i = 0; i < count; i++)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
-        size_t profile = signature == DVM_CALL_LIST_SIGNATURE ? 3 :
+        size_t profile = signature == DVM_REF_PAIR_SIGNATURE ? 4 : signature == DVM_CALL_LIST_SIGNATURE ? 3 :
             signature == DVM_REF_SIGNATURE ? 2 : signature == DVM_TUPLE_SIGNATURE ? 1 : 0;
         if (!frames[profile])
         {
-            uchar map[] = {0, 0x80}; /* Compiler map for the ref pointer at byte 64. */
-            int mapped = signature == DVM_REF_SIGNATURE;
+            uchar map[] = {0, signature == DVM_REF_PAIR_SIGNATURE ? 0xc0 : 0x80};
+            int mapped = signature == DVM_REF_SIGNATURE || signature == DVM_REF_PAIR_SIGNATURE;
             frames[profile] = dtype(freeheap, sizes[profile], mapped ? map : NULL, mapped ? sizeof(map) : 0);
             if (!frames[profile])
             {

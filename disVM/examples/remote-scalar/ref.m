@@ -10,3 +10,7 @@ Cell: adt {
 Refexample: module {
     revise: fn(value: ref Cell): (int,big); # Return the call number and original wide field.
 };
+
+Refpairexample: module {
+    exchange: fn(first, second: ref Cell): (int,big); # Aliasing is observed inside the call.
+};

@@ -82,3 +82,19 @@ The service verifies the compiled signature once when it links the
 original Dis instance. For each request it invokes the export with three
 ordinary Limbo arguments and sends the nested return or an error. It runs
 until the request mailbox reaches EOF.
+
+## One export with two references
+
+Publish a `StyxMountedScalar` entry with `dis_ref_pair` for the
+[two-ref profile](../native/terminal/SCALAR-FUNCTION.md#two-references-in-one-call).
+Pass five tab-separated fields to the shared service.
+
+```text
+refpair  implementation  export  request  reply
+```
+
+The service links the original export once. Each request creates one
+owner-local ADT per object ID. When the two IDs match, the ordinary Dis
+call receives the same reference twice. On success it returns the result
+and each object's final state once. An exception sends an error through
+the reply mailbox. The request mailbox reaching EOF ends the service.

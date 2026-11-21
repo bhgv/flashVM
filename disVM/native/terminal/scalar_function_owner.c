@@ -155,18 +155,52 @@ static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallV
 }
 
 
-/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
-int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple, int ref, int call)
+/* EN: Exchange the numbered snapshots with the linked Dis service. Reject a
+ * changed identity map as an ambiguous owner response and retire its mailbox.
+ * RU: Обменять снимки со связанным сервисом Dis. При изменении таблицы
+ * идентичности закрыть приёмник, поскольку ответ владельца неоднозначен. */
+static int ref_pair_dispatch(void *state, StyxRefPair *value)
 {
-    if (!!big + !!tuple + !!ref + !!call > 1)
+    StyxScalarFunctionOwner *owner = state;
+    unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size, received;
+    StyxRefPair result;
+    StyxScalarKind kind;
+    int64_t code;
+    if (styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, record, sizeof(record), &size) &&
+        exchange(owner, record, size, &received))
+    {
+        if (styxrefpairread(STYX_REF_PAIR_REPLY_TAG, record, received, &result) && result.count == value->count)
+        {
+            *value = result;
+            return 1;
+        }
+        if (styxscalarread(STYX_REF_PAIR_REPLY_TAG, record, received, &kind, &code) && kind == STYX_SCALAR_ERROR)
+        {
+            return 0;
+        }
+    }
+    return retire(owner);
+}
+
+
+/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
+int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple, int ref, int call, int ref_pair)
+{
+    if (!!big + !!tuple + !!ref + !!call + !!ref_pair > 1)
     {
         return 0;
     }
-    owner->request_tag = call ? STYX_CALL_LIST_REQUEST_TAG : ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
+    owner->request_tag = ref_pair ? STYX_REF_PAIR_REQUEST_TAG :
+        call ? STYX_CALL_LIST_REQUEST_TAG : ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
     function->request_tag = owner->request_tag;
     function->reply_tag = styxfunction_reply_tag(owner->request_tag);
     function->state = owner;
-    if (call)
+    if (ref_pair)
+    {
+        function->ref_pair_method = ref_pair_dispatch;
+    }
+    else if (call)
     {
         function->call_method = list_dispatch;
     }

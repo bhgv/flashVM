@@ -73,7 +73,7 @@ typedef enum ScalarRead
 
 /* EN/RU: Read a complete reply, repeating only empty pending reads for up to 3 seconds.
  * Прочитать полный ответ, повторяя только пустые чтения до трёх секунд. */
-static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode, StyxTuple *tuple, StyxCallValues *arguments)
+static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *value, ScalarRead mode, DVM_OwnerDecode decoder, void *decoded)
 {
     struct timespec start;
     if (mode != READ_SESSION && mode != READ_POLL && clock_gettime(CLOCK_MONOTONIC, &start))
@@ -92,30 +92,25 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
         }
         if (got.stop != DVM_IO_AGAIN || got.count || (got.flags & DVM_IO_UNCERTAIN))
         {
-            uint32_t pid;
-            if (tuple && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
-                !(got.flags & DVM_IO_UNCERTAIN) && styxtupleread(tag, bytes, got.count, &pid, tuple))
+            if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) || (got.flags & DVM_IO_UNCERTAIN))
             {
-                return NULL;
+                return "remote scalar reply unavailable";
             }
-            if (arguments && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
-                !(got.flags & DVM_IO_UNCERTAIN) &&
-                styxcallrecordread(tag, styxcall_list_args, bytes, got.count, arguments))
+            if (decoder)
             {
-                return NULL;
+                return decoder(tag, bytes, got.count, decoded) ? NULL : "invalid typed owner request";
             }
             StyxScalarKind kind;
-            if (!tuple && !arguments && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) && !(got.flags & DVM_IO_UNCERTAIN) &&
-                styxscalarread(tag, bytes, got.count, &kind, value))
+            if (!styxscalarread(tag, bytes, got.count, &kind, value))
             {
-                if (mode != READ_REPLY)
-                {
-                    return kind == STYX_SCALAR_CALL ? NULL : "invalid scalar request";
-                }
-                return kind == STYX_SCALAR_VALUE ? NULL :
-                    kind == STYX_SCALAR_ERROR ? owner_error : "invalid scalar reply";
+                return "remote scalar reply unavailable";
             }
-            return "remote scalar reply unavailable";
+            if (mode != READ_REPLY)
+            {
+                return kind == STYX_SCALAR_CALL ? NULL : "invalid scalar request";
+            }
+            return kind == STYX_SCALAR_VALUE ? NULL :
+                kind == STYX_SCALAR_ERROR ? owner_error : "invalid scalar reply";
         }
         if (mode == READ_POLL)
         {
@@ -228,7 +223,7 @@ void Vfsnative_scalarcall(void *frame)
 
 /* EN/RU: Read from the checked owner inbox outside managed admission.
  * Читать из проверенного приёмника владельца вне допуска VM. */
-static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result, StyxTuple *tuple, StyxCallValues *arguments)
+static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result, DVM_OwnerDecode decoder, void *decoded)
 {
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
@@ -249,7 +244,7 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     if (provider && (dvm_provider_native_flags(provider) & DVM_PROVIDER_CANCEL_PATH) &&
         dvm_provider_open(provider, ".", "r", &handle) == FVM_OK && (handle.native_flags & DVM_VFS_CANCEL_DATA))
     {
-        failure = receive(&handle, (unsigned long)tag, &value, mode, tuple, arguments);
+        failure = receive(&handle, (unsigned long)tag, &value, mode, decoder, decoded);
     }
     dvm_vfs_close(&handle);
     dvm_provider_release(provider);
@@ -387,6 +382,11 @@ void dvm_scalar_entry(void *frame, unsigned index)
         error(exModule);
     }
     Type *expected_type = module->ext[ordinal].frame;
+    if (files && files->signature == DVM_REF_PAIR_SIGNATURE)
+    {
+        dvm_ref_pair_entry(frame, expected_type, files);
+        return;
+    }
     if (files && files->signature == DVM_CALL_LIST_SIGNATURE)
     {
         dvm_call_list_entry(frame, expected_type, files);
@@ -449,18 +449,15 @@ void dvm_scalar_entry(void *frame, unsigned index)
 }
 
 
-/* EN: Publish readiness and two tuple fields only after a complete read.
- * RU: Выдать готовность и два поля только после полного чтения. */
-void dvm_scalar_tuple_next(String *path, unsigned long tag, void *ret)
+/* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
+int dvm_scalar_owner_next(String *path, unsigned long tag, DVM_OwnerDecode decoder, void *decoded)
 {
-    StyxTuple tuple = {0};
-    const char *failure = take_request(path, tag, READ_SESSION, NULL, &tuple, NULL);
+    const char *failure = take_request(path, tag, READ_SESSION, NULL, decoder, decoded);
     if (failure && failure != session_end)
     {
         error((char *)failure);
     }
-    WORD cells[] = {!failure, tuple.narrow, tuple.wide};
-    dvm_sys_scalar_result(cells, ret, sizeof(cells));
+    return !failure;
 }
 
 
@@ -471,27 +468,4 @@ void Vfsnative_scalarbignext(void *frame)
     F_Vfsnative_scalarbignext call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarbignext, ret), 2 * sizeof(WORD));
     next_result(call.path, call.tag, call.ret);
-}
-
-
-
-/* EN: Return readiness followed by the four validated call cells to the owner service.
- * RU: Вернуть признак готовности и четыре проверенные ячейки сервису владельца. */
-void Vfsnative_scalarlistnext(void *frame)
-{
-    F_Vfsnative_scalarlistnext call;
-    WORD result[5] = {0};
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarlistnext, ret), sizeof(result));
-    StyxCallValues arguments = {0};
-    const char *failure = take_request(call.path, STYX_CALL_LIST_REQUEST_TAG, READ_SESSION, NULL, NULL, &arguments);
-    if (failure && failure != session_end)
-    {
-        error((char *)failure);
-    }
-    result[0] = !failure;
-    for (size_t i = 0; i < arguments.count; i++)
-    {
-        result[i + 1] = arguments.cells[i];
-    }
-    dvm_sys_scalar_result(result, call.ret, sizeof(result));
 }

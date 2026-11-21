@@ -104,6 +104,8 @@ uint32_t styxscalar_request_signature(unsigned long tag)
     case STYX_FUNCTION_BIG_TAG:
     case STYX_FUNCTION_BIG_CALLER_TAG:
         return DVM_SCALAR_BIG_SIGNATURE;
+    case STYX_REF_PAIR_REQUEST_TAG:
+        return DVM_REF_PAIR_SIGNATURE;
     case STYX_CALL_LIST_REQUEST_TAG:
         return DVM_CALL_LIST_SIGNATURE;
     case STYX_REF_REQUEST_TAG:
@@ -123,7 +125,8 @@ uint32_t styxscalar_request_signature(unsigned long tag)
 unsigned long styxfunction_reply_tag(unsigned long request)
 {
     uint32_t signature = styxscalar_request_signature(request);
-    return signature == DVM_CALL_LIST_SIGNATURE ? STYX_CALL_LIST_REPLY_TAG :
+    return signature == DVM_REF_PAIR_SIGNATURE ? STYX_REF_PAIR_REPLY_TAG :
+        signature == DVM_CALL_LIST_SIGNATURE ? STYX_CALL_LIST_REPLY_TAG :
         signature == DVM_REF_SIGNATURE ? STYX_REF_REPLY_TAG :
         signature == DVM_TUPLE_SIGNATURE ? STYX_TUPLE_REPLY_TAG : signature ? STYX_FUNCTION_REPLY_TAG : 0;
 }

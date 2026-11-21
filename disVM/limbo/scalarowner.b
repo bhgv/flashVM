@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 5 && hd fields == "refpair") {
+        serve_ref_pair(routes, tl fields);
+        return;
+    }
     if (count == 5 && hd fields == "list") {
         serve_list(routes, tl fields);
         return;
@@ -350,5 +354,44 @@ serve_list(routes: Vfsnative, fields: list of string)
                 success = 0;
         }
         routes->scalarlistreply(reply, success, outer, inner, value);
+    }
+}
+
+
+
+# EN: Materialize one managed object per wire ID and invoke the linked export.
+# RU: Создать один управляемый объект на номер из запроса и вызвать связанный экспорт.
+serve_ref_pair(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    reply := hd tl fields;
+    target := routes->scalarrefpairload(implementation, name);
+    if (target == nil) {
+        raise "ref pair owner implementation link failed";
+    }
+    for (;;) {
+        (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairnext(request);
+        if (count == 0) {
+            return;
+        }
+        first := ref Scalarrefcell(firstn, firstw);
+        second := first;
+        if (count == 2) {
+            second = ref Scalarrefcell(secondn, secondw);
+        }
+        result := (0, big 0);
+        success := 1;
+        {
+            result = target->invoke(first, second);
+        } exception {
+            "*" =>
+                success = 0;
+        }
+        routes->scalarrefpairreply(reply, success, count, result,
+            (first.narrow, first.wide), (second.narrow, second.wide));
     }
 }

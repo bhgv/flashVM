@@ -30,14 +30,16 @@ typedef struct RefCells
 } RefCells;
 
 
-/* EN: Claim the live object and optional scalar return span together.
- * RU: Захватить живой объект и необязательную область скалярного результата. */
-static void claim(RefCells *object, void *ret, DVM_RangeAccess *access)
+/* EN: Claim up to two rooted objects and a return span in one ordered union.
+ * RU: Захватить до двух укоренённых объектов и результат в одном упорядоченном наборе.
+ * Retry busy admission before any reads or writes. NULL omits a span.
+ * Повторять занятый захват до чтения или записи. NULL пропускает область. */
+static void claim(RefCells *first, RefCells *second, RefCells *ret, DVM_RangeAccess *access)
 {
     for (;;)
     {
-        DVM_CellResult result = dvm_managed_ranges_begin(object, sizeof(*object),
-            ret, ret ? sizeof(RefCells) : 0, access);
+        DVM_CellResult result = dvm_managed_three_begin(first, sizeof(*first),
+            second, second ? sizeof(*second) : 0, ret, ret ? sizeof(*ret) : 0, access);
         if (result == DVM_CELL_ACQUIRED)
         {
             return;
@@ -51,45 +53,73 @@ static void claim(RefCells *object, void *ret, DVM_RangeAccess *access)
 }
 
 
-/* EN: Capture scalar fields under the same range guards used by Limbo writes.
- * RU: Скопировать скалярные поля под теми же guards, что и записи Limbo. */
-static RefCells snapshot(RefCells *object)
+/* EN: Release an admitted exact-owner access or abort on broken invariants.
+ * RU: Освободить захват текущего владельца либо остановиться при нарушении инварианта. */
+static void release_claim(DVM_RangeAccess *access)
 {
-    DVM_RangeAccess access = {0};
-    claim(object, NULL, &access);
-    RefCells result;
-    memcpy(&result, object, sizeof(result));
-    if (!dvm_range_access_end(&access))
+    if (!dvm_range_access_end(access))
     {
         abort();
     }
-    return result;
 }
 
 
-/* EN: Publish both result and copy-back only if the source cells still match.
- * RU: Записать результат и обновление только при совпадении исходных полей. */
-static void commit_ref(RefCells *object, RefCells *ret, const RefCells *before, const StyxRefReply *reply)
+/* EN: Snapshot unique objects together and stage input cells after dropping guards.
+ * RU: Снять общий снимок уникальных объектов и подготовить аргументы после снятия блокировок. */
+static void snapshot(RefCells *const *objects, RefCells *before, StyxRefPair *call)
 {
-    uintptr_t from = (uintptr_t)object, to = (uintptr_t)ret;
-    if (from <= to ? to - from < sizeof(*object) : from - to < sizeof(*ret))
+    DVM_RangeAccess access = {0};
+    claim(objects[0], objects[1], NULL, &access);
+    for (size_t i = 0; i < call->count; i++)
     {
-        error("overlapping remote ref result");
+        memcpy(&before[i], objects[i], sizeof(before[i]));
+    }
+    release_claim(&access);
+    for (size_t i = 0; i < call->count; i++)
+    {
+        if (before[i].narrow < INT32_MIN || before[i].narrow > INT32_MAX)
+        {
+            error("remote ref call not sent");
+        }
+        call->objects[i] = (StyxTuple){(int32_t)before[i].narrow, before[i].wide};
+    }
+}
+
+
+/* EN: Publish result and every update together after comparing all old fields.
+ * RU: Вместе выдать результат и все обновления после сверки исходных полей. */
+static void commit_ref(RefCells *const *objects, RefCells *ret, const RefCells *before, const StyxRefPair *reply)
+{
+    for (size_t i = 0; i < reply->count; i++)
+    {
+        uintptr_t from = (uintptr_t)objects[i], to = (uintptr_t)ret;
+        if (from <= to ? to - from < sizeof(*ret) : from - to < sizeof(*ret))
+        {
+            error("overlapping remote ref result");
+        }
     }
     DVM_RangeAccess access = {0};
-    claim(object, ret, &access);
-    int matches = object->narrow == before->narrow && object->wide == before->wide;
+    claim(objects[0], objects[1], ret, &access);
+    int matches = 1;
+    for (size_t i = 0; i < reply->count; i++)
+    {
+        if (objects[i]->narrow != before[i].narrow || objects[i]->wide != before[i].wide)
+        {
+            matches = 0;
+            break;
+        }
+    }
     if (matches)
     {
-        const RefCells updated = {reply->updated.narrow, reply->updated.wide};
+        for (size_t i = 0; i < reply->count; i++)
+        {
+            const RefCells updated = {reply->objects[i].narrow, reply->objects[i].wide};
+            memcpy(objects[i], &updated, sizeof(updated));
+        }
         const RefCells value = {reply->result.narrow, reply->result.wide};
-        memcpy(object, &updated, sizeof(updated));
         memcpy(ret, &value, sizeof(value));
     }
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
+    release_claim(&access);
     if (!matches)
     {
         error("remote ref changed during call");
@@ -97,13 +127,12 @@ static void commit_ref(RefCells *object, RefCells *ret, const RefCells *before, 
 }
 
 
-/* EN: Keep the managed ref rooted by its mapped frame across one native wait.
- * RU: Удержать ref через карту кадра на время одного нативного ожидания. */
-void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
+/* EN: Check that both managed pointers will stay rooted by the actual frame map.
+ * RU: Проверить, что карта активного кадра удерживает управляемые указатели. */
+static void capture_frame(void *frame, Type *expected_type, void *output, size_t size, size_t ret_offset)
 {
-    DirectRefFrame call;
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
-        (uintptr_t)DVM_R.SP - (uintptr_t)frame < sizeof(call))
+        (uintptr_t)DVM_R.SP - (uintptr_t)frame < size)
     {
         error(exBounds);
     }
@@ -113,30 +142,45 @@ void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
     {
         error(exModule);
     }
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(DirectRefFrame, ret), sizeof(RefCells));
-    RefCells *object = dvm_sys_owner(&call.object);
+    dvm_sys_capture(frame, output, size, ret_offset, sizeof(RefCells));
+}
+
+
+/* EN: Borrow a nonnil scalar-looking owner rooted in the caller frame.
+ * RU: Заимствовать ненулевой объект со скалярными полями из корней кадра клиента. */
+static RefCells *ref_object(void *const *slot)
+{
+    RefCells *object = dvm_sys_owner(slot);
     if (object == H || D2H(object)->t->size != sizeof(*object) || D2H(object)->t->np)
     {
         error("invalid remote ref argument");
     }
-    RefCells before = snapshot(object);
+    return object;
+}
+
+
+/* EN: Hold the snapshot locally across one native wait and commit only a trusted reply.
+ * RU: Удерживать снимок локально на время обмена и применить только проверенный ответ.
+ * objects contains one or two distinct rooted objects. NULL second means one object.
+ * objects содержит один или два разных объекта. NULL во второй позиции означает один. */
+static void invoke(DVM_ScalarFiles *files, RefCells *const *objects, RefCells *ret, int paired)
+{
+    StyxRefPair value = {.count = objects[1] ? 2 : 1};
+    RefCells before[2];
+    snapshot(objects, before, &value);
     DVM_Namespace *group = dvm_namespace_current_group();
-    if (!group || before.narrow < INT32_MIN || before.narrow > INT32_MAX)
-    {
-        error("remote ref call not sent");
-    }
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
     DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
     DVM_VfsWait *wait;
-    int released = dvm_vfs_path_enter(&wait);
+    int released = group ? dvm_vfs_path_enter(&wait) : -1;
     if (released < 0)
     {
         error("remote ref call not sent");
     }
-    StyxTuple argument = {.narrow = (int32_t)before.narrow, .wide = before.wide};
-    StyxRefReply reply;
-    int outcome = dvm_ref_function_invoke(files, group, descriptors, pid, &argument, &reply);
+    StyxRefReply single;
+    int outcome = paired ? dvm_ref_pair_invoke(files, &value) :
+        dvm_ref_function_invoke(files, group, descriptors, pid, &value.objects[0], &single);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
     if (cancelled || outcome != 1)
@@ -144,5 +188,34 @@ void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
         error(cancelled ? "remote ref call cancelled" : outcome == 2 ? "remote scalar owner error" :
             outcome < 0 ? "remote ref call not sent" : "remote ref call outcome unknown");
     }
-    commit_ref(object, call.ret, &before, &reply);
+    if (!paired)
+    {
+        value.objects[0] = single.updated;
+        value.result = single.result;
+    }
+    commit_ref(objects, ret, before, &value);
+}
+
+
+/* EN: Keep one managed ref rooted by its compiled frame across the exchange.
+ * RU: Удержать один ref через карту кадра во время обмена. */
+void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
+{
+    DirectRefFrame call;
+    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefFrame, ret));
+    RefCells *objects[] = {ref_object(&call.object), NULL};
+    invoke(files, objects, call.ret, 0);
+}
+
+
+/* EN: Assign call-local object IDs by first appearance and coalesce equal owners.
+ * RU: Назначить номера по первому появлению и объединить две ссылки на один объект. */
+void dvm_ref_pair_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
+{
+    DirectRefPairFrame call;
+    capture_frame(frame, expected_type, &call, sizeof(call), offsetof(DirectRefPairFrame, ret));
+    RefCells *first = ref_object(&call.objects[0]);
+    RefCells *second = ref_object(&call.objects[1]);
+    RefCells *objects[] = {first, first == second ? NULL : second};
+    invoke(files, objects, call.ret, 1);
 }

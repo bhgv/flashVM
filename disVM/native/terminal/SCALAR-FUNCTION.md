@@ -245,3 +245,33 @@ for their fields and retain their wire tags.
 
 See the [runnable example](../../examples/remote-scalar/STYX.md#call-with-three-arguments).
 This profile uses an unscoped request and supports the signature above.
+
+## Two references in one call
+
+The profile `fn(ref Cell,ref Cell): (int,big)` uses the same two-field
+`Cell` layout. Both argument positions are required and a nil ref is
+rejected before sending. The request carries a table of object IDs in
+first-appearance order, followed by one snapshot per distinct object.
+Argument IDs `(0,0)` tell the owner to construct one object and pass it
+twice. IDs `(0,1)` tell it to construct two objects, including when their
+fields happen to be equal.
+
+| Outer S-record tag | Nested fields in order |
+| --- | --- |
+| 86 | Argument IDs, snapshots in ID order |
+| 87 | Return tuple, argument IDs, final snapshots in ID order |
+| 73 | Scalar error |
+
+Inner tag 1 carries two one-byte IDs. Inner tag 2 carries the return in
+12 bytes, a signed 32-bit `int` followed by a signed 64-bit `big` in
+network order. Each inner tag 3 holds one one-byte object ID and the same
+12-byte layout. The reply must match the request's identity table.
+
+DisVM checks the entire reply and claims both unique objects and the
+result slot before publication. If any field differs from the input
+snapshot, publication raises `remote ref changed during call` and leaves
+all caller fields and the result slot untouched. Cancellation, invalid
+replies and owner exceptions also prevent copy-back. The IDs belong
+to one invocation on the function fid. This profile has no caller PID
+and supports two arguments with this scalar-only ADT layout.
+See the [runnable two-VM example](../../examples/remote-scalar/STYX.md#pass-one-object-in-two-ref-arguments).

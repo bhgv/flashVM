@@ -126,6 +126,8 @@ int scalar_runtime_run(int argc, char **argv, DVM_Provider *writer, DVM_Provider
     {
         const char *count = getenv("DVM_TEST_SCALAR_CALL_COUNT");
         int size = snprintf((char *)owner_config, sizeof(owner_config),
+            getenv("DVM_TEST_SCALAR_REF_PAIR_OWNER") ?
+                "refpair\trefpair-owner.dis\texchange\t/scalar/request\t/scalar/reply" :
             getenv("DVM_TEST_SCALAR_LIST_OWNER") ?
                 "list\tblend-owner.dis\tblend\t/scalar/request\t/scalar/reply" :
             getenv("DVM_TEST_SCALAR_REF_OWNER") ?
