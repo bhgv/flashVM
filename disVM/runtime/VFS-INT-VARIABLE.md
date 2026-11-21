@@ -56,3 +56,5 @@ write permissions.
 
 The example exports writable `count` and read-only `limit` through one
 Styx mount. The owner checks that updating `count` preserves `limit`.
+
+For a directory of live cells, see [Vfsexport.intarray](VFS-INT-ARRAY.md).

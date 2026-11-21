@@ -21,7 +21,7 @@ static int fd_reads; /* Successful shared-cursor checks. */
 DVM_Provider *scalar_reverse_mount(RemotePhy *transport)
 {
     StyxClient *client = styxclientmountphy(transport, 512, "provider", "", 3000, 4);
-    return client ? styxmountprovider(client, FVM_ACCESS_READ) : NULL;
+    return client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
 }
 
 

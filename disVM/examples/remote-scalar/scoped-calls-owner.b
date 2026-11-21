@@ -52,6 +52,10 @@ inspect(fail: int): (int,big)
         wait_cancel(sys, fail == 3);
         raise "remote handler stopped at a cancellation checkpoint";
     }
+    if (fail == 6) {
+        edit_vector(sys);
+        return (pid, big 0);
+    }
     if (fail == 5) {
         return (pid, big sys->pctl(0, nil));
     }
@@ -312,5 +316,24 @@ pause_ref(sys: Sys, prefix: string)
         "remote call cancelled" =>
             set_marker(sys, prefix + "-cancelled");
             raise "remote call cancelled";
+    }
+}
+
+# EN: Read collection metadata and update one byte-encoded member via reverse Styx.
+# RU: Прочитать метаданные и изменить один элемент через обратный Styx.
+edit_vector(sys: Sys)
+{
+    path := Caller + ".var/vector/";
+    if (contents(sys, path + ".type", 24) != "array of int\n" ||
+        contents(sys, path + ".len", 8) != "3\n" ||
+        sys->open(path + ".len", Sys->OWRITE) != nil ||
+        !live_value(sys, path + "0", 0, 7) || !live_value(sys, path + "1", 0, 9)) {
+        raise "invalid live array directory";
+    }
+    member := sys->open(path + "0", Sys->OWRITE);
+    bytes := array[] of {byte 0, byte 0, byte 0, byte 19};
+    if (member == nil || sys->write(member, bytes, len bytes) != len bytes ||
+        !live_value(sys, path + "2", 0, 19)) {
+        raise "live array update lost its aliased cell";
     }
 }

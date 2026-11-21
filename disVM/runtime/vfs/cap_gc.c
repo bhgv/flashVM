@@ -207,6 +207,15 @@ DVM_CapState *dvm_cap_get(void *value, unsigned kind)
 }
 
 
+/* EN: Return the native state of an exact root shell, or NULL on mismatch.
+ * RU: Вернуть состояние точной оболочки корня либо NULL при несовпадении. */
+DVM_CapState *dvm_cap_try_root(void *value)
+{
+    return value && value != H && D2H(value)->t == types[DVM_CAP_ROOT] ?
+        ((CapShell *)value)->cleanup.state : NULL;
+}
+
+
 /* EN/RU: See internal header; embedded NUL/empty/oversize input refuses before effects.
  * См. internal header; NUL/empty/oversize input отклоняется до effects. */
 int dvm_cap_text(String *value, char *out, size_t capacity)

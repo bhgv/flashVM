@@ -41,6 +41,13 @@ init()
     rights := Vfsexport->Read | Vfsexport->Execute;
     base := exports->capture("/.var", 0, rights);
     vars := exports->overlay(base, cell, "/live", Vfsexport->Read, 0);
+    first_cell := exports->intvar(7);
+    second_cell := exports->intvar(9);
+    if (exports->intarray(base :: nil) != nil) {
+        raise "integer collection admitted a directory";
+    }
+    collection := exports->intarray(first_cell :: second_cell :: first_cell :: nil);
+    vars = exports->overlay(vars, collection, "/vector", rights | Vfsexport->Write, Vfsexport->Tree);
     if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
         raise "could not mount live variable for event test";
     }
@@ -98,6 +105,12 @@ init()
     (slowpid, slowvalue) := service->inspect(4);
     if (slowpid != pid || slowvalue != big 44) {
         raise "slow scoped call lost its private reply";
+    }
+    (arraypid, nil) := service->inspect(6);
+    (valid, updated) := exports->intget(first_cell);
+    (valid2, unchanged) := exports->intget(second_cell);
+    if (arraypid != pid || !valid || updated != 19 || !valid2 || unchanged != 9) {
+        raise "remote array change did not update the local live cells";
     }
     report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
 }

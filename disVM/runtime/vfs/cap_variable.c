@@ -164,6 +164,14 @@ static const DVM_ProviderOps factory = {.info = metadata, .open = open_cell,
     .destroy = free, .flags = DVM_PROVIDER_STABLE_BIND}; /* Exact cell capability. */
 
 
+/* EN: Recognize a native integer cell without opening it.
+ * RU: Распознать нативную целочисленную ячейку без открытия. */
+int dvm_cap_is_integer(const DVM_CapState *state)
+{
+    return state && state->root && state->root->ops == &factory;
+}
+
+
 /* EN/RU: Create a Limbo-owned root with initial signed-32-bit value.
  * Создать корень Limbo с начальным знаковым 32-битным значением. */
 void Vfsexport_intvar(void *frame)

@@ -74,6 +74,8 @@ void dvm_cap_abandon(void *value);
 /* [GC:] EN/RU: Check exact type; nil returns NULL, forged records raise exHeap.
  * Проверить exact type; nil даёт NULL, forged record вызывает exHeap. */
 DVM_CapState *dvm_cap_get(void *value, unsigned kind);
+DVM_CapState *dvm_cap_try_root(void *value);
+int dvm_cap_is_integer(const DVM_CapState *state);
 
 
 /* EN/RU: Validate/copy borrowed guest string before native release;1/0.
