@@ -101,7 +101,7 @@ static int shape_type(const char **cursor, unsigned depth)
         return 0;
     }
     char type = *(*cursor)++;
-    if (type == 'i' || type == 'b' || type == 'f')
+    if (type == 'i' || type == 'b' || type == 'f' || type == 'y')
     {
         return 1;
     }
@@ -172,7 +172,7 @@ static int scalar_cells(const char *shape, size_t *count)
     StyxCallValues cells = {0};
     for (const char *type = shape; *type; type++)
     {
-        if (*type == 'i' || *type == 'b' || *type == 'f')
+        if (*type == 'i' || *type == 'b' || *type == 'f' || *type == 'y')
         {
             cells.count++;
         }

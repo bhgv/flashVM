@@ -18,6 +18,7 @@
 #include "vfsnative_decl.h"
 #include "raise.h"
 #include "../../native/terminal/load_profile.h"
+#include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/scalar_verify.h"
 #include <string.h>
@@ -135,8 +136,15 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
             }
             if (tag == STYX_DYNAMIC_REQUEST_TAG)
             {
-                size_t result;
-                if (!gateway || !styxshapecells(shape, &slot, &result) || !gateway_frame(export->frame, slot, 0))
+                size_t leaves, result;
+                StyxScalarLayout layout;
+                if (!gateway || !styxshapecells(shape, &leaves, &result) ||
+                    !styxscalar_layout(shape->arguments, &layout))
+                {
+                    break;
+                }
+                slot = (layout.size + sizeof(WORD) - 1) / sizeof(WORD);
+                if (!gateway_frame(export->frame, slot, 0))
                 {
                     break;
                 }

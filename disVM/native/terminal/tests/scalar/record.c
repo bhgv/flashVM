@@ -222,6 +222,35 @@ static int real_record(void)
 }
 
 
+/* EN: Exercise adjacent bytes, alignment to a wide field and byte range checks.
+ * RU: Проверить соседние байты, выравнивание широкого поля и диапазон byte. */
+static int byte_record(void)
+{
+    const char shape[] = "((yy)b)";
+    StyxScalarLayout layout;
+    unsigned char frame[16], record[STYX_FUNCTION_FRAME_CAPACITY];
+    StyxCallValues values = {.count = 3, .cells = {255, 128, INT64_MIN}}, decoded;
+    size_t used;
+    if (!styxscalar_layout(shape, &layout) || layout.size != sizeof(frame) || layout.count != 3 ||
+        layout.offset[0] != 0 || layout.offset[1] != 1 || layout.offset[2] != 8)
+    {
+        return 0;
+    }
+    styxscalar_pack(&layout, &values, frame);
+    styxscalar_unpack(&layout, frame, &decoded);
+    if (frame[0] != 255 || frame[1] != 128 || frame[2] || decoded.count != values.count ||
+        memcmp(decoded.cells, values.cells, values.count * sizeof(values.cells[0])) ||
+        !styxcallrecordwrite(STYX_DYNAMIC_REQUEST_TAG, shape, &values, record, sizeof(record), &used) ||
+        !styxcallrecordread(STYX_DYNAMIC_REQUEST_TAG, shape, record, used, &decoded) ||
+        styxcallrecordread(STYX_DYNAMIC_REQUEST_TAG, "((ii)b)", record, used, &decoded))
+    {
+        return 0;
+    }
+    values.cells[1] = 256;
+    return !styxcallrecordwrite(STYX_DYNAMIC_REQUEST_TAG, shape, &values, record, sizeof(record), &used);
+}
+
+
 /* EN: Check the separate admission rules for scalar values and copy-back refs.
  * RU: Проверить отдельные условия допуска скаляров и ref с обратной записью. */
 static int dynamic_profile(void)
@@ -389,7 +418,7 @@ int main(void)
     {
         return 1;
     }
-    if (!real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
+    if (!byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

@@ -74,12 +74,17 @@ void dvm_tuple_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectCallListFrame call;
-    size_t arguments_count = files->dynamic ? files->argument_cells : 4;
-    size_t result_count = files->dynamic ? files->result_cells : 3;
-    size_t extent = offsetof(DirectCallListFrame, arguments) + arguments_count * sizeof(WORD);
+    const char *input_shape = files->dynamic ? files->shape.arguments : styxcall_list_args;
+    const char *output_shape = files->dynamic ? files->shape.result : styxcall_list_result;
+    StyxScalarLayout input, output;
+    if (!styxscalar_layout(input_shape, &input) || !styxscalar_layout(output_shape, &output))
+    {
+        error(exModule);
+    }
+    size_t extent = offsetof(DirectCallListFrame, arguments) + input.size;
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
         (uintptr_t)DVM_R.SP - (uintptr_t)frame < extent || extent > sizeof(call) ||
-        result_count > STYX_DYNAMIC_CELLS)
+        output.size > STYX_DYNAMIC_CELLS * sizeof(WORD))
     {
         error(exBounds);
     }
@@ -90,19 +95,16 @@ void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *file
         error(exModule);
     }
     WORD cells[STYX_DYNAMIC_CELLS];
-    if (result_count)
+    if (output.size)
     {
-        dvm_sys_capture(frame, &call, extent, offsetof(DirectCallListFrame, ret), result_count * sizeof(WORD));
+        dvm_sys_capture(frame, &call, extent, offsetof(DirectCallListFrame, ret), output.size);
     }
     else
     {
         memcpy(&call, frame, extent);
     }
-    StyxCallValues arguments = {.count = arguments_count}, answer;
-    for (size_t i = 0; i < arguments.count; i++)
-    {
-        arguments.cells[i] = call.arguments[i];
-    }
+    StyxCallValues arguments, answer;
+    styxscalar_unpack(&input, call.arguments, &arguments);
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
     DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
@@ -121,16 +123,13 @@ void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *file
         error(cancelled ? "remote argument-list call cancelled" : outcome == 2 ? "remote scalar owner error" :
             outcome < 0 ? "remote argument-list call not sent" : "remote argument-list call outcome unknown");
     }
-    if (answer.count != result_count)
+    if (answer.count != output.count)
     {
         error("invalid remote argument-list result width");
     }
-    for (size_t i = 0; i < result_count; i++)
+    if (output.size)
     {
-        cells[i] = answer.cells[i];
-    }
-    if (result_count)
-    {
-        dvm_sys_scalar_result(cells, call.ret, result_count * sizeof(WORD));
+        styxscalar_pack(&output, &answer, cells);
+        dvm_sys_scalar_result(cells, call.ret, output.size);
     }
 }

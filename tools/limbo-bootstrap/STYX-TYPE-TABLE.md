@@ -20,7 +20,7 @@ interfaces. The CMake four-byte target and the shell bootstrap emit
 legacy images. Hosted DisVM also loads previously compiled images
 without the table.
 
-The table describes `int`, `big`, `real` (token `f`), nested tuples and references to
+The table describes `int`, `big`, `real` (token `f`), `byte` (token `y`), nested tuples and references to
 untagged, non-polymorphic ADTs with scalar `int` and `big` data fields.
 Each shape has at most 48 bytes and each value has at most six levels of
 types. Unsupported exports or shapes beyond those bounds are omitted.

@@ -59,8 +59,8 @@ init()
     if (target->tally(0) != 9 || target->status() != 9) {
         raise "dynamic route lost state after exception";
     }
-    (multiplier, (fraction, original)) := target->fractional((-1.25, 3), 0.5);
-    if (multiplier != 3 || fraction != -3.25 || original != -1.25) {
+    (fraction, (multiplier, limit), original) := target->fractional((byte 255, byte 3), -1.25, 0.5);
+    if (multiplier != byte 3 || limit != byte 255 || fraction != -3.25 || original != -1.25) {
         raise "dynamic real argument or nested result lost its bits";
     }
     target->clear();

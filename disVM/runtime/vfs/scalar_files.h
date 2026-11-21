@@ -26,8 +26,8 @@ typedef struct DVM_ScalarFiles
     int explicit_end; /* The mounted profile advertises staged function writes. */
     int dynamic; /* Both compiled sides verified the scalar schema. */
     unsigned long ref_profile; /* Wire tag for a schema-selected reference call, or zero. */
-    size_t argument_cells; /* Dynamic ABI arguments after tuple flattening. */
-    size_t result_cells; /* Dynamic ABI result after tuple flattening. */
+    size_t argument_cells; /* Machine words in the packed NC64 argument area. */
+    size_t result_cells; /* Leaf count for a dynamic return schema. */
     int caller; /* Frame includes a captured caller PID. */
     int duplex; /* One fresh read/write fid per call. */
     unsigned references; /* Atomic native ownership. */

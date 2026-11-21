@@ -286,7 +286,7 @@ links the remote slot. The owner uses the same shape to validate each call.
 The arguments form one ordered list. A tuple nests a list inside it.
 The result is an empty list for a function returning no value, or a list
 describing one scalar or tuple. Each side can hold up to four scalar
-leaves of type `int`, `big`, or `real` in network byte order. The
+leaves of type `int`, `big`, `real`, or `byte` in network byte order. The
 tuple codec permits four levels including the outer list and a frame
 of up to 64 bytes. The shared dispatcher handles value arguments.
 The existing reference profiles retain their copy-back behavior.
@@ -297,11 +297,13 @@ The existing reference profiles retain their copy-back behavior.
 | 90 | Typed result list |
 | 73 | Scalar error |
 
-Nested S-record tags 1, 2, 4, and 5 denote `int`, `big`, tuple, and `real`.
+Nested S-record tags 1, 2, 4, 5, and 6 denote `int`, `big`, tuple, `real`, and `byte`.
 Each scalar leaf carries the value-kind byte 2 followed by eight bytes.
 An `int` must fit in 32 bits. A `real` carries its IEEE 754 binary64 bits,
 including signed zero and NaN payloads. Both peers must support token `f`
-to bind an export containing `real`.
+to bind an export containing `real`. A `byte` accepts 0–255. The gateway maps
+it to one byte in the NC64 frame, with tuple alignment preserved. Both peers
+must support token `y` to bind an export containing `byte`.
 
 These tags apply to unscoped packed requests on the loaded function's Styx
 file. The owner links and calls the original Dis export in its VM.

@@ -186,9 +186,17 @@ static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *
     const char *input_shape = dynamic ? "(bbbb)" : styxcall_list_args;
     const char *output_shape = dynamic ? "(bbbb)" : styxcall_list_result;
     StyxCallValues local = *arguments;
+    StyxScalarLayout result_layout;
     if (dynamic)
     {
-        local.count = STYX_DYNAMIC_CELLS;
+        StyxScalarLayout input_layout;
+        if (!styxscalar_layout(owner->shape.arguments, &input_layout) ||
+            !styxscalar_layout(owner->shape.result, &result_layout))
+        {
+            return 0;
+        }
+        local = (StyxCallValues){.count = STYX_DYNAMIC_CELLS};
+        styxscalar_pack(&input_layout, arguments, local.cells);
     }
     unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
     size_t size, received;
@@ -201,7 +209,9 @@ static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *
         {
             if (dynamic)
             {
-                value->count = owner->result_cells;
+                StyxCallValues unpacked;
+                styxscalar_unpack(&result_layout, value->cells, &unpacked);
+                *value = unpacked;
             }
             return 1;
         }

@@ -24,8 +24,8 @@ If the loaded image contains a [compiled type table](../../../tools/limbo-bootst
 the service includes the selected export's types in the offer. S-record
 tag 88 carries the existing interface kind and 32-bit signature, one-byte
 lengths for name, arguments and result, then those three counted strings.
-The two type descriptions are outer lists. Inside them `i`, `b`, and `f`
-stand for `int`, `big`, and `real`, parentheses nest a tuple, and `r[ib]`
+The two type descriptions are outer lists. Inside them `i`, `b`, `f`, and `y`
+stand for `int`, `big`, `real`, and `byte`, parentheses nest a tuple, and `r[ib]`
 describes a reference to an ADT with those two fields.
 
 The owner validates the schema against the supported gateway, and client

@@ -13,6 +13,7 @@
 #define CALL_PID 3UL /* Session-local caller PID. */
 #define CALL_TUPLE 4UL /* Nested tuple. */
 #define CALL_REAL 5UL /* IEEE 754 binary64 bit pattern. */
+#define CALL_BYTE 6UL /* Unsigned Limbo byte. */
 
 const char styxcall_list_args[] = "(i(ib)b)"; /* Argument list: int, tuple, big. */
 const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,big)). */
@@ -23,7 +24,7 @@ const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,
 static unsigned long node_tag(char type)
 {
     return type == 'i' ? CALL_INT : type == 'b' ? CALL_BIG : type == 'f' ? CALL_REAL :
-        type == 'p' ? CALL_PID : CALL_TUPLE;
+        type == 'p' ? CALL_PID : type == 'y' ? CALL_BYTE : CALL_TUPLE;
 }
 
 
@@ -32,7 +33,8 @@ static unsigned long node_tag(char type)
 static int scalar_valid(char type, int64_t value)
 {
     return type == 'b' || type == 'f' || (type == 'i' && value >= INT32_MIN && value <= INT32_MAX) ||
-        (type == 'p' && value > 0 && value <= UINT32_MAX);
+        (type == 'p' && value > 0 && value <= UINT32_MAX) ||
+        (type == 'y' && value >= 0 && value <= UINT8_MAX);
 }
 
 
@@ -152,4 +154,117 @@ int styxcallrecordread(unsigned long tag, const char *shape, const void *bytes, 
     }
     *values = decoded;
     return 1;
+}
+
+
+/* EN: Align a bounded byte offset to a power-of-two NC64 field alignment.
+ * RU: Выровнять ограниченное смещение по степени двойки для поля NC64. */
+static size_t align_field(size_t offset, size_t alignment)
+{
+    return (offset + alignment - 1) & ~(alignment - 1);
+}
+
+
+/* EN: Append one field's leaf layout relative to its enclosing aggregate.
+ * RU: Добавить раскладку полей одного значения относительно внешнего агрегата. */
+static int scalar_field(const char **cursor, unsigned depth, StyxScalarLayout *layout, size_t *alignment)
+{
+    char type = **cursor;
+    if (type == '(' && depth < STYX_CALL_DEPTH)
+    {
+        ++*cursor;
+        size_t base = layout->count;
+        size_t size = 0;
+        *alignment = 1;
+        while (**cursor != ')')
+        {
+            size_t first = layout->count;
+            size_t child_alignment;
+            if (!scalar_field(cursor, depth + 1, layout, &child_alignment))
+            {
+                return 0;
+            }
+            size = align_field(size, child_alignment);
+            for (size_t i = first; i < layout->count; i++)
+            {
+                layout->offset[i] += size;
+            }
+            size += layout->size;
+            if (child_alignment > *alignment)
+            {
+                *alignment = child_alignment;
+            }
+        }
+        ++*cursor;
+        if (depth && layout->count == base)
+        {
+            return 0;
+        }
+        layout->size = align_field(size, *alignment);
+        return 1;
+    }
+    if ((type != 'i' && type != 'b' && type != 'f' && type != 'y') || layout->count == STYX_CALL_VALUES)
+    {
+        return 0;
+    }
+    ++*cursor;
+    *alignment = type == 'y' ? 1 : 8;
+    layout->offset[layout->count] = 0;
+    layout->width[layout->count++] = (unsigned char)*alignment;
+    layout->size = *alignment;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxscalar_layout(const char *shape, StyxScalarLayout *layout)
+{
+    StyxScalarLayout decoded = {0};
+    size_t alignment;
+    if (!shape || *shape != '(' || !layout || !scalar_field(&shape, 0, &decoded, &alignment) || *shape)
+    {
+        return 0;
+    }
+    *layout = decoded;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCallValues *values)
+{
+    const unsigned char *bytes = frame;
+    *values = (StyxCallValues){.count = layout->count};
+    for (size_t i = 0; i < layout->count; i++)
+    {
+        const unsigned char *field = bytes + layout->offset[i];
+        if (layout->width[i] == 1)
+        {
+            values->cells[i] = *field;
+        }
+        else
+        {
+            memcpy(&values->cells[i], field, sizeof(values->cells[i]));
+        }
+    }
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *values, void *frame)
+{
+    unsigned char *bytes = frame;
+    memset(bytes, 0, layout->size);
+    for (size_t i = 0; i < layout->count; i++)
+    {
+        unsigned char *field = bytes + layout->offset[i];
+        if (layout->width[i] == 1)
+        {
+            *field = (unsigned char)values->cells[i];
+        }
+        else
+        {
+            memcpy(field, &values->cells[i], sizeof(values->cells[i]));
+        }
+    }
 }

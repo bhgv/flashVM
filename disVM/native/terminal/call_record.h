@@ -34,4 +34,26 @@ int styxcallrecordwrite(unsigned long tag, const char *shape, const StyxCallValu
 int styxcallrecordread(unsigned long tag, const char *shape, const void *bytes, size_t size,
     StyxCallValues *values);
 
+typedef struct StyxScalarLayout
+{
+    size_t size; /* Exact byte extent of the pointer-free NC64 layout. */
+    size_t count; /* Number of scalar leaves. */
+    size_t offset[STYX_CALL_VALUES]; /* Byte offsets in schema order. */
+    unsigned char width[STYX_CALL_VALUES]; /* Native leaf widths. */
+} StyxScalarLayout;
+
+
+/* EN: Validate a value-only schema and compute its NC64 layout.
+ * RU: Проверить схему значений и вычислить раскладку NC64. */
+int styxscalar_layout(const char *shape, StyxScalarLayout *layout);
+
+
+/* EN: Copy fields from an NC64 buffer and widen packed byte leaves.
+ * RU: Скопировать поля буфера NC64 и расширить упакованные поля byte. */
+void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCallValues *values);
+
+
+/* EN: Stage fields in an NC64 buffer, zeroing layout padding.
+ * RU: Записать поля в буфер NC64, обнуляя заполнители раскладки. */
+void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *values, void *frame);
 #endif
