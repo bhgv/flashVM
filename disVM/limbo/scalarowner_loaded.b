@@ -117,21 +117,41 @@ invoke_raw(target: Scalarrawinvoke, inputs: int, a,b,c,d: big): (big,big,big,big
 run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inputs, outputs: int)
 {
     for (;;) {
-        (ready, a, b, c, d) := routes->scalarrawnext(request);
+        (ready, a, b, c, d) := routes->scalarrawdispatchnext(request);
         if (ready == 0) {
             return;
         }
-        result := (big 0, big 0, big 0, big 0);
-        success := 0;
-        if (ready > 0) {
+        if (ready == 2) {
             {
-                result = invoke_raw(target, inputs, a, b, c, d);
-                success = 1;
+                spawn finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
             } exception {
                 "*" =>
-                    success = 0;
+                    routes->scalarcallabort();
             }
+        } else {
+            finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
         }
-        routes->scalarrawreply(reply, success, outputs, result);
     }
+}
+
+
+# EN: Invoke one admitted call and send its response through the worker's scope.
+# RU: Выполнить один принятый вызов и отправить ответ через контекст исполнителя.
+finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, outputs, ready: int, a,b,c,d: big)
+{
+    result := (big 0, big 0, big 0, big 0);
+    success := 0;
+    if (ready > 0) {
+        {
+            if (ready == 2) {
+                routes->scalarcallstart();
+            }
+            result = invoke_raw(target, inputs, a, b, c, d);
+            success = 1;
+        } exception {
+            "*" =>
+                success = 0;
+        }
+    }
+    routes->scalarrawreply(reply, success, outputs, result);
 }

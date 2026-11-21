@@ -39,9 +39,25 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
     int ready = 0;
     unsigned char attached[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
     size_t length;
-    if (context ? fvm_srecord_write(STYX_LOCAL_CONTEXT_TAG, record, size, attached, sizeof(attached), &length) == FVM_S_OK &&
-            styxunibusmailboxcontext(owner->request, attached, length, context) :
-        styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED)
+    int sent = 0;
+    const struct timespec delay = {0, 10000000};
+    if (!context)
+    {
+        sent = styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED;
+    }
+    else if (fvm_srecord_write(STYX_LOCAL_CONTEXT_TAG, record, size, attached, sizeof(attached), &length) == FVM_S_OK)
+    {
+        while (!dvm_cancel_requested(cancel))
+        {
+            sent = styxunibusmailboxcontext(owner->request, attached, length, context);
+            if (sent >= 0)
+            {
+                break;
+            }
+            nanosleep(&delay, NULL);
+        }
+    }
+    if (sent == 1)
     {
         struct timespec now;
         for (;;)
@@ -70,7 +86,6 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
             {
                 break;
             }
-            const struct timespec delay = {0, 10000000};
             nanosleep(&delay, NULL);
         }
     }

@@ -170,5 +170,8 @@ Vfsnative: module
     callcancelled: fn(): int;
 
     scalarrawnext: fn(path: string): (int,big,big,big,big);
+    scalarrawdispatchnext: fn(path: string): (int,big,big,big,big);
+    scalarcallstart: fn();
+    scalarcallabort: fn();
     scalarrawreply: fn(path: string, success, count: int, value: (big,big,big,big));
 };

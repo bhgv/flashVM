@@ -176,10 +176,18 @@ checkcancel(sys: Sys, service: Scopedcalls, mode: int, prefix: string)
     spawn cancel_worker(service, ctl, started, mode);
     child := <-started;
     wait_marker(sys, prefix + "entered");
+    (companion, workerpid) := service->inspect(5);
+    if (companion != ctl->pid() || workerpid <= big 0) {
+        raise "same export could not run for a second caller";
+    }
     if (ctl->kill(child) <= 0) {
         raise "could not stop the child caller";
     }
     wait_marker(sys, prefix + "observed");
+    (again, replacement) := service->inspect(5);
+    if (again != companion || replacement <= big 0 || replacement == workerpid) {
+        raise "provider reused the retired invocation process";
+    }
     {
         service->inspect(1);
         raise "expected owner error after cancellation";

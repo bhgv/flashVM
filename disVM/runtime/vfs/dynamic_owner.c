@@ -112,6 +112,7 @@ void dvm_scalar_caller_end(Prog *process)
     DVM_SysEvents *events = owner->remote_call_events;
     dvm_cancel_release(owner->remote_call_cancel);
     owner->remote_call_cancel = NULL;
+    owner->remote_call_handoff = 0;
     styxunibusmailboxseal(owner->remote_call_reply);
     dvm_provider_release(owner->remote_call_reply);
     owner->remote_call_reply = NULL;
@@ -149,18 +150,74 @@ static int decode_words(unsigned long tag, const void *bytes, size_t size, void 
 
 /* EN: Return EOF or the four staged input cells to the owner process.
  * RU: Вернуть EOF либо четыре скопированные входные ячейки процессу владельца. */
-void Vfsnative_scalarrawnext(void *frame)
+static void scalar_raw_next(void *frame, int handoff)
 {
     F_Vfsnative_scalarrawnext call;
     WORD result[STYX_DYNAMIC_CELLS + 1];
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrawnext, ret), sizeof(result));
     StyxCallValues decoded = {0};
     result[0] = dvm_scalar_owner_next(call.path, STYX_DYNAMIC_REQUEST_TAG, decode_words, &decoded, 1);
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (handoff && result[0] > 0 && owner && owner->remote_call_reply)
+    {
+        owner->remote_call_handoff = 1;
+        owner->remote_call_cancel_delivered = 1;
+        result[0] = 2;
+    }
     for (size_t i = 0; i < STYX_DYNAMIC_CELLS; i++)
     {
         result[i + 1] = decoded.cells[i];
     }
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
+/* EN: Receive on the current worker using the original owner ABI.
+ * RU: Принять вызов в текущем исполнителе через исходный ABI владельца. */
+void Vfsnative_scalarrawnext(void *frame)
+{
+    scalar_raw_next(frame, 0);
+}
+
+
+/* EN: Receive a call and reserve its scope for the next dispatcher spawn.
+ * RU: Принять вызов и зарезервировать контекст для ближайшего spawn диспетчера. */
+void Vfsnative_scalarrawdispatchnext(void *frame)
+{
+    scalar_raw_next(frame, 1);
+}
+
+
+/* EN: Enable cancellation in the spawned worker after its exception handler is live.
+ * RU: Включить отмену после установки обработчика исключений дочернего процесса. */
+void Vfsnative_scalarcallstart(void *frame)
+{
+    (void)frame;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (!owner || !owner->remote_call_reply || owner->remote_call_handoff != 2)
+    {
+        error("invalid scalar call worker");
+    }
+    owner->remote_call_handoff = 0;
+    owner->remote_call_cancel_delivered = 0;
+    if (dvm_cancel_requested(owner->remote_call_cancel))
+    {
+        owner->remote_call_cancel_delivered = 1;
+        error("remote call cancelled");
+    }
+}
+
+
+/* EN: Seal any pending handoff after a failed worker spawn.
+ * RU: Закрыть ожидающую передачу при отказе создания исполнителя. */
+void Vfsnative_scalarcallabort(void *frame)
+{
+    (void)frame;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (owner && owner->remote_call_handoff == 1)
+    {
+        dvm_scalar_caller_end((Prog *)owner);
+    }
 }
 
 

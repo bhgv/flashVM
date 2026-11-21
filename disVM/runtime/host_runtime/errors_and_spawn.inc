@@ -439,5 +439,21 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
         free(request.storage);
         krethrow();
     }
+    DVM_RuntimeProcess *source = (DVM_RuntimeProcess *)parent;
+    if (source && source->remote_call_handoff == 1)
+    {
+        DVM_RuntimeProcess *child = (DVM_RuntimeProcess *)request.storage;
+        child->remote_call_group = source->remote_call_group;
+        child->remote_call_events = source->remote_call_events;
+        child->remote_call_reply = source->remote_call_reply;
+        child->remote_call_cancel = source->remote_call_cancel;
+        child->remote_call_cancel_delivered = 1;
+        child->remote_call_handoff = 2;
+        source->remote_call_group = NULL;
+        source->remote_call_events = NULL;
+        source->remote_call_reply = NULL;
+        source->remote_call_cancel = NULL;
+        source->remote_call_handoff = 0;
+    }
     (void)create_process(parent, module, NULL, request.storage, NULL);
 }

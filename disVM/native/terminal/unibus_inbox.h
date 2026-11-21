@@ -26,8 +26,8 @@ void styxunibusmailboxseal(DVM_Provider *provider);
 DVM_Provider *styxunibusloadmailbox(void);
 
 
-/* EN: Atomically queue a local request and pin its borrowed caller context.
- * RU: Атомарно принять локальный запрос и удержать контекст вызывающего. */
+/* EN: Queue and retain context. Return 1 on success, -1 while occupied, 0 on refusal.
+ * RU: Принять запрос и удержать контекст. 1 при успехе, -1 если занят, 0 при отказе. */
 int styxunibusmailboxcontext(DVM_Provider *provider, const void *bytes, size_t size, DVM_Provider *context);
 /* EN: Reserve a private slot for one complete shaped profile or refusal.
  * RU: Зарезервировать служебный приёмник расширенного профиля или отказа. */

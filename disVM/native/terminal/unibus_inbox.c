@@ -140,6 +140,10 @@ static void publish(Inbox *inbox, const void *bytes, size_t size, DVM_Provider *
     {
         out->stop = DVM_IO_CANCELLED;
     }
+    else if (!inbox->sealed && inbox->size && context)
+    {
+        out->stop = DVM_IO_AGAIN;
+    }
     else if (!inbox->sealed && !inbox->size)
     {
         memcpy(inbox->bytes, bytes, size);
@@ -241,7 +245,7 @@ int styxunibusmailboxcontext(DVM_Provider *provider, const void *bytes, size_t s
         return 1;
     }
     dvm_provider_release(context);
-    return 0;
+    return sent.stop == DVM_IO_AGAIN ? -1 : 0;
 }
 
 
