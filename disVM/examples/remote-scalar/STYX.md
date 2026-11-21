@@ -254,3 +254,7 @@ The `terminal-caller-mount-cli` check holds two PID publications open
 while the first call is running. Each caller stream starts with its own
 namespace record, even when the first has already consumed its record.
 The forward dispatcher handles calls in sequence.
+
+After both child calls return, the parent makes a follow-up call.
+During that call the provider checks that the first child's saved
+event fid refuses reads and that the parent's event fid still works.

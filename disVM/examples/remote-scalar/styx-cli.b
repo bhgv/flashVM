@@ -42,6 +42,10 @@ init()
     if (first <= 0 || second <= 0 || first == second) {
         raise "provider did not see both concurrent callers";
     }
+    pid := ctl->pid();
+    if (service->compute(pid) != pid) {
+        raise "follow-up caller lost its event stream";
+    }
     bad := load Wrong "/peer/mounted/compute.dis";
     if (bad != nil ||
         service->wide(big 9223372036854775807) != big 9223372036854775807 ||
