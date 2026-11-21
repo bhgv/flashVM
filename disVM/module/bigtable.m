@@ -31,6 +31,13 @@ Bigtable: module
     # Remove one entry; return Missing when absent. No implicit sequence compaction.
     delindex: fn(tab: ref Handle, key: big): int;
     deltext: fn(tab: ref Handle, key: string): int;
+    # Edit the dense prefix while preserving sparse numeric and textual keys.
+    insert: fn(tab: ref Handle, position, value: big): int;
+    push: fn(tab: ref Handle, value: big): int;
+    pop: fn(tab: ref Handle): (int, big);
+    # Add a key only when absent. An existing key returns Invalid.
+    addindex: fn(tab: ref Handle, key, value: big): int;
+    addtext: fn(tab: ref Handle, key: string, value: big): int;
     # Return contiguous sequence length, independently of total pair count.
     length: fn(tab: ref Handle): big;
     count: fn(tab: ref Handle): big;

@@ -126,6 +126,54 @@ int fvm_owned_leave_pair(FvmOwned *first, FvmOwned *second, uint64_t token)
 }
 
 
+/* EN: Insert one scalar into the dense prefix using transactional splice.
+ * RU: Вставить скаляр в плотную часть через транзакционный splice. */
+static FhtStatus insert_scalar(Fht *table, int64_t position, int64_t value)
+{
+    if (position < 0 || (uint64_t)position > fht_length(table))
+    {
+        return FHT_INVALID;
+    }
+    Fht *replacement = fht_create(NULL);
+    if (!replacement)
+    {
+        return FHT_NOMEM;
+    }
+    FhtKey zero = {.kind = FHT_INDEX};
+    FhtStatus status = fht_set(replacement, zero, value);
+    if (status == FHT_OK)
+    {
+        status = fht_splice(table, position, position, replacement);
+    }
+    fht_destroy(replacement);
+    return status;
+}
+
+
+/* EN: Remove the last dense cell while preserving all sparse and text keys.
+ * RU: Удалить последнюю плотную ячейку, сохраняя разреженные и строковые ключи. */
+static FhtStatus pop_scalar(Fht *table, int64_t *output)
+{
+    uint64_t length = fht_length(table);
+    if (!length)
+    {
+        return FHT_MISSING;
+    }
+    FhtKey last = {.kind = FHT_INDEX, .index = (int64_t)(length - 1)};
+    int64_t value;
+    FhtStatus status = fht_get(table, last, &value);
+    if (status == FHT_OK)
+    {
+        status = fht_delete(table, last);
+    }
+    if (status == FHT_OK)
+    {
+        *output = value;
+    }
+    return status;
+}
+
+
 /* Execute scalar-only storage operations after all required guards are held.
  * Borrowed request inputs stay live through return. New snapshots transfer to
  * the request only on success. No runtime allocation/exception callback is used. */
@@ -164,6 +212,20 @@ static FhtStatus execute(FvmTableOwner *owner, FvmTableRequest *request)
         return fht_keys(owner->payload, &request->keys);
     case FVM_TABLE_SPLICE:
         return fht_splice(owner->payload, request->first, request->end, request->replacement->payload);
+    case FVM_TABLE_INSERT:
+        return insert_scalar(owner->payload, request->first, request->value);
+    case FVM_TABLE_PUSH:
+        first = fht_length(owner->payload);
+        return first > INT64_MAX ? FHT_INVALID : insert_scalar(owner->payload, (int64_t)first, request->value);
+    case FVM_TABLE_POP:
+        return pop_scalar(owner->payload, &request->value);
+    case FVM_TABLE_ADD:
+    {
+        int64_t old;
+        FhtStatus found = fht_get(owner->payload, request->key, &old);
+        return found == FHT_MISSING ? fht_set(owner->payload, request->key, request->value) :
+            found == FHT_OK ? FHT_INVALID : found;
+    }
     default:
         return FHT_INVALID;
     }

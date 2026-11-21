@@ -292,6 +292,10 @@ void Bigtable_create(void *frame)
     initialize_table(owner);
 }
 
+/* EN/RU: Keep positional and add-only mutations on the same table guard.
+ * Сохранять позиционные изменения и добавление под guard той же таблицы. */
+#include "bigtable_mutation.inc"
+
 /* Read a numeric key from the borrowed owner; failed reads return status plus an unusable zero. */
 void Bigtable_getindex(void *frame)
 {
@@ -894,7 +898,8 @@ static unsigned table_call_arguments(void (*function)(void *))
         function == Bigtable_getkey || function == Bigtable_setkey || function == Bigtable_delkey ||
         function == Bigtable_length || function == Bigtable_count || function == Bigtable_slice ||
         function == Bigtable_slicerange || function == Bigtable_keysof || function == Bigtable_resolveindex ||
-        function == Bigtable_acquire)
+        function == Bigtable_insert || function == Bigtable_push || function == Bigtable_pop ||
+        function == Bigtable_addindex || function == Bigtable_addtext || function == Bigtable_acquire)
     {
         return 1;
     }

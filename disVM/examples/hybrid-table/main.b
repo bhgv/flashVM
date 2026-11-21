@@ -20,6 +20,7 @@ init()
     if (s == nil || tables == nil) {
         raise "fail: hybrid tab modules";
     }
+    check_mutations(tables);
     tab := tables->create();
     maximum := big 9223372036854775807;
     if (tables->setindex(tab, big 1, maximum) != tables->Ok
@@ -109,4 +110,42 @@ init()
         }
     }
     s->print("PASS native hybrid tables: exact big Unicode holes slices key snapshots lifecycle\n");
+}
+
+# EN: Exercise positional and keyed mutations on the same native table.
+# RU: Проверить позиционные и ключевые операции на одной нативной таблице.
+check_mutations(tables: Bigtable)
+{
+    tab := tables->create();
+    (status, value) := tables->pop(tab);
+    if (status != tables->Missing || value != big 0 ||
+        tables->push(tab, big 10) != tables->Ok || tables->push(tab, big 20) != tables->Ok ||
+        tables->addindex(tab, big 5, big 50) != tables->Ok ||
+        tables->addtext(tab, "1", big 90) != tables->Ok ||
+        tables->insert(tab, big 1, big 15) != tables->Ok ||
+        tables->length(tab) != big 3 || tables->count(tab) != big 5) {
+        raise "fail: hybrid mutation setup and dense insertion";
+    }
+    if (tables->addindex(tab, big 1, big 77) != tables->Invalid ||
+        tables->addtext(tab, "1", big 77) != tables->Invalid ||
+        tables->insert(tab, big 4, big 77) != tables->Invalid) {
+        raise "fail: hybrid mutation accepted duplicate or out-of-range index";
+    }
+    (status, value) = tables->getindex(tab, big 1);
+    if (status != tables->Ok || value != big 15) {
+        raise "fail: inserted dense value was replaced";
+    }
+    (status, value) = tables->pop(tab);
+    if (status != tables->Ok || value != big 20 || tables->length(tab) != big 2 ||
+        tables->push(tab, big 99) != tables->Ok || tables->length(tab) != big 3) {
+        raise "fail: pop and push did not edit the dense prefix";
+    }
+    (status, value) = tables->getindex(tab, big 5);
+    if (status != tables->Ok || value != big 50) {
+        raise "fail: sparse key moved during positional edits";
+    }
+    (status, value) = tables->gettext(tab, "1");
+    if (status != tables->Ok || value != big 90) {
+        raise "fail: text key was confused with its numeric spelling";
+    }
 }

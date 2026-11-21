@@ -14,7 +14,11 @@ typedef enum
     FVM_TABLE_RANGE,   /* Normalize signed bounds under the payload guard. */
     FVM_TABLE_SLICE,   /* Produce an independent copied prefix range. */
     FVM_TABLE_KEYS,    /* Produce an independent immutable key snapshot. */
-    FVM_TABLE_SPLICE   /* Replace a range while guarding source and destination. */
+    FVM_TABLE_SPLICE,  /* Replace a range while guarding source and destination. */
+    FVM_TABLE_INSERT,  /* Insert in the dense positional part. */
+    FVM_TABLE_PUSH,    /* Append to the dense positional part. */
+    FVM_TABLE_POP,     /* Remove and return the final dense element. */
+    FVM_TABLE_ADD      /* Insert a key only if absent. */
 } FvmTableOperation;
 
 typedef struct

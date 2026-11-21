@@ -45,3 +45,9 @@ numeric/string/dotted access, slices, keysof and len into FIR. See the
 is distinct from this native Dis module example. Compiler-generated [native Dis table calls](../../../fir/v1/doc/TABLES_DIS.md) now
 execute this same hosted module. SWF table calls, keyseq indexing, pair iteration
 and typeof/any remain pending; the module example continues to use the matching bootstrap explicitly.
+The positional operations `insert`, `push` and `pop` edit the dense
+prefix atomically. Positions for `insert` start at zero and may equal the
+prefix length. Sparse numeric and text keys retain their values. An
+existing sparse key that would collide with an insertion causes refusal.
+`addindex` and `addtext` create an absent key. A duplicate returns
+`Invalid`, and popping an empty prefix returns `Missing`.
