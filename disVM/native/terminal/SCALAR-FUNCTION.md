@@ -137,9 +137,12 @@ and pass its root to `program_method`. On carrier shutdown call `styxcallerjoin`
 outlive the control. It retains the stopped state and rejects new calls. The test uses these same APIs
 and reads the granted files through the provider's selected `.self`.
 
-Each reverse session admits one scoped call at a time, with up to 511
-walked nodes per call. Open fids cannot issue new I/O after their call
-ends. The host must provision both transport channels. Automatic
+A reverse session admits up to 16 simultaneous publications from distinct
+caller PIDs. The same PID may have one live publication. `.prog` lists
+a snapshot of the active PIDs. Each call has a separate Qid generation
+with up to 511 additional walked nodes. Open fids cannot issue new I/O
+after their call ends. The scalar provider may dispatch methods serially
+while multiple callers remain active. The host must provision both transport channels. Automatic
 collection of ordinary managed FD and variable grants remains open.
 
 When the caller has no explicit `/.fd` mount, DisVM projects the

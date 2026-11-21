@@ -18,15 +18,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static int calls; /* Inspected only after the provider worker joins. */
+
+
+/* EN: Wait for two live PID directories while the initial function is still running.
+ * RU: Дождаться двух живых каталогов PID пока первый вызов ещё выполняется. */
+static int concurrent(DVM_Provider *root)
+{
+    const struct timespec pause = {0, 10000000};
+    for (unsigned attempt = 0; attempt < 100; attempt++)
+    {
+        DVM_VfsHandle directory = {0};
+        if (dvm_provider_open(root, ".prog", "r", &directory) == FVM_OK)
+        {
+            FVM_FileInfo *entries = NULL;
+            size_t count = 0;
+            FVM_Result status = dvm_vfs_list(&directory, &entries, &count);
+            fvm_port_directory_entries_free(entries);
+            dvm_vfs_close(&directory);
+            if (status == FVM_OK && count == 2)
+            {
+                return 1;
+            }
+        }
+        nanosleep(&pause, NULL);
+    }
+    return 0;
+}
 
 
 /* EN: Confirm the selected .self exposes the calling process's live PID over Styx.
  * RU: Проверить текущий PID клиента через выбранный .self на встречном Styx. */
 static int compute(void *state, DVM_Provider *self, int64_t value, int64_t *out)
 {
-    (void)state;
+    if (!calls && !concurrent(state))
+    {
+        return 0;
+    }
     DVM_VfsHandle reader = {0};
     if (value <= 0 || dvm_provider_open(self, ".pid", "r", &reader) != FVM_OK)
     {
@@ -112,9 +142,9 @@ int main(int argc, char **argv)
     }
     StyxClient *reverse = mux ? styxclientmountphy(phybidirchannel(mux, 1), 4096,
         "provider", "", 5000, 8) : NULL;
-    DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_READ) : NULL;
+    DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_READ | FVM_ACCESS_EXEC) : NULL;
     StyxScalarFunction function = {.request_tag = STYX_FUNCTION_CALLER_TAG,
-        .reply_tag = STYX_FUNCTION_REPLY_TAG, .program_root = root, .program_method = compute};
+        .reply_tag = STYX_FUNCTION_REPLY_TAG, .state = root, .program_root = root, .program_method = compute};
     StyxUnibusServer *server = root ?
         styxunibusserverstartfunction(phybidirchannel(mux, 0), "compute.dis", "compute", &function) : NULL;
     int success = server && styxunibusserverjoin(server);

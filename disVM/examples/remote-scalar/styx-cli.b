@@ -11,8 +11,9 @@ Client: module { init: fn(); };
 
 # EN: Verify that the same library selects the spawned caller.
 # RU: Проверить выбор потомка при вызове той же библиотеки.
-child(service: Compute, ctl: Processctl, done: chan of int)
+child(service: Compute, ctl: Processctl, start: chan of int, done: chan of int)
 {
+    <-start;
     pid := ctl->pid();
     done <-= service->compute(pid);
 }
@@ -28,15 +29,16 @@ init()
     if (ctl == nil || service == nil) {
         raise sys->sprint("could not load mounted library: %r");
     }
-    pid := ctl->pid();
-    if (service->compute(pid) != pid) {
-        raise "provider did not see parent context";
-    }
+    start := chan of int;
     done := chan of int;
-    spawn child(service, ctl, done);
-    childpid := <-done;
-    if (childpid <= 0 || childpid == pid) {
-        raise "provider did not see child context";
+    spawn child(service, ctl, start, done);
+    spawn child(service, ctl, start, done);
+    start <-= 1;
+    start <-= 1;
+    first := <-done;
+    second := <-done;
+    if (first <= 0 || second <= 0 || first == second) {
+        raise "provider did not see both concurrent callers";
     }
     sys->print("PASS bidirectional Styx CLI mount\n");
 }

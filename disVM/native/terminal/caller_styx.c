@@ -6,6 +6,7 @@
 #include <styx.h>
 #include <styxserver.h>
 #include "caller_styx.h"
+#include "caller_scope.h"
 #include "server.h"
 #include "file_provider.h"
 #include "mount.h"
@@ -13,120 +14,90 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
-#define CALLER_NODES 512U /* Maximum distinct Qids issued for a single invocation. */
+#define PROG_QID 1U /* Permanent virtual directory for active process IDs. */
+
+typedef struct CallerNodes
+{
+    uint64_t generation; /* Publication represented by this dispatcher cache. */
+    size_t count; /* Number of visited nodes for this publication. */
+    StyxBacking *nodes[STYX_CALLER_NODES]; /* Owned visited nodes. */
+} CallerNodes;
 
 struct StyxCallerServer
 {
     Styxserver server; /* Owned original Styx dispatcher. */
+    StyxPhyWake *wake; /* Owned dispatcher wake pin through mount retirement. */
     pthread_t worker; /* Owns dispatcher, nodes and stat scratch. */
-    pthread_mutex_t lock; /* Serializes publication and root snapshot. */
-    size_t references; /* Control and bound mount owners, under lock. */
-    int stopped; /* Worker finished and cannot publish again. */
-    DVM_Provider *active; /* Borrowed from the synchronous call lease. */
-    Path generation; /* Monotonic publication serial. */
-    Path observed; /* Last generation observed by dispatcher. */
-    Path base; /* First Qid for the current generation. */
-    size_t count; /* Number of retained nodes in the current generation. */
-    StyxBacking *nodes[CALLER_NODES]; /* Owned exact visited nodes. */
+    StyxCallerScopes scopes; /* Concurrent per-PID publications. */
+    size_t references; /* Control and bound mount owners, under scopes.lock. */
+    CallerNodes cache[STYX_CALLER_SLOTS]; /* Dispatcher-owned node caches. */
     StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
 };
 
 typedef struct CallerOpen
 {
     StyxOpen *file; /* Exclusive opened VFS cursor. */
-    Path generation; /* Publication which granted this open. */
+    uint64_t generation; /* Publication which granted this open, zero for a portal snapshot. */
 } CallerOpen;
 
 static __thread StyxCallerServer *owner; /* Current dispatcher on its native thread. */
 
 
-/* EN: Publish one call root until the matching end. Refuse overlap without mutation.
- * RU: Опубликовать корень на время вызова. Параллельный вызов отклонить. */
-static void *begin(void *state, DVM_Provider *target, DVM_Provider *tree)
+/* EN: Publish a caller tree for its PID until the matching release.
+ * RU: Опубликовать дерево клиента для его PID до освобождения. */
+static void *begin(void *state, DVM_Provider *target, DVM_Provider *tree, uint32_t pid)
 {
     StyxCallerServer *server = state;
     (void)target;
-    pthread_mutex_lock(&server->lock);
-    int accepted = !server->stopped && !server->active && server->generation < (~(Path)0 - 1) / CALLER_NODES;
-    if (accepted)
-    {
-        server->active = tree;
-        server->generation++;
-    }
-    pthread_mutex_unlock(&server->lock);
-    return accepted ? tree : NULL;
+    return styxcallerscopeadd(&server->scopes, tree, pid) ? tree : NULL;
 }
 
 
-/* EN: Remove the publication as soon as the exchange retires.
- * RU: Снять публикацию сразу после завершения обмена. */
+/* EN: Revoke this invocation without affecting other PIDs.
+ * RU: Отозвать этот вызов, сохранив остальные PID. */
 static void end(void *state, void *lease)
 {
     StyxCallerServer *server = state;
-    pthread_mutex_lock(&server->lock);
-    if (server->active == lease)
-    {
-        server->active = NULL;
-    }
-    pthread_mutex_unlock(&server->lock);
+    styxcallerscopedrop(&server->scopes, lease);
+    styxphywake(server->wake);
 }
 
 
-/* EN: Drop unopened Qid lookups. Open fids independently own their handles.
- * RU: Освободить узлы поиска. Открытые fid удерживают собственные файлы. */
-static void clear(StyxCallerServer *server)
+/* EN: Release visited nodes from one dispatcher cache.
+ * RU: Освободить посещённые узлы одного кеша диспетчера. */
+static void clear(CallerNodes *cache)
 {
-    for (size_t i = 0; i < server->count; i++)
+    for (size_t i = 0; i < cache->count; i++)
     {
-        styxbackingfree(server->nodes[i]);
+        styxbackingfree(cache->nodes[i]);
     }
-    server->count = 0;
+    cache->count = 0;
 }
 
 
-/* EN: Borrow a visited node for this dispatcher generation. The root is dynamic.
- * RU: Заимствовать посещённый узел поколения. Корень динамический. */
-static StyxBacking *find(Path path)
+/* EN: Borrow a previously walked node only from its live generation.
+ * RU: Заимствовать пройденный узел только из его активного поколения. */
+static StyxBacking *find(Path path, CallerNodes **cache)
 {
-    pthread_mutex_lock(&owner->lock);
-    Path generation = owner->generation;
-    DVM_Provider *tree = owner->active;
-    if (!dvm_provider_retain(tree))
+    uint64_t generation = path / STYX_CALLER_NODES;
+    size_t offset = path % STYX_CALLER_NODES;
+    int index = generation ? styxcallerscopefind(&owner->scopes, 0, generation, NULL) : -1;
+    if (index < 0)
     {
-        tree = NULL;
+        return NULL;
     }
-    pthread_mutex_unlock(&owner->lock);
-    if (!tree || generation != owner->observed)
-    {
-        clear(owner);
-        owner->observed = generation;
-        owner->base = generation * CALLER_NODES;
-    }
-    if (tree && !owner->count)
-    {
-        StyxBacking *root = styxtree(tree);
-        if (root)
-        {
-            owner->nodes[owner->count++] = root;
-        }
-    }
-    dvm_provider_release(tree);
-    if (path == Qroot)
-    {
-        return owner->count ? owner->nodes[0] : NULL;
-    }
-    return path >= owner->base && path - owner->base < owner->count ?
-        owner->nodes[path - owner->base] : NULL;
+    *cache = &owner->cache[index];
+    return (*cache)->generation == generation && offset < (*cache)->count ? (*cache)->nodes[offset] : NULL;
 }
 
 
-/* EN: Resolve one component in the active capability and issue a bounded Qid.
- * RU: Найти компонент в активном дереве и выдать Qid в пределах лимита. */
-static char *walk(Qid *qid, char *name)
+/* EN: Sign a child node with the generation that grants access to it.
+ * RU: Привязать дочерний узел к поколению, выдавшему доступ. */
+static char *walk_child(Qid *qid, const char *name, StyxBacking *parent, CallerNodes *cache)
 {
-    StyxBacking *parent = find(qid->path);
-    if (!parent || owner->count == CALLER_NODES)
+    if (!parent || cache->count == STYX_CALLER_NODES)
     {
         return Enonexist;
     }
@@ -137,9 +108,98 @@ static char *walk(Qid *qid, char *name)
         styxbackingfree(node);
         return Enonexist;
     }
-    *qid = styxqid(owner->base + owner->count, meta.directory);
-    owner->nodes[owner->count++] = node;
+    *qid = styxqid(cache->generation * STYX_CALLER_NODES + cache->count, meta.directory);
+    cache->nodes[cache->count++] = node;
     return nil;
+}
+
+
+/* EN: Find one canonical decimal PID and enter its pinned virtual directory.
+ * RU: Найти канонический десятичный PID и войти в удерживаемый каталог. */
+static char *walk_pid(Qid *qid, const char *name)
+{
+    char *end;
+    errno = 0;
+    unsigned long pid = strtoul(name, &end, 10);
+    if (errno || *name < '1' || *name > '9' || *end || pid > UINT32_MAX)
+    {
+        return Enonexist;
+    }
+    StyxCallerGrant grant;
+    int index = styxcallerscopefind(&owner->scopes, (uint32_t)pid, 0, &grant);
+    if (index < 0)
+    {
+        return Enonexist;
+    }
+    CallerNodes *cache = &owner->cache[index];
+    if (cache->generation != grant.generation)
+    {
+        clear(cache);
+        cache->generation = grant.generation;
+    }
+    if (cache->count)
+    {
+        dvm_provider_release(grant.tree);
+        *qid = styxqid(grant.generation * STYX_CALLER_NODES, 1);
+        return nil;
+    }
+    StyxBacking *root = styxtree(grant.tree);
+    dvm_provider_release(grant.tree);
+    StyxBacking *prog = root ? styxwalknode(root, ".prog") : NULL;
+    char *error = walk_child(qid, name, prog, cache);
+    styxbackingfree(prog);
+    styxbackingfree(root);
+    return error;
+}
+
+
+/* EN: Walk through the shared portal or within one live generation.
+ * RU: Пройти общий каталог либо узел одного живого поколения. */
+static char *walk(Qid *qid, char *name)
+{
+    if (qid->path == Qroot)
+    {
+        if (!strcmp(name, ".prog"))
+        {
+            *qid = styxqid(PROG_QID, 1);
+            return nil;
+        }
+        return Enonexist;
+    }
+    if (qid->path == PROG_QID)
+    {
+        if (!strcmp(name, ".."))
+        {
+            *qid = styxqid(Qroot, 1);
+            return nil;
+        }
+        return walk_pid(qid, name);
+    }
+    CallerNodes *cache = NULL;
+    StyxBacking *parent = find(qid->path, &cache);
+    if (parent && qid->path % STYX_CALLER_NODES == 0 && !strcmp(name, ".."))
+    {
+        *qid = styxqid(PROG_QID, 1);
+        return nil;
+    }
+    return parent ? walk_child(qid, name, parent, cache) : Enonexist;
+}
+
+
+/* EN: Build an owned snapshot for opening or stating a portal directory.
+ * RU: Собрать свой снимок для открытия или stat общего каталога. */
+static StyxBacking *portal(Path path)
+{
+    DVM_Provider *view = styxcallerscopeview(&owner->scopes);
+    StyxBacking *root = view ? styxtree(view) : NULL;
+    dvm_provider_release(view);
+    if (path == Qroot || !root)
+    {
+        return root;
+    }
+    StyxBacking *prog = styxwalknode(root, ".prog");
+    styxbackingfree(root);
+    return prog;
 }
 
 
@@ -157,7 +217,9 @@ static void close_node(void *state)
  * RU: Открыть узел и удержать курсор и поколение в fid. */
 static char *open_node(Qid *qid, int mode)
 {
-    StyxBacking *node = find(qid->path);
+    int shared = qid->path <= PROG_QID;
+    CallerNodes *cache = NULL;
+    StyxBacking *node = shared ? portal(qid->path) : find(qid->path, &cache);
     if (!node)
     {
         return Enonexist;
@@ -165,10 +227,18 @@ static char *open_node(Qid *qid, int mode)
     CallerOpen *opened = calloc(1, sizeof(*opened));
     if (!opened)
     {
+        if (shared)
+        {
+            styxbackingfree(node);
+        }
         return Enomem;
     }
     opened->file = styxfileopen(node, mode);
-    opened->generation = owner->observed;
+    if (shared)
+    {
+        styxbackingfree(node);
+    }
+    opened->generation = cache ? cache->generation : 0;
     if (!opened->file || styxsetaux(&owner->server, opened) < 0)
     {
         close_node(opened);
@@ -183,23 +253,9 @@ static char *open_node(Qid *qid, int mode)
 static StyxOpen *active_open(void)
 {
     CallerOpen *opened = styxgetaux(&owner->server);
-    pthread_mutex_lock(&owner->lock);
-    int valid = opened && owner->active && opened->generation == owner->generation;
-    pthread_mutex_unlock(&owner->lock);
+    int valid = opened && (!opened->generation ||
+        styxcallerscopefind(&owner->scopes, 0, opened->generation, NULL) >= 0);
     return valid ? opened->file : NULL;
-}
-
-
-/* EN: Copy display metadata into a stat record. Name storage remains borrowed.
- * RU: Скопировать метаданные в stat. Хранилище имени заимствуется. */
-static void attributes(const StyxMeta *meta, Qid qid, Dir *dir)
-{
-    memset(dir, 0, sizeof(*dir));
-    dir->qid = qid;
-    dir->mode = meta->mode | (meta->directory ? DMDIR : 0);
-    dir->length = meta->length;
-    dir->name = (char *)meta->name;
-    dir->uid = dir->gid = dir->muid = "caller";
 }
 
 
@@ -208,59 +264,27 @@ static void attributes(const StyxMeta *meta, Qid qid, Dir *dir)
 static char *stat_node(Qid qid, Dir *dir)
 {
     StyxOpen *opened = active_open();
-    if (!(styxgetaux(&owner->server) ? opened && styxfileinfo(opened, &owner->stat) :
-            styxbackinginfo(find(qid.path), &owner->stat)))
+    int valid;
+    if (styxgetaux(&owner->server))
+    {
+        valid = opened && styxfileinfo(opened, &owner->stat);
+    }
+    else if (qid.path <= PROG_QID)
+    {
+        StyxBacking *node = portal(qid.path);
+        valid = styxbackinginfo(node, &owner->stat);
+        styxbackingfree(node);
+    }
+    else
+    {
+        CallerNodes *cache;
+        valid = styxbackinginfo(find(qid.path, &cache), &owner->stat);
+    }
+    if (!valid)
     {
         return Enonexist;
     }
-    attributes(&owner->stat, qid, dir);
-    return nil;
-}
-
-
-/* EN: Encode complete directory entries, advancing only after copying each entry.
- * RU: Кодировать полные записи каталога, продвигая курсор после копирования записи. */
-static char *list(StyxOpen *opened, char *bytes, ulong *count, vlong offset)
-{
-    if (offset < 0 || !styxdirbegin(opened, offset))
-    {
-        return Eperm;
-    }
-    ulong used = 0;
-    while (used < *count)
-    {
-        StyxMeta meta;
-        int next = styxdirpeek(opened, &meta);
-        if (!next)
-        {
-            break;
-        }
-        if (next < 0)
-        {
-            if (!used)
-            {
-                return Eperm;
-            }
-            break;
-        }
-        Dir dir;
-        attributes(&meta, styxqid(meta.identity, meta.directory), &dir);
-        uint size = sizeD2M(&dir);
-        if (size > *count - used)
-        {
-            if (!used)
-            {
-                return Ebadarg;
-            }
-            break;
-        }
-        if (convD2M(&dir, (uchar *)bytes + used, *count - used) != size || !styxdiradvance(opened, size))
-        {
-            return Ebadarg;
-        }
-        used += size;
-    }
-    *count = used;
+    styxcallerattributes(&owner->stat, qid, dir);
     return nil;
 }
 
@@ -276,7 +300,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.type & QTDIR)
     {
-        return list(opened, bytes, count, offset);
+        return styxcallerlist(opened, bytes, count, offset);
     }
     StyxTransfer result;
     if (offset < 0)
@@ -330,12 +354,23 @@ static void *serve(void *state)
     owner = state;
     while (!styxwait(&owner->server) && !styxprocess(&owner->server))
     {
+        for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
+        {
+            CallerNodes *cache = &owner->cache[i];
+            if (cache->count && styxcallerscopefind(&owner->scopes, 0, cache->generation, NULL) < 0)
+            {
+                clear(cache);
+            }
+        }
     }
     styxend(&owner->server);
-    clear(owner);
-    pthread_mutex_lock(&owner->lock);
-    owner->stopped = 1;
-    pthread_mutex_unlock(&owner->lock);
+    for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
+    {
+        clear(&owner->cache[i]);
+    }
+    pthread_mutex_lock(&owner->scopes.lock);
+    owner->scopes.stopped = 1;
+    pthread_mutex_unlock(&owner->scopes.lock);
     owner = NULL;
     return NULL;
 }
@@ -346,7 +381,7 @@ static void *serve(void *state)
 StyxCallerServer *styxcallerserver(RemotePhy *reverse)
 {
     StyxCallerServer *server = calloc(1, sizeof(*server));
-    if (!server || pthread_mutex_init(&server->lock, NULL))
+    if (!server || pthread_mutex_init(&server->scopes.lock, NULL))
     {
         free(server);
         phyfree(reverse);
@@ -355,14 +390,16 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
     server->references = 1;
     if (styxphyinit(&server->server, &operations, reverse, 0555, 0, 8))
     {
-        pthread_mutex_destroy(&server->lock);
+        pthread_mutex_destroy(&server->scopes.lock);
         free(server);
         return NULL;
     }
-    if (pthread_create(&server->worker, NULL, serve, server))
+    server->wake = styxphywakepin(&server->server);
+    if (!server->wake || pthread_create(&server->worker, NULL, serve, server))
     {
         styxend(&server->server);
-        pthread_mutex_destroy(&server->lock);
+        styxphywakefree(server->wake);
+        pthread_mutex_destroy(&server->scopes.lock);
         free(server);
         return NULL;
     }
@@ -375,12 +412,13 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
 static void drop(void *state)
 {
     StyxCallerServer *server = state;
-    pthread_mutex_lock(&server->lock);
+    pthread_mutex_lock(&server->scopes.lock);
     int last = --server->references == 0;
-    pthread_mutex_unlock(&server->lock);
+    pthread_mutex_unlock(&server->scopes.lock);
     if (last)
     {
-        pthread_mutex_destroy(&server->lock);
+        styxphywakefree(server->wake);
+        pthread_mutex_destroy(&server->scopes.lock);
         free(server);
     }
 }
@@ -394,13 +432,13 @@ int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
     {
         return 0;
     }
-    pthread_mutex_lock(&server->lock);
-    int retained = !server->stopped && server->references < (size_t)-1;
+    pthread_mutex_lock(&server->scopes.lock);
+    int retained = !server->scopes.stopped && server->references < (size_t)-1;
     if (retained)
     {
         server->references++;
     }
-    pthread_mutex_unlock(&server->lock);
+    pthread_mutex_unlock(&server->scopes.lock);
     if (!retained)
     {
         return 0;

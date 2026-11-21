@@ -4,6 +4,7 @@
  */
 #ifndef DVM_VFS_PROVIDER_H
 #define DVM_VFS_PROVIDER_H
+#include <stdint.h>
 #include "handle.h"
 #include "anchor_port.h"
 #include "changes.h"
@@ -62,7 +63,7 @@ typedef struct DVM_ProviderOps
  * End завершает аренду. Оба вызова выполняются в области нативного ожидания. */
 typedef struct DVM_CallerBinding
 {
-    void *(*begin)(void *state, DVM_Provider *target, DVM_Provider *tree); /* Start reverse publication. */
+    void *(*begin)(void *state, DVM_Provider *target, DVM_Provider *tree, uint32_t pid); /* Start reverse publication. */
     void (*end)(void *state, void *lease); /* Retire one active publication. */
     void *state; /* Context held by the bound provider. */
     void (*release)(void *state); /* Optional owned context retirement. */

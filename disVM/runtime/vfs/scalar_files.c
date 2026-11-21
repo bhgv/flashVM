@@ -154,7 +154,7 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
         return dvm_scalar_function_call(files, pid, argument, value);
     }
     DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
-    void *lease = tree ? binding.begin(binding.state, files->request, tree) : NULL;
+    void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
     if (!lease)
     {
         dvm_provider_release(tree);

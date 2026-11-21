@@ -373,7 +373,7 @@ static void mounted_function(void)
         dvm_provider_release(function.program_root);
         styxcallerjoin(reverse);
         DVM_CallerBinding binding;
-        check(dvm_provider_caller_binding(mount, &binding) && !binding.begin(binding.state, mount, mount),
+        check(dvm_provider_caller_binding(mount, &binding) && !binding.begin(binding.state, mount, mount, 1),
             "still-live mount rejects publication after server retirement");
         phybidirfree(caller);
         phybidirfree(provider);

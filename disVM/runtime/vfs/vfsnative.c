@@ -351,7 +351,7 @@ static DVM_LaunchDelivery send_launch(DVM_LaunchAddress *address, DVM_Provider *
         return dvm_launch_address_send_process(address, pid, bytes, size);
     }
     DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
-    void *lease = tree ? binding.begin(binding.state, source, tree) : NULL;
+    void *lease = tree ? binding.begin(binding.state, source, tree, pid) : NULL;
     DVM_LaunchDelivery result = lease ? dvm_launch_address_send_process(address, pid, bytes, size) :
         DVM_LAUNCH_NOT_SENT;
     if (lease)
