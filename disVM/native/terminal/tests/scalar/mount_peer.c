@@ -83,9 +83,9 @@ static int serve_launch(PhyBidir *mux)
     {
         return 0;
     }
-    int ready = styxaddfile(&server, Qroot, 1, "app.dis", 0555, "provider") &&
+    int ready = styxaddfile(&server, Qroot, 1, "implementation.dis", 0555, "provider") &&
         styxaddfile(&server, Qroot, 2, "other.dis", 0555, "provider") &&
-        styxaddfile(&server, Qroot, 3, "submit", 0222, "provider");
+        styxaddfile(&server, Qroot, 3, ".unibus", 0222, "provider");
     while (ready && !styxwait(&server) && !styxprocess(&server))
     {
     }

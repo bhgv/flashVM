@@ -14,8 +14,10 @@ init()
 {
     sys := load Sys Sys->PATH;
     vfs := load Vfsnative Vfsnative->PATH;
-    if (vfs == nil || vfs->run("/peer/other.dis") != 0 ||
-        sys->bind("/peer/app.dis", "/alias.dis", Sys->MREPL) < 0) {
+    if (vfs == nil || vfs->run("/peer/other.dis") != 0) {
+        raise "unadvertised launch route accepted";
+    }
+    if (sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0) {
         raise sys->sprint("launch route setup failed: %r");
     }
     arguments := array[] of {byte 'a', byte 0, byte 'b'};

@@ -189,3 +189,27 @@ The [launch submission example](../examples/remote-scalar/styx-run.b)
 verifies exact binary arguments through a bind alias and rejection of an
 unadvertised neighbour. It runs in the same `terminal-caller-mount-cli`
 test.
+
+### Run both sides
+
+Give the owner and caller opposite ends of a connected stream. On the
+owner, launch the one-shot service with the local Dis image it will run:
+
+```sh
+disvm --styx-serve-fd 3 -- owner.dis
+```
+
+The service exports `implementation.dis` and accepts one S-record with
+tag 17 at `.unibus`. Start the caller with its descriptor of the same
+connection:
+
+```sh
+disvm --styx-mount-fd 3 --launch implementation.dis .unibus 17 -- caller.dis
+```
+
+The owner runs its configured image and exposes the accepted bytes to
+`Launchcontext.arguments()`. The complete record must fit the one-shot
+64-byte inbox. This launch profile carries startup bytes and does not
+select the caller's process context. The [owner example](../examples/remote-scalar/styx-owner.b)
+checks an embedded NUL. The acceptance test starts two separate DisVM
+processes with these commands.

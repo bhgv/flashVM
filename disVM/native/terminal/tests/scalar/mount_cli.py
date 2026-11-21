@@ -20,7 +20,7 @@ def main():
         for source, marker, options, peer_options in (
             ("styx-cli.b", "PASS bidirectional Styx CLI mount", [], []),
             ("styx-run.b", "PASS mounted Styx launch submission",
-             ["--launch", "app.dis", "submit", "17"], ["launch"]),
+             ["--launch", "implementation.dis", ".unibus", "17"], ["launch"]),
         ):
             image = work / "caller.dis"
             subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
@@ -42,6 +42,31 @@ def main():
                     finally:
                         if peer.poll() is None:
                             peer.kill()
+
+        owner_image = work / "owner.dis"
+        subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
+                        "-o", owner_image, example / "styx-owner.b"], cwd=work, check=True)
+        for mode in ("--no-jit", "--jit"):
+            caller, owner = socket.socketpair()
+            with caller, owner, subprocess.Popen(
+                [runtime, "--styx-serve-fd", str(owner.fileno()), "--", mode, owner_image],
+                pass_fds=(owner.fileno(),), cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            ) as peer:
+                owner.close()
+                try:
+                    result = subprocess.run(
+                        [runtime, "--styx-mount-fd", str(caller.fileno()),
+                         "--launch", "implementation.dis", ".unibus", "17", "--", mode, image],
+                        pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=20)
+                    caller.close()
+                    out, err = peer.communicate(timeout=10)
+                    marker = "PASS mounted Styx owner Dis init"
+                    if result.returncode or peer.returncode or marker not in out or                             "PASS mounted Styx launch submission" not in result.stdout:
+                        raise RuntimeError(result.stdout + result.stderr + out + err)
+                    print(marker, mode, flush=True)
+                finally:
+                    if peer.poll() is None:
+                        peer.kill()
 
 
 if __name__ == "__main__":

@@ -477,6 +477,11 @@ int main(int argc, char **argv)
 #ifdef DVM_TERMINAL_LAUNCH
     extern int dvm_terminal_launch_cli(int, char **);
     extern int dvm_styx_mount_cli(int, char **);
+    extern int dvm_styx_serve_cli(int, char **);
+    if (argc > 1 && !strcmp(argv[1], "--styx-serve-fd"))
+    {
+        return dvm_styx_serve_cli(argc, argv);
+    }
     if (argc > 1 && !strcmp(argv[1], "--styx-mount-fd"))
     {
         return dvm_styx_mount_cli(argc, argv);
