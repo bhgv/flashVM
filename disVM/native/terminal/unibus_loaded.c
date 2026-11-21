@@ -106,7 +106,7 @@ int styxunibusawaitload(StyxUnibusServer *server)
             }
             else if (!styxloadedrequest(signature))
             {
-                if (fvm_srecord_write(STYX_SCOPED_END_OFFER_TAG, profile.payload, profile.size,
+                if (fvm_srecord_write(STYX_SCOPED_PATH_OFFER_TAG, profile.payload, profile.size,
                     directory->interface + directory->interface_size, sizeof(directory->interface) -
                         directory->interface_size, &used) != FVM_S_OK)
                 {

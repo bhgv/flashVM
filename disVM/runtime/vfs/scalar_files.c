@@ -189,9 +189,14 @@ static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, i
     }
     unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + 2 * STYX_SCOPED_CALL_OVERHEAD];
     unsigned char end[STYX_SCOPED_CALL_OVERHEAD];
-    size_t count, end_size;
-    return fvm_srecord_write(STYX_CALL_STAGE_TAG, bytes, size, staged, sizeof(staged), &count) == FVM_S_OK &&
+    unsigned char context[32];
+    size_t count, end_size, context_size;
+    int context_ready = explicit_end != STYX_CALL_PATH_FRAMING ||
+        fvm_srecord_write(STYX_CALL_CONTEXT_TAG, STYX_CALL_CONTEXT_SELF, sizeof(STYX_CALL_CONTEXT_SELF) - 1,
+            context, sizeof(context), &context_size) == FVM_S_OK;
+    return context_ready && fvm_srecord_write(STYX_CALL_STAGE_TAG, bytes, size, staged, sizeof(staged), &count) == FVM_S_OK &&
         fvm_srecord_write(STYX_CALL_END_TAG, NULL, 0, end, sizeof(end), &end_size) == FVM_S_OK &&
+        (explicit_end != STYX_CALL_PATH_FRAMING || write_frame(handle, context, context_size)) &&
         write_frame(handle, staged, count) && write_frame(handle, end, end_size);
 }
 

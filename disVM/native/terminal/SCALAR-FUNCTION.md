@@ -370,3 +370,8 @@ payload as tag 91. Ordinary Limbo `load` selects staged writes for tag
 96. The runtime keeps the reverse PID lease across both writes and the
 read of the reply. Tag 91 still selects the single-write protocol.
 Older loaders need an update to import a directory advertising tag 96.
+
+Profile 98 adds S-record 97 before the argument record. Ordinary
+`load` writes the relative selector `.prog/.self`. An explicit
+`.prog/<pid>` must match the PID in the scoped request. Profiles 91
+and 96 retain their earlier formats. The same fid carries the end and reply.

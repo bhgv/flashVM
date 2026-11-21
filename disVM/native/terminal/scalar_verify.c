@@ -75,7 +75,8 @@ unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const
         }
         int selected;
         StyxCallShape types = {{0}, {0}};
-        int scoped_shape = record.tag == STYX_SCOPED_OFFER_TAG || record.tag == STYX_SCOPED_END_OFFER_TAG;
+        int scoped_shape = record.tag == STYX_SCOPED_OFFER_TAG || record.tag == STYX_SCOPED_END_OFFER_TAG ||
+            record.tag == STYX_SCOPED_PATH_OFFER_TAG;
         if (record.tag == STYX_SHAPED_OFFER_TAG || scoped_shape)
         {
             char offered_name[INTERFACE_NAME_LIMIT + 1];
@@ -105,7 +106,7 @@ unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const
             }
             match = 1U << i;
             scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || scoped_shape;
-            staged = record.tag == STYX_SCOPED_END_OFFER_TAG;
+            staged = record.tag == STYX_SCOPED_PATH_OFFER_TAG ? STYX_CALL_PATH_FRAMING : record.tag == STYX_SCOPED_END_OFFER_TAG;
             decoded = types;
         }
         cursor += used;

@@ -360,6 +360,15 @@ int main(void)
         fputs("scalar method dispatch failed\n", stderr);
         return 1;
     }
+    uint32_t context_pid;
+    if (!styxcall_context(".prog/.self", 11, &context_pid) || context_pid ||
+        !styxcall_context(".prog/4294967295", 16, &context_pid) || context_pid != UINT32_MAX ||
+        styxcall_context(".prog/4294967296", 16, &context_pid) ||
+        styxcall_context(".prog/01", 8, &context_pid) ||
+        styxcall_context(".prog/../9", 10, &context_pid))
+    {
+        return 1;
+    }
     if (!dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);

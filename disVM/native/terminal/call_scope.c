@@ -3,6 +3,7 @@
  * RU: Кодировать PID сессии вместе с одним ограниченным кадром вызова.
  */
 #include "call_scope.h"
+#include <string.h>
 #include "tuple_record.h"
 #include "flashvm/srecord.h"
 
@@ -38,5 +39,39 @@ int styxcall_scope_read(const void *bytes, size_t size, uint32_t *pid, const voi
     *pid = identity;
     *call = p + 4;
     *length = record.size - 4;
+    return 1;
+}
+
+
+/* EN/RU: See call_scope.h. / См. call_scope.h. */
+int styxcall_context(const void *bytes, size_t size, uint32_t *pid)
+{
+    static const char prefix[] = ".prog/"; /* Canonical context directory. */
+    const unsigned char *path = bytes;
+    if (size == sizeof(STYX_CALL_CONTEXT_SELF) - 1 && !memcmp(path, STYX_CALL_CONTEXT_SELF, size))
+    {
+        *pid = 0;
+        return 1;
+    }
+    size_t start = sizeof(prefix) - 1;
+    if (size <= start || size > start + 10 || memcmp(path, prefix, start) ||
+        path[start] < '1' || path[start] > '9')
+    {
+        return 0;
+    }
+    uint64_t value = 0;
+    for (size_t i = start; i < size; i++)
+    {
+        if (path[i] < '0' || path[i] > '9')
+        {
+            return 0;
+        }
+        value = value * 10 + path[i] - '0';
+    }
+    if (value > UINT32_MAX)
+    {
+        return 0;
+    }
+    *pid = (uint32_t)value;
     return 1;
 }

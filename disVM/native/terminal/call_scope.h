@@ -13,6 +13,10 @@
 #define STYX_CALL_STAGE_TAG 94UL /* Bounded request staged on one open function fid. */
 #define STYX_CALL_END_TAG 95UL /* Empty record committing the staged request. */
 #define STYX_SCOPED_END_OFFER_TAG 96UL /* Scoped profile with explicit request end. */
+#define STYX_CALL_CONTEXT_TAG 97UL /* Initial context path. */
+#define STYX_SCOPED_PATH_OFFER_TAG 98UL /* Scoped profile with a separate context record. */
+#define STYX_CALL_PATH_FRAMING 2 /* Context, arguments, end. */
+#define STYX_CALL_CONTEXT_SELF ".prog/.self" /* Session-local active caller. */
 #define STYX_SCOPED_CALL_OVERHEAD 8U /* Four PID bytes plus S-record framing. */
 
 
@@ -24,4 +28,7 @@ int styxcall_scope_write(uint32_t pid, const void *call, size_t size, void *byte
 /* EN: Borrow the exact inner bytes from one complete envelope; publish only on success.
  * RU: Заимствовать вложенные байты полной оболочки; выдать только при успехе. */
 int styxcall_scope_read(const void *bytes, size_t size, uint32_t *pid, const void **call, size_t *length);
+/* EN: Parse a canonical relative selector. A zero PID selects the current caller.
+ * RU: Разобрать канонический относительный путь. Нулевой PID выбирает текущего клиента. */
+int styxcall_context(const void *bytes, size_t size, uint32_t *pid);
 #endif

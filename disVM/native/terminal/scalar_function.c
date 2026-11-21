@@ -18,6 +18,8 @@ typedef struct FunctionFid
 {
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
     int report_transport_failure; /* Interpret negative service status as missing reply. */
+    int context_written; /* One context selector precedes request staging. */
+    uint32_t context_pid; /* Zero selects the PID in the scoped request. */
     size_t staged_size; /* Bytes of the legacy request awaiting the end record. */
     size_t write_offset; /* Exact offset after the staged envelope. */
     unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD]; /* Request owned by this fid. */
@@ -239,7 +241,8 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
     int envelope = function->scoped_call_method || function->scoped_ref_pair_method ||
         (function->ref_method && function->program_root && function->request_tag == STYX_REF_REQUEST_TAG);
     if ((envelope && !styxcall_scope_read(bytes, count, &scoped_pid, &request, &length)) ||
-        (!envelope && count > STYX_FUNCTION_FRAME_CAPACITY))
+        (!envelope && count > STYX_FUNCTION_FRAME_CAPACITY) ||
+        (fid->context_written && (!envelope || (fid->context_pid && fid->context_pid != scoped_pid))))
     {
         return Ebadarg;
     }
@@ -316,6 +319,16 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         }
         return dispatch(fid, fid->staged, fid->staged_size);
     }
+    if (complete && record.tag == STYX_CALL_CONTEXT_TAG && !offset)
+    {
+        if (!styxcall_context(record.payload, record.size, &fid->context_pid))
+        {
+            return Ebadarg;
+        }
+        fid->context_written = 1;
+        fid->write_offset = count;
+        return nil;
+    }
     if (complete && record.tag == STYX_CALL_STAGE_TAG)
     {
         if (!record.size || record.size > sizeof(fid->staged))
@@ -324,10 +337,10 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         }
         memcpy(fid->staged, record.payload, record.size);
         fid->staged_size = record.size;
-        fid->write_offset = count;
+        fid->write_offset += count;
         return nil;
     }
-    return count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
+    return !fid->context_written && count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
 }
 
 
