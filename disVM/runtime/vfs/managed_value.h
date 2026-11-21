@@ -16,4 +16,13 @@
  * неверных данных вернуть 0, сохранив result. Ошибки выделения передаются
  * вызывающему. Вызывающий укореняет объект до выхода из допуска GC. */
 int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result);
+
+
+/* [GC:] EN: Encode a rooted s or a[y] value into disjoint native storage.
+ * Observe a stable String owner or borrowed array with immutable header.
+ * Payload is snapped before encoding. On failure bytes and used are preserved.
+ * RU: Кодировать укоренённые s или a[y] в отдельный нативный буфер.
+ * Строка удерживается стабильным владельцем, заголовок массива неизменяем.
+ * Данные копируются до кодирования. При отказе bytes и used сохраняются. */
+int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used);
 #endif

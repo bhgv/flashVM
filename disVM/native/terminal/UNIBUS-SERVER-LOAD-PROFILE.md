@@ -52,5 +52,5 @@ The NC64 layout calculation identifies field offsets and roots for strings,
 arrays, and references. Styx invocation still uses the existing profiles.
 The [DisVM decoder](../../runtime/vfs/managed_value.h) constructs strings and
 byte arrays in the local heap. Its test keeps only GC roots before collecting
-and checking the values. Connecting the decoded values to call frames,
-encoding results, and reference copy-back remain open.
+and checking the values. The same values can be encoded back into records with embedded zeroes intact.
+Connecting the values to call frames, sending replies, and reference copy-back remain open.

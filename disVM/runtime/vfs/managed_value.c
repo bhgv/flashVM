@@ -1,16 +1,18 @@
 /* Copyright (c) 2026 bhgv
- * EN: Decode bounded, receiver-local strings and byte arrays without cross-heap pointers.
- * RU: Декодирование строк и массивов байтов в локальной куче получателя.
+ * EN: Encode and decode bounded strings and byte arrays without cross-heap pointers.
+ * RU: Кодирование и декодирование строк и байтовых массивов без межкучевых указателей.
  */
 #include "lib9.h"
 #include "isa.h"
 #include "interp.h"
 #include "runt.h"
 #include "managed_value.h"
+#include "shared_bytes.h"
 #include "flashvm/utf8.h"
 #include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 /* EN: Consume one verified byte child, advancing the borrowed input on success.
@@ -101,4 +103,104 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
     }
     *result = c2string((char *)record->payload, (int)record->size);
     return 1;
+}
+
+
+/* [GC:] EN: Snapshot one counted ASCII string or convert copied native runes to UTF-8.
+ * RU: Скопировать строку ASCII с её длиной либо преобразовать копию Rune в UTF-8. */
+static int write_string(String *text, void *bytes, size_t capacity, size_t *used)
+{
+    int length = text->len;
+    int wide = length < 0;
+    size_t count = wide ? (size_t)(-(int64_t)length) : (size_t)length;
+    if (text->max < 0 || count > (size_t)text->max || count > capacity)
+    {
+        return 0;
+    }
+    size_t extent = count * (wide ? sizeof(Rune) : 1);
+    unsigned char *snapshot = extent ? malloc(extent) : NULL;
+    unsigned char *utf8 = wide ? malloc(capacity) : snapshot;
+    int ok = (!extent || snapshot) && (!wide || utf8) &&
+        !dvm_runtime_bytes_snapshot(&text->data, snapshot, extent);
+    size_t size = wide ? 0 : count;
+    if (ok && wide)
+    {
+        for (size_t i = 0; ok && i < count; i++)
+        {
+            Rune rune;
+            size_t width;
+            memcpy(&rune, snapshot + i * sizeof(Rune), sizeof(rune));
+            ok = fvm_utf8_write(rune, (char *)utf8 + size, capacity - size, &width) == FVM_UTF8_OK;
+            if (ok)
+            {
+                size += width;
+            }
+        }
+    }
+    ok = ok && fvm_srecord_write(STYX_MANAGED_STRING_TAG, utf8, size, bytes, capacity, used) == FVM_S_OK;
+    if (wide)
+    {
+        free(utf8);
+    }
+    free(snapshot);
+    return ok;
+}
+
+
+/* [GC:] EN: Copy an array's live byte span once and encode each homogeneous child.
+ * RU: Один раз скопировать живой диапазон массива и кодировать каждый элемент. */
+static int write_array(Array *array, void *bytes, size_t capacity, size_t *used)
+{
+    if (array->t != &Tbyte || array->len < 0 || (size_t)array->len > capacity)
+    {
+        return 0;
+    }
+    size_t length = (size_t)array->len;
+    unsigned char *snapshot = length ? malloc(length) : NULL;
+    unsigned char *payload = length ? malloc(capacity) : NULL;
+    int ok = (!length || (snapshot && payload)) &&
+        !dvm_runtime_bytes_snapshot(array->data, snapshot, length);
+    size_t size = 0;
+    for (size_t i = 0; ok && i < length; i++)
+    {
+        size_t child;
+        ok = styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, snapshot[i],
+            payload + size, capacity - size, &child);
+        if (ok)
+        {
+            size += child;
+        }
+    }
+    ok = ok && fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, payload, size, bytes, capacity, used) == FVM_S_OK;
+    free(payload);
+    free(snapshot);
+    return ok;
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used)
+{
+    if (!type || !value || !bytes || !used || !capacity)
+    {
+        return 0;
+    }
+    int string = !strcmp(type, "s");
+    if (!string && strcmp(type, "a[y]"))
+    {
+        return 0;
+    }
+    if (capacity > STYX_MANAGED_LIST_LIMIT)
+    {
+        capacity = STYX_MANAGED_LIST_LIMIT;
+    }
+    if (value == H)
+    {
+        return fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+    }
+    if (D2H(value)->t != (string ? &Tstring : &Tarray))
+    {
+        return 0;
+    }
+    return string ? write_string(value, bytes, capacity, used) : write_array(value, bytes, capacity, used);
 }

@@ -178,6 +178,24 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
     check(text && text != H && !memcmp(string2c(text), utf8, sizeof(utf8)) &&
         restored && restored != H && restored->len == 2 && restored->data[0] == 255 && restored->data[1] == 0,
         "decoded values are independent of transport storage and survive collection");
+    FVM_SRecord view;
+    size_t used, consumed;
+    check(dvm_styx_managed_write("s", text, encoded, sizeof(encoded), &used) &&
+        fvm_srecord_read(encoded, used, sizeof(encoded), &view, &consumed) == FVM_S_OK &&
+        consumed == used && view.tag == STYX_MANAGED_STRING_TAG && view.size == sizeof(utf8) &&
+        !memcmp(view.payload, utf8, sizeof(utf8)), "encode rooted counted Styx string");
+    check(dvm_styx_managed_write("a[y]", restored, encoded, sizeof(encoded), &used) &&
+        fvm_srecord_read(encoded, used, sizeof(encoded), &view, &consumed) == FVM_S_OK &&
+        consumed == used && dvm_styx_managed_new("a[y]", &view, &bytes) &&
+        ((Array *)bytes)->len == 2 && !memcmp(((Array *)bytes)->data, restored->data, 2),
+        "round-trip rooted Styx byte array");
+    destroy(bytes);
+    check(dvm_styx_managed_write("s", H, encoded, sizeof(encoded), &used) &&
+        fvm_srecord_read(encoded, used, sizeof(encoded), &view, &consumed) == FVM_S_OK &&
+        view.tag == STYX_MANAGED_NIL_TAG && !view.size, "encode nil without a heap object");
+    const size_t previous = used;
+    check(!dvm_styx_managed_write("s", text, encoded, 1, &used) && used == previous,
+        "oversized wire value preserves result size");
     check(dvm_owner_scope_close(&scope), "retire decoded values");
     check(dvm_native_owner_leave(owner) && dvm_gc_workers_wait_idle(workers) &&
         dvm_native_owner_enter(owner), "finish native root retirement");
