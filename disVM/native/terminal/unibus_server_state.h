@@ -10,6 +10,7 @@
 
 typedef struct MountedExport
 {
+    int busy; /* Atomic gate for the export mailbox. */
     StyxScalarFunctionOwner owner; /* Owned routes when the endpoint uses Dis. */
     size_t interface_size; /* Advertised size of the immutable profile. */
     unsigned char interface[STYX_SHAPED_OFFER_MAX * STYX_MOUNTED_EXPORT_LIMIT]; /* Encoded profile. */
@@ -26,6 +27,7 @@ struct StyxUnibusServer
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven calls. */
+    int function_workers; /* Active async calls holding this server state. */
     int completion; /* Whether this one-shot endpoint exports .exit. */
     int exit_value; /* Atomic encoded status; zero while pending. */
     int stopped; /* Atomic flag set after the dispatch transport stops. */
@@ -53,4 +55,6 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
 StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile, int reusable, int completion);
 size_t styxunibusexitread(StyxUnibusServer *server, char *bytes, size_t count, uint64_t offset);
+/* EN/RU: Wait for function jobs before releasing routes. / Дождаться задач перед освобождением маршрутов. */
+void styxunibusdrainfunctions(StyxUnibusServer *server);
 #endif

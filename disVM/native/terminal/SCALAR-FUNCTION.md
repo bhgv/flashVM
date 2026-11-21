@@ -377,3 +377,11 @@ Profile 98 adds S-record 97 before the argument record. Ordinary
 and 96 retain their earlier formats. The same fid carries the end and reply.
 
 The native route test keeps two staged requests on the same connection, clunks one before the end record, and confirms that only the surviving request executes.
+
+For profile 98 the end write acknowledges admission to a bounded native
+worker. A pending read at offset zero returns zero bytes. The runtime
+polls the same fid, holding the caller lease until the exchange finishes.
+Different exports can progress on the same connection. Calls sharing an
+export take turns at its owner mailbox. Clunk discards queued work that
+has yet to enter dispatch. Once dispatch has started, clunk releases the
+client fid while the owner callback runs to completion.

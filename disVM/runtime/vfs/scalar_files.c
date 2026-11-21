@@ -15,6 +15,8 @@
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/scalar_verify.h"
 #include <limits.h>
+#include <time.h>
+#include "cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -221,6 +223,8 @@ static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t s
             dvm_vfs_seek(&handle, 0, FVM_FILE_SEEK_START, &position) == FVM_OK)
         {
             size_t used = 0;
+            unsigned pending = 0;
+            const struct timespec pause = {0, 10000000};
             while (used < capacity)
             {
                 DVM_IoResult got = dvm_vfs_read_chunk(&handle, bytes + used, capacity - used);
@@ -228,6 +232,15 @@ static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t s
                     (got.flags & DVM_IO_UNCERTAIN) || got.count > capacity - used)
                 {
                     break;
+                }
+                if (!used && !got.count && files->explicit_end == STYX_CALL_PATH_FRAMING)
+                {
+                    if (++pending == 500 || dvm_cancel_requested(dvm_cancel_current()))
+                    {
+                        break;
+                    }
+                    nanosleep(&pause, NULL);
+                    continue;
                 }
                 used += got.count;
                 if (!got.count || got.stop == DVM_IO_EOF)

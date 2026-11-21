@@ -34,8 +34,9 @@ typedef struct StyxScalarFunction
 int styxscalarfunctionvalid(const StyxScalarFunction *function);
 
 struct Styxserver;
-char *styxscalarfunctionopen(struct Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure);
+char *styxscalarfunctionopen(struct Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure, int *workers, int *busy);
 char *styxscalarfunctionwrite(void *fid, const char *bytes, ulong count, vlong offset);
+void styxscalarfunctionclose(void *fid);
 char *styxscalarfunctionread(void *fid, char *bytes, ulong *count, vlong offset);
 
 #endif

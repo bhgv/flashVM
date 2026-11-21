@@ -10,6 +10,8 @@
 #include "call_scope.h"
 #include "flashvm/srecord.h"
 #include <inttypes.h>
+#include <pthread.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +20,13 @@ typedef struct FunctionFid
 {
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
     int report_transport_failure; /* Interpret negative service status as missing reply. */
+    int *workers; /* Server-owned active job counter, retained through dispatcher join. */
+    int *busy; /* Export-owned mailbox gate. */
+    unsigned references; /* Fid and optional worker references. */
+    int closed; /* Atomic revocation of this fid. */
+    int running; /* Async request accepted, written only by the dispatcher. */
+    int ready; /* Atomic publication of the worker's reply or failure. */
+    char *failure; /* Worker result published with ready. */
     int context_written; /* One context selector precedes request staging. */
     uint32_t context_pid; /* Zero selects the PID in the scoped request. */
     size_t staged_size; /* Bytes of the legacy request awaiting the end record. */
@@ -90,7 +99,7 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
 
 /* EN/RU: Install private state on the current server fid for ORDWR only.
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
-char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure)
+char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure, int *workers, int *busy)
 {
     if (mode != ORDWR || !styxscalarfunctionvalid(function))
     {
@@ -101,6 +110,9 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
     {
         return Enomem;
     }
+    fid->references = 1;
+    fid->workers = workers;
+    fid->busy = busy;
     fid->function = *function;
     fid->report_transport_failure = report_transport_failure;
     if (styxsetaux(server, fid) < 0)
@@ -297,12 +309,92 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
 }
 
 
+/* EN: Drop one worker or fid reference; free private buffers after the final drop.
+ * RU: Снять ссылку задачи или fid; освободить буферы после последней ссылки. */
+static void release_fid(FunctionFid *fid)
+{
+    if (__atomic_sub_fetch(&fid->references, 1, __ATOMIC_ACQ_REL) == 0)
+    {
+        free(fid);
+    }
+}
+
+
+/* EN: Revoke the fid and let an admitted native worker retire independently.
+ * RU: Отозвать fid и дать принятой нативной задаче завершиться самостоятельно. */
+void styxscalarfunctionclose(void *state)
+{
+    FunctionFid *fid = state;
+    if (fid)
+    {
+        __atomic_store_n(&fid->closed, 1, __ATOMIC_RELEASE);
+        release_fid(fid);
+    }
+}
+
+
+/* EN: Wait for the export mailbox, skip revoked queued work and publish the result.
+ * RU: Дождаться приёмника экспорта, пропустить отозванную задачу и выдать результат. */
+static void *run_async(void *state)
+{
+    FunctionFid *fid = state;
+    int *workers = fid->workers;
+    const struct timespec pause = {0, 1000000};
+    while (!__atomic_load_n(&fid->closed, __ATOMIC_ACQUIRE))
+    {
+        int idle = 0;
+        if (__atomic_compare_exchange_n(fid->busy, &idle, 1, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        {
+            if (!__atomic_load_n(&fid->closed, __ATOMIC_ACQUIRE))
+            {
+                fid->failure = dispatch(fid, fid->staged, fid->staged_size);
+                __atomic_store_n(&fid->ready, 1, __ATOMIC_RELEASE);
+            }
+            __atomic_store_n(fid->busy, 0, __ATOMIC_RELEASE);
+            break;
+        }
+        nanosleep(&pause, NULL);
+    }
+    release_fid(fid);
+    __atomic_sub_fetch(workers, 1, __ATOMIC_RELEASE);
+    return NULL;
+}
+
+
+/* EN: Schedule one bounded job without blocking the Styx dispatcher.
+ * RU: Принять одну задачу в пределах лимита без блокировки диспетчера Styx. */
+static char *schedule(FunctionFid *fid)
+{
+    pthread_attr_t attributes;
+    if (__atomic_load_n(fid->workers, __ATOMIC_ACQUIRE) >= 16 || pthread_attr_init(&attributes))
+    {
+        return Eperm;
+    }
+    int failed = pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_DETACHED);
+    if (!failed)
+    {
+        pthread_t worker;
+        __atomic_add_fetch(&fid->references, 1, __ATOMIC_RELAXED);
+        __atomic_add_fetch(fid->workers, 1, __ATOMIC_RELAXED);
+        failed = pthread_create(&worker, &attributes, run_async, fid);
+        if (failed)
+        {
+            __atomic_sub_fetch(fid->workers, 1, __ATOMIC_RELEASE);
+            release_fid(fid);
+        }
+    }
+    pthread_attr_destroy(&attributes);
+    fid->running = !failed;
+    return failed ? Eperm : nil;
+}
+
+
 /* EN: Accept legacy requests or a staged request followed by an explicit end record.
  * RU: Принять прежний запрос либо отложенный запрос с отдельной записью конца. */
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
 {
     FunctionFid *fid = state;
-    if (!fid || fid->submitted || offset < 0 || (uint64_t)offset != fid->write_offset)
+    if (!fid || fid->running || fid->submitted || offset < 0 || (uint64_t)offset != fid->write_offset)
     {
         return Ebadarg;
     }
@@ -316,6 +408,10 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         if (!complete || record.tag != STYX_CALL_END_TAG || record.size)
         {
             return Ebadarg;
+        }
+        if (fid->workers)
+        {
+            return fid->context_written ? schedule(fid) : Ebadarg;
         }
         return dispatch(fid, fid->staged, fid->staged_size);
     }
@@ -340,7 +436,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         fid->write_offset += count;
         return nil;
     }
-    return !fid->context_written && count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
+    return !fid->workers && !fid->context_written && count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
 }
 
 
@@ -349,6 +445,18 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
 char *styxscalarfunctionread(void *state, char *bytes, ulong *count, vlong offset)
 {
     FunctionFid *fid = state;
+    if (fid && fid->running)
+    {
+        if (!__atomic_load_n(&fid->ready, __ATOMIC_ACQUIRE))
+        {
+            *count = 0;
+            return offset == 0 ? nil : Ebadarg;
+        }
+        if (fid->failure)
+        {
+            return fid->failure;
+        }
+    }
     if (fid && fid->staged_size && !fid->submitted && offset == 0)
     {
         *count = 0;

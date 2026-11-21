@@ -58,7 +58,7 @@ init()
         raise "scoped compiled load failed: " + sys->sprint("%r");
     }
     edited := chan of int;
-    spawn change_live(sys, exports, cell, private_cell, edited);
+    spawn change_live(sys, service, exports, cell, private_cell, edited);
     pid := sys->pctl(0, nil);
     (seen, code) := service->inspect(0);
     if (<-edited != 1 || service->baseline(18) != 18 || seen != pid || code != big 1) {
@@ -129,9 +129,13 @@ report(sys: Sys, message: string)
 
 # EN: Mutate the published variable only after the provider opens its event stream.
 # RU: Изменить опубликованную переменную после открытия потока у провайдера.
-change_live(sys: Sys, exports: Vfsexport, cell, private_cell: ref Vfsexport->Root, done: chan of int)
+change_live(sys: Sys, service: Scopedcalls, exports: Vfsexport, cell, private_cell: ref Vfsexport->Root, done: chan of int)
 {
     wait_marker(sys, "refpair-entered");
+    # EN/RU: The first call is still waiting for this worker. / Первый вызов ещё ждёт этот поток.
+    if (service->baseline(57) != 57) {
+        raise "another export could not run while the first call was pending";
+    }
     success := exports->intset(private_cell, 23) && exports->intset(cell, 65539);
     file := sys->open("/.vfs/live", Sys->OWRITE);
     encoded := array[] of {byte 0, byte 2, byte 0, byte 5};

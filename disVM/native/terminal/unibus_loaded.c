@@ -269,3 +269,14 @@ size_t styxunibusexitread(StyxUnibusServer *server, char *bytes, size_t count, u
     memcpy(bytes, status + offset, count);
     return count;
 }
+
+
+/* EN/RU: See unibus_server_state.h. / См. unibus_server_state.h. */
+void styxunibusdrainfunctions(StyxUnibusServer *server)
+{
+    const struct timespec pause = {0, 1000000};
+    while (__atomic_load_n(&server->function_workers, __ATOMIC_ACQUIRE))
+    {
+        nanosleep(&pause, NULL);
+    }
+}

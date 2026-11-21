@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "unibus_server_state.h"
-
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
 
@@ -47,7 +46,8 @@ static char *open_node(Qid *qid, int mode)
         {
             return Eperm;
         }
-        return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL);
+        return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL,
+            module->function.program_root && current->loaded ? &current->function_workers : NULL, &module->busy);
     }
     if (mounted_node(qid->path, 2))
     {
@@ -145,7 +145,7 @@ static void close_node(void *state)
 {
     if (current->count)
     {
-        free(state);
+        styxscalarfunctionclose(state);
     }
     else
     {
@@ -488,6 +488,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     {
         return 0;
     }
+    styxunibusdrainfunctions(server);
     styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);
