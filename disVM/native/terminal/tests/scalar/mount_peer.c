@@ -49,6 +49,22 @@ static int concurrent(DVM_Provider *root)
 }
 
 
+/* EN: Consume the initial namespace record from this caller's own event queue.
+ * RU: Прочитать начальную запись namespace из очереди этого клиента. */
+static int initial_event(DVM_Provider *self)
+{
+    char bytes[512];
+    DVM_VfsHandle stream = {0};
+    if (dvm_provider_open(self, ".sysevents", "r", &stream) != FVM_OK)
+    {
+        return 0;
+    }
+    DVM_IoResult event = dvm_vfs_read_chunk(&stream, bytes, sizeof(bytes));
+    dvm_vfs_close(&stream);
+    return event.status == FVM_OK && event.count >= 9 && !memcmp(bytes, "system 2 ", 9);
+}
+
+
 /* EN: Confirm the selected .self exposes the calling process's live PID over Styx.
  * RU: Проверить текущий PID клиента через выбранный .self на встречном Styx. */
 static int compute(void *state, DVM_Provider *self, int64_t value, int64_t *out)
@@ -67,6 +83,10 @@ static int compute(void *state, DVM_Provider *self, int64_t value, int64_t *out)
     DVM_IoResult result = dvm_vfs_read_chunk(&reader, bytes, sizeof(bytes));
     dvm_vfs_close(&reader);
     if (result.status != FVM_OK || result.count != (size_t)length || memcmp(bytes, expected, result.count))
+    {
+        return 0;
+    }
+    if (!initial_event(self))
     {
         return 0;
     }

@@ -249,3 +249,8 @@ For the overflow check, the caller makes 33 changes while the provider
 pauses event reads. The provider reads `system 3`, fetches the current
 value from `.var/live` and drains the notice that triggered overflow.
 The next mutation produces a regular content notice on the same fid.
+
+The `terminal-caller-mount-cli` check holds two PID publications open
+while the first call is running. Each caller stream starts with its own
+namespace record, even when the first has already consumed its record.
+The forward dispatcher handles calls in sequence.
