@@ -13,6 +13,8 @@
 #include "scalar_direct.h"
 #include <stdlib.h>
 
+_Static_assert(sizeof(LONG) == sizeof(WORD), "mounted big and int use the same NC64 frame cell");
+
 
 /* EN/RU: Give each native Link its own stable route ordinal.
  * Назначить каждому нативному Link постоянный номер маршрута. */
@@ -74,7 +76,8 @@ static int build_direct(void *opaque)
     for (size_t i = 0; i < count; i++)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
-        runtime(module, &module->ext[i], name, (int32_t)DVM_SCALAR_INT_SIGNATURE, scalar_slots[i], frame);
+        uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
+        runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i], frame);
         entry = entry ? entry->next : NULL;
     }
     return 1;

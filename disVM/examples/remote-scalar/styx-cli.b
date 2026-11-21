@@ -4,14 +4,15 @@
 implement Client;
 include "sys.m";
 include "processctl.m";
-include "compute.m";
+include "mixed.m";
 
 Client: module { init: fn(); };
+Wrong: module { wide: fn(value: int): int; };
 
 
 # EN: Verify that the same library selects the spawned caller.
 # RU: Проверить выбор потомка при вызове той же библиотеки.
-child(service: Compute, ctl: Processctl, start: chan of int, done: chan of int)
+child(service: Mixed, ctl: Processctl, start: chan of int, done: chan of int)
 {
     <-start;
     pid := ctl->pid();
@@ -25,7 +26,7 @@ init()
 {
     sys := load Sys Sys->PATH;
     ctl := load Processctl Processctl->PATH;
-    service := load Compute "/peer/mounted/compute.dis";
+    service := load Mixed "/peer/mounted/compute.dis";
     if (ctl == nil || service == nil) {
         raise sys->sprint("could not load mounted library: %r");
     }
@@ -39,6 +40,13 @@ init()
     second := <-done;
     if (first <= 0 || second <= 0 || first == second) {
         raise "provider did not see both concurrent callers";
+    }
+    bad := load Wrong "/peer/mounted/compute.dis";
+    if (bad != nil ||
+        service->wide(big 9223372036854775807) != big 9223372036854775807 ||
+        service->raw(big 4294967296) != big 4294967296 ||
+        service->wide(-big 9223372036854775807 - big 1) != -big 9223372036854775807 - big 1) {
+        raise "wide Styx import or signed result mismatch";
     }
     sys->print("PASS bidirectional Styx CLI mount\n");
 }

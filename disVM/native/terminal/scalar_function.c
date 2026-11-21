@@ -75,14 +75,16 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
     }
     const StyxScalarFunction *function = &fid->function;
     int scoped = function->caller_method || function->program_method;
-    int typed = (function->request_tag == STYX_FUNCTION_REQUEST_TAG || scoped) &&
-        function->reply_tag == STYX_FUNCTION_REPLY_TAG;
+    uint32_t signature = styxscalar_request_signature(function->request_tag);
+    int narrow = signature == DVM_SCALAR_INT_SIGNATURE && function->reply_tag == STYX_FUNCTION_REPLY_TAG;
     StyxScalarKind kind;
     int64_t argument;
     uint32_t pid = 0;
-    int admitted = scoped ? styxscalarcallerread(bytes, count, &pid, &argument) :
+    int admitted = scoped && signature == DVM_SCALAR_BIG_SIGNATURE ?
+        styxscalarbigcallerread(bytes, count, &pid, &argument) : scoped ?
+        styxscalarcallerread(bytes, count, &pid, &argument) :
         styxscalarread(function->request_tag, bytes, count, &kind, &argument) && kind == STYX_SCALAR_CALL;
-    if (!admitted || (typed && (argument < INT32_MIN || argument > INT32_MAX)))
+    if (!admitted || (narrow && (argument < INT32_MIN || argument > INT32_MAX)))
     {
         return Ebadarg;
     }
@@ -102,7 +104,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ehungup;
     }
     int success = outcome == 1;
-    if (typed && (value < INT32_MIN || value > INT32_MAX))
+    if (narrow && (value < INT32_MIN || value > INT32_MAX))
     {
         success = 0;
     }

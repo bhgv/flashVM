@@ -6,6 +6,9 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_SCALAR_BIG_SIGNATURE 0x17f525e4U /* Compiled fn(big): big signature. */
+#define STYX_FUNCTION_BIG_TAG 76UL /* Signed big request on an opened function. */
+#define STYX_FUNCTION_BIG_CALLER_TAG 77UL /* Signed big request with caller PID. */
 #define DVM_SCALAR_INT_SIGNATURE 0xe67bf126U /* Compiled fn(int): int signature. */
 #define STYX_FUNCTION_PROFILE_TAG 71UL /* Profile of a mounted function directory. */
 #define STYX_FUNCTION_REQUEST_TAG 72UL /* Request on an opened function. */
@@ -33,4 +36,7 @@ int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
 /* EN/RU: Return the matching record bit in a complete, bounded mounted profile.
  * Вернуть бит совпавшей записи полного ограниченного профиля модуля. */
 unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller);
+/* EN/RU: Identify a supported request tag by compiled signature, or zero.
+ * Сопоставить поддерживаемый тег с сигнатурой либо вернуть ноль. */
+uint32_t styxscalar_request_signature(unsigned long tag);
 #endif

@@ -76,6 +76,39 @@ static int compute(void *state, DVM_Provider *self, int64_t value, int64_t *out)
 }
 
 
+static int wide_calls; /* Successful wide calls after checking the reverse context. */
+
+
+static int raw_calls; /* Full-width calls on the export without caller publication. */
+
+
+/* EN: Echo the exact signed value on the unscoped export.
+ * RU: Вернуть точное знаковое число из экспорта без контекста. */
+static int raw(void *state, int64_t value, int64_t *out)
+{
+    (void)state;
+    ++raw_calls;
+    *out = value;
+    return 1;
+}
+
+
+/* EN: Echo a full-width signed argument from the granted process context.
+ * RU: Вернуть полный знаковый аргумент из выданного контекста процесса. */
+static int wide(void *state, DVM_Provider *self, int64_t value, int64_t *out)
+{
+    (void)state;
+    FVM_FileInfo metadata;
+    if (dvm_provider_info(self, ".pid", &metadata) != FVM_OK || metadata.directory)
+    {
+        return 0;
+    }
+    ++wide_calls;
+    *out = value;
+    return 1;
+}
+
+
 /* EN: Confirm the launch bytes accepted by the provider's ordinary request file.
  * RU: Проверить стартовые байты, принятые обычным файлом запросов провайдера. */
 static int launch_payload(void *unused, const void *bytes, size_t size)
@@ -145,10 +178,18 @@ int main(int argc, char **argv)
     DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_READ | FVM_ACCESS_EXEC) : NULL;
     StyxScalarFunction function = {.request_tag = STYX_FUNCTION_CALLER_TAG,
         .reply_tag = STYX_FUNCTION_REPLY_TAG, .state = root, .program_root = root, .program_method = compute};
+    StyxScalarFunction big_function = {.request_tag = STYX_FUNCTION_BIG_CALLER_TAG,
+        .reply_tag = STYX_FUNCTION_REPLY_TAG, .program_root = root, .program_method = wide};
+    StyxScalarFunction raw_function = {.request_tag = STYX_FUNCTION_BIG_TAG,
+        .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = raw};
+    const StyxMountedScalar entries[] = {
+        {"compute.dis", "compute", &function}, {"compute.dis", "wide", &big_function},
+        {"compute.dis", "raw", &raw_function}
+    };
     StyxUnibusServer *server = root ?
-        styxunibusserverstartfunction(phybidirchannel(mux, 0), "compute.dis", "compute", &function) : NULL;
+        styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 3) : NULL;
     int success = server && styxunibusserverjoin(server);
     dvm_provider_release(root);
     phybidirfree(mux);
-    return success && calls == 2 ? 0 : 1;
+    return success && calls == 2 && wide_calls == 2 && raw_calls == 1 ? 0 : 1;
 }

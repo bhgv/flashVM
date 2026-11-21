@@ -118,3 +118,58 @@ int styxscalarcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t 
     *argument = fields[1] <= INT32_MAX ? (int64_t)fields[1] : (int64_t)fields[1] - INT64_C(4294967296);
     return 1;
 }
+
+
+
+/* EN/RU: Encode one record containing a 32-bit PID and a 64-bit argument.
+ * Закодировать запись с 32-битным PID и 64-битным аргументом. */
+int styxscalarbigcallerwrite(uint32_t pid, int64_t argument, void *bytes, size_t capacity, size_t *used)
+{
+    if (!pid || !bytes || !used)
+    {
+        return 0;
+    }
+    unsigned char payload[12];
+    for (unsigned i = 0; i < 4; i++)
+    {
+        payload[i] = (unsigned char)(pid >> (24 - 8 * i));
+    }
+    for (unsigned i = 0; i < 8; i++)
+    {
+        payload[4 + i] = (unsigned char)((uint64_t)argument >> (56 - 8 * i));
+    }
+    return fvm_srecord_write(STYX_FUNCTION_BIG_CALLER_TAG, payload, sizeof(payload),
+        bytes, capacity, used) == FVM_S_OK;
+}
+
+
+/* EN/RU: Verify the entire big frame before publishing the decoded fields.
+ * Проверить полный кадр big до выдачи полей. */
+int styxscalarbigcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t *argument)
+{
+    FVM_SRecord record;
+    size_t used;
+    if (!bytes || !pid || !argument ||
+        fvm_srecord_read(bytes, size, STYX_SCALAR_RECORD_CAPACITY, &record, &used) != FVM_S_OK ||
+        used != size || record.tag != STYX_FUNCTION_BIG_CALLER_TAG || record.size != 12)
+    {
+        return 0;
+    }
+    uint32_t identity = 0;
+    uint64_t bits = 0;
+    for (unsigned i = 0; i < 4; i++)
+    {
+        identity = (identity << 8) | record.payload[i];
+    }
+    for (unsigned i = 4; i < 12; i++)
+    {
+        bits = (bits << 8) | record.payload[i];
+    }
+    if (!identity)
+    {
+        return 0;
+    }
+    *pid = identity;
+    *argument = bits <= INT64_MAX ? (int64_t)bits : -1 - (int64_t)(UINT64_MAX - bits);
+    return 1;
+}

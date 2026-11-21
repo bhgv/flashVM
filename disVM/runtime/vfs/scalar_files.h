@@ -17,6 +17,7 @@ typedef struct DVM_ScalarFiles
     DVM_Provider *request; /* Owned captured request node. */
     DVM_Provider *reply; /* Owned captured reply node. */
     DVM_CloseJob *close; /* Native retirement reservation. */
+    uint32_t signature; /* Verified compiled import for this exact function. */
     int caller; /* Frame includes a captured caller PID. */
     int duplex; /* One fresh read/write fid per call. */
     unsigned references; /* Atomic native ownership. */

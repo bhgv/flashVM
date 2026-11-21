@@ -197,13 +197,13 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
     {
         return 0;
     }
-    if ((module->function.request_tag != STYX_FUNCTION_REQUEST_TAG && !module->function.caller_method && !module->function.program_method) ||
-        module->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
+    uint32_t signature = styxscalar_request_signature(module->function.request_tag);
+    if (!signature || module->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
     {
         return 1;
     }
     unsigned char header[INTERFACE_HEADER];
-    styxscalar_interface_header(header, DVM_SCALAR_INT_SIGNATURE);
+    styxscalar_interface_header(header, signature);
     size_t length = styxscalar_name_length(entry->name);
     size_t used;
     unsigned long tag = (module->function.caller_method || module->function.program_method) ? STYX_FUNCTION_CALLER_PROFILE : STYX_FUNCTION_PROFILE_TAG;
@@ -322,9 +322,10 @@ static int configure(MountedExport *module, const StyxMountedScalar *entry)
         {
             return 0;
         }
-        return scoped ? !fn->method && fn->request_tag == STYX_FUNCTION_CALLER_TAG &&
+        int caller_tag = fn->request_tag == STYX_FUNCTION_CALLER_TAG || fn->request_tag == STYX_FUNCTION_BIG_CALLER_TAG;
+        return scoped ? !fn->method && caller_tag &&
             fn->reply_tag == STYX_FUNCTION_REPLY_TAG :
-            fn->method && fn->request_tag && fn->reply_tag &&
+            fn->method && !caller_tag && fn->request_tag && fn->reply_tag &&
             fn->request_tag <= UINT32_MAX && fn->reply_tag <= UINT32_MAX;
     }
     module->owner.request = styxunibusmailbox(STYX_FUNCTION_REQUEST_TAG);

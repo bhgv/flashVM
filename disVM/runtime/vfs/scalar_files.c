@@ -174,9 +174,22 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
     unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
     size_t size;
     DVM_VfsHandle handle = {0};
-    int encoded = files->caller ? (argument >= INT32_MIN && argument <= INT32_MAX &&
-        styxscalarcallerwrite(pid, (int32_t)argument, bytes, sizeof(bytes), &size)) :
-        styxscalarwrite(STYX_FUNCTION_REQUEST_TAG, STYX_SCALAR_CALL, argument, bytes, sizeof(bytes), &size);
+    int wide = files->signature == DVM_SCALAR_BIG_SIGNATURE;
+    if (!wide && (argument < INT32_MIN || argument > INT32_MAX))
+    {
+        return -1;
+    }
+    int encoded;
+    if (files->caller)
+    {
+        encoded = wide ? styxscalarbigcallerwrite(pid, argument, bytes, sizeof(bytes), &size) :
+            styxscalarcallerwrite(pid, (int32_t)argument, bytes, sizeof(bytes), &size);
+    }
+    else
+    {
+        encoded = styxscalarwrite(wide ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG,
+            STYX_SCALAR_CALL, argument, bytes, sizeof(bytes), &size);
+    }
     if (!encoded ||
         dvm_provider_open(files->request, ".", "rw", &handle) != FVM_OK)
     {
@@ -206,7 +219,8 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
                 if (!got.count || got.stop == DVM_IO_EOF)
                 {
                     StyxScalarKind kind;
-                    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, used, &kind, value))
+                    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, used, &kind, value) &&
+                        (kind != STYX_SCALAR_VALUE || wide || (*value >= INT32_MIN && *value <= INT32_MAX)))
                     {
                         result = kind == STYX_SCALAR_VALUE ? 1 : kind == STYX_SCALAR_ERROR ? 2 : 0;
                     }

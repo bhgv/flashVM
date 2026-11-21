@@ -39,4 +39,8 @@ int styxscalarrespond(unsigned long request_tag, const void *request, size_t req
  * Закодировать или прочитать вызов со знаковым int и ненулевым PID. */
 int styxscalarcallerwrite(uint32_t pid, int32_t argument, void *bytes, size_t capacity, size_t *used);
 int styxscalarcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t *argument);
+/* EN/RU: Encode and decode one exact scoped big request.
+ * Закодировать и прочитать один точный вызов big с контекстом. */
+int styxscalarbigcallerwrite(uint32_t pid, int64_t argument, void *bytes, size_t capacity, size_t *used);
+int styxscalarbigcallerread(const void *bytes, size_t size, uint32_t *pid, int64_t *argument);
 #endif

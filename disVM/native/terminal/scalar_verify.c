@@ -89,3 +89,22 @@ unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *na
     }
     return size ? 0 : match;
 }
+
+
+
+/* EN/RU: See scalar_verify.h; typed tags fix the scalar width on the wire.
+ * См. scalar_verify.h; типизированный тег фиксирует ширину в записи. */
+uint32_t styxscalar_request_signature(unsigned long tag)
+{
+    switch (tag)
+    {
+    case STYX_FUNCTION_REQUEST_TAG:
+    case STYX_FUNCTION_CALLER_TAG:
+        return DVM_SCALAR_INT_SIGNATURE;
+    case STYX_FUNCTION_BIG_TAG:
+    case STYX_FUNCTION_BIG_CALLER_TAG:
+        return DVM_SCALAR_BIG_SIGNATURE;
+    default:
+        return 0;
+    }
+}

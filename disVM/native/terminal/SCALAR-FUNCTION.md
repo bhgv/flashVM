@@ -161,3 +161,21 @@ nonblocking I/O and SIGPIPE suppression. An empty socket reports temporary
 unavailability. Socket I/O preserves the original descriptor flags.
 Pipe and terminal stdio and ordinary managed opens remain outside this projection.
 The reverse mount setup still requires an embedder.
+
+## Full-width signed scalars
+
+A native mounted export can declare the compiled Limbo signature
+`fn(big): big`. Select `STYX_FUNCTION_BIG_TAG` (76) for an ordinary
+`method` or `STYX_FUNCTION_BIG_CALLER_TAG` (77) for a context-aware
+callback. Both use the existing reply tag 73. The scoped request contains
+a nonzero 32-bit PID followed by a signed 64-bit argument in big-endian
+order. The ordinary request uses the existing signed scalar record body.
+
+The loader can bind `int` and `big` exports in the same module. It
+compares the compiled signature for each imported name before creating
+the instance. The 32-bit `int` path validates its width at both ends.
+The original-Dis owner service still provides its existing `int` ABI.
+
+The [mixed interface](../../examples/remote-scalar/mixed.m) and
+`terminal-caller-mount-cli` exercise both big profiles, the signed
+64-bit endpoints and refusal of an incompatible import.
