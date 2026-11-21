@@ -295,6 +295,15 @@ static int wrapped_close_ready(void *state)
 }
 
 
+/* EN: Take the optional native record context through the pinned inner handle.
+ * RU: Получить нативный контекст записи через удерживаемый внутренний handle. */
+static DVM_Provider *wrapped_context(void *state)
+{
+    ProviderHandle *handle = state;
+    return handle->inner.ops->take_context(handle->inner.state);
+}
+
+
 /* EN/RU: See provider.h; callbacks must honor the valid-handle/empty-failure contract.
  * См. provider.h; callbacks соблюдают valid-handle/empty-failure contract. */
 FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const char *mode, DVM_VfsHandle *output)
@@ -354,6 +363,7 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     handle->ops.list = handle->inner.ops->list ? wrapped_list : NULL;
     handle->ops.close = wrapped_close;
     handle->ops.abort_list = handle->inner.ops->abort_list ? wrapped_abort : NULL;
+    handle->ops.take_context = handle->inner.ops->take_context ? wrapped_context : NULL;
     output->close_ready = wrapped_close_ready;
     output->native_flags = handle->inner.native_flags & DVM_VFS_CANCEL_MASK;
     output->ops = &handle->ops;

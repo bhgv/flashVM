@@ -388,7 +388,7 @@ static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *ent
 /* EN/RU: Consume the channel and publish a bounded table on one Styx session.
  * Принять канал и опубликовать ограниченную таблицу в одной сессии Styx. */
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
-    const StyxMountedScalar *entries, size_t count, int loaded)
+    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse)
 {
     StyxUnibusServer *server = channel && entries && count && count <= (loaded ? STYX_MOUNTED_EXPORT_LIMIT : STYX_MOUNTED_SCALAR_LIMIT) ?
         calloc(1, sizeof(*server)) : NULL;
@@ -406,6 +406,14 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     }
     server->count = count;
     server->loaded = loaded;
+    if (reverse && !dvm_provider_retain(reverse))
+    {
+        free_modules(server);
+        phyfree(channel);
+        free(server);
+        return NULL;
+    }
+    server->caller_root = reverse;
     if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
     {
         if (export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))
@@ -415,6 +423,7 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
         styxend(&server->server);
     }
     free_modules(server);
+    dvm_provider_release(server->caller_root);
     free(server);
     return NULL;
 }
@@ -482,6 +491,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
     free_modules(server);
+    dvm_provider_release(server->caller_root);
     free(server);
     return 1;
 }

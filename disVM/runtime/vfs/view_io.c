@@ -219,7 +219,19 @@ static int close_ready(void *state)
 {
     return dvm_vfs_close_cancellable(&((ViewStream *)state)->inner);
 }
-static const DVM_VfsOps ops = {info, NULL, NULL, seek, list, close_stream, abort_list, read_chunk, write_chunk}; /* Policy-enforced ordinary I/O. */
+
+
+
+/* EN: Transfer the read context only while the stream's read grant remains valid.
+ * RU: Передать прочитанный контекст только при действующих правах чтения. */
+static DVM_Provider *take_context(void *state)
+{
+    ViewStream *stream = state;
+    return (stream->access & FVM_ACCESS_READ) && stream->inner.ops && stream->inner.ops->take_context &&
+        allowed(stream, FVM_ACCESS_READ) ?
+        stream->inner.ops->take_context(stream->inner.state) : NULL;
+}
+static const DVM_VfsOps ops = {info, NULL, NULL, seek, list, close_stream, abort_list, read_chunk, write_chunk, take_context}; /* Policy-enforced ordinary I/O. */
 
 
 /* EN/RU: See internal header; no native stream is exposed before all checks succeed.

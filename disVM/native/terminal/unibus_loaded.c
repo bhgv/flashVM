@@ -12,6 +12,8 @@
 #include "load_profile.h"
 #include "file_provider.h"
 #include "unibus_server_state.h"
+#include "call_scope.h"
+#include "flashvm/srecord.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -91,6 +93,24 @@ int styxunibusawaitload(StyxUnibusServer *server)
         }
         styxunibusmailboxseal(module->load_offer);
         unsigned long tag = styxloadedacceptshape(module->load_name, offer, size, &module->owner.shape);
+        if (tag == STYX_DYNAMIC_REQUEST_TAG && server->caller_root)
+        {
+            FVM_SRecord profile;
+            size_t used;
+            if (fvm_srecord_read(offer, size, sizeof(offer), &profile, &used) != FVM_S_OK ||
+                fvm_srecord_write(STYX_SCOPED_OFFER_TAG, profile.payload, profile.size,
+                    directory->interface + directory->interface_size, sizeof(directory->interface) -
+                        directory->interface_size, &used) != FVM_S_OK)
+            {
+                tag = 0;
+            }
+            else
+            {
+                memcpy(offer, directory->interface + directory->interface_size, used);
+                size = used;
+                module->function.program_root = server->caller_root;
+            }
+        }
         if (!tag || !styxscalarownerbind(&module->owner, &module->function, tag))
         {
             server->load_state = -1;
@@ -122,7 +142,7 @@ DVM_Provider *styxunibusserverloadprofile(StyxUnibusServer *server)
 StyxUnibusServer *styxunibusserverstartmounted(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count)
 {
-    return styxunibusstarttable(channel, entries, count, 0);
+    return styxunibusstarttable(channel, entries, count, 0, NULL);
 }
 
 
@@ -133,9 +153,10 @@ StyxUnibusServer *styxunibusserverstartloaded(RemotePhy *channel, const char *mo
 }
 
 
-/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
-StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char *module,
-    const char *const *names, size_t count)
+/* EN: Reserve loaded owner endpoints with an optional native reverse root.
+ * RU: Зарезервировать экспорты владельца с необязательным встречным корнем. */
+static StyxUnibusServer *start_loaded_set(RemotePhy *channel, const char *module,
+    const char *const *names, size_t count, DVM_Provider *reverse)
 {
     if (!names || !count || count > STYX_MOUNTED_EXPORT_LIMIT)
     {
@@ -148,7 +169,28 @@ StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char 
         entries[i].module = module;
         entries[i].name = names[i];
     }
-    return styxunibusstarttable(channel, entries, count, 1);
+    return styxunibusstarttable(channel, entries, count, 1, reverse);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartloadedset(RemotePhy *channel, const char *module,
+    const char *const *names, size_t count)
+{
+    return start_loaded_set(channel, module, names, count, NULL);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartscopedset(RemotePhy *channel, const char *module,
+    const char *const *names, size_t count, DVM_Provider *reverse)
+{
+    if (!reverse)
+    {
+        phyfree(channel);
+        return NULL;
+    }
+    return start_loaded_set(channel, module, names, count, reverse);
 }
 
 

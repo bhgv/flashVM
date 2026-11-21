@@ -6,6 +6,7 @@
 #define DVM_PROGRAM_VIEW_H
 #include "provider.h"
 #include "namespace.h"
+#include "launch/origin.h"
 #include <stdint.h>
 
 
@@ -61,4 +62,13 @@ struct DVM_LaunchFiles; /* Borrowed numbered table pinned by the active caller. 
 /* EN: Capture the caller's borrowed namespace and numbered files during native wait.
  * RU: Захватить пространство имён и номерные файлы клиента при нативном ожидании. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
+
+
+/* EN: Stage a borrowed directory at an absolute virtual path in an exclusive,
+ * unpublished namespace. Fail if a mount already occupies the path or its descendants.
+ * RU: Поместить заимствованный каталог по виртуальному абсолютному пути в
+ * неопубликованном namespace. Отказать при существующем маунте в этом поддереве. */
+int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, const char *target,
+    const DVM_Origin *origin);
+
 #endif

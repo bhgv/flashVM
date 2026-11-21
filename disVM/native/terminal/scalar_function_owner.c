@@ -7,12 +7,13 @@
 #include "scalar_function_owner.h"
 #include "record_write.h"
 #include "scalar_verify.h"
+#include "call_scope.h"
 #include <time.h>
 
 
 /* EN: Exchange one complete request and capture the reply, at most once.
  * RU: Обменять полную запись и захватить ответ без повторной отправки. */
-static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_t size, size_t *received)
+static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_t size, size_t *received, DVM_Provider *context)
 {
     DVM_VfsHandle reader = {0};
     struct timespec start;
@@ -22,7 +23,8 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
         return 0;
     }
     int ready = 0;
-    if (styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED)
+    if (context ? styxunibusmailboxcontext(owner->request, record, size, context) :
+        styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED)
     {
         struct timespec now;
         while (!clock_gettime(CLOCK_MONOTONIC, &now) &&
@@ -67,7 +69,7 @@ int styxscalarfunctiondispatch(void *state, int64_t argument, int64_t *value)
     size_t size, received;
     StyxScalarKind kind;
     if (!styxscalarwrite(owner->request_tag, STYX_SCALAR_CALL, argument, record, sizeof(record), &size) ||
-        !exchange(owner, record, size, &received) ||
+        !exchange(owner, record, size, &received, NULL) ||
         !styxscalarread(STYX_FUNCTION_REPLY_TAG, record, received, &kind, value) ||
         (kind != STYX_SCALAR_ERROR && kind != STYX_SCALAR_VALUE))
     {
@@ -89,7 +91,7 @@ static int tuple_dispatch(void *state, DVM_Provider *self, const StyxTuple *argu
     int64_t code;
     uint32_t pid;
     if (styxtuplewrite(STYX_TUPLE_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received))
+        exchange(owner, record, size, &received, NULL))
     {
         if (styxtupleread(STYX_TUPLE_REPLY_TAG, record, received, &pid, value))
         {
@@ -115,7 +117,7 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
     StyxScalarKind kind;
     int64_t code;
     if (styxtuplewrite(STYX_REF_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received))
+        exchange(owner, record, size, &received, NULL))
     {
         if (styxrefreplyread(record, received, value))
         {
@@ -132,7 +134,7 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
 
 /* EN: Pass the argument list to the local owner's mailbox and validate its return.
  * RU: Передать список аргументов в приёмник владельца и проверить результат. */
-static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallValues *value)
+static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *arguments, StyxCallValues *value)
 {
     StyxScalarFunctionOwner *owner = state;
     int dynamic = owner->request_tag == STYX_DYNAMIC_REQUEST_TAG;
@@ -148,8 +150,9 @@ static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallV
     size_t size, received;
     StyxScalarKind kind;
     int64_t code;
-    if (styxcallrecordwrite(owner->request_tag, input_shape, &local, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received))
+    unsigned long local_tag = self ? STYX_SCOPED_CALL_TAG : owner->request_tag;
+    if (styxcallrecordwrite(local_tag, input_shape, &local, record, sizeof(record), &size) &&
+        exchange(owner, record, size, &received, self))
     {
         if (styxcallrecordread(reply_tag, output_shape, record, received, value))
         {
@@ -168,6 +171,14 @@ static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallV
 }
 
 
+/* EN: Invoke the shared dispatcher without a borrowed context for legacy profiles.
+ * RU: Вызвать общий диспетчер без заимствованного контекста для прежнего профиля. */
+static int plain_list_dispatch(void *state, const StyxCallValues *arguments, StyxCallValues *value)
+{
+    return list_dispatch(state, NULL, arguments, value);
+}
+
+
 /* EN: Exchange the numbered snapshots with the linked Dis service. Reject a
  * changed identity map as an ambiguous owner response and retire its mailbox.
  * RU: Обменять снимки со связанным сервисом Dis. При изменении таблицы
@@ -181,7 +192,7 @@ static int ref_pair_dispatch(void *state, StyxRefPair *value)
     StyxScalarKind kind;
     int64_t code;
     if (styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received))
+        exchange(owner, record, size, &received, NULL))
     {
         if (styxrefpairread(STYX_REF_PAIR_REPLY_TAG, record, received, &result) && result.count == value->count)
         {
@@ -237,14 +248,21 @@ int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *func
             return 0;
         }
         function->dynamic_shape = &owner->shape;
-        function->call_method = list_dispatch;
+        if (function->program_root)
+        {
+            function->scoped_call_method = list_dispatch;
+        }
+        else
+        {
+            function->call_method = plain_list_dispatch;
+        }
         break;
     }
     case STYX_REF_PAIR_REQUEST_TAG:
         function->ref_pair_method = ref_pair_dispatch;
         break;
     case STYX_CALL_LIST_REQUEST_TAG:
-        function->call_method = list_dispatch;
+        function->call_method = plain_list_dispatch;
         break;
     case STYX_REF_REQUEST_TAG:
         function->ref_method = ref_dispatch;

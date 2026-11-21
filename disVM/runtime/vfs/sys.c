@@ -33,6 +33,10 @@ extern char *dvm_runtime_file_path(String *); /* Borrowed validated guest UTF-8 
 DVM_Namespace *dvm_namespace_current_group(void)
 {
     Prog *process = currun();
+    if (process && ((DVM_RuntimeProcess *)process)->remote_call_group)
+    {
+        return ((DVM_RuntimeProcess *)process)->remote_call_group;
+    }
     DVM_Namespace *module = process ? dvm_module_environment_current(process) : NULL;
     return module ? module : process ? ((DVM_RuntimeProcess *)process)->namespace_group : dvm_namespace_boot_group();
 }
@@ -113,6 +117,14 @@ void Sys_pctl(void *frame)
     {
         kwerrstr("cannot allocate or acquire namespace group");
         publish(call.ret, -1);
+        return;
+    }
+    if (owner->remote_call_group)
+    {
+        DVM_Namespace *previous = owner->remote_call_group;
+        owner->remote_call_group = replacement;
+        dvm_namespace_release(previous);
+        publish(call.ret, process->pid);
         return;
     }
     DVM_Provider *movie = owner->terminal_channels ? styxmovieservice(replacement) : NULL;

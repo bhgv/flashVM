@@ -7,6 +7,7 @@
 #include "scalar_verify.h"
 #include "tuple_record.h"
 #include "call_record.h"
+#include "call_scope.h"
 #include "ref_pair_record.h"
 #include "load_profile.h"
 #include "unibus_inbox.h"
@@ -229,6 +230,38 @@ static int dynamic_profile(void)
 }
 
 
+/* EN: Check exact PID envelopes and the scoped profile's declared call schema.
+ * RU: Проверить точную оболочку PID и объявленную схему контекстного профиля. */
+static int scoped_call(void)
+{
+    const StyxCallShape shape = {"(ib)", "((ib))"};
+    const StyxCallValues values = {.count = 2, .cells = {-4, INT64_MAX}};
+    unsigned char raw[STYX_FUNCTION_FRAME_CAPACITY];
+    unsigned char wrapped[STYX_SHAPED_OFFER_MAX];
+    size_t raw_size, wrapped_size, length;
+    uint32_t pid;
+    const void *inside;
+    if (!styxcallrecordwrite(STYX_DYNAMIC_REQUEST_TAG, shape.arguments, &values, raw, sizeof(raw), &raw_size) ||
+        styxcall_scope_write(0, raw, raw_size, wrapped, sizeof(wrapped), &wrapped_size) ||
+        !styxcall_scope_write(UINT32_MAX, raw, raw_size, wrapped, sizeof(wrapped), &wrapped_size) ||
+        styxcall_scope_read(wrapped, wrapped_size - 1, &pid, &inside, &length) ||
+        !styxcall_scope_read(wrapped, wrapped_size, &pid, &inside, &length) ||
+        pid != UINT32_MAX || length != raw_size || memcmp(inside, raw, length))
+    {
+        return 0;
+    }
+    FVM_SRecord offer;
+    size_t used;
+    int caller = 0;
+    StyxCallShape decoded;
+    return styxshapedoffer("sample", 17, &shape, wrapped, sizeof(wrapped), &wrapped_size) &&
+        fvm_srecord_read(wrapped, wrapped_size, sizeof(wrapped), &offer, &used) == FVM_S_OK &&
+        fvm_srecord_write(STYX_SCOPED_OFFER_TAG, offer.payload, offer.size, raw, sizeof(raw), &raw_size) == FVM_S_OK &&
+        styxscalar_profile_match_shape(raw, raw_size, "sample", 17, &caller, &decoded) && caller &&
+        !strcmp(shape.arguments, decoded.arguments) && !strcmp(shape.result, decoded.result);
+}
+
+
 /* EN/RU: Check full signed width, tags, integrity and domain separation.
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
@@ -303,7 +336,7 @@ int main(void)
         fputs("scalar method dispatch failed\n", stderr);
         return 1;
     }
-    if (!dynamic_profile() || !shaped_profile())
+    if (!dynamic_profile() || !shaped_profile() || !scoped_call())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

@@ -4,6 +4,7 @@
  */
 #include "scalar_verify.h"
 #include "load_profile.h"
+#include "call_scope.h"
 #include "flashvm/srecord.h"
 #include <string.h>
 
@@ -74,11 +75,12 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
         }
         int selected;
         StyxCallShape types = {{0}, {0}};
-        if (record.tag == STYX_SHAPED_OFFER_TAG)
+        if (record.tag == STYX_SHAPED_OFFER_TAG || record.tag == STYX_SCOPED_OFFER_TAG)
         {
             char offered_name[INTERFACE_NAME_LIMIT + 1];
             uint32_t offered_sig;
-            if (!styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types))
+            unsigned long request = styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types);
+            if (!request || (record.tag == STYX_SCOPED_OFFER_TAG && request != STYX_DYNAMIC_REQUEST_TAG))
             {
                 return 0;
             }
@@ -101,7 +103,7 @@ unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const ch
                 return 0;
             }
             match = 1U << i;
-            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE;
+            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || record.tag == STYX_SCOPED_OFFER_TAG;
             decoded = types;
         }
         cursor += used;

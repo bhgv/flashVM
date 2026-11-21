@@ -288,7 +288,7 @@ static int decode_tuple(unsigned long tag, const void *bytes, size_t size, void 
 static void tuple_next(String *path, unsigned long tag, void *ret)
 {
     StyxTuple tuple = {0};
-    int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple);
+    int ready = dvm_scalar_owner_next(path, tag, decode_tuple, &tuple, 0);
     const WORD cells[] = {ready, tuple.narrow, tuple.wide};
     dvm_sys_scalar_result(cells, ret, sizeof(cells));
 }
@@ -425,7 +425,7 @@ void Vfsnative_scalarlistnext(void *frame)
     WORD result[5] = {0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarlistnext, ret), sizeof(result));
     StyxCallValues arguments = {0};
-    result[0] = dvm_scalar_owner_next(call.path, STYX_CALL_LIST_REQUEST_TAG, decode_list, &arguments);
+    result[0] = dvm_scalar_owner_next(call.path, STYX_CALL_LIST_REQUEST_TAG, decode_list, &arguments, 0);
     for (size_t i = 0; i < arguments.count; i++)
     {
         result[i + 1] = arguments.cells[i];

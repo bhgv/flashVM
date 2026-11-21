@@ -25,6 +25,7 @@ typedef struct StyxScalarFunction
     int (*call_method)(void *, const StyxCallValues *, StyxCallValues *); /* Typed argument-list callback. */
     int (*ref_pair_method)(void *, StyxRefPair *); /* Keep the map and update object snapshots in place. */
     const StyxCallShape *dynamic_shape; /* Borrowed validated scalar schema through join. */
+    int (*scoped_call_method)(void *, DVM_Provider *, const StyxCallValues *, StyxCallValues *); /* Typed call with a borrowed caller provider. */
 } StyxScalarFunction;
 
 

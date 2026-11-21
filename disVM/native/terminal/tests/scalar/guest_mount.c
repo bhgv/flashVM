@@ -385,7 +385,8 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
         exit(2);
     }
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
-    int scoped = getenv("DVM_TEST_SCALAR_CALLER") != NULL;
+    int typed_caller = getenv("DVM_TEST_SCALAR_CALLER") != NULL;
+    int scoped = typed_caller || getenv("DVM_TEST_SCALAR_SCOPED_SET") != NULL;
     handoff.program = scoped ? fixture_program("leftnextlast") : NULL;
     strcpy(handoff.description.module, "scalar-mounted.dis");
     if (!handoff.group || !dvm_namespace_pin(handoff.group) ||
@@ -401,7 +402,7 @@ int scalar_runtime_mounted(int argc, char **argv, DVM_Provider *mount)
     int result = dvm_runtime_main_with_handoff(argc, argv, &handoff);
     dvm_namespace_release(handoff.group);
     dvm_provider_release(handoff.program);
-    if (scoped && result == 0)
+    if (typed_caller && result == 0)
     {
         puts("PASS typed Styx caller PID");
     }

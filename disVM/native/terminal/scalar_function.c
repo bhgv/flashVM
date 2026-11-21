@@ -7,6 +7,7 @@
 #include <styxserver.h>
 #include "scalar_function.h"
 #include "scalar_verify.h"
+#include "call_scope.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,13 +32,17 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     {
         return 0;
     }
+    if (fn->scoped_call_method && (!fn->program_root || !fn->dynamic_shape || fn->call_method || fn->ref_pair_method))
+    {
+        return 0;
+    }
     if (fn->ref_pair_method)
     {
         return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
             !fn->ref_method && !fn->call_method && !fn->program_root &&
             fn->request_tag == STYX_REF_PAIR_REQUEST_TAG && fn->reply_tag == STYX_REF_PAIR_REPLY_TAG;
     }
-    if (fn->call_method)
+    if (fn->call_method || fn->scoped_call_method)
     {
         size_t args, result;
         int profile = fn->dynamic_shape ?
@@ -45,7 +50,7 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
                 styxshapecells(fn->dynamic_shape, &args, &result) :
             fn->request_tag == STYX_CALL_LIST_REQUEST_TAG && fn->reply_tag == STYX_CALL_LIST_REPLY_TAG;
         return profile && !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
-            !fn->ref_method && !fn->program_root;
+            !fn->ref_method && (!!fn->program_root == !!fn->scoped_call_method);
     }
     if (fn->ref_method)
     {
@@ -158,12 +163,23 @@ static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
     const StyxScalarFunction *fn = &fid->function;
     const char *input_shape = fn->dynamic_shape ? fn->dynamic_shape->arguments : styxcall_list_args;
     const char *output_shape = fn->dynamic_shape ? fn->dynamic_shape->result : styxcall_list_result;
-    if (!styxcallrecordread(fn->request_tag, input_shape, bytes, count, &arguments))
+    uint32_t pid = 0;
+    const void *request = bytes;
+    size_t length = count;
+    if ((fn->program_root && !styxcall_scope_read(bytes, count, &pid, &request, &length)) ||
+        !styxcallrecordread(fn->request_tag, input_shape, request, length, &arguments))
     {
         return Ebadarg;
     }
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    if (pid && !self)
+    {
+        return Eperm;
+    }
     fid->submitted = 1;
-    int outcome = fid->function.call_method(fid->function.state, &arguments, &result);
+    int outcome = self ? fn->scoped_call_method(fn->state, self, &arguments, &result) :
+        fn->call_method(fn->state, &arguments, &result);
+    dvm_provider_release(self);
     if (outcome < 0 && fid->report_transport_failure)
     {
         return Ehungup;
@@ -207,7 +223,7 @@ static char *ref_pair_call(FunctionFid *fid, const char *bytes, size_t count)
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
 {
     FunctionFid *fid = state;
-    if (!fid || fid->submitted || offset || count > STYX_FUNCTION_FRAME_CAPACITY)
+    if (!fid || fid->submitted || offset || count > STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD)
     {
         return Ebadarg;
     }
@@ -216,7 +232,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
     {
         return ref_pair_call(fid, bytes, count);
     }
-    if (function->call_method)
+    if (function->call_method || function->scoped_call_method)
     {
         return call_list(fid, bytes, count);
     }

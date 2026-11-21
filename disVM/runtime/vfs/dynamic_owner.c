@@ -9,22 +9,60 @@
 #include "interp.h"
 #include "runt.h"
 #include "namespace.h"
+#include "runqueue.h"
+#include "export.h"
+#include "program_view.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
 #include "vfsnative_decl.h"
 #include "raise.h"
 #include "../../native/terminal/call_record.h"
+#include "../../native/terminal/call_scope.h"
 #include "../../native/terminal/load_profile.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/tuple_record.h"
 #include <string.h>
 
 
+/* EN: Clone the borrowed owner's namespace and overlay only the pinned caller.
+ * Return a private owned namespace or NULL before any Dis call runs.
+ * RU: Копировать namespace владельца и наложить только закреплённого клиента.
+ * Вернуть свою копию либо NULL до выполнения Dis. */
+DVM_Namespace *dvm_scalar_caller_namespace(DVM_Namespace *group, DVM_Provider *context)
+{
+    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
+    if (!view || !dvm_view_map(view, "/.self", context, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE))
+    {
+        dvm_view_discard(view);
+        return NULL;
+    }
+    DVM_Provider *projection = dvm_view_freeze(view);
+    DVM_Namespace *copy = projection ? dvm_namespace_copy(group) : NULL;
+    int installed = copy && dvm_program_mount_private(copy, projection, "/.prog", NULL);
+    dvm_provider_release(projection);
+    if (!installed)
+    {
+        dvm_namespace_release(copy);
+        return NULL;
+    }
+    return copy;
+}
+
+
+typedef struct RawRequest
+{
+    StyxCallValues values; /* Four staged words consumed by the local ABI. */
+    int scoped;            /* The record requires an independently captured provider. */
+} RawRequest;
+
+
 /* EN: Read the dispatcher's complete four-word local argument record.
  * RU: Прочитать полную локальную запись из четырёх ячеек аргументов. */
 static int decode_words(unsigned long tag, const void *bytes, size_t size, void *result)
 {
-    return styxcallrecordread(tag, "(bbbb)", bytes, size, result);
+    RawRequest *request = result;
+    request->scoped = styxcallrecordread(STYX_SCOPED_CALL_TAG, "(bbbb)", bytes, size, &request->values);
+    return request->scoped || styxcallrecordread(tag, "(bbbb)", bytes, size, &request->values);
 }
 
 
@@ -35,11 +73,16 @@ void Vfsnative_scalarrawnext(void *frame)
     F_Vfsnative_scalarrawnext call;
     WORD result[STYX_DYNAMIC_CELLS + 1];
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarrawnext, ret), sizeof(result));
-    StyxCallValues decoded = {0};
-    result[0] = dvm_scalar_owner_next(call.path, STYX_DYNAMIC_REQUEST_TAG, decode_words, &decoded);
+    RawRequest decoded = {0};
+    result[0] = dvm_scalar_owner_next(call.path, STYX_DYNAMIC_REQUEST_TAG, decode_words, &decoded, 1);
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (result[0] == 1 && decoded.scoped && !owner->remote_call_group)
+    {
+        result[0] = -1;
+    }
     for (size_t i = 0; i < STYX_DYNAMIC_CELLS; i++)
     {
-        result[i + 1] = decoded.cells[i];
+        result[i + 1] = decoded.values.cells[i];
     }
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
 }
@@ -80,5 +123,9 @@ void Vfsnative_scalarrawreply(void *frame)
     {
         error("invalid remote scalar reply");
     }
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    DVM_Namespace *scope = owner->remote_call_group;
+    owner->remote_call_group = NULL;
+    dvm_namespace_release(scope);
     dvm_scalar_owner_record(call.path, bytes, used);
 }

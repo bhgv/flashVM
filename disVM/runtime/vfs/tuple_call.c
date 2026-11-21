@@ -103,13 +103,17 @@ void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *file
     {
         arguments.cells[i] = call.arguments[i];
     }
+    Prog *process = currun();
+    uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
+    DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
+    DVM_Namespace *group = dvm_namespace_current_group();
     DVM_VfsWait *wait;
     int released = dvm_vfs_path_enter(&wait);
     if (released < 0)
     {
         error("remote argument-list call not sent");
     }
-    int outcome = dvm_call_list_function_invoke(files, &arguments, &answer);
+    int outcome = dvm_call_list_function_invoke(files, group, descriptors, pid, &arguments, &answer);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
     if (cancelled || outcome != 1)

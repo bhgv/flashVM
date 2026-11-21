@@ -326,3 +326,26 @@ No copy-back occurs on cancellation, an owner exception, an invalid reply
 or a conflicting local edit. These calls use unscoped function fids.
 
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-compiled-reference-types).
+
+## Caller context for compiled value calls
+
+A provider started with [styxunibusserverstartscopedset](UNIBUS-SERVER-SCOPED-SET.md)
+uses two Styx directions. The client still calls ordinary Limbo `load` and
+passes the function's declared values. DisVM gets the current process identity
+and grants from the client mount. The reverse lease lasts from before the
+request is written through the end of its read reply.
+
+| S-record tag | Payload |
+| --- | --- |
+| 91 | Same payload as shaped interface tag 88, requiring a reverse mount |
+| 92 | Four PID bytes in network order followed by one complete tag 89 record |
+| 90 | Ordinary typed success reply |
+| 73 | Ordinary owner error reply |
+
+The dispatcher validates the argument record and captures `.prog/<pid>`
+from that session's reverse root before submitting the call. It keeps the
+captured native provider with the local request. The provider VM exposes its
+root at `/.prog/.self` in a private namespace for the original Dis export.
+Its files and subtrees come from the caller's grant. No host directory is
+created. Existing fixed and reference profiles retain their current behavior.
+See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount).

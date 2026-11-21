@@ -20,6 +20,7 @@
  * call; close consumes it. No managed access or guest callbacks are allowed.
  * Доверенные immutable callbacks; state заимствован на serialized call, close
  * поглощает его. Managed access и guest callbacks запрещены. */
+struct DVM_Provider; /* Optional native context owned by a completed local record. */
 typedef struct DVM_VfsOps
 {
     FVM_Result (*info)(void *state, FVM_FileInfo *output); /* Optional info; NULL returns UNSUPPORTED. */
@@ -31,6 +32,7 @@ typedef struct DVM_VfsOps
     void (*abort_list)(void *state); /* Required with list: invalidate cursor after publication failure. */
     void (*read_chunk)(void *state, void *bytes, size_t size, DVM_IoResult *result); /* Optional precise read acknowledgement. */
     void (*write_chunk)(void *state, const void *bytes, size_t size, DVM_IoResult *result); /* Optional precise write acknowledgement. */
+    struct DVM_Provider *(*take_context)(void *state); /* Transfer the context of the last consumed record once. */
 } DVM_VfsOps;
 
 

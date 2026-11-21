@@ -25,6 +25,7 @@ struct StyxUnibusServer
     size_t count; /* Number of mounted modules. */
     Styxserver server;   /* Original Styx dispatcher and owned physical channel. */
     pthread_t thread;    /* Exclusive native dispatcher. */
+    DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven value calls. */
     int loaded; /* Load-backed directory; all profiles arrive from the owner. */
     size_t load_ready; /* Dispatcher-owned checked prefix of the export list. */
     int load_state; /* Dispatcher-owned: pending zero, ready one, rejected minus one. */
@@ -44,5 +45,5 @@ int styxunibusprepareload(MountedExport *module, const char *name);
 /* EN: Start the mounted table. loaded selects one directory of owner-linked exports.
  * RU: Запустить смонтированную таблицу. loaded выбирает один каталог связанных экспортов владельца. */
 StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
-    const StyxMountedScalar *entries, size_t count, int loaded);
+    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse);
 #endif

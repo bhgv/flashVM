@@ -6,6 +6,7 @@
 #include "../internal.h"
 #include "../cancel.h"
 #include "../export.h"
+#include "../program_view.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -285,9 +286,14 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
 
 /* EN/RU: Add a retained subtree to the unpublished namespace, refusing existing mounts.
  * Добавить удерживаемое поддерево в неопубликованное пространство, исключая конфликт привязок. */
-static int add_program_mount(DVM_Namespace *group, const DVM_LaunchHandoff *handoff,
-    DVM_Provider *provider, const char *target)
+int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, const char *target,
+    const DVM_Origin *origin)
 {
+    if (!group || !provider || !target || target[0] != '/' || !target[1] ||
+        strlen(target) >= DVM_NS_PATH_LIMIT)
+    {
+        return 0;
+    }
     size_t length = strlen(target);
     for (const DVM_NamespaceBinding *old = group->bindings; old; old = old->next)
     {
@@ -305,7 +311,10 @@ static int add_program_mount(DVM_Namespace *group, const DVM_LaunchHandoff *hand
     }
     strcpy(entry->on, target);
     strcpy(entry->source, target);
-    entry->origin = handoff->description.terminal_origin;
+    if (origin)
+    {
+        entry->origin = *origin;
+    }
     entry->provider = provider;
     entry->identity = entry->head_identity = ++group->next_binding;
     entry->next = group->bindings;
@@ -347,8 +356,8 @@ DVM_Namespace *dvm_launch_program_namespace(const DVM_LaunchHandoff *handoff)
     }
     DVM_Namespace *group = dvm_namespace_copy(handoff->group);
     DVM_Provider *self = group ? program_self(handoff) : NULL;
-    int mounted = self && add_program_mount(group, handoff, self, "/.prog") &&
-        (!handoff->program_vfs || add_program_mount(group, handoff, handoff->program_vfs, "/.vfs"));
+    int mounted = self && dvm_program_mount_private(group, self, "/.prog", &handoff->description.terminal_origin) &&
+        (!handoff->program_vfs || dvm_program_mount_private(group, handoff->program_vfs, "/.vfs", &handoff->description.terminal_origin));
     dvm_provider_release(self);
     if (!mounted)
     {

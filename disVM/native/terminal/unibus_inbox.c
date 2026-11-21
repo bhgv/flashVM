@@ -18,6 +18,7 @@ typedef struct Inbox
     int sealed; /* No further writes after carrier shutdown. */
     int reusable; /* Consume complete records for a serialized live route. */
     size_t size;             /* Zero while empty. */
+    DVM_Provider *context;   /* Owned context of a queued local request. */
     size_t capacity; /* Exact accepted wire record limit. */
     unsigned char bytes[]; /* One immutable complete wire record after admission. */
 } Inbox;
@@ -26,6 +27,7 @@ typedef struct Cursor
 {
     Inbox *inbox;     /* Provider holds the lifetime of the inbox. */
     size_t position;  /* Private sequential read position. */
+    DVM_Provider *context; /* Owned context of the last complete read. */
 } Cursor;
 
 
@@ -60,6 +62,8 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *out)
     {
         return;
     }
+    dvm_provider_release(cursor->context);
+    cursor->context = NULL;
     pthread_mutex_lock(&inbox->lock);
     if (dvm_cancel_requested(dvm_cancel_current()))
     {
@@ -91,6 +95,8 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *out)
             out->count = inbox->size;
             out->flags |= DVM_IO_RECORD;
             inbox->size = 0;
+            cursor->context = inbox->context;
+            inbox->context = NULL;
         }
     }
     else
@@ -115,11 +121,10 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *out)
 }
 
 
-/* EN/RU: Validate and publish exactly one complete record under the inbox lock.
- * Проверить и опубликовать ровно одну полную запись под блокировкой. */
-static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResult *out)
+/* EN: Transfer context on success together with the complete validated record.
+ * RU: Передать контекст при успешной публикации полной проверенной записи. */
+static void publish(Inbox *inbox, const void *bytes, size_t size, DVM_Provider *context, DVM_IoResult *out)
 {
-    Inbox *inbox = ((Cursor *)state)->inbox;
     FVM_SRecord record;
     size_t consumed;
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
@@ -138,6 +143,7 @@ static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResul
     {
         memcpy(inbox->bytes, bytes, size);
         inbox->size = size;
+        inbox->context = context;
         out->count = size;
         out->status = FVM_OK;
         out->stop = DVM_IO_NONE;
@@ -145,7 +151,38 @@ static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResul
     pthread_mutex_unlock(&inbox->lock);
 }
 
-static const DVM_VfsOps reader = {.read_chunk = read_chunk, .close = free}; /* Read-only cursor. */
+
+
+
+/* EN: Publish one local record without an attached caller context.
+ * RU: Опубликовать одну локальную запись без контекста клиента. */
+static void write_chunk(void *state, const void *bytes, size_t size, DVM_IoResult *out)
+{
+    publish(((Cursor *)state)->inbox, bytes, size, NULL, out);
+}
+
+
+/* EN: Transfer the context held by the last read; subsequent queries return NULL.
+ * RU: Передать контекст последнего чтения; следующие запросы вернут NULL. */
+static DVM_Provider *take_context(void *state)
+{
+    Cursor *cursor = state;
+    DVM_Provider *context = cursor->context;
+    cursor->context = NULL;
+    return context;
+}
+
+
+/* EN: Release any unread context before consuming an exclusive cursor.
+ * RU: Освободить невзятый контекст перед освобождением курсора. */
+static void close_reader(void *state)
+{
+    dvm_provider_release(((Cursor *)state)->context);
+    free(state);
+}
+
+static const DVM_VfsOps reader = {.read_chunk = read_chunk, .close = close_reader,
+    .take_context = take_context}; /* Read-only cursor. */
 static const DVM_VfsOps writer = {.write_chunk = write_chunk, .close = free}; /* Write-only cursor. */
 
 
@@ -180,11 +217,31 @@ static FVM_Result open_file(void *state, const char *path, const char *mode, DVM
 static void destroy(void *state)
 {
     Inbox *inbox = state;
+    dvm_provider_release(inbox->context);
     pthread_mutex_destroy(&inbox->lock);
     free(inbox);
 }
 
 static const DVM_ProviderOps factory = {.info = info, .open = open_file, .destroy = destroy}; /* Exact root file. */
+
+
+/* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
+int styxunibusmailboxcontext(DVM_Provider *provider, const void *bytes, size_t size, DVM_Provider *context)
+{
+    if (!provider || provider->ops != &factory || !((Inbox *)provider->state)->reusable ||
+        !context || !dvm_provider_retain(context))
+    {
+        return 0;
+    }
+    DVM_IoResult sent;
+    publish(provider->state, bytes, size, context, &sent);
+    if (sent.status == FVM_OK)
+    {
+        return 1;
+    }
+    dvm_provider_release(context);
+    return 0;
+}
 
 
 /* EN/RU: Seal a reusable inbox without discarding its last confirmed record.

@@ -32,3 +32,5 @@ For declared exports and multi-export directories see
 
 For multiple exports, use
 [styxunibusserverstartloadedset](UNIBUS-SERVER-LOADED-SET.md).
+
+See [styxunibusserverstartscopedset](UNIBUS-SERVER-SCOPED-SET.md) for caller namespaces on shaped value calls.

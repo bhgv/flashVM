@@ -32,6 +32,7 @@
 #include <string.h>
 #include <time.h>
 
+static const char scope_failed[] = "remote caller namespace unavailable"; /* Refuse the call before executing Dis. */
 static const char session_end[] = "scalar session closed"; /* Clean EOF or exact close record. */
 static const char session_idle[] = "scalar session idle"; /* Nonblocking empty read. */
 static const char owner_error[] = "remote scalar owner error"; /* Verified reply, route remains synchronized. */
@@ -223,7 +224,8 @@ void Vfsnative_scalarcall(void *frame)
 
 /* EN/RU: Read from the checked owner inbox outside managed admission.
  * Читать из проверенного приёмника владельца вне допуска VM. */
-static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result, DVM_OwnerDecode decoder, void *decoded)
+static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD *result,
+    DVM_OwnerDecode decoder, void *decoded, DVM_Namespace **scoped)
 {
     char path[DVM_NS_PATH_LIMIT];
     DVM_Namespace *group = dvm_namespace_current_group();
@@ -245,6 +247,14 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
         dvm_provider_open(provider, ".", "r", &handle) == FVM_OK && (handle.native_flags & DVM_VFS_CANCEL_DATA))
     {
         failure = receive(&handle, (unsigned long)tag, &value, mode, decoder, decoded);
+        DVM_Provider *caller = !failure && scoped && handle.ops->take_context ?
+            handle.ops->take_context(handle.state) : NULL;
+        if (caller)
+        {
+            *scoped = dvm_scalar_caller_namespace(group, caller);
+            dvm_provider_release(caller);
+            failure = *scoped ? NULL : scope_failed;
+        }
     }
     dvm_vfs_close(&handle);
     dvm_provider_release(provider);
@@ -252,6 +262,11 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
     dvm_runtime_gc_native_enter(released);
     if (cancelled || failure)
     {
+        if (scoped)
+        {
+            dvm_namespace_release(*scoped);
+            *scoped = NULL;
+        }
         return cancelled ? "scalar owner request cancelled" : failure;
     }
     if (result)
@@ -269,7 +284,7 @@ void Vfsnative_scalartake(void *frame)
     F_Vfsnative_scalartake call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalartake, ret), sizeof(*call.ret));
     WORD result = 0;
-    const char *failure = take_request(call.path, call.tag, READ_CALL, &result, NULL, NULL);
+    const char *failure = take_request(call.path, call.tag, READ_CALL, &result, NULL, NULL, NULL);
     if (failure)
     {
         error((char *)failure);
@@ -283,7 +298,7 @@ void Vfsnative_scalartake(void *frame)
 static void next_result(String *path, LONG tag, void *ret)
 {
     WORD result[2] = {0};
-    const char *failure = take_request(path, tag, READ_SESSION, &result[1], NULL, NULL);
+    const char *failure = take_request(path, tag, READ_SESSION, &result[1], NULL, NULL, NULL);
     if (failure && failure != session_end)
     {
         error((char *)failure);
@@ -310,7 +325,7 @@ void Vfsnative_scalarpoll(void *frame)
     F_Vfsnative_scalarpoll call;
     WORD result[2] = {0, 0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarpoll, ret), sizeof(result));
-    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL, NULL);
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL, NULL, NULL);
     if (failure && failure != session_idle && failure != session_end)
     {
         error((char *)failure);
@@ -327,7 +342,7 @@ void Vfsnative_scalarbigpoll(void *frame)
     F_Vfsnative_scalarbigpoll call;
     WORD result[2] = {0, 0};
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarbigpoll, ret), sizeof(result));
-    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL, NULL);
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1], NULL, NULL, NULL);
     if (failure && failure != session_idle && failure != session_end)
     {
         error((char *)failure);
@@ -450,9 +465,19 @@ void dvm_scalar_entry(void *frame, unsigned index)
 
 
 /* EN/RU: See scalar_owner_internal.h. / См. scalar_owner_internal.h. */
-int dvm_scalar_owner_next(String *path, unsigned long tag, DVM_OwnerDecode decoder, void *decoded)
+int dvm_scalar_owner_next(String *path, unsigned long tag, DVM_OwnerDecode decoder, void *decoded, int scoped)
 {
-    const char *failure = take_request(path, tag, READ_SESSION, NULL, decoder, decoded);
+    DVM_RuntimeProcess *owner = scoped ? (DVM_RuntimeProcess *)currun() : NULL;
+    if (scoped && (!owner || owner->remote_call_group))
+    {
+        error("invalid scalar owner scope");
+    }
+    const char *failure = take_request(path, tag, READ_SESSION, NULL, decoder, decoded,
+        owner ? &owner->remote_call_group : NULL);
+    if (failure == scope_failed)
+    {
+        return -1;
+    }
     if (failure && failure != session_end)
     {
         error((char *)failure);

@@ -122,12 +122,15 @@ run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inpu
             return;
         }
         result := (big 0, big 0, big 0, big 0);
-        success := 1;
-        {
-            result = invoke_raw(target, inputs, a, b, c, d);
-        } exception {
-            "*" =>
-                success = 0;
+        success := 0;
+        if (ready > 0) {
+            {
+                result = invoke_raw(target, inputs, a, b, c, d);
+                success = 1;
+            } exception {
+                "*" =>
+                    success = 0;
+            }
         }
         routes->scalarrawreply(reply, success, outputs, result);
     }

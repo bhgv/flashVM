@@ -3,6 +3,7 @@
  * RU: Нативное владение точными файлами запроса и ответа.
  */
 #include "scalar_files.h"
+#include "../../native/terminal/call_scope.h"
 #include "program_view.h"
 #include "lib9.h"
 #include "dat.h"
@@ -335,7 +336,8 @@ int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
 
 
 /* EN/RU: See scalar_files.h. / См. scalar_files.h. */
-int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *arguments, StyxCallValues *result)
+int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_LaunchFiles *descriptors,
+    uint32_t pid, const StyxCallValues *arguments, StyxCallValues *result)
 {
     unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
     size_t size, received = 0;
@@ -343,12 +345,42 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *
     unsigned long reply_tag = styxfunction_reply_tag(request_tag);
     const char *shape_args = files->shape.arguments[0] ? files->shape.arguments : styxcall_list_args;
     const char *shape_result = files->shape.result[0] ? files->shape.result : styxcall_list_result;
-    if (files->caller || !styxcallrecordwrite(request_tag, shape_args,
-            arguments, bytes, sizeof(bytes), &size))
+    if (!styxcallrecordwrite(request_tag, shape_args, arguments, bytes, sizeof(bytes), &size))
     {
         return -1;
     }
-    int exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    int exchanged;
+    if (files->caller)
+    {
+        unsigned char scoped[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
+        size_t used;
+        DVM_CallerBinding binding;
+        if (!files->dynamic || !styxcall_scope_write(pid, bytes, size, scoped, sizeof(scoped), &used) ||
+            !dvm_provider_caller_binding(files->request, &binding))
+        {
+            return -1;
+        }
+        DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
+        void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
+        exchanged = lease ? exchange_frame(files, scoped, used, sizeof(scoped), &received) : -1;
+        if (lease)
+        {
+            binding.end(binding.state, lease);
+        }
+        dvm_provider_release(tree);
+        if (exchanged == 1)
+        {
+            if (received >= sizeof(bytes))
+            {
+                return 0;
+            }
+            memcpy(bytes, scoped, received);
+        }
+    }
+    else
+    {
+        exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    }
     if (exchanged != 1)
     {
         return exchanged;

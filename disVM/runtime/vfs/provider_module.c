@@ -224,12 +224,20 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         if (dynamic && bit)
         {
             ref_profile = styxshaperef(&shape, &result);
-            if (caller || !local->arguments[0] || (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
+            if (!local->arguments[0] || (caller && ref_profile) ||
+                (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
             {
                 bit = 0;
             }
         }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
+        {
+            dvm_scalar_files_release(head);
+            head = NULL;
+            break;
+        }
+        DVM_CallerBinding binding;
+        if (dynamic && caller && !dvm_provider_caller_binding((*tail)->request, &binding))
         {
             dvm_scalar_files_release(head);
             head = NULL;

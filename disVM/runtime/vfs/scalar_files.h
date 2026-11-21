@@ -73,7 +73,8 @@ int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxRefReply *result);
 /* EN: Exchange one typed list on a mounted function fid and stage the reply.
  * RU: Обменять типизированный список через fid функции, сохранить ответ. */
-int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *arguments, StyxCallValues *result);
+int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, struct DVM_LaunchFiles *descriptors,
+    uint32_t pid, const StyxCallValues *arguments, StyxCallValues *result);
 /* EN: Exchange one object map and stage its matching reply through files.
  * RU: Обменять таблицу объектов через files и сохранить соответствующий ответ. */
 int dvm_ref_pair_invoke(DVM_ScalarFiles *files, StyxRefPair *value);

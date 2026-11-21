@@ -63,6 +63,11 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         env["DVM_TEST_SCALAR_LOADED_SET"] = "dynamic"
     if mounted in ("compiled-ref", "legacy-compiled-ref"):
         env["DVM_TEST_SCALAR_LOADED_SET"] = "compiled-ref"
+    if mounted in ("scoped-calls", "unbound-scoped-calls"):
+        env["DVM_TEST_SCALAR_LOADED_SET"] = "scoped-calls"
+        env["DVM_TEST_SCALAR_SCOPED_SET"] = "1"
+    if mounted == "unbound-scoped-calls":
+        env["DVM_TEST_SCALAR_UNBOUND_SET"] = "1"
     if mounted == "mixed":
         env["DVM_TEST_SCALAR_MIXED_OWNER"] = "1"
     if disconnect:
@@ -117,6 +122,11 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
             image = "legacy-dynamic.dis" if mounted == "legacy-dynamic" else "dynamic.dis"
         if mounted in ("compiled-ref", "legacy-compiled-ref"):
             image = mounted + ".dis"
+        scope_result = None
+        if mounted in ("scoped-calls", "unbound-scoped-calls"):
+            image = "scoped-calls.dis"
+            scope_result = caller / "scope-test-output"
+            scope_result.write_text("")
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -125,8 +135,9 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
             relay_ref_pair(owner, caller)
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
-        if any(child.returncode for child in children) or marker not in caller_output:
-            raise RuntimeError(f"{mode}: Styx pair failed\n{owner_output}{caller_output}")
+        reported = scope_result.read_text() if scope_result else caller_output
+        if any(child.returncode for child in children) or marker not in reported:
+            raise RuntimeError(f"{mode}: Styx pair failed\n{owner_output}{caller_output}{reported}")
         retirement(owner_output)
         retirement(caller_output)
         print(marker, mode, flush=True)
@@ -179,6 +190,8 @@ def main():
         (caller / "library").mkdir()
         (caller / "alias.dis").mkdir()
         (caller / "peer").mkdir()
+        for path in (".vfs", ".var"):
+            (caller / path).mkdir()
         for folder, source, output in (
             (caller, example / "styx-pair.b", "client.dis"),
             (caller, example / "styx-mounted.b", "mounted.dis"),
@@ -201,6 +214,8 @@ def main():
             (owner, example / "dynamic-set-owner.b", "dynamic-set-owner.dis"),
             (caller, example / "styx-compiled-ref.b", "compiled-ref.dis"),
             (owner, example / "compiled-ref-owner.b", "compiled-ref-owner.dis"),
+            (caller, example / "styx-scoped-calls.b", "scoped-calls.dis"),
+            (owner, example / "scoped-calls-owner.b", "scoped-calls-owner.dis"),
             (owner, disvm / "limbo/scalarowner.b", "owner.dis"),
             (owner, example / "implementation.b", "implementation.dis"),
             (owner, example / "privatevalue.b", "privatevalue.dis"),
@@ -275,6 +290,15 @@ def main():
                 marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS mounted compiled ref argument layouts",
                      calls=0, mounted="compiled-ref")
+            exchange(binary, owner, caller, mode, "PASS compiled call sees scoped caller VFS",
+                     calls=0, mounted="scoped-calls")
+            unbound = caller / "expect-unbound-refusal"
+            unbound.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS scoped compiled load requires reverse mount",
+                         calls=0, mounted="unbound-scoped-calls")
+            finally:
+                unbound.unlink()
             legacy_ref = caller / "expect-legacy-compiled-ref-refusal"
             legacy_ref.touch()
             try:

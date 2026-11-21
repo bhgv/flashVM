@@ -37,11 +37,10 @@ def build_peer(runtime, sdk, work, paired, compiler):
     run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
          "-DSTYX_SCALAR_GUEST", "-c", str(here / transport_source), "-o", str(transport)], work)
     objects.append(str(transport))
-    if not paired:
-        reverse = work / "reverse.o"
-        run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
-             "-c", str(here / "reverse.c"), "-o", str(reverse)], work)
-        objects.append(str(reverse))
+    reverse = work / "reverse.o"
+    run([native_link[0], *styx["C_DEFINES"], *styx["C_INCLUDES"], *styx["C_FLAGS"],
+         "-c", str(here / "reverse.c"), "-o", str(reverse)], work)
+    objects.append(str(reverse))
     for source in (("guest_mount.c", "guest_stdio.c") if paired else ("guest_mount.c", "guest_stdio.c", "guest.c")):
         obj = work / (source + ".o")
         run([link[0], *rt["C_DEFINES"], *rt["C_INCLUDES"], *rt["C_FLAGS"],

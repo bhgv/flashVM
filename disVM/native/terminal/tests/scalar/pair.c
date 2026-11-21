@@ -10,6 +10,7 @@
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
 #include "mount.h"
+#include "caller_styx.h"
 #include "unibus_server.h"
 #include "scalar_route.h"
 #include <lib9.h>
@@ -18,6 +19,8 @@
 #include "scalar_verify.h"
 #include <string.h>
 #include "guest_mount.h"
+
+extern DVM_Provider *scalar_reverse_mount(RemotePhy *transport); /* Reverse provider for call contexts. */
 
 #define CALL_TAG 4294967295UL /* Maximum supported nonzero request tag. */
 #define REPLY_TAG 64UL        /* First tag needing a leading magnitude group. */
@@ -79,6 +82,32 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
         return 2;
     }
     RemotePhy *channel = phyposixfd(fd, caps);
+    int scoped = getenv("DVM_TEST_SCALAR_SCOPED_SET") != NULL;
+    PhyBidir *mux = scoped ? phybidircreate(channel, 1024) : NULL;
+    DVM_Provider *reverse = NULL;
+    StyxCallerServer *caller = NULL;
+    if (scoped)
+    {
+        channel = mux ? phybidirchannel(mux, 0) : NULL;
+        if (owner)
+        {
+            reverse = mux ? scalar_reverse_mount(phybidirchannel(mux, 1)) : NULL;
+        }
+        else
+        {
+            caller = mux ? styxcallerserver(phybidirchannel(mux, 1)) : NULL;
+        }
+        if (!channel || (!reverse && !caller))
+        {
+            shutdown(breaker, SHUT_RDWR);
+            phyfree(channel);
+            dvm_provider_release(reverse);
+            styxcallerjoin(caller);
+            phybidirfree(mux);
+            close(breaker);
+            return 2;
+        }
+    }
     int result = 2;
     if (owner)
     {
@@ -102,7 +131,16 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                 module = "compiled-ref.dis";
                 implementation = "compiled-ref-owner.dis";
             }
-            StyxUnibusServer *server = styxunibusserverstartloadedset(channel, module, names, count);
+            const char *scoped_names[] = {"inspect", "baseline"};
+            if (scoped)
+            {
+                names = scoped_names;
+                count = sizeof(scoped_names) / sizeof(scoped_names[0]);
+                module = "scoped-calls.dis";
+                implementation = "scoped-calls-owner.dis";
+            }
+            StyxUnibusServer *server = scoped ? styxunibusserverstartscopedset(channel, module, names, count, reverse) :
+                styxunibusserverstartloadedset(channel, module, names, count);
             if (server)
             {
                 DVM_Provider *requests[STYX_MOUNTED_EXPORT_LIMIT];
@@ -124,6 +162,8 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
                     result = 2;
                 }
             }
+            dvm_provider_release(reverse);
+            phybidirfree(mux);
             close(breaker);
             return result;
         }
@@ -170,7 +210,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             return result;
         }
         const StyxScalarFunction alternate = {
-            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+            .request_tag = STYX_FUNCTION_REQUEST_TAG, .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = adjust
         };
         const StyxMountedScalar entries[] = {
             {"helper.dis", "offset", &alternate, 0, 0, 0, 0, 0},
@@ -198,8 +238,9 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
     else
     {
         StyxClient *client = styxclientmountphy(channel, 256, "scalar", "", 3000, 4);
-        DVM_Provider *mount = client ?
-            styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC) : NULL;
+        unsigned access = FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC;
+        DVM_Provider *mount = !client ? NULL : caller && !getenv("DVM_TEST_SCALAR_UNBOUND_SET") ?
+            styxcallermount(caller, client, access) : styxmountprovider(client, access);
         if (mount)
         {
             if (!getenv("DVM_TEST_SCALAR_COMPILED_TYPES") || verify_compiled_profile(mount))
@@ -213,6 +254,8 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             dvm_provider_release(mount);
         }
         shutdown(breaker, SHUT_RDWR);
+        styxcallerjoin(caller);
+        phybidirfree(mux);
     }
     close(breaker);
     return result;

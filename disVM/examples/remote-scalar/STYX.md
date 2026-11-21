@@ -202,3 +202,24 @@ second caller image without a type table is refused. The harness closes
 the connections and removes both roots.
 
 See the [wire format](../../native/terminal/SCALAR-FUNCTION.md#calls-with-compiled-reference-types).
+
+## Call with a reverse Styx mount
+
+The same `owner_guest.py` command also compiles
+[the interface](scoped-calls.m), [the client](styx-scoped-calls.b) and
+[the owner](scoped-calls-owner.b). The launcher starts a forward server and
+a reverse caller server on separate channels of one TCP connection. The
+provider's original Dis opens `/.prog/.self/.pid`, `.vfs/env/CLIENT`,
+`.var/counter` and `.fd/3` through ordinary Sys operations. The client
+passes only the application's failure flag. It uses the returned PID to
+check who was selected.
+
+The parent and two spawned callers share their inherited descriptor's
+cursor, with distinct PIDs. An owner exception leaves the next call
+usable. A fid saved by the owner becomes unreadable after the reply.
+The caller reports `PASS compiled call sees scoped caller VFS`. A second
+mount with the reverse binding deliberately absent refuses the scoped
+import and reports `PASS scoped compiled load requires reverse mount`.
+The harness closes both channels and removes the temporary directories.
+
+See [server setup](../../native/terminal/UNIBUS-SERVER-SCOPED-SET.md).
