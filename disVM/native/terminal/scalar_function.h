@@ -6,6 +6,7 @@
 #define STYX_SCALAR_FUNCTION_H
 #include "scalar_record.h"
 #include "tuple_record.h"
+#include "call_record.h"
 #include "provider.h"
 
 typedef struct StyxScalarFunction
@@ -19,6 +20,7 @@ typedef struct StyxScalarFunction
     int (*program_method)(void *, DVM_Provider *, int64_t, int64_t *); /* Borrow the exact .self during dispatch. */
     int (*tuple_method)(void *, DVM_Provider *, const StyxTuple *, StyxTuple *); /* One typed tuple call. */
     int (*ref_method)(void *, DVM_Provider *, const StyxTuple *, StyxRefReply *); /* Return and copy-back fields. */
+    int (*call_method)(void *, const StyxCallValues *, StyxCallValues *); /* Typed argument-list callback. */
 } StyxScalarFunction;
 
 

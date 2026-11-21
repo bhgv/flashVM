@@ -224,3 +224,24 @@ uses the caller PID. An original Dis export uses the unscoped
 See the [two-VM example](../../examples/remote-scalar/STYX.md#copy-back-from-an-original-dis-export).
 This profile supports one reference to the two scalar fields. References
 inside the object and live sharing during a call are outside its scope.
+
+## Argument lists and nested returns
+
+The mounted call codec writes one outer S-record with an ordered list of
+arguments. A nested Limbo tuple occupies one position and has its own
+S-record with tag 4. Leaf tags 1 and 2 carry signed `int` and `big`.
+The type sequence comes from the verified function signature. The codec
+accepts an empty list or a single item as well as several items. Its bounds
+are 64 encoded bytes, eight flattened cells and four levels of nesting.
+
+The mounted loader accepts the argument-list profile
+`fn(int,(int,big),big): (int,(int,big))`. Request tag 84 carries three
+positions and success tag 85 carries one nested return value. Owner errors
+retain tag 73. Both peers validate the full shape before publishing values.
+The caller writes the request and reads the reply through the same open
+function fid. Argument values and the result have no paths in the module's
+VFS environment. The existing tuple and `ref` profiles use the same codec
+for their fields and retain their wire tags.
+
+See the [runnable example](../../examples/remote-scalar/STYX.md#call-with-three-arguments).
+This profile uses an unscoped request and supports the signature above.

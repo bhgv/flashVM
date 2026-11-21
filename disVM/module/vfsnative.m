@@ -11,6 +11,11 @@ Scalartupleimplementation: module
     invoke: fn(value: (int,big)): (int,big); # One linked tuple export.
 };
 
+Scalarlistimplementation: module
+{
+    invoke: fn(seed: int, pair: (int,big), delta: big): (int,(int,big)); # One argument-list export.
+};
+
 Scalarrefcell: adt
 {
     narrow: int; # Copied signed int.
@@ -118,4 +123,9 @@ Vfsnative: module
     scalarrefload: fn(path, exportname: string): Scalarrefimplementation;
     scalarrefnext: fn(path: string): (int, int, big);
     scalarrefreply: fn(path: string, success: int, value, updated: (int,big));
+    # EN: Bind the typed list and exchange its owner-side mailbox records.
+    # RU: Связать типизированный список и обменять записи с сервисом владельца.
+    scalarlistload: fn(path, exportname: string): Scalarlistimplementation;
+    scalarlistnext: fn(path: string): (int,int,int,big,big);
+    scalarlistreply: fn(path: string, success, outer, inner: int, wide: big);
 };

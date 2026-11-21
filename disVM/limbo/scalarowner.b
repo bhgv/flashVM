@@ -27,6 +27,10 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 5 && hd fields == "list") {
+        serve_list(routes, tl fields);
+        return;
+    }
     if (count == 5 && hd fields == "ref") {
         serve_ref(routes, tl fields);
         return;
@@ -312,5 +316,39 @@ serve_ref(routes: Vfsnative, fields: list of string)
                 success = 0;
         }
         routes->scalarrefreply(reply, success, result, (cell.narrow, cell.wide));
+    }
+}
+
+
+
+# EN: Invoke the verified multi-argument export on one linked Dis instance.
+# RU: Вызвать проверенный экспорт с несколькими аргументами в одном экземпляре Dis.
+serve_list(routes: Vfsnative, fields: list of string)
+{
+    implementation := hd fields;
+    fields = tl fields;
+    name := hd fields;
+    fields = tl fields;
+    request := hd fields;
+    reply := hd tl fields;
+    target := routes->scalarlistload(implementation, name);
+    if (target == nil) {
+        raise "argument-list owner implementation link failed";
+    }
+    for (;;) {
+        (ready, seed, narrow, wide, delta) := routes->scalarlistnext(request);
+        if (ready == 0) {
+            return;
+        }
+        outer := inner := 0;
+        value := big 0;
+        success := 1;
+        {
+            (outer, (inner, value)) = target->invoke(seed, (narrow, wide), delta);
+        } exception {
+            "*" =>
+                success = 0;
+        }
+        routes->scalarlistreply(reply, success, outer, inner, value);
     }
 }

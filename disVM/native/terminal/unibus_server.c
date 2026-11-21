@@ -318,7 +318,7 @@ static int configure(MountedExport *module, const StyxMountedScalar *entry)
         module->function = *entry->native;
         return styxscalarfunctionvalid(&module->function);
     }
-    return styxscalarownerconfigure(&module->owner, &module->function, entry->dis_big, entry->dis_tuple, entry->dis_ref);
+    return styxscalarownerconfigure(&module->owner, &module->function, entry->dis_big, entry->dis_tuple, entry->dis_ref, entry->dis_call);
 }
 
 /* EN/RU: Export all distinct entries before making the dispatcher visible.
@@ -403,7 +403,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
         phyfree(channel);
         return NULL;
     }
-    const StyxMountedScalar entry = {module, name, function, 0, 0, 0};
+    const StyxMountedScalar entry = {module, name, function, 0, 0, 0, 0};
     return styxunibusserverstartmounted(channel, &entry, 1);
 }
 
@@ -412,7 +412,7 @@ StyxUnibusServer *styxunibusserverstartfunction(RemotePhy *channel, const char *
  * Опубликовать один именованный экспорт через общий сервис Dis. */
 StyxUnibusServer *styxunibusserverstartdis(RemotePhy *channel, const char *module, const char *name)
 {
-    const StyxMountedScalar entry = {module, name, NULL, 0, 0, 0};
+    const StyxMountedScalar entry = {module, name, NULL, 0, 0, 0, 0};
     return styxunibusserverstartmounted(channel, &entry, 1);
 }
 

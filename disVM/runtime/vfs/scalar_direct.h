@@ -34,10 +34,22 @@ typedef struct DirectRefFrame
     void *object; /* Mapped borrowed reference. */
 } DirectRefFrame;
 
+typedef struct DirectCallListFrame
+{
+    WORD regs[NREG-1]; /* VM linkage cells. */
+    WORD *ret; /* Borrowed three-cell result. */
+    unsigned char temps[24]; /* Compiler ABI temporary area. */
+    WORD arguments[4]; /* Two scalar parameters and two fields in the tuple parameter. */
+} DirectCallListFrame;
+
 struct DVM_ScalarFiles;
 
+/* EN: Dispatch the compiled pointer-free argument-list frame on files.
+ * RU: Вызвать скомпилированный кадр списка без ссылок через files. */
+void dvm_call_list_entry(void *frame, Type *expected_type, struct DVM_ScalarFiles *files);
+
 /* EN: Dispatch one compiled composed frame. / RU: Вызвать один составной кадр. */
-void dvm_tuple_entry(void *frame, Module *module, struct DVM_ScalarFiles *files);
+void dvm_tuple_entry(void *frame, Type *expected_type, struct DVM_ScalarFiles *files);
 /* EN: Dispatch a mapped ref frame. / RU: Вызвать кадр с ref. */
-void dvm_ref_entry(void *frame, Module *module, struct DVM_ScalarFiles *files);
+void dvm_ref_entry(void *frame, Type *expected_type, struct DVM_ScalarFiles *files);
 #endif

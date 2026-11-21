@@ -6,6 +6,9 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_CALL_LIST_SIGNATURE 0xff407097U /* Compiled fn(int,(int,big),big): (int,(int,big)). */
+#define STYX_CALL_LIST_REQUEST_TAG 84UL /* Ordered typed argument list. */
+#define STYX_CALL_LIST_REPLY_TAG 85UL /* One nested Limbo result. */
 #define DVM_REF_SIGNATURE 0xadb273baU /* Compiled fn(ref Cell): (int,big). */
 #define STYX_REF_REQUEST_TAG 81UL /* ADT snapshot argument. */
 #define STYX_REF_CALLER_TAG 82UL /* ADT snapshot with caller context. */

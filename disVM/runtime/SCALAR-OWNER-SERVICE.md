@@ -67,3 +67,18 @@ and invokes the linked export. On success the service sends the return
 tuple and the ADT's final scalar fields. An exception sends an error record
 and the caller keeps its original field values. The startup format uses
 the unscoped request. See the [runnable example](../examples/remote-scalar/STYX.md#copy-back-from-an-original-dis-export).
+
+## One argument-list export
+
+Publish a `StyxMountedScalar` entry with `dis_call` for the
+[argument-list profile](../native/terminal/SCALAR-FUNCTION.md#argument-lists-and-nested-returns).
+Pass five tab-separated fields to the same shared service.
+
+```text
+list  implementation  export  request  reply
+```
+
+The service verifies the compiled signature once when it links the
+original Dis instance. For each request it invokes the export with three
+ordinary Limbo arguments and sends the nested return or an error. It runs
+until the request mailbox reaches EOF.

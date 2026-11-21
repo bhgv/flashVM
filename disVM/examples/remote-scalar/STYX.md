@@ -96,3 +96,15 @@ after the provider's writes leaves the caller's fields intact, that a nil
 reference is rejected locally, and that the next call observes the counter
 in the same loaded module. Expect `PASS mounted original ref Dis` in both
 execution modes. The driver closes both VM processes and their temporary roots.
+
+## Call with three arguments
+
+The `owner_guest.py` command also compiles [blend.m](blend.m) with
+[the client](styx-list-owner.b) and [the original provider](blend-owner.b).
+The client loads `/peer/mounted/blend.dis` and calls
+`blend(40, (-2, min), max)`. The provider receives three arguments and
+adds the two narrow fields and the two wide fields. The client assigns
+the nested return to `(count, (narrow, wide))` and checks `(1, (38, -1))`.
+A zero seed raises an error. The next successful call verifies the
+original instance kept its call count. Expect
+`PASS mounted original argument list Dis` with and without JIT.

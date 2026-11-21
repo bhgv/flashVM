@@ -15,6 +15,8 @@
 
 _Static_assert(sizeof(LONG) == sizeof(WORD), "mounted big and int use the same NC64 frame cell");
 _Static_assert(offsetof(DirectRefFrame, object) == 64, "compiled NC64 ref map");
+_Static_assert(offsetof(DirectCallListFrame, arguments) == 64 && sizeof(DirectCallListFrame) == 96,
+    "compiled NC64 argument-list frame");
 
 
 /* EN/RU: Give each native Link its own stable route ordinal.
@@ -55,7 +57,7 @@ static int build_direct(void *opaque)
 {
     DirectBuild *build = opaque;
     Module *module = build->module = newmod(build->path);
-    module->type = calloc(3, sizeof(*module->type));
+    module->type = calloc(4, sizeof(*module->type));
     size_t count = 1;
     for (DVM_ScalarFiles *entry = build->files; entry && entry->next; entry = entry->next)
     {
@@ -66,40 +68,28 @@ static int build_direct(void *opaque)
     {
         return 0;
     }
-    Type *frame = dtype(freeheap, sizeof(DirectFrame), NULL, 0);
-    if (!frame)
-    {
-        return 0;
-    }
-    module->type[0] = frame;
-    module->ntype = 1;
+    Type *frames[4] = {0};
+    const size_t sizes[] = {sizeof(DirectFrame), sizeof(DirectTupleFrame), sizeof(DirectRefFrame),
+        sizeof(DirectCallListFrame)};
     DVM_ScalarFiles *entry = build->files;
     for (size_t i = 0; i < count; i++)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
-        if ((signature == DVM_TUPLE_SIGNATURE || signature == DVM_REF_SIGNATURE) && !module->type[1])
-        {
-            module->type[1] = dtype(freeheap, sizeof(DirectTupleFrame), NULL, 0);
-            if (!module->type[1])
-            {
-                return 0;
-            }
-            module->ntype = 2;
-        }
-        if (signature == DVM_REF_SIGNATURE && !module->type[2])
+        size_t profile = signature == DVM_CALL_LIST_SIGNATURE ? 3 :
+            signature == DVM_REF_SIGNATURE ? 2 : signature == DVM_TUPLE_SIGNATURE ? 1 : 0;
+        if (!frames[profile])
         {
             uchar map[] = {0, 0x80}; /* Compiler map for the ref pointer at byte 64. */
-            module->type[2] = dtype(freeheap, sizeof(DirectRefFrame), map, sizeof(map));
-            if (!module->type[2])
+            int mapped = signature == DVM_REF_SIGNATURE;
+            frames[profile] = dtype(freeheap, sizes[profile], mapped ? map : NULL, mapped ? sizeof(map) : 0);
+            if (!frames[profile])
             {
                 return 0;
             }
-            module->ntype = 3;
+            module->type[module->ntype++] = frames[profile];
         }
-        Type *entry_frame = signature == DVM_REF_SIGNATURE ? module->type[2] :
-            signature == DVM_TUPLE_SIGNATURE ? module->type[1] : frame;
-        runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i], entry_frame);
+        runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i], frames[profile]);
         entry = entry ? entry->next : NULL;
     }
     return 1;

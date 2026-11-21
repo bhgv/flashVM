@@ -99,7 +99,7 @@ static void commit_ref(RefCells *object, RefCells *ret, const RefCells *before, 
 
 /* EN: Keep the managed ref rooted by its mapped frame across one native wait.
  * RU: Удержать ref через карту кадра на время одного нативного ожидания. */
-void dvm_ref_entry(void *frame, Module *module, DVM_ScalarFiles *files)
+void dvm_ref_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectRefFrame call;
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
@@ -109,7 +109,7 @@ void dvm_ref_entry(void *frame, Module *module, DVM_ScalarFiles *files)
     }
     Type *type;
     memcpy(&type, (unsigned char *)frame + offsetof(Frame, t), sizeof(type));
-    if (type != module->type[2])
+    if (type != expected_type)
     {
         error(exModule);
     }

@@ -130,18 +130,47 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
 }
 
 
-/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
-int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple, int ref)
+/* EN: Pass the argument list to the local owner's mailbox and validate its return.
+ * RU: Передать список аргументов в приёмник владельца и проверить результат. */
+static int list_dispatch(void *state, const StyxCallValues *arguments, StyxCallValues *value)
 {
-    if (!!big + !!tuple + !!ref > 1)
+    StyxScalarFunctionOwner *owner = state;
+    unsigned char record[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size, received;
+    StyxScalarKind kind;
+    int64_t code;
+    if (styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, arguments, record, sizeof(record), &size) &&
+        exchange(owner, record, size, &received))
+    {
+        if (styxcallrecordread(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, record, received, value))
+        {
+            return 1;
+        }
+        if (styxscalarread(STYX_CALL_LIST_REPLY_TAG, record, received, &kind, &code) && kind == STYX_SCALAR_ERROR)
+        {
+            return 0;
+        }
+    }
+    return retire(owner);
+}
+
+
+/* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
+int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, int big, int tuple, int ref, int call)
+{
+    if (!!big + !!tuple + !!ref + !!call > 1)
     {
         return 0;
     }
-    owner->request_tag = ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
+    owner->request_tag = call ? STYX_CALL_LIST_REQUEST_TAG : ref ? STYX_REF_REQUEST_TAG : tuple ? STYX_TUPLE_REQUEST_TAG : big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
     function->request_tag = owner->request_tag;
     function->reply_tag = styxfunction_reply_tag(owner->request_tag);
     function->state = owner;
-    if (ref)
+    if (call)
+    {
+        function->call_method = list_dispatch;
+    }
+    else if (ref)
     {
         function->ref_method = ref_dispatch;
     }

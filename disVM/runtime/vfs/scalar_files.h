@@ -10,6 +10,7 @@
 #include "close_worker.h"
 #include "../../native/terminal/scalar_verify.h"
 #include "../../native/terminal/tuple_record.h"
+#include "../../native/terminal/call_record.h"
 
 typedef struct DVM_ScalarFiles
 {
@@ -63,4 +64,7 @@ int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
  * RU: Обменять снимок ref и подготовить результат и обновление. */
 int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxRefReply *result);
+/* EN: Exchange one typed list on a mounted function fid and stage the reply.
+ * RU: Обменять типизированный список через fid функции, сохранить ответ. */
+int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *arguments, StyxCallValues *result);
 #endif

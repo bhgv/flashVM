@@ -31,6 +31,12 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
     {
         return 0;
     }
+    if (fn->call_method)
+    {
+        return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
+            !fn->ref_method && !fn->program_root && fn->request_tag == STYX_CALL_LIST_REQUEST_TAG &&
+            fn->reply_tag == STYX_CALL_LIST_REPLY_TAG;
+    }
     if (fn->ref_method)
     {
         return !fn->method && !fn->caller_method && !fn->program_method && !fn->tuple_method &&
@@ -46,7 +52,7 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
                 fn->request_tag == STYX_TUPLE_REQUEST_TAG);
     }
     uint32_t signature = styxscalar_request_signature(fn->request_tag);
-    if (signature == DVM_TUPLE_SIGNATURE || signature == DVM_REF_SIGNATURE ||
+    if (signature == DVM_TUPLE_SIGNATURE || signature == DVM_REF_SIGNATURE || signature == DVM_CALL_LIST_SIGNATURE ||
         !!fn->program_root != !!fn->program_method || (fn->caller_method && fn->program_method))
     {
         return 0;
@@ -133,6 +139,29 @@ static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
 }
 
 
+/* EN: Validate the full argument list before invoking and retain only the encoded fid reply.
+ * RU: Проверить весь список аргументов перед вызовом, сохранить только ответ в fid. */
+static char *call_list(FunctionFid *fid, const char *bytes, size_t count)
+{
+    StyxCallValues arguments, result = {0};
+    if (!styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, bytes, count, &arguments))
+    {
+        return Ebadarg;
+    }
+    fid->submitted = 1;
+    int outcome = fid->function.call_method(fid->function.state, &arguments, &result);
+    if (outcome < 0 && fid->report_transport_failure)
+    {
+        return Ehungup;
+    }
+    int encoded = outcome == 1 ?
+        styxcallrecordwrite(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, &result,
+            fid->reply, sizeof(fid->reply), &fid->size) :
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
+    return encoded ? nil : Ebadarg;
+}
+
+
 /* EN/RU: Validate one whole request at offset zero and store the method's reply.
  * Проверить полный запрос по смещению ноль и сохранить ответ метода. */
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
@@ -143,6 +172,10 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
+    if (function->call_method)
+    {
+        return call_list(fid, bytes, count);
+    }
     if (function->tuple_method || function->ref_method)
     {
         return tuple_call(fid, bytes, count);

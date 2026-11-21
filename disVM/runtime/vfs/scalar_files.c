@@ -331,3 +331,30 @@ int dvm_ref_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     return styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, received, &kind, &code) &&
         kind == STYX_SCALAR_ERROR ? 2 : 0;
 }
+
+
+
+/* EN/RU: See scalar_files.h. / См. scalar_files.h. */
+int dvm_call_list_function_invoke(DVM_ScalarFiles *files, const StyxCallValues *arguments, StyxCallValues *result)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
+    size_t size, received = 0;
+    if (files->caller || !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args,
+            arguments, bytes, sizeof(bytes), &size))
+    {
+        return -1;
+    }
+    int exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    if (exchanged != 1)
+    {
+        return exchanged;
+    }
+    if (styxcallrecordread(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, bytes, received, result))
+    {
+        return 1;
+    }
+    StyxScalarKind kind;
+    int64_t code;
+    return styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, received, &kind, &code) &&
+        kind == STYX_SCALAR_ERROR ? 2 : 0;
+}

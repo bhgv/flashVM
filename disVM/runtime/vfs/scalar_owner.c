@@ -16,6 +16,7 @@
 #include "scalar_owner_internal.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/tuple_record.h"
+#include "../../native/terminal/call_record.h"
 #include "raise.h"
 #include "vfsnative_decl.h"
 #include "../../native/terminal/scalar_verify.h"
@@ -243,7 +244,8 @@ static void load_composed(String *path_input, String *name_input, uint32_t signa
     if (!dvm_scalar_copy_path(path_input, path) || !dvm_scalar_copy_path(name_input, name) ||
         !styxscalar_name_length(name))
     {
-        error(signature == DVM_REF_SIGNATURE ? "ref owner implementation unavailable" :
+        error(signature == DVM_CALL_LIST_SIGNATURE ? "argument-list owner implementation unavailable" :
+            signature == DVM_REF_SIGNATURE ? "ref owner implementation unavailable" :
             "tuple owner implementation unavailable");
     }
     Import imports[] = {{(int32_t)signature, name}, {0, NULL}};
@@ -345,6 +347,41 @@ void Vfsnative_scalarrefreply(void *frame)
     if (!encoded)
     {
         error("invalid ref reply");
+    }
+    dvm_scalar_owner_record(call.path, bytes, size);
+}
+
+
+
+/* EN: Bind the named local export using the compiled argument-list signature.
+ * RU: Связать именованный локальный экспорт по сигнатуре списка аргументов. */
+void Vfsnative_scalarlistload(void *frame)
+{
+    F_Vfsnative_scalarlistload call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarlistload, ret), sizeof(*call.ret));
+    load_composed(call.path, call.exportname, DVM_CALL_LIST_SIGNATURE, call.ret);
+}
+
+
+/* EN: Send the complete nested return or an error to the provider dispatcher.
+ * RU: Отправить вложенный результат или ошибку диспетчеру провайдера. */
+void Vfsnative_scalarlistreply(void *frame)
+{
+    F_Vfsnative_scalarlistreply call;
+    if (!frame || frame == H || (uintptr_t)frame > UINTPTR_MAX - sizeof(call))
+    {
+        error(exBounds);
+    }
+    memmove(&call, frame, sizeof(call));
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size;
+    const StyxCallValues result = {3, {call.outer, call.inner, call.wide}};
+    int encoded = call.success == 1 ?
+        styxcallrecordwrite(STYX_CALL_LIST_REPLY_TAG, styxcall_list_result, &result, bytes, sizeof(bytes), &size) :
+        styxscalarwrite(STYX_CALL_LIST_REPLY_TAG, STYX_SCALAR_ERROR, 0, bytes, sizeof(bytes), &size);
+    if (!encoded)
+    {
+        error("invalid argument-list reply");
     }
     dvm_scalar_owner_record(call.path, bytes, size);
 }

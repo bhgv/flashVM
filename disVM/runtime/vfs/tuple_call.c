@@ -23,7 +23,7 @@
 
 /* EN: Copy a composed native frame, perform one Styx exchange and publish its result.
  * RU: Скопировать составной кадр, выполнить обмен Styx и записать результат. */
-void dvm_tuple_entry(void *frame, Module *module, DVM_ScalarFiles *files)
+void dvm_tuple_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
 {
     DirectTupleFrame call;
     if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
@@ -33,7 +33,7 @@ void dvm_tuple_entry(void *frame, Module *module, DVM_ScalarFiles *files)
     }
     Type *type;
     memcpy(&type, (unsigned char *)frame + offsetof(Frame, t), sizeof(type));
-    if (type && type != module->type[1])
+    if (type && type != expected_type)
     {
         error(exModule);
     }
@@ -65,4 +65,50 @@ void dvm_tuple_entry(void *frame, Module *module, DVM_ScalarFiles *files)
     result[0] = answer.narrow;
     result[1] = answer.wide;
     dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
+
+/* EN: Copy the pointer-free frame, exchange values, then publish the nested return.
+ * RU: Скопировать кадр без указателей, обменять значения, затем выдать вложенный результат. */
+void dvm_call_list_entry(void *frame, Type *expected_type, DVM_ScalarFiles *files)
+{
+    DirectCallListFrame call;
+    if (!frame || frame == H || frame != (void *)DVM_R.FP || (uintptr_t)frame > (uintptr_t)DVM_R.SP ||
+        (uintptr_t)DVM_R.SP - (uintptr_t)frame < sizeof(call))
+    {
+        error(exBounds);
+    }
+    Type *type;
+    memcpy(&type, (unsigned char *)frame + offsetof(Frame, t), sizeof(type));
+    if (type && type != expected_type)
+    {
+        error(exModule);
+    }
+    WORD cells[3];
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(DirectCallListFrame, ret), sizeof(cells));
+    StyxCallValues arguments = {.count = 4}, answer;
+    for (size_t i = 0; i < arguments.count; i++)
+    {
+        arguments.cells[i] = call.arguments[i];
+    }
+    DVM_VfsWait *wait;
+    int released = dvm_vfs_path_enter(&wait);
+    if (released < 0)
+    {
+        error("remote argument-list call not sent");
+    }
+    int outcome = dvm_call_list_function_invoke(files, &arguments, &answer);
+    int cancelled = dvm_vfs_wait_end(wait);
+    dvm_runtime_gc_native_enter(released);
+    if (cancelled || outcome != 1)
+    {
+        error(cancelled ? "remote argument-list call cancelled" : outcome == 2 ? "remote scalar owner error" :
+            outcome < 0 ? "remote argument-list call not sent" : "remote argument-list call outcome unknown");
+    }
+    for (size_t i = 0; i < answer.count; i++)
+    {
+        cells[i] = answer.cells[i];
+    }
+    dvm_sys_scalar_result(cells, call.ret, sizeof(cells));
 }

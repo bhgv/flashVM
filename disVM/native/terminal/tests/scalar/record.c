@@ -6,6 +6,7 @@
 #include "scalar_route.h"
 #include "scalar_verify.h"
 #include "tuple_record.h"
+#include "call_record.h"
 #include "unibus_inbox.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
@@ -75,6 +76,35 @@ static int ref_reply(void)
     return !styxrefreplyread(bytes, size, &decoded) &&
         decoded.result.narrow == expected.result.narrow && decoded.result.wide == expected.result.wide &&
         decoded.updated.narrow == expected.updated.narrow && decoded.updated.wide == expected.updated.wide;
+}
+
+
+/* EN: Verify zero and one positions, nested shape, and unchanged output on bad input.
+ * RU: Проверить ноль и одну позицию, вложенность и сохранение вывода при ошибке. */
+static int argument_list(void)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY];
+    size_t size;
+    const StyxCallValues empty = {0}, one = {1, {INT32_MIN}};
+    const StyxCallValues many = {4, {INT32_MIN, INT32_MAX, INT64_MIN, INT64_MAX}};
+    StyxCallValues decoded;
+    if (!styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, "()", &empty, bytes, sizeof(bytes), &size) ||
+        !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, "()", bytes, size, &decoded) || decoded.count ||
+        styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, "((((()))))", &empty, bytes, sizeof(bytes), &size) ||
+        !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, "(i)", &one, bytes, sizeof(bytes), &size) ||
+        !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, "(i)", bytes, size, &decoded) ||
+        decoded.count != 1 || decoded.cells[0] != INT32_MIN ||
+        !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, &many, bytes, sizeof(bytes), &size) ||
+        !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, bytes, size, &decoded) ||
+        decoded.count != many.count || memcmp(many.cells, decoded.cells, sizeof(many.cells)))
+    {
+        return 0;
+    }
+    return !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, "(iibb)", bytes, size, &decoded) &&
+        !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, "((i(ib)b))", bytes, size, &decoded) &&
+        !styxcallrecordread(STYX_CALL_LIST_REQUEST_TAG, styxcall_list_args, bytes, size - 1, &decoded) &&
+        decoded.count == many.count && !memcmp(many.cells, decoded.cells, sizeof(many.cells)) &&
+        !styxcallrecordwrite(STYX_CALL_LIST_REQUEST_TAG, "(iibi)", &many, bytes, sizeof(bytes), &size);
 }
 
 
@@ -150,6 +180,11 @@ int main(void)
         decoded != STYX_SCALAR_VALUE || value != 99 || calls != 2)
     {
         fputs("scalar method dispatch failed\n", stderr);
+        return 1;
+    }
+    if (!argument_list())
+    {
+        fputs("ordered argument list failed\n", stderr);
         return 1;
     }
     if (!ref_reply())
