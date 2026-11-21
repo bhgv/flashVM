@@ -19,13 +19,15 @@ serve_loaded(routes: Vfsnative, fields: list of string)
     reply := hd fields;
     offer := hd tl fields;
     anchor := routes->scalarloadanchor(implementation);
-    run_loaded(routes, routes->scalarloadedslot(anchor, name, offer), request, reply);
+    pool := new_call_pool();
+    run_loaded(routes, routes->scalarloadedslot(anchor, name, offer), request, reply, pool);
+    close_call_pool(pool);
 }
 
 
 # EN: Invoke the typed slot selected from the actual compiled export.
 # RU: Вызывать типизированный слот фактически связанного экспорта.
-run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string)
+run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string, pool: Callpool)
 {
     (tag, narrow, wide, pair, single, arguments, aliases, raw, inputs, outputs) := view;
     if (tag == 0) {
@@ -38,13 +40,13 @@ run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string)
     } else if (pair != nil) {
         run_tuple(routes, pair, request, reply);
     } else if (single != nil) {
-        run_ref(routes, single, request, reply, outputs);
+        run_ref(routes, single, request, reply, outputs, pool);
     } else if (arguments != nil) {
         run_list(routes, arguments, request, reply);
     } else if (aliases != nil) {
-        run_ref_pair(routes, aliases, request, reply, outputs);
+        run_ref_pair(routes, aliases, request, reply, outputs, pool);
     } else if (raw != nil) {
-        run_raw(routes, raw, request, reply, inputs, outputs);
+        run_raw(routes, raw, request, reply, inputs, outputs, pool);
     }
 }
 
@@ -52,9 +54,9 @@ run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string)
 
 # EN: Drain one verified inbox, then acknowledge its EOF to the owner process.
 # RU: Обслуживать проверенный приёмник, затем подтвердить EOF владельцу.
-serve_loaded_view(routes: Vfsnative, view: Scalarloadedview, request, reply: string, done: chan of int)
+serve_loaded_view(routes: Vfsnative, view: Scalarloadedview, request, reply: string, pool: Callpool, done: chan of int)
 {
-    run_loaded(routes, view, request, reply);
+    run_loaded(routes, view, request, reply, pool);
     done <-= 1;
 }
 
@@ -86,13 +88,15 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string)
         planned = (view, request, reply) :: planned;
     }
     done := chan of int;
+    pool := new_call_pool();
     for (pending := planned; pending != nil; pending = tl pending) {
         (view, request, reply) := hd pending;
-        spawn serve_loaded_view(routes, view, request, reply, done);
+        spawn serve_loaded_view(routes, view, request, reply, pool, done);
     }
     for (i = 1; i < count; i += 4) {
         <-done;
     }
+    close_call_pool(pool);
 }
 
 
@@ -112,122 +116,20 @@ invoke_raw(target: Scalarrawinvoke, inputs: int, a,b,c,d: big): (big,big,big,big
 }
 
 
-Rawkey: type (big,big,big,big,int);
-Rawargs: type (big,big,big,big);
-
-Rawworker: adt {
-    key: Rawkey;
-    pid: int;
-    jobs: chan of (int, Rawargs);
-    completed: chan of int;
-    claimed: chan of int;
-};
-
-
-# EN: Compare every cell of the checked session and caller identity.
-# RU: Сравнить все ячейки проверенных идентификаторов сессии и клиента.
-same_raw_key(left, right: Rawkey): int
+# EN: Receive raw arguments and submit scoped calls to the module dispatcher.
+# RU: Принять аргументы и передать контекстные вызовы диспетчеру модуля.
+run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inputs, outputs: int, pool: Callpool)
 {
-    (a,b,c,d,p) := left;
-    (e,f,g,h,q) := right;
-    return a == e && b == f && c == g && d == h && p == q;
-}
-
-
-# EN: Dispatch each scoped call to the worker for that session and caller PID.
-# RU: Передать каждый вызов исполнителю с ключом сессии и PID клиента.
-run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inputs, outputs: int)
-{
-    sys := load Sys Sys->PATH;
-    workers: list of ref Rawworker;
     for (;;) {
         (ready, a, b, c, d) := routes->scalarrawdispatchnext(request);
         if (ready == 0) {
-            break;
+            return;
         }
         if (ready != 2) {
             finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
-            continue;
+        } else {
+            submit_call(routes, pool, ref Calljob(reply, outputs, inputs, (a,b,c,d), target, nil, nil));
         }
-        key := routes->scalarcallkey();
-        worker: ref Rawworker;
-        for (remaining := workers; remaining != nil; remaining = tl remaining) {
-            current := hd remaining;
-            if (same_raw_key(current.key, key)) {
-                worker = current;
-                break;
-            }
-        }
-        {
-            if (worker == nil) {
-                worker = ref Rawworker(key, 0, chan of (int, Rawargs), chan[1] of int, chan of int);
-                workers = worker :: workers;
-            }
-            if (worker.pid != 0 && <-worker.completed == 0) {
-                worker.pid = 0;
-            }
-            if (worker.pid == 0) {
-                started := chan[1] of int;
-                spawn raw_worker(sys, routes, target, reply, inputs, outputs, worker.jobs, worker.completed,
-                    worker.claimed, started, (a,b,c,d));
-                worker.pid = <-started;
-            } else {
-                routes->scalarcallstage(worker.pid);
-                worker.jobs <-= (1, (a,b,c,d));
-                if (<-worker.claimed == 0) {
-                    routes->scalarcallabort();
-                }
-            }
-        } exception {
-            "*" =>
-                routes->scalarcallabort();
-        }
-    }
-    for (remaining := workers; remaining != nil; remaining = tl remaining) {
-        worker := hd remaining;
-        if (worker.pid != 0 && <-worker.completed != 0) {
-            worker.jobs <-= (0, (big 0,big 0,big 0,big 0));
-        }
-    }
-}
-
-
-# EN: Keep an idle worker until its dispatcher shuts down or the call is revoked.
-# RU: Сохранять исполнителя в ожидании до остановки диспетчера или отмены вызова.
-raw_worker(sys: Sys, routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, outputs: int,
-    jobs: chan of (int, Rawargs), completed, claimed, started: chan of int, args: Rawargs)
-{
-    started <-= sys->pctl(0, nil);
-    for (;;) {
-        reusable := 0;
-        {
-            (a,b,c,d) := args;
-            reusable = !finish_raw(routes, target, reply, inputs, outputs, 2, a, b, c, d);
-        } exception {
-            "*" =>
-                reusable = 0;
-        }
-        completed <-= reusable;
-        if (!reusable) {
-            return;
-        }
-        (continuecall, next) := <-jobs;
-        if (!continuecall) {
-            return;
-        }
-        accepted := 1;
-        {
-            routes->scalarcalltake();
-        } exception {
-            "*" =>
-                accepted = 0;
-        }
-        claimed <-= accepted;
-        if (!accepted) {
-            completed <-= 0;
-            return;
-        }
-        args = next;
     }
 }
 
@@ -258,7 +160,7 @@ finish_raw(routes: Vfsnative, target: Scalarrawinvoke, reply: string, inputs, ou
 
 # EN: Dispatch one-ref snapshots until EOF, preserving the unscoped call path.
 # RU: Раздавать снимки ref до EOF, сохраняя вызовы без контекста.
-run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string, outputs: int)
+run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: string, outputs: int, pool: Callpool)
 {
     for (;;) {
         (ready, narrow, wide) := routes->scalarrefdispatchnext(request);
@@ -266,12 +168,7 @@ run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: stri
             return;
         }
         if (ready == 2) {
-            {
-                spawn finish_ref(routes, target, reply, outputs, ready, narrow, wide);
-            } exception {
-                "*" =>
-                    routes->scalarcallabort();
-            }
+            submit_call(routes, pool, ref Calljob(reply, outputs, 1, (big narrow,wide,big 0,big 0), nil, target, nil));
         } else {
             finish_ref(routes, target, reply, outputs, ready, narrow, wide);
         }
@@ -281,11 +178,11 @@ run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: stri
 
 # EN: Call the linked one-ref export and publish its updated snapshot.
 # RU: Вызвать связанный экспорт ref и отправить изменённый снимок.
-finish_ref(routes: Vfsnative, target: Scalarrefimplementation, reply: string, outputs, ready, narrow: int, wide: big)
+finish_ref(routes: Vfsnative, target: Scalarrefimplementation, reply: string, outputs, ready, narrow: int, wide: big): int
 {
     if (ready < 0) {
         routes->scalarrefreply(reply, 0, (0, big 0), (0, big 0));
-        return;
+        return 0;
     }
     cell := ref Scalarrefcell(narrow, wide);
     result := (0, big 0);
@@ -299,7 +196,9 @@ finish_ref(routes: Vfsnative, target: Scalarrefimplementation, reply: string, ou
         "*" =>
             success = 0;
     }
+    cancelled := routes->callcancelled();
     routes->scalarrefreply(reply, success, ref_result(result, outputs), (cell.narrow, cell.wide));
+    return cancelled;
 }
 
 
@@ -307,7 +206,7 @@ finish_ref(routes: Vfsnative, target: Scalarrefimplementation, reply: string, ou
 # carry the worker handoff marker, removed before reconstructing aliases.
 # RU: Раздавать один или два снимка ref до EOF. Счётчик выше двух включает
 # признак передачи исполнителю, который снимается перед восстановлением алиасов.
-run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string, outputs: int)
+run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, reply: string, outputs: int, pool: Callpool)
 {
     for (;;) {
         (count, firstn, firstw, secondn, secondw) := routes->scalarrefpairdispatchnext(request);
@@ -315,12 +214,7 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
             return;
         }
         if (count > 2) {
-            {
-                spawn finish_ref_pair(routes, target, reply, outputs, count-2, 1, firstn, firstw, secondn, secondw);
-            } exception {
-                "*" =>
-                    routes->scalarcallabort();
-            }
+            submit_call(routes, pool, ref Calljob(reply, outputs, count-2, (big firstn,firstw,big secondn,secondw), nil, nil, target));
         } else {
             finish_ref_pair(routes, target, reply, outputs, count, 0, firstn, firstw, secondn, secondw);
         }
@@ -330,11 +224,11 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
 
 # EN: Reconstruct ref aliases in the executing Prog and return successful updates.
 # RU: Восстановить алиасы ref в выполняющем Prog и отправить успешные изменения.
-finish_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, reply: string, outputs, count, worker, firstn: int, firstw: big, secondn: int, secondw: big)
+finish_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, reply: string, outputs, count, worker, firstn: int, firstw: big, secondn: int, secondw: big): int
 {
     if (count < 0) {
         routes->scalarrefpairreply(reply, 0, 0, (0, big 0), (0, big 0), (0, big 0));
-        return;
+        return 0;
     }
     first := ref Scalarrefcell(firstn, firstw);
     second := first;
@@ -352,6 +246,10 @@ finish_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, reply: s
         "*" =>
             success = 0;
     }
+    cancelled := routes->callcancelled();
     routes->scalarrefpairreply(reply, success, count, ref_result(result, outputs),
         (first.narrow, first.wide), (second.narrow, second.wide));
+    return cancelled;
 }
+
+include "scalarowner_pool.b";

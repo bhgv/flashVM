@@ -176,6 +176,7 @@ Vfsnative: module
     scalarcallstart: fn();
     scalarcallstage: fn(worker: int);
     scalarcalltake: fn();
+    scalarcalltakefrom: fn(source: int);
     scalarcallkey: fn(): (big,big,big,big,int);
     scalarcallabort: fn();
     scalarrawreply: fn(path: string, success, count: int, value: (big,big,big,big));

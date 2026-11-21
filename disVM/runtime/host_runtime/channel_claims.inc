@@ -264,13 +264,13 @@ static Prog *find_child(Prog *caller, int pid)
 
 /* EN: Claim the parent’s staged scope while its registered Prog is pinned.
  * RU: Забрать ожидающий контекст, пока Prog родителя удерживается реестром. */
-int dvm_runtime_scalar_take(Prog *child)
+int dvm_runtime_scalar_take(Prog *child, int source_pid)
 {
     if (native_spawn)
     {
         fvm_port_sync_lock(channel_queue_mutex);
     }
-    int parent_pid = ((DVM_RuntimeProcess *)child)->parent_pid;
+    int parent_pid = source_pid ? source_pid : ((DVM_RuntimeProcess *)child)->parent_pid;
     Prog *parent = dvm_runtime_process_roots();
     while (parent && parent->pid != parent_pid)
     {

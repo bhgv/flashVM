@@ -335,7 +335,7 @@ void Vfsnative_scalarcallstage(void *frame)
 }
 
 
-extern int dvm_runtime_scalar_take(Prog *child);
+extern int dvm_runtime_scalar_take(Prog *child, int source_pid);
 
 
 /* EN: Install the detached scope on the worker before enabling cancellation.
@@ -343,7 +343,24 @@ extern int dvm_runtime_scalar_take(Prog *child);
 void Vfsnative_scalarcalltake(void *frame)
 {
     (void)frame;
-    if (!dvm_runtime_scalar_take(currun()))
+    if (!dvm_runtime_scalar_take(currun(), 0))
+    {
+        error("scalar call handoff missing");
+    }
+}
+
+
+/* EN: Collect an explicitly addressed handoff from the specified dispatcher.
+ * RU: Принять адресованную этому исполнителю передачу от указанного диспетчера. */
+void Vfsnative_scalarcalltakefrom(void *frame)
+{
+    F_Vfsnative_scalarcalltakefrom call;
+    if (!frame || frame == H || (uintptr_t)frame > UINTPTR_MAX - sizeof(call))
+    {
+        error(exBounds);
+    }
+    memcpy(&call, frame, sizeof(call));
+    if (call.source <= 0 || call.source > INT_MAX || !dvm_runtime_scalar_take(currun(), (int)call.source))
     {
         error("scalar call handoff missing");
     }

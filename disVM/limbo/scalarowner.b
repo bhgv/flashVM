@@ -337,7 +337,9 @@ serve_ref(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref owner implementation link failed";
     }
-    run_ref(routes, target, request, reply, 2);
+    pool := new_call_pool();
+    run_ref(routes, target, request, reply, 2, pool);
+    close_call_pool(pool);
 }
 
 
@@ -397,7 +399,9 @@ serve_ref_pair(routes: Vfsnative, fields: list of string)
     if (target == nil) {
         raise "ref pair owner implementation link failed";
     }
-    run_ref_pair(routes, target, request, reply, 2);
+    pool := new_call_pool();
+    run_ref_pair(routes, target, request, reply, 2, pool);
+    close_call_pool(pool);
 }
 
 

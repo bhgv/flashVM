@@ -121,6 +121,9 @@ update(value: ref Cell): int
 {
     sys := load Sys Sys->PATH;
     pid := int contents(sys, Caller + ".pid", 32);
+    if (value.narrow == -51) {
+        value.wide = big sys->pctl(0, nil);
+    }
     if (value.narrow == -50) {
         pause_ref(sys, "single-ref");
     }
@@ -135,6 +138,10 @@ updatepair(values: (ref Cell, ref Cell))
 {
     sys := load Sys Sys->PATH;
     (first, second) := values;
+    if (first.narrow == -51) {
+        first.wide = big sys->pctl(0, nil);
+        return;
+    }
     if (first.narrow == -50) {
         pause_ref(sys, "pair-ref");
     }

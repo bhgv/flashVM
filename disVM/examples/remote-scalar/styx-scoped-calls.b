@@ -98,7 +98,17 @@ init()
 # RU: Проверить обратную запись ref, алиас, отказ владельца и закрытие очереди.
 checkrefs(service: Scopedcalls, pid: int)
 {
-    a := ref Cell(21, big 0);
+    (caller, executor) := service->inspect(5);
+    a := ref Cell(-51, big 0);
+    if (caller != pid || executor <= big 0 || service->update(a) != pid || a.wide != executor) {
+        raise "dynamic and ref exports used different executors";
+    }
+    a = ref Cell(-51, big 0);
+    service->updatepair((a, a));
+    if (a.wide != executor) {
+        raise "ref pair export used a different executor";
+    }
+    a = ref Cell(21, big 0);
     if (service->update(a) != pid || a.narrow != pid) {
         raise "single ref did not use caller scope";
     }
@@ -221,9 +231,11 @@ cancel_worker(service: Scopedcalls, ctl: Processctl, started, resumed: chan of i
         "*" =>
             cancelled = 1;
     }
-    (after_pid, after) := service->inspect(5);
-    resumed <-= cancelled && before_pid == pid && after_pid == pid &&
-        before > big 0 && after > big 0 && before != after;
+    cell := ref Cell(-51, big 0);
+    after_pid := service->update(cell);
+    (raw_pid, after) := service->inspect(5);
+    resumed <-= cancelled && before_pid == pid && after_pid == pid && raw_pid == pid &&
+        before > big 0 && after > big 0 && before != after && cell.wide == after;
 }
 
 # EN: Run a second ref call on the same export while the first is asleep.
