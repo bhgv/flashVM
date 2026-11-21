@@ -260,3 +260,15 @@ During that call the provider checks that the first child's saved
 event fid refuses reads and that the parent's event fid still works.
 
 The parent repeats its call using the same PID. The earlier event fid stays revoked while the newly opened fid remains readable.
+
+## Three-peer launch
+
+Run `ctest --test-dir <sdk-build> -R '^terminal-caller-mount-cli$' -V`
+with the terminal launch SDK and DisVM configured. The harness sets up
+two local TCP connections and three DisVM processes. A mounts B's
+advertised launch route, binds the program to `/alias.dis` and invokes
+`runargs`. B uses its [library mount](../../runtime/TERMINAL-LAUNCH-CLI.md#owner-side-styx-library-mount)
+to load C's original Dis export with the shared `wide.m` declaration.
+B reads A's FD 0 and writes distinct messages to A's FD 1 and FD 2.
+The harness checks all three process exit statuses and reaps the peers.
+Expect `PASS A-B-C Styx launch and library call` in both VM modes.

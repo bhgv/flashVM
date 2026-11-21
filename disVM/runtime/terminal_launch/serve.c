@@ -103,15 +103,38 @@ static DVM_Provider *publish_program(DVM_Namespace *group, const char *path)
 }
 
 
+/* EN: Consume an optional library carrier and mount its root in the owner namespace.
+ * RU: Принять соединение библиотек и смонтировать его в namespace владельца. */
+static int mount_library(DVM_Namespace *group, const char *descriptor)
+{
+    int fd = dvm_terminal_connected(descriptor);
+    StyxClient *client = fd >= 3 ? styxclientmountphy(
+        phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "owner", "", 5000, 8) : NULL;
+    DVM_Provider *root = client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
+    DVM_NamespacePlan target;
+    int installed = root && dvm_namespace_plan(group, "/libraries", &target) &&
+        dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;
+    dvm_provider_release(root);
+    return installed;
+}
+
+
 /* EN: Take one delegated launch and boot only the locally configured Dis image.
  * RU: Принять один запрос и запустить только локально заданный образ Dis. */
 int dvm_styx_serve_cli(int argc, char **argv)
 {
     int scoped = argc > 3 && !strcmp(argv[3], "--context");
     int separator = scoped ? 4 : 3;
-    if (argc <= separator + 1 || strcmp(argv[separator], "--"))
+    const char *library = NULL;
+    if (argc > separator + 1 && !strcmp(argv[separator], "--library-fd"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] -- [VM OPTIONS] OWNER.dis\n");
+        library = argv[separator + 1];
+        separator += 2;
+    }
+    if (argc <= separator + 1 || strcmp(argv[separator], "--") ||
+        (library && !strcmp(library, argv[2])))
+    {
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD] -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -150,7 +173,9 @@ int dvm_styx_serve_cli(int argc, char **argv)
     DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_MASK) : NULL;
     Startup startup = {.scoped = scoped};
     int result = 1;
-    if (server && (!scoped || root) && receive_startup(styxunibusserverinbox(server), &startup) &&
+    int ready = server && (!scoped || root);
+    int library_ready = ready && (!library || mount_library(handoff.group, library));
+    if (library_ready && receive_startup(styxunibusserverinbox(server), &startup) &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
     {
@@ -162,7 +187,9 @@ int dvm_styx_serve_cli(int argc, char **argv)
     else
     {
         fprintf(stderr, "%s\n", !published ? "disvm: cannot publish the owner program" :
-            !server ? "disvm: cannot start the Styx launch server" : "disvm: no accepted Styx launch request");
+            !server ? "disvm: cannot start the Styx launch server" :
+            !ready ? "disvm: cannot mount reverse launch context" :
+            !library_ready ? "disvm: cannot mount Styx library at /libraries" : "disvm: no accepted Styx launch request");
     }
     shutdown(breaker, SHUT_RDWR);
     close(breaker);

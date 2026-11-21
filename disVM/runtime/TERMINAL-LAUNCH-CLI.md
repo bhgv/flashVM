@@ -238,3 +238,13 @@ The two-process example reads the caller PID and consumes redirected
 stdin from the owner with `Sys->fildes(0)`. It also writes through the
 caller's redirected stdout. The 64-byte inbox limit includes the S-record
 and process headers.
+
+## Owner-side Styx library mount
+
+Use `disvm --styx-serve-fd FD --context --library-fd LIBFD -- OWNER.dis`
+to give the launched Dis a second, already connected Styx stream.
+`LIBFD` is a separate delegated stream FD of at least 3. It carries a
+plain Styx session. The owner mounts it at `/libraries` before accepting
+the launch. An unavailable library mount makes the server refuse startup.
+The library is resolved by ordinary Dis `load` in the owner's namespace.
+See the [three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch).
