@@ -14,6 +14,7 @@
 #include "export.h"
 #include "program_view.h"
 #include "sysevents.h"
+#include "cancel.h"
 #include "flashvm/srecord.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
@@ -76,14 +77,17 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
 {
     DVM_Provider *caller = handle->ops->take_context ? handle->ops->take_context(handle->state) : NULL;
     DVM_Namespace *scope = caller ? caller_namespace(group, caller) : NULL;
+    DVM_Cancel *cancel = caller ? dvm_provider_call_cancel(caller) : NULL;
     dvm_provider_release(caller);
     DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
     if (!events)
     {
         dvm_namespace_release(scope);
+        dvm_cancel_release(cancel);
         return 0;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+    owner->remote_call_cancel = cancel;
     owner->remote_call_group = scope;
     owner->remote_call_events = events;
     return 1;
@@ -100,6 +104,8 @@ void dvm_scalar_caller_end(Prog *process)
     }
     DVM_Namespace *scope = owner->remote_call_group;
     DVM_SysEvents *events = owner->remote_call_events;
+    dvm_cancel_release(owner->remote_call_cancel);
+    owner->remote_call_cancel = NULL;
     owner->remote_call_group = NULL;
     owner->remote_call_events = NULL;
     dvm_sysevents_retire(events);
@@ -186,4 +192,16 @@ void Vfsnative_scalarrawreply(void *frame)
     }
     dvm_scalar_caller_end(currun());
     dvm_scalar_owner_record(call.path, bytes, used);
+}
+
+
+/* EN: Query the cancellation token bound to the caller's active function fid.
+ * RU: Проверить токен отмены, привязанный к fid текущего вызова. */
+void Vfsnative_callcancelled(void *frame)
+{
+    F_Vfsnative_callcancelled call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_callcancelled, ret), sizeof(*call.ret));
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    WORD result = owner && dvm_cancel_requested(owner->remote_call_cancel);
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }

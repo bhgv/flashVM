@@ -196,4 +196,14 @@ int dvm_provider_bindable(DVM_Provider *provider);
  * No authority or ownership transfer; changesretain can pin the journal independently.
  * Заимствовать journal под provider ref; changesretain удерживает его независимо. */
 DVM_Changes *dvm_provider_changes(DVM_Provider *provider);
+struct DVM_Cancel;
+
+/* EN: Bind a native cancellation token before publishing the captured context.
+ * RU: Привязать токен отмены до публикации захваченного контекста вызова. */
+int dvm_provider_set_call_cancel(DVM_Provider *provider, struct DVM_Cancel *token);
+
+/* EN: Retain the immutable context token, if present.
+ * RU: Удержать неизменяемый токен контекста, если он задан. */
+struct DVM_Cancel *dvm_provider_call_cancel(DVM_Provider *provider);
+
 #endif

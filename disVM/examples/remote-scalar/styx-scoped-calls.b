@@ -3,6 +3,7 @@
 # RU: Проверить load, выбор процесса и срок выдачи контекста при обмене по TCP.
 implement Client;
 include "sys.m";
+include "processctl.m";
 include "scoped-calls.m";
 include "vfsexport.m";
 
@@ -81,6 +82,7 @@ init()
         raise "scoped child calls lost PID or shared fd cursor";
     }
     checkrefs(service, pid);
+    checkcancel(sys, service);
     report(sys, "PASS compiled call sees scoped caller VFS, refs and Sysevents");
 }
 
@@ -159,3 +161,37 @@ change_live(sys: Sys, service: Scopedcalls, exports: Vfsexport, cell, private_ce
 }
 
 include "refpair-sync.b";
+
+# EN: Revoke an active call by killing its caller, then reuse the same mount.
+# RU: Отозвать активный вызов завершением клиента и повторно использовать маунт.
+checkcancel(sys: Sys, service: Scopedcalls)
+{
+    ctl := load Processctl Processctl->PATH;
+    started := chan of int;
+    spawn cancel_worker(service, ctl, started);
+    child := <-started;
+    wait_marker(sys, "cancel-entered");
+    if (ctl->kill(child) <= 0) {
+        raise "could not stop the child caller";
+    }
+    wait_marker(sys, "cancel-observed");
+    {
+        service->inspect(1);
+        raise "expected owner error after cancellation";
+    } exception {
+        "remote scalar owner error" =>
+            ;
+    }
+    if (service->baseline(73) != 73) {
+        raise "another export failed after cancellation";
+    }
+}
+
+
+# EN: Publish the caller PID before entering the remote function.
+# RU: Передать PID клиента перед входом в удалённую функцию.
+cancel_worker(service: Scopedcalls, ctl: Processctl, started: chan of int)
+{
+    started <-= ctl->pid();
+    service->inspect(2);
+}

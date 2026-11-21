@@ -165,6 +165,10 @@ Vfsnative: module
     scalarloadedslot: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
             Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int);
+    # EN: Return 1 if the peer closed the current call fid, otherwise 0.
+    # RU: Вернуть 1 при закрытии fid текущего вызова, иначе 0.
+    callcancelled: fn(): int;
+
     scalarrawnext: fn(path: string): (int,big,big,big,big);
     scalarrawreply: fn(path: string, success, count: int, value: (big,big,big,big));
 };

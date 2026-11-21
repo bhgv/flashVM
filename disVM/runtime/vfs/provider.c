@@ -3,6 +3,7 @@
  * RU: Native factory references и удержание factory открытыми handles.
  */
 #include "provider_walk.h"
+#include "cancel.h"
 #include <string.h>
 #include "channel_sync.h"
 #include <stdlib.h>
@@ -136,6 +137,7 @@ void dvm_provider_release(DVM_Provider *provider)
     if (last)
     {
         dvm_provider_capture_detach(provider);
+        dvm_cancel_release(provider->call_cancel);
         provider->ops->destroy(provider->state);
         if (provider->caller.release)
         {
@@ -409,4 +411,40 @@ FVM_Result dvm_provider_access(DVM_Provider *provider, const char *relative, uns
 DVM_Changes *dvm_provider_changes(DVM_Provider *provider)
 {
     return provider ? provider->changes : NULL;
+}
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+int dvm_provider_set_call_cancel(DVM_Provider *provider, DVM_Cancel *token)
+{
+    if (!provider || !token)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(provider->lock);
+    int installed = provider->references == 1 && !provider->call_cancel && dvm_cancel_retain(token);
+    if (installed)
+    {
+        provider->call_cancel = token;
+    }
+    fvm_port_sync_unlock(provider->lock);
+    return installed;
+}
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+DVM_Cancel *dvm_provider_call_cancel(DVM_Provider *provider)
+{
+    if (!provider)
+    {
+        return NULL;
+    }
+    fvm_port_sync_lock(provider->lock);
+    DVM_Cancel *token = provider->call_cancel;
+    if (token && !dvm_cancel_retain(token))
+    {
+        token = NULL;
+    }
+    fvm_port_sync_unlock(provider->lock);
+    return token;
 }

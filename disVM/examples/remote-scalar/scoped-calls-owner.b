@@ -3,6 +3,7 @@
 # RU: Читать смонтированный контекст клиента обычными операциями Sys.
 implement Scopedcalls;
 include "sys.m";
+include "vfsnative.m";
 include "scoped-calls.m";
 
 Caller: con "/.prog/.self/"; # Alias set in the private namespace of one call.
@@ -46,6 +47,10 @@ inspect(fail: int): (int,big)
     if (pid <= 0 || contents(sys, Caller + ".vfs/env/CLIENT", 8) != "/.vfs" ||
         contents(sys, Caller + ".var/counter", 8) != "/.var") {
         raise "wrong caller scope";
+    }
+    if (fail == 2) {
+        wait_cancel(sys);
+        raise "remote handler stopped at a cancellation checkpoint";
     }
     if (fail != 0) {
         raise "requested scoped owner failure";
@@ -249,4 +254,20 @@ check_overflow(sys: Sys, reverse: ref Sys->FD, event: array of byte)
         !live_value(sys, Caller + ".var/live", 1, 99)) {
         raise "reverse event stream failed to recover";
     }
+}
+
+# EN: Observe revocation after entering the actual Dis function.
+# RU: Увидеть отзыв fid уже после входа в функцию Dis.
+wait_cancel(sys: Sys)
+{
+    vfs := load Vfsnative Vfsnative->PATH;
+    set_marker(sys, "cancel-entered");
+    for (i := 0; i < 180; i++) {
+        if (vfs->callcancelled()) {
+            set_marker(sys, "cancel-observed");
+            return;
+        }
+        sys->sleep(10);
+    }
+    raise "remote call cancellation timed out";
 }

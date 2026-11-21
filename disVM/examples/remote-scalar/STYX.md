@@ -284,3 +284,7 @@ The disconnect case terminates B only after its Dis code confirms startup. A rep
 The chain also mounts a second library peer at `/other-libs`. Both peers
 export `wide.dis`. B verifies that the second peer starts with its own
 counter and that the first retains its earlier state.
+
+The scoped call example also kills a child caller after the owner enters
+its function. The resulting clunk reaches the owner's cancellation
+checkpoint. The parent then reuses the same connection and export.

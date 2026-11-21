@@ -384,4 +384,10 @@ polls the same fid, holding the caller lease until the exchange finishes.
 Different exports can progress on the same connection. Calls sharing an
 export take turns at its owner mailbox. Clunk discards queued work that
 has yet to enter dispatch. Once dispatch has started, clunk releases the
-client fid while the owner callback runs to completion.
+client fid and signals the owner callback.
+
+An active context-profile call owns a cancellation token. Clunk requests
+cancellation on that token. Owner code that may run for a long time can
+check `Vfsnative->callcancelled()` at a safe point and unwind its call.
+The token belongs to that invocation. Closing one fid does not cancel
+another fid. Code without a checkpoint can still run to completion.

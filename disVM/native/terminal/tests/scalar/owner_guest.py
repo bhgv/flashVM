@@ -85,7 +85,7 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
 # EN: Relay private test markers between roots in order, bounding the wait.
 # RU: Передать тестовые маркеры между корнями по порядку с ограничением ожидания.
 def relay_ref_pair(owner, caller, overflow=False):
-    deadline = time.monotonic() + 3
+    deadline = time.monotonic() + 7
     markers = (
         (owner, caller, "refpair-entered"),
         (caller, owner, "refpair-edited"),
@@ -96,6 +96,8 @@ def relay_ref_pair(owner, caller, overflow=False):
             (caller, owner, "overflow-done"),
             (owner, caller, "recovery-ready"),
             (caller, owner, "recovery-done"),
+            (owner, caller, "cancel-entered"),
+            (owner, caller, "cancel-observed"),
         )
     for source, target, name in markers:
         while (source / name).read_bytes() != b"1":
@@ -264,7 +266,8 @@ def main():
         (caller / "expect-dis-owner").touch()
         marker_paths = [root / marker for root in (owner, caller)
                         for marker in ("refpair-entered", "refpair-edited", "overflow-ready",
-                                       "overflow-done", "recovery-ready", "recovery-done")]
+                                       "overflow-done", "recovery-ready", "recovery-done",
+                                       "cancel-entered", "cancel-observed")]
         for mode in ("--no-jit", "--jit"):
             exchange(binary, owner, caller, mode, "PASS mounted Styx original Dis",
                      calls=0, mounted=True)

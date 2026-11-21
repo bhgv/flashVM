@@ -8,6 +8,7 @@
 #include "scalar_function.h"
 #include "scalar_verify.h"
 #include "call_scope.h"
+#include "cancel.h"
 #include "flashvm/srecord.h"
 #include <inttypes.h>
 #include <pthread.h>
@@ -20,6 +21,7 @@ typedef struct FunctionFid
 {
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
     int report_transport_failure; /* Interpret negative service status as missing reply. */
+    DVM_Cancel *cancel; /* Owned token for this exact admitted call. */
     int *workers; /* Server-owned active job counter, retained through dispatcher join. */
     int *busy; /* Export-owned mailbox gate. */
     unsigned references; /* Fid and optional worker references. */
@@ -126,13 +128,14 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
 
 /* EN: Capture the selected process from a borrowed reverse root, returning an owned directory.
  * RU: Захватить выбранный процесс из заимствованного обратного корня и вернуть свой каталог. */
-static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid)
+static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid, DVM_Cancel *cancel)
 {
     char path[sizeof(".prog/4294967295")];
     snprintf(path, sizeof(path), ".prog/%" PRIu32, pid);
     DVM_Provider *self = dvm_provider_capture(root, path);
     FVM_FileInfo info;
-    if (self && dvm_provider_info(self, ".", &info) == FVM_OK && info.directory)
+    if (self && dvm_provider_info(self, ".", &info) == FVM_OK && info.directory &&
+        (!cancel || dvm_provider_set_call_cancel(self, cancel)))
     {
         return self;
     }
@@ -154,7 +157,7 @@ static char *tuple_call(FunctionFid *fid, const void *bytes, size_t count, uint3
         return Ebadarg;
     }
     pid = scoped_pid ? scoped_pid : pid;
-    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid, fid->cancel) : NULL;
     if (pid && !self)
     {
         return Eperm;
@@ -188,7 +191,7 @@ static char *call_list(FunctionFid *fid, const void *bytes, size_t count, uint32
     {
         return Ebadarg;
     }
-    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid, fid->cancel) : NULL;
     if (pid && !self)
     {
         return Eperm;
@@ -221,7 +224,7 @@ static char *ref_pair_call(FunctionFid *fid, const void *bytes, size_t count, ui
         return Ebadarg;
     }
     const StyxScalarFunction *fn = &fid->function;
-    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid, fid->cancel) : NULL;
     if (pid && !self)
     {
         return Eperm;
@@ -284,7 +287,7 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
     {
         return Ebadarg;
     }
-    DVM_Provider *self = function->program_method ? capture_self(function->program_root, pid) : NULL;
+    DVM_Provider *self = function->program_method ? capture_self(function->program_root, pid, fid->cancel) : NULL;
     if (function->program_method && !self)
     {
         return Eperm;
@@ -315,6 +318,7 @@ static void release_fid(FunctionFid *fid)
 {
     if (__atomic_sub_fetch(&fid->references, 1, __ATOMIC_ACQ_REL) == 0)
     {
+        dvm_cancel_release(fid->cancel);
         free(fid);
     }
 }
@@ -328,6 +332,7 @@ void styxscalarfunctionclose(void *state)
     if (fid)
     {
         __atomic_store_n(&fid->closed, 1, __ATOMIC_RELEASE);
+        dvm_cancel_request(fid->cancel);
         release_fid(fid);
     }
 }
@@ -365,6 +370,10 @@ static void *run_async(void *state)
  * RU: Принять одну задачу в пределах лимита без блокировки диспетчера Styx. */
 static char *schedule(FunctionFid *fid)
 {
+    if (!fid->cancel && !(fid->cancel = dvm_cancel_create()))
+    {
+        return Enomem;
+    }
     pthread_attr_t attributes;
     if (__atomic_load_n(fid->workers, __ATOMIC_ACQUIRE) >= 16 || pthread_attr_init(&attributes))
     {
