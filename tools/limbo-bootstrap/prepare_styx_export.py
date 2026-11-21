@@ -18,7 +18,7 @@ def main():
     if source.count(header) != 1 or source.count(anchor) != 1:
         parser.error("compiler output boundary changed")
     source = source.replace(header, header + '#include "styx_export.h"\n')
-    source = source.replace(anchor, anchor + "\t\tlimbo_styx_export(impdecl);\n")
+    source = source.replace(anchor, anchor + "\t\tlimbo_styx_export(impdecl, ldts);\n")
     args.output.write_text(source)
 
 

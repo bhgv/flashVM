@@ -18,6 +18,13 @@ init()
         raise "load accepted a type table with a different export signature";
     }
     owner := load Blend "/peer/mounted/blend.dis";
+    if (sys->open("expect-import-shape-refusal", Sys->OREAD) != nil) {
+        if (owner != nil) {
+            raise "load accepted unequal compiled import and export shapes";
+        }
+        sys->print("PASS mounted Dis rejects local import shape mismatch\n");
+        return;
+    }
     if (owner == nil) {
         raise "could not load original argument-list module";
     }

@@ -109,6 +109,10 @@ The hosted compiler embeds
 [the resolved types](../../../tools/limbo-bootstrap/STYX-TYPE-TABLE.md)
 in the owner image. The driver reads the lists from `.interface`. It checks
 that the same loader rejects a copy whose embedded signature was altered.
+The driver also changes a local import type while keeping its compiled
+signature, then checks that ordinary `load` refuses the provider despite
+the matching name and signature. A copy of the caller without any type
+table exercises the existing legacy import path.
 A zero seed raises an error. The next successful call verifies the
 original instance kept its call count. Expect
 `PASS mounted original argument list Dis` with and without JIT.

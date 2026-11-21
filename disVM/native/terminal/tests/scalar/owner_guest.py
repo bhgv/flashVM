@@ -45,10 +45,12 @@ def peer(binary, directory, image, mode, carrier, owner, calls, disconnect, moun
         "tuple": ("tuple.dis", "tuple-owner.dis", "transform"),
         "ref": ("ref.dis", "ref-owner.dis", "revise"),
         "list": ("blend.dis", "blend-owner.dis", "blend"),
+        "legacy-import": ("blend.dis", "blend-owner.dis", "blend"),
+        "import-shape-mismatch": ("blend.dis", "blend-owner.dis", "blend"),
         "refpair": ("refpair.dis", "refpair-owner.dis", "exchange"),
         "load-mismatch": ("blend.dis", "blend-scalar-owner.dis", "blend"),
     }
-    if mounted == "list":
+    if mounted in ("list", "legacy-import", "import-shape-mismatch"):
         env["DVM_TEST_SCALAR_COMPILED_TYPES"] = "1"
     if mounted in loaded_exports:
         publication, implementation, export = loaded_exports[mounted]
@@ -103,6 +105,10 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
                  "ref": "ref.dis", "list": "blend.dis", "refpair": "refpair.dis", "load-mismatch": "wrong-profile.dis"}.get(mounted, "mounted.dis" if mounted else "client.dis")
         if mounted in ("loaded-set", "loaded-set-reject"):
             image = "set.dis"
+        if mounted == "legacy-import":
+            image = "legacy-import.dis"
+        if mounted == "import-shape-mismatch":
+            image = "mismatched-import.dis"
         children.append(peer(binary, caller, image,
                              mode, right, False, calls, disconnect, mounted))
         left.close()
@@ -123,6 +129,31 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
             if child.poll() is None:
                 child.kill()
             child.communicate()
+
+
+# EN: Write one fixture with a changed import type or a mismatched trailer signature.
+# RU: Записать тестовый образ с изменённым типом или несовпадающей сигнатурой импорта.
+def mismatch_import_shape(source, target, change_signature=False):
+    image = bytearray(source.read_bytes())
+    index = image.rindex(b"STYXCS2!") + 8
+    while image[index:index+4] != b"\xff" * 4:
+        index += 10 + image[index+8] + image[index+9]
+    index += 4
+    matches = 0
+    while image[index:index+4] != b"\xff" * 4:
+        args, result = image[index+12:index+14]
+        if image[index+8:index+12] == bytes.fromhex("ff407097"):
+            if image[index+14:index+14+args] != b"(i(ib)b)":
+                raise RuntimeError("unexpected compiled caller Blend shape")
+            if change_signature:
+                image[index+8] ^= 1
+            else:
+                image[index+15] = ord("b")
+            matches += 1
+        index += 14 + args + result
+    if matches != 1 or index + 4 != len(image):
+        raise RuntimeError("no exact compiled Blend import shape to mutate")
+    target.write_bytes(image)
 
 
 # EN: Generate both ends from the original interface and compile the actual owner.
@@ -174,6 +205,15 @@ def main():
         trailer = corrupted.rindex(b"STYXCS1!")
         corrupted[trailer + 12] ^= 1
         (caller / "invalid-shape.dis").write_bytes(corrupted)
+        mismatch_import_shape(caller / "blend.dis", caller / "mismatched-import.dis")
+        client = (caller / "blend.dis").read_bytes()
+        (caller / "legacy-import.dis").write_bytes(client[:client.rindex(b"STYXCS2!")])
+        invalid_import = caller / "invalid-import.dis"
+        mismatch_import_shape(caller / "blend.dis", invalid_import, change_signature=True)
+        refused = subprocess.run([str(runtime), "--no-jit", invalid_import.name], cwd=caller,
+                                 capture_output=True, text=True, timeout=10)
+        if refused.returncode == 0 or "invalid compiled Styx type table" not in refused.stderr + refused.stdout:
+            raise RuntimeError("loader did not reject an import signature mismatch")
         (caller / "original-prefix").write_bytes((owner / "implementation.dis").read_bytes()[:14])
         (owner / "provider-secret").write_text("41")
         (caller / "provider-secret").write_text("900")
@@ -193,6 +233,15 @@ def main():
             exchange(binary, owner, caller, mode, "PASS mounted original tuple Dis", calls=0, mounted="tuple")
             exchange(binary, owner, caller, mode, "PASS mounted original ref Dis", calls=0, mounted="ref")
             exchange(binary, owner, caller, mode, "PASS mounted original argument list Dis", calls=0, mounted="list")
+            exchange(binary, owner, caller, mode, "PASS mounted original argument list Dis", calls=0,
+                     mounted="legacy-import")
+            shape_refusal = caller / "expect-import-shape-refusal"
+            shape_refusal.touch()
+            try:
+                exchange(binary, owner, caller, mode, "PASS mounted Dis rejects local import shape mismatch",
+                         calls=0, mounted="import-shape-mismatch")
+            finally:
+                shape_refusal.unlink()
             exchange(binary, owner, caller, mode, "PASS Styx profile from loaded export", calls=0, mounted="load-mismatch")
             for marker in marker_paths:
                 marker.write_bytes(b"0")

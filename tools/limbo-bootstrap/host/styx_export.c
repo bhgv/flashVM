@@ -1,11 +1,12 @@
 /* Copyright (c) 2026 bhgv
- * EN: Describe resolved int, big, tuple and scalar ADT reference exports.
- * RU: Описание разрешённых экспортов int, big, кортежей и скалярных ref ADT.
+ * EN: Describe resolved export and import types using the compiler linkage order.
+ * RU: Описание типов экспортов и импортов в порядке таблицы связей компилятора.
  */
 #include "limbo.h"
 #include "styx_export.h"
 
 #define SHAPE_MAX 48U /* Shape bytes excluding NUL, consistent with hosted Dis. */
+#define TABLE_MAX 65536U /* Limit for each section, including its final marker. */
 #define DEPTH_MAX 6U /* Per-value bound on nested compiler types. */
 
 
@@ -101,17 +102,24 @@ static int shape_function(const Type *type, Shape *args, Shape *result)
 }
 
 
-/* EN/RU: See styx_export.h. / См. styx_export.h. */
-void limbo_styx_export(Decl *module)
+/* EN: Write the shared signature and counted type fields of one record.
+ * RU: Записать общую сигнатуру и типы с длинами в одной записи. */
+static void write_shape(Decl *entry, const Shape *args, const Shape *result)
 {
-    if (IBY2WD != 8)
+    disword(sign(entry));
+    if (Bputc(bout, args->size) < 0 || Bputc(bout, result->size) < 0 ||
+        Bwrite(bout, args->text, args->size) != args->size ||
+        Bwrite(bout, result->text, result->size) != result->size)
     {
-        return;
+        fatal("cannot write compiled Styx types");
     }
-    if (Bwrite(bout, "STYXCS1!", 8) != 8)
-    {
-        fatal("cannot write Styx type table");
-    }
+}
+
+
+/* EN: Write the resolved exported types in the exact dismod order.
+ * RU: Записать разрешённые типы экспортов в порядке dismod. */
+static void write_exports(Decl *module)
+{
     unsigned long index = 0;
     size_t bytes = 4; /* Reserve the final record terminator. */
     for (Decl *entry = module->ty->tof->ids; entry; entry = entry->next, index++)
@@ -122,18 +130,69 @@ void limbo_styx_export(Decl *module)
             continue;
         }
         size_t record = 10 + args.size + result.size;
-        if (index >= 0xffffffffUL || record > 65536 - bytes)
+        if (index >= 0xffffffffUL || record > TABLE_MAX - bytes)
         {
             break;
         }
         bytes += record;
         disword(index);
-        disword(sign(entry));
-        if (Bputc(bout, args.size) < 0 || Bputc(bout, result.size) < 0 ||
-            Bwrite(bout, args.text, args.size) != args.size || Bwrite(bout, result.text, result.size) != result.size)
-        {
-            fatal("cannot write compiled Styx export types");
-        }
+        write_shape(entry, &args, &result);
     }
     disword(0xffffffffUL);
+}
+
+
+/* EN: Follow disldt exactly, including the positions of omitted entries.
+ * RU: Следовать порядку disldt, учитывая позиции пропущенных записей. */
+static void write_imports(Decl *ldts)
+{
+    size_t bytes = 4; /* Reserve the final group terminator. */
+    unsigned long group = 0;
+    for (Decl *table = ldts; table; table = table->next)
+    {
+        if (table->store != Dglobal || !table->init)
+        {
+            continue;
+        }
+        unsigned long index = 0;
+        for (Decl *entry = table->init->decl->ty->ids; entry; entry = entry->next, index++)
+        {
+            Shape args = {{0}, 0}, result = {{0}, 0};
+            if (!shape_function(entry->ty, &args, &result))
+            {
+                continue;
+            }
+            size_t record = 14 + args.size + result.size;
+            if (group >= 0xffffffffUL || index >= 0xffffffffUL || record > TABLE_MAX - bytes)
+            {
+                disword(0xffffffffUL);
+                return;
+            }
+            bytes += record;
+            disword(group);
+            disword(index);
+            write_shape(entry, &args, &result);
+        }
+        group++;
+    }
+    disword(0xffffffffUL);
+}
+
+
+/* EN/RU: See styx_export.h. / См. styx_export.h. */
+void limbo_styx_export(Decl *module, Decl *ldts)
+{
+    if (IBY2WD != 8)
+    {
+        return;
+    }
+    if (Bwrite(bout, ldts ? "STYXCS2!" : "STYXCS1!", 8) != 8)
+    {
+        fatal("cannot write Styx type table");
+    }
+    write_exports(module);
+    if (ldts)
+    {
+        write_imports(ldts);
+    }
 }

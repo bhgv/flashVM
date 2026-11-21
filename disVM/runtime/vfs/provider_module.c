@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "raise.h"
 #include "loader.h"
+#include "module_shapes.h"
 #include "scalar_files.h"
 #include "../../native/terminal/scalar_verify.h"
 #include "../../native/terminal/load_profile.h"
@@ -150,6 +151,7 @@ typedef struct ScalarImport
 {
     char name[INTERFACE_NAME_LIMIT + 1]; /* Copied compiled export name. */
     uint32_t signature; /* Copied compiled type signature. */
+    StyxCallShape shape; /* Optional independently compiled caller-side shape. */
 } ScalarImport;
 
 
@@ -214,7 +216,10 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         unsigned bit = styxloadedrequest(signature) &&
             !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
             styxscalar_profile_match_shape(profile, size, name, signature, &caller, &shape) : 0;
-        if (!bit || (bit & matched) || !(*tail = dvm_scalar_function_files(directory, name)))
+        const StyxCallShape *local = &imports[i].shape;
+        int shape_conflict = bit && shape.arguments[0] && local->arguments[0] &&
+            (strcmp(shape.arguments, local->arguments) || strcmp(shape.result, local->result));
+        if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
         {
             dvm_scalar_files_release(head);
             head = NULL;
@@ -222,7 +227,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         }
         (*tail)->signature = signature;
         (*tail)->caller = caller;
-        (*tail)->shape = shape;
+        (*tail)->shape = local->arguments[0] && shape.arguments[0] ? *local : shape;
         matched |= bit;
         tail = &(*tail)->next;
     }
@@ -268,6 +273,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     size_t count = 0;
     if (imports && imports != H)
     {
+        Module *caller = process && DVM_R.M && DVM_R.M != H ? DVM_R.M->m : NULL;
         for (; count < STYX_MOUNTED_EXPORT_LIMIT && imports[count].name; count++)
         {
             size_t length = styxscalar_name_length(imports[count].name);
@@ -275,6 +281,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
             {
                 memcpy(copied[count].name, imports[count].name, length);
                 copied[count].signature = (uint32_t)imports[count].sig;
+                dvm_module_import_shape(caller, imports, count, &copied[count].shape);
             }
         }
         if (imports[count].name)

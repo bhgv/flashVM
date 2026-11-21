@@ -8,8 +8,8 @@
 struct Decl;
 
 
-/* EN: Append the type table when the emitted image targets NC64.
- * RU: Добавить таблицу типов в образ для цели NC64. */
-void limbo_styx_export(struct Decl *module);
+/* EN: Append the type table for NC64, using resolved module exports and ldts.
+ * RU: Добавить таблицу типов экспортов module и импортов ldts для NC64. */
+void limbo_styx_export(struct Decl *module, struct Decl *ldts);
 
 #endif

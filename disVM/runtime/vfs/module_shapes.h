@@ -8,6 +8,7 @@
 #include "../../native/terminal/load_profile.h"
 
 struct Module;
+struct Import;
 
 
 /* EN: Attach a checked table after sourcepath's legacy NUL, if present.
@@ -20,5 +21,9 @@ int dvm_module_read_shapes(struct Module *module, const unsigned char *start, co
 /* EN: Copy one compiled schema by validated export ordinal, or return zero.
  * RU: Скопировать схему по проверенному порядковому номеру экспорта либо вернуть ноль. */
 int dvm_module_export_shape(const struct Module *module, size_t index, StyxCallShape *shape);
+
+/* EN: Copy one local compiled shape for the exact import group used by load.
+ * RU: Скопировать локальную схему для точной группы импортов текущего load. */
+int dvm_module_import_shape(const struct Module *module, const struct Import *imports, size_t index, StyxCallShape *shape);
 
 #endif
