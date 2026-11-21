@@ -48,4 +48,11 @@ int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *
 /* [GC:] EN: Release all decoded owners and clear the private frame.
  * RU: Освободить все декодированные ссылки и очистить частный кадр. */
 void dvm_styx_value_frame_clear(DVM_StyxValueFrame *frame);
+
+/* [GC:] EN: Encode an NC64 value list from borrowed slots with pinned managed
+ * owners. Writes one complete native S-record or preserves bytes and used.
+ * RU: Закодировать список NC64 из заимствованных слотов с удержанными
+ * владельцами. Выдать одну S-запись либо сохранить bytes и used при отказе. */
+int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void *slots,
+    size_t slot_size, void *bytes, size_t capacity, size_t *used);
 #endif

@@ -351,3 +351,120 @@ int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *
     *frame = decode.pending;
     return 1;
 }
+
+
+typedef struct FrameEncode
+{
+    StyxScalarLayout layout; /* Offsets and kinds of the borrowed source slots. */
+    const unsigned char *slots; /* Borrowed source; managed owners remain pinned. */
+    unsigned char *scratch; /* Separate buffer per tuple depth. */
+    size_t capacity; /* Size of each scratch region. */
+    size_t leaf; /* Next source slot in schema order. */
+} FrameEncode;
+
+
+/* [GC:] EN: Encode one checked scalar or managed slot into caller-owned scratch.
+ * RU: Кодировать один проверенный скалярный или управляемый слот в scratch. */
+static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
+    unsigned char *bytes, size_t capacity, size_t *used)
+{
+    size_t leaf = encode->leaf++;
+    const unsigned char *slot = encode->slots + encode->layout.offset[leaf];
+    if (encode->layout.pointers & (1U << leaf))
+    {
+        char type[5] = {0};
+        void *value;
+        if (end - shape >= (ptrdiff_t)sizeof(type))
+        {
+            return 0;
+        }
+        memcpy(type, shape, (size_t)(end - shape));
+        memcpy(&value, slot, sizeof(value));
+        return dvm_styx_managed_write(type, value, bytes, capacity, used);
+    }
+    int64_t value;
+    unsigned long tag;
+    switch (*shape)
+    {
+    case 'y':
+        return styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, *slot, bytes, capacity, used);
+    case 'i':
+        tag = STYX_CALL_INT_TAG;
+        break;
+    case 'b':
+        tag = STYX_CALL_BIG_TAG;
+        break;
+    case 'f':
+        tag = STYX_CALL_REAL_TAG;
+        break;
+    default:
+        return 0;
+    }
+    memcpy(&value, slot, sizeof(value));
+    return styxscalarwrite(tag, STYX_SCALAR_VALUE, value, bytes, capacity, used);
+}
+
+
+/* [GC:] EN: Encode ordered siblings; recurse into nonoverlapping tuple buffers.
+ * RU: Кодировать соседние поля по порядку, используя отдельные буферы кортежей. */
+static int encode_nodes(FrameEncode *encode, const char *shape, unsigned depth, size_t *size)
+{
+    if (depth >= 6)
+    {
+        return 0;
+    }
+    unsigned char *dest = encode->scratch + depth * encode->capacity;
+    size_t offset = 0;
+    while (*shape != ')')
+    {
+        const char *end = styxshape_end(shape);
+        size_t used;
+        if (!end)
+        {
+            return 0;
+        }
+        if (*shape == '(')
+        {
+            size_t child;
+            if (!encode_nodes(encode, shape + 1, depth + 1, &child) ||
+                fvm_srecord_write(STYX_CALL_TUPLE_TAG, dest + encode->capacity, child, dest + offset,
+                    encode->capacity - offset, &used) != FVM_S_OK)
+            {
+                return 0;
+            }
+        }
+        else if (encode->leaf == encode->layout.count ||
+            !encode_leaf(encode, shape, end, dest + offset, encode->capacity - offset, &used))
+        {
+            return 0;
+        }
+        offset += used;
+        shape = end;
+    }
+    *size = offset;
+    return 1;
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void *slots,
+    size_t slot_size, void *bytes, size_t capacity, size_t *used)
+{
+    FrameEncode encode = {.slots = slots};
+    if (!styxmanaged_layout(shape, &encode.layout) || (encode.layout.size && !slots) ||
+        encode.layout.size > slot_size || !bytes || !used || !capacity)
+    {
+        return 0;
+    }
+    encode.capacity = capacity < STYX_MANAGED_LIST_LIMIT ? capacity : STYX_MANAGED_LIST_LIMIT;
+    encode.scratch = malloc(6 * encode.capacity);
+    if (!encode.scratch)
+    {
+        return 0;
+    }
+    size_t size;
+    int ok = encode_nodes(&encode, shape + 1, 0, &size) && encode.leaf == encode.layout.count &&
+        styxmanaged_list_write(tag, shape, encode.scratch, size, bytes, capacity, used);
+    free(encode.scratch);
+    return ok;
+}

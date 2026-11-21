@@ -64,6 +64,10 @@ void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCa
  * RU: Записать поля без указателей в буфер NC64 и обнулить заполнители. */
 void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *values, void *frame);
 
+#define STYX_CALL_INT_TAG 1UL /* Signed Limbo int leaf. */
+#define STYX_CALL_BIG_TAG 2UL /* Signed Limbo big leaf. */
+#define STYX_CALL_TUPLE_TAG 4UL /* Ordered nested tuple. */
+#define STYX_CALL_REAL_TAG 5UL /* IEEE 754 binary64 bits. */
 #define STYX_CALL_BYTE_TAG 6UL /* Unsigned Limbo byte leaf. */
 #define STYX_MANAGED_LIST_LIMIT 65536U /* Maximum complete managed value record. */
 #define STYX_MANAGED_STRING_TAG 7UL /* Counted UTF-8 bytes. */

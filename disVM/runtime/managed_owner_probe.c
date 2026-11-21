@@ -181,6 +181,23 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
         !memcmp(string2c(frame_text), utf8, sizeof(utf8)) &&
         frame_array->len == 2 && frame_array->data[0] == 255 && frame_array->data[1] == 0,
         "decoded frame matches the original mixed arguments");
+    DVM_StyxValueFrame decoded = {0};
+    check(dvm_styx_value_frame_write(89, "(y(sa[y]))", frame.words, frame.layout.size,
+            frame_wire, sizeof(frame_wire), &wire_size) &&
+        dvm_styx_value_frame_read(89, "(y(sa[y]))", frame_wire, wire_size, &decoded),
+        "round-trip a nested mixed Styx frame");
+    String *nested_text;
+    Array *nested_array;
+    memcpy(&nested_text, &decoded.words[1], sizeof(nested_text));
+    memcpy(&nested_array, &decoded.words[2], sizeof(nested_array));
+    check(*(unsigned char *)decoded.words == 93 && nested_text != frame_text && nested_array != frame_array &&
+        !memcmp(string2c(nested_text), utf8, sizeof(utf8)) && nested_array->len == 2 &&
+        nested_array->data[0] == 255 && nested_array->data[1] == 0, "nested round-trip creates independent owners");
+    dvm_styx_value_frame_clear(&decoded);
+    const size_t complete_size = wire_size;
+    check(!dvm_styx_value_frame_write(89, "(y(sa[y]))", frame.words, frame.layout.size,
+            frame_wire, 1, &wire_size) && wire_size == complete_size,
+        "short frame encoder buffer preserves published size");
     dvm_styx_value_frame_clear(&frame);
     check(!frame.layout.count && !frame.words[1] && !frame.words[2], "retire decoded frame owners");
     check(fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, fields + n + m,

@@ -10,11 +10,7 @@
 #include "flashvm/srecord.h"
 #include <string.h>
 
-#define CALL_INT 1UL /* Signed int leaf. */
-#define CALL_BIG 2UL /* Signed big leaf. */
 #define CALL_PID 3UL /* Session-local caller PID. */
-#define CALL_TUPLE 4UL /* Nested tuple. */
-#define CALL_REAL 5UL /* IEEE 754 binary64 bit pattern. */
 
 const char styxcall_list_args[] = "(i(ib)b)"; /* Argument list: int, tuple, big. */
 const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,big)). */
@@ -24,8 +20,8 @@ const char styxcall_list_result[] = "((i(ib)))"; /* One return value: (int,(int,
  * RU: Сопоставить токен схемы с тегом вложенной записи. */
 static unsigned long node_tag(char type)
 {
-    return type == 'i' ? CALL_INT : type == 'b' ? CALL_BIG : type == 'f' ? CALL_REAL :
-        type == 'p' ? CALL_PID : type == 'y' ? STYX_CALL_BYTE_TAG : CALL_TUPLE;
+    return type == 'i' ? STYX_CALL_INT_TAG : type == 'b' ? STYX_CALL_BIG_TAG : type == 'f' ? STYX_CALL_REAL_TAG :
+        type == 'p' ? CALL_PID : type == 'y' ? STYX_CALL_BYTE_TAG : STYX_CALL_TUPLE_TAG;
 }
 
 
@@ -341,7 +337,7 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
         return value.tag == STYX_MANAGED_ARRAY_TAG &&
             managed_children(shape + 2, value.payload, value.size, 1, depth + 1);
     case '(':
-        return value.tag == CALL_TUPLE && managed_children(shape + 1, value.payload, value.size, 0, depth + 1);
+        return value.tag == STYX_CALL_TUPLE_TAG && managed_children(shape + 1, value.payload, value.size, 0, depth + 1);
     case 'i':
     case 'b':
     case 'f':
