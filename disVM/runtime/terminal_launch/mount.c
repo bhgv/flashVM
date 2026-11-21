@@ -3,6 +3,7 @@
  * RU: Запуск локальной программы Dis с двусторонним маунтом Styx в /peer.
  */
 #include "config.h"
+#include "offer.h"
 #include "caller_styx.h"
 #include "launch_send.h"
 #include "mount.h"
@@ -129,6 +130,53 @@ static DVM_LaunchAddress *resolve_launch(void *state)
 }
 
 
+/* EN: Read a bounded exact declaration without interpreting untrusted paths or tags.
+ * RU: Прочитать точное объявление без разбора недоверенных путей и тегов. */
+static const char *discover_launch(StyxClient *client)
+{
+    if (!styxclientretain(client))
+    {
+        return NULL;
+    }
+    DVM_Provider *offer = styxmountproviderat(client, ".interface", FVM_ACCESS_READ);
+    DVM_VfsHandle reader = {0};
+    if (!offer || dvm_provider_open(offer, ".", "r", &reader) != FVM_OK)
+    {
+        dvm_provider_release(offer);
+        return NULL;
+    }
+    unsigned char bytes[sizeof(DVM_STYX_LAUNCH_CONTEXT)];
+    size_t size = 0;
+    const char *profile = NULL;
+    while (size < sizeof(bytes))
+    {
+        DVM_IoResult read = dvm_vfs_read_chunk(&reader, bytes + size, sizeof(bytes) - size);
+        if (read.status != FVM_OK || !(read.flags & DVM_IO_PREFIX) || (read.flags & DVM_IO_UNCERTAIN))
+        {
+            break;
+        }
+        size += read.count;
+        if (!read.count || read.stop == DVM_IO_EOF)
+        {
+            if (size == sizeof(DVM_STYX_LAUNCH_CONTEXT) - 1 &&
+                !memcmp(bytes, DVM_STYX_LAUNCH_CONTEXT, size))
+            {
+                profile = DVM_STYX_LAUNCH_CONTEXT;
+            }
+            else if (size == sizeof(DVM_STYX_LAUNCH_RAW) - 1 &&
+                !memcmp(bytes, DVM_STYX_LAUNCH_RAW, size))
+            {
+                profile = DVM_STYX_LAUNCH_RAW;
+            }
+            break;
+        }
+    }
+    dvm_vfs_close(&reader);
+    dvm_provider_release(offer);
+    return profile;
+}
+
+
 /* EN: Consume an attached client and configure an exact optional launch route.
  * RU: Принять подключённый клиент и настроить точный маршрут запуска. */
 static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
@@ -136,7 +184,15 @@ static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
 {
     if (!entry)
     {
-        return styxcallermount(reverse, client, FVM_ACCESS_MASK);
+        const char *profile = discover_launch(client);
+        if (!profile)
+        {
+            return styxcallermount(reverse, client, FVM_ACCESS_MASK);
+        }
+        entry = DVM_STYX_LAUNCH_ENTRY;
+        request = DVM_STYX_LAUNCH_REQUEST;
+        tag = DVM_STYX_LAUNCH_TAG;
+        scoped = !strcmp(profile, DVM_STYX_LAUNCH_CONTEXT);
     }
     MountedLaunch *launch = calloc(1, sizeof(*launch));
     if (!launch || !styxclientretain(client))

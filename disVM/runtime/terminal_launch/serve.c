@@ -3,6 +3,8 @@
  * RU: Обслужить один запуск Dis, выбранный владельцем выданного транспорта Styx.
  */
 #include "config.h"
+#include "offer.h"
+#include "vfs/module_adapter.h"
 #include "unibus_server.h"
 #include "launch_receive.h"
 #include "program_record.h"
@@ -17,7 +19,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define OWNER_LAUNCH_TAG 17UL /* S-record tag accepted by the delegated one-shot service. */
 #define OWNER_WAIT_SECONDS 30 /* Bound initial admission even when the peer stays connected. */
 
 typedef struct Startup
@@ -59,7 +60,7 @@ static int receive_startup(DVM_Provider *inbox, Startup *startup)
     {
         return 0;
     }
-    StyxLaunchReceiver receiver = {.tag = OWNER_LAUNCH_TAG, .start_payload = save_startup,
+    StyxLaunchReceiver receiver = {.tag = DVM_STYX_LAUNCH_TAG, .start_payload = save_startup,
         .state = startup, .payload_limit = sizeof(startup->bytes)};
     unsigned char wire[64];
     int accepted = 0;
@@ -137,8 +138,11 @@ int dvm_styx_serve_cli(int argc, char **argv)
     {
         close(fd);
     }
-    StyxUnibusServer *server = mux ?
-        styxunibusserverstartfile(phybidirchannel(mux, 0), OWNER_LAUNCH_TAG, image) : NULL;
+    const char *declaration = scoped ? DVM_STYX_LAUNCH_CONTEXT : DVM_STYX_LAUNCH_RAW;
+    DVM_Provider *profile = mux ? dvm_module_adapter(declaration, strlen(declaration)) : NULL;
+    StyxUnibusServer *server = profile ?
+        styxunibusserverstartmodule(phybidirchannel(mux, 0), DVM_STYX_LAUNCH_TAG, image, profile) : NULL;
+    dvm_provider_release(profile);
     int published = image != NULL;
     dvm_provider_release(image);
     StyxClient *reverse = server && scoped ?
@@ -150,7 +154,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
     {
-        strcpy(handoff.description.module, "implementation.dis");
+        strcpy(handoff.description.module, DVM_STYX_LAUNCH_ENTRY);
         handoff.description.argument_bytes = startup.size;
         handoff.arguments = startup.bytes;
         result = dvm_runtime_main_with_handoff(argc - separator, argv + separator, &handoff);

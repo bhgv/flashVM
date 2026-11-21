@@ -171,7 +171,7 @@ The [Limbo example](../examples/remote-scalar/styx-cli.b) and
 both VM execution modes. Configure the native SDK test build with
 `INFERNO_DISVM_TERMINAL_CLI` pointing to the SDK-enabled DisVM executable.
 
-To enable launch submission on the same mount, specify the provider's
+For peers without the built-in launch declaration, configure an explicit
 program entry, writable request file and S-record tag:
 
 ```sh
@@ -204,8 +204,12 @@ tag 17 at `.unibus`. Start the caller with its descriptor of the same
 connection:
 
 ```sh
-disvm --styx-mount-fd 3 --launch implementation.dis .unibus 17 -- caller.dis
+disvm --styx-mount-fd 3 -- caller.dis
 ```
+
+The mount recognizes the owner's read-only `.interface` declaration,
+then pins the program and request files automatically. An explicit
+`--launch` or `--launch-context` takes precedence over discovery.
 
 The owner runs its configured image and exposes the accepted bytes to
 `Launchcontext.arguments()`. The complete record must fit the one-shot
@@ -220,7 +224,7 @@ Use the context profile on both ends of the same delegated connection:
 
 ```sh
 disvm --styx-serve-fd 3 --context -- owner.dis
-disvm --styx-mount-fd 3 --launch-context implementation.dis .unibus 17 -- caller.dis
+disvm --styx-mount-fd 3 -- caller.dis
 ```
 
 The Limbo caller uses the same `Vfsnative.runargs` call. DisVM publishes

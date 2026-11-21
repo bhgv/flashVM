@@ -55,8 +55,7 @@ def main():
                 owner.close()
                 try:
                     result = subprocess.run(
-                        [runtime, "--styx-mount-fd", str(caller.fileno()),
-                         "--launch", "implementation.dis", ".unibus", "17", "--", mode, image],
+                        [runtime, "--styx-mount-fd", str(caller.fileno()), "--", mode, image],
                         pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=20)
                     caller.close()
                     out, err = peer.communicate(timeout=10)
@@ -80,8 +79,7 @@ def main():
                 owner.close()
                 try:
                     result = subprocess.run(
-                        [runtime, "--styx-mount-fd", str(caller.fileno()),
-                         "--launch-context", "implementation.dis", ".unibus", "17", "--", mode, image],
+                        [runtime, "--styx-mount-fd", str(caller.fileno()), "--", mode, image],
                         pass_fds=(caller.fileno(),), cwd=work, stdin=input_stream, stdout=output_stream,
                         stderr=subprocess.PIPE, text=True, timeout=40)
                     caller.close()

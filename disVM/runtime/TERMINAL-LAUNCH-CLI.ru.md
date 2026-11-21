@@ -20,8 +20,8 @@ disvm --styx-mount-fd 3 -- --no-jit caller.dis
 без него. Укажите в настройке тестовой сборки SDK
 `INFERNO_DISVM_TERMINAL_CLI` со ссылкой на исполняемый DisVM с этим SDK.
 
-Для отправки запуска по тому же маунту укажите путь программы, файл
-запросов на запись и тег S-записи.
+Если провайдер не публикует штатное объявление, можно явно указать
+путь программы, файл запросов на запись и тег S-записи.
 
 ```sh
 disvm --styx-mount-fd 3 --launch app.dis submit 17 -- caller.dis
@@ -51,8 +51,12 @@ disvm --styx-serve-fd 3 -- owner.dis
 тегом 17 в `.unibus`. Запустите клиента с его концом соединения.
 
 ```sh
-disvm --styx-mount-fd 3 --launch implementation.dis .unibus 17 -- caller.dis
+disvm --styx-mount-fd 3 -- caller.dis
 ```
+
+Маунт читает объявление владельца из `.interface` и автоматически
+закрепляет программу и файл запросов. Явные параметры `--launch` и
+`--launch-context` имеют приоритет.
 
 Владелец запускает указанный образ и выдаёт принятые байты через
 `Launchcontext.arguments()`. Полная запись должна уместиться в
@@ -67,7 +71,7 @@ disvm --styx-mount-fd 3 --launch implementation.dis .unibus 17 -- caller.dis
 
 ```sh
 disvm --styx-serve-fd 3 --context -- owner.dis
-disvm --styx-mount-fd 3 --launch-context implementation.dis .unibus 17 -- caller.dis
+disvm --styx-mount-fd 3 -- caller.dis
 ```
 
 Программа Limbo вызывает тот же `Vfsnative.runargs`. Перед отправкой

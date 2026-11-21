@@ -23,3 +23,9 @@ The TCP example exercises a bound route, owner-side `init` and exit-status
 reading in interpreter and JIT. An opted-in owner delivers binary bytes to the command's
 `Launchcontext.arguments()` in `init`. Ordinary command integration and
 transparent remote library calls remain open.
+
+
+The [bidirectional DisVM mount](TERMINAL-LAUNCH-CLI.md) discovers the
+one-shot launch declaration on a delegated connection. Its scoped
+profile installs `.prog/.self` and available numbered caller descriptors
+before the owner enters `init`.
