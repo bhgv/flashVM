@@ -137,6 +137,10 @@ void dvm_provider_release(DVM_Provider *provider)
     {
         dvm_provider_capture_detach(provider);
         provider->ops->destroy(provider->state);
+        if (provider->caller.release)
+        {
+            provider->caller.release(provider->caller.state);
+        }
         dvm_provider_release(provider->origin);
         dvm_changes_destroy(provider->changes);
         fvm_port_sync_destroy(provider->lock);

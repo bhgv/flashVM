@@ -64,14 +64,15 @@ typedef struct DVM_CallerBinding
 {
     void *(*begin)(void *state, DVM_Provider *target, DVM_Provider *tree); /* Start reverse publication. */
     void (*end)(void *state, void *lease); /* Retire one active publication. */
-    void *state; /* Borrowed context valid through the bound provider. */
+    void *state; /* Context held by the bound provider. */
+    void (*release)(void *state); /* Optional owned context retirement. */
 } DVM_CallerBinding;
 
 
 /* EN: Install once on an exclusively owned unpublished native provider.
- * The host keeps callback context alive through the provider and its captures.
+ * On success adopts the context when release is provided. Failure leaves ownership intact.
  * RU: Установить один раз на свой неопубликованный нативный провайдер.
- * Хост удерживает контекст до освобождения провайдера и его захватов. */
+ * При успехе принимает контекст с release. При отказе владение сохраняется. */
 int dvm_provider_bind_caller(DVM_Provider *provider, const DVM_CallerBinding *binding);
 
 

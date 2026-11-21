@@ -131,10 +131,10 @@ cancellably prevents submission. The fixture verifies `.vfs/env/CLIENT` and `.va
 Styx for both callers.
 
 The SDK supplies a generic reverse server. Start it with
-`styxcallerserver` on the reverse carrier channel and use `styxcallerbind`
-on the fresh forward provider. Mount the reverse channel at the provider
-and pass its root to `program_method`. On carrier shutdown, retire the
-forward mount and call `styxcallerjoin`. The test uses these same APIs
+`styxcallerserver` on the reverse carrier channel and pass its control with the attached forward client to
+`styxcallermount`. The returned mount inherits the reverse session. Mount the reverse channel at the provider
+and pass its root to `program_method`. On carrier shutdown call `styxcallerjoin`. A mount or captured export can
+outlive the control. It retains the stopped state and rejects new calls. The test uses these same APIs
 and reads the granted files through the provider's selected `.self`.
 
 Each reverse session admits one scoped call at a time, with up to 511

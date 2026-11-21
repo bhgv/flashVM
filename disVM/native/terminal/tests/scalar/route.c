@@ -307,14 +307,10 @@ static void mounted_function(void)
     StyxClient *client = styxclientmountphy(forward_client, 256, "caller", "", 3000, 4);
     check(client != NULL, "mount function server");
 #ifdef STYX_SCALAR_GUEST
-    DVM_Provider *mount = styxmountprovider(client, FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC);
-    check(mount != NULL, "ordinary Styx mount");
-    if (getenv("DVM_TEST_SCALAR_CALLER"))
-    {
-        check(styxcallerbind(reverse, mount), "bind the fixture caller publication");
-    }
+    unsigned access = FVM_ACCESS_READ | FVM_ACCESS_WRITE | FVM_ACCESS_EXEC;
+    DVM_Provider *mount = reverse ? styxcallermount(reverse, client, access) : styxmountprovider(client, access);
+    check(mount != NULL, "ordinary or bidirectional Styx mount");
     scalar_guest_mounted(mount);
-    dvm_provider_release(mount);
 #else
     StyxFid *profile = styxclientwalk(client, "mounted/compute.dis/.interface");
     unsigned char offer[STYX_SCALAR_INTERFACE_CAPACITY];
@@ -376,9 +372,13 @@ static void mounted_function(void)
     {
         dvm_provider_release(function.program_root);
         styxcallerjoin(reverse);
+        DVM_CallerBinding binding;
+        check(dvm_provider_caller_binding(mount, &binding) && !binding.begin(binding.state, mount, mount),
+            "still-live mount rejects publication after server retirement");
         phybidirfree(caller);
         phybidirfree(provider);
     }
+    dvm_provider_release(mount);
 #endif
 }
 

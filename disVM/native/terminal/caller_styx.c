@@ -8,6 +8,7 @@
 #include "caller_styx.h"
 #include "server.h"
 #include "file_provider.h"
+#include "mount.h"
 #include "tree.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -20,6 +21,8 @@ struct StyxCallerServer
     Styxserver server; /* Owned original Styx dispatcher. */
     pthread_t worker; /* Owns dispatcher, nodes and stat scratch. */
     pthread_mutex_t lock; /* Serializes publication and root snapshot. */
+    size_t references; /* Control and bound mount owners, under lock. */
+    int stopped; /* Worker finished and cannot publish again. */
     DVM_Provider *active; /* Borrowed from the synchronous call lease. */
     Path generation; /* Monotonic publication serial. */
     Path observed; /* Last generation observed by dispatcher. */
@@ -45,7 +48,7 @@ static void *begin(void *state, DVM_Provider *target, DVM_Provider *tree)
     StyxCallerServer *server = state;
     (void)target;
     pthread_mutex_lock(&server->lock);
-    int accepted = !server->active && server->generation < (~(Path)0 - 1) / CALLER_NODES;
+    int accepted = !server->stopped && !server->active && server->generation < (~(Path)0 - 1) / CALLER_NODES;
     if (accepted)
     {
         server->active = tree;
@@ -330,6 +333,9 @@ static void *serve(void *state)
     }
     styxend(&owner->server);
     clear(owner);
+    pthread_mutex_lock(&owner->lock);
+    owner->stopped = 1;
+    pthread_mutex_unlock(&owner->lock);
     owner = NULL;
     return NULL;
 }
@@ -346,6 +352,7 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
         phyfree(reverse);
         return NULL;
     }
+    server->references = 1;
     if (styxphyinit(&server->server, &operations, reverse, 0555, 0, 8))
     {
         pthread_mutex_destroy(&server->lock);
@@ -363,23 +370,72 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
 }
 
 
-/* EN/RU: See caller_styx.h. No server ownership moves into the provider.
- * См. caller_styx.h. Провайдер заимствует сервер. */
-int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
+/* EN: Release one control or provider reference without joining the worker.
+ * RU: Снять ссылку управления или провайдера без ожидания потока. */
+static void drop(void *state)
 {
-    DVM_CallerBinding binding = {.begin = begin, .end = end, .state = server};
-    return server && dvm_provider_bind_caller(forward, &binding);
+    StyxCallerServer *server = state;
+    pthread_mutex_lock(&server->lock);
+    int last = --server->references == 0;
+    pthread_mutex_unlock(&server->lock);
+    if (last)
+    {
+        pthread_mutex_destroy(&server->lock);
+        free(server);
+    }
 }
 
 
-/* EN/RU: See caller_styx.h. No mount may still borrow the server.
- * См. caller_styx.h. Маунты уже не используют сервер. */
+/* EN/RU: See caller_styx.h. On successful binding the provider owns a pin.
+ * См. caller_styx.h. При успехе провайдер владеет ссылкой. */
+int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
+{
+    if (!server)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&server->lock);
+    int retained = !server->stopped && server->references < (size_t)-1;
+    if (retained)
+    {
+        server->references++;
+    }
+    pthread_mutex_unlock(&server->lock);
+    if (!retained)
+    {
+        return 0;
+    }
+    DVM_CallerBinding binding = {.begin = begin, .end = end, .state = server, .release = drop};
+    if (!dvm_provider_bind_caller(forward, &binding))
+    {
+        drop(server);
+        return 0;
+    }
+    return 1;
+}
+
+
+/* EN/RU: See caller_styx.h. Do not expose a partially configured mount.
+ * См. caller_styx.h. Публиковать только полностью настроенный маунт. */
+DVM_Provider *styxcallermount(StyxCallerServer *server, StyxClient *forward, unsigned access)
+{
+    DVM_Provider *mount = styxmountprovider(forward, access);
+    if (!mount || !styxcallerbind(server, mount))
+    {
+        dvm_provider_release(mount);
+        return NULL;
+    }
+    return mount;
+}
+
+
+/* EN/RU: See caller_styx.h. The references held by mounts retire independently.
+ * См. caller_styx.h. Ссылки маунтов освобождаются независимо. */
 void styxcallerjoin(StyxCallerServer *server)
 {
     if (server)
     {
         pthread_join(server->worker, NULL);
-        pthread_mutex_destroy(&server->lock);
-        free(server);
+        drop(server);
     }
 }
