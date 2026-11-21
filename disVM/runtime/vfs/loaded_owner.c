@@ -15,10 +15,10 @@
 #include "namespace.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
+#include "scalar_direct.h"
 #include "vfsnative_decl.h"
 #include "raise.h"
 #include "../../native/terminal/load_profile.h"
-#include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/scalar_verify.h"
 #include <string.h>
@@ -52,10 +52,9 @@ typedef struct GatewayOwner
 } GatewayOwner;
 
 
-/* EN: Verify that the original export reserves all incoming scalar words and
- * that the pointer bits match the expected scalar-only or ref-only layout.
- * RU: Проверить размер кадра и соответствие карты раскладке скаляров или ref. */
-static int gateway_frame(const Type *frame, size_t arguments, int references)
+/* EN: Check the original export's argument extent and exact argument reference bits.
+ * RU: Проверить размер области аргументов экспорта и точную карту ссылок в ней. */
+static int gateway_frame(const Type *frame, size_t arguments, unsigned char references)
 {
     const size_t first_cell = 8;
     if (frame->size < 0 || (size_t)frame->size < (first_cell + arguments) * sizeof(WORD) || frame->np < 0)
@@ -65,7 +64,7 @@ static int gateway_frame(const Type *frame, size_t arguments, int references)
     for (size_t i = first_cell; i < first_cell + arguments; i++)
     {
         int pointer = i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8)));
-        if (pointer != references)
+        if (pointer != !!(references & (0x80U >> (i - first_cell))))
         {
             return 0;
         }
@@ -137,14 +136,10 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
             if (tag == STYX_DYNAMIC_REQUEST_TAG)
             {
                 size_t leaves, result;
-                StyxScalarLayout layout;
+                unsigned char references;
                 if (!gateway || !styxshapecells(shape, &leaves, &result) ||
-                    !styxscalar_layout(shape->arguments, &layout))
-                {
-                    break;
-                }
-                slot = (layout.size + sizeof(WORD) - 1) / sizeof(WORD);
-                if (!gateway_frame(export->frame, slot, 0))
+                    !dvm_styx_frame_layout(shape->arguments, &slot, &references) ||
+                    references || !gateway_frame(export->frame, slot, references))
                 {
                     break;
                 }
@@ -154,7 +149,11 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
             else if (tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG)
             {
                 size_t refs = tag == STYX_REF_REQUEST_TAG ? 1 : 2;
-                if (!styxloadedrequest(*signature) && (!gateway || !gateway_frame(export->frame, refs, 1)))
+                size_t words;
+                unsigned char references;
+                if (!styxloadedrequest(*signature) && (!gateway ||
+                    !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
+                    words != refs || !gateway_frame(export->frame, words, references)))
                 {
                     break;
                 }

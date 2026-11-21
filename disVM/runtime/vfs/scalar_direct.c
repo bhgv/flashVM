@@ -21,6 +21,28 @@ _Static_assert(offsetof(DirectCallListFrame, arguments) == 64 && sizeof(DirectCa
     "compiled NC64 argument-list frame");
 
 
+/* EN/RU: See scalar_direct.h. / См. scalar_direct.h. */
+int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *pointers)
+{
+    StyxScalarLayout layout;
+    if (!styxmanaged_layout(shape, &layout) || layout.size > 8 * sizeof(WORD))
+    {
+        return 0;
+    }
+    unsigned char mask = 0;
+    for (size_t i = 0; i < layout.count; i++)
+    {
+        if (layout.pointers & (1U << i))
+        {
+            mask |= (unsigned char)(0x80U >> (layout.offset[i] / sizeof(WORD)));
+        }
+    }
+    *words = (layout.size + sizeof(WORD) - 1) / sizeof(WORD);
+    *pointers = mask;
+    return 1;
+}
+
+
 /* EN/RU: Give each native Link its own stable route ordinal.
  * Назначить каждому нативному Link постоянный номер маршрута. */
 #define SCALAR_SLOT(index) \
@@ -78,10 +100,16 @@ static int build_direct(void *opaque)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
-        if (entry && entry->dynamic && !entry->ref_profile)
+        if (entry && entry->dynamic)
         {
-            size_t size = offsetof(DirectCallListFrame, arguments) + entry->argument_cells * sizeof(WORD);
-            Type *type = dtype(freeheap, size, NULL, 0);
+            size_t words;
+            uchar map[] = {0, 0};
+            if (!dvm_styx_frame_layout(entry->shape.arguments, &words, &map[1]))
+            {
+                return 0;
+            }
+            size_t size = offsetof(DirectCallListFrame, arguments) + words * sizeof(WORD);
+            Type *type = dtype(freeheap, size, map[1] ? map : NULL, map[1] ? sizeof(map) : 0);
             if (!type)
             {
                 return 0;

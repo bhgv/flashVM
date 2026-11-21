@@ -224,15 +224,9 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         if (dynamic && bit)
         {
             ref_profile = styxshaperef(&shape, &result);
-            StyxScalarLayout layout;
-            if (!local->arguments[0] || (!ref_profile &&
-                (!styxshapecells(&shape, &arguments, &result) || !styxscalar_layout(shape.arguments, &layout))))
+            if (!local->arguments[0] || (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
             {
                 bit = 0;
-            }
-            else if (!ref_profile)
-            {
-                arguments = (layout.size + sizeof(WORD) - 1) / sizeof(WORD);
             }
         }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
@@ -253,7 +247,6 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->explicit_end = explicit_end;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;
-        (*tail)->argument_cells = arguments;
         (*tail)->result_cells = result;
         (*tail)->shape = local->arguments[0] && shape.arguments[0] ? *local : shape;
         matched |= bit;

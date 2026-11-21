@@ -50,6 +50,10 @@ typedef struct DirectRefPairFrame
     void *objects[2]; /* Two rooted references, possibly aliased. */
 } DirectRefPairFrame;
 
+/* EN: Derive the NC64 argument extent and reference bits from a checked shape.
+ * RU: Вычислить размер аргументов NC64 и карту ссылок по проверенной схеме. */
+int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *pointers);
+
 struct DVM_ScalarFiles;
 
 /* EN: Transfer two mapped references with their identity map.

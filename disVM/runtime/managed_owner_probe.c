@@ -20,6 +20,8 @@
 #include "thread_port.h"
 #include "channel_sync.h"
 #include "vfs/managed_value.h"
+#include "isa.h"
+#include "vfs/scalar_direct.h"
 #include "../native/terminal/call_record.h"
 #include "../native/terminal/scalar_record.h"
 #include <stdio.h>
@@ -143,6 +145,10 @@ static int error_scope(void *argument)
  * RU: Декодировать записи, удержать локальные значения и запустить GC с корнями билетов. */
 static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
 {
+    size_t words;
+    unsigned char pointers;
+    check(dvm_styx_frame_layout("(ys(a[b]y)r[ib])", &words, &pointers) &&
+        words == 5 && pointers == 0x68, "derive exact argument reference bits for mixed Styx frame");
     const unsigned char utf8[] = {0xd0, 0x96, 0, 0x61};
     unsigned char encoded[64];
     size_t first, second;
