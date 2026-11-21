@@ -198,7 +198,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
         return 0;
     }
     uint32_t signature = styxscalar_request_signature(module->function.request_tag);
-    if (!signature || module->function.reply_tag != STYX_FUNCTION_REPLY_TAG)
+    if (!signature || module->function.reply_tag != styxfunction_reply_tag(module->function.request_tag))
     {
         return 1;
     }
@@ -206,7 +206,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
     styxscalar_interface_header(header, signature);
     size_t length = styxscalar_name_length(entry->name);
     size_t used;
-    unsigned long tag = (module->function.caller_method || module->function.program_method) ? STYX_FUNCTION_CALLER_PROFILE : STYX_FUNCTION_PROFILE_TAG;
+    unsigned long tag = (module->function.caller_method || module->function.program_root) ? STYX_FUNCTION_CALLER_PROFILE : STYX_FUNCTION_PROFILE_TAG;
     if (!length || fvm_srecord_write_pair(tag, header, sizeof(header), entry->name, length,
             directory->interface + directory->interface_size,
             sizeof(directory->interface) - directory->interface_size, &used) != FVM_S_OK)
@@ -316,23 +316,13 @@ static int configure(MountedExport *module, const StyxMountedScalar *entry)
     if (entry->native)
     {
         module->function = *entry->native;
-        const StyxScalarFunction *fn = &module->function;
-        int scoped = fn->caller_method || fn->program_method;
-        if (!!fn->program_root != !!fn->program_method || (fn->caller_method && fn->program_method))
-        {
-            return 0;
-        }
-        int caller_tag = fn->request_tag == STYX_FUNCTION_CALLER_TAG || fn->request_tag == STYX_FUNCTION_BIG_CALLER_TAG;
-        return scoped ? !fn->method && caller_tag &&
-            fn->reply_tag == STYX_FUNCTION_REPLY_TAG :
-            fn->method && !caller_tag && fn->request_tag && fn->reply_tag &&
-            fn->request_tag <= UINT32_MAX && fn->reply_tag <= UINT32_MAX;
+        return styxscalarfunctionvalid(&module->function);
     }
     module->owner.request_tag = entry->dis_big ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG;
     module->owner.request = styxunibusmailbox(module->owner.request_tag);
     module->owner.reply = styxunibusmailbox(STYX_FUNCTION_REPLY_TAG);
     module->function = (StyxScalarFunction){
-        module->owner.request_tag, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner, NULL, NULL, NULL
+        module->owner.request_tag, STYX_FUNCTION_REPLY_TAG, styxscalarfunctiondispatch, &module->owner, NULL, NULL, NULL, NULL
     };
     return module->owner.request && module->owner.reply;
 }

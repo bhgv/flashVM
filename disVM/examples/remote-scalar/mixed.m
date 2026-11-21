@@ -4,5 +4,6 @@
 Mixed: module {
     compute: fn(value: int): int; # Scoped int / int с контекстом.
     wide: fn(value: big): big; # Scoped big / big с контекстом.
+    pair: fn(value: (int,big)): (int,big); # Composed argument and result.
     raw: fn(value: big): big; # Unscoped big / big без контекста.
 };

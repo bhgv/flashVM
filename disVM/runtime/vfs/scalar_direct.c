@@ -54,7 +54,7 @@ static int build_direct(void *opaque)
 {
     DirectBuild *build = opaque;
     Module *module = build->module = newmod(build->path);
-    module->type = calloc(1, sizeof(*module->type));
+    module->type = calloc(2, sizeof(*module->type));
     size_t count = 1;
     for (DVM_ScalarFiles *entry = build->files; entry && entry->next; entry = entry->next)
     {
@@ -77,7 +77,17 @@ static int build_direct(void *opaque)
     {
         char *name = entry && entry->duplex ? entry->name : build->name;
         uint32_t signature = entry && entry->duplex ? entry->signature : DVM_SCALAR_INT_SIGNATURE;
-        runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i], frame);
+        if (signature == DVM_TUPLE_SIGNATURE && !module->type[1])
+        {
+            module->type[1] = dtype(freeheap, sizeof(DirectTupleFrame), NULL, 0);
+            if (!module->type[1])
+            {
+                return 0;
+            }
+            module->ntype = 2;
+        }
+        runtime(module, &module->ext[i], name, (int32_t)signature, scalar_slots[i],
+            signature == DVM_TUPLE_SIGNATURE ? module->type[1] : frame);
         entry = entry ? entry->next : NULL;
     }
     return 1;

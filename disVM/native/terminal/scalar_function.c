@@ -18,16 +18,43 @@ typedef struct FunctionFid
     int report_transport_failure; /* Interpret negative service status as missing reply. */
     int submitted;              /* A validated request reached the method. */
     size_t size;                 /* Reply length, zero before an accepted request. */
-    unsigned char reply[STYX_SCALAR_RECORD_CAPACITY]; /* Immutable encoded response. */
+    unsigned char reply[STYX_FUNCTION_FRAME_CAPACITY]; /* Immutable encoded response. */
 } FunctionFid;
+
+
+/* EN: Verify exactly one compatible typed or legacy callback.
+ * RU: Проверить ровно один совместимый типизированный или прежний callback. */
+int styxscalarfunctionvalid(const StyxScalarFunction *fn)
+{
+    if (!fn || !fn->request_tag || !fn->reply_tag ||
+        fn->request_tag > UINT32_MAX || fn->reply_tag > UINT32_MAX)
+    {
+        return 0;
+    }
+    if (fn->tuple_method)
+    {
+        return !fn->method && !fn->caller_method && !fn->program_method &&
+            fn->reply_tag == STYX_TUPLE_REPLY_TAG &&
+            (fn->program_root ? fn->request_tag == STYX_TUPLE_CALLER_TAG :
+                fn->request_tag == STYX_TUPLE_REQUEST_TAG);
+    }
+    if (styxscalar_request_signature(fn->request_tag) == DVM_TUPLE_SIGNATURE ||
+        !!fn->program_root != !!fn->program_method || (fn->caller_method && fn->program_method))
+    {
+        return 0;
+    }
+    int scoped = fn->caller_method || fn->program_method;
+    int caller_tag = fn->request_tag == STYX_FUNCTION_CALLER_TAG || fn->request_tag == STYX_FUNCTION_BIG_CALLER_TAG;
+    return scoped ? !fn->method && caller_tag && fn->reply_tag == STYX_FUNCTION_REPLY_TAG :
+        fn->method && !caller_tag;
+}
 
 
 /* EN/RU: Install private state on the current server fid for ORDWR only.
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
 char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure)
 {
-    if (mode != ORDWR || !function || (!function->method && !function->caller_method && !function->program_method) || !function->request_tag ||
-        !function->reply_tag || function->request_tag > UINT32_MAX || function->reply_tag > UINT32_MAX)
+    if (mode != ORDWR || !styxscalarfunctionvalid(function))
     {
         return Eperm;
     }
@@ -64,16 +91,46 @@ static DVM_Provider *capture_self(DVM_Provider *root, uint32_t pid)
 }
 
 
+/* EN: Decode a complete tuple before dispatch, then encode its result or error.
+ * RU: Проверить полный кортеж перед вызовом, затем закодировать результат или ошибку. */
+static char *tuple_call(FunctionFid *fid, const char *bytes, size_t count)
+{
+    const StyxScalarFunction *fn = &fid->function;
+    StyxTuple argument, result = {0};
+    uint32_t pid;
+    if (!styxtupleread(fn->request_tag, bytes, count, &pid, &argument))
+    {
+        return Ebadarg;
+    }
+    DVM_Provider *self = pid ? capture_self(fn->program_root, pid) : NULL;
+    if (pid && !self)
+    {
+        return Eperm;
+    }
+    fid->submitted = 1;
+    int outcome = fn->tuple_method(fn->state, self, &argument, &result);
+    dvm_provider_release(self);
+    int encoded = outcome == 1 ?
+        styxtuplewrite(fn->reply_tag, 0, &result, fid->reply, sizeof(fid->reply), &fid->size) :
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
+    return encoded ? nil : Ebadarg;
+}
+
+
 /* EN/RU: Validate one whole request at offset zero and store the method's reply.
  * Проверить полный запрос по смещению ноль и сохранить ответ метода. */
 char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
 {
     FunctionFid *fid = state;
-    if (!fid || fid->submitted || offset || count > STYX_SCALAR_RECORD_CAPACITY)
+    if (!fid || fid->submitted || offset || count > STYX_FUNCTION_FRAME_CAPACITY)
     {
         return Ebadarg;
     }
     const StyxScalarFunction *function = &fid->function;
+    if (function->tuple_method)
+    {
+        return tuple_call(fid, bytes, count);
+    }
     int scoped = function->caller_method || function->program_method;
     uint32_t signature = styxscalar_request_signature(function->request_tag);
     int narrow = signature == DVM_SCALAR_INT_SIGNATURE && function->reply_tag == STYX_FUNCTION_REPLY_TAG;

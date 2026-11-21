@@ -51,4 +51,5 @@ target_sources(disvm PRIVATE "${root}/disVM/native/terminal/scalar_verify.c" "${
 target_sources(disvm PRIVATE vfs/scalar_call.c vfs/scalar_owner.c vfs/scalar_files.c vfs/scalar_direct.c vfs/program_view.c vfs/program_publication.c
     "${root}/disVM/native/terminal/record_write.c"
     "${root}/disVM/native/terminal/scalar_record.c"
+    "${root}/disVM/native/terminal/tuple_record.c"
     "${root}/disVM/native/terminal/scalar_route.c")

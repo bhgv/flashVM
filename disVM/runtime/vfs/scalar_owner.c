@@ -20,6 +20,23 @@
 #include <string.h>
 
 
+extern char *dvm_runtime_file_path(String *name); /* Borrowed path while the calling frame is rooted. */
+
+
+/* EN/RU: Copy a validated guest spelling before releasing managed admission.
+ * Скопировать проверенный путь гостя до выхода из допуска VM. */
+int dvm_scalar_copy_path(String *name, char output[DVM_NS_PATH_LIMIT])
+{
+    char *path = dvm_runtime_file_path(name);
+    if (!path || !*path || strlen(path) >= DVM_NS_PATH_LIMIT)
+    {
+        return 0;
+    }
+    strcpy(output, path);
+    return 1;
+}
+
+
 /* EN: Return one owned local link for the supplied compiled import list.
  * RU: Вернуть свою локальную связь для списка компилированных импортов. */
 static Modlink *link_owner(char *path, Import *imports)

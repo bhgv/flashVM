@@ -209,7 +209,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         const char *name = imports[i].name;
         int caller = 0;
         uint32_t signature = imports[i].signature;
-        unsigned bit = (signature == DVM_SCALAR_INT_SIGNATURE || signature == DVM_SCALAR_BIG_SIGNATURE) &&
+        unsigned bit = (signature == DVM_SCALAR_INT_SIGNATURE || signature == DVM_SCALAR_BIG_SIGNATURE || signature == DVM_TUPLE_SIGNATURE) &&
             !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..") && strcmp(name, ".interface") ?
             styxscalar_profile_match(profile, size, name, imports[i].signature, &caller) : 0;
         if (!bit || (bit & matched) || !(*tail = dvm_scalar_function_files(directory, name)))

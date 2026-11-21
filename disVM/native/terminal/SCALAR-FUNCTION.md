@@ -179,3 +179,20 @@ The original-Dis owner service also supports a single `big` export.
 The [mixed interface](../../examples/remote-scalar/mixed.m) and
 `terminal-caller-mount-cli` exercise both big profiles, the signed
 64-bit endpoints and refusal of an incompatible import.
+
+## Tuple argument and result
+
+Native mounted functions support the compiled Limbo signature
+`fn((int,big)): (int,big)`. Set `tuple_method` with request tag 78 and
+reply tag 79. With `program_root`, use request tag 80. The dispatcher
+borrows the selected `.self` for that callback.
+
+The payload contains ordered S-records for signed `int` (field tag 1)
+and `big` (field tag 2). Scoped requests prefix the two fields with a
+PID record (field tag 3). The reader checks both field types and exact
+record extent before invoking the handler. The result uses the same
+field order. Errors keep the existing scalar error record.
+
+The [mixed interface](../../examples/remote-scalar/mixed.m) exercises
+signed limits, the reversed-type import and a call following a remote
+exception. The tuple profile currently uses a native C handler.

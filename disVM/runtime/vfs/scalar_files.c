@@ -167,13 +167,57 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
 }
 
 
+/* EN: Exchange one native function frame and return the exact reply.
+ * RU: Обменять кадр функции и вернуть точный ответ. */
+static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t size, size_t capacity,
+    size_t *received)
+{
+    DVM_VfsHandle handle = {0};
+    if (dvm_provider_open(files->request, ".", "rw", &handle) != FVM_OK)
+    {
+        return -1;
+    }
+    int result = -1;
+    if ((handle.native_flags & (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK)) ==
+        (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK))
+    {
+        DVM_IoResult sent = dvm_vfs_write_chunk(&handle, bytes, size);
+        result = 0;
+        long position;
+        if (sent.status == FVM_OK && (sent.flags & DVM_IO_PREFIX) &&
+            !(sent.flags & DVM_IO_UNCERTAIN) && sent.count == size &&
+            dvm_vfs_seek(&handle, 0, FVM_FILE_SEEK_START, &position) == FVM_OK)
+        {
+            size_t used = 0;
+            while (used < capacity)
+            {
+                DVM_IoResult got = dvm_vfs_read_chunk(&handle, bytes + used, capacity - used);
+                if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) ||
+                    (got.flags & DVM_IO_UNCERTAIN) || got.count > capacity - used)
+                {
+                    break;
+                }
+                used += got.count;
+                if (!got.count || got.stop == DVM_IO_EOF)
+                {
+                    *received = used;
+                    result = 1;
+                    break;
+                }
+            }
+        }
+    }
+    dvm_vfs_close(&handle);
+    return result;
+}
+
+
 /* EN/RU: Encode, write once, rewind, and read bounded chunks from the same opened fid.
  * Закодировать, записать один раз, перемотать и прочитать части с того же fid. */
 int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argument, int64_t *value)
 {
     unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY + 1];
     size_t size;
-    DVM_VfsHandle handle = {0};
     int wide = files->signature == DVM_SCALAR_BIG_SIGNATURE;
     if (!wide && (argument < INT32_MIN || argument > INT32_MAX))
     {
@@ -190,45 +234,64 @@ int dvm_scalar_function_call(DVM_ScalarFiles *files, uint32_t pid, int64_t argum
         encoded = styxscalarwrite(wide ? STYX_FUNCTION_BIG_TAG : STYX_FUNCTION_REQUEST_TAG,
             STYX_SCALAR_CALL, argument, bytes, sizeof(bytes), &size);
     }
-    if (!encoded ||
-        dvm_provider_open(files->request, ".", "rw", &handle) != FVM_OK)
+    size_t received = 0;
+    int exchanged = encoded ? exchange_frame(files, bytes, size, sizeof(bytes), &received) : -1;
+    if (exchanged != 1)
+    {
+        return exchanged;
+    }
+    StyxScalarKind kind;
+    if (!styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, received, &kind, value))
+    {
+        return 0;
+    }
+    return kind == STYX_SCALAR_ERROR ? 2 : kind == STYX_SCALAR_VALUE &&
+        (wide || (*value >= INT32_MIN && *value <= INT32_MAX));
+}
+
+
+/* EN/RU: Reuse the function-file exchange for one scoped or ordinary tuple.
+ * Повторно использовать обмен файла функции для кортежа с контекстом или без. */
+int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxTuple *result)
+{
+    unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + 1];
+    size_t size, received = 0;
+    if (!styxtuplewrite(files->caller ? STYX_TUPLE_CALLER_TAG : STYX_TUPLE_REQUEST_TAG,
+            files->caller ? pid : 0, argument, bytes, sizeof(bytes), &size))
     {
         return -1;
     }
-    int result = -1;
-    if ((handle.native_flags & (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK)) ==
-        (DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK))
+    DVM_CallerBinding binding;
+    DVM_Provider *tree = NULL;
+    void *lease = NULL;
+    if (files->caller && dvm_provider_caller_binding(files->request, &binding))
     {
-        DVM_IoResult sent = dvm_vfs_write_chunk(&handle, bytes, size);
-        result = 0;
-        long position;
-        if (sent.status == FVM_OK && (sent.flags & DVM_IO_PREFIX) &&
-            !(sent.flags & DVM_IO_UNCERTAIN) && sent.count == size &&
-            dvm_vfs_seek(&handle, 0, FVM_FILE_SEEK_START, &position) == FVM_OK)
+        tree = dvm_program_current(group, descriptors, pid);
+        lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
+        if (!lease)
         {
-            size_t used = 0;
-            while (used < sizeof(bytes))
-            {
-                DVM_IoResult got = dvm_vfs_read_chunk(&handle, bytes + used, sizeof(bytes) - used);
-                if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) ||
-                    (got.flags & DVM_IO_UNCERTAIN) || got.count > sizeof(bytes) - used)
-                {
-                    break;
-                }
-                used += got.count;
-                if (!got.count || got.stop == DVM_IO_EOF)
-                {
-                    StyxScalarKind kind;
-                    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, used, &kind, value) &&
-                        (kind != STYX_SCALAR_VALUE || wide || (*value >= INT32_MIN && *value <= INT32_MAX)))
-                    {
-                        result = kind == STYX_SCALAR_VALUE ? 1 : kind == STYX_SCALAR_ERROR ? 2 : 0;
-                    }
-                    break;
-                }
-            }
+            dvm_provider_release(tree);
+            return -1;
         }
     }
-    dvm_vfs_close(&handle);
-    return result;
+    int exchanged = exchange_frame(files, bytes, size, sizeof(bytes), &received);
+    if (lease)
+    {
+        binding.end(binding.state, lease);
+    }
+    dvm_provider_release(tree);
+    if (exchanged != 1)
+    {
+        return exchanged;
+    }
+    uint32_t response_pid;
+    if (styxtupleread(STYX_TUPLE_REPLY_TAG, bytes, received, &response_pid, result))
+    {
+        return 1;
+    }
+    StyxScalarKind kind;
+    int64_t code;
+    return styxscalarread(STYX_FUNCTION_REPLY_TAG, bytes, received, &kind, &code) &&
+        kind == STYX_SCALAR_ERROR ? 2 : 0;
 }

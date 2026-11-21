@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include "close_worker.h"
 #include "../../native/terminal/scalar_verify.h"
+#include "../../native/terminal/tuple_record.h"
 
 typedef struct DVM_ScalarFiles
 {
@@ -54,4 +55,8 @@ int dvm_scalar_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid,
     int64_t argument, int64_t *value);
 
+/* EN: Exchange one composed value using the scoped route when configured.
+ * RU: Обменять составное значение через настроенный маршрут. */
+int dvm_tuple_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group,
+    struct DVM_LaunchFiles *descriptors, uint32_t pid, const StyxTuple *argument, StyxTuple *result);
 #endif

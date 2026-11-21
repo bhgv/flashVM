@@ -109,6 +109,29 @@ static int wide(void *state, DVM_Provider *self, int64_t value, int64_t *out)
 }
 
 
+static int pair_calls; /* Tuple dispatches, including the expected failure. */
+
+
+/* EN: Validate the live caller scope and change one tuple component.
+ * RU: Проверить живой контекст и изменить компонент кортежа. */
+static int pair(void *state, DVM_Provider *self, const StyxTuple *argument, StyxTuple *reply)
+{
+    (void)state;
+    FVM_FileInfo metadata;
+    if (dvm_provider_info(self, ".pid", &metadata) != FVM_OK || metadata.directory)
+    {
+        return 0;
+    }
+    ++pair_calls;
+    if (!argument->narrow || argument->narrow == INT32_MAX)
+    {
+        return 0;
+    }
+    *reply = (StyxTuple){.narrow = argument->narrow + 1, .wide = argument->wide};
+    return 1;
+}
+
+
 /* EN: Confirm the launch bytes accepted by the provider's ordinary request file.
  * RU: Проверить стартовые байты, принятые обычным файлом запросов провайдера. */
 static int launch_payload(void *unused, const void *bytes, size_t size)
@@ -182,14 +205,16 @@ int main(int argc, char **argv)
         .reply_tag = STYX_FUNCTION_REPLY_TAG, .program_root = root, .program_method = wide};
     StyxScalarFunction raw_function = {.request_tag = STYX_FUNCTION_BIG_TAG,
         .reply_tag = STYX_FUNCTION_REPLY_TAG, .method = raw};
+    StyxScalarFunction pair_function = {.request_tag = STYX_TUPLE_CALLER_TAG,
+        .reply_tag = STYX_TUPLE_REPLY_TAG, .program_root = root, .tuple_method = pair};
     const StyxMountedScalar entries[] = {
         {"compute.dis", "compute", &function, 0}, {"compute.dis", "wide", &big_function, 0},
-        {"compute.dis", "raw", &raw_function, 0}
+        {"compute.dis", "raw", &raw_function, 0}, {"compute.dis", "pair", &pair_function, 0}
     };
     StyxUnibusServer *server = root ?
-        styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 3) : NULL;
+        styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 4) : NULL;
     int success = server && styxunibusserverjoin(server);
     dvm_provider_release(root);
     phybidirfree(mux);
-    return success && calls == 2 && wide_calls == 2 && raw_calls == 1 ? 0 : 1;
+    return success && calls == 2 && wide_calls == 2 && raw_calls == 1 && pair_calls == 3 ? 0 : 1;
 }

@@ -88,7 +88,7 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
             return result;
         }
         const StyxScalarFunction alternate = {
-            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL
+            STYX_FUNCTION_REQUEST_TAG, STYX_FUNCTION_REPLY_TAG, adjust, NULL, NULL, NULL, NULL, NULL
         };
         const StyxMountedScalar entries[] = {
             {"helper.dis", "offset", &alternate, 0},

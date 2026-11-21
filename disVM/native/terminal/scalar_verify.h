@@ -6,6 +6,10 @@
 #define STYX_SCALAR_VERIFY_H
 #include <stddef.h>
 #include <stdint.h>
+#define DVM_TUPLE_SIGNATURE 0xbbfc530eU /* Compiled fn((int,big)): (int,big). */
+#define STYX_TUPLE_REQUEST_TAG 78UL /* Tuple argument. */
+#define STYX_TUPLE_REPLY_TAG 79UL /* Tuple result. */
+#define STYX_TUPLE_CALLER_TAG 80UL /* Tuple argument with caller PID. */
 #define DVM_SCALAR_BIG_SIGNATURE 0x17f525e4U /* Compiled fn(big): big signature. */
 #define STYX_FUNCTION_BIG_TAG 76UL /* Signed big request on an opened function. */
 #define STYX_FUNCTION_BIG_CALLER_TAG 77UL /* Signed big request with caller PID. */
@@ -39,4 +43,7 @@ unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *na
 /* EN/RU: Identify a supported request tag by compiled signature, or zero.
  * Сопоставить поддерживаемый тег с сигнатурой либо вернуть ноль. */
 uint32_t styxscalar_request_signature(unsigned long tag);
+/* EN: Return the required reply tag or zero for an unknown request.
+ * RU: Вернуть тег ответа либо ноль для неизвестного запроса. */
+unsigned long styxfunction_reply_tag(unsigned long request);
 #endif
