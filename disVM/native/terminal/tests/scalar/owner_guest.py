@@ -131,7 +131,7 @@ def exchange(binary, owner, caller, mode, marker, calls=1, disconnect=False, mou
                              mode, right, False, calls, disconnect, mounted))
         left.close()
         right.close()
-        if mounted in ("refpair", "compiled-ref"):
+        if mounted in ("refpair", "compiled-ref", "scoped-calls"):
             relay_ref_pair(owner, caller)
         owner_output, _ = children[0].communicate(timeout=15)
         caller_output, _ = children[1].communicate(timeout=15)
@@ -290,6 +290,8 @@ def main():
                 marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS mounted compiled ref argument layouts",
                      calls=0, mounted="compiled-ref")
+            for marker in marker_paths:
+                marker.write_bytes(b"0")
             exchange(binary, owner, caller, mode, "PASS compiled call sees scoped caller VFS, refs and Sysevents",
                      calls=0, mounted="scoped-calls")
             unbound = caller / "expect-unbound-refusal"

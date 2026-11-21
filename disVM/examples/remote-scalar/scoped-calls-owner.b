@@ -51,6 +51,23 @@ inspect(fail: int): (int,big)
     }
     value := contents(sys, Caller + ".fd/3", 4);
     if (value == "left") {
+        set_marker(sys, "refpair-entered");
+        wait_marker(sys, "refpair-edited");
+        changed := 0;
+        for (i := 0; i < 3 && !changed; i++) {
+            n := sys->read(reverse, event, len event);
+            if (n < 22) {
+                break;
+            }
+            changed = string event[0:11] == "system 1 4 " &&
+                string event[n-11:n] == "2f2e766172\n";
+        }
+        live := sys->open(Caller + ".var/live", Sys->OREAD);
+        encoded := array[4] of byte;
+        if (!changed || live == nil || sys->read(live, encoded, 4) != 4 ||
+            encoded[0] != byte 0 || encoded[1] != byte 1 || encoded[2] != byte 0 || encoded[3] != byte 3) {
+            raise "did not receive live caller .var event and value";
+        }
         saved = sys->open(Caller + ".pid", Sys->OREAD);
         if (saved == nil) {
             raise "could not save the scoped fid";
@@ -155,3 +172,5 @@ retired_events(sys: Sys, inbox: ref Sys->FD)
     }
     raise "saved call event inbox did not retire";
 }
+
+include "refpair-sync.b";

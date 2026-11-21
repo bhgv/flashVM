@@ -7,6 +7,13 @@
 #include "cancel.h"
 #include "../../native/terminal/variable_file.h"
 
+typedef struct VariableCell
+{
+    int32_t value; /* Atomic signed value. */
+    DVM_Changes *journal; /* Borrowed from the owning provider. */
+} VariableCell;
+
+
 typedef struct VariableCursor
 {
     StyxIntVariable io; /* Owner pinned by the opened provider. */
@@ -47,7 +54,7 @@ static FVM_Result stat_open(void *state, FVM_FileInfo *out)
  * Прочитать нативное значение без управляемых ссылок. */
 static int load_value(void *state, int32_t *value)
 {
-    *value = __atomic_load_n((int32_t *)state, __ATOMIC_ACQUIRE);
+    *value = __atomic_load_n(&((VariableCell *)state)->value, __ATOMIC_ACQUIRE);
     return 1;
 }
 
@@ -56,7 +63,12 @@ static int load_value(void *state, int32_t *value)
  * Выполнить одну замену нативного скаляра. */
 static int store_value(void *state, int32_t value)
 {
-    __atomic_store_n((int32_t *)state, value, __ATOMIC_RELEASE);
+    VariableCell *cell = state;
+    int32_t previous = __atomic_exchange_n(&cell->value, value, __ATOMIC_ACQ_REL);
+    if (previous != value)
+    {
+        changespost(cell->journal, DVM_CHANGE_CONTENT, 0, 0);
+    }
     return 1;
 }
 
@@ -167,14 +179,18 @@ void Vfsexport_intvar(void *frame)
     void *value = dvm_cap_new(DVM_CAP_ROOT, &state);
     if (state)
     {
-        int32_t *cell = malloc(sizeof(*cell));
+        VariableCell *cell = calloc(1, sizeof(*cell));
         if (cell)
         {
-            *cell = call.initial;
+            cell->value = call.initial;
             state->root = dvm_provider_create_native(&factory, cell, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
             if (!state->root)
             {
                 free(cell);
+            }
+            else
+            {
+                cell->journal = dvm_provider_changes(state->root);
             }
         }
         if (!state->root)

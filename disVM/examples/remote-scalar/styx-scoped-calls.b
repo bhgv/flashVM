@@ -4,6 +4,7 @@
 implement Client;
 include "sys.m";
 include "scoped-calls.m";
+include "vfsexport.m";
 
 Client: module { init: fn(); };
 
@@ -26,20 +27,31 @@ worker(sys: Sys, service: Scopedcalls, done: chan of (int,big))
 init()
 {
     sys := load Sys Sys->PATH;
-    service := load Scopedcalls "/peer/mounted/scoped-calls.dis";
     if (sys->open("expect-unbound-refusal", Sys->OREAD) != nil) {
+        service := load Scopedcalls "/peer/mounted/scoped-calls.dis";
         if (service != nil) {
             raise "scoped load accepted without reverse binding";
         }
         report(sys, "PASS scoped compiled load requires reverse mount");
         return;
     }
+    exports := load Vfsexport Vfsexport->PATH;
+    cell := exports->intvar(41);
+    rights := Vfsexport->Read | Vfsexport->Execute;
+    base := exports->capture("/.var", 0, rights);
+    vars := exports->overlay(base, cell, "/live", Vfsexport->Read, 0);
+    if (base == nil || cell == nil || vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
+        raise "could not mount live variable for event test";
+    }
+    service := load Scopedcalls "/peer/mounted/scoped-calls.dis";
     if (service == nil) {
         raise "scoped compiled load failed: " + sys->sprint("%r");
     }
+    edited := chan of int;
+    spawn change_live(sys, exports, cell, edited);
     pid := sys->pctl(0, nil);
     (seen, code) := service->inspect(0);
-    if (service->baseline(18) != 18 || seen != pid || code != big 1) {
+    if (<-edited != 1 || service->baseline(18) != 18 || seen != pid || code != big 1) {
         raise "parent's scoped call failed";
     }
     {
@@ -103,3 +115,16 @@ report(sys: Sys, message: string)
         raise "could not report scoped call test";
     }
 }
+
+
+# EN: Mutate the published variable only after the provider opens its event stream.
+# RU: Изменить опубликованную переменную после открытия потока у провайдера.
+change_live(sys: Sys, exports: Vfsexport, cell: ref Vfsexport->Root, done: chan of int)
+{
+    wait_marker(sys, "refpair-entered");
+    success := exports->intset(cell, 65539);
+    set_marker(sys, "refpair-edited");
+    done <-= success;
+}
+
+include "refpair-sync.b";

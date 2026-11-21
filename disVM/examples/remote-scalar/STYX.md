@@ -231,3 +231,9 @@ See [server setup](../../native/terminal/UNIBUS-SERVER-SCOPED-SET.md).
 The same example opens `/.prog/.self/.sysevents`, reads the first
 namespace record over reverse Styx, and checks that opening it for
 writing is refused. See [the event view](../../runtime/SYSTEM-EVENTS.md#reverse-event-view).
+
+The live event check mounts an integer capability in the shared `.var`
+tree before loading the remote module. The caller changes it from 41
+to 65539 once the provider has opened the reverse stream. The provider
+checks the content-change record on that same fid and reads the new
+four-byte value through `/.prog/.self/.var/live`.
