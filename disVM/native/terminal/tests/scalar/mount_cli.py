@@ -7,6 +7,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 
 from guest import build_peer
 
@@ -145,8 +146,9 @@ def chain(runtime, compiler, provider, disvm, example, work):
     stderr = work / "chain-stderr"
     extra = work / "chain-fd3"
     extra.write_bytes(b"skipmore")
-    for mode, fail in (("--no-jit", False), ("--jit", False), ("--no-jit", True)):
-        stdin.write_bytes(b"fail" if fail else b"live")
+    for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
+                          ("--no-jit", b"drop"), ("--jit", b"drop")):
+        stdin.write_bytes(payload)
         a, b = tcp_pair()
         lib, c = tcp_pair()
         with a, b, lib, c, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
@@ -165,20 +167,42 @@ def chain(runtime, compiler, provider, disvm, example, work):
             lib.close()
             c.close()
             try:
-                result = subprocess.run(
+                with subprocess.Popen(
                     [runtime, "--styx-mount-fd", str(a.fileno()), "--fd3", str(fourth.fileno()), "--", mode, caller_image],
-                    pass_fds=(a.fileno(), fourth.fileno()), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors, timeout=40)
+                    pass_fds=(a.fileno(), fourth.fileno()), cwd=work, stdin=incoming, stdout=outgoing, stderr=errors
+                ) as caller:
+                    try:
+                        if payload == b"drop":
+                            deadline = time.monotonic() + 5
+                            while b"chain accepted before disconnect\n" not in stdout.read_bytes():
+                                if owner.poll() is not None or caller.poll() is not None or time.monotonic() >= deadline:
+                                    raise RuntimeError("B did not enter the accepted launch")
+                                time.sleep(0.01)
+                            owner.kill()
+                        caller_status = caller.wait(timeout=20)
+                    finally:
+                        if caller.poll() is None:
+                            caller.kill()
                 a.close()
                 out, err = owner.communicate(timeout=10)
                 library_status = library.wait(timeout=10)
-                if fail:
-                    if (not result.returncode or not owner.returncode or
+                if payload == b"drop":
+                    diagnostic = stderr.read_bytes()
+                    if (not caller_status or not owner.returncode or
+                            b"chain completion transport failed" not in diagnostic or
+                            b"chain owner reported failure" in diagnostic or
+                            b"PASS mounted Styx launch completion" in stdout.read_bytes()):
+                        raise RuntimeError(repr((stdout.read_bytes(), diagnostic, out, err)))
+                    print("PASS A distinguishes disconnect after accepted launch", mode, flush=True)
+                    continue
+                if payload == b"fail":
+                    if (not caller_status or not owner.returncode or
                             b"chain owner reported failure" not in stderr.read_bytes() or
                             b"chain input mismatch" not in err):
                         raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
                     print("PASS A receives B's launch failure", mode, flush=True)
                     continue
-                if (result.returncode or owner.returncode or library_status or fourth.tell() != 8 or
+                if (caller_status or owner.returncode or library_status or fourth.tell() != 8 or
                         b"chain stdout\n" not in stdout.read_bytes() or
                         b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):

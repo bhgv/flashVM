@@ -15,7 +15,15 @@ init()
     sys := load Sys Sys->PATH;
     data := array[4] of byte;
     input := sys->fildes(0);
-    if (input == nil || sys->readn(input, data, len data) != len data || string data != "live") {
+    if (input == nil || sys->readn(input, data, len data) != len data) {
+        raise "chain input mismatch";
+    }
+    if (string data == "drop") {
+        sys->fprint(sys->fildes(1), "chain accepted before disconnect\n");
+        sys->sleep(30000);
+        raise "test transport was not disconnected";
+    }
+    if (string data != "live") {
         raise "chain input mismatch";
     }
     extra := sys->fildes(3);

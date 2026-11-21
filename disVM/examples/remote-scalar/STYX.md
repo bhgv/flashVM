@@ -278,3 +278,5 @@ The chain also changes the ordering of a library union on B. The same
 after rebinding. B confirms that FD 3 is read-only and reads from its
 existing offset. A reads the outcome from `/peer/.exit`, including
 an owner error in the invalid-input case.
+
+The disconnect case terminates B only after its Dis code confirms startup. A reports a transport failure and receives no completion status.
