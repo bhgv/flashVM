@@ -21,6 +21,7 @@
 #include <time.h>
 
 static DVM_VfsHandle first_events; /* Retained until the follow-up call checks revocation. */
+static DVM_VfsHandle parent_events; /* Previous grant from the same parent PID. */
 static int calls; /* Inspected only after the provider worker joins. */
 
 
@@ -73,6 +74,18 @@ static int initial_event(DVM_Provider *self)
         event = dvm_vfs_read_chunk(&stream, bytes, sizeof(bytes));
         valid = valid && revoked && event.status == FVM_OK;
         dvm_vfs_close(&first_events);
+    }
+    if (valid && calls == 2)
+    {
+        valid = dvm_vfs_move(&parent_events, &stream);
+    }
+    if (calls == 3)
+    {
+        event = dvm_vfs_read_chunk(&parent_events, bytes, sizeof(bytes));
+        int revoked = event.status != FVM_OK && !event.count;
+        event = dvm_vfs_read_chunk(&stream, bytes, sizeof(bytes));
+        valid = valid && revoked && event.status == FVM_OK;
+        dvm_vfs_close(&parent_events);
     }
     dvm_vfs_close(&stream);
     return valid;
@@ -277,7 +290,8 @@ int main(int argc, char **argv)
         styxunibusserverstartmounted(phybidirchannel(mux, 0), entries, 5) : NULL;
     int success = server && styxunibusserverjoin(server);
     dvm_vfs_close(&first_events);
+    dvm_vfs_close(&parent_events);
     dvm_provider_release(root);
     phybidirfree(mux);
-    return success && calls == 3 && wide_calls == 2 && raw_calls == 1 && pair_calls == 3 && ref_calls == 2 ? 0 : 1;
+    return success && calls == 4 && wide_calls == 2 && raw_calls == 1 && pair_calls == 3 && ref_calls == 2 ? 0 : 1;
 }

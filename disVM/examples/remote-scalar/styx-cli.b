@@ -46,6 +46,9 @@ init()
     if (service->compute(pid) != pid) {
         raise "follow-up caller lost its event stream";
     }
+    if (service->compute(pid) != pid) {
+        raise "second call from the parent lost its event stream";
+    }
     bad := load Wrong "/peer/mounted/compute.dis";
     if (bad != nil ||
         service->wide(big 9223372036854775807) != big 9223372036854775807 ||
