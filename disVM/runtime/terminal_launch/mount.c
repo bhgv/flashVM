@@ -4,10 +4,15 @@
  */
 #include "config.h"
 #include "caller_styx.h"
+#include "launch_send.h"
+#include "mount.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
+#include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -40,13 +45,92 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount)
 }
 
 
+typedef struct MountedLaunch
+{
+    DVM_Provider *request; /* Owned exact remote request file. */
+    unsigned long tag; /* Record type selected at mount setup. */
+} MountedLaunch;
+
+
+/* EN: Drop an owned launch configuration after its last captured mount retires.
+ * RU: Освободить конфигурацию запуска после последнего захвата маунта. */
+static void release_launch(void *state)
+{
+    MountedLaunch *launch = state;
+    dvm_provider_release(launch->request);
+    free(launch);
+}
+
+
+/* EN: Return a fresh address for the same pinned request file.
+ * RU: Выдать адрес для того же закреплённого файла запросов. */
+static DVM_LaunchAddress *resolve_launch(void *state)
+{
+    MountedLaunch *launch = state;
+    return styxterminallaunchaddress(launch->request, launch->tag);
+}
+
+
+/* EN: Consume an attached client and configure an exact optional launch route.
+ * RU: Принять подключённый клиент и настроить точный маршрут запуска. */
+static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
+    const char *entry, const char *request, unsigned long tag)
+{
+    if (!entry)
+    {
+        return styxcallermount(reverse, client, FVM_ACCESS_MASK);
+    }
+    MountedLaunch *launch = calloc(1, sizeof(*launch));
+    if (!launch || !styxclientretain(client))
+    {
+        free(launch);
+        styxclientfree(client);
+        return NULL;
+    }
+    launch->tag = tag;
+    launch->request = styxmountproviderat(client, request, FVM_ACCESS_WRITE);
+    if (!launch->request)
+    {
+        release_launch(launch);
+        styxclientfree(client);
+        return NULL;
+    }
+    DVM_Provider *mount = styxmountproviderlaunch(client, ".", FVM_ACCESS_MASK, entry,
+        resolve_launch, launch, release_launch);
+    if (!mount || !styxcallerbind(reverse, mount))
+    {
+        dvm_provider_release(mount);
+        return NULL;
+    }
+    return mount;
+}
+
+
 /* EN: Consume a delegated stream duplicate and run with forward channel 0 and reverse channel 1.
  * RU: Принять дубликат выданного потока и запустить с прямым каналом 0 и встречным 1. */
 int dvm_styx_mount_cli(int argc, char **argv)
 {
-    if (argc < 5 || strcmp(argv[3], "--"))
+    int separator = 3;
+    const char *entry = NULL;
+    const char *request = NULL;
+    unsigned long tag = 0;
+    if (argc >= 8 && !strcmp(argv[3], "--launch"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        entry = argv[4];
+        request = argv[5];
+        char *end;
+        errno = 0;
+        tag = strtoul(argv[6], &end, 10);
+        if (errno || argv[6][0] < '0' || argv[6][0] > '9' || *end || !tag || tag > UINT32_MAX)
+        {
+            fprintf(stderr, "disvm: invalid launch record tag\n");
+            return 2;
+        }
+        separator = 7;
+    }
+    if (argc <= separator + 1 || strcmp(argv[separator], "--"))
+    {
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch ENTRY REQUEST TAG] -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -64,11 +148,11 @@ int dvm_styx_mount_cli(int argc, char **argv)
     StyxCallerServer *reverse = mux ? styxcallerserver(phybidirchannel(mux, 1)) : NULL;
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
-    DVM_Provider *mount = client ? styxcallermount(reverse, client, FVM_ACCESS_MASK) : NULL;
+    DVM_Provider *mount = client ? mount_launch(reverse, client, entry, request, tag) : NULL;
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - 3, argv + 3, mount);
+        result = run_mounted(argc - separator, argv + separator, mount);
     }
     else
     {

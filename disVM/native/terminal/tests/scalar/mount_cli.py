@@ -16,27 +16,32 @@ def main():
     example = disvm / "examples/remote-scalar"
     with tempfile.TemporaryDirectory(prefix="styx-cli-") as directory:
         work = Path(directory)
-        image = work / "caller.dis"
-        subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
-                        "-I", example, "-o", image, example / "styx-cli.b"], cwd=work, check=True)
-        for mode in ("--no-jit", "--jit"):
-            caller, owner = socket.socketpair()
-            with caller, owner, subprocess.Popen(
-                [provider, str(owner.fileno())], pass_fds=(owner.fileno(),), cwd=work
-            ) as peer:
-                owner.close()
-                try:
-                    result = subprocess.run(
-                        [runtime, "--styx-mount-fd", str(caller.fileno()), "--", mode, image],
-                        pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=20)
-                    caller.close()
-                    marker = "PASS bidirectional Styx CLI mount"
-                    if result.returncode or marker not in result.stdout or peer.wait(timeout=10):
-                        raise RuntimeError(result.stdout + result.stderr)
-                    print(marker, mode, flush=True)
-                finally:
-                    if peer.poll() is None:
-                        peer.kill()
+        (work / "alias.dis").touch()
+        for source, marker, options, peer_options in (
+            ("styx-cli.b", "PASS bidirectional Styx CLI mount", [], []),
+            ("styx-run.b", "PASS mounted Styx launch submission",
+             ["--launch", "app.dis", "submit", "17"], ["launch"]),
+        ):
+            image = work / "caller.dis"
+            subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
+                            "-I", example, "-o", image, example / source], cwd=work, check=True)
+            for mode in ("--no-jit", "--jit"):
+                caller, owner = socket.socketpair()
+                with caller, owner, subprocess.Popen(
+                    [provider, str(owner.fileno()), *peer_options], pass_fds=(owner.fileno(),), cwd=work
+                ) as peer:
+                    owner.close()
+                    try:
+                        result = subprocess.run(
+                            [runtime, "--styx-mount-fd", str(caller.fileno()), *options, "--", mode, image],
+                            pass_fds=(caller.fileno(),), cwd=work, capture_output=True, text=True, timeout=20)
+                        caller.close()
+                        if result.returncode or marker not in result.stdout or peer.wait(timeout=10):
+                            raise RuntimeError(result.stdout + result.stderr)
+                        print(marker, mode, flush=True)
+                    finally:
+                        if peer.poll() is None:
+                            peer.kill()
 
 
 if __name__ == "__main__":

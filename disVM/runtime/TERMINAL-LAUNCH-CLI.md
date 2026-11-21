@@ -170,3 +170,22 @@ The [Limbo example](../examples/remote-scalar/styx-cli.b) and
 `terminal-caller-mount-cli` check the command with two OS processes and
 both VM execution modes. Configure the native SDK test build with
 `INFERNO_DISVM_TERMINAL_CLI` pointing to the SDK-enabled DisVM executable.
+
+To enable launch submission on the same mount, specify the provider's
+program entry, writable request file and S-record tag:
+
+```sh
+disvm --styx-mount-fd 3 --launch app.dis submit 17 -- caller.dis
+```
+
+The entry and request paths are relative to the attached peer. The mount
+pins both nodes. The guest calls `Vfsnative.run` or `Vfsnative.runargs` on
+`/peer/app.dis` or one of its bind aliases. The provider must serve the
+selected request file and accept the configured record tag. A positive
+result confirms submission to the provider. This profile carries raw
+startup bytes.
+
+The [launch submission example](../examples/remote-scalar/styx-run.b)
+verifies exact binary arguments through a bind alias and rejection of an
+unadvertised neighbour. It runs in the same `terminal-caller-mount-cli`
+test.
