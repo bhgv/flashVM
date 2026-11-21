@@ -298,3 +298,20 @@ VM провайдера подключает обычное устройство
 исключении функции. Через удерживаемый FD можно дочитать накопленные
 записи, событие завершения и EOF. Очередь сообщает об изменениях, которые
 наблюдает пространство имён вызова на стороне провайдера.
+
+### Reverse event view
+
+Each caller grant also exposes a readonly `/.prog/.self/.sysevents` in the
+provider VM. It observes the explicitly shared `.vfs` and `.var` trees and
+starts with a namespace record. It has its own queue, so remote reads do
+not consume events from the client's `/dev/sysevents`. The reverse Styx
+lease bounds access to the current call. This stream observes provider
+notices from the shared trees.
+
+### Встречная очередь событий
+
+В VM провайдера через `/.prog/.self/.sysevents` доступна отдельная очередь
+только для чтения. Она начинает с записи namespace и наблюдает явно
+выданные деревья `.vfs` и `.var`. Чтение через Styx не расходует очередь
+`/dev/sysevents` клиента. Доступ действует в пределах текущего вызова.
+Очередь получает уведомления от провайдеров расшаренных деревьев.

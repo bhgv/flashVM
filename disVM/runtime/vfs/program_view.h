@@ -17,6 +17,7 @@ typedef struct DVM_ProgramView
     uint32_t pid; /* Nonzero PID in the publishing VM. */
     DVM_Provider *fds; /* Numbered file grants, preserving their open modes. */
     DVM_Provider *vfs; /* Granted namespace subtree, including ordinary env files. */
+    DVM_Provider *events; /* Optional read-only event stream for the published grants. */
     DVM_Provider *vars; /* Granted shared variable proxies. */
 } DVM_ProgramView;
 

@@ -35,6 +35,12 @@ inspect(fail: int): (int,big)
     if (sys->pctl(Sys->FORKNS, nil) <= 0) {
         raise "failed to copy scoped namespace";
     }
+    reverse := sys->open(Caller + ".sysevents", Sys->OREAD);
+    event := array[4096] of byte;
+    if (reverse == nil || !namespace_event(sys, reverse, event) ||
+        sys->open(Caller + ".sysevents", Sys->OWRITE) != nil) {
+        raise "reverse event stream missing or writable";
+    }
     pid := int contents(sys, Caller + ".pid", 32);
     if (pid <= 0 || contents(sys, Caller + ".vfs/env/CLIENT", 8) != "/.vfs" ||
         contents(sys, Caller + ".var/counter", 8) != "/.var") {

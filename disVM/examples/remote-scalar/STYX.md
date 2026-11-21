@@ -227,3 +227,7 @@ import and reports `PASS scoped compiled load requires reverse mount`.
 The harness closes both channels and removes the temporary directories.
 
 See [server setup](../../native/terminal/UNIBUS-SERVER-SCOPED-SET.md).
+
+The same example opens `/.prog/.self/.sysevents`, reads the first
+namespace record over reverse Styx, and checks that opening it for
+writing is refused. See [the event view](../../runtime/SYSTEM-EVENTS.md#reverse-event-view).

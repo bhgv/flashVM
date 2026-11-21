@@ -12,6 +12,8 @@
 #include "interp.h"
 #include "runt.h"
 #include "launch_files.h"
+#include "sysevents_internal.h"
+#include <string.h>
 #include <inttypes.h>
 #include <stdio.h>
 
@@ -40,13 +42,15 @@ static int map_tree(DVM_View *view, uint32_t pid, const char *name, DVM_Provider
 static int map_program(DVM_View *view, const DVM_ProgramView *program)
 {
     char pid_text[sizeof("4294967295\n")];
-    char path[sizeof("/.prog/4294967295/.pid")];
+    char path[sizeof("/.prog/4294967295/.sysevents")];
     int size = snprintf(pid_text, sizeof(pid_text), "%" PRIu32 "\n", program->pid);
     DVM_Provider *identity = dvm_module_adapter(pid_text, (size_t)size);
     snprintf(path, sizeof(path), "/.prog/%" PRIu32 "/.pid", program->pid);
     int mapped = identity && dvm_view_map(view, path, identity, ".", FVM_ACCESS_READ, 0);
     dvm_provider_release(identity);
-    return mapped && map_tree(view, program->pid, ".fd", program->fds) &&
+    snprintf(path, sizeof(path), "/.prog/%" PRIu32 "/.sysevents", program->pid);
+    return mapped && (!program->events || dvm_view_map(view, path, program->events, ".", FVM_ACCESS_READ, 0)) &&
+        map_tree(view, program->pid, ".fd", program->fds) &&
         map_tree(view, program->pid, ".vfs", program->vfs) &&
         map_tree(view, program->pid, ".var", program->vars);
 }
@@ -126,6 +130,60 @@ static int capture_grant(DVM_Namespace *group, const char *path, DVM_Provider **
 }
 
 
+/* EN: Describe the borrowed reverse event node without exposing its watched providers.
+ * RU: Описать встречный узел событий без раскрытия наблюдаемых провайдеров. */
+static FVM_Result events_info(void *state, const char *path, FVM_FileInfo *info)
+{
+    (void)state;
+    if (strcmp(path, "."))
+    {
+        return FVM_NOT_FOUND;
+    }
+    memset(info, 0, sizeof(*info));
+    strcpy(info->name, ".sysevents");
+    info->mode = 0444;
+    return FVM_OK;
+}
+
+
+/* EN: Open an independent FD for this grant's shared observer, read-only.
+ * RU: Открыть FD очереди этой выдачи в режиме чтения. */
+static FVM_Result events_open(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
+{
+    return strcmp(path, ".") ? FVM_NOT_FOUND : dvm_sysevents_open(state, mode, out);
+}
+
+
+/* EN: Retire the observer and release its owned reference with the last grant.
+ * RU: Завершить наблюдение и освободить очередь с последней ссылкой на выдачу. */
+static void events_destroy(void *state)
+{
+    dvm_sysevents_retire(state);
+    dvm_sysevents_release(state);
+}
+
+
+/* EN: Observe only the explicitly shared VFS and variable grants.
+ * RU: Наблюдать только явно выданные деревья VFS и переменных. */
+static DVM_Provider *events_provider(const DVM_ProgramView *entry)
+{
+    static const DVM_ProviderOps ops = {.info = events_info, .open = events_open,
+        .destroy = events_destroy, .flags = DVM_PROVIDER_STABLE_BIND}; /* Observer owned by its file. */
+    DVM_Namespace *group = dvm_namespace_create("/", "/", NULL);
+    int ready = group && (!entry->vfs || dvm_program_mount_private(group, entry->vfs, "/.vfs", NULL)) &&
+        (!entry->vars || dvm_program_mount_private(group, entry->vars, "/.var", NULL));
+    DVM_SysEvents *events = ready ? dvm_sysevents_create(group) : NULL;
+    dvm_namespace_release(group);
+    DVM_Provider *provider = events ? dvm_provider_create_native(&ops, events, NULL, 1,
+        DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE) : NULL;
+    if (!provider && events)
+    {
+        events_destroy(events);
+    }
+    return provider;
+}
+
+
 /* EN/RU: See program_view.h. Return an owned tree built from the caller's grants.
  * См. program_view.h. Вернуть своё дерево из полномочий клиента. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descriptors, uint32_t pid)
@@ -138,7 +196,9 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descrip
     {
         entry.fds = dvm_launch_fd_view(descriptors, &captured);
     }
-    DVM_Provider *tree = captured ? dvm_program_view(&entry, 1) : NULL;
+    entry.events = captured ? events_provider(&entry) : NULL;
+    DVM_Provider *tree = entry.events ? dvm_program_view(&entry, 1) : NULL;
+    dvm_provider_release(entry.events);
     dvm_provider_release(entry.fds);
     dvm_provider_release(entry.vfs);
     dvm_provider_release(entry.vars);
