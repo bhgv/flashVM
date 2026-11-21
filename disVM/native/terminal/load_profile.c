@@ -144,6 +144,13 @@ static int shape_type(const char **cursor, unsigned depth)
 }
 
 
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+const char *styxshape_end(const char *type)
+{
+    return type && shape_type(&type, 0) ? type : NULL;
+}
+
+
 /* EN: Check a list of types. The result list has at most one top-level value.
  * RU: Проверить список типов. Список результата содержит до одного значения верхнего уровня. */
 static int shape_list(const char *text, int result)

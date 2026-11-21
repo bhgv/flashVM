@@ -16,6 +16,9 @@
 #include <string.h>
 
 
+#include "managed_records.inc"
+
+
 /* EN/RU: Return the argument or a fixture error, recording each admitted call.
  * Вернуть аргумент или тестовую ошибку, считая допущенные вызовы. */
 static int method(void *state, int64_t argument, int64_t *result)
@@ -432,7 +435,7 @@ int main(void)
     {
         return 1;
     }
-    if (!managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
+    if (!managed_layout() || !managed_records() || !managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

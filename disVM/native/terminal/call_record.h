@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "flashvm/srecord.h"
 
 #define STYX_CALL_VALUES 8U /* Maximum flattened scalar cells in a frame. */
 #define STYX_CALL_DEPTH 4U /* Maximum tuple nesting, including the outer list. */
@@ -36,10 +37,11 @@ int styxcallrecordread(unsigned long tag, const char *shape, const void *bytes, 
 
 typedef struct StyxScalarLayout
 {
-    size_t size; /* Exact byte extent of the pointer-free NC64 layout. */
+    size_t size; /* Exact byte extent of the NC64 layout. */
     size_t count; /* Number of scalar leaves. */
     size_t offset[STYX_CALL_VALUES]; /* Byte offsets in schema order. */
     unsigned char width[STYX_CALL_VALUES]; /* Native leaf widths. */
+    unsigned pointers; /* Bit i marks a managed reference at leaf i. */
 } StyxScalarLayout;
 
 
@@ -48,12 +50,38 @@ typedef struct StyxScalarLayout
 int styxscalar_layout(const char *shape, StyxScalarLayout *layout);
 
 
-/* EN: Copy fields from an NC64 buffer and widen packed byte leaves.
- * RU: Скопировать поля буфера NC64 и расширить упакованные поля byte. */
+/* EN: Compute NC64 field offsets and identify managed roots without reading a frame.
+ * RU: Вычислить смещения NC64 и отметить управляемые корни без чтения кадра. */
+int styxmanaged_layout(const char *shape, StyxScalarLayout *layout);
+
+
+/* EN: Copy only a pointer-free NC64 buffer and widen packed byte leaves.
+ * RU: Скопировать поля буфера NC64 без указателей и расширить поля byte. */
 void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCallValues *values);
 
 
-/* EN: Stage fields in an NC64 buffer, zeroing layout padding.
- * RU: Записать поля в буфер NC64, обнуляя заполнители раскладки. */
+/* EN: Stage pointer-free fields in an NC64 buffer and zero its padding.
+ * RU: Записать поля без указателей в буфер NC64 и обнулить заполнители. */
 void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *values, void *frame);
+
+#define STYX_MANAGED_LIST_LIMIT 65536U /* Maximum complete managed value record. */
+#define STYX_MANAGED_STRING_TAG 7UL /* Counted UTF-8 bytes. */
+#define STYX_MANAGED_ARRAY_TAG 8UL /* Sequence of nested records of one declared element type. */
+#define STYX_MANAGED_NIL_TAG 9UL /* Empty payload for a nil string or array. */
+
+
+/* EN: Validate a managed argument or result list and borrow its decoded outer record.
+ * RU: Проверить список управляемых значений и заимствовать внешнюю запись.
+ * Shape must be a NUL-terminated list. Ref identity is outside this value codec.
+ * Схема должна быть NUL-строкой. Идентичность ref лежит вне этого кодека. */
+int styxmanaged_list_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
+    FVM_SRecord *list);
+
+
+/* EN: Validate encoded children against shape and seal them as one list.
+ * RU: Проверить закодированных потомков по схеме и упаковать их в один список.
+ * Payload and destination must be disjoint. Failure does not publish used.
+ * Payload и приёмник не пересекаются. Ошибка не меняет used. */
+int styxmanaged_list_write(unsigned long tag, const char *shape, const void *payload, size_t size,
+    void *bytes, size_t capacity, size_t *used);
 #endif

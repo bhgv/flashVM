@@ -53,6 +53,7 @@ target_sources(disvm PRIVATE vfs/scalar_call.c vfs/tuple_call.c vfs/ref_call.c v
     "${root}/disVM/native/terminal/record_write.c"
     "${root}/disVM/native/terminal/scalar_record.c"
     "${root}/disVM/native/terminal/call_record.c"
+    "${root}/flashVM/src/capi/utf8.c"
     "${root}/disVM/native/terminal/call_scope.c"
     "${root}/disVM/native/terminal/tuple_record.c"
     "${root}/disVM/native/terminal/ref_pair_record.c"

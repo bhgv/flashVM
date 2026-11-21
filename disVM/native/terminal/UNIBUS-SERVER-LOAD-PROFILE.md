@@ -36,3 +36,19 @@ tag 71, which carries the compiled name and signature for the six fixed
 profiles. Additional [compiled scalar shapes](SCALAR-FUNCTION.md#calls-with-compiled-scalar-types)
 and [reference layouts](SCALAR-FUNCTION.md#calls-with-compiled-reference-types)
 require type metadata from both images.
+
+
+## Value records for gateway development
+
+The [codec](call_record.h) validates an entire typed list before exposing a
+borrowed view. Tag 7 contains counted UTF-8 bytes, including embedded
+zeroes. Tag 8 contains nested records of the element type declared by
+`a[T]`. Tag 9 with an empty payload represents `nil` in a string or array
+position. Empty strings and arrays retain their own tags. Tuple and scalar
+records use their existing nested tags. The complete list record is limited
+to 65,536 bytes.
+
+The NC64 layout calculation identifies field offsets and roots for strings,
+arrays, and references. Styx invocation still uses the existing profiles.
+The new path still needs object allocation in the receiving VM, integration
+with the root map, and reference copy-back.

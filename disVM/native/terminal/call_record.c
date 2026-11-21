@@ -5,6 +5,8 @@
 #include "call_record.h"
 #include "tuple_record.h"
 #include "scalar_record.h"
+#include "load_profile.h"
+#include "flashvm/utf8.h"
 #include "flashvm/srecord.h"
 #include <string.h>
 
@@ -167,10 +169,11 @@ static size_t align_field(size_t offset, size_t alignment)
 
 /* EN: Append one field's leaf layout relative to its enclosing aggregate.
  * RU: Добавить раскладку полей одного значения относительно внешнего агрегата. */
-static int scalar_field(const char **cursor, unsigned depth, StyxScalarLayout *layout, size_t *alignment)
+static int scalar_field(const char **cursor, unsigned depth, int managed, StyxScalarLayout *layout,
+    size_t *alignment)
 {
     char type = **cursor;
-    if (type == '(' && depth < STYX_CALL_DEPTH)
+    if (type == '(' && depth < (managed ? 7U : STYX_CALL_DEPTH))
     {
         ++*cursor;
         size_t base = layout->count;
@@ -180,7 +183,7 @@ static int scalar_field(const char **cursor, unsigned depth, StyxScalarLayout *l
         {
             size_t first = layout->count;
             size_t child_alignment;
-            if (!scalar_field(cursor, depth + 1, layout, &child_alignment))
+            if (!scalar_field(cursor, depth + 1, managed, layout, &child_alignment))
             {
                 return 0;
             }
@@ -203,11 +206,26 @@ static int scalar_field(const char **cursor, unsigned depth, StyxScalarLayout *l
         layout->size = align_field(size, *alignment);
         return 1;
     }
-    if ((type != 'i' && type != 'b' && type != 'f' && type != 'y') || layout->count == STYX_CALL_VALUES)
+    int pointer = managed && (type == 's' || type == 'a' || type == 'r');
+    if ((!pointer && type != 'i' && type != 'b' && type != 'f' && type != 'y') ||
+        layout->count == STYX_CALL_VALUES)
     {
         return 0;
     }
-    ++*cursor;
+    if (pointer)
+    {
+        const char *end = styxshape_end(*cursor);
+        if (!end)
+        {
+            return 0;
+        }
+        *cursor = end;
+        layout->pointers |= 1U << layout->count;
+    }
+    else
+    {
+        ++*cursor;
+    }
     *alignment = type == 'y' ? 1 : 8;
     layout->offset[layout->count] = 0;
     layout->width[layout->count++] = (unsigned char)*alignment;
@@ -221,7 +239,32 @@ int styxscalar_layout(const char *shape, StyxScalarLayout *layout)
 {
     StyxScalarLayout decoded = {0};
     size_t alignment;
-    if (!shape || *shape != '(' || !layout || !scalar_field(&shape, 0, &decoded, &alignment) || *shape)
+    if (!shape || *shape != '(' || !layout || !scalar_field(&shape, 0, 0, &decoded, &alignment) || *shape)
+    {
+        return 0;
+    }
+    *layout = decoded;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_layout(const char *shape, StyxScalarLayout *layout)
+{
+    StyxScalarLayout decoded = {0};
+    size_t alignment;
+    StyxCallShape schema = {.result = "()"};
+    if (!shape || !layout)
+    {
+        return 0;
+    }
+    size_t length = strlen(shape);
+    if (length > STYX_SHAPE_MAX)
+    {
+        return 0;
+    }
+    memcpy(schema.arguments, shape, length + 1);
+    if (!styxshapevalid(&schema) || !scalar_field(&shape, 0, 1, &decoded, &alignment) || *shape)
     {
         return 0;
     }
@@ -267,4 +310,122 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
             memcpy(field, &values->cells[i], sizeof(values->cells[i]));
         }
     }
+}
+
+
+/* EN: Validate one tuple's exact arity or one array's homogeneous record sequence.
+ * RU: Проверить точное число полей кортежа или однородную последовательность массива. */
+static int managed_children(const char *shape, const unsigned char *bytes, size_t size, int array,
+    unsigned depth);
+
+
+/* EN: Traverse one nested value, checking tag, payload and bounds before advancing.
+ * RU: Проверить тег, содержимое и границы вложенного значения до продвижения. */
+static int managed_value(const char *shape, const unsigned char *bytes, size_t size, unsigned depth, size_t *used)
+{
+    FVM_SRecord value;
+    if (depth == 6 || fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &value, used) != FVM_S_OK)
+    {
+        return 0;
+    }
+    const char type = *shape;
+    if ((type == 's' || type == 'a') && value.tag == STYX_MANAGED_NIL_TAG)
+    {
+        return value.size == 0;
+    }
+    switch (type)
+    {
+    case 's':
+        return value.tag == STYX_MANAGED_STRING_TAG &&
+            fvm_utf8_validate((const char *)value.payload, value.size, NULL) == FVM_UTF8_OK;
+    case 'a':
+        return value.tag == STYX_MANAGED_ARRAY_TAG &&
+            managed_children(shape + 2, value.payload, value.size, 1, depth + 1);
+    case '(':
+        return value.tag == CALL_TUPLE && managed_children(shape + 1, value.payload, value.size, 0, depth + 1);
+    case 'i':
+    case 'b':
+    case 'f':
+    case 'y':
+    {
+        StyxScalarKind kind;
+        int64_t scalar;
+        return styxscalarread(node_tag(type), bytes, *used, &kind, &scalar) &&
+            kind == STYX_SCALAR_VALUE && scalar_valid(type, scalar);
+    }
+    default:
+        return 0;
+    }
+}
+
+
+/* EN: Scan borrowed child records once. Shape is already checked as a complete list.
+ * RU: Один раз пройти заимствованные записи. Схема уже проверена целиком. */
+static int managed_children(const char *shape, const unsigned char *bytes, size_t size, int array,
+    unsigned depth)
+{
+    while (array ? size != 0 : *shape != ')')
+    {
+        size_t used;
+        if (!managed_value(shape, bytes, size, depth, &used))
+        {
+            return 0;
+        }
+        if (!array)
+        {
+            shape = styxshape_end(shape);
+        }
+        bytes += used;
+        size -= used;
+    }
+    return size == 0;
+}
+
+
+/* EN: Apply the compiled schema grammar and exclude reference identity from this codec.
+ * RU: Проверить грамматику схемы Dis и исключить идентичность ref из кодека. */
+static int managed_payload(const char *shape, const void *bytes, size_t size)
+{
+    StyxCallShape schema = {.result = "()"};
+    if (!shape || (size && !bytes))
+    {
+        return 0;
+    }
+    size_t length = strlen(shape);
+    if (length > STYX_SHAPE_MAX || strchr(shape, 'r'))
+    {
+        return 0;
+    }
+    memcpy(schema.arguments, shape, length + 1);
+    return styxshapevalid(&schema) && managed_children(schema.arguments + 1, bytes, size, 0, 0);
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_list_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
+    FVM_SRecord *list)
+{
+    FVM_SRecord decoded;
+    size_t used;
+    if (!list || size > STYX_MANAGED_LIST_LIMIT ||
+        fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &decoded, &used) != FVM_S_OK ||
+        used != size || decoded.tag != tag || !managed_payload(shape, decoded.payload, decoded.size))
+    {
+        return 0;
+    }
+    *list = decoded;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_list_write(unsigned long tag, const char *shape, const void *payload, size_t size,
+    void *bytes, size_t capacity, size_t *used)
+{
+    if (capacity > STYX_MANAGED_LIST_LIMIT)
+    {
+        capacity = STYX_MANAGED_LIST_LIMIT;
+    }
+    return size <= capacity && managed_payload(shape, payload, size) &&
+        fvm_srecord_write(tag, payload, size, bytes, capacity, used) == FVM_S_OK;
 }

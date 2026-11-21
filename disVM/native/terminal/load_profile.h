@@ -42,6 +42,11 @@ typedef struct StyxCallShape
 int styxshapevalid(const StyxCallShape *shape);
 
 
+/* EN: Return the end of one value type in a borrowed NUL-terminated schema.
+ * RU: Вернуть конец одного типа значения в заимствованной NUL-схеме. */
+const char *styxshape_end(const char *type);
+
+
 /* EN: Count the scalar cells and prove both lists fit the generic call codec.
  * RU: Посчитать скалярные ячейки и проверить вместимость обеих записей. */
 int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result);
