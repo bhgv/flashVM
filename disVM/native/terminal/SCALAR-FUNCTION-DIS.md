@@ -55,3 +55,17 @@ The [caller](../../examples/remote-scalar/styx-wide-owner.b) and
 [owner](../../examples/remote-scalar/wide-owner.b) exercise the signed
 limits, an exception and persistent instance state in
 `terminal-scalar-owner-guest`.
+
+## Mixed-width owner instance
+
+Publish the original exports together with `styxunibusserverstartmounted`.
+Each Dis-backed entry selects its width with `dis_big`. The scalar owner
+accepts a tab-separated `mixed` configuration with the implementation
+path followed by triples of export selector, request path and reply path.
+Selectors start with `i:` for `int` or `b:` for `big`.
+
+The runtime validates the whole import list and links one local instance.
+The service dispatches each mailbox with the corresponding typed frame
+and preserves one module data area across both widths. The
+[mixed caller](../../examples/remote-scalar/styx-mixed-owner.b) checks
+shared state and rejects an incompatible compiled import.

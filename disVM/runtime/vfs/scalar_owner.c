@@ -11,6 +11,7 @@
 #include "loader.h"
 #include "namespace.h"
 #include "kernel.h"
+#include "disvm/refcount.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
 #include "raise.h"
@@ -19,26 +20,34 @@
 #include <string.h>
 
 
-/* [GC:] EN/RU: Bind requested scalar exports on one ordinary local Modlink.
- * Связать запрошенные скалярные экспорты в одном обычном локальном Modlink. */
+/* EN: Return one owned local link for the supplied compiled import list.
+ * RU: Вернуть свою локальную связь для списка компилированных импортов. */
+static Modlink *link_owner(char *path, Import *imports)
+{
+    Module *module = dvm_namespace_read_imports(path, NULL, 1, imports);
+    if (!module)
+    {
+        return H;
+    }
+    if (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID)
+    {
+        unload(module);
+        kwerrstr("scalar owner requires a local Dis implementation");
+        return H;
+    }
+    return linkmod(module, imports, 1);
+}
+
+
+/* EN: Replace the caller's old result with one linked owner reference.
+ * RU: Заменить прежний результат клиента одной ссылкой на связанный модуль. */
 static void load_owner(char *path, Import *imports, Modlink **result)
 {
     Modlink *empty = H;
     void *previous = dvm_sys_owner(result);
     memmove(result, &empty, sizeof(empty));
     destroy(previous);
-    Module *module = dvm_namespace_read_imports(path, NULL, 1, imports);
-    if (!module)
-    {
-        return;
-    }
-    if (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID)
-    {
-        unload(module);
-        kwerrstr("scalar owner requires a local Dis implementation");
-        return;
-    }
-    Modlink *link = linkmod(module, imports, 1);
+    Modlink *link = link_owner(path, imports);
     if (link != H)
     {
         Setmark(D2H(link));
@@ -63,8 +72,40 @@ void Vfsnative_scalarload(void *frame)
 }
 
 
-/* EN/RU: Bind up to eight names in request order, sharing one cloned data area.
- * Связать до восьми имён в порядке запроса с одной копией данных модуля. */
+/* EN: Parse all export slots before linking. Mixed mode requires a width prefix.
+ * RU: Разобрать все слоты до связывания. В смешанном режиме требуется префикс ширины. */
+static void parse_exports(char *names, Import *imports, int mixed)
+{
+    char *name = names;
+    for (size_t i = 0; name; i++)
+    {
+        char *separator = strchr(name, '\t');
+        if (separator)
+        {
+            *separator = '\0';
+        }
+        uint32_t signature = DVM_SCALAR_INT_SIGNATURE;
+        if (mixed)
+        {
+            if ((name[0] != 'i' && name[0] != 'b') || name[1] != ':')
+            {
+                error("invalid mixed owner export type");
+            }
+            signature = name[0] == 'b' ? DVM_SCALAR_BIG_SIGNATURE : DVM_SCALAR_INT_SIGNATURE;
+            name += 2;
+        }
+        if (i == STYX_MOUNTED_EXPORT_LIMIT || !styxscalar_name_length(name))
+        {
+            error("invalid scalar owner export list");
+        }
+        imports[i] = (Import){(int32_t)signature, name};
+        name = separator ? separator + 1 : NULL;
+    }
+}
+
+
+/* EN: Bind eight or fewer int exports into one cloned data area.
+ * RU: Связать до восьми экспортов int с одной областью данных. */
 void Vfsnative_scalarloadset(void *frame)
 {
     F_Vfsnative_scalarloadset call;
@@ -75,24 +116,43 @@ void Vfsnative_scalarloadset(void *frame)
         error("scalar owner implementation unavailable");
     }
     Import imports[STYX_MOUNTED_EXPORT_LIMIT + 1] = {0};
-    char *name = names;
-    for (size_t i = 0; name; i++)
-    {
-        char *separator = strchr(name, '\t');
-        if (separator)
-        {
-            *separator = '\0';
-        }
-        if (i == STYX_MOUNTED_EXPORT_LIMIT || !styxscalar_name_length(name))
-        {
-            error("invalid scalar owner export list");
-        }
-        imports[i] = (Import){(int32_t)DVM_SCALAR_INT_SIGNATURE, name};
-        name = separator ? separator + 1 : NULL;
-    }
+    parse_exports(names, imports, 0);
     load_owner(path, imports, call.ret);
 }
 
+
+/* EN: Publish two typed views of one compatible Modlink without cloning module data.
+ * RU: Выдать два типизированных представления одной связи без копирования данных модуля. */
+void Vfsnative_scalarmixedload(void *frame)
+{
+    F_Vfsnative_scalarmixedload call;
+    Modlink *result[2] = {H, H};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarmixedload, ret), sizeof(result));
+    char path[DVM_NS_PATH_LIMIT], names[DVM_NS_PATH_LIMIT];
+    if (!dvm_scalar_copy_path(call.path, path) || !dvm_scalar_copy_path(call.names, names))
+    {
+        error("scalar owner implementation unavailable");
+    }
+    Import imports[STYX_MOUNTED_EXPORT_LIMIT + 1] = {0};
+    parse_exports(names, imports, 1);
+    Modlink *previous[2];
+    memmove(previous, call.ret, sizeof(previous));
+    memmove(call.ret, result, sizeof(result));
+    destroy(previous[0]);
+    destroy(previous[1]);
+    Modlink *link = link_owner(path, imports);
+    if (link != H)
+    {
+        if (dvm_refcount_retain_u(&D2H(link)->ref) != DVM_REFCOUNT_LIVE)
+        {
+            destroy(link);
+            error(exHeap);
+        }
+        Setmark(D2H(link));
+        result[0] = result[1] = link;
+        memmove(call.ret, result, sizeof(result));
+    }
+}
 
 
 /* EN: Bind a single original Dis export with the compiled big signature.

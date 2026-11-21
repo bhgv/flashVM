@@ -23,6 +23,18 @@ ScalarimplementationSet: module
     invoke7: fn(value: int): int; # Slot 7 of one linked module instance.
 };
 
+ScalarbigimplementationSet: module
+{
+    invoke0: fn(value: big): big;
+    invoke1: fn(value: big): big;
+    invoke2: fn(value: big): big;
+    invoke3: fn(value: big): big;
+    invoke4: fn(value: big): big;
+    invoke5: fn(value: big): big;
+    invoke6: fn(value: big): big;
+    invoke7: fn(value: big): big;
+};
+
 Vfsnative: module
 {
     PATH: con "$Vfsnative"; # Hosted builtin, no foreign namespace/PID input.
@@ -76,4 +88,8 @@ Vfsnative: module
     scalarbigload: fn(path, exportname: string): Scalarbigimplementation;
     scalarbignext: fn(path: string, tag: big): (int, big);
     scalarbigreply: fn(path: string, tag: big, success: int, value: big);
+    # EN: Poll one signed mailbox and link a mixed set into two views of one instance.
+    # RU: Проверить знаковый приёмник и связать смешанные типы с одним экземпляром.
+    scalarbigpoll: fn(path: string, tag: big): (int, big);
+    scalarmixedload: fn(path, names: string): (ScalarimplementationSet, ScalarbigimplementationSet);
 };

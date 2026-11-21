@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Original Dis implementation of the mounted full-width example.
 # RU: Исходная реализация Dis для примера полноразрядного вызова.
-implement Wide;
+implement WideSet;
 include "wide.m";
 
 calls: big; # State retained by the owner's linked instance.
@@ -19,4 +19,14 @@ echo(value: big): big
         return calls;
     }
     return value;
+}
+
+
+
+# EN: Update the shared counter from the narrow export.
+# RU: Обновить общий счётчик из узкого экспорта.
+count(delta: int): int
+{
+    calls += big delta;
+    return int calls;
 }

@@ -31,8 +31,8 @@ init()
         serve_big(routes, tl fields);
         return;
     }
-    if (count > 0 && hd fields == "set") {
-        serve_set(sys, routes, count-1, tl fields);
+    if (count > 0 && (hd fields == "set" || hd fields == "mixed")) {
+        serve_set(sys, routes, count-1, tl fields, hd fields == "mixed");
         return;
     }
     if (count != 6 && count != 7) {
@@ -92,7 +92,7 @@ init()
 
 # EN/RU: Serve separate file routes on a single linked Dis data instance.
 # Обслуживать отдельные файловые маршруты на одном экземпляре данных Dis.
-serve_set(sys: Sys, routes: Vfsnative, count: int, fields: list of string)
+serve_set(sys: Sys, routes: Vfsnative, count: int, fields: list of string, mixed: int)
 {
     if (count < 4 || count > 25 || (count-1)%3 != 0) {
         raise "invalid owner export set";
@@ -103,10 +103,16 @@ serve_set(sys: Sys, routes: Vfsnative, count: int, fields: list of string)
     requests := array[size] of string;
     replies := array[size] of string;
     active := array[size] of int;
+    tags := array[size] of big;
     names := hd fields;
     for (i := 0; i < size; i++) {
         if (i > 0) {
             names += "\t" + hd fields;
+        }
+        name := hd fields;
+        tags[i] = big 72;
+        if (mixed && len name > 2 && name[0] == 'b' && name[1] == ':') {
+            tags[i] = big 76;
         }
         fields = tl fields;
         requests[i] = hd fields;
@@ -115,8 +121,14 @@ serve_set(sys: Sys, routes: Vfsnative, count: int, fields: list of string)
         fields = tl fields;
         active[i] = 1;
     }
-    target := routes->scalarloadset(implementation, names);
-    if (target == nil) {
+    target: ScalarimplementationSet;
+    wide: ScalarbigimplementationSet;
+    if (mixed) {
+        (target, wide) = routes->scalarmixedload(implementation, names);
+    } else {
+        target = routes->scalarloadset(implementation, names);
+    }
+    if (target == nil || (mixed && wide == nil)) {
         raise "scalar owner export set link failed";
     }
     remaining := size;
@@ -126,21 +138,25 @@ serve_set(sys: Sys, routes: Vfsnative, count: int, fields: list of string)
             if (active[i] == 0) {
                 continue;
             }
-            (ready, value) := routes->scalarpoll(requests[i], big 72);
+            (ready, value) := routes->scalarbigpoll(requests[i], tags[i]);
             if (ready == 0) {
                 active[i] = 0;
                 remaining--;
             } else if (ready > 0) {
-                result := 0;
+                result := big 0;
                 success := 1;
                 {
-                    result = invoke(target, i, value);
+                    if (tags[i] == big 76) {
+                        result = invoke_big(wide, i, value);
+                    } else {
+                        result = big invoke(target, i, int value);
+                    }
                 } exception {
                     "*" =>
                         success = 0;
-                        result = 1;
+                        result = big 1;
                 }
-                routes->scalarreply(replies[i], big 73, success, result);
+                routes->scalarbigreply(replies[i], big 73, success, result);
                 worked = 1;
             }
         }
@@ -168,6 +184,24 @@ invoke(target: ScalarimplementationSet, slot, value: int): int
     raise "invalid owner export slot";
 }
 
+
+
+# EN: Dispatch full-width values through the corresponding typed view of the same link.
+# RU: Передать полноразрядное значение через типизированное представление той же связи.
+invoke_big(target: ScalarbigimplementationSet, slot: int, value: big): big
+{
+    case slot {
+    0 => return target->invoke0(value);
+    1 => return target->invoke1(value);
+    2 => return target->invoke2(value);
+    3 => return target->invoke3(value);
+    4 => return target->invoke4(value);
+    5 => return target->invoke5(value);
+    6 => return target->invoke6(value);
+    7 => return target->invoke7(value);
+    }
+    raise "invalid wide owner export slot";
+}
 
 
 # EN: Serve a full-width export using the same native mailbox and ordinary Dis link.

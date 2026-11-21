@@ -46,6 +46,30 @@ static int mounted_pair(int argc, char **argv, int fd, unsigned caps, int owner)
     int result = 2;
     if (owner)
     {
+        if (getenv("DVM_TEST_SCALAR_MIXED_OWNER"))
+        {
+            const StyxMountedScalar entries[] = {
+                {"wide.dis", "count", NULL, 0}, {"wide.dis", "echo", NULL, 1}
+            };
+            StyxUnibusServer *server = styxunibusserverstartmounted(channel, entries, 2);
+            if (server)
+            {
+                DVM_Provider *requests[] = {
+                    styxunibusservermailbox(server, 0, 0), styxunibusservermailbox(server, 1, 0)
+                };
+                DVM_Provider *replies[] = {
+                    styxunibusservermailbox(server, 0, 1), styxunibusservermailbox(server, 1, 1)
+                };
+                result = scalar_runtime_shared(argc, argv, requests, replies);
+                shutdown(breaker, SHUT_RDWR);
+                if (!styxunibusserverjoin(server))
+                {
+                    result = 2;
+                }
+            }
+            close(breaker);
+            return result;
+        }
         if (getenv("DVM_TEST_SCALAR_BIG_OWNER"))
         {
             const StyxMountedScalar entry = {"wide.dis", "echo", NULL, 1};

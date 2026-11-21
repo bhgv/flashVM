@@ -324,6 +324,23 @@ void Vfsnative_scalarpoll(void *frame)
 }
 
 
+/* EN/RU: Read the full-width mailbox once and distinguish idle from EOF.
+ * Прочитать локальный приёмник один раз и отличить ожидание от EOF. */
+void Vfsnative_scalarbigpoll(void *frame)
+{
+    F_Vfsnative_scalarbigpoll call;
+    WORD result[2] = {0, 0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarbigpoll, ret), sizeof(result));
+    const char *failure = take_request(call.path, call.tag, READ_POLL, &result[1]);
+    if (failure && failure != session_idle && failure != session_end)
+    {
+        error((char *)failure);
+    }
+    result[0] = !failure ? 1 : failure == session_idle ? -1 : 0;
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
 /* EN/RU: Send one result or owner error from the active namespace.
  * Отправить результат или ошибку из пространства владельца. */
 void dvm_scalar_owner_reply(String *name, int64_t tag, WORD success, int64_t value)

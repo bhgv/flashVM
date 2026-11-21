@@ -163,7 +163,10 @@ int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, 
     char cwd[DVM_NS_PATH_LIMIT];
     const char *request_paths[] = {"/request0", "/request1"};
     const char *reply_paths[] = {"/reply0", "/reply1"};
-    unsigned char arguments[] = "set\timplementation.dis\tadjust\t/scalar/request0\t/scalar/reply0"
+    const char *arguments = getenv("DVM_TEST_SCALAR_MIXED_OWNER") ?
+        "mixed\twide-owner.dis\ti:count\t/scalar/request0\t/scalar/reply0"
+        "\tb:echo\t/scalar/request1\t/scalar/reply1" :
+        "set\timplementation.dis\tadjust\t/scalar/request0\t/scalar/reply0"
         "\tcompute\t/scalar/request1\t/scalar/reply1";
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
     if (!view || !getcwd(cwd, sizeof(cwd)))
@@ -179,8 +182,8 @@ int scalar_runtime_shared(int argc, char **argv, DVM_Provider *const *requests, 
         }
     }
     DVM_Provider *routes = dvm_view_freeze(view);
-    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_PROVIDER, .arguments = arguments};
-    handoff.description.argument_bytes = sizeof(arguments) - 1;
+    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_PROVIDER, .arguments = (unsigned char *)arguments};
+    handoff.description.argument_bytes = strlen(arguments);
     strcpy(handoff.description.module, "scalar-owner-set.dis");
     handoff.group = dvm_namespace_create(cwd, "/", NULL);
     if (!routes || !handoff.group || !dvm_namespace_pin(handoff.group) ||
