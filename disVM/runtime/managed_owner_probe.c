@@ -163,6 +163,31 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
         "encode typed bytes");
     FVM_SRecord array = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = encoded, .size = first + second};
     check(dvm_styx_managed_new("a[y]", &array, &bytes) && bytes != H, "construct Styx byte array");
+    unsigned char fields[120], frame_wire[128];
+    size_t n, m, k, wire_size;
+    DVM_StyxValueFrame frame = {0};
+    check(styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, 93, fields, sizeof(fields), &n) &&
+        fvm_srecord_write(STYX_MANAGED_STRING_TAG, utf8, sizeof(utf8), fields + n, sizeof(fields) - n, &m) == FVM_S_OK &&
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, encoded, first + second, fields + n + m,
+            sizeof(fields) - n - m, &k) == FVM_S_OK &&
+        styxmanaged_list_write(89, "(ysa[y])", fields, n + m + k, frame_wire, sizeof(frame_wire), &wire_size) &&
+        dvm_styx_value_frame_read(89, "(ysa[y])", frame_wire, wire_size, &frame),
+        "decode scalar and managed arguments into exact NC64 slots");
+    String *frame_text;
+    Array *frame_array;
+    memcpy(&frame_text, &frame.words[1], sizeof(frame_text));
+    memcpy(&frame_array, &frame.words[2], sizeof(frame_array));
+    check(frame.layout.size == 24 && frame.layout.pointers == 6 && *(unsigned char *)frame.words == 93 &&
+        !memcmp(string2c(frame_text), utf8, sizeof(utf8)) &&
+        frame_array->len == 2 && frame_array->data[0] == 255 && frame_array->data[1] == 0,
+        "decoded frame matches the original mixed arguments");
+    dvm_styx_value_frame_clear(&frame);
+    check(!frame.layout.count && !frame.words[1] && !frame.words[2], "retire decoded frame owners");
+    check(fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, fields + n + m,
+            sizeof(fields) - n - m, &k) == FVM_S_OK &&
+        styxmanaged_list_write(89, "(ysa[b])", fields, n + m + k, frame_wire, sizeof(frame_wire), &wire_size) &&
+        !dvm_styx_value_frame_read(89, "(ysa[b])", frame_wire, wire_size, &frame) && !frame.layout.count,
+        "unsupported leaf rolls back an already decoded owner");
     FVM_SRecord truncated = array;
     truncated.size--;
     void *unchanged = text;

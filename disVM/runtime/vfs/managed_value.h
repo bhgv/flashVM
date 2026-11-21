@@ -5,6 +5,7 @@
 #ifndef DVM_STYX_MANAGED_VALUE_H
 #define DVM_STYX_MANAGED_VALUE_H
 #include "flashvm/srecord.h"
+#include "../../native/terminal/call_record.h"
 
 
 /* [GC:] EN: Decode one leaf of type s or a[y]. Borrow type and record, allocate
@@ -25,4 +26,26 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
  * Строка удерживается стабильным владельцем, заголовок массива неизменяем.
  * Данные копируются до кодирования. При отказе bytes и used сохраняются. */
 int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used);
+
+typedef struct DVM_StyxValueFrame
+{
+    StyxScalarLayout layout; /* NC64 offsets and managed ownership slots. */
+    unsigned roots; /* Registered temporary heap roots by leaf index. */
+    uint64_t words[STYX_CALL_VALUES]; /* Aligned private argument or result bytes. */
+} DVM_StyxValueFrame;
+
+
+/* [GC:] EN: Decode a checked list into an empty output frame on the ACTIVE resident.
+ * On success the frame owns rooted references. Clear it under GC admission,
+ * after copying references to managed slots if needed. Failure preserves output.
+ * RU: Декодировать проверенный список в пустой кадр на ACTIVE resident.
+ * Кадр владеет укоренёнными ссылками. Освободить его при допуске GC, при
+ * необходимости после переноса в управляемые слоты. Отказ сохраняет выход. */
+int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
+    DVM_StyxValueFrame *frame);
+
+
+/* [GC:] EN: Release all decoded owners and clear the private frame.
+ * RU: Освободить все декодированные ссылки и очистить частный кадр. */
+void dvm_styx_value_frame_clear(DVM_StyxValueFrame *frame);
 #endif

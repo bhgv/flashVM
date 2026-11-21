@@ -3,6 +3,9 @@
  * RU: Кодирование и декодирование строк и байтовых массивов без межкучевых указателей.
  */
 #include "lib9.h"
+#include "dat.h"
+#include "fns.h"
+#include "kernel.h"
 #include "isa.h"
 #include "interp.h"
 #include "runt.h"
@@ -11,6 +14,7 @@
 #include "flashvm/utf8.h"
 #include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
+#include "../../native/terminal/load_profile.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -203,4 +207,147 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
         return 0;
     }
     return string ? write_string(value, bytes, capacity, used) : write_array(value, bytes, capacity, used);
+}
+
+
+typedef struct FrameDecode
+{
+    const char *shape; /* Borrowed validated list shape. */
+    FVM_SRecord list; /* Borrowed validated input list. */
+    DVM_StyxValueFrame pending; /* Owned local staging until publication. */
+    size_t leaf; /* Count of populated slots, in shape order. */
+} FrameDecode;
+
+
+/* [GC:] EN: Copy one validated node or recurse into a tuple.
+ * RU: Скопировать один проверенный узел либо рекурсивно разобрать кортеж. */
+static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned char *data, size_t size)
+{
+    while (*shape != ')')
+    {
+        FVM_SRecord node;
+        size_t used;
+        if (fvm_srecord_read(data, size, STYX_MANAGED_LIST_LIMIT, &node, &used) != FVM_S_OK)
+        {
+            return 0;
+        }
+        const char *end = styxshape_end(shape);
+        if (!end)
+        {
+            return 0;
+        }
+        if (*shape == '(')
+        {
+            if (!decode_nodes(decode, shape + 1, node.payload, node.size))
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            size_t slot = decode->leaf;
+            StyxScalarLayout *layout = &decode->pending.layout;
+            if (slot >= layout->count)
+            {
+                return 0;
+            }
+            unsigned char *destination = (unsigned char *)decode->pending.words + layout->offset[slot];
+            if (layout->pointers & (1U << slot))
+            {
+                char type[5] = {0};
+                void *object;
+                if (end - shape >= (ptrdiff_t)sizeof(type))
+                {
+                    return 0;
+                }
+                memcpy(type, shape, (size_t)(end - shape));
+                if (!dvm_styx_managed_new(type, &node, &object))
+                {
+                    return 0;
+                }
+                memcpy(destination, &object, sizeof(object));
+                if (object != H)
+                {
+                    ptradd(D2H(object));
+                    decode->pending.roots |= 1U << slot;
+                    Setmark(D2H(object));
+                }
+            }
+            else
+            {
+                StyxScalarKind kind;
+                int64_t value;
+                if (!styxscalarread(node.tag, data, used, &kind, &value))
+                {
+                    return 0;
+                }
+                if (layout->width[slot] == 1)
+                {
+                    *destination = (unsigned char)value;
+                }
+                else
+                {
+                    memcpy(destination, &value, sizeof(value));
+                }
+            }
+            decode->leaf++;
+        }
+        shape = end;
+        data += used;
+        size -= used;
+    }
+    return size == 0;
+}
+
+
+/* [GC:] EN: Run the decoder within the VM exception boundary.
+ * RU: Выполнить декодирование в границах обработчика ошибок VM. */
+static int decode_frame(void *state)
+{
+    FrameDecode *decode = state;
+    return decode_nodes(decode, decode->shape + 1, decode->list.payload, decode->list.size);
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+void dvm_styx_value_frame_clear(DVM_StyxValueFrame *frame)
+{
+    unsigned char *storage = (unsigned char *)frame->words;
+    for (size_t i = 0; i < frame->layout.count; i++)
+    {
+        if (frame->layout.pointers & (1U << i))
+        {
+            void *object;
+            memcpy(&object, storage + frame->layout.offset[i], sizeof(object));
+            if (object && object != H)
+            {
+                if (frame->roots & (1U << i))
+                {
+                    ptrdel(D2H(object));
+                }
+                destroy(object);
+            }
+        }
+    }
+    memset(frame, 0, sizeof(*frame));
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
+    DVM_StyxValueFrame *frame)
+{
+    FrameDecode decode = {.shape = shape};
+    if (!frame || !styxmanaged_layout(shape, &decode.pending.layout) ||
+        !styxmanaged_list_read(tag, shape, bytes, size, &decode.list))
+    {
+        return 0;
+    }
+    if (!kprotect(decode_frame, &decode) || decode.leaf != decode.pending.layout.count)
+    {
+        dvm_styx_value_frame_clear(&decode.pending);
+        return 0;
+    }
+    *frame = decode.pending;
+    return 1;
 }
