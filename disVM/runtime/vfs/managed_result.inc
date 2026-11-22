@@ -61,7 +61,10 @@ int dvm_styx_ref_result_read(const StyxCallShape *shape, const void *data, size_
     {
         return 0;
     }
-    if (!kprotect(decode_frame, &decode) || decode.leaf != decode.pending.layout.count)
+    size_t seeded = refs.count;
+    int valid = kprotect(decode_frame, &decode) && decode.leaf == decode.pending.layout.count;
+    dvm_styx_ref_release(&refs, seeded);
+    if (!valid)
     {
         dvm_styx_value_frame_clear(&decode.pending);
         return 0;
@@ -85,11 +88,7 @@ int dvm_styx_ref_result_write(const StyxCallShape *shape, const void *slots, siz
     size_t seeded = refs.count;
     int valid = encode_frame(&encode, STYX_DYNAMIC_REPLY_TAG, shape->result, size, data, capacity, used,
         shape->arguments, arguments);
-    for (size_t i = seeded; i < refs.count; i++)
-    {
-        ptrdel(D2H(refs.objects[i]));
-        destroy(refs.objects[i]);
-    }
+    dvm_styx_ref_release(&refs, seeded);
     return valid;
 }
 

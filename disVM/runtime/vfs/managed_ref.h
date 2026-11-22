@@ -8,11 +8,16 @@
 
 typedef struct DVM_StyxRefTable
 {
-    void *objects[STYX_CALL_REF_KEYS]; /* Borrowed from rooted slots during a single traversal. */
+    void *objects[STYX_CALL_REF_KEYS]; /* Original argument objects followed by owned traversal objects. */
     size_t count; /* Number of reserved reference indices. */
     size_t limit; /* Maximum result indices, or zero for the standalone limit. */
     int result; /* Share the table through the validated result tree. */
 } DVM_StyxRefTable;
+
+
+/* EN: Remove owned entries starting at first, preserving borrowed identities.
+ * RU: Освободить собственные записи начиная с first, сохраняя заимствованные. */
+void dvm_styx_ref_release(DVM_StyxRefTable *table, size_t first);
 
 
 /* EN: Decode an owned local object or retain an earlier alias from table.

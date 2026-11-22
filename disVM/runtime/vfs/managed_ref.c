@@ -53,6 +53,27 @@ static int ref_layout(const Type *type, const StyxScalarLayout *layout)
 }
 
 
+/* EN: Retain an object independently of its enclosing value during traversal.
+ * RU: Удержать объект независимо от содержащего его значения на время обхода. */
+static int pin_ref_object(void *object);
+
+
+/* EN/RU: See managed_ref.h. / См. managed_ref.h. */
+void dvm_styx_ref_release(DVM_StyxRefTable *table, size_t first)
+{
+    while (table->count > first)
+    {
+        void *object = table->objects[--table->count];
+        table->objects[table->count] = NULL;
+        if (object)
+        {
+            ptrdel(D2H(object));
+            destroy(object);
+        }
+    }
+}
+
+
 /* EN/RU: See managed_ref.h. / См. managed_ref.h. */
 int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRecord *node, void **result)
 {
@@ -115,6 +136,12 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
     freetype(allocation.type);
     if (!allocated)
     {
+        dvm_styx_value_frame_clear(&frame);
+        return 0;
+    }
+    if (table->result && !pin_ref_object(allocation.object))
+    {
+        destroy(allocation.object);
         dvm_styx_value_frame_clear(&frame);
         return 0;
     }
@@ -181,7 +208,7 @@ static int encode_snapshot(void *opaque)
 
 /* EN: Register an encoder-owned temporary root within an error boundary.
  * RU: Зарегистрировать временный корень кодировщика под обработчиком ошибок. */
-static int root_result_object(void *object)
+static int root_ref_object(void *object)
 {
     ptradd(D2H(object));
     Setmark(D2H(object));
@@ -189,20 +216,17 @@ static int root_result_object(void *object)
 }
 
 
-/* EN: Reserve an index and pin its object until the complete result has been encoded.
- * RU: Зарезервировать индекс и удержать объект до кодирования всего результата. */
-static int pin_result_object(DVM_StyxRefTable *table, void *object)
+static int pin_ref_object(void *object)
 {
     if (dvm_refcount_retain_u(&D2H(object)->ref) != DVM_REFCOUNT_LIVE)
     {
         return 0;
     }
-    if (!kprotect(root_result_object, object))
+    if (!kprotect(root_ref_object, object))
     {
         destroy(object);
         return 0;
     }
-    table->objects[table->count++] = object;
     return 1;
 }
 
@@ -238,10 +262,14 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
         dvm_styx_value_frame_clear(&snapshot);
         return 0;
     }
-    if (table->result && !pin_result_object(table, object))
+    if (table->result)
     {
-        dvm_styx_value_frame_clear(&snapshot);
-        return 0;
+        if (!pin_ref_object(object))
+        {
+            dvm_styx_value_frame_clear(&snapshot);
+            return 0;
+        }
+        table->objects[table->count++] = object;
     }
     RefEncode encode = {.snapshot = &snapshot, .fields = fields, .record = malloc(capacity),
         .capacity = capacity, .table = table->result ? table : NULL};
