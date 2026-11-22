@@ -7,6 +7,7 @@
 #include "mount.h"
 #include "offer.h"
 #include "programs.h"
+#include "serve_libraries.h"
 #include "vfs/module_adapter.h"
 #include "vfs/export.h"
 #include "vfs/launch/runtime.h"
@@ -75,21 +76,31 @@ int dvm_styx_library_cli(int argc, char **argv)
     }
     DVM_TerminalPrograms programs = {0};
     int valid = dvm_terminal_parse_programs(&programs, argc, argv, &separator) && (execute || !programs.count);
-    for (; argc - separator >= 4 && count < STYX_MOUNTED_SCALAR_LIMIT &&
-        !strcmp(argv[separator], "--export"); separator += 4)
+    LibraryMount libraries[LIBRARY_MOUNT_LIMIT];
+    size_t library_count = 0;
+    while (valid && argc > separator)
     {
-        entries[count].module = argv[separator + 1];
-        images[count] = argv[separator + 2];
-        entries[count].name = argv[separator + 3];
-        if (!*images[count] || strchr(images[count], '\t') || strchr(entries[count].name, '\t'))
+        if (argc - separator >= 4 && count < STYX_MOUNTED_SCALAR_LIMIT &&
+            !strcmp(argv[separator], "--export"))
+        {
+            entries[count].module = argv[separator + 1];
+            images[count] = argv[separator + 2];
+            entries[count].name = argv[separator + 3];
+            valid = *images[count] && !strchr(images[count], '\t') && !strchr(entries[count].name, '\t');
+            count++;
+            separator += 4;
+            continue;
+        }
+        int previous = separator;
+        valid = dvm_terminal_parse_libraries(libraries, &library_count, argc, argv, &separator);
+        if (separator == previous)
         {
             break;
         }
-        count++;
     }
     if (!valid || !count || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-library-serve-fd FD [--execute PROGRAM.dis [--execute-as NAME.dis IMAGE.dis]...] --export PUBLIC.dis OWNER.dis NAME [...] -- [VM OPTIONS] scalarowner.dis\n");
+        fprintf(stderr, "usage: disvm --styx-library-serve-fd FD [--execute PROGRAM.dis [--execute-as NAME.dis IMAGE.dis]...] --export PUBLIC.dis OWNER.dis NAME [...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] scalarowner.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -101,6 +112,13 @@ int dvm_styx_library_cli(int argc, char **argv)
             close(fd);
         }
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
+        return 2;
+    }
+    if (!dvm_terminal_distinct_carriers(fd, libraries, library_count))
+    {
+        close(breaker);
+        close(fd);
+        fprintf(stderr, "disvm: incoming and dependency carriers must be distinct connected sockets\n");
         return 2;
     }
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
@@ -132,6 +150,9 @@ int dvm_styx_library_cli(int argc, char **argv)
         dvm_namespace_plan(handoff.group, "/.scalar", &target) &&
         dvm_namespace_mount_provider(handoff.group, &target, routes, "/styx-library-routes") == 1;
     int result = 1;
+    LibrarySession sessions[LIBRARY_MOUNT_LIMIT] = {0};
+    size_t opened = 0;
+    initialized = initialized && dvm_terminal_mount_libraries(handoff.group, libraries, library_count, sessions, &opened);
     if (initialized)
     {
         strcpy(handoff.description.module, "styx-library-owner.dis");
@@ -153,5 +174,6 @@ int dvm_styx_library_cli(int argc, char **argv)
     dvm_provider_release(routes);
     dvm_provider_release(root);
     phybidirfree(mux);
+    dvm_terminal_close_libraries(sessions, opened);
     return result;
 }

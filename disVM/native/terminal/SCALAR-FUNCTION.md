@@ -145,21 +145,26 @@ with up to 511 additional walked nodes. Open fids cannot issue new I/O
 after their call ends. The scalar provider may dispatch methods serially
 while multiple callers remain active. The host must provision both transport channels.
 
-When the caller has no explicit `/.fd` mount, DisVM projects the
-numbered descriptors imported at process launch. The exported alias
-retains the open slot, uses its original read/write mode, and shares its
-cursor with local aliases. The guest fixture imports FD 3 at launch. The
-provider reads two consecutive blocks over reverse Styx on the parent
-and child's calls. The parent then reads the third block locally with
-`Sys->fildes(3)` and acknowledges this read with one more typed call.
-This supports the existing numbered launch
-range 0–31. On POSIX hosts with close-on-exec duplication, unhidden standard numbers
-0–2 also project regular files when an imported slot does not replace
-them. Each alias owns a duplicate of the existing open file description
-and preserves its cursor and access mode. Connected stream sockets are also supported on hosts with per-operation
-nonblocking I/O and SIGPIPE suppression. An empty socket reports temporary
-unavailability. Socket I/O preserves the original descriptor flags.
-Pipe and terminal stdio and ordinary managed opens remain outside this projection.
+DisVM publishes numbered file descriptors from the caller's file group.
+Each file in `.prog/.self/.fd` retains the already open slot, with the
+original read/write rights and shared cursor. This covers file handles
+opened by the caller and numeric slots imported at launch. Local child
+processes share the caller's file group. An explicit `/.fd` mount takes
+precedence for its numbers. Publication is independent of any `/fd`
+mount or bind.
+
+The numbered range is 0–31. When no explicit `/.fd` mount supplies
+the directory and an imported slot does not replace the standard number,
+POSIX hosts with close-on-exec duplication can also publish regular files
+and supported connected stream sockets as standard descriptors. Socket
+I/O preserves the original descriptor flags. Pipe and terminal-backed
+host stdio are outside this fallback.
+
+When a scoped library function calls another mounted library, the
+outgoing call inherits its incoming `.fd`, `.vfs`, and `.var` grants.
+An explicit provider mount can override a grant. The next Styx session
+uses its immediate caller's PID and its own fid. See the
+[three-VM example](../../examples/remote-scalar/STYX.md#run-on-separate-hosts).
 The reverse mount setup still requires an embedder.
 
 ## Full-width signed scalars

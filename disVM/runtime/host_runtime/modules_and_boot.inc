@@ -79,7 +79,8 @@ int dvm_runtime_open_selected(const char *path, const char *mode, int asynchrono
         kwerrstr("file handle quota exceeded");
         return -1;
     }
-    status = dvm_open_wait_resource(path, mode, asynchronous, selected, &file, &directory, &provider_output);
+    unsigned access;
+    status = dvm_open_wait_resource(path, mode, asynchronous, selected, &file, &directory, &provider_output, &access);
     if (status == FVM_OK)
     {
         if (provider_output.ops)
@@ -89,6 +90,10 @@ int dvm_runtime_open_selected(const char *path, const char *mode, int asynchrono
         else
         {
             dvm_file_slots_publish(index, file, directory);
+        }
+        if (access)
+        {
+            dvm_launch_mark_guest_file(index, access);
         }
         return index;
     }

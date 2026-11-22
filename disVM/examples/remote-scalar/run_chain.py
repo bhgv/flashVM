@@ -97,6 +97,7 @@ def run_c(options, main_listener, alternate_listener):
         compile_images(options.limbo, root, (
             (DISVM / "limbo/scalarowner.b", "owner.dis"),
             (EXAMPLE / "wide-owner.b", "wide.dis"),
+            (EXAMPLE / "styx-chain-fd.b", "chain-fd.dis"),
             (EXAMPLE / "managed-fid/target.b", "managed.dis"),
             (EXAMPLE / "styx-named-launch-owner.b", "nested-root.dis"),
             (EXAMPLE / "styx-chain-leaf.b", "nested-leaf.dis"),
@@ -109,7 +110,8 @@ def run_c(options, main_listener, alternate_listener):
             programs = []
             if managed:
                 programs = ["--execute", "nested-root.dis", "--execute-as", "leaf.dis", "nested-leaf.dis"]
-                exports.extend(("--export", "managed.dis", "managed.dis", "changegraph"))
+                exports.extend(("--export", "managed.dis", "managed.dis", "changegraph",
+                                "--export", "chain-fd.dis", "chain-fd.dis", "forward"))
             delegate([options.runtime, "--styx-library-serve-fd", str(stream.fileno()),
                       *programs, *exports, "--", options.mode, "owner.dis"], (stream,), root)
 
@@ -127,6 +129,8 @@ def run_b(options, listener, main_library, alternate_library):
         root = Path(temp)
         compile_images(options.limbo, root, (
             (EXAMPLE / "styx-chain-owner.b", "chain-owner.dis"),
+            (EXAMPLE / "styx-chain-forward.b", "chain-fd.dis"),
+            (DISVM / "limbo/scalarowner.b", "dispatcher.dis"),
             (EXAMPLE / "styx-chain-local.b", "deps/wide.dis"),
         ))
         (root / "leaf-alias.dis").touch()
@@ -135,10 +139,11 @@ def run_b(options, listener, main_library, alternate_library):
         main = sockets.enter_context(connect(main_library))
         alternate = sockets.enter_context(connect(alternate_library))
         launch = sockets.enter_context(accept(listener))
-        delegate([options.runtime, "--styx-serve-fd", str(launch.fileno()), "--persistent",
+        delegate([options.runtime, "--styx-library-serve-fd", str(launch.fileno()),
+                  "--execute", "chain-owner.dis", "--export", "chain-fd.dis", "chain-fd.dis", "forward",
                   "--library-bidir-fd", str(main.fileno()), "--library-at", "/remote-libs",
                   "--library-bidir-fd", str(alternate.fileno()), "--library-at", "/other-libs",
-                  "--", options.mode, "chain-owner.dis"], (launch, main, alternate), root)
+                  "--", options.mode, "dispatcher.dis"], (launch, main, alternate), root)
 
 
 def run_a(options, owner):
@@ -151,6 +156,8 @@ def run_a(options, owner):
         (root / ".var").mkdir()
         (root / "stdin").write_bytes(b"live")
         (root / "fd3").write_bytes(b"skipmore")
+        (root / "ordinary-input").write_bytes(b"skiplive")
+        (root / "fd").mkdir()
         shared = root / "shared"
         shared.write_bytes(b"skipAB")
         with (root / "stdin").open("rb") as incoming, (root / "fd3").open("rb") as fourth, \
@@ -168,7 +175,9 @@ def run_a(options, owner):
                     "chain leaf stdout\n" not in stdout or "chain leaf stderr\n" not in stderr or
                     "PASS mounted Styx launch completion\n" not in stdout or
                     "PASS nested Styx launch cancellation\n" not in stdout or
-                    "PASS nested Styx shared variables\n" not in stdout):
+                    "PASS nested Styx shared variables\n" not in stdout or
+                    "PASS nested Styx libraries and ordinary FDs\n" not in stdout or
+                    (root / "ordinary-output").read_bytes() != b"live"):
                 raise RuntimeError(f"wrong result or descriptor state\n{stdout}{stderr}")
 
 

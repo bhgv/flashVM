@@ -396,12 +396,25 @@ write position. Guest numbers 0, 1 and 2 come from the standard streams.
 The [launch example](../examples/remote-scalar/styx-chain-owner.b) checks
 successive reads through two numbers and a write through one of them.
 
+Files already opened by the caller with `Sys->open` or `Sys->create`
+are published from its file group without extra command-line options.
+The new virtual numbered files preserve the original access and cursor.
+Explicit numbers supplied by `--fd` reserve those numbers in the caller.
+Any guest `/fd` mount remains independent of this publication.
+
 A scoped launch also exposes the adopted numbers under `/.prog/.self/.fd`.
 Opening one of these files uses the same slot, cursor and mode as
 `Sys->fildes(N)`. An existing caller `/env` directory is visible under
 `/.vfs/env` when it is part of the caller's VFS grant.
 
 ### Serve a program and libraries together
+
+A library owner can mount its own dependencies using
+`--library-bidir-fd FD [--library-at PATH]`. Put this option before
+the final `--`. The dependencies are available to the libraries'
+ordinary `load` instructions. A nested scoped call receives the incoming
+caller grants for `.fd`, `.vfs`, and `.var`, subject to explicit local
+mounts. See the [three-VM example](../examples/remote-scalar/STYX.md#run-on-separate-hosts).
 
 Place `--execute PROGRAM.dis` before the export table:
 

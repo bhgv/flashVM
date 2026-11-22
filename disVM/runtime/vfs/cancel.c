@@ -210,6 +210,38 @@ void dvm_cancel_unsubscribe(DVM_CancelTap *tap)
 }
 
 
+/* EN: Mark the retained destination from the source's native notice.
+ * RU: Поставить отметку удерживаемой цели из нативного уведомления источника. */
+static void forward(void *target)
+{
+    dvm_cancel_request(target);
+}
+
+
+/* EN: Release the destination when no forwarding callback can still use it.
+ * RU: Освободить цель, когда ни один callback её больше не использует. */
+static void release_forward(void *target)
+{
+    dvm_cancel_release(target);
+}
+
+
+/* EN/RU: See cancel.h. / См. cancel.h. */
+DVM_CancelTap *dvm_cancel_forward(DVM_Cancel *source, DVM_Cancel *target)
+{
+    if (!source || source == target || !dvm_cancel_retain(target))
+    {
+        return NULL;
+    }
+    DVM_CancelTap *tap = dvm_cancel_subscribe(source, forward, target, release_forward);
+    if (!tap)
+    {
+        dvm_cancel_release(target);
+    }
+    return tap;
+}
+
+
 /* EN/RU: See cancel.h; retain before publishing current-thread scope.
  * См. cancel.h; retain до публикации current-thread scope. */
 int dvm_cancel_enter(DVM_CancelScope *scope, DVM_Cancel *cancel)

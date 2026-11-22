@@ -440,7 +440,7 @@ static void free_fd(Heap *heap, int swept)
     {
         dvm_file_slots_drop_launch(slot);
     }
-    else if (slot >= 3)
+    else if (slot >= 3 && !dvm_file_slots_close_guest(slot))
     {
         kclose(slot);
     }

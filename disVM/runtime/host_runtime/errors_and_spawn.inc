@@ -462,12 +462,14 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
         child->remote_call_key = source->remote_call_key;
         source->remote_call_key = (DVM_StyxCallerKey){0};
         child->remote_call_group = source->remote_call_group;
+        child->remote_call_context = source->remote_call_context;
         child->remote_call_events = source->remote_call_events;
         child->remote_call_reply = source->remote_call_reply;
         child->remote_call_cancel = source->remote_call_cancel;
         child->remote_call_cancel_delivered = 1;
         child->remote_call_handoff = 2;
         source->remote_call_group = NULL;
+        source->remote_call_context = NULL;
         source->remote_call_events = NULL;
         source->remote_call_reply = NULL;
         source->remote_call_cancel = NULL;

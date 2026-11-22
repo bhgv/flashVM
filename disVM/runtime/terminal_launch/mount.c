@@ -44,6 +44,13 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *p
         dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
     if (installed && descriptors)
     {
+        for (unsigned number = 3; number < DVM_LAUNCH_FD_COUNT; number++)
+        {
+            if (descriptors[number] >= 3)
+            {
+                handoff.reserved_fds |= UINT32_C(1) << number;
+            }
+        }
         int captured;
         DVM_Provider *fds = dvm_launch_host_fd_view(descriptors, &captured);
         installed = captured && fds && dvm_namespace_plan(handoff.group, "/.fd", &target) &&

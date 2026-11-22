@@ -314,7 +314,7 @@ python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" b \
 python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" a --owner "$B_ADDR:9030"
 ```
 
-On its main connection, C publishes both libraries, the root image
+On its main connection, C publishes the libraries, the root image
 `implementation.dis` and the named image `programs/leaf.dis`. B loads
 the libraries, launches the root image by its mount path and uses a bind
 alias for the named image. C reads its local file and A's granted `.vfs`
@@ -327,6 +327,16 @@ first updates A's variable through B. A separate program launched by B's
 local child updates it again. An explicit mount on B selects its own cell
 for the next launch. Unmounting it restores A's original grant. A checks the
 final value, and C verifies the read-only permission and the scope of the grant.
+
+A also loads `chain-fd.dis` on B. That function loads the same interface
+from C and forwards the call. The argument is two descriptor numbers,
+from a file opened with `Sys->open` and an output created with
+`Sys->create`. A consumes `skip` before the call, then C receives
+`live` from the same cursor and writes it to A's output. The fixture
+mounts an unrelated tree at A's `/fd` and verifies the original open modes,
+A's VFS marker and the live variable through both library calls. A cancels
+a pending library call and retries from the same PID before the
+successful file check.
 
 A also cancels its wait after C signals that the leaf has entered a
 `big` loop. The clunk reaches C through B. A fresh launch and a library

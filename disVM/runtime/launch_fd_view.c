@@ -290,6 +290,19 @@ static int map_fd(DVM_View *view, unsigned number, FdGrant *grant)
 }
 
 
+/* EN: Pin a named ordinary file owned by the caller's inherited file group.
+ * RU: Удержать номерной файл, принадлежащий унаследованной файловой группе. */
+static int prepare_guest(DVM_LaunchFiles *files, unsigned number, FdGrant *grant)
+{
+    int pinned = dvm_launch_pin_guest_file(files, number, &grant->access);
+    if (pinned > 0)
+    {
+        grant->slot = (int)number;
+    }
+    return pinned;
+}
+
+
 /* EN: Prepare an imported slot or a supported non-hidden standard descriptor.
  * RU: Подготовить импортированный слот или нескрытый стандартный FD. */
 static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int delegated, int imported_only)
@@ -355,21 +368,43 @@ static int prepare(DVM_LaunchFiles *files, unsigned number, FdGrant *grant, int 
         return 1;
     }
 #endif
-    return 0;
+    return imported_only ? 0 : prepare_guest(files, number, grant);
 }
 
 
 /* EN/RU: See launch_files.h. Publish the directory only after mapping all slots.
  * См. launch_files.h. Опубликовать каталог после отображения всех слотов. */
-static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, const int *delegated, int imported_only)
+static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, const int *delegated,
+    int imported_only, DVM_Provider *explicit_fds)
 {
     DVM_View *view = NULL;
     *success = 0;
+    if (explicit_fds)
+    {
+        view = dvm_view_create(NULL, NULL, NULL);
+        if (!view || !dvm_view_map(view, "/", explicit_fds, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE))
+        {
+            dvm_view_discard(view);
+            return NULL;
+        }
+    }
     for (unsigned number = 0; number < DVM_LAUNCH_FD_COUNT; number++)
     {
-        FdGrant candidate = {0};
+        FdGrant candidate = {.slot = -1, .host = -1};
         int host = delegated ? delegated[number] : -1;
-        int present = prepare(files, number, &candidate, host, imported_only);
+        int present = explicit_fds && number >= 3 ? prepare_guest(files, number, &candidate) :
+            explicit_fds ? 0 : prepare(files, number, &candidate, host, imported_only);
+        if (present > 0 && explicit_fds)
+        {
+            char name[sizeof("31")];
+            FVM_FileInfo info;
+            snprintf(name, sizeof(name), "%u", number);
+            if (dvm_provider_info(explicit_fds, name, &info) != FVM_NOT_FOUND)
+            {
+                close_grant(&candidate);
+                continue;
+            }
+        }
         if (present < 0 || (host >= 3 && !present))
         {
             dvm_view_discard(view);
@@ -410,18 +445,25 @@ static DVM_Provider *fd_view(DVM_LaunchFiles *files, int *success, const int *de
 /* EN/RU: See launch_files.h. / См. launch_files.h. */
 DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success)
 {
-    return fd_view(files, success, NULL, 0);
+    return dvm_launch_fd_view_with_base(files, NULL, success);
+}
+
+
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+DVM_Provider *dvm_launch_fd_view_with_base(DVM_LaunchFiles *files, DVM_Provider *explicit_fds, int *success)
+{
+    return fd_view(files, success, NULL, 0, explicit_fds);
 }
 
 
 /* EN/RU: See launch_files.h. / См. launch_files.h. */
 DVM_Provider *dvm_launch_host_fd_view(const int descriptors[DVM_LAUNCH_FD_COUNT], int *success)
 {
-    return fd_view(NULL, success, descriptors, 0);
+    return fd_view(NULL, success, descriptors, 0, NULL);
 }
 
 /* EN/RU: See launch_files.h. / См. launch_files.h. */
 DVM_Provider *dvm_launch_imported_fd_view(DVM_LaunchFiles *files, int *success)
 {
-    return fd_view(files, success, NULL, 1);
+    return fd_view(files, success, NULL, 1, NULL);
 }

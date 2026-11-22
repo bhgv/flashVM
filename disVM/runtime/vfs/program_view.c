@@ -8,10 +8,12 @@
 #include "path_cancel.h"
 #include "lib9.h"
 #include "dat.h"
+#include "fns.h"
 #include "isa.h"
 #include "interp.h"
 #include "runt.h"
 #include "launch_files.h"
+#include "runqueue.h"
 #include "sysevents_internal.h"
 #include <string.h>
 #include <inttypes.h>
@@ -184,6 +186,19 @@ static DVM_Provider *events_provider(const DVM_ProgramView *entry)
 }
 
 
+/* EN: Use the retained caller directory for any grant without a local override.
+ * RU: Взять выдачу из удерживаемого каталога клиента, если нет местной замены. */
+static int inherit_grant(DVM_Provider *context, const char *name, DVM_Provider **grant)
+{
+    if (*grant)
+    {
+        return 1;
+    }
+    FVM_Result status = dvm_program_child(context, name, grant);
+    return status == FVM_OK || status == FVM_NOT_FOUND;
+}
+
+
 /* EN/RU: See program_view.h. Return an owned tree built from the caller's grants.
  * См. program_view.h. Вернуть своё дерево из полномочий клиента. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descriptors, uint32_t pid)
@@ -192,13 +207,23 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descrip
     int captured = capture_grant(group, "/.fd", &entry.fds) &&
         capture_grant(group, "/.vfs", &entry.vfs) &&
         capture_grant(group, "/.var", &entry.vars);
-    if (captured && !entry.vars)
+    Prog *process = currun();
+    DVM_Provider *incoming = process && process->pid > 0 && (uint32_t)process->pid == pid ?
+        ((DVM_RuntimeProcess *)process)->remote_call_context : NULL;
+    if (captured && incoming)
+    {
+        captured = inherit_grant(incoming, ".fd", &entry.fds) &&
+            inherit_grant(incoming, ".vfs", &entry.vfs) && inherit_grant(incoming, ".var", &entry.vars);
+    }
+    if (captured && !incoming && !entry.vars)
     {
         captured = dvm_launch_vars_view(descriptors, &entry.vars);
     }
-    if (captured && !entry.fds)
+    if (captured && !incoming)
     {
-        entry.fds = dvm_launch_fd_view(descriptors, &captured);
+        DVM_Provider *explicit_fds = entry.fds;
+        entry.fds = dvm_launch_fd_view_with_base(descriptors, explicit_fds, &captured);
+        dvm_provider_release(explicit_fds);
     }
     entry.events = captured ? events_provider(&entry) : NULL;
     DVM_Provider *tree = entry.events ? dvm_program_view(&entry, 1) : NULL;

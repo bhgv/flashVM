@@ -20,12 +20,32 @@
 struct DVM_LaunchFiles
 {
     unsigned references;            /* Atomic ownership count through process inheritance. */
+    uint64_t file_group;            /* Never-reused ID for ordinary guest FD ownership. */
     DVM_Provider *vars;             /* Owned explicit variable grant from the incoming launch. */
+    uint32_t reserved;              /* Local numbers with explicit host grants. */
     uint32_t hidden;                /* Explicitly absent numbers reserved in the launch view. */
     uint32_t occupied;              /* Mask of imported guest numbers. */
     unsigned char modes[DVM_LAUNCH_FD_COUNT]; /* Original access of each imported file. */
     int slots[DVM_LAUNCH_FD_COUNT]; /* Native slots; zero when absent. */
 };
+
+
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+DVM_LaunchFiles *dvm_launch_files_create(void)
+{
+    DVM_LaunchFiles *files = calloc(1, sizeof(*files));
+    if (files)
+    {
+        files->references = 1;
+        files->file_group = dvm_file_slots_new_group();
+        if (!files->file_group)
+        {
+            free(files);
+            files = NULL;
+        }
+    }
+    return files;
+}
 
 
 /* EN/RU: Parse a canonical decimal basename in the supported descriptor range.
@@ -195,12 +215,11 @@ static int open_batch(DVM_Provider *source, DVM_Provider *base, uint32_t from_ba
     {
         return 1;
     }
-    DVM_LaunchFiles *files = calloc(1, sizeof(*files));
+    DVM_LaunchFiles *files = dvm_launch_files_create();
     if (!files)
     {
         return 0;
     }
-    files->references = 1;
     files->hidden = hidden;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
     {
@@ -303,6 +322,13 @@ int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **ou
 }
 
 
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+void dvm_launch_files_reserve_numbers(DVM_LaunchFiles *files, uint32_t reserved)
+{
+    files->reserved = reserved;
+}
+
+
 /* EN/RU: See launch_files.h; an existing caller pin prevents resurrection.
  * См. launch_files.h; ссылка вызывающего исключает повторное оживление. */
 int dvm_launch_files_retain(DVM_LaunchFiles *files)
@@ -366,6 +392,24 @@ static DVM_LaunchFiles *current(void)
 }
 
 
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+void dvm_launch_mark_guest_file(int slot, unsigned access)
+{
+    DVM_LaunchFiles *files = current();
+    if (files)
+    {
+        dvm_file_slots_mark_guest(slot, files->file_group, access);
+    }
+}
+
+
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+int dvm_launch_pin_guest_file(DVM_LaunchFiles *files, unsigned number, unsigned *access)
+{
+    return files ? dvm_file_slots_pin_guest((int)number, files->file_group, access) : 0;
+}
+
+
 /* EN/RU: See launch_files.h; the current process pins the returned slot.
  * См. launch_files.h; текущий процесс удерживает возвращённый слот. */
 int dvm_launch_file_current(int number)
@@ -381,7 +425,7 @@ int dvm_launch_file_current(int number)
 uint32_t dvm_launch_file_mask(void)
 {
     DVM_LaunchFiles *files = current();
-    return files ? files->occupied | files->hidden : 0;
+    return files ? files->occupied | files->hidden | files->reserved : 0;
 }
 
 

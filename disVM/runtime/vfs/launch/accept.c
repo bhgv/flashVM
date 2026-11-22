@@ -8,22 +8,6 @@
 #include <string.h>
 
 
-/* EN/RU: Forward only to a retained native cancellation source, no request/provider/guest pointers.
- * Передать сигнал только retained native source, без request/provider/guest pointers. */
-static void forward(void *state)
-{
-    dvm_cancel_request(state);
-}
-
-
-/* EN/RU: Consume forwarding callback's independent native pin after all admitted signals retire.
- * Поглотить independent native pin после завершения всех admitted signals. */
-static void release(void *state)
-{
-    dvm_cancel_release(state);
-}
-
-
 /* EN/RU: See ticket.h; source wrappers stay owned through preparation and notifications.
  * См. ticket.h; source wrappers удерживаются до завершения preparation/notices. */
 int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provider, const DVM_Origin *origin)
@@ -57,21 +41,8 @@ int dvm_launch_request_prepare(DVM_LaunchRequest *request, DVM_Provider *provide
     }
     dvm_launch_shared_changed(shared);
     DVM_Cancel *parent = dvm_cancel_current();
-    DVM_CancelTap *tap = NULL;
-    int connected = 1;
-    if (parent)
-    {
-        connected = dvm_cancel_retain(shared->cancel);
-        if (connected)
-        {
-            tap = dvm_cancel_subscribe(parent, forward, shared->cancel, release);
-            if (!tap)
-            {
-                dvm_cancel_release(shared->cancel);
-                connected = 0;
-            }
-        }
-    }
+    DVM_CancelTap *tap = parent ? dvm_cancel_forward(parent, shared->cancel) : NULL;
+    int connected = !parent || tap;
     DVM_CancelScope scope = {0};
     DVM_LaunchHandoff context = {0};
     int prepared = 0;

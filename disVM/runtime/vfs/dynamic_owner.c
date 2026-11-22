@@ -85,13 +85,13 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
     DVM_Provider *reply = dvm_provider_call_reply(caller);
     DVM_StyxCallerKey key = {0};
     int identified = dvm_provider_styx_caller(caller, &key);
-    dvm_provider_release(caller);
     DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
     if (!events || (reply && !identified))
     {
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);
         dvm_namespace_release(scope);
+        dvm_provider_release(caller);
         dvm_cancel_release(cancel);
         styxunibusmailboxseal(reply);
         dvm_provider_release(reply);
@@ -103,6 +103,7 @@ int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *
     owner->remote_call_cancel_delivered = 0;
     owner->remote_call_cancel = cancel;
     owner->remote_call_group = scope;
+    owner->remote_call_context = caller;
     owner->remote_call_events = events;
     return 1;
 }
@@ -126,6 +127,8 @@ void dvm_scalar_caller_end(Prog *process)
     dvm_provider_release(owner->remote_call_reply);
     owner->remote_call_reply = NULL;
     owner->remote_call_group = NULL;
+    dvm_provider_release(owner->remote_call_context);
+    owner->remote_call_context = NULL;
     owner->remote_call_events = NULL;
     dvm_sysevents_retire(events);
     dvm_sysevents_release(events);
@@ -255,6 +258,7 @@ typedef struct DVM_ScalarHandoff
     DVM_StyxCallerKey key; /* Caller identity. */
     DVM_Namespace *group; /* Owned call namespace. */
     DVM_SysEvents *events; /* Owned namespace event stream. */
+    DVM_Provider *context; /* Owned exact caller directory. */
     DVM_Provider *reply; /* Owned private reply mailbox. */
     DVM_Cancel *cancel; /* Owned fid cancellation token. */
 } DVM_ScalarHandoff;
@@ -273,6 +277,7 @@ void dvm_scalar_discard_staged(Prog *process)
         dvm_provider_release(stage->reply);
         dvm_cancel_release(stage->cancel);
         dvm_namespace_release(stage->group);
+        dvm_provider_release(stage->context);
         free(stage);
     }
 }
@@ -295,6 +300,7 @@ int dvm_scalar_take_staged(Prog *parent, Prog *child)
     }
     target->remote_call_key = stage->key;
     target->remote_call_group = stage->group;
+    target->remote_call_context = stage->context;
     target->remote_call_events = stage->events;
     target->remote_call_reply = stage->reply;
     target->remote_call_cancel = stage->cancel;
@@ -327,9 +333,10 @@ void Vfsnative_scalarcallstage(void *frame)
         error(exNomem);
     }
     *stage = (DVM_ScalarHandoff){owner->remote_call_key, owner->remote_call_group, owner->remote_call_events,
-        owner->remote_call_reply, owner->remote_call_cancel};
+        owner->remote_call_context, owner->remote_call_reply, owner->remote_call_cancel};
     owner->remote_call_key = (DVM_StyxCallerKey){0};
     owner->remote_call_group = NULL;
+    owner->remote_call_context = NULL;
     owner->remote_call_events = NULL;
     owner->remote_call_reply = NULL;
     owner->remote_call_cancel = NULL;

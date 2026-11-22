@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "open_wait.h"
 #include "vfs/path_cancel.h"
+#include "vfs/cancel.h"
 #include "vfs/native_wait.h"
 #include "runtime_gc.h"
 #include "channel_sync.h"
@@ -32,7 +33,7 @@ static FVM_Result open_result(const char *path,
                                   DVM_ResourcePlan *selected,
                                   FVM_PortFile **file,
                                   FVM_PortDirectory **directory,
-                                  DVM_VfsHandle *provider_output)
+                                  DVM_VfsHandle *provider_output, unsigned *fd_access)
 {
     FVM_FileInfo metadata;
     FVM_Result status;
@@ -136,6 +137,21 @@ static FVM_Result open_result(const char *path,
     {
         status = fvm_port_file_open(snapshot, mode, file);
     }
+    if (status == FVM_OK && fd_access && asynchronous && selected &&
+        !selected->directory && !selected->union_root && !*directory)
+    {
+        if (!provider_output->ops || !provider_output->ops->list ||
+            ((provider_output->native_flags & DVM_VFS_CANCEL_DATA) &&
+                !(provider_output->native_flags & DVM_VFS_CANCEL_LIST)))
+        {
+            *fd_access = selected->requested_access;
+        }
+        else if ((!dvm_cancel_current() || (provider_output->native_flags & DVM_VFS_CANCEL_INFO)) &&
+            dvm_vfs_info(provider_output, &metadata) == FVM_OK && !metadata.directory)
+        {
+            *fd_access = selected->requested_access;
+        }
+    }
     int cancelled = dvm_vfs_wait_end(operation);
     if (asynchronous)
     {
@@ -165,7 +181,7 @@ static FVM_Result open_result(const char *path,
 FVM_Result dvm_open_wait_selected(const char *path, const char *mode, int asynchronous,
                                   DVM_ResourcePlan *selected, FVM_PortFile **file, FVM_PortDirectory **directory)
 {
-    return open_result(path, mode, asynchronous, selected, file, directory, NULL);
+    return open_result(path, mode, asynchronous, selected, file, directory, NULL, NULL);
 }
 
 
@@ -173,13 +189,14 @@ FVM_Result dvm_open_wait_selected(const char *path, const char *mode, int asynch
  * См. open_wait.h; provider output — пустая caller-owned storage. */
 FVM_Result dvm_open_wait_resource(const char *path, const char *mode, int asynchronous,
                                   DVM_ResourcePlan *selected, FVM_PortFile **file,
-                                  FVM_PortDirectory **directory, DVM_VfsHandle *provider_output)
+                                  FVM_PortDirectory **directory, DVM_VfsHandle *provider_output, unsigned *fd_access)
 {
-    if (!provider_output || provider_output->ops || provider_output->state)
+    if (!provider_output || provider_output->ops || provider_output->state || !fd_access)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return open_result(path, mode, asynchronous, selected, file, directory, provider_output);
+    *fd_access = 0;
+    return open_result(path, mode, asynchronous, selected, file, directory, provider_output, fd_access);
 }
 
 

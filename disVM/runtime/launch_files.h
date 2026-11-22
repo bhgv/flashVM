@@ -30,6 +30,28 @@ typedef struct DVM_SysFD
 int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out);
 
 
+/* EN/RU: Allocate an empty owned file group, or NULL on failure.
+ * Выделить пустую группу файлов со своей ссылкой либо NULL при отказе. */
+DVM_LaunchFiles *dvm_launch_files_create(void);
+
+
+/* EN/RU: Exclude reserved guest numbers before the table becomes visible.
+ * Исключить зарезервированные гостевые номера до публикации таблицы. */
+void dvm_launch_files_reserve_numbers(DVM_LaunchFiles *files, uint32_t reserved);
+
+
+/* EN/RU: Register a just-opened ordinary slot and its access in the current group.
+ * Зарегистрировать только что открытый обычный слот и его права в текущей группе. */
+void dvm_launch_mark_guest_file(int slot, unsigned access);
+
+
+/* EN/RU: Retain an ordinary slot from the borrowed group and write its original mode.
+ * Returns 1 on success, 0 on absence, -1 on retention failure.
+ * Удержать обычный слот заимствованной группы и записать исходный режим.
+ * Возвращает 1 при успехе, 0 при отсутствии, -1 при ошибке удержания. */
+int dvm_launch_pin_guest_file(DVM_LaunchFiles *files, unsigned number, unsigned *access);
+
+
 /* EN/RU: Retain a borrowed table (NULL allowed), return 1 or zero on overflow.
  * Удержать заимствованную таблицу (NULL допустим), вернуть 1 или ноль при переполнении. */
 int dvm_launch_files_retain(DVM_LaunchFiles *files);
@@ -74,11 +96,18 @@ int dvm_launch_file_lookup(DVM_LaunchFiles *files, unsigned number, unsigned *ac
  * RU: Проверить маску скрытых номеров заимствованной таблицы, включая NULL. */
 int dvm_launch_file_is_hidden(DVM_LaunchFiles *files, unsigned number);
 
-/* EN: Read the retained launch table and return an owned virtual directory or NULL when empty.
- * Writes 1 to success on a complete build including an empty table, otherwise 0.
- * RU: Построить виртуальный каталог из удерживаемой таблицы. Пустой даёт NULL.
- * Записать 1 при полной сборке, включая пустую таблицу, иначе 0. */
+/* EN/RU: Project the current file group and supported standard files; set success.
+ * Вернуть выдачу файловой группы и поддерживаемых стандартных потоков, задать success. */
 DVM_Provider *dvm_launch_fd_view(DVM_LaunchFiles *files, int *success);
+
+
+/* EN: Return an owned virtual directory, or NULL when empty. Optional explicit_fds
+ * is a borrowed base and takes precedence over ordinary opens with the same number.
+ * Writes 1 to success on a complete build including an empty table, otherwise 0.
+ * RU: Построить виртуальный каталог либо вернуть NULL для пустого. Необязательный
+ * explicit_fds заимствуется и имеет приоритет над обычным FD с тем же номером.
+ * Записать 1 при полной сборке, включая пустую таблицу, иначе 0. */
+DVM_Provider *dvm_launch_fd_view_with_base(DVM_LaunchFiles *files, DVM_Provider *explicit_fds, int *success);
 
 /* EN: Project only adopted slots, preserving modes, omissions and cursors.
  * RU: Отобразить принятые слоты с их режимами, исключениями и курсорами. */

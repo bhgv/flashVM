@@ -207,7 +207,7 @@ static FVM_Result missing_program_child(DVM_Provider *program, const char *name)
 
 /* EN/RU: Capture one optional process subtree and preserve lookup errors.
  * Захватить необязательное поддерево процесса, сохранив ошибки поиска. */
-static FVM_Result program_child(DVM_Provider *program, const char *name, DVM_Provider **out)
+FVM_Result dvm_program_child(DVM_Provider *program, const char *name, DVM_Provider **out)
 {
     if (!program)
     {
@@ -255,10 +255,10 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
         return 0;
     }
     DVM_Provider *vfs = NULL;
-    FVM_Result status = program_child(program, ".vfs", &vfs);
+    FVM_Result status = dvm_program_child(program, ".vfs", &vfs);
     if (status == FVM_NOT_FOUND)
     {
-        status = program_child(parent, ".vfs", &vfs);
+        status = dvm_program_child(parent, ".vfs", &vfs);
     }
     if (status != FVM_OK && status != FVM_NOT_FOUND)
     {
@@ -267,7 +267,7 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
         return 0;
     }
     DVM_Provider *vars = NULL;
-    status = program_child(program, ".var", &vars);
+    status = dvm_program_child(program, ".var", &vars);
     if (status != FVM_OK && status != FVM_NOT_FOUND)
     {
         dvm_provider_release(vfs);

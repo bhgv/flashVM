@@ -46,9 +46,35 @@ int dvm_file_slots_reserve_launch(DVM_FileGate *gate, DVM_CloseJob *job);
 int dvm_file_slots_retain_launch(int descriptor);
 
 
-/* EN/RU: Drop one launch reference; the last retires its gate and queues native close.
- * Освободить ссылку на слот запуска; последняя удаляет gate и ставит закрытие в очередь. */
+/* EN/RU: Drop an imported or exported pin; the last queues native close.
+ * Освободить ссылку импорта или экспорта; последняя ставит закрытие в очередь. */
 void dvm_file_slots_drop_launch(int descriptor);
+
+
+/* EN/RU: Allocate a never-reused group identity, or zero on exhaustion.
+ * Выдать неповторимый идентификатор группы либо ноль при исчерпании. */
+uint64_t dvm_file_slots_new_group(void);
+
+
+/* EN: Associate a newly opened ordinary descriptor with its live guest owner and mode.
+ * The caller exclusively owns the published descriptor and passes a nonzero group ID.
+ * RU: Связать новый обычный дескриптор с владельцем и режимом. У вызывающего
+ * исключительное владение опубликованным дескриптором и ненулевой ID группы. */
+void dvm_file_slots_mark_guest(int descriptor, uint64_t group, unsigned access);
+
+
+/* EN: Pin a live ordinary file in the specified group and copy its open mode.
+ * Returns 1 when pinned, 0 on absence, -1 on reference overflow.
+ * RU: Удержать обычный файл заданной группы и скопировать режим открытия.
+ * Возвращает 1 при успехе, 0 при отсутствии, -1 при переполнении. */
+int dvm_file_slots_pin_guest(int descriptor, uint64_t group, unsigned *access);
+
+
+/* EN: Remove an ordinary file from discovery and drop its local owner.
+ * Return 1 if consumed, 0 for slots outside guest ownership.
+ * RU: Убрать обычный файл из выдачи и снять ссылку владельца.
+ * Вернуть 1 при освобождении, иначе 0. */
+int dvm_file_slots_close_guest(int descriptor);
 
 
 /* EN: Publish file/directory into the caller's exclusively reserved descriptor.

@@ -13,6 +13,7 @@
 #include "program_record.h"
 #include "mount.h"
 #include "peer_mount.h"
+#include "serve_libraries.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
@@ -204,24 +205,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     size_t count = 0;
     int valid = dvm_terminal_parse_programs(&programs, argc, argv, &separator) &&
         (persistent || !programs.count);
-    while (valid && argc > separator + 1 &&
-        (!strcmp(argv[separator], "--library-fd") || !strcmp(argv[separator], "--library-bidir-fd")))
-    {
-        int bidirectional = !strcmp(argv[separator], "--library-bidir-fd");
-        const char *library = argv[separator + 1];
-        const char *path = "/libraries";
-        separator += 2;
-        if (argc > separator + 1 && !strcmp(argv[separator], "--library-at"))
-        {
-            path = argv[separator + 1];
-            separator += 2;
-        }
-        valid = count < LIBRARY_MOUNT_LIMIT && admit_library(libraries, count, argv[2], library, path, bidirectional);
-        if (valid)
-        {
-            count++;
-        }
-    }
+    valid = valid && dvm_terminal_parse_libraries(libraries, &count, argc, argv, &separator);
     if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
         fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent [--execute-as NAME.dis IMAGE.dis]...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
@@ -238,7 +222,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
         return 2;
     }
-    if (!distinct_carriers(fd, libraries, count))
+    if (!dvm_terminal_distinct_carriers(fd, libraries, count))
     {
         close(breaker);
         close(fd);
@@ -290,15 +274,9 @@ int dvm_styx_serve_cli(int argc, char **argv)
     Startup startup = {.scoped = scoped};
     int result = 1;
     int ready = server && (!scoped || root);
-    int library_ready = ready;
     LibrarySession sessions[LIBRARY_MOUNT_LIMIT] = {0};
     size_t opened = 0;
-    while (library_ready && opened < count)
-    {
-        sessions[opened].breaker = -1;
-        library_ready = mount_library(handoff.group, &libraries[opened], &sessions[opened]);
-        opened++;
-    }
+    int library_ready = ready && dvm_terminal_mount_libraries(handoff.group, libraries, count, sessions, &opened);
     int received = !persistent && library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS);
     if (persistent && library_ready)
     {
@@ -340,10 +318,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     dvm_provider_release(root);
     phybidirfree(mux);
     dvm_namespace_release(handoff.group);
-    while (opened)
-    {
-        close_library(&sessions[--opened]);
-    }
+    dvm_terminal_close_libraries(sessions, opened);
     return result;
 }
 

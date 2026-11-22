@@ -4,25 +4,6 @@
  */
 
 
-#define LIBRARY_MOUNT_LIMIT 8U /* Maximum library mounts admitted before startup. */
-
-typedef struct LibraryMount
-{
-    const char *descriptor; /* Borrowed argument naming the delegated stream. */
-    const char *path; /* Borrowed owner-side absolute mount path. */
-    long number; /* Parsed descriptor used to detect duplicates. */
-    int bidirectional; /* Use the stock library service with reverse caller VFS. */
-} LibraryMount;
-
-
-typedef struct LibrarySession
-{
-    PhyBidir *mux; /* Retained through the runtime and reverse worker shutdown. */
-    StyxCallerServer *reverse; /* Owned reverse caller service on the same socket. */
-    int breaker; /* Shutdown duplicate, valid when mux setup was attempted. */
-} LibrarySession;
-
-
 /* EN: Stop the reverse worker before dropping the controller's transport pin.
  * RU: Остановить встречный сервер до снятия ссылки на транспорт. */
 static void close_library(LibrarySession *session)
@@ -108,7 +89,7 @@ static int admit_library(LibraryMount *mounts, size_t count, const char *launch,
 
 /* EN: Reject aliases of the same socket before any Styx handshake starts.
  * RU: Отклонить дубликаты одного сокета до начала обмена Styx. */
-static int distinct_carriers(int launch, const LibraryMount *mounts, size_t count)
+int dvm_terminal_distinct_carriers(int launch, const LibraryMount *mounts, size_t count)
 {
     struct stat identities[LIBRARY_MOUNT_LIMIT + 1];
     if (fstat(launch, &identities[0]))
@@ -138,4 +119,60 @@ static int distinct_carriers(int launch, const LibraryMount *mounts, size_t coun
         }
     }
     return 1;
+}
+
+
+/* EN/RU: See serve_libraries.h. / См. serve_libraries.h. */
+int dvm_terminal_parse_libraries(LibraryMount *mounts, size_t *count, int argc, char **argv, int *index)
+{
+    int position = *index;
+    while (argc > position + 1 &&
+        (!strcmp(argv[position], "--library-fd") || !strcmp(argv[position], "--library-bidir-fd")))
+    {
+        int bidirectional = !strcmp(argv[position], "--library-bidir-fd");
+        const char *descriptor = argv[position + 1];
+        const char *path = "/libraries";
+        position += 2;
+        if (argc > position + 1 && !strcmp(argv[position], "--library-at"))
+        {
+            path = argv[position + 1];
+            position += 2;
+        }
+        if (*count >= LIBRARY_MOUNT_LIMIT ||
+            !admit_library(mounts, *count, argv[2], descriptor, path, bidirectional))
+        {
+            return 0;
+        }
+        ++*count;
+    }
+    *index = position;
+    return 1;
+}
+
+
+/* EN/RU: See serve_libraries.h. / См. serve_libraries.h. */
+int dvm_terminal_mount_libraries(DVM_Namespace *group, const LibraryMount *mounts,
+    size_t count, LibrarySession *sessions, size_t *opened)
+{
+    *opened = 0;
+    while (*opened < count)
+    {
+        size_t index = (*opened)++;
+        sessions[index].breaker = -1;
+        if (!mount_library(group, &mounts[index], &sessions[index]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: See serve_libraries.h. / См. serve_libraries.h. */
+void dvm_terminal_close_libraries(LibrarySession *sessions, size_t opened)
+{
+    while (opened)
+    {
+        close_library(&sessions[--opened]);
+    }
 }

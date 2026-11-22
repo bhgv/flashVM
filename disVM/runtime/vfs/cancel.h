@@ -58,6 +58,13 @@ DVM_CancelTap *dvm_cancel_subscribe(DVM_Cancel *cancel, void (*receive)(void *),
 void dvm_cancel_unsubscribe(DVM_CancelTap *tap);
 
 
+/* EN: Forward sticky cancellation from a borrowed source to a borrowed target.
+ * Returns an owned tap, or NULL on refusal. The tap pins both until retirement.
+ * RU: Передать отмену от заимствованного источника заимствованной цели.
+ * Вернуть свою подписку либо NULL. Подписка удерживает оба токена до освобождения. */
+DVM_CancelTap *dvm_cancel_forward(DVM_Cancel *source, DVM_Cancel *target);
+
+
 /* EN/RU: Enter/leave synchronous native scope1/0; leave must match thread and LIFO.
  * Current is borrowed under scope pin. Scopes do not propagate to new native threads.
  * Войти/выйти из synchronous scope1/0; тот же thread/LIFO; current borrowed;

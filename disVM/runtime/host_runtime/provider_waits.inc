@@ -10,6 +10,7 @@ struct DVM_VfsWait
 {
     NativeGuestWait wait; /* Linked native wait, no managed pointer. */
     DVM_Cancel *cancel; /* Owned per-operation cancellation source. */
+    DVM_CancelTap *parent; /* Optional active remote call forwarded into this path operation. */
     DVM_CancelScope scope; /* Same-thread synchronous native propagation. */
 };
 
@@ -22,6 +23,7 @@ int dvm_vfs_wait_end(DVM_VfsWait *wait)
     {
         return 0;
     }
+    dvm_cancel_unsubscribe(wait->parent);
     int cancelled = native_guest_wait_end(&wait->wait, 0) < 0 || dvm_cancel_requested(wait->cancel);
     if (!dvm_cancel_leave(&wait->scope))
     {
@@ -51,6 +53,16 @@ static DVM_VfsWait *vfs_wait_start(DVM_FileGate *gate, DVM_FileTicket *ticket)
             dvm_cancel_release(wait->cancel);
             free(wait);
         }
+        return NULL;
+    }
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    DVM_Cancel *parent = !gate && owner && !owner->remote_call_cancel_delivered ?
+        owner->remote_call_cancel : NULL;
+    if (parent && !(wait->parent = dvm_cancel_forward(parent, wait->cancel)))
+    {
+        dvm_cancel_leave(&wait->scope);
+        dvm_cancel_release(wait->cancel);
+        free(wait);
         return NULL;
     }
     native_guest_wait_begin_operation(&wait->wait, gate, ticket, -1, wait->cancel);
@@ -99,7 +111,7 @@ int dvm_vfs_path_enter(DVM_VfsWait **output)
     {
         return -1;
     }
-    int released = native_guest_wait_try_leave(&wait->wait);
+    int released = dvm_cancel_requested(wait->cancel) ? -2 : native_guest_wait_try_leave(&wait->wait);
     if (released < 0)
     {
         dvm_vfs_wait_end(wait);

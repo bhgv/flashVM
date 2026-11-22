@@ -61,11 +61,17 @@ int dvm_program_publication_replace(DVM_ProgramPublication *control,
 struct DVM_LaunchFiles; /* Borrowed numbered table pinned by the active caller. */
 
 
-/* EN: Capture the caller's namespace and launch grants during native wait. An
- * explicit .var mount selects variables, with the incoming launch grant as
- * fallback when the caller has no .var mount.
- * RU: Захватить namespace и выданные ресурсы при нативном ожидании. Явный
- * маунт .var определяет переменные. Иначе используется каталог входящего запуска. */
+/* EN: Capture an optional directory by name under a pinned program. On FVM_OK
+ * writes an owned grant, on FVM_NOT_FOUND leaves out unchanged. Lookup errors propagate.
+ * RU: Захватить необязательный каталог по имени в удерживаемом контексте.
+ * FVM_OK выдаёт свою ссылку, FVM_NOT_FOUND не меняет out. Ошибки поиска возвращаются. */
+FVM_Result dvm_program_child(DVM_Provider *program, const char *name, DVM_Provider **out);
+
+
+/* EN: Publish this process's selected grants during native wait. Explicit mounts
+ * override incoming call grants or, for jobs, inherited launch resources.
+ * RU: Опубликовать выданные ресурсы процесса при ожидании. Явные маунты имеют
+ * приоритет над входящим контекстом вызова или унаследованными ресурсами запуска. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
 
 
