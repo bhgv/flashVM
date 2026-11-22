@@ -159,6 +159,15 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
         code[5].op == ILEA && code[5].s.i.f == 32 && code[5].d.i.f == 104 &&
         code[6].op == IMCALL && code[6].reg == 7 && code[6].d.ind == 64 &&
         code[7].op == IRET, "emit native Dis instructions for mixed managed arguments");
+    Module *stub = dvm_styx_call_module("(ysa[y]b)", 7, 1, 0x7205e8dd);
+    check(stub && stub->nprog == 8 && stub->ext[0].frame->size == 112 &&
+        stub->ext[0].frame->np == 2 && stub->ext[0].frame->map[1] == 0xb0 &&
+        stub->prog[6].op == code[6].op && stub->prog[6].reg == code[6].reg, "construct mapped interpreted Styx call module");
+    Import imports[] = {{0x7205e8dd, "invoke"}, {0, NULL}};
+    Modlink *linked = linkmod(stub, imports, 0);
+    check(linked && linked != H && linked->links[0].u.pc == linked->prog &&
+        linked->links[0].frame->map[1] == 0xb0, "link a generated Styx call export with the standard linker");
+    destroy(linked);
     const unsigned char utf8[] = {0xd0, 0x96, 0, 0x61};
     unsigned char encoded[64];
     size_t first, second;

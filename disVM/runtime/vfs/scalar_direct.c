@@ -86,6 +86,74 @@ size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *co
 }
 
 
+typedef struct CallModuleBuild
+{
+    Module *module; /* Owned unpublished result during assembly. */
+    const Inst *code; /* Borrowed generated instructions until copied. */
+    size_t count; /* Number of instructions. */
+    size_t words; /* Number of argument words in the stub. */
+    unsigned char pointers; /* Reference mask for the original argument area. */
+    uint32_t signature; /* Compiled signature of the caller's private interface. */
+} CallModuleBuild;
+
+
+/* EN: Allocate text, frame descriptor and export. Leave partial state for unload.
+ * RU: Выделить код, дескриптор кадра и экспорт. Передать очистку остатков unload. */
+static int build_call_module(void *opaque)
+{
+    CallModuleBuild *build = opaque;
+    Module *module = build->module = newmod("$StyxCall");
+    module->prog = calloc(build->count, sizeof(*module->prog));
+    module->ext = calloc(2, sizeof(*module->ext));
+    module->type = calloc(1, sizeof(*module->type));
+    if (!module->prog || !module->ext || !module->type)
+    {
+        return 0;
+    }
+    unsigned char map[] = {0, 0x80 | build->pointers >> 1, (unsigned char)(build->pointers << 7)};
+    size_t frame_size = (10 + build->words) * sizeof(WORD);
+    Type *type = dtype(freeheap, frame_size, map, map[2] ? sizeof(map) : sizeof(map) - 1);
+    if (!type)
+    {
+        return 0;
+    }
+    module->type[module->ntype++] = type;
+    module->ext[0].name = strdup("invoke");
+    if (!module->ext[0].name)
+    {
+        return 0;
+    }
+    memcpy(module->prog, build->code, build->count * sizeof(*module->prog));
+    module->nprog = (int)build->count;
+    module->ext[0].sig = (int32_t)build->signature;
+    module->ext[0].frame = type;
+    module->ext[0].u.pc = module->prog;
+    return 1;
+}
+
+
+/* EN/RU: See scalar_direct.h. / См. scalar_direct.h. */
+Module *dvm_styx_call_module(const char *shape, unsigned slot, int result, uint32_t signature)
+{
+    Inst code[STYX_CALL_VALUES + 4];
+    CallModuleBuild build = {.code = code, .signature = signature};
+    build.count = dvm_styx_call_code(shape, slot, result, code, sizeof(code) / sizeof(code[0]));
+    if (!signature || !build.count || !dvm_styx_frame_layout(shape, &build.words, &build.pointers))
+    {
+        return NULL;
+    }
+    if (!kprotect(build_call_module, &build))
+    {
+        if (build.module)
+        {
+            unload(build.module);
+        }
+        return NULL;
+    }
+    return build.module;
+}
+
+
 /* EN/RU: Give each native Link its own stable route ordinal.
  * Назначить каждому нативному Link постоянный номер маршрута. */
 #define SCALAR_SLOT(index) \

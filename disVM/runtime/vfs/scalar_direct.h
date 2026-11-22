@@ -60,6 +60,12 @@ int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *point
  * модуль, далее аргументы и один временный слот указателя на кадр. */
 size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *code, size_t capacity);
 
+/* EN: Build a private interpreted module containing one generated call export.
+ * The caller owns the returned module or receives NULL on failure.
+ * RU: Собрать приватный интерпретируемый модуль с одним экспортом.
+ * Вызывающий владеет результатом либо получает NULL при отказе. */
+Module *dvm_styx_call_module(const char *shape, unsigned slot, int result, uint32_t signature);
+
 struct DVM_ScalarFiles;
 
 /* EN: Transfer two mapped references with their identity map.
