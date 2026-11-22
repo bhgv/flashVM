@@ -38,6 +38,14 @@ update(mode: string, left, right, untouched: ref Cell): string
         left.text = left.text[:1] + "🌍" + left.text[2:];
         return right.text[:2];
     }
+    if (mode == "mixed") {
+        grown := array[len left.bytes + 1] of byte;
+        grown[0] = byte 79;
+        grown[1:] = left.bytes;
+        grown[len grown - 1] = byte 98;
+        left.bytes = grown;
+        return right.text;
+    }
     if (mode == "grow") {
         grown := array[len left.bytes + 1] of byte;
         grown[0:] = left.bytes;

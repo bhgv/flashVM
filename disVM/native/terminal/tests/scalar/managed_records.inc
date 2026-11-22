@@ -345,3 +345,50 @@ static int managed_text_patch(void)
         fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) == FVM_S_OK &&
         patch.tag == STYX_MANAGED_STRING_TAG;
 }
+
+
+/* EN: Preserve a long shared interior after inserting and replacing distant bytes.
+ * RU: Сохранить длинную общую середину после вставки и далёкой замены. */
+static int managed_sequence_edits(void)
+{
+    unsigned char old[512], next[513], a[528], b[528], fields[530], scratch[513], output[528];
+    for (size_t i = 0; i < sizeof(old); i++)
+    {
+        old[i] = i % 251;
+    }
+    memcpy(next, old, 12);
+    next[12] = 255;
+    memcpy(next + 13, old + 12, sizeof(old) - 12);
+    next[451] = 254;
+    a[0] = b[0] = 0;
+    size_t an, bn, n, used;
+    if (fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, old, sizeof(old), a + 1, sizeof(a) - 1, &an) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, next, sizeof(next), b + 1, sizeof(b) - 1, &bn) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_SRecord before = {.tag = STYX_MANAGED_EDIT_REQUEST_TAG, .payload = a, .size = an + 1};
+    FVM_SRecord after = {.tag = STYX_MANAGED_REF_TAG, .payload = b, .size = bn + 1};
+    FVM_SRecord base = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = old, .size = sizeof(old)};
+    FVM_SRecord patch, restored;
+    if (!styxmanaged_diff_fields("r[a[y]]", &before, &after, fields, sizeof(fields), &n) ||
+        n >= 24 || fields[0] != 1 ||
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) != FVM_S_OK ||
+        patch.tag != STYX_MANAGED_EDIT_TAG || patch.size != 14 ||
+        !styxmanaged_span_expand("a[y]", &base, &patch, scratch, sizeof(scratch), output, sizeof(output), &n) ||
+        fvm_srecord_read(output, n, sizeof(output), &restored, &used) != FVM_S_OK ||
+        restored.size != sizeof(next) || memcmp(restored.payload, next, sizeof(next)))
+    {
+        return 0;
+    }
+    fields[patch.payload - fields + 7] = 0;
+    fields[patch.payload - fields + 8] = 5;
+    if (styxmanaged_span_expand("a[y]", &base, &patch, scratch, sizeof(scratch), output, sizeof(output), &n))
+    {
+        return 0;
+    }
+    before.tag = STYX_MANAGED_TEXT_REQUEST_TAG;
+    return styxmanaged_diff_fields("r[a[y]]", &before, &after, fields, sizeof(fields), &n) &&
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) == FVM_S_OK &&
+        patch.tag == STYX_MANAGED_SPLICE_TAG;
+}

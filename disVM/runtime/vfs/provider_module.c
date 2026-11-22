@@ -257,7 +257,11 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             strchr(shape.arguments, 'r') ? 1 : 0;
         if ((*tail)->field_deltas && !delta.length.high)
         {
-            if (delta.length.low == STYX_MANAGED_TEXT_VERSION)
+            if (delta.length.low == STYX_MANAGED_EDIT_VERSION)
+            {
+                (*tail)->field_deltas = 6;
+            }
+            else if (delta.length.low == STYX_MANAGED_TEXT_VERSION)
             {
                 (*tail)->field_deltas = 5;
             }

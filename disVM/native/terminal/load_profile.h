@@ -19,6 +19,8 @@
 #define STYX_MANAGED_RUN_REQUEST_TAG 105UL /* Opt in to multiple array spans. */
 #define STYX_MANAGED_SPLICE_REQUEST_TAG 106UL /* Opt in to size-changing array splices. */
 #define STYX_MANAGED_TEXT_REQUEST_TAG 107UL /* Opt in to UTF-8 string patches. */
+#define STYX_MANAGED_EDIT_REQUEST_TAG 108UL /* Opt in to disjoint size-changing edits. */
+#define STYX_MANAGED_EDIT_VERSION 5U /* Length of .ref-fields for disjoint edits. */
 #define STYX_MANAGED_TEXT_VERSION 4U /* Length of .ref-fields for text patches. */
 #define STYX_MANAGED_SPLICE_VERSION 3U /* Length of .ref-fields for array splices. */
 #define STYX_MANAGED_RUN_VERSION 2U /* Length of .ref-fields for multiple spans. */

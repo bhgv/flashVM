@@ -68,3 +68,9 @@ A four-byte `.ref-fields` file also advertises patches for UTF-8 strings.
 They can cross character boundaries. The receiver validates the complete
 reconstructed string before applying the update. Older peers receive the
 complete string field.
+
+A five-byte `.ref-fields` file advertises multiple replacements in one value.
+Each replacement uses coordinates in the original value. The owner searches
+a bounded neighborhood for a shared sequence after each mismatch. If the
+resulting record saves bytes, it can preserve a long interior between an
+insertion and a distant replacement. Otherwise the earlier encodings apply.

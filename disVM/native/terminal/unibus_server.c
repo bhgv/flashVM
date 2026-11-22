@@ -123,9 +123,9 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (delta_node(qid.path) && offset >= 0)
     {
-        static const char capability[] = "v04\n"; /* Version identified by the file length. */
-        size_t remaining = offset < STYX_MANAGED_TEXT_VERSION ?
-            STYX_MANAGED_TEXT_VERSION - (size_t)offset : 0;
+        static const char capability[] = "v005\n"; /* Version identified by the file length. */
+        size_t remaining = offset < STYX_MANAGED_EDIT_VERSION ?
+            STYX_MANAGED_EDIT_VERSION - (size_t)offset : 0;
         if (*count > remaining)
         {
             *count = remaining;
@@ -250,7 +250,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
             {
                 return 0;
             }
-            marker->d.length = STYX_MANAGED_TEXT_VERSION;
+            marker->d.length = STYX_MANAGED_EDIT_VERSION;
         }
         return directory->profile_node != NULL;
     }

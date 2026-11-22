@@ -12,6 +12,9 @@ static int patchable(unsigned long tag)
 }
 
 
+#include "managed_sequence_edits.inc"
+
+
 /* EN: Encode disjoint spans when their total size beats one contiguous replacement.
  * RU: Кодировать отдельные участки, если они короче одной непрерывной замены. */
 static int managed_runs_write(const FVM_SRecord *before, const FVM_SRecord *after,
@@ -191,9 +194,13 @@ int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const F
     if (!((type[0] == 'a' && before->tag == STYX_MANAGED_ARRAY_TAG) ||
         (type[0] == 's' && before->tag == STYX_MANAGED_STRING_TAG)) || before->size > capacity ||
         patch->size <= 4 || (patch->tag != STYX_MANAGED_SPAN_TAG && patch->tag != STYX_MANAGED_RUN_TAG &&
-        patch->tag != STYX_MANAGED_SPLICE_TAG))
+        patch->tag != STYX_MANAGED_SPLICE_TAG && patch->tag != STYX_MANAGED_EDIT_TAG))
     {
         return 0;
+    }
+    if (patch->tag == STYX_MANAGED_EDIT_TAG)
+    {
+        return expand_edits(before, patch, scratch, capacity, bytes, limit, used);
     }
     if (patch->tag == STYX_MANAGED_SPLICE_TAG)
     {
@@ -247,7 +254,7 @@ static int expand_spans(const char *schema, StyxFieldDelta *change, const FVM_SR
                 fvm_srecord_read(change->fields.payload + input, change->fields.size - input,
                     STYX_MANAGED_LIST_LIMIT, &field, &consumed) != FVM_S_OK ||
                 !((field.tag == STYX_MANAGED_SPAN_TAG || field.tag == STYX_MANAGED_RUN_TAG ||
-                   field.tag == STYX_MANAGED_SPLICE_TAG) ?
+                   field.tag == STYX_MANAGED_SPLICE_TAG || field.tag == STYX_MANAGED_EDIT_TAG) ?
                     styxmanaged_span_expand(originals.type[i], &originals.node[i], &field,
                         scratch, sizeof(scratch), output + written, capacity - written, &used) :
                     fvm_srecord_write(field.tag, field.payload, field.size, output + written,

@@ -372,7 +372,8 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
         return -1;
     }
     unsigned char *request = malloc(STYX_MANAGED_LIST_LIMIT + 1);
-    unsigned long tag = files->field_deltas == 5 ? STYX_MANAGED_TEXT_REQUEST_TAG :
+    unsigned long tag = files->field_deltas == 6 ? STYX_MANAGED_EDIT_REQUEST_TAG :
+        files->field_deltas == 5 ? STYX_MANAGED_TEXT_REQUEST_TAG :
         files->field_deltas == 4 ? STYX_MANAGED_SPLICE_REQUEST_TAG :
         files->field_deltas == 3 ? STYX_MANAGED_RUN_REQUEST_TAG :
         files->field_deltas == 2 ? STYX_MANAGED_SPAN_REQUEST_TAG :

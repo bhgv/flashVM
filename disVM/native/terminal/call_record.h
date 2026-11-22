@@ -93,6 +93,7 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_EDIT_TAG 15UL /* Ordered offset, removal and insertion records. */
 #define STYX_MANAGED_SPLICE_TAG 14UL /* Offset, removal extent, and insertion bytes. */
 #define STYX_MANAGED_RUN_TAG 13UL /* Ordered array spans, each with offset and length. */
 #define STYX_MANAGED_SPAN_TAG 12UL /* Equal-size array payload replacement. */

@@ -313,7 +313,8 @@ static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *
 static int field_patch(char type, unsigned long version, const FVM_SRecord *old, const FVM_SRecord *next,
     void *output, size_t capacity, size_t *used)
 {
-    int text = version == STYX_MANAGED_TEXT_REQUEST_TAG;
+    int edits = version == STYX_MANAGED_EDIT_REQUEST_TAG;
+    int text = edits || version == STYX_MANAGED_TEXT_REQUEST_TAG;
     int splice = text || version == STYX_MANAGED_SPLICE_REQUEST_TAG;
     int runs = splice || version == STYX_MANAGED_RUN_REQUEST_TAG;
     int span = runs || version == STYX_MANAGED_SPAN_REQUEST_TAG;
@@ -321,9 +322,19 @@ static int field_patch(char type, unsigned long version, const FVM_SRecord *old,
     {
         return 0;
     }
-    return (splice && managed_splice_write(old, next, output, capacity, used)) ||
-        (runs && managed_runs_write(old, next, output, capacity, used)) ||
-        (span && styxmanaged_span_write(old, next, output, capacity, used));
+    size_t standard;
+    int known = (splice && managed_splice_write(old, next, output, capacity, &standard)) ||
+        (runs && managed_runs_write(old, next, output, capacity, &standard)) ||
+        (span && styxmanaged_span_write(old, next, output, capacity, &standard));
+    if (edits && managed_edits_write(old, next, output, known ? standard - 1 : capacity, used))
+    {
+        return 1;
+    }
+    if (known)
+    {
+        *used = standard;
+    }
+    return known;
 }
 
 

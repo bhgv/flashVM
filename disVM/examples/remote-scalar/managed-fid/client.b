@@ -104,6 +104,11 @@ check_refs(m: Managed)
         cell.bytes[len cell.bytes - 1] != byte 92 || other.bytes != held) {
         raise "failed call modified client refs";
     }
+    if (m->update("mixed", cell, cell, other) != "x!!" || len cell.bytes != 2501 ||
+        cell.bytes[0] != byte 79 || cell.bytes[2] != byte 91 || cell.bytes[2500] != byte 98 ||
+        other.bytes != held) {
+        raise "disjoint array insertion and replacement via ref failed";
+    }
     text := "é";
     for (i := 0; i < 10; i++) {
         text = text + text;
