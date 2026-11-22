@@ -93,6 +93,7 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_RUN_TAG 13UL /* Ordered array spans, each with offset and length. */
 #define STYX_MANAGED_SPAN_TAG 12UL /* Equal-size array payload replacement. */
 
 /* EN: Encode a smaller array patch when both payload extents match.

@@ -208,3 +208,45 @@ static int managed_array_span(void)
     return !styxmanaged_span_expand("a[y]", &before, &span, scratch, sizeof(scratch),
         array, sizeof(array), &expanded);
 }
+
+
+/* EN: Two distant edits should use two short runs and reject their overlap.
+ * RU: Две далёкие правки должны идти двумя участками без пересечения. */
+static int managed_array_runs(void)
+{
+    unsigned char old[512] = {0}, next[512] = {0}, a[528], b[528], fields[530], scratch[512], output[528];
+    next[12] = 7;
+    next[450] = 8;
+    size_t an, bn, n, used;
+    if (fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, old, sizeof(old), a + 1, sizeof(a) - 1, &an) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, next, sizeof(next), b + 1, sizeof(b) - 1, &bn) != FVM_S_OK)
+    {
+        return 0;
+    }
+    a[0] = b[0] = 0;
+    FVM_SRecord before = {.tag = STYX_MANAGED_RUN_REQUEST_TAG, .payload = a, .size = an + 1};
+    FVM_SRecord after = {.tag = STYX_MANAGED_REF_TAG, .payload = b, .size = bn + 1};
+    FVM_SRecord original = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = old, .size = sizeof(old)};
+    FVM_SRecord patch, restored;
+    if (!styxmanaged_diff_fields("r[a[y]]", &before, &after, fields, sizeof(fields), &n) ||
+        n >= 20 || fields[0] != 1 ||
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) != FVM_S_OK ||
+        patch.tag != STYX_MANAGED_RUN_TAG || patch.size != 10 ||
+        !styxmanaged_span_expand("a[y]", &original, &patch, scratch, sizeof(scratch), output, sizeof(output), &n) ||
+        fvm_srecord_read(output, n, sizeof(output), &restored, &used) != FVM_S_OK ||
+        restored.size != sizeof(next) || memcmp(restored.payload, next, sizeof(next)))
+    {
+        return 0;
+    }
+    unsigned char *second = fields + (patch.payload - fields) + 5;
+    second[0] = 0;
+    second[1] = 12;
+    if (styxmanaged_span_expand("a[y]", &original, &patch, scratch, sizeof(scratch), output, sizeof(output), &n))
+    {
+        return 0;
+    }
+    before.tag = STYX_MANAGED_SPAN_REQUEST_TAG;
+    return styxmanaged_diff_fields("r[a[y]]", &before, &after, fields, sizeof(fields), &n) &&
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) == FVM_S_OK &&
+        patch.tag == STYX_MANAGED_SPAN_TAG;
+}

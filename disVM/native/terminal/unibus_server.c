@@ -125,7 +125,16 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         if (offset == 0 && *count)
         {
-            bytes[0] = '1';
+            bytes[0] = '2';
+            if (*count > 1)
+            {
+                bytes[1] = '\n';
+                *count = 2;
+            }
+        }
+        else if (offset == 1 && *count)
+        {
+            bytes[0] = '\n';
             *count = 1;
         }
         else
@@ -248,7 +257,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
             {
                 return 0;
             }
-            marker->d.length = STYX_MANAGED_SPAN_VERSION;
+            marker->d.length = STYX_MANAGED_RUN_VERSION;
         }
         return directory->profile_node != NULL;
     }

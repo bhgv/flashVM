@@ -31,7 +31,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
             return nil;
         }
         if (parsed != FVM_S_OK || used != size || (request.tag != STYX_MANAGED_REQUEST_TAG && request.tag != STYX_MANAGED_DELTA_REQUEST_TAG &&
-            request.tag != STYX_MANAGED_SPAN_REQUEST_TAG))
+            request.tag != STYX_MANAGED_SPAN_REQUEST_TAG && request.tag != STYX_MANAGED_RUN_REQUEST_TAG))
         {
             return Ebadarg;
         }

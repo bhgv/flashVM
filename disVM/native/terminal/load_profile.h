@@ -16,6 +16,8 @@
 #define STYX_MANAGED_REQUEST_TAG 100UL /* Typed managed argument list. */
 #define STYX_MANAGED_DELTA_REQUEST_TAG 103UL /* Opt in to field deltas on this fid. */
 #define STYX_MANAGED_SPAN_REQUEST_TAG 104UL /* Opt in to array spans. */
+#define STYX_MANAGED_RUN_REQUEST_TAG 105UL /* Opt in to multiple array spans. */
+#define STYX_MANAGED_RUN_VERSION 2U /* Length of .ref-fields for multiple spans. */
 #define STYX_MANAGED_SPAN_VERSION 1U /* Length of the .ref-fields capability file. */
 #define STYX_MANAGED_DELTA_FILE ".ref-fields" /* Owner supports optional field deltas. */
 #define STYX_MANAGED_REPLY_TAG 101UL /* Result and updates envelope. */

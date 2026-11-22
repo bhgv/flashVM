@@ -147,7 +147,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     }
     unsigned char original[STYX_MANAGED_LIST_LIMIT + 1];
     FVM_SRecord baseline;
-    if (files->field_deltas == 2)
+    if (files->field_deltas >= 2)
     {
         memcpy(original, request, request_size);
         if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
@@ -176,7 +176,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
     if (files->field_deltas ? delta_reply(&files->shape, request, response_size, &captured,
-        files->field_deltas == 2 ? &baseline : NULL) :
+        files->field_deltas >= 2 ? &baseline : NULL) :
         managed_reply(&files->shape, request, response_size, &captured))
     {
         return;

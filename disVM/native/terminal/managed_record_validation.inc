@@ -305,6 +305,9 @@ static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *
 }
 
 
+#include "managed_array_span.inc"
+
+
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
     void *bytes, size_t capacity, size_t *used)
@@ -336,8 +339,11 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
         }
         size_t n;
         if (size >= capacity ||
-            (!(before->tag == STYX_MANAGED_SPAN_REQUEST_TAG && *right.type[i] == 'a' &&
-                styxmanaged_span_write(old, next, output + size, capacity - size, &n)) &&
+            (!(*right.type[i] == 'a' &&
+                ((before->tag == STYX_MANAGED_RUN_REQUEST_TAG &&
+                    managed_runs_write(old, next, output + size, capacity - size, &n)) ||
+                 ((before->tag == STYX_MANAGED_SPAN_REQUEST_TAG || before->tag == STYX_MANAGED_RUN_REQUEST_TAG) &&
+                    styxmanaged_span_write(old, next, output + size, capacity - size, &n)))) &&
             fvm_srecord_write(next->tag, next->payload, next->size,
                 output + size, capacity - size, &n) != FVM_S_OK))
         {
@@ -353,9 +359,6 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
     *used = mask ? size : 0;
     return 1;
 }
-
-
-#include "managed_array_span.inc"
 
 
 /* EN: Decode and validate one field mask and exactly its selected leaf values.
