@@ -293,6 +293,35 @@ The chain also mounts a second library peer at `/other-libs`. Both peers
 export `wide.dis`. B verifies that the second peer starts with its own
 counter and that the first retains its earlier state.
 
+### Run on separate hosts
+
+On each host, run [run_chain.py](run_chain.py) from
+`disVM/examples/remote-scalar` in a source checkout. Set `DISVM` to its SDK-enabled executable and `LIMBO` to its native-cell
+compiler. The script compiles the role's own images and passes connected
+TCP descriptors to the stock CLI. Use a private test network and set
+`B_ADDR` and `C_ADDR` to the reachable addresses on that network.
+Start C, then B after C prints its listening addresses, then A after B
+prints its address.
+
+```sh
+# Host C
+python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" c \
+  --listen "$C_ADDR:9031" --alternate-listen "$C_ADDR:9032"
+# Host B
+python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" b \
+  --listen "$B_ADDR:9030" --library "$C_ADDR:9031" --alternate "$C_ADDR:9032"
+# Host A
+python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" a --owner "$B_ADDR:9030"
+```
+
+A verifies the completion, stdout, stderr, exact forwarded bytes and
+both file positions. All three roles print `PASS Styx chain` and exit
+with zero. C serves both modules on its main connection. A second
+owner instance on C checks that the two library mounts have independent
+state. For a JIT run, add `--jit` before the role on each host and restart
+the three commands. The `local` role runs the same program and checks over
+loopback and is registered in the SDK-enabled runtime CTest suite.
+
 The scoped call example also kills a child caller after the owner enters
 its function. The resulting clunk reaches the owner's cancellation
 checkpoint. The parent then reuses the same connection and export.

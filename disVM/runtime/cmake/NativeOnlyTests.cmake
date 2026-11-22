@@ -29,6 +29,15 @@ if(DVM_RUNTIME_TESTS)
             "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/managed-fid/run.py"
             "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>")
         set_tests_properties(disvm_native_styx_managed_load PROPERTIES TIMEOUT 120 LABELS "native")
+        if(DVM_TERMINAL_LAUNCH_SDK)
+            set(chain_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_chain.py")
+            add_test(NAME disvm_native_styx_chain_tcp_interpreter COMMAND "${PYTHON_EXECUTABLE}"
+                "${chain_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" local)
+            add_test(NAME disvm_native_styx_chain_tcp_jit COMMAND "${PYTHON_EXECUTABLE}"
+                "${chain_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" --jit local)
+            set_tests_properties(disvm_native_styx_chain_tcp_interpreter disvm_native_styx_chain_tcp_jit
+                PROPERTIES TIMEOUT 120 LABELS "native")
+        endif()
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
         foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy proxy_churn routed_results proxy_retirement proxy_handoffs)
