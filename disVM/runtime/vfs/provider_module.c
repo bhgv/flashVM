@@ -253,31 +253,9 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->signature = signature;
         (*tail)->caller = caller;
         (*tail)->explicit_end = explicit_end;
-        (*tail)->field_deltas = field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            strchr(shape.arguments, 'r') ? 1 : 0;
-        if ((*tail)->field_deltas && !delta.length.high)
-        {
-            if (delta.length.low == STYX_MANAGED_EDIT_VERSION)
-            {
-                (*tail)->field_deltas = 6;
-            }
-            else if (delta.length.low == STYX_MANAGED_TEXT_VERSION)
-            {
-                (*tail)->field_deltas = 5;
-            }
-            else if (delta.length.low == STYX_MANAGED_SPLICE_VERSION)
-            {
-                (*tail)->field_deltas = 4;
-            }
-            else if (delta.length.low == STYX_MANAGED_RUN_VERSION)
-            {
-                (*tail)->field_deltas = 3;
-            }
-            else if (delta.length.low == STYX_MANAGED_SPAN_VERSION)
-            {
-                (*tail)->field_deltas = 2;
-            }
-        }
+        (*tail)->managed_tag = field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
+            strchr(shape.arguments, 'r') ?
+            styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;
         (*tail)->result_cells = result;

@@ -30,10 +30,7 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
             fid->write_offset += count;
             return nil;
         }
-        if (parsed != FVM_S_OK || used != size || (request.tag != STYX_MANAGED_REQUEST_TAG && request.tag != STYX_MANAGED_DELTA_REQUEST_TAG &&
-            request.tag != STYX_MANAGED_SPAN_REQUEST_TAG && request.tag != STYX_MANAGED_RUN_REQUEST_TAG &&
-            request.tag != STYX_MANAGED_SPLICE_REQUEST_TAG && request.tag != STYX_MANAGED_TEXT_REQUEST_TAG &&
-            request.tag != STYX_MANAGED_EDIT_REQUEST_TAG))
+        if (parsed != FVM_S_OK || used != size || !styxmanaged_request_tag(request.tag))
         {
             return Ebadarg;
         }

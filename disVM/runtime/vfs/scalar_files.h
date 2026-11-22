@@ -23,7 +23,7 @@ typedef struct DVM_ScalarFiles
     DVM_CloseJob *close; /* Native retirement reservation. */
     uint32_t signature; /* Verified compiled import for this exact function. */
     StyxCallShape shape; /* Optional checked typed export from the same publication. */
-    int field_deltas; /* The captured owner advertises per-field replies. */
+    unsigned long managed_tag; /* Exact managed request tag selected for the captured owner. */
     int explicit_end; /* The mounted profile advertises staged function writes. */
     int dynamic; /* Both compiled sides verified the scalar schema. */
     unsigned long ref_profile; /* Wire tag for a schema-selected reference call, or zero. */
@@ -82,10 +82,11 @@ int dvm_ref_pair_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, struct DVM
     uint32_t pid, StyxRefPair *value);
 
 
-/* EN: Exchange one pre-encoded typed managed request on its retained fid.
- * RU: Обменять заранее закодированный управляемый запрос через сохранённый fid.
- */
+/* EN: Borrow the validated argument view into request for one fid exchange.
+ * The distinct reply buffer holds the scoped PID envelope until the write completes.
+ * RU: Заимствовать проверенные аргументы из request на время обмена через fid.
+ * Отдельный буфер reply хранит оболочку PID до завершения записи. */
 int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
-    struct DVM_LaunchFiles *descriptors, uint32_t pid, unsigned char *bytes,
-    size_t size, size_t capacity, size_t *received);
+    struct DVM_LaunchFiles *descriptors, uint32_t pid, const FVM_SRecord *arguments,
+    const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received);
 #endif

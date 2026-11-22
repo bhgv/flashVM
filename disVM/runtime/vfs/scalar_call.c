@@ -292,10 +292,7 @@ static int capture_managed(unsigned long tag, const void *bytes, size_t size, vo
     size_t used;
     if (size > sizeof(input->bytes) ||
         fvm_srecord_read(bytes, size, sizeof(input->bytes), &record, &used) != FVM_S_OK ||
-        used != size || (record.tag != tag && record.tag != STYX_MANAGED_DELTA_REQUEST_TAG &&
-            record.tag != STYX_MANAGED_SPAN_REQUEST_TAG && record.tag != STYX_MANAGED_RUN_REQUEST_TAG &&
-            record.tag != STYX_MANAGED_SPLICE_REQUEST_TAG && record.tag != STYX_MANAGED_TEXT_REQUEST_TAG &&
-            record.tag != STYX_MANAGED_EDIT_REQUEST_TAG))
+        used != size || tag != STYX_MANAGED_REQUEST_TAG || !styxmanaged_request_tag(record.tag))
     {
         return 0;
     }

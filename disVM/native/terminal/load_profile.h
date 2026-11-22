@@ -100,4 +100,18 @@ int styxshapedoffer(const char *name, uint32_t signature, const StyxCallShape *s
  * необязательны. При отказе выходные значения сохраняются. */
 unsigned long styxshapedpayload(const void *payload, size_t length, char *name, uint32_t *signature, StyxCallShape *shape);
 
+
+/* EN: Select the request tag for a known .ref-fields length, falling back to plain field deltas.
+ * RU: Выбрать тег по длине .ref-fields либо использовать обычные дельты полей. */
+unsigned long styxmanaged_capability(unsigned long high, unsigned long low);
+
+
+/* EN: Check whether the request tag permits patches against its snapshot.
+ * RU: Проверить, разрешает ли тег патчи по снимку запроса. */
+int styxmanaged_has_snapshot(unsigned long tag);
+
+
+/* EN: Recognize the standard managed request or one of its negotiated profiles.
+ * RU: Распознать обычный управляемый запрос либо один из согласованных профилей. */
+int styxmanaged_request_tag(unsigned long tag);
 #endif

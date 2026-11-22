@@ -33,6 +33,18 @@ typedef struct GatewayData
 } GatewayData;
 
 
+/* EN: Find the recognized tag on one complete private request.
+ * RU: Определить распознанный тег полной приватной записи запроса. */
+static unsigned long gateway_tag(const Array *wire)
+{
+    FVM_SRecord record;
+    size_t used;
+    return wire && wire != H && wire->t == &Tbyte && wire->len > 0 && wire->len <= STYX_MANAGED_LIST_LIMIT &&
+        fvm_srecord_read(wire->data, (size_t)wire->len, STYX_MANAGED_LIST_LIMIT, &record, &used) == FVM_S_OK &&
+        used == (size_t)wire->len && styxmanaged_request_tag(record.tag) ? record.tag : 0;
+}
+
+
 /* [GC:] EN: Decode the rooted request and move its values into the parent Dis frame.
  * RU: Декодировать удерживаемый запрос и передать значения в родительский кадр Dis. */
 static void prepare_call(void *frame)
@@ -43,21 +55,9 @@ static void prepare_call(void *frame)
     Array *wire;
     memcpy(&wire, bridge + GATE_WIRE, sizeof(wire));
     DVM_StyxValueFrame arguments = {0};
-    if (!wire || wire == H || wire->t != &Tbyte || wire->len <= 0 || wire->len > STYX_MANAGED_LIST_LIMIT ||
-        (!dvm_styx_value_frame_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_DELTA_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_SPAN_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_RUN_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_SPLICE_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_TEXT_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments) &&
-         !dvm_styx_value_frame_read(STYX_MANAGED_EDIT_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments)))
+    unsigned long tag = gateway_tag(wire);
+    if (!tag || !dvm_styx_value_frame_read(tag, data->shape.arguments,
+        wire->data, (size_t)wire->len, &arguments))
     {
         error("invalid managed owner arguments");
     }
@@ -78,20 +78,8 @@ static void finish_call(void *frame)
     Array *wire;
     FVM_SRecord baseline;
     memcpy(&wire, helper->fp + GATE_WIRE, sizeof(wire));
-    if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
-        wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_DELTA_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_SPAN_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_RUN_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_SPLICE_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_TEXT_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline) &&
-        !styxmanaged_list_read(STYX_MANAGED_EDIT_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &baseline))
+    unsigned long tag = gateway_tag(wire);
+    if (!tag || !styxmanaged_list_read(tag, data->shape.arguments, wire->data, (size_t)wire->len, &baseline))
     {
         error("invalid managed owner baseline");
     }

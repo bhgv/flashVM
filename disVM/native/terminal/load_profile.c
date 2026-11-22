@@ -464,3 +464,28 @@ unsigned long styxshapedpayload(const void *payload, size_t length, char *name, 
     }
     return request;
 }
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+unsigned long styxmanaged_capability(unsigned long high, unsigned long low)
+{
+    static const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
+        STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG}; /* Index is capability file length. */
+    return !high && low < sizeof(tags) / sizeof(tags[0]) ? tags[low] : tags[0];
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxmanaged_has_snapshot(unsigned long tag)
+{
+    return tag >= STYX_MANAGED_SPAN_REQUEST_TAG && tag <= STYX_MANAGED_EDIT_REQUEST_TAG;
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxmanaged_request_tag(unsigned long tag)
+{
+    return tag == STYX_MANAGED_REQUEST_TAG || tag == STYX_MANAGED_DELTA_REQUEST_TAG ||
+        styxmanaged_has_snapshot(tag);
+}

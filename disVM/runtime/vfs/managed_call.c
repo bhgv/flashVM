@@ -145,16 +145,12 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     {
         error("cannot encode remote managed call");
     }
-    unsigned char original[STYX_MANAGED_LIST_LIMIT + 1];
+    unsigned char reply[STYX_MANAGED_LIST_LIMIT + 1];
     FVM_SRecord baseline;
-    if (files->field_deltas >= 2)
+    if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
+        request, request_size, &baseline))
     {
-        memcpy(original, request, request_size);
-        if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
-            original, request_size, &baseline))
-        {
-            error("invalid managed request snapshot");
-        }
+        error("invalid managed request snapshot");
     }
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
@@ -167,7 +163,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         error("remote managed call not sent");
     }
     int outcome = dvm_managed_function_exchange(files, group, descriptors, pid,
-        request, request_size, sizeof(request), &response_size);
+        &baseline, request, request_size, reply, sizeof(reply), &response_size);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
     if (cancelled || outcome != 1)
@@ -175,15 +171,15 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
-    if (files->field_deltas ? delta_reply(&files->shape, request, response_size, &captured,
-        files->field_deltas >= 2 ? &baseline : NULL) :
-        managed_reply(&files->shape, request, response_size, &captured))
+    if (files->managed_tag != STYX_MANAGED_REQUEST_TAG ? delta_reply(&files->shape, reply, response_size, &captured,
+        styxmanaged_has_snapshot(files->managed_tag) ? &baseline : NULL) :
+        managed_reply(&files->shape, reply, response_size, &captured))
     {
         return;
     }
     StyxScalarKind kind;
     int64_t code;
-    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, request, response_size, &kind, &code) &&
+    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, reply, response_size, &kind, &code) &&
         kind == STYX_SCALAR_ERROR)
     {
         error("remote scalar owner error");
