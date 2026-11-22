@@ -45,6 +45,8 @@ def exercise(runtime, owner, caller, mode):
         cwd=owner, pass_fds=(owner_fd.fileno(),), stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True,
     ) as server:
+        for endpoint in (client_fd, owner_fd):
+            endpoint.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         owner_fd.close()
         try:
             client = subprocess.run(

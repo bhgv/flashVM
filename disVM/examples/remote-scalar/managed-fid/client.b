@@ -35,6 +35,7 @@ init()
     check_returned_refs(m);
     check_bundle(m);
     check_graph(m);
+    check_graph_conflict(sys, m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -232,4 +233,41 @@ check_graph(m: Managed)
         state.members[1] != nil || extra[0] != old || extra[31].text != "last index") {
         raise "graph copy-back lost an identity or field";
     }
+}
+
+# EN: Rebind one shared reference while the owner is still executing the call.
+# RU: Заменить одну общую ссылку, пока владелец ещё выполняет вызов.
+check_graph_conflict(sys: Sys, m: Managed)
+{
+    Cell, Bundle: import m;
+    old := ref Cell("original", nil);
+    state := ref Bundle(old, array[] of {old, nil});
+    extra := array[32] of ref Cell;
+    extra[0] = old;
+    extra[31] = ref Cell("untouched", nil);
+    ready := chan of int;
+    done := chan of string;
+    spawn graph_conflict_call(m, state, extra, ready, done);
+    <-ready;
+    sys->sleep(1500);
+    state.direct = nil;
+    problem := <-done;
+    if (problem != "remote ref argument changed while waiting" ||
+        state.direct != nil || state.members[0] != old || old.text != "original" ||
+        extra[31].text != "untouched") {
+        raise "concurrent ref change was not rejected: " + problem;
+    }
+}
+
+graph_conflict_call(m: Managed, state: ref Managed->Bundle, extra: array of ref Managed->Cell,
+    ready: chan of int, done: chan of string)
+{
+    ready <-= 1;
+    problem := "";
+    {
+        m->changegraph(state, extra, 2);
+    } exception error {
+        "*" => problem = error;
+    }
+    done <-= problem;
 }

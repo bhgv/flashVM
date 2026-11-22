@@ -349,10 +349,12 @@ static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFr
 }
 
 
+#include "managed_graph_guard.inc"
+
 /* EN: Acquire write access to the whole reply before changing any caller slot.
  * RU: Получить право записи для всего ответа до изменения первого слота. */
 static int commit_swaps(RefSwap *swaps, size_t count,
-    void *destination, DVM_StyxValueFrame *result)
+    void *destination, DVM_StyxValueFrame *result, GraphGuard *graph)
 {
     if (result->layout.size && (!destination || destination == H))
     {
@@ -367,6 +369,10 @@ static int commit_swaps(RefSwap *swaps, size_t count,
             for (size_t i = 0; i < count && claim == DVM_CELL_ACQUIRED; i++)
             {
                 claim = dvm_range_access_extend(&access, swaps[i].original, swaps[i].layout.size);
+            }
+            if (graph && claim == DVM_CELL_ACQUIRED)
+            {
+                claim = guard_graph(graph, &access);
             }
             if (claim == DVM_CELL_ACQUIRED)
             {
@@ -451,7 +457,7 @@ static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame
 {
     RefSwap swaps[STYX_CALL_VALUES];
     return prepare_swaps(refs, objects, updates, masks, swaps) &&
-        commit_swaps(swaps, updates->layout.count, destination, result);
+        commit_swaps(swaps, updates->layout.count, destination, result, NULL);
 }
 
 

@@ -128,3 +128,11 @@ tag 110 and complete snapshots of changed objects. The example leaves a
 4,096-byte array field unchanged and returns a separate 3,000-byte array.
 Their combined encoding would exceed the reply limit if the unchanged field
 were included. The client also checks that it keeps its original array.
+
+
+Before publishing a graph reply, the client checks its original reference
+paths under the same range guards used for copy-back. If a caller thread
+rebound a reference to another object or to `nil`, the call raises
+`remote ref argument changed while waiting` and installs no updates.
+Concurrent data changes to an object with the same identity are allowed.
+The provider's returned fields replace those fields only.

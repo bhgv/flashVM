@@ -3,6 +3,7 @@
 # RU: Исходная реализация Dis для вызовов через смонтированную библиотеку.
 implement Managed;
 include "managed.m";
+include "sys.m";
 # EN: Mutate the locally decoded byte array and return it with the decorated text.
 # RU: Изменить локальный массив байтов и вернуть его вместе с дополненной строкой.
 echo(text: string, bytes: array of byte): (string, array of byte)
@@ -129,7 +130,10 @@ changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): (ref Cell, 
     extra[31].text = "last index";
     extra[0] = nil;
     old.text = "changed after unlink";
-    if (fail) {
+    if (fail == 2) {
+        sys := load Sys Sys->PATH;
+        sys->sleep(3000);
+    } else if (fail) {
         raise "graph failed after mutation";
     }
     output := array[3000] of byte;

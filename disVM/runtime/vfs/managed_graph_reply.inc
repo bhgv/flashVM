@@ -138,7 +138,7 @@ static int graph_stage(DVM_StyxRefTable *refs, const StyxRefDefinition *definiti
 /* EN: Commit source frames directly; they own the displaced fields after swapping.
  * RU: Применить подготовленные кадры; после обмена они владеют вытесненными полями. */
 int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *baseline,
-    DVM_StyxRefTable *refs, void *destination, const void *bytes, size_t size)
+    DVM_StyxRefTable *refs, const void *slots, void *destination, const void *bytes, size_t size)
 {
     StyxRefDefinition definitions[STYX_CALL_REF_KEYS];
     StyxReplyField fields[2];
@@ -179,6 +179,7 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
             valid = ref_layout(D2H(original)->t, &stage->layout);
         }
     }
+    GraphGuard graph = {.shape = shape->arguments, .slots = slots, .baseline = baseline, .refs = refs};
     void *moved[STYX_CALL_REF_KEYS][STYX_CALL_VALUES] = {{0}};
     if (valid)
     {
@@ -194,7 +195,7 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
                 }
             }
         }
-        valid = commit_swaps(swaps, count, destination, &result);
+        valid = commit_swaps(swaps, count, destination, &result, &graph);
     }
     for (size_t i = 0; i < count; i++)
     {
@@ -213,5 +214,5 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
     }
     free(stages);
     dvm_styx_value_frame_clear(&result);
-    return valid;
+    return graph.changed ? -1 : valid;
 }
