@@ -42,6 +42,10 @@ int dvm_styx_composite_array_write(const char *type, void *value, void *bytes,
 int dvm_styx_array_element_read(const char *shape, const unsigned char *record, size_t size,
     const StyxScalarLayout *layout, DVM_StyxValueFrame *element);
 
+#define DVM_STYX_TUPLE_SCRATCH 6U /* Regions required by the bounded tuple encoder. */
+
+/* EN: Reuse caller-owned scratch for tuple elements, each region at least capacity bytes.
+ * RU: Переиспользовать буфер кортежа, каждый участок содержит не менее capacity байтов. */
 int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *element,
-    void *bytes, size_t capacity, size_t *used);
+    unsigned char *scratch, void *bytes, size_t capacity, size_t *used);
 #endif

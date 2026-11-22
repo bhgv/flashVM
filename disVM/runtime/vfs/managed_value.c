@@ -386,7 +386,7 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
  * RU: Кодировать соседние поля по порядку, используя отдельные буферы кортежей. */
 static int encode_nodes(FrameEncode *encode, const char *shape, unsigned depth, size_t *size)
 {
-    if (depth >= 6)
+    if (depth >= DVM_STYX_TUPLE_SCRATCH)
     {
         return 0;
     }
@@ -425,7 +425,7 @@ static int encode_nodes(FrameEncode *encode, const char *shape, unsigned depth, 
 
 /* EN/RU: See managed_array.h. / См. managed_array.h. */
 int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *element,
-    void *bytes, size_t capacity, size_t *used)
+    unsigned char *scratch, void *bytes, size_t capacity, size_t *used)
 {
     FrameEncode encode = {.layout = element->layout, .slots = (const unsigned char *)element->words};
     const char *type = shape + 1;
@@ -434,17 +434,11 @@ int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *el
         return encode_leaf(&encode, type, styxshape_end(type), bytes, capacity, used);
     }
     encode.capacity = capacity;
-    encode.scratch = malloc(6 * capacity);
-    if (!encode.scratch)
-    {
-        return 0;
-    }
+    encode.scratch = scratch;
     size_t size;
-    int valid = encode_nodes(&encode, type + 1, 0, &size) &&
+    return scratch && encode_nodes(&encode, type + 1, 0, &size) &&
         encode.leaf == element->layout.count &&
-        fvm_srecord_write(STYX_CALL_TUPLE_TAG, encode.scratch, size, bytes, capacity, used) == FVM_S_OK;
-    free(encode.scratch);
-    return valid;
+        fvm_srecord_write(STYX_CALL_TUPLE_TAG, scratch, size, bytes, capacity, used) == FVM_S_OK;
 }
 
 
@@ -459,7 +453,7 @@ int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void 
         return 0;
     }
     encode.capacity = capacity < STYX_MANAGED_LIST_LIMIT ? capacity : STYX_MANAGED_LIST_LIMIT;
-    encode.scratch = malloc(6 * encode.capacity);
+    encode.scratch = malloc(DVM_STYX_TUPLE_SCRATCH * encode.capacity);
     if (!encode.scratch)
     {
         return 0;

@@ -339,6 +339,7 @@ typedef struct CompositeEncode
 {
     const char *schema; /* Borrowed checked element schema. */
     DVM_StyxValueFrame *element; /* Temporarily retained fields of one element. */
+    unsigned char *scratch; /* Shared tuple scratch for this array level. */
     unsigned char *bytes; /* Destination of one element record. */
     size_t capacity; /* Bytes available for this record. */
     size_t used; /* Bytes written on success. */
@@ -365,7 +366,8 @@ static int encode_composite_element(void *state)
             }
         }
     }
-    return dvm_styx_array_element_write(encode->schema, element, encode->bytes, encode->capacity, &encode->used);
+    return dvm_styx_array_element_write(encode->schema, element, encode->scratch,
+        encode->bytes, encode->capacity, &encode->used);
 }
 
 
@@ -399,7 +401,13 @@ int dvm_styx_composite_array_write(const char *type, void *value, void *bytes, s
     {
         return 0;
     }
-    unsigned char *payload = malloc(capacity);
+    if (!array->len)
+    {
+        return fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+    }
+    int tuples = schema[1] == '(';
+    size_t regions = tuples ? 1 + DVM_STYX_TUPLE_SCRATCH : 1;
+    unsigned char *payload = malloc(regions * capacity);
     if (!payload)
     {
         return 0;
@@ -410,6 +418,7 @@ int dvm_styx_composite_array_write(const char *type, void *value, void *bytes, s
     {
         DVM_StyxValueFrame element = {.layout = layout};
         CompositeEncode encode = {.schema = schema, .element = &element,
+            .scratch = tuples ? payload + capacity : NULL,
             .bytes = payload + length, .capacity = capacity - length};
         valid = encode.capacity > 0 &&
             dvm_styx_value_snapshot(array->data + (size_t)i * layout.size, &element) &&

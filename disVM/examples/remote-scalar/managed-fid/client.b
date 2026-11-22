@@ -133,15 +133,20 @@ check_nested(m: Managed)
     rows := array[3] of array of byte;
     rows[0] = array[] of {byte 42};
     rows[2] = array[0] of byte;
-    items := array[1] of Item;
+    items := array[400] of Item;
+    for (i := 0; i < len items; i++) {
+        items[i] = (byte (i % 200), "stable");
+    }
     items[0] = (byte 9, "old");
     state := ref Nested(items, rows);
     alias := state;
     (returned, records) := m->nested(names, state);
     (code, label) := records[0];
     (updated, updatedlabel) := alias.items[0];
+    (last, lastlabel) := records[len records - 1];
     if (returned[0] != "é!" || returned[1] != nil || returned[2] != "🌍" ||
         code != byte 10 || label != "new" || updated != code || updatedlabel != label ||
+        len records != 400 || last != byte 199 || lastlabel != "stable" ||
         alias.rows[0][0] != byte 99 || alias.rows[1] != nil ||
         alias.rows[2] == nil || len alias.rows[2] != 0 ||
         names[0] != "é" || rows[0][0] != byte 42) {
