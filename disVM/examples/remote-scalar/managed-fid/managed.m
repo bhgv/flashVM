@@ -18,6 +18,7 @@ Managed: module {
         direct: ref Cell;
         members: array of ref Cell;
     };
+    changegraph: fn(state: ref Bundle, extra: array of ref Cell, fail: int): ref Cell;
     bundle: fn(state: ref Cell): ref Bundle;
     reference: fn(state: ref Cell): (ref Cell, ref Cell, ref Cell, ref Cell);
     accept: fn(text: string);

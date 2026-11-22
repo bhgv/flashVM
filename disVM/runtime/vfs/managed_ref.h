@@ -39,6 +39,14 @@ int dvm_styx_result_fields_write(DVM_StyxRefTable *table, const char *shape, con
     size_t size, void *bytes, size_t capacity, size_t *used);
 
 
+/* EN/RU: Codec for a call-local graph. The caller owns entries appended to table. */
+int dvm_styx_graph_write(DVM_StyxRefTable *table, unsigned long tag, const char *shape,
+    const void *slots, size_t size, void *bytes, size_t capacity, size_t *used);
+int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *baseline,
+    void *const *identities, size_t count, const void *slots, size_t size, void *bytes, size_t capacity, size_t *used);
+int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *baseline,
+    DVM_StyxRefTable *refs, void *destination, const void *bytes, size_t size);
+
 /* EN: Gather only borrowed ref slots from the argument frame.
  * RU: Выбрать только заимствованные слоты ref из кадра аргументов. */
 int dvm_styx_ref_slots(const char *shape, const void *arguments, char *refs, void **objects);

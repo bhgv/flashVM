@@ -75,3 +75,5 @@ int styxmanaged_result_refs(const char *shape)
     }
     return 1;
 }
+
+#include "managed_graph_validation.inc"

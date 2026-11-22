@@ -114,3 +114,23 @@ bundle(state: ref Cell): ref Bundle
     members[257] = fresh;
     return ref Bundle(fresh, members);
 }
+
+
+# EN: Update a shared child after removing its original paths from the provider's graph.
+# RU: Изменить общий дочерний объект после удаления исходных путей к нему у владельца.
+changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): ref Cell
+{
+    old := state.direct;
+    if (old != state.members[0] || old != extra[0] || state.members[1] != nil) {
+        raise "nested arguments lost shared identity";
+    }
+    state.direct = ref Cell("fresh", nil);
+    state.members[0] = state.direct;
+    extra[31].text = "last index";
+    extra[0] = nil;
+    old.text = "changed after unlink";
+    if (fail) {
+        raise "graph failed after mutation";
+    }
+    return old;
+}

@@ -109,6 +109,7 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_GRAPH_UPDATES_TAG 16UL /* Changed objects, in request index order. */
 #define STYX_MANAGED_EDIT_TAG 15UL /* Ordered offset, removal and insertion records. */
 #define STYX_MANAGED_SPLICE_TAG 14UL /* Offset, removal extent, and insertion bytes. */
 #define STYX_MANAGED_RUN_TAG 13UL /* Ordered array spans, each with offset and length. */
@@ -212,6 +213,17 @@ int styxmanaged_ref_definitions(const char *shape, const FVM_SRecord *list, int 
 /* EN: Validate borrowed children against the value-list schema.
  * RU: Проверить заимствованные дочерние записи по схеме списка. */
 int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size);
+/* EN: Validate the argument payload according to its negotiated request tag.
+ * RU: Проверить аргументы по согласованному тегу запроса. */
+int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list);
+/* EN: Validate both graph-reply positions using one identity namespace.
+ * RU: Проверить обе части ответа с общей таблицей ссылок. */
+int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,
+    const StyxReplyField fields[2]);
+/* EN: Compare checked ADT fields by value, comparing ref records by index.
+ * RU: Сравнить проверенные поля ADT по значению, а записи ref по индексу. */
+int styxmanaged_graph_mask(const FVM_SRecord *before, const FVM_SRecord *after, unsigned *mask);
+
 /* EN: Match a single complete, empty nil record.
  * RU: Проверить одну полную запись nil без полезной нагрузки. */
 int styxmanaged_is_nil(const void *bytes, size_t size);

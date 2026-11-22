@@ -263,7 +263,8 @@ static int managed_profile(void)
     const StyxCallShape two_elements = {"(a[si])", "(s)"};
     const StyxCallShape broken_ref = {"(r[a[s])", "(s)"};
     const StyxCallShape too_deep = {"(a[a[a[a[a[a[s]]]]]])", "(s)"};
-    return styxshapevalid(&good) && !styxshaperequest(17, &good) && !styxshapevalid(&empty_array) &&
+    return styxshapevalid(&good) && styxshaperequest(17, &good) == STYX_MANAGED_REQUEST_TAG &&
+        styxmanaged_graph_required(good.arguments) && !styxshapevalid(&empty_array) &&
         !styxshapevalid(&two_elements) && !styxshapevalid(&broken_ref) && !styxshapevalid(&too_deep);
 }
 
@@ -433,6 +434,11 @@ int main(void)
         styxcall_context(".prog/01", 8, &context_pid) ||
         styxcall_context(".prog/../9", 10, &context_pid))
     {
+        return 1;
+    }
+    if (!graph_reply_records())
+    {
+        fputs("managed graph reply validation failed\n", stderr);
         return 1;
     }
     if (!linked_result_graph() || !linked_result_refs() || !managed_capabilities() || !managed_sequence_edits() || !managed_text_patch() || !managed_array_splice() || !managed_array_runs() || !managed_array_span() || !managed_field_deltas() || !managed_sparse_refs() || !scoped_large_record() || !reply_fields() || !managed_layout() || !managed_records() || !managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())

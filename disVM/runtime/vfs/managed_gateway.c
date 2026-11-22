@@ -9,7 +9,7 @@
 #include "interp.h"
 #include "kernel.h"
 #include "scalar_direct.h"
-#include "managed_value.h"
+#include "managed_ref.h"
 #include "raise.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
@@ -30,6 +30,7 @@ typedef struct GatewayData
     size_t result_offset; /* Mapped result storage in the parent bridge frame. */
     size_t result_size; /* Native result extent. */
     size_t extent; /* Bridge frame size. */
+    size_t identities_offset; /* Mapped array of original graph objects. */
 } GatewayData;
 
 
@@ -45,6 +46,29 @@ static unsigned long gateway_tag(const Array *wire)
 }
 
 
+/* EN: Transfer the decoder-owned roots into a mapped pointer array.
+ * RU: Перенести корни декодировщика в массив указателей в кадре Dis. */
+typedef struct GatewayIdentities
+{
+    DVM_StyxRefTable *refs;
+    Array *array;
+} GatewayIdentities;
+
+static int retain_identities(void *opaque)
+{
+    GatewayIdentities *state = opaque;
+    DVM_StyxRefTable *refs = state->refs;
+    state->array = H2D(Array *, heaparray(&Tptr, (int)refs->count));
+    for (size_t i = 0; i < refs->count; i++)
+    {
+        memcpy(state->array->data + i * sizeof(void *), &refs->objects[i], sizeof(void *));
+        ptrdel(D2H(refs->objects[i]));
+    }
+    refs->count = 0;
+    return 1;
+}
+
+
 /* [GC:] EN: Decode the rooted request and move its values into the parent Dis frame.
  * RU: Декодировать удерживаемый запрос и передать значения в родительский кадр Dis. */
 static void prepare_call(void *frame)
@@ -56,7 +80,23 @@ static void prepare_call(void *frame)
     memcpy(&wire, bridge + GATE_WIRE, sizeof(wire));
     DVM_StyxValueFrame arguments = {0};
     unsigned long tag = gateway_tag(wire);
-    if (!tag || !dvm_styx_value_frame_read(tag, data->shape.arguments,
+    if (tag == STYX_MANAGED_GRAPH_TAG)
+    {
+        DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
+        GatewayIdentities identities = {.refs = &refs, .array = H};
+        FVM_SRecord baseline;
+        int valid = styxmanaged_list_read(tag, data->shape.arguments, wire->data, (size_t)wire->len, &baseline) &&
+            dvm_styx_result_fields_read(&refs, data->shape.arguments, baseline.payload, baseline.size, &arguments) &&
+            kprotect(retain_identities, &identities);
+        dvm_styx_ref_release(&refs, 0);
+        if (!valid)
+        {
+            dvm_styx_value_frame_clear(&arguments);
+            error("invalid managed owner graph");
+        }
+        memcpy(bridge + data->identities_offset, &identities.array, sizeof(identities.array));
+    }
+    else if (!tag || !dvm_styx_value_frame_read(tag, data->shape.arguments,
         wire->data, (size_t)wire->len, &arguments))
     {
         error("invalid managed owner arguments");
@@ -83,8 +123,10 @@ static void finish_call(void *frame)
     {
         error("invalid managed owner baseline");
     }
+    Array *identities;
+    memcpy(&identities, helper->fp + data->identities_offset, sizeof(identities));
     dvm_styx_owner_finish(&data->shape, helper->fp + GATE_TARGET + 8, &baseline,
-        helper->fp + data->result_offset, data->result_size);
+        helper->fp + data->result_offset, data->result_size, identities);
 }
 
 
@@ -124,7 +166,10 @@ static int build_gateway(void *opaque)
     data->result_offset = temporary + 8;
     data->result_size = output.size;
     data->extent = data->result_offset + ((output.size + 7) & ~(size_t)7);
+    data->identities_offset = data->extent;
+    data->extent += sizeof(void *);
     unsigned char map[4] = {0};
+    map_slot(map, data->identities_offset);
     map_slot(map, GATE_WIRE);
     map_slot(map, GATE_TARGET);
     for (size_t i = 0; i < input.count; i++)

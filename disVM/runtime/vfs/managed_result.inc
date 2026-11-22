@@ -116,3 +116,12 @@ int dvm_styx_result_fields_write(DVM_StyxRefTable *table, const char *shape, con
     FrameEncode encode = {.slots = slots, .refs = table};
     return encode_frame(&encode, STYX_MANAGED_REF_TAG, shape, size, bytes, capacity, used, NULL, NULL);
 }
+
+
+/* EN/RU: See managed_ref.h. / См. managed_ref.h. */
+int dvm_styx_graph_write(DVM_StyxRefTable *table, unsigned long tag, const char *shape,
+    const void *slots, size_t size, void *bytes, size_t capacity, size_t *used)
+{
+    FrameEncode encode = {.slots = slots, .refs = table};
+    return encode_frame(&encode, tag, shape, size, bytes, capacity, used, NULL, NULL);
+}

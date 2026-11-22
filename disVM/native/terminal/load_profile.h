@@ -20,6 +20,8 @@
 #define STYX_MANAGED_SPLICE_REQUEST_TAG 106UL /* Opt in to size-changing array splices. */
 #define STYX_MANAGED_TEXT_REQUEST_TAG 107UL /* Opt in to UTF-8 string patches. */
 #define STYX_MANAGED_EDIT_REQUEST_TAG 108UL /* Opt in to disjoint size-changing edits. */
+#define STYX_MANAGED_GRAPH_TAG 110UL /* Nested request identities and indexed object updates. */
+#define STYX_MANAGED_GRAPH_VERSION 7U /* Length of .ref-fields for graph calls. */
 #define STYX_MANAGED_WIDE_REFS_TAG 109UL /* Use the full byte index space in results. */
 #define STYX_MANAGED_WIDE_REFS_VERSION 6U /* Length of .ref-fields for 256 indices. */
 #define STYX_MANAGED_EDIT_VERSION 5U /* Length of .ref-fields for disjoint edits. */
@@ -106,6 +108,11 @@ unsigned long styxshapedpayload(const void *payload, size_t length, char *name, 
 /* EN: Select the request tag for a known .ref-fields length, falling back to plain field deltas.
  * RU: Выбрать тег по длине .ref-fields либо использовать обычные дельты полей. */
 unsigned long styxmanaged_capability(unsigned long high, unsigned long low);
+
+
+/* EN: Identify argument schemas that require nested reference identities.
+ * RU: Определить схемы аргументов, которым нужны вложенные ссылки. */
+int styxmanaged_graph_required(const char *arguments);
 
 
 /* EN: Check whether the request tag permits patches against its snapshot.

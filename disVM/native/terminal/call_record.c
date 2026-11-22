@@ -353,7 +353,7 @@ int styxmanaged_list_read(unsigned long tag, const char *shape, const void *byte
     size_t used;
     if (!list || size > STYX_MANAGED_LIST_LIMIT ||
         fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &decoded, &used) != FVM_S_OK ||
-        used != size || decoded.tag != tag || !styxmanaged_payload_valid(shape, decoded.payload, decoded.size))
+        used != size || decoded.tag != tag || !styxmanaged_request_payload(shape, &decoded))
     {
         return 0;
     }
@@ -370,7 +370,7 @@ int styxmanaged_list_write(unsigned long tag, const char *shape, const void *pay
     {
         capacity = STYX_MANAGED_LIST_LIMIT;
     }
-    return size <= capacity && styxmanaged_payload_valid(shape, payload, size) &&
+    return size <= capacity && styxmanaged_request_payload(shape, &(FVM_SRecord){.tag = tag, .payload = payload, .size = size}) &&
         fvm_srecord_write(tag, payload, size, bytes, capacity, used) == FVM_S_OK;
 }
 

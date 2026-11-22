@@ -400,11 +400,11 @@ static int managed_capabilities(void)
 {
     const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
         STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
-        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG};
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG, STYX_MANAGED_GRAPH_TAG};
     for (size_t i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
     {
         if (styxmanaged_capability(0, i) != tags[i] || !styxmanaged_request_tag(tags[i]) ||
-            styxmanaged_has_snapshot(tags[i]) != (i != 0))
+            styxmanaged_has_snapshot(tags[i]) != (i != 0 && tags[i] != STYX_MANAGED_GRAPH_TAG))
         {
             return 0;
         }
@@ -413,8 +413,8 @@ static int managed_capabilities(void)
         !styxmanaged_has_snapshot(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_request_tag(STYX_MANAGED_REPLY_TAG) &&
         !styxmanaged_request_tag(STYX_SCOPED_RECORD_OFFER_TAG) &&
-        !styxmanaged_request_tag(STYX_MANAGED_WIDE_REFS_TAG + 1) &&
-        styxmanaged_capability(0, STYX_MANAGED_WIDE_REFS_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
+        !styxmanaged_request_tag(STYX_MANAGED_GRAPH_TAG + 1) &&
+        styxmanaged_capability(0, STYX_MANAGED_GRAPH_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
         styxmanaged_capability(1, 0) == STYX_MANAGED_DELTA_REQUEST_TAG;
 }
 
@@ -500,4 +500,43 @@ static int linked_result_graph(void)
         return 0;
     }
     return 1;
+}
+
+
+/* EN: Check nested arguments, a typed result alias, and duplicate update rejection.
+ * RU: Проверить вложенные аргументы, тип ссылки результата и отказ при дубликате обновления. */
+static int graph_reply_records(void)
+{
+    StyxCallShape shape = {.arguments = "(a[r[s]])", .result = "(r[s])"};
+    unsigned char text[24], object[32], request[64], alias[16], reply[32], payload[64], updates[80];
+    unsigned char index = 0;
+    size_t text_size, object_size, alias_size, used;
+    FVM_SRecord arguments;
+    StyxReplyField fields[2] = {{reply, 0}, {updates, 0}};
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "original", 8, text, sizeof(text), &text_size) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, text, text_size, object,
+            sizeof(object), &object_size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, object, object_size, payload, sizeof(payload), &used) != FVM_S_OK ||
+        !styxmanaged_list_write(STYX_MANAGED_GRAPH_TAG, shape.arguments, payload, used, request, sizeof(request), &used) ||
+        !styxmanaged_list_read(STYX_MANAGED_GRAPH_TAG, shape.arguments, request, used, &arguments) ||
+        !styxmanaged_graph_required(shape.arguments) || styxmanaged_graph_required("(r[s])") ||
+        fvm_srecord_write(STYX_MANAGED_REF_TAG, &index, 1, alias, sizeof(alias), &alias_size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, alias, alias_size, reply, sizeof(reply), &fields[0].size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_GRAPH_UPDATES_TAG, object, object_size, updates,
+            sizeof(updates), &fields[1].size) != FVM_S_OK ||
+        !styxmanaged_graph_reply(&shape, &arguments, fields))
+    {
+        return 0;
+    }
+    shape.result[3] = 'i';
+    if (styxmanaged_graph_reply(&shape, &arguments, fields))
+    {
+        return 0;
+    }
+    shape.result[3] = 's';
+    memcpy(payload, object, object_size);
+    memcpy(payload + object_size, object, object_size);
+    return fvm_srecord_write(STYX_MANAGED_GRAPH_UPDATES_TAG, payload, object_size * 2,
+        updates, sizeof(updates), &fields[1].size) == FVM_S_OK &&
+        !styxmanaged_graph_reply(&shape, &arguments, fields);
 }

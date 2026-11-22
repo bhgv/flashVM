@@ -40,8 +40,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
             fvm_srecord_read(outer.payload, outer.size, STYX_MANAGED_LIST_LIMIT, &first, &prefix) != FVM_S_OK ||
             !styxscalarread(STYX_CALL_BIG_TAG, outer.payload, prefix, &kind, &caller) ||
             kind != STYX_SCALAR_VALUE || caller <= 0 || caller > UINT32_MAX ||
-            (fid->context_pid && fid->context_pid != (uint32_t)caller) ||
-            !styxmanaged_payload_valid(fn->dynamic_shape->arguments, outer.payload + prefix, outer.size - prefix))
+            (fid->context_pid && fid->context_pid != (uint32_t)caller))
         {
             return Ebadarg;
         }
@@ -49,6 +48,12 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         arguments = outer;
         arguments.payload += prefix;
         arguments.size -= prefix;
+        if (!styxmanaged_request_payload(fn->dynamic_shape->arguments, &arguments) ||
+            (styxmanaged_graph_required(fn->dynamic_shape->arguments) &&
+                arguments.tag != STYX_MANAGED_GRAPH_TAG))
+        {
+            return Ebadarg;
+        }
     }
     else if (!styxmanaged_list_read(fn->request_tag, fn->dynamic_shape->arguments, bytes, size, &arguments))
     {
@@ -80,14 +85,16 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     size_t delta_count;
     unsigned char expanded[STYX_MANAGED_LIST_LIMIT];
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
-        !managed_result_valid(fn->dynamic_shape, &fields[0], &arguments) ||
+        (arguments.tag == STYX_MANAGED_GRAPH_TAG ?
+            !styxmanaged_graph_reply(fn->dynamic_shape, &arguments, fields) :
+        (!managed_result_valid(fn->dynamic_shape, &fields[0], &arguments) ||
         (styxmanaged_has_snapshot(arguments.tag) ?
             !styxmanaged_deltas_base(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
                 deltas, &delta_count, &arguments, expanded, sizeof(expanded)) :
          arguments.tag == STYX_MANAGED_DELTA_REQUEST_TAG ?
             !styxmanaged_deltas(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size, deltas, &delta_count) :
             !styxmanaged_updates(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
-                selected, &mask, &updates)))
+                selected, &mask, &updates)))))
     {
         return Ebadarg;
     }

@@ -93,8 +93,9 @@ int dvm_styx_ref_result_write(const StyxCallShape *shape, const void *slots, siz
 
 /* [GC:] EN: Send the return from rooted slots through the active private route.
  * RU: Отправить результат из укоренённых слотов через текущий приватный маршрут. */
+struct Array;
 void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, const FVM_SRecord *baseline,
-    const void *slots, size_t size);
+    const void *slots, size_t size, const struct Array *identities);
 
 /* [GC:] EN: Initialize the private mapped frame of a generated gateway.
  * RU: Инициализировать частный mapped кадр сгенерированного шлюза. */

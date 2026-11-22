@@ -367,13 +367,11 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
     }
     unsigned long ref = styxshaperef(shape, &results);
     StyxScalarLayout input, output;
-    char refs[STYX_SHAPE_MAX + 1];
-    unsigned mask;
     if (ref || !styxshapevalid(shape) ||
         !styxmanaged_layout(shape->arguments, &input) || !styxmanaged_layout(shape->result, &output) ||
         input.size > 64 || output.size > 64 ||
-        !styxmanaged_refs(shape->arguments, refs, &mask) || !styxmanaged_result_refs(shape->result) ||
-        !styxmanaged_arrays(shape->arguments, 0) || !styxmanaged_arrays(shape->result, 1) ||
+        !styxmanaged_result_refs(shape->arguments) || !styxmanaged_result_refs(shape->result) ||
+        !styxmanaged_arrays(shape->arguments, 1) || !styxmanaged_arrays(shape->result, 1) ||
         !(input.pointers || output.pointers))
     {
         return ref;
@@ -456,7 +454,7 @@ unsigned long styxmanaged_capability(unsigned long high, unsigned long low)
 {
     static const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
         STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
-        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG}; /* Index is capability file length. */
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG, STYX_MANAGED_GRAPH_TAG}; /* Index is capability file length. */
     return !high && low < sizeof(tags) / sizeof(tags[0]) ? tags[low] : tags[0];
 }
 
@@ -472,5 +470,14 @@ int styxmanaged_has_snapshot(unsigned long tag)
 int styxmanaged_request_tag(unsigned long tag)
 {
     return tag == STYX_MANAGED_REQUEST_TAG || tag == STYX_MANAGED_DELTA_REQUEST_TAG ||
-        styxmanaged_has_snapshot(tag);
+        tag == STYX_MANAGED_GRAPH_TAG || styxmanaged_has_snapshot(tag);
+}
+
+/* EN: Legacy requests carry ref leaves in tuples and standalone ADT fields only.
+ * RU: Старые запросы поддерживают ref в кортежах и поля без вложенных ссылок. */
+int styxmanaged_graph_required(const char *arguments)
+{
+    char refs[STYX_SHAPE_MAX + 1];
+    unsigned mask;
+    return !styxmanaged_refs(arguments, refs, &mask) || !styxmanaged_arrays(arguments, 0);
 }

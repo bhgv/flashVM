@@ -84,7 +84,7 @@ an array of byte arrays and an array of tuples. Each array element has its
 own S-record. A nil element and an empty array have distinct records.
 The reply returns arrays by value and updates the existing `ref` object.
 Array element types may recursively contain scalars, strings, arrays and
-tuples within the compiled schema and record limits. Arrays sent as arguments contain values.
+tuples within the compiled schema and record limits.
 
 A result can contain `ref` values, including inside a tuple. If the owner
 returns an argument object, the client receives its existing reference.
@@ -96,5 +96,23 @@ a nil result component and the write-back on the original object.
 Returned references can themselves include references in ADT fields and
 array elements. These locations share the same index table with the result
 and its arguments. A new definition must precede references to it. The
-profile accepts finite shapes and completed definitions. Argument graphs
-with nested references still require a separate copy-back policy.
+profile accepts finite shapes and completed definitions.
+
+A seven-byte `.ref-fields` marker enables nested references in arguments.
+The caller and provider both hold the original objects by their request
+indices until the call ends, including objects that become unreachable from
+the provider arguments during execution. The request uses tag 110 and keeps
+the caller PID first on the function fid. The reply keeps the result first
+and uses tag 16 for the second record. Each changed object in that record
+has tag 10, its original index byte, and its new field values. Objects are
+ordered by original index. References to new objects can be defined in the
+result or in these updates. The client checks both records before applying
+changed fields to the original objects. Top-level arrays are passed by
+value, but changes to the `ref` objects they contain are copied back.
+Both sides must support the graph profile to load a signature that needs it.
+
+The `changegraph` example passes one object through an ADT field, an ADT
+array and a separate array argument. The provider replaces its links before
+updating the old object. The caller verifies that a successful call updates
+that object in place and returns the original reference. An exception
+leaves the caller's objects untouched.

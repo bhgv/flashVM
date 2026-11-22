@@ -346,7 +346,7 @@ void Vfsnative_scalarmanagederror(void *frame)
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
     if (owner && owner->remote_call_reply)
     {
-        dvm_styx_owner_finish(NULL, NULL, NULL, NULL, 0);
+        dvm_styx_owner_finish(NULL, NULL, NULL, NULL, 0, NULL);
     }
 }
 

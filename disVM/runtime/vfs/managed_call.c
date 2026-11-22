@@ -148,17 +148,20 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     memcpy(&captured, frame, extent);
     unsigned char request[STYX_MANAGED_LIST_LIMIT + 1];
     size_t request_size, response_size = 0;
-    if (!dvm_styx_value_frame_write(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
-        captured.arguments, inputs.size, request, sizeof(request), &request_size))
-    {
-        error("cannot encode remote managed call");
-    }
+    int graph = files->managed_tag == STYX_MANAGED_GRAPH_TAG;
+    DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
+    unsigned long tag = graph ? STYX_MANAGED_GRAPH_TAG : STYX_MANAGED_REQUEST_TAG;
+    int encoded = graph ?
+        dvm_styx_graph_write(&refs, tag, files->shape.arguments, captured.arguments,
+            inputs.size, request, sizeof(request), &request_size) :
+        dvm_styx_value_frame_write(tag, files->shape.arguments, captured.arguments,
+            inputs.size, request, sizeof(request), &request_size);
     unsigned char reply[STYX_MANAGED_LIST_LIMIT + 1];
     FVM_SRecord baseline;
-    if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
-        request, request_size, &baseline))
+    if (!encoded || !styxmanaged_list_read(tag, files->shape.arguments, request, request_size, &baseline))
     {
-        error("invalid managed request snapshot");
+        dvm_styx_ref_release(&refs, 0);
+        error("cannot encode remote managed call");
     }
     baseline.tag = files->managed_tag;
     Prog *process = currun();
@@ -169,6 +172,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     int released = group ? dvm_vfs_path_enter(&wait) : -1;
     if (released < 0)
     {
+        dvm_styx_ref_release(&refs, 0);
         error("remote managed call not sent");
     }
     int outcome = dvm_managed_function_exchange(files, group, descriptors, pid,
@@ -177,12 +181,17 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     dvm_runtime_gc_native_enter(released);
     if (cancelled || outcome != 1)
     {
+        dvm_styx_ref_release(&refs, 0);
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
-    if (files->managed_tag != STYX_MANAGED_REQUEST_TAG ? delta_reply(&files->shape, reply, response_size, &captured,
+    int valid = graph ? dvm_styx_graph_reply_commit(&files->shape, &baseline, &refs, captured.ret,
+        reply, response_size) :
+        files->managed_tag != STYX_MANAGED_REQUEST_TAG ? delta_reply(&files->shape, reply, response_size, &captured,
         &baseline, styxmanaged_has_snapshot(files->managed_tag)) :
-        managed_reply(&files->shape, reply, response_size, &captured, &baseline))
+        managed_reply(&files->shape, reply, response_size, &captured, &baseline);
+    dvm_styx_ref_release(&refs, 0);
+    if (valid)
     {
         return;
     }
@@ -200,7 +209,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
 /* [GC:] EN: Serialize the return and publish one reply to the caller's fid.
  * RU: Кодировать результат и отправить один ответ для fid вызывающего. */
 void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, const FVM_SRecord *baseline,
-    const void *slots, size_t size)
+    const void *slots, size_t size, const Array *identities)
 {
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
     if (!owner || !owner->remote_call_reply)
@@ -211,7 +220,11 @@ void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, co
     unsigned char reply[STYX_MANAGED_LIST_LIMIT];
     unsigned char updates[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, reply_size;
-    if (!(shape && baseline && (!strcmp(shape->result, "()") ?
+    int valid = shape && baseline && (baseline->tag == STYX_MANAGED_GRAPH_TAG ?
+        identities && identities != H &&
+        dvm_styx_graph_reply_write(shape, baseline, (void *const *)identities->data, (size_t)identities->len,
+            slots, size, reply, sizeof(reply), &reply_size) :
+        ((!strcmp(shape->result, "()") ?
         fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, result, sizeof(result), &result_size) == FVM_S_OK :
         strchr(shape->result, 'r') ?
             dvm_styx_ref_result_write(shape, slots, size, arguments, baseline, result, sizeof(result), &result_size) :
@@ -219,7 +232,8 @@ void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, co
                 result, sizeof(result), &result_size)) &&
         dvm_styx_ref_updates(shape->arguments, arguments, baseline, updates, sizeof(updates), &update_size) &&
         styxcall_reply_write(STYX_MANAGED_REPLY_TAG, result, result_size, updates, update_size,
-            reply, sizeof(reply), &reply_size)))
+            reply, sizeof(reply), &reply_size)));
+    if (!valid)
     {
         if (!styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, reply, sizeof(reply), &reply_size))
         {

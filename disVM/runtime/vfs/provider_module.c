@@ -237,6 +237,20 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
                 bit = 0;
             }
         }
+        unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
+            (strchr(shape.arguments, 'r') || strchr(shape.result, 'r')) ?
+            styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
+        if (bit && explicit_end == STYX_CALL_RECORD_FRAMING && styxmanaged_graph_required(shape.arguments))
+        {
+            if (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG)
+            {
+                bit = 0;
+            }
+        }
+        else if (managed_tag == STYX_MANAGED_GRAPH_TAG)
+        {
+            managed_tag = STYX_MANAGED_WIDE_REFS_TAG;
+        }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
         {
             dvm_scalar_files_release(head);
@@ -253,9 +267,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->signature = signature;
         (*tail)->caller = caller;
         (*tail)->explicit_end = explicit_end;
-        (*tail)->managed_tag = field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            (strchr(shape.arguments, 'r') || strchr(shape.result, 'r')) ?
-            styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
+        (*tail)->managed_tag = managed_tag;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;
         (*tail)->result_cells = result;

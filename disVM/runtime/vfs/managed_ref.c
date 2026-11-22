@@ -349,13 +349,12 @@ static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFr
 }
 
 
-/* EN/RU: See managed_ref.h. / См. managed_ref.h. */
-static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates, const unsigned *masks,
+/* EN: Acquire write access to the whole reply before changing any caller slot.
+ * RU: Получить право записи для всего ответа до изменения первого слота. */
+static int commit_swaps(RefSwap *swaps, size_t count,
     void *destination, DVM_StyxValueFrame *result)
 {
-    RefSwap swaps[STYX_CALL_VALUES];
-    if (!prepare_swaps(refs, objects, updates, masks, swaps) ||
-        (result->layout.size && (!destination || destination == H)))
+    if (result->layout.size && (!destination || destination == H))
     {
         return 0;
     }
@@ -365,7 +364,7 @@ static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame
         DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, destination, result->layout.size, &access);
         if (claim == DVM_CELL_ACQUIRED)
         {
-            for (size_t i = 0; i < updates->layout.count && claim == DVM_CELL_ACQUIRED; i++)
+            for (size_t i = 0; i < count && claim == DVM_CELL_ACQUIRED; i++)
             {
                 claim = dvm_range_access_extend(&access, swaps[i].original, swaps[i].layout.size);
             }
@@ -386,7 +385,7 @@ static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame
     }
     /* Swap ownership, leaving the displaced fields in the private decoded ADTs. */
     unsigned char old[64];
-    for (size_t i = 0; i < updates->layout.count; i++)
+    for (size_t i = 0; i < count; i++)
     {
         RefSwap *swap = &swaps[i];
         for (size_t j = 0; j < swap->layout.count; j++)
@@ -447,6 +446,15 @@ static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame
 }
 
 
+static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates,
+    const unsigned *masks, void *destination, DVM_StyxValueFrame *result)
+{
+    RefSwap swaps[STYX_CALL_VALUES];
+    return prepare_swaps(refs, objects, updates, masks, swaps) &&
+        commit_swaps(swaps, updates->layout.count, destination, result);
+}
+
+
 /* EN/RU: See managed_ref.h. / См. managed_ref.h. */
 int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates,
     void *destination, DVM_StyxValueFrame *result)
@@ -458,3 +466,5 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
 
 
 #include "managed_ref_updates.inc"
+
+#include "managed_graph_reply.inc"

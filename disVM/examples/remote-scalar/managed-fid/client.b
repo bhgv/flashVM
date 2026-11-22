@@ -34,6 +34,7 @@ init()
     check_nested(m);
     check_returned_refs(m);
     check_bundle(m);
+    check_graph(m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -196,5 +197,34 @@ check_bundle(m: Managed)
     packed.members[1].text = "shared";
     if (packed.direct.text != "shared" || packed.members[257].text != "shared") {
         raise "nested aliases do not share one local object";
+    }
+}
+
+# EN: Verify sparse copy-back, original identity and rollback of a failed remote call.
+# RU: Проверить обратную запись, исходную идентичность и отказ без частичного обновления.
+check_graph(m: Managed)
+{
+    Cell, Bundle: import m;
+    old := ref Cell("original", array[] of {byte 17});
+    members := array[] of {old, nil};
+    state := ref Bundle(old, members);
+    extra := array[32] of ref Cell;
+    extra[0] = old;
+    for (i := 1; i < len extra; i++)
+        extra[i] = ref Cell("separate", nil);
+    failed := 0;
+    {
+        m->changegraph(state, extra, 1);
+    } exception {
+        "*" => failed = 1;
+    }
+    if (!failed || state.direct != old || old.text != "original" || state.members != members) {
+        raise "failed graph call changed caller's objects";
+    }
+    returned := m->changegraph(state, extra, 0);
+    if (returned != old || old.text != "changed after unlink" || old.bytes[0] != byte 17 ||
+        state.direct == old || state.direct.text != "fresh" || state.direct != state.members[0] ||
+        state.members[1] != nil || extra[0] != old || extra[31].text != "last index") {
+        raise "graph copy-back lost an identity or field";
     }
 }
