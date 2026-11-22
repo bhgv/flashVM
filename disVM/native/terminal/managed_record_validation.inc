@@ -6,7 +6,7 @@
 
 typedef struct RefKeys
 {
-    const char *type[STYX_CALL_VALUES]; /* First occurrence of each object schema. */
+    const char *type[STYX_CALL_REF_KEYS]; /* First occurrence of each object schema. */
     size_t count; /* Number of snapshots already defined. */
 } RefKeys;
 
@@ -56,7 +56,7 @@ static int managed_ref(const char *shape, const FVM_SRecord *value, unsigned dep
             !memcmp(shape, first, length);
     }
     char fields[STYX_SHAPE_MAX + 1];
-    if (index != keys->count || index >= STYX_CALL_VALUES ||
+    if (index != keys->count || index >= STYX_CALL_REF_KEYS ||
         !styxmanaged_ref_fields(shape, fields) ||
         !managed_children(fields + 1, value->payload + 1, value->size - 1, 0, depth + 1, keys))
     {
@@ -132,9 +132,9 @@ static int managed_children(const char *shape, const unsigned char *bytes, size_
 }
 
 
-/* EN: Apply the compiled schema grammar including call-local reference identity.
- * RU: Проверить грамматику схемы Dis и идентичность ref внутри записи. */
-int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
+/* EN: Apply the schema grammar with a caller-owned table of borrowed type names.
+ * RU: Проверить грамматику с таблицей заимствованных имён типов вызывающего. */
+static int managed_payload(const char *shape, const void *bytes, size_t size, RefKeys *keys)
 {
     StyxCallShape schema = {.result = "()"};
     if (!shape || (size && !bytes))
@@ -147,11 +147,11 @@ int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
         return 0;
     }
     memcpy(schema.arguments, shape, length + 1);
-    RefKeys keys = {0};
-    return styxshapevalid(&schema) && managed_children(schema.arguments + 1, bytes, size, 0, 0, &keys);
+    return styxshapevalid(&schema) && managed_children(shape + 1, bytes, size, 0, 0, keys);
 }
 
 
+#include "managed_result_validation.inc"
 
 
 /* EN: Find ref records in leaf order, descending only through tuple nodes.

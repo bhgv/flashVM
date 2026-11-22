@@ -32,6 +32,7 @@ init()
     m->accept("ok");
     check_refs(m);
     check_nested(m);
+    check_returned_refs(m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -151,5 +152,24 @@ check_nested(m: Managed)
         alias.rows[2] == nil || len alias.rows[2] != 0 ||
         names[0] != "é" || rows[0][0] != byte 42) {
         raise "nested value or ref update failed";
+    }
+}
+
+
+# EN: Observe returned aliases and copy-back on the original client object.
+# RU: Проверить алиасы в результате и обновление исходного объекта клиента.
+check_returned_refs(m: Managed)
+{
+    Cell: import m;
+    original := ref Cell("old", nil);
+    (existing, created, repeated, absent) := m->reference(original);
+    if (existing != original || existing.text != "updated" ||
+        created == nil || created == original || created != repeated || absent != nil ||
+        created.text != "fresh" || len created.bytes != 1 || created.bytes[0] != byte 31) {
+        raise "remote ref result lost object identity";
+    }
+    repeated.text = "client";
+    if (created.text != "client") {
+        raise "fresh returned aliases are not shared";
     }
 }

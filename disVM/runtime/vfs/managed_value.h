@@ -79,6 +79,18 @@ int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void 
     size_t slot_size, void *bytes, size_t capacity, size_t *used);
 
 
+/* EN: Decode a result with the original argument objects available by call-local index.
+ * RU: Декодировать результат с исходными объектами аргументов по индексам вызова. */
+int dvm_styx_ref_result_read(const StyxCallShape *shape, const void *data, size_t size,
+    const void *argument_slots, const FVM_SRecord *arguments, DVM_StyxValueFrame *result);
+
+
+/* EN: Encode the result, using argument indices for objects from the request.
+ * RU: Кодировать результат с индексами исходных объектов запроса. */
+int dvm_styx_ref_result_write(const StyxCallShape *shape, const void *slots, size_t size,
+    const void *argument_slots, const FVM_SRecord *arguments, void *data, size_t capacity, size_t *used);
+
+
 /* [GC:] EN: Send the return from rooted slots through the active private route.
  * RU: Отправить результат из укоренённых слотов через текущий приватный маршрут. */
 void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, const FVM_SRecord *baseline,

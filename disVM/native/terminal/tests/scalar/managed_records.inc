@@ -417,3 +417,33 @@ static int managed_capabilities(void)
         styxmanaged_capability(0, STYX_MANAGED_EDIT_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
         styxmanaged_capability(1, 0) == STYX_MANAGED_DELTA_REQUEST_TAG;
 }
+
+
+/* EN: Match a returned index against the request definition and its exact schema.
+ * RU: Сверить индекс результата с определением из запроса и его точной схемой. */
+static int linked_result_refs(void)
+{
+    unsigned char text[32], request[64], alias[32], wire[48];
+    unsigned char index = 0;
+    size_t length, request_size, alias_size, wire_size;
+    FVM_SRecord result;
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "seed", 4, text, sizeof(text), &length) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, text, length,
+            request, sizeof(request), &request_size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_REF_TAG, &index, 1, alias, sizeof(alias), &alias_size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, alias, alias_size, wire, sizeof(wire), &wire_size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_SRecord arguments = {.tag = STYX_MANAGED_REQUEST_TAG, .payload = request, .size = request_size};
+    if (!styxmanaged_result_read("(r[s])", wire, wire_size, "(r[s])", &arguments, &result) ||
+        styxmanaged_result_read("(r[i])", wire, wire_size, "(r[s])", &arguments, &result) ||
+        styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, "(r[s])", wire, wire_size, &result))
+    {
+        return 0;
+    }
+    index = 1;
+    return fvm_srecord_write(STYX_MANAGED_REF_TAG, &index, 1, alias, sizeof(alias), &alias_size) == FVM_S_OK &&
+        fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, alias, alias_size, wire, sizeof(wire), &wire_size) == FVM_S_OK &&
+        !styxmanaged_result_read("(r[s])", wire, wire_size, "(r[s])", &arguments, &result);
+}

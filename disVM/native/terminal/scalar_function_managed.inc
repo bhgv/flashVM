@@ -4,6 +4,24 @@
  */
 
 
+/* EN: Validate one result, linking reference indices to its original request.
+ * RU: Проверить результат по исходному запросу и его индексам ссылок. */
+static int managed_result_valid(const StyxCallShape *shape, const StyxReplyField *field,
+    const FVM_SRecord *arguments)
+{
+    FVM_SRecord value;
+    if (!strcmp(shape->result, "()"))
+    {
+        return styxmanaged_is_nil(field->bytes, field->size);
+    }
+    if (strchr(shape->result, 'r'))
+    {
+        return styxmanaged_result_read(shape->result, field->bytes, field->size, shape->arguments, arguments, &value);
+    }
+    return styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, shape->result, field->bytes, field->size, &value);
+}
+
+
 /* EN: Validate managed input and both reply positions before making the fid readable.
  * RU: Проверить управляемый запрос и обе части ответа до публикации чтения fid. */
 static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint32_t pid)
@@ -55,17 +73,14 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
             fid->reply_capacity, &fid->size) ? nil : Ebadarg;
     }
     StyxReplyField fields[2];
-    FVM_SRecord value, updates;
+    FVM_SRecord updates;
     char selected[STYX_SHAPE_MAX + 1];
     unsigned mask;
     StyxFieldDelta deltas[STYX_CALL_VALUES];
     size_t delta_count;
     unsigned char expanded[STYX_MANAGED_LIST_LIMIT];
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
-        (!strcmp(fn->dynamic_shape->result, "()") ?
-            !styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
-            !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
-                fields[0].bytes, fields[0].size, &value)) ||
+        !managed_result_valid(fn->dynamic_shape, &fields[0], &arguments) ||
         (styxmanaged_has_snapshot(arguments.tag) ?
             !styxmanaged_deltas_base(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
                 deltas, &delta_count, &arguments, expanded, sizeof(expanded)) :

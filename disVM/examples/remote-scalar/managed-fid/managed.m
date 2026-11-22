@@ -14,5 +14,6 @@ Managed: module {
         rows: array of array of byte;
     };
     nested: fn(names: array of string, state: ref Nested): (array of string, array of Item);
+    reference: fn(state: ref Cell): (ref Cell, ref Cell, ref Cell, ref Cell);
     accept: fn(text: string);
 };

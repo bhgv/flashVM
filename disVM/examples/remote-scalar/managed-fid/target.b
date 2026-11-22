@@ -87,3 +87,13 @@ nested(names: array of string, state: ref Nested): (array of string, array of It
     state.rows[0][0] = byte 99;
     return (names, state.items);
 }
+
+
+# EN: Return an existing object and two aliases of one fresh object.
+# RU: Вернуть существующий объект и две ссылки на один новый объект.
+reference(state: ref Cell): (ref Cell, ref Cell, ref Cell, ref Cell)
+{
+    state.text = "updated";
+    fresh := ref Cell("fresh", array[] of {byte 31});
+    return (state, fresh, fresh, nil);
+}

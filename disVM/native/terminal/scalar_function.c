@@ -57,8 +57,7 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
         return fn->request_tag == STYX_MANAGED_REQUEST_TAG && fn->reply_tag == STYX_MANAGED_REPLY_TAG &&
             styxshapevalid(fn->dynamic_shape) && !fn->method && !fn->caller_method && !fn->program_method &&
             !fn->tuple_method && !fn->ref_method && !fn->call_method && !fn->scoped_call_method &&
-            !fn->ref_pair_method && !fn->scoped_ref_pair_method &&
-            !strchr(fn->dynamic_shape->result, 'r');
+            !fn->ref_pair_method && !fn->scoped_ref_pair_method;
     }
     if (fn->scoped_call_method && (!fn->program_root || !fn->dynamic_shape || fn->call_method || fn->ref_pair_method))
     {

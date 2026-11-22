@@ -77,7 +77,7 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
         return 1;
     }
     char fields[STYX_SHAPE_MAX + 1];
-    if (index >= STYX_CALL_VALUES || !styxmanaged_ref_fields(shape, fields))
+    if (index >= STYX_CALL_REF_KEYS || !styxmanaged_ref_fields(shape, fields))
     {
         return 0;
     }
@@ -184,7 +184,7 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
     {
         return fvm_srecord_write(STYX_MANAGED_REF_TAG, &index, 1, bytes, capacity, used) == FVM_S_OK;
     }
-    if (index >= STYX_CALL_VALUES || !dvm_styx_value_snapshot(object, &snapshot))
+    if (index >= STYX_CALL_REF_KEYS || !dvm_styx_value_snapshot(object, &snapshot))
     {
         dvm_styx_value_frame_clear(&snapshot);
         return 0;

@@ -8,7 +8,7 @@
 
 typedef struct DVM_StyxRefTable
 {
-    void *objects[STYX_CALL_VALUES]; /* Borrowed from rooted slots during a single traversal. */
+    void *objects[STYX_CALL_REF_KEYS]; /* Borrowed from rooted slots during a single traversal. */
     size_t count; /* Number of previously encoded or decoded objects. */
 } DVM_StyxRefTable;
 

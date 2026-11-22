@@ -11,6 +11,7 @@
 #include "load_profile.h"
 
 #define STYX_CALL_VALUES 8U /* Maximum flattened scalar cells in a frame. */
+#define STYX_CALL_REF_KEYS (2U * STYX_CALL_VALUES) /* Input and output reference identities. */
 #define STYX_CALL_DEPTH 4U /* Maximum tuple nesting, including the outer list. */
 
 typedef struct StyxCallValues
@@ -144,6 +145,17 @@ int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
 int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t size,
     StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count, const FVM_SRecord *baseline,
     unsigned char *output, size_t capacity);
+
+
+/* EN: Validate reply values with reference indices seeded by the request.
+ * RU: Проверить значения ответа с индексами ссылок из исходного запроса. */
+int styxmanaged_payload_linked(const char *shape, const void *bytes, size_t size,
+    const char *argument_shape, const FVM_SRecord *arguments);
+
+/* EN: Borrow a complete result record, rejecting references to unknown objects.
+ * RU: Заимствовать полную запись результата и отклонить неизвестные ссылки. */
+int styxmanaged_result_read(const char *shape, const void *bytes, size_t size,
+    const char *argument_shape, const FVM_SRecord *arguments, FVM_SRecord *result);
 
 
 /* EN: Validate a managed argument or result list and borrow its decoded outer record.
