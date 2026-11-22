@@ -106,14 +106,89 @@ int styxmanaged_span_write(const FVM_SRecord *before, const FVM_SRecord *after,
 }
 
 
+/* EN: Represent one size change by preserving the common prefix and suffix.
+ * RU: Представить изменение размера, сохранив общий префикс и суффикс. */
+static int managed_splice_write(const FVM_SRecord *before, const FVM_SRecord *after,
+    void *bytes, size_t capacity, size_t *used)
+{
+    if (before->tag != STYX_MANAGED_ARRAY_TAG || after->tag != before->tag ||
+        before->size == after->size || before->size > STYX_MANAGED_LIST_LIMIT ||
+        after->size > STYX_MANAGED_LIST_LIMIT)
+    {
+        return 0;
+    }
+    size_t start = 0, left = before->size, right = after->size;
+    while (start < left && start < right && before->payload[start] == after->payload[start])
+    {
+        start++;
+    }
+    while (left > start && right > start && before->payload[left - 1] == after->payload[right - 1])
+    {
+        left--;
+        right--;
+    }
+    size_t removed = left - start, inserted = right - start;
+    if (inserted + 8 >= after->size)
+    {
+        return 0;
+    }
+    unsigned char header[] = {start >> 24, start >> 16, start >> 8, start,
+        removed >> 24, removed >> 16, removed >> 8, removed};
+    return fvm_srecord_write_pair(STYX_MANAGED_SPLICE_TAG, header, sizeof(header),
+        after->payload + start, inserted, bytes, capacity, used) == FVM_S_OK;
+}
+
+
+/* EN: Read a portable unsigned offset or removal size.
+ * RU: Прочитать переносимое смещение или размер удаления. */
+static size_t splice_word(const unsigned char *bytes)
+{
+    return (uint32_t)bytes[0] << 24 | (uint32_t)bytes[1] << 16 | (uint32_t)bytes[2] << 8 | bytes[3];
+}
+
+
+/* EN: Rebuild a splice in bounded scratch and publish only the complete record.
+ * RU: Восстановить вставку или удаление в буфере и выдать только полную запись. */
+static int expand_splice(const FVM_SRecord *before, const FVM_SRecord *patch,
+    unsigned char *scratch, size_t capacity, void *bytes, size_t limit, size_t *used)
+{
+    if (patch->size < 8)
+    {
+        return 0;
+    }
+    size_t start = splice_word(patch->payload);
+    size_t removed = splice_word(patch->payload + 4);
+    size_t inserted = patch->size - 8;
+    if (start > before->size || removed > before->size - start || removed == inserted)
+    {
+        return 0;
+    }
+    size_t retained = before->size - removed;
+    if (retained > capacity || inserted > capacity - retained ||
+        retained + inserted > STYX_MANAGED_LIST_LIMIT)
+    {
+        return 0;
+    }
+    memcpy(scratch, before->payload, start);
+    memcpy(scratch + start, patch->payload + 8, inserted);
+    memcpy(scratch + start + inserted, before->payload + start + removed, retained - start);
+    return fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, scratch, retained + inserted, bytes, limit, used) == FVM_S_OK;
+}
+
+
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const FVM_SRecord *patch,
     unsigned char *scratch, size_t capacity, void *bytes, size_t limit, size_t *used)
 {
     if (type[0] != 'a' || before->tag != STYX_MANAGED_ARRAY_TAG || before->size > capacity ||
-        patch->size <= 4 || (patch->tag != STYX_MANAGED_SPAN_TAG && patch->tag != STYX_MANAGED_RUN_TAG))
+        patch->size <= 4 || (patch->tag != STYX_MANAGED_SPAN_TAG && patch->tag != STYX_MANAGED_RUN_TAG &&
+        patch->tag != STYX_MANAGED_SPLICE_TAG))
     {
         return 0;
+    }
+    if (patch->tag == STYX_MANAGED_SPLICE_TAG)
+    {
+        return expand_splice(before, patch, scratch, capacity, bytes, limit, used);
     }
     if (patch->tag == STYX_MANAGED_RUN_TAG)
     {
@@ -162,7 +237,8 @@ static int expand_spans(const char *schema, StyxFieldDelta *change, const FVM_SR
             if (input >= change->fields.size ||
                 fvm_srecord_read(change->fields.payload + input, change->fields.size - input,
                     STYX_MANAGED_LIST_LIMIT, &field, &consumed) != FVM_S_OK ||
-                !((field.tag == STYX_MANAGED_SPAN_TAG || field.tag == STYX_MANAGED_RUN_TAG) ?
+                !((field.tag == STYX_MANAGED_SPAN_TAG || field.tag == STYX_MANAGED_RUN_TAG ||
+                   field.tag == STYX_MANAGED_SPLICE_TAG) ?
                     styxmanaged_span_expand(originals.type[i], &originals.node[i], &field,
                         scratch, sizeof(scratch), output + written, capacity - written, &used) :
                     fvm_srecord_write(field.tag, field.payload, field.size, output + written,

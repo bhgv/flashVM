@@ -123,23 +123,16 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (delta_node(qid.path) && offset >= 0)
     {
-        if (offset == 0 && *count)
+        static const char capability[] = "v3\n"; /* Version identified by the file length. */
+        size_t remaining = offset < STYX_MANAGED_SPLICE_VERSION ?
+            STYX_MANAGED_SPLICE_VERSION - (size_t)offset : 0;
+        if (*count > remaining)
         {
-            bytes[0] = '2';
-            if (*count > 1)
-            {
-                bytes[1] = '\n';
-                *count = 2;
-            }
+            *count = remaining;
         }
-        else if (offset == 1 && *count)
+        if (*count)
         {
-            bytes[0] = '\n';
-            *count = 1;
-        }
-        else
-        {
-            *count = 0;
+            memcpy(bytes, capability + offset, *count);
         }
         return nil;
     }
@@ -257,7 +250,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
             {
                 return 0;
             }
-            marker->d.length = STYX_MANAGED_RUN_VERSION;
+            marker->d.length = STYX_MANAGED_SPLICE_VERSION;
         }
         return directory->profile_node != NULL;
     }

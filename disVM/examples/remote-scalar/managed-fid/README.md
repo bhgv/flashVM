@@ -57,6 +57,9 @@ spans. For equal-size encoded arrays the owner sends sorted offset-and-length
 runs when they cost less than one span or a full array. Short gaps are merged
 when that saves bytes. The client checks the bounds and ordering of every run
 and validates the reconstructed array against its type before publishing it.
-A size change or a wide edit can use the complete array.
+A three-byte `.ref-fields` file also advertises splices for size changes.
+The owner sends the offset, the number of bytes to remove and the insertion
+bytes when that representation is smaller. The common prefix and suffix
+are reused from the request. Wide edits can still use the complete array.
 Peers without the capability still use the complete object snapshot
 for each changed reference.

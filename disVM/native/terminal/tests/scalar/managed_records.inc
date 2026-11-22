@@ -250,3 +250,55 @@ static int managed_array_runs(void)
         fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) == FVM_S_OK &&
         patch.tag == STYX_MANAGED_SPAN_TAG;
 }
+
+
+/* EN: Encode one interior insertion or deletion, then reject an excessive removal.
+ * RU: Кодировать вставку или удаление в середине и отклонить избыточное удаление. */
+static int managed_array_splice(void)
+{
+    unsigned char short_bytes[128], long_bytes[129], first[144], second[144], fields[148];
+    unsigned char scratch[129], output[144];
+    memset(short_bytes, 3, sizeof(short_bytes));
+    memcpy(long_bytes, short_bytes, 64);
+    long_bytes[64] = 7;
+    memcpy(long_bytes + 65, short_bytes + 64, 64);
+    first[0] = second[0] = 0;
+    size_t a, b;
+    if (fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, short_bytes, sizeof(short_bytes), first + 1,
+        sizeof(first) - 1, &a) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, long_bytes, sizeof(long_bytes), second + 1,
+            sizeof(second) - 1, &b) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_SRecord refs[] = {
+        {.tag = STYX_MANAGED_SPLICE_REQUEST_TAG, .payload = first, .size = a + 1},
+        {.tag = STYX_MANAGED_SPLICE_REQUEST_TAG, .payload = second, .size = b + 1},
+    };
+    const unsigned char *arrays[] = {short_bytes, long_bytes};
+    const size_t sizes[] = {sizeof(short_bytes), sizeof(long_bytes)};
+    for (size_t i = 0; i < 2; i++)
+    {
+        size_t n, consumed, expanded;
+        FVM_SRecord patch, rebuilt;
+        FVM_SRecord before = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = arrays[i], .size = sizes[i]};
+        if (!styxmanaged_diff_fields("r[a[y]]", &refs[i], &refs[1 - i], fields, sizeof(fields), &n) ||
+            n >= 20 || fields[0] != 1 ||
+            fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &consumed) != FVM_S_OK ||
+            patch.tag != STYX_MANAGED_SPLICE_TAG || patch.size != 9 - i ||
+            !styxmanaged_span_expand("a[y]", &before, &patch, scratch, sizeof(scratch),
+                output, sizeof(output), &expanded) ||
+            fvm_srecord_read(output, expanded, sizeof(output), &rebuilt, &consumed) != FVM_S_OK ||
+            rebuilt.size != sizes[1 - i] || memcmp(rebuilt.payload, arrays[1 - i], rebuilt.size))
+        {
+            return 0;
+        }
+        fields[patch.payload - fields + 4] = 255;
+        if (styxmanaged_span_expand("a[y]", &before, &patch, scratch, sizeof(scratch),
+            output, sizeof(output), &expanded))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}

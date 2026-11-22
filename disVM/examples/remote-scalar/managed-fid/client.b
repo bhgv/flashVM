@@ -86,6 +86,14 @@ check_refs(m: Managed)
         cell.bytes[len cell.bytes - 1] != byte 92 || other.bytes != held) {
         raise "sparse aliased ref update failed";
     }
+    if (m->update("grow", cell, cell, other) != "x!!" || len cell.bytes != 2501 ||
+        cell.bytes[2499] != byte 92 || cell.bytes[2500] != byte 77 || other.bytes != held) {
+        raise "array append via ref failed";
+    }
+    if (m->update("shrink", cell, cell, other) != "x!!" || len cell.bytes != 2500 ||
+        cell.bytes[2499] != byte 92 || other.bytes != held) {
+        raise "array truncation via ref failed";
+    }
     failed := 0;
     {
         m->update("fail", cell, cell, other);

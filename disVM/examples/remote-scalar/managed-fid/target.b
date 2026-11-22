@@ -34,6 +34,17 @@ update(mode: string, left, right, untouched: ref Cell): string
     if (mode == "noop") {
         return untouched.text;
     }
+    if (mode == "grow") {
+        grown := array[len left.bytes + 1] of byte;
+        grown[0:] = left.bytes;
+        grown[len grown - 1] = byte 77;
+        left.bytes = grown;
+        return right.text;
+    }
+    if (mode == "shrink") {
+        left.bytes = left.bytes[:len left.bytes - 1];
+        return right.text;
+    }
     left.text = left.text + "!";
     if (mode != "text") {
         right.bytes[1] = byte 91;

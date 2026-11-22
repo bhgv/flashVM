@@ -19,7 +19,8 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         if (size > STYX_MANAGED_LIST_LIMIT ||
             fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &outer, &used) != FVM_S_OK ||
             used != size || (outer.tag != fn->request_tag && outer.tag != STYX_MANAGED_DELTA_REQUEST_TAG &&
-            outer.tag != STYX_MANAGED_SPAN_REQUEST_TAG && outer.tag != STYX_MANAGED_RUN_REQUEST_TAG) ||
+            outer.tag != STYX_MANAGED_SPAN_REQUEST_TAG && outer.tag != STYX_MANAGED_RUN_REQUEST_TAG &&
+            outer.tag != STYX_MANAGED_SPLICE_REQUEST_TAG) ||
             fvm_srecord_read(outer.payload, outer.size, STYX_MANAGED_LIST_LIMIT, &first, &prefix) != FVM_S_OK ||
             !styxscalarread(STYX_CALL_BIG_TAG, outer.payload, prefix, &kind, &caller) ||
             kind != STYX_SCALAR_VALUE || caller <= 0 || caller > UINT32_MAX ||
@@ -67,7 +68,8 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
             !styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
             !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
                 fields[0].bytes, fields[0].size, &value)) ||
-        (arguments.tag == STYX_MANAGED_SPAN_REQUEST_TAG || arguments.tag == STYX_MANAGED_RUN_REQUEST_TAG ?
+        (arguments.tag == STYX_MANAGED_SPAN_REQUEST_TAG || arguments.tag == STYX_MANAGED_RUN_REQUEST_TAG ||
+         arguments.tag == STYX_MANAGED_SPLICE_REQUEST_TAG ?
             !styxmanaged_deltas_base(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
                 deltas, &delta_count, &arguments, expanded, sizeof(expanded)) :
          arguments.tag == STYX_MANAGED_DELTA_REQUEST_TAG ?

@@ -340,9 +340,12 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
         size_t n;
         if (size >= capacity ||
             (!(*right.type[i] == 'a' &&
-                ((before->tag == STYX_MANAGED_RUN_REQUEST_TAG &&
+                ((before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG &&
+                    managed_splice_write(old, next, output + size, capacity - size, &n)) ||
+                 ((before->tag == STYX_MANAGED_RUN_REQUEST_TAG || before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG) &&
                     managed_runs_write(old, next, output + size, capacity - size, &n)) ||
-                 ((before->tag == STYX_MANAGED_SPAN_REQUEST_TAG || before->tag == STYX_MANAGED_RUN_REQUEST_TAG) &&
+                 ((before->tag == STYX_MANAGED_SPAN_REQUEST_TAG || before->tag == STYX_MANAGED_RUN_REQUEST_TAG ||
+                    before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG) &&
                     styxmanaged_span_write(old, next, output + size, capacity - size, &n)))) &&
             fvm_srecord_write(next->tag, next->payload, next->size,
                 output + size, capacity - size, &n) != FVM_S_OK))
