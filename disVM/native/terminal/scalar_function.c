@@ -276,11 +276,11 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
     const void *request = bytes;
     size_t length = count;
     int envelope = function->scoped_call_method || function->scoped_ref_pair_method ||
-        (function->program_root && function->managed_method) ||
         (function->ref_method && function->program_root && function->request_tag == STYX_REF_REQUEST_TAG);
     if ((envelope && !styxcall_scope_read_bounded(bytes, count, fid->reply_capacity, &scoped_pid, &request, &length)) ||
         (!envelope && count > fid->reply_capacity) ||
-        (fid->context_written && (!envelope || (fid->context_pid && fid->context_pid != scoped_pid))))
+        (fid->context_written && !function->managed_method &&
+            (!envelope || (fid->context_pid && fid->context_pid != scoped_pid))))
     {
         return Ebadarg;
     }

@@ -11,9 +11,6 @@
 #include "ref_pair_record.h"
 #include "provider.h"
 
-#define STYX_MANAGED_REQUEST_TAG 100UL /* Typed managed argument list. */
-#define STYX_MANAGED_REPLY_TAG 101UL /* Result and updates envelope. */
-
 typedef struct StyxScalarFunction
 {
     unsigned long request_tag; /* Expected request frame tag. */

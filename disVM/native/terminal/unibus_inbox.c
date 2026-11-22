@@ -8,6 +8,7 @@
 #include "call_scope.h"
 #include "provider_internal.h"
 #include "flashvm/srecord.h"
+#include "call_record.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -323,4 +324,11 @@ DVM_Provider *styxunibusloadmailbox(void)
 DVM_Provider *styxunibusprofilemailbox(void)
 {
     return create_inbox(0, 1, STYX_SHAPED_OFFER_MAX);
+}
+
+
+/* EN/RU: See unibus_inbox.h. / См. unibus_inbox.h. */
+DVM_Provider *styxunibusmanagedmailbox(void)
+{
+    return create_inbox(0, 1, STYX_MANAGED_LIST_LIMIT + STYX_SCOPED_LARGE_OVERHEAD);
 }

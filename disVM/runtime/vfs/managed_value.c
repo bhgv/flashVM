@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Encode and decode bounded strings and byte arrays without cross-heap pointers.
- * RU: Кодирование и декодирование строк и байтовых массивов без межкучевых указателей.
+ * EN: Encode bounded strings, primitive arrays and mixed value frames.
+ * RU: Кодирование строк, примитивных массивов и смешанных кадров значений.
  */
 #include "lib9.h"
 #include "dat.h"
@@ -10,6 +10,7 @@
 #include "interp.h"
 #include "runt.h"
 #include "managed_value.h"
+#include "managed_array.h"
 #include "shared_bytes.h"
 #include "flashvm/utf8.h"
 #include "../../native/terminal/call_record.h"
@@ -41,42 +42,6 @@ static int take_byte(const unsigned char **data, size_t *size, unsigned char *by
 }
 
 
-/* [GC:] EN: Check all bytes before allocation. Copy into one new unshared array.
- * RU: Проверить все байты до выделения. Скопировать в один новый массив. */
-static int new_byte_array(const FVM_SRecord *record, void **result)
-{
-    const unsigned char *data = record->payload;
-    size_t remaining = record->size;
-    int length = 0;
-    unsigned char byte;
-    if (record->tag != STYX_MANAGED_ARRAY_TAG)
-    {
-        return 0;
-    }
-    while (remaining)
-    {
-        if (!take_byte(&data, &remaining, &byte))
-        {
-            return 0;
-        }
-        length++;
-    }
-    Array *array = mem2array(NULL, length);
-    data = record->payload;
-    remaining = record->size;
-    for (int i = 0; i < length; i++)
-    {
-        if (!take_byte(&data, &remaining, &array->data[i]))
-        {
-            destroy(array);
-            return 0;
-        }
-    }
-    *result = array;
-    return 1;
-}
-
-
 /* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
 int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result)
 {
@@ -86,8 +51,9 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
         return 0;
     }
     int string = !strcmp(type, "s");
-    int bytes = !strcmp(type, "a[y]");
-    if (!string && !bytes)
+    size_t type_length = strlen(type);
+    int array = type_length == 4 && type[0] == 'a' && type[1] == '[' && type[3] == ']';
+    if (!string && (!array || !dvm_styx_primitive_array_supported(type[2])))
     {
         return 0;
     }
@@ -96,9 +62,9 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
         *result = H;
         return 1;
     }
-    if (bytes)
+    if (array)
     {
-        return new_byte_array(record, result);
+        return dvm_styx_primitive_array_new(type[2], record, result);
     }
     if (record->tag != STYX_MANAGED_STRING_TAG ||
         fvm_utf8_validate((const char *)record->payload, record->size, NULL) != FVM_UTF8_OK)
@@ -151,37 +117,6 @@ static int write_string(String *text, void *bytes, size_t capacity, size_t *used
 }
 
 
-/* [GC:] EN: Copy an array's live byte span once and encode each homogeneous child.
- * RU: Один раз скопировать живой диапазон массива и кодировать каждый элемент. */
-static int write_array(Array *array, void *bytes, size_t capacity, size_t *used)
-{
-    if (array->t != &Tbyte || array->len < 0 || (size_t)array->len > capacity)
-    {
-        return 0;
-    }
-    size_t length = (size_t)array->len;
-    unsigned char *snapshot = length ? malloc(length) : NULL;
-    unsigned char *payload = length ? malloc(capacity) : NULL;
-    int ok = (!length || (snapshot && payload)) &&
-        !dvm_runtime_bytes_snapshot(array->data, snapshot, length);
-    size_t size = 0;
-    for (size_t i = 0; ok && i < length; i++)
-    {
-        size_t child;
-        ok = styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, snapshot[i],
-            payload + size, capacity - size, &child);
-        if (ok)
-        {
-            size += child;
-        }
-    }
-    ok = ok && fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, payload, size, bytes, capacity, used) == FVM_S_OK;
-    free(payload);
-    free(snapshot);
-    return ok;
-}
-
-
 /* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
 int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used)
 {
@@ -190,7 +125,9 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
         return 0;
     }
     int string = !strcmp(type, "s");
-    if (!string && strcmp(type, "a[y]"))
+    size_t type_length = strlen(type);
+    int array = type_length == 4 && type[0] == 'a' && type[1] == '[' && type[3] == ']';
+    if (!string && (!array || !dvm_styx_primitive_array_supported(type[2])))
     {
         return 0;
     }
@@ -206,7 +143,40 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
     {
         return 0;
     }
-    return string ? write_string(value, bytes, capacity, used) : write_array(value, bytes, capacity, used);
+    return string ? write_string(value, bytes, capacity, used) :
+        dvm_styx_primitive_array_write(type[2], value, bytes, capacity, used);
+}
+
+
+/* [GC:] EN: Admit scalar leaves, counted strings and one-dimensional primitive
+ * arrays; reference identity and pointer-bearing array descriptors stay on
+ * their dedicated codecs.
+ * RU: Допустить скаляры, строки и одномерные примитивные массивы. Ссылочная
+ * идентичность и массивы с указателями требуют отдельных кодеков.
+ */
+int dvm_styx_value_shape_supported(const char *shape)
+{
+    StyxScalarLayout layout;
+    if (!shape || !styxmanaged_layout(shape, &layout))
+    {
+        return 0;
+    }
+    for (const char *type = shape + 1; *type; )
+    {
+        if (*type == '(' || *type == ')')
+        {
+            type++;
+            continue;
+        }
+        const char *end = styxshape_end(type);
+        if (!end || *type == 'r' ||
+            (*type == 'a' && (end - type != 4 || !dvm_styx_primitive_array_supported(type[2]))))
+        {
+            return 0;
+        }
+        type = end;
+    }
+    return 1;
 }
 
 

@@ -3,7 +3,7 @@
 # RU: Публикация проверенных экспортов одного исходного экземпляра данных Dis.
 
 Scalarloadedview: type (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
-    Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int);
+    Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int, Scalarmanagedinvoke);
 
 
 # EN: Load one export, publish its qualified wire profile and dispatch its typed view.
@@ -29,7 +29,7 @@ serve_loaded(routes: Vfsnative, fields: list of string)
 # RU: Вызывать типизированный слот фактически связанного экспорта.
 run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string, pool: Callpool)
 {
-    (tag, narrow, wide, pair, single, arguments, aliases, raw, inputs, outputs) := view;
+    (tag, narrow, wide, pair, single, arguments, aliases, raw, inputs, outputs, managed) := view;
     if (tag == 0) {
         return;
     }
@@ -45,6 +45,15 @@ run_loaded(routes: Vfsnative, view: Scalarloadedview, request, reply: string, po
         run_list(routes, arguments, request, reply);
     } else if (aliases != nil) {
         run_ref_pair(routes, aliases, request, reply, outputs, pool);
+    } else if (managed != nil) {
+        for (;;) {
+            wire := routes->scalarmanagednext(request);
+            if (wire == nil) {
+                return;
+            }
+            submit_call(routes, pool, ref Calljob(reply, 0, 0, (big 0,big 0,big 0,big 0),
+                nil, nil, nil, managed, wire));
+        }
     } else if (raw != nil) {
         run_raw(routes, raw, request, reply, inputs, outputs, pool);
     }
@@ -105,7 +114,7 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string, table: i
         offer := hd fields;
         fields = tl fields;
         view := routes->scalarloadedslot(anchor, name, offer);
-        (tag, nil, nil, nil, nil, nil, nil, nil, nil, nil) := view;
+        (tag, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil) := view;
         if (tag == 0) {
             if (table) {
                 raise "cannot publish loaded export " + implementation + " " + name;
@@ -172,7 +181,7 @@ run_raw(routes: Vfsnative, target: Scalarrawinvoke, request, reply: string, inpu
         if (ready != 2) {
             finish_raw(routes, target, reply, inputs, outputs, ready, a, b, c, d);
         } else {
-            submit_call(routes, pool, ref Calljob(reply, outputs, inputs, (a,b,c,d), target, nil, nil));
+            submit_call(routes, pool, ref Calljob(reply, outputs, inputs, (a,b,c,d), target, nil, nil, nil, nil));
         }
     }
 }
@@ -212,7 +221,7 @@ run_ref(routes: Vfsnative, target: Scalarrefimplementation, request, reply: stri
             return;
         }
         if (ready == 2) {
-            submit_call(routes, pool, ref Calljob(reply, outputs, 1, (big narrow,wide,big 0,big 0), nil, target, nil));
+            submit_call(routes, pool, ref Calljob(reply, outputs, 1, (big narrow,wide,big 0,big 0), nil, target, nil, nil, nil));
         } else {
             finish_ref(routes, target, reply, outputs, ready, narrow, wide);
         }
@@ -258,7 +267,7 @@ run_ref_pair(routes: Vfsnative, target: Scalarrefpairimplementation, request, re
             return;
         }
         if (count > 2) {
-            submit_call(routes, pool, ref Calljob(reply, outputs, count-2, (big firstn,firstw,big secondn,secondw), nil, nil, target));
+            submit_call(routes, pool, ref Calljob(reply, outputs, count-2, (big firstn,firstw,big secondn,secondw), nil, nil, target, nil, nil));
         } else {
             finish_ref_pair(routes, target, reply, outputs, count, 0, firstn, firstw, secondn, secondw);
         }

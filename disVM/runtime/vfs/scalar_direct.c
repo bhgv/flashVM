@@ -12,6 +12,7 @@
 #include "scalar_files.h"
 #include "scalar_direct.h"
 #include <stdlib.h>
+#include <string.h>
 
 _Static_assert(sizeof(LONG) == sizeof(WORD), "mounted big and int use the same NC64 frame cell");
 _Static_assert(offsetof(DirectRefFrame, object) == 64, "compiled NC64 ref map");
@@ -19,6 +20,27 @@ _Static_assert(offsetof(DirectRefPairFrame, objects) == 64 && sizeof(DirectRefPa
     "compiled NC64 ref-pair frame");
 _Static_assert(offsetof(DirectCallListFrame, arguments) == 64 && sizeof(DirectCallListFrame) == 96,
     "compiled NC64 argument-list frame");
+
+
+/* EN: Check the original export's argument extent and exact argument reference bits.
+ * RU: Проверить размер области аргументов экспорта и точную карту ссылок в ней. */
+int dvm_styx_export_frame(const Type *frame, size_t arguments, unsigned char references)
+{
+    const size_t first_cell = 8;
+    if (!frame || arguments > 8 || frame->size < 0 || (size_t)frame->size < (first_cell + arguments) * sizeof(WORD) || frame->np < 0)
+    {
+        return 0;
+    }
+    for (size_t i = first_cell; i < first_cell + arguments; i++)
+    {
+        int pointer = i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8)));
+        if (pointer != !!(references & (0x80U >> (i - first_cell))))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 
 /* EN/RU: See scalar_direct.h. / См. scalar_direct.h. */
@@ -44,11 +66,11 @@ int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *point
 
 
 /* EN/RU: See scalar_direct.h. / См. scalar_direct.h. */
-size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *code, size_t capacity)
+size_t dvm_styx_call_code_at(const char *shape, unsigned slot, int result, Inst *code,
+    size_t capacity, unsigned module)
 {
     StyxScalarLayout layout;
-    const unsigned module = 64;
-    const unsigned arguments = 72;
+    const unsigned arguments = module + 8;
     const unsigned returned = 32;
     if (!code || slot > INT16_MAX || !styxmanaged_layout(shape, &layout) ||
         capacity < layout.count + 3 + !!result)
@@ -72,7 +94,7 @@ size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *co
             operation = IMOVB;
         }
         code[n++] = (Inst){.op = operation, .add = SRC(AFP) | DST(AFP | AIND),
-            .s.ind = arguments + offset, .d.i = {temporary, (ushort)(module + offset)}};
+            .s.ind = arguments + offset, .d.i = {temporary, (ushort)(64 + offset)}};
     }
     if (result)
     {
@@ -83,6 +105,13 @@ size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *co
         .reg = (ushort)slot, .s.ind = temporary, .d.ind = module};
     code[n++] = (Inst){.op = IRET, .add = SRC(AXXX) | DST(AXXX)};
     return n;
+}
+
+
+/* EN/RU: Emit the standard gateway layout. / Выдать обычную раскладку шлюза. */
+size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *code, size_t capacity)
+{
+    return dvm_styx_call_code_at(shape, slot, result, code, capacity, 64);
 }
 
 
@@ -151,6 +180,27 @@ Module *dvm_styx_call_module(const char *shape, unsigned slot, int result, uint3
         return NULL;
     }
     return build.module;
+}
+
+
+/* EN: Generate a gateway only for a linked interpreted export whose
+ * argument extent and root map match the compiled schema.
+ * RU: Создать шлюз для связанного экспорта с проверенной областью
+ * аргументов и картой корней, соответствующей схеме. */
+Module *dvm_styx_owner_gateway(Modlink *target, unsigned slot, const StyxCallShape *shape,
+    uint32_t gateway_signature)
+{
+    size_t words;
+    unsigned char pointers;
+    if (!target || target == H || !target->prog || target->prog == H || target->nlinks <= 0 ||
+        slot >= (unsigned)target->nlinks || !target->links[slot].u.pc ||
+        !styxshapevalid(shape) || !dvm_styx_frame_layout(shape->arguments, &words, &pointers) ||
+        !dvm_styx_export_frame(target->links[slot].frame, words, pointers))
+    {
+        return NULL;
+    }
+    return dvm_styx_call_module(shape->arguments, slot, strcmp(shape->result, "()") != 0,
+        gateway_signature);
 }
 
 

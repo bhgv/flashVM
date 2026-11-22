@@ -6,6 +6,7 @@
 #include "interp.h"
 #include "isa.h"
 #include "vfs/scalar_direct.h"
+#include "../../../native/terminal/load_profile.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,5 +59,46 @@ Module *__wrap_dvm_namespace_read_imports(char *path, Module *cached, int sync, 
     {
         abort();
     }
-    return dvm_styx_call_module(ref ? "(r[ib]r[ib])" : "(ysa[y]b)", ref ? 1 : 0, 1, (uint32_t)imports[0].sig);
+    Module *original = __real_dvm_namespace_read_imports("./target.dis", NULL, sync, NULL);
+    if (!original)
+    {
+        return NULL;
+    }
+    Import target_imports[3] = {{0}};
+    const char *names[] = {"invoke", "update"};
+    for (size_t i = 0; i < 2; i++)
+    {
+        for (Link *entry = original->ext; entry && entry->name; entry++)
+        {
+            if (!strcmp(entry->name, names[i]))
+            {
+                target_imports[i] = (Import){entry->sig, entry->name};
+                break;
+            }
+        }
+        if (!target_imports[i].name)
+        {
+            unload(original);
+            return NULL;
+        }
+    }
+    Modlink *target = linkmod(original, target_imports, 0);
+    if (target == H)
+    {
+        return NULL;
+    }
+    StyxCallShape shape = {{0}, {0}};
+    strcpy(shape.arguments, ref ? "(r[ib]r[ib])" : "(ysa[y]b)");
+    strcpy(shape.result, ref ? "(b)" : "(s)");
+    unsigned slot = ref ? 1 : 0;
+    Module *wrong = dvm_styx_owner_gateway(target, 1 - slot, &shape, (uint32_t)imports[0].sig);
+    if (wrong)
+    {
+        unload(wrong);
+        destroy(target);
+        abort();
+    }
+    Module *gateway = dvm_styx_owner_gateway(target, slot, &shape, (uint32_t)imports[0].sig);
+    destroy(target);
+    return gateway;
 }

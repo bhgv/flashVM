@@ -226,6 +226,10 @@ add_executable(disvm
     vfs/cancel.c
     vfs/provider.c vfs/provider_capture.c vfs/provider_walk.c vfs/provider_launch.c
     vfs/layer_bind.c
+    vfs/managed_publish.c
+    vfs/managed_array.c
+    vfs/managed_call.c
+    vfs/managed_gateway.c
     vfs/auto_access.c
     vfs/union_io.c vfs/directory.c vfs/directory_names.c
     vfs/io_result.c

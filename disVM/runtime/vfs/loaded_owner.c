@@ -16,6 +16,7 @@
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
 #include "scalar_direct.h"
+#include "managed_value.h"
 #include "vfsnative_decl.h"
 #include "raise.h"
 #include "../../native/terminal/load_profile.h"
@@ -49,28 +50,8 @@ typedef struct GatewayOwner
     Modlink *raw; /* Owned scalar-only view when the shape selects a dynamic call. */
     WORD arguments; /* Flattened input cells, selects the one allowed slot. */
     WORD results; /* Flattened scalar result cells to publish. */
+    Modlink *managed; /* Private bridge for the owning VM. */
 } GatewayOwner;
-
-
-/* EN: Check the original export's argument extent and exact argument reference bits.
- * RU: Проверить размер области аргументов экспорта и точную карту ссылок в ней. */
-static int gateway_frame(const Type *frame, size_t arguments, unsigned char references)
-{
-    const size_t first_cell = 8;
-    if (frame->size < 0 || (size_t)frame->size < (first_cell + arguments) * sizeof(WORD) || frame->np < 0)
-    {
-        return 0;
-    }
-    for (size_t i = first_cell; i < first_cell + arguments; i++)
-    {
-        int pointer = i / 8 < (size_t)frame->np && (frame->map[i / 8] & (0x80 >> (i % 8)));
-        if (pointer != !!(references & (0x80U >> (i - first_cell))))
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
 
 
 /* EN: Map a recognized unscoped request tag to its typed Limbo view.
@@ -139,7 +120,7 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
                 unsigned char references;
                 if (!gateway || !styxshapecells(shape, &leaves, &result) ||
                     !dvm_styx_frame_layout(shape->arguments, &slot, &references) ||
-                    references || !gateway_frame(export->frame, slot, references))
+                    references || !dvm_styx_export_frame(export->frame, slot, references))
                 {
                     break;
                 }
@@ -153,7 +134,7 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
                 unsigned char references;
                 if (!styxloadedrequest(*signature) && (!gateway ||
                     !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
-                    words != refs || !gateway_frame(export->frame, words, references)))
+                    words != refs || !dvm_styx_export_frame(export->frame, words, references)))
                 {
                     break;
                 }
@@ -359,10 +340,13 @@ void Vfsnative_scalarloadedslot(void *frame)
     {
         error("loaded owner export unavailable");
     }
-    GatewayOwner result = {.raw = H};
+    GatewayOwner result = {.raw = H, .managed = H};
     unsigned char *destination = (unsigned char *)call.ret;
     Modlink *previous = dvm_sys_owner(destination + offsetof(GatewayOwner, raw));
     memcpy(destination + offsetof(GatewayOwner, raw), &result.raw, sizeof(result.raw));
+    destroy(previous);
+    previous = dvm_sys_owner(destination + offsetof(GatewayOwner, managed));
+    memcpy(destination + offsetof(GatewayOwner, managed), &result.managed, sizeof(result.managed));
     destroy(previous);
     result.typed = reset_result(destination);
     memcpy(destination, &result, sizeof(result));
@@ -370,7 +354,38 @@ void Vfsnative_scalarloadedslot(void *frame)
     uint32_t signature = 0;
     StyxCallShape shape = {{0}, {0}};
     Modlink *link = link_export(retain_anchor(anchor), anchor, name, &signature, &shape, &result);
-    if (link == H || styxshaperequest(signature, &shape) != STYX_DYNAMIC_REQUEST_TAG)
+    unsigned long tag = styxshaperequest(signature, &shape);
+    if (link != H && tag == STYX_MANAGED_REQUEST_TAG)
+    {
+        Setmark(D2H(link));
+        result.managed = link;
+        memcpy(destination, &result, sizeof(result));
+        result.managed = dvm_styx_managed_gateway(link, &shape);
+        if (result.managed != H)
+        {
+            Setmark(D2H(result.managed));
+        }
+        memcpy(destination, &result, sizeof(result));
+        destroy(link);
+        unsigned char bytes[STYX_SHAPED_OFFER_MAX];
+        size_t size = 0;
+        if (result.managed != H)
+        {
+            if (encode_offer(name, signature, &shape, bytes, sizeof(bytes), &size))
+            {
+                result.typed.tag = tag;
+            }
+            else
+            {
+                destroy(result.managed);
+                result.managed = H;
+            }
+            memcpy(destination, &result, sizeof(result));
+        }
+        send_offer(call.offer, bytes, sizeof(bytes), size);
+        return;
+    }
+    if (link == H || tag != STYX_DYNAMIC_REQUEST_TAG)
     {
         memcpy(destination, &result, sizeof(result));
         publish_view(destination, result.typed, call.offer, name, link, signature, &shape);

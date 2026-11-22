@@ -14,6 +14,8 @@
 #include "launch_files.h"
 #include "runqueue.h"
 #include "scalar_direct.h"
+#include "managed_value.h"
+#include "../../native/terminal/scalar_function.h"
 #include "scalar_owner_internal.h"
 #include "raise.h"
 #include "guest.h"
@@ -84,7 +86,10 @@ static const char *receive(DVM_VfsHandle *reply, unsigned long tag, int64_t *val
     }
     while (!dvm_cancel_requested(dvm_cancel_current()))
     {
-        unsigned char bytes[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD + 1];
+        size_t capacity = tag == STYX_MANAGED_REQUEST_TAG ?
+            STYX_MANAGED_LIST_LIMIT + STYX_SCOPED_LARGE_OVERHEAD + 1 :
+            STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD + 1;
+        unsigned char bytes[capacity];
         DVM_IoResult got = dvm_vfs_read_chunk(reply, bytes, sizeof(bytes));
         if ((mode == READ_SESSION || mode == READ_POLL) && got.status == FVM_OK && (got.flags & DVM_IO_PREFIX) &&
             !(got.flags & DVM_IO_UNCERTAIN) &&
@@ -271,6 +276,81 @@ static const char *take_request(String *name, int64_t tag, ScalarRead mode, WORD
 }
 
 
+typedef struct ManagedOwnerInput
+{
+    unsigned char bytes[STYX_MANAGED_LIST_LIMIT]; /* Copied complete request. */
+    size_t size; /* Exact encoded length. */
+} ManagedOwnerInput;
+
+
+/* EN: Copy a complete record before the local inbox releases its storage.
+ * RU: Скопировать полную запись до освобождения памяти локальным приёмником. */
+static int capture_managed(unsigned long tag, const void *bytes, size_t size, void *state)
+{
+    ManagedOwnerInput *input = state;
+    FVM_SRecord record;
+    size_t used;
+    if (size > sizeof(input->bytes) ||
+        fvm_srecord_read(bytes, size, sizeof(input->bytes), &record, &used) != FVM_S_OK ||
+        used != size || record.tag != tag)
+    {
+        return 0;
+    }
+    memcpy(input->bytes, bytes, size);
+    input->size = size;
+    return 1;
+}
+
+
+/* [GC:] EN: Receive a validated local record and arm its scope for the caller's worker.
+ * RU: Принять проверенную локальную запись и подготовить контекст её исполнителя. */
+void Vfsnative_scalarmanagednext(void *frame)
+{
+    F_Vfsnative_scalarmanagednext call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarmanagednext, ret), sizeof(*call.ret));
+    Prog *process = currun();
+    ManagedOwnerInput input;
+    const char *failure = take_request(call.path, STYX_MANAGED_REQUEST_TAG, READ_SESSION, NULL,
+        capture_managed, &input, process);
+    Array *wire = H;
+    if (waserror())
+    {
+        dvm_scalar_caller_end(process);
+        nexterror();
+    }
+    if (!failure)
+    {
+        if (!dvm_scalar_arm_handoff())
+        {
+            error("managed owner call requires a private reply");
+        }
+        wire = mem2array(input.bytes, (int)input.size);
+        Setmark(D2H(wire));
+    }
+    else if (failure != session_end)
+    {
+        error((char *)failure);
+    }
+    Array *previous = dvm_sys_owner(call.ret);
+    memcpy(call.ret, &wire, sizeof(wire));
+    destroy(previous);
+    poperror();
+}
+
+
+/* EN: Publish one failure for the current private call, if it is still open.
+ * RU: Отправить ошибку текущего частного вызова, если он ещё открыт. */
+void Vfsnative_scalarmanagederror(void *frame)
+{
+    (void)frame;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    if (owner && owner->remote_call_reply)
+    {
+        dvm_styx_owner_finish(NULL, NULL, 0, 0);
+    }
+}
+
+
 /* EN/RU: Read one admitted scalar request from the active owner's namespace.
  * Прочитать один допущенный скалярный запрос из пространства владельца. */
 void Vfsnative_scalartake(void *frame)
@@ -407,7 +487,14 @@ void dvm_scalar_entry(void *frame, unsigned index)
     }
     if (files && ((files->dynamic && !files->ref_profile) || files->signature == DVM_CALL_LIST_SIGNATURE))
     {
-        dvm_call_list_entry(frame, expected_type, files);
+        if (files->explicit_end == STYX_CALL_RECORD_FRAMING)
+        {
+            dvm_managed_call_entry(frame, expected_type, files);
+        }
+        else
+        {
+            dvm_call_list_entry(frame, expected_type, files);
+        }
         return;
     }
     if (files && (files->signature == DVM_REF_SIGNATURE || files->ref_profile == STYX_REF_REQUEST_TAG))

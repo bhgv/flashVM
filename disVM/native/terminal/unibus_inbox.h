@@ -33,4 +33,9 @@ int styxunibusmailboxcontext(DVM_Provider *provider, const void *bytes, size_t s
  * RU: Зарезервировать служебный приёмник расширенного профиля или отказа. */
 DVM_Provider *styxunibusprofilemailbox(void);
 
+
+/* EN: Allocate an owned single-record mailbox for managed payloads and context framing.
+ * RU: Выделить приёмник одной записи управляемых данных с оболочкой контекста. */
+DVM_Provider *styxunibusmanagedmailbox(void);
+
 #endif

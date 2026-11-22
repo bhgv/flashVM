@@ -13,6 +13,40 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
     {
         return Ebadarg;
     }
+    if (fid->function.managed_method && fid->function.program_root)
+    {
+        if (!count || count > STYX_MANAGED_LIST_LIMIT - fid->staged_size)
+        {
+            return Ebadarg;
+        }
+        size_t size = fid->staged_size + count;
+        memcpy(fid->staged + fid->staged_size, bytes, count);
+        FVM_SRecord request;
+        size_t used;
+        FVM_SResult parsed = fvm_srecord_read(fid->staged, size, STYX_MANAGED_LIST_LIMIT, &request, &used);
+        if (parsed == FVM_S_MORE && size < STYX_MANAGED_LIST_LIMIT)
+        {
+            fid->staged_size = size;
+            fid->write_offset += count;
+            return nil;
+        }
+        if (parsed != FVM_S_OK || used != size || request.tag != STYX_MANAGED_REQUEST_TAG)
+        {
+            return Ebadarg;
+        }
+        size_t previous = fid->staged_size;
+        fid->staged_size = size;
+        char *failure = fid->workers ? schedule(fid) : dispatch(fid, fid->staged, size);
+        if (failure && !fid->submitted)
+        {
+            fid->staged_size = previous;
+        }
+        else
+        {
+            fid->write_offset += count;
+        }
+        return failure;
+    }
     FVM_SRecord record;
     size_t used;
     int complete = count <= fid->stage_capacity + STYX_SCOPED_CALL_OVERHEAD &&

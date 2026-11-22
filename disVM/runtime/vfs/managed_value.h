@@ -6,9 +6,10 @@
 #define DVM_STYX_MANAGED_VALUE_H
 #include "flashvm/srecord.h"
 #include "../../native/terminal/call_record.h"
+#include "../../native/terminal/load_profile.h"
 
 
-/* [GC:] EN: Decode one leaf of type s or a[y]. Borrow type and record, allocate
+/* [GC:] EN: Decode one leaf of type s, a[i], a[b], a[f] or a[y]. Borrow type and record, allocate
  * on the current ACTIVE resident, and return one owned reference or H for nil.
  * Return zero and preserve result on malformed data. Allocator errors propagate.
  * The recipient must root the returned object before leaving GC admission.
@@ -19,13 +20,19 @@
 int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result);
 
 
-/* [GC:] EN: Encode a rooted s or a[y] value into disjoint native storage.
+/* [GC:] EN: Encode a rooted s or primitive array value into disjoint native storage.
  * Observe a stable String owner or borrowed array with immutable header.
  * Payload is snapped before encoding. On failure bytes and used are preserved.
  * RU: Кодировать укоренённые s или a[y] в отдельный нативный буфер.
  * Строка удерживается стабильным владельцем, заголовок массива неизменяем.
  * Данные копируются до кодирования. При отказе bytes и used сохраняются. */
 int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Validate one bounded value shape whose managed leaves have a codec.
+ * RU: Проверить схему с поддерживаемыми кодеками для управляемых значений.
+ */
+int dvm_styx_value_shape_supported(const char *shape);
 
 typedef struct DVM_StyxValueFrame
 {
@@ -49,10 +56,34 @@ int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *
  * RU: Освободить все декодированные ссылки и очистить частный кадр. */
 void dvm_styx_value_frame_clear(DVM_StyxValueFrame *frame);
 
+
+/* [GC:] EN: Move a decoded frame into a live mapped return span and transfer
+ * temporary roots. Failure leaves both owners and destination unchanged.
+ * RU: Переместить кадр в живую mapped область возврата, передав корни.
+ * При отказе сохранить кадр и область назначения.
+ */
+int dvm_styx_value_frame_move(DVM_StyxValueFrame *frame, void *destination, size_t size);
+
 /* [GC:] EN: Encode an NC64 value list from borrowed slots with pinned managed
  * owners. Writes one complete native S-record or preserves bytes and used.
  * RU: Закодировать список NC64 из заимствованных слотов с удержанными
  * владельцами. Выдать одну S-запись либо сохранить bytes и used при отказе. */
 int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void *slots,
     size_t slot_size, void *bytes, size_t capacity, size_t *used);
+
+
+/* [GC:] EN: Send the return from rooted slots through the active private route.
+ * RU: Отправить результат из укоренённых слотов через текущий приватный маршрут. */
+void dvm_styx_owner_finish(const char *shape, const void *slots, size_t size, int success);
+
+/* [GC:] EN: Initialize the private mapped frame of a generated gateway.
+ * RU: Инициализировать частный mapped кадр сгенерированного шлюза. */
+struct Modlink;
+int dvm_styx_owner_frame_init(DVM_StyxValueFrame *arguments, struct Modlink *target,
+    void *frame, size_t extent);
+
+
+/* [GC:] EN: Bind a generated bridge to an original rooted export and return an owned link or H.
+ * RU: Связать шлюз с удерживаемым исходным экспортом и вернуть собственную ссылку либо H. */
+struct Modlink *dvm_styx_managed_gateway(struct Modlink *target, const StyxCallShape *shape);
 #endif

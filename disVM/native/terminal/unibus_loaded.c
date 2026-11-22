@@ -28,7 +28,7 @@ int styxunibusprepareload(MountedExport *module, const char *name)
     }
     strcpy(module->load_name, name);
     module->load_offer = styxunibusprofilemailbox();
-    module->owner.request = styxunibusloadmailbox();
+    module->owner.request = styxunibusmanagedmailbox();
     module->owner.reply = styxunibusloadmailbox();
     return module->load_offer && module->owner.request && module->owner.reply;
 }
@@ -93,7 +93,7 @@ int styxunibusawaitload(StyxUnibusServer *server)
         }
         styxunibusmailboxseal(module->load_offer);
         unsigned long tag = styxloadedacceptshape(module->load_name, offer, size, &module->owner.shape);
-        if (server->caller_root && (tag == STYX_DYNAMIC_REQUEST_TAG ||
+        if (server->caller_root && (tag == STYX_DYNAMIC_REQUEST_TAG || tag == STYX_MANAGED_REQUEST_TAG ||
             tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG) && module->owner.shape.arguments[0])
         {
             FVM_SRecord profile;
@@ -106,7 +106,8 @@ int styxunibusawaitload(StyxUnibusServer *server)
             }
             else if (!styxloadedrequest(signature))
             {
-                if (fvm_srecord_write(STYX_SCOPED_PATH_OFFER_TAG, profile.payload, profile.size,
+                if (fvm_srecord_write(tag == STYX_MANAGED_REQUEST_TAG ? STYX_SCOPED_RECORD_OFFER_TAG :
+                    STYX_SCOPED_PATH_OFFER_TAG, profile.payload, profile.size,
                     directory->interface + directory->interface_size, sizeof(directory->interface) -
                         directory->interface_size, &used) != FVM_S_OK)
                 {

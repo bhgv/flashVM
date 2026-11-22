@@ -16,6 +16,8 @@
 #define STYX_CALL_CONTEXT_TAG 97UL /* Initial context path. */
 #define STYX_SCOPED_PATH_OFFER_TAG 98UL /* Scoped profile with a separate context record. */
 #define STYX_CALL_CHUNK_TAG 99UL /* Additional bytes for an already staged request. */
+#define STYX_SCOPED_RECORD_OFFER_TAG 102UL /* PID inside one complete call record. */
+#define STYX_CALL_RECORD_FRAMING 3 /* Complete S-record commits the call. */
 #define STYX_CALL_PATH_FRAMING 2 /* Context, arguments, end. */
 #define STYX_CALL_CONTEXT_SELF ".prog/.self" /* Session-local active caller. */
 #define STYX_SCOPED_CALL_OVERHEAD 8U /* Four PID bytes plus S-record framing. */

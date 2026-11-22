@@ -25,6 +25,10 @@ if(DVM_RUNTIME_TESTS)
             "${CMAKE_CURRENT_SOURCE_DIR}/test_styx_generated_call.py" "$<TARGET_FILE:disvm>"
             "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
         set_tests_properties(disvm_native_styx_generated_call PROPERTIES TIMEOUT 120 LABELS "native")
+        add_test(NAME disvm_native_styx_managed_load COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/managed-fid/run.py"
+            "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>")
+        set_tests_properties(disvm_native_styx_managed_load PROPERTIES TIMEOUT 120 LABELS "native")
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
         foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy proxy_churn routed_results proxy_retirement proxy_handoffs)

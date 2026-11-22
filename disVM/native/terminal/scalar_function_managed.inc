@@ -10,7 +10,29 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
 {
     const StyxScalarFunction *fn = &fid->function;
     FVM_SRecord arguments;
-    if (!styxmanaged_list_read(fn->request_tag, fn->dynamic_shape->arguments, bytes, size, &arguments))
+    if (fn->program_root)
+    {
+        FVM_SRecord outer, first;
+        size_t used, prefix;
+        StyxScalarKind kind;
+        int64_t caller;
+        if (size > STYX_MANAGED_LIST_LIMIT ||
+            fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &outer, &used) != FVM_S_OK ||
+            used != size || outer.tag != fn->request_tag ||
+            fvm_srecord_read(outer.payload, outer.size, STYX_MANAGED_LIST_LIMIT, &first, &prefix) != FVM_S_OK ||
+            !styxscalarread(STYX_CALL_BIG_TAG, outer.payload, prefix, &kind, &caller) ||
+            kind != STYX_SCALAR_VALUE || caller <= 0 || caller > UINT32_MAX ||
+            (fid->context_pid && fid->context_pid != (uint32_t)caller) ||
+            !styxmanaged_payload_valid(fn->dynamic_shape->arguments, outer.payload + prefix, outer.size - prefix))
+        {
+            return Ebadarg;
+        }
+        pid = (uint32_t)caller;
+        arguments = outer;
+        arguments.payload += prefix;
+        arguments.size -= prefix;
+    }
+    else if (!styxmanaged_list_read(fn->request_tag, fn->dynamic_shape->arguments, bytes, size, &arguments))
     {
         return Ebadarg;
     }
@@ -36,10 +58,12 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     FVM_SRecord value, updates;
     size_t used;
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
-        !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
-            fields[0].bytes, fields[0].size, &value) ||
+        (!strcmp(fn->dynamic_shape->result, "()") ?
+            !styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
+            !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
+                fields[0].bytes, fields[0].size, &value)) ||
         fvm_srecord_read(fields[1].bytes, fields[1].size, STYX_MANAGED_LIST_LIMIT, &updates, &used) != FVM_S_OK ||
-        updates.tag != STYX_MANAGED_ARRAY_TAG || updates.size)
+        used != fields[1].size || updates.tag != STYX_MANAGED_ARRAY_TAG || updates.size)
     {
         return Ebadarg;
     }

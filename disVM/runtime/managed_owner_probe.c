@@ -221,9 +221,32 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
     check(!frame.layout.count && !frame.words[1] && !frame.words[2], "retire decoded frame owners");
     check(fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, fields + n + m,
             sizeof(fields) - n - m, &k) == FVM_S_OK &&
-        styxmanaged_list_write(89, "(ysa[b])", fields, n + m + k, frame_wire, sizeof(frame_wire), &wire_size) &&
-        !dvm_styx_value_frame_read(89, "(ysa[b])", frame_wire, wire_size, &frame) && !frame.layout.count,
+        styxmanaged_list_write(89, "(ysa[s])", fields, n + m + k, frame_wire, sizeof(frame_wire), &wire_size) &&
+        !dvm_styx_value_frame_read(89, "(ysa[s])", frame_wire, wire_size, &frame) && !frame.layout.count,
         "unsupported leaf rolls back an already decoded owner");
+    unsigned char packed[64];
+    size_t scalar_size, packed_size, consumed_array;
+    FVM_SRecord primitive;
+    void *source = H;
+    void *roundtrip = H;
+    const char *shapes[] = {"a[i]", "a[b]", "a[f]"};
+    const unsigned long tags[] = {STYX_CALL_INT_TAG, STYX_CALL_BIG_TAG, STYX_CALL_REAL_TAG};
+    const int64_t values[] = {INT32_MIN, INT64_MIN, INT64_C(0x3ff8000000000000)};
+    for (size_t i = 0; i < 3; i++)
+    {
+        check(styxscalarwrite(tags[i], STYX_SCALAR_VALUE, values[i], packed, sizeof(packed), &scalar_size),
+            "encode primitive array element");
+        primitive = (FVM_SRecord){.tag = STYX_MANAGED_ARRAY_TAG, .payload = packed, .size = scalar_size};
+        check(dvm_styx_managed_new(shapes[i], &primitive, &source) && source != H &&
+            dvm_styx_managed_write(shapes[i], source, frame_wire, sizeof(frame_wire), &packed_size) &&
+            fvm_srecord_read(frame_wire, packed_size, sizeof(frame_wire), &primitive, &consumed_array) == FVM_S_OK &&
+            consumed_array == packed_size && primitive.size == scalar_size &&
+            !memcmp(primitive.payload, packed, scalar_size) &&
+            dvm_styx_managed_new(shapes[i], &primitive, &roundtrip) && roundtrip != source,
+            "round-trip int, big and real array elements");
+        destroy(roundtrip);
+        destroy(source);
+    }
     FVM_SRecord truncated = array;
     truncated.size--;
     void *unchanged = text;

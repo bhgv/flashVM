@@ -3,10 +3,12 @@
  * RU: Нативное владение точными файлами запроса и ответа.
  */
 #include "scalar_files.h"
+#include "managed_value.h"
 #include "../../native/terminal/call_scope.h"
 #include "flashvm/srecord.h"
 #include "program_view.h"
 #include "lib9.h"
+#include "../../native/terminal/scalar_function.h"
 #include "dat.h"
 #include "isa.h"
 #include "interp.h"
@@ -185,6 +187,22 @@ static int write_frame(DVM_VfsHandle *handle, const void *bytes, size_t size)
  * RU: Сохранить и завершить запрос на одном fid, если владелец объявил этот режим. */
 static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, int explicit_end)
 {
+    if (explicit_end == STYX_CALL_RECORD_FRAMING)
+    {
+        const unsigned char *cursor = bytes;
+        while (size)
+        {
+            DVM_IoResult sent = dvm_vfs_write_chunk(handle, cursor, size);
+            if (sent.status != FVM_OK || !(sent.flags & DVM_IO_PREFIX) ||
+                (sent.flags & DVM_IO_UNCERTAIN) || !sent.count || sent.count > size)
+            {
+                return 0;
+            }
+            cursor += sent.count;
+            size -= sent.count;
+        }
+        return 1;
+    }
     if (!explicit_end)
     {
         return write_frame(handle, bytes, size);
@@ -196,10 +214,29 @@ static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, i
     int context_ready = explicit_end != STYX_CALL_PATH_FRAMING ||
         fvm_srecord_write(STYX_CALL_CONTEXT_TAG, STYX_CALL_CONTEXT_SELF, sizeof(STYX_CALL_CONTEXT_SELF) - 1,
             context, sizeof(context), &context_size) == FVM_S_OK;
-    return context_ready && fvm_srecord_write(STYX_CALL_STAGE_TAG, bytes, size, staged, sizeof(staged), &count) == FVM_S_OK &&
-        fvm_srecord_write(STYX_CALL_END_TAG, NULL, 0, end, sizeof(end), &end_size) == FVM_S_OK &&
-        (explicit_end != STYX_CALL_PATH_FRAMING || write_frame(handle, context, context_size)) &&
-        write_frame(handle, staged, count) && write_frame(handle, end, end_size);
+    if (!context_ready || (explicit_end == STYX_CALL_PATH_FRAMING &&
+        !write_frame(handle, context, context_size)) || !size)
+    {
+        return 0;
+    }
+    const unsigned char *cursor = bytes;
+    for (size_t offset = 0; offset < size; )
+    {
+        size_t chunk = size - offset;
+        if (chunk > STYX_FUNCTION_FRAME_CAPACITY)
+        {
+            chunk = STYX_FUNCTION_FRAME_CAPACITY;
+        }
+        unsigned long tag = offset ? STYX_CALL_CHUNK_TAG : STYX_CALL_STAGE_TAG;
+        if (fvm_srecord_write(tag, cursor + offset, chunk, staged, sizeof(staged), &count) != FVM_S_OK ||
+            !write_frame(handle, staged, count))
+        {
+            return 0;
+        }
+        offset += chunk;
+    }
+    return fvm_srecord_write(STYX_CALL_END_TAG, NULL, 0, end, sizeof(end), &end_size) == FVM_S_OK &&
+        write_frame(handle, end, end_size);
 }
 
 
@@ -233,9 +270,11 @@ static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t s
                 {
                     break;
                 }
-                if (!used && !got.count && files->explicit_end == STYX_CALL_PATH_FRAMING)
+                if (!used && !got.count && (files->explicit_end == STYX_CALL_PATH_FRAMING ||
+                    files->explicit_end == STYX_CALL_RECORD_FRAMING))
                 {
-                    if (++pending == 500 || dvm_cancel_requested(dvm_cancel_current()))
+                    if (dvm_cancel_requested(dvm_cancel_current()) ||
+                        (files->explicit_end != STYX_CALL_RECORD_FRAMING && ++pending == 500))
                     {
                         break;
                     }
@@ -266,17 +305,24 @@ static int exchange_compiled(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_L
     {
         return exchange_frame(files, bytes, size, capacity, received);
     }
-    unsigned char scoped[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
+    size_t limit = capacity > STYX_FUNCTION_FRAME_CAPACITY + 1 ?
+        STYX_MANAGED_LIST_LIMIT : STYX_FUNCTION_FRAME_CAPACITY;
+    size_t scoped_capacity = limit + STYX_SCOPED_LARGE_OVERHEAD;
     size_t used;
     DVM_CallerBinding binding;
-    if (!files->dynamic || !styxcall_scope_write(pid, bytes, size, scoped, sizeof(scoped), &used) ||
-        !dvm_provider_caller_binding(files->request, &binding))
+    if (!files->dynamic || !dvm_provider_caller_binding(files->request, &binding))
     {
+        return -1;
+    }
+    unsigned char *scoped = malloc(scoped_capacity);
+    if (!scoped || !styxcall_scope_write_bounded(pid, bytes, size, limit, scoped, scoped_capacity, &used))
+    {
+        free(scoped);
         return -1;
     }
     DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
     void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
-    int result = lease ? exchange_frame(files, scoped, used, sizeof(scoped), received) : -1;
+    int result = lease ? exchange_frame(files, scoped, used, scoped_capacity, received) : -1;
     if (lease)
     {
         binding.end(binding.state, lease);
@@ -286,10 +332,70 @@ static int exchange_compiled(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_L
     {
         if (*received >= capacity)
         {
-            return 0;
+            result = 0;
         }
-        memcpy(bytes, scoped, *received);
+        else
+        {
+            memcpy(bytes, scoped, *received);
+        }
     }
+    free(scoped);
+    return result;
+}
+
+
+/* EN/RU: Exchange one schema-checked managed frame through the existing opened-function transport.
+ * Обменять проверенный managed-кадр через существующий транспорт файла функции.
+ */
+int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
+    DVM_LaunchFiles *descriptors, uint32_t pid, unsigned char *bytes,
+    size_t size, size_t capacity, size_t *received)
+{
+    if (!files || !files->dynamic || !bytes || !size || size > capacity || !received ||
+        !dvm_styx_value_shape_supported(files->shape.arguments) ||
+        !dvm_styx_value_shape_supported(files->shape.result))
+    {
+        return -1;
+    }
+    if (!files->caller)
+    {
+        return exchange_frame(files, bytes, size, capacity, received);
+    }
+    FVM_SRecord arguments;
+    unsigned char first[STYX_SCALAR_RECORD_CAPACITY];
+    size_t prefix, used;
+    DVM_CallerBinding binding;
+    if (!pid || !dvm_provider_caller_binding(files->request, &binding) ||
+        !styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments, bytes, size, &arguments) ||
+        !styxscalarwrite(STYX_CALL_BIG_TAG, STYX_SCALAR_VALUE, pid, first, sizeof(first), &prefix))
+    {
+        return -1;
+    }
+    unsigned char *request = malloc(STYX_MANAGED_LIST_LIMIT + 1);
+    if (!request || fvm_srecord_write_pair(STYX_MANAGED_REQUEST_TAG, first, prefix,
+        arguments.payload, arguments.size, request, STYX_MANAGED_LIST_LIMIT, &used) != FVM_S_OK)
+    {
+        free(request);
+        return -1;
+    }
+    DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
+    void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
+    DVM_ScalarFiles route = {.request = files->request, .explicit_end = STYX_CALL_RECORD_FRAMING};
+    int result = lease ? exchange_frame(&route, request, used, STYX_MANAGED_LIST_LIMIT + 1, received) : -1;
+    if (lease)
+    {
+        binding.end(binding.state, lease);
+    }
+    dvm_provider_release(tree);
+    if (result == 1 && *received <= capacity)
+    {
+        memcpy(bytes, request, *received);
+    }
+    else if (result == 1)
+    {
+        result = 0;
+    }
+    free(request);
     return result;
 }
 

@@ -379,7 +379,7 @@ static int managed_children(const char *shape, const unsigned char *bytes, size_
 
 /* EN: Apply the compiled schema grammar and exclude reference identity from this codec.
  * RU: Проверить грамматику схемы Dis и исключить идентичность ref из кодека. */
-static int managed_payload(const char *shape, const void *bytes, size_t size)
+int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
 {
     StyxCallShape schema = {.result = "()"};
     if (!shape || (size && !bytes))
@@ -404,7 +404,7 @@ int styxmanaged_list_read(unsigned long tag, const char *shape, const void *byte
     size_t used;
     if (!list || size > STYX_MANAGED_LIST_LIMIT ||
         fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &decoded, &used) != FVM_S_OK ||
-        used != size || decoded.tag != tag || !managed_payload(shape, decoded.payload, decoded.size))
+        used != size || decoded.tag != tag || !styxmanaged_payload_valid(shape, decoded.payload, decoded.size))
     {
         return 0;
     }
@@ -421,7 +421,7 @@ int styxmanaged_list_write(unsigned long tag, const char *shape, const void *pay
     {
         capacity = STYX_MANAGED_LIST_LIMIT;
     }
-    return size <= capacity && managed_payload(shape, payload, size) &&
+    return size <= capacity && styxmanaged_payload_valid(shape, payload, size) &&
         fvm_srecord_write(tag, payload, size, bytes, capacity, used) == FVM_S_OK;
 }
 
@@ -460,4 +460,14 @@ int styxcall_reply_read(unsigned long tag, const void *bytes, size_t size, StyxR
     fields[0] = (StyxReplyField){outer.payload, first};
     fields[1] = (StyxReplyField){outer.payload + first, second};
     return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_is_nil(const void *bytes, size_t size)
+{
+    FVM_SRecord record;
+    size_t used;
+    return fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &record, &used) == FVM_S_OK &&
+        used == size && record.tag == STYX_MANAGED_NIL_TAG && !record.size;
 }

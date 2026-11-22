@@ -305,6 +305,21 @@ static int signature_shape(uint32_t signature, const StyxCallShape *shape)
 }
 
 
+/* EN: Admit only arrays whose elements the current value bridge can materialize.
+ * RU: Допустить только массивы, элементы которых умеет создавать текущий шлюз. */
+static int managed_arrays(const char *shape)
+{
+    for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
+    {
+        if (!strchr("ibfy", array[2]) || array[3] != ']')
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
 unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
 {
@@ -318,7 +333,22 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
     {
         return 0;
     }
-    return styxshapecells(shape, &args, &results) ? STYX_DYNAMIC_REQUEST_TAG : styxshaperef(shape, &results);
+    if (styxshapecells(shape, &args, &results))
+    {
+        return STYX_DYNAMIC_REQUEST_TAG;
+    }
+    unsigned long ref = styxshaperef(shape, &results);
+    StyxScalarLayout input, output;
+    if (ref || !styxshapevalid(shape) ||
+        !styxmanaged_layout(shape->arguments, &input) || !styxmanaged_layout(shape->result, &output) ||
+        input.size > 64 || output.size > 64 ||
+        strchr(shape->arguments, 'r') || strchr(shape->result, 'r') ||
+        !managed_arrays(shape->arguments) || !managed_arrays(shape->result) ||
+        !(input.pointers || output.pointers))
+    {
+        return ref;
+    }
+    return STYX_MANAGED_REQUEST_TAG;
 }
 
 

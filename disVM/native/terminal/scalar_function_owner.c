@@ -11,6 +11,7 @@
 #include "cancel.h"
 #include "flashvm/srecord.h"
 #include <time.h>
+#include <stdlib.h>
 
 
 /* EN: Exchange one complete request. A scoped call receives on its own mailbox.
@@ -19,11 +20,16 @@
  * RU: Передать полную запись. Вызов с контекстом принимает ответ в своём приёмнике.
  * При наличии токена ждать ответ либо отзыв. После отзыва дать владельцу
  * ограниченное время на разворачивание стека и завершение локального обмена. */
-static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_t size, size_t *received, DVM_Provider *context)
+static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_t size, size_t capacity, size_t *received, DVM_Provider *context)
 {
     DVM_VfsHandle reader = {0};
     struct timespec start = {0};
-    DVM_Provider *private_reply = context ? styxunibusloadmailbox() : NULL;
+    int managed = capacity > STYX_FUNCTION_FRAME_CAPACITY;
+    DVM_Provider *private_reply = context ? (managed ? styxunibusmanagedmailbox() : styxunibusloadmailbox()) : NULL;
+    if (context && !private_reply)
+    {
+        return 0;
+    }
     int bound = !context || dvm_provider_set_call_reply(context, private_reply);
     DVM_Provider *reply = context ? private_reply : owner->reply;
     DVM_Cancel *cancel = dvm_provider_call_cancel(context);
@@ -37,7 +43,8 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
         return 0;
     }
     int ready = 0;
-    unsigned char attached[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD];
+    size_t attached_capacity = size + STYX_SCOPED_LARGE_OVERHEAD;
+    unsigned char *attached = context ? malloc(attached_capacity) : NULL;
     size_t length;
     int sent = 0;
     const struct timespec delay = {0, 10000000};
@@ -45,7 +52,7 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
     {
         sent = styxterminalrecordwrite(owner->request, record, size) == DVM_LAUNCH_DELIVERED;
     }
-    else if (fvm_srecord_write(STYX_LOCAL_CONTEXT_TAG, record, size, attached, sizeof(attached), &length) == FVM_S_OK)
+    else if (attached && fvm_srecord_write(STYX_LOCAL_CONTEXT_TAG, record, size, attached, attached_capacity, &length) == FVM_S_OK)
     {
         while (!dvm_cancel_requested(cancel))
         {
@@ -57,6 +64,7 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
             nanosleep(&delay, NULL);
         }
     }
+    free(attached);
     if (sent == 1)
     {
         struct timespec now;
@@ -75,7 +83,7 @@ static int exchange(StyxScalarFunctionOwner *owner, unsigned char *record, size_
             {
                 break;
             }
-            DVM_IoResult got = dvm_vfs_read_chunk(&reader, record, STYX_FUNCTION_FRAME_CAPACITY);
+            DVM_IoResult got = dvm_vfs_read_chunk(&reader, record, capacity);
             if (got.status == FVM_OK && (got.flags & DVM_IO_RECORD) && !(got.flags & DVM_IO_UNCERTAIN))
             {
                 *received = got.count;
@@ -114,7 +122,7 @@ int styxscalarfunctiondispatch(void *state, int64_t argument, int64_t *value)
     size_t size, received;
     StyxScalarKind kind;
     if (!styxscalarwrite(owner->request_tag, STYX_SCALAR_CALL, argument, record, sizeof(record), &size) ||
-        !exchange(owner, record, size, &received, NULL) ||
+        !exchange(owner, record, size, sizeof(record), &received, NULL) ||
         !styxscalarread(STYX_FUNCTION_REPLY_TAG, record, received, &kind, value) ||
         (kind != STYX_SCALAR_ERROR && kind != STYX_SCALAR_VALUE))
     {
@@ -136,7 +144,7 @@ static int tuple_dispatch(void *state, DVM_Provider *self, const StyxTuple *argu
     int64_t code;
     uint32_t pid;
     if (styxtuplewrite(STYX_TUPLE_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, NULL))
+        exchange(owner, record, size, sizeof(record), &received, NULL))
     {
         if (styxtupleread(STYX_TUPLE_REPLY_TAG, record, received, &pid, value))
         {
@@ -161,7 +169,7 @@ static int ref_dispatch(void *state, DVM_Provider *self, const StyxTuple *argume
     StyxScalarKind kind;
     int64_t code;
     if (styxtuplewrite(STYX_REF_REQUEST_TAG, 0, argument, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, self))
+        exchange(owner, record, size, sizeof(record), &received, self))
     {
         if (styxrefreplyread(record, received, value))
         {
@@ -203,7 +211,7 @@ static int list_dispatch(void *state, DVM_Provider *self, const StyxCallValues *
     StyxScalarKind kind;
     int64_t code;
     if (styxcallrecordwrite(owner->request_tag, input_shape, &local, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, self))
+        exchange(owner, record, size, sizeof(record), &received, self))
     {
         if (styxcallrecordread(reply_tag, output_shape, record, received, value))
         {
@@ -245,7 +253,7 @@ static int ref_pair_dispatch(void *state, DVM_Provider *self, StyxRefPair *value
     StyxScalarKind kind;
     int64_t code;
     if (styxrefpairwrite(STYX_REF_PAIR_REQUEST_TAG, value, record, sizeof(record), &size) &&
-        exchange(owner, record, size, &received, self))
+        exchange(owner, record, size, sizeof(record), &received, self))
     {
         if (styxrefpairread(STYX_REF_PAIR_REPLY_TAG, record, received, &result) && result.count == value->count)
         {
@@ -289,10 +297,34 @@ int styxscalarownerconfigure(StyxScalarFunctionOwner *owner, StyxScalarFunction 
 }
 
 
+/* EN: Forward checked arguments to the owner inbox and read the private reply.
+ * RU: Передать проверенные аргументы владельцу и прочитать приватный ответ. */
+static int managed_dispatch(void *state, DVM_Provider *context, const FVM_SRecord *arguments,
+    unsigned char *reply, size_t capacity, size_t *size)
+{
+    StyxScalarFunctionOwner *owner = state;
+    size_t request_size;
+    if (!context || !styxmanaged_list_write(STYX_MANAGED_REQUEST_TAG, owner->shape.arguments,
+        arguments->payload, arguments->size, reply, capacity, &request_size) ||
+        !exchange(owner, reply, request_size, capacity, size, context))
+    {
+        return -1;
+    }
+    StyxScalarKind kind;
+    int64_t code;
+    if (styxscalarread(STYX_FUNCTION_REPLY_TAG, reply, *size, &kind, &code) &&
+        kind == STYX_SCALAR_ERROR)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+
 /* EN/RU: See scalar_function_owner.h. / См. scalar_function_owner.h. */
 int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *function, unsigned long tag)
 {
-    function->reply_tag = styxfunction_reply_tag(tag);
+    function->reply_tag = tag == STYX_MANAGED_REQUEST_TAG ? STYX_MANAGED_REPLY_TAG : styxfunction_reply_tag(tag);
     if (!function->reply_tag)
     {
         return 0;
@@ -301,6 +333,14 @@ int styxscalarownerbind(StyxScalarFunctionOwner *owner, StyxScalarFunction *func
     function->state = owner;
     switch (tag)
     {
+    case STYX_MANAGED_REQUEST_TAG:
+        if (!function->program_root || !styxshapevalid(&owner->shape))
+        {
+            return 0;
+        }
+        function->dynamic_shape = &owner->shape;
+        function->managed_method = managed_dispatch;
+        break;
     case STYX_DYNAMIC_REQUEST_TAG:
     {
         size_t arguments;

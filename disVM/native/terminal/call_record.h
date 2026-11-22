@@ -108,4 +108,10 @@ typedef struct StyxReplyField
  * On failure fields stay unchanged. Callers still validate value types.
  * При отказе fields сохраняется. Типы значений проверяет вызывающий. */
 int styxcall_reply_read(unsigned long tag, const void *bytes, size_t size, StyxReplyField fields[2]);
+/* EN: Validate borrowed children against the value-list schema.
+ * RU: Проверить заимствованные дочерние записи по схеме списка. */
+int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size);
+/* EN: Match a single complete, empty nil record.
+ * RU: Проверить одну полную запись nil без полезной нагрузки. */
+int styxmanaged_is_nil(const void *bytes, size_t size);
 #endif

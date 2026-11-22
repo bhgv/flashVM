@@ -1,6 +1,11 @@
 # Copyright (c) 2026 bhgv
 # EN: Scalar native bridge for caller-namespace layer control; prefer Vfsctl wrapper.
 # RU: Scalar native bridge управления слоями своего namespace; удобный wrapper Vfsctl.
+Scalarmanagedinvoke: module
+{
+    invoke: fn(wire: array of byte); # Private generated gateway for one compiled export.
+};
+
 Scalarimplementation: module
 {
     invoke: fn(value: int): int; # Single linked slot; the native loader selects its export.
@@ -164,7 +169,9 @@ Vfsnative: module
     # RU: Связать именованный экспорт с типизированным или общим шлюзом владельца.
     scalarloadedslot: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
-            Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int);
+            Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int, Scalarmanagedinvoke);
+    scalarmanagednext: fn(path: string): array of byte;
+    scalarmanagederror: fn();
     # EN: Return 1 if the peer closed the current call fid, otherwise 0.
     # RU: Вернуть 1 при закрытии fid текущего вызова, иначе 0.
     callcancelled: fn(): int;

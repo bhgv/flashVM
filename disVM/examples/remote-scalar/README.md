@@ -119,3 +119,8 @@ this example currently uses Proxynet.
 [Native Styx round-trip example](../../native/terminal/SCALAR-ROUTE.md)
 
 [Ordinary typed load with Styx](STYX.md)
+
+
+## Load a library with ordinary Limbo calls
+
+The mounted Dis profile supports strings and primitive arrays. Run the two-VM example in [managed-fid](managed-fid/README.md).

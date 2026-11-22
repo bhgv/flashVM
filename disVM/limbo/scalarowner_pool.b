@@ -14,6 +14,8 @@ Calljob: adt {
     raw: Scalarrawinvoke;
     single: Scalarrefimplementation;
     pair: Scalarrefpairimplementation;
+    managed: Scalarmanagedinvoke;
+    wire: array of byte;
 };
 
 # EN: Per-caller state. Receiving its gate grants access to PID and pending status.
@@ -114,6 +116,18 @@ submit_call(routes: Vfsnative, pool: Callpool, job: ref Calljob)
 # RU: Вызвать проверенный слот задания в Prog текущего клиента.
 invoke_call_job(routes: Vfsnative, job: ref Calljob): int
 {
+    if (job.managed != nil) {
+        {
+            routes->scalarcallstart();
+            job.managed->invoke(job.wire);
+            return 0;
+        } exception {
+            "*" =>
+                cancelled := routes->callcancelled();
+                routes->scalarmanagederror();
+                return cancelled;
+        }
+    }
     (a,b,c,d) := job.args;
     if (job.raw != nil) {
         return finish_raw(routes, job.raw, job.reply, job.inputs, job.outputs, 2, a, b, c, d);

@@ -18,6 +18,7 @@
 #include "flashvm/srecord.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
+#include "../../native/terminal/scalar_function.h"
 #include "vfsnative_decl.h"
 #include "raise.h"
 #include "../../native/terminal/call_record.h"
@@ -138,7 +139,10 @@ int dvm_scalar_owner_decode(DVM_OwnerDecode decode, unsigned long tag, const voi
 {
     FVM_SRecord envelope;
     size_t used;
-    if (required && fvm_srecord_read(bytes, size, STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD,
+    size_t capacity = tag == STYX_MANAGED_REQUEST_TAG ?
+        STYX_MANAGED_LIST_LIMIT + STYX_SCOPED_LARGE_OVERHEAD :
+        STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD;
+    if (required && fvm_srecord_read(bytes, size, capacity,
         &envelope, &used) == FVM_S_OK && used == size && envelope.tag == STYX_LOCAL_CONTEXT_TAG)
     {
         *required = 1;

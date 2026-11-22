@@ -13,6 +13,8 @@
 #define STYX_DYNAMIC_CELLS 4U /* Maximum flattened arguments or result cells. */
 #define STYX_DYNAMIC_REQUEST_TAG 89UL /* Shape-driven request. */
 #define STYX_DYNAMIC_REPLY_TAG 90UL /* Shape-driven successful reply. */
+#define STYX_MANAGED_REQUEST_TAG 100UL /* Typed managed argument list. */
+#define STYX_MANAGED_REPLY_TAG 101UL /* Result and updates envelope. */
 #define STYX_SHAPED_OFFER_TAG 88UL /* Ordinary export signature and resolved call types. */
 
 

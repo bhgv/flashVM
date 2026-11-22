@@ -79,4 +79,12 @@ int dvm_call_list_function_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, 
  * RU: Обменять таблицу объектов через files и сохранить соответствующий ответ. */
 int dvm_ref_pair_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, struct DVM_LaunchFiles *descriptors,
     uint32_t pid, StyxRefPair *value);
+
+
+/* EN: Exchange one pre-encoded typed managed request on its retained fid.
+ * RU: Обменять заранее закодированный управляемый запрос через сохранённый fid.
+ */
+int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
+    struct DVM_LaunchFiles *descriptors, uint32_t pid, unsigned char *bytes,
+    size_t size, size_t capacity, size_t *received);
 #endif

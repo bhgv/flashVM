@@ -12,6 +12,8 @@
 #include "loader.h"
 #include "module_shapes.h"
 #include "scalar_files.h"
+#include "managed_value.h"
+#include "../../native/terminal/call_scope.h"
 #include "../../native/terminal/scalar_verify.h"
 #include "../../native/terminal/load_profile.h"
 #include "resource.h"
@@ -224,7 +226,10 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         if (dynamic && bit)
         {
             ref_profile = styxshaperef(&shape, &result);
-            if (!local->arguments[0] || (!ref_profile && !styxshapecells(&shape, &arguments, &result)))
+            int managed = explicit_end == STYX_CALL_RECORD_FRAMING;
+            if (!local->arguments[0] || (managed ?
+                !dvm_styx_value_shape_supported(shape.arguments) || !dvm_styx_value_shape_supported(shape.result) :
+                !ref_profile && !styxshapecells(&shape, &arguments, &result)))
             {
                 bit = 0;
             }
