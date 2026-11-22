@@ -4,7 +4,15 @@
 implement Client;
 include "sys.m";
 Target: module {
+    Cell: adt { narrow: int; wide: big; };
+    update: fn(a, b: ref Cell): big;
     invoke: fn(x: byte, s: string, a: array of byte, n: big): string;
+};
+Gateway: module {
+    invoke: fn(m: Target, x: byte, s: string, a: array of byte, n: big): string;
+};
+Refgateway: module {
+    invoke: fn(m: Target, a, b: ref Target->Cell): big;
 };
 Client: module {
     init: fn();
@@ -27,5 +35,16 @@ init()
     if (target == nil || go(target, byte 23, "Ж", array[] of {byte 11}, big 77) != "Ж!") {
         raise "synthesized call result mismatch";
     }
+    gateway := load Gateway "./generated-gateway.dis";
+    if (gateway == nil || gateway->invoke(target, byte 23, "Ж", array[] of {byte 11}, big 77) != "Ж!") {
+        raise "synthesized module load result mismatch";
+    }
+    refs := load Refgateway "./generated-ref-gateway.dis";
+    cell := ref Target->Cell(7, big 19);
+    if (refs == nil || refs->invoke(target, cell, cell) != big 27 ||
+        cell.narrow != 8 || cell.wide != big 27) {
+        raise "synthesized call lost ref alias";
+    }
+    sys->print("PASS loaded synthesized Dis module executed\n");
     sys->print("PASS synthesized Dis call executed\n");
 }

@@ -39,3 +39,24 @@ void __wrap_xec(Prog *process)
     }
     __real_xec(process);
 }
+
+
+
+Module *__real_dvm_namespace_read_imports(char *path, Module *cached, int sync, const Import *imports);
+
+
+/* EN: Supply exactly the private fixture module; keep normal load/link handling.
+ * RU: Подставить только приватный тестовый модуль, сохраняя штатный load/link. */
+Module *__wrap_dvm_namespace_read_imports(char *path, Module *cached, int sync, const Import *imports)
+{
+    int ref = !strcmp(path, "./generated-ref-gateway.dis");
+    if (!ref && strcmp(path, "./generated-gateway.dis"))
+    {
+        return __real_dvm_namespace_read_imports(path, cached, sync, imports);
+    }
+    if (!imports || !imports[0].name || strcmp(imports[0].name, "invoke") || imports[1].name)
+    {
+        abort();
+    }
+    return dvm_styx_call_module(ref ? "(r[ib]r[ib])" : "(ysa[y]b)", ref ? 1 : 0, 1, (uint32_t)imports[0].sig);
+}

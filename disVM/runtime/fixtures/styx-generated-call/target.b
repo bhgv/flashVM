@@ -3,6 +3,8 @@
 # RU: Проверить значения, полученные исходным экспортом.
 implement Target;
 Target: module {
+    Cell: adt { narrow: int; wide: big; };
+    update: fn(a, b: ref Cell): big;
     invoke: fn(x: byte, s: string, a: array of byte, n: big): string;
 };
 
@@ -14,4 +16,14 @@ invoke(x: byte, s: string, a: array of byte, n: big): string
         raise "synthesized call argument mismatch";
     }
     return s + "!";
+}
+
+
+# EN: Update through both arguments to check reference identity.
+# RU: Изменить объект через оба аргумента для проверки идентичности ссылки.
+update(a, b: ref Cell): big
+{
+    a.narrow++;
+    b.wide += big b.narrow;
+    return a.wide;
 }
