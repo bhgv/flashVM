@@ -91,7 +91,7 @@ int dvm_runtime_open_selected(const char *path, const char *mode, int asynchrono
         {
             dvm_file_slots_publish(index, file, directory);
         }
-        if (access)
+        if (access && !selected)
         {
             dvm_launch_mark_guest_file(index, access);
         }

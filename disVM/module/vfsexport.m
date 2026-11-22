@@ -116,4 +116,11 @@ Vfsexport: module
     # EN/RU: Close publication; accepted trees survive, pending denied, endpoints stop admission.
     # Закрыть publication; issued trees живут, pending denied, endpoint больше не принимает.
     close: fn(owner: ref Owner): int;
+
+    # EN: Fresh virtual record pipe, with separate send and recv files. Open each
+    # endpoint ORDWR. One complete S-record up to 1024 wire bytes per submission.
+    # RU: Новый виртуальный канал с файловыми концами send и recv. Открытие ORDWR.
+    # За одну запись передаётся целая S-запись до 1024 байтов вместе с заголовком.
+    recordpipe: fn(): ref Root;
+
 };

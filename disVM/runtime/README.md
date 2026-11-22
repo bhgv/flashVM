@@ -931,6 +931,10 @@ duplex or paired FlashVM streams and live extra channels after source unmount.
 Native mode conversion uses existing Inferno provider modes without truncation.
 Network launch and automatic host handoff import remain separate integration.
 
+[Vfsexport.recordpipe](RECORD-PIPE.md) exposes virtual send and receive
+files for complete S-records with delivery receipts on the same fid.
+[Описание на русском](RECORD-PIPE.ru.md).
+
 ## Native handoff adoption / Принятие handoff до запуска (runtime0.170)
 
 [Launch import, constructor ownership and Terminal.current](LAUNCH-IMPORT.md)

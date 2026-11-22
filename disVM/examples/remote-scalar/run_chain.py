@@ -177,6 +177,7 @@ def run_a(options, owner):
                     "PASS nested Styx launch cancellation\n" not in stdout or
                     "PASS nested Styx shared variables\n" not in stdout or
                     "PASS nested Styx libraries and ordinary FDs\n" not in stdout or
+                    "PASS live Limbo channels over Styx record pipes\n" not in stdout or
                     (root / "ordinary-output").read_bytes() != b"live"):
                 raise RuntimeError(f"wrong result or descriptor state\n{stdout}{stderr}")
 

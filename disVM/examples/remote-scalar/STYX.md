@@ -338,6 +338,11 @@ A's VFS marker and the live variable through both library calls. A cancels
 a pending library call and retries from the same PID before the
 successful file check.
 
+The fixture also exchanges messages with a real `chan of int` on A.
+C opens two virtual endpoints on the same reverse Styx path through B.
+A acknowledges after its local `alt` takes the value and returns a reply
+over the other endpoint. See [Vfsexport.recordpipe](../../runtime/RECORD-PIPE.md).
+
 A also cancels its wait after C signals that the leaf has entered a
 `big` loop. The clunk reaches C through B. A fresh launch and a library
 call then reuse both connections. A verifies the results, both owners'

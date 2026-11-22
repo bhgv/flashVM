@@ -320,10 +320,14 @@ static void confinement(DVM_ResourcePlan *plan)
 }
 
 
+extern void dvm_test_record_pipe(void);
+
+
 /* EN/RU: Real native fixture paths supplied by the temporary-tree driver.
  * Real native fixture paths задаются temporary-tree driver. */
 int main(int argc, char **argv)
 {
+    dvm_test_record_pipe();
     test_export_hidden_batches();
     test_export_races();
     State state = {1, 0, 0, 0, 0, NULL};

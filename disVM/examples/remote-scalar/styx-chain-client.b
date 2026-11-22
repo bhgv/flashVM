@@ -29,6 +29,21 @@ init()
     }
     parked := exports->intvar(0);
     grant := exports->record(("chain-stage", exports->intvar(42)) :: ("chain-parked", parked) :: nil);
+    inbound, outbound: ref Vfsexport->Root;
+    if (extended) {
+        inbound = exports->recordpipe();
+        outbound = exports->recordpipe();
+        if (inbound == nil || outbound == nil) {
+            raise "cannot create record pipes";
+        }
+        sendonly := exports->overlay(inbound, nil, "/recv", 0, Vfsexport->Tree);
+        recvonly := exports->overlay(outbound, nil, "/send", 0, Vfsexport->Tree);
+        if (grant == nil || sendonly == nil || recvonly == nil) {
+            raise "cannot select record pipe endpoints";
+        }
+        grant = exports->overlay(grant, sendonly, "/channel-to-a", Vfsexport->Read | Vfsexport->Write | Vfsexport->Execute, Vfsexport->Tree);
+        grant = exports->overlay(grant, recvonly, "/channel-from-a", Vfsexport->Read | Vfsexport->Write | Vfsexport->Execute, Vfsexport->Tree);
+    }
     if (grant == nil || exports->mount(grant, "/.vfs", 0, 0) != 0)
         raise "could not publish chain VFS";
     if (sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0) {
@@ -48,6 +63,7 @@ init()
         sys->print("PASS nested Styx shared variables\n");
         cancel_nested(sys, vfs, exports, parked);
         check_nested_library(sys, exports, shared, parked);
+        check_record_pipe(sys, exports, inbound, outbound);
     }
 }
 
@@ -143,3 +159,70 @@ pending_nested(vfs: Vfsnative, control: Processctl, started, done: chan of int)
     started <-= control->pid();
     done <-= vfs->runargs("/alias.dis", array of byte "cancel-nested");
 }
+
+# EN: Use a pair of real local Limbo channels while the caller is in remote load.
+# RU: Использовать настоящие каналы Limbo, пока вызывающий ждёт удалённую функцию.
+check_record_pipe(sys: Sys, exports: Vfsexport, inbound, outbound: ref Vfsexport->Root)
+{
+    remote := load Chainfd "/peer/mounted/chain-fd.dis";
+    receiver := exports->open(inbound, "recv", Sys->ORDWR);
+    sender := exports->open(outbound, "send", Sys->ORDWR);
+    if (remote == nil || receiver == nil || sender == nil) {
+        raise "cannot open record pipe aliases";
+    }
+    input := chan of int;
+    output := chan of int;
+    done := chan of string;
+    spawn record_pipe_relay(sys, receiver, sender, input, output, done);
+    spawn record_pipe_check(input, output);
+    if (remote->forward(-10 - receiver.fd, -10 - sender.fd) != 37) {
+        raise "remote record pipe exchange failed";
+    }
+    problem := <-done;
+    if (problem != nil) {
+        raise problem;
+    }
+    sys->print("PASS live Limbo channels over Styx record pipes\n");
+}
+
+
+# EN: Move messages between the exported pipe and ordinary Limbo channels.
+# RU: Передавать сообщения между файловыми концами и обычными каналами Limbo.
+record_pipe_relay(sys: Sys, receiver, sender: ref Sys->FD, input, output: chan of int, done: chan of string)
+{
+    problem: string;
+    {
+        incoming := pipe_read(sys, receiver, 1024);
+        pipe_check(incoming, pipe_test_record(0));
+        input <-= int incoming[6];
+        pipe_accept(sys, receiver);
+        value := <-output;
+        if (value != 73) {
+            raise "invalid Limbo channel reply";
+        }
+        answer := pipe_test_record(1);
+        if (sys->write(sender, answer, len answer) != len answer) {
+            raise "cannot send Limbo channel reply";
+        }
+        pipe_check(pipe_read(sys, sender, 1), array[] of {byte 1});
+    } exception failure {
+        "*" => problem = failure;
+    }
+    done <-= problem;
+}
+
+
+# EN: Consume the incoming record in a real ALT and send the reply on a channel.
+# RU: Принять входную запись в настоящем alt и послать ответ через канал.
+record_pipe_check(input, output: chan of int)
+{
+    alt {
+        incoming := <-input =>
+            if (incoming != 42) {
+                raise "invalid Limbo channel input";
+            }
+            output <-= incoming + 31;
+    }
+}
+
+include "chain-record-pipe.b";

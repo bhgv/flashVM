@@ -23,6 +23,9 @@ forward(input, output: int): int
     if (input == -2 && output == -2) {
         return 29;
     }
+    if (input <= -10 && output <= -10) {
+        return check_styx_pipe(sys, -10 - input, -10 - output);
+    }
     inpath := sys->sprint("/.prog/.self/.fd/%d", input);
     outpath := sys->sprint("/.prog/.self/.fd/%d", output);
     in := sys->open(inpath, Sys->OREAD);
@@ -43,3 +46,49 @@ forward(input, output: int): int
 }
 
 include "chain-var.b";
+
+# EN: Exercise one exchange on two mounted exact fids, without sharing a local FD.
+# RU: Проверить обмен на двух точных fid маунта без передачи локального FD.
+check_styx_pipe(sys: Sys, first_private, second_private: int): int
+{
+    to_a := "/.prog/.self/.vfs/channel-to-a";
+    from_a := "/.prog/.self/.vfs/channel-from-a";
+    sender := sys->open(to_a+"/send", Sys->ORDWR);
+    receiver := sys->open(from_a+"/recv", Sys->ORDWR);
+    unrelated := sys->open(from_a+"/recv", Sys->ORDWR);
+    damaged := sys->open(to_a+"/send", Sys->ORDWR);
+    premature := sys->open(from_a+"/recv", Sys->ORDWR);
+    if (sender == nil || receiver == nil || unrelated == nil || damaged == nil || premature == nil ||
+        sys->open(to_a+"/recv", Sys->ORDWR) != nil ||
+        sys->open(from_a+"/send", Sys->ORDWR) != nil ||
+        sys->open(to_a+"/send", Sys->OWRITE) != nil ||
+        sys->open(sys->sprint("/.prog/.self/.fd/%d", first_private), Sys->ORDWR) != nil ||
+        sys->open(sys->sprint("/.prog/.self/.fd/%d", second_private), Sys->ORDWR) != nil) {
+        raise "record pipe exported the wrong endpoint or mode";
+    }
+    record := pipe_test_record(0);
+    malformed := pipe_test_record(0);
+    malformed[0] = byte 0;
+    receipt := array[] of {byte 1};
+    if (sys->write(damaged, malformed, len malformed) >= 0) {
+        raise "record pipe accepted damaged checksum";
+    }
+    if (sys->write(premature, receipt, 1) >= 0) {
+        raise "record pipe accepted an unsolicited receipt";
+    }
+    if (sys->read(sender, receipt, 1) != 0) {
+        raise "record pipe reported delivery before submission";
+    }
+    if (sys->write(sender, record, len record) != len record) {
+        raise sys->sprint("record pipe refused valid record: %r");
+    }
+    pipe_check(pipe_read(sys, sender, 1), array[] of {byte 1});
+    pipe_check(pipe_read(sys, receiver, 1024), pipe_test_record(1));
+    if (sys->write(unrelated, receipt, 1) >= 0) {
+        raise "receipt accepted on a different fid";
+    }
+    pipe_accept(sys, receiver);
+    return 37;
+}
+
+include "chain-record-pipe.b";
