@@ -183,14 +183,18 @@ check_bundle(m: Managed)
     Cell: import m;
     original := ref Cell("caller", nil);
     packed := m->bundle(original);
-    if (packed == nil || len packed.members != 4 || packed.members[0] != original ||
+    if (packed == nil || len packed.members != 258 || packed.members[0] != original ||
         original.text != "nested update" || packed.direct == nil ||
         packed.members[1] != packed.direct || packed.members[2] != nil ||
-        packed.members[3] != packed.direct || packed.direct.text != "member") {
+        packed.members[257] != packed.direct || packed.direct.text != "member") {
         raise "nested ref result lost identity";
     }
+    if (packed.members[255] == nil || packed.members[254] == packed.members[255] ||
+        packed.members[255] != packed.members[256]) {
+        raise "last reference index lost identity";
+    }
     packed.members[1].text = "shared";
-    if (packed.direct.text != "shared" || packed.members[3].text != "shared") {
+    if (packed.direct.text != "shared" || packed.members[257].text != "shared") {
         raise "nested aliases do not share one local object";
     }
 }

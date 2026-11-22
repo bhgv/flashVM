@@ -160,6 +160,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     {
         error("invalid managed request snapshot");
     }
+    baseline.tag = files->managed_tag;
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
     DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;

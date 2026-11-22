@@ -10,7 +10,7 @@ typedef struct DVM_StyxRefTable
 {
     void *objects[STYX_CALL_REF_KEYS]; /* Borrowed from rooted slots during a single traversal. */
     size_t count; /* Number of reserved reference indices. */
-    unsigned pins; /* New result references retained and rooted during encoding. */
+    size_t limit; /* Maximum result indices, or zero for the standalone limit. */
     int result; /* Share the table through the validated result tree. */
 } DVM_StyxRefTable;
 

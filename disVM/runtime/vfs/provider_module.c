@@ -254,7 +254,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->caller = caller;
         (*tail)->explicit_end = explicit_end;
         (*tail)->managed_tag = field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            strchr(shape.arguments, 'r') ?
+            (strchr(shape.arguments, 'r') || strchr(shape.result, 'r')) ?
             styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;

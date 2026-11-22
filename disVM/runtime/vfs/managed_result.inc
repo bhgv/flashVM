@@ -50,7 +50,8 @@ static int seed_result(DVM_StyxRefTable *table, const char *shape, const void *s
 int dvm_styx_ref_result_read(const StyxCallShape *shape, const void *data, size_t size,
     const void *argument_slots, const FVM_SRecord *arguments, DVM_StyxValueFrame *result)
 {
-    DVM_StyxRefTable refs = {.result = 1};
+    DVM_StyxRefTable refs = {.result = 1,
+        .limit = arguments->tag == STYX_MANAGED_WIDE_REFS_TAG ? STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
     FrameDecode decode = {.shape = shape->result, .refs = &refs};
     if (!result || !styxmanaged_layout(shape->result, &decode.pending.layout) ||
         !styxmanaged_result_read(shape->result, data, size, shape->arguments, arguments, &decode.list) ||
@@ -72,18 +73,20 @@ int dvm_styx_ref_result_read(const StyxCallShape *shape, const void *data, size_
 int dvm_styx_ref_result_write(const StyxCallShape *shape, const void *slots, size_t size,
     const void *argument_slots, const FVM_SRecord *arguments, void *data, size_t capacity, size_t *used)
 {
-    DVM_StyxRefTable refs = {.result = 1};
+    DVM_StyxRefTable refs = {.result = 1,
+        .limit = arguments->tag == STYX_MANAGED_WIDE_REFS_TAG ? STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
     FrameEncode encode = {.slots = slots, .refs = &refs};
-    int valid = seed_result(&refs, shape->arguments, argument_slots, arguments) &&
-        encode_frame(&encode, STYX_DYNAMIC_REPLY_TAG, shape->result, size, data, capacity, used,
-            shape->arguments, arguments);
-    for (size_t i = 0; i < refs.count; i++)
+    if (!seed_result(&refs, shape->arguments, argument_slots, arguments))
     {
-        if (refs.pins & (1U << i))
-        {
-            ptrdel(D2H(refs.objects[i]));
-            destroy(refs.objects[i]);
-        }
+        return 0;
+    }
+    size_t seeded = refs.count;
+    int valid = encode_frame(&encode, STYX_DYNAMIC_REPLY_TAG, shape->result, size, data, capacity, used,
+        shape->arguments, arguments);
+    for (size_t i = seeded; i < refs.count; i++)
+    {
+        ptrdel(D2H(refs.objects[i]));
+        destroy(refs.objects[i]);
     }
     return valid;
 }

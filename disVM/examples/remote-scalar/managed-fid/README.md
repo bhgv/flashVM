@@ -74,6 +74,11 @@ a bounded neighborhood for a shared sequence after each mismatch. If the
 resulting record saves bytes, it can preserve a long interior between an
 insertion and a distant replacement. Otherwise the earlier encodings apply.
 
+A six-byte `.ref-fields` file enables 256 distinct references per result,
+including references reused from arguments. Earlier versions allow 16.
+The bundle example fills the reference table and checks an alias to its last
+entry. The S-record size limit still applies.
+
 The nested example sends an array of UTF-8 strings and a `ref` object with
 an array of byte arrays and an array of tuples. Each array element has its
 own S-record. A nil element and an empty array have distinct records.

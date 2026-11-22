@@ -22,6 +22,7 @@ int styxmanaged_payload_linked(const char *shape, const void *bytes, size_t size
         return 0;
     }
     keys.nested = 1;
+    keys.limit = arguments->tag == STYX_MANAGED_WIDE_REFS_TAG ? STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS;
     return managed_payload(shape, bytes, size, &keys);
 }
 

@@ -253,7 +253,7 @@ static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *
 static int field_patch(char type, unsigned long version, const FVM_SRecord *old, const FVM_SRecord *next,
     void *output, size_t capacity, size_t *used)
 {
-    int edits = version == STYX_MANAGED_EDIT_REQUEST_TAG;
+    int edits = version == STYX_MANAGED_EDIT_REQUEST_TAG || version == STYX_MANAGED_WIDE_REFS_TAG;
     int text = edits || version == STYX_MANAGED_TEXT_REQUEST_TAG;
     int splice = text || version == STYX_MANAGED_SPLICE_REQUEST_TAG;
     int runs = splice || version == STYX_MANAGED_RUN_REQUEST_TAG;

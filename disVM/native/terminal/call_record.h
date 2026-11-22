@@ -11,7 +11,8 @@
 #include "load_profile.h"
 
 #define STYX_CALL_VALUES 8U /* Maximum flattened scalar cells in a frame. */
-#define STYX_CALL_REF_KEYS (2U * STYX_CALL_VALUES) /* Input and output reference identities. */
+#define STYX_CALL_REF_KEYS 256U /* All values of the wire reference-index byte. */
+#define STYX_CALL_LEGACY_REF_KEYS (2U * STYX_CALL_VALUES) /* Older result profiles. */
 #define STYX_CALL_DEPTH 4U /* Maximum tuple nesting, including the outer list. */
 
 typedef struct StyxCallValues

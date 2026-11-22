@@ -77,7 +77,7 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
         return 1;
     }
     char fields[STYX_SHAPE_MAX + 1];
-    if (index >= STYX_CALL_REF_KEYS || !(table->result ?
+    if (index >= (table->limit ? table->limit : STYX_CALL_LEGACY_REF_KEYS) || !(table->result ?
         styxmanaged_result_ref_fields(shape, fields) : styxmanaged_ref_fields(shape, fields)))
     {
         return 0;
@@ -202,7 +202,6 @@ static int pin_result_object(DVM_StyxRefTable *table, void *object)
         destroy(object);
         return 0;
     }
-    table->pins |= 1U << table->count;
     table->objects[table->count++] = object;
     return 1;
 }
@@ -224,16 +223,17 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
     {
         return 0;
     }
-    unsigned char index = 0;
+    size_t index = 0;
     while (index < table->count && table->objects[index] != object)
     {
         index++;
     }
+    unsigned char wire_index = (unsigned char)index;
     if (index < table->count)
     {
-        return fvm_srecord_write(STYX_MANAGED_REF_TAG, &index, 1, bytes, capacity, used) == FVM_S_OK;
+        return fvm_srecord_write(STYX_MANAGED_REF_TAG, &wire_index, 1, bytes, capacity, used) == FVM_S_OK;
     }
-    if (index >= STYX_CALL_REF_KEYS || !dvm_styx_value_snapshot(object, &snapshot))
+    if (index >= (table->limit ? table->limit : STYX_CALL_LEGACY_REF_KEYS) || !dvm_styx_value_snapshot(object, &snapshot))
     {
         dvm_styx_value_frame_clear(&snapshot);
         return 0;
@@ -249,7 +249,7 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
     size_t consumed;
     int valid = encode.record && kprotect(encode_snapshot, &encode) &&
         fvm_srecord_read(encode.record, encode.size, capacity, &record, &consumed) == FVM_S_OK &&
-        consumed == encode.size && fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1,
+        consumed == encode.size && fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &wire_index, 1,
             record.payload, record.size, bytes, capacity, used) == FVM_S_OK;
     dvm_styx_value_frame_clear(&snapshot);
     free(encode.record);

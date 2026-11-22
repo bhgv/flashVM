@@ -400,7 +400,7 @@ static int managed_capabilities(void)
 {
     const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
         STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
-        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG};
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG};
     for (size_t i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
     {
         if (styxmanaged_capability(0, i) != tags[i] || !styxmanaged_request_tag(tags[i]) ||
@@ -413,8 +413,8 @@ static int managed_capabilities(void)
         !styxmanaged_has_snapshot(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_request_tag(STYX_MANAGED_REPLY_TAG) &&
         !styxmanaged_request_tag(STYX_SCOPED_RECORD_OFFER_TAG) &&
-        !styxmanaged_request_tag(STYX_MANAGED_EDIT_REQUEST_TAG + 1) &&
-        styxmanaged_capability(0, STYX_MANAGED_EDIT_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
+        !styxmanaged_request_tag(STYX_MANAGED_WIDE_REFS_TAG + 1) &&
+        styxmanaged_capability(0, STYX_MANAGED_WIDE_REFS_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
         styxmanaged_capability(1, 0) == STYX_MANAGED_DELTA_REQUEST_TAG;
 }
 

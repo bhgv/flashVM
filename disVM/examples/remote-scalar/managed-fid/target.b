@@ -105,5 +105,12 @@ bundle(state: ref Cell): ref Bundle
 {
     state.text = "nested update";
     fresh := ref Cell("member", nil);
-    return ref Bundle(fresh, array[] of {state, fresh, nil, fresh});
+    members := array[258] of ref Cell;
+    members[0] = state;
+    members[1] = fresh;
+    for (i := 3; i < 256; i++)
+        members[i] = ref Cell("item", nil);
+    members[256] = members[255];
+    members[257] = fresh;
+    return ref Bundle(fresh, members);
 }

@@ -8,6 +8,7 @@ typedef struct RefKeys
 {
     const char *type[STYX_CALL_REF_KEYS]; /* First occurrence of each object schema. */
     size_t count; /* Number of reserved snapshot indices. */
+    size_t limit; /* Maximum count, or zero for the standalone limit. */
     int nested; /* Result traversal may define references inside values. */
 } RefKeys;
 
@@ -64,7 +65,7 @@ static int managed_ref(const char *shape, const FVM_SRecord *value, unsigned dep
             !memcmp(shape, first, length);
     }
     char fields[STYX_SHAPE_MAX + 1];
-    if (index != keys->count || index >= STYX_CALL_REF_KEYS ||
+    if (index != keys->count || index >= (keys->limit ? keys->limit : STYX_CALL_LEGACY_REF_KEYS) ||
         !styxmanaged_result_ref_fields(shape, fields) || (!keys->nested && strchr(fields, 'r')))
     {
         return 0;
