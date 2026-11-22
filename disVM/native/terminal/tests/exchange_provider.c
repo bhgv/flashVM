@@ -68,7 +68,7 @@ static void closebytes(void *state)
 {
     free(state);
 }
-static const DVM_VfsOps stream = {NULL, readbytes, NULL, NULL, NULL, closebytes, NULL, NULL, NULL}; /* Read-only native source. */
+static const DVM_VfsOps stream = {.read = readbytes, .close = closebytes}; /* Read-only native source. */
 
 
 /* EN/RU: Open only the permitted source for reading; denial is final even for an existing path.

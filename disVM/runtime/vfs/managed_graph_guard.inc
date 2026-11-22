@@ -9,7 +9,9 @@ typedef struct GraphGuard
     const void *slots;
     const FVM_SRecord *baseline;
     DVM_StyxRefTable *refs;
-    int changed;
+    int changed; /* A live argument path no longer matches the request. */
+    DVM_BigtableEdit *tables; /* Borrowed staged table patches checked with the other fields. */
+    size_t table_count; /* Number of table updates in the reply. */
 } GraphGuard;
 
 static DVM_CellResult guard_values(GraphGuard *graph, DVM_RangeAccess *access,
@@ -28,7 +30,7 @@ static DVM_CellResult guard_ref(GraphGuard *graph, DVM_RangeAccess *access,
     {
         return DVM_CELL_REFUSED;
     }
-    if (node->size == 1)
+    if (node->size == 1 || *type == 'h')
     {
         return DVM_CELL_ACQUIRED;
     }
@@ -109,7 +111,8 @@ static DVM_CellResult guard_values(GraphGuard *graph, DVM_RangeAccess *access,
         else
         {
             size_t i = (*leaf)++;
-            if (*type == 'r' || (*type == 'a' && memchr(type, 'r', (size_t)(end - type))))
+            if (*type == 'r' || *type == 'h' || (*type == 'a' &&
+                (memchr(type, 'r', (size_t)(end - type)) || memchr(type, 'h', (size_t)(end - type)))))
             {
                 const void *slot = slots + layout->offset[i];
                 claim = dvm_range_access_extend(access, slot, sizeof(void *));
@@ -117,7 +120,7 @@ static DVM_CellResult guard_values(GraphGuard *graph, DVM_RangeAccess *access,
                 {
                     void *value;
                     memcpy(&value, slot, sizeof(value));
-                    claim = *type == 'r' ? guard_ref(graph, access, type, value, &node) :
+                    claim = *type != 'a' ? guard_ref(graph, access, type, value, &node) :
                         guard_array(graph, access, type, value, &node);
                 }
             }

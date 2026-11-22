@@ -4,6 +4,8 @@
 implement Client;
 include "sys.m";
 include "managed.m";
+include "managed-table.m";
+include "vfsexport.m";
 Client: module { init: fn(); };
 # EN: Load the mounted library and validate normal and exceptional calls.
 # RU: Загрузить смонтированную библиотеку и проверить возврат и исключение.
@@ -44,6 +46,7 @@ init()
     if (!first || !second) {
         raise "parallel managed calls lost arguments or results";
     }
+    check_tables(sys);
     sys->print("PASS managed Styx load\n");
 }
 
@@ -271,3 +274,6 @@ graph_conflict_call(m: Managed, state: ref Managed->Bundle, extra: array of ref 
     }
     done <-= problem;
 }
+
+
+include "table-client.b";

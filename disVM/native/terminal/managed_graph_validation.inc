@@ -23,7 +23,7 @@ int styxmanaged_graph_positions(const char *shape, const FVM_SRecord *arguments,
         {
             return 0;
         }
-        if (*type == 'r' && record.tag == STYX_MANAGED_REF_TAG && record.size)
+        if ((*type == 'r' || *type == 'h') && record.tag == STYX_MANAGED_REF_TAG && record.size)
         {
             unsigned index = record.payload[0];
             if (!positions->argument[index])
@@ -142,8 +142,10 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
             return 0;
         }
         StyxFieldDelta change;
-        if (sparse ?
-            !styxmanaged_graph_fields(keys.type[index], &update, &change) ||
+        if (*keys.type[index] == 'h' ?
+            arguments->tag != STYX_MANAGED_POSITION_GRAPH_TAG ||
+                !styxmanaged_table_visit(update.payload + 1, update.size - 1, 1, NULL, NULL) :
+            sparse ? !styxmanaged_graph_fields(keys.type[index], &update, &change) ||
                 !managed_payload(change.schema, change.fields.payload, change.fields.size, &keys) :
             !managed_children(keys.type[index] + 2, update.payload + 1, update.size - 1, 0, 0, &keys))
         {

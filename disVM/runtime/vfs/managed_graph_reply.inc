@@ -34,6 +34,25 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
     {
         char fields[STYX_SHAPE_MAX + 1];
         unsigned char index = (unsigned char)i;
+        unsigned position = positions.argument[i];
+        unsigned long tag = position ? STYX_MANAGED_ARG_UPDATE_TAG : STYX_MANAGED_REF_TAG;
+        unsigned char selector = position ? (unsigned char)(position - 1) : index;
+        if (*definitions[i].shape == 'h')
+        {
+            size_t patch, written;
+            valid = baseline->tag == STYX_MANAGED_POSITION_GRAPH_TAG &&
+                table_patch(refs.objects[i], &definitions[i].record, record, sizeof(record), &patch);
+            if (valid && patch)
+            {
+                valid = fvm_srecord_write_pair(tag, &selector, 1, record, patch,
+                    payload + length, sizeof(payload) - length, &written) == FVM_S_OK;
+                if (valid)
+                {
+                    length += written;
+                }
+            }
+            continue;
+        }
         DVM_StyxValueFrame frame = {0};
         FVM_SRecord encoded;
         size_t extent, consumed, written;
@@ -65,9 +84,6 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
                 record, sizeof(record), &fields_size);
             if (valid && fields_size)
             {
-                unsigned position = positions.argument[i];
-                unsigned long tag = position ? STYX_MANAGED_ARG_UPDATE_TAG : STYX_MANAGED_REF_TAG;
-                unsigned char selector = position ? (unsigned char)(position - 1) : index;
                 valid = fvm_srecord_write_pair(tag, &selector, 1, record, fields_size,
                     payload + length, sizeof(payload) - length, &written) == FVM_S_OK;
                 if (valid)
@@ -159,6 +175,9 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
         return 0;
     }
     RefSwap swaps[STYX_CALL_REF_KEYS];
+    DVM_BigtableEdit tables[STYX_CALL_REF_KEYS];
+    FVM_SRecord patches[STYX_CALL_REF_KEYS];
+    size_t table_count = 0;
     DVM_StyxValueFrame *stages = records[1].size ? calloc(originals, sizeof(*stages)) : NULL;
     DVM_StyxValueFrame result = {0};
     int valid = (!records[1].size || stages) && (records[0].tag == STYX_MANAGED_NIL_TAG ||
@@ -175,9 +194,16 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
         {
             break;
         }
+        void *original = refs->objects[index];
+        if (*definitions[index].shape == 'h')
+        {
+            patches[table_count] = (FVM_SRecord){.payload = update.payload + 1, .size = update.size - 1};
+            tables[table_count] = (DVM_BigtableEdit){original, stage_table_edit, &patches[table_count]};
+            table_count++;
+            continue;
+        }
         unsigned mask;
         DVM_StyxValueFrame *stage = &stages[count];
-        void *original = refs->objects[index];
         valid = graph_stage(refs, &definitions[index], &update,
             styxmanaged_sparse_graph_tag(baseline->tag), stage, &mask);
         if (valid)
@@ -186,7 +212,8 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
             valid = ref_layout(D2H(original)->t, &stage->layout);
         }
     }
-    GraphGuard graph = {.shape = shape->arguments, .slots = slots, .baseline = baseline, .refs = refs};
+    GraphGuard graph = {.shape = shape->arguments, .slots = slots, .baseline = baseline, .refs = refs,
+        .tables = tables, .table_count = table_count};
     void *moved[STYX_CALL_REF_KEYS][STYX_CALL_VALUES] = {{0}};
     if (valid)
     {

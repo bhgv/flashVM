@@ -360,6 +360,10 @@ The scoped form is available for additional signatures selected by
 the compiled shape.
 See the [two-VM example](../../examples/remote-scalar/STYX.md#call-with-a-reverse-styx-mount).
 
+In the positional graph profile, the compiled token `h` adds native hybrid
+tables to managed calls. Definitions, aliases and changed-key patches use
+the existing reply envelope. See [Styx managed table records](MANAGED-TABLE-RECORD.md).
+
 ### Explicit end of a request
 
 A native client may write tag 94 with one complete ordinary function

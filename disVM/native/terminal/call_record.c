@@ -201,7 +201,7 @@ static int scalar_field(const char **cursor, unsigned depth, int managed, StyxSc
         layout->size = align_field(size, *alignment);
         return 1;
     }
-    int pointer = managed && (type == 's' || type == 'a' || type == 'r');
+    int pointer = managed && (type == 's' || type == 'a' || type == 'r' || type == 'h');
     if ((!pointer && type != 'i' && type != 'b' && type != 'f' && type != 'y') ||
         layout->count == STYX_CALL_VALUES)
     {
@@ -293,7 +293,7 @@ int styxmanaged_arrays(const char *shape, int result)
     {
         char element[STYX_SHAPE_MAX + 1];
         StyxScalarLayout layout;
-        if (!styxmanaged_array_layout(array, element, &layout) || (!result && strchr(element, 'r')))
+        if (!styxmanaged_array_layout(array, element, &layout) || (!result && strpbrk(element, "rh")))
         {
             return 0;
         }
@@ -342,6 +342,7 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 }
 
 
+#include "managed_table_wire.inc"
 #include "managed_record_validation.inc"
 
 

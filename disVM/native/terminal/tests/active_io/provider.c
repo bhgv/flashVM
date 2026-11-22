@@ -85,7 +85,7 @@ static void closing(void *state)
     __atomic_add_fetch(&closed, 1, __ATOMIC_RELEASE);
     free(state);
 }
-static const DVM_VfsOps stream = {NULL, reading, NULL, NULL, NULL, closing, NULL, NULL, NULL}; /* Scoped native read/close. */
+static const DVM_VfsOps stream = {.read = reading, .close = closing}; /* Scoped native read/close. */
 
 
 /* EN/RU: Open exactly one read source, refusing cancelled open without transferring a cursor.

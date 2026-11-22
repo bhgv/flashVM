@@ -41,7 +41,7 @@ int styxmanaged_result_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX 
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX + 1])
 {
-    return styxmanaged_result_ref_fields(shape, fields) && !strchr(fields, 'r');
+    return styxmanaged_result_ref_fields(shape, fields) && !strpbrk(fields, "rh");
 }
 
 
@@ -65,14 +65,17 @@ static int managed_ref(const char *shape, const FVM_SRecord *value, unsigned dep
         return value->size == 1 && (size_t)(styxshape_end(shape) - shape) == length &&
             !memcmp(shape, first, length);
     }
+    int table = *shape == 'h';
     char fields[STYX_SHAPE_MAX + 1];
     if (index != keys->count || index >= (keys->limit ? keys->limit : STYX_CALL_LEGACY_REF_KEYS) ||
-        !styxmanaged_result_ref_fields(shape, fields) || (!keys->nested && strchr(fields, 'r')))
+        (table ? !keys->nested : !styxmanaged_result_ref_fields(shape, fields) ||
+            (!keys->nested && strpbrk(fields, "rh"))))
     {
         return 0;
     }
     keys->type[keys->count++] = NULL;
-    if (!managed_children(shape + 2, value->payload + 1, value->size - 1, 0, depth + 1, keys))
+    if (table ? !styxmanaged_table_visit(value->payload + 1, value->size - 1, 0, NULL, NULL) :
+        !managed_children(shape + 2, value->payload + 1, value->size - 1, 0, depth + 1, keys))
     {
         return 0;
     }

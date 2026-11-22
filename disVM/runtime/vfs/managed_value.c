@@ -212,7 +212,7 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
             {
                 char type[STYX_SHAPE_MAX + 1] = {0};
                 void *object;
-                if (*shape == 'r')
+                if (*shape == 'r' || *shape == 'h')
                 {
                     if (!dvm_styx_ref_read(decode->refs, shape, &node, &object))
                     {
@@ -362,7 +362,7 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
         char type[STYX_SHAPE_MAX + 1] = {0};
         void *value;
         memcpy(&value, slot, sizeof(value));
-        if (*shape == 'r')
+        if (*shape == 'r' || *shape == 'h')
         {
             return dvm_styx_ref_write(encode->refs, shape, value, bytes, capacity, used);
         }

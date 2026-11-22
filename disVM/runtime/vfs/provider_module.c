@@ -240,11 +240,12 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             }
         }
         unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            (strchr(shape.arguments, 'r') || strchr(shape.result, 'r')) ?
+            (strpbrk(shape.arguments, "rh") || strpbrk(shape.result, "rh")) ?
             styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
         if (bit && explicit_end == STYX_CALL_RECORD_FRAMING)
         {
-            int needs_graph = styxmanaged_graph_required(shape.arguments);
+            int table = strchr(shape.arguments, 'h') || strchr(shape.result, 'h');
+            int needs_graph = table || styxmanaged_graph_required(shape.arguments);
             if (needs_graph && (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG))
             {
                 bit = 0;
@@ -266,6 +267,10 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
                         graph_tag = STYX_MANAGED_SPARSE_GRAPH_TAG;
                     }
                     read_graph_marker = 1;
+                }
+                if (table && graph_tag != STYX_MANAGED_POSITION_GRAPH_TAG)
+                {
+                    bit = 0;
                 }
                 managed_tag = needs_graph ? graph_tag : graph_tag == STYX_MANAGED_POSITION_GRAPH_TAG ?
                     STYX_MANAGED_POSITION_FLAT_TAG : STYX_MANAGED_WIDE_REFS_TAG;

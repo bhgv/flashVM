@@ -30,6 +30,32 @@ static int token(Shape *shape, char ch)
 }
 
 
+/* EN: Recognize the resolved hosted Bigtable handle before expanding ADT fields.
+ * RU: Распознать разрешённый дескриптор Bigtable до раскрытия полей ADT. */
+static int table_handle(const Type *type)
+{
+    const Decl *name = type && type->kind == Tadt ? type->decl : nil;
+    const Decl *module = name ? name->dot : nil;
+    if (!name || !name->sym || strcmp(name->sym->name, "Handle") ||
+        !module || !module->sym || !module->ty || module->ty->kind != Tmodule ||
+        strcmp(module->sym->name, "Bigtable"))
+    {
+        return 0;
+    }
+    for (const Decl *member = module->ty->ids; member; member = member->next)
+    {
+        if (member->store == Dconst && member->sym && !strcmp(member->sym->name, "PATH") &&
+            member->init && member->init->op == Oconst && member->init->ty && member->init->ty->kind == Tstring &&
+            member->init->decl && member->init->decl->sym &&
+            !strcmp(member->init->decl->sym->name, "$Bigtable"))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 /* EN: Serialize a supported resolved type with bounded recursion.
  * RU: Записать поддерживаемый разрешённый тип с ограниченной вложенностью. */
 static int shape_type(Shape *shape, const Type *type, unsigned depth)
@@ -69,6 +95,10 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
         return token(shape, ')');
     case Tref:
         type = type->tof;
+        if (debug['G'] && table_handle(type))
+        {
+            return token(shape, 'h');
+        }
         if (!type || type->kind != Tadt || type->tags || type->polys ||
             !token(shape, 'r') || !token(shape, '['))
         {

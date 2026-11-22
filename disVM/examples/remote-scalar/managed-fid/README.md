@@ -2,8 +2,8 @@
 
 [Русская версия](README.ru.md) · [Remote Dis examples](../README.md)
 
-Two DisVM processes share one Styx session. The owner serves six exports from
-one loaded instance of [target.b](target.b). The caller imports [managed.m](managed.m),
+Two DisVM processes share one Styx session. The owner serves exports from
+[target.b](target.b) and [table-target.b](table-target.b). The caller imports [managed.m](managed.m),
 loads the mounted module path and calls the functions with ordinary Limbo syntax.
 The owner builds the bridge from the types recorded by the Limbo compiler.
 
@@ -19,7 +19,8 @@ python3 disVM/examples/remote-scalar/managed-fid/run.py \
 
 The runner uses separate temporary directories, compiles the images with
 `-D RG`, connects both processes over a single loopback TCP connection and
-cleans up on exit. Expect `PASS managed Styx load` in both execution modes.
+cleans up on exit. Expect `PASS managed Styx load and hybrid tables` in both
+execution modes.
 
 ## Follow the call
 
@@ -147,3 +148,31 @@ rebound a reference to another object or to `nil`, the call raises
 `remote ref argument changed while waiting` and installs no updates.
 Concurrent data changes to an object with the same identity are allowed.
 The provider's returned fields replace those fields only.
+
+## Pass hybrid tables
+
+[managed-table.m](managed-table.m) declares arguments and results of type
+`ref Bigtable->Handle`. The caller uses an ordinary `load` of
+`/transport/mounted/hybrid.dis`, then invokes `apply` with a real local
+Bigtable handle. Compile both sides with `-D RG` so Limbo records the table
+type alongside the ordinary export signature.
+
+The [provider](table-target.b) uses the same `Bigtable` operations it uses for
+a local call. The receiver reconstructs the dense prefix, sparse numeric
+keys and text keys. Numeric `1` is distinct from text `"1"`. An array and
+an ADT can carry aliases of the same table. The result can share its original
+caller identity or be a newly allocated native handle. A string-key-only
+table uses the same interface as a hash table.
+
+[The caller](table-client.b) verifies a key insertion, deletion and reorder,
+a second table's update, and an ADT field copied back in the same reply.
+Unchanged keys remain in the caller's existing handle. Other caller threads
+can edit unrelated keys while the owner runs. An exception, a rebound
+reference or refusal of the complete copy-back leaves the caller's original
+tables untouched. The example also checks a VFS projection opened from the
+same handle after copy-back.
+
+The supported native table specialization stores `big` values. The request
+and reply remain subject to the managed record limit. The transport format
+and native visitor are described in
+[Styx managed table records](../../../native/terminal/MANAGED-TABLE-RECORD.md).

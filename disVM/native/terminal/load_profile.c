@@ -101,7 +101,7 @@ static int shape_type(const char **cursor, unsigned depth)
         return 0;
     }
     char type = *(*cursor)++;
-    if (type == 'i' || type == 'b' || type == 'f' || type == 'y' || type == 's')
+    if (type == 'i' || type == 'b' || type == 'f' || type == 'y' || type == 's' || type == 'h')
     {
         return 1;
     }
@@ -481,7 +481,7 @@ int styxmanaged_graph_required(const char *arguments)
 {
     char refs[STYX_SHAPE_MAX + 1];
     unsigned mask;
-    return !styxmanaged_refs(arguments, refs, &mask) || !styxmanaged_arrays(arguments, 0);
+    return strchr(arguments, 'h') || !styxmanaged_refs(arguments, refs, &mask) || !styxmanaged_arrays(arguments, 0);
 }
 
 

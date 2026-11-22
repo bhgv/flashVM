@@ -19,6 +19,7 @@ def compile_images(compiler, disvm, example, owner, caller):
     for source, image in (
         (disvm / "limbo/scalarowner.b", owner / "scalarowner.dis"),
         (example / "target.b", owner / "target.dis"),
+        (example / "table-target.b", owner / "table-target.dis"),
         (example / "client.b", caller / "client.dis"),
     ):
         subprocess.run([*compiler_args, "-o", image, source], check=True)
@@ -41,6 +42,8 @@ def exercise(runtime, owner, caller, mode):
          "--export", "managed.dis", "target.dis", "reference",
          "--export", "managed.dis", "target.dis", "bundle",
          "--export", "managed.dis", "target.dis", "changegraph",
+         "--export", "hybrid.dis", "table-target.dis", "apply",
+         "--export", "hybrid.dis", "table-target.dis", "empty",
          "--", mode, "scalarowner.dis"],
         cwd=owner, pass_fds=(owner_fd.fileno(),), stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True,
@@ -57,9 +60,10 @@ def exercise(runtime, owner, caller, mode):
             )
             client_fd.close()
             output, _ = server.communicate(timeout=10)
-            if client.returncode or server.returncode or "PASS managed Styx load" not in client.stdout:
+            if (client.returncode or server.returncode or "PASS managed Styx load" not in client.stdout or
+                "PASS managed Styx hybrid tables" not in client.stdout):
                 raise RuntimeError(f"{mode}\nClient:\n{client.stdout}\nOwner:\n{output}")
-            print(f"{mode}: PASS managed Styx load", flush=True)
+            print(f"{mode}: PASS managed Styx load and hybrid tables", flush=True)
         finally:
             if server.poll() is None:
                 server.kill()

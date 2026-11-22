@@ -93,6 +93,26 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_REF_TAG 10UL /* Index byte, then fields on first occurrence. */
 
 
+#define STYX_MANAGED_TABLE_TAG 20UL /* Complete hybrid table, using ordered typed pairs. */
+#define STYX_MANAGED_TABLE_PAIR_TAG 21UL /* Big or string key followed by a big value. */
+#define STYX_MANAGED_TABLE_PATCH_TAG 22UL /* Ordered removals followed by changed pairs. */
+#define STYX_MANAGED_TABLE_REMOVE_TAG 23UL /* Remove one big or string key. */
+
+typedef struct StyxTableKey
+{
+    int64_t index; /* Nonnegative positional or sparse key if text is false. */
+    const unsigned char *bytes; /* Borrowed exact UTF-8 key bytes when text is true. */
+    size_t size; /* Byte extent of bytes, allowing embedded zero bytes. */
+    int text; /* Distinguish numeric keys from textual keys. */
+} StyxTableKey;
+
+/* EN: Validate one table record and optionally visit its checked rows in order.
+ * A false visitor result refuses the record; visitors stage unpublished data.
+ * RU: Проверить полную запись таблицы, затем при необходимости обойти строки.
+ * Ноль от посетителя означает отказ; посетитель меняет только временные данные. */
+int styxmanaged_table_visit(const void *bytes, size_t size, int patch,
+    int (*visit)(void *, const StyxTableKey *, int, int64_t), void *state);
+
 /* EN: Extract one ref ADT's non-reference field schema.
  * RU: Получить схему полей одного ref ADT без вложенных ref. */
 int styxmanaged_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX + 1]);

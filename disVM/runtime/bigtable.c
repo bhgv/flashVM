@@ -236,6 +236,18 @@ static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
 
 #include "bigtable_projection.inc"
 
+/* EN: Publish private native storage on an unpublished owner and count it.
+ * RU: Передать частное хранилище неопубликованному владельцу и учесть его. */
+static void attach_table(TableOwner *owner, TableStorage *storage)
+{
+    owner->storage = storage;
+    owner->ready = 1;
+    fvm_port_registry_lock();
+    table_owners++;
+    fvm_port_registry_unlock();
+}
+
+
 /* Initialize an unpublished private owner; finalization can retire partial
  * construction after a VM exception. No heap reference escapes into C storage. */
 static void initialize_table(TableOwner *owner)
@@ -246,12 +258,11 @@ static void initialize_table(TableOwner *owner)
     {
         error(failure == ENOMEM ? exNomem : "native table guard initialization failure");
     }
-    owner->storage = storage;
-    owner->ready = 1;
-    fvm_port_registry_lock();
-    table_owners++;
-    fvm_port_registry_unlock();
+    attach_table(owner, storage);
 }
+
+
+#include "bigtable_transfer.inc"
 
 /* Validate a borrowed snapshot reference before reading private metadata. */
 static FhtKeys *keys_value(Bigtable_Keys *handle)
