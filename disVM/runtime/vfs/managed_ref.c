@@ -69,7 +69,7 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
     if (index < table->count)
     {
         void *value = table->objects[index];
-        if (node->size != 1 || dvm_refcount_retain_u(&D2H(value)->ref) != DVM_REFCOUNT_LIVE)
+        if (!value || value == H || node->size != 1 || dvm_refcount_retain_u(&D2H(value)->ref) != DVM_REFCOUNT_LIVE)
         {
             return 0;
         }
@@ -77,18 +77,27 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
         return 1;
     }
     char fields[STYX_SHAPE_MAX + 1];
-    if (index >= STYX_CALL_REF_KEYS || !styxmanaged_ref_fields(shape, fields))
+    if (index >= STYX_CALL_REF_KEYS || !(table->result ?
+        styxmanaged_result_ref_fields(shape, fields) : styxmanaged_ref_fields(shape, fields)))
     {
         return 0;
     }
-    size_t extent = node->size + 16;
-    unsigned char *record = malloc(extent);
-    size_t used;
     DVM_StyxValueFrame frame = {0};
-    int valid = record && fvm_srecord_write(STYX_MANAGED_REF_TAG, node->payload + 1, node->size - 1,
-        record, extent, &used) == FVM_S_OK &&
-        dvm_styx_value_frame_read(STYX_MANAGED_REF_TAG, fields, record, used, &frame);
-    free(record);
+    int valid;
+    if (table->result)
+    {
+        table->objects[table->count++] = NULL;
+        valid = dvm_styx_result_fields_read(table, fields, node->payload + 1, node->size - 1, &frame);
+    }
+    else
+    {
+        size_t extent = node->size + 16, used;
+        unsigned char *record = malloc(extent);
+        valid = record && fvm_srecord_write(STYX_MANAGED_REF_TAG, node->payload + 1, node->size - 1,
+            record, extent, &used) == FVM_S_OK &&
+            dvm_styx_value_frame_read(STYX_MANAGED_REF_TAG, fields, record, used, &frame);
+        free(record);
+    }
     if (!valid)
     {
         return 0;
@@ -119,7 +128,11 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
             ptrdel(D2H(value));
         }
     }
-    table->objects[table->count++] = allocation.object;
+    if (!table->result)
+    {
+        table->count++;
+    }
+    table->objects[index] = allocation.object;
     *result = allocation.object;
     return 1;
 }
@@ -132,6 +145,7 @@ typedef struct RefEncode
     unsigned char *record; /* Scratch for the field list. */
     size_t capacity; /* Scratch extent. */
     size_t size; /* Encoded field list extent. */
+    DVM_StyxRefTable *table; /* Shared result references or NULL for a standalone snapshot. */
 } RefEncode;
 
 
@@ -155,8 +169,42 @@ static int encode_snapshot(void *opaque)
             }
         }
     }
+    if (state->table)
+    {
+        return dvm_styx_result_fields_write(state->table, state->fields, snapshot->words,
+            snapshot->layout.size, state->record, state->capacity, &state->size);
+    }
     return dvm_styx_value_frame_write(STYX_MANAGED_REF_TAG, state->fields, snapshot->words,
         snapshot->layout.size, state->record, state->capacity, &state->size);
+}
+
+
+/* EN: Register an encoder-owned temporary root within an error boundary.
+ * RU: Зарегистрировать временный корень кодировщика под обработчиком ошибок. */
+static int root_result_object(void *object)
+{
+    ptradd(D2H(object));
+    Setmark(D2H(object));
+    return 1;
+}
+
+
+/* EN: Reserve an index and pin its object until the complete result has been encoded.
+ * RU: Зарезервировать индекс и удержать объект до кодирования всего результата. */
+static int pin_result_object(DVM_StyxRefTable *table, void *object)
+{
+    if (dvm_refcount_retain_u(&D2H(object)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        return 0;
+    }
+    if (!kprotect(root_result_object, object))
+    {
+        destroy(object);
+        return 0;
+    }
+    table->pins |= 1U << table->count;
+    table->objects[table->count++] = object;
+    return 1;
 }
 
 
@@ -170,7 +218,8 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
     }
     char fields[STYX_SHAPE_MAX + 1];
     DVM_StyxValueFrame snapshot = {0};
-    if (!object || !styxmanaged_ref_fields(shape, fields) || !styxmanaged_layout(fields, &snapshot.layout) ||
+    if (!object || !(table->result ? styxmanaged_result_ref_fields(shape, fields) :
+        styxmanaged_ref_fields(shape, fields)) || !styxmanaged_layout(fields, &snapshot.layout) ||
         !ref_layout(D2H(object)->t, &snapshot.layout))
     {
         return 0;
@@ -189,7 +238,13 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
         dvm_styx_value_frame_clear(&snapshot);
         return 0;
     }
-    RefEncode encode = {&snapshot, fields, malloc(capacity), capacity, 0};
+    if (table->result && !pin_result_object(table, object))
+    {
+        dvm_styx_value_frame_clear(&snapshot);
+        return 0;
+    }
+    RefEncode encode = {.snapshot = &snapshot, .fields = fields, .record = malloc(capacity),
+        .capacity = capacity, .table = table->result ? table : NULL};
     FVM_SRecord record;
     size_t consumed;
     int valid = encode.record && kprotect(encode_snapshot, &encode) &&
@@ -198,7 +253,7 @@ int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
             record.payload, record.size, bytes, capacity, used) == FVM_S_OK;
     dvm_styx_value_frame_clear(&snapshot);
     free(encode.record);
-    if (valid)
+    if (valid && !table->result)
     {
         table->objects[table->count++] = object;
     }
@@ -374,83 +429,4 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
 #include "managed_ref_delta.inc"
 
 
-/* EN: Encode changed original ADTs once, excluding aliases and nil arguments.
- * RU: Кодировать изменившиеся исходные ADT один раз, исключая дубликаты и nil. */
-int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRecord *baseline,
-    void *bytes, size_t capacity, size_t *used)
-{
-    char refs[STYX_SHAPE_MAX + 1];
-    void *objects[STYX_CALL_VALUES];
-    if (!dvm_styx_ref_slots(arguments, slots, refs, objects))
-    {
-        return 0;
-    }
-    if (!strcmp(refs, "()"))
-    {
-        unsigned long tag = baseline->tag != STYX_MANAGED_REQUEST_TAG ?
-            STYX_MANAGED_DELTA_TAG : STYX_MANAGED_ARRAY_TAG;
-        return fvm_srecord_write(tag, NULL, 0, bytes, capacity, used) == FVM_S_OK;
-    }
-    FVM_SRecord before[STYX_CALL_VALUES], after[STYX_CALL_VALUES], frame;
-    size_t count, other_count, extent, consumed;
-    unsigned char *encoded = malloc(capacity);
-    unsigned char *payload = malloc(capacity);
-    StyxScalarLayout layout;
-    int valid = encoded && payload && styxmanaged_layout(refs, &layout) &&
-        styxmanaged_ref_records(arguments, baseline, before, &count) &&
-        dvm_styx_value_frame_write(STYX_MANAGED_REQUEST_TAG, refs, objects, layout.size,
-            encoded, capacity, &extent) &&
-        fvm_srecord_read(encoded, extent, capacity, &frame, &consumed) == FVM_S_OK &&
-        consumed == extent && styxmanaged_ref_records(refs, &frame, after, &other_count) && count == other_count;
-    unsigned char index = 0, mask = 0;
-    size_t length = 1;
-    int delta = baseline->tag != STYX_MANAGED_REQUEST_TAG;
-    unsigned char *fields = delta ? malloc(capacity) : NULL;
-    valid = valid && (!delta || fields);
-    const char *type = refs + 1;
-    for (size_t i = 0; valid && i < count; i++, type = styxshape_end(type))
-    {
-        if (after[i].tag != STYX_MANAGED_REF_TAG || after[i].size <= 1 ||
-            (before[i].size == after[i].size && !memcmp(before[i].payload, after[i].payload, after[i].size)))
-        {
-            continue;
-        }
-        size_t written;
-        if (delta)
-        {
-            size_t field_size;
-            before[i].tag = baseline->tag;
-            valid = styxmanaged_diff_fields(type, &before[i], &after[i], fields, capacity, &field_size);
-            if (!valid || !field_size)
-            {
-                continue;
-            }
-            valid = length <= capacity && fvm_srecord_write(STYX_MANAGED_REF_TAG, fields, field_size,
-                payload + length, capacity - length, &written) == FVM_S_OK;
-        }
-        else
-        {
-            valid = length <= capacity &&
-                fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1,
-                    after[i].payload + 1, after[i].size - 1, payload + length, capacity - length,
-                    &written) == FVM_S_OK;
-        }
-        if (valid)
-        {
-            mask |= 1U << i;
-            length += written;
-            index++;
-        }
-    }
-    if (valid && mask)
-    {
-        payload[0] = mask;
-    }
-    valid = valid && fvm_srecord_write(delta ? STYX_MANAGED_DELTA_TAG : STYX_MANAGED_ARRAY_TAG,
-        payload, mask ? length : 0,
-        bytes, capacity, used) == FVM_S_OK;
-    free(fields);
-    free(payload);
-    free(encoded);
-    return valid;
-}
+#include "managed_ref_updates.inc"

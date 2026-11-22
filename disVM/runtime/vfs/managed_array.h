@@ -4,7 +4,7 @@
  */
 #ifndef DVM_STYX_MANAGED_ARRAY_H
 #define DVM_STYX_MANAGED_ARRAY_H
-#include "managed_value.h"
+#include "managed_ref.h"
 
 
 /* [GC:] EN: Construct a receiver-local primitive array from one validated
@@ -31,21 +31,21 @@ int dvm_styx_primitive_array_write(char element, void *value, void *bytes,
     size_t capacity, size_t *used);
 /* EN: Construct or encode an array with strings, arrays or tuple elements.
  * RU: Создать либо закодировать массив строк, массивов или кортежей. */
-int dvm_styx_composite_array_new(const char *type, const FVM_SRecord *record, void **result);
+int dvm_styx_composite_array_new(const char *type, const FVM_SRecord *record, DVM_StyxRefTable *refs, void **result);
 
-int dvm_styx_composite_array_write(const char *type, void *value, void *bytes,
+int dvm_styx_composite_array_write(const char *type, void *value, DVM_StyxRefTable *refs, void *bytes,
     size_t capacity, size_t *used);
 
 
 /* EN: Read or write exactly one element in the precomputed singleton schema.
  * RU: Прочитать или записать ровно один элемент по заранее вычисленной схеме. */
 int dvm_styx_array_element_read(const char *shape, const unsigned char *record, size_t size,
-    const StyxScalarLayout *layout, DVM_StyxValueFrame *element);
+    const StyxScalarLayout *layout, DVM_StyxRefTable *refs, DVM_StyxValueFrame *element);
 
 #define DVM_STYX_TUPLE_SCRATCH 6U /* Regions required by the bounded tuple encoder. */
 
 /* EN: Reuse caller-owned scratch for tuple elements, each region at least capacity bytes.
  * RU: Переиспользовать буфер кортежа, каждый участок содержит не менее capacity байтов. */
 int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *element,
-    unsigned char *scratch, void *bytes, size_t capacity, size_t *used);
+    DVM_StyxRefTable *refs, unsigned char *scratch, void *bytes, size_t capacity, size_t *used);
 #endif

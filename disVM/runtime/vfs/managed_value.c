@@ -22,8 +22,9 @@
 #include <stdlib.h>
 
 
-/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
-int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result)
+/* [GC:] EN: Construct a counted value with an optional linked result table.
+ * RU: Создать значение с длиной и, при наличии, таблицей ссылок результата. */
+static int managed_new(const char *type, const FVM_SRecord *record, DVM_StyxRefTable *refs, void **result)
 {
     if (!type || !record || !result || record->size > STYX_MANAGED_LIST_LIMIT ||
         (!record->payload && record->size))
@@ -32,7 +33,7 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
     }
     int string = !strcmp(type, "s");
     const char *end = styxshape_end(type);
-    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type);
+    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type, refs && refs->result);
     if (!string && !array)
     {
         return 0;
@@ -46,7 +47,7 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
     {
         return type[3] == ']' && dvm_styx_primitive_array_supported(type[2]) ?
             dvm_styx_primitive_array_new(type[2], record, result) :
-            dvm_styx_composite_array_new(type, record, result);
+            dvm_styx_composite_array_new(type, record, refs, result);
     }
     if (record->tag != STYX_MANAGED_STRING_TAG ||
         fvm_utf8_validate((const char *)record->payload, record->size, NULL) != FVM_UTF8_OK)
@@ -55,6 +56,13 @@ int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **res
     }
     *result = c2string((char *)record->payload, (int)record->size);
     return 1;
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result)
+{
+    return managed_new(type, record, NULL, result);
 }
 
 
@@ -99,8 +107,10 @@ static int write_string(String *text, void *bytes, size_t capacity, size_t *used
 }
 
 
-/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
-int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used)
+/* [GC:] EN: Encode one value, sharing reference indices in a linked result.
+ * RU: Кодировать значение с общими индексами ссылок в результате. */
+static int managed_write(const char *type, void *value, DVM_StyxRefTable *refs,
+    void *bytes, size_t capacity, size_t *used)
 {
     if (!type || !value || !bytes || !used || !capacity)
     {
@@ -108,7 +118,7 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
     }
     int string = !strcmp(type, "s");
     const char *end = styxshape_end(type);
-    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type);
+    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type, refs && refs->result);
     if (!string && !array)
     {
         return 0;
@@ -131,7 +141,14 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
     }
     return type[3] == ']' && dvm_styx_primitive_array_supported(type[2]) ?
         dvm_styx_primitive_array_write(type[2], value, bytes, capacity, used) :
-        dvm_styx_composite_array_write(type, value, bytes, capacity, used);
+        dvm_styx_composite_array_write(type, value, refs, bytes, capacity, used);
+}
+
+
+/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used)
+{
+    return managed_write(type, value, NULL, bytes, capacity, used);
 }
 
 
@@ -144,13 +161,7 @@ int dvm_styx_value_shape_supported(const char *shape)
     {
         return 0;
     }
-    char refs[STYX_SHAPE_MAX + 1];
-    unsigned mask;
-    if (!styxmanaged_refs(shape, refs, &mask))
-    {
-        return 0;
-    }
-    return styxmanaged_arrays(shape);
+    return styxmanaged_result_refs(shape) && styxmanaged_arrays(shape, 1);
 }
 
 
@@ -160,7 +171,7 @@ typedef struct FrameDecode
     FVM_SRecord list; /* Borrowed validated input list. */
     DVM_StyxValueFrame pending; /* Owned local staging until publication. */
     size_t leaf; /* Count of populated slots, in shape order. */
-    DVM_StyxRefTable refs; /* Borrowed aliases of decoded argument slots. */
+    DVM_StyxRefTable *refs; /* Shared reference indices for this traversal. */
 } FrameDecode;
 
 
@@ -203,7 +214,7 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
                 void *object;
                 if (*shape == 'r')
                 {
-                    if (!dvm_styx_ref_read(&decode->refs, shape, &node, &object))
+                    if (!dvm_styx_ref_read(decode->refs, shape, &node, &object))
                     {
                         return 0;
                     }
@@ -215,7 +226,7 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
                         return 0;
                     }
                     memcpy(type, shape, (size_t)(end - shape));
-                    if (!dvm_styx_managed_new(type, &node, &object))
+                    if (!managed_new(type, &node, decode->refs->result ? decode->refs : NULL, &object))
                     {
                         return 0;
                     }
@@ -290,11 +301,13 @@ void dvm_styx_value_frame_clear(DVM_StyxValueFrame *frame)
 
 /* EN/RU: See managed_array.h. / См. managed_array.h. */
 int dvm_styx_array_element_read(const char *shape, const unsigned char *record, size_t size,
-    const StyxScalarLayout *layout, DVM_StyxValueFrame *element)
+    const StyxScalarLayout *layout, DVM_StyxRefTable *refs, DVM_StyxValueFrame *element)
 {
-    FrameDecode decode = {.shape = shape, .list = {.payload = record, .size = size}};
+    DVM_StyxRefTable local = {0};
+    FrameDecode decode = {.shape = shape, .list = {.payload = record, .size = size},
+        .refs = refs ? refs : &local};
     decode.pending.layout = *layout;
-    if (!styxmanaged_payload_valid(shape, record, size) ||
+    if ((!refs && !styxmanaged_payload_valid(shape, record, size)) ||
         !kprotect(decode_frame, &decode) || decode.leaf != layout->count)
     {
         dvm_styx_value_frame_clear(&decode.pending);
@@ -309,7 +322,8 @@ int dvm_styx_array_element_read(const char *shape, const unsigned char *record, 
 int dvm_styx_value_frame_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
     DVM_StyxValueFrame *frame)
 {
-    FrameDecode decode = {.shape = shape};
+    DVM_StyxRefTable refs = {0};
+    FrameDecode decode = {.shape = shape, .refs = &refs};
     if (!frame || !styxmanaged_layout(shape, &decode.pending.layout) ||
         !styxmanaged_list_read(tag, shape, bytes, size, &decode.list))
     {
@@ -332,7 +346,7 @@ typedef struct FrameEncode
     unsigned char *scratch; /* Separate buffer per tuple depth. */
     size_t capacity; /* Size of each scratch region. */
     size_t leaf; /* Next source slot in schema order. */
-    DVM_StyxRefTable refs; /* Borrowed identities during encoding. */
+    DVM_StyxRefTable *refs; /* Shared reference indices for this traversal. */
 } FrameEncode;
 
 
@@ -350,14 +364,14 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
         memcpy(&value, slot, sizeof(value));
         if (*shape == 'r')
         {
-            return dvm_styx_ref_write(&encode->refs, shape, value, bytes, capacity, used);
+            return dvm_styx_ref_write(encode->refs, shape, value, bytes, capacity, used);
         }
         if (end - shape >= (ptrdiff_t)sizeof(type))
         {
             return 0;
         }
         memcpy(type, shape, (size_t)(end - shape));
-        return dvm_styx_managed_write(type, value, bytes, capacity, used);
+        return managed_write(type, value, encode->refs->result ? encode->refs : NULL, bytes, capacity, used);
     }
     int64_t value;
     unsigned long tag;
@@ -425,9 +439,11 @@ static int encode_nodes(FrameEncode *encode, const char *shape, unsigned depth, 
 
 /* EN/RU: See managed_array.h. / См. managed_array.h. */
 int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *element,
-    unsigned char *scratch, void *bytes, size_t capacity, size_t *used)
+    DVM_StyxRefTable *refs, unsigned char *scratch, void *bytes, size_t capacity, size_t *used)
 {
-    FrameEncode encode = {.layout = element->layout, .slots = (const unsigned char *)element->words};
+    DVM_StyxRefTable local = {0};
+    FrameEncode encode = {.layout = element->layout, .slots = (const unsigned char *)element->words,
+        .refs = refs ? refs : &local};
     const char *type = shape + 1;
     if (*type != '(')
     {
@@ -442,40 +458,5 @@ int dvm_styx_array_element_write(const char *shape, const DVM_StyxValueFrame *el
 }
 
 
-/* EN: Encode one laid-out frame with optional argument identities in its result.
- * RU: Кодировать кадр с возможностью связать ссылки результата с аргументами. */
-static int encode_frame(FrameEncode *encode, unsigned long tag, const char *shape,
-    size_t slot_size, void *bytes, size_t capacity, size_t *used,
-    const char *argument_shape, const FVM_SRecord *arguments)
-{
-    if (!styxmanaged_layout(shape, &encode->layout) || (encode->layout.size && !encode->slots) ||
-        encode->layout.size > slot_size || !bytes || !used || !capacity)
-    {
-        return 0;
-    }
-    encode->capacity = capacity < STYX_MANAGED_LIST_LIMIT ? capacity : STYX_MANAGED_LIST_LIMIT;
-    encode->scratch = malloc(DVM_STYX_TUPLE_SCRATCH * encode->capacity);
-    if (!encode->scratch)
-    {
-        return 0;
-    }
-    size_t size;
-    int ok = encode_nodes(encode, shape + 1, 0, &size) && encode->leaf == encode->layout.count &&
-        (arguments ? styxmanaged_payload_linked(shape, encode->scratch, size, argument_shape, arguments) :
-            styxmanaged_payload_valid(shape, encode->scratch, size)) &&
-        fvm_srecord_write(tag, encode->scratch, size, bytes, encode->capacity, used) == FVM_S_OK;
-    free(encode->scratch);
-    return ok;
-}
-
-
-/* [GC:] EN/RU: See managed_value.h. / См. managed_value.h. */
-int dvm_styx_value_frame_write(unsigned long tag, const char *shape, const void *slots,
-    size_t slot_size, void *bytes, size_t capacity, size_t *used)
-{
-    FrameEncode encode = {.slots = slots};
-    return encode_frame(&encode, tag, shape, slot_size, bytes, capacity, used, NULL, NULL);
-}
-
-
+#include "managed_frame_encode.inc"
 #include "managed_result.inc"

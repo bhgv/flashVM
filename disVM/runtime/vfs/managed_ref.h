@@ -9,7 +9,9 @@
 typedef struct DVM_StyxRefTable
 {
     void *objects[STYX_CALL_REF_KEYS]; /* Borrowed from rooted slots during a single traversal. */
-    size_t count; /* Number of previously encoded or decoded objects. */
+    size_t count; /* Number of reserved reference indices. */
+    unsigned pins; /* New result references retained and rooted during encoding. */
+    int result; /* Share the table through the validated result tree. */
 } DVM_StyxRefTable;
 
 
@@ -22,6 +24,14 @@ int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRec
  * RU: Кодировать удерживаемый объект один раз и дальше выдавать его индекс. */
 int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
     void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Encode or decode fields of a nested result object with the shared table.
+ * RU: Кодировать или декодировать поля вложенного объекта с общей таблицей. */
+int dvm_styx_result_fields_read(DVM_StyxRefTable *table, const char *shape,
+    const void *payload, size_t size, DVM_StyxValueFrame *frame);
+int dvm_styx_result_fields_write(DVM_StyxRefTable *table, const char *shape, const void *slots,
+    size_t size, void *bytes, size_t capacity, size_t *used);
 
 
 /* EN: Gather only borrowed ref slots from the argument frame.

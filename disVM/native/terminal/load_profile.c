@@ -372,8 +372,8 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
     if (ref || !styxshapevalid(shape) ||
         !styxmanaged_layout(shape->arguments, &input) || !styxmanaged_layout(shape->result, &output) ||
         input.size > 64 || output.size > 64 ||
-        !styxmanaged_refs(shape->arguments, refs, &mask) || !styxmanaged_refs(shape->result, refs, &mask) ||
-        !styxmanaged_arrays(shape->arguments) || !styxmanaged_arrays(shape->result) ||
+        !styxmanaged_refs(shape->arguments, refs, &mask) || !styxmanaged_result_refs(shape->result) ||
+        !styxmanaged_arrays(shape->arguments, 0) || !styxmanaged_arrays(shape->result, 1) ||
         !(input.pointers || output.pointers))
     {
         return ref;

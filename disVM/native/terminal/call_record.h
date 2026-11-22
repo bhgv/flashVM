@@ -64,7 +64,11 @@ int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1]
 
 /* EN: Check each array in a validated schema, including arrays in tuple and ref fields.
  * RU: Проверить каждый массив валидированной схемы, включая поля кортежей и ref. */
-int styxmanaged_arrays(const char *shape);
+int styxmanaged_arrays(const char *shape, int result);
+
+/* EN: Extract the fields of a result reference, allowing nested result references.
+ * RU: Получить поля ссылки результата, включая вложенные ссылки результата. */
+int styxmanaged_result_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX + 1]);
 
 
 /* EN: Copy only a pointer-free NC64 buffer and widen packed byte leaves.

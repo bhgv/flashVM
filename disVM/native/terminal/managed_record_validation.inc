@@ -4,67 +4,7 @@
  */
 
 
-typedef struct RefKeys
-{
-    const char *type[STYX_CALL_REF_KEYS]; /* First occurrence of each object schema. */
-    size_t count; /* Number of snapshots already defined. */
-} RefKeys;
-
-
-/* EN: Validate one tuple's exact arity or one array's homogeneous record sequence.
- * RU: Проверить точное число полей кортежа или однородную последовательность массива. */
-static int managed_children(const char *shape, const unsigned char *bytes, size_t size, int array,
-    unsigned depth, RefKeys *keys);
-
-
-/* EN: Extract the fields of a ref ADT as a value-list schema.
- * RU: Получить схему списка полей объекта ref ADT. */
-int styxmanaged_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX + 1])
-{
-    const char *end = shape && *shape == 'r' ? styxshape_end(shape) : NULL;
-    if (!end || end - shape <= 3 || end - shape > STYX_SHAPE_MAX)
-    {
-        return 0;
-    }
-    size_t n = (size_t)(end - shape) - 3;
-    if (memchr(shape + 2, 'r', n))
-    {
-        return 0;
-    }
-    fields[0] = '(';
-    memcpy(fields + 1, shape + 2, n);
-    fields[n + 1] = ')';
-    fields[n + 2] = 0;
-    return 1;
-}
-
-
-/* EN: Claim a new reference index or verify an earlier index with the same schema.
- * RU: Принять новый индекс ссылки либо сверить схему ранее объявленного индекса. */
-static int managed_ref(const char *shape, const FVM_SRecord *value, unsigned depth, RefKeys *keys)
-{
-    if (value->tag != STYX_MANAGED_REF_TAG || !value->size)
-    {
-        return 0;
-    }
-    size_t index = value->payload[0];
-    if (index < keys->count)
-    {
-        const char *first = keys->type[index];
-        size_t length = (size_t)(styxshape_end(first) - first);
-        return value->size == 1 && (size_t)(styxshape_end(shape) - shape) == length &&
-            !memcmp(shape, first, length);
-    }
-    char fields[STYX_SHAPE_MAX + 1];
-    if (index != keys->count || index >= STYX_CALL_REF_KEYS ||
-        !styxmanaged_ref_fields(shape, fields) ||
-        !managed_children(fields + 1, value->payload + 1, value->size - 1, 0, depth + 1, keys))
-    {
-        return 0;
-    }
-    keys->type[keys->count++] = shape;
-    return 1;
-}
+#include "managed_ref_validation.inc"
 
 
 /* EN: Traverse one nested value, checking tag, payload and bounds before advancing.
@@ -114,7 +54,7 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
 static int managed_children(const char *shape, const unsigned char *bytes, size_t size, int array,
     unsigned depth, RefKeys *keys)
 {
-    while (array ? size != 0 : *shape != ')')
+    while (array ? size != 0 : *shape != ')' && *shape != ']')
     {
         size_t used;
         if (!managed_value(shape, bytes, size, depth, &used, keys))

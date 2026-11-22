@@ -14,6 +14,11 @@ Managed: module {
         rows: array of array of byte;
     };
     nested: fn(names: array of string, state: ref Nested): (array of string, array of Item);
+    Bundle: adt {
+        direct: ref Cell;
+        members: array of ref Cell;
+    };
+    bundle: fn(state: ref Cell): ref Bundle;
     reference: fn(state: ref Cell): (ref Cell, ref Cell, ref Cell, ref Cell);
     accept: fn(text: string);
 };

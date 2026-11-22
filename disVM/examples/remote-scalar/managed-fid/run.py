@@ -39,6 +39,7 @@ def exercise(runtime, owner, caller, mode):
          "--export", "managed.dis", "target.dis", "update",
          "--export", "managed.dis", "target.dis", "nested",
          "--export", "managed.dis", "target.dis", "reference",
+         "--export", "managed.dis", "target.dis", "bundle",
          "--", mode, "scalarowner.dis"],
         cwd=owner, pass_fds=(owner_fd.fileno(),), stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True,

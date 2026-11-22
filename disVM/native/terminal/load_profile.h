@@ -114,4 +114,8 @@ int styxmanaged_has_snapshot(unsigned long tag);
 /* EN: Recognize the standard managed request or one of its negotiated profiles.
  * RU: Распознать обычный управляемый запрос либо один из согласованных профилей. */
 int styxmanaged_request_tag(unsigned long tag);
+
+/* EN: Verify that each reference in the result has a bounded field layout.
+ * RU: Проверить раскладку полей каждой ссылки результата. */
+int styxmanaged_result_refs(const char *shape);
 #endif

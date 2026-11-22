@@ -97,3 +97,13 @@ reference(state: ref Cell): (ref Cell, ref Cell, ref Cell, ref Cell)
     fresh := ref Cell("fresh", array[] of {byte 31});
     return (state, fresh, fresh, nil);
 }
+
+
+# EN: Share both an input and a newly created object inside the returned graph.
+# RU: Разделить исходный и новый объекты между полями возвращаемого графа.
+bundle(state: ref Cell): ref Bundle
+{
+    state.text = "nested update";
+    fresh := ref Cell("member", nil);
+    return ref Bundle(fresh, array[] of {state, fresh, nil, fresh});
+}

@@ -447,3 +447,36 @@ static int linked_result_refs(void)
         fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, alias, alias_size, wire, sizeof(wire), &wire_size) == FVM_S_OK &&
         !styxmanaged_result_read("(r[s])", wire, wire_size, "(r[s])", &arguments, &result);
 }
+
+
+/* EN: Validate a nested definition and reject a forward alias in its place.
+ * RU: Проверить вложенное определение и отклонить ссылку до определения. */
+static int linked_result_graph(void)
+{
+    unsigned char field[24], definition[48], alias[24], fields[96], object[112], result[128];
+    unsigned char child = 1, parent = 0;
+    size_t field_size, definition_size, alias_size, object_size, result_size;
+    FVM_SRecord empty = {0}, decoded;
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "child", 5, field, sizeof(field), &field_size) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &child, 1, field, field_size,
+            definition, sizeof(definition), &definition_size) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_REF_TAG, &child, 1, alias, sizeof(alias), &alias_size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    for (int reverse = 0; reverse < 2; reverse++)
+    {
+        size_t first = reverse ? alias_size : definition_size;
+        memcpy(fields, reverse ? alias : definition, first);
+        memcpy(fields + first, reverse ? definition : alias, reverse ? definition_size : alias_size);
+        if (fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &parent, 1, fields, definition_size + alias_size,
+                object, sizeof(object), &object_size) != FVM_S_OK ||
+            fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, object, object_size, result,
+                sizeof(result), &result_size) != FVM_S_OK ||
+            styxmanaged_result_read("(r[r[s]r[s]])", result, result_size, "()", &empty, &decoded) != !reverse)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}

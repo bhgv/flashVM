@@ -278,10 +278,6 @@ int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1]
         return 0;
     }
     size_t length = (size_t)(end - array) - 3;
-    if (memchr(array + 2, 'r', length))
-    {
-        return 0;
-    }
     element[0] = '(';
     memcpy(element + 1, array + 2, length);
     element[length + 1] = ')';
@@ -291,13 +287,13 @@ int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1]
 
 
 /* EN/RU: See call_record.h. / См. call_record.h. */
-int styxmanaged_arrays(const char *shape)
+int styxmanaged_arrays(const char *shape, int result)
 {
     for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
     {
         char element[STYX_SHAPE_MAX + 1];
         StyxScalarLayout layout;
-        if (!styxmanaged_array_layout(array, element, &layout))
+        if (!styxmanaged_array_layout(array, element, &layout) || (!result && strchr(element, 'r')))
         {
             return 0;
         }

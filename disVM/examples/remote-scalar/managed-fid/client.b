@@ -33,6 +33,7 @@ init()
     check_refs(m);
     check_nested(m);
     check_returned_refs(m);
+    check_bundle(m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -171,5 +172,25 @@ check_returned_refs(m: Managed)
     repeated.text = "client";
     if (created.text != "client") {
         raise "fresh returned aliases are not shared";
+    }
+}
+
+
+# EN: Confirm that arrays and ADT fields share one result identity table.
+# RU: Проверить общую таблицу идентичности для массивов и полей результата.
+check_bundle(m: Managed)
+{
+    Cell: import m;
+    original := ref Cell("caller", nil);
+    packed := m->bundle(original);
+    if (packed == nil || len packed.members != 4 || packed.members[0] != original ||
+        original.text != "nested update" || packed.direct == nil ||
+        packed.members[1] != packed.direct || packed.members[2] != nil ||
+        packed.members[3] != packed.direct || packed.direct.text != "member") {
+        raise "nested ref result lost identity";
+    }
+    packed.members[1].text = "shared";
+    if (packed.direct.text != "shared" || packed.members[3].text != "shared") {
+        raise "nested aliases do not share one local object";
     }
 }

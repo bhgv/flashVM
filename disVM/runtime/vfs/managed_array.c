@@ -243,6 +243,7 @@ typedef struct CompositeDecode
     const char *schema; /* Borrowed singleton schema. */
     const StyxScalarLayout *layout; /* Layout of one element. */
     Type *type; /* Borrowed descriptor, retained by the constructed array. */
+    DVM_StyxRefTable *refs; /* Shared result identities or NULL for arrays of values. */
     int length; /* Count of length-checked child records. */
     Array *array; /* Partially built array, owned by caller. */
     int rooted; /* Whether array has a temporary GC root. */
@@ -265,7 +266,7 @@ static int decode_composite(void *state)
         size_t used;
         DVM_StyxValueFrame element = {0};
         if (fvm_srecord_read(bytes, remaining, STYX_MANAGED_LIST_LIMIT, &record, &used) != FVM_S_OK ||
-            !dvm_styx_array_element_read(decode->schema, bytes, used, decode->layout, &element))
+            !dvm_styx_array_element_read(decode->schema, bytes, used, decode->layout, decode->refs, &element))
         {
             return 0;
         }
@@ -283,7 +284,7 @@ static int decode_composite(void *state)
 
 
 /* EN/RU: See managed_array.h. / См. managed_array.h. */
-int dvm_styx_composite_array_new(const char *type, const FVM_SRecord *record, void **result)
+int dvm_styx_composite_array_new(const char *type, const FVM_SRecord *record, DVM_StyxRefTable *refs, void **result)
 {
     char schema[STYX_SHAPE_MAX + 1];
     StyxScalarLayout layout;
@@ -312,7 +313,7 @@ int dvm_styx_composite_array_new(const char *type, const FVM_SRecord *record, vo
         return 0;
     }
     CompositeDecode decode = {.record = record, .schema = schema, .layout = &layout,
-        .type = descriptor, .length = length};
+        .type = descriptor, .refs = refs, .length = length};
     int valid = kprotect(decode_composite, &decode);
     if (decode.rooted)
     {
@@ -339,6 +340,7 @@ typedef struct CompositeEncode
 {
     const char *schema; /* Borrowed checked element schema. */
     DVM_StyxValueFrame *element; /* Temporarily retained fields of one element. */
+    DVM_StyxRefTable *refs; /* Shared result identities or NULL for arrays of values. */
     unsigned char *scratch; /* Shared tuple scratch for this array level. */
     unsigned char *bytes; /* Destination of one element record. */
     size_t capacity; /* Bytes available for this record. */
@@ -366,7 +368,7 @@ static int encode_composite_element(void *state)
             }
         }
     }
-    return dvm_styx_array_element_write(encode->schema, element, encode->scratch,
+    return dvm_styx_array_element_write(encode->schema, element, encode->refs, encode->scratch,
         encode->bytes, encode->capacity, &encode->used);
 }
 
@@ -386,7 +388,8 @@ static int array_element_matches(const Type *type, const StyxScalarLayout *layou
 
 
 /* EN/RU: See managed_array.h. / См. managed_array.h. */
-int dvm_styx_composite_array_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used)
+int dvm_styx_composite_array_write(const char *type, void *value, DVM_StyxRefTable *refs,
+    void *bytes, size_t capacity, size_t *used)
 {
     char schema[STYX_SHAPE_MAX + 1];
     StyxScalarLayout layout;
@@ -417,7 +420,7 @@ int dvm_styx_composite_array_write(const char *type, void *value, void *bytes, s
     for (int i = 0; valid && i < array->len; i++)
     {
         DVM_StyxValueFrame element = {.layout = layout};
-        CompositeEncode encode = {.schema = schema, .element = &element,
+        CompositeEncode encode = {.schema = schema, .element = &element, .refs = refs,
             .scratch = tuples ? payload + capacity : NULL,
             .bytes = payload + length, .capacity = capacity - length};
         valid = encode.capacity > 0 &&
