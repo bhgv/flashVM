@@ -39,7 +39,8 @@ Closing the receiving fid after taking a record and before acknowledging
 it reports byte `2` to the sender. That outcome is uncertain. The pipe
 does not deliver the record again. Closing the sending fid removes its
 outstanding transaction. If the receiver already took the message, it
-can no longer acknowledge that transaction. The pipe becomes available
+can no longer acknowledge that transaction. A late receipt fails and
+has no effect on the next message. The pipe becomes available
 after the sender takes a receipt or closes its fid.
 
 The pipe validates S-record framing and checksum. The endpoint that

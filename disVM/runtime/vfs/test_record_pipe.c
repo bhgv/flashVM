@@ -82,6 +82,17 @@ void dvm_test_record_pipe(void)
     unsigned char rejected = DVM_RECORD_REJECTED;
     require(dvm_vfs_write_chunk(&receiver, &rejected, 1).status == FVM_OK, "receiver could not reject");
     receipt(&competitor, DVM_RECORD_REJECTED);
+    require(dvm_provider_open(pipe, "send", "rw", &sender) == FVM_OK &&
+        dvm_vfs_write_chunk(&sender, wire, size).status == FVM_OK &&
+        dvm_vfs_read_chunk(&receiver, bytes, sizeof(bytes)).count == size, "offer before sender close unavailable");
+    dvm_vfs_close(&sender);
+    require(dvm_vfs_write_chunk(&competitor, wire, size).status == FVM_OK &&
+        dvm_vfs_read_chunk(&receiver, bytes, sizeof(bytes)).count == 0 &&
+        dvm_vfs_write_chunk(&receiver, &accepted, 1).status != FVM_OK &&
+        dvm_vfs_read_chunk(&competitor, bytes, 1).count == 0, "late receipt affected next sender");
+    require(dvm_vfs_read_chunk(&receiver, bytes, sizeof(bytes)).count == size &&
+        dvm_vfs_write_chunk(&receiver, &accepted, 1).status == FVM_OK, "second sender did not proceed");
+    receipt(&competitor, DVM_RECORD_DELIVERED);
     dvm_vfs_close(&receiver);
     dvm_vfs_close(&competitor);
     dvm_provider_release(pipe);

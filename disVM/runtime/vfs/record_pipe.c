@@ -43,6 +43,7 @@ typedef struct Endpoint
 struct PipeCursor
 {
     Endpoint *end; /* Borrowed through provider ownership. */
+    int has_offer; /* This receiving fid still owes a receipt, even if the sender closed. */
 };
 
 
@@ -83,7 +84,7 @@ static void read_pipe(void *state, void *bytes, size_t size, DVM_IoResult *out)
         out->flags |= DVM_IO_RECORD;
         reset(pipe);
     }
-    else if (!cursor->end->sending && pipe->sender && !pipe->receiver && !pipe->settled)
+    else if (!cursor->end->sending && !cursor->has_offer && pipe->sender && !pipe->receiver && !pipe->settled)
     {
         if (size < pipe->size)
         {
@@ -96,6 +97,7 @@ static void read_pipe(void *state, void *bytes, size_t size, DVM_IoResult *out)
             out->count = pipe->size;
             out->flags |= DVM_IO_RECORD;
             pipe->receiver = cursor;
+            cursor->has_offer = 1;
         }
     }
     fvm_port_sync_unlock(pipe->lock);
@@ -138,11 +140,15 @@ static void write_pipe(void *state, const void *bytes, size_t size, DVM_IoResult
         pipe->sender = cursor;
         out->count = size;
     }
-    else if (!cursor->end->sending && pipe->receiver == cursor && !pipe->settled)
+    else if (!cursor->end->sending && cursor->has_offer)
     {
-        pipe->receipt = receipt;
-        pipe->settled = 1;
-        out->count = size;
+        cursor->has_offer = 0;
+        if (pipe->receiver == cursor && !pipe->settled)
+        {
+            pipe->receipt = receipt;
+            pipe->settled = 1;
+            out->count = size;
+        }
     }
     if (out->count)
     {
@@ -223,7 +229,7 @@ static FVM_Result open_pipe(void *state, const char *path, const char *mode, DVM
     {
         return FVM_OUT_OF_MEMORY;
     }
-    cursor->end = state;
+    *cursor = (PipeCursor){.end = state};
     out->state = cursor;
     out->ops = &operations;
     out->native_flags = DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_CLOSE | DVM_VFS_CANCEL_INFO;
