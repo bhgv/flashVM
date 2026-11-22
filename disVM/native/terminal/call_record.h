@@ -93,6 +93,19 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_SPAN_TAG 12UL /* Equal-size array payload replacement. */
+
+/* EN: Encode a smaller array patch when both payload extents match.
+ * RU: Кодировать компактную замену при совпадении размеров массивов. */
+int styxmanaged_span_write(const FVM_SRecord *before, const FVM_SRecord *after,
+    void *bytes, size_t capacity, size_t *used);
+
+/* EN: Expand a checked patch against the original array with bounds checking.
+ * RU: Восстановить запись по исходному массиву с проверкой границ. */
+int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const FVM_SRecord *patch,
+    unsigned char *scratch, size_t capacity, void *bytes, size_t limit, size_t *used);
+
+
 typedef struct StyxFieldDelta
 {
     unsigned object; /* Index within the projected ref arguments. */
@@ -111,6 +124,13 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
  * RU: Проверить дельты по исходной схеме аргументов и заимствовать их. */
 int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
     StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count);
+
+
+/* EN: Validate deltas and expand spans using the retained request and output scratch.
+ * RU: Проверить дельты и развернуть участки по сохранённому запросу в выходной буфер. */
+int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t size,
+    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count, const FVM_SRecord *baseline,
+    unsigned char *output, size_t capacity);
 
 
 /* EN: Validate a managed argument or result list and borrow its decoded outer record.

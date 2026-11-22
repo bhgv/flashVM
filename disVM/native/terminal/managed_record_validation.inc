@@ -335,8 +335,11 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
             continue;
         }
         size_t n;
-        if (size >= capacity || fvm_srecord_write(next->tag, next->payload, next->size,
-            output + size, capacity - size, &n) != FVM_S_OK)
+        if (size >= capacity ||
+            (!(before->tag == STYX_MANAGED_SPAN_REQUEST_TAG && *right.type[i] == 'a' &&
+                styxmanaged_span_write(old, next, output + size, capacity - size, &n)) &&
+            fvm_srecord_write(next->tag, next->payload, next->size,
+                output + size, capacity - size, &n) != FVM_S_OK))
         {
             return 0;
         }
@@ -352,9 +355,13 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
 }
 
 
+#include "managed_array_span.inc"
+
+
 /* EN: Decode and validate one field mask and exactly its selected leaf values.
  * RU: Разобрать маску полей и проверить ровно выбранные ею значения. */
-static int field_delta(const char *type, StyxFieldDelta *change)
+static int field_delta(const char *type, StyxFieldDelta *change, const FVM_SRecord *baseline,
+    unsigned char *output, size_t capacity)
 {
     char schema[STYX_SHAPE_MAX + 1];
     FieldLeaves leaves = {0};
@@ -383,13 +390,18 @@ static int field_delta(const char *type, StyxFieldDelta *change)
     change->schema[length] = 0;
     fields->payload++;
     fields->size--;
+    if (baseline && !expand_spans(schema, change, baseline, output, capacity))
+    {
+        return 0;
+    }
     return styxmanaged_payload_valid(change->schema, fields->payload, fields->size);
 }
 
 
 /* EN/RU: See call_record.h. / См. call_record.h. */
-int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
-    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count)
+int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t size,
+    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count, const FVM_SRecord *baseline,
+    unsigned char *output, size_t capacity)
 {
     FVM_SRecord outer;
     char refs[STYX_SHAPE_MAX + 1];
@@ -406,6 +418,12 @@ int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
     {
         return 1;
     }
+    FVM_SRecord originals[STYX_CALL_VALUES];
+    size_t original_count = 0;
+    if (baseline && !styxmanaged_ref_records(arguments, baseline, originals, &original_count))
+    {
+        return 0;
+    }
     unsigned mask = outer.payload[0], index = 0;
     size_t offset = 1;
     for (const char *type = refs + 1; *type != ')'; type = styxshape_end(type), index++)
@@ -416,13 +434,29 @@ int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
             change->object = index;
             if (offset >= outer.size ||
                 fvm_srecord_read(outer.payload + offset, outer.size - offset, STYX_MANAGED_LIST_LIMIT,
-                    &change->fields, &used) != FVM_S_OK || !field_delta(type, change))
+                    &change->fields, &used) != FVM_S_OK || (baseline && index >= original_count) ||
+                !field_delta(type, change, baseline ? &originals[index] : NULL, output, capacity))
             {
                 return 0;
+            }
+            if (baseline)
+            {
+                output += change->fields.size;
+                capacity -= change->fields.size;
             }
             (*count)++;
             offset += used;
         }
     }
     return mask && !(mask >> index) && offset == outer.size;
+}
+
+
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
+    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count)
+{
+    return styxmanaged_deltas_base(arguments, bytes, size, changes, count, NULL, NULL, 0);
 }

@@ -38,14 +38,16 @@ static int read_result(const char *shape, const StyxReplyField *field, DVM_StyxV
 /* EN: Validate and commit the field reply from an opted-in owner.
  * RU: Проверить и применить изменения полей от владельца с поддержкой дельт. */
 static int delta_reply(const StyxCallShape *shape, const unsigned char *bytes, size_t size,
-    const DirectManagedFrame *call)
+    const DirectManagedFrame *call, const FVM_SRecord *baseline)
 {
     StyxReplyField fields[2];
     StyxFieldDelta deltas[STYX_CALL_VALUES];
     DVM_StyxValueFrame result = {0};
     size_t count;
+    unsigned char expanded[STYX_MANAGED_LIST_LIMIT];
     int valid = styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) &&
-        styxmanaged_deltas(shape->arguments, fields[1].bytes, fields[1].size, deltas, &count) &&
+        styxmanaged_deltas_base(shape->arguments, fields[1].bytes, fields[1].size, deltas, &count,
+            baseline, expanded, sizeof(expanded)) &&
         read_result(shape->result, &fields[0], &result) &&
         dvm_styx_ref_delta_commit(shape->arguments, call->arguments, deltas, count, call->ret, &result);
     dvm_styx_value_frame_clear(&result);
@@ -143,6 +145,17 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     {
         error("cannot encode remote managed call");
     }
+    unsigned char original[STYX_MANAGED_LIST_LIMIT + 1];
+    FVM_SRecord baseline;
+    if (files->field_deltas == 2)
+    {
+        memcpy(original, request, request_size);
+        if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, files->shape.arguments,
+            original, request_size, &baseline))
+        {
+            error("invalid managed request snapshot");
+        }
+    }
     Prog *process = currun();
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
     DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
@@ -162,7 +175,8 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
-    if (files->field_deltas ? delta_reply(&files->shape, request, response_size, &captured) :
+    if (files->field_deltas ? delta_reply(&files->shape, request, response_size, &captured,
+        files->field_deltas == 2 ? &baseline : NULL) :
         managed_reply(&files->shape, request, response_size, &captured))
     {
         return;

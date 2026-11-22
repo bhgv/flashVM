@@ -180,3 +180,31 @@ static int managed_field_deltas(void)
             outer, sizeof(outer), &length) == FVM_S_OK &&
         !styxmanaged_deltas(arguments, outer, length, patches, &count);
 }
+
+
+/* EN: Round-trip a bounded array span and reject an offset outside the snapshot.
+ * RU: Проверить восстановление участка массива и отклонить выход за границы. */
+static int managed_array_span(void)
+{
+    unsigned char old[128], next[128], patch[128], scratch[128], array[160];
+    memset(old, 3, sizeof(old));
+    memcpy(next, old, sizeof(next));
+    next[64] = 7;
+    FVM_SRecord before = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = old, .size = sizeof(old)};
+    FVM_SRecord after = {.tag = STYX_MANAGED_ARRAY_TAG, .payload = next, .size = sizeof(next)};
+    FVM_SRecord span, rebuilt;
+    size_t packed, expanded, used;
+    if (!styxmanaged_span_write(&before, &after, patch, sizeof(patch), &packed) || packed >= 16 ||
+        fvm_srecord_read(patch, packed, sizeof(patch), &span, &used) != FVM_S_OK ||
+        used != packed || !styxmanaged_span_expand("a[y]", &before, &span, scratch,
+            sizeof(scratch), array, sizeof(array), &expanded) ||
+        fvm_srecord_read(array, expanded, sizeof(array), &rebuilt, &used) != FVM_S_OK ||
+        rebuilt.tag != STYX_MANAGED_ARRAY_TAG || rebuilt.size != sizeof(next) ||
+        memcmp(rebuilt.payload, next, sizeof(next)))
+    {
+        return 0;
+    }
+    patch[span.payload - patch] = 255;
+    return !styxmanaged_span_expand("a[y]", &before, &span, scratch, sizeof(scratch),
+        array, sizeof(array), &expanded);
+}

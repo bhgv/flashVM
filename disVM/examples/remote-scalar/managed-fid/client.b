@@ -67,6 +67,7 @@ check_refs(m: Managed)
     Cell: import m;
     bytes := array[2500] of byte;
     bytes[0] = byte 12;
+    bytes[1] = byte 90;
     held := array[2500] of byte;
     held[2499] = byte 234;
     cell := ref Cell("x", bytes);

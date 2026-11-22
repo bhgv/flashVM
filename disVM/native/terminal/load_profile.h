@@ -15,6 +15,8 @@
 #define STYX_DYNAMIC_REPLY_TAG 90UL /* Shape-driven successful reply. */
 #define STYX_MANAGED_REQUEST_TAG 100UL /* Typed managed argument list. */
 #define STYX_MANAGED_DELTA_REQUEST_TAG 103UL /* Opt in to field deltas on this fid. */
+#define STYX_MANAGED_SPAN_REQUEST_TAG 104UL /* Opt in to array spans. */
+#define STYX_MANAGED_SPAN_VERSION 1U /* Length of the .ref-fields capability file. */
 #define STYX_MANAGED_DELTA_FILE ".ref-fields" /* Owner supports optional field deltas. */
 #define STYX_MANAGED_REPLY_TAG 101UL /* Result and updates envelope. */
 #define STYX_SHAPED_OFFER_TAG 88UL /* Ordinary export signature and resolved call types. */

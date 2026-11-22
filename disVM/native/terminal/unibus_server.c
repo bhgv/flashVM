@@ -123,7 +123,15 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (delta_node(qid.path) && offset >= 0)
     {
-        *count = 0;
+        if (offset == 0 && *count)
+        {
+            bytes[0] = '1';
+            *count = 1;
+        }
+        else
+        {
+            *count = 0;
+        }
         return nil;
     }
     MountedExport *module = mounted_node(qid.path, 2);
@@ -232,9 +240,17 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
         {
             directory->profile_node = styxaddfile(&server->server, parent, parent + 2, ".interface", 0444, "unibus");
         }
-        return directory->profile_node && (leader != index ||
-            styxaddfile(&server->server, parent, LAUNCH_EXIT + 1 + leader,
-                STYX_MANAGED_DELTA_FILE, 0444, "unibus"));
+        if (leader == index)
+        {
+            Styxfile *marker = styxaddfile(&server->server, parent, LAUNCH_EXIT + 1 + leader,
+                STYX_MANAGED_DELTA_FILE, 0444, "unibus");
+            if (!marker)
+            {
+                return 0;
+            }
+            marker->d.length = STYX_MANAGED_SPAN_VERSION;
+        }
+        return directory->profile_node != NULL;
     }
     uint32_t signature = styxscalar_request_signature(module->function.request_tag);
     if (!signature || module->function.reply_tag != styxfunction_reply_tag(module->function.request_tag))

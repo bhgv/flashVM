@@ -52,6 +52,9 @@ updates together. An exception discards all copy-back.
 
 The profile supports bounded ADTs with scalar, string, primitive array and
 tuple fields. Nested `ref` fields and `ref` return values are outside this
-profile. Arrays are individual fields. If an array changes, the whole array
-is sent. Peers without the capability still use the complete object snapshot
+profile. Arrays are individual fields. A new owner advertises array spans with a
+one-byte `.ref-fields` file. When the encoded payload keeps its size and the
+changed span is smaller, the reply includes its offset and replacement bytes.
+The client rebuilds and validates the array against the original request. A
+size change or a wide edit uses the complete array. Peers without the capability still use the complete object snapshot
 for each changed reference.

@@ -415,7 +415,6 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
     return ref_commit(refs, objects, updates, NULL, destination, result);
 }
 
-
 #include "managed_ref_delta.inc"
 
 
@@ -432,7 +431,7 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
     }
     if (!strcmp(refs, "()"))
     {
-        unsigned long tag = baseline->tag == STYX_MANAGED_DELTA_REQUEST_TAG ?
+        unsigned long tag = baseline->tag != STYX_MANAGED_REQUEST_TAG ?
             STYX_MANAGED_DELTA_TAG : STYX_MANAGED_ARRAY_TAG;
         return fvm_srecord_write(tag, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
@@ -449,7 +448,7 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
         consumed == extent && styxmanaged_ref_records(refs, &frame, after, &other_count) && count == other_count;
     unsigned char index = 0, mask = 0;
     size_t length = 1;
-    int delta = baseline->tag == STYX_MANAGED_DELTA_REQUEST_TAG;
+    int delta = baseline->tag != STYX_MANAGED_REQUEST_TAG;
     unsigned char *fields = delta ? malloc(capacity) : NULL;
     valid = valid && (!delta || fields);
     const char *type = refs + 1;
@@ -464,6 +463,7 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
         if (delta)
         {
             size_t field_size;
+            before[i].tag = baseline->tag;
             valid = styxmanaged_diff_fields(type, &before[i], &after[i], fields, capacity, &field_size);
             if (!valid || !field_size)
             {
