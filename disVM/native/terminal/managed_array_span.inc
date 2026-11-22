@@ -4,12 +4,20 @@
  */
 
 
+/* EN: Patches operate on counted bytes of an array or UTF-8 string.
+ * RU: Патчи работают с байтами массива или строки UTF-8. */
+static int patchable(unsigned long tag)
+{
+    return tag == STYX_MANAGED_ARRAY_TAG || tag == STYX_MANAGED_STRING_TAG;
+}
+
+
 /* EN: Encode disjoint spans when their total size beats one contiguous replacement.
  * RU: Кодировать отдельные участки, если они короче одной непрерывной замены. */
 static int managed_runs_write(const FVM_SRecord *before, const FVM_SRecord *after,
     void *bytes, size_t capacity, size_t *used)
 {
-    if (before->tag != STYX_MANAGED_ARRAY_TAG || after->tag != before->tag ||
+    if (!patchable(before->tag) || after->tag != before->tag ||
         before->size != after->size || before->size > STYX_MANAGED_LIST_LIMIT)
     {
         return 0;
@@ -82,7 +90,7 @@ static int apply_runs(const FVM_SRecord *patch, unsigned char *scratch, size_t s
 int styxmanaged_span_write(const FVM_SRecord *before, const FVM_SRecord *after,
     void *bytes, size_t capacity, size_t *used)
 {
-    if (before->tag != STYX_MANAGED_ARRAY_TAG || after->tag != before->tag ||
+    if (!patchable(before->tag) || after->tag != before->tag ||
         before->size != after->size || before->size > STYX_MANAGED_LIST_LIMIT)
     {
         return 0;
@@ -111,7 +119,7 @@ int styxmanaged_span_write(const FVM_SRecord *before, const FVM_SRecord *after,
 static int managed_splice_write(const FVM_SRecord *before, const FVM_SRecord *after,
     void *bytes, size_t capacity, size_t *used)
 {
-    if (before->tag != STYX_MANAGED_ARRAY_TAG || after->tag != before->tag ||
+    if (!patchable(before->tag) || after->tag != before->tag ||
         before->size == after->size || before->size > STYX_MANAGED_LIST_LIMIT ||
         after->size > STYX_MANAGED_LIST_LIMIT)
     {
@@ -172,7 +180,7 @@ static int expand_splice(const FVM_SRecord *before, const FVM_SRecord *patch,
     memcpy(scratch, before->payload, start);
     memcpy(scratch + start, patch->payload + 8, inserted);
     memcpy(scratch + start + inserted, before->payload + start + removed, retained - start);
-    return fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, scratch, retained + inserted, bytes, limit, used) == FVM_S_OK;
+    return fvm_srecord_write(before->tag, scratch, retained + inserted, bytes, limit, used) == FVM_S_OK;
 }
 
 
@@ -180,7 +188,8 @@ static int expand_splice(const FVM_SRecord *before, const FVM_SRecord *patch,
 int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const FVM_SRecord *patch,
     unsigned char *scratch, size_t capacity, void *bytes, size_t limit, size_t *used)
 {
-    if (type[0] != 'a' || before->tag != STYX_MANAGED_ARRAY_TAG || before->size > capacity ||
+    if (!((type[0] == 'a' && before->tag == STYX_MANAGED_ARRAY_TAG) ||
+        (type[0] == 's' && before->tag == STYX_MANAGED_STRING_TAG)) || before->size > capacity ||
         patch->size <= 4 || (patch->tag != STYX_MANAGED_SPAN_TAG && patch->tag != STYX_MANAGED_RUN_TAG &&
         patch->tag != STYX_MANAGED_SPLICE_TAG))
     {
@@ -194,7 +203,7 @@ int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const F
     {
         memcpy(scratch, before->payload, before->size);
         return apply_runs(patch, scratch, before->size) &&
-            fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, scratch, before->size, bytes, limit, used) == FVM_S_OK;
+            fvm_srecord_write(before->tag, scratch, before->size, bytes, limit, used) == FVM_S_OK;
     }
     size_t start = (uint32_t)patch->payload[0] << 24 | (uint32_t)patch->payload[1] << 16 |
         (uint32_t)patch->payload[2] << 8 | patch->payload[3];
@@ -205,7 +214,7 @@ int styxmanaged_span_expand(const char *type, const FVM_SRecord *before, const F
     }
     memcpy(scratch, before->payload, before->size);
     memcpy(scratch + start, patch->payload + 4, length);
-    return fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, scratch, before->size, bytes, limit, used) == FVM_S_OK;
+    return fvm_srecord_write(before->tag, scratch, before->size, bytes, limit, used) == FVM_S_OK;
 }
 
 

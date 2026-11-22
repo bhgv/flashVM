@@ -53,6 +53,8 @@ static void prepare_call(void *frame)
          !dvm_styx_value_frame_read(STYX_MANAGED_RUN_REQUEST_TAG, data->shape.arguments,
             wire->data, (size_t)wire->len, &arguments) &&
          !dvm_styx_value_frame_read(STYX_MANAGED_SPLICE_REQUEST_TAG, data->shape.arguments,
+            wire->data, (size_t)wire->len, &arguments) &&
+         !dvm_styx_value_frame_read(STYX_MANAGED_TEXT_REQUEST_TAG, data->shape.arguments,
             wire->data, (size_t)wire->len, &arguments)))
     {
         error("invalid managed owner arguments");
@@ -83,6 +85,8 @@ static void finish_call(void *frame)
         !styxmanaged_list_read(STYX_MANAGED_RUN_REQUEST_TAG, data->shape.arguments,
             wire->data, (size_t)wire->len, &baseline) &&
         !styxmanaged_list_read(STYX_MANAGED_SPLICE_REQUEST_TAG, data->shape.arguments,
+            wire->data, (size_t)wire->len, &baseline) &&
+        !styxmanaged_list_read(STYX_MANAGED_TEXT_REQUEST_TAG, data->shape.arguments,
             wire->data, (size_t)wire->len, &baseline))
     {
         error("invalid managed owner baseline");

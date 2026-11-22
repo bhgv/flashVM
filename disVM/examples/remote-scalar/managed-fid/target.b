@@ -34,6 +34,10 @@ update(mode: string, left, right, untouched: ref Cell): string
     if (mode == "noop") {
         return untouched.text;
     }
+    if (mode == "utf8") {
+        left.text = left.text[:1] + "🌍" + left.text[2:];
+        return right.text[:2];
+    }
     if (mode == "grow") {
         grown := array[len left.bytes + 1] of byte;
         grown[0:] = left.bytes;

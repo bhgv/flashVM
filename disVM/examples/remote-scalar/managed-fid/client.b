@@ -104,4 +104,15 @@ check_refs(m: Managed)
         cell.bytes[len cell.bytes - 1] != byte 92 || other.bytes != held) {
         raise "failed call modified client refs";
     }
+    text := "é";
+    for (i := 0; i < 10; i++) {
+        text = text + text;
+    }
+    cell.text = text;
+    prior := cell.bytes;
+    if (m->update("utf8", cell, cell, other) != "é🌍" ||
+        cell.text != "é🌍" + text[2:] || cell.bytes != prior) {
+        raise "UTF-8 text delta via ref failed";
+    }
+
 }

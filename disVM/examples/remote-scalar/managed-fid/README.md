@@ -63,3 +63,8 @@ bytes when that representation is smaller. The common prefix and suffix
 are reused from the request. Wide edits can still use the complete array.
 Peers without the capability still use the complete object snapshot
 for each changed reference.
+
+A four-byte `.ref-fields` file also advertises patches for UTF-8 strings.
+They can cross character boundaries. The receiver validates the complete
+reconstructed string before applying the update. Older peers receive the
+complete string field.

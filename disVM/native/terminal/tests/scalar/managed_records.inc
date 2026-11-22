@@ -302,3 +302,46 @@ static int managed_array_splice(void)
     }
     return 1;
 }
+
+
+/* EN: Reassemble a UTF-8 edit before validation, including a split code point.
+ * RU: Восстановить правку UTF-8 до проверки, включая участок внутри символа. */
+static int managed_text_patch(void)
+{
+    unsigned char old[128], next[128], a[144], b[144], fields[148], scratch[128], expanded[144];
+    memset(old, 'x', sizeof(old));
+    memcpy(next, old, sizeof(next));
+    old[50] = next[50] = 0xc3;
+    old[51] = 0xa8;
+    next[51] = 0xa9;
+    a[0] = b[0] = 0;
+    size_t an, bn, n, used, size;
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, old, sizeof(old), a + 1, sizeof(a) - 1, &an) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_STRING_TAG, next, sizeof(next), b + 1, sizeof(b) - 1, &bn) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_SRecord before = {.tag = STYX_MANAGED_TEXT_REQUEST_TAG, .payload = a, .size = an + 1};
+    FVM_SRecord after = {.tag = STYX_MANAGED_REF_TAG, .payload = b, .size = bn + 1};
+    FVM_SRecord base = {.tag = STYX_MANAGED_STRING_TAG, .payload = old, .size = sizeof(old)};
+    FVM_SRecord patch;
+    if (!styxmanaged_diff_fields("r[s]", &before, &after, fields, sizeof(fields), &n) ||
+        n >= 16 || fields[0] != 1 ||
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) != FVM_S_OK ||
+        patch.tag != STYX_MANAGED_SPAN_TAG ||
+        !styxmanaged_span_expand("s", &base, &patch, scratch, sizeof(scratch), expanded, sizeof(expanded), &size) ||
+        !styxmanaged_payload_valid("(s)", expanded, size) || memcmp(scratch, next, sizeof(next)))
+    {
+        return 0;
+    }
+    fields[patch.payload - fields + 4] = 0xff;
+    if (!styxmanaged_span_expand("s", &base, &patch, scratch, sizeof(scratch), expanded, sizeof(expanded), &size) ||
+        styxmanaged_payload_valid("(s)", expanded, size))
+    {
+        return 0;
+    }
+    before.tag = STYX_MANAGED_SPLICE_REQUEST_TAG;
+    return styxmanaged_diff_fields("r[s]", &before, &after, fields, sizeof(fields), &n) &&
+        fvm_srecord_read(fields + 1, n - 1, sizeof(fields), &patch, &used) == FVM_S_OK &&
+        patch.tag == STYX_MANAGED_STRING_TAG;
+}

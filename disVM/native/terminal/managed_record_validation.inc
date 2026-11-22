@@ -308,6 +308,25 @@ static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *
 #include "managed_array_span.inc"
 
 
+/* EN: Choose the smallest supported patch before falling back to the complete leaf.
+ * RU: Выбрать компактный поддерживаемый патч либо оставить полное значение. */
+static int field_patch(char type, unsigned long version, const FVM_SRecord *old, const FVM_SRecord *next,
+    void *output, size_t capacity, size_t *used)
+{
+    int text = version == STYX_MANAGED_TEXT_REQUEST_TAG;
+    int splice = text || version == STYX_MANAGED_SPLICE_REQUEST_TAG;
+    int runs = splice || version == STYX_MANAGED_RUN_REQUEST_TAG;
+    int span = runs || version == STYX_MANAGED_SPAN_REQUEST_TAG;
+    if (type != 'a' && !(type == 's' && text))
+    {
+        return 0;
+    }
+    return (splice && managed_splice_write(old, next, output, capacity, used)) ||
+        (runs && managed_runs_write(old, next, output, capacity, used)) ||
+        (span && styxmanaged_span_write(old, next, output, capacity, used));
+}
+
+
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
     void *bytes, size_t capacity, size_t *used)
@@ -339,14 +358,7 @@ int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const F
         }
         size_t n;
         if (size >= capacity ||
-            (!(*right.type[i] == 'a' &&
-                ((before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG &&
-                    managed_splice_write(old, next, output + size, capacity - size, &n)) ||
-                 ((before->tag == STYX_MANAGED_RUN_REQUEST_TAG || before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG) &&
-                    managed_runs_write(old, next, output + size, capacity - size, &n)) ||
-                 ((before->tag == STYX_MANAGED_SPAN_REQUEST_TAG || before->tag == STYX_MANAGED_RUN_REQUEST_TAG ||
-                    before->tag == STYX_MANAGED_SPLICE_REQUEST_TAG) &&
-                    styxmanaged_span_write(old, next, output + size, capacity - size, &n)))) &&
+            (!field_patch(*right.type[i], before->tag, old, next, output + size, capacity - size, &n) &&
             fvm_srecord_write(next->tag, next->payload, next->size,
                 output + size, capacity - size, &n) != FVM_S_OK))
         {
