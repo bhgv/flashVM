@@ -315,17 +315,26 @@ int dvm_styx_serve_cli(int argc, char **argv)
     return result;
 }
 
-/* EN: Acquire the one-shot launch and populate the borrowed startup buffer.
- * RU: Принять одноразовый запуск и заполнить заимствованный буфер параметров. */
+/* EN: Acquire one queued launch and populate the borrowed startup buffer.
+ * RU: Принять один запуск из очереди и заполнить заимствованный буфер. */
 int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
-    DVM_LaunchHandoff *handoff, unsigned char *arguments)
+    DVM_LaunchHandoff *handoff, unsigned char *arguments, StyxLaunchTicket **ticket)
 {
+    unsigned char wire[64];
+    size_t size;
+    *ticket = styxunibusservernextlaunch(server, wire, sizeof(wire), &size);
+    if (!*ticket)
+    {
+        return 0;
+    }
     Startup startup = {.scoped = 1};
-    if (!receive_startup(styxunibusserverinbox(server), &startup, 0) ||
+    StyxLaunchReceiver receiver = {.tag = DVM_STYX_LAUNCH_TAG, .start_payload = save_startup,
+        .state = &startup, .payload_limit = sizeof(startup.bytes)};
+    if (!styxterminallaunchreceive(&receiver, 0, wire, size) ||
         !dvm_launch_handoff_program(handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds))
     {
-        return 0;
+        return -1;
     }
     memcpy(arguments, startup.bytes, startup.size);
     handoff->arguments = arguments;

@@ -1,52 +1,90 @@
 /* Copyright (c) 2026 bhgv
- * EN: Exercise one-shot launch traffic beside mounted functions on a single session.
- * RU: Проверить одноразовый запуск рядом с вызовами функций на одной сессии.
+ * EN: Exercise independent launches beside mounted functions on a single session.
+ * RU: Проверить независимые запуски рядом с вызовами функций на одной сессии.
  */
 
-/* EN: Submit one launch record and read completion on the existing library session.
- * RU: Отправить запись запуска и прочитать результат на той же сессии библиотек. */
+static void launch_write(StyxFid *fid, uint32_t pid, int expected)
+{
+    DVM_LaunchProgram program = {.pid = pid};
+    unsigned char header[STYX_LAUNCH_PROGRAM_HEADER], wire[64];
+    size_t size;
+    check(styxlaunchprogramencode(header, &program) &&
+        fvm_srecord_write(REQUEST_TAG, header, sizeof(header), wire, sizeof(wire), &size) == FVM_S_OK,
+        "format one scoped launch");
+    StyxTransfer result;
+    styxclientwrite(fid, 0, wire, size, &result);
+    if (!!result.success != expected || (expected && result.count != size))
+    {
+        fprintf(stderr, "launch PID %u: success=%d count=%zu expected=%d\n",
+            pid, result.success, result.count, expected);
+        check(0, "admit a complete launch once per fid");
+    }
+}
+
+static StyxLaunchTicket *launch_take(StyxUnibusServer *server, uint32_t pid)
+{
+    unsigned char wire[64];
+    size_t size, used;
+    FVM_SRecord record;
+    DVM_LaunchProgram program;
+    StyxLaunchTicket *ticket = styxunibusservernextlaunch(server, wire, sizeof(wire), &size);
+    check(ticket && fvm_srecord_read(wire, size, sizeof(wire), &record, &used) == FVM_S_OK &&
+        used == size && styxlaunchprogramdecode(record.payload, record.size, &program) &&
+        program.pid == pid, "dequeue the expected launch");
+    return ticket;
+}
+
+static void launch_status(StyxFid *fid, const char *expected)
+{
+    char bytes[8];
+    size_t size = expected ? strlen(expected) : 0;
+    StyxTransfer result;
+    styxclientread(fid, 0, bytes, sizeof(bytes), &result);
+    check(result.success == (expected != NULL) && (!expected ||
+        (result.count == size && !memcmp(bytes, expected, size))), "launch status belongs to its fid");
+}
+
 static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
 {
-    StyxFid *input = styxclientwalk(client, ".unibus");
-    StyxFid *unsubmitted = styxclientwalk(client, ".unibus");
+    StyxFid *first = styxclientwalk(client, ".unibus");
+    StyxFid *second = styxclientwalk(client, ".unibus");
+    StyxFid *discarded = styxclientwalk(client, ".unibus");
+    StyxFid *legacy = styxclientwalk(client, ".unibus");
     StyxFid *exit_status = styxclientwalk(client, ".exit");
     StyxFid *image = styxclientwalk(client, "implementation.dis");
     StyxFid *declaration = styxclientwalk(client, ".interface");
-    check(input && unsubmitted && exit_status && image && declaration && styxclientopen(input, ORDWR) &&
-        styxclientopen(unsubmitted, ORDWR) &&
-        styxclientopen(exit_status, OREAD) && styxclientopen(image, OREAD) &&
-        styxclientopen(declaration, OREAD), "open launch nodes beside library");
+    check(first && second && discarded && legacy && exit_status && image && declaration &&
+        styxclientopen(first, ORDWR) && styxclientopen(second, ORDWR) && styxclientopen(discarded, ORDWR) &&
+        styxclientopen(legacy, OWRITE) && styxclientopen(exit_status, OREAD) &&
+        styxclientopen(image, OREAD) && styxclientopen(declaration, OREAD), "open launch nodes beside library");
     styxclientclunk(image);
     styxclientclunk(declaration);
-    unsigned char bytes[STYX_SCALAR_RECORD_CAPACITY], received[sizeof(bytes)];
-    size_t size;
-    check(styxscalarwrite(REQUEST_TAG, STYX_SCALAR_CALL, 73, bytes, sizeof(bytes), &size),
-        "format tagged launch inbox fixture");
-    StyxTransfer transfer;
-    styxclientread(unsubmitted, 0, received, sizeof(received), &transfer);
-    check(!transfer.success, "unsubmitted fid cannot read launch status");
-    styxclientwrite(input, 0, bytes, size, &transfer);
-    check(transfer.success && transfer.count == size, "deliver launch on library session");
-    styxclientwrite(unsubmitted, 0, bytes, size, &transfer);
-    check(!transfer.success, "second launch cannot claim the accepted request");
-    DVM_VfsHandle reader = {0};
-    check(dvm_provider_open(styxunibusserverinbox(server), ".", "r", &reader) == FVM_OK,
-        "open the launch inbox on the provider");
-    DVM_IoResult result = dvm_vfs_read_chunk(&reader, received, sizeof(received));
-    check(result.status == FVM_OK && result.count == size && !memcmp(bytes, received, size),
-        "launch record reached the dedicated inbox");
-    dvm_vfs_close(&reader);
-    styxclientread(input, 0, received, sizeof(received), &transfer);
-    check(transfer.success && transfer.count == 0, "launch status pending");
-    styxunibusserverlaunchstatus(server, 0);
-    styxclientread(input, 0, received, sizeof(received), &transfer);
-    check(transfer.success && transfer.count == 3 && !memcmp(received, "ok\n", 3),
-        "read launch result on the library session");
-    styxclientread(unsubmitted, 0, received, sizeof(received), &transfer);
-    check(!transfer.success, "rejected fid cannot read another launch result");
-    styxclientread(exit_status, 0, received, sizeof(received), &transfer);
-    check(transfer.success && transfer.count == 3, "legacy status remains readable");
+
+    launch_write(first, 73, 1);
+    launch_write(discarded, 76, 1);
+    styxclientclunk(discarded);
+    launch_write(second, 77, 1);
+    launch_write(legacy, 78, 1);
+    styxclientclunk(legacy);
+    StyxLaunchTicket *a = launch_take(server, 73);
+    StyxLaunchTicket *b = launch_take(server, 77);
+    StyxLaunchTicket *old = launch_take(server, 78);
+    launch_status(first, "");
+    styxunibuslaunchcomplete(b, 1);
+    launch_status(second, "error\n");
+    launch_status(first, "");
+    launch_status(exit_status, "");
+    styxunibuslaunchcomplete(a, 0);
+    styxunibuslaunchcomplete(old, 0);
+    launch_status(first, "ok\n");
+    launch_status(second, "error\n");
+    launch_status(exit_status, "ok\n");
+    launch_write(first, 75, 0);
+    StyxFid *unsubmitted = styxclientwalk(client, ".unibus");
+    check(unsubmitted && styxclientopen(unsubmitted, ORDWR), "open an unsubmitted launch fid");
+    launch_status(unsubmitted, NULL);
     styxclientclunk(unsubmitted);
-    styxclientclunk(input);
+    styxclientclunk(first);
+    styxclientclunk(second);
     styxclientclunk(exit_status);
 }

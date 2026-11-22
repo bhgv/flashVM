@@ -126,6 +126,7 @@ typedef struct StyxUnibusLaunch
     unsigned long tag; /* Nonzero S-record tag accepted by .unibus. */
     DVM_Provider *original; /* Borrowed original Dis image. */
     DVM_Provider *profile; /* Borrowed launch declaration. */
+    int persistent; /* Queue scoped requests and attach a result to each fid. */
 } StyxUnibusLaunch;
 
 /* EN: Publish a launch inbox, exit result and mounted native/Dis functions.
@@ -141,6 +142,18 @@ StyxUnibusServer *styxunibusserverstartlaunchmounted(RemotePhy *channel,
  * Принять channel, удерживать reverse и оба файла запуска до join. */
 StyxUnibusServer *styxunibusserverstartscopedlaunchtable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse, const StyxUnibusLaunch *launch);
+
+typedef struct StyxLaunchTicket StyxLaunchTicket;
+
+/* EN: Wait on a persistent endpoint. wire holds at least 64 bytes. Return an
+ * owned ticket and the exact request, or NULL on shutdown/cancel.
+ * RU: Ждать на многоразовой точке запуска. wire вмещает не менее 64 байт.
+ * Вернуть собственный билет и точный запрос либо NULL при остановке/отмене. */
+StyxLaunchTicket *styxunibusservernextlaunch(StyxUnibusServer *server, void *wire, size_t capacity, size_t *size);
+
+/* EN: Consume a ticket and publish its result. A nonzero status means failure.
+ * RU: Поглотить билет и опубликовать результат. Ненулевой статус означает ошибку. */
+void styxunibuslaunchcomplete(StyxLaunchTicket *ticket, int status);
 
 /* EN: Publish one launch exit status while continuing to serve the session.
  * RU: Опубликовать результат запуска и продолжить обслуживание сессии. */

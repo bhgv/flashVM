@@ -20,41 +20,42 @@
 
 
 extern DVM_Provider *dvm_terminal_publish_program(DVM_Namespace *, const char *);
-extern int dvm_terminal_prepare_shared_launch(StyxUnibusServer *, DVM_Provider *, DVM_LaunchHandoff *, unsigned char *);
+extern int dvm_terminal_prepare_shared_launch(StyxUnibusServer *, DVM_Provider *,
+    DVM_LaunchHandoff *, unsigned char *, StyxLaunchTicket **);
 
 static StyxUnibusServer *launch_server; /* Borrowed from the active CLI through runtime shutdown. */
 static DVM_Provider *launch_root; /* Borrowed reverse session. */
 static const char *launch_image; /* Borrowed host-selected image. */
-static int launch_taken; /* One use by the dispatcher. */
 
 
-/* EN: Publish a hosted child result without ending the library session.
- * RU: Опубликовать результат потомка и сохранить сессию библиотек. */
-static void report_shared_launch(void *server, int status)
+/* EN: Report the hosted child result to its own fid, then retire its ticket.
+ * RU: Передать итог потомка в его fid и освободить билет. */
+static void report_shared_launch(void *ticket, int status)
 {
-    styxunibusserverlaunchstatus(server, status);
+    styxunibuslaunchcomplete(ticket, status);
 }
 
 
-/* EN: Wait for the configured request outside managed admission, at most once.
- * RU: Дождаться настроенного запроса вне допуска VM, не более одного раза. */
+/* EN: Wait for the next request outside managed admission.
+ * RU: Дождаться следующего запроса вне допуска VM. */
 int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *arguments,
     const char **image, DVM_LaunchCompletion *completion)
 {
-    if (!launch_server || __atomic_exchange_n(&launch_taken, 1, __ATOMIC_ACQ_REL))
+    if (!launch_server)
     {
         return 0;
     }
     handoff->local_role = DVM_ORIGIN_PROVIDER;
-    *completion = (DVM_LaunchCompletion){report_shared_launch, launch_server};
-    *image = launch_image;
-    if (!dvm_terminal_prepare_shared_launch(launch_server, launch_root, handoff, arguments))
+    StyxLaunchTicket *ticket = NULL;
+    int outcome = dvm_terminal_prepare_shared_launch(launch_server, launch_root, handoff, arguments, &ticket);
+    if (!outcome)
     {
-        report_shared_launch(launch_server, 1);
         return 0;
     }
+    *completion = (DVM_LaunchCompletion){report_shared_launch, ticket};
+    *image = launch_image;
     strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);
-    return 1;
+    return outcome;
 }
 
 
@@ -144,7 +145,8 @@ int dvm_styx_library_cli(int argc, char **argv)
     DVM_Namespace *host = execute && have_cwd ? dvm_namespace_create("/", cwd, NULL) : NULL;
     DVM_Provider *original = host && dvm_namespace_pin(host) ? dvm_terminal_publish_program(host, execute) : NULL;
     DVM_Provider *profile = original ? dvm_module_adapter(DVM_STYX_LAUNCH_CONTEXT, sizeof(DVM_STYX_LAUNCH_CONTEXT) - 1) : NULL;
-    const StyxUnibusLaunch launch = {DVM_STYX_LAUNCH_TAG, original, profile};
+    const StyxUnibusLaunch launch = {.tag = DVM_STYX_LAUNCH_TAG, .original = original,
+        .profile = profile, .persistent = 1};
     StyxUnibusServer *server = NULL;
     if (root && (!execute || profile))
     {

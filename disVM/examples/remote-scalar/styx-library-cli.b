@@ -102,7 +102,25 @@ run_shared(sys: Sys)
     if (sys->open("/expect-launch-fail", Sys->OREAD) != nil) {
         expected = -2;
     }
-    if (vfs->run("/shared-launch.dis") != expected) {
+    if (vfs->run("/shared-launch.dis") != expected || vfs->run("/shared-launch.dis") != expected) {
         raise "wrong result from shared Styx launch";
     }
+    if (expected == 1) {
+        done := chan of (string, int, int);
+        spawn run_parallel(vfs, "wait", 1, done);
+        spawn run_parallel(vfs, "release", -2, done);
+        for (i := 0; i < 2; i++) {
+            (command, actual, wanted) := <-done;
+            if (actual != wanted) {
+                raise sys->sprint("parallel launch %s returned %d, expected %d", command, actual, wanted);
+            }
+        }
+    }
+}
+
+# EN: Each worker uses the same bound path and receives its own completion.
+# RU: Каждый поток использует общий bind-путь и получает собственный итог.
+run_parallel(vfs: Vfsnative, payload: string, expected: int, done: chan of (string, int, int))
+{
+    done <-= (payload, vfs->runargs("/shared-launch.dis", array of byte payload), expected);
 }

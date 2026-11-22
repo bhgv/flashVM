@@ -340,6 +340,8 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
             (root / mark).write_bytes(b"")
     caller, owner = tcp_pair()
     export = "missing" if missing else "update"
+    for marker in ("parallel-entered", "parallel-released"):
+        (owner_root / marker).write_bytes(b"")
     (owner_root / "launch-marker").write_bytes(b"")
     with caller, owner, subprocess.Popen(
         [runtime, "--styx-library-serve-fd", str(owner.fileno()), "--execute", "launch.dis",
@@ -364,7 +366,8 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
                     raise RuntimeError(reported + output)
             elif (client.returncode or server.returncode or "PASS two libraries" not in reported or
                   (owner_root / "launch-marker").read_bytes() != b"ran\n"):
-                raise RuntimeError(reported + output)
+                barriers = {p.name: p.read_bytes() for p in owner_root.glob("parallel-*")}
+                raise RuntimeError(reported + output + repr(barriers))
             else:
                 print(reported.strip(), mode, flush=True)
         finally:

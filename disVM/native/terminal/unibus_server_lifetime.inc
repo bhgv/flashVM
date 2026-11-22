@@ -61,6 +61,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
         return 0;
     }
     styxunibusdrainfunctions(server);
+    free_launch_queue(server->launches);
     styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);

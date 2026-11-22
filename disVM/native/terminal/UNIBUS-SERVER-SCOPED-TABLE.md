@@ -48,9 +48,14 @@ the original image provider and the launch declaration provider.
 The server retains both providers until join. The module-specific
 interfaces remain under `mounted`.
 
-The host reads the one-shot launch request from
-`styxunibusserverinbox` and manages execution. Call
-`styxunibusserverlaunchstatus` with the process status to publish a
-result while keeping the library session available. The first status
-wins. The [wire test](tests/scalar/route_launch.inc) exercises launch
-submission, result and library requests on a single connection.
+Set `persistent` on `StyxUnibusLaunch` for a bounded queue of scoped
+requests. The host takes each record with `styxunibusservernextlaunch`
+and reports through `styxunibuslaunchcomplete`. The ticket belongs to
+that request, even if later requests finish earlier. A closed fid
+discards its queued request before dequeue. An already running child
+can finish independently. The legacy write-only fid has one status
+slot at `.exit`.
+
+With `persistent` clear, retain the one-shot inbox and
+`styxunibusserverlaunchstatus`. The [wire test](tests/scalar/route_launch.inc)
+checks independent fids, reverse completion order and the legacy result.

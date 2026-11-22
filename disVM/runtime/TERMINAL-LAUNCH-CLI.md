@@ -336,10 +336,13 @@ disvm --styx-library-serve-fd 3 --execute launch.dis \
 
 The same Styx mount publishes the program at `implementation.dis` and
 libraries under `mounted`. The caller can bind the program to another VFS
-path and submit it with `Vfsnative.run`. The provider runs the configured
-image once in a child Dis process with the caller context. The call
-returns the execution result. The library dispatcher stays available after program
-success or failure until the caller disconnects.
+path and submit it with `Vfsnative.run`. Each call runs the configured
+image in its own child Dis process with its caller context and receives its
+own result on the opened fid. Different callers can run concurrently and
+the same caller can run again after completion. The host queues up to 64
+pending launch records. Each record, including the selector and S-record
+header, fits in 64 bytes. Library calls stay available on the same session.
+The standalone `--styx-serve-fd` command retains its one-shot lifetime.
 
 The [stock CLI test](../native/terminal/tests/scalar/mount_cli.py) runs
 the [example program](../examples/remote-scalar/styx-shared-launch-owner.b),

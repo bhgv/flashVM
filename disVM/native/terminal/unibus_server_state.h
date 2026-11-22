@@ -22,6 +22,8 @@ typedef struct MountedExport
     StyxScalarFunction function; /* Copied dispatch descriptor. */
 } MountedExport;
 
+typedef struct StyxLaunchQueue StyxLaunchQueue;
+
 struct StyxUnibusServer
 {
     MountedExport *modules; /* Fixed entries; the dispatcher finalizes loaded profiles. */
@@ -30,7 +32,8 @@ struct StyxUnibusServer
     pthread_t thread;    /* Exclusive native dispatcher. */
     DVM_Provider *caller_root; /* Owned reverse Styx provider for shape-driven calls. */
     int function_workers; /* Active async calls holding this server state. */
-    int completion; /* Whether this one-shot endpoint exports .exit. */
+    int completion; /* Whether this endpoint exports completion. */
+    StyxLaunchQueue *launches; /* Optional persistent request queue. */
     int exit_value; /* Atomic encoded status; zero while pending. */
     int stopped; /* Atomic flag set after the dispatch transport stops. */
     int loaded; /* Load-backed directory; all profiles arrive from the owner. */

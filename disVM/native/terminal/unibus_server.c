@@ -18,6 +18,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "unibus_server_state.h"
+#include "program_record.h"
+#include "cancel.h"
+#include <time.h>
+#include "unibus_launch_queue.inc"
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
 
@@ -46,7 +50,8 @@ static int delta_node(Path path)
 
 typedef struct LaunchFid
 {
-    StyxOpen *writer; /* Owned inbox backing. */
+    StyxOpen *writer; /* Owned legacy inbox backing. */
+    StyxLaunchTicket *ticket; /* Owned result for a persistent read/write fid. */
     int waiting; /* Read/write fid admitted to observe completion. */
     int submitted; /* Set only after the complete request is accepted. */
 } LaunchFid;
@@ -57,6 +62,7 @@ typedef struct LaunchFid
 static void close_launch_file(void *state)
 {
     LaunchFid *fid = state;
+    close_launch_ticket(fid->ticket);
     styxfileclose(fid->writer);
     free(fid);
 }
@@ -95,9 +101,12 @@ static char *open_node(Qid *qid, int mode)
         {
             return Eperm;
         }
-        fid->writer = styxfileopen(current->file, OWRITE);
+        if (!current->launches)
+        {
+            fid->writer = styxfileopen(current->file, OWRITE);
+        }
         fid->waiting = mode == ORDWR;
-        if (!fid->writer || styxsetauxowned(&current->server, fid, close_launch_file) < 0)
+        if ((!current->launches && !fid->writer) || styxsetauxowned(&current->server, fid, close_launch_file) < 0)
         {
             close_launch_file(fid);
             return Eperm;
@@ -143,6 +152,16 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
     if (!fid || (fid->waiting && (offset || fid->submitted)))
     {
         return Ebadarg;
+    }
+    if (current->launches)
+    {
+        if (offset || fid->submitted || !enqueue_launch(current->launches, bytes, *count,
+                fid->waiting, &fid->ticket))
+        {
+            return Ebadarg;
+        }
+        fid->submitted = 1;
+        return nil;
     }
     styxfilewrite(fid->writer, offset, bytes, *count, &result);
     if (!result.success || !result.confirmed || result.uncertain || result.count != *count)
@@ -202,12 +221,14 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         {
             return Eperm;
         }
-        *count = styxunibusexitread(current, bytes, *count, offset);
+        *count = current->launches ? launch_ticket_read(fid->ticket, bytes, *count, offset) :
+            styxunibusexitread(current, bytes, *count, offset);
         return nil;
     }
     if (current->completion && qid.path == (current->count ? LAUNCH_EXIT : MOUNTED_ROOT) && offset >= 0)
     {
-        *count = styxunibusexitread(current, bytes, *count, offset);
+        *count = current->launches ? launch_ticket_read(current->launches->legacy, bytes, *count, offset) :
+            styxunibusexitread(current, bytes, *count, offset);
         return nil;
     }
     StyxTransfer result;
@@ -238,6 +259,7 @@ static void *serve(void *arg)
     while (!styxwait(&server->server) && !styxprocess(&server->server))
     {
     }
+    seal_launch_queue(server->launches);
     styxend(&server->server);
     styxunibusmailboxseal(server->inbox);
     for (size_t i = 0; i < server->count; i++)
@@ -505,12 +527,19 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     if (launch)
     {
         server->completion = 1;
-        server->inbox = styxunibusinbox(launch->tag);
-        server->file = server->inbox ? styxbacking(server->inbox) : NULL;
+        if (launch->persistent)
+        {
+            server->launches = launch_queue(launch->tag);
+        }
+        else
+        {
+            server->inbox = styxunibusinbox(launch->tag);
+            server->file = server->inbox ? styxbacking(server->inbox) : NULL;
+        }
         server->original = launch->original ? styxbacking(launch->original) : NULL;
         server->profile = launch->profile ? styxbacking(launch->profile) : NULL;
     }
-    if (launch && (!server->file || !server->original || !server->profile))
+    if (launch && (!(server->launches || server->file) || !server->original || !server->profile))
     {
         phyfree(channel);
     }
@@ -527,6 +556,7 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
         }
         styxend(&server->server);
     }
+    free_launch_queue(server->launches);
     styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);

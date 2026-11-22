@@ -18,6 +18,8 @@
 #include "caller_styx.h"
 #include "mount.h"
 #include "staged_call.h"
+#include "program_record.h"
+#include "flashvm/srecord.h"
 #include "mux/bidir.h"
 #include "drivers/posix/fd.h"
 #include <pthread.h>
@@ -312,7 +314,7 @@ static void mounted_function(void)
 #else
     DVM_Provider *image = styxunibusinbox(REQUEST_TAG);
     DVM_Provider *declaration = styxunibusinbox(REQUEST_TAG);
-    const StyxUnibusLaunch launch = {.tag = REQUEST_TAG, .original = image, .profile = declaration};
+    const StyxUnibusLaunch launch = {.tag = REQUEST_TAG, .original = image, .profile = declaration, .persistent = 1};
     const StyxMountedScalar exports[] = {{.module = "compute.dis", .name = "compute", .native = &function}};
     StyxUnibusServer *server = styxunibusserverstartlaunchmounted(forward_server, exports, 1, &launch);
     dvm_provider_release(image);
