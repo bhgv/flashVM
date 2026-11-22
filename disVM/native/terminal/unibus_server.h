@@ -119,6 +119,21 @@ StyxUnibusServer *styxunibusserverstartscopedtable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse);
 
 
+#define STYX_LAUNCH_EXTRA_LIMIT 16U /* Maximum additional runnable images. */
+#define STYX_LAUNCH_NAME_LIMIT 31U /* Maximum length of an exported basename. */
+#define STYX_LAUNCH_PROGRAMS "programs" /* Directory with named images and their request files. */
+#define STYX_LAUNCH_CATALOG ".programs" /* Bounded list of published basenames. */
+
+typedef struct StyxUnibusProgram
+{
+    const char *name; /* Public basename ending in .dis, copied when exported. */
+    DVM_Provider *image; /* Borrowed image retained by the server through join. */
+} StyxUnibusProgram;
+
+/* EN: Check a public basename with no path components or hidden prefix.
+ * RU: Проверить открытое имя .dis без элементов пути или скрытого префикса. */
+int styxunibusprogramname(const char *name);
+
 /* EN: Provider-owned launch publication on the same carrier as library exports.
  * RU: Публикация программы провайдера на одном транспорте с библиотеками. */
 typedef struct StyxUnibusLaunch
@@ -127,6 +142,9 @@ typedef struct StyxUnibusLaunch
     DVM_Provider *original; /* Borrowed original Dis image. */
     DVM_Provider *profile; /* Borrowed launch declaration. */
     int persistent; /* Queue scoped requests and attach a result to each fid. */
+    const StyxUnibusProgram *programs; /* Additional persistent launch images, borrowed during setup. */
+    size_t program_count; /* Number of additional images. */
+    DVM_Provider *catalog; /* Borrowed immutable list of names, retained through join. */
 } StyxUnibusLaunch;
 
 /* EN: Publish a launch inbox, exit result and mounted native/Dis functions.
@@ -143,7 +161,15 @@ StyxUnibusServer *styxunibusserverstartlaunchmounted(RemotePhy *channel,
 StyxUnibusServer *styxunibusserverstartscopedlaunchtable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, DVM_Provider *reverse, const StyxUnibusLaunch *launch);
 
+/* EN: Publish persistent executable images without library exports. Consume channel.
+ * RU: Опубликовать исполняемые образы без библиотечных экспортов. Принять channel. */
+StyxUnibusServer *styxunibusserverstartprograms(RemotePhy *channel, const StyxUnibusLaunch *launch);
+
 typedef struct StyxLaunchTicket StyxLaunchTicket;
+
+/* EN: Return the borrowed ticket's image slot, zero for the default.
+ * RU: Вернуть номер образа из билета, ноль для основного образа. */
+size_t styxunibuslaunchslot(const StyxLaunchTicket *ticket);
 
 /* EN: Wait on a persistent endpoint. wire holds at least 64 bytes. Return an
  * owned ticket and the exact request, or NULL on shutdown/cancel.

@@ -14,6 +14,7 @@ init()
 {
     sys := load Sys Sys->PATH;
     run_shared(sys);
+    run_named(sys);
     check_cancel_launch(sys);
     sys->print("PASS standalone persistent Styx launch\n");
 }
@@ -50,6 +51,10 @@ cancel_child_launch(sys: Sys, vfs: Vfsnative, control: Processctl, mode: string)
         if (ready != nil && sys->read(ready, signal, len signal) == len signal && signal[3] == byte 1)
             break;
         sys->sleep(10);
+    }
+    if (sys->open("/transport/programs/second.dis", Sys->OREAD) != nil &&
+        vfs->runargs("/transport/programs/second.dis", array of byte "secondary") != 1) {
+        raise "second image failed during another active launch";
     }
     if (signal[3] != byte 1 || vfs->run("/shared-launch.dis") != 1 ||
         control->cancelwait(caller) != Processctl->Cancelled || <-done != -1 ||

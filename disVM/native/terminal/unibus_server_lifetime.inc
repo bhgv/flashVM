@@ -67,6 +67,7 @@ int styxunibusserverjoin(StyxUnibusServer *server)
     styxbackingfree(server->file);
     dvm_provider_release(server->inbox);
     free_modules(server);
+    free_programs(server);
     dvm_provider_release(server->caller_root);
     free(server);
     return 1;

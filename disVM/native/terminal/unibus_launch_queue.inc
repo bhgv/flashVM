@@ -15,6 +15,7 @@ struct StyxLaunchTicket
     int child_pid; /* Published once, after the child registers its native owner. */
     void (*cancel)(int, void *); /* Published with child_pid. */
     int status; /* Atomic: pending 0, success 1, error 2. */
+    size_t slot; /* Zero for default, otherwise the statically selected image slot. */
     size_t size;
     unsigned char wire[LAUNCH_WIRE_LIMIT];
 };
@@ -114,7 +115,7 @@ static void free_launch_queue(StyxLaunchQueue *queue)
 }
 
 static int enqueue_launch(StyxLaunchQueue *queue, const void *bytes, size_t size,
-    int waiting, StyxLaunchTicket **fid)
+    int waiting, size_t slot, StyxLaunchTicket **fid)
 {
     FVM_SRecord record;
     DVM_LaunchProgram program;
@@ -133,6 +134,7 @@ static int enqueue_launch(StyxLaunchQueue *queue, const void *bytes, size_t size
     }
     ticket->owners = 2;
     ticket->size = size;
+    ticket->slot = slot;
     memcpy(ticket->wire, bytes, size);
     pthread_mutex_lock(&queue->lock);
     int accepted = !queue->sealed && queue->count < LAUNCH_PENDING_LIMIT && (waiting || !queue->legacy);
@@ -208,6 +210,13 @@ StyxLaunchTicket *styxunibusservernextlaunch(StyxUnibusServer *server, void *wir
         nanosleep(&pause, NULL);
     }
     return NULL;
+}
+
+
+/* EN/RU: Read the immutable slot before consuming the ticket. / Прочитать номер образа до поглощения билета. */
+size_t styxunibuslaunchslot(const StyxLaunchTicket *ticket)
+{
+    return ticket->slot;
 }
 
 

@@ -322,6 +322,7 @@ def library_cli(runtime, compiler, disvm, example, work):
     (caller_root / "libraries").mkdir()
     (caller_root / "libraries/local-marker").touch()
     (caller_root / "shared-launch.dis").touch()
+    (caller_root / "named-launch.dis").touch()
     reject_mount_path(runtime, caller_root)
     for source, image in (
         (disvm / "limbo/scalarowner.b", owner_root / "scalarowner.dis"),
@@ -329,6 +330,7 @@ def library_cli(runtime, compiler, disvm, example, work):
         (example / "scoped-calls-owner.b", owner_root / "second-owner.dis"),
         (example / "styx-library-cli.b", caller_root / "library-cli.dis"),
         (example / "styx-shared-launch-owner.b", owner_root / "launch.dis"),
+        (example / "styx-named-launch-owner.b", owner_root / "named.dis"),
     ):
         subprocess.run([compiler, "-D", "R", "-I", disvm / "upstream/module", "-I", disvm / "module",
                         "-I", example, "-o", image, source], cwd=work, check=True)
@@ -369,6 +371,7 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
     (owner_root / "launch-marker").write_bytes(b"")
     with caller, owner, subprocess.Popen(
         [runtime, "--styx-library-serve-fd", str(owner.fileno()), "--execute", "launch.dis",
+         "--execute-as", "second.dis", "named.dis",
          "--export", "first.dis", "first-owner.dis", "update",
          "--export", "second.dis", "second-owner.dis", export, "--", mode, "scalarowner.dis"],
         pass_fds=(owner.fileno(),), cwd=owner_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -389,6 +392,7 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
                 if not client.returncode or not server.returncode or "cannot publish loaded export second-owner.dis missing" not in output:
                     raise RuntimeError(reported + output)
             elif (client.returncode or server.returncode or "PASS two libraries" not in reported or
+                  "PASS named Styx executable on the same mount" not in reported or
                   (owner_root / "launch-marker").read_bytes() != b"ran\n"):
                 barriers = {p.name: p.read_bytes() for p in owner_root.glob("parallel-*")}
                 raise RuntimeError(reported + output + repr(barriers))
@@ -400,6 +404,23 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
                     child.kill()
 
 
+# EN: Reject duplicate and non-basename names before using the carrier.
+# RU: Отклонить дубликаты и имена с путём до обращения к транспорту.
+def reject_program_names(runtime, owner_image):
+    caller, owner = tcp_pair()
+    with caller, owner:
+        for names in (("../second.dis",), ("second.dis", "second.dis")):
+            entries = [part for name in names for part in ("--execute-as", name, owner_image)]
+            result = subprocess.run(
+                [runtime, "--styx-serve-fd", str(owner.fileno()), "--persistent", *entries, "--", owner_image],
+                pass_fds=(owner.fileno(),), capture_output=True, timeout=5,
+            )
+            if result.returncode != 2 or b"usage:" not in result.stderr:
+                raise RuntimeError(f"accepted invalid program publication {names!r}: {result.stderr!r}")
+            if select.select((caller,), (), (), 0)[0]:
+                raise RuntimeError("refused publication emitted Styx bytes")
+
+
 # EN: Exercise the embedded listener with the configured image outside the owner cwd.
 # RU: Проверить встроенный приёмник с настроенным образом вне cwd владельца.
 def persistent_cli(runtime, compiler, disvm, example, work):
@@ -409,11 +430,14 @@ def persistent_cli(runtime, compiler, disvm, example, work):
     owner_image = work / "standalone-owner.dis"
     client_image = caller_root / "persistent-cli.dis"
     for source, image in (("styx-shared-launch-owner.b", owner_image),
+                          ("styx-named-launch-owner.b", work / "second-owner.dis"),
                           ("styx-persistent-cli.b", client_image)):
         subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
                         "-I", example, "-o", image, example / source], cwd=work, check=True)
     (caller_root / "shared-launch.dis").touch()
+    (caller_root / "named-launch.dis").touch()
     (caller_root / ".vfs").mkdir()
+    reject_program_names(runtime, owner_image)
     for mode in ("--no-jit", "--jit"):
         marks = ("launch-marker", "parallel-entered", "parallel-released")
         for mark in marks:
@@ -421,7 +445,7 @@ def persistent_cli(runtime, compiler, disvm, example, work):
         caller, owner = tcp_pair()
         with caller, owner, subprocess.Popen(
             [runtime, "--styx-serve-fd", str(owner.fileno()), "--persistent",
-             "--", mode, owner_image],
+             "--execute-as", "second.dis", work / "second-owner.dis", "--", mode, owner_image],
             cwd=owner_root, pass_fds=(owner.fileno(),), stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True,
         ) as server:
@@ -440,9 +464,10 @@ def persistent_cli(runtime, compiler, disvm, example, work):
                     output, _ = server.communicate()
                     raise RuntimeError(f"persistent owner stuck after disconnect\n{guest.stdout}{guest.stderr}{output}") from None
                 marker = "PASS standalone persistent Styx launch"
-                if guest.returncode or server.returncode or marker not in guest.stdout or any(
+                if (guest.returncode or server.returncode or marker not in guest.stdout or
+                    "PASS named Styx executable on the same mount" not in guest.stdout or any(
                     not (owner_root / mark).read_bytes() for mark in marks
-                ):
+                )):
                     raise RuntimeError(guest.stdout + guest.stderr + output)
                 print(marker, mode, flush=True)
             finally:

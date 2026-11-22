@@ -57,6 +57,15 @@ running child. A close between dequeue and the first instruction
 is delivered when the child registers. The legacy write-only fid has
 one status slot at `.exit`.
 
+On a persistent endpoint, set `programs`, `program_count`, and
+`catalog` to publish extra images on the same connection. The catalog contains
+one validated public basename per line in slot order. The server exposes it
+as `.programs`, each image as `programs/NAME.dis`, and its request file as
+`programs/.NAME.dis`. Read the slot with `styxunibuslaunchslot` before
+consuming the ticket. Slot zero selects the root image. The named request
+files require a read/write fid. Use `styxunibusserverstartprograms` for a
+persistent service without a library table.
+
 With `persistent` clear, retain the one-shot inbox and
 `styxunibusserverlaunchstatus`. The [wire test](tests/scalar/route_launch.inc)
 checks independent fids, reverse completion order and the legacy result.

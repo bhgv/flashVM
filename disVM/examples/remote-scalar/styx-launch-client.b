@@ -38,3 +38,23 @@ run_parallel(vfs: Vfsnative, payload: string, expected: int, done: chan of (stri
 {
     done <-= (payload, vfs->runargs("/shared-launch.dis", array of byte payload), expected);
 }
+
+
+# EN: Run another image from the same mount through its retained bind alias.
+# RU: Запустить другой образ с того же маунта через удержанный bind-путь.
+run_named(sys: Sys)
+{
+    if (sys->open("/transport/.programs", Sys->OREAD) == nil) {
+        return;
+    }
+    if (sys->bind("/transport/programs/second.dis", "/named-launch.dis", Sys->MREPL) < 0) {
+        raise "could not bind the second Styx program";
+    }
+    vfs := load Vfsnative Vfsnative->PATH;
+    if (vfs->run("/named-launch.dis") != -2 ||
+        vfs->runargs("/named-launch.dis", array of byte "secondary") != 1 ||
+        vfs->runargs("/transport/programs/second.dis", array of byte "secondary") != 1) {
+        raise "named Styx launch selected the wrong image or result";
+    }
+    sys->print("PASS named Styx executable on the same mount\n");
+}

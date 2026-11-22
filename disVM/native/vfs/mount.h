@@ -50,4 +50,19 @@ DVM_Provider *styxmountproviderat(StyxClient *client, const char *relative, unsi
 DVM_Provider *styxmountproviderlaunch(StyxClient *client, const char *relative_root,
     unsigned access, const char *advertised_file, struct DVM_LaunchAddress *(*resolve)(void *),
     void *state, void (*release)(void *));
+
+typedef struct StyxLaunchOffer
+{
+    const char *path; /* Borrowed path relative to the mount root. */
+    struct DVM_LaunchAddress *(*resolve)(void *); /* Native address factory. */
+    void *state; /* Passed to resolve and release. */
+    void (*release)(void *); /* Optional nonblocking destructor. */
+} StyxLaunchOffer;
+
+/* EN: Pin distinct advertised files on one client. Consume the client and every
+ * offer state, including on refusal. Borrow the array and paths during setup.
+ * RU: Закрепить разные файлы на одном client. Принять client и state каждой
+ * записи даже при отказе. Массив и пути заимствуются на время настройки. */
+DVM_Provider *styxmountproviderlaunches(StyxClient *client, const char *root, unsigned access,
+    const StyxLaunchOffer *offers, size_t count);
 #endif

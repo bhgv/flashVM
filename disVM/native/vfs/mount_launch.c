@@ -9,15 +9,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct StyxLaunchGrant
+typedef struct StyxLaunchNode
 {
-    size_t refs; /* Atomic refs shared by captured directory/file factories. */
     StyxRootLife *held; /* Detached retirement for the advertised remote fid. */
     unsigned long long identity; /* Exact remote node identifier. */
-    unsigned long long device;   /* Exact remote device identifier. */
+    unsigned long long device; /* Exact remote device identifier. */
     DVM_LaunchAddress *(*resolve)(void *); /* Trusted native address factory. */
     void *state; /* Native configuration owned by the grant. */
     void (*release)(void *); /* Optional nonblocking state destructor. */
+} StyxLaunchNode;
+
+struct StyxLaunchGrant
+{
+    size_t refs; /* Atomic refs shared by captured directory/file factories. */
+    size_t count; /* Number of advertised images owned by this grant. */
+    StyxLaunchNode *nodes; /* Retained fids and native offer state. */
 };
 
 
@@ -48,11 +54,19 @@ void styxmountlaunchfree(StyxLaunchGrant *grant)
 {
     if (grant && __atomic_sub_fetch(&grant->refs, 1, __ATOMIC_ACQ_REL) == 0)
     {
-        styxmountrootretire(grant->held);
-        if (grant->release)
+        for (size_t i = 0; i < grant->count; i++)
         {
-            grant->release(grant->state);
+            StyxLaunchNode *node = &grant->nodes[i];
+            if (node->held)
+            {
+                styxmountrootretire(node->held);
+            }
+            if (node->release)
+            {
+                node->release(node->state);
+            }
         }
+        free(grant->nodes);
         free(grant);
     }
 }
@@ -86,14 +100,22 @@ DVM_LaunchAddress *styxmountlaunch(void *state, const char *relative)
     }
     StyxFid *selected = styxmountwalk(mount, relative);
     StyxMeta meta;
-    int matches = selected && styxmountstat(mount->client, selected, &meta) &&
-        !meta.directory && meta.identity == grant->identity && meta.device == grant->device;
+    int file = selected && styxmountstat(mount->client, selected, &meta) && !meta.directory;
     styxmountclunk(mount->client, selected);
-    if (!matches || dvm_cancel_requested(dvm_cancel_current()))
+    if (!file || dvm_cancel_requested(dvm_cancel_current()))
     {
         return NULL;
     }
-    DVM_LaunchAddress *address = grant->resolve(grant->state);
+    DVM_LaunchAddress *address = NULL;
+    for (size_t i = 0; i < grant->count; i++)
+    {
+        StyxLaunchNode *node = &grant->nodes[i];
+        if (meta.identity == node->identity && meta.device == node->device)
+        {
+            address = node->resolve(node->state);
+            break;
+        }
+    }
     if (!address || !styxclientretain(mount->client))
     {
         dvm_launch_address_free(address);
@@ -108,55 +130,92 @@ DVM_LaunchAddress *styxmountlaunch(void *state, const char *relative)
 }
 
 
-/* EN/RU: See mount.h; stage both captures before publishing a launchable mount.
- * См. mount.h; подготовить оба захвата до публикации mount. */
-DVM_Provider *styxmountproviderlaunch(StyxClient *client, const char *relative_root,
-    unsigned access, const char *advertised_file, DVM_LaunchAddress *(*resolve)(void *),
-    void *state, void (*release)(void *))
+/* EN: Retain a single remote file and reject identity duplicates.
+ * RU: Закрепить один удалённый файл и отклонить дубликаты идентичности. */
+static int pin_node(StyxClient *client, StyxFid *root, StyxLaunchGrant *grant, size_t index, const char *path)
+{
+    StyxFid *file = path && *path ? styxmountwalkcancel(client, root, path) : NULL;
+    StyxMeta meta;
+    int valid = file && styxmountstat(client, file, &meta) && !meta.directory;
+    for (size_t i = 0; valid && i < index; i++)
+    {
+        valid = grant->nodes[i].identity != meta.identity || grant->nodes[i].device != meta.device;
+    }
+    StyxLaunchNode *node = &grant->nodes[index];
+    if (valid && !dvm_cancel_requested(dvm_cancel_current()) && (node->held = styxmountrootlife(file)))
+    {
+        node->identity = meta.identity;
+        node->device = meta.device;
+        return 1;
+    }
+    styxmountclunk(client, file);
+    return 0;
+}
+
+
+/* EN/RU: See mount.h. / См. mount.h. */
+DVM_Provider *styxmountproviderlaunches(StyxClient *client, const char *relative_root,
+    unsigned access, const StyxLaunchOffer *offers, size_t count)
 {
     StyxLaunchGrant *grant = NULL;
     StyxFid *root = NULL;
-    StyxFid *file = NULL;
-    StyxMeta root_meta;
-    StyxMeta file_meta;
+    StyxMeta meta;
     unsigned required = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
-    if (client && styxclientcancellable(client) && resolve &&
+    if (client && styxclientcancellable(client) && offers && count &&
         (access & required) == required && !(access & ~FVM_ACCESS_MASK) &&
-        relative_root && *relative_root && advertised_file && *advertised_file &&
-        !dvm_cancel_requested(dvm_cancel_current()))
+        relative_root && *relative_root && !dvm_cancel_requested(dvm_cancel_current()))
     {
         root = styxmountwalkcancel(client, NULL, relative_root);
-        if (root && styxmountstat(client, root, &root_meta) && root_meta.directory)
-        {
-            file = styxmountwalkcancel(client, root, advertised_file);
-        }
-        if (file && styxmountstat(client, file, &file_meta) && !file_meta.directory &&
-            !dvm_cancel_requested(dvm_cancel_current()))
+        if (root && styxmountstat(client, root, &meta) && meta.directory)
         {
             grant = calloc(1, sizeof(*grant));
         }
     }
     if (grant)
     {
-        grant->held = styxmountrootlife(file);
-        if (grant->held)
+        grant->nodes = calloc(count, sizeof(*grant->nodes));
+        if (grant->nodes)
         {
             grant->refs = 1;
-            grant->identity = file_meta.identity;
-            grant->device = file_meta.device;
-            grant->resolve = resolve;
-            grant->state = state;
-            grant->release = release;
+            grant->count = count;
+            for (size_t i = 0; i < count; i++)
+            {
+                grant->nodes[i].resolve = offers[i].resolve;
+                grant->nodes[i].state = offers[i].state;
+                grant->nodes[i].release = offers[i].release;
+            }
+            for (size_t i = 0; i < count; i++)
+            {
+                if (!offers[i].resolve || !pin_node(client, root, grant, i, offers[i].path))
+                {
+                    styxmountlaunchfree(grant);
+                    styxmountclunk(client, root);
+                    styxclientfree(client);
+                    return NULL;
+                }
+            }
             return styxmountroot(client, root, access, 1, 1, grant);
         }
         free(grant);
     }
-    styxmountclunk(client, file);
     styxmountclunk(client, root);
     styxclientfree(client);
-    if (release)
+    for (size_t i = 0; offers && i < count; i++)
     {
-        release(state);
+        if (offers[i].release)
+        {
+            offers[i].release(offers[i].state);
+        }
     }
     return NULL;
+}
+
+
+/* EN/RU: See mount.h; preserve the exact single-file interface. / См. mount.h; сохранить API одного файла. */
+DVM_Provider *styxmountproviderlaunch(StyxClient *client, const char *relative_root,
+    unsigned access, const char *advertised_file, DVM_LaunchAddress *(*resolve)(void *),
+    void *state, void (*release)(void *))
+{
+    StyxLaunchOffer offer = {advertised_file, resolve, state, release};
+    return styxmountproviderlaunches(client, relative_root, access, &offer, 1);
 }

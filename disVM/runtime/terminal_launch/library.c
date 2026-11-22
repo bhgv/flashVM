@@ -6,6 +6,7 @@
 #include "unibus_server.h"
 #include "mount.h"
 #include "offer.h"
+#include "programs.h"
 #include "vfs/module_adapter.h"
 #include "vfs/export.h"
 #include "vfs/launch/runtime.h"
@@ -20,7 +21,6 @@
 
 
 extern DVM_Provider *dvm_terminal_publish_program(DVM_Namespace *, const char *);
-extern void dvm_terminal_configure_shared_launch(StyxUnibusServer *, DVM_Provider *, const char *, DVM_Provider *);
 
 
 /* EN: Build a private mailbox tree and matching startup text. Return an owned
@@ -73,6 +73,8 @@ int dvm_styx_library_cli(int argc, char **argv)
         execute = argv[4];
         separator += 2;
     }
+    DVM_TerminalPrograms programs = {0};
+    int valid = dvm_terminal_parse_programs(&programs, argc, argv, &separator) && (execute || !programs.count);
     for (; argc - separator >= 4 && count < STYX_MOUNTED_SCALAR_LIMIT &&
         !strcmp(argv[separator], "--export"); separator += 4)
     {
@@ -85,9 +87,9 @@ int dvm_styx_library_cli(int argc, char **argv)
         }
         count++;
     }
-    if (!count || argc <= separator + 1 || strcmp(argv[separator], "--"))
+    if (!valid || !count || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-library-serve-fd FD [--execute PROGRAM.dis] --export PUBLIC.dis OWNER.dis NAME [...] -- [VM OPTIONS] scalarowner.dis\n");
+        fprintf(stderr, "usage: disvm --styx-library-serve-fd FD [--execute PROGRAM.dis [--execute-as NAME.dis IMAGE.dis]...] --export PUBLIC.dis OWNER.dis NAME [...] -- [VM OPTIONS] scalarowner.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -109,10 +111,12 @@ int dvm_styx_library_cli(int argc, char **argv)
     DVM_Namespace *host = execute && have_cwd ? dvm_namespace_create("/", cwd, NULL) : NULL;
     DVM_Provider *original = host && dvm_namespace_pin(host) ? dvm_terminal_publish_program(host, execute) : NULL;
     DVM_Provider *profile = original ? dvm_module_adapter(DVM_STYX_LAUNCH_CONTEXT, sizeof(DVM_STYX_LAUNCH_CONTEXT) - 1) : NULL;
+    int published = !programs.count || (original && dvm_terminal_publish_programs(host, &programs));
     const StyxUnibusLaunch launch = {.tag = DVM_STYX_LAUNCH_TAG, .original = original,
-        .profile = profile, .persistent = 1};
+        .profile = profile, .persistent = 1, .programs = programs.entries, .program_count = programs.count,
+        .catalog = programs.catalog};
     StyxUnibusServer *server = NULL;
-    if (root && (!execute || profile))
+    if (published && root && (!execute || profile))
     {
         server = execute ? styxunibusserverstartscopedlaunchtable(phybidirchannel(mux, 0), entries, count, root, &launch) :
             styxunibusserverstartscopedtable(phybidirchannel(mux, 0), entries, count, root);
@@ -133,9 +137,9 @@ int dvm_styx_library_cli(int argc, char **argv)
         strcpy(handoff.description.module, "styx-library-owner.dis");
         handoff.arguments = (unsigned char *)config;
         handoff.description.argument_bytes = strlen(config);
-        dvm_terminal_configure_shared_launch(execute ? server : NULL, root, execute, NULL);
+        dvm_terminal_configure_shared_launch(execute ? server : NULL, root, execute, NULL, &programs);
         result = dvm_runtime_main_with_handoff(argc - separator, argv + separator, &handoff);
-        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL);
+        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL, NULL);
     }
     else
     {
@@ -144,6 +148,7 @@ int dvm_styx_library_cli(int argc, char **argv)
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxunibusserverjoin(server);
+    dvm_terminal_release_programs(&programs);
     dvm_namespace_release(handoff.group);
     dvm_provider_release(routes);
     dvm_provider_release(root);

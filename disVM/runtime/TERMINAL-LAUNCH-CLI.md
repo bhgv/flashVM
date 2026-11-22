@@ -312,6 +312,35 @@ reside on separate hosts.
 
 Different descriptor numbers that alias the same socket are rejected before any Styx handshake.
 
+### Publish additional executables on the same mount
+
+Repeat `--execute-as NAME.dis IMAGE.dis` after `--persistent` and before
+any library carrier options. Each name is a unique public basename of at most
+31 ASCII characters. Start it with a letter or digit, use letters, digits,
+dots, underscores or hyphens, and end it with `.dis`. The listener accepts
+up to 16 additional images and retains a snapshot of each for the session.
+
+```sh
+disvm --styx-serve-fd 3 --persistent --execute-as second.dis other.dis -- owner.dis
+```
+
+An automatic mount discovers the extra paths through `.programs`. With the
+default mount point, the existing entry is `/peer/implementation.dis` and the
+additional entry is `/peer/programs/second.dis`. Pass either path to
+`Vfsnative->run` or bind it to a local alias before calling `run`. The named
+request uses `programs/.second.dis` on the existing carrier. Its open fid
+selects the image and carries its own completion, including errors and
+cancellation. The launch record retains the same caller context and argument
+format.
+
+The combined library server also accepts `--execute-as` after its
+`--execute PROGRAM.dis` option and before the first `--export`. Its
+library exports remain under `mounted/`. The
+[client example](../examples/remote-scalar/styx-launch-client.b) exercises
+direct and bound paths with the
+[second executable](../examples/remote-scalar/styx-named-launch-owner.b).
+
+
 ## Serve several loaded libraries over one Styx session
 
 Run the provider with one connected stream delegated by the host. Repeat

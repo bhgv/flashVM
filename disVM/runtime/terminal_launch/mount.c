@@ -4,6 +4,7 @@
  */
 #include "config.h"
 #include "offer.h"
+#include "unibus_server.h"
 #include "caller_styx.h"
 #include "launch_send.h"
 #include "mount.h"
@@ -211,12 +212,43 @@ static const char *discover_launch(StyxClient *client)
 }
 
 
+/* EN: Pin the server's exact request file and determine its completion mode.
+ * RU: Закрепить точный файл запроса и определить режим завершения. */
+static MountedLaunch *open_launch_route(StyxClient *client, const char *request, unsigned long tag, int scoped)
+{
+    MountedLaunch *launch = calloc(1, sizeof(*launch));
+    if (!launch || !styxclientretain(client))
+    {
+        free(launch);
+        return NULL;
+    }
+    launch->tag = tag;
+    launch->client = client;
+    launch->scoped = scoped;
+    unsigned access = FVM_ACCESS_WRITE | (scoped ? FVM_ACCESS_READ : 0);
+    launch->request = styxmountproviderat(client, request, access);
+    if (!launch->request)
+    {
+        release_launch(launch);
+        return NULL;
+    }
+    FVM_FileInfo info;
+    launch->wait = scoped && dvm_provider_info(launch->request, ".", &info) == FVM_OK &&
+        !info.directory && (info.mode & 0444);
+    return launch;
+}
+
+
+#include "mount_programs.inc"
+
+
 /* EN: Consume an attached client and configure an exact optional launch route.
  * RU: Принять подключённый клиент и настроить точный маршрут запуска. */
 static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
     const char *entry, const char *request, unsigned long tag, int scoped)
 {
-    if (!entry)
+    int automatic = !entry;
+    if (automatic)
     {
         const char *profile = discover_launch(client);
         if (!profile)
@@ -228,29 +260,7 @@ static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
         tag = DVM_STYX_LAUNCH_TAG;
         scoped = !strcmp(profile, DVM_STYX_LAUNCH_CONTEXT);
     }
-    MountedLaunch *launch = calloc(1, sizeof(*launch));
-    if (!launch || !styxclientretain(client))
-    {
-        free(launch);
-        styxclientfree(client);
-        return NULL;
-    }
-    launch->tag = tag;
-    launch->client = client;
-    launch->scoped = scoped;
-    unsigned access = FVM_ACCESS_WRITE | (scoped ? FVM_ACCESS_READ : 0);
-    launch->request = styxmountproviderat(client, request, access);
-    FVM_FileInfo info;
-    launch->wait = scoped && launch->request && dvm_provider_info(launch->request, ".", &info) == FVM_OK &&
-        !info.directory && (info.mode & 0444);
-    if (!launch->request)
-    {
-        release_launch(launch);
-        styxclientfree(client);
-        return NULL;
-    }
-    DVM_Provider *mount = styxmountproviderlaunch(client, ".", FVM_ACCESS_MASK, entry,
-        resolve_launch, launch, release_launch);
+    DVM_Provider *mount = mount_launch_programs(client, entry, request, tag, scoped, automatic && scoped);
     if (!mount || !styxcallerbind(reverse, mount))
     {
         dvm_provider_release(mount);

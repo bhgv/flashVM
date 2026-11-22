@@ -4,6 +4,7 @@
  */
 #include "config.h"
 #include "offer.h"
+#include "programs.h"
 #include "vfs/module_adapter.h"
 #include "vfs/loader.h"
 #include "vfs/cancel.h"
@@ -144,155 +145,26 @@ static DVM_Provider *snapshot_program(DVM_Provider *original)
 }
 
 
-#define LIBRARY_MOUNT_LIMIT 8U /* Maximum library mounts admitted before startup. */
-
-typedef struct LibraryMount
-{
-    const char *descriptor; /* Borrowed argument naming the delegated stream. */
-    const char *path; /* Borrowed owner-side absolute mount path. */
-    long number; /* Parsed descriptor used to detect duplicates. */
-    int bidirectional; /* Use the stock library service with reverse caller VFS. */
-} LibraryMount;
+#include "serve_programs.inc"
 
 
-typedef struct LibrarySession
-{
-    PhyBidir *mux; /* Retained through the runtime and reverse worker shutdown. */
-    StyxCallerServer *reverse;
-    int breaker; /* Shutdown duplicate, valid when mux setup was attempted. */
-} LibrarySession;
-
-
-/* EN: Stop the reverse worker before dropping the controller's transport pin.
- * RU: Остановить встречный сервер до снятия ссылки на транспорт. */
-static void close_library(LibrarySession *session)
-{
-    if (session->breaker >= 0)
-    {
-        shutdown(session->breaker, SHUT_RDWR);
-        close(session->breaker);
-    }
-    styxcallerjoin(session->reverse);
-    phybidirfree(session->mux);
-}
-
-
-/* EN: Consume one delegated library stream and mount its root in the owner.
- * RU: Принять выданный поток библиотеки и смонтировать корень у владельца. */
-static int mount_library(DVM_Namespace *group, const LibraryMount *library, LibrarySession *session)
-{
-    int fd = dvm_terminal_connected(library->descriptor);
-    if (fd < 3)
-    {
-        return 0;
-    }
-    if (library->bidirectional)
-    {
-        session->breaker = dup(fd);
-        if (session->breaker < 0)
-        {
-            close(fd);
-            return 0;
-        }
-    }
-    RemotePhy *carrier = phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
-    if (library->bidirectional)
-    {
-        session->mux = phybidircreate(carrier, 65536);
-        session->reverse = session->mux ? styxcallerserver(phybidirchannel(session->mux, 1)) : NULL;
-        carrier = session->reverse ? phybidirchannel(session->mux, 0) : NULL;
-    }
-    StyxClient *client = carrier ? styxclientmountphy(carrier, 4096, "owner", "", 5000, 8) : NULL;
-    DVM_Provider *root = !client ? NULL : session->reverse ?
-        styxcallermount(session->reverse, client, FVM_ACCESS_MASK) : styxmountprovider(client, FVM_ACCESS_MASK);
-    DVM_NamespacePlan target;
-    int installed = root && dvm_namespace_plan(group, library->path, &target) &&
-        dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;
-    dvm_provider_release(root);
-    return installed;
-}
-
-
-/* EN: Reject the same path and nested mounts before touching any carrier.
- * RU: Отклонить одинаковые и вложенные точки маунта до обращения к соединениям. */
-static int overlaps(const char *first, const char *second)
-{
-    size_t a = strlen(first), b = strlen(second);
-    size_t prefix = a < b ? a : b;
-    return !memcmp(first, second, prefix) && (a == b || (a < b ? second[a] : first[b]) == '/');
-}
-
-
-/* EN: Parse and check one mount against the previously accepted prefix.
- * RU: Разобрать и сверить маунт с ранее проверенными параметрами. */
-static int admit_library(LibraryMount *mounts, size_t count, const char *launch, const char *fd, const char *path, int bidirectional)
-{
-    char *end;
-    long number = strtol(fd, &end, 10);
-    if (*end || number < 3 || number > INT_MAX || number == strtol(launch, NULL, 10) ||
-        !dvm_terminal_mount_path_valid(path))
-    {
-        return 0;
-    }
-    for (size_t i = 0; i < count; i++)
-    {
-        if (number == mounts[i].number || overlaps(path, mounts[i].path))
-        {
-            return 0;
-        }
-    }
-    mounts[count] = (LibraryMount){fd, path, number, bidirectional};
-    return 1;
-}
-
-
-/* EN: Reject aliases of the same socket before any Styx handshake starts.
- * RU: Отклонить дубликаты одного сокета до начала обмена Styx. */
-static int distinct_carriers(int launch, const LibraryMount *mounts, size_t count)
-{
-    struct stat identities[LIBRARY_MOUNT_LIMIT + 1];
-    if (fstat(launch, &identities[0]))
-    {
-        return 0;
-    }
-    for (size_t i = 0; i < count; i++)
-    {
-        struct stat *current = &identities[i + 1];
-        int descriptor = dvm_terminal_connected(mounts[i].descriptor);
-        if (descriptor < 0)
-        {
-            return 0;
-        }
-        int failed = fstat(descriptor, current);
-        close(descriptor);
-        if (failed)
-        {
-            return 0;
-        }
-        for (size_t j = 0; j <= i; j++)
-        {
-            if (current->st_dev == identities[j].st_dev && current->st_ino == identities[j].st_ino)
-            {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
+#include "serve_libraries.inc"
 
 
 static StyxUnibusServer *launch_server; /* Borrowed from the active CLI through runtime shutdown. */
 static DVM_Provider *launch_root; /* Borrowed reverse session. */
 static const char *launch_image; /* Borrowed host-selected image name. */
 static DVM_Provider *launch_provider; /* Borrowed exact standalone image. */
+static const DVM_TerminalPrograms *launch_programs; /* Borrowed additional images indexed by ticket slot. */
 
 void dvm_terminal_configure_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
-    const char *image, DVM_Provider *provider)
+    const char *image, DVM_Provider *provider, const DVM_TerminalPrograms *programs)
 {
     launch_server = server;
     launch_root = root;
     launch_image = image;
     launch_provider = provider;
+    launch_programs = programs;
 }
 
 
@@ -327,9 +199,11 @@ int dvm_styx_serve_cli(int argc, char **argv)
         separator++;
     }
     scoped |= persistent;
+    DVM_TerminalPrograms programs = {0};
     LibraryMount libraries[LIBRARY_MOUNT_LIMIT];
     size_t count = 0;
-    int valid = 1;
+    int valid = dvm_terminal_parse_programs(&programs, argc, argv, &separator) &&
+        (persistent || !programs.count);
     while (valid && argc > separator + 1 &&
         (!strcmp(argv[separator], "--library-fd") || !strcmp(argv[separator], "--library-bidir-fd")))
     {
@@ -350,7 +224,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     }
     if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent [--execute-as NAME.dis IMAGE.dis]...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -378,13 +252,18 @@ int dvm_styx_serve_cli(int argc, char **argv)
     DVM_Namespace *host = handoff.group ? dvm_namespace_create("/", cwd, NULL) : NULL;
     DVM_Provider *image = host && dvm_namespace_pin(host) && dvm_namespace_pin(handoff.group) ?
         dvm_terminal_publish_program(host, program) : NULL;
-    dvm_namespace_release(host);
     if (persistent && image)
     {
         DVM_Provider *copy = snapshot_program(image);
         dvm_provider_release(image);
         image = copy;
     }
+    if (image && programs.count && !dvm_terminal_publish_programs(host, &programs))
+    {
+        dvm_provider_release(image);
+        image = NULL;
+    }
+    dvm_namespace_release(host);
     PhyBidir *mux = image ? phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536) : NULL;
     if (!image)
     {
@@ -396,7 +275,11 @@ int dvm_styx_serve_cli(int argc, char **argv)
     if (profile)
     {
         RemotePhy *forward = phybidirchannel(mux, 0);
-        server = persistent ? styxunibusserverstartpersistent(forward, DVM_STYX_LAUNCH_TAG, image, profile) :
+        StyxUnibusLaunch launch = {.tag = DVM_STYX_LAUNCH_TAG, .original = image, .profile = profile,
+            .persistent = 1, .programs = programs.entries, .program_count = programs.count,
+            .catalog = programs.catalog};
+        server = programs.count ? styxunibusserverstartprograms(forward, &launch) :
+            persistent ? styxunibusserverstartpersistent(forward, DVM_STYX_LAUNCH_TAG, image, profile) :
             styxunibusserverstartexit(forward, DVM_STYX_LAUNCH_TAG, image, profile);
     }
     dvm_provider_release(profile);
@@ -420,9 +303,9 @@ int dvm_styx_serve_cli(int argc, char **argv)
     if (persistent && library_ready)
     {
         strcpy(handoff.description.module, "styx-launch-listener");
-        dvm_terminal_configure_shared_launch(server, root, program, image);
+        dvm_terminal_configure_shared_launch(server, root, program, image, &programs);
         result = dvm_runtime_main_launch_listener(argc - separator, argv + separator, &handoff);
-        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL);
+        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL, NULL);
     }
     else if (received &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
@@ -449,6 +332,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     close(breaker);
     styxunibusserverjoin(server);
     dvm_provider_release(image);
+    dvm_terminal_release_programs(&programs);
     dvm_provider_release(handoff.program);
     dvm_provider_release(handoff.program_parent);
     dvm_provider_release(handoff.program_vfs);
@@ -516,6 +400,22 @@ int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *a
     *completion = (DVM_LaunchCompletion){.report = report_shared_launch, .state = ticket, .started = start_shared_launch};
     *image = launch_image;
     *provider = launch_provider;
-    strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);
+    size_t slot = styxunibuslaunchslot(ticket);
+    if (slot)
+    {
+        if (!launch_programs || slot > launch_programs->count)
+        {
+            return -1;
+        }
+        const StyxUnibusProgram *entry = &launch_programs->entries[slot - 1];
+        *provider = entry->image;
+        *image = entry->name;
+        snprintf(handoff->description.module, sizeof(handoff->description.module), "%s/%s",
+            STYX_LAUNCH_PROGRAMS, entry->name);
+    }
+    else
+    {
+        strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);
+    }
     return outcome;
 }

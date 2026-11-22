@@ -7,6 +7,9 @@
 
 #define MOUNTED_ROOT 4UL /* Shared directory for mounted modules. */
 #define LAUNCH_EXIT 197UL /* After all 64 mounted export qid triples. */
+#define PROGRAM_DIRECTORY 512UL /* Beyond the mounted export and delta qids. */
+#define PROGRAM_CATALOG 513UL /* Named launch list. */
+#define FIRST_PROGRAM 514UL /* Two consecutive qids per additional image. */
 #define FIRST_MODULE 5UL /* Three consecutive qids per module. */
 
 typedef struct MountedExport
@@ -42,6 +45,9 @@ struct StyxUnibusServer
     DVM_Provider *inbox; /* Owner reference for local readers. */
     StyxBacking *profile; /* Optional compiled interface record. */
     StyxBacking *original; /* Optional read-only Dis image. */
+    StyxBacking *catalog; /* Immutable program advertisement. */
+    StyxBacking **programs; /* Owned backing per additional executable. */
+    size_t program_count; /* Count of slots represented by programs. */
     StyxBacking *file;   /* Retained backing for write fids. */
 };
 

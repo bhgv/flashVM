@@ -48,6 +48,19 @@ static int delta_node(Path path)
 }
 
 
+/* EN: Locate a named program by qid, returning its one-based ticket slot.
+ * RU: Найти программу по qid и вернуть её номер в билете с единицы. */
+static size_t program_slot(Path path, unsigned offset)
+{
+    if (path < FIRST_PROGRAM)
+    {
+        return 0;
+    }
+    Path index = path - FIRST_PROGRAM;
+    return index % 2 == offset && index / 2 < current->program_count ? index / 2 + 1 : 0;
+}
+
+
 typedef struct LaunchFid
 {
     StyxOpen *writer; /* Owned legacy inbox backing. */
@@ -90,11 +103,13 @@ static char *open_node(Qid *qid, int mode)
     {
         return mode == OREAD && styxunibusawaitload(current) ? nil : Eperm;
     }
-    if (qid->path == Qroot || qid->path == MOUNTED_ROOT || (current->completion && qid->path == LAUNCH_EXIT) || mounted_node(qid->path, 0))
+    if (qid->path == Qroot || qid->path == PROGRAM_DIRECTORY || qid->path == MOUNTED_ROOT || (current->completion && qid->path == LAUNCH_EXIT) || mounted_node(qid->path, 0))
     {
         return mode == OREAD ? nil : Eperm;
     }
-    if (qid->path == 1 && (mode == OWRITE || (mode == ORDWR && current->completion)))
+    size_t request_slot = program_slot(qid->path, 1);
+    if ((qid->path == 1 && (mode == OWRITE || (mode == ORDWR && current->completion))) ||
+        (request_slot && mode == ORDWR))
     {
         LaunchFid *fid = calloc(1, sizeof(*fid));
         if (!fid)
@@ -113,7 +128,10 @@ static char *open_node(Qid *qid, int mode)
         }
         return nil;
     }
+    size_t image_slot = program_slot(qid->path, 0);
     StyxBacking *node = mode != OREAD ? NULL :
+        image_slot ? current->programs[image_slot - 1] :
+        qid->path == PROGRAM_CATALOG ? current->catalog :
         qid->path == 2 ? current->original :
         qid->path == 3 ? current->profile : NULL;
     if (!node)
@@ -144,7 +162,8 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
         return styxscalarfunctionwrite(styxgetaux(&current->server), bytes, *count, offset);
     }
     StyxTransfer result;
-    if (qid.path != 1 || offset < 0)
+    size_t slot = program_slot(qid.path, 1);
+    if ((qid.path != 1 && !slot) || offset < 0)
     {
         return Ebadarg;
     }
@@ -156,7 +175,7 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
     if (current->launches)
     {
         if (offset || fid->submitted || !enqueue_launch(current->launches, bytes, *count,
-                fid->waiting, &fid->ticket))
+                fid->waiting, slot, &fid->ticket))
         {
             return Ebadarg;
         }
@@ -214,7 +233,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         return nil;
     }
-    if (qid.path == 1 && current->completion && offset >= 0)
+    if ((qid.path == 1 || program_slot(qid.path, 1)) && current->completion && offset >= 0)
     {
         LaunchFid *fid = styxgetaux(&current->server);
         if (!fid || !fid->waiting || !fid->submitted)
@@ -232,7 +251,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         return nil;
     }
     StyxTransfer result;
-    if ((qid.path != 2 && qid.path != 3) || offset < 0)
+    if ((qid.path != 2 && qid.path != 3 && qid.path != PROGRAM_CATALOG && !program_slot(qid.path, 0)) || offset < 0)
     {
         return Ebadarg;
     }
@@ -275,7 +294,7 @@ static void *serve(void *arg)
 
 /* EN/RU: Add one optional readable file with its advertised native length.
  * Добавить необязательный читаемый файл с его нативной длиной. */
-static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, const char *name)
+static int export_file(Styxserver *server, ulong parent, StyxBacking *backing, ulong qid, const char *name)
 {
     if (!backing)
     {
@@ -286,7 +305,7 @@ static int export_file(Styxserver *server, StyxBacking *backing, ulong qid, cons
     {
         return 0;
     }
-    Styxfile *node = styxaddfile(server, Qroot, qid, (char *)name, 0444, "unibus");
+    Styxfile *node = styxaddfile(server, parent, qid, (char *)name, 0444, "unibus");
     if (!node)
     {
         return 0;
@@ -357,223 +376,5 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
 }
 
 
-/* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
- * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
-StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion, int persistent)
-{
-    StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
-    if (!server)
-    {
-        phyfree(channel);
-        return NULL;
-    }
-    server->completion = completion;
-    if (persistent)
-    {
-        server->launches = launch_queue(tag);
-    }
-    else
-    {
-        server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
-        server->file = styxbacking(server->inbox);
-    }
-    server->original = original ? styxbacking(original) : NULL;
-    server->profile = profile ? styxbacking(profile) : NULL;
-    if (!(server->file || server->launches) || (original && !server->original) || (profile && !server->profile))
-    {
-        phyfree(channel);
-    }
-    else if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
-    {
-        if (export_file(&server->server, server->original, 2, "implementation.dis") &&
-            export_file(&server->server, server->profile, 3, ".interface") &&
-            (!completion || styxaddfile(&server->server, Qroot, MOUNTED_ROOT, ".exit", 0444, "unibus")) &&
-            styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, completion ? 0666 : 0222, "unibus") &&
-            !pthread_create(&server->thread, NULL, serve, server))
-        {
-            return server;
-        }
-        styxend(&server->server);
-    }
-    free_launch_queue(server->launches);
-    styxbackingfree(server->profile);
-    styxbackingfree(server->original);
-    styxbackingfree(server->file);
-    dvm_provider_release(server->inbox);
-    free(server);
-    return NULL;
-}
-
-
-StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile)
-{
-    return styxunibusstart(channel, tag, original, profile, 0, 0, 0);
-}
-
-
-/* EN/RU: Publish a reusable endpoint for one serialized scalar session.
- * Опубликовать переиспользуемую точку входа для последовательной сессии. */
-StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile)
-{
-    return styxunibusstart(channel, tag, original, profile, 1, 0, 0);
-}
-
-
-/* EN/RU: Validate a single non-special Styx path component.
- * Проверить один обычный элемент пути Styx. */
-static int node_name(const char *name)
-{
-    return name && *name && !strchr(name, '/') && strcmp(name, ".") && strcmp(name, "..");
-}
-
-
-/* EN/RU: Drop all allocated routes and the array after server stop or setup refusal.
- * Освободить все выделенные маршруты и массив после остановки или отказа запуска. */
-static void free_modules(StyxUnibusServer *server)
-{
-    for (size_t i = 0; i < server->count; i++)
-    {
-        dvm_provider_release(server->modules[i].owner.request);
-        dvm_provider_release(server->modules[i].owner.reply);
-        dvm_provider_release(server->modules[i].load_offer);
-    }
-    free(server->modules);
-}
-
-
-/* EN/RU: Validate one borrowed entry and reserve its private dispatch routes.
- * Проверить заимствованную запись и зарезервировать её собственные маршруты. */
-static int configure(MountedExport *module, const StyxMountedScalar *entry, int loaded)
-{
-    if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface") ||
-        !strcmp(entry->name, STYX_MANAGED_DELTA_FILE))
-    {
-        return 0;
-    }
-    if (loaded)
-    {
-        return styxunibusprepareload(module, entry->name);
-    }
-    if (entry->native)
-    {
-        module->function = *entry->native;
-        return styxscalarfunctionvalid(&module->function);
-    }
-    return styxscalarownerconfigure(&module->owner, &module->function, entry->dis_big, entry->dis_tuple, entry->dis_ref, entry->dis_call, entry->dis_ref_pair);
-}
-
-/* EN/RU: Export all distinct entries before making the dispatcher visible.
- * Опубликовать различные записи до запуска диспетчера. */
-static int export_modules(StyxUnibusServer *server, const StyxMountedScalar *entries, int loaded)
-{
-    if (!styxadddir(&server->server, Qroot, MOUNTED_ROOT, "mounted", 0555, "unibus"))
-    {
-        return 0;
-    }
-    for (size_t i = 0; i < server->count; i++)
-    {
-        if (!configure(&server->modules[i], &entries[i], loaded))
-        {
-            return 0;
-        }
-        size_t leader = i, exports = 1;
-        for (size_t j = 0; j < i; j++)
-        {
-            if (!strcmp(entries[i].module, entries[j].module))
-            {
-                if (++exports > STYX_MOUNTED_EXPORT_LIMIT || !strcmp(entries[i].name, entries[j].name))
-                {
-                    return 0;
-                }
-                if (leader == i)
-                {
-                    leader = j;
-                }
-            }
-        }
-        server->modules[i].directory_leader = leader;
-        if (!export_function(server, i, leader, &entries[i]))
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-/* EN/RU: Consume the channel and publish a bounded table on one Styx session.
- * Принять канал и опубликовать ограниченную таблицу в одной сессии Styx. */
-StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
-    const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse, const StyxUnibusLaunch *launch)
-{
-    StyxUnibusServer *server = channel && entries && count && count <= STYX_MOUNTED_SCALAR_LIMIT ?
-        calloc(1, sizeof(*server)) : NULL;
-    if (!server)
-    {
-        phyfree(channel);
-        return NULL;
-    }
-    server->modules = calloc(count, sizeof(*server->modules));
-    if (!server->modules)
-    {
-        phyfree(channel);
-        free(server);
-        return NULL;
-    }
-    server->count = count;
-    server->loaded = loaded;
-    if (reverse && !dvm_provider_retain(reverse))
-    {
-        free_modules(server);
-        phyfree(channel);
-        free(server);
-        return NULL;
-    }
-    server->caller_root = reverse;
-    if (launch)
-    {
-        server->completion = 1;
-        if (launch->persistent)
-        {
-            server->launches = launch_queue(launch->tag);
-        }
-        else
-        {
-            server->inbox = styxunibusinbox(launch->tag);
-            server->file = server->inbox ? styxbacking(server->inbox) : NULL;
-        }
-        server->original = launch->original ? styxbacking(launch->original) : NULL;
-        server->profile = launch->profile ? styxbacking(launch->profile) : NULL;
-    }
-    if (launch && (!(server->launches || server->file) || !server->original || !server->profile))
-    {
-        phyfree(channel);
-    }
-    else if (!styxphyinit(&server->server, &operations, channel, 0555, 1, 2))
-    {
-        int launch_nodes = !launch ||
-            (export_file(&server->server, server->original, 2, "implementation.dis") &&
-             export_file(&server->server, server->profile, 3, ".interface") &&
-             styxaddfile(&server->server, Qroot, LAUNCH_EXIT, ".exit", 0444, "unibus") &&
-             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0666, "unibus"));
-        if (launch_nodes && export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))
-        {
-            return server;
-        }
-        styxend(&server->server);
-    }
-    free_launch_queue(server->launches);
-    styxbackingfree(server->profile);
-    styxbackingfree(server->original);
-    styxbackingfree(server->file);
-    dvm_provider_release(server->inbox);
-    free_modules(server);
-    dvm_provider_release(server->caller_root);
-    free(server);
-    return NULL;
-}
-
-
+#include "unibus_server_setup.inc"
 #include "unibus_server_lifetime.inc"

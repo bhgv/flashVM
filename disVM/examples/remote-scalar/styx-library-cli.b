@@ -37,6 +37,7 @@ init()
         raise "mounted libraries did not share the expected executor";
     }
     run_shared(sys);
+    run_named(sys);
     check_cancel(sys, first, second, a.wide);
     sys->print("PASS two libraries on one stock Styx session\n");
 }
