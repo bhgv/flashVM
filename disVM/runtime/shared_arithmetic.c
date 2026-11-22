@@ -1303,7 +1303,8 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
          * alone does not end the trace. The counter bounds accumulation. */
         limit = INT_MAX;
     }
-    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)dvm_native_context_process(dvm_native_context_current());
+    Prog *program = dvm_native_context_process(dvm_native_context_current());
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)program;
     DVM_Cancel *cancel = owner && !owner->remote_call_cancel_delivered ? owner->remote_call_cancel : NULL;
     released = dvm_runtime_gc_shared_try_enter();
     if (released <= 0)
@@ -1312,7 +1313,8 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     }
     /* EN: Return to xec to raise only after publishing roots and releasing the shared lease.
      * RU: Вернуться в xec для исключения после публикации корней и освобождения общей аренды. */
-    while (completed < limit && (!cancel || !dvm_cancel_requested(cancel)))
+    while (completed < limit && (!cancel || !dvm_cancel_requested(cancel)) &&
+        (!program || !(__atomic_load_n(&program->flags, __ATOMIC_ACQUIRE) & Pkilled)))
     {
         /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();

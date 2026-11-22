@@ -7,7 +7,7 @@
 int styxmanaged_graph_positions(const char *shape, const FVM_SRecord *arguments, StyxGraphPositions *positions)
 {
     memset(positions, 0, sizeof(*positions));
-    if (arguments->tag != STYX_MANAGED_POSITION_GRAPH_TAG)
+    if (arguments->tag != STYX_MANAGED_POSITION_GRAPH_TAG && arguments->tag != STYX_MANAGED_POSITION_FLAT_TAG)
     {
         return 1;
     }

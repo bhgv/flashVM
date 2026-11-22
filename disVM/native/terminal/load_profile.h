@@ -20,6 +20,7 @@
 #define STYX_MANAGED_SPLICE_REQUEST_TAG 106UL /* Opt in to size-changing array splices. */
 #define STYX_MANAGED_TEXT_REQUEST_TAG 107UL /* Opt in to UTF-8 string patches. */
 #define STYX_MANAGED_EDIT_REQUEST_TAG 108UL /* Opt in to disjoint size-changing edits. */
+#define STYX_MANAGED_POSITION_FLAT_TAG 113UL /* Direct argument positions with the existing field patches. */
 #define STYX_MANAGED_POSITION_GRAPH_TAG 112UL /* Sparse graph updates name direct argument positions. */
 #define STYX_MANAGED_POSITION_GRAPH_MARKER "v00009\n" /* Retain the legacy graph advertisement length. */
 #define STYX_MANAGED_SPARSE_GRAPH_TAG 111UL /* Graph updates containing only changed slots. */

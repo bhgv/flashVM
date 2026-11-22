@@ -51,10 +51,11 @@ run_named(sys: Sys)
         raise "could not bind the second Styx program";
     }
     vfs := load Vfsnative Vfsnative->PATH;
-    if (vfs->run("/named-launch.dis") != -2 ||
-        vfs->runargs("/named-launch.dis", array of byte "secondary") != 1 ||
-        vfs->runargs("/transport/programs/second.dis", array of byte "secondary") != 1) {
-        raise "named Styx launch selected the wrong image or result";
+    rejected := vfs->run("/named-launch.dis");
+    alias := vfs->runargs("/named-launch.dis", array of byte "secondary");
+    direct := vfs->runargs("/transport/programs/second.dis", array of byte "secondary");
+    if (rejected != -2 || alias != 1 || direct != 1) {
+        raise sys->sprint("named Styx launch results: rejected %d, alias %d, direct %d", rejected, alias, direct);
     }
     sys->print("PASS named Styx executable on the same mount\n");
 }

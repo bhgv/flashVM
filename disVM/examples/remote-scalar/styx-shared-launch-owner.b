@@ -31,11 +31,8 @@ init()
                 raise "could not announce the parked launch";
             if (command == "spin") {
                 remaining := big 1 << 50;
-                for (i := 0; remaining != big 0; i++) {
-                    if (i == 1000) {
-                        remaining--;
-                        i = 0;
-                    }
+                while (remaining != big 0) {
+                    remaining--;
                 }
             } else {
                 sys->sleep(30000);

@@ -225,7 +225,7 @@ typedef struct StyxGraphPositions
     unsigned short reference[STYX_SHAPE_MAX]; /* Identity plus one at each canonical direct position. */
 } StyxGraphPositions;
 
-/* EN: Build the direct argument map for a validated request with a positional tag.
+/* EN: Build the direct argument map for a validated positional request.
  * For other dialects leave positions disabled. Returns zero on inconsistent input.
  * RU: Построить карту прямых параметров проверенного запроса с позиционным тегом.
  * Для других диалектов карта пуста. Ноль означает несогласованные данные. */

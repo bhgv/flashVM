@@ -463,7 +463,8 @@ unsigned long styxmanaged_capability(unsigned long high, unsigned long low)
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
 int styxmanaged_has_snapshot(unsigned long tag)
 {
-    return tag >= STYX_MANAGED_SPAN_REQUEST_TAG && tag <= STYX_MANAGED_WIDE_REFS_TAG;
+    return tag == STYX_MANAGED_POSITION_FLAT_TAG ||
+        (tag >= STYX_MANAGED_SPAN_REQUEST_TAG && tag <= STYX_MANAGED_WIDE_REFS_TAG);
 }
 
 

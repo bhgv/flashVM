@@ -26,7 +26,9 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
     unsigned char *encoded = malloc(capacity);
     unsigned char *payload = malloc(capacity);
     StyxScalarLayout layout;
+    StyxGraphPositions positions;
     int valid = encoded && payload && styxmanaged_layout(refs, &layout) &&
+        styxmanaged_graph_positions(arguments, baseline, &positions) &&
         styxmanaged_ref_records(arguments, baseline, before, &count) &&
         dvm_styx_value_frame_write(STYX_MANAGED_REQUEST_TAG, refs, objects, layout.size,
             encoded, capacity, &extent) &&
@@ -40,7 +42,8 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
     const char *type = refs + 1;
     for (size_t i = 0; valid && i < count; i++, type = styxshape_end(type))
     {
-        if (after[i].tag != STYX_MANAGED_REF_TAG || after[i].size <= 1 ||
+        if (before[i].tag != STYX_MANAGED_REF_TAG || before[i].size <= 1 ||
+            after[i].tag != STYX_MANAGED_REF_TAG || after[i].size <= 1 ||
             (before[i].size == after[i].size && !memcmp(before[i].payload, after[i].payload, after[i].size)))
         {
             continue;
@@ -55,7 +58,10 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
             {
                 continue;
             }
-            valid = length <= capacity && fvm_srecord_write(STYX_MANAGED_REF_TAG, fields, field_size,
+            unsigned position = positions.argument[before[i].payload[0]];
+            unsigned char selector = position ? (unsigned char)(position - 1) : 0;
+            unsigned long tag = position ? STYX_MANAGED_ARG_UPDATE_TAG : STYX_MANAGED_REF_TAG;
+            valid = length <= capacity && fvm_srecord_write_pair(tag, &selector, !!position, fields, field_size,
                 payload + length, capacity - length, &written) == FVM_S_OK;
         }
         else

@@ -273,7 +273,8 @@ static void select_lanes(const FieldLeaves *leaves, unsigned mask, char *selecte
 static int field_patch(char type, unsigned long version, const FVM_SRecord *old, const FVM_SRecord *next,
     void *output, size_t capacity, size_t *used)
 {
-    int edits = version == STYX_MANAGED_EDIT_REQUEST_TAG || version == STYX_MANAGED_WIDE_REFS_TAG;
+    int edits = version == STYX_MANAGED_EDIT_REQUEST_TAG || version == STYX_MANAGED_WIDE_REFS_TAG ||
+        version == STYX_MANAGED_POSITION_FLAT_TAG;
     int text = edits || version == STYX_MANAGED_TEXT_REQUEST_TAG;
     int splice = text || version == STYX_MANAGED_SPLICE_REQUEST_TAG;
     int runs = splice || version == STYX_MANAGED_RUN_REQUEST_TAG;
@@ -376,6 +377,27 @@ static int field_delta(const char *type, StyxFieldDelta *change, const FVM_SReco
 }
 
 
+/* EN: Check the selector for this snapshot; normalize it for the field decoder.
+ * RU: Сверить селектор этого снимка и подготовить запись для декодера полей. */
+static int delta_selector(FVM_SRecord *update, const FVM_SRecord *original, const StyxGraphPositions *positions)
+{
+    unsigned position = original && original->tag == STYX_MANAGED_REF_TAG && original->size ?
+        positions->argument[original->payload[0]] : 0;
+    if (!position)
+    {
+        return update->tag == STYX_MANAGED_REF_TAG;
+    }
+    if (update->tag != STYX_MANAGED_ARG_UPDATE_TAG || update->size < 3 || update->payload[0] != position - 1)
+    {
+        return 0;
+    }
+    update->tag = STYX_MANAGED_REF_TAG;
+    update->payload++;
+    update->size--;
+    return 1;
+}
+
+
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t size,
     StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count, const FVM_SRecord *baseline,
@@ -398,7 +420,9 @@ int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t siz
     }
     FVM_SRecord originals[STYX_CALL_VALUES];
     size_t original_count = 0;
-    if (baseline && !styxmanaged_ref_records(arguments, baseline, originals, &original_count))
+    StyxGraphPositions positions = {0};
+    if (baseline && (!styxmanaged_ref_records(arguments, baseline, originals, &original_count) ||
+        !styxmanaged_graph_positions(arguments, baseline, &positions)))
     {
         return 0;
     }
@@ -413,6 +437,7 @@ int styxmanaged_deltas_base(const char *arguments, const void *bytes, size_t siz
             if (offset >= outer.size ||
                 fvm_srecord_read(outer.payload + offset, outer.size - offset, STYX_MANAGED_LIST_LIMIT,
                     &change->fields, &used) != FVM_S_OK || (baseline && index >= original_count) ||
+                !delta_selector(&change->fields, baseline ? &originals[index] : NULL, &positions) ||
                 !field_delta(type, change, baseline ? &originals[index] : NULL, output, capacity))
             {
                 return 0;

@@ -53,7 +53,8 @@ int dvm_styx_ref_result_read(const StyxCallShape *shape, const void *data, size_
     const void *argument_slots, const FVM_SRecord *arguments, DVM_StyxValueFrame *result)
 {
     DVM_StyxRefTable refs = {.result = 1,
-        .limit = arguments->tag == STYX_MANAGED_WIDE_REFS_TAG ? STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
+        .limit = (arguments->tag == STYX_MANAGED_WIDE_REFS_TAG || arguments->tag == STYX_MANAGED_POSITION_FLAT_TAG) ?
+            STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
     FrameDecode decode = {.shape = shape->result, .refs = &refs};
     if (!result || !styxmanaged_layout(shape->result, &decode.pending.layout) ||
         !styxmanaged_result_read(shape->result, data, size, shape->arguments, arguments, &decode.list) ||
@@ -79,7 +80,8 @@ int dvm_styx_ref_result_write(const StyxCallShape *shape, const void *slots, siz
     const void *argument_slots, const FVM_SRecord *arguments, void *data, size_t capacity, size_t *used)
 {
     DVM_StyxRefTable refs = {.result = 1,
-        .limit = arguments->tag == STYX_MANAGED_WIDE_REFS_TAG ? STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
+        .limit = (arguments->tag == STYX_MANAGED_WIDE_REFS_TAG || arguments->tag == STYX_MANAGED_POSITION_FLAT_TAG) ?
+            STYX_CALL_REF_KEYS : STYX_CALL_LEGACY_REF_KEYS};
     FrameEncode encode = {.slots = slots, .refs = &refs};
     if (!seed_result(&refs, shape->arguments, argument_slots, arguments))
     {

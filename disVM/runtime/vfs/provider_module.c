@@ -242,17 +242,18 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
             (strchr(shape.arguments, 'r') || strchr(shape.result, 'r')) ?
             styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
-        if (bit && explicit_end == STYX_CALL_RECORD_FRAMING && styxmanaged_graph_required(shape.arguments))
+        if (bit && explicit_end == STYX_CALL_RECORD_FRAMING)
         {
-            if (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG)
+            int needs_graph = styxmanaged_graph_required(shape.arguments);
+            if (needs_graph && (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG))
             {
                 bit = 0;
             }
-            else
+            else if (managed_tag == STYX_MANAGED_GRAPH_TAG)
             {
-                if (!read_graph_marker)
+                if (caller && !read_graph_marker)
                 {
-                    unsigned char marker[sizeof(STYX_MANAGED_SPARSE_GRAPH_MARKER)];
+                    unsigned char marker[sizeof(STYX_MANAGED_POSITION_GRAPH_MARKER)];
                     size_t length = mounted_profile(directory, STYX_MANAGED_DELTA_FILE, marker, sizeof(marker));
                     if (length == sizeof(marker) - 1 &&
                         !memcmp(marker, STYX_MANAGED_POSITION_GRAPH_MARKER, length))
@@ -266,12 +267,9 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
                     }
                     read_graph_marker = 1;
                 }
-                managed_tag = graph_tag;
+                managed_tag = needs_graph ? graph_tag : graph_tag == STYX_MANAGED_POSITION_GRAPH_TAG ?
+                    STYX_MANAGED_POSITION_FLAT_TAG : STYX_MANAGED_WIDE_REFS_TAG;
             }
-        }
-        else if (styxmanaged_graph_tag(managed_tag))
-        {
-            managed_tag = STYX_MANAGED_WIDE_REFS_TAG;
         }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))
         {

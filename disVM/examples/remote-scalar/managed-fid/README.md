@@ -134,6 +134,13 @@ Their combined encoding would exceed the reply limit if the unchanged field
 were included. The client also checks that it keeps its original array.
 
 
+For signatures eligible for the existing text and array patch format,
+the same marker selects request tag 113. The field delta list still uses
+its mask for ordering. A changed direct reference starts with tag 18 and
+its original tuple position, followed by the field mask and patches.
+The client checks the position against the original argument snapshot.
+
+
 Before publishing a graph reply, the client checks its original reference
 paths under the same range guards used for copy-back. If a caller thread
 rebound a reference to another object or to `nil`, the call raises

@@ -8,7 +8,6 @@
 #include "isa.h"
 #include "interp.h"
 #include "raise.h"
-#include "disvm/refcount.h"
 #include "startup_internal.h"
 #include "module_counts.h"
 #include <stdlib.h>
@@ -80,10 +79,11 @@ static Prog *launch_module(Module *module, DVM_LaunchHandoff *handoff, const DVM
     state->initial.R.EX = NULL;
     Modlink *link = state->link;
     state->link = NULL;
-    if (dvm_refcount_release_u(&D2H(link)->ref) != DVM_REFCOUNT_LIVE)
-    {
-        error(exHeap);
-    }
+    /* EN: A dedicated child may finish before its constructor releases the
+     * bootstrap link. Release the last reference through the normal destructor.
+     * RU: Закреплённый потомок может выйти раньше освобождения стартового
+     * модуля конструктором. Последнюю ссылку освобождает обычный деструктор. */
+    destroy(link);
     poperror();
     DVM_R.s = state->source;
     free(state->frame);
