@@ -18,7 +18,7 @@ typedef struct LibraryMount
 typedef struct LibrarySession
 {
     PhyBidir *mux; /* Retained through the runtime and reverse worker shutdown. */
-    StyxCallerServer *reverse;
+    StyxCallerServer *reverse; /* Owned reverse caller service on the same socket. */
     int breaker; /* Shutdown duplicate, valid when mux setup was attempted. */
 } LibrarySession;
 
@@ -64,7 +64,7 @@ static int mount_library(DVM_Namespace *group, const LibraryMount *library, Libr
     }
     StyxClient *client = carrier ? styxclientmountphy(carrier, 4096, "owner", "", 5000, 8) : NULL;
     DVM_Provider *root = !client ? NULL : session->reverse ?
-        styxcallermount(session->reverse, client, FVM_ACCESS_MASK) : styxmountprovider(client, FVM_ACCESS_MASK);
+        dvm_terminal_mount_peer(session->reverse, client, NULL, NULL, 0, 0) : styxmountprovider(client, FVM_ACCESS_MASK);
     DVM_NamespacePlan target;
     int installed = root && dvm_namespace_plan(group, library->path, &target) &&
         dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;

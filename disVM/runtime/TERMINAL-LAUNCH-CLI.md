@@ -310,6 +310,17 @@ inherited FDs. Both descriptor options accept `--library-at PATH`.
 The caller supplies an already connected transport. Endpoints can
 reside on separate hosts.
 
+The bidirectional mount also discovers executables. A peer started with
+`--styx-library-serve-fd FD --execute IMAGE.dis` advertises `implementation.dis` and
+may add named images under `programs/`. With the mount at
+`/remote-libs`, use `Vfsnative->run("/remote-libs/implementation.dis")`
+or bind an advertised file to a local path before calling `run`.
+A program started over Styx can use the same VFS path to launch a
+dependency on the next peer. The next launch receives that process's
+current descriptor views and VFS grants. Both launches keep their own
+fids through completion or cancellation. See the
+[three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch).
+
 Different descriptor numbers that alias the same socket are rejected before any Styx handshake.
 
 ### Publish additional executables on the same mount

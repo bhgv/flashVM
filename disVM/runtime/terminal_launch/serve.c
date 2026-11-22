@@ -12,7 +12,7 @@
 #include "launch_receive.h"
 #include "program_record.h"
 #include "mount.h"
-#include "caller_styx.h"
+#include "peer_mount.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"

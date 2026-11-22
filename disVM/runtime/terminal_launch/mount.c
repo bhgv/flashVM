@@ -5,7 +5,7 @@
 #include "config.h"
 #include "offer.h"
 #include "unibus_server.h"
-#include "caller_styx.h"
+#include "peer_mount.h"
 #include "launch_send.h"
 #include "mount.h"
 #include "vfs/cancel.h"
@@ -244,7 +244,7 @@ static MountedLaunch *open_launch_route(StyxClient *client, const char *request,
 
 /* EN: Consume an attached client and configure an exact optional launch route.
  * RU: Принять подключённый клиент и настроить точный маршрут запуска. */
-static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
+DVM_Provider *dvm_terminal_mount_peer(StyxCallerServer *reverse, StyxClient *client,
     const char *entry, const char *request, unsigned long tag, int scoped)
 {
     int automatic = !entry;
@@ -355,7 +355,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     StyxCallerServer *reverse = mux ? styxcallerserver(phybidirchannel(mux, 1)) : NULL;
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
-    DVM_Provider *mount = client ? mount_launch(reverse, client, entry, request, tag, scoped) : NULL;
+    DVM_Provider *mount = client ? dvm_terminal_mount_peer(reverse, client, entry, request, tag, scoped) : NULL;
     int result = 1;
     if (mount)
     {

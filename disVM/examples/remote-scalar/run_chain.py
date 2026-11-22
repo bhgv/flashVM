@@ -98,14 +98,20 @@ def run_c(options, main_listener, alternate_listener):
             (DISVM / "limbo/scalarowner.b", "owner.dis"),
             (EXAMPLE / "wide-owner.b", "wide.dis"),
             (EXAMPLE / "managed-fid/target.b", "managed.dis"),
+            (EXAMPLE / "styx-named-launch-owner.b", "nested-root.dis"),
+            (EXAMPLE / "styx-chain-leaf.b", "nested-leaf.dis"),
         ))
+
+        (root / "leaf-owner").write_bytes(b"on C")
 
         def serve(stream, managed):
             exports = ["--export", "wide.dis", "wide.dis", "echo"]
+            programs = []
             if managed:
+                programs = ["--execute", "nested-root.dis", "--execute-as", "leaf.dis", "nested-leaf.dis"]
                 exports.extend(("--export", "managed.dis", "managed.dis", "changegraph"))
             delegate([options.runtime, "--styx-library-serve-fd", str(stream.fileno()),
-                      *exports, "--", options.mode, "owner.dis"], (stream,), root)
+                      *programs, *exports, "--", options.mode, "owner.dis"], (stream,), root)
 
         with ExitStack() as sockets, ThreadPoolExecutor(max_workers=2) as workers:
             first = sockets.enter_context(accept(main_listener))
@@ -123,6 +129,7 @@ def run_b(options, listener, main_library, alternate_library):
             (EXAMPLE / "styx-chain-owner.b", "chain-owner.dis"),
             (EXAMPLE / "styx-chain-local.b", "deps/wide.dis"),
         ))
+        (root / "leaf-alias.dis").touch()
         main = sockets.enter_context(connect(main_library))
         alternate = sockets.enter_context(connect(alternate_library))
         launch = sockets.enter_context(accept(listener))
@@ -138,6 +145,7 @@ def run_a(options, owner):
         compile_images(options.limbo, root, ((EXAMPLE / "styx-chain-client.b", "chain-client.dis"),))
         (root / ".vfs").mkdir()
         (root / "alias.dis").touch()
+        (root / "enable-nested-cancel").touch()
         (root / "stdin").write_bytes(b"live")
         (root / "fd3").write_bytes(b"skipmore")
         shared = root / "shared"
@@ -152,9 +160,11 @@ def run_a(options, owner):
                  "--", options.mode, "chain-client.dis"],
                 (launch,), root, files=(fourth, aliases), stdin=incoming,
             )
-            if (fourth.tell() != 8 or aliases.tell() != 8 or shared.read_bytes() != b"skipABCD" or
+            if (fourth.tell() != 8 or aliases.tell() != 10 or shared.read_bytes() != b"skipABCDEF" or
                     "chain stdout\n" not in stdout or "chain stderr\n" not in stderr or
-                    "PASS mounted Styx launch completion\n" not in stdout):
+                    "chain leaf stdout\n" not in stdout or "chain leaf stderr\n" not in stderr or
+                    "PASS mounted Styx launch completion\n" not in stdout or
+                    "PASS nested Styx launch cancellation\n" not in stdout):
                 raise RuntimeError(f"wrong result or descriptor state\n{stdout}{stderr}")
 
 

@@ -1,8 +1,10 @@
 # Copyright (c) 2026 bhgv
-# EN: Execute on B and resolve a separate Styx library on C.
-# RU: Выполнить программу на B и загрузить библиотеку Styx с C.
+# EN: Execute on B and resolve libraries and executables from C's Styx mount.
+# RU: Выполнить программу на B с библиотеками и запусками из маунта Styx на C.
 implement Owner;
 include "sys.m";
+include "vfsnative.m";
+include "launchcontext.m";
 
 Owner: module { init: fn(); };
 include "wide.m";
@@ -14,6 +16,12 @@ include "managed.m";
 init()
 {
     sys := load Sys Sys->PATH;
+    context := load Launchcontext Launchcontext->PATH;
+    action := string context->arguments();
+    if (action == "cancel-nested" || action == "probe-nested") {
+        launch_nested_action(sys, action);
+        return;
+    }
     data := array[4] of byte;
     input := sys->fildes(0);
     if (input == nil || sys->readn(input, data, len data) != len data) {
@@ -71,6 +79,9 @@ init()
     if (n != 4 || mark[0] != byte 0 || mark[1] != byte 0 || mark[2] != byte 0 || mark[3] != byte 42)
         raise "invalid A marker on B";
     check_managed();
+    if (sys->open("/remote-libs/.programs", Sys->OREAD) != nil) {
+        check_nested_launch(sys);
+    }
     if (sys->fprint(sys->fildes(1), "chain stdout\n") <= 0 ||
         sys->fprint(sys->fildes(2), "chain stderr\n") <= 0) {
         raise "chain output failed";
@@ -97,5 +108,39 @@ check_managed()
         extra[0] != original || extra[31].text != "last index" ||
         len output != 3000 || output[2999] != byte 53) {
         raise "chain managed copy-back failed";
+    }
+}
+
+
+# EN: Select two executables published beside the loaded modules on C.
+# RU: Выбрать две программы, опубликованные рядом с загруженными модулями C.
+check_nested_launch(sys: Sys)
+{
+    vfs := load Vfsnative Vfsnative->PATH;
+    if (sys->bind("/remote-libs/programs/leaf.dis", "/leaf-alias.dis", Sys->MREPL) < 0) {
+        raise sys->sprint("could not bind nested launcher: %r");
+    }
+    root := vfs->runargs("/remote-libs/implementation.dis", array of byte "secondary");
+    refused := vfs->runargs("/leaf-alias.dis", array of byte "fail");
+    leaf := vfs->runargs("/leaf-alias.dis", array of byte "leaf");
+    if (root != 1 || refused != -2 || leaf != 1) {
+        raise sys->sprint("nested launch results: root %d, failure %d, leaf %d", root, refused, leaf);
+    }
+}
+
+
+# EN: Forward a cancellation probe or check the connection after a cancelled child.
+# RU: Передать запрос проверки отмены либо проверить соединение после отмены.
+launch_nested_action(sys: Sys, action: string)
+{
+    vfs := load Vfsnative Vfsnative->PATH;
+    if (action == "cancel-nested") {
+        status := vfs->runargs("/remote-libs/programs/leaf.dis", array of byte "park");
+        raise sys->sprint("parked launch unexpectedly returned %d", status);
+    }
+    library := load Wide "/remote-libs/mounted/wide.dis";
+    if (vfs->runargs("/remote-libs/implementation.dis", array of byte "secondary") != 1 ||
+        library == nil || library->echo(big 1) != big 4) {
+        raise "nested connection did not survive cancellation";
     }
 }

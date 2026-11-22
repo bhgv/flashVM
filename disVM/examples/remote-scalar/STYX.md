@@ -314,11 +314,20 @@ python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" b \
 python3 run_chain.py --runtime "$DISVM" --limbo "$LIMBO" a --owner "$B_ADDR:9030"
 ```
 
-A verifies the completion, stdout, stderr, exact forwarded bytes and
-both file positions. All three roles print `PASS Styx chain` and exit
-with zero. C serves both modules on its main connection. A second
-owner instance on C checks that the two library mounts have independent
-state. For a JIT run, add `--jit` before the role on each host and restart
+On its main connection, C publishes both libraries, the root image
+`implementation.dis` and the named image `programs/leaf.dis`. B loads
+the libraries, launches the root image by its mount path and uses a bind
+alias for the named image. C reads its local file and A's granted `.vfs`
+marker, checks FD 3 permissions and writes to A's FD 1 and 2. Writes
+through inherited FD aliases 7 and 8 leave A's file containing `skipABCDEF`.
+A launch with an invalid argument reports failure to B on its own fid.
+
+A also cancels its wait after C signals that the leaf has entered a
+`big` loop. The clunk reaches C through B. A fresh launch and a library
+call then reuse both connections. A verifies the results, both owners'
+output and the file positions. All three roles print `PASS Styx chain`
+and exit with zero. C's second owner instance checks that the two mounts
+have independent state. For a JIT run, add `--jit` before the role on each host and restart
 the three commands. The `local` role runs the same program and checks over
 loopback and is registered in the SDK-enabled runtime CTest suite.
 
