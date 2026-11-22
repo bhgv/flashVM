@@ -56,6 +56,16 @@ int styxscalar_layout(const char *shape, StyxScalarLayout *layout);
 int styxmanaged_layout(const char *shape, StyxScalarLayout *layout);
 
 
+/* EN: Resolve the single element of a borrowed array type to a frame schema and layout.
+ * RU: Получить схему и раскладку одного элемента заимствованного типа массива. */
+int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1],
+    StyxScalarLayout *layout);
+
+/* EN: Check each array in a validated schema, including arrays in tuple and ref fields.
+ * RU: Проверить каждый массив валидированной схемы, включая поля кортежей и ref. */
+int styxmanaged_arrays(const char *shape);
+
+
 /* EN: Copy only a pointer-free NC64 buffer and widen packed byte leaves.
  * RU: Скопировать поля буфера NC64 без указателей и расширить поля byte. */
 void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCallValues *values);

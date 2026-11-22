@@ -2,7 +2,7 @@
 
 [Русская версия](README.ru.md) · [Remote Dis examples](../README.md)
 
-Two DisVM processes share one Styx session. The owner serves three exports from
+Two DisVM processes share one Styx session. The owner serves four exports from
 one loaded instance of [target.b](target.b). The caller imports [managed.m](managed.m),
 loads the mounted module path and calls the functions with ordinary Limbo syntax.
 The owner builds the bridge from the types recorded by the Limbo compiler.
@@ -50,7 +50,7 @@ values against the request, so a store of the same value does not set a bit.
 The client validates the full response before applying the return value and
 updates together. An exception discards all copy-back.
 
-The profile supports bounded ADTs with scalar, string, primitive array and
+The profile supports bounded ADTs with scalar, string, array and
 tuple fields. Nested `ref` fields and `ref` return values are outside this
 profile. Arrays are individual fields. A two-byte `.ref-fields` file advertises multiple
 spans. For equal-size encoded arrays the owner sends sorted offset-and-length
@@ -74,3 +74,11 @@ Each replacement uses coordinates in the original value. The owner searches
 a bounded neighborhood for a shared sequence after each mismatch. If the
 resulting record saves bytes, it can preserve a long interior between an
 insertion and a distant replacement. Otherwise the earlier encodings apply.
+
+The nested example sends an array of UTF-8 strings and a `ref` object with
+an array of byte arrays and an array of tuples. Each array element has its
+own S-record. A nil element and an empty array have distinct records.
+The reply returns arrays by value and updates the existing `ref` object.
+Array element types may recursively contain scalars, strings, arrays and
+tuples within the compiled schema and record limits. References inside
+array elements are outside this value format.

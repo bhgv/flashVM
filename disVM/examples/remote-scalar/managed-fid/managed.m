@@ -8,5 +8,11 @@ Managed: module {
         bytes: array of byte;
     };
     update: fn(mode: string, left, right, untouched: ref Cell): string;
+    Item: type (byte, string);
+    Nested: adt {
+        items: array of Item;
+        rows: array of array of byte;
+    };
+    nested: fn(names: array of string, state: ref Nested): (array of string, array of Item);
     accept: fn(text: string);
 };

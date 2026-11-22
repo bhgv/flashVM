@@ -140,3 +140,47 @@ int dvm_styx_owner_frame_init(DVM_StyxValueFrame *arguments, Modlink *target,
     memset(arguments, 0, sizeof(*arguments));
     return 1;
 }
+
+
+/* EN: Copy the object fields under one guard, retaining pointer values before unlock.
+ * RU: Скопировать поля под одной блокировкой и удержать ссылки до её снятия. */
+int dvm_styx_value_snapshot(const void *object, DVM_StyxValueFrame *snapshot)
+{
+    DVM_RangeAccess access = {0};
+    for (;;)
+    {
+        DVM_CellResult claim = dvm_managed_ranges_begin(object, snapshot->layout.size, NULL, 0, &access);
+        if (claim == DVM_CELL_ACQUIRED)
+        {
+            break;
+        }
+        if (claim != DVM_CELL_BUSY || !dvm_native_context_poll())
+        {
+            return 0;
+        }
+        fvm_port_thread_sleep_us(50);
+    }
+    unsigned char *slots = (unsigned char *)snapshot->words;
+    memcpy(slots, object, snapshot->layout.size);
+    int valid = 1;
+    for (size_t i = 0; i < snapshot->layout.count; i++)
+    {
+        if (snapshot->layout.pointers & (1U << i))
+        {
+            unsigned char *slot = slots + snapshot->layout.offset[i];
+            void *value;
+            memcpy(&value, slot, sizeof(value));
+            if (value != H && (!valid || !value || dvm_refcount_retain_u(&D2H(value)->ref) != DVM_REFCOUNT_LIVE))
+            {
+                value = H;
+                memcpy(slot, &value, sizeof(value));
+                valid = 0;
+            }
+        }
+    }
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return valid;
+}

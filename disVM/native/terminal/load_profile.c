@@ -305,21 +305,6 @@ static int signature_shape(uint32_t signature, const StyxCallShape *shape)
 }
 
 
-/* EN: Admit only arrays whose elements the current value bridge can materialize.
- * RU: Допустить только массивы, элементы которых умеет создавать текущий шлюз. */
-static int managed_arrays(const char *shape)
-{
-    for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
-    {
-        if (!strchr("ibfy", array[2]) || array[3] != ']')
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
 /* EN: Collect the bounded ref leaves across argument tuples for reply validation.
  * RU: Собрать ref-поля из кортежей аргументов для проверки ответа. */
 int styxmanaged_refs(const char *shape, char refs[STYX_SHAPE_MAX + 1], unsigned *mask)
@@ -388,7 +373,7 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
         !styxmanaged_layout(shape->arguments, &input) || !styxmanaged_layout(shape->result, &output) ||
         input.size > 64 || output.size > 64 ||
         strchr(shape->result, 'r') || !styxmanaged_refs(shape->arguments, refs, &mask) ||
-        !managed_arrays(shape->arguments) || !managed_arrays(shape->result) ||
+        !styxmanaged_arrays(shape->arguments) || !styxmanaged_arrays(shape->result) ||
         !(input.pointers || output.pointers))
     {
         return ref;

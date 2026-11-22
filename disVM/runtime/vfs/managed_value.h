@@ -9,21 +9,21 @@
 #include "../../native/terminal/load_profile.h"
 
 
-/* [GC:] EN: Decode one leaf of type s, a[i], a[b], a[f] or a[y]. Borrow type and record, allocate
+/* [GC:] EN: Decode one string or recursive array. Borrow type and record, allocate
  * on the current ACTIVE resident, and return one owned reference or H for nil.
  * Return zero and preserve result on malformed data. Allocator errors propagate.
  * The recipient must root the returned object before leaving GC admission.
- * RU: Декодировать s или a[y]. Тип и запись заимствуются; выделить объект в
+ * RU: Декодировать строку или вложенный массив. Тип и запись заимствуются; выделить объект в
  * текущем ACTIVE resident. Вернуть владеющую ссылку либо H для nil. При
  * неверных данных вернуть 0, сохранив result. Ошибки выделения передаются
  * вызывающему. Вызывающий укореняет объект до выхода из допуска GC. */
 int dvm_styx_managed_new(const char *type, const FVM_SRecord *record, void **result);
 
 
-/* [GC:] EN: Encode a rooted s or primitive array value into disjoint native storage.
+/* [GC:] EN: Encode a rooted string or recursive array into disjoint native storage.
  * Observe a stable String owner or borrowed array with immutable header.
  * Payload is snapped before encoding. On failure bytes and used are preserved.
- * RU: Кодировать укоренённые s или a[y] в отдельный нативный буфер.
+ * RU: Кодировать укоренённую строку или вложенный массив в отдельный буфер.
  * Строка удерживается стабильным владельцем, заголовок массива неизменяем.
  * Данные копируются до кодирования. При отказе bytes и used сохраняются. */
 int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t capacity, size_t *used);
@@ -40,6 +40,13 @@ typedef struct DVM_StyxValueFrame
     unsigned roots; /* Registered temporary heap roots by leaf index. */
     uint64_t words[STYX_CALL_VALUES]; /* Aligned private argument or result bytes. */
 } DVM_StyxValueFrame;
+
+
+/* [GC:] EN: Snapshot live slots under the VM range lock and retain their pointer cells.
+ * The zeroed frame must contain its layout. Clear it even after failure.
+ * RU: Скопировать слоты под блокировкой VM и удержать ссылки. Нулевой кадр
+ * должен содержать раскладку. Очистить его даже после ошибки. */
+int dvm_styx_value_snapshot(const void *object, DVM_StyxValueFrame *snapshot);
 
 
 /* [GC:] EN: Decode a checked list into an empty output frame on the ACTIVE resident.

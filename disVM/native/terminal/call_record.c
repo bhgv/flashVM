@@ -269,6 +269,44 @@ int styxmanaged_layout(const char *shape, StyxScalarLayout *layout)
 
 
 /* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1],
+    StyxScalarLayout *layout)
+{
+    const char *end = array && *array == 'a' ? styxshape_end(array) : NULL;
+    if (!end || (size_t)(end - array) > STYX_SHAPE_MAX)
+    {
+        return 0;
+    }
+    size_t length = (size_t)(end - array) - 3;
+    if (memchr(array + 2, 'r', length))
+    {
+        return 0;
+    }
+    element[0] = '(';
+    memcpy(element + 1, array + 2, length);
+    element[length + 1] = ')';
+    element[length + 2] = 0;
+    return styxmanaged_layout(element, layout) && layout->size > 0;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_arrays(const char *shape)
+{
+    for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
+    {
+        char element[STYX_SHAPE_MAX + 1];
+        StyxScalarLayout layout;
+        if (!styxmanaged_array_layout(array, element, &layout))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
 void styxscalar_unpack(const StyxScalarLayout *layout, const void *frame, StyxCallValues *values)
 {
     const unsigned char *bytes = frame;

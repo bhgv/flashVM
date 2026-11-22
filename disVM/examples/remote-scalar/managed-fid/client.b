@@ -31,6 +31,7 @@ init()
     }
     m->accept("ok");
     check_refs(m);
+    check_nested(m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -120,4 +121,30 @@ check_refs(m: Managed)
         raise "UTF-8 text delta via ref failed";
     }
 
+}
+
+
+# EN: Verify both value return and recursive ref write-back after one ordinary load.
+# RU: Проверить возврат по значению и вложенное обновление ref после обычного load.
+check_nested(m: Managed)
+{
+    Item, Nested: import m;
+    names := array[] of {"é", nil, "🌍"};
+    rows := array[3] of array of byte;
+    rows[0] = array[] of {byte 42};
+    rows[2] = array[0] of byte;
+    items := array[1] of Item;
+    items[0] = (byte 9, "old");
+    state := ref Nested(items, rows);
+    alias := state;
+    (returned, records) := m->nested(names, state);
+    (code, label) := records[0];
+    (updated, updatedlabel) := alias.items[0];
+    if (returned[0] != "é!" || returned[1] != nil || returned[2] != "🌍" ||
+        code != byte 10 || label != "new" || updated != code || updatedlabel != label ||
+        alias.rows[0][0] != byte 99 || alias.rows[1] != nil ||
+        alias.rows[2] == nil || len alias.rows[2] != 0 ||
+        names[0] != "é" || rows[0][0] != byte 42) {
+        raise "nested value or ref update failed";
+    }
 }

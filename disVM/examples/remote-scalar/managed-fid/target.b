@@ -67,3 +67,23 @@ update(mode: string, left, right, untouched: ref Cell): string
     }
     return right.text;
 }
+
+
+# EN: Exercise nested S-records and write reconstructed values back through ref.
+# RU: Проверить вложенные S-записи и вернуть восстановленные значения через ref.
+nested(names: array of string, state: ref Nested): (array of string, array of Item)
+{
+    if (len names != 3 || names[0] != "é" || names[1] != nil || names[2] != "🌍" ||
+        len state.rows != 3 || state.rows[1] != nil || state.rows[2] == nil ||
+        len state.rows[2] != 0 || state.rows[0][0] != byte 42) {
+        raise "bad nested request";
+    }
+    (code, label) := state.items[0];
+    if (code != byte 9 || label != "old") {
+        raise "bad tuple element";
+    }
+    names[0] = names[0] + "!";
+    state.items[0] = (byte 10, "new");
+    state.rows[0][0] = byte 99;
+    return (names, state.items);
+}
