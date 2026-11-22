@@ -44,6 +44,36 @@ static void launch_status(StyxFid *fid, const char *expected)
         (result.count == size && !memcmp(bytes, expected, size))), "launch status belongs to its fid");
 }
 
+static int cancelled_launch;
+
+static void cancel_child(int pid, void *ticket)
+{
+    check(ticket != NULL && pid > 0, "cancel only a registered launch");
+    __atomic_store_n(&cancelled_launch, pid, __ATOMIC_RELEASE);
+}
+
+static void check_launch_clunk(StyxUnibusServer *server, StyxClient *client, int clunk_first)
+{
+    int pid = clunk_first ? 81 : 82;
+    StyxFid *fid = styxclientwalk(client, ".unibus");
+    check(fid && styxclientopen(fid, ORDWR), "open a cancellable launch");
+    launch_write(fid, (uint32_t)pid, 1);
+    StyxLaunchTicket *ticket = launch_take(server, (uint32_t)pid);
+    if (clunk_first)
+    {
+        styxclientclunk(fid);
+        styxunibuslaunchstarted(ticket, pid, cancel_child);
+    }
+    else
+    {
+        styxunibuslaunchstarted(ticket, pid, cancel_child);
+        styxclientclunk(fid);
+    }
+    check(__atomic_load_n(&cancelled_launch, __ATOMIC_ACQUIRE) == pid,
+        "clunk cancels a dequeued launch before or after registration");
+    styxunibuslaunchcomplete(ticket, 1);
+}
+
 static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
 {
     StyxFid *first = styxclientwalk(client, ".unibus");
@@ -87,4 +117,6 @@ static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
     styxclientclunk(first);
     styxclientclunk(second);
     styxclientclunk(exit_status);
+    check_launch_clunk(server, client, 0);
+    check_launch_clunk(server, client, 1);
 }

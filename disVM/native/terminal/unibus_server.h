@@ -151,6 +151,12 @@ typedef struct StyxLaunchTicket StyxLaunchTicket;
  * Вернуть собственный билет и точный запрос либо NULL при остановке/отмене. */
 StyxLaunchTicket *styxunibusservernextlaunch(StyxUnibusServer *server, void *wire, size_t capacity, size_t *size);
 
+/* EN: Bind a borrowed ticket to the registered child once, before its first instruction.
+ * The callback can run on the Styx dispatcher and must target this ticket identity.
+ * RU: Привязать билет к зарегистрированному потомку перед первой инструкцией.
+ * Callback может исполняться в диспетчере Styx и сверяет идентичность билета. */
+void styxunibuslaunchstarted(StyxLaunchTicket *ticket, int pid, void (*cancel)(int, void *));
+
 /* EN: Consume a ticket and publish its result. A nonzero status means failure.
  * RU: Поглотить билет и опубликовать результат. Ненулевой статус означает ошибку. */
 void styxunibuslaunchcomplete(StyxLaunchTicket *ticket, int status);

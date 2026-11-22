@@ -10,7 +10,10 @@ struct StyxLaunchTicket
 {
     StyxLaunchTicket *next; /* Protected by the queue lock until dequeued. */
     unsigned owners; /* Queue/worker and fid/legacy reader each hold one reference. */
-    int abandoned; /* The read/write fid closed before the worker took the launch. */
+    int abandoned; /* The read/write fid closed. */
+    int cancel_sent; /* At most one native termination request. */
+    int child_pid; /* Published once, after the child registers its native owner. */
+    void (*cancel)(int, void *); /* Published with child_pid. */
     int status; /* Atomic: pending 0, success 1, error 2. */
     size_t size;
     unsigned char wire[LAUNCH_WIRE_LIMIT];
@@ -47,11 +50,34 @@ static void drop_launch(StyxLaunchTicket *ticket)
     }
 }
 
+/* EN: Pair fid closure with first dispatch, independent of which arrives first.
+ * RU: Связать закрытие fid с первым шагом исполнения в любом порядке. */
+static void cancel_launch(StyxLaunchTicket *ticket)
+{
+    int pid = __atomic_load_n(&ticket->child_pid, __ATOMIC_SEQ_CST);
+    if (pid && !__atomic_load_n(&ticket->status, __ATOMIC_ACQUIRE) &&
+        !__atomic_exchange_n(&ticket->cancel_sent, 1, __ATOMIC_ACQ_REL))
+    {
+        ticket->cancel(pid, ticket);
+    }
+}
+
+void styxunibuslaunchstarted(StyxLaunchTicket *ticket, int pid, void (*cancel)(int, void *))
+{
+    ticket->cancel = cancel;
+    __atomic_store_n(&ticket->child_pid, pid, __ATOMIC_SEQ_CST);
+    if (__atomic_load_n(&ticket->abandoned, __ATOMIC_SEQ_CST))
+    {
+        cancel_launch(ticket);
+    }
+}
+
 static void close_launch_ticket(StyxLaunchTicket *ticket)
 {
     if (ticket)
     {
-        __atomic_store_n(&ticket->abandoned, 1, __ATOMIC_RELEASE);
+        __atomic_store_n(&ticket->abandoned, 1, __ATOMIC_SEQ_CST);
+        cancel_launch(ticket);
         drop_launch(ticket);
     }
 }

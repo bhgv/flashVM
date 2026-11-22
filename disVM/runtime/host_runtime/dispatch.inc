@@ -220,6 +220,13 @@ static int runtime_dispatch_turn(void)
     }
     else
     {
+        DVM_RuntimeProcess *launch = (DVM_RuntimeProcess *)process;
+        if (launch->report_launch_start)
+        {
+            void (*started)(void *, int) = launch->report_launch_start;
+            launch->report_launch_start = NULL;
+            started(launch->report_launch_state, process->pid);
+        }
         if (__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled)
         { /* A resident with live registers already owns its unwind state. */
             if (!dvm_native_execution()->resident_registers_valid)

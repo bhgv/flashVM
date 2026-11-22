@@ -270,6 +270,12 @@ checks two consecutive launches and two overlapping launches with
 different outcomes. The three-peer test also runs this mode with
 inherited descriptors and separately mounted libraries.
 
+In persistent mode, cancelling the caller's wait closes the launch fid.
+The owner drops a queued request or interrupts its registered child at
+a VM termination checkpoint. A definitive process result is unavailable
+after the caller closes the fid. Other launches keep their own fids and
+the same session remains available.
+
 ### Launch result and an extra descriptor
 
 For a scoped launch, `Vfsnative.run` and `runargs` write to a read/write

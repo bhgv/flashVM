@@ -22,7 +22,25 @@ init()
     if (context == nil) {
         raise "combined launch has no startup context";
     }
-    case string context->arguments() {
+    command := string context->arguments();
+    case command {
+        "park" or "spin" =>
+            ready := sys->open("/.vfs/launch-ready", Sys->OWRITE);
+            signal := array[] of {byte 0, byte 0, byte 0, byte 1};
+            if (ready == nil || sys->write(ready, signal, len signal) != len signal)
+                raise "could not announce the parked launch";
+            if (command == "spin") {
+                remaining := big 1 << 50;
+                for (i := 0; remaining != big 0; i++) {
+                    if (i == 1000) {
+                        remaining--;
+                        i = 0;
+                    }
+                }
+            } else {
+                sys->sleep(30000);
+            }
+            raise "parked launch was not stopped";
         "wait" =>
             mark(sys, "/parallel-entered");
             wait_for(sys, "/parallel-released");

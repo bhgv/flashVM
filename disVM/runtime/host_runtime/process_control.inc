@@ -160,6 +160,25 @@ static int resident_can_exit(Prog *child)
 }
 
 
+/* EN: The native server holds the ticket, and the registry pins the exact Prog.
+ * RU: Нативный сервер удерживает билет, а реестр удерживает нужный Prog. */
+void dvm_runtime_cancel_hosted_launch(int pid, void *state)
+{
+    fvm_port_sync_lock(channel_queue_mutex);
+    Prog *child = dvm_runtime_process_roots();
+    while (child && child->pid != pid)
+    {
+        child = child->next;
+    }
+    if (resident_can_exit(child) && ((DVM_RuntimeProcess *)child)->report_launch_state == state)
+    {
+        send_resident_exit(child);
+        cancel_registered_guest_wait(pid);
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+}
+
+
 /* Schedule termination for a runnable or supported blocked child. Never
  * retire a native stack on a foreign worker. The child unwinds it first. */
 static int request_child_exit(Prog *child)

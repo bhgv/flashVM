@@ -489,6 +489,14 @@ static int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Prov
     handoff->description.argument_bytes = startup.size;
     return 1;
 }
+/* EN: Publish cancellation authority when the hosted child owns its thread.
+ * RU: Опубликовать возможность отмены после закрепления потока потомка. */
+static void start_shared_launch(void *ticket, int pid)
+{
+    styxunibuslaunchstarted(ticket, pid, dvm_runtime_cancel_hosted_launch);
+}
+
+
 /* EN: Wait for the next request outside managed admission.
  * RU: Дождаться следующего запроса вне допуска VM. */
 int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *arguments,
@@ -505,7 +513,7 @@ int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *a
     {
         return 0;
     }
-    *completion = (DVM_LaunchCompletion){report_shared_launch, ticket};
+    *completion = (DVM_LaunchCompletion){.report = report_shared_launch, .state = ticket, .started = start_shared_launch};
     *image = launch_image;
     *provider = launch_provider;
     strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);

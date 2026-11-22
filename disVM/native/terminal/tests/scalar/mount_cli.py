@@ -413,6 +413,7 @@ def persistent_cli(runtime, compiler, disvm, example, work):
         subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
                         "-I", example, "-o", image, example / source], cwd=work, check=True)
     (caller_root / "shared-launch.dis").touch()
+    (caller_root / ".vfs").mkdir()
     for mode in ("--no-jit", "--jit"):
         marks = ("launch-marker", "parallel-entered", "parallel-released")
         for mark in marks:
@@ -432,7 +433,12 @@ def persistent_cli(runtime, compiler, disvm, example, work):
                     cwd=caller_root, pass_fds=(caller.fileno(),), capture_output=True, text=True, timeout=15,
                 )
                 caller.close()
-                output, _ = server.communicate(timeout=10)
+                try:
+                    output, _ = server.communicate(timeout=10)
+                except subprocess.TimeoutExpired:
+                    server.kill()
+                    output, _ = server.communicate()
+                    raise RuntimeError(f"persistent owner stuck after disconnect\n{guest.stdout}{guest.stderr}{output}") from None
                 marker = "PASS standalone persistent Styx launch"
                 if guest.returncode or server.returncode or marker not in guest.stdout or any(
                     not (owner_root / mark).read_bytes() for mark in marks

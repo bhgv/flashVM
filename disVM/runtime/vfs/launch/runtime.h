@@ -40,7 +40,11 @@ typedef struct DVM_LaunchCompletion
 {
     void (*report)(void *, int); /* Native callback receiving zero on success. */
     void *state; /* Borrowed callback target through child retirement. */
+    void (*started)(void *, int); /* Optional notification before the first instruction. */
 } DVM_LaunchCompletion;
+
+/* EN/RU: Stop the registered child matching the native launch identity. / Остановить потомка данного запуска. */
+void dvm_runtime_cancel_hosted_launch(int pid, void *state);
 
 struct Prog *dvm_runtime_launch_child(struct Module *module, DVM_LaunchHandoff *handoff,
     const DVM_LaunchCompletion *completion);

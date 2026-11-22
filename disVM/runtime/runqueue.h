@@ -70,6 +70,7 @@ typedef struct DVM_RuntimeProcess
     struct DVM_ModuleOverride *module_namespaces; /* Process-local namespace variants and inboxes keyed by never-reused binding identity. */
     struct DVM_SysEvents *remote_call_events; /* Owned event inbox for the temporary namespace. */
     int remote_call_staged_worker; /* Designated receiver of the detached request. */
+    void (*report_launch_start)(void *, int); /* Owner-only first dispatch notification. */
     void (*report_launch_exit)(void *, int); /* Owned launch outcome callback binding. */
     void *report_launch_state; /* Borrowed native target through process retirement. */
     struct DVM_ScalarHandoff *remote_call_staged; /* Detached request awaiting the designated worker. */

@@ -288,6 +288,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
     if (completion)
     {
+        resident->report_launch_start = completion->started;
         resident->report_launch_exit = completion->report;
         resident->report_launch_state = completion->state;
     }

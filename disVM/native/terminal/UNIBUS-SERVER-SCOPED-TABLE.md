@@ -52,9 +52,10 @@ Set `persistent` on `StyxUnibusLaunch` for a bounded queue of scoped
 requests. The host takes each record with `styxunibusservernextlaunch`
 and reports through `styxunibuslaunchcomplete`. The ticket belongs to
 that request, even if later requests finish earlier. A closed fid
-discards its queued request before dequeue. An already running child
-can finish independently. The legacy write-only fid has one status
-slot at `.exit`.
+discards its queued request or requests termination of its already
+running child. A close between dequeue and the first instruction
+is delivered when the child registers. The legacy write-only fid has
+one status slot at `.exit`.
 
 With `persistent` clear, retain the one-shot inbox and
 `styxunibusserverlaunchstatus`. The [wire test](tests/scalar/route_launch.inc)
