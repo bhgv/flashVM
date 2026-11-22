@@ -20,6 +20,21 @@
 #define STYX_SCOPED_CALL_OVERHEAD 8U /* Four PID bytes plus S-record framing. */
 
 
+#define STYX_SCOPED_LARGE_OVERHEAD 32U /* Upper bound for PID and framing at 64 KiB. */
+
+
+/* EN: Encode a scoped record with the selected profile's explicit payload limit.
+ * RU: Кодировать контекстную запись с явным пределом данных выбранного профиля. */
+int styxcall_scope_write_bounded(uint32_t pid, const void *call, size_t size, size_t limit,
+    void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Borrow a scoped payload within the limit, preserving outputs on failure.
+ * RU: Заимствовать данные контекста в пределах лимита, сохраняя выходы при отказе. */
+int styxcall_scope_read_bounded(const void *bytes, size_t size, size_t limit,
+    uint32_t *pid, const void **call, size_t *length);
+
+
 /* EN: Write a caller envelope for one bounded request using a nonzero PID.
  * RU: Записать оболочку одного ограниченного запроса с ненулевым PID. */
 int styxcall_scope_write(uint32_t pid, const void *call, size_t size, void *bytes, size_t capacity, size_t *used);

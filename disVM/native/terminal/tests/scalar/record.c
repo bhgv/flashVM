@@ -435,7 +435,7 @@ int main(void)
     {
         return 1;
     }
-    if (!reply_fields() || !managed_layout() || !managed_records() || !managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
+    if (!scoped_large_record() || !reply_fields() || !managed_layout() || !managed_records() || !managed_profile() || !byte_record() || !real_record() || !dynamic_profile() || !shaped_profile() || !scoped_call() || !scoped_ref_profile())
     {
         fputs("compiled type offer failed\n", stderr);
         return 1;

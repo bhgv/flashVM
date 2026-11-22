@@ -5,28 +5,31 @@
 #include "call_scope.h"
 #include <string.h>
 #include "tuple_record.h"
+#include "call_record.h"
 #include "flashvm/srecord.h"
 
 
 /* EN/RU: See call_scope.h. / См. call_scope.h. */
-int styxcall_scope_write(uint32_t pid, const void *call, size_t size, void *bytes, size_t capacity, size_t *used)
+int styxcall_scope_write_bounded(uint32_t pid, const void *call, size_t size, size_t limit,
+    void *bytes, size_t capacity, size_t *used)
 {
     unsigned char identity[] = {pid >> 24, pid >> 16, pid >> 8, pid};
-    return pid && call && size && size <= STYX_FUNCTION_FRAME_CAPACITY &&
+    return pid && call && size && size <= limit && limit <= STYX_MANAGED_LIST_LIMIT &&
         fvm_srecord_write_pair(STYX_SCOPED_CALL_TAG, identity, sizeof(identity), call, size,
             bytes, capacity, used) == FVM_S_OK;
 }
 
 
 /* EN/RU: See call_scope.h. / См. call_scope.h. */
-int styxcall_scope_read(const void *bytes, size_t size, uint32_t *pid, const void **call, size_t *length)
+int styxcall_scope_read_bounded(const void *bytes, size_t size, size_t limit,
+    uint32_t *pid, const void **call, size_t *length)
 {
     FVM_SRecord record;
     size_t used;
-    if (!pid || !call || !length || size > STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD ||
-        fvm_srecord_read(bytes, size, STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD,
-            &record, &used) != FVM_S_OK || size != used || record.tag != STYX_SCOPED_CALL_TAG ||
-        record.size <= 4 || record.size - 4 > STYX_FUNCTION_FRAME_CAPACITY)
+    size_t framing = limit <= STYX_FUNCTION_FRAME_CAPACITY ? STYX_SCOPED_CALL_OVERHEAD : STYX_SCOPED_LARGE_OVERHEAD;
+    if (!pid || !call || !length || limit > STYX_MANAGED_LIST_LIMIT || size > limit + framing ||
+        fvm_srecord_read(bytes, size, limit + framing, &record, &used) != FVM_S_OK ||
+        size != used || record.tag != STYX_SCOPED_CALL_TAG || record.size <= 4 || record.size - 4 > limit)
     {
         return 0;
     }
@@ -40,6 +43,20 @@ int styxcall_scope_read(const void *bytes, size_t size, uint32_t *pid, const voi
     *call = p + 4;
     *length = record.size - 4;
     return 1;
+}
+
+
+/* EN/RU: See call_scope.h. / См. call_scope.h. */
+int styxcall_scope_write(uint32_t pid, const void *call, size_t size, void *bytes, size_t capacity, size_t *used)
+{
+    return styxcall_scope_write_bounded(pid, call, size, STYX_FUNCTION_FRAME_CAPACITY, bytes, capacity, used);
+}
+
+
+/* EN/RU: See call_scope.h. / См. call_scope.h. */
+int styxcall_scope_read(const void *bytes, size_t size, uint32_t *pid, const void **call, size_t *length)
+{
+    return styxcall_scope_read_bounded(bytes, size, STYX_FUNCTION_FRAME_CAPACITY, pid, call, length);
 }
 
 

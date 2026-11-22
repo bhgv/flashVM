@@ -75,3 +75,22 @@ static int reply_fields(void)
     return fvm_srecord_write(90, payload, a + b + b, reply, sizeof(reply), &used) == FVM_S_OK &&
         !styxcall_reply_read(90, reply, used, fields) && fields[0].size == a && fields[1].size == b;
 }
+
+
+
+/* EN: Round-trip the largest scoped value and retain strict legacy limits.
+ * RU: Передать предельное значение с контекстом и проверить прежний лимит. */
+static int scoped_large_record(void)
+{
+    unsigned char payload[STYX_MANAGED_LIST_LIMIT] = {42};
+    unsigned char record[STYX_MANAGED_LIST_LIMIT + STYX_SCOPED_LARGE_OVERHEAD];
+    size_t used, size;
+    uint32_t pid;
+    const void *data;
+    return styxcall_scope_write_bounded(47, payload, sizeof(payload), sizeof(payload),
+            record, sizeof(record), &used) &&
+        !styxcall_scope_read(record, used, &pid, &data, &size) &&
+        !styxcall_scope_read_bounded(record, used, sizeof(payload) - 1, &pid, &data, &size) &&
+        styxcall_scope_read_bounded(record, used, sizeof(payload), &pid, &data, &size) &&
+        pid == 47 && size == sizeof(payload) && !memcmp(data, payload, size);
+}
