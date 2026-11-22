@@ -123,4 +123,10 @@ Vfsexport: module
     # За одну запись передаётся целая S-запись до 1024 байтов вместе с заголовком.
     recordpipe: fn(): ref Root;
 
+    # EN: Capture an exact relative node from a held capability. Own the result
+    # independently. Invalid, inaccessible or unavailable paths return nil.
+    # RU: Захватить точный относительный узел из удерживаемого полномочия.
+    # Результат имеет свою ссылку. При недоступном или неверном пути вернуть nil.
+    subtree: fn(root: ref Root, relative: string): ref Root;
+
 };

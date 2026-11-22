@@ -18,9 +18,10 @@ pipe := export->recordpipe();
 `recordpipe()` takes no arguments. It returns an owned `ref Vfsexport->Root`
 or `nil` on allocation failure. Use `Vfsexport->open` to open an endpoint
 from the capability directly. A mounted peer can use `Sys->open`. Both ends
-require `Sys->ORDWR`. To grant only one end, hide the other with
-`Vfsexport->overlay` before publishing the tree. The directory needs
-search permission.
+require `Sys->ORDWR`. Use [`Vfsexport->subtree`](VFSEXPORT-SUBTREE.md)
+to capture only the end the peer needs. Map that exact file by number in
+the outgoing descriptor grant with `Vfsexport->overlay`. The peer opens
+`.prog/<pid>/.fd/<number>` over Styx.
 
 | Open file | Write | Read |
 | --- | --- | --- |
@@ -51,8 +52,9 @@ SDK-enabled build.
 
 ## Example
 
-The three-VM fixture publishes one endpoint in each direction under the
-caller's `.vfs`. Its relay accepts a message in a local `chan of int`
+The three-VM fixture publishes one endpoint in each direction as
+`.fd/30` and `.fd/31` beneath the caller's verified PID. The other ends
+are held privately by the relay. Its relay accepts a message in a local `chan of int`
 via `alt`, acknowledges delivery and sends the typed reply back through
 the second pipe. The adverse cases cover a damaged record, the wrong
 open mode, a hidden endpoint and confirmation on the wrong fid.

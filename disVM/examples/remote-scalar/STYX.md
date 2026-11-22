@@ -338,8 +338,15 @@ A's VFS marker and the live variable through both library calls. A cancels
 a pending library call and retries from the same PID before the
 successful file check.
 
+During one nested call, B binds a replacement only at its local
+`/.prog/.self/.fd/7` while the numeric path and held FD still refer to A.
+B exports a separate read-only FD 7 and its own cell under `.var` to C.
+C reads B's file and updates B's cell. A keeps its original grant, and
+the next call from the same PID sees A's original resources.
+
 The fixture also exchanges messages with a real `chan of int` on A.
-C opens two virtual endpoints on the same reverse Styx path through B.
+C opens two numbered virtual files under the caller’s `.prog/<pid>/.fd`
+on the same reverse Styx path through B.
 A acknowledges after its local `alt` takes the value and returns a reply
 over the other endpoint. See [Vfsexport.recordpipe](../../runtime/RECORD-PIPE.md).
 

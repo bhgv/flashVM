@@ -3,6 +3,7 @@
  * RU: Guest-owned immutable tree capture/composition и indexed mount/bind.
  */
 #include "cap_internal.h"
+#include "view_internal.h"
 #include "native_wait.h"
 #include "path_cancel.h"
 #include "cancel.h"
@@ -103,6 +104,53 @@ void Vfsexport_capture(void *frame)
     int success = state && state->root;
     poperror();
     if (!success)
+    {
+        dvm_cap_abandon(value);
+        value = H;
+    }
+    dvm_cap_publish(value, call.ret);
+}
+
+
+/* [GC:] EN: Capture a child of a borrowed capability without mounting it.
+ * The rooted result owns the captured provider and preserves its access.
+ * RU: Захватить узел заимствованного полномочия без маунта. Укоренённый
+ * результат владеет захваченным провайдером и сохраняет его права. */
+void Vfsexport_subtree(void *frame)
+{
+    F_Vfsexport_subtree call;
+    char path[DVM_NS_PATH_LIMIT];
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsexport_subtree, ret), sizeof(*call.ret));
+    DVM_CapState *source = dvm_cap_get(call.root, DVM_CAP_ROOT);
+    if (!source || !source->root || !dvm_cap_text(call.relative, path, sizeof(path)) || !dvm_view_path(path, 0))
+    {
+        dvm_cap_publish(H, call.ret);
+        return;
+    }
+    DVM_CapState *state;
+    void *value = dvm_cap_new(DVM_CAP_ROOT, &state);
+    if (waserror())
+    {
+        dvm_cap_abandon(value);
+        nexterror();
+    }
+    int valid = 0;
+    if (state)
+    {
+        DVM_VfsWait *wait;
+        int released = dvm_vfs_path_enter(&wait);
+        if (released >= 0)
+        {
+            state->root = dvm_provider_capture(source->root, path);
+            FVM_FileInfo info;
+            int found = state->root && dvm_provider_info(state->root, ".", &info) == FVM_OK;
+            int cancelled = dvm_vfs_wait_end(wait);
+            valid = found && !cancelled;
+            dvm_runtime_gc_native_enter(released);
+        }
+    }
+    poperror();
+    if (!valid)
     {
         dvm_cap_abandon(value);
         value = H;

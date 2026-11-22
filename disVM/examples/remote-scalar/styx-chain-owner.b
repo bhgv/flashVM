@@ -44,7 +44,7 @@ init()
     if (sys->open("/.prog/.self/.fd/3", Sys->OWRITE) != nil) {
         raise "caller FD view widened read-only access";
     }
-    alias := sys->open("/.prog/.self/.fd/7", Sys->ORDWR);
+    alias := sys->open(chain_context_path(sys)+"/.fd/7", Sys->ORDWR);
     alias2 := sys->fildes(8);
     bytebuf := array[1] of byte;
     if (alias == nil || alias2 == nil || sys->read(alias, bytebuf, 1) != 1 || string bytebuf != "A" ||
@@ -190,3 +190,5 @@ launch_nested_action(sys: Sys, action: string)
 
 
 include "chain-var.b";
+
+include "chain-context.b";

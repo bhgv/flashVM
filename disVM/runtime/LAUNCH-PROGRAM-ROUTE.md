@@ -58,19 +58,26 @@ The dispatcher must associate selection with the open operation so concurrent
 accesses retain separate indices. `.ins`, `.add`, `.push` and `.pop`
 are planned collection operations.
 
-On launch, DisVM projects `/.prog/.self/.pid` and `/.prog/.self/.vfs`
-into the new process's private namespace. The first path reads the selected
-client's read-only `.pid` file. The publisher uses a decimal PID followed
-by a newline. The second path exposes the same effective tree as `/.vfs`,
+On launch, DisVM projects the selected caller under `/.prog/<pid>` in
+the new process's private namespace. `/.prog/.self` initially aliases the
+same directory. Under either name, `.pid` is the selected client's
+read-only PID file. The publisher uses a decimal PID followed
+by a newline. The context’s `.vfs` exposes the same effective tree as `/.vfs`,
 including the inherited case. Environment entries remain ordinary files
 under `.vfs/env`. The binding belongs to the launch namespace and survives
-local `spawn`. Numbered descriptors are available through `Sys.fildes`.
+local `spawn`. Numbered descriptors are available under `.fd` in the
+context and through `Sys.fildes`.
 If the selected process publishes a `.var` directory, it is available via
 `/.prog/.self/.var` with the original Styx permissions. Reads and writes
 go directly to the published files. An absent directory does not fall back
 to the base process. The fixture checks updates to `counter` by the launched
 program and its child. Automatic VM variable publication and composite
 value operations remain separate work.
+
+Each Styx direction has its own publisher and PID space. A local bind
+changes lookup along its target path. Already-open fids retain the
+previous object until close or revocation. Writes through a grant of
+the same open file or live variable still reach that object.
 
 The fixture uses the [callback-backed integer proxy](../native/terminal/VARIABLE-FILE.md).
 

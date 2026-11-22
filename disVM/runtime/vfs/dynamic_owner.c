@@ -55,15 +55,9 @@ static int install_events(DVM_Namespace *scope)
  * Return a private owned namespace or NULL before any Dis call runs.
  * RU: Копировать namespace владельца и наложить только закреплённого клиента.
  * Вернуть свою копию либо NULL до выполнения Dis. */
-static DVM_Namespace *caller_namespace(DVM_Namespace *group, DVM_Provider *context)
+static DVM_Namespace *caller_namespace(DVM_Namespace *group, DVM_Provider *context, uint32_t pid)
 {
-    DVM_View *view = dvm_view_create(NULL, NULL, NULL);
-    if (!view || !dvm_view_map(view, "/.self", context, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE))
-    {
-        dvm_view_discard(view);
-        return NULL;
-    }
-    DVM_Provider *projection = dvm_view_freeze(view);
+    DVM_Provider *projection = dvm_program_aliases(context, pid);
     DVM_Namespace *copy = projection ? dvm_namespace_copy(group) : NULL;
     int installed = copy && dvm_program_mount_private(copy, projection, "/.prog", NULL) && install_events(copy);
     dvm_provider_release(projection);
@@ -80,13 +74,13 @@ static DVM_Namespace *caller_namespace(DVM_Namespace *group, DVM_Provider *conte
 int dvm_scalar_caller_begin(Prog *process, DVM_Namespace *group, DVM_VfsHandle *handle)
 {
     DVM_Provider *caller = handle->ops->take_context ? handle->ops->take_context(handle->state) : NULL;
-    DVM_Namespace *scope = caller ? caller_namespace(group, caller) : NULL;
     DVM_Cancel *cancel = caller ? dvm_provider_call_cancel(caller) : NULL;
     DVM_Provider *reply = dvm_provider_call_reply(caller);
     DVM_StyxCallerKey key = {0};
     int identified = dvm_provider_styx_caller(caller, &key);
+    DVM_Namespace *scope = caller && (identified || !reply) ? caller_namespace(group, caller, key.pid) : NULL;
     DVM_SysEvents *events = scope ? dvm_sysevents_create(scope) : NULL;
-    if (!events || (reply && !identified))
+    if (!events)
     {
         dvm_sysevents_retire(events);
         dvm_sysevents_release(events);

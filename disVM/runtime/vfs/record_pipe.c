@@ -277,7 +277,7 @@ static int map_end(DVM_View *view, RecordPipe *pipe, const char *path, int sendi
     ++pipe->references; /* The pipe is still private. */
     *end = (Endpoint){pipe, sending};
     DVM_Provider *file = dvm_provider_create_native(&factory, end, NULL, 1,
-        DVM_PROVIDER_CANCEL_PATH);
+        DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST | DVM_PROVIDER_CANCEL_CAPTURE);
     if (!file)
     {
         free_endpoint(end);

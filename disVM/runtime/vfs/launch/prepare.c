@@ -279,6 +279,7 @@ int dvm_launch_handoff_program(DVM_LaunchHandoff *handoff, DVM_Provider *source,
     handoff->program_vfs = vfs;
     handoff->program = program;
     handoff->program_parent = parent;
+    handoff->program_pid = pid;
     handoff->program_hidden_fds = hidden_fds;
     return 1;
 }
@@ -324,16 +325,32 @@ int dvm_program_mount_private(DVM_Namespace *group, DVM_Provider *provider, cons
 }
 
 
+/* EN/RU: See program_view.h. / См. program_view.h. */
+DVM_Provider *dvm_program_aliases(DVM_Provider *context, uint32_t pid)
+{
+    DVM_View *view = context ? dvm_view_create(NULL, NULL, NULL) : NULL;
+    char path[sizeof("/4294967295")];
+    snprintf(path, sizeof(path), "/%" PRIu32, pid);
+    if (!view || !dvm_view_map(view, "/.self", context, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE) ||
+        (pid && !dvm_view_map(view, path, context, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)))
+    {
+        dvm_view_discard(view);
+        return NULL;
+    }
+    return dvm_view_freeze(view);
+}
+
+
 /* EN/RU: Project the process identity and explicitly granted subtrees.
  * Спроецировать идентификатор процесса и явно выданные поддеревья. */
-static DVM_Provider *program_self(const DVM_LaunchHandoff *handoff, DVM_Provider *fds)
+static DVM_Provider *launch_context(const DVM_LaunchHandoff *handoff, DVM_Provider *fds)
 {
     DVM_View *view = dvm_view_create(NULL, NULL, NULL);
-    if (!view || !dvm_view_map(view, "/.self/.pid", handoff->program, ".pid", FVM_ACCESS_READ, 0) ||
-        (fds && !dvm_view_map(view, "/.self/.fd", fds, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
-        (handoff->program_vfs && !dvm_view_map(view, "/.self/.vfs", handoff->program_vfs,
+    if (!view || !dvm_view_map(view, "/.pid", handoff->program, ".pid", FVM_ACCESS_READ, 0) ||
+        (fds && !dvm_view_map(view, "/.fd", fds, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
+        (handoff->program_vfs && !dvm_view_map(view, "/.vfs", handoff->program_vfs,
             ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)) ||
-        (handoff->program_var && !dvm_view_map(view, "/.self/.var", handoff->program_var,
+        (handoff->program_var && !dvm_view_map(view, "/.var", handoff->program_var,
             ".", FVM_ACCESS_MASK, DVM_VIEW_TREE)))
     {
         dvm_view_discard(view);
@@ -356,7 +373,9 @@ DVM_Namespace *dvm_launch_program_namespace_with_fds(const DVM_LaunchHandoff *ha
         return dvm_namespace_retain(handoff->group) ? handoff->group : NULL;
     }
     DVM_Namespace *group = dvm_namespace_copy(handoff->group);
-    DVM_Provider *self = group ? program_self(handoff, fds) : NULL;
+    DVM_Provider *context = group ? launch_context(handoff, fds) : NULL;
+    DVM_Provider *self = dvm_program_aliases(context, handoff->program_pid);
+    dvm_provider_release(context);
     int mounted = self && dvm_program_mount_private(group, self, "/.prog", &handoff->description.terminal_origin) &&
         (!handoff->program_vfs || dvm_program_mount_private(group, handoff->program_vfs, "/.vfs", &handoff->description.terminal_origin));
     dvm_provider_release(self);

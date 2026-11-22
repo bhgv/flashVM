@@ -23,6 +23,12 @@ forward(input, output: int): int
     if (input == -2 && output == -2) {
         return 29;
     }
+    if (input == -3 && output == -3) {
+        return check_direction(sys, 1);
+    }
+    if (input == -4 && output == -4) {
+        return check_direction(sys, 0);
+    }
     if (input <= -10 && output <= -10) {
         return check_styx_pipe(sys, -10 - input, -10 - output);
     }
@@ -51,17 +57,17 @@ include "chain-var.b";
 # RU: Проверить обмен на двух точных fid маунта без передачи локального FD.
 check_styx_pipe(sys: Sys, first_private, second_private: int): int
 {
-    to_a := "/.prog/.self/.vfs/channel-to-a";
-    from_a := "/.prog/.self/.vfs/channel-from-a";
-    sender := sys->open(to_a+"/send", Sys->ORDWR);
-    receiver := sys->open(from_a+"/recv", Sys->ORDWR);
-    unrelated := sys->open(from_a+"/recv", Sys->ORDWR);
-    damaged := sys->open(to_a+"/send", Sys->ORDWR);
-    premature := sys->open(from_a+"/recv", Sys->ORDWR);
+    to_a := "/.prog/.self/.fd/30";
+    from_a := chain_context_path(sys)+"/.fd/31";
+    sender := sys->open(to_a, Sys->ORDWR);
+    receiver := sys->open(from_a, Sys->ORDWR);
+    unrelated := sys->open(from_a, Sys->ORDWR);
+    damaged := sys->open(to_a, Sys->ORDWR);
+    premature := sys->open(from_a, Sys->ORDWR);
     if (sender == nil || receiver == nil || unrelated == nil || damaged == nil || premature == nil ||
         sys->open(to_a+"/recv", Sys->ORDWR) != nil ||
         sys->open(from_a+"/send", Sys->ORDWR) != nil ||
-        sys->open(to_a+"/send", Sys->OWRITE) != nil ||
+        sys->open(to_a, Sys->OWRITE) != nil ||
         sys->open(sys->sprint("/.prog/.self/.fd/%d", first_private), Sys->ORDWR) != nil ||
         sys->open(sys->sprint("/.prog/.self/.fd/%d", second_private), Sys->ORDWR) != nil) {
         raise "record pipe exported the wrong endpoint or mode";
@@ -92,3 +98,29 @@ check_styx_pipe(sys: Sys, first_private, second_private: int): int
 }
 
 include "chain-record-pipe.b";
+
+# EN: Check B's temporary outgoing grant and its successor after the scope ends.
+# RU: Проверить временную выдачу B и следующую выдачу после окончания контекста.
+check_direction(sys: Sys, changed: int): int
+{
+    numeric := chain_context_path(sys);
+    path := numeric+"/.fd/7";
+    if (!changed) {
+        chain_var(sys, 25, -1);
+        if (sys->open(path, Sys->ORDWR) == nil) {
+            raise "temporary B grant replaced A's later FD";
+        }
+        return 89;
+    }
+    fd := sys->open(path, Sys->OREAD);
+    bytes := array[4] of byte;
+    if (fd == nil || sys->open(path, Sys->OWRITE) != nil ||
+        sys->open(numeric+"/.fd/8", Sys->OREAD) != nil ||
+        sys->readn(fd, bytes, 4) != 4 || bytes[3] != byte 61) {
+        raise "C did not get B's scoped numbered FD";
+    }
+    chain_var(sys, 51, 52);
+    return 88;
+}
+
+include "chain-context.b";

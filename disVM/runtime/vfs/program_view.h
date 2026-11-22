@@ -75,6 +75,15 @@ FVM_Result dvm_program_child(DVM_Provider *program, const char *name, DVM_Provid
 DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
 
 
+/* EN: Return an owned private .prog root over one borrowed context directory.
+ * The verified PID and .self name the same grant. PID zero supplies only .self
+ * for a legacy context. Failure returns NULL without retaining the input.
+ * RU: Вернуть свой закрытый корень .prog поверх заимствованного каталога.
+ * Проверенный PID и .self именуют одну выдачу. При PID ноль для старого
+ * контекста создаётся только .self. При отказе входная ссылка не удерживается. */
+DVM_Provider *dvm_program_aliases(DVM_Provider *context, uint32_t pid);
+
+
 /* EN: Stage a borrowed directory at an absolute virtual path in an exclusive,
  * unpublished namespace. Fail if a mount already occupies the path or its descendants.
  * RU: Поместить заимствованный каталог по виртуальному абсолютному пути в

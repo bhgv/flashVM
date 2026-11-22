@@ -29,21 +29,6 @@ init()
     }
     parked := exports->intvar(0);
     grant := exports->record(("chain-stage", exports->intvar(42)) :: ("chain-parked", parked) :: nil);
-    inbound, outbound: ref Vfsexport->Root;
-    if (extended) {
-        inbound = exports->recordpipe();
-        outbound = exports->recordpipe();
-        if (inbound == nil || outbound == nil) {
-            raise "cannot create record pipes";
-        }
-        sendonly := exports->overlay(inbound, nil, "/recv", 0, Vfsexport->Tree);
-        recvonly := exports->overlay(outbound, nil, "/send", 0, Vfsexport->Tree);
-        if (grant == nil || sendonly == nil || recvonly == nil) {
-            raise "cannot select record pipe endpoints";
-        }
-        grant = exports->overlay(grant, sendonly, "/channel-to-a", Vfsexport->Read | Vfsexport->Write | Vfsexport->Execute, Vfsexport->Tree);
-        grant = exports->overlay(grant, recvonly, "/channel-from-a", Vfsexport->Read | Vfsexport->Write | Vfsexport->Execute, Vfsexport->Tree);
-    }
     if (grant == nil || exports->mount(grant, "/.vfs", 0, 0) != 0)
         raise "could not publish chain VFS";
     if (sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0) {
@@ -63,7 +48,7 @@ init()
         sys->print("PASS nested Styx shared variables\n");
         cancel_nested(sys, vfs, exports, parked);
         check_nested_library(sys, exports, shared, parked);
-        check_record_pipe(sys, exports, inbound, outbound);
+        check_record_pipe(sys, exports);
     }
 }
 
@@ -102,6 +87,14 @@ check_nested_library(sys: Sys, exports: Vfsexport, shared, parked: ref Vfsexport
         raise "nested library lost the original .var";
     }
     sys->print("PASS nested Styx libraries and ordinary FDs\n");
+    if (remote->forward(-3, -3) != 88 || remote->forward(-4, -4) != 89) {
+        raise "wrong result from directional grant checks";
+    }
+    (valid, value) = exports->intget(shared);
+    if (!valid || value != 25) {
+        raise "B's replacement changed A's published variable";
+    }
+    sys->print("PASS independent Styx FD and variable grants\n");
 }
 
 
@@ -162,8 +155,25 @@ pending_nested(vfs: Vfsnative, control: Processctl, started, done: chan of int)
 
 # EN: Use a pair of real local Limbo channels while the caller is in remote load.
 # RU: Использовать настоящие каналы Limbo, пока вызывающий ждёт удалённую функцию.
-check_record_pipe(sys: Sys, exports: Vfsexport, inbound, outbound: ref Vfsexport->Root)
+check_record_pipe(sys: Sys, exports: Vfsexport)
 {
+    inbound := exports->recordpipe();
+    outbound := exports->recordpipe();
+    incoming := exports->subtree(inbound, "send");
+    outgoing := exports->subtree(outbound, "recv");
+    descriptors := exports->capture("/.fd", 0, Vfsexport->Read | Vfsexport->Write | Vfsexport->Execute);
+    if (exports->subtree(inbound, "../recv") != nil || exports->subtree(inbound, "missing") != nil) {
+        raise "relative endpoint capture accepted an invalid path";
+    }
+    if (incoming == nil || outgoing == nil || descriptors == nil) {
+        raise sys->sprint("cannot capture record pipe: send=%d recv=%d descriptors=%d",
+            incoming != nil, outgoing != nil, descriptors != nil);
+    }
+    wired := exports->overlay(descriptors, incoming, "/30", Vfsexport->Read | Vfsexport->Write, 0);
+    wired = exports->overlay(wired, outgoing, "/31", Vfsexport->Read | Vfsexport->Write, 0);
+    if (wired == nil || exports->mount(wired, "/.fd", Sys->MREPL, 0) != 0) {
+        raise "cannot publish the numbered record-pipe endpoints";
+    }
     remote := load Chainfd "/peer/mounted/chain-fd.dis";
     receiver := exports->open(inbound, "recv", Sys->ORDWR);
     sender := exports->open(outbound, "send", Sys->ORDWR);
@@ -182,7 +192,10 @@ check_record_pipe(sys: Sys, exports: Vfsexport, inbound, outbound: ref Vfsexport
     if (problem != nil) {
         raise problem;
     }
-    sys->print("PASS live Limbo channels over Styx record pipes\n");
+    if (exports->mount(descriptors, "/.fd", Sys->MREPL, 0) != 0) {
+        raise "cannot restore the caller's descriptor grant";
+    }
+    sys->print("PASS live Limbo channels over numbered Styx record pipes\n");
 }
 
 

@@ -148,6 +148,7 @@ DVM_LaunchHandoff *dvm_launch_request_take(DVM_LaunchRequest *request)
         handoff->program_parent = shared->program_parent;
         handoff->program_vfs = shared->program_vfs;
         handoff->program_var = shared->program_var;
+        handoff->program_pid = shared->selection.pid;
         handoff->program_hidden_fds = shared->selection.hidden_fds;
         shared->program = NULL;
         shared->program_parent = NULL;

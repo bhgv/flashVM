@@ -134,6 +134,7 @@ def run_b(options, listener, main_library, alternate_library):
             (EXAMPLE / "styx-chain-local.b", "deps/wide.dis"),
         ))
         (root / "leaf-alias.dis").touch()
+        (root / ".fd").mkdir()
         (root / ".var").mkdir()
         (root / ".var/unpublished").write_bytes(b"private on B")
         main = sockets.enter_context(connect(main_library))
@@ -177,7 +178,8 @@ def run_a(options, owner):
                     "PASS nested Styx launch cancellation\n" not in stdout or
                     "PASS nested Styx shared variables\n" not in stdout or
                     "PASS nested Styx libraries and ordinary FDs\n" not in stdout or
-                    "PASS live Limbo channels over Styx record pipes\n" not in stdout or
+                    "PASS independent Styx FD and variable grants\n" not in stdout or
+                    "PASS live Limbo channels over numbered Styx record pipes\n" not in stdout or
                     (root / "ordinary-output").read_bytes() != b"live"):
                 raise RuntimeError(f"wrong result or descriptor state\n{stdout}{stderr}")
 

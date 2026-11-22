@@ -213,7 +213,7 @@ static DVM_LaunchHandoff *prepare_launch(void)
     if (scoped)
     {
         launch_check(handoff && handoff->program && handoff->program_parent && handoff->program_vfs &&
-            handoff->program_hidden_fds == (UINT32_C(1) << 2),
+            handoff->program_pid == 42 && handoff->program_hidden_fds == (UINT32_C(1) << 2),
             "wire request pinned child and parent beneath the loaded module");
     }
     dvm_provider_release(assets);

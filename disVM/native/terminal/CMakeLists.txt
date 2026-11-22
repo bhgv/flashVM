@@ -138,6 +138,12 @@ target_compile_options(terminal-scalar-route PRIVATE -Wall -Wextra -Wno-unknown-
 add_test(NAME terminal-scalar-route COMMAND terminal-scalar-route)
 set_tests_properties(terminal-scalar-route PROPERTIES TIMEOUT 20)
 
+add_executable(terminal-caller-directions tests/scalar/directions.c)
+target_link_libraries(terminal-caller-directions PRIVATE styx_unibus_server remote_phy_mux)
+target_compile_options(terminal-caller-directions PRIVATE -Wall -Wextra -Wno-unknown-pragmas)
+add_test(NAME terminal-caller-directions COMMAND terminal-caller-directions)
+set_tests_properties(terminal-caller-directions PROPERTIES TIMEOUT 20)
+
 if(INFERNO_DISVM_RUNTIME AND INFERNO_LIMBO_COMPILER AND CMAKE_GENERATOR STREQUAL "Unix Makefiles")
     add_test(NAME terminal-scalar-guest COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/scalar/guest.py"
