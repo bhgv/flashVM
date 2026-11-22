@@ -29,7 +29,8 @@ static size_t stage_request(StyxFid *fid, const void *request, size_t size)
  * RU: Закрыть соседний fid с отложенным запросом перед завершением исходного. */
 static int staged_call(StyxClient *client, StyxFid *fid, const void *request, size_t size)
 {
-    size_t offset = stage_request(fid, request, size);
+    size_t prefix = size / 2;
+    size_t offset = stage_request(fid, request, prefix);
     StyxFid *abandoned = styxclientwalk(client, "mounted/compute.dis/compute");
     int isolated = abandoned && styxclientopen(abandoned, ORDWR) && stage_request(abandoned, request, size);
     if (abandoned)
@@ -43,6 +44,19 @@ static int staged_call(StyxClient *client, StyxFid *fid, const void *request, si
     unsigned char bytes[128];
     size_t used;
     StyxTransfer transfer;
+    styxclientread(fid, 0, bytes, sizeof(bytes), &transfer);
+    if (!transfer.success || transfer.count ||
+        fvm_srecord_write(STYX_CALL_CHUNK_TAG, (const unsigned char *)request + prefix,
+            size - prefix, bytes, sizeof(bytes), &used) != FVM_S_OK)
+    {
+        return 0;
+    }
+    styxclientwrite(fid, offset, bytes, used, &transfer);
+    if (!transfer.success || !transfer.confirmed || transfer.count != used)
+    {
+        return 0;
+    }
+    offset += used;
     styxclientread(fid, 0, bytes, sizeof(bytes), &transfer);
     if (!transfer.success || transfer.count ||
         fvm_srecord_write(STYX_CALL_END_TAG, NULL, 0, bytes, sizeof(bytes), &used) != FVM_S_OK)

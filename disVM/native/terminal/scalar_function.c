@@ -31,7 +31,7 @@ typedef struct FunctionFid
     char *failure; /* Worker result published with ready. */
     int context_written; /* One context selector precedes request staging. */
     uint32_t context_pid; /* Zero selects the PID in the scoped request. */
-    size_t staged_size; /* Bytes of the legacy request awaiting the end record. */
+    size_t staged_size; /* Bytes accumulated for the request awaiting the end record. */
     size_t write_offset; /* Exact offset after the staged envelope. */
     unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD]; /* Request owned by this fid. */
     int submitted;              /* A validated request reached the method. */
@@ -422,6 +422,17 @@ char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong
             &record, &used) == FVM_S_OK && used == count;
     if (fid->staged_size)
     {
+        if (complete && record.tag == STYX_CALL_CHUNK_TAG)
+        {
+            if (!record.size || record.size > sizeof(fid->staged) - fid->staged_size)
+            {
+                return Ebadarg;
+            }
+            memcpy(fid->staged + fid->staged_size, record.payload, record.size);
+            fid->staged_size += record.size;
+            fid->write_offset += count;
+            return nil;
+        }
         if (!complete || record.tag != STYX_CALL_END_TAG || record.size)
         {
             return Ebadarg;

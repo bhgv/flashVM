@@ -368,6 +368,9 @@ offset on the same open fid. The first write stages bytes without
 dispatch. The second validates and dispatches the staged request.
 Reads at offset zero before dispatch return zero bytes. Closing the fid before tag 95
 discards the staged request. Existing single-write clients still work.
+Tag 94 can carry the first part of a request. Subsequent tag 99 records
+append bytes on the same fid. Tag 95 commits the assembled request, which
+is validated as a whole. The active profile still bounds the total size.
 
 A scoped compiled export can advertise tag 96 with the same profile
 payload as tag 91. Ordinary Limbo `load` selects staged writes for tag
