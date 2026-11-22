@@ -44,11 +44,21 @@ static int delta_node(Path path)
 }
 
 
+typedef struct LaunchFid
+{
+    StyxOpen *writer; /* Owned inbox backing. */
+    int waiting; /* Read/write fid admitted to observe completion. */
+    int submitted; /* Set only after the complete request is accepted. */
+} LaunchFid;
+
+
 /* EN: Consume the file context attached to a launch fid.
  * RU: Освободить файловый контекст, прикреплённый к fid запуска. */
 static void close_launch_file(void *state)
 {
-    styxfileclose(state);
+    LaunchFid *fid = state;
+    styxfileclose(fid->writer);
+    free(fid);
 }
 
 
@@ -78,18 +88,38 @@ static char *open_node(Qid *qid, int mode)
     {
         return mode == OREAD ? nil : Eperm;
     }
-    StyxBacking *node = qid->path == 1 && mode == OWRITE ? current->file :
-        mode != OREAD ? NULL :
+    if (qid->path == 1 && (mode == OWRITE || (mode == ORDWR && current->completion)))
+    {
+        LaunchFid *fid = calloc(1, sizeof(*fid));
+        if (!fid)
+        {
+            return Eperm;
+        }
+        fid->writer = styxfileopen(current->file, OWRITE);
+        fid->waiting = mode == ORDWR;
+        if (!fid->writer || styxsetauxowned(&current->server, fid, close_launch_file) < 0)
+        {
+            close_launch_file(fid);
+            return Eperm;
+        }
+        return nil;
+    }
+    StyxBacking *node = mode != OREAD ? NULL :
         qid->path == 2 ? current->original :
         qid->path == 3 ? current->profile : NULL;
     if (!node)
     {
         return Eperm;
     }
-    StyxOpen *opened = styxfileopen(node, mode);
-    if (!opened || styxsetauxowned(&current->server, opened, close_launch_file) < 0)
+    LaunchFid *fid = calloc(1, sizeof(*fid));
+    if (!fid)
     {
-        styxfileclose(opened);
+        return Eperm;
+    }
+    fid->writer = styxfileopen(node, mode);
+    if (!fid->writer || styxsetauxowned(&current->server, fid, close_launch_file) < 0)
+    {
+        close_launch_file(fid);
         return Eperm;
     }
     return nil;
@@ -109,8 +139,18 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    styxfilewrite(styxgetaux(&current->server), offset, bytes, *count, &result);
-    return result.success && result.confirmed && !result.uncertain && result.count == *count ? nil : Ebadarg;
+    LaunchFid *fid = styxgetaux(&current->server);
+    if (!fid || (fid->waiting && (offset || fid->submitted)))
+    {
+        return Ebadarg;
+    }
+    styxfilewrite(fid->writer, offset, bytes, *count, &result);
+    if (!result.success || !result.confirmed || result.uncertain || result.count != *count)
+    {
+        return Ebadarg;
+    }
+    fid->submitted = 1;
+    return nil;
 }
 
 /* EN/RU: Return a confirmed prefix from the original Dis image.
@@ -155,6 +195,16 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
         }
         return nil;
     }
+    if (qid.path == 1 && current->completion && offset >= 0)
+    {
+        LaunchFid *fid = styxgetaux(&current->server);
+        if (!fid || !fid->waiting || !fid->submitted)
+        {
+            return Eperm;
+        }
+        *count = styxunibusexitread(current, bytes, *count, offset);
+        return nil;
+    }
     if (current->completion && qid.path == (current->count ? LAUNCH_EXIT : MOUNTED_ROOT) && offset >= 0)
     {
         *count = styxunibusexitread(current, bytes, *count, offset);
@@ -165,7 +215,8 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    styxfileread(styxgetaux(&current->server), offset, bytes, *count, &result);
+    LaunchFid *fid = styxgetaux(&current->server);
+    styxfileread(fid ? fid->writer : NULL, offset, bytes, *count, &result);
     if (!result.success || !result.confirmed || result.uncertain || result.count > *count)
     {
         return Ebadarg;
@@ -309,7 +360,7 @@ StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
         if (export_file(&server->server, server->original, 2, "implementation.dis") &&
             export_file(&server->server, server->profile, 3, ".interface") &&
             (!completion || styxaddfile(&server->server, Qroot, MOUNTED_ROOT, ".exit", 0444, "unibus")) &&
-            styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus") &&
+            styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, completion ? 0666 : 0222, "unibus") &&
             !pthread_create(&server->thread, NULL, serve, server))
         {
             return server;
@@ -469,7 +520,7 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
             (export_file(&server->server, server->original, 2, "implementation.dis") &&
              export_file(&server->server, server->profile, 3, ".interface") &&
              styxaddfile(&server->server, Qroot, LAUNCH_EXIT, ".exit", 0444, "unibus") &&
-             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0222, "unibus"));
+             styxaddfile(&server->server, Qroot, 1, STYX_UNIBUS_NODE, 0666, "unibus"));
         if (launch_nodes && export_modules(server, entries, loaded) && !pthread_create(&server->thread, NULL, serve, server))
         {
             return server;

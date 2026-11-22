@@ -64,6 +64,7 @@ typedef struct MountedLaunch
     DVM_Provider *request; /* Owned exact remote request file. */
     unsigned long tag; /* Record type selected at mount setup. */
     StyxClient *client; /* Borrowed while the routed mount is retained. */
+    int wait; /* Use the read/write launch fid when advertised. */
     int scoped; /* Keep the callback tree alive through owner shutdown. */
 } MountedLaunch;
 
@@ -133,6 +134,10 @@ static DVM_LaunchDelivery send_scoped(void *state, uint32_t pid, const void *byt
 static DVM_LaunchAddress *resolve_launch(void *state)
 {
     MountedLaunch *launch = state;
+    if (launch->wait)
+    {
+        return styxterminallaunchwaitaddress(launch->request, launch->tag);
+    }
     if (!launch->scoped)
     {
         return styxterminallaunchaddress(launch->request, launch->tag);
@@ -233,7 +238,11 @@ static DVM_Provider *mount_launch(StyxCallerServer *reverse, StyxClient *client,
     launch->tag = tag;
     launch->client = client;
     launch->scoped = scoped;
-    launch->request = styxmountproviderat(client, request, FVM_ACCESS_WRITE);
+    unsigned access = FVM_ACCESS_WRITE | (scoped ? FVM_ACCESS_READ : 0);
+    launch->request = styxmountproviderat(client, request, access);
+    FVM_FileInfo info;
+    launch->wait = scoped && launch->request && dvm_provider_info(launch->request, ".", &info) == FVM_OK &&
+        !info.directory && (info.mode & 0444);
     if (!launch->request)
     {
         release_launch(launch);

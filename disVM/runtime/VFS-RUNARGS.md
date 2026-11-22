@@ -23,15 +23,20 @@ data to the command’s `Launchcontext.arguments()`.
 
 | Result | Meaning |
 | --- | --- |
-| `1` | Delivery of the complete request was acknowledged. |
+| `1` | Owner confirmed success, or a delivery-only route acknowledged the request. |
 | `0` | Invalid input, unavailable route or a definitive refusal. |
-| `-1` | The transport could not establish whether the request was delivered. |
+| `-1` | Delivery or completion is uncertain. |
+| `-2` | The owner confirmed execution failure. |
 
 The runtime copies the array before waiting for provider I/O. The caller keeps
 ownership of the array. The owner callback borrows the received bytes for the
 duration of the callback. An owner that retains them must take a copy.
 Cancellation applies to the transport wait and never triggers a retry.
 The owner callback controls how it uses the payload.
+
+A scoped Styx route can open `.unibus` for reading and writing and keep the
+same fid through completion. The caller receives the status directly from
+this operation.
 
 ## Example
 

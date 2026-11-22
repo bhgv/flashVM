@@ -267,7 +267,7 @@ Run `ctest --test-dir <sdk-build> -R '^terminal-caller-mount-cli$' -V`
 with the terminal launch SDK and DisVM configured. The harness sets up
 two local TCP connections and three DisVM processes. A mounts B's
 advertised launch route, binds the program to `/alias.dis` and invokes
-`runargs`. B uses its [library mount](../../runtime/TERMINAL-LAUNCH-CLI.md#owner-side-styx-library-mount)
+`run`. B uses its [library mount](../../runtime/TERMINAL-LAUNCH-CLI.md#owner-side-styx-library-mount)
 to load C's original Dis export with the shared `wide.m` declaration.
 B reads A's FD 0 and writes distinct messages to A's FD 1 and FD 2.
 The harness checks all three process exit statuses and reaps the peers.
@@ -276,7 +276,7 @@ Expect `PASS A-B-C Styx launch and library call` in both VM modes.
 The chain also changes the ordering of a library union on B. The same
 `load` path resolves the local candidate first and the Styx candidate
 after rebinding. B confirms that FD 3 is read-only and reads from its
-existing offset. A reads the outcome from `/peer/.exit`, including
+existing offset. A gets the outcome from `run` on the same `.unibus` fid, including
 an owner error in the invalid-input case.
 
 The disconnect case terminates B only after its Dis code confirms startup. A reports a transport failure and receives no completion status.

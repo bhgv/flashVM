@@ -252,12 +252,13 @@ See the [three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch
 
 ### Launch result and an extra descriptor
 
-The one-shot Dis owner publishes a read-only `/peer/.exit` on the
-client mount. A read returns zero bytes while pending, then `ok\n`
-or `error\n`. Treat a read error as a transport failure. A context
-launch retains the caller grants until it sees the result or the
-connection closes. After publishing a result, the owner waits up to
-five seconds for the client to close the connection.
+For a scoped launch, `Vfsnative.run` and `runargs` write to a read/write
+`.unibus` fid and read the result on that same fid. The calls return
+`1` for success, `-2` for a reported execution failure and `-1` if the
+outcome is unknown. A fid can read the result after its own request was
+accepted. The legacy read-only `.exit` file remains available. The
+one-shot owner waits up to five seconds for disconnect after reporting
+completion.
 
 At client bootstrap, `--styx-mount-fd FD --fd3 EXTRA -- APP.dis`
 exposes a separately delegated regular file as guest FD 3 alongside
@@ -336,8 +337,8 @@ disvm --styx-library-serve-fd 3 --execute launch.dis \
 The same Styx mount publishes the program at `implementation.dis` and
 libraries under `mounted`. The caller can bind the program to another VFS
 path and submit it with `Vfsnative.run`. The provider runs the configured
-image once in a child Dis process with the caller context. Read `.exit`
-for its result. The library dispatcher stays available after program
+image once in a child Dis process with the caller context. The call
+returns the execution result. The library dispatcher stays available after program
 success or failure until the caller disconnects.
 
 The [stock CLI test](../native/terminal/tests/scalar/mount_cli.py) runs

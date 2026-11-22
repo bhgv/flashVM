@@ -7,11 +7,14 @@
 #include "flashvm/srecord.h"
 #include "cancel.h"
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 typedef struct LaunchFile
 {
     DVM_Provider *provider; /* Owned exact request file, independent of VFS aliases. */
     DVM_LaunchProgram program; /* Optional copied client context. */
+    int wait; /* Read completion from the same open request. */
     unsigned long tag;      /* Configured application launch route. */
 } LaunchFile;
 
@@ -23,6 +26,57 @@ static void release(void *opaque)
     LaunchFile *file = opaque;
     dvm_provider_release(file->provider);
     free(file);
+}
+
+
+/* EN: Submit once on a read/write fid and keep it through completion.
+ * RU: Подать запрос один раз и удерживать тот же fid до завершения. */
+static DVM_LaunchDelivery exchange(LaunchFile *file, const void *bytes, size_t size)
+{
+    DVM_VfsHandle handle = {0};
+    DVM_LaunchDelivery delivery = DVM_LAUNCH_NOT_SENT;
+    if (dvm_cancel_requested(dvm_cancel_current()) ||
+        dvm_provider_open(file->provider, ".", "rw", &handle) != FVM_OK)
+    {
+        return delivery;
+    }
+    if (handle.native_flags & DVM_VFS_CANCEL_DATA)
+    {
+        DVM_IoResult sent = dvm_vfs_write_chunk(&handle, bytes, size);
+        if (sent.status == FVM_OK && (sent.flags & DVM_IO_PREFIX) && sent.count == size &&
+            !(sent.flags & DVM_IO_UNCERTAIN))
+        {
+            delivery = DVM_LAUNCH_UNKNOWN;
+            long offset;
+            if (dvm_vfs_seek(&handle, 0, FVM_FILE_SEEK_START, &offset) == FVM_OK && !offset)
+            {
+                const struct timespec pause = {0, 10000000};
+                while (!dvm_cancel_requested(dvm_cancel_current()))
+                {
+                    char status[8];
+                    DVM_IoResult got = dvm_vfs_read_chunk(&handle, status, sizeof(status));
+                    if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) || (got.flags & DVM_IO_UNCERTAIN))
+                    {
+                        break;
+                    }
+                    if (got.count)
+                    {
+                        delivery = got.count == 3 && !memcmp(status, "ok\n", 3) ? DVM_LAUNCH_DELIVERED :
+                            got.count == 6 && !memcmp(status, "error\n", 6) ? DVM_LAUNCH_FAILED :
+                            DVM_LAUNCH_UNKNOWN;
+                        break;
+                    }
+                    nanosleep(&pause, NULL);
+                }
+            }
+        }
+        else if ((sent.flags & DVM_IO_UNCERTAIN) || sent.count || sent.stop == DVM_IO_INVALID)
+        {
+            delivery = DVM_LAUNCH_UNKNOWN;
+        }
+    }
+    dvm_vfs_close(&handle);
+    return delivery;
 }
 
 
@@ -44,7 +98,7 @@ static DVM_LaunchDelivery send_frame(LaunchFile *file, const DVM_LaunchProgram *
     if (bytes && (prefix ? fvm_srecord_write_pair(file->tag, header, prefix, arguments, size, bytes, capacity, &used) :
         fvm_srecord_write(file->tag, arguments, size, bytes, capacity, &used)) == FVM_S_OK)
     {
-        delivery = styxterminalrecordwrite(file->provider, bytes, used);
+        delivery = file->wait ? exchange(file, bytes, used) : styxterminalrecordwrite(file->provider, bytes, used);
     }
     free(bytes);
     return delivery;
@@ -73,7 +127,7 @@ static DVM_LaunchDelivery send_process(void *opaque, uint32_t pid, const void *a
 /* EN/RU: See launch_send.h; do not open the provider until actual submission.
  * См. launch_send.h; до подачи запроса не открывать provider. */
 static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long tag,
-    const DVM_LaunchProgram *program, int automatic)
+    const DVM_LaunchProgram *program, int automatic, int wait)
 {
     if (!request_file || !(dvm_provider_native_flags(request_file) & DVM_PROVIDER_CANCEL_PATH) || !tag || tag > FVM_SRECORD_U32)
     {
@@ -87,6 +141,7 @@ static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long 
     }
     file->provider = request_file;
     file->tag = tag;
+    file->wait = wait;
     if (program)
     {
         file->program = *program;
@@ -105,7 +160,7 @@ static DVM_LaunchAddress *address_for(DVM_Provider *request_file, unsigned long 
  * Создать прежний адрес запуска с исходными данными запуска. */
 DVM_LaunchAddress *styxterminallaunchaddress(DVM_Provider *request_file, unsigned long tag)
 {
-    return address_for(request_file, tag, NULL, 0);
+    return address_for(request_file, tag, NULL, 0, 0);
 }
 
 
@@ -115,7 +170,7 @@ DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, 
     const DVM_LaunchProgram *program)
 {
     return program && program->pid && program->pid != program->parent_pid ?
-        address_for(request_file, tag, program, 0) : NULL;
+        address_for(request_file, tag, program, 0, 0) : NULL;
 }
 
 
@@ -123,5 +178,11 @@ DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, 
  * Создать адрес Styx, получающий PID активного вызывающего при каждой отправке. */
 DVM_LaunchAddress *styxterminallaunchcalleraddress(DVM_Provider *request_file, unsigned long tag)
 {
-    return address_for(request_file, tag, NULL, 1);
+    return address_for(request_file, tag, NULL, 1, 0);
+}
+
+/* EN/RU: See launch_send.h. / См. launch_send.h. */
+DVM_LaunchAddress *styxterminallaunchwaitaddress(DVM_Provider *request_file, unsigned long tag)
+{
+    return address_for(request_file, tag, NULL, 1, 1);
 }

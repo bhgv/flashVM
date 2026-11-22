@@ -95,21 +95,14 @@ interrupted_ref(first, second: Scopedcalls, control: Processctl, started, done: 
 run_shared(sys: Sys)
 {
     vfs := load Vfsnative Vfsnative->PATH;
-    if (sys->bind("/transport/implementation.dis", "/shared-launch.dis", Sys->MREPL) < 0 ||
-        vfs->run("/shared-launch.dis") != 1) {
-        raise "could not launch the shared Styx program";
+    if (sys->bind("/transport/implementation.dis", "/shared-launch.dis", Sys->MREPL) < 0) {
+        raise "could not bind the shared Styx program";
     }
-    status := sys->open("/transport/.exit", Sys->OREAD);
-    result := array[8] of byte;
-    expected := "ok\n";
+    expected := 1;
     if (sys->open("/expect-launch-fail", Sys->OREAD) != nil) {
-        expected = "error\n";
+        expected = -2;
     }
-    n := -1;
-    if (status != nil) {
-        n = sys->read(status, result, len result);
-    }
-    if (n != len expected || string result[0:n] != expected) {
-        raise "shared Styx launch did not complete";
+    if (vfs->run("/shared-launch.dis") != expected) {
+        raise "wrong result from shared Styx launch";
     }
 }

@@ -8,10 +8,12 @@
 static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
 {
     StyxFid *input = styxclientwalk(client, ".unibus");
+    StyxFid *unsubmitted = styxclientwalk(client, ".unibus");
     StyxFid *exit_status = styxclientwalk(client, ".exit");
     StyxFid *image = styxclientwalk(client, "implementation.dis");
     StyxFid *declaration = styxclientwalk(client, ".interface");
-    check(input && exit_status && image && declaration && styxclientopen(input, OWRITE) &&
+    check(input && unsubmitted && exit_status && image && declaration && styxclientopen(input, ORDWR) &&
+        styxclientopen(unsubmitted, ORDWR) &&
         styxclientopen(exit_status, OREAD) && styxclientopen(image, OREAD) &&
         styxclientopen(declaration, OREAD), "open launch nodes beside library");
     styxclientclunk(image);
@@ -21,8 +23,12 @@ static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
     check(styxscalarwrite(REQUEST_TAG, STYX_SCALAR_CALL, 73, bytes, sizeof(bytes), &size),
         "format tagged launch inbox fixture");
     StyxTransfer transfer;
+    styxclientread(unsubmitted, 0, received, sizeof(received), &transfer);
+    check(!transfer.success, "unsubmitted fid cannot read launch status");
     styxclientwrite(input, 0, bytes, size, &transfer);
     check(transfer.success && transfer.count == size, "deliver launch on library session");
+    styxclientwrite(unsubmitted, 0, bytes, size, &transfer);
+    check(!transfer.success, "second launch cannot claim the accepted request");
     DVM_VfsHandle reader = {0};
     check(dvm_provider_open(styxunibusserverinbox(server), ".", "r", &reader) == FVM_OK,
         "open the launch inbox on the provider");
@@ -30,12 +36,17 @@ static void check_shared_launch(StyxUnibusServer *server, StyxClient *client)
     check(result.status == FVM_OK && result.count == size && !memcmp(bytes, received, size),
         "launch record reached the dedicated inbox");
     dvm_vfs_close(&reader);
-    styxclientclunk(input);
-    styxclientread(exit_status, 0, received, sizeof(received), &transfer);
+    styxclientread(input, 0, received, sizeof(received), &transfer);
     check(transfer.success && transfer.count == 0, "launch status pending");
     styxunibusserverlaunchstatus(server, 0);
-    styxclientread(exit_status, 0, received, sizeof(received), &transfer);
+    styxclientread(input, 0, received, sizeof(received), &transfer);
     check(transfer.success && transfer.count == 3 && !memcmp(received, "ok\n", 3),
         "read launch result on the library session");
+    styxclientread(unsubmitted, 0, received, sizeof(received), &transfer);
+    check(!transfer.success, "rejected fid cannot read another launch result");
+    styxclientread(exit_status, 0, received, sizeof(received), &transfer);
+    check(transfer.success && transfer.count == 3, "legacy status remains readable");
+    styxclientclunk(unsubmitted);
+    styxclientclunk(input);
     styxclientclunk(exit_status);
 }

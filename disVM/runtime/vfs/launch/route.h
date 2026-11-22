@@ -102,12 +102,13 @@ DVM_LaunchTicket *dvm_launch_route_discover(DVM_Namespace *group, const char *pa
 DVM_LaunchAddress *dvm_launch_route_resolve(DVM_Namespace *group, const char *path, unsigned local_role);
 
 
-/* EN/RU: A transport acknowledgement covers request delivery, not guest init.
- * Подтверждение транспорта относится к доставке запроса, а не к init гостя. */
+/* EN/RU: Scoped transports can report completion from the owner.
+ * Транспорт с контекстом может сообщить результат выполнения на владельце. */
 typedef enum DVM_LaunchDelivery
 {
     DVM_LAUNCH_NOT_SENT = 0, /* Refused before delivery, or conclusively rejected by the peer. */
-    DVM_LAUNCH_DELIVERED = 1, /* Peer acknowledged the exact complete request. */
+    DVM_LAUNCH_DELIVERED = 1, /* Request delivered, or confirmed successful completion. */
+    DVM_LAUNCH_FAILED = -2, /* Owner confirmed failure after admission. */
     DVM_LAUNCH_UNKNOWN = -1 /* Partial/uncertain transport outcome; no automatic retry. */
 } DVM_LaunchDelivery;
 

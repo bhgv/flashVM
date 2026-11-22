@@ -8,31 +8,19 @@ include "vfsnative.m";
 Client: module { init: fn(); };
 
 
-# EN: Poll the one-shot result; empty means pending and read failure means transport failure.
-# RU: Опросить результат; пустое чтение означает ожидание, ошибка чтения означает сбой связи.
+# EN: Run the bound module and receive its result on the opened request.
+# RU: Запустить забинженный модуль и получить итог на открытом запросе.
 init()
 {
     sys := load Sys Sys->PATH;
     vfs := load Vfsnative Vfsnative->PATH;
-    status := sys->open("/peer/.exit", Sys->OREAD);
-    if (status == nil || sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0 ||
-        vfs->run("/alias.dis") != 1) {
-        raise "could not submit chain launch";
+    if (sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0) {
+        raise "could not bind chain launch";
     }
-    bytes := array[16] of byte;
-    for (i := 0; i < 500; i++) {
-        n := sys->read(status, bytes, len bytes);
-        if (n < 0) {
-            raise "chain completion transport failed";
-        }
-        if (n > 0) {
-            if (string bytes[0:n] != "ok\n") {
-                raise "chain owner reported failure";
-            }
-            sys->print("PASS mounted Styx launch completion\n");
-            return;
-        }
-        sys->sleep(10);
+    case vfs->run("/alias.dis") {
+        1 => sys->print("PASS mounted Styx launch completion\n");
+        -2 => raise "chain owner reported failure";
+        -1 => raise "chain completion transport failed";
+        * => raise "could not submit chain launch";
     }
-    raise "chain completion timed out";
 }

@@ -280,7 +280,8 @@ int dvm_styx_serve_cli(int argc, char **argv)
     {
         library_ready = mount_library(handoff.group, libraries[i].descriptor, libraries[i].path);
     }
-    if (library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS) &&
+    int received = library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS);
+    if (received &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
     {
@@ -292,6 +293,10 @@ int dvm_styx_serve_cli(int argc, char **argv)
     }
     else
     {
+        if (received)
+        {
+            styxunibusserverexit(server, result);
+        }
         fprintf(stderr, "%s\n", !published ? "disvm: cannot publish the owner program" :
             !server ? "disvm: cannot start the Styx launch server" :
             !ready ? "disvm: cannot mount reverse launch context" :

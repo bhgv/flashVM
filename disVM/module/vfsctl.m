@@ -85,8 +85,8 @@ Vfsctl: module
     # Inherited file/subdirectory stack becomes an independent exact-path binding.
     # Старый parent/siblings не меняются;0 success,-2 stale,-1 failure.
     move: fn(path: string, revision, id: big, index: int): int;
-    # EN/RU: Submit the mounted program by its visible path;1 delivered,0 refused,-1 uncertain.
-    # Отправить запуск по видимому пути;1 доставлено,0 отказ,-1 исход неизвестен.
+    # EN: Run by VFS path. 1 success/delivery, 0 refused, -1 uncertain, -2 owner failure.
+    # RU: Запуск по пути VFS. 1 успех/доставка, 0 отказ, -1 неизвестно, -2 ошибка владельца.
     run: fn(path: string): int;
     # EN/RU: Submit a bounded binary startup payload using the selected route.
     # Отправить ограниченные бинарные данные через выбранный маршрут.

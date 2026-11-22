@@ -21,4 +21,7 @@ DVM_LaunchAddress *styxterminallaunchprogramaddress(DVM_Provider *request_file, 
 /* EN/RU: Opt into a process-scoped launch using the runtime caller's PID.
  * Включить запуск с контекстом PID вызывающего процесса. */
 DVM_LaunchAddress *styxterminallaunchcalleraddress(DVM_Provider *request_file, unsigned long tag);
+/* EN: Submit and read completion on the same scoped read/write fid.
+ * RU: Подать запрос и прочитать итог на одном fid с правом записи и чтения. */
+DVM_LaunchAddress *styxterminallaunchwaitaddress(DVM_Provider *request_file, unsigned long tag);
 #endif
