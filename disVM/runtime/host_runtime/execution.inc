@@ -6,11 +6,16 @@
 
 /* EN/RU: Startup inputs borrowed until the controller and GUI owners join.
  * Параметры запуска заимствованы до join контроллера и владельца GUI. */
+#ifdef DVM_TERMINAL_LAUNCH
+#include "styxlaunchlistener_image.h"
+#endif
+
 typedef struct RuntimeEntry
 {
     const char *path; /* Host-selected local bootstrap path. */
     DVM_LaunchHandoff *handoff; /* Optional exclusive native environment. */
     const char *startup_hex; /* Validated lowercase hex from the native launcher. */
+    int launch_listener; /* Boot the embedded Styx listener on the initial resident. */
     int startup_fd; /* Optional sealed owner payload, consumed before dispatch. */
 } RuntimeEntry;
 
@@ -160,7 +165,19 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
         error("cannot initialize graphical editor");
     }
 #endif
-    module = load(entry);
+#ifdef DVM_TERMINAL_LAUNCH
+    if (argument->launch_listener)
+    {
+        Dir metadata = {0};
+        uchar image[sizeof(launch_listener_image)];
+        memcpy(image, launch_listener_image, sizeof(image));
+        module = parsemod("$StyxLaunchListener", image, sizeof(image), &metadata);
+    }
+    else
+#endif
+    {
+        module = load(entry);
+    }
     if (!module)
     {
         error(owner_error());

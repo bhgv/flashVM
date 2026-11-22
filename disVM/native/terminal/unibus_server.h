@@ -169,6 +169,11 @@ DVM_Provider *styxunibusserverloadprofileat(StyxUnibusServer *server, size_t ind
 StyxUnibusServer *styxunibusserverstartexit(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile);
 
+/* EN: Publish a scoped launch queue with no library exports. Consume the channel.
+ * RU: Опубликовать очередь запуска с контекстом без библиотечных экспортов. Принять канал. */
+StyxUnibusServer *styxunibusserverstartpersistent(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile);
+
 /* EN: Publish the exit status and keep the server available until EOF or timeout.
  * RU: Опубликовать статус и оставить сервер доступным до EOF или таймаута. */
 void styxunibusserverexit(StyxUnibusServer *server, int status);

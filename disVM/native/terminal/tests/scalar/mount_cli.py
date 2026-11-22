@@ -101,6 +101,7 @@ def main():
 
         chain(runtime, compiler, provider, disvm, example, work)
         library_cli(runtime, compiler, disvm, example, work)
+        persistent_cli(runtime, compiler, disvm, example, work)
 
 
 # EN: Create an owned TCP connection for one link between the peers.
@@ -199,8 +200,10 @@ def chain(runtime, compiler, provider, disvm, example, work):
         if invalid.returncode != 2 or b"usage:" not in invalid.stderr:
             raise RuntimeError(f"conflicting library delegation accepted: {fd}, {path}")
     reject_carrier_alias(runtime, owner_image)
-    for mode, payload in (("--no-jit", b"live"), ("--jit", b"live"), ("--no-jit", b"fail"),
-                          ("--no-jit", b"drop"), ("--jit", b"drop")):
+    for mode, payload, service in (("--no-jit", b"live", "--context"), ("--jit", b"live", "--context"),
+                                   ("--no-jit", b"fail", "--context"), ("--no-jit", b"drop", "--context"),
+                                   ("--jit", b"drop", "--context"), ("--no-jit", b"live", "--persistent"),
+                                   ("--jit", b"live", "--persistent")):
         stdin.write_bytes(payload)
         shared.write_bytes(b"skipAB")
         a, b = tcp_pair()
@@ -210,7 +213,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
                 stderr.open("wb") as errors, extra.open("rb") as fourth, shared.open("r+b") as aliases, \
                 start_library(library_peer, library_dir, mode, c) as library, \
                 start_library(library_peer, library_dir, mode, d) as other, subprocess.Popen(
-            [runtime, "--styx-serve-fd", str(b.fileno()), "--context", "--library-fd",
+            [runtime, "--styx-serve-fd", str(b.fileno()), service, "--library-fd",
              str(lib.fileno()), "--library-at", "/remote-libs", "--library-fd",
              str(alternate.fileno()), "--library-at", "/other-libs", "--", mode, owner_image],
             pass_fds=(b.fileno(), lib.fileno(), alternate.fileno()), cwd=owner_dir,
@@ -267,7 +270,7 @@ def chain(runtime, compiler, provider, disvm, example, work):
                         b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):
                     raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
-                print("PASS A-B-C Styx launch and library call", mode, flush=True)
+                print("PASS A-B-C Styx launch and library call", mode, service, flush=True)
             finally:
                 for peer in (owner, library, other):
                     if peer.poll() is None:
@@ -374,6 +377,50 @@ def library_cli_pair(runtime, owner_root, caller_root, mode, missing=False, fail
             for child in (client, server):
                 if child.poll() is None:
                     child.kill()
+
+
+# EN: Exercise the embedded listener with the configured image outside the owner cwd.
+# RU: Проверить встроенный приёмник с настроенным образом вне cwd владельца.
+def persistent_cli(runtime, compiler, disvm, example, work):
+    owner_root, caller_root = work / "program-owner", work / "program-caller"
+    owner_root.mkdir()
+    caller_root.mkdir()
+    owner_image = work / "standalone-owner.dis"
+    client_image = caller_root / "persistent-cli.dis"
+    for source, image in (("styx-shared-launch-owner.b", owner_image),
+                          ("styx-persistent-cli.b", client_image)):
+        subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
+                        "-I", example, "-o", image, example / source], cwd=work, check=True)
+    (caller_root / "shared-launch.dis").touch()
+    for mode in ("--no-jit", "--jit"):
+        marks = ("launch-marker", "parallel-entered", "parallel-released")
+        for mark in marks:
+            (owner_root / mark).write_bytes(b"")
+        caller, owner = tcp_pair()
+        with caller, owner, subprocess.Popen(
+            [runtime, "--styx-serve-fd", str(owner.fileno()), "--persistent",
+             "--", mode, owner_image],
+            cwd=owner_root, pass_fds=(owner.fileno(),), stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True,
+        ) as server:
+            owner.close()
+            try:
+                guest = subprocess.run(
+                    [runtime, "--styx-mount-fd", str(caller.fileno()), "--at",
+                     "/transport", "--", mode, client_image],
+                    cwd=caller_root, pass_fds=(caller.fileno(),), capture_output=True, text=True, timeout=15,
+                )
+                caller.close()
+                output, _ = server.communicate(timeout=10)
+                marker = "PASS standalone persistent Styx launch"
+                if guest.returncode or server.returncode or marker not in guest.stdout or any(
+                    not (owner_root / mark).read_bytes() for mark in marks
+                ):
+                    raise RuntimeError(guest.stdout + guest.stderr + output)
+                print(marker, mode, flush=True)
+            finally:
+                if server.poll() is None:
+                    server.kill()
 
 
 if __name__ == "__main__":

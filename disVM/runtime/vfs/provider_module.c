@@ -297,6 +297,34 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
 }
 
 
+#ifdef DVM_TERMINAL_LAUNCH
+/* EN: Parse the exact image granted by the standalone host launch command.
+ * RU: Разобрать образ, выданный хостом при настройке самостоятельного запуска. */
+Module *dvm_provider_read_launch_image(DVM_Provider *provider, char *label)
+{
+    ProviderModule image = {0};
+    image.close = dvm_close_prepare();
+    if (!image.close)
+    {
+        return NULL;
+    }
+    DVM_VfsWait *wait;
+    int released = dvm_vfs_path_enter(&wait);
+    int valid = released >= 0 && readimage(provider, ".", &image);
+    closeimage(&image);
+    if (released >= 0)
+    {
+        valid = !dvm_vfs_wait_end(wait) && valid;
+        dvm_runtime_gc_native_enter(released);
+    }
+    Module *module = valid ? parsemod(label, image.bytes, (ulong)image.length, &image.metadata) : NULL;
+    free(image.bytes);
+    return module;
+}
+
+
+#endif
+
 /* [GC:] EN/RU: See loader.h; cleanup native image before propagating a managed reentry/parser exception.
  * См. loader.h; очистить native image до передачи exception managed reentry/parser.
  */

@@ -20,6 +20,8 @@ struct Module; /* Loaded provider-local module, managed by the runtime controlle
  * вызывающий освобождает оболочку после завершения runtime. Возвращает CLI status.
  * Один вызов на процесс, без конкурентных вызовов. */
 int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff);
+/* EN/RU: Boot the embedded listener in the supplied owner namespace. / Запустить встроенный приёмник. */
+int dvm_runtime_main_launch_listener(int argc, char **argv, DVM_LaunchHandoff *handoff);
 
 
 /* EN/RU: Controller starts an already loaded zero-argument bootstrap with optional handoff.

@@ -360,7 +360,7 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
 /* EN/RU: See unibus_server.h; release partially initialized native resources on failure.
  * См. unibus_server.h; при отказе освободить частично созданные ресурсы. */
 StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion)
+    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion, int persistent)
 {
     StyxUnibusServer *server = channel ? calloc(1, sizeof(*server)) : NULL;
     if (!server)
@@ -369,11 +369,18 @@ StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
         return NULL;
     }
     server->completion = completion;
-    server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
-    server->file = styxbacking(server->inbox);
+    if (persistent)
+    {
+        server->launches = launch_queue(tag);
+    }
+    else
+    {
+        server->inbox = reusable ? styxunibusmailbox(tag) : styxunibusinbox(tag);
+        server->file = styxbacking(server->inbox);
+    }
     server->original = original ? styxbacking(original) : NULL;
     server->profile = profile ? styxbacking(profile) : NULL;
-    if (!server->file || (original && !server->original) || (profile && !server->profile))
+    if (!(server->file || server->launches) || (original && !server->original) || (profile && !server->profile))
     {
         phyfree(channel);
     }
@@ -389,6 +396,7 @@ StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
         }
         styxend(&server->server);
     }
+    free_launch_queue(server->launches);
     styxbackingfree(server->profile);
     styxbackingfree(server->original);
     styxbackingfree(server->file);
@@ -401,7 +409,7 @@ StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
 StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return styxunibusstart(channel, tag, original, profile, 0, 0);
+    return styxunibusstart(channel, tag, original, profile, 0, 0, 0);
 }
 
 
@@ -410,7 +418,7 @@ StyxUnibusServer *styxunibusserverstartmodule(RemotePhy *channel, unsigned long 
 StyxUnibusServer *styxunibusserverstartsession(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return styxunibusstart(channel, tag, original, profile, 1, 0);
+    return styxunibusstart(channel, tag, original, profile, 1, 0, 0);
 }
 
 

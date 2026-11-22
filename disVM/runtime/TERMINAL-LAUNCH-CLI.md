@@ -231,9 +231,8 @@ disvm --styx-mount-fd 3 -- caller.dis
 The Limbo caller uses the same `Vfsnative.runargs` call. DisVM publishes
 its virtual `.prog/<pid>` before sending the request. The owner mounts
 the reverse channel, pins the PID directory and adopts its available
-context before `init`. The scoped send holds the export until the
-one-shot owner closes the carrier or the caller cancels. The return
-value still reports submission status.
+context before `init`. The scoped send holds the export until
+completion, loss of the carrier or cancellation.
 
 The two-process example reads the caller PID and consumes redirected
 stdin from the owner with `Sys->fildes(0)`. It also writes through the
@@ -249,6 +248,27 @@ plain Styx session. The owner mounts it at `/libraries` before accepting
 the launch. An unavailable library mount makes the server refuse startup.
 The library is resolved by ordinary Dis `load` in the owner's namespace.
 See the [three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch).
+
+### Serve repeated standalone launches
+
+```sh
+disvm --styx-serve-fd 3 --persistent -- owner.dis
+disvm --styx-mount-fd 3 -- caller.dis
+```
+
+`--persistent` implies the caller-context profile. The owner reads the
+configured Dis image at startup, publishes that same immutable image and
+waits on the connected session. Each bound-path `run` or `runargs` starts
+its own child with the caller's context and reads its own completion.
+Separate callers can run concurrently. The listener is built into DisVM.
+Use `--library-fd` to mount dependencies on the owner before accepting
+requests. Without `--persistent`, the standalone command still exits
+after the single configured run.
+
+The [standalone client](../examples/remote-scalar/styx-persistent-cli.b)
+checks two consecutive launches and two overlapping launches with
+different outcomes. The three-peer test also runs this mode with
+inherited descriptors and separately mounted libraries.
 
 ### Launch result and an extra descriptor
 
@@ -342,7 +362,7 @@ own result on the opened fid. Different callers can run concurrently and
 the same caller can run again after completion. The host queues up to 64
 pending launch records. Each record, including the selector and S-record
 header, fits in 64 bytes. Library calls stay available on the same session.
-The standalone `--styx-serve-fd` command retains its one-shot lifetime.
+The standalone command can use the same queue with `--persistent`.
 
 The [stock CLI test](../native/terminal/tests/scalar/mount_cli.py) runs
 the [example program](../examples/remote-scalar/styx-shared-launch-owner.b),

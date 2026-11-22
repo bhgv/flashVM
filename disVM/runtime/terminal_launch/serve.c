@@ -5,6 +5,7 @@
 #include "config.h"
 #include "offer.h"
 #include "vfs/module_adapter.h"
+#include "vfs/loader.h"
 #include "vfs/cancel.h"
 #include "unibus_server.h"
 #include "launch_receive.h"
@@ -107,6 +108,41 @@ DVM_Provider *dvm_terminal_publish_program(DVM_Namespace *group, const char *pat
 }
 
 
+/* EN: Publish an immutable copy for the session's recurring program.
+ * RU: Опубликовать неизменяемую копию программы для повторных запусков. */
+static DVM_Provider *snapshot_program(DVM_Provider *original)
+{
+    DVM_VfsHandle reader = {0};
+    FVM_FileInfo info;
+    DVM_Provider *image = NULL;
+    if (dvm_provider_open(original, ".", "r", &reader) == FVM_OK &&
+        dvm_vfs_info(&reader, &info) == FVM_OK && !info.directory &&
+        !info.length.high && info.length.low && info.length.low < DVM_MODULE_IMAGE_LIMIT)
+    {
+        size_t size = (size_t)info.length.low;
+        unsigned char *bytes = malloc(size);
+        size_t used = 0;
+        while (bytes && used < size)
+        {
+            DVM_IoResult got = dvm_vfs_read_chunk(&reader, bytes + used, size - used);
+            if (got.status != FVM_OK || !(got.flags & DVM_IO_PREFIX) ||
+                (got.flags & DVM_IO_UNCERTAIN) || !got.count || got.count > size - used)
+            {
+                break;
+            }
+            used += got.count;
+        }
+        if (used == size)
+        {
+            image = dvm_module_adapter(bytes, size);
+        }
+        free(bytes);
+    }
+    dvm_vfs_close(&reader);
+    return image;
+}
+
+
 /* EN: Consume an optional library carrier and mount its root in the owner namespace.
  * RU: Принять соединение библиотек и смонтировать его в namespace владельца. */
 static int mount_library(DVM_Namespace *group, const char *descriptor, const char *path)
@@ -201,12 +237,52 @@ static int distinct_carriers(int launch, const LibraryMount *mounts, size_t coun
 }
 
 
-/* EN: Take one delegated launch and boot only the locally configured Dis image.
- * RU: Принять один запрос и запустить только локально заданный образ Dis. */
+static StyxUnibusServer *launch_server; /* Borrowed from the active CLI through runtime shutdown. */
+static DVM_Provider *launch_root; /* Borrowed reverse session. */
+static const char *launch_image; /* Borrowed host-selected image name. */
+static DVM_Provider *launch_provider; /* Borrowed exact standalone image. */
+
+void dvm_terminal_configure_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
+    const char *image, DVM_Provider *provider)
+{
+    launch_server = server;
+    launch_root = root;
+    launch_image = image;
+    launch_provider = provider;
+}
+
+
+/* EN: Report the hosted child result to its own fid, then retire its ticket.
+ * RU: Передать итог потомка в его fid и освободить билет. */
+static void report_shared_launch(void *ticket, int status)
+{
+    styxunibuslaunchcomplete(ticket, status);
+}
+
+
+/* EN: Serve the host-selected image on a delegated Styx stream.
+ * RU: Обслужить настроенный хостом образ на выданном транспорте Styx. */
 int dvm_styx_serve_cli(int argc, char **argv)
 {
-    int scoped = argc > 3 && !strcmp(argv[3], "--context");
-    int separator = scoped ? 4 : 3;
+    int scoped = 0, persistent = 0;
+    int separator = 3;
+    while (argc > separator)
+    {
+        if (!scoped && !strcmp(argv[separator], "--context"))
+        {
+            scoped = 1;
+        }
+        else if (!persistent && !strcmp(argv[separator], "--persistent"))
+        {
+            persistent = 1;
+        }
+        else
+        {
+            break;
+        }
+        separator++;
+    }
+    scoped |= persistent;
     LibraryMount libraries[LIBRARY_MOUNT_LIMIT];
     size_t count = 0;
     int valid = 1;
@@ -228,7 +304,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     }
     if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--library-fd FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent] [--library-fd FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -257,6 +333,12 @@ int dvm_styx_serve_cli(int argc, char **argv)
     DVM_Provider *image = host && dvm_namespace_pin(host) && dvm_namespace_pin(handoff.group) ?
         dvm_terminal_publish_program(host, program) : NULL;
     dvm_namespace_release(host);
+    if (persistent && image)
+    {
+        DVM_Provider *copy = snapshot_program(image);
+        dvm_provider_release(image);
+        image = copy;
+    }
     PhyBidir *mux = image ? phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536) : NULL;
     if (!image)
     {
@@ -264,11 +346,15 @@ int dvm_styx_serve_cli(int argc, char **argv)
     }
     const char *declaration = scoped ? DVM_STYX_LAUNCH_CONTEXT : DVM_STYX_LAUNCH_RAW;
     DVM_Provider *profile = mux ? dvm_module_adapter(declaration, strlen(declaration)) : NULL;
-    StyxUnibusServer *server = profile ?
-        styxunibusserverstartexit(phybidirchannel(mux, 0), DVM_STYX_LAUNCH_TAG, image, profile) : NULL;
+    StyxUnibusServer *server = NULL;
+    if (profile)
+    {
+        RemotePhy *forward = phybidirchannel(mux, 0);
+        server = persistent ? styxunibusserverstartpersistent(forward, DVM_STYX_LAUNCH_TAG, image, profile) :
+            styxunibusserverstartexit(forward, DVM_STYX_LAUNCH_TAG, image, profile);
+    }
     dvm_provider_release(profile);
     int published = image != NULL;
-    dvm_provider_release(image);
     StyxClient *reverse = server && scoped ?
         styxclientmountphy(phybidirchannel(mux, 1), 4096, "provider", "", 5000, 8) : NULL;
     DVM_Provider *root = reverse ? styxmountprovider(reverse, FVM_ACCESS_MASK) : NULL;
@@ -280,8 +366,15 @@ int dvm_styx_serve_cli(int argc, char **argv)
     {
         library_ready = mount_library(handoff.group, libraries[i].descriptor, libraries[i].path);
     }
-    int received = library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS);
-    if (received &&
+    int received = !persistent && library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS);
+    if (persistent && library_ready)
+    {
+        strcpy(handoff.description.module, "styx-launch-listener");
+        dvm_terminal_configure_shared_launch(server, root, program, image);
+        result = dvm_runtime_main_launch_listener(argc - separator, argv + separator, &handoff);
+        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL);
+    }
+    else if (received &&
         (!scoped || dvm_launch_handoff_program(&handoff, root, startup.program.pid,
             startup.program.parent_pid, startup.program.hidden_fds)))
     {
@@ -305,6 +398,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxunibusserverjoin(server);
+    dvm_provider_release(image);
     dvm_provider_release(handoff.program);
     dvm_provider_release(handoff.program_parent);
     dvm_provider_release(handoff.program_vfs);
@@ -317,7 +411,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
 
 /* EN: Acquire one queued launch and populate the borrowed startup buffer.
  * RU: Принять один запуск из очереди и заполнить заимствованный буфер. */
-int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
+static int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Provider *root,
     DVM_LaunchHandoff *handoff, unsigned char *arguments, StyxLaunchTicket **ticket)
 {
     unsigned char wire[64];
@@ -340,4 +434,26 @@ int dvm_terminal_prepare_shared_launch(StyxUnibusServer *server, DVM_Provider *r
     handoff->arguments = arguments;
     handoff->description.argument_bytes = startup.size;
     return 1;
+}
+/* EN: Wait for the next request outside managed admission.
+ * RU: Дождаться следующего запроса вне допуска VM. */
+int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *arguments,
+    const char **image, DVM_Provider **provider, DVM_LaunchCompletion *completion)
+{
+    if (!launch_server)
+    {
+        return 0;
+    }
+    handoff->local_role = DVM_ORIGIN_PROVIDER;
+    StyxLaunchTicket *ticket = NULL;
+    int outcome = dvm_terminal_prepare_shared_launch(launch_server, launch_root, handoff, arguments, &ticket);
+    if (!outcome)
+    {
+        return 0;
+    }
+    *completion = (DVM_LaunchCompletion){report_shared_launch, ticket};
+    *image = launch_image;
+    *provider = launch_provider;
+    strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);
+    return outcome;
 }

@@ -10,7 +10,7 @@
  * RU: Разобрать заимствованные argc/argv в стартовом потоке и проверить настройки
  * исполнения/GC до создания потоков. Вернуть код VM либо ненулевую диагностику
  * ошибки параметров/старта; профиль работающей VM не изменяется. */
-int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff)
+static int runtime_main(int argc, char **argv, DVM_LaunchHandoff *handoff, int launch_listener)
 {
     struct sigaction pipe_action = {0};
     int startup_fd = -1; /* Owner-delegated sealed file, consumed at startup. */
@@ -460,7 +460,8 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
         fprintf(stderr, "cannot start private debugger socket: %s\n", debug_path);
         return 2;
     }
-    RuntimeEntry entry = {argv[1], handoff, startup_hex, startup_fd};
+    RuntimeEntry entry = {.path = argv[1], .handoff = handoff, .startup_hex = startup_hex,
+        .startup_fd = startup_fd, .launch_listener = launch_listener};
 #ifdef DVM_RUNTIME_EDITOR
     if (threaded)
     {
@@ -469,6 +470,18 @@ int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *hand
 #endif
     return runtime_execute(&entry);
 }
+
+int dvm_runtime_main_with_handoff(int argc, char **argv, DVM_LaunchHandoff *handoff)
+{
+    return runtime_main(argc, argv, handoff, 0);
+}
+
+#ifdef DVM_TERMINAL_LAUNCH
+int dvm_runtime_main_launch_listener(int argc, char **argv, DVM_LaunchHandoff *handoff)
+{
+    return runtime_main(argc, argv, handoff, 1);
+}
+#endif
 
 /* EN/RU: Ordinary CLI boot with no preauthorized handoff; forwards argc/argv.
  * Обычный CLI-запуск без переданного handoff; передаёт argc/argv. */

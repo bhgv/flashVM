@@ -60,6 +60,8 @@ int dvm_namespace_module_cacheable(const struct Dir *metadata);
  * caller удерживает/освобождает plan.
  * Обычные read-права соответствуют Dis load; intent меняет порядок источников, не полномочия.
  */
+/* EN/RU: Open a host-selected launch image directly. / Открыть выданный хостом образ запуска. */
+struct Module *dvm_provider_read_launch_image(struct DVM_Provider *provider, char *label);
 struct Module *dvm_provider_readmod(char *path, struct DVM_ResourcePlan *plan, const struct Import *imports);
 
 

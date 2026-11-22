@@ -20,43 +20,7 @@
 
 
 extern DVM_Provider *dvm_terminal_publish_program(DVM_Namespace *, const char *);
-extern int dvm_terminal_prepare_shared_launch(StyxUnibusServer *, DVM_Provider *,
-    DVM_LaunchHandoff *, unsigned char *, StyxLaunchTicket **);
-
-static StyxUnibusServer *launch_server; /* Borrowed from the active CLI through runtime shutdown. */
-static DVM_Provider *launch_root; /* Borrowed reverse session. */
-static const char *launch_image; /* Borrowed host-selected image. */
-
-
-/* EN: Report the hosted child result to its own fid, then retire its ticket.
- * RU: Передать итог потомка в его fid и освободить билет. */
-static void report_shared_launch(void *ticket, int status)
-{
-    styxunibuslaunchcomplete(ticket, status);
-}
-
-
-/* EN: Wait for the next request outside managed admission.
- * RU: Дождаться следующего запроса вне допуска VM. */
-int dvm_terminal_take_shared_launch(DVM_LaunchHandoff *handoff, unsigned char *arguments,
-    const char **image, DVM_LaunchCompletion *completion)
-{
-    if (!launch_server)
-    {
-        return 0;
-    }
-    handoff->local_role = DVM_ORIGIN_PROVIDER;
-    StyxLaunchTicket *ticket = NULL;
-    int outcome = dvm_terminal_prepare_shared_launch(launch_server, launch_root, handoff, arguments, &ticket);
-    if (!outcome)
-    {
-        return 0;
-    }
-    *completion = (DVM_LaunchCompletion){report_shared_launch, ticket};
-    *image = launch_image;
-    strcpy(handoff->description.module, DVM_STYX_LAUNCH_ENTRY);
-    return outcome;
-}
+extern void dvm_terminal_configure_shared_launch(StyxUnibusServer *, DVM_Provider *, const char *, DVM_Provider *);
 
 
 /* EN: Build a private mailbox tree and matching startup text. Return an owned
@@ -169,10 +133,9 @@ int dvm_styx_library_cli(int argc, char **argv)
         strcpy(handoff.description.module, "styx-library-owner.dis");
         handoff.arguments = (unsigned char *)config;
         handoff.description.argument_bytes = strlen(config);
-        launch_server = execute ? server : NULL;
-        launch_root = root;
-        launch_image = execute;
+        dvm_terminal_configure_shared_launch(execute ? server : NULL, root, execute, NULL);
         result = dvm_runtime_main_with_handoff(argc - separator, argv + separator, &handoff);
+        dvm_terminal_configure_shared_launch(NULL, NULL, NULL, NULL);
     }
     else
     {

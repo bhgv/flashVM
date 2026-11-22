@@ -29,6 +29,19 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         endif()
         list(APPEND terminal_launch_libraries "${path}")
     endforeach()
+    set(launch_listener_source "${root}/disVM/limbo/styxlaunchlistener.b")
+    set(launch_listener_embed "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedLaunchListener.cmake")
+    set(launch_listener_dis "${CMAKE_CURRENT_BINARY_DIR}/styxlaunchlistener.dis")
+    set(launch_listener_header "${CMAKE_CURRENT_BINARY_DIR}/styxlaunchlistener_image.h")
+    add_custom_command(OUTPUT "${launch_listener_header}" BYPRODUCTS "${launch_listener_dis}"
+        COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${root}/disVM/module"
+            -o "${launch_listener_dis}" "${launch_listener_source}"
+        COMMAND "${CMAKE_COMMAND}" "-DINPUT=${launch_listener_dis}" "-DOUTPUT=${launch_listener_header}"
+            -P "${launch_listener_embed}"
+        DEPENDS limbo-bootstrap "${launch_listener_source}" "${root}/disVM/module/vfsnative.m"
+            "${launch_listener_embed}" VERBATIM)
+    target_sources(disvm PRIVATE "${launch_listener_header}")
+    target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
     target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c)
     target_compile_definitions(disvm PRIVATE DVM_TERMINAL_LAUNCH=1)
     set_property(SOURCE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c APPEND PROPERTY INCLUDE_DIRECTORIES

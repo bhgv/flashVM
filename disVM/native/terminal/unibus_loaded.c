@@ -298,7 +298,15 @@ void styxunibusserverexit(StyxUnibusServer *server, int status)
 StyxUnibusServer *styxunibusserverstartexit(RemotePhy *channel, unsigned long tag,
     DVM_Provider *original, DVM_Provider *profile)
 {
-    return styxunibusstart(channel, tag, original, profile, 0, 1);
+    return styxunibusstart(channel, tag, original, profile, 0, 1, 0);
+}
+
+
+/* EN/RU: See unibus_server.h. / См. unibus_server.h. */
+StyxUnibusServer *styxunibusserverstartpersistent(RemotePhy *channel, unsigned long tag,
+    DVM_Provider *original, DVM_Provider *profile)
+{
+    return styxunibusstart(channel, tag, original, profile, 0, 1, 1);
 }
 
 

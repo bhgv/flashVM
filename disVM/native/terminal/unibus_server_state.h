@@ -58,7 +58,7 @@ StyxUnibusServer *styxunibusstarttable(RemotePhy *channel,
     const StyxMountedScalar *entries, size_t count, int loaded, DVM_Provider *reverse, const StyxUnibusLaunch *launch);
 /* EN/RU: Private one-shot constructor and result reader. / Конструктор и чтение результата. */
 StyxUnibusServer *styxunibusstart(RemotePhy *channel, unsigned long tag,
-    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion);
+    DVM_Provider *original, DVM_Provider *profile, int reusable, int completion, int persistent);
 size_t styxunibusexitread(StyxUnibusServer *server, char *bytes, size_t count, uint64_t offset);
 /* EN/RU: Wait for function jobs before releasing routes. / Дождаться задач перед освобождением маршрутов. */
 void styxunibusdrainfunctions(StyxUnibusServer *server);
