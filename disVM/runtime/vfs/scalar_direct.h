@@ -54,6 +54,12 @@ typedef struct DirectRefPairFrame
  * RU: Вычислить размер аргументов NC64 и карту ссылок по проверенной схеме. */
 int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *pointers);
 
+/* EN: Emit a Dis call and return for a validated argument shape. The caller
+ * frame has the target at byte 64, then arguments and one raw frame temporary.
+ * RU: Сгенерировать вызов и возврат Dis. В кадре по смещению 64 находятся
+ * модуль, далее аргументы и один временный слот указателя на кадр. */
+size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *code, size_t capacity);
+
 struct DVM_ScalarFiles;
 
 /* EN: Transfer two mapped references with their identity map.

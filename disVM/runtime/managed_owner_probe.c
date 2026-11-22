@@ -149,6 +149,16 @@ static void styx_value_probe(DVM_HeapOwner *owner, DVM_GCWorkers *workers)
     unsigned char pointers;
     check(dvm_styx_frame_layout("(ys(a[b]y)r[ib])", &words, &pointers) &&
         words == 5 && pointers == 0x68, "derive exact argument reference bits for mixed Styx frame");
+    Inst code[8];
+    check(dvm_styx_call_code("(ysa[y]b)", 7, 1, code, 8) == 8 &&
+        code[0].op == IMFRAME && code[0].reg == 7 && code[0].d.ind == 104 &&
+        code[1].op == IMOVB && code[1].s.ind == 72 && code[1].d.i.s == 64 &&
+        code[2].op == IMOVP && code[2].s.ind == 80 && code[2].d.i.s == 72 &&
+        code[3].op == IMOVP && code[3].s.ind == 88 && code[3].d.i.s == 80 &&
+        code[4].op == IMOVL && code[4].s.ind == 96 && code[4].d.i.s == 88 &&
+        code[5].op == ILEA && code[5].s.i.f == 32 && code[5].d.i.f == 104 &&
+        code[6].op == IMCALL && code[6].reg == 7 && code[6].d.ind == 64 &&
+        code[7].op == IRET, "emit native Dis instructions for mixed managed arguments");
     const unsigned char utf8[] = {0xd0, 0x96, 0, 0x61};
     unsigned char encoded[64];
     size_t first, second;

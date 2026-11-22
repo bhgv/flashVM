@@ -43,6 +43,49 @@ int dvm_styx_frame_layout(const char *shape, size_t *words, unsigned char *point
 }
 
 
+/* EN/RU: See scalar_direct.h. / См. scalar_direct.h. */
+size_t dvm_styx_call_code(const char *shape, unsigned slot, int result, Inst *code, size_t capacity)
+{
+    StyxScalarLayout layout;
+    const unsigned module = 64;
+    const unsigned arguments = 72;
+    const unsigned returned = 32;
+    if (!code || slot > INT16_MAX || !styxmanaged_layout(shape, &layout) ||
+        capacity < layout.count + 3 + !!result)
+    {
+        return 0;
+    }
+    ushort temporary = (ushort)(arguments + (layout.size + 7) / 8 * 8);
+    size_t n = 0;
+    code[n++] = (Inst){.op = IMFRAME, .add = SRC(AFP) | AXIMM | DST(AFP),
+        .reg = (ushort)slot, .s.ind = module, .d.ind = temporary};
+    for (size_t i = 0; i < layout.count; i++)
+    {
+        unsigned offset = (unsigned)layout.offset[i];
+        uchar operation = IMOVL;
+        if (layout.pointers & (1U << i))
+        {
+            operation = IMOVP;
+        }
+        else if (layout.width[i] == 1)
+        {
+            operation = IMOVB;
+        }
+        code[n++] = (Inst){.op = operation, .add = SRC(AFP) | DST(AFP | AIND),
+            .s.ind = arguments + offset, .d.i = {temporary, (ushort)(module + offset)}};
+    }
+    if (result)
+    {
+        code[n++] = (Inst){.op = ILEA, .add = SRC(AFP | AIND) | DST(AFP | AIND),
+            .s.i = {returned, 0}, .d.i = {temporary, returned}};
+    }
+    code[n++] = (Inst){.op = IMCALL, .add = SRC(AFP) | AXIMM | DST(AFP),
+        .reg = (ushort)slot, .s.ind = temporary, .d.ind = module};
+    code[n++] = (Inst){.op = IRET, .add = SRC(AXXX) | DST(AXXX)};
+    return n;
+}
+
+
 /* EN/RU: Give each native Link its own stable route ordinal.
  * Назначить каждому нативному Link постоянный номер маршрута. */
 #define SCALAR_SLOT(index) \
