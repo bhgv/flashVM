@@ -33,10 +33,13 @@ typedef struct FunctionFid
     uint32_t context_pid; /* Zero selects the PID in the scoped request. */
     size_t staged_size; /* Bytes accumulated for the request awaiting the end record. */
     size_t write_offset; /* Exact offset after the staged envelope. */
-    unsigned char staged[STYX_FUNCTION_FRAME_CAPACITY + STYX_SCOPED_CALL_OVERHEAD]; /* Request owned by this fid. */
+    unsigned char *staged; /* Request storage retained through asynchronous dispatch. */
+    size_t stage_capacity; /* Profile-specific bound on request bytes. */
     int submitted;              /* A validated request reached the method. */
     size_t size;                 /* Reply length, zero before an accepted request. */
-    unsigned char reply[STYX_FUNCTION_FRAME_CAPACITY]; /* Immutable encoded response. */
+    unsigned char *reply; /* Response storage retained until clunk. */
+    size_t reply_capacity; /* Profile-specific bound on reply bytes. */
+    unsigned char storage[]; /* Request and reply regions allocated with the fid. */
 } FunctionFid;
 
 
@@ -48,6 +51,14 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
         fn->request_tag > UINT32_MAX || fn->reply_tag > UINT32_MAX)
     {
         return 0;
+    }
+    if (fn->managed_method)
+    {
+        return fn->request_tag == STYX_MANAGED_REQUEST_TAG && fn->reply_tag == STYX_MANAGED_REPLY_TAG &&
+            styxshapevalid(fn->dynamic_shape) && !fn->method && !fn->caller_method && !fn->program_method &&
+            !fn->tuple_method && !fn->ref_method && !fn->call_method && !fn->scoped_call_method &&
+            !fn->ref_pair_method && !fn->scoped_ref_pair_method &&
+            !strchr(fn->dynamic_shape->arguments, 'r') && !strchr(fn->dynamic_shape->result, 'r');
     }
     if (fn->scoped_call_method && (!fn->program_root || !fn->dynamic_shape || fn->call_method || fn->ref_pair_method))
     {
@@ -107,11 +118,18 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
     {
         return Eperm;
     }
-    FunctionFid *fid = calloc(1, sizeof(*fid));
+    size_t reply_capacity = function->managed_method ? STYX_MANAGED_LIST_LIMIT : STYX_FUNCTION_FRAME_CAPACITY;
+    size_t stage_capacity = reply_capacity +
+        (function->managed_method ? STYX_SCOPED_LARGE_OVERHEAD : STYX_SCOPED_CALL_OVERHEAD);
+    FunctionFid *fid = calloc(1, sizeof(*fid) + stage_capacity + reply_capacity);
     if (!fid)
     {
         return Enomem;
     }
+    fid->stage_capacity = stage_capacity;
+    fid->reply_capacity = reply_capacity;
+    fid->staged = fid->storage;
+    fid->reply = fid->storage + stage_capacity;
     fid->references = 1;
     fid->workers = workers;
     fid->busy = busy;
@@ -173,9 +191,9 @@ static char *tuple_call(FunctionFid *fid, const void *bytes, size_t count, uint3
         return Ehungup;
     }
     int encoded = outcome == 1 ?
-        (fn->ref_method ? styxrefreplywrite(&result, fid->reply, sizeof(fid->reply), &fid->size) :
-            styxtuplewrite(fn->reply_tag, 0, &result.result, fid->reply, sizeof(fid->reply), &fid->size)) :
-        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
+        (fn->ref_method ? styxrefreplywrite(&result, fid->reply, fid->reply_capacity, &fid->size) :
+            styxtuplewrite(fn->reply_tag, 0, &result.result, fid->reply, fid->reply_capacity, &fid->size)) :
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, fid->reply_capacity, &fid->size);
     return encoded ? nil : Ebadarg;
 }
 
@@ -207,8 +225,8 @@ static char *call_list(FunctionFid *fid, const void *bytes, size_t count, uint32
     }
     int encoded = outcome == 1 ?
         styxcallrecordwrite(fn->reply_tag, output_shape, &result,
-            fid->reply, sizeof(fid->reply), &fid->size) :
-        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
+            fid->reply, fid->reply_capacity, &fid->size) :
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, fid->reply_capacity, &fid->size);
     return encoded ? nil : Ebadarg;
 }
 
@@ -240,10 +258,13 @@ static char *ref_pair_call(FunctionFid *fid, const void *bytes, size_t count, ui
     }
     int encoded = outcome == 1 ?
         pair.count == objects && styxrefpairwrite(STYX_REF_PAIR_REPLY_TAG, &pair,
-            fid->reply, sizeof(fid->reply), &fid->size) :
-        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, sizeof(fid->reply), &fid->size);
+            fid->reply, fid->reply_capacity, &fid->size) :
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, fid->reply, fid->reply_capacity, &fid->size);
     return encoded ? nil : Ebadarg;
 }
+
+
+#include "scalar_function_managed.inc"
 
 
 /* EN: Validate and dispatch one complete legacy-format request.
@@ -255,12 +276,17 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
     const void *request = bytes;
     size_t length = count;
     int envelope = function->scoped_call_method || function->scoped_ref_pair_method ||
+        (function->program_root && function->managed_method) ||
         (function->ref_method && function->program_root && function->request_tag == STYX_REF_REQUEST_TAG);
-    if ((envelope && !styxcall_scope_read(bytes, count, &scoped_pid, &request, &length)) ||
-        (!envelope && count > STYX_FUNCTION_FRAME_CAPACITY) ||
+    if ((envelope && !styxcall_scope_read_bounded(bytes, count, fid->reply_capacity, &scoped_pid, &request, &length)) ||
+        (!envelope && count > fid->reply_capacity) ||
         (fid->context_written && (!envelope || (fid->context_pid && fid->context_pid != scoped_pid))))
     {
         return Ebadarg;
+    }
+    if (function->managed_method)
+    {
+        return managed_call(fid, request, length, scoped_pid);
     }
     if (function->ref_pair_method || function->scoped_ref_pair_method)
     {
@@ -309,7 +335,7 @@ static char *dispatch(FunctionFid *fid, const void *bytes, size_t count)
         success = 0;
     }
     return styxscalarwrite(function->reply_tag, success ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
-        value, fid->reply, sizeof(fid->reply), &fid->size) ? nil : Ebadarg;
+        value, fid->reply, fid->reply_capacity, &fid->size) ? nil : Ebadarg;
 }
 
 
@@ -406,104 +432,4 @@ static char *schedule(FunctionFid *fid)
 }
 
 
-/* EN: Accept legacy requests or a staged request followed by an explicit end record.
- * RU: Принять прежний запрос либо отложенный запрос с отдельной записью конца. */
-char *styxscalarfunctionwrite(void *state, const char *bytes, ulong count, vlong offset)
-{
-    FunctionFid *fid = state;
-    if (!fid || fid->running || fid->submitted || offset < 0 || (uint64_t)offset != fid->write_offset)
-    {
-        return Ebadarg;
-    }
-    FVM_SRecord record;
-    size_t used;
-    int complete = count <= sizeof(fid->staged) + STYX_SCOPED_CALL_OVERHEAD &&
-        fvm_srecord_read(bytes, count, sizeof(fid->staged) + STYX_SCOPED_CALL_OVERHEAD,
-            &record, &used) == FVM_S_OK && used == count;
-    if (fid->staged_size)
-    {
-        if (complete && record.tag == STYX_CALL_CHUNK_TAG)
-        {
-            if (!record.size || record.size > sizeof(fid->staged) - fid->staged_size)
-            {
-                return Ebadarg;
-            }
-            memcpy(fid->staged + fid->staged_size, record.payload, record.size);
-            fid->staged_size += record.size;
-            fid->write_offset += count;
-            return nil;
-        }
-        if (!complete || record.tag != STYX_CALL_END_TAG || record.size)
-        {
-            return Ebadarg;
-        }
-        if (fid->workers)
-        {
-            return fid->context_written ? schedule(fid) : Ebadarg;
-        }
-        return dispatch(fid, fid->staged, fid->staged_size);
-    }
-    if (complete && record.tag == STYX_CALL_CONTEXT_TAG && !offset)
-    {
-        if (!styxcall_context(record.payload, record.size, &fid->context_pid))
-        {
-            return Ebadarg;
-        }
-        fid->context_written = 1;
-        fid->write_offset = count;
-        return nil;
-    }
-    if (complete && record.tag == STYX_CALL_STAGE_TAG)
-    {
-        if (!record.size || record.size > sizeof(fid->staged))
-        {
-            return Ebadarg;
-        }
-        memcpy(fid->staged, record.payload, record.size);
-        fid->staged_size = record.size;
-        fid->write_offset += count;
-        return nil;
-    }
-    return !fid->workers && !fid->context_written && count <= sizeof(fid->staged) ? dispatch(fid, bytes, count) : Ebadarg;
-}
-
-
-/* EN/RU: Copy a reply slice to bytes and report its count; reject reads before a request.
- * Копировать часть ответа в bytes и вернуть размер; отказать до получения запроса. */
-char *styxscalarfunctionread(void *state, char *bytes, ulong *count, vlong offset)
-{
-    FunctionFid *fid = state;
-    if (fid && fid->running)
-    {
-        if (!__atomic_load_n(&fid->ready, __ATOMIC_ACQUIRE))
-        {
-            *count = 0;
-            return offset == 0 ? nil : Ebadarg;
-        }
-        if (fid->failure)
-        {
-            return fid->failure;
-        }
-    }
-    if (fid && fid->staged_size && !fid->submitted && offset == 0)
-    {
-        *count = 0;
-        return nil;
-    }
-    if (!fid || !fid->size || offset < 0)
-    {
-        return Ebadarg;
-    }
-    if ((uvlong)offset >= fid->size)
-    {
-        *count = 0;
-        return nil;
-    }
-    size_t available = fid->size - (size_t)offset;
-    if (*count > available)
-    {
-        *count = available;
-    }
-    memcpy(bytes, fid->reply + offset, *count);
-    return nil;
-}
+#include "scalar_function_io.inc"

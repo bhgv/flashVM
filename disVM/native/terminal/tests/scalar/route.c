@@ -407,6 +407,9 @@ static void mounted_function(void)
 
 /* EN/RU: Exercise both reply types and verify wrong requests did not invoke the method.
  * Проверить оба вида ответа и отсутствие вызовов для чужого тега. */
+#include "managed_fid.inc"
+
+
 int main(void)
 {
     round_trip(native_interface);
@@ -414,6 +417,7 @@ int main(void)
     round_trip(native_error);
     check(calls == 2, "exact owner method count");
     mounted_function();
+    managed_fid();
     check(calls == 4, "exact method count after interleaved fids");
     puts("PASS mounted scalar function with two Styx fids");
     WalkEntity first, second;

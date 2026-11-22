@@ -398,3 +398,13 @@ cancellation on that token. Owner code that may run for a long time can
 check `Vfsnative->callcancelled()` at a safe point and unwind its call.
 The token belongs to that invocation. Closing one fid does not cancel
 another fid. Code without a checkpoint can still run to completion.
+
+
+## Native callback for managed values
+
+The `managed_method` field connects a C callback to a Styx function file.
+Tag 100 carries the typed argument tuple. Tag 101 contains two positions,
+the result and an empty update list. This profile bounds both the request
+and the reply to 64 KiB. A single fid accepts a request assembled from
+multiple writes. The callback is tested over a real Styx connection.
+Ordinary remote `load` still needs a Dis executor and reference updates.

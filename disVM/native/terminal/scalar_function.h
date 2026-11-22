@@ -11,6 +11,9 @@
 #include "ref_pair_record.h"
 #include "provider.h"
 
+#define STYX_MANAGED_REQUEST_TAG 100UL /* Typed managed argument list. */
+#define STYX_MANAGED_REPLY_TAG 101UL /* Result and updates envelope. */
+
 typedef struct StyxScalarFunction
 {
     unsigned long request_tag; /* Expected request frame tag. */
@@ -27,6 +30,7 @@ typedef struct StyxScalarFunction
     const StyxCallShape *dynamic_shape; /* Borrowed validated scalar schema through join. */
     int (*scoped_call_method)(void *, DVM_Provider *, const StyxCallValues *, StyxCallValues *); /* Typed call with a borrowed caller provider. */
     int (*scoped_ref_pair_method)(void *, DVM_Provider *, StyxRefPair *); /* Reference call with a borrowed caller provider. */
+    int (*managed_method)(void *, DVM_Provider *, const FVM_SRecord *, unsigned char *, size_t, size_t *); /* Borrow request/context and encode reply. */
 } StyxScalarFunction;
 
 
