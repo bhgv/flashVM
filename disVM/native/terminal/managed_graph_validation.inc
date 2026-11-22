@@ -3,6 +3,85 @@
  * RU: Проверка запроса и двух связанных частей ответа с графом ссылок.
  */
 
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_graph_positions(const char *shape, const FVM_SRecord *arguments, StyxGraphPositions *positions)
+{
+    memset(positions, 0, sizeof(*positions));
+    if (arguments->tag != STYX_MANAGED_POSITION_GRAPH_TAG)
+    {
+        return 1;
+    }
+    size_t offset = 0, position = 0;
+    for (const char *type = shape + 1; *type != ')'; position++)
+    {
+        FVM_SRecord record;
+        size_t used;
+        const char *next = styxshape_end(type);
+        if (!next || position >= STYX_SHAPE_MAX || offset >= arguments->size ||
+            fvm_srecord_read(arguments->payload + offset, arguments->size - offset,
+                STYX_MANAGED_LIST_LIMIT, &record, &used) != FVM_S_OK)
+        {
+            return 0;
+        }
+        if (*type == 'r' && record.tag == STYX_MANAGED_REF_TAG && record.size)
+        {
+            unsigned index = record.payload[0];
+            if (!positions->argument[index])
+            {
+                positions->argument[index] = (unsigned short)(position + 1);
+                positions->reference[position] = (unsigned short)(index + 1);
+            }
+        }
+        type = next;
+        offset += used;
+    }
+    return offset == arguments->size;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_graph_update_index(const StyxGraphPositions *positions, const FVM_SRecord *update,
+    size_t originals, size_t *index)
+{
+    if (update->size < 2)
+    {
+        return 0;
+    }
+    unsigned value = update->payload[0];
+    if (update->tag == STYX_MANAGED_ARG_UPDATE_TAG)
+    {
+        if (value >= STYX_SHAPE_MAX || !positions->reference[value])
+        {
+            return 0;
+        }
+        value = positions->reference[value] - 1;
+    }
+    else if (update->tag != STYX_MANAGED_REF_TAG || positions->argument[value])
+    {
+        return 0;
+    }
+    if (value >= originals)
+    {
+        return 0;
+    }
+    *index = value;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+unsigned long styxmanaged_graph_updates_tag(unsigned long request)
+{
+    if (request == STYX_MANAGED_POSITION_GRAPH_TAG)
+    {
+        return STYX_MANAGED_POSITION_UPDATES_TAG;
+    }
+    return request == STYX_MANAGED_SPARSE_GRAPH_TAG ?
+        STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG : STYX_MANAGED_GRAPH_UPDATES_TAG;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list)
 {
     if (!list)
@@ -18,6 +97,7 @@ int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list)
     return managed_payload(shape, list->payload, list->size, &keys);
 }
 
+/* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,
     const StyxReplyField fields[2])
 {
@@ -31,8 +111,13 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
         return 0;
     }
     size_t originals = keys.count;
-    int sparse = arguments->tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
-    unsigned long update_tag = sparse ? STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG : STYX_MANAGED_GRAPH_UPDATES_TAG;
+    int sparse = styxmanaged_sparse_graph_tag(arguments->tag);
+    unsigned long update_tag = styxmanaged_graph_updates_tag(arguments->tag);
+    StyxGraphPositions positions;
+    if (!styxmanaged_graph_positions(shape->arguments, arguments, &positions))
+    {
+        return 0;
+    }
     if ((!strcmp(shape->result, "()") ? result.tag != STYX_MANAGED_NIL_TAG || result.size :
             result.tag != STYX_DYNAMIC_REPLY_TAG ||
             !managed_payload(shape->result, result.payload, result.size, &keys)) ||
@@ -45,13 +130,14 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
     for (size_t offset = 0; offset < updates.size; offset += used)
     {
         FVM_SRecord update;
+        size_t index;
         if (fvm_srecord_read(updates.payload + offset, updates.size - offset, STYX_MANAGED_LIST_LIMIT,
-                &update, &used) != FVM_S_OK || update.tag != STYX_MANAGED_REF_TAG || update.size < 2)
+                &update, &used) != FVM_S_OK ||
+            !styxmanaged_graph_update_index(&positions, &update, originals, &index))
         {
             return 0;
         }
-        size_t index = update.payload[0];
-        if (index < next || index >= originals)
+        if (index < next)
         {
             return 0;
         }
@@ -182,7 +268,7 @@ int styxmanaged_graph_fields(const char *type, const FVM_SRecord *update, StyxFi
 {
     char schema[STYX_SHAPE_MAX + 1];
     FieldLeaves leaves = {0};
-    if (update->tag != STYX_MANAGED_REF_TAG || update->size < 3 ||
+    if ((update->tag != STYX_MANAGED_REF_TAG && update->tag != STYX_MANAGED_ARG_UPDATE_TAG) || update->size < 3 ||
         !styxmanaged_result_ref_fields(type, schema) || !field_leaves(schema + 1, NULL, &leaves))
     {
         return 0;

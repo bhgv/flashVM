@@ -109,6 +109,8 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_ARG_UPDATE_TAG 18UL /* Tuple position, field mask and selected values. */
+#define STYX_MANAGED_POSITION_UPDATES_TAG 19UL /* Sparse entries may use argument positions. */
 #define STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG 17UL /* Original index, field mask and selected values. */
 #define STYX_MANAGED_GRAPH_UPDATES_TAG 16UL /* Changed objects, in request index order. */
 #define STYX_MANAGED_EDIT_TAG 15UL /* Ordered offset, removal and insertion records. */
@@ -217,6 +219,29 @@ int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
 /* EN: Validate the argument payload according to its negotiated request tag.
  * RU: Проверить аргументы по согласованному тегу запроса. */
 int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list);
+typedef struct StyxGraphPositions
+{
+    unsigned short argument[STYX_CALL_REF_KEYS]; /* Earliest direct position plus one, zero for nested-only refs. */
+    unsigned short reference[STYX_SHAPE_MAX]; /* Identity plus one at each canonical direct position. */
+} StyxGraphPositions;
+
+/* EN: Build the direct argument map for a validated request with a positional tag.
+ * For other dialects leave positions disabled. Returns zero on inconsistent input.
+ * RU: Построить карту прямых параметров проверенного запроса с позиционным тегом.
+ * Для других диалектов карта пуста. Ноль означает несогласованные данные. */
+int styxmanaged_graph_positions(const char *shape, const FVM_SRecord *arguments, StyxGraphPositions *positions);
+
+/* EN: Resolve a reply selector to an original identity. Reject invalid selectors
+ * and noncanonical aliases before a caller can index the reference table.
+ * RU: Найти исходную ссылку по селектору ответа. Отклонить неверные и повторные
+ * позиции до обращения к таблице ссылок. */
+int styxmanaged_graph_update_index(const StyxGraphPositions *positions, const FVM_SRecord *update,
+    size_t originals, size_t *index);
+
+/* EN: Select the reply list tag belonging to the checked graph dialect.
+ * RU: Выбрать тег списка ответа для проверенного диалекта графа. */
+unsigned long styxmanaged_graph_updates_tag(unsigned long request);
+
 /* EN: Validate both graph-reply positions using one identity namespace.
  * RU: Проверить обе части ответа с общей таблицей ссылок. */
 int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,

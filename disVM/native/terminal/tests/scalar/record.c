@@ -17,6 +17,7 @@
 
 
 #include "managed_records.inc"
+#include "graph_positions.inc"
 
 
 /* EN/RU: Return the argument or a fixture error, recording each admitted call.
@@ -436,7 +437,7 @@ int main(void)
     {
         return 1;
     }
-    if (!graph_reply_records() || !sparse_graph_fields())
+    if (!graph_reply_records() || !sparse_graph_fields() || !argument_position_updates())
     {
         fputs("managed graph reply validation failed\n", stderr);
         return 1;

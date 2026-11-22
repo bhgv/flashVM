@@ -487,5 +487,12 @@ int styxmanaged_graph_required(const char *arguments)
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
 int styxmanaged_graph_tag(unsigned long tag)
 {
-    return tag == STYX_MANAGED_GRAPH_TAG || tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
+    return tag == STYX_MANAGED_GRAPH_TAG || styxmanaged_sparse_graph_tag(tag);
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxmanaged_sparse_graph_tag(unsigned long tag)
+{
+    return tag == STYX_MANAGED_SPARSE_GRAPH_TAG || tag == STYX_MANAGED_POSITION_GRAPH_TAG;
 }

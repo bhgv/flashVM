@@ -410,12 +410,13 @@ static int managed_capabilities(void)
             return 0;
         }
     }
-    return styxmanaged_request_tag(STYX_MANAGED_SPARSE_GRAPH_TAG) &&
+    return styxmanaged_request_tag(STYX_MANAGED_POSITION_GRAPH_TAG) &&
+        styxmanaged_request_tag(STYX_MANAGED_SPARSE_GRAPH_TAG) &&
         styxmanaged_request_tag(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_has_snapshot(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_request_tag(STYX_MANAGED_REPLY_TAG) &&
         !styxmanaged_request_tag(STYX_SCOPED_RECORD_OFFER_TAG) &&
-        !styxmanaged_request_tag(STYX_MANAGED_SPARSE_GRAPH_TAG + 1) &&
+        !styxmanaged_request_tag(STYX_MANAGED_POSITION_GRAPH_TAG + 1) &&
         styxmanaged_capability(0, STYX_MANAGED_GRAPH_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
         styxmanaged_capability(1, 0) == STYX_MANAGED_DELTA_REQUEST_TAG;
 }

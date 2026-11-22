@@ -255,6 +255,11 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
                     unsigned char marker[sizeof(STYX_MANAGED_SPARSE_GRAPH_MARKER)];
                     size_t length = mounted_profile(directory, STYX_MANAGED_DELTA_FILE, marker, sizeof(marker));
                     if (length == sizeof(marker) - 1 &&
+                        !memcmp(marker, STYX_MANAGED_POSITION_GRAPH_MARKER, length))
+                    {
+                        graph_tag = STYX_MANAGED_POSITION_GRAPH_TAG;
+                    }
+                    else if (length == sizeof(marker) - 1 &&
                         !memcmp(marker, STYX_MANAGED_SPARSE_GRAPH_MARKER, length))
                     {
                         graph_tag = STYX_MANAGED_SPARSE_GRAPH_TAG;

@@ -9,10 +9,11 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
 {
     StyxRefDefinition definitions[STYX_CALL_REF_KEYS];
     DVM_StyxRefTable refs = {.count = count, .limit = STYX_CALL_REF_KEYS, .result = 1};
+    StyxGraphPositions positions;
     size_t originals;
     if (count > STYX_CALL_REF_KEYS ||
         !styxmanaged_ref_definitions(shape->arguments, baseline, 1, definitions, STYX_CALL_REF_KEYS, &originals) ||
-        originals != count)
+        originals != count || !styxmanaged_graph_positions(shape->arguments, baseline, &positions))
     {
         return 0;
     }
@@ -23,8 +24,8 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
     unsigned char result[STYX_MANAGED_LIST_LIMIT], updates[STYX_MANAGED_LIST_LIMIT];
     unsigned char payload[STYX_MANAGED_LIST_LIMIT], record[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, length = 0;
-    int sparse = baseline->tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
-    unsigned long update_tag = sparse ? STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG : STYX_MANAGED_GRAPH_UPDATES_TAG;
+    int sparse = styxmanaged_sparse_graph_tag(baseline->tag);
+    unsigned long update_tag = styxmanaged_graph_updates_tag(baseline->tag);
     int valid = !strcmp(shape->result, "()") ?
         fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, result, sizeof(result), &result_size) == FVM_S_OK :
         dvm_styx_graph_write(&refs, STYX_DYNAMIC_REPLY_TAG, shape->result, slots, size,
@@ -64,7 +65,10 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
                 record, sizeof(record), &fields_size);
             if (valid && fields_size)
             {
-                valid = fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, record, fields_size,
+                unsigned position = positions.argument[i];
+                unsigned long tag = position ? STYX_MANAGED_ARG_UPDATE_TAG : STYX_MANAGED_REF_TAG;
+                unsigned char selector = position ? (unsigned char)(position - 1) : index;
+                valid = fvm_srecord_write_pair(tag, &selector, 1, record, fields_size,
                     payload + length, sizeof(payload) - length, &written) == FVM_S_OK;
                 if (valid)
                 {
@@ -143,10 +147,12 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
     StyxRefDefinition definitions[STYX_CALL_REF_KEYS];
     StyxReplyField fields[2];
     FVM_SRecord records[2];
+    StyxGraphPositions positions;
     size_t originals, used;
     if (!styxmanaged_ref_definitions(shape->arguments, baseline, 1, definitions, STYX_CALL_REF_KEYS, &originals) ||
         originals != refs->count || !styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) ||
         !styxmanaged_graph_reply(shape, baseline, fields) ||
+        !styxmanaged_graph_positions(shape->arguments, baseline, &positions) ||
         fvm_srecord_read(fields[0].bytes, fields[0].size, STYX_MANAGED_LIST_LIMIT, &records[0], &used) != FVM_S_OK ||
         fvm_srecord_read(fields[1].bytes, fields[1].size, STYX_MANAGED_LIST_LIMIT, &records[1], &used) != FVM_S_OK)
     {
@@ -161,18 +167,19 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
     for (size_t offset = 0; valid && offset < records[1].size; offset += used)
     {
         FVM_SRecord update;
+        size_t index;
         valid = fvm_srecord_read(records[1].payload + offset, records[1].size - offset,
-            STYX_MANAGED_LIST_LIMIT, &update, &used) == FVM_S_OK;
+            STYX_MANAGED_LIST_LIMIT, &update, &used) == FVM_S_OK &&
+            styxmanaged_graph_update_index(&positions, &update, originals, &index);
         if (!valid)
         {
             break;
         }
-        size_t index = update.payload[0];
         unsigned mask;
         DVM_StyxValueFrame *stage = &stages[count];
         void *original = refs->objects[index];
         valid = graph_stage(refs, &definitions[index], &update,
-            baseline->tag == STYX_MANAGED_SPARSE_GRAPH_TAG, stage, &mask);
+            styxmanaged_sparse_graph_tag(baseline->tag), stage, &mask);
         if (valid)
         {
             swaps[count++] = (RefSwap){original, stage->words, stage->layout, mask};

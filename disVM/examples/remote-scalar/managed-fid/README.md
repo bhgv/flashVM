@@ -118,9 +118,13 @@ that object in place and returns the original reference. An exception
 leaves the caller's objects untouched.
 
 
-The seven-byte marker content `v00008\n` selects request tag 111 and update-list
-tag 17 for nested-reference signatures. Each update starts with its original
-index and a nonzero byte mask. Bit zero selects the first native field, with
+The seven-byte marker `v00009\n` selects request tag 112 and update-list
+tag 19 for nested-reference signatures. An updated object reachable as a
+direct `ref` parameter uses tag 18 and the zero-based position of its first
+direct alias in the argument tuple. An object reachable only through a nested
+value uses tag 10 and its original graph index. Each selector is followed by
+a nonzero byte mask. A `v00008\n` peer uses request tag 111, list tag 17
+and the graph index for every object. Bit zero selects the first native field, with
 tuple fields flattened in declaration order. Only selected field records
 follow the mask. References use the same table across the result and all
 updates. Changed strings and arrays are sent as whole field values. The earlier content `v00007\n` and older graph clients still use
