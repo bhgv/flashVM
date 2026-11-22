@@ -12,9 +12,11 @@ static int seed_result(DVM_StyxRefTable *table, const char *shape, const void *s
     char refs[STYX_SHAPE_MAX + 1];
     void *objects[STYX_CALL_VALUES] = {0};
     FVM_SRecord records[STYX_CALL_VALUES];
-    size_t count;
+    StyxRefDefinition definitions[STYX_CALL_VALUES];
+    size_t count, defined;
     if (!arguments || !dvm_styx_ref_slots(shape, slots, refs, objects) ||
-        !styxmanaged_ref_records(shape, arguments, records, &count))
+        !styxmanaged_ref_records(shape, arguments, records, &count) ||
+        !styxmanaged_ref_definitions(shape, arguments, 0, definitions, STYX_CALL_VALUES, &defined))
     {
         return 0;
     }
@@ -33,7 +35,7 @@ static int seed_result(DVM_StyxRefTable *table, const char *shape, const void *s
             return 0;
         }
         size_t index = records[i].payload[0];
-        if (index == table->count && index < STYX_CALL_VALUES && records[i].size > 1)
+        if (index == table->count && index < defined && records[i].payload == definitions[index].record.payload)
         {
             table->objects[table->count++] = objects[i];
         }
@@ -42,7 +44,7 @@ static int seed_result(DVM_StyxRefTable *table, const char *shape, const void *s
             return 0;
         }
     }
-    return 1;
+    return table->count == defined;
 }
 
 

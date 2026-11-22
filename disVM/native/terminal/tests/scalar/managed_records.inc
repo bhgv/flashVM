@@ -478,5 +478,26 @@ static int linked_result_graph(void)
             return 0;
         }
     }
+    static const char schema[] = "(r[r[s]r[s]])";
+    StyxRefDefinition definitions[2];
+    size_t count;
+    /* The last iteration encoded a forward alias, with a complete definition later. */
+    FVM_SRecord graph = {.payload = object, .size = object_size};
+    if (styxmanaged_ref_definitions(schema, &graph, 1, definitions, 2, &count))
+    {
+        return 0;
+    }
+    memcpy(fields, definition, definition_size);
+    memcpy(fields + definition_size, alias, alias_size);
+    if (fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &parent, 1, fields, definition_size + alias_size,
+            object, sizeof(object), &graph.size) != FVM_S_OK ||
+        styxmanaged_ref_definitions(schema, &graph, 0, definitions, 2, &count) ||
+        styxmanaged_ref_definitions(schema, &graph, 1, definitions, 1, &count) ||
+        !styxmanaged_ref_definitions(schema, &graph, 1, definitions, 2, &count) || count != 2 ||
+        definitions[0].shape != schema + 1 || definitions[1].shape != schema + 3 ||
+        definitions[0].record.payload[0] != parent || definitions[1].record.payload[0] != child)
+    {
+        return 0;
+    }
     return 1;
 }

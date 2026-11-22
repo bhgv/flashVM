@@ -13,6 +13,21 @@ int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
 
 
 /* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_ref_definitions(const char *shape, const FVM_SRecord *list, int nested,
+    StyxRefDefinition *definitions, size_t limit, size_t *count)
+{
+    RefKeys keys = {.definitions = definitions, .limit = limit, .nested = nested};
+    if (!list || !definitions || !count || !limit || limit > STYX_CALL_REF_KEYS ||
+        !managed_payload(shape, list->payload, list->size, &keys))
+    {
+        return 0;
+    }
+    *count = keys.count;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_payload_linked(const char *shape, const void *bytes, size_t size,
     const char *argument_shape, const FVM_SRecord *arguments)
 {

@@ -7,6 +7,7 @@
 typedef struct RefKeys
 {
     const char *type[STYX_CALL_REF_KEYS]; /* First occurrence of each object schema. */
+    StyxRefDefinition *definitions; /* Optional definitions indexed by wire identity. */
     size_t count; /* Number of reserved snapshot indices. */
     size_t limit; /* Maximum count, or zero for the standalone limit. */
     int nested; /* Result traversal may define references inside values. */
@@ -76,5 +77,9 @@ static int managed_ref(const char *shape, const FVM_SRecord *value, unsigned dep
         return 0;
     }
     keys->type[index] = shape;
+    if (keys->definitions)
+    {
+        keys->definitions[index] = (StyxRefDefinition){shape, *value};
+    }
     return 1;
 }

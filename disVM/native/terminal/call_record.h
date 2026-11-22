@@ -196,6 +196,19 @@ typedef struct StyxReplyField
  * On failure fields stay unchanged. Callers still validate value types.
  * При отказе fields сохраняется. Типы значений проверяет вызывающий. */
 int styxcall_reply_read(unsigned long tag, const void *bytes, size_t size, StyxReplyField fields[2]);
+typedef struct StyxRefDefinition
+{
+    const char *shape; /* Borrowed start of an ADT schema in the input shape. */
+    FVM_SRecord record; /* Borrowed defining record including its index byte. */
+} StyxRefDefinition;
+
+/* EN: Index definitions in a checked value graph by wire identity. Limit is the
+ * number of available entries (1–256). Discard entries on failure.
+ * RU: Собрать определения проверенного графа по сетевым индексам. Limit задаёт
+ * число доступных записей (1–256). При ошибке записи использовать нельзя. */
+int styxmanaged_ref_definitions(const char *shape, const FVM_SRecord *list, int nested,
+    StyxRefDefinition *definitions, size_t limit, size_t *count);
+
 /* EN: Validate borrowed children against the value-list schema.
  * RU: Проверить заимствованные дочерние записи по схеме списка. */
 int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size);
