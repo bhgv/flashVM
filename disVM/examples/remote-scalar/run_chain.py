@@ -130,6 +130,8 @@ def run_b(options, listener, main_library, alternate_library):
             (EXAMPLE / "styx-chain-local.b", "deps/wide.dis"),
         ))
         (root / "leaf-alias.dis").touch()
+        (root / ".var").mkdir()
+        (root / ".var/unpublished").write_bytes(b"private on B")
         main = sockets.enter_context(connect(main_library))
         alternate = sockets.enter_context(connect(alternate_library))
         launch = sockets.enter_context(accept(listener))
@@ -145,7 +147,8 @@ def run_a(options, owner):
         compile_images(options.limbo, root, ((EXAMPLE / "styx-chain-client.b", "chain-client.dis"),))
         (root / ".vfs").mkdir()
         (root / "alias.dis").touch()
-        (root / "enable-nested-cancel").touch()
+        (root / "enable-nested-checks").touch()
+        (root / ".var").mkdir()
         (root / "stdin").write_bytes(b"live")
         (root / "fd3").write_bytes(b"skipmore")
         shared = root / "shared"
@@ -164,7 +167,8 @@ def run_a(options, owner):
                     "chain stdout\n" not in stdout or "chain stderr\n" not in stderr or
                     "chain leaf stdout\n" not in stdout or "chain leaf stderr\n" not in stderr or
                     "PASS mounted Styx launch completion\n" not in stdout or
-                    "PASS nested Styx launch cancellation\n" not in stdout):
+                    "PASS nested Styx launch cancellation\n" not in stdout or
+                    "PASS nested Styx shared variables\n" not in stdout):
                 raise RuntimeError(f"wrong result or descriptor state\n{stdout}{stderr}")
 
 

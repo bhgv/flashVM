@@ -126,9 +126,10 @@ with JIT enabled and disabled.
 
 Before publishing the caller tree, DisVM captures explicit directory
 mounts at `/.fd`, `/.vfs` and `/.var` in the current caller's namespace.
-Missing mounts are omitted. A union or a mount that cannot be captured
-cancellably prevents submission. The fixture verifies `.vfs/env/CLIENT` and `.var/counter` through reverse
-Styx for both callers.
+An incoming launch grant supplies `.var` if the caller has no explicit
+variable mount. Other missing subtrees are omitted. A union or a mount that
+cannot be captured cancellably prevents submission. The fixture verifies
+`.vfs/env/CLIENT` and `.var/counter` through reverse Styx for both callers.
 
 The SDK supplies a generic reverse server. Start it with
 `styxcallerserver` on the reverse carrier channel and pass its control with the attached forward client to
@@ -142,8 +143,7 @@ caller PIDs. The same PID may have one live publication. `.prog` lists
 a snapshot of the active PIDs. Each call has a separate Qid generation
 with up to 511 additional walked nodes. Open fids cannot issue new I/O
 after their call ends. The scalar provider may dispatch methods serially
-while multiple callers remain active. The host must provision both transport channels. Automatic
-collection of ordinary managed FD and variable grants remains open.
+while multiple callers remain active. The host must provision both transport channels.
 
 When the caller has no explicit `/.fd` mount, DisVM projects the
 numbered descriptors imported at process launch. The exported alias

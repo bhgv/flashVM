@@ -163,8 +163,8 @@ static void events_destroy(void *state)
 }
 
 
-/* EN: Observe only the explicitly shared VFS and variable grants.
- * RU: Наблюдать только явно выданные деревья VFS и переменных. */
+/* EN: Observe the selected VFS and variable grants.
+ * RU: Наблюдать выбранные деревья VFS и переменных. */
 static DVM_Provider *events_provider(const DVM_ProgramView *entry)
 {
     static const DVM_ProviderOps ops = {.info = events_info, .open = events_open,
@@ -192,6 +192,10 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descrip
     int captured = capture_grant(group, "/.fd", &entry.fds) &&
         capture_grant(group, "/.vfs", &entry.vfs) &&
         capture_grant(group, "/.var", &entry.vars);
+    if (captured && !entry.vars)
+    {
+        captured = dvm_launch_vars_view(descriptors, &entry.vars);
+    }
     if (captured && !entry.fds)
     {
         entry.fds = dvm_launch_fd_view(descriptors, &captured);

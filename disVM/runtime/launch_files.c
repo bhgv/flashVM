@@ -20,6 +20,7 @@
 struct DVM_LaunchFiles
 {
     unsigned references;            /* Atomic ownership count through process inheritance. */
+    DVM_Provider *vars;             /* Owned explicit variable grant from the incoming launch. */
     uint32_t hidden;                /* Explicitly absent numbers reserved in the launch view. */
     uint32_t occupied;              /* Mask of imported guest numbers. */
     unsigned char modes[DVM_LAUNCH_FD_COUNT]; /* Original access of each imported file. */
@@ -262,7 +263,21 @@ int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **ou
     *out = NULL;
     if (handoff->program)
     {
-        return open_program(handoff, out);
+        if (!open_program(handoff, out))
+        {
+            return 0;
+        }
+        if (handoff->program_var)
+        {
+            if (!*out || !dvm_provider_retain(handoff->program_var))
+            {
+                dvm_launch_files_release(*out);
+                *out = NULL;
+                return 0;
+            }
+            (*out)->vars = handoff->program_var;
+        }
+        return 1;
     }
     const DVM_TerminalChannels *terminal = &handoff->flashvm;
     for (unsigned i = 0; i < DVM_LAUNCH_FD_COUNT; i++)
@@ -322,8 +337,23 @@ void dvm_launch_files_release(DVM_LaunchFiles *files)
                 dvm_file_slots_drop_launch(files->slots[i]);
             }
         }
+        dvm_provider_release(files->vars);
         free(files);
     }
+}
+
+
+/* EN/RU: See launch_files.h. / См. launch_files.h. */
+int dvm_launch_vars_view(DVM_LaunchFiles *files, DVM_Provider **out)
+{
+    DVM_Provider *vars = files ? files->vars : NULL;
+    *out = NULL;
+    if (vars && !dvm_provider_retain(vars))
+    {
+        return 0;
+    }
+    *out = vars;
+    return 1;
 }
 
 

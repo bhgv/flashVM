@@ -61,8 +61,11 @@ int dvm_program_publication_replace(DVM_ProgramPublication *control,
 struct DVM_LaunchFiles; /* Borrowed numbered table pinned by the active caller. */
 
 
-/* EN: Capture the caller's borrowed namespace and numbered files during native wait.
- * RU: Захватить пространство имён и номерные файлы клиента при нативном ожидании. */
+/* EN: Capture the caller's namespace and launch grants during native wait. An
+ * explicit .var mount selects variables, with the incoming launch grant as
+ * fallback when the caller has no .var mount.
+ * RU: Захватить namespace и выданные ресурсы при нативном ожидании. Явный
+ * маунт .var определяет переменные. Иначе используется каталог входящего запуска. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
 
 

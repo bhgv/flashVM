@@ -5,6 +5,7 @@ implement Owner;
 include "sys.m";
 include "vfsnative.m";
 include "launchcontext.m";
+include "vfsexport.m";
 
 Owner: module { init: fn(); };
 include "wide.m";
@@ -78,9 +79,17 @@ init()
     n := sys->read(marker, mark, len mark);
     if (n != 4 || mark[0] != byte 0 || mark[1] != byte 0 || mark[2] != byte 0 || mark[3] != byte 42)
         raise "invalid A marker on B";
-    check_managed();
-    if (sys->open("/remote-libs/.programs", Sys->OREAD) != nil) {
-        check_nested_launch(sys);
+    nested := sys->open("/remote-libs/.programs", Sys->OREAD) != nil;
+    check_managed(nested);
+    if (nested) {
+        chain_var(sys, 19, -1);
+        done := chan of string;
+        spawn nested_child(sys, done);
+        failure := <-done;
+        if (failure != "") {
+            raise failure;
+        }
+        check_variable_override(sys);
     }
     if (sys->fprint(sys->fildes(1), "chain stdout\n") <= 0 ||
         sys->fprint(sys->fildes(2), "chain stderr\n") <= 0) {
@@ -90,7 +99,7 @@ init()
 
 # EN: Copy back an aliased graph from C before reporting the launch result to A.
 # RU: Получить вложенные обновления с C до передачи результата запуска на A.
-check_managed()
+check_managed(nested: int)
 {
     remote := load Managed "/deps/managed.dis";
     if (remote == nil)
@@ -101,7 +110,7 @@ check_managed()
     extra := array[32] of ref Cell;
     extra[0] = original;
     extra[31] = ref Cell("untouched", nil);
-    (returned, output) := remote->changegraph(state, extra, 3);
+    (returned, output) := remote->changegraph(state, extra, 3+nested);
     if (returned != original || original.text != "changed after unlink" ||
         original.bytes[0] != byte 17 || state.direct != state.members[0] ||
         state.direct == original || state.direct.text != "fresh" || state.members[1] != nil ||
@@ -109,6 +118,20 @@ check_managed()
         len output != 3000 || output[2999] != byte 53) {
         raise "chain managed copy-back failed";
     }
+}
+
+
+# EN: Run the nested launch from a locally spawned B child with the inherited grant.
+# RU: Запустить программу из локального потомка B с унаследованной выдачей.
+nested_child(sys: Sys, done: chan of string)
+{
+    failure := "";
+    {
+        check_nested_launch(sys);
+    } exception detail {
+        "*" => failure = detail;
+    }
+    done <-= failure;
 }
 
 
@@ -129,6 +152,26 @@ check_nested_launch(sys: Sys)
 }
 
 
+# EN: Verify explicit B selection and restoration of the inherited A grant.
+# RU: Проверить выбор явного маунта B и возврат к унаследованной выдаче A.
+check_variable_override(sys: Sys)
+{
+    vfs := load Vfsnative Vfsnative->PATH;
+    exports := load Vfsexport Vfsexport->PATH;
+    local := exports->intvar(42);
+    if (sys->open("/.var/chain-var", Sys->OREAD) != nil ||
+        exports->mount(exports->record(("chain-var", local) :: nil), "/.var", 0, 0) != 0 ||
+        vfs->runargs("/leaf-alias.dis", array of byte "override") != 1) {
+        raise "explicit B variable mount was not selected";
+    }
+    (valid, value) := exports->intget(local);
+    if (!valid || value != 43 || sys->unmount(nil, "/.var") != 0 ||
+        vfs->runargs("/leaf-alias.dis", array of byte "restore") != 1) {
+        raise "nested variable routing did not restore the A grant";
+    }
+}
+
+
 # EN: Forward a cancellation probe or check the connection after a cancelled child.
 # RU: Передать запрос проверки отмены либо проверить соединение после отмены.
 launch_nested_action(sys: Sys, action: string)
@@ -144,3 +187,6 @@ launch_nested_action(sys: Sys, action: string)
         raise "nested connection did not survive cancellation";
     }
 }
+
+
+include "chain-var.b";

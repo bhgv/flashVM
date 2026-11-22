@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Launch-owned numbered file table and native-only suffix of builtin Sys.FD.
- * RU: Номерная таблица файлов запуска и нативное расширение builtin Sys.FD.
+ * EN: Launch-owned file and variable grants and native-only suffix of builtin Sys.FD.
+ * RU: Выданные файлы и переменные запуска и нативное расширение builtin Sys.FD.
  */
 #ifndef DVM_RUNTIME_LAUNCH_FILES_H
 #define DVM_RUNTIME_LAUNCH_FILES_H
@@ -20,9 +20,11 @@ typedef struct DVM_SysFD
 
 
 /* EN/RU: Discover and open the launch's numbered files before dispatch; success returns
- * an owned table or NULL if empty. Explicit terminal modes override discovery.
+ * an owned table or NULL if empty. Retain the explicitly imported variable tree.
+ * Explicit terminal modes override discovery.
  * On failure return zero and retire any obtained files. Handoff is borrowed.
  * Найти и открыть номерные файлы до dispatch; успех даёт свою таблицу или NULL.
+ * Удержать явно выданное дерево переменных.
  * Явно заданные режимы терминала заменяют автоматическое обнаружение.
  * При отказе вернуть ноль и закрыть полученные файлы. Handoff заимствован. */
 int dvm_launch_files_open(const DVM_LaunchHandoff *handoff, DVM_LaunchFiles **out);
@@ -36,6 +38,13 @@ int dvm_launch_files_retain(DVM_LaunchFiles *files);
 /* EN/RU: Drop one table pin; release file slots on the last pin; NULL allowed.
  * Освободить ссылку на таблицу; последняя освобождает слоты; NULL допустим. */
 void dvm_launch_files_release(DVM_LaunchFiles *files);
+
+
+/* EN: Borrow a live launch table. On success write an owned exact variable
+ * directory or NULL if absent. On retain failure clear out and return zero.
+ * RU: Заимствовать живую таблицу запуска. При успехе записать свою ссылку на
+ * выданный каталог переменных либо NULL. При ошибке очистить out и вернуть ноль. */
+int dvm_launch_vars_view(DVM_LaunchFiles *files, DVM_Provider **out);
 
 
 /* EN/RU: Borrow the current process's imported slot, or -1 if the guest number is absent.

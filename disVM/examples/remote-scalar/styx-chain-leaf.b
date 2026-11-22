@@ -19,12 +19,26 @@ init()
         park_nested(sys);
         return;
     }
+    if (action == "override") {
+        if (sys->open("/.prog/.self/.var/chain-readonly", Sys->OREAD) != nil) {
+            raise "explicit .var mount exposed the inherited layer";
+        }
+        chain_var(sys, 42, 43);
+        return;
+    }
+    if (action == "restore") {
+        chain_readonly_var(sys);
+        chain_var(sys, 23, 24);
+        return;
+    }
     if (action == "fail") {
         raise "requested nested launch failure";
     }
     if (action != "leaf") {
         raise "unexpected nested launch arguments";
     }
+    chain_readonly_var(sys);
+    chain_var(sys, 19, 23);
     local := sys->open("/leaf-owner", Sys->OREAD);
     marker := sys->open("/.vfs/chain-stage", Sys->OREAD);
     restricted := sys->fildes(3);
@@ -65,3 +79,6 @@ park_nested(sys: Sys)
     }
     raise "nested launch was not cancelled";
 }
+
+
+include "chain-var.b";

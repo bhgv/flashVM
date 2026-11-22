@@ -317,8 +317,11 @@ may add named images under `programs/`. With the mount at
 or bind an advertised file to a local path before calling `run`.
 A program started over Styx can use the same VFS path to launch a
 dependency on the next peer. The next launch receives that process's
-current descriptor views and VFS grants. Both launches keep their own
-fids through completion or cancellation. See the
+current descriptor views and VFS grants. An explicit `/.var` mount selects
+the outgoing variable tree. In its absence the incoming launch grant and its
+access modes pass through to the next peer. The provider sees variables at
+`/.prog/.self/.var`. Both launches keep their own fids through completion or
+cancellation. See the
 [three-peer example](../examples/remote-scalar/STYX.md#three-peer-launch).
 
 Different descriptor numbers that alias the same socket are rejected before any Styx handshake.

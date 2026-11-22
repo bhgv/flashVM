@@ -17,6 +17,15 @@ init()
     sys := load Sys Sys->PATH;
     vfs := load Vfsnative Vfsnative->PATH;
     exports := load Vfsexport Vfsexport->PATH;
+    extended := sys->open("/enable-nested-checks", Sys->OREAD) != nil;
+    shared := exports->intvar(17);
+    if (extended) {
+        vars := exports->record(("chain-var", shared) :: nil);
+        vars = exports->overlay(vars, exports->intvar(9), "/chain-readonly", Vfsexport->Read, 0);
+        if (vars == nil || exports->mount(vars, "/.var", 0, 0) != 0) {
+            raise "could not publish chain variables";
+        }
+    }
     parked := exports->intvar(0);
     grant := exports->record(("chain-stage", exports->intvar(42)) :: ("chain-parked", parked) :: nil);
     if (grant == nil || exports->mount(grant, "/.vfs", 0, 0) != 0)
@@ -30,7 +39,12 @@ init()
         -1 => raise "chain completion transport failed";
         * => raise "could not submit chain launch";
     }
-    if (sys->open("/enable-nested-cancel", Sys->OREAD) != nil) {
+    if (extended) {
+        (valid, value) := exports->intget(shared);
+        if (!valid || value != 24) {
+            raise "nested calls and launches lost A's live variable";
+        }
+        sys->print("PASS nested Styx shared variables\n");
         cancel_nested(sys, vfs, exports, parked);
     }
 }

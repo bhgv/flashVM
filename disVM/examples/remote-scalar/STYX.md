@@ -322,6 +322,12 @@ marker, checks FD 3 permissions and writes to A's FD 1 and 2. Writes
 through inherited FD aliases 7 and 8 leave A's file containing `skipABCDEF`.
 A launch with an invalid argument reports failure to B on its own fid.
 
+A publishes a live variable and a read-only cell in `/.var`. C's library
+first updates A's variable through B. A separate program launched by B's
+local child updates it again. An explicit mount on B selects its own cell
+for the next launch. Unmounting it restores A's original grant. A checks the
+final value, and C verifies the read-only permission and the scope of the grant.
+
 A also cancels its wait after C signals that the leaf has entered a
 `big` loop. The clunk reaches C through B. A fresh launch and a library
 call then reuse both connections. A verifies the results, both owners'
