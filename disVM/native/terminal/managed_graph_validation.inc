@@ -10,7 +10,7 @@ int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list)
         return 0;
     }
     RefKeys keys = {0};
-    if (list->tag == STYX_MANAGED_GRAPH_TAG)
+    if (styxmanaged_graph_tag(list->tag))
     {
         keys.nested = 1;
         keys.limit = STYX_CALL_REF_KEYS;
@@ -31,11 +31,13 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
         return 0;
     }
     size_t originals = keys.count;
+    int sparse = arguments->tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
+    unsigned long update_tag = sparse ? STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG : STYX_MANAGED_GRAPH_UPDATES_TAG;
     if ((!strcmp(shape->result, "()") ? result.tag != STYX_MANAGED_NIL_TAG || result.size :
             result.tag != STYX_DYNAMIC_REPLY_TAG ||
             !managed_payload(shape->result, result.payload, result.size, &keys)) ||
         fvm_srecord_read(fields[1].bytes, fields[1].size, STYX_MANAGED_LIST_LIMIT, &updates, &used) != FVM_S_OK ||
-        used != fields[1].size || updates.tag != STYX_MANAGED_GRAPH_UPDATES_TAG)
+        used != fields[1].size || updates.tag != update_tag)
     {
         return 0;
     }
@@ -49,7 +51,14 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
             return 0;
         }
         size_t index = update.payload[0];
-        if (index < next || index >= originals ||
+        if (index < next || index >= originals)
+        {
+            return 0;
+        }
+        StyxFieldDelta change;
+        if (sparse ?
+            !styxmanaged_graph_fields(keys.type[index], &update, &change) ||
+                !managed_payload(change.schema, change.fields.payload, change.fields.size, &keys) :
             !managed_children(keys.type[index] + 2, update.payload + 1, update.size - 1, 0, 0, &keys))
         {
             return 0;
@@ -122,4 +131,72 @@ int styxmanaged_graph_mask(const FVM_SRecord *before, const FVM_SRecord *after, 
     unsigned lane = 0;
     *mask = 0;
     return graph_sequence(&left, &right, mask, &lane);
+}
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_graph_diff(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *output, size_t capacity, size_t *used)
+{
+    char schema[STYX_SHAPE_MAX + 1];
+    FieldLeaves left = {0}, right = {0};
+    if (!before->size || !after->size || !styxmanaged_result_ref_fields(type, schema))
+    {
+        return 0;
+    }
+    FVM_SRecord a = {.payload = before->payload + 1, .size = before->size - 1};
+    FVM_SRecord b = {.payload = after->payload + 1, .size = after->size - 1};
+    if (!field_leaves(schema + 1, &a, &left) || !field_leaves(schema + 1, &b, &right))
+    {
+        return 0;
+    }
+    unsigned char *bytes = output;
+    unsigned mask = 0;
+    size_t size = 1;
+    for (size_t i = 0; i < right.count; i++)
+    {
+        const FVM_SRecord *value = &right.node[i];
+        if (graph_compare(&left.node[i], value, NULL, NULL))
+        {
+            continue;
+        }
+        size_t n;
+        if (size >= capacity || fvm_srecord_write(value->tag, value->payload, value->size,
+            bytes + size, capacity - size, &n) != FVM_S_OK)
+        {
+            return 0;
+        }
+        mask |= 1U << i;
+        size += n;
+    }
+    if (mask)
+    {
+        bytes[0] = (unsigned char)mask;
+    }
+    *used = mask ? size : 0;
+    return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_graph_fields(const char *type, const FVM_SRecord *update, StyxFieldDelta *change)
+{
+    char schema[STYX_SHAPE_MAX + 1];
+    FieldLeaves leaves = {0};
+    if (update->tag != STYX_MANAGED_REF_TAG || update->size < 3 ||
+        !styxmanaged_result_ref_fields(type, schema) || !field_leaves(schema + 1, NULL, &leaves))
+    {
+        return 0;
+    }
+    unsigned mask = update->payload[1];
+    if (!mask || (mask >> leaves.count))
+    {
+        return 0;
+    }
+    select_lanes(&leaves, mask, change->schema);
+    change->object = update->payload[0];
+    change->mask = mask;
+    change->fields = *update;
+    change->fields.payload += 2;
+    change->fields.size -= 2;
+    return 1;
 }

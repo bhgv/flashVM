@@ -205,7 +205,11 @@ check_bundle(m: Managed)
 check_graph(m: Managed)
 {
     Cell, Bundle: import m;
-    old := ref Cell("original", array[] of {byte 17});
+    # EN: The unchanged array and the returned array exceed the reply limit together.
+    # RU: Неизменённый и возвращённый массивы вместе превышают лимит ответа.
+    originalbytes := array[4096] of byte;
+    originalbytes[0] = byte 17;
+    old := ref Cell("original", originalbytes);
     members := array[] of {old, nil};
     state := ref Bundle(old, members);
     extra := array[32] of ref Cell;
@@ -221,8 +225,9 @@ check_graph(m: Managed)
     if (!failed || state.direct != old || old.text != "original" || state.members != members) {
         raise "failed graph call changed caller's objects";
     }
-    returned := m->changegraph(state, extra, 0);
-    if (returned != old || old.text != "changed after unlink" || old.bytes[0] != byte 17 ||
+    (returned, output) := m->changegraph(state, extra, 0);
+    if (returned != old || len output != 3000 || output[2999] != byte 53 ||
+        old.text != "changed after unlink" || old.bytes != originalbytes || old.bytes[0] != byte 17 ||
         state.direct == old || state.direct.text != "fresh" || state.direct != state.members[0] ||
         state.members[1] != nil || extra[0] != old || extra[31].text != "last index") {
         raise "graph copy-back lost an identity or field";

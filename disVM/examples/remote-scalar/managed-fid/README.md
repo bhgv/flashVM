@@ -116,3 +116,15 @@ array and a separate array argument. The provider replaces its links before
 updating the old object. The caller verifies that a successful call updates
 that object in place and returns the original reference. An exception
 leaves the caller's objects untouched.
+
+
+The seven-byte marker content `v00008\n` selects request tag 111 and update-list
+tag 17 for nested-reference signatures. Each update starts with its original
+index and a nonzero byte mask. Bit zero selects the first native field, with
+tuple fields flattened in declaration order. Only selected field records
+follow the mask. References use the same table across the result and all
+updates. Changed strings and arrays are sent as whole field values. The earlier content `v00007\n` and older graph clients still use
+tag 110 and complete snapshots of changed objects. The example leaves a
+4,096-byte array field unchanged and returns a separate 3,000-byte array.
+Their combined encoding would exceed the reply limit if the unchanged field
+were included. The client also checks that it keeps its original array.

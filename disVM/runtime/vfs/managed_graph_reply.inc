@@ -23,6 +23,8 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
     unsigned char result[STYX_MANAGED_LIST_LIMIT], updates[STYX_MANAGED_LIST_LIMIT];
     unsigned char payload[STYX_MANAGED_LIST_LIMIT], record[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, length = 0;
+    int sparse = baseline->tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
+    unsigned long update_tag = sparse ? STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG : STYX_MANAGED_GRAPH_UPDATES_TAG;
     int valid = !strcmp(shape->result, "()") ?
         fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, result, sizeof(result), &result_size) == FVM_S_OK :
         dvm_styx_graph_write(&refs, STYX_DYNAMIC_REPLY_TAG, shape->result, slots, size,
@@ -34,7 +36,6 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
         DVM_StyxValueFrame frame = {0};
         FVM_SRecord encoded;
         size_t extent, consumed, written;
-        unsigned mask;
         /* Use the same rooting and native layout checks as regular ref snapshots. */
         valid = styxmanaged_result_ref_fields(definitions[i].shape, fields) &&
             styxmanaged_layout(fields, &frame.layout) &&
@@ -49,25 +50,88 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
                 consumed == encode.size &&
                 fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, encoded.payload, encoded.size,
                     updates, sizeof(updates), &extent) == FVM_S_OK &&
-                fvm_srecord_read(updates, extent, sizeof(updates), &encoded, &consumed) == FVM_S_OK &&
-                styxmanaged_graph_mask(&definitions[i].record, &encoded, &mask);
+                fvm_srecord_read(updates, extent, sizeof(updates), &encoded, &consumed) == FVM_S_OK;
         }
         dvm_styx_value_frame_clear(&frame);
-        if (valid && mask)
+        if (!valid)
         {
-            written = extent;
-            valid = written <= sizeof(payload) - length;
-            if (valid)
+            continue;
+        }
+        if (sparse)
+        {
+            size_t fields_size;
+            valid = styxmanaged_graph_diff(definitions[i].shape, &definitions[i].record, &encoded,
+                record, sizeof(record), &fields_size);
+            if (valid && fields_size)
             {
-                memcpy(payload + length, updates, written);
-                length += written;
+                valid = fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, record, fields_size,
+                    payload + length, sizeof(payload) - length, &written) == FVM_S_OK;
+                if (valid)
+                {
+                    length += written;
+                }
+            }
+        }
+        else
+        {
+            unsigned mask;
+            valid = styxmanaged_graph_mask(&definitions[i].record, &encoded, &mask);
+            if (valid && mask)
+            {
+                valid = extent <= sizeof(payload) - length;
+                if (valid)
+                {
+                    memcpy(payload + length, updates, extent);
+                    length += extent;
+                }
             }
         }
     }
     dvm_styx_ref_release(&refs, count);
     return valid &&
-        fvm_srecord_write(STYX_MANAGED_GRAPH_UPDATES_TAG, payload, length, updates, sizeof(updates), &update_size) == FVM_S_OK &&
+        fvm_srecord_write(update_tag, payload, length, updates, sizeof(updates), &update_size) == FVM_S_OK &&
         styxcall_reply_write(STYX_MANAGED_REPLY_TAG, result, result_size, updates, update_size, bytes, capacity, used);
+}
+
+
+/* EN: Decode selected fields, then transfer their roots to native slot positions.
+ * RU: Декодировать выбранные поля и перенести их корни в нативные позиции. */
+static int graph_stage(DVM_StyxRefTable *refs, const StyxRefDefinition *definition,
+    const FVM_SRecord *update, int sparse, DVM_StyxValueFrame *stage, unsigned *mask)
+{
+    char schema[STYX_SHAPE_MAX + 1];
+    if (!styxmanaged_result_ref_fields(definition->shape, schema))
+    {
+        return 0;
+    }
+    if (!sparse)
+    {
+        return styxmanaged_graph_mask(&definition->record, update, mask) && *mask &&
+            dvm_styx_result_fields_read(refs, schema, update->payload + 1, update->size - 1, stage);
+    }
+    StyxFieldDelta change;
+    DVM_StyxValueFrame selected = {0};
+    if (!styxmanaged_layout(schema, &stage->layout) ||
+        !styxmanaged_graph_fields(definition->shape, update, &change) ||
+        !dvm_styx_result_fields_read(refs, change.schema, change.fields.payload, change.fields.size, &selected))
+    {
+        return 0;
+    }
+    for (size_t i = 0, j = 0; i < stage->layout.count; i++)
+    {
+        if (change.mask & (1U << i))
+        {
+            memcpy((unsigned char *)stage->words + stage->layout.offset[i],
+                (const unsigned char *)selected.words + selected.layout.offset[j], stage->layout.width[i]);
+            if (selected.roots & (1U << j))
+            {
+                stage->roots |= 1U << i;
+            }
+            j++;
+        }
+    }
+    *mask = change.mask;
+    return 1;
 }
 
 
@@ -97,7 +161,6 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
     for (size_t offset = 0; valid && offset < records[1].size; offset += used)
     {
         FVM_SRecord update;
-        char schema[STYX_SHAPE_MAX + 1];
         valid = fvm_srecord_read(records[1].payload + offset, records[1].size - offset,
             STYX_MANAGED_LIST_LIMIT, &update, &used) == FVM_S_OK;
         if (!valid)
@@ -108,9 +171,8 @@ int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *b
         unsigned mask;
         DVM_StyxValueFrame *stage = &stages[count];
         void *original = refs->objects[index];
-        valid = styxmanaged_graph_mask(&definitions[index].record, &update, &mask) && mask &&
-            styxmanaged_result_ref_fields(definitions[index].shape, schema) &&
-            dvm_styx_result_fields_read(refs, schema, update.payload + 1, update.size - 1, stage);
+        valid = graph_stage(refs, &definitions[index], &update,
+            baseline->tag == STYX_MANAGED_SPARSE_GRAPH_TAG, stage, &mask);
         if (valid)
         {
             swaps[count++] = (RefSwap){original, stage->words, stage->layout, mask};

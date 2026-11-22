@@ -109,6 +109,7 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
 
 #define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
 
+#define STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG 17UL /* Original index, field mask and selected values. */
 #define STYX_MANAGED_GRAPH_UPDATES_TAG 16UL /* Changed objects, in request index order. */
 #define STYX_MANAGED_EDIT_TAG 15UL /* Ordered offset, removal and insertion records. */
 #define STYX_MANAGED_SPLICE_TAG 14UL /* Offset, removal extent, and insertion bytes. */
@@ -223,6 +224,14 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
 /* EN: Compare checked ADT fields by value, comparing ref records by index.
  * RU: Сравнить проверенные поля ADT по значению, а записи ref по индексу. */
 int styxmanaged_graph_mask(const FVM_SRecord *before, const FVM_SRecord *after, unsigned *mask);
+
+/* EN: Encode only changed leaves of two checked snapshots. Compare refs by index.
+ * RU: Закодировать только изменившиеся поля двух снимков. Ссылки сравниваются по индексу. */
+int styxmanaged_graph_diff(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *output, size_t capacity, size_t *used);
+/* EN: Read the mask and derive the flattened schema of the selected fields.
+ * RU: Прочитать маску и вывести развёрнутую схему выбранных полей. */
+int styxmanaged_graph_fields(const char *type, const FVM_SRecord *update, StyxFieldDelta *change);
 
 /* EN: Match a single complete, empty nil record.
  * RU: Проверить одну полную запись nil без полезной нагрузки. */

@@ -454,7 +454,8 @@ unsigned long styxmanaged_capability(unsigned long high, unsigned long low)
 {
     static const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
         STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
-        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG, STYX_MANAGED_GRAPH_TAG}; /* Index is capability file length. */
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG,
+        STYX_MANAGED_GRAPH_TAG}; /* Index is capability file length. */
     return !high && low < sizeof(tags) / sizeof(tags[0]) ? tags[low] : tags[0];
 }
 
@@ -470,7 +471,7 @@ int styxmanaged_has_snapshot(unsigned long tag)
 int styxmanaged_request_tag(unsigned long tag)
 {
     return tag == STYX_MANAGED_REQUEST_TAG || tag == STYX_MANAGED_DELTA_REQUEST_TAG ||
-        tag == STYX_MANAGED_GRAPH_TAG || styxmanaged_has_snapshot(tag);
+        styxmanaged_graph_tag(tag) || styxmanaged_has_snapshot(tag);
 }
 
 /* EN: Legacy requests carry ref leaves in tuples and standalone ADT fields only.
@@ -480,4 +481,11 @@ int styxmanaged_graph_required(const char *arguments)
     char refs[STYX_SHAPE_MAX + 1];
     unsigned mask;
     return !styxmanaged_refs(arguments, refs, &mask) || !styxmanaged_arrays(arguments, 0);
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxmanaged_graph_tag(unsigned long tag)
+{
+    return tag == STYX_MANAGED_GRAPH_TAG || tag == STYX_MANAGED_SPARSE_GRAPH_TAG;
 }

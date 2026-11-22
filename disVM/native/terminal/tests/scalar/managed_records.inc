@@ -400,20 +400,22 @@ static int managed_capabilities(void)
 {
     const unsigned long tags[] = {STYX_MANAGED_DELTA_REQUEST_TAG, STYX_MANAGED_SPAN_REQUEST_TAG,
         STYX_MANAGED_RUN_REQUEST_TAG, STYX_MANAGED_SPLICE_REQUEST_TAG,
-        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG, STYX_MANAGED_GRAPH_TAG};
+        STYX_MANAGED_TEXT_REQUEST_TAG, STYX_MANAGED_EDIT_REQUEST_TAG, STYX_MANAGED_WIDE_REFS_TAG,
+        STYX_MANAGED_GRAPH_TAG};
     for (size_t i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
     {
         if (styxmanaged_capability(0, i) != tags[i] || !styxmanaged_request_tag(tags[i]) ||
-            styxmanaged_has_snapshot(tags[i]) != (i != 0 && tags[i] != STYX_MANAGED_GRAPH_TAG))
+            styxmanaged_has_snapshot(tags[i]) != (i != 0 && !styxmanaged_graph_tag(tags[i])))
         {
             return 0;
         }
     }
-    return styxmanaged_request_tag(STYX_MANAGED_REQUEST_TAG) &&
+    return styxmanaged_request_tag(STYX_MANAGED_SPARSE_GRAPH_TAG) &&
+        styxmanaged_request_tag(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_has_snapshot(STYX_MANAGED_REQUEST_TAG) &&
         !styxmanaged_request_tag(STYX_MANAGED_REPLY_TAG) &&
         !styxmanaged_request_tag(STYX_SCOPED_RECORD_OFFER_TAG) &&
-        !styxmanaged_request_tag(STYX_MANAGED_GRAPH_TAG + 1) &&
+        !styxmanaged_request_tag(STYX_MANAGED_SPARSE_GRAPH_TAG + 1) &&
         styxmanaged_capability(0, STYX_MANAGED_GRAPH_VERSION + 1) == STYX_MANAGED_DELTA_REQUEST_TAG &&
         styxmanaged_capability(1, 0) == STYX_MANAGED_DELTA_REQUEST_TAG;
 }
@@ -536,7 +538,68 @@ static int graph_reply_records(void)
     shape.result[3] = 's';
     memcpy(payload, object, object_size);
     memcpy(payload + object_size, object, object_size);
-    return fvm_srecord_write(STYX_MANAGED_GRAPH_UPDATES_TAG, payload, object_size * 2,
-        updates, sizeof(updates), &fields[1].size) == FVM_S_OK &&
-        !styxmanaged_graph_reply(&shape, &arguments, fields);
+    if (fvm_srecord_write(STYX_MANAGED_GRAPH_UPDATES_TAG, payload, object_size * 2,
+        updates, sizeof(updates), &fields[1].size) != FVM_S_OK ||
+        styxmanaged_graph_reply(&shape, &arguments, fields))
+    {
+        return 0;
+    }
+    arguments.tag = STYX_MANAGED_SPARSE_GRAPH_TAG;
+    unsigned char header[] = {0, 1};
+    for (unsigned mask = 0; mask <= 2; mask++)
+    {
+        header[1] = (unsigned char)mask;
+        if (fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, header, sizeof(header), text, text_size,
+                object, sizeof(object), &object_size) != FVM_S_OK ||
+            fvm_srecord_write(STYX_MANAGED_SPARSE_GRAPH_UPDATES_TAG, object, object_size,
+                updates, sizeof(updates), &fields[1].size) != FVM_S_OK ||
+            styxmanaged_graph_reply(&shape, &arguments, fields) != (mask == 1))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN: Flatten tuple fields, omit an unchanged large field and compare ref aliases by index.
+ * RU: Развернуть поля кортежа, пропустить большое неизменное поле и сравнить ссылки по индексу. */
+static int sparse_graph_fields(void)
+{
+    const char *type = "r[(ss)r[s]]";
+    unsigned char unchanged[128], tuple[160], snapshots[2][220] = {{0}, {0}};
+    unsigned char diff[16], reply[32];
+    memset(unchanged, 'a', sizeof(unchanged));
+    FVM_SRecord fields[2], update;
+    for (unsigned i = 0; i < 2; i++)
+    {
+        unsigned char changed = (unsigned char)('b' + i);
+        unsigned char ref = 1;
+        size_t one, two, outer, nested, used;
+        if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, unchanged, sizeof(unchanged),
+                tuple, sizeof(tuple), &one) != FVM_S_OK ||
+            fvm_srecord_write(STYX_MANAGED_STRING_TAG, &changed, 1,
+                tuple + one, sizeof(tuple) - one, &two) != FVM_S_OK ||
+            fvm_srecord_write(STYX_CALL_TUPLE_TAG, tuple, one + two,
+                snapshots[i] + 1, sizeof(snapshots[i]) - 1, &outer) != FVM_S_OK ||
+            fvm_srecord_write(STYX_MANAGED_STRING_TAG, "child", 5, diff, sizeof(diff), &nested) != FVM_S_OK ||
+            fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &ref, 1, diff, i ? 0 : nested,
+                snapshots[i] + 1 + outer, sizeof(snapshots[i]) - 1 - outer, &used) != FVM_S_OK)
+        {
+            return 0;
+        }
+        fields[i] = (FVM_SRecord){.payload = snapshots[i], .size = 1 + outer + used};
+    }
+    unsigned char index = 0;
+    size_t diff_size, reply_size, used;
+    StyxFieldDelta change;
+    return styxmanaged_graph_diff(type, &fields[0], &fields[1], diff, sizeof(diff), &diff_size) &&
+        diff_size > 1 && diff[0] == 2 &&
+        fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, diff, diff_size,
+            reply, sizeof(reply), &reply_size) == FVM_S_OK &&
+        fvm_srecord_read(reply, reply_size, sizeof(reply), &update, &used) == FVM_S_OK &&
+        styxmanaged_graph_fields(type, &update, &change) && !strcmp(change.schema, "(s)") &&
+        fvm_srecord_read(change.fields.payload, change.fields.size, sizeof(reply), &update, &used) == FVM_S_OK &&
+        used == change.fields.size && update.tag == STYX_MANAGED_STRING_TAG &&
+        update.size == 1 && update.payload[0] == 'c';
 }

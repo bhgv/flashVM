@@ -148,9 +148,9 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     memcpy(&captured, frame, extent);
     unsigned char request[STYX_MANAGED_LIST_LIMIT + 1];
     size_t request_size, response_size = 0;
-    int graph = files->managed_tag == STYX_MANAGED_GRAPH_TAG;
+    int graph = styxmanaged_graph_tag(files->managed_tag);
     DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
-    unsigned long tag = graph ? STYX_MANAGED_GRAPH_TAG : STYX_MANAGED_REQUEST_TAG;
+    unsigned long tag = graph ? files->managed_tag : STYX_MANAGED_REQUEST_TAG;
     int encoded = graph ?
         dvm_styx_graph_write(&refs, tag, files->shape.arguments, captured.arguments,
             inputs.size, request, sizeof(request), &request_size) :
@@ -220,7 +220,7 @@ void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, co
     unsigned char reply[STYX_MANAGED_LIST_LIMIT];
     unsigned char updates[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, reply_size;
-    int valid = shape && baseline && (baseline->tag == STYX_MANAGED_GRAPH_TAG ?
+    int valid = shape && baseline && (styxmanaged_graph_tag(baseline->tag) ?
         identities && identities != H &&
         dvm_styx_graph_reply_write(shape, baseline, (void *const *)identities->data, (size_t)identities->len,
             slots, size, reply, sizeof(reply), &reply_size) :

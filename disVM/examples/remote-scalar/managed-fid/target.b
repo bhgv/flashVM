@@ -118,7 +118,7 @@ bundle(state: ref Cell): ref Bundle
 
 # EN: Update a shared child after removing its original paths from the provider's graph.
 # RU: Изменить общий дочерний объект после удаления исходных путей к нему у владельца.
-changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): ref Cell
+changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): (ref Cell, array of byte)
 {
     old := state.direct;
     if (old != state.members[0] || old != extra[0] || state.members[1] != nil) {
@@ -132,5 +132,7 @@ changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): ref Cell
     if (fail) {
         raise "graph failed after mutation";
     }
-    return old;
+    output := array[3000] of byte;
+    output[2999] = byte 53;
+    return (old, output);
 }

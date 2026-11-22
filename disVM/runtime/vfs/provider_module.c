@@ -159,11 +159,11 @@ typedef struct ScalarImport
 
 /* EN/RU: Read the complete bounded profile with a fresh, cancellable native handle.
  * Прочитать полный ограниченный профиль через новый нативный handle с отменой. */
-static size_t mounted_profile(DVM_Provider *directory, unsigned char *bytes, size_t capacity)
+static size_t mounted_profile(DVM_Provider *directory, const char *name, unsigned char *bytes, size_t capacity)
 {
     DVM_CloseJob *close = dvm_close_prepare();
     DVM_VfsHandle reader = {0};
-    if (!close || dvm_provider_open(directory, ".interface", "r", &reader) != FVM_OK)
+    if (!close || dvm_provider_open(directory, name, "r", &reader) != FVM_OK)
     {
         dvm_close_discard(close);
         return 0;
@@ -205,10 +205,12 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         return NULL;
     }
     unsigned char profile[STYX_MOUNTED_EXPORT_LIMIT * STYX_SHAPED_OFFER_MAX + 1];
-    size_t size = mounted_profile(directory, profile, sizeof(profile));
+    size_t size = mounted_profile(directory, ".interface", profile, sizeof(profile));
     FVM_FileInfo delta;
     int field_deltas = size && dvm_provider_info(directory, STYX_MANAGED_DELTA_FILE, &delta) == FVM_OK &&
         !delta.directory && (delta.mode & 0444);
+    unsigned long graph_tag = STYX_MANAGED_GRAPH_TAG;
+    int read_graph_marker = 0;
     DVM_ScalarFiles *head = NULL;
     DVM_ScalarFiles **tail = &head;
     unsigned matched = 0;
@@ -246,8 +248,23 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             {
                 bit = 0;
             }
+            else
+            {
+                if (!read_graph_marker)
+                {
+                    unsigned char marker[sizeof(STYX_MANAGED_SPARSE_GRAPH_MARKER)];
+                    size_t length = mounted_profile(directory, STYX_MANAGED_DELTA_FILE, marker, sizeof(marker));
+                    if (length == sizeof(marker) - 1 &&
+                        !memcmp(marker, STYX_MANAGED_SPARSE_GRAPH_MARKER, length))
+                    {
+                        graph_tag = STYX_MANAGED_SPARSE_GRAPH_TAG;
+                    }
+                    read_graph_marker = 1;
+                }
+                managed_tag = graph_tag;
+            }
         }
-        else if (managed_tag == STYX_MANAGED_GRAPH_TAG)
+        else if (styxmanaged_graph_tag(managed_tag))
         {
             managed_tag = STYX_MANAGED_WIDE_REFS_TAG;
         }

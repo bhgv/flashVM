@@ -50,7 +50,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         arguments.size -= prefix;
         if (!styxmanaged_request_payload(fn->dynamic_shape->arguments, &arguments) ||
             (styxmanaged_graph_required(fn->dynamic_shape->arguments) &&
-                arguments.tag != STYX_MANAGED_GRAPH_TAG))
+                !styxmanaged_graph_tag(arguments.tag)))
         {
             return Ebadarg;
         }
@@ -85,7 +85,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     size_t delta_count;
     unsigned char expanded[STYX_MANAGED_LIST_LIMIT];
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
-        (arguments.tag == STYX_MANAGED_GRAPH_TAG ?
+        (styxmanaged_graph_tag(arguments.tag) ?
             !styxmanaged_graph_reply(fn->dynamic_shape, &arguments, fields) :
         (!managed_result_valid(fn->dynamic_shape, &fields[0], &arguments) ||
         (styxmanaged_has_snapshot(arguments.tag) ?

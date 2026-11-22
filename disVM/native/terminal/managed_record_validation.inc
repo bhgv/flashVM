@@ -245,6 +245,26 @@ static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *
 }
 
 
+/* EN: Build the compact tuple schema in native slot order.
+ * RU: Собрать компактную схему кортежа в порядке нативных слотов. */
+static void select_lanes(const FieldLeaves *leaves, unsigned mask, char *selected)
+{
+    size_t length = 1;
+    selected[0] = '(';
+    for (size_t i = 0; i < leaves->count; i++)
+    {
+        if (mask & (1U << i))
+        {
+            memcpy(selected + length, leaves->type[i], leaves->length[i]);
+            length += leaves->length[i];
+        }
+    }
+    selected[length++] = ')';
+    selected[length] = 0;
+}
+
+
+#include "managed_graph_validation.inc"
 #include "managed_array_span.inc"
 
 
@@ -345,18 +365,7 @@ static int field_delta(const char *type, StyxFieldDelta *change, const FVM_SReco
     {
         return 0;
     }
-    size_t length = 1;
-    change->schema[0] = '(';
-    for (size_t i = 0; i < leaves.count; i++)
-    {
-        if (change->mask & (1U << i))
-        {
-            memcpy(change->schema + length, leaves.type[i], leaves.length[i]);
-            length += leaves.length[i];
-        }
-    }
-    change->schema[length++] = ')';
-    change->schema[length] = 0;
+    select_lanes(&leaves, change->mask, change->schema);
     fields->payload++;
     fields->size--;
     if (baseline && !expand_spans(schema, change, baseline, output, capacity))

@@ -80,7 +80,7 @@ static void prepare_call(void *frame)
     memcpy(&wire, bridge + GATE_WIRE, sizeof(wire));
     DVM_StyxValueFrame arguments = {0};
     unsigned long tag = gateway_tag(wire);
-    if (tag == STYX_MANAGED_GRAPH_TAG)
+    if (styxmanaged_graph_tag(tag))
     {
         DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
         GatewayIdentities identities = {.refs = &refs, .array = H};

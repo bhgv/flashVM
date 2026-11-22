@@ -436,7 +436,7 @@ int main(void)
     {
         return 1;
     }
-    if (!graph_reply_records())
+    if (!graph_reply_records() || !sparse_graph_fields())
     {
         fputs("managed graph reply validation failed\n", stderr);
         return 1;

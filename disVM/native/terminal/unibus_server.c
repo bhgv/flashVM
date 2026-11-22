@@ -123,7 +123,7 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (delta_node(qid.path) && offset >= 0)
     {
-        static const char capability[] = "v00007\n"; /* Version identified by the file length. */
+        static const char capability[] = STYX_MANAGED_SPARSE_GRAPH_MARKER;
         size_t remaining = offset < STYX_MANAGED_GRAPH_VERSION ?
             STYX_MANAGED_GRAPH_VERSION - (size_t)offset : 0;
         if (*count > remaining)
