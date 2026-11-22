@@ -4,6 +4,7 @@
  */
 #ifndef DVM_SCALAR_DIRECT_H
 #define DVM_SCALAR_DIRECT_H
+#include <stdint.h>
 typedef struct DirectFrame
 {
     WORD regs[NREG-1]; /* VM linkage cells. */
