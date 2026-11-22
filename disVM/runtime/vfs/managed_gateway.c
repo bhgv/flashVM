@@ -63,7 +63,16 @@ static void finish_call(void *frame)
 {
     Frame *helper = frame;
     GatewayData *data = (GatewayData *)helper->mr->MP;
-    dvm_styx_owner_finish(data->shape.result, helper->fp + data->result_offset, data->result_size, 1);
+    Array *wire;
+    FVM_SRecord baseline;
+    memcpy(&wire, helper->fp + GATE_WIRE, sizeof(wire));
+    if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
+        wire->data, (size_t)wire->len, &baseline))
+    {
+        error("invalid managed owner baseline");
+    }
+    dvm_styx_owner_finish(&data->shape, helper->fp + GATE_TARGET + 8, &baseline,
+        helper->fp + data->result_offset, data->result_size);
 }
 
 

@@ -11,6 +11,7 @@
 #include "scalar_direct.h"
 #include "scalar_files.h"
 #include "managed_value.h"
+#include "managed_ref.h"
 #include "scalar_owner_internal.h"
 #include "namespace.h"
 #include "launch_files.h"
@@ -25,22 +26,49 @@
 #include <string.h>
 
 
-/* [GC:] EN: Decode the successful two-position reply and reject copy-back until
- * an explicit update schema exists. Both positions are validated atomically.
- * RU: Разобрать успешный двухпозиционный ответ и пока отклонить copy-back
- * без отдельной схемы обновлений. Обе позиции проверяются целиком.
- */
-static int managed_reply(const char *shape, const unsigned char *bytes, size_t size,
-    DVM_StyxValueFrame *result)
+/* [GC:] EN: Stage and validate both reply positions before touching live fields.
+ * RU: Подготовить и проверить обе позиции ответа до изменения живых полей. */
+static int managed_reply(const StyxCallShape *shape, const unsigned char *bytes, size_t size,
+    const DirectManagedFrame *call)
 {
     StyxReplyField fields[2];
     FVM_SRecord updates;
-    size_t used;
-    return styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) &&
-        (!strcmp(shape, "()") ? styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
-            dvm_styx_value_frame_read(STYX_DYNAMIC_REPLY_TAG, shape, fields[0].bytes, fields[0].size, result)) &&
-        fvm_srecord_read(fields[1].bytes, fields[1].size, STYX_MANAGED_LIST_LIMIT, &updates, &used) == FVM_S_OK &&
-        used == fields[1].size && updates.tag == STYX_MANAGED_ARRAY_TAG && !updates.size;
+    char selected[STYX_SHAPE_MAX + 1], refs[STYX_SHAPE_MAX + 1];
+    unsigned mask;
+    void *objects[STYX_CALL_VALUES] = {0}, *chosen[STYX_CALL_VALUES];
+    if (!styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) ||
+        !styxmanaged_updates(shape->arguments, fields[1].bytes, fields[1].size, selected, &mask, &updates) ||
+        !dvm_styx_ref_slots(shape->arguments, call->arguments, refs, objects))
+    {
+        return 0;
+    }
+    size_t count = 0;
+    for (size_t i = 0; i < STYX_CALL_VALUES; i++)
+    {
+        if (mask & (1U << i))
+        {
+            for (size_t j = 0; j < i; j++)
+            {
+                if (objects[i] == objects[j])
+                {
+                    return 0;
+                }
+            }
+            chosen[count++] = objects[i];
+        }
+    }
+    DVM_StyxValueFrame result = {0}, copyback = {0};
+    unsigned char record[STYX_MANAGED_LIST_LIMIT];
+    size_t extent;
+    int valid = (!mask || (fvm_srecord_write(STYX_MANAGED_REF_TAG, updates.payload, updates.size,
+        record, sizeof(record), &extent) == FVM_S_OK &&
+        dvm_styx_value_frame_read(STYX_MANAGED_REF_TAG, selected, record, extent, &copyback))) &&
+        (!strcmp(shape->result, "()") ? styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
+            dvm_styx_value_frame_read(STYX_DYNAMIC_REPLY_TAG, shape->result, fields[0].bytes, fields[0].size, &result)) &&
+        dvm_styx_ref_commit(selected, chosen, &copyback, call->ret, &result);
+    dvm_styx_value_frame_clear(&copyback);
+    dvm_styx_value_frame_clear(&result);
+    return valid;
 }
 
 
@@ -108,14 +136,8 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
-    DVM_StyxValueFrame result = {0};
-    if (managed_reply(files->shape.result, request, response_size, &result))
+    if (managed_reply(&files->shape, request, response_size, &captured))
     {
-        if (!dvm_styx_value_frame_move(&result, captured.ret, outputs.size))
-        {
-            dvm_styx_value_frame_clear(&result);
-            error(exHeap);
-        }
         return;
     }
     StyxScalarKind kind;
@@ -125,14 +147,14 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     {
         error("remote scalar owner error");
     }
-    dvm_styx_value_frame_clear(&result);
     error("invalid remote managed reply");
 }
 
 
 /* [GC:] EN: Serialize the return and publish one reply to the caller's fid.
  * RU: Кодировать результат и отправить один ответ для fid вызывающего. */
-void dvm_styx_owner_finish(const char *shape, const void *slots, size_t size, int success)
+void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, const FVM_SRecord *baseline,
+    const void *slots, size_t size)
 {
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
     if (!owner || !owner->remote_call_reply)
@@ -141,13 +163,13 @@ void dvm_styx_owner_finish(const char *shape, const void *slots, size_t size, in
     }
     unsigned char result[STYX_MANAGED_LIST_LIMIT];
     unsigned char reply[STYX_MANAGED_LIST_LIMIT];
-    unsigned char updates[16];
+    unsigned char updates[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, reply_size;
-    if (!(success && shape && (!strcmp(shape, "()") ?
+    if (!(shape && baseline && (!strcmp(shape->result, "()") ?
         fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, result, sizeof(result), &result_size) == FVM_S_OK :
-        dvm_styx_value_frame_write(STYX_DYNAMIC_REPLY_TAG, shape, slots, size,
+        dvm_styx_value_frame_write(STYX_DYNAMIC_REPLY_TAG, shape->result, slots, size,
             result, sizeof(result), &result_size)) &&
-        fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
+        dvm_styx_ref_updates(shape->arguments, arguments, baseline, updates, sizeof(updates), &update_size) &&
         styxcall_reply_write(STYX_MANAGED_REPLY_TAG, result, result_size, updates, update_size,
             reply, sizeof(reply), &reply_size)))
     {

@@ -1,0 +1,40 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Call-local references and transactional ADT copy-back.
+ * RU: Ссылки внутри вызова и транзакционная обратная запись ADT.
+ */
+#ifndef DVM_STYX_MANAGED_REF_H
+#define DVM_STYX_MANAGED_REF_H
+#include "managed_value.h"
+
+typedef struct DVM_StyxRefTable
+{
+    void *objects[STYX_CALL_VALUES]; /* Borrowed from rooted slots during a single traversal. */
+    size_t count; /* Number of previously encoded or decoded objects. */
+} DVM_StyxRefTable;
+
+
+/* EN: Decode an owned local object or retain an earlier alias from table.
+ * RU: Декодировать собственный локальный объект либо удержать прежний из table. */
+int dvm_styx_ref_read(DVM_StyxRefTable *table, const char *shape, const FVM_SRecord *node, void **result);
+
+
+/* EN: Encode a rooted object once and use its index for subsequent aliases.
+ * RU: Кодировать удерживаемый объект один раз и дальше выдавать его индекс. */
+int dvm_styx_ref_write(DVM_StyxRefTable *table, const char *shape, void *object,
+    void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Gather only borrowed ref slots from the argument frame.
+ * RU: Выбрать только заимствованные слоты ref из кадра аргументов. */
+int dvm_styx_ref_slots(const char *shape, const void *arguments, char *refs, void **objects);
+
+
+/* EN: Install the decoded result and updates together. Caller clears both stages.
+ * RU: Применить результат и обновления вместе. Вызывающий очищает оба буфера. */
+int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates,
+    void *destination, DVM_StyxValueFrame *result);
+/* EN: Write the mask and snapshots for changed ADTs only.
+ * RU: Записать маску и снимки только изменившихся ADT. */
+int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRecord *baseline,
+    void *bytes, size_t capacity, size_t *used);
+#endif

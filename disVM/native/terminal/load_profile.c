@@ -320,6 +320,49 @@ static int managed_arrays(const char *shape)
 }
 
 
+/* EN: Collect the bounded ref leaves across argument tuples for reply validation.
+ * RU: Собрать ref-поля из кортежей аргументов для проверки ответа. */
+int styxmanaged_refs(const char *shape, char refs[STYX_SHAPE_MAX + 1], unsigned *mask)
+{
+    unsigned index = 0;
+    size_t length = 1;
+    *mask = 0;
+    refs[0] = '(';
+    for (const char *type = shape + 1; *type; )
+    {
+        if (*type == '(' || *type == ')')
+        {
+            type++;
+            continue;
+        }
+        const char *end = styxshape_end(type);
+        if (!end || index >= STYX_CALL_VALUES)
+        {
+            return 0;
+        }
+        if (*type == 'r')
+        {
+            char fields[STYX_SHAPE_MAX + 1];
+            StyxScalarLayout layout;
+            size_t n = (size_t)(end - type);
+            if (length + n + 1 > STYX_SHAPE_MAX || !styxmanaged_ref_fields(type, fields) ||
+                !styxmanaged_layout(fields, &layout) || layout.size > 64)
+            {
+                return 0;
+            }
+            memcpy(refs + length, type, n);
+            length += n;
+            *mask |= 1U << index;
+        }
+        index++;
+        type = end;
+    }
+    refs[length++] = ')';
+    refs[length] = 0;
+    return 1;
+}
+
+
 /* EN/RU: See load_profile.h. / См. load_profile.h. */
 unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
 {
@@ -339,10 +382,12 @@ unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape)
     }
     unsigned long ref = styxshaperef(shape, &results);
     StyxScalarLayout input, output;
+    char refs[STYX_SHAPE_MAX + 1];
+    unsigned mask;
     if (ref || !styxshapevalid(shape) ||
         !styxmanaged_layout(shape->arguments, &input) || !styxmanaged_layout(shape->result, &output) ||
         input.size > 64 || output.size > 64 ||
-        strchr(shape->arguments, 'r') || strchr(shape->result, 'r') ||
+        strchr(shape->result, 'r') || !styxmanaged_refs(shape->arguments, refs, &mask) ||
         !managed_arrays(shape->arguments) || !managed_arrays(shape->result) ||
         !(input.pointers || output.pointers))
     {

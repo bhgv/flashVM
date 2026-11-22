@@ -56,14 +56,15 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     }
     StyxReplyField fields[2];
     FVM_SRecord value, updates;
-    size_t used;
+    char selected[STYX_SHAPE_MAX + 1];
+    unsigned mask;
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
         (!strcmp(fn->dynamic_shape->result, "()") ?
             !styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
             !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
                 fields[0].bytes, fields[0].size, &value)) ||
-        fvm_srecord_read(fields[1].bytes, fields[1].size, STYX_MANAGED_LIST_LIMIT, &updates, &used) != FVM_S_OK ||
-        used != fields[1].size || updates.tag != STYX_MANAGED_ARRAY_TAG || updates.size)
+        !styxmanaged_updates(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
+            selected, &mask, &updates))
     {
         return Ebadarg;
     }

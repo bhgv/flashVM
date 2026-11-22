@@ -30,6 +30,7 @@ init()
         raise "missing managed error";
     }
     m->accept("ok");
+    check_refs(m);
     done := chan of int;
     spawn large(m, "first", done);
     spawn large(m, "second", done);
@@ -56,5 +57,34 @@ large(m: Managed, label: string, done: chan of int)
     } exception {
         "*" =>
             done <-= 0;
+    }
+}
+
+# EN: Verify aliased copy-back, dirty suppression and rollback on owner failure.
+# RU: Проверить обновление общей ссылки, пропуск прежних значений и отказ после ошибки.
+check_refs(m: Managed)
+{
+    Cell: import m;
+    bytes := array[] of {byte 12, byte 0};
+    held := array[2500] of byte;
+    held[2499] = byte 234;
+    cell := ref Cell("x", bytes);
+    other := ref Cell("stable", held);
+    if (m->update("noop", cell, cell, other) != "stable" ||
+        cell.bytes != bytes || other.bytes != held) {
+        raise "unchanged refs were overwritten";
+    }
+    if (m->update("write", cell, cell, other) != "x!" ||
+        cell.text != "x!" || cell.bytes[1] != byte 91 || other.bytes != held) {
+        raise "sparse aliased ref update failed";
+    }
+    failed := 0;
+    {
+        m->update("fail", cell, cell, other);
+    } exception {
+        "*" => failed = 1;
+    }
+    if (!failed || cell.text != "x!" || cell.bytes[1] != byte 91 || other.bytes != held) {
+        raise "failed call modified client refs";
     }
 }

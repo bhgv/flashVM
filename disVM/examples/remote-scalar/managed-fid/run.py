@@ -36,6 +36,7 @@ def exercise(runtime, owner, caller, mode):
         [runtime, "--styx-library-serve-fd", str(owner_fd.fileno()),
          "--export", "managed.dis", "target.dis", "echo",
          "--export", "managed.dis", "target.dis", "accept",
+         "--export", "managed.dis", "target.dis", "update",
          "--", mode, "scalarowner.dis"],
         cwd=owner, pass_fds=(owner_fd.fileno(),), stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True,
@@ -46,7 +47,7 @@ def exercise(runtime, owner, caller, mode):
                 [runtime, "--styx-mount-fd", str(client_fd.fileno()), "--at",
                  "/transport", "--", mode, "client.dis"],
                 cwd=caller, pass_fds=(client_fd.fileno(),),
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=55,
             )
             client_fd.close()
             output, _ = server.communicate(timeout=10)

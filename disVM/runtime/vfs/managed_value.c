@@ -11,6 +11,8 @@
 #include "runt.h"
 #include "managed_value.h"
 #include "managed_array.h"
+#include "managed_ref.h"
+#include "disvm/refcount.h"
 #include "shared_bytes.h"
 #include "flashvm/utf8.h"
 #include "../../native/terminal/call_record.h"
@@ -161,20 +163,18 @@ int dvm_styx_value_shape_supported(const char *shape)
     {
         return 0;
     }
-    for (const char *type = shape + 1; *type; )
+    char refs[STYX_SHAPE_MAX + 1];
+    unsigned mask;
+    if (!styxmanaged_refs(shape, refs, &mask))
     {
-        if (*type == '(' || *type == ')')
-        {
-            type++;
-            continue;
-        }
-        const char *end = styxshape_end(type);
-        if (!end || *type == 'r' ||
-            (*type == 'a' && (end - type != 4 || !dvm_styx_primitive_array_supported(type[2]))))
+        return 0;
+    }
+    for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
+    {
+        if (array[3] != ']' || !dvm_styx_primitive_array_supported(array[2]))
         {
             return 0;
         }
-        type = end;
     }
     return 1;
 }
@@ -186,6 +186,7 @@ typedef struct FrameDecode
     FVM_SRecord list; /* Borrowed validated input list. */
     DVM_StyxValueFrame pending; /* Owned local staging until publication. */
     size_t leaf; /* Count of populated slots, in shape order. */
+    DVM_StyxRefTable refs; /* Borrowed aliases of decoded argument slots. */
 } FrameDecode;
 
 
@@ -226,14 +227,24 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
             {
                 char type[5] = {0};
                 void *object;
-                if (end - shape >= (ptrdiff_t)sizeof(type))
+                if (*shape == 'r')
                 {
-                    return 0;
+                    if (!dvm_styx_ref_read(&decode->refs, shape, &node, &object))
+                    {
+                        return 0;
+                    }
                 }
-                memcpy(type, shape, (size_t)(end - shape));
-                if (!dvm_styx_managed_new(type, &node, &object))
+                else
                 {
-                    return 0;
+                    if (end - shape >= (ptrdiff_t)sizeof(type))
+                    {
+                        return 0;
+                    }
+                    memcpy(type, shape, (size_t)(end - shape));
+                    if (!dvm_styx_managed_new(type, &node, &object))
+                    {
+                        return 0;
+                    }
                 }
                 memcpy(destination, &object, sizeof(object));
                 if (object != H)
@@ -330,6 +341,7 @@ typedef struct FrameEncode
     unsigned char *scratch; /* Separate buffer per tuple depth. */
     size_t capacity; /* Size of each scratch region. */
     size_t leaf; /* Next source slot in schema order. */
+    DVM_StyxRefTable refs; /* Borrowed identities during encoding. */
 } FrameEncode;
 
 
@@ -344,12 +356,16 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
     {
         char type[5] = {0};
         void *value;
+        memcpy(&value, slot, sizeof(value));
+        if (*shape == 'r')
+        {
+            return dvm_styx_ref_write(&encode->refs, shape, value, bytes, capacity, used);
+        }
         if (end - shape >= (ptrdiff_t)sizeof(type))
         {
             return 0;
         }
         memcpy(type, shape, (size_t)(end - shape));
-        memcpy(&value, slot, sizeof(value));
         return dvm_styx_managed_write(type, value, bytes, capacity, used);
     }
     int64_t value;

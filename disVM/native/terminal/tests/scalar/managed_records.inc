@@ -94,3 +94,38 @@ static int scoped_large_record(void)
         styxcall_scope_read_bounded(record, used, sizeof(payload), &pid, &data, &size) &&
         pid == 47 && size == sizeof(payload) && !memcmp(data, payload, size);
 }
+
+
+/* EN: Check sparse index selection and reject missing snapshots and out-of-range bits.
+ * RU: Проверить выбор индексов и отклонить пропущенные снимки и лишние биты. */
+static int managed_sparse_refs(void)
+{
+    const char arguments[] = "(sr[s](ir[s]))";
+    unsigned char field[32], node[64], frame[128];
+    size_t field_size, node_size, size;
+    unsigned char index = 0, mask = 2;
+    char selected[STYX_SHAPE_MAX + 1];
+    unsigned decoded_mask;
+    FVM_SRecord updates;
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "new", 3, field, sizeof(field), &field_size) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1, field, field_size, node,
+            sizeof(node), &node_size) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_ARRAY_TAG, &mask, 1, node, node_size, frame,
+            sizeof(frame), &size) != FVM_S_OK ||
+        !styxmanaged_updates(arguments, frame, size, selected, &decoded_mask, &updates) ||
+        decoded_mask != mask || strcmp(selected, "(r[s])") || updates.size != node_size)
+    {
+        return 0;
+    }
+    mask = 4;
+    if (fvm_srecord_write_pair(STYX_MANAGED_ARRAY_TAG, &mask, 1, node, node_size, frame,
+            sizeof(frame), &size) != FVM_S_OK ||
+        styxmanaged_updates(arguments, frame, size, selected, &decoded_mask, &updates))
+    {
+        return 0;
+    }
+    mask = 3;
+    return fvm_srecord_write_pair(STYX_MANAGED_ARRAY_TAG, &mask, 1, node, node_size, frame,
+        sizeof(frame), &size) == FVM_S_OK &&
+        !styxmanaged_updates(arguments, frame, size, selected, &decoded_mask, &updates);
+}

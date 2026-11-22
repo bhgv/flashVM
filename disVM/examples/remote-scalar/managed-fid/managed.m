@@ -3,5 +3,10 @@
 # RU: Общий интерфейс обычного клиента и исходной удалённой реализации.
 Managed: module {
     echo: fn(text: string, bytes: array of byte): (string, array of byte);
+    Cell: adt {
+        text: string;
+        bytes: array of byte;
+    };
+    update: fn(mode: string, left, right, untouched: ref Cell): string;
     accept: fn(text: string);
 };

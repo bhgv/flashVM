@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "flashvm/srecord.h"
+#include "load_profile.h"
 
 #define STYX_CALL_VALUES 8U /* Maximum flattened scalar cells in a frame. */
 #define STYX_CALL_DEPTH 4U /* Maximum tuple nesting, including the outer list. */
@@ -72,13 +73,28 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_LIST_LIMIT 65536U /* Maximum complete managed value record. */
 #define STYX_MANAGED_STRING_TAG 7UL /* Counted UTF-8 bytes. */
 #define STYX_MANAGED_ARRAY_TAG 8UL /* Sequence of nested records of one declared element type. */
-#define STYX_MANAGED_NIL_TAG 9UL /* Empty payload for a nil string or array. */
+#define STYX_MANAGED_NIL_TAG 9UL /* Empty payload for a nil managed leaf. */
+#define STYX_MANAGED_REF_TAG 10UL /* Index byte, then fields on first occurrence. */
+
+
+/* EN: Extract one ref ADT's non-reference field schema.
+ * RU: Получить схему полей одного ref ADT без вложенных ref. */
+int styxmanaged_ref_fields(const char *shape, char fields[STYX_SHAPE_MAX + 1]);
+
+/* EN: Borrow checked ref nodes in flattened argument order.
+ * RU: Заимствовать проверенные узлы ref в развёрнутом порядке аргументов. */
+int styxmanaged_ref_records(const char *shape, const FVM_SRecord *list, FVM_SRecord *refs, size_t *count);
+
+/* EN: Borrow sparse updates after validating their mask, schemas and unique indices.
+ * RU: Заимствовать обновления после проверки маски, схем и уникальных индексов. */
+int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
+    char selected[STYX_SHAPE_MAX + 1], unsigned *mask, FVM_SRecord *updates);
 
 
 /* EN: Validate a managed argument or result list and borrow its decoded outer record.
  * RU: Проверить список управляемых значений и заимствовать внешнюю запись.
- * Shape must be a NUL-terminated list. Ref identity is outside this value codec.
- * Схема должна быть NUL-строкой. Идентичность ref лежит вне этого кодека. */
+ * Shape is a NUL-terminated list. Ref identities are local to one record.
+ * Схема должна быть NUL-строкой. Идентичность ref действует в одной записи. */
 int styxmanaged_list_read(unsigned long tag, const char *shape, const void *bytes, size_t size,
     FVM_SRecord *list);
 

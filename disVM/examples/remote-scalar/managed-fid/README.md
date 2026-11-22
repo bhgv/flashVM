@@ -2,9 +2,9 @@
 
 [Русская версия](README.ru.md) · [Remote Dis examples](../README.md)
 
-Two DisVM processes share one Styx session. The owner serves two exports from
+Two DisVM processes share one Styx session. The owner serves three exports from
 one loaded instance of [target.b](target.b). The caller imports [managed.m](managed.m),
-loads the mounted module path and calls both functions with ordinary Limbo syntax.
+loads the mounted module path and calls the functions with ordinary Limbo syntax.
 The owner builds the bridge from the types recorded by the Limbo compiler.
 
 ## Run
@@ -24,7 +24,7 @@ cleans up on exit. Expect `PASS managed Styx load` in both execution modes.
 ## Follow the call
 
 1. The client's `load` matches the owner signature and schema in `.interface`
-   against its compiled import. Both functions are files inside `managed.dis`.
+   against its compiled import. The functions are files inside `managed.dis`.
 2. The client opens one function fid and writes a complete S-record with
    `(client PID, arguments…)`. The record can span several Styx writes. Its
    encoded length tells the owner when to schedule the call.
@@ -36,6 +36,17 @@ cleans up on exit. Expect `PASS managed Styx load` in both execution modes.
 
 The example checks a UTF-8 string, a returned byte array, a void return, an
 owner exception and two parallel calls whose records exceed one Styx message.
-The managed value profile supports strings, primitive arrays and tuples within
-the schema and record limits. Its reference-updates position is empty. The
-existing scalar `ref` profiles handle their own copy-back.
+It also passes the same ADT through two `ref` arguments and verifies that an
+unchanged ADT retains its original array on the client.
+
+For `ref` arguments, the request defines each non-nil ADT once. Later aliases
+carry its index. The reply's second position carries a bit mask of changed
+references in flattened argument order, followed by one snapshot for each set
+bit. An empty position means no copy-back. The owner compares final field
+values against the request, so a store of the same value does not set a bit.
+The client validates the full response before applying the return value and
+updates together. An exception discards all copy-back.
+
+The profile supports bounded ADTs with scalar, string, primitive array and
+tuple fields. Nested `ref` fields and `ref` return values are outside this
+profile. An ADT that changed is sent as a complete snapshot.

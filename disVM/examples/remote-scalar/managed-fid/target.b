@@ -21,3 +21,23 @@ accept(text: string)
         raise "rejected";
     }
 }
+
+
+# EN: Change the aliased ADT once, touch an unchanged field, or raise after a write.
+# RU: Изменить общий ADT, записать прежнее значение либо вызвать исключение после записи.
+update(mode: string, left, right, untouched: ref Cell): string
+{
+    if (left != right) {
+        raise "remote aliases diverged";
+    }
+    untouched.text = untouched.text;
+    if (mode == "noop") {
+        return untouched.text;
+    }
+    left.text = left.text + "!";
+    right.bytes[1] = byte 91;
+    if (mode == "fail") {
+        raise "discard ref updates";
+    }
+    return right.text;
+}

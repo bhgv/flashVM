@@ -61,6 +61,11 @@ int styxshapecells(const StyxCallShape *shape, size_t *arguments, size_t *result
 unsigned long styxshaperef(const StyxCallShape *shape, size_t *results);
 
 
+/* EN: Project ref leaves from a validated argument schema in slot order.
+ * RU: Выделить ref-поля проверенной схемы аргументов в порядке слотов. */
+int styxmanaged_refs(const char *shape, char refs[STYX_SHAPE_MAX + 1], unsigned *mask);
+
+
 /* EN: Choose a wire tag for a shaped export. Existing profiles retain their tag.
  * RU: Выбрать тег по типам экспорта. Прежние профили сохраняют свои теги. */
 unsigned long styxshaperequest(uint32_t signature, const StyxCallShape *shape);
