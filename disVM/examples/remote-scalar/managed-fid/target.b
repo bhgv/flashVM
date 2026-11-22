@@ -133,10 +133,30 @@ changegraph(state: ref Bundle, extra: array of ref Cell, fail: int): (ref Cell, 
     if (fail == 2) {
         sys := load Sys Sys->PATH;
         sys->sleep(3000);
+    } else if (fail == 3) {
+        check_chain_context();
     } else if (fail) {
         raise "graph failed after mutation";
     }
     output := array[3000] of byte;
     output[2999] = byte 53;
     return (old, output);
+}
+
+# EN: Follow the VFS and FD that B inherited from A.
+# RU: Обратиться к VFS и дескриптору, унаследованным B от A.
+check_chain_context()
+{
+    sys := load Sys Sys->PATH;
+    marker := sys->open("/.prog/.self/.vfs/chain-stage", Sys->OREAD);
+    output := sys->open("/.prog/.self/.fd/8", Sys->ORDWR);
+    data := array[4] of byte;
+    if (marker == nil || output == nil)
+        raise "chain library lost caller context";
+    n := sys->read(marker, data, len data);
+    if (n != 4 || data[0] != byte 0 || data[1] != byte 0 || data[2] != byte 0 || data[3] != byte 42)
+        raise "chain library lost the delegated VFS";
+    data[0] = byte 'D';
+    if (sys->write(output, data, 1) != 1)
+        raise "chain library lost inherited FD";
 }

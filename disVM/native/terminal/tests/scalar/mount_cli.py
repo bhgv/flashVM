@@ -133,6 +133,19 @@ def start_library(peer, directory, mode, carrier):
     )
 
 
+# EN: Export both compiled interfaces on one stock bidirectional library session.
+# RU: Опубликовать оба интерфейса на одной штатной двусторонней сессии.
+def start_chain_library(runtime, directory, mode, carrier):
+    fd = carrier.fileno()
+    return subprocess.Popen(
+        [runtime, "--styx-library-serve-fd", str(fd),
+         "--export", "wide.dis", "typed-wide.dis", "echo",
+         "--export", "managed.dis", "managed-target.dis", "changegraph",
+         "--", mode, "owner.dis"],
+        pass_fds=(fd,), cwd=directory, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+
+
 # EN: Pass distinct FD numbers for the same open socket and require refusal before wire I/O.
 # RU: Передать разные номера одного открытого сокета и проверить отказ до обмена.
 def reject_carrier_alias(runtime, owner_image):
@@ -158,6 +171,7 @@ def reject_carrier_alias(runtime, owner_image):
 # RU: Запустить A, исполняющую DisVM B и отдельного провайдера библиотеки C.
 def chain(runtime, compiler, provider, disvm, example, work):
     caller_image = work / "chain-client.dis"
+    (work / ".vfs").mkdir()
     subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
                     "-o", caller_image, example / "styx-chain-client.b"], cwd=work, check=True)
     library_dir = work / "library-peer"
@@ -168,6 +182,12 @@ def chain(runtime, compiler, provider, disvm, example, work):
                            (example / "wide-owner.b", "wide-owner.dis")):
         subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
                         "-I", example, "-o", library_dir / target, source], cwd=library_dir, check=True)
+    managed = example / "managed-fid"
+    for source, target in ((example / "wide-owner.b", "typed-wide.dis"),
+                           (managed / "target.b", "managed-target.dis")):
+        subprocess.run([compiler, "-D", "RG", "-I", disvm / "upstream/module", "-I", disvm / "module",
+                        "-I", example, "-I", managed, "-o", library_dir / target, source],
+                       cwd=library_dir, check=True)
     owner_dir = work / "execution-peer"
     owner_dir.mkdir()
     deps = owner_dir / "deps"
@@ -175,8 +195,8 @@ def chain(runtime, compiler, provider, disvm, example, work):
     subprocess.run([compiler, "-I", example, "-o", deps / "wide.dis",
                     example / "styx-chain-local.b"], cwd=owner_dir, check=True)
     owner_image = owner_dir / "chain-owner.dis"
-    subprocess.run([compiler, "-I", disvm / "upstream/module", "-I", disvm / "module",
-                    "-I", example, "-o", owner_image, example / "styx-chain-owner.b"], cwd=work, check=True)
+    subprocess.run([compiler, "-D", "RG", "-I", disvm / "upstream/module", "-I", disvm / "module",
+                    "-I", example, "-I", managed, "-o", owner_image, example / "styx-chain-owner.b"], cwd=work, check=True)
     stdin = work / "chain-stdin"
     stdout = work / "chain-stdout"
     stderr = work / "chain-stderr"
@@ -211,9 +231,9 @@ def chain(runtime, compiler, provider, disvm, example, work):
         alternate, d = tcp_pair()
         with a, b, lib, c, alternate, d, stdin.open("rb") as incoming, stdout.open("wb") as outgoing, \
                 stderr.open("wb") as errors, extra.open("rb") as fourth, shared.open("r+b") as aliases, \
-                start_library(library_peer, library_dir, mode, c) as library, \
+                start_chain_library(runtime, library_dir, mode, c) as library, \
                 start_library(library_peer, library_dir, mode, d) as other, subprocess.Popen(
-            [runtime, "--styx-serve-fd", str(b.fileno()), service, "--library-fd",
+            [runtime, "--styx-serve-fd", str(b.fileno()), service, "--library-bidir-fd",
              str(lib.fileno()), "--library-at", "/remote-libs", "--library-fd",
              str(alternate.fileno()), "--library-at", "/other-libs", "--", mode, owner_image],
             pass_fds=(b.fileno(), lib.fileno(), alternate.fileno()), cwd=owner_dir,
@@ -246,7 +266,8 @@ def chain(runtime, compiler, provider, disvm, example, work):
                             caller.kill()
                 a.close()
                 out, err = owner.communicate(timeout=10)
-                library_status = library.wait(timeout=10)
+                library_output, _ = library.communicate(timeout=10)
+                library_status = library.returncode
                 other_status = other.wait(timeout=10)
                 if payload == b"drop":
                     diagnostic = stderr.read_bytes()
@@ -261,15 +282,15 @@ def chain(runtime, compiler, provider, disvm, example, work):
                     if (not caller_status or not owner.returncode or
                             b"chain owner reported failure" not in stderr.read_bytes() or
                             b"chain input mismatch" not in err):
-                        raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
+                        raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err, library_output, shared.read_bytes())))
                     print("PASS A receives B's launch failure", mode, flush=True)
                     continue
                 if (caller_status or owner.returncode or library_status or other_status or fourth.tell() != 8 or
-                        aliases.tell() != 7 or shared.read_bytes() != b"skipABC" or
+                        aliases.tell() != 8 or shared.read_bytes() != b"skipABCD" or
                         b"chain stdout\n" not in stdout.read_bytes() or
                         b"PASS mounted Styx launch completion\n" not in stdout.read_bytes() or
                         b"chain stderr\n" not in stderr.read_bytes()):
-                    raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err)))
+                    raise RuntimeError(repr((stdout.read_bytes(), stderr.read_bytes(), out, err, library_output, shared.read_bytes())))
                 print("PASS A-B-C Styx launch and library call", mode, service, flush=True)
             finally:
                 for peer in (owner, library, other):

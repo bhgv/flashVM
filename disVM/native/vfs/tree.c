@@ -70,6 +70,13 @@ StyxBacking *styxwalknode(StyxBacking *parent, const char *component)
 	return result;
 }
 
+/* EN/RU: See tree.h. / См. tree.h. */
+int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right)
+{
+    return left && right && left->bound && right->bound && left->provider == right->provider &&
+        !strcmp(left->path, right->path) && styxsame(&left->captured, &right->captured);
+}
+
 /* EN/RU: Refresh current directory authority and bound identity, never mode inference.
  * Перепроверить полномочия и identity каталога, не выводя доступ из mode. */
 static int valid(StyxOpen *opened)

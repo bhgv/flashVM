@@ -97,13 +97,27 @@ static StyxBacking *find(Path path, CallerNodes **cache)
  * RU: Привязать дочерний узел к поколению, выдавшему доступ. */
 static char *walk_child(Qid *qid, const char *name, StyxBacking *parent, CallerNodes *cache)
 {
-    if (!parent || cache->count == STYX_CALLER_NODES)
+    if (!parent)
     {
         return Enonexist;
     }
     StyxBacking *node = styxwalknode(parent, name);
     StyxMeta meta;
     if (!node || !styxbackinginfo(node, &meta))
+    {
+        styxbackingfree(node);
+        return Enonexist;
+    }
+    for (size_t i = 0; i < cache->count; i++)
+    {
+        if (styxbackingsamenode(cache->nodes[i], node))
+        {
+            styxbackingfree(node);
+            *qid = styxqid(cache->generation * STYX_CALLER_NODES + i, meta.directory);
+            return nil;
+        }
+    }
+    if (cache->count == STYX_CALLER_NODES)
     {
         styxbackingfree(node);
         return Enonexist;

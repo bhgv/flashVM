@@ -4,6 +4,7 @@
 implement Client;
 include "sys.m";
 include "vfsnative.m";
+include "vfsexport.m";
 
 Client: module { init: fn(); };
 
@@ -14,6 +15,10 @@ init()
 {
     sys := load Sys Sys->PATH;
     vfs := load Vfsnative Vfsnative->PATH;
+    exports := load Vfsexport Vfsexport->PATH;
+    grant := exports->record(("chain-stage", exports->intvar(42)) :: nil);
+    if (grant == nil || exports->mount(grant, "/.vfs", 0, 0) != 0)
+        raise "could not publish chain VFS";
     if (sys->bind("/peer/implementation.dis", "/alias.dis", Sys->MREPL) < 0) {
         raise "could not bind chain launch";
     }

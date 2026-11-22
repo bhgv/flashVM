@@ -11,6 +11,7 @@
 #include "launch_receive.h"
 #include "program_record.h"
 #include "mount.h"
+#include "caller_styx.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
@@ -143,22 +144,6 @@ static DVM_Provider *snapshot_program(DVM_Provider *original)
 }
 
 
-/* EN: Consume an optional library carrier and mount its root in the owner namespace.
- * RU: Принять соединение библиотек и смонтировать его в namespace владельца. */
-static int mount_library(DVM_Namespace *group, const char *descriptor, const char *path)
-{
-    int fd = dvm_terminal_connected(descriptor);
-    StyxClient *client = fd >= 3 ? styxclientmountphy(
-        phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "owner", "", 5000, 8) : NULL;
-    DVM_Provider *root = client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
-    DVM_NamespacePlan target;
-    int installed = root && dvm_namespace_plan(group, path, &target) &&
-        dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;
-    dvm_provider_release(root);
-    return installed;
-}
-
-
 #define LIBRARY_MOUNT_LIMIT 8U /* Maximum library mounts admitted before startup. */
 
 typedef struct LibraryMount
@@ -166,7 +151,66 @@ typedef struct LibraryMount
     const char *descriptor; /* Borrowed argument naming the delegated stream. */
     const char *path; /* Borrowed owner-side absolute mount path. */
     long number; /* Parsed descriptor used to detect duplicates. */
+    int bidirectional; /* Use the stock library service with reverse caller VFS. */
 } LibraryMount;
+
+
+typedef struct LibrarySession
+{
+    PhyBidir *mux; /* Retained through the runtime and reverse worker shutdown. */
+    StyxCallerServer *reverse;
+    int breaker; /* Shutdown duplicate, valid when mux setup was attempted. */
+} LibrarySession;
+
+
+/* EN: Stop the reverse worker before dropping the controller's transport pin.
+ * RU: Остановить встречный сервер до снятия ссылки на транспорт. */
+static void close_library(LibrarySession *session)
+{
+    if (session->breaker >= 0)
+    {
+        shutdown(session->breaker, SHUT_RDWR);
+        close(session->breaker);
+    }
+    styxcallerjoin(session->reverse);
+    phybidirfree(session->mux);
+}
+
+
+/* EN: Consume one delegated library stream and mount its root in the owner.
+ * RU: Принять выданный поток библиотеки и смонтировать корень у владельца. */
+static int mount_library(DVM_Namespace *group, const LibraryMount *library, LibrarySession *session)
+{
+    int fd = dvm_terminal_connected(library->descriptor);
+    if (fd < 3)
+    {
+        return 0;
+    }
+    if (library->bidirectional)
+    {
+        session->breaker = dup(fd);
+        if (session->breaker < 0)
+        {
+            close(fd);
+            return 0;
+        }
+    }
+    RemotePhy *carrier = phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
+    if (library->bidirectional)
+    {
+        session->mux = phybidircreate(carrier, 65536);
+        session->reverse = session->mux ? styxcallerserver(phybidirchannel(session->mux, 1)) : NULL;
+        carrier = session->reverse ? phybidirchannel(session->mux, 0) : NULL;
+    }
+    StyxClient *client = carrier ? styxclientmountphy(carrier, 4096, "owner", "", 5000, 8) : NULL;
+    DVM_Provider *root = !client ? NULL : session->reverse ?
+        styxcallermount(session->reverse, client, FVM_ACCESS_MASK) : styxmountprovider(client, FVM_ACCESS_MASK);
+    DVM_NamespacePlan target;
+    int installed = root && dvm_namespace_plan(group, library->path, &target) &&
+        dvm_namespace_mount_provider(group, &target, root, "/styx-libraries") == 1;
+    dvm_provider_release(root);
+    return installed;
+}
 
 
 /* EN: Reject the same path and nested mounts before touching any carrier.
@@ -181,7 +225,7 @@ static int overlaps(const char *first, const char *second)
 
 /* EN: Parse and check one mount against the previously accepted prefix.
  * RU: Разобрать и сверить маунт с ранее проверенными параметрами. */
-static int admit_library(LibraryMount *mounts, size_t count, const char *launch, const char *fd, const char *path)
+static int admit_library(LibraryMount *mounts, size_t count, const char *launch, const char *fd, const char *path, int bidirectional)
 {
     char *end;
     long number = strtol(fd, &end, 10);
@@ -197,7 +241,7 @@ static int admit_library(LibraryMount *mounts, size_t count, const char *launch,
             return 0;
         }
     }
-    mounts[count] = (LibraryMount){fd, path, number};
+    mounts[count] = (LibraryMount){fd, path, number, bidirectional};
     return 1;
 }
 
@@ -286,8 +330,10 @@ int dvm_styx_serve_cli(int argc, char **argv)
     LibraryMount libraries[LIBRARY_MOUNT_LIMIT];
     size_t count = 0;
     int valid = 1;
-    while (valid && argc > separator + 1 && !strcmp(argv[separator], "--library-fd"))
+    while (valid && argc > separator + 1 &&
+        (!strcmp(argv[separator], "--library-fd") || !strcmp(argv[separator], "--library-bidir-fd")))
     {
+        int bidirectional = !strcmp(argv[separator], "--library-bidir-fd");
         const char *library = argv[separator + 1];
         const char *path = "/libraries";
         separator += 2;
@@ -296,7 +342,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
             path = argv[separator + 1];
             separator += 2;
         }
-        valid = count < LIBRARY_MOUNT_LIMIT && admit_library(libraries, count, argv[2], library, path);
+        valid = count < LIBRARY_MOUNT_LIMIT && admit_library(libraries, count, argv[2], library, path, bidirectional);
         if (valid)
         {
             count++;
@@ -304,7 +350,7 @@ int dvm_styx_serve_cli(int argc, char **argv)
     }
     if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent] [--library-fd FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -362,9 +408,13 @@ int dvm_styx_serve_cli(int argc, char **argv)
     int result = 1;
     int ready = server && (!scoped || root);
     int library_ready = ready;
-    for (size_t i = 0; library_ready && i < count; i++)
+    LibrarySession sessions[LIBRARY_MOUNT_LIMIT] = {0};
+    size_t opened = 0;
+    while (library_ready && opened < count)
     {
-        library_ready = mount_library(handoff.group, libraries[i].descriptor, libraries[i].path);
+        sessions[opened].breaker = -1;
+        library_ready = mount_library(handoff.group, &libraries[opened], &sessions[opened]);
+        opened++;
     }
     int received = !persistent && library_ready && receive_startup(styxunibusserverinbox(server), &startup, OWNER_WAIT_SECONDS);
     if (persistent && library_ready)
@@ -406,6 +456,10 @@ int dvm_styx_serve_cli(int argc, char **argv)
     dvm_provider_release(root);
     phybidirfree(mux);
     dvm_namespace_release(handoff.group);
+    while (opened)
+    {
+        close_library(&sessions[--opened]);
+    }
     return result;
 }
 

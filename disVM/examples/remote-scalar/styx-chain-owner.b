@@ -6,6 +6,7 @@ include "sys.m";
 
 Owner: module { init: fn(); };
 include "wide.m";
+include "managed.m";
 
 
 # EN: Read A's stdin, call C, then acknowledge via A's separate output files.
@@ -62,8 +63,39 @@ init()
     if (other == nil || other->echo(big 1) != big 1 || library->echo(big 1) != big 3) {
         raise "library mount instances shared state";
     }
+    marker := sys->open("/.vfs/chain-stage", Sys->OREAD);
+    if (marker == nil)
+        raise "B cannot see A's VFS";
+    mark := array[4] of byte;
+    n := sys->read(marker, mark, len mark);
+    if (n != 4 || mark[0] != byte 0 || mark[1] != byte 0 || mark[2] != byte 0 || mark[3] != byte 42)
+        raise "invalid A marker on B";
+    check_managed();
     if (sys->fprint(sys->fildes(1), "chain stdout\n") <= 0 ||
         sys->fprint(sys->fildes(2), "chain stderr\n") <= 0) {
         raise "chain output failed";
+    }
+}
+
+# EN: Copy back an aliased graph from C before reporting the launch result to A.
+# RU: Получить вложенные обновления с C до передачи результата запуска на A.
+check_managed()
+{
+    remote := load Managed "/deps/managed.dis";
+    if (remote == nil)
+        raise "chain managed load failed";
+    Cell, Bundle: import remote;
+    original := ref Cell("from B", array[] of {byte 17});
+    state := ref Bundle(original, array[] of {original, nil});
+    extra := array[32] of ref Cell;
+    extra[0] = original;
+    extra[31] = ref Cell("untouched", nil);
+    (returned, output) := remote->changegraph(state, extra, 3);
+    if (returned != original || original.text != "changed after unlink" ||
+        original.bytes[0] != byte 17 || state.direct != state.members[0] ||
+        state.direct == original || state.direct.text != "fresh" || state.members[1] != nil ||
+        extra[0] != original || extra[31].text != "last index" ||
+        len output != 3000 || output[2999] != byte 53) {
+        raise "chain managed copy-back failed";
     }
 }

@@ -9,6 +9,10 @@
  * Owned node/NULL; no raw host-path lookup; effective parent execute is required.
  * Пройти один компонент; dotdot ограничен prepared root. Свой node/NULL. */
 StyxBacking *styxwalknode(StyxBacking *node, const char *component);
+/* EN: Compare the retained provider, path and captured object identity.
+ * RU: Сравнить удерживаемый провайдер, путь и захваченную идентичность. */
+int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right);
+
 /* EN/RU: Begin one directory read at exact continuation offset, or restart at zero.
  * Rewind reopens only through the retained provider and must preserve object identity.
  * Начать чтение по точному offset или заново с нуля; identity при rewind сохраняется. */

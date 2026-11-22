@@ -261,8 +261,8 @@ configured Dis image at startup, publishes that same immutable image and
 waits on the connected session. Each bound-path `run` or `runargs` starts
 its own child with the caller's context and reads its own completion.
 Separate callers can run concurrently. The listener is built into DisVM.
-Use `--library-fd` to mount dependencies on the owner before accepting
-requests. Without `--persistent`, the standalone command still exits
+Use `--library-fd` or `--library-bidir-fd` to mount dependencies on the
+owner before accepting requests. Without `--persistent`, the standalone command still exits
 after the single configured run.
 
 The [standalone client](../examples/remote-scalar/styx-persistent-cli.b)
@@ -295,6 +295,14 @@ Repeat the `--library-fd FD --library-at PATH` pair for up to eight
 library mounts. Each FD and mount path must be distinct. Nested mount
 paths are rejected before any connection is opened. All mounts must
 succeed before the owner accepts a launch.
+
+Use `--library-bidir-fd LIBFD` for a library peer running
+`--styx-library-serve-fd`. It mounts the same forward Styx tree and
+starts a reverse Styx server for the launching DisVM. Compiled calls
+can use the caller's `.prog/.self`, including granted `.vfs` files and
+inherited FDs. Both descriptor options accept `--library-at PATH`.
+The caller supplies an already connected transport. Endpoints can
+reside on separate hosts.
 
 Different descriptor numbers that alias the same socket are rejected before any Styx handshake.
 

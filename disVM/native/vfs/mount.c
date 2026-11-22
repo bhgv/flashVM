@@ -148,7 +148,42 @@ static void destroy(void *state)
     styxclientfree(mount->client);
     free(mount);
 }
-static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL}; /* Directory subroot aliases need distinct retained-fid capabilities. */
+/* EN: Probe a readable remote directory on one fid without inferring access
+ * from mode. Subsequent walks still go through the original server.
+ * RU: Проверить читаемый удалённый каталог на одном fid. Последующий
+ * обход по-прежнему выполняется исходным сервером. */
+static FVM_Result directory_access(void *state, const char *path, unsigned access)
+{
+    struct Mount *mount = state;
+    if (access & FVM_ACCESS_WRITE)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    if ((access | FVM_ACCESS_READ) & ~mount->access)
+    {
+        return FVM_ERROR;
+    }
+    StyxFid *fid = styxmountwalk(mount, path);
+    StyxMeta metadata;
+    FVM_Result status = FVM_ERROR;
+    if (fid && styxmountstat(mount->client, fid, &metadata))
+    {
+        if (!metadata.directory)
+        {
+            status = FVM_UNSUPPORTED;
+        }
+        else if ((!(access & FVM_ACCESS_EXEC) || (metadata.mode & 0111)) &&
+            styxmountopen(mount->client, fid, 0))
+        {
+            status = FVM_OK;
+        }
+    }
+    styxmountclunk(mount->client, fid);
+    return status;
+}
+
+
+static const DVM_ProviderOps operations = {info, openfile, destroy, 0, directory_access}; /* Directory subroot aliases need distinct retained-fid capabilities. */
 static const DVM_ProviderOps fileoperations = {info, openfile, destroy, DVM_PROVIDER_STABLE_BIND, NULL}; /* Only dot maps to the immutable attached file fid. */
 
 
