@@ -372,7 +372,8 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
         return -1;
     }
     unsigned char *request = malloc(STYX_MANAGED_LIST_LIMIT + 1);
-    if (!request || fvm_srecord_write_pair(STYX_MANAGED_REQUEST_TAG, first, prefix,
+    unsigned long tag = files->field_deltas ? STYX_MANAGED_DELTA_REQUEST_TAG : STYX_MANAGED_REQUEST_TAG;
+    if (!request || fvm_srecord_write_pair(tag, first, prefix,
         arguments.payload, arguments.size, request, STYX_MANAGED_LIST_LIMIT, &used) != FVM_S_OK)
     {
         free(request);

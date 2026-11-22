@@ -304,7 +304,7 @@ static int managed_dispatch(void *state, DVM_Provider *context, const FVM_SRecor
 {
     StyxScalarFunctionOwner *owner = state;
     size_t request_size;
-    if (!context || !styxmanaged_list_write(STYX_MANAGED_REQUEST_TAG, owner->shape.arguments,
+    if (!context || !styxmanaged_list_write(arguments->tag, owner->shape.arguments,
         arguments->payload, arguments->size, reply, capacity, &request_size) ||
         !exchange(owner, reply, request_size, capacity, size, context))
     {

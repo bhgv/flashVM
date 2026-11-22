@@ -26,6 +26,33 @@
 #include <string.h>
 
 
+/* EN: Decode the return, including the empty return from a void function.
+ * RU: Декодировать результат, включая пустой возврат функции без результата. */
+static int read_result(const char *shape, const StyxReplyField *field, DVM_StyxValueFrame *result)
+{
+    return !strcmp(shape, "()") ? styxmanaged_is_nil(field->bytes, field->size) :
+        dvm_styx_value_frame_read(STYX_DYNAMIC_REPLY_TAG, shape, field->bytes, field->size, result);
+}
+
+
+/* EN: Validate and commit the field reply from an opted-in owner.
+ * RU: Проверить и применить изменения полей от владельца с поддержкой дельт. */
+static int delta_reply(const StyxCallShape *shape, const unsigned char *bytes, size_t size,
+    const DirectManagedFrame *call)
+{
+    StyxReplyField fields[2];
+    StyxFieldDelta deltas[STYX_CALL_VALUES];
+    DVM_StyxValueFrame result = {0};
+    size_t count;
+    int valid = styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) &&
+        styxmanaged_deltas(shape->arguments, fields[1].bytes, fields[1].size, deltas, &count) &&
+        read_result(shape->result, &fields[0], &result) &&
+        dvm_styx_ref_delta_commit(shape->arguments, call->arguments, deltas, count, call->ret, &result);
+    dvm_styx_value_frame_clear(&result);
+    return valid;
+}
+
+
 /* [GC:] EN: Stage and validate both reply positions before touching live fields.
  * RU: Подготовить и проверить обе позиции ответа до изменения живых полей. */
 static int managed_reply(const StyxCallShape *shape, const unsigned char *bytes, size_t size,
@@ -63,8 +90,7 @@ static int managed_reply(const StyxCallShape *shape, const unsigned char *bytes,
     int valid = (!mask || (fvm_srecord_write(STYX_MANAGED_REF_TAG, updates.payload, updates.size,
         record, sizeof(record), &extent) == FVM_S_OK &&
         dvm_styx_value_frame_read(STYX_MANAGED_REF_TAG, selected, record, extent, &copyback))) &&
-        (!strcmp(shape->result, "()") ? styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
-            dvm_styx_value_frame_read(STYX_DYNAMIC_REPLY_TAG, shape->result, fields[0].bytes, fields[0].size, &result)) &&
+        read_result(shape->result, &fields[0], &result) &&
         dvm_styx_ref_commit(selected, chosen, &copyback, call->ret, &result);
     dvm_styx_value_frame_clear(&copyback);
     dvm_styx_value_frame_clear(&result);
@@ -136,7 +162,8 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
-    if (managed_reply(&files->shape, request, response_size, &captured))
+    if (files->field_deltas ? delta_reply(&files->shape, request, response_size, &captured) :
+        managed_reply(&files->shape, request, response_size, &captured))
     {
         return;
     }

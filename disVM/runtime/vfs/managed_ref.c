@@ -275,12 +275,13 @@ typedef struct RefSwap
     void *original; /* Live caller ADT kept by the pending call frame. */
     void *decoded; /* Rooted private ADT carrying the new fields. */
     StyxScalarLayout layout; /* Exact native fields, excluding tail padding. */
+    unsigned mask; /* Only these fields are swapped. */
 } RefSwap;
 
 
 /* EN: Validate every selected object and prepare disjoint targets.
  * RU: Проверить все выбранные объекты и подготовить непересекающиеся цели. */
-static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFrame *updates, RefSwap *swaps)
+static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFrame *updates, const unsigned *masks, RefSwap *swaps)
 {
     const char *type = refs + 1;
     for (size_t i = 0; i < updates->layout.count; i++)
@@ -302,7 +303,7 @@ static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFr
                 return 0;
             }
         }
-        swaps[i] = (RefSwap){objects[i], decoded, layout};
+        swaps[i] = (RefSwap){objects[i], decoded, layout, masks ? masks[i] : (1U << layout.count) - 1};
         type = styxshape_end(type);
     }
     return *type == ')';
@@ -310,11 +311,11 @@ static int prepare_swaps(const char *refs, void *const *objects, DVM_StyxValueFr
 
 
 /* EN/RU: See managed_ref.h. / См. managed_ref.h. */
-int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates,
+static int ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates, const unsigned *masks,
     void *destination, DVM_StyxValueFrame *result)
 {
     RefSwap swaps[STYX_CALL_VALUES];
-    if (!prepare_swaps(refs, objects, updates, swaps) ||
+    if (!prepare_swaps(refs, objects, updates, masks, swaps) ||
         (result->layout.size && (!destination || destination == H)))
     {
         return 0;
@@ -349,17 +350,23 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
     for (size_t i = 0; i < updates->layout.count; i++)
     {
         RefSwap *swap = &swaps[i];
-        memcpy(old, swap->original, swap->layout.size);
-        memcpy(swap->original, swap->decoded, swap->layout.size);
-        memcpy(swap->decoded, old, swap->layout.size);
         for (size_t j = 0; j < swap->layout.count; j++)
         {
+            if (!(swap->mask & (1U << j)))
+            {
+                continue;
+            }
+            size_t offset = swap->layout.offset[j], width = swap->layout.width[j];
+            unsigned char *original = (unsigned char *)swap->original + offset;
+            unsigned char *decoded = (unsigned char *)swap->decoded + offset;
+            memcpy(old, original, width);
+            memcpy(original, decoded, width);
+            memcpy(decoded, old, width);
             if (swap->layout.pointers & (1U << j))
             {
-                size_t offset = swap->layout.offset[j];
                 void *previous, *next;
-                memcpy(&previous, old + offset, sizeof(previous));
-                memcpy(&next, (unsigned char *)swap->original + offset, sizeof(next));
+                memcpy(&previous, old, sizeof(previous));
+                memcpy(&next, original, sizeof(next));
                 if (previous && previous != H)
                 {
                     Setmark(D2H(previous));
@@ -401,6 +408,17 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
 }
 
 
+/* EN/RU: See managed_ref.h. / См. managed_ref.h. */
+int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFrame *updates,
+    void *destination, DVM_StyxValueFrame *result)
+{
+    return ref_commit(refs, objects, updates, NULL, destination, result);
+}
+
+
+#include "managed_ref_delta.inc"
+
+
 /* EN: Encode changed original ADTs once, excluding aliases and nil arguments.
  * RU: Кодировать изменившиеся исходные ADT один раз, исключая дубликаты и nil. */
 int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRecord *baseline,
@@ -414,7 +432,9 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
     }
     if (!strcmp(refs, "()"))
     {
-        return fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+        unsigned long tag = baseline->tag == STYX_MANAGED_DELTA_REQUEST_TAG ?
+            STYX_MANAGED_DELTA_TAG : STYX_MANAGED_ARRAY_TAG;
+        return fvm_srecord_write(tag, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
     FVM_SRecord before[STYX_CALL_VALUES], after[STYX_CALL_VALUES], frame;
     size_t count, other_count, extent, consumed;
@@ -429,7 +449,11 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
         consumed == extent && styxmanaged_ref_records(refs, &frame, after, &other_count) && count == other_count;
     unsigned char index = 0, mask = 0;
     size_t length = 1;
-    for (size_t i = 0; valid && i < count; i++)
+    int delta = baseline->tag == STYX_MANAGED_DELTA_REQUEST_TAG;
+    unsigned char *fields = delta ? malloc(capacity) : NULL;
+    valid = valid && (!delta || fields);
+    const char *type = refs + 1;
+    for (size_t i = 0; valid && i < count; i++, type = styxshape_end(type))
     {
         if (after[i].tag != STYX_MANAGED_REF_TAG || after[i].size <= 1 ||
             (before[i].size == after[i].size && !memcmp(before[i].payload, after[i].payload, after[i].size)))
@@ -437,10 +461,24 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
             continue;
         }
         size_t written;
-        valid = length <= capacity &&
-            fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1,
-                after[i].payload + 1, after[i].size - 1, payload + length, capacity - length,
-                &written) == FVM_S_OK;
+        if (delta)
+        {
+            size_t field_size;
+            valid = styxmanaged_diff_fields(type, &before[i], &after[i], fields, capacity, &field_size);
+            if (!valid || !field_size)
+            {
+                continue;
+            }
+            valid = length <= capacity && fvm_srecord_write(STYX_MANAGED_REF_TAG, fields, field_size,
+                payload + length, capacity - length, &written) == FVM_S_OK;
+        }
+        else
+        {
+            valid = length <= capacity &&
+                fvm_srecord_write_pair(STYX_MANAGED_REF_TAG, &index, 1,
+                    after[i].payload + 1, after[i].size - 1, payload + length, capacity - length,
+                    &written) == FVM_S_OK;
+        }
         if (valid)
         {
             mask |= 1U << i;
@@ -452,8 +490,10 @@ int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRe
     {
         payload[0] = mask;
     }
-    valid = valid && fvm_srecord_write(STYX_MANAGED_ARRAY_TAG, payload, mask ? length : 0,
+    valid = valid && fvm_srecord_write(delta ? STYX_MANAGED_DELTA_TAG : STYX_MANAGED_ARRAY_TAG,
+        payload, mask ? length : 0,
         bytes, capacity, used) == FVM_S_OK;
+    free(fields);
     free(payload);
     free(encoded);
     return valid;

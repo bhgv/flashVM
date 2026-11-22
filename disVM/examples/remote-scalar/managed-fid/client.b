@@ -65,7 +65,8 @@ large(m: Managed, label: string, done: chan of int)
 check_refs(m: Managed)
 {
     Cell: import m;
-    bytes := array[] of {byte 12, byte 0};
+    bytes := array[2500] of byte;
+    bytes[0] = byte 12;
     held := array[2500] of byte;
     held[2499] = byte 234;
     cell := ref Cell("x", bytes);
@@ -74,8 +75,12 @@ check_refs(m: Managed)
         cell.bytes != bytes || other.bytes != held) {
         raise "unchanged refs were overwritten";
     }
-    if (m->update("write", cell, cell, other) != "x!" ||
-        cell.text != "x!" || cell.bytes[1] != byte 91 || other.bytes != held) {
+    if (m->update("text", cell, cell, other) != "x!" ||
+        cell.text != "x!" || cell.bytes != bytes || other.bytes != held) {
+        raise "text update replaced an untouched array";
+    }
+    if (m->update("write", cell, cell, other) != "x!!" ||
+        cell.text != "x!!" || cell.bytes[1] != byte 91 || other.bytes != held) {
         raise "sparse aliased ref update failed";
     }
     failed := 0;
@@ -84,7 +89,7 @@ check_refs(m: Managed)
     } exception {
         "*" => failed = 1;
     }
-    if (!failed || cell.text != "x!" || cell.bytes[1] != byte 91 || other.bytes != held) {
+    if (!failed || cell.text != "x!!" || cell.bytes[1] != byte 91 || other.bytes != held) {
         raise "failed call modified client refs";
     }
 }

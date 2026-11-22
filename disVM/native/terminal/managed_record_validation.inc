@@ -253,3 +253,176 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
     }
     return 1;
 }
+
+
+typedef struct FieldLeaves
+{
+    const char *type[STYX_CALL_VALUES]; /* Borrowed beginning of each flattened type. */
+    size_t length[STYX_CALL_VALUES]; /* Length of each type token. */
+    FVM_SRecord node[STYX_CALL_VALUES]; /* Borrowed leaf records when a snapshot is supplied. */
+    size_t count; /* Number of visited leaves. */
+} FieldLeaves;
+
+
+/* EN: Flatten a validated field schema and optionally its matching snapshot.
+ * RU: Развернуть проверенную схему полей и, если задан, её снимок. */
+static int field_leaves(const char *type, const FVM_SRecord *list, FieldLeaves *leaves)
+{
+    size_t offset = 0;
+    while (*type != ')')
+    {
+        FVM_SRecord node = {0};
+        size_t used = 0;
+        const char *end = styxshape_end(type);
+        if (!end || (list && (offset >= list->size ||
+            fvm_srecord_read(list->payload + offset, list->size - offset,
+                STYX_MANAGED_LIST_LIMIT, &node, &used) != FVM_S_OK)))
+        {
+            return 0;
+        }
+        if (*type == '(')
+        {
+            if (!field_leaves(type + 1, list ? &node : NULL, leaves))
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            if (leaves->count >= STYX_CALL_VALUES)
+            {
+                return 0;
+            }
+            size_t i = leaves->count++;
+            leaves->type[i] = type;
+            leaves->length[i] = (size_t)(end - type);
+            leaves->node[i] = node;
+        }
+        offset += used;
+        type = end;
+    }
+    return !list || offset == list->size;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *bytes, size_t capacity, size_t *used)
+{
+    char schema[STYX_SHAPE_MAX + 1];
+    FieldLeaves left = {0}, right = {0};
+    if (before->size < 2 || after->size < 2 || !styxmanaged_ref_fields(type, schema))
+    {
+        return 0;
+    }
+    FVM_SRecord a = *before, b = *after;
+    a.payload++;
+    a.size--;
+    b.payload++;
+    b.size--;
+    if (!field_leaves(schema + 1, &a, &left) || !field_leaves(schema + 1, &b, &right))
+    {
+        return 0;
+    }
+    unsigned char *output = bytes;
+    size_t size = 1;
+    unsigned char mask = 0;
+    for (size_t i = 0; i < right.count; i++)
+    {
+        const FVM_SRecord *old = &left.node[i], *next = &right.node[i];
+        if (old->tag == next->tag && old->size == next->size && !memcmp(old->payload, next->payload, next->size))
+        {
+            continue;
+        }
+        size_t n;
+        if (size >= capacity || fvm_srecord_write(next->tag, next->payload, next->size,
+            output + size, capacity - size, &n) != FVM_S_OK)
+        {
+            return 0;
+        }
+        size += n;
+        mask |= 1U << i;
+    }
+    if (mask)
+    {
+        output[0] = mask;
+    }
+    *used = mask ? size : 0;
+    return 1;
+}
+
+
+/* EN: Decode and validate one field mask and exactly its selected leaf values.
+ * RU: Разобрать маску полей и проверить ровно выбранные ею значения. */
+static int field_delta(const char *type, StyxFieldDelta *change)
+{
+    char schema[STYX_SHAPE_MAX + 1];
+    FieldLeaves leaves = {0};
+    FVM_SRecord *fields = &change->fields;
+    if (fields->tag != STYX_MANAGED_REF_TAG || fields->size < 2 ||
+        !styxmanaged_ref_fields(type, schema) || !field_leaves(schema + 1, NULL, &leaves))
+    {
+        return 0;
+    }
+    change->mask = fields->payload[0];
+    if (!change->mask || (change->mask >> leaves.count))
+    {
+        return 0;
+    }
+    size_t length = 1;
+    change->schema[0] = '(';
+    for (size_t i = 0; i < leaves.count; i++)
+    {
+        if (change->mask & (1U << i))
+        {
+            memcpy(change->schema + length, leaves.type[i], leaves.length[i]);
+            length += leaves.length[i];
+        }
+    }
+    change->schema[length++] = ')';
+    change->schema[length] = 0;
+    fields->payload++;
+    fields->size--;
+    return styxmanaged_payload_valid(change->schema, fields->payload, fields->size);
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
+    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count)
+{
+    FVM_SRecord outer;
+    char refs[STYX_SHAPE_MAX + 1];
+    unsigned slots;
+    size_t used;
+    *count = 0;
+    if (!styxmanaged_refs(arguments, refs, &slots) ||
+        fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &outer, &used) != FVM_S_OK ||
+        outer.tag != STYX_MANAGED_DELTA_TAG || used != size)
+    {
+        return 0;
+    }
+    if (!outer.size)
+    {
+        return 1;
+    }
+    unsigned mask = outer.payload[0], index = 0;
+    size_t offset = 1;
+    for (const char *type = refs + 1; *type != ')'; type = styxshape_end(type), index++)
+    {
+        if (mask & (1U << index))
+        {
+            StyxFieldDelta *change = &changes[*count];
+            change->object = index;
+            if (offset >= outer.size ||
+                fvm_srecord_read(outer.payload + offset, outer.size - offset, STYX_MANAGED_LIST_LIMIT,
+                    &change->fields, &used) != FVM_S_OK || !field_delta(type, change))
+            {
+                return 0;
+            }
+            (*count)++;
+            offset += used;
+        }
+    }
+    return mask && !(mask >> index) && offset == outer.size;
+}

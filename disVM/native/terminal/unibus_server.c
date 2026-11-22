@@ -35,6 +35,15 @@ static MountedExport *mounted_node(Path path, unsigned offset)
 }
 
 
+/* EN: Recognize the per-module field delta capability file.
+ * RU: Распознать файл поддержки дельт полей в каталоге модуля. */
+static int delta_node(Path path)
+{
+    Path first = LAUNCH_EXIT + 1;
+    return current->loaded && path >= first && path - first < current->count;
+}
+
+
 /* EN: Consume the file context attached to a launch fid.
  * RU: Освободить файловый контекст, прикреплённый к fid запуска. */
 static void close_launch_file(void *state)
@@ -56,6 +65,10 @@ static char *open_node(Qid *qid, int mode)
         }
         return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL,
             module->function.program_root && current->loaded ? &current->function_workers : NULL, &module->busy);
+    }
+    if (delta_node(qid->path))
+    {
+        return mode == OREAD ? nil : Eperm;
     }
     if (mounted_node(qid->path, 2))
     {
@@ -107,6 +120,11 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     if (mounted_node(qid.path, 1))
     {
         return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
+    }
+    if (delta_node(qid.path) && offset >= 0)
+    {
+        *count = 0;
+        return nil;
     }
     MountedExport *module = mounted_node(qid.path, 2);
     if (module && offset >= 0)
@@ -214,7 +232,9 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
         {
             directory->profile_node = styxaddfile(&server->server, parent, parent + 2, ".interface", 0444, "unibus");
         }
-        return directory->profile_node != NULL;
+        return directory->profile_node && (leader != index ||
+            styxaddfile(&server->server, parent, LAUNCH_EXIT + 1 + leader,
+                STYX_MANAGED_DELTA_FILE, 0444, "unibus"));
     }
     uint32_t signature = styxscalar_request_signature(module->function.request_tag);
     if (!signature || module->function.reply_tag != styxfunction_reply_tag(module->function.request_tag))
@@ -329,7 +349,8 @@ static void free_modules(StyxUnibusServer *server)
  * Проверить заимствованную запись и зарезервировать её собственные маршруты. */
 static int configure(MountedExport *module, const StyxMountedScalar *entry, int loaded)
 {
-    if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface"))
+    if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface") ||
+        !strcmp(entry->name, STYX_MANAGED_DELTA_FILE))
     {
         return 0;
     }

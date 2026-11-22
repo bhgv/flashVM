@@ -37,16 +37,21 @@ cleans up on exit. Expect `PASS managed Styx load` in both execution modes.
 The example checks a UTF-8 string, a returned byte array, a void return, an
 owner exception and two parallel calls whose records exceed one Styx message.
 It also passes the same ADT through two `ref` arguments and verifies that an
-unchanged ADT retains its original array on the client.
+unchanged ADT retains its original array on the client. It checks array identity
+again after changing only the string in the very same ADT.
 
 For `ref` arguments, the request defines each non-nil ADT once. Later aliases
 carry its index. The reply's second position carries a bit mask of changed
-references in flattened argument order, followed by one snapshot for each set
-bit. An empty position means no copy-back. The owner compares final field
+references in flattened argument order. On an owner that publishes the
+`.ref-fields` capability, the client opts in on each request and each selected
+reference has its own field mask and only the selected values. Tuples are
+flattened in schema order. An empty position means no copy-back. The owner compares final field
 values against the request, so a store of the same value does not set a bit.
 The client validates the full response before applying the return value and
 updates together. An exception discards all copy-back.
 
 The profile supports bounded ADTs with scalar, string, primitive array and
 tuple fields. Nested `ref` fields and `ref` return values are outside this
-profile. An ADT that changed is sent as a complete snapshot.
+profile. Arrays are individual fields. If an array changes, the whole array
+is sent. Peers without the capability still use the complete object snapshot
+for each changed reference.

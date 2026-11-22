@@ -44,8 +44,10 @@ static void prepare_call(void *frame)
     memcpy(&wire, bridge + GATE_WIRE, sizeof(wire));
     DVM_StyxValueFrame arguments = {0};
     if (!wire || wire == H || wire->t != &Tbyte || wire->len <= 0 || wire->len > STYX_MANAGED_LIST_LIMIT ||
-        !dvm_styx_value_frame_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
-            wire->data, (size_t)wire->len, &arguments))
+        (!dvm_styx_value_frame_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
+            wire->data, (size_t)wire->len, &arguments) &&
+         !dvm_styx_value_frame_read(STYX_MANAGED_DELTA_REQUEST_TAG, data->shape.arguments,
+            wire->data, (size_t)wire->len, &arguments)))
     {
         error("invalid managed owner arguments");
     }
@@ -67,7 +69,9 @@ static void finish_call(void *frame)
     FVM_SRecord baseline;
     memcpy(&wire, helper->fp + GATE_WIRE, sizeof(wire));
     if (!styxmanaged_list_read(STYX_MANAGED_REQUEST_TAG, data->shape.arguments,
-        wire->data, (size_t)wire->len, &baseline))
+        wire->data, (size_t)wire->len, &baseline) &&
+        !styxmanaged_list_read(STYX_MANAGED_DELTA_REQUEST_TAG, data->shape.arguments,
+            wire->data, (size_t)wire->len, &baseline))
     {
         error("invalid managed owner baseline");
     }

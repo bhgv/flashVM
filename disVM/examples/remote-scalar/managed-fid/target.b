@@ -35,7 +35,9 @@ update(mode: string, left, right, untouched: ref Cell): string
         return untouched.text;
     }
     left.text = left.text + "!";
-    right.bytes[1] = byte 91;
+    if (mode != "text") {
+        right.bytes[1] = byte 91;
+    }
     if (mode == "fail") {
         raise "discard ref updates";
     }

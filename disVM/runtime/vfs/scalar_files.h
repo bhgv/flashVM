@@ -23,6 +23,7 @@ typedef struct DVM_ScalarFiles
     DVM_CloseJob *close; /* Native retirement reservation. */
     uint32_t signature; /* Verified compiled import for this exact function. */
     StyxCallShape shape; /* Optional checked typed export from the same publication. */
+    int field_deltas; /* The captured owner advertises per-field replies. */
     int explicit_end; /* The mounted profile advertises staged function writes. */
     int dynamic; /* Both compiled sides verified the scalar schema. */
     unsigned long ref_profile; /* Wire tag for a schema-selected reference call, or zero. */

@@ -18,7 +18,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         int64_t caller;
         if (size > STYX_MANAGED_LIST_LIMIT ||
             fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &outer, &used) != FVM_S_OK ||
-            used != size || outer.tag != fn->request_tag ||
+            used != size || (outer.tag != fn->request_tag && outer.tag != STYX_MANAGED_DELTA_REQUEST_TAG) ||
             fvm_srecord_read(outer.payload, outer.size, STYX_MANAGED_LIST_LIMIT, &first, &prefix) != FVM_S_OK ||
             !styxscalarread(STYX_CALL_BIG_TAG, outer.payload, prefix, &kind, &caller) ||
             kind != STYX_SCALAR_VALUE || caller <= 0 || caller > UINT32_MAX ||
@@ -58,13 +58,17 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     FVM_SRecord value, updates;
     char selected[STYX_SHAPE_MAX + 1];
     unsigned mask;
+    StyxFieldDelta deltas[STYX_CALL_VALUES];
+    size_t delta_count;
     if (length > fid->reply_capacity || !styxcall_reply_read(fn->reply_tag, fid->reply, length, fields) ||
         (!strcmp(fn->dynamic_shape->result, "()") ?
             !styxmanaged_is_nil(fields[0].bytes, fields[0].size) :
             !styxmanaged_list_read(STYX_DYNAMIC_REPLY_TAG, fn->dynamic_shape->result,
                 fields[0].bytes, fields[0].size, &value)) ||
-        !styxmanaged_updates(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
-            selected, &mask, &updates))
+        (arguments.tag == STYX_MANAGED_DELTA_REQUEST_TAG ?
+            !styxmanaged_deltas(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size, deltas, &delta_count) :
+            !styxmanaged_updates(fn->dynamic_shape->arguments, fields[1].bytes, fields[1].size,
+                selected, &mask, &updates)))
     {
         return Ebadarg;
     }

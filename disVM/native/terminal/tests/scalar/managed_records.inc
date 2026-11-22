@@ -129,3 +129,54 @@ static int managed_sparse_refs(void)
         sizeof(frame), &size) == FVM_S_OK &&
         !styxmanaged_updates(arguments, frame, size, selected, &decoded_mask, &updates);
 }
+
+
+/* EN: Flatten a tuple in one changed ADT and reject a mask outside its schema.
+ * RU: Развернуть кортеж изменённого ADT и отклонить маску за пределами схемы. */
+static int managed_field_deltas(void)
+{
+    const char type[] = "r[y(sy)]";
+    const char arguments[] = "(sr[y(sy)])";
+    unsigned char head[32] = {0}, tuple[48], old[96], next[96], fields[96], outer[192], ref[128];
+    size_t byte_size, one, two, a, b, n, r, length;
+    unsigned char object = 1;
+    if (!styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, 5, head + 1,
+            sizeof(head) - 1, &byte_size) ||
+        fvm_srecord_write(STYX_MANAGED_STRING_TAG, "old", 3, tuple, sizeof(tuple), &one) != FVM_S_OK ||
+        !styxscalarwrite(STYX_CALL_BYTE_TAG, STYX_SCALAR_VALUE, 9, tuple + one, sizeof(tuple) - one, &two))
+    {
+        return 0;
+    }
+    memcpy(old, head, byte_size + 1);
+    memcpy(next, head, byte_size + 1);
+    if (fvm_srecord_write(STYX_CALL_TUPLE_TAG, tuple, one + two, old + byte_size + 1,
+        sizeof(old) - byte_size - 1, &a) != FVM_S_OK)
+    {
+        return 0;
+    }
+    if (fvm_srecord_write(STYX_MANAGED_STRING_TAG, "new", 3, tuple, sizeof(tuple), &one) != FVM_S_OK ||
+        fvm_srecord_write(STYX_CALL_TUPLE_TAG, tuple, one + two, next + byte_size + 1,
+            sizeof(next) - byte_size - 1, &b) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_SRecord before = {.tag = STYX_MANAGED_REF_TAG, .payload = old, .size = byte_size + 1 + a};
+    FVM_SRecord after = {.tag = STYX_MANAGED_REF_TAG, .payload = next, .size = byte_size + 1 + b};
+    StyxFieldDelta patches[STYX_CALL_VALUES];
+    size_t count;
+    if (!styxmanaged_diff_fields(type, &before, &after, fields, sizeof(fields), &n) ||
+        n != 1 + one || fields[0] != 2 || memcmp(fields + 1, tuple, one) ||
+        fvm_srecord_write(STYX_MANAGED_REF_TAG, fields, n, ref, sizeof(ref), &r) != FVM_S_OK ||
+        fvm_srecord_write_pair(STYX_MANAGED_DELTA_TAG, &object, 1, ref, r,
+            outer, sizeof(outer), &length) != FVM_S_OK ||
+        !styxmanaged_deltas(arguments, outer, length, patches, &count) || count != 1 ||
+        patches[0].object || patches[0].mask != 2 || strcmp(patches[0].schema, "(s)"))
+    {
+        return 0;
+    }
+    fields[0] = 8;
+    return fvm_srecord_write(STYX_MANAGED_REF_TAG, fields, n, ref, sizeof(ref), &r) == FVM_S_OK &&
+        fvm_srecord_write_pair(STYX_MANAGED_DELTA_TAG, &object, 1, ref, r,
+            outer, sizeof(outer), &length) == FVM_S_OK &&
+        !styxmanaged_deltas(arguments, outer, length, patches, &count);
+}

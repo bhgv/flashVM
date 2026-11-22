@@ -37,4 +37,8 @@ int dvm_styx_ref_commit(const char *refs, void *const *objects, DVM_StyxValueFra
  * RU: Записать маску и снимки только изменившихся ADT. */
 int dvm_styx_ref_updates(const char *arguments, const void *slots, const FVM_SRecord *baseline,
     void *bytes, size_t capacity, size_t *used);
+/* EN: Apply validated field deltas and the return value in one commit.
+ * RU: Применить проверенные дельты полей и результат одним действием. */
+int dvm_styx_ref_delta_commit(const char *arguments, const void *slots, const StyxFieldDelta *changes,
+    size_t count, void *destination, DVM_StyxValueFrame *result);
 #endif

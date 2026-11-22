@@ -206,6 +206,9 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
     }
     unsigned char profile[STYX_MOUNTED_EXPORT_LIMIT * STYX_SHAPED_OFFER_MAX + 1];
     size_t size = mounted_profile(directory, profile, sizeof(profile));
+    FVM_FileInfo delta;
+    int field_deltas = size && dvm_provider_info(directory, STYX_MANAGED_DELTA_FILE, &delta) == FVM_OK &&
+        !delta.directory && (delta.mode & 0444);
     DVM_ScalarFiles *head = NULL;
     DVM_ScalarFiles **tail = &head;
     unsigned matched = 0;
@@ -250,6 +253,8 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         (*tail)->signature = signature;
         (*tail)->caller = caller;
         (*tail)->explicit_end = explicit_end;
+        (*tail)->field_deltas = field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
+            strchr(shape.arguments, 'r') != NULL;
         (*tail)->dynamic = dynamic;
         (*tail)->ref_profile = ref_profile;
         (*tail)->result_cells = result;

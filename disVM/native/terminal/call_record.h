@@ -91,6 +91,28 @@ int styxmanaged_updates(const char *arguments, const void *bytes, size_t size,
     char selected[STYX_SHAPE_MAX + 1], unsigned *mask, FVM_SRecord *updates);
 
 
+#define STYX_MANAGED_DELTA_TAG 11UL /* Object mask and per-object field records. */
+
+typedef struct StyxFieldDelta
+{
+    unsigned object; /* Index within the projected ref arguments. */
+    unsigned mask; /* Selected flattened fields of this ADT. */
+    char schema[STYX_SHAPE_MAX + 1]; /* Value schema for the selected leaves. */
+    FVM_SRecord fields; /* Borrowed sequence of selected field records. */
+} StyxFieldDelta;
+
+
+/* EN: Compare two validated ref snapshots and encode only changed field leaves.
+ * RU: Сравнить два проверенных снимка ref и записать только изменившиеся поля. */
+int styxmanaged_diff_fields(const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *bytes, size_t capacity, size_t *used);
+
+/* EN: Validate and borrow the deltas against the original argument schema.
+ * RU: Проверить дельты по исходной схеме аргументов и заимствовать их. */
+int styxmanaged_deltas(const char *arguments, const void *bytes, size_t size,
+    StyxFieldDelta changes[STYX_CALL_VALUES], size_t *count);
+
+
 /* EN: Validate a managed argument or result list and borrow its decoded outer record.
  * RU: Проверить список управляемых значений и заимствовать внешнюю запись.
  * Shape is a NUL-terminated list. Ref identities are local to one record.
