@@ -9,6 +9,9 @@ function(fvm_add_program source)
     if(relative STREQUAL "examples/embedding/media_parts/main.c" OR relative STREQUAL "examples/embedding/srecords/main.c" OR relative STREQUAL "examples/embedding/resource_events/main.c" OR relative STREQUAL "examples/embedding/hybrid_heartbeat/main.c" OR relative STREQUAL "examples/embedding/resource_files/main.c" OR relative STREQUAL "examples/embedding/resource_9p/main.c")
         return() # The protocol tutorial deliberately links only the standalone C codec.
     endif()
+    if(relative STREQUAL "tests/styxrpc_host.c")
+        return() # The bridge host is driven by the separate DisVM integration tests.
+    endif()
     if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
         return() # This contract requires actual target Windows SDK declarations.
     endif()

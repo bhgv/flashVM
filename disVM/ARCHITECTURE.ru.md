@@ -8,8 +8,13 @@ DisVM и FlashVM — соседние независимые движки. Limbo
 AS-реализация не-Dis модуля и AS-клиент Dis — два обязательных направления.
 
 Собственный компилятор уже выдаёт descriptor/source scaffolds обеих сторон.
-Настоящий bridge ещё должен разрешить signatures/types/layouts, зарегистрировать
-внешние экспорты, переносить значения/capabilities и удерживать pending GC roots.
+Для межмашинных RPC используйте независимый контракт libstyxrpc поверх Styx, VFS
+и UniBus. [Хостовый мост FlashVM](../flashVM/doc/STYX_RPC.ru.md) обеспечивает
+проверенные скалярные импорты и экспорты в обе стороны. Внешние программы
+используют ту же библиотеку без линковки с VM. До появления особых расширений
+в DisVM обе реализации должны сохранять одинаковый базовый функционал.
+Для управляемых значений и полномочий ещё нужны привязки FlashVM и GC-корни
+ожидающих операций.
 Нельзя обходить typed UI channels, передавать raw heap pointers или блокировать
 render/event owner на rendezvous. Call IDs не являются native frame pointers.
 Кучи/планировщики раздельны, debugger показывает boundary frames и source identity

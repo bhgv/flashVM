@@ -161,3 +161,8 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 The tests exercise the interpreter and JIT. They cover loading C modules,
 typed calls and nested refs, named and one-shot launches, reverse resources,
 live channels and revocation of delegated routes.
+
+For FlashVM, build [the adapter test host](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.md#build) and also pass
+`-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Then run
+`ctest --test-dir build -R 'styxrpc-(flash-to-dis|dis-to-flash)' --output-on-failure`.
+The four cases cover both directions and both DisVM execution modes.

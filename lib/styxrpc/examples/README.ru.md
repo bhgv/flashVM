@@ -165,3 +165,8 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 Проверки запускают интерпретатор и JIT. Они охватывают загрузку C-модуля,
 типизированные вызовы и вложенный ref, именованный и одноразовый запуск,
 встречные ресурсы, живые каналы и отзыв делегированных маршрутов.
+
+Для FlashVM соберите [исполняемый тест адаптера](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.ru.md#сборка) и передайте
+`-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Запустите
+`ctest --test-dir build -R 'styxrpc-(flash-to-dis|dis-to-flash)' --output-on-failure`.
+Четыре проверки охватывают два направления и оба режима DisVM.

@@ -3,50 +3,26 @@
  * RU: Дважды вызвать нативное устройство по одному соединению Styx.
  */
 #include "client.h"
-#include "styxrpc/rpc.h"
+#include "styxrpc/scalar_client.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 
-/* EN: Borrow client, send argument on a fresh function fid and compare the reply.
- * Return zero on an uncertain transfer without replaying the call.
- * RU: Через заимствованный client передать argument на новом fid и проверить ответ.
- * При неподтверждённой операции вернуть ноль, не повторяя вызов. */
-static int invoke(StyxClient *client, int argument)
+/* EN: Check two fresh calls and two refused outcomes on the borrowed client.
+ * RU: Проверить два новых вызова и два отказа через заимствованный клиент. */
+static int exercise(StyxClient *client)
 {
-    unsigned char request[STYXRPC_FRAME_SIZE];
-    size_t request_size;
-    if (styxrpc_request(STYXRPC_INT_SIGNATURE, argument, request, sizeof(request), &request_size) != STYXRPC_OK)
-    {
-        return 0;
-    }
-    StyxFid *fid = styxclientwalk(client, "mounted/device.dis/sample");
-    if (!fid || !styxclientopen(fid, 2))
-    {
-        styxclientclunk(fid);
-        return 0;
-    }
-    StyxTransfer sent;
-    styxclientwrite(fid, 0, request, request_size, &sent);
-    int good = sent.success && sent.confirmed && !sent.uncertain && sent.count == request_size;
-    unsigned char reply[STYXRPC_FRAME_SIZE + 1];
-    size_t offset = 0;
-    while (good && offset < sizeof(reply))
-    {
-        StyxTransfer received;
-        styxclientread(fid, offset, reply + offset, sizeof(reply) - offset, &received);
-        good = received.success && received.confirmed && !received.uncertain;
-        if (!good || !received.count)
-        {
-            break;
-        }
-        offset += received.count;
-    }
-    styxclientclunk(fid);
-    int64_t result;
-    return good && styxrpc_reply(STYXRPC_INT_SIGNATURE, reply, offset, &result) == STYXRPC_OK &&
-        result == (int64_t)argument + 1;
+    const char *module = "mounted/device.dis";
+    int64_t result = 0;
+    return styxrpc_scalar_invoke(client, module, "sample", STYXRPC_BIG_SIGNATURE, 41, 1000, &result) ==
+            STYXRPC_CALL_NOT_SENT && result == 0 &&
+        styxrpc_scalar_invoke(client, module, "sample", STYXRPC_INT_SIGNATURE, 41, 1000, &result) ==
+            STYXRPC_CALL_OK && result == 42 &&
+        styxrpc_scalar_invoke(client, module, "sample", STYXRPC_INT_SIGNATURE, INT32_MAX, 1000, &result) ==
+            STYXRPC_CALL_REMOTE_ERROR && result == 42 &&
+        styxrpc_scalar_invoke(client, module, "sample", STYXRPC_INT_SIGNATURE, -10, 1000, &result) ==
+            STYXRPC_CALL_OK && result == -9;
 }
 
 
@@ -67,7 +43,7 @@ int main(int argc, char **argv)
     {
         return 1;
     }
-    int good = invoke(client, 41) && invoke(client, -10);
+    int good = exercise(client);
     styxclientshutdown(client);
     styxclientfree(client);
     if (good)

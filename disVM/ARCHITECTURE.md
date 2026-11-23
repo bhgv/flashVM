@@ -9,8 +9,12 @@ external modules are not limited to native C. AS implementations of non-Dis
 modules and AS callers of Dis are first-class directions.
 
 The current own compiler emits descriptor/source scaffolds for those directions.
-A real host bridge must still resolve signatures/types/layouts, register external
-exports, marshal owned values/capabilities and retain pending GC roots. It must
+Use the independent libstyxrpc contract over Styx, VFS and UniBus for VM-to-VM RPC.
+The [FlashVM host bridge](../flashVM/doc/STYX_RPC.md) provides verified scalar
+imports and exports in both directions. External callers use the same library
+without linking either VM. The DisVM-side implementation must preserve functional
+parity on the shared baseline before adding VM-specific extensions. Managed
+values and capabilities still need FlashVM bindings with pending GC roots. It must
 not bypass typed UI channels, pass raw heap pointers or execute a blocking rendezvous
 on the render/event owner. Shared call IDs identify pending calls, not native frames.
 Different heaps and schedulers remain distinct. Debuggers must expose boundary

@@ -39,3 +39,23 @@ add_test(NAME styxrpc-disvm-named
 add_test(NAME styxrpc-disvm-routed
     COMMAND "${disvm_command}" "${disvm_examples}/routed.py" ${disvm_common}
         --disvm-source "${STYXRPC_DISVM_SOURCE}" --driver "$<TARGET_FILE:styxrpc-routed-client>")
+
+if(STYXRPC_FLASHVM_TEST_HOST)
+    if(NOT EXISTS "${STYXRPC_FLASHVM_TEST_HOST}")
+        message(FATAL_ERROR "Missing FlashVM bridge test host: ${STYXRPC_FLASHVM_TEST_HOST}")
+    endif()
+    foreach(direction IN ITEMS flash-to-dis dis-to-flash)
+        foreach(mode IN ITEMS interpreter jit)
+            set(mode_args)
+            if(mode STREQUAL "jit")
+                list(APPEND mode_args --jit)
+            endif()
+            set(test_name "styxrpc-${direction}-${mode}")
+            add_test(NAME "${test_name}"
+                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" ${mode_args})
+            set_tests_properties("${test_name}" PROPERTIES TIMEOUT 75)
+        endforeach()
+    endforeach()
+endif()
