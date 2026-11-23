@@ -44,10 +44,18 @@ static int channel_round_trip(void)
         return 0;
     }
     const StyxRpcSelection single = {.count = 1, .guards = {{1, 1, NULL, 0}}};
+    const StyxRpcSelection mixed = {.mode = STYXRPC_CHANNEL_ALT, .count = 2, .guards = {
+        {1, 1, NULL, 0}, {2, 1, NULL, 0}
+    }};
     return styxrpc_value_integer(STYXRPC_VALUE_INT, -71, child, sizeof(child), &field) == STYXRPC_OK &&
         styxrpc_channel_reply(grants, 2, &single, 1, child, field, reply, sizeof(reply), &reply_size) == STYXRPC_OK &&
         styxrpc_channel_result(grants, 2, &single, reply, reply_size, &received) == STYXRPC_OK &&
-        received.selected == 1 && received.integer == -71;
+        received.selected == 1 && received.integer == -71 &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, field, message, sizeof(message), &extent) == FVM_S_OK &&
+        styxrpc_channel_reply(grants, 2, &mixed, 1, message, extent, reply, sizeof(reply), &reply_size) == STYXRPC_OK &&
+        styxrpc_channel_result(grants, 2, &mixed, reply, reply_size, &received) == STYXRPC_OK &&
+        received.selected == 1 && received.integer == -71 && received.size == extent &&
+        !memcmp(received.value, message, extent);
 }
 
 

@@ -56,6 +56,11 @@ unsigned fvm_styxrpc_ref_fields(const char *type, int graph, char fields[STYXRPC
 int fvm_styxrpc_ref_snapshot(FVM_Context *context, FVM_Object *object, unsigned count, FVM_Value *values);
 
 
+/* [GC:] EN: Copy the own slots of a nonempty plain Array up to limit; return its length or zero.
+ * RU: Скопировать собственные слоты непустого простого Array до limit. Вернуть длину либо ноль. */
+unsigned fvm_styxrpc_array_snapshot(FVM_Context *context, FVM_Object *object, unsigned limit, FVM_Value *values);
+
+
 /* [GC:] EN: Verify all destination slots, then apply staged changes in a nonallocating, callback-free pass.
  * RU: Сверить все слоты назначения, затем применить изменения без выделения и колбэков. */
 int fvm_styxrpc_refs_commit(FVM_Context *context, FVM_StyxRefs *refs);

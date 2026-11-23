@@ -178,6 +178,30 @@ void fvm_styxrpc_channel_disarm(FVM_StyxRemoteChannel *channel, int deferred);
 FVM_StyxRemoteChannel *fvm_styxrpc_channel_lookup(FVM_Context *context, FVM_Object *object);
 
 
+/* EN: Test whether both open wrappers belong to one exact PID or module token.
+ * RU: Проверить, относятся ли обе открытые обёртки к одному PID либо токену модуля. */
+int fvm_styxrpc_channels_share_bus(const FVM_StyxRemoteChannel *left, const FVM_StyxRemoteChannel *right);
+
+
+/* EN: Send selection on the anchor's bus. Buffers holds three consecutive maximum-size
+ * frames for scratch, request and reply. Return NULL on success, or a static error string.
+ * RU: Послать selection на шину anchor. Buffers содержит три кадра максимального размера
+ * для промежуточных данных, запроса и ответа. Вернуть NULL либо статический текст ошибки. */
+const char *fvm_styxrpc_channel_run(const FVM_StyxRemoteChannel *anchor, const StyxRpcSelection *selection,
+    unsigned char *buffers, StyxRpcChannelResult *result);
+
+
+/* [GC:] EN: Decode the selected receive on channel, admitting nested keys under roots.
+ * RU: Декодировать выбранную ветку приёма на channel, допуская вложенные ключи под roots. */
+int fvm_styxrpc_channel_unpack_remote(FVM_Context *context, FVM_GCRootScope *roots,
+    FVM_StyxRemoteChannel *channel, const StyxRpcChannelResult *result, FVM_Value *out);
+
+
+/* [GC:] EN: Install the alternative selection methods on a rooted live channel object.
+ * RU: Установить методы альтернативного выбора на удерживаемый объект живого канала. */
+FVM_Result fvm_styxrpc_channel_install_select(FVM_Context *context, FVM_Object *owner);
+
+
 /* [GC:] EN: Encode one element using the legacy int or managed-element framing.
  * RU: Закодировать элемент обычным кадром int либо управляемым кадром элемента. */
 int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,

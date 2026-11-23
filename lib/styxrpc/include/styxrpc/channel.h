@@ -77,15 +77,15 @@ StyxRpcStatus styxrpc_channel_reply(const StyxRpcChannelGrant *grants, size_t gr
     void *bytes, size_t capacity, size_t *used);
 
 /* EN: Decode a complete exact reply. Selected is 1-based or zero when idle.
- * A typed received record borrows reply storage; int-only replies return integer.
+ * A typed received record borrows reply storage. An int receive also fills integer in mixed ALT.
  * RU: Декодировать полный ответ. Selected от 1 либо ноль при отсутствии готовых веток.
- * Типизированный элемент заимствует буфер ответа; для варианта int заполнен integer. */
+ * Типизированный элемент заимствует буфер ответа. Приём int заполняет integer и в смешанном ALT. */
 typedef struct StyxRpcChannelResult
 {
     unsigned selected; /* One-based guard ordinal, zero for idle. */
     const void *value; /* Borrowed typed receive record, otherwise NULL. */
     size_t size;       /* Typed record byte length. */
-    int32_t integer;  /* Received int for a legacy int-only operation. */
+    int32_t integer;  /* Received int for either wire reply format. */
 } StyxRpcChannelResult;
 
 /* EN: Validate a complete reply and publish the outcome only on success.

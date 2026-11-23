@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1725 / Контрольная точка v0.1725. ActionScript submits one
+native UniBus ALT through libstyxrpc for several guards on the same bus.
+Смешанный выбор сохраняет тип принятого значения. Локальная проверка
+отклоняет ветки с другого PID или токена. [EN](STYX_RPC_CHANNEL_SELECT.md) /
+[RU](STYX_RPC_CHANNEL_SELECT.ru.md).
+
 Checkpoint v0.1724 / Контрольная точка v0.1724. FlashVM receives and
 returns nested native Dis channels through libstyxrpc on the reverse PID.
 Алиасы сохраняются, вложенный канал переживает закрытие родительского

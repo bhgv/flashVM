@@ -71,6 +71,14 @@ static int same_bus(const FVM_StyxChannelSet *set, size_t left, size_t right)
 }
 
 
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channels_share_bus(const FVM_StyxRemoteChannel *left, const FVM_StyxRemoteChannel *right)
+{
+    const FVM_StyxChannelSet *set = left->set;
+    return set && set == right->set && (set->call || same_bus(set, left->index, right->index));
+}
+
+
 /* EN: Match record to the canonical wire form of a grant in the checked decoding set.
  * RU: Сопоставить record с каноническим кодированием полномочия из проверенного набора. */
 static int same_leaf(const FVM_StyxChannelDecode *decode, size_t index,
@@ -248,9 +256,7 @@ int fvm_styxrpc_channel_encode(FVM_Context *context, FVM_GCRootScope *roots, voi
         return pack_pid(send, pid, type, bytes, capacity, used);
     }
     child = fvm_styxrpc_channel_lookup(context, value->object);
-    if (!child || !receiver->set || child->set != receiver->set ||
-        ((child->set->lease || child->set->pid_mailbox) && !same_bus(child->set, receiver->index, child->index)) ||
-        !same_shape(&child->grant, type))
+    if (!child || !fvm_styxrpc_channels_share_bus(receiver, child) || !same_shape(&child->grant, type))
     {
         return 0;
     }

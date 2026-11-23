@@ -16,6 +16,8 @@ A typed Limbo function can return channels that remain live after the function r
 | `receive()` | One confirmed typed value. Waits for an element. |
 | `trySend(value)` | `true` on a confirmed send, `false` on a confirmed idle selection. |
 | `tryReceive()` | One typed value or `undefined` on an idle selection. |
+| `select(guards)` | One [native selection](STYX_RPC_CHANNEL_SELECT.md) that waits for a send or receive guard on the same bus. |
+| `trySelect(guards)` | One immediate selection. An idle reply gives `undefined`. |
 | `close()` | Disarms this object and its aliases. Repeated close succeeds. Other distinct channels from the same call keep their lease. |
 
 Methods run synchronously on the FlashVM owner. A timeout, refusal or uncertain transport outcome raises an exception. A timeout can occur after an operation has taken effect. Release discarded objects normally through GC or call `close()` for explicit release.

@@ -60,7 +60,9 @@ static FVM_Result exchange(FVM_Context *context, FVM_Object *self, unsigned argc
 {
     static const char original[] = {'a', 0, (char)0xd0, (char)0xb1};
     static const char changed[] = {'a', 0, (char)0xd0, (char)0xb1, '!'};
-    FVM_Value first, alias, nil, value;
+    FVM_Value first, alias, nil, value, ports[2], blocked;
+    const FVM_Value *operands[] = {NULL, &blocked};
+    unsigned branch;
     (void)self;
     (void)unused;
     if (argc != 2 || args[0].type != FVM_VALUE_OBJECT || args[1].type != FVM_VALUE_OBJECT ||
@@ -71,8 +73,11 @@ static FVM_Result exchange(FVM_Context *context, FVM_Object *self, unsigned argc
     {
         return failure("invalid aliases or nil argument");
     }
-    if (fvm_object_call(context, first.object, "receive", 0, NULL, &value) != FVM_OK ||
-        value.type != FVM_VALUE_NUMBER || value.number != 41)
+    ports[0] = first;
+    ports[1] = args[1];
+    if (fvm_value_string_bytes(&blocked, changed, sizeof(changed)) != FVM_OK ||
+        test_channel_select(context, args + 1, "select", 2, ports, operands, &branch, &value) != FVM_OK ||
+        branch != 1 || value.type != FVM_VALUE_NUMBER || value.number != 41)
     {
         return failure("invalid integer receive");
     }

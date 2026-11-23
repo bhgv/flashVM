@@ -102,6 +102,24 @@ static int send_value(FVM_Context *context, const FVM_Value *port, const char *m
 }
 
 
+/* EN: Reject selection across two PIDs of a mailbox, then select a nested int on the first PID.
+ * RU: Отклонить выбор между PID очереди, затем выбрать вложенный int первого PID. */
+static int select_child(FVM_Context *context, const FVM_Value *parent, const FVM_Value *foreign,
+    const FVM_Value *child, FVM_Value *out)
+{
+    FVM_Value ports[] = {*parent, *foreign};
+    unsigned branch;
+    if (test_channel_select(context, parent, "trySelect", 2, ports, NULL, &branch, out) != FVM_EXCEPTION ||
+        fvm_exception_clear(context) != FVM_OK)
+    {
+        return 0;
+    }
+    ports[1] = *child;
+    return test_channel_select(context, parent, "select", 2, ports, NULL, &branch, out) == FVM_OK &&
+        branch == 2 && out->type == FVM_VALUE_NUMBER && out->number == 81;
+}
+
+
 /* [GC:] EN: Check nested aliases, reject cross-PID leaves and retain the child past parent close.
  * RU: Проверить алиасы, отказ для ссылок другого PID и работу потомка после закрытия родителя. */
 static FVM_Result drain_nested(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -130,13 +148,12 @@ static FVM_Result drain_nested(FVM_Context *context, FVM_Object *self, unsigned 
         fvm_object_call(context, first.object, "send", 1, &right, &value) == FVM_EXCEPTION &&
         fvm_exception_get(context, &value) == FVM_OK && value.type == FVM_VALUE_STRING &&
         !strcmp(value.string, "Styx RPC channel value does not fit the schema") && fvm_exception_clear(context) == FVM_OK &&
+        select_child(context, &first, &second, &child, out) &&
         send_value(context, &first, "send", &left) && send_value(context, &second, "send", &right) &&
         send_value(context, &mailbox, "trySend", &first) &&
         fvm_object_call(context, first.object, "close", 0, NULL, &value) == FVM_OK &&
         fvm_object_call(context, sync.object, "receive", 0, NULL, &value) == FVM_OK &&
-        value.type == FVM_VALUE_NUMBER && value.number == 19 &&
-        fvm_object_call(context, child.object, "receive", 0, NULL, out) == FVM_OK &&
-        out->type == FVM_VALUE_NUMBER && out->number == 81;
+        value.type == FVM_VALUE_NUMBER && value.number == 19;
     if (ok)
     {
         fvm_value_number(&value, 43);

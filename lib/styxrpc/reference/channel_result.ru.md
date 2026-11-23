@@ -10,7 +10,9 @@ StyxRpcStatus styxrpc_channel_result(const StyxRpcChannelGrant *grants, size_t g
     const StyxRpcSelection *operation, const void *bytes, size_t size, StyxRpcChannelResult *result);
 ```
 
-Проверяет точный ответ по исходной операции и полномочиям. При успехе выдаёт номер и int либо заимствованный типизированный кадр. REMOTE_ERROR означает отказ участника.
+Декодирует полный кадр `bytes` длиной `size` по исходной операции `operation` и таблице `grants` из `grant_count` записей. При `STYXRPC_OK` поле `result->selected` содержит номер ветки от единицы или ноль при отсутствии готовой ветки. Приём `int` заполняет `result->integer` и в скалярном, и в смешанном типизированном ответе. Типизированный приём также возвращает полный элемент через заимствованные `result->value` и `result->size` до повторного использования буфера. У ответа на отправку или пустой выбор принятого элемента нет.
+
+`STYXRPC_REMOTE_ERROR` означает отказ участника. `STYXRPC_INVALID` означает неверный ввод или ответ. Обе ошибки сохраняют значение `result` вызывающего.
 
 C99. `StyxRpc::rpc`.
 

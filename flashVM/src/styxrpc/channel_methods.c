@@ -126,9 +126,8 @@ int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, con
 }
 
 
-/* [GC:] EN: Admit all nested keys from a confirmed receive before creating any script wrappers.
- * RU: Принять вложенные ключи подтверждённого приёма до создания обёрток сценария. */
-static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRemoteChannel *channel,
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channel_unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRemoteChannel *channel,
     const StyxRpcChannelResult *result, FVM_Value *out)
 {
     FVM_StyxChannelSet *set = channel->set;
@@ -153,6 +152,50 @@ static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxR
 }
 
 
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+const char *fvm_styxrpc_channel_run(const FVM_StyxRemoteChannel *anchor, const StyxRpcSelection *selection,
+    unsigned char *buffers, StyxRpcChannelResult *result)
+{
+    FVM_StyxChannelSet *set = anchor->set;
+    unsigned char *request = buffers + STYXRPC_MANAGED_LIMIT;
+    unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
+    StyxRpcStatus status;
+    if (!set || (set->pid_mailbox && !styxrpc_channel_mailbox_active(set->pid_mailbox)))
+    {
+        return "Styx RPC channel is closed";
+    }
+    if (set->pid_mailbox)
+    {
+        status = styxrpc_channel_pid_exchange(set->reverse, &set->pid_routes, anchor->index, selection,
+            set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+            reply, STYXRPC_MANAGED_LIMIT, result);
+    }
+    else if (set->lease)
+    {
+        status = styxrpc_channel_lease_exchange(set->lease, anchor->index, selection,
+            set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+            reply, STYXRPC_MANAGED_LIMIT, result);
+    }
+    else
+    {
+        status = styxrpc_channel_exchange(set->reverse, set->call, selection,
+            set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+            reply, STYXRPC_MANAGED_LIMIT, result);
+    }
+    switch (status)
+    {
+    case STYXRPC_OK:
+        return NULL;
+    case STYXRPC_MORE:
+        return "Styx RPC channel operation timed out";
+    case STYXRPC_REMOTE_ERROR:
+        return "Styx RPC channel operation was refused";
+    default:
+        return "Styx RPC channel outcome is uncertain";
+    }
+}
+
+
 /* [GC:] EN: Use one fresh operation fid and translate its checked outcome without replay.
  * RU: Выполнить операцию на новом fid и обработать проверенный исход без повтора. */
 static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -167,7 +210,6 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
     FVM_StyxChannelSend send = {0};
     StyxRpcChannelPolicy policy;
     StyxRpcChannelResult result;
-    StyxRpcStatus rpc_status;
     FVM_Result status;
     const char *error = NULL;
     if (!channel || argc != method->argc)
@@ -201,47 +243,15 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
         {
             error = "Styx RPC channel value does not fit the schema";
         }
-        else if (!channel->set)
-        {
-            error = "Styx RPC channel is closed";
-        }
         else
         {
-            FVM_StyxChannelSet *set = channel->set;
-            unsigned char *scratch = buffers + 2U * STYXRPC_MANAGED_LIMIT;
-            unsigned char *request = scratch + STYXRPC_MANAGED_LIMIT;
-            unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
             selection.policy = send.delegated.count ? &policy : NULL;
-            if (set->pid_mailbox)
-            {
-                rpc_status = styxrpc_channel_mailbox_active(set->pid_mailbox) ?
-                    styxrpc_channel_pid_exchange(set->reverse, &set->pid_routes, channel->index,
-                        &selection, set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-                        reply, STYXRPC_MANAGED_LIMIT, &result) : STYXRPC_REMOTE_ERROR;
-            }
-            else if (set->lease)
-            {
-                rpc_status = styxrpc_channel_lease_exchange(set->lease, channel->index, &selection,
-                    set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-                    reply, STYXRPC_MANAGED_LIMIT, &result);
-            }
-            else
-            {
-                rpc_status = styxrpc_channel_exchange(set->reverse, set->call, &selection,
-                    set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-                    reply, STYXRPC_MANAGED_LIMIT, &result);
-            }
-            if (rpc_status != STYXRPC_OK)
-            {
-                error = rpc_status == STYXRPC_MORE ? "Styx RPC channel operation timed out" :
-                    rpc_status == STYXRPC_REMOTE_ERROR ? "Styx RPC channel operation was refused" :
-                    "Styx RPC channel outcome is uncertain";
-            }
-            else if (argc)
+            error = fvm_styxrpc_channel_run(channel, &selection, buffers + 2U * STYXRPC_MANAGED_LIMIT, &result);
+            if (!error && argc)
             {
                 fvm_value_boolean(out, result.selected != 0);
             }
-            else if (!unpack_remote(context, roots, channel, &result, out))
+            else if (!error && !fvm_styxrpc_channel_unpack_remote(context, roots, channel, &result, out))
             {
                 error = "Styx RPC channel result could not be decoded";
             }
@@ -285,6 +295,10 @@ static FVM_Result create_object(FVM_Context *context, FVM_StyxChannelSet *set,
         {
             status = fvm_object_define_method_rooted(context, owner, methods[i].name,
                 operate, (void *)(methods + i), NULL);
+        }
+        if (status == FVM_OK)
+        {
+            status = fvm_styxrpc_channel_install_select(context, owner);
         }
         if (status == FVM_OK)
         {

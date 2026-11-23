@@ -377,12 +377,27 @@ static StyxRpcStatus typed_result(const StyxRpcChannelGrant *grants, size_t gran
         return record.size == 1 ? STYXRPC_OK : STYXRPC_INVALID;
     }
     const char *shape = grant_shape(grants, grant_count, operation->guards[index - 1].key);
-    if (!element_valid(shape, 1, record.payload + 1, record.size - 1, NULL, operation->policy))
+    const unsigned char *value = record.payload + 1;
+    size_t length = record.size - 1;
+    if (!strcmp(shape, "(i)"))
+    {
+        FVM_SRecord element;
+        size_t extent;
+        int64_t integer;
+        if (fvm_srecord_read(value, length, STYXRPC_MANAGED_LIMIT, &element, &extent) != FVM_S_OK ||
+            extent != length || element.tag != STYXRPC_CHANNEL_ELEMENT_TAG ||
+            !integer_value(element.payload, element.size, &integer))
+        {
+            return STYXRPC_INVALID;
+        }
+        result->integer = (int32_t)integer;
+    }
+    else if (!element_valid(shape, 1, value, length, NULL, operation->policy))
     {
         return STYXRPC_INVALID;
     }
-    result->value = record.payload + 1;
-    result->size = record.size - 1;
+    result->value = value;
+    result->size = length;
     return STYXRPC_OK;
 }
 

@@ -9,38 +9,53 @@
 #include <cstring>
 
 
-/* EN: Require a dense native Array with exactly the requested raw indexed shape.
- * RU: Требовать плотный нативный Array с точной структурой индексных слотов. */
-static bool ref_array(FVM_Context *context, FVM_Object *object, unsigned count)
+/* EN: Find a bounded raw extent of an owner-local Array without invoking script.
+ * RU: Найти ограниченную длину Array владельца без вызова сценария. */
+static unsigned array_size(FVM_Context *context, FVM_Object *object, unsigned limit)
 {
-    return context && !context->destroying && !context->gc_releasing && object &&
+    if (context && !context->destroying && !context->gc_releasing && object &&
         object->owner == context && object->resource_kind == FVM_RESOURCE_ARRAY &&
         object->resource_result_valid && object->resource_result.type == FVM_VALUE_NUMBER &&
-        object->resource_result.number == count && object->indexed.size() == count &&
+        object->resource_result.number == object->indexed.size() && object->indexed.size() <= limit &&
         object->watchers.empty() && object->accessors.size() <= 1 &&
-        (object->accessors.empty() || fvm_base_array_length_accessor(object->accessors.begin()->second));
+        (object->accessors.empty() || fvm_base_array_length_accessor(object->accessors.begin()->second)))
+    {
+        return static_cast<unsigned>(object->indexed.size());
+    }
+    return 0;
+}
+
+
+/* EN: Read count raw slots into values, rejecting a hole or an out-of-range index.
+ * RU: Прочитать count слотов в values, отклоняя пропуск или индекс вне диапазона. */
+static bool copy_slots(FVM_Object *object, unsigned count, FVM_Value *values)
+{
+    for (unsigned i = 0; i < count; ++i)
+    {
+        fvm_detail::map<unsigned long, FVM_Value>::iterator slot = object->indexed.find(i);
+        if (slot == object->indexed.end())
+        {
+            return false;
+        }
+        values[i] = slot->second;
+    }
+    return true;
 }
 
 
 /* [GC:] EN/RU: See managed_refs.h. / См. managed_refs.h. */
 int fvm_styxrpc_ref_snapshot(FVM_Context *context, FVM_Object *object, unsigned count, FVM_Value *values)
 {
-    if (!values || !count || count > FVM_STYXRPC_REF_FIELDS || !ref_array(context, object, count))
-    {
-        return 0;
-    }
-    unsigned i = 0;
-    for (fvm_detail::map<unsigned long, FVM_Value>::iterator it = object->indexed.begin();
-        it != object->indexed.end(); ++it)
-    {
-        if (it->first >= count)
-        {
-            return 0;
-        }
-        values[it->first] = it->second;
-        ++i;
-    }
-    return i == count;
+    return values && count && count <= FVM_STYXRPC_REF_FIELDS && array_size(context, object, count) == count &&
+        copy_slots(object, count, values);
+}
+
+
+/* [GC:] EN/RU: See managed_refs.h. / См. managed_refs.h. */
+unsigned fvm_styxrpc_array_snapshot(FVM_Context *context, FVM_Object *object, unsigned limit, FVM_Value *values)
+{
+    const unsigned count = array_size(context, object, limit);
+    return values && count && copy_slots(object, count, values) ? count : 0;
 }
 
 
@@ -60,7 +75,7 @@ static bool unchanged(const FVM_Value &left, const FVM_Value &right)
  * RU: Сверить все слоты до выдачи адресов существующих элементов таблицы. */
 static bool prepare(FVM_Context *context, FVM_StyxRef &ref, FVM_Value **targets)
 {
-    if (!ref_array(context, ref.object, ref.count))
+    if (!ref.count || array_size(context, ref.object, ref.count) != ref.count)
     {
         return false;
     }

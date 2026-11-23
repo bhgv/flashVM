@@ -5,6 +5,7 @@
 #include "channel-test.h"
 #include "managed-test.h"
 #include "flashvm/exception.h"
+#include "flashvm/execution.h"
 #include "flashvm/gc.h"
 #include "flashvm/gc_roots.h"
 #include <stdio.h>
@@ -66,6 +67,103 @@ static int closed(FVM_Context *context, const FVM_Value *channel)
 }
 
 
+/* [GC:] EN/RU: See channel-test.h. / См. channel-test.h. */
+FVM_Result test_channel_select(FVM_Context *context, const FVM_Value *anchor, const char *method,
+    unsigned count, const FVM_Value *ports, const FVM_Value *const *operands, unsigned *ordinal, FVM_Value *out)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value guards[STYXRPC_CHANNEL_SLOTS], list, result, index;
+    if (!count || count > STYXRPC_CHANNEL_SLOTS)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    FVM_Result status = fvm_gc_roots_begin(context, &roots);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    for (unsigned i = 0; status == FVM_OK && i < count; ++i)
+    {
+        FVM_Value fields[2] = {ports[i]};
+        const FVM_Value *operand = operands ? operands[i] : NULL;
+        if (operand)
+        {
+            fields[1] = *operand;
+        }
+        status = fvm_exec_literal_array(context, operand ? 2 : 1, fields, guards + i);
+        if (status == FVM_OK)
+        {
+            status = fvm_gc_roots_add(roots, guards + i);
+        }
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_exec_literal_array(context, count, guards, &list);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_call(context, anchor->object, method, 1, &list, &result);
+    }
+    if (status == FVM_OK && result.type == FVM_VALUE_UNDEFINED)
+    {
+        *ordinal = 0;
+        *out = result;
+    }
+    else if (status == FVM_OK)
+    {
+        if (result.type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, &result) == FVM_OK &&
+            fvm_object_get(context, result.object, "0", &index) == FVM_OK && index.type == FVM_VALUE_NUMBER &&
+            index.number >= 1 && index.number <= count && (unsigned)index.number == index.number &&
+            fvm_object_get(context, result.object, "1", out) == FVM_OK)
+        {
+            *ordinal = (unsigned)index.number;
+        }
+        else
+        {
+            status = FVM_ERROR;
+        }
+    }
+    fvm_gc_roots_end(roots);
+    return status;
+}
+
+
+/* EN: Select across int and string, reject another call, and commit only the winning send.
+ * RU: Выбрать между int и string, отклонить другой вызов и подтвердить только выигравшую отправку. */
+static int alternatives(FVM_Context *context, const FVM_Value *left, const FVM_Value *right,
+    const FVM_Value *foreign, const char *counted, size_t length)
+{
+    FVM_Value ports[] = {*left, *right}, value, replacement, out;
+    const FVM_Value *operands[] = {NULL, &replacement};
+    unsigned branch;
+    if (fvm_value_string_bytes(&replacement, counted, length) != FVM_OK ||
+        test_channel_select(context, right, "select", 2, ports, operands, &branch, &out) != FVM_OK ||
+        branch != 1 || out.type != FVM_VALUE_NUMBER || out.number != 41 ||
+        test_channel_select(context, left, "trySelect", 2, ports, NULL, &branch, &out) != FVM_OK ||
+        branch != 2 || out.type != FVM_VALUE_STRING || fvm_value_string_size(&out) != length ||
+        memcmp(out.string, counted, length) ||
+        test_channel_select(context, left, "trySelect", 2, ports, NULL, &branch, &out) != FVM_OK || branch)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, -7);
+    ports[1] = *foreign;
+    operands[0] = &value;
+    operands[1] = NULL;
+    if (test_channel_select(context, left, "trySelect", 2, ports, operands, &branch, &out) != FVM_EXCEPTION ||
+        fvm_exception_clear(context) != FVM_OK || !idle(context, left) ||
+        fvm_object_call(context, left->object, "send", 1, &value, &out) != FVM_OK)
+    {
+        return 0;
+    }
+    ports[1] = *right;
+    operands[1] = &replacement;
+    return test_channel_select(context, left, "trySelect", 2, ports, operands, &branch, &out) == FVM_OK &&
+        branch == 2 && out.type == FVM_VALUE_UNDEFINED && number(context, left, "receive", -7) &&
+        idle(context, left) && text(context, right, counted, length) && idle(context, right);
+}
+
+
 /* EN: Exercise independent channels and another call while both leases are open.
  * RU: Проверить раздельные каналы и новый вызов при двух открытых арендах. */
 static int exercise(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Value *group, const FVM_Value *other)
@@ -81,7 +179,7 @@ static int exercise(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Valu
         fvm_gc_roots_add(roots, &left) != FVM_OK || fvm_gc_roots_add(roots, &right) != FVM_OK ||
         left.object != alias.object || left.object == second.object || left.object == right.object ||
         fvm_gc_collect(context, &reclaimed) != FVM_OK ||
-        !number(context, &left, "tryReceive", 41) || !idle(context, &alias) ||
+        !alternatives(context, &left, &right, &second, counted, sizeof(counted)) || !idle(context, &alias) ||
         !number(context, &second, "receive", 91))
     {
         return 0;
@@ -93,7 +191,7 @@ static int exercise(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Valu
         reply.type == FVM_VALUE_BOOLEAN && !reply.boolean &&
         number(context, &alias, "receive", -7) &&
         fvm_object_call(context, left.object, "close", 0, NULL, &reply) == FVM_OK && closed(context, &alias) &&
-        text(context, &right, counted, sizeof(counted)) && idle(context, &right) &&
+        idle(context, &right) &&
         fvm_value_string_bytes(&value, counted, sizeof(counted)) == FVM_OK &&
         fvm_object_call(context, right.object, "send", 1, &value, &reply) == FVM_OK &&
         reply.type == FVM_VALUE_BOOLEAN && reply.boolean && text(context, &right, counted, sizeof(counted)) &&
@@ -102,18 +200,41 @@ static int exercise(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Valu
 }
 
 
-/* EN/RU: See channel-test.h. / См. channel-test.h. */
-int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
-    const FVM_Value *outer, FVM_Value *message, FVM_Value *child)
+/* [GC:] EN: Check aliases and nil in a received message and retain the message under roots.
+ * RU: Проверить алиасы и nil принятого сообщения и удержать сообщение под roots. */
+static int nested_fields(FVM_Context *context, FVM_GCRootScope *roots,
+    const FVM_Value *message, FVM_Value *child)
 {
     FVM_Value alias, nil;
-    return outer->type == FVM_VALUE_OBJECT &&
-        fvm_object_call(context, outer->object, "receive", 0, NULL, message) == FVM_OK &&
-        message->type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, message) == FVM_OK &&
+    return message->type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, message) == FVM_OK &&
         fvm_object_get(context, message->object, "0", child) == FVM_OK && child->type == FVM_VALUE_OBJECT &&
         fvm_object_get(context, message->object, "1", &alias) == FVM_OK &&
         alias.type == FVM_VALUE_OBJECT && alias.object == child->object &&
         fvm_object_get(context, message->object, "2", &nil) == FVM_OK && nil.type == FVM_VALUE_NULL;
+}
+
+
+/* EN/RU: See channel-test.h. / См. channel-test.h. */
+int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
+    const FVM_Value *outer, FVM_Value *message, FVM_Value *child)
+{
+    return outer->type == FVM_VALUE_OBJECT &&
+        fvm_object_call(context, outer->object, "receive", 0, NULL, message) == FVM_OK &&
+        nested_fields(context, roots, message, child);
+}
+
+
+/* [GC:] EN: Select a nested array on outer while the int child's send is blocked.
+ * RU: Выбрать вложенный массив на outer, пока отправка через дочерний int заблокирована. */
+static int select_nested(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Value *outer,
+    const FVM_Value *child, FVM_Value *message, FVM_Value *received)
+{
+    FVM_Value ports[] = {*child, *outer}, blocked;
+    const FVM_Value *operands[] = {&blocked, NULL};
+    unsigned branch;
+    fvm_value_number(&blocked, 99);
+    return test_channel_select(context, child, "trySelect", 2, ports, operands, &branch, message) == FVM_OK &&
+        branch == 2 && nested_fields(context, roots, message, received) && received->object == child->object;
 }
 
 
@@ -154,7 +275,7 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManagedTa
         inner.object == sibling.object ||
         fvm_object_get(context, batch.object, "3", &sync) != FVM_OK ||
         sync.type != FVM_VALUE_OBJECT || !idle(context, &sync) ||
-        !test_channel_nested_message(context, roots, &outer, &reply, &again) || again.object != inner.object)
+        !select_nested(context, roots, &outer, &inner, &reply, &again))
     {
         return 0;
     }

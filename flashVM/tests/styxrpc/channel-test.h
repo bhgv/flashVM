@@ -39,6 +39,12 @@ int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
     const FVM_Value *outer, FVM_Value *message, FVM_Value *child);
 
 
+/* [GC:] EN: Invoke a script selection on ports. Null operands denote receive; ordinal zero is idle.
+ * RU: Вызвать выбор по ports. Нулевой указатель операнда означает приём, номер ноль означает простой. */
+FVM_Result test_channel_select(FVM_Context *context, const FVM_Value *anchor, const char *method,
+    unsigned count, const FVM_Value *ports, const FVM_Value *const *operands, unsigned *ordinal, FVM_Value *out);
+
+
 /* EN: Create the script seed descriptor [capacity, items] with the input items rooted by caller.
  * RU: Создать описатель сценария [ёмкость, элементы] с корнями элементов у вызывающего. */
 FVM_Result test_channel_seed(FVM_Context *context, FVM_GCRootScope *roots,
