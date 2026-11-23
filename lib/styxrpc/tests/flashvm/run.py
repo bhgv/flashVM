@@ -54,7 +54,8 @@ def main():
     parser = argparse.ArgumentParser(description="Check the production FlashVM/DisVM Styx RPC bridge")
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash"), required=True)
+    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
+    parser.add_argument("--device", type=lambda value: Path(value).resolve())
     parser.add_argument("--managed", action="store_true")
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
@@ -71,6 +72,25 @@ def main():
                 lambda fd: [args.runtime, "--styx-library-serve-fd", fd, "--export", image.name,
                             image.name, "echo" if args.managed else "next", "--", "--native-spawn", mode, dispatcher.name],
                 lambda fd: [args.flash_host, action + "call", fd],
+                "PASS FlashVM Styx RPC host",
+            )
+        elif args.direction == "launch":
+            image = compile_image(args, directory, tests / "context.b", "context.dis")
+            exchange(
+                directory,
+                lambda fd: [args.runtime, "--styx-serve-fd", fd, "--persistent",
+                            "--execute-as", "context.dis", image.name, "--execute-as", "park.dis", image.name,
+                            "--", "--native-spawn", mode, image.name],
+                lambda fd: [args.flash_host, "launch", fd],
+                "PASS FlashVM Styx RPC host",
+            )
+        elif args.direction == "vfs":
+            if not args.device:
+                parser.error("--device is required for VFS")
+            exchange(
+                directory,
+                lambda fd: [args.device, fd],
+                lambda fd: [args.flash_host, "vfs", fd],
                 "PASS FlashVM Styx RPC host",
             )
         else:

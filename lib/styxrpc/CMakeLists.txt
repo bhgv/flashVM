@@ -24,7 +24,7 @@ set(styxrpc_targets styxrpc)
 if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Styx CONFIG REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
-    add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/scalar_client.c src/managed_client.c src/client_exchange.c)
+    add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)

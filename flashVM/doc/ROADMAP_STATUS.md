@@ -1,5 +1,12 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1707 / Контрольная точка v0.1707. The ActionScript Styx RPC
+session starts named Dis images and holds an independent receipt and cancellation
+token for each request. It adds bounded positional file access through the same
+SDK used by standalone C clients. Проверены два режима DisVM, встречные
+`.var/.fd/.vfs`, отмена при clunk и закрытии сессии, короткая запись и EOF.
+[EN](STYX_RPC_SESSION.md) / [RU](STYX_RPC_SESSION.ru.md).
+
 Checkpoint v0.1706 / Контрольная точка v0.1706. The FlashVM–DisVM bridge now
 exchanges managed copied values using libstyxrpc and the same compiled-interface
 verifier as DisVM. Linux amd64 acceptance covers both directions, both DisVM

@@ -4,6 +4,7 @@
  */
 #include "client.h"
 #include "styxrpc/managed_client.h"
+#include "styxrpc/vfs_client.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,6 +67,25 @@ static int exercise_managed(StyxClient *client)
 }
 
 
+/* EN: Use the independent byte API on the same mounted provider.
+ * RU: Использовать независимый байтовый API на том же смонтированном провайдере. */
+static int exercise_vfs(StyxClient *client)
+{
+    const char *path = "mounted/device.dis/value";
+    StyxRpcFileInfo info;
+    unsigned char bytes[2];
+    size_t count = 0;
+    return styxrpc_vfs_stat(client, path, &info) == STYXRPC_IO_OK && !info.directory &&
+        styxrpc_vfs_read_at(client, path, 0, bytes, sizeof(bytes), &count) == STYXRPC_IO_OK &&
+        count == 1 && bytes[0] == 'A' &&
+        styxrpc_vfs_write_at(client, path, 0, "Z", 1, &count) == STYXRPC_IO_OK && count == 1 &&
+        styxrpc_vfs_read_at(client, path, 0, bytes, sizeof(bytes), &count) == STYXRPC_IO_OK &&
+        count == 1 && bytes[0] == 'Z' &&
+        styxrpc_vfs_read_at(client, "mounted/device.dis/../value", 0, bytes, sizeof(bytes), &count) ==
+            STYXRPC_IO_NOT_OPEN && count == 0;
+}
+
+
 /* EN: Take the connected fd in argv[1]. The mount consumes it.
  * Return 2 for bad arguments, 1 for setup/RPC failure, or 0 for checked outcomes.
  * RU: Принять подключённый fd из argv[1]. Монтирование забирает fd.
@@ -83,7 +103,7 @@ int main(int argc, char **argv)
     {
         return 1;
     }
-    int good = exercise(client) && exercise_managed(client);
+    int good = exercise(client) && exercise_managed(client) && exercise_vfs(client);
     styxclientshutdown(client);
     styxclientfree(client);
     if (good)

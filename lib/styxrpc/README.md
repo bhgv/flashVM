@@ -112,6 +112,8 @@ A persistent DisVM provider can launch several named images on one Styx connecti
 
 [`styxrpc_launch_named`](reference/launch_named.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.md) · [`styxrpc_server_create`](reference/server_create.md) · [`styxrpc_server_step`](reference/server_step.md) · [`styxrpc_server_destroy`](reference/server_destroy.md) · [`styxrpc_server_state`](reference/server_state.md) · [`styxintvariableread`](reference/intvariableread.md) · [`styxintvariablewrite`](reference/intvariablewrite.md)
 
+The hosted client also supports [stat](reference/vfs_stat.md), [positional read](reference/vfs_read_at.md) and [positional write](reference/vfs_write_at.md). These operations use an already mounted session, hold one fid, and report the confirmed transfer prefix.
+
 ## Name, Qid and fid
 
 `Twalk` resolves a child name to a stable node ID. The example uses

@@ -1,6 +1,6 @@
 # Connecting FlashVM and DisVM through libstyxrpc
 
-[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md)
+[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md) · [Launch and file operations](STYX_RPC_SESSION.md)
 
 FlashVM and DisVM communicate through libstyxrpc over Styx. Supply an authorized,
 connected carrier to the Styx SDK. A module publishes its compiled interface as
@@ -38,5 +38,9 @@ Use a dedicated FlashVM owner context for synchronous RPC. The adapter covers sc
 strings, arrays, tuples and nil. The external client uses the same signature
 and shape verification as DisVM. Acceptance covers fragmented Styx array writes,
 Unicode with embedded NUL, and rejection before writing on shape mismatch
-or a missing reverse PID. Reference, channel, VFS and launch bindings for
-ActionScript and migration of existing in-process editor bridges remain open.
+or a missing reverse PID. The AS session object adds named
+Dis launch with independent wait and cancellation tickets, and positional stat,
+read and write of Styx files. The host selects the reverse PID. The launched
+program can use its delegated `.var`, `.fd` and `.vfs`. Reference and channel
+bindings, direct declaration of reverse resources from AS, and migration of
+existing in-process editor bridges remain open.

@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define STYXRPC_NAMED_FRAME_MAX 64U /* Maximum complete persistent-launch frame. */
+#define STYXRPC_NAMED_NAME_MAX 31U  /* Maximum public program basename in bytes. */
+
 struct StyxClient; /* Borrowed from the installed Styx client. */
 struct StyxFid;    /* Owned single request on a persistent connection. */
 

@@ -64,4 +64,20 @@ if(STYXRPC_FLASHVM_TEST_HOST)
             set_tests_properties("${managed_test_name}" PROPERTIES TIMEOUT 75)
         endforeach()
     endforeach()
+    foreach(mode IN ITEMS interpreter jit)
+        set(mode_args)
+        if(mode STREQUAL "jit")
+            list(APPEND mode_args --jit)
+        endif()
+        add_test(NAME "styxrpc-flashvm-launch-${mode}"
+            COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction launch ${mode_args})
+        set_tests_properties("styxrpc-flashvm-launch-${mode}" PROPERTIES TIMEOUT 75)
+    endforeach()
+    add_test(NAME styxrpc-flashvm-vfs
+        COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+            ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+            --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction vfs --device "$<TARGET_FILE:styxrpc-device>")
+    set_tests_properties(styxrpc-flashvm-vfs PROPERTIES TIMEOUT 45)
 endif()

@@ -13,6 +13,7 @@
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
 #include "styxrpc/managed-test.h"
+#include "styxrpc/session-test.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -156,7 +157,8 @@ static void *serve_reverse(void *state)
 
 /* EN: Consume fd, mount the Dis provider and serve its reverse handshake concurrently.
  * RU: Принять fd, смонтировать провайдера Dis и параллельно обслуживать встречный поток. */
-static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcManagedTarget *managed, int fd)
+static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcManagedTarget *managed,
+    FVM_StyxRpcSession *launch, int fd)
 {
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), HOST_MUX_LIMIT);
     if (!mux)
@@ -165,9 +167,11 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     }
     StyxRpcPrograms programs;
     StyxRpcRegistration storage[16];
+    TestLaunchContext launch_state = {0};
     StyxRpcServer *reverse = NULL;
     if (styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)) &&
-        (!managed || styxrpc_program_add(&programs, TEST_MANAGED_PID)))
+        (!managed || styxrpc_program_add(&programs, TEST_MANAGED_PID)) &&
+        (!launch || test_launch_resources(&programs, &launch_state)))
     {
         reverse = styxrpc_server_create(phybidirchannel(mux, 1), &styxrpc_program_tree, &programs);
     }
@@ -194,6 +198,10 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
             managed->session = session;
             ok = test_managed_call(context, managed);
         }
+        else if (launch)
+        {
+            ok = test_launch_call(context, launch, session, &launch_state);
+        }
         else
         {
             ok = exercise_import(context, binding);
@@ -204,7 +212,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     styxclientfree(session);
     phybidirfree(mux);
     pthread_join(thread, NULL);
-    return ok;
+    return ok && (!launch || (launch_state.value == 42 && launch_state.output == 'D'));
 }
 
 
@@ -215,7 +223,8 @@ int main(int argc, char **argv)
     char *end;
     long fd = argc == 3 ? strtol(argv[2], &end, 10) : -1;
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
-        strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call")))
+        strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
+        strcmp(argv[1], "launch") && strcmp(argv[1], "vfs")))
     {
         return 2;
     }
@@ -230,6 +239,7 @@ int main(int argc, char **argv)
     int ok = 0;
     FVM_StyxRpcImport binding = {NULL, "mounted/limbo.dis", "next", HOST_TIMEOUT};
     StyxRpcManagedTarget managed = {0};
+    FVM_StyxRpcSession session = {0};
     if (fvm_context_create(runtime, &context) == FVM_OK)
     {
         if (!strcmp(argv[1], "serve"))
@@ -240,9 +250,14 @@ int main(int argc, char **argv)
         {
             ok = test_managed_serve(context, (int)fd);
         }
+        else if (!strcmp(argv[1], "vfs"))
+        {
+            ok = test_vfs_call(context, &session, (int)fd);
+        }
         else
         {
-            ok = call_dis(context, &binding, !strcmp(argv[1], "managed-call") ? &managed : NULL, (int)fd);
+            ok = call_dis(context, &binding, !strcmp(argv[1], "managed-call") ? &managed : NULL,
+                !strcmp(argv[1], "launch") ? &session : NULL, (int)fd);
         }
         fvm_context_destroy(context);
     }

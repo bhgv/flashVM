@@ -114,6 +114,8 @@ Dis передаёт живые каналы C-экспорту. C выбира�
 
 [`styxrpc_channel_import_element`](reference/channel_import_element.ru.md) · [`styxrpc_scheduler_init`](reference/scheduler_init.ru.md) · [`styxrpc_scheduler_admit`](reference/scheduler_admit.ru.md) · [`styxrpc_scheduler_cancel`](reference/scheduler_cancel.ru.md) · [`styxrpc_scheduler_progress`](reference/scheduler_progress.ru.md)
 
+Хостовый клиент также поддерживает [stat](reference/vfs_stat.ru.md), [позиционное чтение](reference/vfs_read_at.ru.md) и [позиционную запись](reference/vfs_write_at.ru.md). Эти операции используют уже смонтированную сессию, удерживают один fid и возвращают подтверждённый префикс передачи.
+
 ## Имя, Qid и fid
 
 При `Twalk` сервер сопоставляет имя в каталоге с устойчивым идентификатором

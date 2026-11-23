@@ -10,9 +10,7 @@
 
 #define LAUNCH_TAG 17UL     /* Existing DisVM launch request tag. */
 #define LAUNCH_LIMIT 65536U /* Maximum startup argument extent. */
-#define NAMED_LIMIT 64U     /* Complete record limit of the persistent provider. */
 #define PROGRAM_HEADER 13U  /* Version and three network-order u32 fields. */
-#define PROGRAM_NAME 31U    /* Maximum basename accepted by the provider. */
 
 
 /* EN: Gather a complete short file or pending empty status on one opened fid.
@@ -127,7 +125,7 @@ static int program_name(const char *name)
 {
     static const char initial[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     size_t length = name ? strlen(name) : 0;
-    return length > 4 && length <= PROGRAM_NAME && !strcmp(name + length - 4, ".dis") &&
+    return length > 4 && length <= STYXRPC_NAMED_NAME_MAX && !strcmp(name + length - 4, ".dis") &&
         strchr(initial, name[0]) && strspn(name, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-") == length;
 }
 
@@ -139,7 +137,7 @@ static int named_record(const StyxRpcProgram *program, const void *arguments, si
 {
     unsigned char header[PROGRAM_HEADER] = {1};
     if (!program || !program->pid || program->pid == program->parent_pid || (size && !arguments) ||
-        size > NAMED_LIMIT - sizeof(header) || !scratch)
+        size > STYXRPC_NAMED_FRAME_MAX - sizeof(header) || !scratch)
     {
         return 0;
     }
@@ -152,7 +150,7 @@ static int named_record(const StyxRpcProgram *program, const void *arguments, si
         }
     }
     return fvm_srecord_write_pair(LAUNCH_TAG, header, sizeof(header), arguments, size,
-        scratch, capacity, frame) == FVM_S_OK && *frame <= NAMED_LIMIT;
+        scratch, capacity, frame) == FVM_S_OK && *frame <= STYXRPC_NAMED_FRAME_MAX;
 }
 
 
@@ -171,7 +169,7 @@ StyxRpcLaunchStatus styxrpc_launch_named(StyxClient *client, const char *name, c
     {
         return STYXRPC_LAUNCH_NOT_SENT;
     }
-    char path[sizeof("programs/.") + PROGRAM_NAME];
+    char path[sizeof("programs/.") + STYXRPC_NAMED_NAME_MAX];
     snprintf(path, sizeof(path), "programs/.%s", name);
     StyxFid *fid = styxclientwalk(client, path);
     StyxRpcLaunchStatus status = fid && styxclientopen(fid, 2) ?

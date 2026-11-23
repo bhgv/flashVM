@@ -164,5 +164,5 @@ live channels and revocation of delegated routes.
 
 For FlashVM, build [the adapter test host](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.md#build) and also pass
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Then run
-`ctest --test-dir build -R 'styxrpc-(managed-)?(flash-to-dis|dis-to-flash)' --output-on-failure`.
-The eight cases cover scalar and managed calls in both directions and both DisVM execution modes.
+`ctest --test-dir build -R 'styxrpc-((managed-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
+Eight cases cover scalar and managed calls in both directions and both DisVM execution modes. Three more cover named launch from ActionScript, reverse resources, cancellation and positional I/O against the independent C device.
