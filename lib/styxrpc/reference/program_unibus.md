@@ -14,3 +14,5 @@ Register one duplex .unibus file under a PID. The resource normally supplies an 
 Linux64. Returns 1 on success, 0 on refusal. Register on the dispatcher thread or before serving. `StyxRpc::serve`.
 
 [Example](../examples/disvm/reverse.c) · [Source](../src/program.c)
+
+[`styxrpc_program_unibus_revoke`](program_unibus_revoke.md)

@@ -42,6 +42,8 @@ typedef struct StyxRpcRegistration
     struct StyxRpcRegistration *table_directory; /* Hybrid table command's parent slot. */
     const struct StyxRpcBigTable *table_spec;     /* Borrowed on the hybrid table directory. */
     void *table_selection;                       /* Active selector owned by the dispatcher. */
+    struct StyxRpcProgramOpen *opens; /* Intrusive list of opened callback handles. */
+    int revoked;                    /* Hidden slot reserved against stale Qids. */
     unsigned collection_op;         /* File operation within the collection. */
 } StyxRpcRegistration;
 
@@ -54,7 +56,7 @@ typedef struct StyxRpcPrograms
 {
     StyxRpcRegistration *nodes; /* Borrowed contiguous registration slots. */
     size_t capacity;            /* Slot count. */
-    size_t used;                /* Published slots. */
+    size_t used;                /* Occupied slots, including revoked entries. */
     uint32_t revision;          /* Revision of membership for this context tree. */
 } StyxRpcPrograms;
 
@@ -95,6 +97,13 @@ int styxrpc_program_file(StyxRpcPrograms *programs, uint32_t pid, const char *na
 /* EN: Publish the process's duplex .unibus callback resource once.
  * RU: Однократно опубликовать двусторонний ресурс .unibus процесса. */
 int styxrpc_program_unibus(StyxRpcPrograms *programs, uint32_t pid, const StyxRpcResource *resource);
+
+
+/* EN: Hide the registered .unibus and synchronously close its active callback handles.
+ * Run on the dispatcher outside the target's callbacks. Return 1 on first revocation.
+ * RU: Скрыть зарегистрированный .unibus и синхронно закрыть его активные колбэки.
+ * Вызывать в диспетчере вне колбэков целевого ресурса. Первый отзыв возвращает 1. */
+int styxrpc_program_unibus_revoke(StyxRpcPrograms *programs, uint32_t pid);
 
 
 extern const StyxRpcTree styxrpc_program_tree; /* Pass StyxRpcPrograms as serve context. */

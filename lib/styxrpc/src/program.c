@@ -299,7 +299,7 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t i
     const StyxRpcPrograms *programs = context;
     for (size_t i = 1; i < programs->used; ++i)
     {
-        if (programs->nodes[i].parent == directory && !index--)
+        if (!programs->nodes[i].revoked && programs->nodes[i].parent == directory && !index--)
         {
             return &programs->nodes[i].entry;
         }
@@ -313,7 +313,7 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t i
 static int lookup(void *context, uint64_t id, StyxRpcNode *out)
 {
     const StyxRpcPrograms *programs = context;
-    if (id >= programs->used)
+    if (id >= programs->used || programs->nodes[id].revoked)
     {
         return 0;
     }
@@ -324,34 +324,91 @@ static int lookup(void *context, uint64_t id, StyxRpcNode *out)
 }
 
 
-typedef struct OpenResource
+typedef struct StyxRpcProgramOpen
 {
-    const StyxRpcRegistration *entry; /* Borrowed until close. */
-    void *cookie;                    /* Exact callback-owned handle. */
+    StyxRpcRegistration *entry;       /* Null after the application handle has closed. */
+    void *cookie;                     /* Exact callback-owned handle. */
+    struct StyxRpcProgramOpen *next;  /* Next open on the same registration. */
+    struct StyxRpcProgramOpen **link; /* Address of the link pointing to this open. */
 } OpenResource;
+
+
+/* EN: Detach and close one handle before invoking the application close callback.
+ * RU: Отсоединить и закрыть дескриптор до вызова колбэка приложения. */
+static void retire_resource(OpenResource *file)
+{
+    StyxRpcRegistration *entry = file->entry;
+    if (!entry)
+    {
+        return;
+    }
+    *file->link = file->next;
+    if (file->next)
+    {
+        file->next->link = file->link;
+    }
+    file->entry = NULL;
+    if (entry->resource.close)
+    {
+        entry->resource.close(file->cookie);
+    }
+}
+
+
+/* EN/RU: See program.h. / См. program.h. */
+int styxrpc_program_unibus_revoke(StyxRpcPrograms *programs, uint32_t pid)
+{
+    size_t parent = find_process(programs, pid);
+    if (!parent || !room(programs, 0))
+    {
+        return 0;
+    }
+    for (size_t i = 1; i < programs->used; ++i)
+    {
+        StyxRpcRegistration *entry = &programs->nodes[i];
+        if (entry->parent == parent && !entry->revoked && !strcmp(entry->name, ".unibus"))
+        {
+            entry->revoked = 1;
+            programs->revision++;
+            while (entry->opens)
+            {
+                retire_resource(entry->opens);
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
 
 
 /* EN: Bind the current fid to registered data and its optional open callback.
  * RU: Закрепить данные регистрации и необязательный колбэк открытия за fid. */
 static int open_resource(void *context, uint64_t id, unsigned access, void **output)
 {
-    const StyxRpcPrograms *programs = context;
-    if (id >= programs->used || programs->nodes[id].entry.directory)
+    StyxRpcPrograms *programs = context;
+    if (id >= programs->used || programs->nodes[id].revoked || programs->nodes[id].entry.directory)
     {
         return 0;
     }
-    const StyxRpcRegistration *entry = &programs->nodes[id];
+    StyxRpcRegistration *entry = &programs->nodes[id];
     OpenResource *file = malloc(sizeof(*file));
     if (!file)
     {
         return 0;
     }
-    *file = (OpenResource){entry, entry->resource.context};
+    *file = (OpenResource){.entry = entry, .cookie = entry->resource.context};
     if (entry->resource.open && entry->resource.open(entry->resource.context, access, &file->cookie) != 1)
     {
         free(file);
         return 0;
     }
+    file->next = entry->opens;
+    file->link = &entry->opens;
+    if (file->next)
+    {
+        file->next->link = &file->next;
+    }
+    entry->opens = file;
     *output = file;
     return 1;
 }
@@ -363,6 +420,10 @@ static int read_resource(void *cookie, uint64_t offset, void *bytes, size_t capa
 {
     OpenResource *file = cookie;
     const StyxRpcRegistration *entry = file->entry;
+    if (!entry || entry->revoked)
+    {
+        return 0;
+    }
     if (entry->pid)
     {
         char text[sizeof("4294967295\n")];
@@ -390,6 +451,10 @@ static int write_resource(void *cookie, uint64_t offset, const void *bytes, size
 {
     OpenResource *file = cookie;
     const StyxRpcRegistration *entry = file->entry;
+    if (!entry || entry->revoked)
+    {
+        return 0;
+    }
     if (!entry->variable.store)
     {
         return entry->resource.write && entry->resource.write(file->cookie, offset, bytes, size, written);
@@ -408,10 +473,7 @@ static int write_resource(void *cookie, uint64_t offset, const void *bytes, size
 static void close_resource(void *cookie)
 {
     OpenResource *file = cookie;
-    if (file->entry->resource.close)
-    {
-        file->entry->resource.close(file->cookie);
-    }
+    retire_resource(file);
     free(file);
 }
 

@@ -14,3 +14,5 @@ int styxrpc_program_unibus(StyxRpcPrograms *programs, uint32_t pid, const StyxRp
 Linux64. Возвращает 1 при успехе, 0 при отказе. Регистрируйте в потоке диспетчера или до его запуска. `StyxRpc::serve`.
 
 [Пример](../examples/disvm/reverse.c) · [Исходник](../src/program.c)
+
+[`styxrpc_program_unibus_revoke`](program_unibus_revoke.ru.md)
