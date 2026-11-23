@@ -46,6 +46,27 @@ FVM_StyxRemoteChannel *fvm_styxrpc_channel_lookup(FVM_Context *context, FVM_Obje
 int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
     const FVM_Value *value, unsigned char *payload, unsigned char *element, StyxRpcGuard *guard);
 
+
+/* [GC:] EN: Decode the exact channel element or a successful idle selection.
+ * RU: Декодировать точный элемент канала либо подтверждённую пустую ветку. */
+int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
+    const StyxRpcChannelResult *result, FVM_Value *out);
+
+
+/* [GC:] EN: Release a script-local typed queue after the owning object retires.
+ * RU: Освободить локальную типизированную очередь при уничтожении объекта. */
+void fvm_styxrpc_local_channel_release(void *state);
+
+
+/* EN: Borrow typed userdata only from an object of this owner.
+ * RU: Заимствовать userdata правильного типа только у объекта этого владельца. */
+void *fvm_styxrpc_local_channel_lookup(FVM_Context *context, FVM_Object *object);
+
+
+/* EN: Borrow the queue of an open script-local channel.
+ * RU: Заимствовать очередь открытого локального канала. */
+StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const FVM_Value *value);
+
 #ifdef __cplusplus
 }
 #endif

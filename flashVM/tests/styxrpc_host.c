@@ -173,8 +173,12 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     StyxRpcRegistration storage[16];
     TestLaunchContext launch_state = {0};
     StyxRpcServer *reverse = NULL;
-    if (styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)) &&
+    int has_channel_args = !strcmp(role, "channel-args-call");
+    StyxRpcArgumentBus *bus = has_channel_args ? styxrpc_argument_bus_create(TEST_MANAGED_PID) : NULL;
+    StyxRpcResource resource = styxrpc_argument_bus_resource(bus);
+    if ((!has_channel_args || bus) && styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)) &&
         (!managed || styxrpc_program_add(&programs, TEST_MANAGED_PID)) &&
+        (!bus || styxrpc_program_unibus(&programs, TEST_MANAGED_PID, &resource)) &&
         (!launch || test_launch_resources(&programs, &launch_state)))
     {
         reverse = styxrpc_server_create(phybidirchannel(mux, 1), &styxrpc_program_tree, &programs);
@@ -184,6 +188,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     {
         styxrpc_server_destroy(reverse);
         phybidirfree(mux);
+        styxrpc_argument_bus_destroy(bus);
         fputs("FlashVM reverse tree failed\n", stderr);
         return 0;
     }
@@ -200,7 +205,8 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
         if (managed)
         {
             managed->session = session;
-            ok = !strcmp(role, "channel-call") ? test_channel_call(context, managed) :
+            ok = bus ? test_channel_args(context, managed, bus) :
+                !strcmp(role, "channel-call") ? test_channel_call(context, managed) :
                 !strcmp(role, "hybrid-call") ? test_hybrid_call(context, managed) :
                 !strcmp(role, "graph-call") ? test_graph_call(context, managed) :
                 !strcmp(role, "ref-call") ? test_refs_call(context, managed) : test_managed_call(context, managed);
@@ -219,6 +225,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     styxclientfree(session);
     phybidirfree(mux);
     pthread_join(thread, NULL);
+    styxrpc_argument_bus_destroy(bus);
     return ok && (!launch || (launch_state.value == 42 && launch_state.output == 'D'));
 }
 
@@ -235,7 +242,7 @@ int main(int argc, char **argv)
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
         strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
         strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call") &&
-        strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve")))
+        strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve") && strcmp(argv[1], "channel-args-call")))
     {
         return 2;
     }
@@ -285,7 +292,7 @@ int main(int argc, char **argv)
         {
             int managed_call = !strcmp(argv[1], "ref-call") || !strcmp(argv[1], "graph-call") ||
                 !strcmp(argv[1], "hybrid-call") || !strcmp(argv[1], "channel-call") ||
-                !strcmp(argv[1], "managed-call");
+                !strcmp(argv[1], "managed-call") || !strcmp(argv[1], "channel-args-call");
             ok = call_dis(context, &binding, managed_call ? &managed : NULL,
                 !strcmp(argv[1], "launch") ? &session : NULL, argv[1], (int)fd);
         }

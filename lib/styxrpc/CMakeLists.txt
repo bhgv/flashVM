@@ -25,7 +25,7 @@ set(styxrpc_targets styxrpc)
 if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Styx CONFIG REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
-    add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_client.c
+    add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_client.c src/channel_arguments.c
         src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/graph_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
@@ -86,6 +86,9 @@ if(BUILD_TESTING)
         add_executable(styxrpc-module-channels-test tests/module_channels.c)
         target_link_libraries(styxrpc-module-channels-test PRIVATE StyxRpc::serve)
         add_test(NAME styxrpc-module-channels COMMAND styxrpc-module-channels-test)
+        add_executable(styxrpc-channel-arguments-test tests/channel_arguments.c)
+        target_link_libraries(styxrpc-channel-arguments-test PRIVATE StyxRpc::launch)
+        add_test(NAME styxrpc-argument-scope COMMAND styxrpc-channel-arguments-test)
         set_tests_properties(styxrpc-unibus-socket PROPERTIES TIMEOUT 10)
         set_tests_properties(styxrpc-live-directory PROPERTIES TIMEOUT 10)
     endif()

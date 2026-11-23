@@ -40,6 +40,8 @@ typedef struct FVM_StyxRefs
     unsigned char *storage; /* Owned client baseline storage; NULL on server. */
     size_t used;           /* Stored baseline byte extent. */
     int (*decode_channel)(FVM_Context *, FVM_GCRootScope *, void *, const char *, const FVM_SRecord *, FVM_Value *); /* Optional scoped channel decoder. */
+    int (*encode_channel)(FVM_Context *, FVM_GCRootScope *, void *, const char *, const FVM_Value *,
+        unsigned char *, size_t, size_t *); /* Optional scoped channel encoder. */
     void *channel_context; /* Borrowed decoder state for one call. */
 } FVM_StyxRefs;
 

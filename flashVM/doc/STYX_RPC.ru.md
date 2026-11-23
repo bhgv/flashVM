@@ -1,6 +1,6 @@
 # Связь FlashVM и DisVM через libstyxrpc
 
-[English](STYX_RPC.md) · [Импорт функции int](STYX_RPC_IMPORT_INT.ru.md) · [Экспорт функции int](STYX_RPC_EXPORT_INT.ru.md) · [Импорт управляемой функции](STYX_RPC_IMPORT_MANAGED.ru.md) · [Экспорт управляемой функции](STYX_RPC_EXPORT_MANAGED.ru.md) · [Запуск и файловые операции](STYX_RPC_SESSION.ru.md) · [Аргументы ref](STYX_RPC_REFS.ru.md) · [Графы ссылок](STYX_RPC_GRAPH.ru.md) · [Гибридные таблицы](STYX_RPC_HYBRID.ru.md) · [Живые каналы UniBus](STYX_RPC_CHANNELS.ru.md)
+[English](STYX_RPC.md) · [Импорт функции int](STYX_RPC_IMPORT_INT.ru.md) · [Экспорт функции int](STYX_RPC_EXPORT_INT.ru.md) · [Импорт управляемой функции](STYX_RPC_IMPORT_MANAGED.ru.md) · [Экспорт управляемой функции](STYX_RPC_EXPORT_MANAGED.ru.md) · [Запуск и файловые операции](STYX_RPC_SESSION.ru.md) · [Аргументы ref](STYX_RPC_REFS.ru.md) · [Графы ссылок](STYX_RPC_GRAPH.ru.md) · [Гибридные таблицы](STYX_RPC_HYBRID.ru.md) · [Живые каналы UniBus](STYX_RPC_CHANNELS.ru.md) · [Каналы как аргументы](STYX_RPC_CHANNEL_ARGUMENTS.ru.md)
 
 FlashVM и DisVM обмениваются вызовами через libstyxrpc поверх Styx. Хост
 передаёт SDK Styx уже разрешённое подключение. Модуль публикует компилированный
@@ -48,6 +48,7 @@ cmake --build build/flash-styx --target flashvm_styxrpc
 Графовый профиль добавляет вложенные и возвращаемые ref, общие идентификаторы и
 разреженную обратную запись. Он передаёт нативные гибридные таблицы с точными
 знаковыми 64-битными значениями и упорядоченными патчами ключей.
-Контекстная привязка передаёт живые каналы в результатах вызовов в обе стороны.
-Открыты каналы как аргументы в AS, объявление встречных ресурсов из AS и
-перенос внутрипроцессных связей редактора.
+Контекстная привязка передаёт живые каналы в результатах в обе стороны.
+FlashVM также передаёт свои локальные очереди как аргументы DisVM. Открыты
+передача каналов как аргументов из DisVM в AS, общее объявление встречных
+ресурсов и перенос внутрипроцессных связей редактора.

@@ -7,6 +7,7 @@
 #include "flashvm/value.h"
 #include "styxrpc/channel_client.h"
 #include "styxrpc/channel_module.h"
+#include "styxrpc/channel_arguments.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +18,23 @@ extern "C" {
  * RU: Зарегистрировать синхронную глобальную функцию; заимствовать target, пока она доступна. */
 FVM_API FVM_Result fvm_styxrpc_channel_import(FVM_Context *context, const char *global,
     StyxRpcManagedTarget *target);
+
+typedef struct FVM_StyxRpcChannelArguments
+{
+    StyxRpcManagedTarget *target; /* Borrowed exact remote offer and caller PID. */
+    StyxRpcArgumentBus *bus;     /* Borrowed reverse bus registered on the same connection. */
+} FVM_StyxRpcChannelArguments;
+
+
+/* [GC:] EN: Install a function which lends script-local typed queues for one scoped call.
+ * RU: Установить функцию, временно передающую типизированные очереди AS для одного вызова. */
+FVM_API FVM_Result fvm_styxrpc_channel_import_arguments(FVM_Context *context, const char *global,
+    FVM_StyxRpcChannelArguments *binding);
+
+
+/* [GC:] EN: Register a script constructor taking a compact element type and slot count.
+ * RU: Зарегистрировать конструктор AS с компактным типом элемента и числом слотов. */
+FVM_API FVM_Result fvm_styxrpc_channel_factory(FVM_Context *context, const char *global);
 
 #define FVM_STYXRPC_CHANNEL_QUEUE_SLOTS 8U /* Maximum FIFO slots for one FlashVM export. */
 

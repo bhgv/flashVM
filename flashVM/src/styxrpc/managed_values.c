@@ -135,16 +135,11 @@ int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
 }
 
 
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema)
+/* EN: Check that channel elements use only by-value types within their exact token.
+ * RU: Проверить, что элементы каждого канала используют только типы по значению. */
+static int channel_elements(const char *type)
 {
-    const char *type;
-    if (!schema_supported(schema) || strpbrk(schema->arguments, "rhc") ||
-        strpbrk(schema->result, "rh") || !strchr(schema->result, 'c'))
-    {
-        return 0;
-    }
-    for (type = strchr(schema->result, 'c'); type; type = strchr(type, 'c'))
+    for (type = strchr(type, 'c'); type; type = strchr(type, 'c'))
     {
         const char *end = type_end(type, 0);
         if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
@@ -154,6 +149,22 @@ int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema)
         type = end;
     }
     return 1;
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema)
+{
+    return schema_supported(schema) && !strpbrk(schema->arguments, "rh") &&
+        !strpbrk(schema->result, "rh") && (strchr(schema->arguments, 'c') || strchr(schema->result, 'c')) &&
+        channel_elements(schema->arguments) && channel_elements(schema->result);
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema)
+{
+    return fvm_styxrpc_channel_signature(schema) && !strchr(schema->arguments, 'c');
 }
 
 
@@ -237,6 +248,11 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
     int64_t number;
+    if (*type == 'c')
+    {
+        return refs && refs->encode_channel &&
+            refs->encode_channel(context, roots, refs->channel_context, type, value, bytes, capacity, used);
+    }
     if (*type == 'r' || *type == 'h')
     {
         return refs && (*type == 'r' || refs->graph) &&

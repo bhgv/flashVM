@@ -35,6 +35,11 @@ int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema);
 int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema);
 
 
+/* EN: Check a scoped profile with channels in value arguments or result.
+ * RU: Проверить контекстный профиль с каналами в аргументах или результате. */
+int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema);
+
+
 /* [GC:] EN: Read owned AS values and root them through the caller's scope.
  * RU: Читать собственные значения AS и удерживать их в области корней вызывающего. */
 int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,

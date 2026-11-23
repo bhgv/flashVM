@@ -14,3 +14,12 @@ extern "C" FVM_StyxRemoteChannel *fvm_styxrpc_channel_lookup(FVM_Context *contex
         object->release_resource == fvm_styxrpc_channel_release ?
         static_cast<FVM_StyxRemoteChannel *>(object->resource) : NULL;
 }
+
+
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+extern "C" void *fvm_styxrpc_local_channel_lookup(FVM_Context *context, FVM_Object *object)
+{
+    return context && !context->destroying && !context->gc_releasing && object &&
+        object->owner == context && object->resource_kind == FVM_RESOURCE_USERDATA &&
+        object->release_resource == fvm_styxrpc_local_channel_release ? object->resource : NULL;
+}

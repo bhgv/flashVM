@@ -148,6 +148,10 @@ The application owns the positional and keyed parts of the table. One C callback
 
 [`styxrpc_program_bigtable`](reference/program_bigtable.md) · [Working example](examples/README.md)
 
+## Reverse channel arguments
+
+[Channel argument scopes](reference/channel_argument_scopes.md) lend owner-local queues on a stable reverse process bus. The caller verifies its exact scoped offer and keys, publishes only for that invocation, and revokes pending operations on return.
+
 ## Leased channel clients and modules
 
 [Hosted channel leases](reference/channel_leases.md) provide verified scoped invocations, pinned result-channel operations and callback-backed channel publication. C programs and the FlashVM bridge share these adapters.

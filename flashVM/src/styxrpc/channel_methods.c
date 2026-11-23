@@ -87,7 +87,7 @@ int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const
 
 /* [GC:] EN: Return one confirmed received element and preserve nil and idle separately.
  * RU: Вернуть подтверждённый элемент и различать nil и отсутствие готовой ветки. */
-static int receive_value(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
+int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
     const StyxRpcChannelResult *result, FVM_Value *out)
 {
     FVM_SRecord record;
@@ -168,7 +168,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
             {
                 fvm_value_boolean(out, result.selected != 0);
             }
-            else if (!receive_value(context, roots, channel->grant.shape, &result, out))
+            else if (!fvm_styxrpc_channel_unpack(context, roots, channel->grant.shape, &result, out))
             {
                 error = "Styx RPC channel result could not be decoded";
             }

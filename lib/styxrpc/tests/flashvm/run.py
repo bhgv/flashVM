@@ -57,7 +57,8 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("channel", "channel"), ("hybrid", "hybrid"), ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
+    for option, profile in (("channel-args", "channel-args"), ("channel", "channel"), ("hybrid", "hybrid"),
+                            ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
         profiles.add_argument("--" + option, dest="profile", action="store_const", const=profile)
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
@@ -66,6 +67,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
         owner, caller, module, exports, result = {
+            "channel-args": ("channel_args_owner.b", None, "channel-args.dis",
+                             ("exchange", "reject", "result", "relay", "wait"), None),
             "channel": ("channel_owner.b", "channel_client.b", "channel.dis", ("ports", "empty"), "live channels"),
             "hybrid": ("hybrid_owner.b", "hybrid_client.b", "hybrid.dis", ("change", "reject", "empty"),
                        "hybrid tables"),

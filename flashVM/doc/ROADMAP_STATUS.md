@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1712 / Контрольная точка v0.1712. Scoped FlashVM calls lend
+typed FIFO and rendezvous queues to DisVM as channel arguments through the
+independent C SDK. Выбор Limbo alt, алиасы и отзыв проверяются вместе с
+возвратом отдельных каналов и восстановлением после тайм-аута.
+[EN](STYX_RPC_CHANNEL_ARGUMENTS.md) / [RU](STYX_RPC_CHANNEL_ARGUMENTS.ru.md).
+
 Checkpoint v0.1711 / Контрольная точка v0.1711. Scoped Styx RPC keeps live
 result channels attached to their issuing fid in both directions. FlashVM
 consumes DisVM lease objects and exposes AVM1-initialized FIFO and rendezvous
