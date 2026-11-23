@@ -76,6 +76,8 @@ Enable `STYXRPC_HOSTED` for `StyxRpc::launch`. The native client drives the curr
 
 Use [managed invoke](reference/managed_invoke.md) to call the compiled managed profile from an independent program and [managed module publication](reference/managed_module_init.md) to export synchronous callbacks. The portable codec also exposes [integer decoding](reference/value_get_integer.md).
 
+[Encode real](reference/value_real.md) and [decode real](reference/value_get_real.md) preserve binary64 bits in the existing Dis format.
+
 ## Process registration
 
 Register the process and its variable, FD and VFS resources on the dispatcher, using fixed caller storage. Each open gets an independent cookie if the application supplies one.

@@ -4,6 +4,7 @@
  */
 #include "styxrpc/managed.h"
 #include "call_record.h"
+#include <float.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -37,10 +38,60 @@ static void cancel(void *context, const FVM_SRecord *arguments)
 }
 
 
+/* EN: Check exact binary64 bits, including signed zero and a quiet NaN payload.
+ * RU: Проверить точные биты binary64, включая знак нуля и нагрузку тихого NaN. */
+static int real_bits(void)
+{
+    static const uint64_t patterns[] = {
+        UINT64_C(0x0000000000000000), UINT64_C(0x8000000000000000),
+        UINT64_C(0x7ff0000000000000), UINT64_C(0x7ff8000000000042),
+        UINT64_C(0xc029000000000000)
+    };
+    double one = 1.0;
+    uint64_t representation;
+    if (sizeof(double) != sizeof(representation) || FLT_RADIX != 2 ||
+        DBL_MANT_DIG != 53 || DBL_MAX_EXP != 1024)
+    {
+        return 1;
+    }
+    memcpy(&representation, &one, sizeof(representation));
+    if (representation != UINT64_C(0x3ff0000000000000))
+    {
+        return 1;
+    }
+    for (size_t i = 0; i < sizeof(patterns) / sizeof(*patterns); ++i)
+    {
+        double input, output;
+        uint64_t actual;
+        unsigned char bytes[32];
+        size_t used;
+        memcpy(&input, patterns + i, sizeof(input));
+        if (styxrpc_value_real(input, bytes, sizeof(bytes), &used) != STYXRPC_OK ||
+            styxrpc_value_get_real(bytes, used, &output) != STYXRPC_OK)
+        {
+            return 0;
+        }
+        memcpy(&actual, &output, sizeof(actual));
+        if (actual != patterns[i] ||
+            styxrpc_value_get_real(bytes, used - 1, &output) != STYXRPC_INVALID ||
+            memcmp(&output, patterns + i, sizeof(output)))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* EN: Use two separate fids with one descriptor, then validate the selected reply.
  * RU: Использовать два fid с общим описанием и проверить выбранный ответ. */
 int main(void)
 {
+    if (!real_bits())
+    {
+        fputs("binary64 managed record lost bits or accepted a truncated frame\n", stderr);
+        return 1;
+    }
     State state = {0};
     const StyxRpcManagedExport exported = {
         "echo", UINT32_C(0x12345678), {"(s)", "(s)"}, begin, cancel, &state

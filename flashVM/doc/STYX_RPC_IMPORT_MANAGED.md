@@ -16,14 +16,14 @@ publish `target->pid` in the reverse Styx tree through every call. See
 [managed invoke](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/reference/managed_invoke.md)
 for the transport fields and statuses.
 
-Supported AS mappings are counted Unicode strings, exact `int`, `byte`
+Supported AS mappings are counted Unicode strings, binary64 real, exact `int`, `byte`
 and `big` within ±(2⁵³−1), dense sequences, tuples as Arrays, `null` for nil
 strings/arrays and `undefined` for a void result. Sequences use a numeric
 length and own indexed properties. Reading those properties can execute
 getters on the owner thread. A sequence has at most 2048 entries and the
 encoded frame has at most 64 KiB. Tuples must match in arity. Arguments and
-results are copied by value. Reference graphs, reals, hybrid tables and
-channels are outside this AS binding.
+results are copied by value. [Ordinary ref arguments](STYX_RPC_REFS.md) support copy-back. Reference
+graphs, hybrid tables and channels are outside this AS binding.
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) means the local registration succeeded. Invalid binding data
 returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Each call reports argument, profile,

@@ -10,7 +10,7 @@ FVM_Result fvm_styxrpc_export_managed(FVM_StyxRpcManagedExport *binding, const c
 ```
 
 Set `binding` to the owner context, AS implementation name, compiled schema
-and application-owned encoded result staging of 1–65536 bytes. Pass the
+and application-owned encoded result and update staging of 1–65536 bytes. Pass the
 wire function `name`, compiled `signature` and caller-owned output.
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) initializes a validated synchronous descriptor. Invalid
 inputs return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) and preserve `exported`. Publish
@@ -21,7 +21,8 @@ Dispatch on the FlashVM context's owner thread. The callback roots newly
 decoded arguments and the result during conversion and calls the named
 AS function. An invalid result or script exception produces a remote
 error. Existing pending exceptions prevent admission. Arguments and
-results use the [value-only mapping](STYX_RPC_IMPORT_MANAGED.md).
+results are [mapped by schema](STYX_RPC_IMPORT_MANAGED.md), including
+[ordinary ref copy-back](STYX_RPC_REFS.md).
 The staging buffer is borrowed through the synchronous encoding of the
 reply. Keep it separate from all transport buffers. Keep the descriptor
 and binding data alive and stable until server destruction.

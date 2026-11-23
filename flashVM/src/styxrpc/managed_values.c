@@ -24,10 +24,25 @@ static const char *type_end(const char *type, unsigned depth)
     }
     switch (*type)
     {
-    case 'i': case 'b': case 'y': case 's':
+    case 'i': case 'b': case 'y': case 's': case 'f':
         return type + 1;
     case 'a':
         next = type[1] == '[' ? type_end(type + 2, depth + 1) : NULL;
+        return next && *next == ']' ? next + 1 : NULL;
+    case 'r':
+        if (type[1] != '[')
+        {
+            return NULL;
+        }
+        next = type + 2;
+        if (*next == ']')
+        {
+            return NULL;
+        }
+        while (next && *next && *next != ']')
+        {
+            next = type_end(next, depth + 1);
+        }
         return next && *next == ']' ? next + 1 : NULL;
     case '(':
         next = type + 1;
@@ -43,10 +58,54 @@ static const char *type_end(const char *type, unsigned depth)
 
 
 /* EN/RU: See managed_values.h. / См. managed_values.h. */
+const char *fvm_styxrpc_type_end(const char *type)
+{
+    return type_end(type, 0);
+}
+
+
+/* EN: Match the ordinary managed ref rules across the checked argument list.
+ * RU: Проверить условия обычного профиля ref для списка аргументов. */
+static int ref_slots(const char *type, unsigned *slots)
+{
+    const char *end = fvm_styxrpc_type_end(type);
+    const char *child;
+    if (*type == 'r')
+    {
+        unsigned fields = 0;
+        for (child = type + 2; *child != ']'; child = fvm_styxrpc_type_end(child))
+        {
+            if (++fields > FVM_STYXRPC_REF_FIELDS)
+            {
+                return 0;
+            }
+        }
+        return ++*slots <= FVM_STYXRPC_REF_SLOTS && !memchr(type + 1, 'r', (size_t)(end - type - 1));
+    }
+    if (*type == 'a')
+    {
+        return !memchr(type, 'r', (size_t)(end - type));
+    }
+    if (*type == '(')
+    {
+        for (child = type + 1; *child != ')'; child = fvm_styxrpc_type_end(child))
+        {
+            if (!ref_slots(child, slots))
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
 int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
 {
     const char *args;
     const char *result;
+    unsigned slots = 0;
     if (!schema || !memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
         !memchr(schema->result, 0, sizeof(schema->result)) ||
         schema->arguments[0] != '(' || schema->result[0] != '(')
@@ -55,7 +114,8 @@ int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
     }
     args = type_end(schema->arguments, 0);
     result = schema->result[1] == ')' ? schema->result + 1 : type_end(schema->result + 1, 1);
-    return args && !*args && result && *result == ')' && !result[1];
+    return args && !*args && result && *result == ')' && !result[1] &&
+        !strchr(schema->result, 'r') && ref_slots(schema->arguments, &slots);
 }
 
 
@@ -82,13 +142,13 @@ static int exact_integer(const FVM_Value *value, double low, double high, int64_
 
 /* EN: Encode a checked scalar, string or compound value to the supplied output.
  * RU: Закодировать проверенный скаляр, строку или составное значение в буфер. */
-static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used);
 
 
 /* [GC:] EN: Snapshot listed indices under roots while encoding a compound.
  * RU: Снять значения индексов под корнями при кодировании составного значения. */
-static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
     FVM_Value length, element;
@@ -116,7 +176,7 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, const c
         if (*child == ')' || fvm_object_has_own(context, value->object, index, &present) != FVM_OK ||
             !present || fvm_object_get(context, value->object, index, &element) != FVM_OK ||
             fvm_gc_roots_add(roots, &element) != FVM_OK ||
-            !encode_value(context, roots, child, &element, body + size, capacity - size, &placed))
+            !encode_value(context, roots, *type == 'a' ? NULL : refs, child, &element, body + size, capacity - size, &placed))
         {
             break;
         }
@@ -135,10 +195,14 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, const c
 
 
 /* EN/RU: See declaration above. / См. объявление выше. */
-static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
     int64_t number;
+    if (*type == 'r')
+    {
+        return refs && fvm_styxrpc_ref_encode(context, roots, refs, type, value, bytes, capacity, used);
+    }
     if ((*type == 's' || *type == 'a') && value->type == FVM_VALUE_NULL)
     {
         return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
@@ -149,9 +213,14 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, const char
             fvm_srecord_write(STYXRPC_VALUE_STRING, value->string, fvm_value_string_size(value),
                 bytes, capacity, used) == FVM_S_OK;
     }
+    if (*type == 'f')
+    {
+        return value->type == FVM_VALUE_NUMBER &&
+            styxrpc_value_real(value->number, bytes, capacity, used) == STYXRPC_OK;
+    }
     if (*type == '(' || *type == 'a')
     {
-        return encode_compound(context, roots, type, value, bytes, capacity, used);
+        return encode_compound(context, roots, refs, type, value, bytes, capacity, used);
     }
     return exact_integer(value, -FVM_STYXRPC_SAFE_BIG, FVM_STYXRPC_SAFE_BIG, &number) &&
         styxrpc_value_integer(integer_tag(*type), number, bytes, capacity, used) == STYXRPC_OK;
@@ -159,7 +228,7 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, const char
 
 
 /* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_values_encode(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
+int fvm_styxrpc_values_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
     const FVM_Value *values, unsigned count, unsigned char *bytes, size_t capacity, size_t *used)
 {
     const char *type = shape + 1;
@@ -167,7 +236,7 @@ int fvm_styxrpc_values_encode(FVM_Context *context, FVM_GCRootScope *roots, cons
     unsigned i;
     for (i = 0; i < count; ++i)
     {
-        if (*type == ')' || !encode_value(context, roots, type, values + i, bytes + size,
+        if (*type == ')' || !encode_value(context, roots, refs, type, values + i, bytes + size,
             capacity - size, &placed))
         {
             return 0;
@@ -197,13 +266,13 @@ static int decode_string(FVM_Context *context, const FVM_SRecord *record, FVM_Va
 
 /* [GC:] EN: Decode one bounded record and root any fresh context value.
  * RU: Декодировать одну ограниченную запись и удержать новое значение контекста. */
-static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     FVM_SRecord *cursor, FVM_Value *value);
 
 
 /* [GC:] EN: Materialize a compound as a dense AS Array with rooted elements.
  * RU: Собрать составное значение как плотный Array AS с корнями элементов. */
-static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     FVM_SRecord record, FVM_Value *value)
 {
     FVM_SRecord scan = record, child;
@@ -230,7 +299,7 @@ static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, const c
     }
     for (i = 0; i < count; ++i)
     {
-        if (*shape == ')' || !decode_value(context, roots, shape, &record, items + i))
+        if (*shape == ')' || !decode_value(context, roots, *type == 'a' ? NULL : refs, shape, &record, items + i))
         {
             break;
         }
@@ -247,7 +316,7 @@ static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, const c
 
 
 /* [GC:] EN/RU: See declaration above. / См. объявление выше. */
-static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, const char *type,
+static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *type,
     FVM_SRecord *cursor, FVM_Value *value)
 {
     FVM_SRecord node;
@@ -260,6 +329,10 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, const char
     }
     cursor->payload += used;
     cursor->size -= used;
+    if (*type == 'r')
+    {
+        return refs && fvm_styxrpc_ref_decode(context, roots, refs, type, &node, value);
+    }
     if (node.tag == STYXRPC_VALUE_NIL && !node.size && (*type == 's' || *type == 'a'))
     {
         fvm_value_undefined(value);
@@ -274,7 +347,17 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, const char
     if (*type == '(' || *type == 'a')
     {
         return node.tag == (*type == 'a' ? STYXRPC_VALUE_ARRAY : STYXRPC_VALUE_TUPLE) &&
-            decode_compound(context, roots, type, node, value) && fvm_gc_roots_add(roots, value) == FVM_OK;
+            decode_compound(context, roots, refs, type, node, value) && fvm_gc_roots_add(roots, value) == FVM_OK;
+    }
+    if (*type == 'f')
+    {
+        double number;
+        if (styxrpc_value_get_real(bytes, used, &number) != STYXRPC_OK)
+        {
+            return 0;
+        }
+        fvm_value_number(value, number);
+        return 1;
     }
     if (styxrpc_value_get_integer(integer_tag(*type), bytes, used, &integer) != STYXRPC_OK ||
         integer < -(int64_t)FVM_STYXRPC_SAFE_BIG || integer > (int64_t)FVM_STYXRPC_SAFE_BIG)
@@ -287,7 +370,7 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, const char
 
 
 /* [GC:] EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
+int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
     const FVM_SRecord *record, FVM_Value *values, unsigned capacity, unsigned *count)
 {
     const char *type = shape + 1;
@@ -295,7 +378,7 @@ int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, cons
     unsigned i = 0;
     while (*type != ')')
     {
-        if (i == capacity || !decode_value(context, roots, type, &cursor, values + i))
+        if (i == capacity || !decode_value(context, roots, refs, type, &cursor, values + i))
         {
             return 0;
         }

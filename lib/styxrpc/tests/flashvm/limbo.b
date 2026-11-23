@@ -6,6 +6,7 @@ implement Limbo;
 Limbo: module {
     next: fn(n: int): int;
     echo: fn(text: string, data: array of byte): (string, array of byte);
+    number: fn(value: real, label: string): (real, string);
 };
 
 
@@ -32,4 +33,12 @@ echo(text: string, data: array of byte): (string, array of byte)
     }
     data[1] = byte 99;
     return (text + "!", data);
+}
+
+
+# EN: Return the real bit pattern with its managed string argument.
+# RU: Вернуть представление real вместе со строковым аргументом.
+number(value: real, label: string): (real, string)
+{
+    return (value, label);
 }

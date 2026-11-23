@@ -1,5 +1,5 @@
 /* Copyright (c) 2026 bhgv
- * EN: Bind value-only managed Styx RPC to ActionScript.
+ * EN: Bind managed values and ordinary ref arguments over Styx RPC to ActionScript.
  * RU: Связь управляемого Styx RPC по значению с ActionScript.
  */
 #ifndef FLASHVM_STYXRPC_MANAGED_H
@@ -16,7 +16,7 @@ typedef struct FVM_StyxRpcManagedExport
     FVM_Context *context;          /* Serving owner context. */
     const char *function;          /* Named ActionScript implementation. */
     StyxRpcSchema schema;          /* Exact compiled Dis arguments/result. */
-    unsigned char *result_buffer;  /* Host-owned encoded output staging. */
+    unsigned char *result_buffer;  /* Host-owned encoded result and update staging. */
     size_t result_capacity;        /* Result buffer size in bytes. */
 } FVM_StyxRpcManagedExport;
 

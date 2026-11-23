@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#define REAL_SIGNATURE UINT32_C(0xdf75d234) /* Limbo fn(real, string): (real, string). */
 #define ECHO_SIGNATURE UINT32_C(0x8e406ff6) /* Limbo fn(string, array of byte): (string, array of byte). */
 #define ECHO_COUNT 600U     /* Large enough to exceed the negotiated Styx write size. */
 #define ECHO_WAIT_MS 3000U  /* Bounded reply polling. */
@@ -26,6 +27,7 @@
 #define PUSH_STRING 0x00          /* Encoded NUL-terminated name. */
 #define PUSH_INTEGER 0x07         /* Little-endian integer operand. */
 
+static const StyxRpcSchema real_shape = {"(fs)", "((fs))"}; /* Managed binary64 and text. */
 static const StyxRpcSchema shape = {"(sa[y])", "((sa[y]))"}; /* Same compiled shape on both endpoints. */
 
 
@@ -57,11 +59,13 @@ int test_managed_serve(FVM_Context *context, int fd)
 {
     unsigned char buffer[STYXRPC_MANAGED_LIMIT];
     FVM_StyxRpcManagedExport binding = {context, "echo", shape, buffer, sizeof(buffer)};
-    StyxRpcManagedExport descriptor;
+    FVM_StyxRpcManagedExport number = {context, "echo", real_shape, buffer, sizeof(buffer)};
+    StyxRpcManagedExport descriptors[2];
     StyxRpcManagedModule module;
     if (!define_echo(context) ||
-        fvm_styxrpc_export_managed(&binding, "echo", ECHO_SIGNATURE, &descriptor) != FVM_OK ||
-        styxrpc_managed_module_init(&module, "flash-values.dis", &descriptor, 1) != STYXRPC_OK)
+        fvm_styxrpc_export_managed(&binding, "echo", ECHO_SIGNATURE, descriptors) != FVM_OK ||
+        fvm_styxrpc_export_managed(&number, "number", REAL_SIGNATURE, descriptors + 1) != FVM_OK ||
+        styxrpc_managed_module_init(&module, "flash-values.dis", descriptors, 2) != STYXRPC_OK)
     {
         fputs("Managed FlashVM publication failed\n", stderr);
         return 0;
@@ -112,6 +116,31 @@ static int check_nil(FVM_Context *context, const FVM_Value *value)
     return value->type == FVM_VALUE_OBJECT &&
         fvm_object_get(context, value->object, "0", &item) == FVM_OK && item.type == FVM_VALUE_NULL &&
         fvm_object_get(context, value->object, "1", &item) == FVM_OK && item.type == FVM_VALUE_NULL;
+}
+
+
+/* EN: Route the same imported binding to the real export and verify signed zero.
+ * RU: Направить ту же привязку на экспорт real и сверить знак нуля. */
+static int real_call(FVM_Context *context, StyxRpcManagedTarget *target)
+{
+    FVM_Value args[2], result, field;
+    uint64_t received;
+    target->name = "number";
+    target->signature = REAL_SIGNATURE;
+    target->schema = real_shape;
+    fvm_value_number(args, -0.0);
+    if (fvm_value_string(args + 1, "number") != FVM_OK ||
+        fvm_call_bytes(context, "echo", 4, 2, args, &result) != FVM_OK ||
+        result.type != FVM_VALUE_OBJECT ||
+        fvm_object_get(context, result.object, "0", &field) != FVM_OK ||
+        field.type != FVM_VALUE_NUMBER)
+    {
+        return 0;
+    }
+    memcpy(&received, &field.number, sizeof(received));
+    return received == UINT64_C(0x8000000000000000) &&
+        fvm_object_get(context, result.object, "1", &field) == FVM_OK &&
+        field.type == FVM_VALUE_STRING && !strcmp(field.string, "number");
 }
 
 
@@ -178,6 +207,10 @@ int test_managed_call(FVM_Context *context, StyxRpcManagedTarget *target)
         args[1].type = FVM_VALUE_NULL;
         ok = fvm_call_bytes(context, "echo", 4, 2, args, &result) == FVM_OK &&
             check_nil(context, &result);
+    }
+    if (ok)
+    {
+        ok = real_call(context, target);
     }
     if (!ok && fvm_exception_get(context, &item) == FVM_OK && item.type == FVM_VALUE_STRING)
     {

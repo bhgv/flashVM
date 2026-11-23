@@ -14,6 +14,7 @@
 #include "mux/bidir.h"
 #include "styxrpc/managed-test.h"
 #include "styxrpc/session-test.h"
+#include "styxrpc/ref-test.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -158,7 +159,7 @@ static void *serve_reverse(void *state)
 /* EN: Consume fd, mount the Dis provider and serve its reverse handshake concurrently.
  * RU: Принять fd, смонтировать провайдера Dis и параллельно обслуживать встречный поток. */
 static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcManagedTarget *managed,
-    FVM_StyxRpcSession *launch, int fd)
+    FVM_StyxRpcSession *launch, int refs, int fd)
 {
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), HOST_MUX_LIMIT);
     if (!mux)
@@ -196,7 +197,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
         if (managed)
         {
             managed->session = session;
-            ok = test_managed_call(context, managed);
+            ok = refs ? test_refs_call(context, managed) : test_managed_call(context, managed);
         }
         else if (launch)
         {
@@ -224,7 +225,8 @@ int main(int argc, char **argv)
     long fd = argc == 3 ? strtol(argv[2], &end, 10) : -1;
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
-        strcmp(argv[1], "launch") && strcmp(argv[1], "vfs")))
+        strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") &&
+        strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call")))
     {
         return 2;
     }
@@ -250,14 +252,19 @@ int main(int argc, char **argv)
         {
             ok = test_managed_serve(context, (int)fd);
         }
+        else if (!strcmp(argv[1], "ref-serve"))
+        {
+            ok = test_refs_serve(context, (int)fd);
+        }
         else if (!strcmp(argv[1], "vfs"))
         {
             ok = test_vfs_call(context, &session, (int)fd);
         }
         else
         {
-            ok = call_dis(context, &binding, !strcmp(argv[1], "managed-call") ? &managed : NULL,
-                !strcmp(argv[1], "launch") ? &session : NULL, (int)fd);
+            int refs = !strcmp(argv[1], "ref-call");
+            ok = call_dis(context, &binding, refs || !strcmp(argv[1], "managed-call") ? &managed : NULL,
+                !strcmp(argv[1], "launch") ? &session : NULL, refs, (int)fd);
         }
         fvm_context_destroy(context);
     }

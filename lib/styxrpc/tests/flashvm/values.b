@@ -8,6 +8,7 @@ Client: module { init: fn(); };
 
 Flash: module {
     echo: fn(text: string, data: array of byte): (string, array of byte);
+    number: fn(value: real, label: string): (real, string);
 };
 
 
@@ -36,6 +37,10 @@ init()
     (text, copy) = flash->echo(nil, nil);
     if (text != nil || copy != nil) {
         raise "nil managed FlashVM values changed representation";
+    }
+    (value, label) := flash->number(-12.5, "number");
+    if (value != -12.5 || label != "number") {
+        raise "wrong real from FlashVM";
     }
     sys->print("PASS DisVM loaded FlashVM managed values through Styx RPC\n");
 }

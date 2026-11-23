@@ -96,6 +96,16 @@ StyxRpcStatus styxrpc_value_integer(unsigned long tag, int64_t value, void *byte
 StyxRpcStatus styxrpc_value_get_integer(unsigned long tag, const void *bytes, size_t size, int64_t *value);
 
 
+/* EN: Encode a binary64 real with its original signed-zero and NaN payload bits.
+ * RU: Кодировать binary64 real с исходными битами знакового нуля и полезной нагрузки NaN. */
+StyxRpcStatus styxrpc_value_real(double value, void *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Decode a real child without numerical conversion; preserve value on refusal.
+ * RU: Декодировать real без числового преобразования; сохранить value при отказе. */
+StyxRpcStatus styxrpc_value_get_real(const void *bytes, size_t size, double *value);
+
+
 /* EN: Write the single export's compatible shaped .interface entry into bytes.
  * RU: Записать совместимый типизированный экспорт .interface в bytes. */
 StyxRpcStatus styxrpc_managed_profile(const StyxRpcManagedExport *exported,

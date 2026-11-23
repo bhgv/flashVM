@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1708 / Контрольная точка v0.1708. Ordinary managed ref
+arguments now preserve aliases and permit atomic local copy-back across
+FlashVM and DisVM. Unchanged fields retain identity, and failed calls or
+readonly destination slots leave the caller's slots intact. Managed real
+uses the existing Dis binary64 record. [EN](STYX_RPC_REFS.md) / [RU](STYX_RPC_REFS.ru.md).
+
 Checkpoint v0.1707 / Контрольная точка v0.1707. The ActionScript Styx RPC
 session starts named Dis images and holds an independent receipt and cancellation
 token for each request. It adds bounded positional file access through the same

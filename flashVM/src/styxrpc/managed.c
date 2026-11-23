@@ -8,6 +8,7 @@
 #include "styxrpc/managed_module.h"
 #include "managed_values.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 /* EN: Raise a local bridge diagnostic, retaining any exception from a getter.
@@ -36,6 +37,8 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
     unsigned char *reply;
     size_t size;
     unsigned count;
+    FVM_StyxRefs refs = {0};
+    FVM_Value decoded;
     StyxRpcManagedReply result;
     const char *error = NULL;
     FVM_Result status;
@@ -44,16 +47,17 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
     {
         return fail(context, "Styx RPC managed schema is unsupported");
     }
-    buffers = malloc(2U * STYXRPC_MANAGED_LIMIT);
+    buffers = malloc((strchr(target->schema.arguments, 'r') ? 3U : 2U) * STYXRPC_MANAGED_LIMIT);
     if (!buffers)
     {
         return FVM_OUT_OF_MEMORY;
     }
     reply = buffers + STYXRPC_MANAGED_LIMIT;
+    refs.storage = strchr(target->schema.arguments, 'r') ? reply + STYXRPC_MANAGED_LIMIT : NULL;
     status = fvm_gc_roots_begin(context, &roots);
     if (status == FVM_OK)
     {
-        if (!fvm_styxrpc_values_encode(context, roots, target->schema.arguments, argv, argc,
+        if (!fvm_styxrpc_values_encode(context, roots, &refs, target->schema.arguments, argv, argc,
             buffers, STYXRPC_MANAGED_LIMIT, &size))
         {
             error = "Styx RPC managed arguments do not fit the schema";
@@ -65,12 +69,21 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
             case STYXRPC_CALL_OK:
                 if (result.void_result)
                 {
-                    fvm_value_undefined(value);
+                    fvm_value_undefined(&decoded);
                 }
-                else if (!fvm_styxrpc_values_decode(context, roots, target->schema.result, &result.result,
-                    value, 1, &count) || count != 1)
+                else if (!fvm_styxrpc_values_decode(context, roots, NULL, target->schema.result, &result.result,
+                    &decoded, 1, &count) || count != 1)
                 {
                     error = "Styx RPC managed result cannot be represented";
+                }
+                if (!error && (!fvm_styxrpc_refs_stage(context, roots, &refs, &result) ||
+                    !fvm_styxrpc_refs_commit(context, &refs)))
+                {
+                    error = "Styx RPC reference update could not be committed";
+                }
+                if (!error)
+                {
+                    *value = decoded;
                 }
                 break;
             case STYXRPC_CALL_NOT_SENT:
@@ -105,14 +118,15 @@ FVM_Result fvm_styxrpc_import_managed(FVM_Context *context, const char *global, 
 }
 
 
-/* [GC:] EN: Run a named AS export with rooted arguments and stage a value-only result.
- * RU: Вызвать именованный экспорт AS с корнями и подготовить результат по значению. */
+/* [GC:] EN: Run a named AS export and stage its rooted result and ref changes.
+ * RU: Вызвать экспорт AS и подготовить результат и изменения ref под корнями. */
 static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, StyxRpcOutput *output)
 {
     FVM_StyxRpcManagedExport *binding = state;
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
     FVM_Value values[FVM_STYXRPC_LIST_ITEMS], result;
+    FVM_StyxRefs refs = {0};
     unsigned count;
     int ok;
     if (fvm_exception_get(context, &result) != FVM_NOT_FOUND ||
@@ -120,13 +134,15 @@ static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, St
     {
         return STYXRPC_REMOTE_ERROR;
     }
-    ok = fvm_styxrpc_values_decode(context, roots, binding->schema.arguments, arguments,
+    ok = fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, arguments,
         values, FVM_STYXRPC_LIST_ITEMS, &count) &&
         fvm_avm1_call(context, binding->function, NULL, count, values, &result) == FVM_OK &&
         fvm_gc_roots_add(roots, &result) == FVM_OK &&
-        fvm_styxrpc_values_encode(context, roots, binding->schema.result, &result,
+        fvm_styxrpc_values_encode(context, roots, NULL, binding->schema.result, &result,
             binding->schema.result[1] == ')' ? 0 : 1, binding->result_buffer,
-            binding->result_capacity, &output->result_size);
+            binding->result_capacity, &output->result_size) &&
+        fvm_styxrpc_refs_reply(context, roots, &refs, binding->result_buffer + output->result_size,
+            binding->result_capacity - output->result_size, output);
     fvm_gc_roots_end(roots);
     if (!ok)
     {
