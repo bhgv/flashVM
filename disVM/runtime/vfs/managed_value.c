@@ -165,32 +165,6 @@ int dvm_styx_value_shape_supported(const char *shape)
 }
 
 
-/* EN: Allow channel capabilities in direct argument slots, including tuples.
- * RU: Разрешить полномочия каналов в аргументах, включая кортежи. */
-int dvm_styx_channel_shape_supported(const StyxCallShape *shape)
-{
-    if (strchr(shape->result, 'c'))
-    {
-        return 0;
-    }
-    for (const char *type = shape->arguments; *type; )
-    {
-        if (*type == '(' || *type == ')')
-        {
-            type++;
-            continue;
-        }
-        const char *end = styxshape_end(type);
-        if (!end || (*type != 'c' && memchr(type, 'c', (size_t)(end - type))))
-        {
-            return 0;
-        }
-        type = end;
-    }
-    return 1;
-}
-
-
 typedef struct FrameDecode
 {
     const char *shape; /* Borrowed validated list shape. */
@@ -240,7 +214,7 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
                 void *object;
                 if (*shape == 'c')
                 {
-                    if (!dvm_call_channel_decode(decode->refs->channels, &node, &object))
+                    if (!dvm_call_channel_decode(decode->refs->channels, shape, &node, &object))
                     {
                         return 0;
                     }
@@ -397,7 +371,7 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
         memcpy(&value, slot, sizeof(value));
         if (*shape == 'c')
         {
-            return dvm_call_channel_encode(encode->refs->channels, value, bytes, capacity, used);
+            return dvm_call_channel_encode(encode->refs->channels, shape, value, bytes, capacity, used);
         }
         if (*shape == 'r' || *shape == 'h')
         {

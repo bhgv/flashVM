@@ -264,7 +264,7 @@ The parent repeats its call using the same PID. The earlier event fid stays revo
 ## Pass a channel through UniBus
 
 Use the [two-VM channel example](STYX-CHANNEL.md) to pass a live
-`chan of int` through ordinary `load` and execute `send`, `recv` and
+`chan of T` through ordinary `load` and execute `send`, `recv` and
 `alt` in the provider.
 
 ## Three-peer launch

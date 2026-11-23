@@ -93,7 +93,7 @@ file(REMOVE "${view}/prepare.stamp" "${view}/runt.h" "${view}/sysmod.h" "${view}
 set(host_prepare_args)
 set(channel_prepare_inputs
   prepare_channel_constructors.py prepare_channel_matches.py
-  prepare_alt_results.py prepare_alt_waits.py prepare_channel_queues.py
+  prepare_alt_results.py prepare_alt_waits.py prepare_remote_alt.py prepare_channel_queues.py
   prepare_channel_buffer.py)
 set(host_prepare_products "${view}/proxyhost_decl.h" "${view}/proxyhost_table.h"
   "${view}/proxygc_decl.h" "${view}/proxygc_table.h")

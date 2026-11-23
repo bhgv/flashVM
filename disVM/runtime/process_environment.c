@@ -19,6 +19,7 @@
 #include "disvm/native_process.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
+#include "vfs/channel_proxy.h"
 #include "vfs/scalar_owner_internal.h"
 #include "../native/terminal/unibus_inbox.h"
 #include <stdio.h>
@@ -68,6 +69,14 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     owner->module_local_role = parent ? ((DVM_RuntimeProcess *)parent)->module_local_role : DVM_ORIGIN_TERMINAL;
     owner->provider_execution = parent ? ((DVM_RuntimeProcess *)parent)->provider_execution : 0;
     owner->unibus_isolated = parent ? ((DVM_RuntimeProcess *)parent)->unibus_isolated : 0;
+    DVM_ChannelRoute *channels = source_owner ? (source_owner->remote_channels ?
+        source_owner->remote_channels : source_owner->inherited_channels) : NULL;
+    if (channels && !dvm_channel_route_retain(channels))
+    {
+        dvm_process_environment_destroy(process);
+        return 0;
+    }
+    owner->inherited_channels = channels;
     if (!dvm_module_environment_inherit(process, parent) || !dvm_launch_process_inherit(process, parent))
     {
         dvm_process_environment_destroy(process);
@@ -102,6 +111,9 @@ void dvm_process_environment_destroy(Prog *process)
         dvm_sysevents_retire(owner->remote_call_events);
         dvm_sysevents_release(owner->remote_call_events);
         owner->remote_call_events = NULL;
+        dvm_channel_route_end(&owner->remote_channels);
+        dvm_channel_route_release(owner->inherited_channels);
+        owner->inherited_channels = NULL;
         dvm_cancel_release(owner->remote_call_cancel);
         owner->remote_call_cancel = NULL;
         styxunibusmailboxseal(owner->remote_call_reply);

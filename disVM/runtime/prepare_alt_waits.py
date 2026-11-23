@@ -3,6 +3,7 @@
 # RU: Ожидание резерваций ALT и проверки отмены.
 import re
 from prepare_channel_queues import ALT_EXTERNAL_CANCEL
+from prepare_remote_alt import REMOTE_ALT_DISPATCH
 
 
 # EN: Prefer ready guards whose channel has no active buffer transfer.
@@ -443,63 +444,6 @@ static void altcheckguard(Channel *channel, int receive, int cancelling)
 
 """
 
-
-# EN: One selection over direct remote guards is submitted as one record.
-# RU: Выбор между прямыми удалёнными ветками передаётся одной записью.
-REMOTE_ALT_DISPATCH = r"""
-#ifdef DVM_TERMINAL_LAUNCH
-/* EN: Use one UniBus transaction for an ALT with direct proxy guards.
- * RU: Использовать одну операцию UniBus для ALT с прямыми прокси-ветками. */
-static int remote_alt(Alt *alt, int sends, int receives, int block, void *result)
-{
-    int count = sends + receives;
-    int remote = 0;
-    for (int i = 0; i < count; i++)
-    {
-        Channel *channel;
-        memmove(&channel, (uchar *)alt + offsetof(Alt, ac) +
-            (uintptr)i * sizeof(Altc) + offsetof(Altc, c), sizeof(channel));
-        if (D2H(channel)->t == &Tchannel)
-        {
-            remote += dvm_call_channel_is_proxy(channel);
-        }
-    }
-    if (!remote)
-    {
-        return 0;
-    }
-    if (remote != count || count > DVM_CHANNEL_BUS_SLOTS)
-    {
-        error("remote alt requires at most eight direct proxy guards");
-    }
-    DVM_ProxyGuard guards[DVM_CHANNEL_BUS_SLOTS];
-    for (int i = 0; i < count; i++)
-    {
-        Altc *entry = (Altc *)((uchar *)alt + offsetof(Alt, ac)) + i;
-        altcapture(entry, &guards[i].channel, &guards[i].operand);
-        if (!dvm_call_channel_is_proxy(guards[i].channel))
-        {
-            error("remote alt operand changed");
-        }
-        guards[i].index = (unsigned)i;
-        guards[i].receive = i >= sends;
-        if (guards[i].receive)
-        {
-            altresult(guards[i].operand);
-        }
-    }
-    WORD selected = dvm_call_channel_alt(guards, (unsigned)count, block);
-    const char *problem = altpublish(result, selected, NULL, 0);
-    if (problem)
-    {
-        error((char *)problem);
-    }
-    return 1;
-}
-#endif
-
-
-"""
 
 ALT_PREFLIGHT = r"""
 

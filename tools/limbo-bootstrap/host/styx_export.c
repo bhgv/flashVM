@@ -81,8 +81,8 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
         return debug['G'] && token(shape, 'a') && token(shape, '[') &&
             shape_type(shape, type->tof, depth + 1) && token(shape, ']');
     case Tchan:
-        return debug['G'] && type->tof && type->tof->kind == Tint &&
-            token(shape, 'c') && token(shape, '[') && token(shape, 'i') && token(shape, ']');
+        return debug['G'] && token(shape, 'c') && token(shape, '[') &&
+            shape_type(shape, type->tof, depth + 1) && token(shape, ']');
     case Ttuple:
         if (!token(shape, '('))
         {

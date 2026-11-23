@@ -105,15 +105,10 @@ static int shape_type(const char **cursor, unsigned depth)
     {
         return 1;
     }
-    if (type == 'c' && !strncmp(*cursor, "[i]", 3))
-    {
-        *cursor += 3;
-        return 1;
-    }
-    if ((type == 'r' || type == 'a') && **cursor == '[')
+    if ((type == 'r' || type == 'a' || type == 'c') && **cursor == '[')
     {
         ++*cursor;
-        if (type == 'a' && !shape_type(cursor, depth + 1))
+        if (type != 'r' && !shape_type(cursor, depth + 1))
         {
             return 0;
         }

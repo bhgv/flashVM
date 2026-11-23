@@ -24,6 +24,12 @@ int dvm_vfs_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket, DVM_VfsWait *
 int dvm_vfs_path_enter(DVM_VfsWait **wait);
 
 
+/* EN: Like path_enter, with an explicit borrowed cancellation source if non-NULL.
+ * RU: Как path_enter, с явным заимствованным источником отмены при non-NULL. */
+struct DVM_Cancel;
+int dvm_vfs_path_enter_cancel(DVM_VfsWait **wait, struct DVM_Cancel *parent);
+
+
 /* EN/RU: Finish after actual I/O, before managed reentry; consume wait.
  * Ordinary calls leave FIFO first; directories retain it through protected publication.
  * Return1 if cancellation/shutdown won before unlink,0 otherwise/NULL. Preserve

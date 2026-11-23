@@ -231,12 +231,7 @@ def adapt_channel_operand_replay(source):
         dispatch = f"""#ifdef DVM_TERMINAL_LAUNCH
     if (c && c != H && channelspan(c, sizeof(*c)) && dvm_call_channel_is_proxy(c))
     {{
-        WORD scalar = 0;
-        if (!{direction} && !guarded_channel_input({opcode}, {value}, &scalar, sizeof(scalar)))
-        {{
-            return;
-        }}
-        dvm_call_channel_operate(c, {direction}, {value}, scalar);
+        dvm_call_channel_operate(c, {direction}, {value});
         return;
     }}
 #endif

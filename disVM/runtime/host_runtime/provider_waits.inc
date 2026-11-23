@@ -36,10 +36,10 @@ int dvm_vfs_wait_end(DVM_VfsWait *wait)
 }
 
 
-/* EN/RU: Build/register source-owned native scope while ACTIVE; borrowed optional gate/ticket.
+/* EN/RU: Build/register native scope while ACTIVE; borrow optional gate, ticket and parent token.
  * Return owned wait/NULL without managed effects. Создать/register native scope
- * в ACTIVE; optional gate/ticket borrowed, свой wait/NULL, без managed effects. */
-static DVM_VfsWait *vfs_wait_start(DVM_FileGate *gate, DVM_FileTicket *ticket)
+ * в ACTIVE; gate, ticket и токен parent заимствуются, свой wait/NULL. */
+static DVM_VfsWait *vfs_wait_start(DVM_FileGate *gate, DVM_FileTicket *ticket, DVM_Cancel *parent)
 {
     DVM_VfsWait *wait = calloc(1, sizeof(*wait));
     if (wait)
@@ -56,8 +56,10 @@ static DVM_VfsWait *vfs_wait_start(DVM_FileGate *gate, DVM_FileTicket *ticket)
         return NULL;
     }
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
-    DVM_Cancel *parent = !gate && owner && !owner->remote_call_cancel_delivered ?
-        owner->remote_call_cancel : NULL;
+    if (!parent && !gate && owner && !owner->remote_call_cancel_delivered)
+    {
+        parent = owner->remote_call_cancel;
+    }
     if (parent && !(wait->parent = dvm_cancel_forward(parent, wait->cancel)))
     {
         dvm_cancel_leave(&wait->scope);
@@ -76,7 +78,7 @@ int dvm_vfs_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket, DVM_VfsWait *
 {
     *output = NULL;
     dvm_file_gate_reserve(gate, ticket);
-    DVM_VfsWait *wait = vfs_wait_start(gate, ticket);
+    DVM_VfsWait *wait = vfs_wait_start(gate, ticket, NULL);
     if (!wait)
     {
         dvm_file_gate_cancel(gate, ticket);
@@ -103,10 +105,10 @@ int dvm_vfs_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket, DVM_VfsWait *
 
 /* EN/RU: See native_wait.h; path selection is already retained and no FD queue is involved.
  * См. native_wait.h; path selection уже удержан, FD queue не используется. */
-int dvm_vfs_path_enter(DVM_VfsWait **output)
+int dvm_vfs_path_enter_cancel(DVM_VfsWait **output, DVM_Cancel *parent)
 {
     *output = NULL;
-    DVM_VfsWait *wait = vfs_wait_start(NULL, NULL);
+    DVM_VfsWait *wait = vfs_wait_start(NULL, NULL, parent);
     if (!wait)
     {
         return -1;
@@ -119,4 +121,11 @@ int dvm_vfs_path_enter(DVM_VfsWait **output)
     }
     *output = wait;
     return released;
+}
+
+
+/* EN/RU: See native_wait.h. / См. native_wait.h. */
+int dvm_vfs_path_enter(DVM_VfsWait **output)
+{
+    return dvm_vfs_path_enter_cancel(output, NULL);
 }

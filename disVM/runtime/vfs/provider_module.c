@@ -241,12 +241,12 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             }
         }
         unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            (strpbrk(shape.arguments, "rhc") || strpbrk(shape.result, "rh")) ?
+            (strpbrk(shape.arguments, "rhc") || strpbrk(shape.result, "rhc")) ?
             styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
         if (bit && explicit_end == STYX_CALL_RECORD_FRAMING)
         {
             int table = strchr(shape.arguments, 'h') || strchr(shape.result, 'h');
-            int needs_graph = table || styxmanaged_graph_required(shape.arguments);
+            int needs_graph = table || strchr(shape.result, 'c') || styxmanaged_graph_required(shape.arguments);
             if (needs_graph && (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG))
             {
                 bit = 0;

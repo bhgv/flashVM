@@ -5,9 +5,11 @@
 #ifndef DVM_CHANNEL_PROXY_H
 #define DVM_CHANNEL_PROXY_H
 #include "channel_bus.h"
+#include "cancel.h"
 #include "flashvm/srecord.h"
 
 struct Channel; /* Dis heap object; never shared with the transport. */
+typedef struct DVM_ChannelRoute DVM_ChannelRoute; /* Native immutable provider-side capability table. */
 
 
 /* [GC:] EN: State owned by the active caller or its local decoder.
@@ -15,8 +17,11 @@ struct Channel; /* Dis heap object; never shared with the transport. */
 typedef struct DVM_CallChannels
 {
     struct Channel *objects[DVM_CHANNEL_BUS_SLOTS]; /* Owned and rooted until release. */
-    uint32_t keys[DVM_CHANNEL_BUS_SLOTS]; /* Exact exported or imported capabilities. */
+    DVM_ChannelSchema schemas[DVM_CHANNEL_BUS_SLOTS]; /* Exact exported or imported element types. */
+    DVM_ChannelRoute *route; /* Owned decoding route until published to the call. */
     size_t count; /* Number of live entries. */
+    int returning; /* Provider may encode only capabilities from the active call. */
+    int resolving; /* Caller resolves reply keys to already exported originals. */
 } DVM_CallChannels;
 
 
@@ -25,15 +30,32 @@ typedef struct DVM_CallChannels
 void dvm_call_channels_release(DVM_CallChannels *channels);
 
 
-/* EN: Encode a borrowed native chan of int or nil. Retain each new identity.
- * RU: Кодировать заимствованный chan of int либо nil. Удержать новый объект. */
-int dvm_call_channel_encode(DVM_CallChannels *channels, void *value,
+/* EN: Encode a borrowed channel of the declared type or nil. Retain each exported original.
+ * RU: Кодировать заимствованный канал объявленного типа либо nil. Удержать каждый исходный канал. */
+int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *value,
     void *bytes, size_t capacity, size_t *size);
 
 
 /* EN: Decode a channel capability into an owned local proxy, reusing aliases.
  * RU: Декодировать полномочие в собственный локальный прокси, повторяя ссылки. */
-int dvm_call_channel_decode(DVM_CallChannels *channels, const FVM_SRecord *record, void **result);
+int dvm_call_channel_decode(DVM_CallChannels *channels, const char *type,
+    const FVM_SRecord *record, void **result);
+
+
+/* EN: Publish the prepared immutable native route before running the provider's Dis.
+ * RU: Опубликовать готовый нативный маршрут до запуска Dis провайдера. */
+int dvm_call_channels_install(DVM_CallChannels *channels);
+
+
+/* EN: Retain or release a native route across inherited process environments.
+ * RU: Удержать или освободить маршрут в наследуемых окружениях процессов. */
+int dvm_channel_route_retain(DVM_ChannelRoute *route);
+void dvm_channel_route_release(DVM_ChannelRoute *route);
+
+
+/* EN: Revoke operations and clear the call owner's slot, leaving child pins valid.
+ * RU: Отозвать операции и обнулить слот владельца, сохранив ссылки дочерних потоков. */
+void dvm_channel_route_end(DVM_ChannelRoute **route);
 
 
 /* EN: Test an already validated live Channel for the private proxy mover.
@@ -43,7 +65,7 @@ int dvm_call_channel_is_proxy(struct Channel *channel);
 
 /* EN: Forward one blocking Dis operation. On receive, set the mapped destination.
  * RU: Передать блокирующую операцию Dis. При приёме записать mapped назначение. */
-void dvm_call_channel_operate(struct Channel *channel, int receive, void *destination, int64_t value);
+void dvm_call_channel_operate(struct Channel *channel, int receive, void *operand);
 
 
 /* EN: One already captured guard of a remote selection.

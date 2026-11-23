@@ -20,7 +20,7 @@ struct DVM_ChannelBus
     FVM_PortSync *lock; /* Exclusive access to fids and lifecycle state. */
     BusFid *head; /* Borrowed live fids, newest first. */
     uint64_t sequence; /* Last assigned request sequence. */
-    uint32_t keys[DVM_CHANNEL_BUS_SLOTS]; /* Capability identities for this call. */
+    DVM_ChannelSchema schemas[DVM_CHANNEL_BUS_SLOTS]; /* Types tied to the exact capability. */
     size_t count; /* Active capability count. */
     unsigned open; /* Bounded concurrent fids, including idle ones. */
     int sealed; /* Caller has retired or cancelled this route. */
@@ -34,30 +34,29 @@ struct BusFid
     DVM_ChannelBus *bus; /* Borrowed from the retained provider. */
     BusFid *next; /* Borrowed sibling, protected by lock. */
     DVM_ChannelOperation request; /* Sequence zero before the first accepted write. */
+    size_t staged; /* Incoming bytes buffered before complete admission. */
     unsigned char reply[DVM_CHANNEL_BUS_WIRE]; /* Complete wire reply. */
     size_t size; /* Zero until completion. */
-    int read; /* The sole reply has already been read. */
+    size_t read; /* Number of reply bytes already returned. */
+    int rejected; /* Bad framing poisons this fid. */
 };
 
 
 /* EN/RU: See channel_bus.h. / См. channel_bus.h. */
-int dvm_channel_bus_write(uint32_t key, int receive, int32_t value,
+int dvm_channel_bus_write(uint32_t key, int receive, const void *element, size_t extent,
     unsigned char *bytes, size_t capacity, size_t *size)
 {
     unsigned char identity[4] = {key >> 24, key >> 16, key >> 8, key};
-    unsigned char payload[STYX_SCALAR_RECORD_CAPACITY];
-    size_t length = 0;
-    return key && (receive || styxscalarwrite(STYX_CALL_INT_TAG, STYX_SCALAR_VALUE,
-        value, payload, sizeof(payload), &length)) &&
+    return key && (receive ? extent == 0 : extent != 0) &&
         fvm_srecord_write_pair(receive ? DVM_CHANNEL_BUS_RECV : DVM_CHANNEL_BUS_SEND,
-            identity, sizeof(identity), payload, length, bytes, capacity, size) == FVM_S_OK;
+            identity, sizeof(identity), element, extent, bytes, capacity, size) == FVM_S_OK;
 }
 
 
 /* EN: Parse one direction and check its key against immutable call keys.
  * RU: Разобрать одно направление и проверить его ключ по ключам вызова. */
 static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
-    DVM_ChannelChoice *choice)
+    DVM_ChannelOperation *request)
 {
     if (record->size < 4 ||
         (record->tag != DVM_CHANNEL_BUS_SEND && record->tag != DVM_CHANNEL_BUS_RECV))
@@ -68,7 +67,7 @@ static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
     const uint32_t key = (uint32_t)id[0] << 24 | (uint32_t)id[1] << 16 |
         (uint32_t)id[2] << 8 | id[3];
     unsigned slot = 0;
-    while (slot < bus->count && bus->keys[slot] != key)
+    while (slot < bus->count && bus->schemas[slot].key != key)
     {
         slot++;
     }
@@ -76,38 +75,61 @@ static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
     {
         return 0;
     }
-    int64_t value = 0;
+    const char *shape = bus->schemas[slot].shape;
+    int typed = strcmp(shape, "(i)") != 0;
     int receive = record->tag == DVM_CHANNEL_BUS_RECV;
-    StyxScalarKind kind;
-    if (receive ? record->size != 4 :
-        (!styxscalarread(STYX_CALL_INT_TAG, id + 4, record->size - 4, &kind, &value) ||
-        kind != STYX_SCALAR_VALUE || value < INT32_MIN || value > INT32_MAX))
+    size_t size = record->size - 4;
+    int64_t integer = 0;
+    if (receive)
     {
-        return 0;
+        if (size)
+        {
+            return 0;
+        }
     }
-    *choice = (DVM_ChannelChoice){.slot = slot, .receive = receive, .value = (int32_t)value};
+    else if (typed)
+    {
+        FVM_SRecord value;
+        if (!styxmanaged_list_read(STYX_MANAGED_GRAPH_TAG, shape, id + 4, size, &value))
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        StyxScalarKind kind;
+        if (!styxscalarread(STYX_CALL_INT_TAG, id + 4, size, &kind, &integer) ||
+            kind != STYX_SCALAR_VALUE || integer < INT32_MIN || integer > INT32_MAX)
+        {
+            return 0;
+        }
+    }
+    request->typed |= typed;
+    request->choices[request->count++] = (DVM_ChannelChoice){.slot = slot, .receive = receive,
+        .offset = (size_t)(id + 4 - request->bytes), .size = size, .integer = (int32_t)integer};
     return 1;
 }
 
 
 /* EN: Parse one complete operation, including every guard before admission.
  * RU: Разобрать полную операцию и проверить все её ветки до приёма. */
-static int parse_request(const DVM_ChannelBus *bus, const void *bytes, size_t size,
-    DVM_ChannelOperation *request)
+static FVM_SResult parse_request(const DVM_ChannelBus *bus, size_t size, DVM_ChannelOperation *request)
 {
     FVM_SRecord record;
     size_t used;
-    if (size > DVM_CHANNEL_BUS_WIRE ||
-        fvm_srecord_read(bytes, size, DVM_CHANNEL_BUS_WIRE, &record, &used) != FVM_S_OK ||
-        used != size)
+    FVM_SResult decoded = fvm_srecord_read(request->bytes, size, DVM_CHANNEL_BUS_WIRE, &record, &used);
+    if (decoded != FVM_S_OK)
     {
-        return 0;
+        return decoded;
     }
-    *request = (DVM_ChannelOperation){0};
+    if (used != size)
+    {
+        return FVM_S_INVALID;
+    }
+    request->extent = size;
     if (record.tag != DVM_CHANNEL_BUS_ALT && record.tag != DVM_CHANNEL_BUS_TRY_ALT)
     {
-        request->count = 1;
-        return parse_choice(bus, &record, &request->choices[0]);
+        return parse_choice(bus, &record, request) ? FVM_S_OK : FVM_S_INVALID;
     }
     request->alt = 1;
     request->immediate = record.tag == DVM_CHANNEL_BUS_TRY_ALT;
@@ -117,15 +139,14 @@ static int parse_request(const DVM_ChannelBus *bus, const void *bytes, size_t si
     {
         if (request->count == DVM_CHANNEL_BUS_SLOTS ||
             fvm_srecord_read(cursor, remaining, DVM_CHANNEL_BUS_WIRE, &record, &used) != FVM_S_OK ||
-            !parse_choice(bus, &record, &request->choices[request->count]))
+            !parse_choice(bus, &record, request))
         {
-            return 0;
+            return FVM_S_INVALID;
         }
-        request->count++;
         cursor += used;
         remaining -= used;
     }
-    return request->count != 0;
+    return request->count ? FVM_S_OK : FVM_S_INVALID;
 }
 
 
@@ -135,19 +156,27 @@ static void write_bus(void *state, const void *bytes, size_t size, DVM_IoResult 
 {
     BusFid *fid = state;
     DVM_ChannelBus *bus = fid->bus;
-    DVM_ChannelOperation request;
     *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
-    if (!parse_request(bus, bytes, size, &request))
-    {
-        return;
-    }
     fvm_port_sync_lock(bus->lock);
-    if (!bus->sealed && !fid->request.sequence && bus->sequence != UINT64_MAX &&
+    if (!bus->sealed && !fid->rejected && !fid->request.sequence && bus->sequence != UINT64_MAX &&
+        size && size <= DVM_CHANNEL_BUS_WIRE - fid->staged &&
         !dvm_cancel_requested(dvm_cancel_current()))
     {
-        request.sequence = ++bus->sequence;
-        fid->request = request;
-        *out = (DVM_IoResult){.status = FVM_OK, .count = size, .flags = DVM_IO_PREFIX};
+        memcpy(fid->request.bytes + fid->staged, bytes, size);
+        fid->staged += size;
+        FVM_SResult decoded = parse_request(bus, fid->staged, &fid->request);
+        if (decoded == FVM_S_OK)
+        {
+            fid->request.sequence = ++bus->sequence;
+        }
+        else
+        {
+            fid->rejected = decoded != FVM_S_MORE || fid->staged == DVM_CHANNEL_BUS_WIRE;
+        }
+        if (!fid->rejected)
+        {
+            *out = (DVM_IoResult){.status = FVM_OK, .count = size, .flags = DVM_IO_PREFIX};
+        }
     }
     fvm_port_sync_unlock(bus->lock);
 }
@@ -171,21 +200,25 @@ static void read_bus(void *state, void *bytes, size_t size, DVM_IoResult *out)
         out->status = FVM_ERROR;
         out->stop = DVM_IO_CANCELLED;
     }
-    else if (fid->read)
-    {
-        out->stop = DVM_IO_EOF;
-    }
-    else if (fid->size && size >= fid->size)
-    {
-        memcpy(bytes, fid->reply, fid->size);
-        out->count = fid->size;
-        out->flags |= DVM_IO_RECORD;
-        fid->read = 1;
-    }
-    else if (fid->size && size)
+    else if (fid->rejected)
     {
         out->status = FVM_ERROR;
         out->stop = DVM_IO_DENIED;
+    }
+    else if (fid->size && fid->read == fid->size)
+    {
+        out->stop = DVM_IO_EOF;
+    }
+    else if (fid->size && size)
+    {
+        size_t left = fid->size - fid->read;
+        out->count = size < left ? size : left;
+        memcpy(bytes, fid->reply + fid->read, out->count);
+        fid->read += out->count;
+        if (fid->read == fid->size)
+        {
+            out->flags |= DVM_IO_RECORD;
+        }
     }
     fvm_port_sync_unlock(bus->lock);
 }
@@ -274,7 +307,7 @@ static void destroy_bus(void *state)
 
 
 /* EN/RU: See channel_bus.h. / См. channel_bus.h. */
-DVM_Provider *dvm_channel_bus_create(const uint32_t *keys, size_t count, DVM_ChannelBus **out)
+DVM_Provider *dvm_channel_bus_create(const DVM_ChannelSchema *schemas, size_t count, DVM_ChannelBus **out)
 {
     static const DVM_ProviderOps ops = {.info = bus_info, .open = open_bus,
         .destroy = destroy_bus, .flags = DVM_PROVIDER_STABLE_BIND}; /* Virtual .unibus file. */
@@ -285,7 +318,7 @@ DVM_Provider *dvm_channel_bus_create(const uint32_t *keys, size_t count, DVM_Cha
         free(bus);
         return NULL;
     }
-    memcpy(bus->keys, keys, count * sizeof(*keys));
+    memcpy(bus->schemas, schemas, count * sizeof(*schemas));
     bus->count = count;
     DVM_Provider *provider = dvm_provider_create_native(&ops, bus, NULL, 1,
         DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_CAPTURE);
@@ -303,6 +336,7 @@ DVM_Provider *dvm_channel_bus_create(const uint32_t *keys, size_t count, DVM_Cha
 int dvm_channel_bus_next(DVM_ChannelBus *bus, uint64_t after, DVM_ChannelOperation *operation)
 {
     uint64_t selected = 0;
+    BusFid *pending = NULL;
     fvm_port_sync_lock(bus->lock);
     for (BusFid *fid = bus->sealed ? NULL : bus->head; fid; fid = fid->next)
     {
@@ -310,8 +344,12 @@ int dvm_channel_bus_next(DVM_ChannelBus *bus, uint64_t after, DVM_ChannelOperati
         if (sequence > after && (!selected || sequence < selected) && !fid->size)
         {
             selected = sequence;
-            *operation = fid->request;
+            pending = fid;
         }
+    }
+    if (pending)
+    {
+        memcpy(operation, &pending->request, offsetof(DVM_ChannelOperation, bytes) + pending->request.extent);
     }
     fvm_port_sync_unlock(bus->lock);
     return selected != 0;
@@ -338,15 +376,31 @@ int dvm_channel_bus_pending(DVM_ChannelBus *bus, uint64_t sequence)
 
 /* EN/RU: See channel_bus.h. / См. channel_bus.h. */
 void dvm_channel_bus_finish(DVM_ChannelBus *bus, const DVM_ChannelOperation *operation,
-    int success, int64_t value)
+    int success, int64_t value, unsigned selected, const void *element, size_t size)
 {
     fvm_port_sync_lock(bus->lock);
     for (BusFid *fid = bus->sealed ? NULL : bus->head; fid; fid = fid->next)
     {
         if (fid->request.sequence == operation->sequence && !fid->size)
         {
-            styxscalarwrite(DVM_CHANNEL_BUS_REPLY, success ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
-                value, fid->reply, sizeof(fid->reply), &fid->size);
+            if (operation->typed)
+            {
+                unsigned char outcome = success ? selected : 255;
+                FVM_SResult written = fvm_srecord_write_pair(DVM_CHANNEL_BUS_TYPED_REPLY,
+                    &outcome, 1, success ? element : NULL, success ? size : 0,
+                    fid->reply, sizeof(fid->reply), &fid->size);
+                if (written != FVM_S_OK)
+                {
+                    outcome = 255;
+                    fvm_srecord_write(DVM_CHANNEL_BUS_TYPED_REPLY, &outcome, 1,
+                        fid->reply, sizeof(fid->reply), &fid->size);
+                }
+            }
+            else
+            {
+                styxscalarwrite(DVM_CHANNEL_BUS_REPLY, success ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
+                    value, fid->reply, sizeof(fid->reply), &fid->size);
+            }
             break;
         }
     }

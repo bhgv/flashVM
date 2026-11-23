@@ -9,6 +9,47 @@ include "chain-channel.m";
 Channelclient: module { init: fn(); };
 
 
+# EN: Pass an aggregate exceeding a single Styx message and validate the reconstructed result.
+# RU: Передать составное значение больше сообщения Styx и проверить восстановленный итог.
+check_typed(remote: Chainchannel)
+{
+    Item: import remote;
+    input := chan[1] of Chainchannel->Payload;
+    output := chan[1] of Chainchannel->Payload;
+    wide := chan of big;
+    tiny := chan[1] of byte;
+    fraction := chan[1] of real;
+    text := chan[1] of string;
+    data := array[900] of int;
+    for (i := 0; i < len data; i++) {
+        data[i] = i*2;
+    }
+    item := ref Item(37);
+    input <-= ("Юнибас", data, item, item);
+    tiny <-= byte 251;
+    fraction <-= 1.25;
+    text <-= nil;
+    next := chan of int;
+    spawn typed_wide(output, wide, next);
+    if (remote->typed(input, output, wide) != 1 || <-next != 1 ||
+        data[899] != 1798 || item.number != 37 ||
+        remote->scalars(tiny, fraction, text) != 1 || <-text != "✓") {
+        raise "typed remote channels failed";
+    }
+}
+
+
+# EN: Make the wide guard ready only after the provider has finished using the first guard.
+# RU: Сделать широкую ветку готовой после завершения провайдером первой ветки.
+typed_wide(output: chan of Chainchannel->Payload, wide: chan of big, done: chan of int)
+{
+    (text, data, first, second) := <-output;
+    wide <-= big 9223372036854775807;
+    done <-= text == "✓" && len data == 900 && data[899] == -18 &&
+        first != nil && first == second && first.number == 91;
+}
+
+
 # EN: Exchange values through an ordinary local alt and report the observed result.
 # RU: Обменяться значениями через обычный локальный alt и сообщить принятый результат.
 local_peer(input, output, done: chan of int)
@@ -71,6 +112,30 @@ init()
         remote->exchange(5, nil, (output, nil)) != 37 ||
         remote->exchange(5, nil, (buffered, nil)) != 31 || <-buffered != -29) {
         raise "remote alt chose the wrong guard";
+    }
+    buffered <-= 53;
+    if (remote->exchange(6, input, (nil, input)) != 77 ||
+        remote->exchange(7, buffered, (nil, buffered)) != 54 ||
+        remote->exchange(7, input, (nil, input)) != -5) {
+        raise "mixed fallback alt chose the wrong guard";
+    }
+    check_typed(remote);
+    returned := remote->channelresult(buffered, 0);
+    if (returned != buffered || remote->channelresult(buffered, 1) != nil) {
+        raise "returned channel lost caller identity";
+    }
+    returned <-= 71;
+    if (<-buffered != 71) {
+        raise "returned channel no longer uses the original queue";
+    }
+    rejected := 0;
+    {
+        remote->channelresult(buffered, 2);
+    } exception {
+        * => rejected = 1;
+    }
+    if (!rejected || remote->channelresult(buffered, 0) != buffered) {
+        raise "provider channel result bypassed capability validation";
     }
     sys->print("PASS automatic Limbo channels over UniBus\n");
 }

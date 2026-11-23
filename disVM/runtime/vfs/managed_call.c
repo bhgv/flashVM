@@ -182,19 +182,21 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         &baseline, request, request_size, reply, sizeof(reply), &response_size, &channels, &released);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
-    dvm_call_channels_release(&channels);
     if (cancelled || outcome != 1)
     {
+        dvm_call_channels_release(&channels);
         dvm_styx_ref_release(&refs, 0);
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
             "remote managed call not sent" : "remote managed call outcome unknown");
     }
+    channels.resolving = 1;
     int valid = graph ? dvm_styx_graph_reply_commit(&files->shape, &baseline, &refs, (const unsigned char *)frame + offsetof(DirectManagedFrame, arguments), captured.ret,
         reply, response_size) :
         files->managed_tag != STYX_MANAGED_REQUEST_TAG ? delta_reply(&files->shape, reply, response_size, &captured,
         &baseline, styxmanaged_has_snapshot(files->managed_tag)) :
         managed_reply(&files->shape, reply, response_size, &captured, &baseline);
     dvm_styx_ref_release(&refs, 0);
+    dvm_call_channels_release(&channels);
     if (valid < 0)
     {
         error("remote ref argument changed while waiting");

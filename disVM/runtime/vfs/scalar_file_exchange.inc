@@ -223,7 +223,7 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
         return -1;
     }
     ExchangeChannels side = {.channels = channels, .native = native};
-    DVM_Provider *bus = channels->count ? dvm_channel_bus_create(channels->keys, channels->count, &side.bus) : NULL;
+    DVM_Provider *bus = channels->count ? dvm_channel_bus_create(channels->schemas, channels->count, &side.bus) : NULL;
     if (channels->count && !bus)
     {
         return -1;

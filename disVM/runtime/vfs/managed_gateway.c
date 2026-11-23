@@ -88,7 +88,7 @@ static void prepare_call(void *frame)
         FVM_SRecord baseline;
         int valid = styxmanaged_list_read(tag, data->shape.arguments, wire->data, (size_t)wire->len, &baseline) &&
             dvm_styx_result_fields_read(&refs, data->shape.arguments, baseline.payload, baseline.size, &arguments) &&
-            kprotect(retain_identities, &identities);
+            dvm_call_channels_install(&channels) && kprotect(retain_identities, &identities);
         dvm_styx_ref_release(&refs, 0);
         dvm_call_channels_release(&channels);
         if (!valid)

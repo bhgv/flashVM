@@ -25,7 +25,10 @@ def exercise(runtime, compiler, root, mode):
         with connect(listener.getsockname()) as forward, accept(listener) as reverse:
             server = worker.submit(delegate,
                 [runtime, "--styx-library-serve-fd", str(reverse.fileno()),
-                 "--export", "channel.dis", "channel.dis", "exchange", "--", mode, "dispatcher.dis"],
+                 "--export", "channel.dis", "channel.dis", "exchange",
+                 "--export", "channel.dis", "channel.dis", "typed",
+                 "--export", "channel.dis", "channel.dis", "scalars",
+                 "--export", "channel.dis", "channel.dis", "channelresult", "--", mode, "dispatcher.dis"],
                 (reverse,), owner)
             stdout, stderr = delegate(
                 [runtime, "--styx-mount-fd", str(forward.fileno()), "--at", "/transport",

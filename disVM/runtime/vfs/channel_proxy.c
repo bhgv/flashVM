@@ -10,267 +10,239 @@
 #include "kernel.h"
 #include "runt.h"
 #include "raise.h"
-#include "channel_proxy.h"
+#include "channel_route.h"
+#include "channel_value.h"
 #include "cancel.h"
 #include "native_wait.h"
 #include "runtime_gc.h"
-#include "runqueue.h"
 #include "shared_bytes.h"
 #include "sys_capture.h"
 #include "thread_port.h"
-#include "disvm/refcount.h"
 #include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
 #include <string.h>
 
-static uint32_t next_key; /* Never reissue a capability in this process. */
-
-extern void movw(void);
 extern int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive);
 
 
-/* EN: Reserved mover identity. Ordinary queue transfers cannot use a proxy.
- * RU: Маркер мувера. Обычные операции с очередью не используют прокси. */
-static void proxy_mover(void)
-{
-    error("remote channel requires a UniBus operation");
-}
-
-
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-int dvm_call_channel_is_proxy(Channel *channel)
-{
-    return channel && channel != H && channel->mover == proxy_mover;
-}
-
-
-/* [GC:] EN: Retain one live heap channel before inserting it in an owner table.
- * RU: Удержать живой канал перед добавлением в таблицу владельца. */
-static int root_channel(Channel *channel)
-{
-    Heap *heap = D2H(channel);
-    if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
-    {
-        return 0;
-    }
-    ptradd(heap);
-    Setmark(heap);
-    return 1;
-}
-
-
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-void dvm_call_channels_release(DVM_CallChannels *channels)
-{
-    while (channels->count)
-    {
-        Channel *object = channels->objects[--channels->count];
-        ptrdel(D2H(object));
-        destroy(object);
-    }
-}
-
-
-/* EN: Allocate a positive wire identity without wraparound.
- * RU: Выделить положительный wire-идентификатор без переполнения. */
-static uint32_t allocate_key(void)
-{
-    uint32_t key = __atomic_load_n(&next_key, __ATOMIC_RELAXED);
-    while (key < INT32_MAX)
-    {
-        if (__atomic_compare_exchange_n(&next_key, &key, key + 1, 1, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
-        {
-            return key + 1;
-        }
-    }
-    return 0;
-}
-
-
-/* [GC:] EN: Encode nil or a key for this admitted integer channel.
- * RU: Кодировать nil либо ключ допущенного целочисленного канала. */
-int dvm_call_channel_encode(DVM_CallChannels *channels, void *value,
-    void *bytes, size_t capacity, size_t *size)
-{
-    if (value == H)
-    {
-        return fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, bytes, capacity, size) == FVM_S_OK;
-    }
-    Channel *channel = value;
-    if (!channels || !channel || D2H(channel)->t != &Tchannel || channel->mover != movw)
-    {
-        return 0;
-    }
-    size_t slot = 0;
-    while (slot < channels->count && channels->objects[slot] != channel)
-    {
-        slot++;
-    }
-    if (slot == channels->count)
-    {
-        uint32_t key = slot < DVM_CHANNEL_BUS_SLOTS ? allocate_key() : 0;
-        if (!key || !root_channel(channel))
-        {
-            return 0;
-        }
-        channels->objects[slot] = channel;
-        channels->keys[slot] = key;
-        channels->count++;
-    }
-    uint32_t key = channels->keys[slot];
-    unsigned char identity[4] = {key >> 24, key >> 16, key >> 8, key};
-    return fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, identity, sizeof(identity),
-        bytes, capacity, size) == FVM_S_OK;
-}
-
-
-/* [GC:] EN: Build one local proxy; repeated keys return the same channel.
- * RU: Создать локальный прокси. Повторные ключи возвращают тот же канал. */
-int dvm_call_channel_decode(DVM_CallChannels *channels, const FVM_SRecord *record, void **result)
-{
-    if (record->tag == STYX_MANAGED_NIL_TAG && !record->size)
-    {
-        *result = H;
-        return 1;
-    }
-    if (!channels || record->tag != STYX_MANAGED_CHANNEL_TAG || record->size != 4)
-    {
-        return 0;
-    }
-    const unsigned char *id = record->payload;
-    uint32_t key = (uint32_t)id[0] << 24 | (uint32_t)id[1] << 16 | (uint32_t)id[2] << 8 | id[3];
-    if (!key || key > INT32_MAX)
-    {
-        return 0;
-    }
-    for (size_t i = 0; i < channels->count; i++)
-    {
-        if (channels->keys[i] == key)
-        {
-            Channel *alias = channels->objects[i];
-            if (dvm_refcount_retain_u(&D2H(alias)->ref) != DVM_REFCOUNT_LIVE)
-            {
-                return 0;
-            }
-            *result = alias;
-            return 1;
-        }
-    }
-    if (channels->count == DVM_CHANNEL_BUS_SLOTS)
-    {
-        return 0;
-    }
-    Channel *proxy = cnewc(&Tword, proxy_mover, 0);
-    proxy->mid.w = key;
-    if (!root_channel(proxy))
-    {
-        destroy(proxy);
-        return 0;
-    }
-    size_t slot = channels->count++;
-    channels->objects[slot] = proxy;
-    channels->keys[slot] = key;
-    *result = proxy;
-    return 1;
-}
-
-
-/* EN: Submit one complete request, poll its exact fid, and return a checked reply.
- * RU: Передать полный запрос, опрашивать его fid и вернуть проверенный ответ. */
-static int exchange(DVM_Provider *context, const unsigned char *bytes, size_t size, int64_t *result)
+/* EN: Write a complete request and accumulate its framed reply on one fid.
+ * RU: Записать полный запрос и собрать ответ с того же fid. */
+static int exchange(DVM_Provider *context, const unsigned char *bytes, size_t size,
+    unsigned char *reply, size_t *received)
 {
     DVM_VfsHandle fid = {0};
     if (dvm_provider_open(context, ".unibus", "rw", &fid) != FVM_OK)
     {
         return 0;
     }
-    DVM_IoResult sent = dvm_vfs_write_chunk(&fid, bytes, size);
     int valid = 0;
-    if (sent.status == FVM_OK && sent.count == size && !(sent.flags & DVM_IO_UNCERTAIN))
+    size_t offset = 0;
+    while (offset < size && !dvm_cancel_requested(dvm_cancel_current()))
     {
-        unsigned char reply[DVM_CHANNEL_BUS_WIRE];
-        while (!dvm_cancel_requested(dvm_cancel_current()))
+        DVM_IoResult sent = dvm_vfs_write_chunk(&fid, bytes + offset, size - offset);
+        if (sent.status != FVM_OK || (sent.flags & DVM_IO_UNCERTAIN) ||
+            !sent.count || sent.count > size - offset)
         {
-            DVM_IoResult got = dvm_vfs_read_chunk(&fid, reply, sizeof(reply));
-            if (got.status != FVM_OK || (got.flags & DVM_IO_UNCERTAIN))
-            {
-                break;
-            }
-            if (got.count)
-            {
-                StyxScalarKind kind;
-                valid = got.count <= sizeof(reply) && styxscalarread(DVM_CHANNEL_BUS_REPLY, reply, got.count,
-                    &kind, result) && kind == STYX_SCALAR_VALUE;
-                break;
-            }
+            break;
+        }
+        offset += sent.count;
+    }
+    size_t used = 0;
+    while (offset == size && used < DVM_CHANNEL_BUS_WIRE &&
+        !dvm_cancel_requested(dvm_cancel_current()))
+    {
+        DVM_IoResult got = dvm_vfs_read_chunk(&fid, reply + used, DVM_CHANNEL_BUS_WIRE - used);
+        if (got.status != FVM_OK || (got.flags & DVM_IO_UNCERTAIN) || got.count > DVM_CHANNEL_BUS_WIRE - used)
+        {
+            break;
+        }
+        if (!got.count)
+        {
             fvm_port_thread_sleep_us(1000);
+            continue;
+        }
+        used += got.count;
+        FVM_SRecord record;
+        size_t extent;
+        FVM_SResult parsed = fvm_srecord_read(reply, used, DVM_CHANNEL_BUS_WIRE, &record, &extent);
+        if (parsed != FVM_S_MORE)
+        {
+            valid = parsed == FVM_S_OK && extent == used;
+            break;
         }
     }
     dvm_vfs_close(&fid);
+    *received = used;
     return valid;
 }
 
 
-/* EN: Exchange a copied request on the active call's native reverse route.
- * RU: Обменять копию запроса по нативному встречному маршруту текущего вызова. */
-static int64_t channel_rpc(const unsigned char *bytes, size_t size)
+/* EN: Exchange copied bytes under the exact route's cancellation source.
+ * RU: Обменять копии байтов под токеном отмены точного маршрута. */
+static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigned char *bytes,
+    size_t size, unsigned char *reply, size_t *received)
 {
-    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)currun();
-    DVM_Provider *context = process ? process->remote_call_context : NULL;
     DVM_VfsWait *wait;
-    if (!context)
-    {
-        error("remote channel is outside its call");
-    }
-    int native = dvm_vfs_path_enter(&wait);
+    int native = dvm_vfs_path_enter_cancel(&wait, cancel);
     if (native < 0)
     {
         error("remote channel operation cancelled");
     }
-    int64_t result;
-    int valid = exchange(context, bytes, size, &result);
+    int valid = exchange(context, bytes, size, reply, received);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(native);
     if (cancelled || !valid)
     {
         error(cancelled ? "remote channel operation cancelled" : "remote channel operation failed");
     }
-    return result;
 }
 
 
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-void dvm_call_channel_operate(Channel *channel, int receive, void *destination, int64_t value)
+/* [GC:] EN: Encode one captured send element or the empty payload of a receive.
+ * RU: Кодировать один зафиксированный элемент отправки или пустое тело приёма. */
+static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *guard,
+    unsigned char *bytes, size_t capacity, size_t *used)
 {
-    unsigned char bytes[DVM_CHANNEL_BUS_WIRE];
-    size_t size;
-    if (value < INT32_MIN || value > INT32_MAX ||
-        !dvm_channel_bus_write((uint32_t)channel->mid.w, receive, (int32_t)value, bytes, sizeof(bytes), &size))
+    unsigned char value[DVM_CHANNEL_BUS_WIRE];
+    size_t size = 0;
+    if (!guard->receive)
     {
-        error("invalid remote channel operand");
+        if (!strcmp(schema->shape, "(i)"))
+        {
+            WORD integer;
+            if (dvm_runtime_bytes_snapshot(guard->operand, &integer, sizeof(integer)) ||
+                integer < INT32_MIN || integer > INT32_MAX ||
+                !styxscalarwrite(STYX_CALL_INT_TAG, STYX_SCALAR_VALUE, integer, value, sizeof(value), &size))
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            DVM_StyxValueFrame frame;
+            int valid = dvm_channel_value_empty(schema->shape, &frame) &&
+                dvm_styx_value_snapshot(guard->operand, &frame);
+            if (valid)
+            {
+                dvm_channel_value_root(&frame);
+                valid = dvm_channel_value_pack(schema->shape, &frame, value, sizeof(value), &size);
+            }
+            dvm_styx_value_frame_clear(&frame);
+            if (!valid)
+            {
+                return 0;
+            }
+        }
     }
-    int64_t result = channel_rpc(bytes, size);
-    if (result < INT32_MIN || result > INT32_MAX)
+    return dvm_channel_bus_write(schema->key, guard->receive, value, size, bytes, capacity, used);
+}
+
+
+/* [GC:] EN: Apply the selected receive, using the declared mapped layout.
+ * RU: Применить выбранный приём в рамках объявленной раскладки. */
+static void receive_value(const DVM_ChannelSchema *schema, void *destination,
+    const void *bytes, size_t size)
+{
+    DVM_StyxValueFrame frame = {0};
+    if (!dvm_channel_value_unpack(schema->shape, bytes, size, &frame) ||
+        !dvm_styx_value_frame_move(&frame, destination, frame.layout.size))
     {
-        error("invalid remote channel reply");
-    }
-    if (receive)
-    {
-        WORD received = (WORD)result;
-        dvm_sys_scalar_result(&received, destination, sizeof(received));
+        dvm_styx_value_frame_clear(&frame);
+        error("invalid remote channel value");
     }
 }
 
 
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int block)
+/* EN: Decode one reply, validate the guard ordinal, then apply its optional value.
+ * RU: Декодировать ответ, проверить номер ветки и применить её значение при наличии. */
+static unsigned receive_selection(const unsigned char *bytes, size_t size,
+    const DVM_ProxyGuard *guards, const DVM_ChannelSchema *const *schemas,
+    const unsigned *order, unsigned count, int alt, int block, int typed)
+{
+    unsigned ordinal;
+    FVM_SRecord record;
+    int64_t legacy = 0;
+    if (typed)
+    {
+        size_t used;
+        if (fvm_srecord_read(bytes, size, DVM_CHANNEL_BUS_WIRE, &record, &used) != FVM_S_OK ||
+            used != size || record.tag != DVM_CHANNEL_BUS_TYPED_REPLY || !record.size)
+        {
+            error("invalid remote channel reply");
+        }
+        ordinal = record.payload[0];
+        record.payload++;
+        record.size--;
+    }
+    else
+    {
+        StyxScalarKind kind;
+        if (!styxscalarread(DVM_CHANNEL_BUS_REPLY, bytes, size, &kind, &legacy) ||
+            kind != STYX_SCALAR_VALUE || (!alt && (legacy < INT32_MIN || legacy > INT32_MAX)))
+        {
+            error("remote channel operation rejected");
+        }
+        ordinal = alt ? (unsigned)((uint64_t)legacy >> 32) : 1;
+    }
+    if (!ordinal && !block && (typed ? !record.size : !legacy))
+    {
+        return count;
+    }
+    if (!ordinal || ordinal > count)
+    {
+        error("invalid remote channel selection");
+    }
+    unsigned selected = order[ordinal - 1];
+    const DVM_ProxyGuard *guard = &guards[selected];
+    if (guard->receive)
+    {
+        if (typed)
+        {
+            receive_value(schemas[selected], guard->operand, record.payload, record.size);
+        }
+        else
+        {
+            uint32_t bits = (uint32_t)legacy;
+            WORD value = bits <= INT32_MAX ? (WORD)bits : (WORD)(-1 - (int32_t)(UINT32_MAX - bits));
+            dvm_sys_scalar_result(&value, guard->operand, sizeof(value));
+        }
+    }
+    else if (typed && record.size)
+    {
+        error("invalid remote channel acknowledgement");
+    }
+    return guard->index;
+}
+
+
+/* EN: Submit direct or ALT guards as one operation on a single inherited route.
+ * RU: Передать прямую операцию или ветки alt одной записью по общему маршруту. */
+static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, int block)
 {
     static _Thread_local uint32_t random = 0x20342U; /* Same per-owner generator as local alt. */
+    const DVM_ChannelSchema *schemas[DVM_CHANNEL_BUS_SLOTS];
+    DVM_Provider *context = NULL;
+    DVM_Cancel *cancel = NULL;
     unsigned order[DVM_CHANNEL_BUS_SLOTS];
     unsigned char payload[DVM_CHANNEL_BUS_WIRE], bytes[DVM_CHANNEL_BUS_WIRE];
+    int typed = 0;
     size_t size = 0;
+    if (!count || count > DVM_CHANNEL_BUS_SLOTS)
+    {
+        error("invalid remote alt guard count");
+    }
     for (unsigned i = 0; i < count; i++)
     {
+        DVM_Provider *found;
+        DVM_Cancel *scope;
+        schemas[i] = dvm_channel_route_lookup((uint32_t)guards[i].channel->mid.w, &found, &scope);
+        if (!schemas[i] || (context && (found != context || scope != cancel)))
+        {
+            error("remote channel is outside its call");
+        }
+        context = found;
+        cancel = scope;
+        typed |= strcmp(schemas[i]->shape, "(i)") != 0;
         order[i] = i;
     }
     for (unsigned i = count; i > 1; i--)
@@ -283,45 +255,43 @@ unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int 
     }
     for (unsigned i = 0; i < count; i++)
     {
-        const DVM_ProxyGuard *guard = &guards[order[i]];
-        WORD value = 0;
+        unsigned selected = order[i];
         size_t used;
-        if (!guard->receive && dvm_runtime_bytes_snapshot(guard->operand, &value, sizeof(value)))
+        if (!write_choice(schemas[selected], &guards[selected], payload + size, sizeof(payload) - size, &used))
         {
-            error("invalid remote alt operand");
-        }
-        if (value < INT32_MIN || value > INT32_MAX ||
-            !dvm_channel_bus_write((uint32_t)guard->channel->mid.w, guard->receive, (int32_t)value,
-                payload + size, sizeof(payload) - size, &used))
-        {
-            error("cannot encode remote alt");
+            error("cannot encode remote channel operation");
         }
         size += used;
     }
-    size_t used;
-    if (fvm_srecord_write(block ? DVM_CHANNEL_BUS_ALT : DVM_CHANNEL_BUS_TRY_ALT,
-        payload, size, bytes, sizeof(bytes), &used) != FVM_S_OK)
+    size_t sent = size;
+    if (alt && fvm_srecord_write(block ? DVM_CHANNEL_BUS_ALT : DVM_CHANNEL_BUS_TRY_ALT,
+        payload, size, bytes, sizeof(bytes), &sent) != FVM_S_OK)
     {
         error("cannot encode remote alt");
     }
-    const uint64_t reply = (uint64_t)channel_rpc(bytes, used);
-    if (!reply && !block)
+    size_t received;
+    if (alt)
     {
-        return count;
+        channel_rpc(context, cancel, bytes, sent, payload, &received);
+        return receive_selection(payload, received, guards, schemas, order, count, alt, block, typed);
     }
-    const uint64_t selected = reply >> 32;
-    if (!selected || selected > count)
-    {
-        error("invalid remote alt reply");
-    }
-    const DVM_ProxyGuard *guard = &guards[order[selected - 1]];
-    if (guard->receive)
-    {
-        const uint32_t bits = (uint32_t)reply;
-        const WORD value = bits <= INT32_MAX ? (WORD)bits : (WORD)(-1 - (int32_t)(UINT32_MAX - bits));
-        dvm_sys_scalar_result(&value, guard->operand, sizeof(value));
-    }
-    return guard->index;
+    channel_rpc(context, cancel, payload, sent, bytes, &received);
+    return receive_selection(bytes, received, guards, schemas, order, count, alt, block, typed);
+}
+
+
+/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
+void dvm_call_channel_operate(Channel *channel, int receive, void *operand)
+{
+    DVM_ProxyGuard guard = {.channel = channel, .receive = receive, .operand = operand};
+    submit(&guard, 1, 0, 1);
+}
+
+
+/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
+unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int block)
+{
+    return submit(guards, count, 1, block);
 }
 
 
@@ -330,7 +300,7 @@ unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int 
 typedef struct ChannelTransfer
 {
     Channel *channel; /* Borrowed from the caller's rooted table. */
-    WORD value; /* Native scalar staging. */
+    DVM_StyxValueFrame frame; /* Owned managed staging, outside the transport. */
     int local_receives; /* Direction seen by the original channel. */
     int delivered; /* Real handoff or buffer operation completed. */
 } ChannelTransfer;
@@ -341,7 +311,7 @@ typedef struct ChannelTransfer
 static int try_transfer(void *state)
 {
     ChannelTransfer *transfer = state;
-    transfer->delivered = dvm_runtime_alt_try_transfer(transfer->channel, &transfer->value,
+    transfer->delivered = dvm_runtime_alt_try_transfer(transfer->channel, transfer->frame.words,
         transfer->local_receives);
     return 1;
 }
@@ -359,26 +329,47 @@ static void progress_operation(DVM_ChannelBus *bus, const DVM_CallChannels *chan
             return;
         }
         const DVM_ChannelChoice *choice = &operation->choices[i];
-        ChannelTransfer transfer = {.channel = channels->objects[choice->slot], .value = choice->value,
-            .local_receives = choice->receive};
-        REG saved = DVM_R;
-        int valid = kprotect(try_transfer, &transfer);
-        DVM_R = saved;
-        if (!valid || transfer.delivered)
+        const char *shape = channels->schemas[choice->slot].shape;
+        ChannelTransfer transfer = {.channel = channels->objects[choice->slot], .local_receives = choice->receive};
+        int scalar = !strcmp(shape, "(i)");
+        int valid = choice->receive || scalar ? dvm_channel_value_empty(shape, &transfer.frame) :
+            dvm_channel_value_unpack(shape, operation->bytes + choice->offset, choice->size, &transfer.frame);
+        if (!choice->receive && scalar)
         {
-            valid = valid && transfer.value >= INT32_MIN && transfer.value <= INT32_MAX;
-            int64_t reply = valid ? transfer.value : 0;
+            WORD value = choice->integer;
+            memcpy(transfer.frame.words, &value, sizeof(value));
+        }
+        REG saved = DVM_R;
+        valid = valid && kprotect(try_transfer, &transfer);
+        DVM_R = saved;
+        unsigned char element[DVM_CHANNEL_BUS_WIRE];
+        size_t size = 0;
+        int settled = !valid || transfer.delivered;
+        if (transfer.delivered && choice->receive && operation->typed)
+        {
+            dvm_channel_value_root(&transfer.frame);
+            valid = valid && dvm_channel_value_pack(shape, &transfer.frame, element, sizeof(element), &size);
+        }
+        int64_t legacy = 0;
+        if (settled && !operation->typed)
+        {
+            memcpy(&legacy, transfer.frame.words, sizeof(legacy));
+            valid = valid && legacy >= INT32_MIN && legacy <= INT32_MAX;
             if (operation->alt)
             {
-                reply = ((int64_t)(i + 1) << 32) | (uint32_t)reply;
+                legacy = ((int64_t)(i + 1) << 32) | (uint32_t)legacy;
             }
-            dvm_channel_bus_finish(bus, operation, valid, reply);
+        }
+        dvm_styx_value_frame_clear(&transfer.frame);
+        if (settled)
+        {
+            dvm_channel_bus_finish(bus, operation, valid, legacy, i + 1, element, size);
             return;
         }
     }
     if (operation->immediate)
     {
-        dvm_channel_bus_finish(bus, operation, 1, 0);
+        dvm_channel_bus_finish(bus, operation, 1, 0, 0, NULL, 0);
     }
 }
 

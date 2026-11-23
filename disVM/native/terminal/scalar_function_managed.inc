@@ -51,7 +51,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         if (!styxmanaged_request_payload(fn->dynamic_shape->arguments, &arguments) ||
             ((strchr(fn->dynamic_shape->arguments, 'h') || strchr(fn->dynamic_shape->result, 'h')) &&
                 arguments.tag != STYX_MANAGED_POSITION_GRAPH_TAG) ||
-            (styxmanaged_graph_required(fn->dynamic_shape->arguments) &&
+            ((strchr(fn->dynamic_shape->result, 'c') || styxmanaged_graph_required(fn->dynamic_shape->arguments)) &&
                 !styxmanaged_graph_tag(arguments.tag)))
         {
             return Ebadarg;

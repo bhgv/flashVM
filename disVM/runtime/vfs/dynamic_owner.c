@@ -15,6 +15,7 @@
 #include "program_view.h"
 #include "sysevents.h"
 #include "cancel.h"
+#include "channel_proxy.h"
 #include "flashvm/srecord.h"
 #include "sys_capture.h"
 #include "scalar_owner_internal.h"
@@ -111,6 +112,7 @@ void dvm_scalar_caller_end(Prog *process)
     {
         return;
     }
+    dvm_channel_route_end(&owner->remote_channels);
     DVM_Namespace *scope = owner->remote_call_group;
     DVM_SysEvents *events = owner->remote_call_events;
     dvm_cancel_release(owner->remote_call_cancel);

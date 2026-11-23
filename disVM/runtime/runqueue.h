@@ -76,6 +76,8 @@ typedef struct DVM_RuntimeProcess
     struct DVM_ScalarHandoff *remote_call_staged; /* Detached request awaiting the designated worker. */
     DVM_StyxCallerKey remote_call_key; /* Identity tied to the active caller scope. */
     struct DVM_Provider *remote_call_context; /* Owned reverse directory for the active call. */
+    struct DVM_ChannelRoute *remote_channels; /* Owned outbound channel route of this invocation. */
+    struct DVM_ChannelRoute *inherited_channels; /* Owned, revocable channel route inherited at spawn. */
     struct DVM_Provider *remote_call_reply; /* Owned private return mailbox of the active call. */
     int remote_call_handoff; /* 1 transfers on spawn, 2 waits for worker cancellation activation. */
     int remote_call_cancel_delivered;     /* The owner has raised cancellation for this call. */

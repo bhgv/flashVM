@@ -8,7 +8,8 @@ int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *ba
     void *bytes, size_t capacity, size_t *used)
 {
     StyxRefDefinition definitions[STYX_CALL_REF_KEYS];
-    DVM_StyxRefTable refs = {.count = count, .limit = STYX_CALL_REF_KEYS, .result = 1};
+    DVM_CallChannels channels = {.returning = 1};
+    DVM_StyxRefTable refs = {.count = count, .limit = STYX_CALL_REF_KEYS, .result = 1, .channels = &channels};
     StyxGraphPositions positions;
     size_t originals;
     if (count > STYX_CALL_REF_KEYS ||
