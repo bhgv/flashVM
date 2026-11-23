@@ -143,3 +143,21 @@ for both VM modes. The launcher closes the socket and waits for the provider.
 [C client](disvm/routed_client.c) · [Address decoding](../reference/channel_element_routes.md) · [Routed operations](../reference/channel_route_exchange.md)
 
 [Two channels over one socket](module_channels.md)
+
+## DisVM integration tests
+
+Build [native DisVM with the terminal launch SDK](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/TERMINAL-LAUNCH-CLI.md).
+Supply the DisVM source directory and that build directory, which contains
+`disvm` and `bootstrap/limbo-bootstrap`. From `lib/styxrpc`, run:
+
+```sh
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/prefix \
+    -DSTYXRPC_EXAMPLES=ON -DSTYXRPC_DISVM_SOURCE=/path/to/disVM \
+    -DSTYXRPC_DISVM_BUILD=/path/to/disvm-terminal
+cmake --build build
+ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
+```
+
+The tests exercise the interpreter and JIT. They cover loading C modules,
+typed calls and nested refs, named and one-shot launches, reverse resources,
+live channels and revocation of delegated routes.

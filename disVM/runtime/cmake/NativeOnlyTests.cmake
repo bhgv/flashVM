@@ -25,11 +25,11 @@ if(DVM_RUNTIME_TESTS)
             "${CMAKE_CURRENT_SOURCE_DIR}/test_styx_generated_call.py" "$<TARGET_FILE:disvm>"
             "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
         set_tests_properties(disvm_native_styx_generated_call PROPERTIES TIMEOUT 120 LABELS "native")
-        add_test(NAME disvm_native_styx_managed_load COMMAND "${PYTHON_EXECUTABLE}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/managed-fid/run.py"
-            "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>")
-        set_tests_properties(disvm_native_styx_managed_load PROPERTIES TIMEOUT 120 LABELS "native")
         if(DVM_TERMINAL_LAUNCH_SDK)
+            add_test(NAME disvm_native_styx_managed_load COMMAND "${PYTHON_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/managed-fid/run.py"
+                "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>")
+            set_tests_properties(disvm_native_styx_managed_load PROPERTIES TIMEOUT 120 LABELS "native")
             set(chain_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_chain.py")
             set(channel_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_channel.py")
             add_test(NAME disvm_native_styx_channel_tcp_interpreter COMMAND "${PYTHON_EXECUTABLE}"

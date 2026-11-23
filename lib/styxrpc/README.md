@@ -9,6 +9,25 @@ functions and publishes a virtual module. DisVM loads it through ordinary
 `load`. A C caller can encode requests and decode replies using its own
 Styx connection.
 
+## Integration scenario
+
+An external application, such as a FlashVM host or a device controller,
+associates export names and types with its C callbacks and publishes a
+module in a Styx tree. DisVM mounts that tree in its VFS. Ordinary Limbo
+`load` checks `.interface`, then each call uses its own function fid.
+The portable library checks UniBus S-records using application buffers.
+The hosted adapters manage the Styx connection and open resources.
+
+In the other direction, a C client can call DisVM functions or launch
+named images. Both peers can serve requests over one bidirectional
+connection. The reverse `.prog/<pid>` tree exposes variables,
+descriptors, VFS and a UniBus endpoint. Results can include references
+and live channels. Ordinary Limbo operations, including `alt`, use them
+within the granted lifetime. Closing the fid retires associated state
+and cancels pending operations.
+
+[End-to-end examples and acceptance](examples/README.md#disvm-integration-tests)
+
 ## Build
 
 Install [libunibus](../libunibus/README.md) first. The core is C99 and links

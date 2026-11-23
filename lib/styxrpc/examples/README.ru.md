@@ -147,3 +147,21 @@ C and DisVM`. Сценарий закрывает сокет и дожидает
 [Клиент C](disvm/routed_client.c) · [Разбор адресов](../reference/channel_element_routes.ru.md) · [Операции по маршруту](../reference/channel_route_exchange.ru.md)
 
 [Два канала через один сокет](module_channels.ru.md)
+
+## Сквозная приёмка DisVM
+
+Соберите [нативную DisVM с SDK терминального запуска](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/TERMINAL-LAUNCH-CLI.md).
+Укажите исходный каталог DisVM и каталог этой сборки с файлами `disvm`
+и `bootstrap/limbo-bootstrap`. Из каталога `lib/styxrpc` запустите:
+
+```sh
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/prefix \
+    -DSTYXRPC_EXAMPLES=ON -DSTYXRPC_DISVM_SOURCE=/path/to/disVM \
+    -DSTYXRPC_DISVM_BUILD=/path/to/disvm-terminal
+cmake --build build
+ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
+```
+
+Проверки запускают интерпретатор и JIT. Они охватывают загрузку C-модуля,
+типизированные вызовы и вложенный ref, именованный и одноразовый запуск,
+встречные ресурсы, живые каналы и отзыв делегированных маршрутов.
