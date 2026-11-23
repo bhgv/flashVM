@@ -214,7 +214,7 @@ static int port(FVM_Context *context, const FVM_Value *tuple, const char *index,
 
 /* [GC:] EN: Execute s = c.send(p) using AVM1 and verify the confirmed Boolean.
  * RU: Выполнить s = c.send(p) в AVM1 и проверить подтверждённое булево значение. */
-static int send(FVM_Context *context, const FVM_Value *object, const FVM_Value *value)
+int test_channel_avm1_send(FVM_Context *context, const FVM_Value *object, const FVM_Value *value)
 {
     static const unsigned char actions[] = {
         ACTION_PUSH, 3, 0, PUSH_STRING, 's', 0,
@@ -269,7 +269,7 @@ static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *cl
         fputs("A different lease did not reject the PID grant\n", stderr);
         return 0;
     }
-    if (!send(context, &input, &offered) || !module_route(routes, &module))
+    if (!test_channel_avm1_send(context, &input, &offered) || !module_route(routes, &module))
     {
         fputs("The first reverse PID did not return a module grant\n", stderr);
         return 0;
@@ -290,7 +290,7 @@ static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *cl
         fvm_call_bytes(context, "publishPort", 11, 2, args, &value) != FVM_EXCEPTION ||
         fvm_exception_clear(context) != FVM_OK ||
         fvm_object_call(context, local->object, "tryReceive", 0, NULL, &value) != FVM_EXCEPTION ||
-        fvm_exception_clear(context) != FVM_OK || !send(context, &alias, &offered))
+        fvm_exception_clear(context) != FVM_OK || !test_channel_avm1_send(context, &alias, &offered))
     {
         fputs("The second reverse PID could not be forwarded via the separate module token\n", stderr);
         return 0;

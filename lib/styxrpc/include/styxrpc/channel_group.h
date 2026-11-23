@@ -41,6 +41,16 @@ StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *qu
  * queue и output не меняются. */
 StyxRpcStatus styxrpc_channel_group_reverse_borrow(StyxRpcChannelQueue *queue, StyxRpcChannelOutput *output);
 
+
+/* EN: Lend count queues to one reverse PID. root selects the returned key.
+ * Nested leaves refer to exact current-group keys. Release returns FIFO state
+ * into queues and its arrays after all fids retire. On failure leave inputs unchanged.
+ * RU: Передать count очередей одному встречному PID. root выбирает ключ.
+ * Вложенные ссылки используют точные текущие ключи группы. После отзыва всех fid
+ * освобождение возвращает состояние в queues и её массивы. При отказе входы сохраняются. */
+StyxRpcStatus styxrpc_channel_group_reverse_borrow_graph(StyxRpcChannelQueue *queues, size_t count,
+    size_t root, StyxRpcChannelOutput *output);
+
 #ifdef __cplusplus
 }
 #endif

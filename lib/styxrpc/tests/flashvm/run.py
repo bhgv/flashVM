@@ -57,7 +57,8 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("channel-delegated", "channel-delegated"), ("channel-incoming", "channel-incoming"),
+    for option, profile in (("channel-pid-graph", "channel-pid-graph"),
+                            ("channel-delegated", "channel-delegated"), ("channel-incoming", "channel-incoming"),
                             ("channel-args", "channel-args"), ("channel", "channel"), ("hybrid", "hybrid"),
                             ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
         profiles.add_argument("--" + option, dest="profile", action="store_const", const=profile)
@@ -70,6 +71,7 @@ def main():
         owner, caller, module, exports, result = {
             "channel-delegated": (args.source / "examples/remote-scalar/styx-channel-recursive-owner.b",
                                   None, "channel-lifetime.dis", ("open", "idle"), None),
+            "channel-pid-graph": ("channel_pid_graph.b", None, "channel-pid-graph.dis", ("open",), None),
             "channel-incoming": (None, "channel_incoming.b", "flash-incoming.dis", (), "channel argument handlers"),
             "channel-args": ("channel_args_owner.b", None, "channel-args.dis",
                              ("exchange", "reject", "result", "relay", "wait", "nested"), None),

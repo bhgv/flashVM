@@ -39,8 +39,8 @@ extern "C" FVM_StyxPidGrant *fvm_styxrpc_pid_lookup(FVM_Context *context, FVM_Ob
 /* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
 extern "C" FVM_Result fvm_styxrpc_local_edges_init(FVM_Context *context, FVM_Object *owner, unsigned capacity)
 {
-    FVM_Value values[STYXRPC_CHANNEL_SLOTS * FVM_STYXRPC_CHANNEL_QUEUE_SLOTS], storage;
-    unsigned count = capacity * STYXRPC_CHANNEL_SLOTS;
+    FVM_Value values[STYXRPC_CHANNEL_SLOTS * FVM_STYXRPC_CHANNEL_QUEUE_SLOTS + 1], storage;
+    unsigned count = capacity * STYXRPC_CHANNEL_SLOTS + 1;
     for (unsigned index = 0; index < count; ++index)
     {
         fvm_value_undefined(values + index);
@@ -71,4 +71,16 @@ extern "C" FVM_Object *fvm_styxrpc_local_edge(FVM_Object *owner, size_t slot, si
         }
     }
     return edge.type == FVM_VALUE_OBJECT ? edge.object : NULL;
+}
+
+
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+extern "C" FVM_Object *fvm_styxrpc_local_graph_node(FVM_Object *graph, uint32_t key)
+{
+    if (!graph || !key || key > STYXRPC_CHANNEL_SLOTS)
+    {
+        return NULL;
+    }
+    fvm_detail::map<unsigned long, FVM_Value>::const_iterator node = graph->indexed.find(key - 1);
+    return node != graph->indexed.end() && node->second.type == FVM_VALUE_OBJECT ? node->second.object : NULL;
 }

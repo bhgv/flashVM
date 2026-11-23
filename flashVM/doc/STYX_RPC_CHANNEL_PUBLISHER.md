@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_publisher
 
-[Русский](STYX_RPC_CHANNEL_PUBLISHER.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L45) · [Implementation](../src/styxrpc/channel_delegate.c#L196)
+[Русский](STYX_RPC_CHANNEL_PUBLISHER.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L47) · [Implementation](../src/styxrpc/channel_delegate.c#L120)
 
 Include `<flashvm/styxrpc_channel.h>` and link `flashvm_styxrpc`.
 
@@ -12,7 +12,7 @@ Install a global native function in `context` under the nonempty NUL-terminated 
 
 Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) on registration, [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) for missing arguments and the registrar's status on allocation or binding failure. Calling the resulting AS function with `(anchor, queue)` runs [local delegation](STYX_RPC_CHANNEL_DELEGATE_LOCAL.md). A valid call returns an opaque PID value. Refused queues or exhausted PID slots raise an AS exception. Remote use starts when the script sends the value.
 
-The [host fixture](../tests/styxrpc/channel-delegated.c) registers `publishPort` before running the exchange. [Delegation guide](STYX_RPC_CHANNEL_DELEGATION.md)
+The [host fixture](../tests/styxrpc/channel-pid-graph.c) registers `publishPort` before lending a graph of local queues. [Delegation guide](STYX_RPC_CHANNEL_DELEGATION.md)
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_publisher
 
-[English](STYX_RPC_CHANNEL_PUBLISHER.md) · [Объявление](../include/flashvm/styxrpc_channel.h#L45) · [Реализация](../src/styxrpc/channel_delegate.c#L196)
+[English](STYX_RPC_CHANNEL_PUBLISHER.md) · [Объявление](../include/flashvm/styxrpc_channel.h#L47) · [Реализация](../src/styxrpc/channel_delegate.c#L120)
 
 Подключите `<flashvm/styxrpc_channel.h>` и линкуйте `flashvm_styxrpc`.
 
@@ -12,7 +12,7 @@ FVM_Result fvm_styxrpc_channel_publisher(FVM_Context *context, const char *globa
 
 Возвращает [`FVM_OK`](../include/flashvm/flashvm.h#L44) при регистрации, [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) при отсутствии обязательных параметров или статус регистратора при ошибке выделения либо привязки. Вызов из AS с `(anchor, queue)` выполняет [публикацию локальной очереди](STYX_RPC_CHANNEL_DELEGATE_LOCAL.ru.md). Успешный вызов возвращает непрозрачное значение PID. Недопустимая очередь или исчерпание слотов PID вызывают исключение AS. Партнёр получает возможность пользоваться каналом после отправки значения.
 
-[Проверочный хост](../tests/styxrpc/channel-delegated.c) регистрирует `publishPort` перед обменом. [Руководство по делегированию](STYX_RPC_CHANNEL_DELEGATION.ru.md)
+[Проверочный хост](../tests/styxrpc/channel-pid-graph.c) регистрирует `publishPort` перед передачей графа локальных очередей. [Руководство по делегированию](STYX_RPC_CHANNEL_DELEGATION.ru.md)
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

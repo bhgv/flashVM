@@ -14,7 +14,8 @@ typedef struct ChannelGroup
     StyxRpcChannelPolicy policy;                /* Current-group validation for each fid. */
     int reverse;                               /* Use post-request read offsets for reverse PID routes. */
     size_t count;                               /* Number of stable queue entries. */
-    StyxRpcChannelQueue *borrowed;               /* Original descriptor for returning FIFO cursors. */
+    StyxRpcChannelQueue *borrowed;               /* Borrowed descriptors receiving final FIFO state. */
+    unsigned shadows;                          /* Bitmask of nested queues with owned canonical frames. */
 } ChannelGroup;
 
 

@@ -174,6 +174,8 @@ The C dispatcher can revoke a reverse bus immediately. Pending operations retire
 
 When the application owner and the reverse dispatcher run on separate threads, use a [program server](reference/program_server_create.md). The host can [publish](reference/program_server_grant.md) and [revoke](reference/program_server_revoke.md) a PID while the dispatcher runs. A [borrowed queue resource](reference/channel_group_reverse_borrow.md) lets the peer use an existing by-value FIFO or rendezvous and returns the advanced cursor to the owner after revocation.
 
+[Borrow a queue graph](reference/channel_group_reverse_borrow_graph.md) to expose several existing FIFOs and rendezvous under one PID. Nested channel leaves use keys on the same bus. Revocation returns the live frames and cursors to the original descriptors.
+
 ## Shared C module bus
 
 The hosted library lets several opened calls return independent channels on

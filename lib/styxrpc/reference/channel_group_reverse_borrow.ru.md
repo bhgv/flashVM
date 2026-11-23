@@ -1,6 +1,6 @@
 # styxrpc_channel_group_reverse_borrow
 
-[English](channel_group_reverse_borrow.md) · [libstyxrpc](../README.ru.md) · [Объявление](../include/styxrpc/channel_group.h#L42) · [Реализация](../src/channel_group.c#L199)
+[English](channel_group_reverse_borrow.md) · [libstyxrpc](../README.ru.md) · [Объявление](../include/styxrpc/channel_group.h#L42) · [Реализация](../src/channel_group.c#L224)
 
 ## Синтаксис
 

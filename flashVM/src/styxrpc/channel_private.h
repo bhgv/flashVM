@@ -89,6 +89,19 @@ int fvm_styxrpc_channel_send_allow(const void *context, const StyxRpcChannelRout
 FVM_StyxPidGrant *fvm_styxrpc_pid_lookup(FVM_Context *context, FVM_Object *object);
 
 
+/* EN: Borrow the result family of an open anchor in context, or return NULL.
+ * RU: Заимствовать семейство результата открытого anchor в context либо вернуть NULL. */
+FVM_StyxChannelSet *fvm_styxrpc_channel_lease_set(FVM_Context *context, const FVM_Value *anchor);
+
+
+/* [GC:] EN: Make an opaque value and retain set. Caller keeps set reachable and fills
+ * payload's route before the value escapes. Both outputs are required.
+ * RU: Создать непрозрачное значение и удержать set. Вызывающий сохраняет достижимость
+ * set и заполняет маршрут payload до выдачи значения. Оба выхода обязательны. */
+FVM_Result fvm_styxrpc_channel_create_pid(FVM_Context *context, FVM_StyxChannelSet *set,
+    FVM_StyxPidGrant **payload, FVM_Value *value);
+
+
 /* [GC:] EN: Release a PID message value and retire its native lease reference.
  * RU: Освободить значение PID и снять его ссылку на нативную аренду. */
 void fvm_styxrpc_pid_release(void *state);
@@ -159,6 +172,7 @@ typedef struct FVM_StyxLocalRefs
 {
     uint32_t keys[STYXRPC_CHANNEL_SLOTS]; /* Slot-local keys, unused entries are zero. */
     FVM_Object *objects[STYXRPC_CHANNEL_SLOTS]; /* Borrowed from the traced queue storage. */
+    int issued; /* Use native capacity markers on frames returned from PID publication. */
 } FVM_StyxLocalRefs;
 
 
@@ -170,6 +184,11 @@ FVM_Result fvm_styxrpc_local_edges_init(FVM_Context *context, FVM_Object *owner,
 /* EN: Get or update a preallocated traced reference without allocating or invoking AS.
  * RU: Прочитать либо заменить заранее выделенную ссылку без выделения памяти и вызова AS. */
 FVM_Object *fvm_styxrpc_local_edge(FVM_Object *owner, size_t slot, size_t index, FVM_Object *value, int store);
+
+
+/* [GC:] EN: Borrow a member of the hidden graph array using its one-based wire key.
+ * RU: Заимствовать участника скрытого массива графа по сетевому ключу с единицы. */
+FVM_Object *fvm_styxrpc_local_graph_node(FVM_Object *graph, uint32_t key);
 
 
 /* EN: Get or replace a physical slot's exact key-to-object map. No heap work.
@@ -198,16 +217,18 @@ void *fvm_styxrpc_local_channel_lookup(FVM_Context *context, FVM_Object *object)
 StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const FVM_Value *value);
 
 
-/* EN: Pin a by-value queue from value and lock out local use on its owner.
+/* EN: Pin a queue from value and lock out local use on its owner.
  * Set owner to the native pin on success, otherwise return NULL.
- * RU: Удержать очередь по значению из value и запретить параллельное использование.
+ * RU: Удержать очередь из value и запретить параллельное использование.
  * При успехе записать в owner удерживаемое состояние, иначе вернуть NULL. */
 StyxRpcChannelQueue *fvm_styxrpc_local_channel_borrow(FVM_Context *context, const FVM_Value *value, void **owner);
 
 
-/* [GC:] EN: Unlock and release a native pin after returning queue ownership.
- * RU: Разблокировать и освободить owner после возврата владения очередью. */
-void fvm_styxrpc_local_channel_return(void *owner);
+/* [GC:] EN: Unlock and release the native pin. If issued is set, resolve returned
+ * nested slots on the next owner access, using the already traced graph.
+ * RU: Разблокировать и снять нативную ссылку. Если задан issued, восстановить
+ * возвращённые вложенные слоты при следующем доступе через трассируемый граф. */
+void fvm_styxrpc_local_channel_return(void *owner, int issued);
 
 #ifdef __cplusplus
 }

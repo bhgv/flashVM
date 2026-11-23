@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1720 / Контрольная точка v0.1720. One reverse PID serves
+the graph of local FlashVM queues through the independent C SDK.
+Нативная DisVM перемещает вложенный канал между очередями. Отзыв
+PID сохраняет данные и алиасы при сборке мусора. [EN](STYX_RPC_CHANNEL_DELEGATION.md) /
+[RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1719 / Контрольная точка v0.1719. FlashVM publishes local
 by-value queues as live reverse PIDs through the independent C SDK.
 Очередь возвращается владельцу после отзыва PID с данными завершённых

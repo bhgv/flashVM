@@ -18,7 +18,13 @@ Typed UniBus messages can carry a route beyond the containing channel's current 
 
 3. Dis opens `.prog/<pid>/.unibus` through its existing reverse mount and operates on the original queue. While it is published, local queue methods raise a busy exception. Close or release all result channels and release the opaque PID values from the issuing family when the exchange is done. The last release revokes the PID, cancels outstanding operation fids and restores use of the local queue with any remaining values. Keep the reverse server alive through retirement.
 
-The [native host API](STYX_RPC_CHANNEL_DELEGATE_LOCAL.md) can publish the same queue explicitly. The [underlying C resource](../../lib/styxrpc/reference/channel_group_reverse_borrow.md) also works without either VM.
+The [native host API](STYX_RPC_CHANNEL_DELEGATE_LOCAL.md) can publish the same queue explicitly. The [underlying C resource](../../lib/styxrpc/reference/channel_group_reverse_borrow_graph.md) also works without either VM.
+
+### Publish queues inside messages
+
+When a queued element contains a local channel, the publisher follows the channel references already in the FIFO. All reachable queues are lent together under one PID. Each distinct queue receives a key on that PID's bus. Repeating a channel in several slots or message positions preserves its identity. The peer can exchange by-value data on the leaves and send the published channels back into a compatible queue on the same bus. A graph can hold up to eight queues, including its root. A closed or already lent descendant rejects the entire publication.
+
+After revocation, the borrowed graph returns FIFO data to the original queues. The next local access restores the exact references from the returned records. A traced graph keeps the objects alive across collection until that access. In the [native Limbo test](../../lib/styxrpc/tests/flashvm/channel_pid_graph.b), Dis moves a rendezvous from one FIFO into another. The [FlashVM host](../tests/styxrpc/channel-pid-graph.c) checks both aliases and the surviving data after GC.
 
 ## Send a PID already registered by the host
 
@@ -32,6 +38,6 @@ When DisVM sends a module grant to a reverse resource, the host checks the incom
 
 The [recursive Limbo fixture](../../disVM/examples/remote-scalar/styx-channel-recursive-owner.b) receives a PID from FlashVM, sends its module child to that reverse resource and receives the identical child back. The [FlashVM host](../tests/styxrpc/channel-delegated.c) sends a second PID backed by a two-slot ActionScript queue through that module channel. Dis writes 43, receives the preloaded 81, and reports 81 through the result channel. FlashVM releases the family and reads 43 from the original queue.
 
-Local PID publication supports FIFO and rendezvous with elements passed by value. PID publication of local queues whose elements contain channels remains open. A separate module token still requires explicit host admission.
+Local queue graphs admit exact keys on their own bus. Bringing a separate PID or module token into one of these FIFO messages still requires a host-managed resource with a route policy. A separate module token sent to FlashVM still requires explicit host admission.
 
-After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R channel-delegated --output-on-failure`. The two cases run the native interpreter and JIT.
+After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'channel-(delegated|pid-graph)' --output-on-failure`. Both scenarios run on the native interpreter and JIT.

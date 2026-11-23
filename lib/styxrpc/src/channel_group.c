@@ -20,25 +20,59 @@ static uint64_t now_ms(void *unused)
 }
 
 
-/* EN: Drop every owned arena after the registry retires all operation fids.
- * RU: Освободить все арены после отзыва реестром всех fid операций. */
+/* EN: Return live FIFO frames and cursors from the scheduler's source to the lender.
+ * If shadowed is zero, source and target already share the slot arrays.
+ * RU: Вернуть текущие кадры и курсоры из source планировщика в очередь владельца.
+ * При нулевом shadowed массивы слотов уже общие. */
+static void return_queue(StyxRpcChannelQueue *target, const StyxRpcChannelQueue *source, int shadowed)
+{
+    if (shadowed)
+    {
+        for (size_t i = 0; i < source->count; ++i)
+        {
+            size_t slot = (source->head + i) % source->capacity;
+            memcpy(target->bytes + slot * target->stride, source->bytes + slot * source->stride, source->sizes[slot]);
+            target->sizes[slot] = source->sizes[slot];
+        }
+    }
+    target->head = source->head;
+    target->count = source->count;
+}
+
+
+/* EN: Return borrowed queues and free owned arenas after retirement of all fids.
+ * RU: Вернуть переданные очереди и освободить собственные арены после отзыва всех fid. */
 static void release_group(void *context)
 {
     ChannelGroup *group = context;
-    if (group->borrowed)
+    for (size_t i = 0; i < group->count; ++i)
     {
-        group->borrowed->head = group->queues[0].head;
-        group->borrowed->count = group->queues[0].count;
-    }
-    else
-    {
-        for (size_t i = 0; i < group->count; ++i)
+        int shadowed = (group->shadows & (1U << i)) != 0;
+        if (group->borrowed)
+        {
+            return_queue(group->borrowed + i, group->queues + i, shadowed);
+        }
+        if (!group->borrowed || shadowed)
         {
             free(group->queues[i].sizes);
             free(group->queues[i].bytes);
         }
     }
     free(group);
+}
+
+
+/* EN: Allocate mutable slot arrays for a queue with checked capacity and stride.
+ * RU: Выделить изменяемые массивы для queue с проверенными ёмкостью и шагом. */
+static int allocate_slots(StyxRpcChannelQueue *queue)
+{
+    if (!queue->capacity)
+    {
+        return 1;
+    }
+    queue->bytes = malloc(queue->capacity * queue->stride);
+    queue->sizes = calloc(queue->capacity, sizeof(*queue->sizes));
+    return queue->bytes && queue->sizes;
 }
 
 
@@ -78,16 +112,7 @@ static int allocate(StyxRpcChannelQueue *queue, const StyxRpcChannelQueue *sourc
     queue->grant = source->grant;
     queue->capacity = source->capacity;
     queue->stride = STYXRPC_MANAGED_LIMIT;
-    if (queue->capacity)
-    {
-        queue->bytes = malloc(queue->capacity * queue->stride);
-        queue->sizes = calloc(queue->capacity, sizeof(*queue->sizes));
-        if (!queue->bytes || !queue->sizes)
-        {
-            return 0;
-        }
-    }
-    return 1;
+    return allocate_slots(queue);
 }
 
 
@@ -198,10 +223,61 @@ StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *qu
 /* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
 StyxRpcStatus styxrpc_channel_group_reverse_borrow(StyxRpcChannelQueue *queue, StyxRpcChannelOutput *output)
 {
-    if (!queue || !output || !queue->grant.key || queue->grant.key > INT32_MAX ||
-        !memchr(queue->grant.shape, 0, sizeof(queue->grant.shape)) || strpbrk(queue->grant.shape, "crh") ||
-        queue->capacity > STYXRPC_CHANNEL_GROUP_CAPACITY || queue->count > queue->capacity ||
-        (queue->capacity ? queue->head >= queue->capacity : queue->head != 0))
+    if (!queue || !memchr(queue->grant.shape, 0, sizeof(queue->grant.shape)) || strchr(queue->grant.shape, 'c'))
+    {
+        return STYXRPC_INVALID;
+    }
+    return styxrpc_channel_group_reverse_borrow_graph(queue, 1, 0, output);
+}
+
+
+/* EN: Validate the caller's arrays, then bind or allocate slots for index in group.
+ * RU: Проверить массивы вызывающего, затем привязать или выделить слоты index группы. */
+static int bind_queue(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *source)
+{
+    if (!source->grant.key || source->grant.key > INT32_MAX ||
+        !memchr(source->grant.shape, 0, sizeof(source->grant.shape)) || strpbrk(source->grant.shape, "rh") ||
+        source->capacity > STYXRPC_CHANNEL_GROUP_CAPACITY || source->count > source->capacity ||
+        (source->capacity ? source->head >= source->capacity || !source->bytes || !source->sizes ||
+            !source->stride || source->stride > STYXRPC_MANAGED_LIMIT : source->head != 0))
+    {
+        return 0;
+    }
+    StyxRpcChannelQueue *queue = group->queues + index;
+    *queue = *source;
+    queue->head = 0;
+    queue->count = 0;
+    group->grants[index] = queue->grant;
+    if (queue->capacity && strchr(queue->grant.shape, 'c'))
+    {
+        group->shadows |= 1U << index;
+        return allocate_slots(queue);
+    }
+    return 1;
+}
+
+
+/* EN: Discard unfinished staging, freeing only the SDK's owned shadow slots.
+ * RU: Отменить подготовку, освободив только собственные теневые слоты SDK. */
+static void discard_borrow(ChannelGroup *group)
+{
+    for (size_t i = 0; i < group->count; ++i)
+    {
+        if (group->shadows & (1U << i))
+        {
+            free(group->queues[i].sizes);
+            free(group->queues[i].bytes);
+        }
+    }
+    free(group);
+}
+
+
+/* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
+StyxRpcStatus styxrpc_channel_group_reverse_borrow_graph(StyxRpcChannelQueue *queues, size_t count,
+    size_t root, StyxRpcChannelOutput *output)
+{
+    if (!queues || !count || count > STYXRPC_CHANNEL_SLOTS || root >= count || !output)
     {
         return STYXRPC_INVALID;
     }
@@ -210,32 +286,34 @@ StyxRpcStatus styxrpc_channel_group_reverse_borrow(StyxRpcChannelQueue *queue, S
     {
         return STYXRPC_INVALID;
     }
-    group->queues[0] = *queue;
-    group->queues[0].head = 0;
-    group->queues[0].count = 0;
-    group->grants[0] = queue->grant;
     group->policy = (StyxRpcChannelPolicy){styxrpc_group_allows, group};
-    group->count = 1;
+    group->count = count;
     group->reverse = 1;
-    if (!styxrpc_scheduler_init(&group->scheduler, group->queues, 1, now_ms, NULL))
+    int valid = 1;
+    int seeded = 0;
+    for (size_t i = 0; valid && i < count; ++i)
     {
-        free(group);
+        valid = bind_queue(group, i, queues + i);
+        seeded = seeded || queues[i].count != 0;
+    }
+    valid = valid && styxrpc_scheduler_init(&group->scheduler, group->queues, count, now_ms, NULL);
+    void *frame = valid && seeded ? malloc(STYXRPC_MANAGED_LIMIT) : NULL;
+    valid = valid && (!seeded || frame);
+    for (size_t i = 0; valid && i < count; ++i)
+    {
+        int shadowed = (group->shadows & (1U << i)) != 0;
+        valid = seed(group, i, queues + i, frame, shadowed);
+        group->queues[i].head = shadowed ? 0 : queues[i].head;
+        group->queues[i].count = queues[i].count;
+    }
+    free(frame);
+    if (!valid)
+    {
+        discard_borrow(group);
         return STYXRPC_INVALID;
     }
-    if (queue->count)
-    {
-        void *frame = malloc(STYXRPC_MANAGED_LIMIT);
-        int valid = frame && seed(group, 0, queue, frame, 0);
-        free(frame);
-        if (!valid)
-        {
-            free(group);
-            return STYXRPC_INVALID;
-        }
-    }
-    group->queues[0].head = queue->head;
-    group->queues[0].count = queue->count;
-    group->borrowed = queue;
-    *output = (StyxRpcChannelOutput){styxrpc_group_resource(group), queue->grant.key, !queue->capacity, release_group};
+    group->borrowed = queues;
+    *output = (StyxRpcChannelOutput){styxrpc_group_resource(group), queues[root].grant.key,
+        !queues[root].capacity, release_group};
     return STYXRPC_OK;
 }

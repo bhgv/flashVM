@@ -28,12 +28,12 @@ FVM_API FVM_Result fvm_styxrpc_channel_delegate_pid(FVM_Context *context, const 
     const StyxRpcChannelRoute *route, FVM_Value *out);
 
 
-/* [GC:] EN: Publish a by-value local queue on the program server from the
- * anchor's bidirectional mount. Transfer exclusive queue access until the
+/* [GC:] EN: Publish a local queue and its reachable queued channels on the
+ * program server from anchor's mount. Transfer exclusive access until the
  * last wrapper or PID value of the anchor's family is released. Keep reverse
  * alive through retirement. Call on the FlashVM owner.
- * RU: Опубликовать локальную очередь по значению на встречном сервере
- * монтирования anchor. Передать доступ к очереди до освобождения последней
+ * RU: Опубликовать локальную очередь и достижимые из неё каналы на сервере
+ * монтирования anchor. Передать доступ к ним до освобождения последней
  * обёртки или значения PID семейства. Хранить reverse до отзыва.
  * Вызывать в потоке владельца FlashVM. */
 FVM_API FVM_Result fvm_styxrpc_channel_delegate_local(FVM_Context *context, const FVM_Value *anchor,

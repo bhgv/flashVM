@@ -48,4 +48,14 @@ FVM_Result test_channel_seed(FVM_Context *context, FVM_GCRootScope *roots,
 /* EN: Exercise host-bound reverse PIDs and a module child on fd's native session.
  * RU: Проверить привязанные PID и дочерний токен модуля в нативной сессии fd. */
 int test_channel_delegated(FVM_Context *context, int fd);
+
+
+/* [GC:] EN: Send value through object using real AVM1, rooting them as test globals.
+ * RU: Отправить value через object реальным AVM1, удерживая их глобальными корнями. */
+int test_channel_avm1_send(FVM_Context *context, const FVM_Value *object, const FVM_Value *value);
+
+
+/* [GC:] EN: Exchange and restore nested live queues over fd in the owning context.
+ * RU: Обменяться вложенными живыми очередями и вернуть их в context через fd. */
+int test_channel_pid_graph(FVM_Context *context, int fd);
 #endif

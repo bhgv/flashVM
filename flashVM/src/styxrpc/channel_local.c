@@ -2,93 +2,13 @@
  * EN: Owner-local typed FIFOs that can be lent to a single scoped RPC.
  * RU: Локальные типизированные FIFO, доступные одному контекстному RPC.
  */
-#include "channel_private.h"
+#include "channel_local.h"
 #include "managed_values.h"
 #include "flashvm/userdata.h"
 #include <stdlib.h>
 #include <string.h>
 
 #define LOCAL_CHANNEL_KEY 1U /* Private key before publication assigns a call key. */
-
-typedef struct LocalChannel
-{
-    StyxRpcChannelQueue queue; /* The local queue, including when published on a reverse PID. */
-    size_t sizes[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS]; /* Length of each encoded element. */
-    uint32_t keys[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS][STYXRPC_CHANNEL_SLOTS]; /* Typed leaves of each physical slot. */
-    int reading;               /* A local receive holds the current slot through GC. */
-    unsigned writing;          /* Active encoders may run reentrant script getters. */
-    int closed;                /* Explicit close invalidates the object and aliases. */
-    int lent;                  /* Only the reverse dispatcher may use the arena. */
-    unsigned references;       /* Userdata and optional PID publication each own one. */
-} LocalChannel;
-
-
-/* [GC:] EN: Drop the userdata or publication reference to this native arena.
- * RU: Снять ссылку userdata либо публикации на этот буфер. */
-void fvm_styxrpc_local_channel_release(void *state)
-{
-    LocalChannel *local = state;
-    if (!--local->references)
-    {
-        free(local);
-    }
-}
-
-
-/* EN/RU: See channel_private.h. / См. channel_private.h. */
-StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const FVM_Value *value)
-{
-    LocalChannel *local = value->type == FVM_VALUE_OBJECT ?
-        fvm_styxrpc_local_channel_lookup(context, value->object) : NULL;
-    return local && !local->closed && !local->reading && !local->lent ? &local->queue : NULL;
-}
-
-
-/* EN/RU: See channel_private.h. / См. channel_private.h. */
-StyxRpcChannelQueue *fvm_styxrpc_local_channel_borrow(FVM_Context *context, const FVM_Value *value, void **owner)
-{
-    LocalChannel *local = value && value->type == FVM_VALUE_OBJECT ?
-        fvm_styxrpc_local_channel_lookup(context, value->object) : NULL;
-    if (!local || local->closed || local->reading || local->writing || local->lent ||
-        strchr(local->queue.grant.shape, 'c'))
-    {
-        return NULL;
-    }
-    ++local->references;
-    local->lent = 1;
-    *owner = local;
-    return &local->queue;
-}
-
-
-/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
-void fvm_styxrpc_local_channel_return(void *owner)
-{
-    LocalChannel *local = owner;
-    local->lent = 0;
-    fvm_styxrpc_local_channel_release(local);
-}
-
-
-/* EN/RU: See channel_private.h. / См. channel_private.h. */
-void fvm_styxrpc_local_slot(FVM_Context *context, FVM_Object *owner, size_t slot, FVM_StyxLocalRefs *refs, int store)
-{
-    LocalChannel *local = fvm_styxrpc_local_channel_lookup(context, owner);
-    size_t index;
-    for (index = 0; index < STYXRPC_CHANNEL_SLOTS; ++index)
-    {
-        if (store)
-        {
-            local->keys[slot][index] = refs->keys[index];
-        }
-        else
-        {
-            refs->keys[index] = local->keys[slot][index];
-        }
-        refs->objects[index] = fvm_styxrpc_local_edge(owner, slot, index, refs->objects[index], store);
-    }
-}
-
 
 /* [GC:] EN: Encode a matching open local channel, rooting each new alias through staging.
  * RU: Кодировать подходящий открытый канал и удерживать каждый новый алиас при подготовке. */
@@ -181,6 +101,7 @@ static int decode_child(FVM_Context *context, FVM_GCRootScope *roots, void *stat
         }
         route.channel = child->queue.grant;
         route.channel.key = refs->keys[index];
+        route.unbuffered = refs->issued && !child->queue.capacity;
         if (styxrpc_channel_route_value(&route, wire, sizeof(wire), &length) == STYXRPC_OK &&
             fvm_srecord_read(wire, length, sizeof(wire), &exact, &consumed) == FVM_S_OK &&
             exact.tag == record->tag && exact.size == record->size && !memcmp(exact.payload, record->payload, exact.size))
@@ -219,6 +140,10 @@ static FVM_Result try_send(FVM_Context *context, FVM_Object *self, unsigned argc
     if (local->closed)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is closed");
+    }
+    if (!fvm_styxrpc_local_sync(context, self, local))
+    {
+        return FVM_ERROR;
     }
     buffer = malloc(2U * STYXRPC_MANAGED_LIMIT);
     if (!buffer)
@@ -293,6 +218,10 @@ static FVM_Result try_receive(FVM_Context *context, FVM_Object *self, unsigned a
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is closed");
     }
+    if (!fvm_styxrpc_local_sync(context, self, local))
+    {
+        return FVM_ERROR;
+    }
     if (!local->queue.count)
     {
         fvm_value_undefined(out);
@@ -359,7 +288,7 @@ static FVM_Result close_local(FVM_Context *context, FVM_Object *self, unsigned a
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
-    if (strchr(local->queue.grant.shape, 'c'))
+    if (local->queue.capacity && strchr(local->queue.grant.shape, 'c'))
     {
         FVM_StyxLocalRefs edges = {0};
         size_t slot;
@@ -367,6 +296,8 @@ static FVM_Result close_local(FVM_Context *context, FVM_Object *self, unsigned a
         {
             fvm_styxrpc_local_slot(context, self, slot, &edges, 1);
         }
+        fvm_styxrpc_local_edge(self, local->queue.capacity, 0, NULL, 1);
+        local->restore = 0;
     }
     local->closed = 1;
     fvm_value_undefined(out);

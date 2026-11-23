@@ -156,11 +156,60 @@ static int exercise_rendezvous(void)
 }
 
 
+/* EN: Reject an unknown nested key, then borrow, echo and return a wrapped FIFO.
+ * RU: Отклонить неизвестный вложенный ключ, затем передать, вернуть эхо и кольцевой FIFO. */
+static int exercise_borrow_graph(void)
+{
+    const StyxRpcChannelGrant grants[] = {{4, "(c[i])"}, {7, "(i)"}};
+    StyxRpcChannelRoute child = {.channel = grants[1]};
+    unsigned char arena[2 * TEST_FRAME], request[TEST_FRAME], reply[TEST_FRAME];
+    size_t sizes[2] = {0, 0}, sent;
+    StyxRpcChannelQueue queues[] = {
+        {.grant = grants[0], .bytes = arena, .sizes = sizes, .capacity = 2, .stride = TEST_FRAME, .head = 1, .count = 1},
+        {.grant = grants[1]}
+    };
+    StyxRpcChannelOutput output = {.key = 99};
+    child.channel.key = 8;
+    if (!message(&child, request, &sent))
+    {
+        return 0;
+    }
+    memcpy(arena + TEST_FRAME, request, sent);
+    sizes[1] = sent;
+    if (styxrpc_channel_group_reverse_borrow_graph(queues, 2, 0, &output) != STYXRPC_INVALID ||
+        output.key != 99 || queues[0].head != 1 || queues[0].count != 1 ||
+        sizes[1] != sent || memcmp(arena + TEST_FRAME, request, sent))
+    {
+        return 0;
+    }
+    child.channel = grants[1];
+    if (!message(&child, arena + TEST_FRAME, sizes + 1) || !message(&child, request, &sent) ||
+        styxrpc_channel_group_reverse_borrow_graph(queues, 2, 0, &output) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    const StyxRpcSelection receive = {.count = 1, .guards = {{4, 1, NULL, 0}}};
+    const StyxRpcSelection send = {.count = 1, .guards = {{4, 0, request, sent}}};
+    StyxRpcChannelResult result;
+    StyxRpcChannelRoutes nested;
+    int good = output.key == 4 && !output.unbuffered &&
+        exchange(&output, grants, 2, &receive, reply, &result, 1) &&
+        styxrpc_channel_element_routes(grants[0].shape, result.value, result.size, &nested) == STYXRPC_OK &&
+        nested.count == 1 && nested.entries[0].channel.key == 7 && nested.entries[0].unbuffered &&
+        exchange(&output, grants, 2, &send, reply, &result, 1);
+    output.release(output.resource.context);
+    return good && queues[0].head == 1 && queues[0].count == 1 &&
+        styxrpc_channel_element_routes(grants[0].shape, arena + TEST_FRAME, sizes[1], &nested) == STYXRPC_OK &&
+        nested.count == 1 && nested.entries[0].kind == STYXRPC_ROUTE_CURRENT &&
+        nested.entries[0].channel.key == 7 && nested.entries[0].unbuffered;
+}
+
+
 /* EN: Run the group resource checks without FlashVM or DisVM.
  * RU: Проверить ресурс группы без FlashVM и DisVM. */
 int main(void)
 {
-    if (!exercise(0) || !exercise(1) || !exercise_borrow() || !exercise_rendezvous())
+    if (!exercise(0) || !exercise(1) || !exercise_borrow() || !exercise_rendezvous() || !exercise_borrow_graph())
     {
         fputs("channel group ownership or canonical echo failed\n", stderr);
         return 1;
