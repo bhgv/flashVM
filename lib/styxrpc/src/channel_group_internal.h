@@ -12,6 +12,7 @@ typedef struct ChannelGroup
     StyxRpcChannelQueue queues[STYXRPC_CHANNEL_SLOTS]; /* Owned copied queue arenas. */
     StyxRpcChannelGrant grants[STYXRPC_CHANNEL_SLOTS]; /* Exact operation keys and shapes. */
     StyxRpcChannelPolicy policy;                /* Current-group validation for each fid. */
+    int reverse;                               /* Use post-request read offsets for reverse PID routes. */
     size_t count;                               /* Number of stable queue entries. */
 } ChannelGroup;
 

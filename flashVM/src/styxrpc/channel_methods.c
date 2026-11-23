@@ -134,6 +134,7 @@ static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxR
     FVM_StyxChannelSet *set = channel->set;
     FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
+    int ok;
     if (result->selected && strchr(channel->grant.shape, 'c') &&
         (set->lease ? styxrpc_channel_lease_import_element(set->lease, channel->index, result->value, result->size) :
             styxrpc_channel_import_element(set->call, channel->grant.key, result->value, result->size)) != STYXRPC_OK)
@@ -145,7 +146,10 @@ static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxR
     refs.graph = 1;
     refs.decode_channel = fvm_styxrpc_channel_decode;
     refs.channel_context = &decode;
-    return fvm_styxrpc_channel_unpack_refs(context, roots, &refs, channel->grant.shape, result, out);
+    ++set->references;
+    ok = fvm_styxrpc_channel_unpack_refs(context, roots, &refs, channel->grant.shape, result, out);
+    fvm_styxrpc_channel_set_release(set, 0);
+    return ok;
 }
 
 
@@ -160,6 +164,8 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
     unsigned char *buffers;
     StyxRpcSelection selection = {0};
     FVM_StyxRefs refs = {0};
+    FVM_StyxChannelSend send = {0};
+    StyxRpcChannelPolicy policy;
     StyxRpcChannelResult result;
     StyxRpcStatus rpc_status;
     FVM_Result status;
@@ -186,7 +192,10 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
         selection.guards[0].receive = !argc;
         refs.graph = 1;
         refs.encode_channel = fvm_styxrpc_channel_encode;
-        refs.channel_context = channel;
+        send.receiver = channel;
+        policy.allow = fvm_styxrpc_channel_send_allow;
+        policy.context = &send;
+        refs.channel_context = &send;
         if (argc && !fvm_styxrpc_channel_pack_refs(context, roots, &refs, channel->grant.shape, args,
             buffers, buffers + STYXRPC_MANAGED_LIMIT, selection.guards))
         {
@@ -202,6 +211,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
             unsigned char *scratch = buffers + 2U * STYXRPC_MANAGED_LIMIT;
             unsigned char *request = scratch + STYXRPC_MANAGED_LIMIT;
             unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
+            selection.policy = send.delegated.count ? &policy : NULL;
             rpc_status = set->lease ?
                 styxrpc_channel_lease_exchange(set->lease, channel->index, &selection,
                     set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
@@ -300,9 +310,21 @@ int fvm_styxrpc_channel_materialize(FVM_Context *context, FVM_GCRootScope *roots
         value->type = FVM_VALUE_OBJECT;
         value->object = existing;
     }
-    else if (create_object(context, set, grant, index, value) != FVM_OK)
+    else
     {
-        return 0;
+        unsigned slot = 1U << index;
+        FVM_Result status;
+        if (set->staging & slot)
+        {
+            return 0;
+        }
+        set->staging |= slot;
+        status = create_object(context, set, grant, index, value);
+        set->staging &= ~slot;
+        if (status != FVM_OK)
+        {
+            return 0;
+        }
     }
     if (fvm_gc_roots_add(roots, value) != FVM_OK)
     {

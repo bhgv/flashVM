@@ -20,6 +20,22 @@ extern "C" {
 FVM_API FVM_Result fvm_styxrpc_channel_import(FVM_Context *context, const char *global,
     StyxRpcManagedTarget *target);
 
+/* [GC:] EN: Create an opaque message value for a reverse PID published by the host
+ * on the anchor's exact bidirectional mount. The returned value retains its lease.
+ * RU: Создать непрозрачное значение для встречного PID, выданного хостом на
+ * двунаправленном монтировании anchor. Возвращаемое значение удерживает аренду. */
+FVM_API FVM_Result fvm_styxrpc_channel_delegate_pid(FVM_Context *context, const FVM_Value *anchor,
+    const StyxRpcChannelRoute *route, FVM_Value *out);
+
+
+/* [GC:] EN: Admit a module grant authenticated by the host for the anchor's lease.
+ * Return a live object on the held module, preserving known aliases.
+ * RU: Принять проверенное хостом полномочие модуля в аренду anchor.
+ * Вернуть живой объект на удерживаемом модуле с сохранением известных алиасов. */
+FVM_API FVM_Result fvm_styxrpc_channel_admit_module(FVM_Context *context, const FVM_Value *anchor,
+    const StyxRpcChannelRoute *route, FVM_Value *out);
+
+
 typedef struct FVM_StyxRpcChannelArguments
 {
     StyxRpcManagedTarget *target; /* Borrowed exact remote offer and caller PID. */

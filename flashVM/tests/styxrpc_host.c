@@ -243,7 +243,7 @@ int main(int argc, char **argv)
         strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
         strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call") &&
         strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve") && strcmp(argv[1], "channel-args-call") &&
-        strcmp(argv[1], "channel-incoming-serve")))
+        strcmp(argv[1], "channel-incoming-serve") && strcmp(argv[1], "channel-delegated-call")))
     {
         return 2;
     }
@@ -264,6 +264,10 @@ int main(int argc, char **argv)
         if (!strcmp(argv[1], "serve"))
         {
             ok = serve_flash(context, (int)fd);
+        }
+        else if (!strcmp(argv[1], "channel-delegated-call"))
+        {
+            ok = test_channel_delegated(context, (int)fd);
         }
         else if (!strcmp(argv[1], "managed-serve"))
         {

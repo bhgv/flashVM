@@ -50,8 +50,9 @@ if(STYXRPC_FLASHVM_TEST_HOST)
             if(mode STREQUAL "jit")
                 list(APPEND mode_args --jit)
             endif()
-            foreach(profile IN ITEMS scalar managed ref graph hybrid channel channel-args channel-incoming)
-                if((profile STREQUAL "channel-args" AND NOT direction STREQUAL "flash-to-dis") OR
+            foreach(profile IN ITEMS scalar managed ref graph hybrid channel channel-args channel-incoming channel-delegated)
+                if(((profile STREQUAL "channel-args" OR profile STREQUAL "channel-delegated")
+                        AND NOT direction STREQUAL "flash-to-dis") OR
                    (profile STREQUAL "channel-incoming" AND NOT direction STREQUAL "dis-to-flash"))
                     continue()
                 endif()

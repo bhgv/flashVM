@@ -112,9 +112,15 @@ static int schema_supported(const StyxRpcSchema *schema)
     {
         return 0;
     }
-    args = type_end(schema->arguments, 0);
-    result = schema->result[1] == ')' ? schema->result + 1 : type_end(schema->result + 1, 1);
-    return args && !*args && result && *result == ')' && !result[1];
+    /* EN: The native codec starts the depth of each item at zero, outside the list.
+     * RU: Нативный кодек начинает глубину элемента с нуля, вне списка. */
+    args = schema->arguments + 1;
+    while (args && *args != ')')
+    {
+        args = type_end(args, 0);
+    }
+    result = schema->result[1] == ')' ? schema->result + 1 : type_end(schema->result + 1, 0);
+    return args && !args[1] && result && *result == ')' && !result[1];
 }
 
 

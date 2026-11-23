@@ -27,7 +27,7 @@ Sending the array back uses the admitted keys on the original bus. A channel obj
 
 Mount the [FlashVM handler module](../../lib/styxrpc/tests/flashvm/channel_incoming.b) from DisVM and lend a buffered channel with the matching element type. The same `receive()` and `send()` methods work in the handler. The transport checks the received message and admits current-bus keys under the original reverse PID. FlashVM closes every borrowed wrapper at callback exit, including children obtained from later messages. Confirmed sends and receives remain visible in DisVM.
 
-The bridge tracks up to eight distinct keys in one call or lease. This includes the containing channel and any keys discovered in messages. ActionScript supports same-bus round trips for Dis-owned channels. Delegating to a separate PID or module token from AS remains open. The C SDK exposes the [explicit route policy](../../lib/styxrpc/reference/channel_read_routed.md) for C applications that manage those addresses.
+The bridge tracks up to eight distinct keys in one call or lease. This includes the containing channel and any keys discovered in messages. ActionScript supports same-bus round trips for Dis-owned channels. [Host-bound delegation](STYX_RPC_CHANNEL_DELEGATION.md) handles separate reverse PIDs and admitted module tokens. The C SDK exposes the [explicit route policy](../../lib/styxrpc/reference/channel_read_routed.md) for C applications that manage those addresses.
 
 The two directions run in the native Dis interpreter and JIT. After [configuring integration tests](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'styxrpc-channel(-incoming-dis-to-flash|-flash-to-dis)' --output-on-failure`.
 

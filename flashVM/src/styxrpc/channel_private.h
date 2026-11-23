@@ -18,6 +18,7 @@ typedef struct FVM_StyxChannelSet
     StyxRpcChannelCall *call;          /* Mutable copy of the scoped reverse grants. */
     size_t references;                 /* Owner-local count including each live wrapper. */
     unsigned wait_ms;                  /* Per-operation polling budget. */
+    unsigned staging;                  /* Wrapper slots under construction. */
     FVM_Object *objects[STYXRPC_CHANNEL_SLOTS]; /* Weak aliases cleared by close or GC. */
 } FVM_StyxChannelSet;
 
@@ -62,6 +63,34 @@ int fvm_styxrpc_channel_materialize(FVM_Context *context, FVM_GCRootScope *roots
  * RU: Декодировать проверенный лист по уже допущенным ключам его семейства. */
 int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, void *state,
     const char *type, const FVM_SRecord *record, FVM_Value *value);
+
+
+typedef struct FVM_StyxPidGrant
+{
+    StyxRpcChannelLease *lease; /* Retained issuing lease shared by the intended receiver. */
+    StyxRpcChannelRoute route;  /* Host-authorized reverse endpoint. */
+} FVM_StyxPidGrant;
+
+typedef struct FVM_StyxChannelSend
+{
+    const FVM_StyxRemoteChannel *receiver;  /* Exact sending method receiver. */
+    StyxRpcChannelRoutes delegated;         /* Distinct PID routes offered in this message. */
+} FVM_StyxChannelSend;
+
+
+/* EN: Authorize an offered PID or exact current-token key before sending.
+ * RU: Разрешить предложенный PID либо точный ключ текущего токена перед отправкой. */
+int fvm_styxrpc_channel_send_allow(const void *context, const StyxRpcChannelRoute *route);
+
+
+/* EN: Borrow a host-created PID grant from the exact context.
+ * RU: Заимствовать созданное хостом полномочие PID из точного контекста. */
+FVM_StyxPidGrant *fvm_styxrpc_pid_lookup(FVM_Context *context, FVM_Object *object);
+
+
+/* [GC:] EN: Release a PID message value and retire its native lease reference.
+ * RU: Освободить значение PID и снять его ссылку на нативную аренду. */
+void fvm_styxrpc_pid_release(void *state);
 
 
 /* [GC:] EN: Encode a nested null or live channel on the target's exact current bus.

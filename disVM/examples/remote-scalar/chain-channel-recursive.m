@@ -3,5 +3,6 @@
 # RU: Объявить канал для выдачи новых каналов в обоих направлениях UniBus.
 Channelrecursive: module
 {
+    idle: fn(): (chan of chan of chan of chan of int, chan of int);
     open: fn(): (chan of chan of chan of chan of int, chan of int);
 };

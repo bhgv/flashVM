@@ -43,4 +43,9 @@ int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
  * RU: Создать описатель сценария [ёмкость, элементы] с корнями элементов у вызывающего. */
 FVM_Result test_channel_seed(FVM_Context *context, FVM_GCRootScope *roots,
     unsigned capacity, unsigned count, const FVM_Value *items, FVM_Value *out);
+
+
+/* EN: Exercise host-bound reverse PIDs and a module child on fd's native session.
+ * RU: Проверить привязанные PID и дочерний токен модуля в нативной сессии fd. */
+int test_channel_delegated(FVM_Context *context, int fd);
 #endif

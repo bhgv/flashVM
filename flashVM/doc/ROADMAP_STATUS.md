@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1718 / Контрольная точка v0.1718. ActionScript sends
+host-bound reverse PID grants and uses admitted module grants through the
+original lease. Два встречных PID и отдельный токен модуля проверены
+в рекурсивном обмене с нативной DisVM. [EN](STYX_RPC_CHANNEL_DELEGATION.md) /
+[RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1717 / Контрольная точка v0.1717. FlashVM can lend local
 FIFO and rendezvous queues reachable through typed argument messages.
 SDK назначает ключи на один вызов, а FlashVM восстанавливает сообщения

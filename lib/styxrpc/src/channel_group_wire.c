@@ -134,14 +134,15 @@ static int write_operation(void *cookie, uint64_t offset, const void *bytes, siz
 }
 
 
-/* EN: Poll WAIT deadlines before copying the immutable reply from offset zero.
- * RU: Проверить сроки WAIT до копирования неизменяемого ответа от смещения ноль. */
+/* EN: Poll WAIT before reading an immutable reply at its route's offset origin.
+ * RU: Проверить WAIT и прочитать неизменяемый ответ от начала данных маршрута. */
 static int read_operation(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
 {
     GroupOpen *operation = cookie;
     styxrpc_scheduler_progress(&operation->group->scheduler);
-    return offset <= SIZE_MAX &&
-        styxrpc_channel_fid_read(&operation->fid, (size_t)offset, bytes, capacity, size) != STYXRPC_INVALID;
+    size_t origin = operation->group->reverse ? operation->fid.staged : 0;
+    return offset >= origin && offset - origin <= SIZE_MAX &&
+        styxrpc_channel_fid_read(&operation->fid, (size_t)(offset - origin), bytes, capacity, size) != STYXRPC_INVALID;
 }
 
 

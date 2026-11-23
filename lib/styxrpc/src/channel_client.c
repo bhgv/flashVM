@@ -194,33 +194,41 @@ const StyxRpcChannelRoute *styxrpc_channel_lease_route(const StyxRpcChannelLease
 }
 
 
-/* EN: Merge a single current-bus route into a staged lease within token's namespace.
- * RU: Добавить маршрут текущей шины в копию аренды в пределах токена. */
-static int add_nested(StyxRpcChannelRoutes *staged, const unsigned char *token,
-    const StyxRpcChannelRoute *route)
+/* EN: Merge a checked module route, retaining stable indices and rejecting type conflicts.
+ * RU: Добавить проверенный маршрут модуля со стабильным индексом и проверкой типа. */
+static int admit_route(StyxRpcChannelRoutes *table, const StyxRpcChannelRoute *route, size_t *index)
 {
-    if (route->kind != STYXRPC_ROUTE_CURRENT)
+    for (size_t i = 0; i < table->count; ++i)
     {
-        return 0;
-    }
-    for (size_t i = 0; i < staged->count; ++i)
-    {
-        const StyxRpcChannelRoute *present = staged->entries + i;
-        if (present->channel.key == route->channel.key && !memcmp(present->token, token, sizeof(present->token)))
+        const StyxRpcChannelRoute *present = &table->entries[i];
+        if (present->channel.key == route->channel.key &&
+            !memcmp(present->token, route->token, STYXRPC_CHANNEL_TOKEN_SIZE))
         {
-            return present->unbuffered == route->unbuffered &&
-                !strcmp(present->channel.shape, route->channel.shape);
+            if (present->unbuffered != route->unbuffered || strcmp(present->channel.shape, route->channel.shape))
+            {
+                return 0;
+            }
+            *index = i;
+            return 1;
         }
     }
-    if (staged->count == STYXRPC_CHANNEL_SLOTS)
+    if (table->count == STYXRPC_CHANNEL_SLOTS)
     {
         return 0;
     }
-    StyxRpcChannelRoute *entry = staged->entries + staged->count++;
-    *entry = *route;
-    entry->kind = STYXRPC_ROUTE_MODULE;
-    memcpy(entry->token, token, sizeof(entry->token));
+    *index = table->count++;
+    table->entries[*index] = *route;
     return 1;
+}
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+StyxRpcStatus styxrpc_channel_lease_admit_module(StyxRpcChannelLease *lease,
+    const StyxRpcChannelRoute *route, size_t *index)
+{
+    return lease && index && route && route->kind == STYXRPC_ROUTE_MODULE &&
+        styxrpc_route_valid(route) && admit_route(&lease->routes, route, index) ?
+        STYXRPC_OK : STYXRPC_INVALID;
 }
 
 
@@ -238,7 +246,15 @@ StyxRpcStatus styxrpc_channel_lease_import_element(StyxRpcChannelLease *lease, s
     StyxRpcChannelRoutes staged = lease->routes;
     for (size_t i = 0; i < received.count; ++i)
     {
-        if (!add_nested(&staged, parent->token, received.entries + i))
+        StyxRpcChannelRoute route = received.entries[i];
+        size_t index;
+        if (route.kind != STYXRPC_ROUTE_CURRENT)
+        {
+            return STYXRPC_INVALID;
+        }
+        route.kind = STYXRPC_ROUTE_MODULE;
+        memcpy(route.token, parent->token, sizeof(route.token));
+        if (!admit_route(&staged, &route, &index))
         {
             return STYXRPC_INVALID;
         }

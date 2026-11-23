@@ -124,29 +124,119 @@ int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, voi
 }
 
 
+/* EN: Match a channel's exact compiled element type to the enclosing leaf type.
+ * RU: Сверить компилированный тип элемента канала с типом внешнего листа. */
+static int same_shape(const StyxRpcChannelGrant *grant, const char *type)
+{
+    const char *end = fvm_styxrpc_type_end(type);
+    size_t length;
+    if (!end)
+    {
+        return 0;
+    }
+    length = (size_t)(end - type) - 3;
+    return strlen(grant->shape) == length + 2 && !memcmp(grant->shape + 1, type + 2, length);
+}
+
+
+/* EN: Compare a PID grant's authority, element type and capacity.
+ * RU: Сверить полномочие PID, тип элемента и ёмкость. */
+static int same_pid(const StyxRpcChannelRoute *a, const StyxRpcChannelRoute *b)
+{
+    return a->pid == b->pid && a->channel.key == b->channel.key &&
+        a->unbuffered == b->unbuffered && !strcmp(a->channel.shape, b->channel.shape);
+}
+
+
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channel_send_allow(const void *context, const StyxRpcChannelRoute *route)
+{
+    const FVM_StyxChannelSend *send = context;
+    const FVM_StyxRemoteChannel *receiver = send->receiver;
+    size_t i;
+    if (route->kind == STYXRPC_ROUTE_PID)
+    {
+        for (i = 0; i < send->delegated.count; ++i)
+        {
+            if (same_pid(send->delegated.entries + i, route))
+            {
+                return 1;
+            }
+        }
+    }
+    else if (route->kind == STYXRPC_ROUTE_CURRENT && !route->unbuffered)
+    {
+        StyxRpcChannelLease *lease = receiver->set->lease;
+        for (i = 0; i < STYXRPC_CHANNEL_SLOTS; ++i)
+        {
+            const StyxRpcChannelRoute *known = styxrpc_channel_lease_route(lease, i);
+            if (known && known->channel.key == route->channel.key && same_bus(lease, receiver->index, i) &&
+                !strcmp(known->channel.shape, route->channel.shape))
+            {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+
+/* EN: Stage an exact host-issued grant for one send through the same issuing lease.
+ * RU: Подготовить точное полномочие хоста для отправки через ту же выдающую аренду. */
+static int pack_pid(FVM_StyxChannelSend *send, const FVM_StyxPidGrant *grant, const char *type,
+    unsigned char *bytes, size_t capacity, size_t *used)
+{
+    const FVM_StyxRemoteChannel *receiver = send->receiver;
+    size_t i;
+    if (!receiver->set || receiver->set->lease != grant->lease || !same_shape(&grant->route.channel, type))
+    {
+        return 0;
+    }
+    for (i = 0; i < send->delegated.count; ++i)
+    {
+        if (send->delegated.entries[i].pid == grant->route.pid)
+        {
+            return same_pid(send->delegated.entries + i, &grant->route) &&
+                styxrpc_channel_route_value(&grant->route, bytes, capacity, used) == STYXRPC_OK;
+        }
+    }
+    if (i == STYXRPC_CHANNEL_SLOTS ||
+        styxrpc_channel_route_value(&grant->route, bytes, capacity, used) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    send->delegated.entries[send->delegated.count++] = grant->route;
+    return 1;
+}
+
+
 /* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
 int fvm_styxrpc_channel_encode(FVM_Context *context, FVM_GCRootScope *roots, void *state,
     const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
-    const FVM_StyxRemoteChannel *receiver = state;
+    FVM_StyxChannelSend *send = state;
+    const FVM_StyxRemoteChannel *receiver = send->receiver;
     FVM_StyxRemoteChannel *child;
+    FVM_StyxPidGrant *pid;
     StyxRpcChannelRoute route = {0};
-    const char *end;
-    size_t length;
     (void)roots;
     if (value->type == FVM_VALUE_NULL)
     {
         return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
-    child = value->type == FVM_VALUE_OBJECT ? fvm_styxrpc_channel_lookup(context, value->object) : NULL;
-    end = fvm_styxrpc_type_end(type);
-    if (!end || !child || !receiver->set || child->set != receiver->set ||
-        (child->set->lease && !same_bus(child->set->lease, receiver->index, child->index)))
+    if (value->type != FVM_VALUE_OBJECT)
     {
         return 0;
     }
-    length = (size_t)(end - type) - 3;
-    if (strlen(child->grant.shape) != length + 2 || memcmp(child->grant.shape + 1, type + 2, length))
+    pid = fvm_styxrpc_pid_lookup(context, value->object);
+    if (pid)
+    {
+        return pack_pid(send, pid, type, bytes, capacity, used);
+    }
+    child = fvm_styxrpc_channel_lookup(context, value->object);
+    if (!child || !receiver->set || child->set != receiver->set ||
+        (child->set->lease && !same_bus(child->set->lease, receiver->index, child->index)) ||
+        !same_shape(&child->grant, type))
     {
         return 0;
     }

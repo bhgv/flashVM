@@ -55,6 +55,13 @@ StyxRpcStatus styxrpc_channel_lease_import_element(StyxRpcChannelLease *lease, s
  * RU: Получить проверенный маршрут index до освобождения аренды. NULL вне таблицы. */
 const StyxRpcChannelRoute *styxrpc_channel_lease_route(const StyxRpcChannelLease *lease, size_t index);
 
+/* EN: Admit a module grant the host authenticated for this exact live lease.
+ * It will use the pinned module. Failure leaves lease and index unchanged.
+ * RU: Принять полномочие модуля, проверенное хостом для точной живой аренды.
+ * Используется удерживаемый модуль. Ошибка сохраняет аренду и index. */
+StyxRpcStatus styxrpc_channel_lease_admit_module(StyxRpcChannelLease *lease,
+    const StyxRpcChannelRoute *route, size_t *index);
+
 #ifdef __cplusplus
 }
 #endif

@@ -24,7 +24,7 @@ static int message(const StyxRpcChannelRoute *route, unsigned char *bytes, size_
 /* EN: Drive one C resource fid with a checked request and decode its reply before release.
  * RU: Выполнить проверенный запрос на fid ресурса C и разобрать ответ до закрытия. */
 static int exchange(const StyxRpcChannelOutput *group, const StyxRpcChannelGrant *grants,
-    const StyxRpcSelection *operation, unsigned char *reply, StyxRpcChannelResult *result)
+    const StyxRpcSelection *operation, unsigned char *reply, StyxRpcChannelResult *result, int reverse)
 {
     const StyxRpcResource *bus = &group->resource;
     unsigned char bytes[TEST_FRAME];
@@ -33,7 +33,8 @@ static int exchange(const StyxRpcChannelOutput *group, const StyxRpcChannelGrant
     int ok = styxrpc_channel_request(grants, 2, operation, NULL, 0, bytes, sizeof(bytes), &size) == STYXRPC_OK &&
         bus->open(bus->context, STYXRPC_READ | STYXRPC_WRITE, &file) &&
         bus->write(file, 0, bytes, size, &used) && used == size &&
-        bus->read(file, 0, reply, TEST_FRAME, &used) && used &&
+        (!reverse || !bus->read(file, 0, reply, TEST_FRAME, &used)) &&
+        bus->read(file, reverse ? size : 0, reply, TEST_FRAME, &used) && used &&
         styxrpc_channel_result(grants, 2, operation, reply, used, result) == STYXRPC_OK;
     if (file)
     {
@@ -45,7 +46,7 @@ static int exchange(const StyxRpcChannelOutput *group, const StyxRpcChannelGrant
 
 /* EN: Verify a detached seed and an echoed regular key both surface as the same rendezvous.
  * RU: Проверить, что копия начального сообщения и возвращённый обычный ключ дают один rendezvous. */
-static int exercise(void)
+static int exercise(int reverse)
 {
     const StyxRpcChannelGrant grants[] = {{1, "(c[i])"}, {2, "(i)"}};
     StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = grants[1]};
@@ -54,15 +55,17 @@ static int exercise(void)
     StyxRpcChannelQueue queues[] = {{.grant = grants[0], .bytes = bytes, .sizes = &size,
         .capacity = 1, .stride = sizeof(bytes), .count = 1}, {.grant = grants[1]}};
     StyxRpcChannelOutput output = {.key = 99};
+    StyxRpcStatus (*build)(const StyxRpcChannelQueue *, size_t, size_t, StyxRpcChannelOutput *) =
+        reverse ? styxrpc_channel_group_reverse_output : styxrpc_channel_group_output;
     route.channel.key = 3;
     if (!message(&route, bytes, &size) ||
-        styxrpc_channel_group_output(queues, 2, 0, &output) != STYXRPC_INVALID || output.key != 99)
+        build(queues, 2, 0, &output) != STYXRPC_INVALID || output.key != 99)
     {
         return 0;
     }
     route.channel.key = 2;
     if (!message(&route, bytes, &size) ||
-        styxrpc_channel_group_output(queues, 2, 0, &output) != STYXRPC_OK)
+        build(queues, 2, 0, &output) != STYXRPC_OK)
     {
         return 0;
     }
@@ -73,11 +76,11 @@ static int exercise(void)
     StyxRpcChannelResult result;
     StyxRpcChannelRoutes nested;
     int valid = output.key == 1 && !output.unbuffered &&
-        exchange(&output, grants, &receive, reply, &result) &&
+        exchange(&output, grants, &receive, reply, &result, reverse) &&
         styxrpc_channel_element_routes(grants[0].shape, result.value, result.size, &nested) == STYXRPC_OK &&
         nested.count == 1 && nested.entries[0].channel.key == 2 && nested.entries[0].unbuffered &&
         message(&route, bytes, &size) && size == sent_size &&
-        exchange(&output, grants, &send, reply, &result) && exchange(&output, grants, &receive, reply, &result) &&
+        exchange(&output, grants, &send, reply, &result, reverse) && exchange(&output, grants, &receive, reply, &result, reverse) &&
         styxrpc_channel_element_routes(grants[0].shape, result.value, result.size, &nested) == STYXRPC_OK &&
         nested.count == 1 && nested.entries[0].channel.key == 2 && nested.entries[0].unbuffered;
     output.release(output.resource.context);
@@ -89,7 +92,7 @@ static int exercise(void)
  * RU: Проверить ресурс группы без FlashVM и DisVM. */
 int main(void)
 {
-    if (!exercise())
+    if (!exercise(0) || !exercise(1))
     {
         fputs("channel group ownership or canonical echo failed\n", stderr);
         return 1;

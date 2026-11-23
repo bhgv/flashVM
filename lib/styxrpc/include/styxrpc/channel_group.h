@@ -23,6 +23,13 @@ extern "C" {
 StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, size_t count,
     size_t root, StyxRpcChannelOutput *output);
 
+/* EN: Copy the same owned queue group for a reverse PID .unibus, using
+ * post-request reply offsets. Register its resource before serving the PID.
+ * RU: Скопировать группу очередей для встречного PID .unibus, со смещением
+ * ответа после запроса. Зарегистрировать ресурс до обслуживания PID. */
+StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *queues,
+    size_t count, size_t root, StyxRpcChannelOutput *output);
+
 #ifdef __cplusplus
 }
 #endif

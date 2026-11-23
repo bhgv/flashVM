@@ -16,6 +16,16 @@ open(): (chan of chan of chan of chan of int, chan of int)
 }
 
 
+# EN: Return a different lease with the same types and no resident worker.
+# RU: Вернуть другую аренду с теми же типами без отдельного рабочего процесса.
+idle(): (chan of chan of chan of chan of int, chan of int)
+{
+    input := chan of chan of chan of chan of int;
+    result := chan of int;
+    return (input, result);
+}
+
+
 # EN: Receive a reverse channel, grant a new module channel and use its client leaf.
 # RU: Принять встречный канал, выдать новый канал модуля и использовать канал клиента.
 exchange(input: chan of chan of chan of chan of int, result: chan of int)

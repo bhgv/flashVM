@@ -122,9 +122,10 @@ static int seed(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *so
 }
 
 
-/* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
-StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, size_t count,
-    size_t root, StyxRpcChannelOutput *output)
+/* EN: Copy and validate queues for one module or reverse PID wire profile.
+ * RU: Скопировать и проверить очереди для профиля модуля либо встречного PID. */
+static StyxRpcStatus create_output(const StyxRpcChannelQueue *queues, size_t count,
+    size_t root, StyxRpcChannelOutput *output, int reverse)
 {
     if (!queues || !count || count > STYXRPC_CHANNEL_SLOTS || root >= count || !output)
     {
@@ -136,6 +137,7 @@ StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, si
     if (group)
     {
         group->count = count;
+        group->reverse = reverse;
         group->policy = (StyxRpcChannelPolicy){styxrpc_group_allows, group};
         for (size_t i = 0; ok && i < count; ++i)
         {
@@ -160,4 +162,20 @@ StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, si
         release_group(group);
     }
     return STYXRPC_INVALID;
+}
+
+
+/* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
+StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, size_t count,
+    size_t root, StyxRpcChannelOutput *output)
+{
+    return create_output(queues, count, root, output, 0);
+}
+
+
+/* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
+StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *queues, size_t count,
+    size_t root, StyxRpcChannelOutput *output)
+{
+    return create_output(queues, count, root, output, 1);
 }

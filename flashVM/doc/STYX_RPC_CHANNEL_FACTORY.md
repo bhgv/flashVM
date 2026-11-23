@@ -28,5 +28,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_channel_factory` | function | [include/flashvm/styxrpc_channel.h:38](../include/flashvm/styxrpc_channel.h#L38) |
+| `fvm_styxrpc_channel_factory` | function | [include/flashvm/styxrpc_channel.h:54](../include/flashvm/styxrpc_channel.h#L54) |
 <!-- source-links:end -->
