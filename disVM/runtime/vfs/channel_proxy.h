@@ -6,6 +6,7 @@
 #define DVM_CHANNEL_PROXY_H
 #include "channel_bus.h"
 #include "cancel.h"
+#include "returned_proxy.h"
 #include "flashvm/srecord.h"
 
 struct Channel; /* Dis heap object; never shared with the transport. */
@@ -23,6 +24,7 @@ typedef struct DVM_CallChannels
     int returning; /* Provider may encode only capabilities from the active call. */
     int resolving; /* Caller resolves reply keys to already exported originals. */
     DVM_Cancel *message; /* Borrowed exact provider scope while moving channel values. */
+    DVM_ReturnedImport *imports; /* Borrowed caller-owned persistent result staging. */
 } DVM_CallChannels;
 
 
@@ -70,7 +72,7 @@ int dvm_call_channel_is_proxy(struct Channel *channel);
 
 /* EN: Forward one blocking Dis operation. On receive, set the mapped destination.
  * RU: Передать блокирующую операцию Dis. При приёме записать mapped назначение. */
-void dvm_call_channel_operate(struct Channel *channel, int receive, void *operand);
+void dvm_call_channel_operate(struct Channel *channel, const void *cell, int receive, void *operand);
 
 
 /* EN: One already captured guard of a remote selection.
@@ -87,6 +89,13 @@ typedef struct DVM_ProxyGuard
 /* EN: Select one guard over UniBus. Return its original index or the fallback.
  * RU: Выбрать одну ветку через UniBus. Вернуть её индекс или запасную ветку. */
 unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int block);
+
+
+/* EN: Offer the first selected route's guards together for one source-clock window.
+ * Return the original guard index, or fallback only after authoritative refusal.
+ * RU: Предложить ветки первого выбранного маршрута на один интервал его часов.
+ * Вернуть исходный индекс либо fallback только после ответа об отсутствии передачи. */
+unsigned dvm_call_channel_alt_window(const DVM_ProxyGuard *guards, unsigned count, unsigned fallback);
 
 
 /* EN: Drain one bounded round on the current caller, restoring GC wait mode.

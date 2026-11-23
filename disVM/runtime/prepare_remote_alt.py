@@ -1,8 +1,12 @@
 # Copyright (c) 2026 bhgv
-# EN: Generate guarded proxy ALT dispatch and a mixed nonblocking probe.
-# RU: Генерация прокси-диспетчера ALT и неблокирующей проверки смешанных веток.
+# EN: Generate proxy ALT dispatch, including protected mixed guard probes.
+# RU: Генерация диспетчера ALT с прокси и защищённой проверкой смешанных веток.
 REMOTE_ALT_DISPATCH = r"""
 #ifdef DVM_TERMINAL_LAUNCH
+extern void dvm_runtime_mixed_alt_probe_end(void);
+extern int dvm_runtime_mixed_alt_probe_owned(void);
+extern uint64_t dvm_runtime_mixed_alt_deadline(void);
+
 /* EN: Identify the Dis branch and optional array member for one wire ordinal.
  * RU: Определить ветку Dis и элемент массива по номеру сетевого варианта. */
 typedef struct RemoteAltResult
@@ -22,6 +26,7 @@ typedef struct RemoteAlt
     int sends; /* Number of leading send branches. */
     int branches; /* Total number of Dis branches. */
     int block; /* True when the instruction has no default branch. */
+    int complete; /* One branch or the nonblocking fallback was selected. */
     unsigned count; /* Number of flattened, non-nil channel guards. */
     unsigned proxies; /* Number of captured proxy guards. */
     DVM_HeapHold current; /* Owned top-level channel or array during capture. */
@@ -32,9 +37,13 @@ typedef struct RemoteAlt
 } RemoteAlt;
 
 
-/* EN: Probe captured guards once in randomized order. Return count for default.
- * RU: Проверить захваченные ветки в случайном порядке. Для default вернуть count. */
-static unsigned mixed_alt(DVM_ProxyGuard *guards, unsigned count)
+/* EN: Probe captured guards once in randomized order. A retry probes local
+ * guards before releasing its permit, then considers remote guards.
+ * Return count when no branch matched.
+ * RU: Проверить захваченные ветки в случайном порядке. При повторе проверить
+ * локальные ветки до снятия допуска, затем удалённые. Если ни одна не готова,
+ * вернуть count. */
+static unsigned mixed_alt(DVM_ProxyGuard *guards, unsigned count, int block)
 {
     static _Thread_local uint32_t random = 0x20342U; /* Per-resident ordering state. */
     unsigned order[DVM_CHANNEL_BUS_SLOTS];
@@ -49,6 +58,32 @@ static unsigned mixed_alt(DVM_ProxyGuard *guards, unsigned count)
         unsigned temporary = order[i - 1];
         order[i - 1] = order[chosen];
         order[chosen] = temporary;
+    }
+    int local_first = block && dvm_runtime_mixed_alt_probe_owned();
+    if (local_first)
+    {
+        for (unsigned i = 0; i < count; i++)
+        {
+            DVM_ProxyGuard *guard = &guards[order[i]];
+            if (!dvm_call_channel_is_proxy(guard->channel) &&
+                dvm_runtime_alt_try_transfer(guard->channel, guard->operand, guard->receive))
+            {
+                dvm_runtime_mixed_alt_probe_end();
+                return guard->index;
+            }
+        }
+        dvm_runtime_mixed_alt_probe_end();
+        DVM_ProxyGuard offers[DVM_CHANNEL_BUS_SLOTS];
+        unsigned offered = 0;
+        for (unsigned i = 0; i < count; i++)
+        {
+            DVM_ProxyGuard *guard = &guards[order[i]];
+            if (dvm_call_channel_is_proxy(guard->channel))
+            {
+                offers[offered++] = *guard;
+            }
+        }
+        return dvm_call_channel_alt_window(offers, offered, count);
     }
     for (unsigned i = 0; i < count; i++)
     {
@@ -84,11 +119,19 @@ static void remote_alt_append(RemoteAlt *state, DVM_HeapHold *hold,
         error("remote alt requires at most eight eligible channel guards");
     }
     Channel *channel = hold->value;
+    int receiving = branch >= state->sends;
+    for (unsigned i = 0; i < index; i++)
+    {
+        if (state->guards[i].channel == channel && state->guards[i].receive != receiving)
+        {
+            error(exAlt);
+        }
+    }
     DVM_HeapHold retained = *hold;
     *hold = (DVM_HeapHold){0};
     state->owners[index] = retained;
     state->guards[index] = (DVM_ProxyGuard){.channel = channel, .operand = operand,
-        .index = index, .receive = branch >= state->sends};
+        .index = index, .receive = receiving};
     state->results[index] = (RemoteAltResult){.branch = branch, .member = member, .tuple = tuple};
     state->proxies += dvm_call_channel_is_proxy(channel);
     state->count++;
@@ -124,12 +167,12 @@ static void remote_alt_array(RemoteAlt *state, Array *array, int branch, void *t
 }
 
 
-/* [GC:] EN: Capture the borrowed Dis guard table under managed cell guards.
- * Submit one proxy transaction or probe a mixed default ALT, then publish the
- * Dis branch and optional member index. Runs on the resident owning this ALT.
- * RU: Захватить заимствованную таблицу Dis под защитой ячеек. Отправить одну
- * операцию с прокси либо проверить смешанный ALT с default и опубликовать
- * ветку Dis с индексом элемента. Работает на исполнителе, владеющем ALT. */
+/* [GC:] EN: Capture borrowed guards on the owning resident, attempt selection
+ * and publish the actual Dis branch and optional member index. An unmatched
+ * blocking mixed ALT leaves these cells untouched for a subsequent local wait.
+ * RU: Захватить ветки на их исполнителе, выбрать одну и опубликовать ветку Dis
+ * с индексом элемента. Если ни одна ветка смешанного блокирующего ALT не
+ * готова, ячейки сохраняются до следующего локального ожидания. */
 static int remote_alt_select(void *argument)
 {
     RemoteAlt *state = argument;
@@ -166,13 +209,20 @@ static int remote_alt_select(void *argument)
     {
         error("remote alt guards changed during capture");
     }
-    if (state->block && state->proxies != state->count)
+    unsigned selected;
+    if (state->proxies == state->count)
     {
-        error("mixed remote alt requires a fallback");
+        dvm_runtime_mixed_alt_probe_end();
+        selected = dvm_call_channel_alt(state->guards, state->count, state->block);
     }
-    unsigned selected = state->proxies == state->count ?
-        dvm_call_channel_alt(state->guards, state->count, state->block) :
-        mixed_alt(state->guards, state->count);
+    else
+    {
+        selected = mixed_alt(state->guards, state->count, state->block);
+    }
+    if (state->block && selected == state->count)
+    {
+        return 1;
+    }
     RemoteAltResult result = {.branch = state->branches};
     if (selected < state->count)
     {
@@ -183,6 +233,7 @@ static int remote_alt_select(void *argument)
     {
         error((char *)problem);
     }
+    state->complete = 1;
     return 1;
 }
 
@@ -200,11 +251,11 @@ static int remote_alt_release(void *argument)
 }
 
 
-/* [GC:] EN: Execute a detected remote ALT and release every capture on success
- * or exception. The borrowed result receives the original Dis branch number.
- * RU: Выполнить удалённый ALT и освободить все ссылки при успехе и исключении.
- * В заимствованный результат записывается исходный номер ветки Dis. */
-static void remote_alt(Alt *alt, int sends, int receives, int block, void *result)
+/* [GC:] EN: Attempt selection and release every capture on all paths. Return
+ * one when result received a branch, zero when a mixed ALT must wait locally.
+ * RU: Попробовать выбрать ветку и освободить все ссылки. Вернуть один, если
+ * ветка записана в result, ноль, если смешанный ALT должен ждать локально. */
+static int remote_alt(Alt *alt, int sends, int receives, int block, void *result)
 {
     RemoteAlt state = {.alt = alt, .result = result, .sends = sends,
         .branches = sends + receives, .block = block};
@@ -231,8 +282,36 @@ static void remote_alt(Alt *alt, int sends, int receives, int block, void *resul
     {
         error(first_error);
     }
+    return state.complete;
 }
 #endif
 
 
 """
+
+
+# EN: Exclude proxy operands from standard queue registration and matching.
+# source is borrowed generated C. Return rewritten text, raising on generator drift.
+# RU: Исключить прокси из обычной регистрации в очередях и сопоставления.
+# source — заимствованный текст C. Вернуть изменённый текст либо ошибку расхождения.
+def adapt_proxy_registration(source):
+    start = source.index("altmark(Channel *c,")
+    mark_end = source.index("typedef struct AltSelection", start)
+    end = source.index("/* Transfer only captured operands", mark_end)
+    mark, body = source[start:mark_end], source[mark_end:end]
+    old_member = "if(c != H && c != nil) {"
+    if mark.count(old_member) != 1:
+        raise ValueError("mixed ALT array queue boundary drift")
+    mark = mark.replace(old_member, "if(c != H && c != nil && !alt_is_proxy(c)) {")
+    changes = (
+        ("\t\tt = D2H(c)->t;\n\t\tif(t == &Tarray){\n\t\t\tadded",
+         "\t\tt = D2H(c)->t;\n\t\tif(t == &Tchannel && alt_is_proxy(c)) continue;\n"
+         "\t\tif(t == &Tarray){\n\t\t\tadded", 1),
+        ("\t\tif(altreceives(c, p)){", "\t\tif(alt_is_proxy(c)) continue;\n\t\tif(altreceives(c, p)){", 1),
+        ("&& which-- == 0", "&& !alt_is_proxy(c) && which-- == 0", 3),
+    )
+    for old, new, count in changes:
+        if body.count(old) != count:
+            raise ValueError("mixed ALT queue boundary drift: " + old)
+        body = body.replace(old, new)
+    return source[:start] + mark + body + source[end:]

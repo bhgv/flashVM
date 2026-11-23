@@ -22,6 +22,7 @@ static unsigned int runnable_count; /* Atomic count, including startup publicati
 static unsigned long claims;        /* Successful exclusive managed-turn assignments. */
 static unsigned long finishes;      /* Matching turn releases, independent of native leases. */
 static unsigned int active;         /* Live turn claims, including suspended C continuations. */
+static unsigned int mixed_alt_waiters; /* Parked resident ALTs with a native probe deadline. */
 static unsigned long migrated;      /* Turns of the same Prog assigned to another live native context. */
 
 
@@ -31,6 +32,9 @@ unsigned int dvm_runqueue_ready_count(void)
 {
     return __atomic_load_n(&runnable_count, __ATOMIC_ACQUIRE);
 }
+
+
+#include "runqueue_mixed_alt.inc"
 
 
 /* EN: Select direct dispatch before publishing the first Prog.
@@ -305,6 +309,10 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         tail = process;
     }
     __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
+    if (complete_wait && __atomic_exchange_n(&runtime_process(process)->mixed_alt_deadline, 0, __ATOMIC_ACQ_REL))
+    {
+        __atomic_fetch_sub(&mixed_alt_waiters, 1, __ATOMIC_RELEASE);
+    }
     if (complete_wait && ready_sync)
     {
         fvm_port_sync_unlock(ready_sync);

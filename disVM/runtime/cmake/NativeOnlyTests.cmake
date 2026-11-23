@@ -45,6 +45,17 @@ if(DVM_RUNTIME_TESTS)
                 "${channel_pair_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" --jit)
             set_tests_properties(disvm_native_styx_channel_pair_interpreter disvm_native_styx_channel_pair_jit
                 PROPERTIES TIMEOUT 120 LABELS "native")
+            # EN: Isolate mixed selection and post-return channel lifetimes on TCP.
+            # RU: Проверять смешанный ALT и каналы после возврата отдельно через TCP.
+            set(channel_lifetime_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_channel_lifetime.py")
+            foreach(channel_case mixed result)
+                add_test(NAME disvm_native_styx_channel_${channel_case}_interpreter COMMAND "${PYTHON_EXECUTABLE}"
+                    "${channel_lifetime_example}" ${channel_case} --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>")
+                add_test(NAME disvm_native_styx_channel_${channel_case}_jit COMMAND "${PYTHON_EXECUTABLE}"
+                    "${channel_lifetime_example}" ${channel_case} --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" --jit)
+                set_tests_properties(disvm_native_styx_channel_${channel_case}_interpreter disvm_native_styx_channel_${channel_case}_jit
+                    PROPERTIES TIMEOUT 120 LABELS "native")
+            endforeach()
             add_test(NAME disvm_native_styx_chain_tcp_interpreter COMMAND "${PYTHON_EXECUTABLE}"
                 "${chain_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" local)
             add_test(NAME disvm_native_styx_chain_tcp_jit COMMAND "${PYTHON_EXECUTABLE}"

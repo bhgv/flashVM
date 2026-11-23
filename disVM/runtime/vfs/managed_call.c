@@ -12,6 +12,7 @@
 #include "scalar_files.h"
 #include "managed_value.h"
 #include "managed_ref.h"
+#include "result_channels.h"
 #include "scalar_owner_internal.h"
 #include "namespace.h"
 #include "launch_files.h"
@@ -149,7 +150,8 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     unsigned char request[STYX_MANAGED_LIST_LIMIT + 1];
     size_t request_size, response_size = 0;
     int graph = styxmanaged_graph_tag(files->managed_tag);
-    DVM_CallChannels channels = {0};
+    DVM_ReturnedImport imports = {0};
+    DVM_CallChannels channels = {.imports = &imports};
     DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1, .channels = &channels};
     unsigned long tag = graph ? files->managed_tag : STYX_MANAGED_REQUEST_TAG;
     int encoded = graph ?
@@ -170,10 +172,18 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     uint32_t pid = process && process->pid > 0 ? (uint32_t)process->pid : 0;
     DVM_LaunchFiles *descriptors = process ? ((DVM_RuntimeProcess *)process)->launch_files : NULL;
     DVM_Namespace *group = dvm_namespace_current_group();
+    if (graph && files->channel_endpoint && strchr(files->shape.result, 'c') &&
+        !(imports.lease = dvm_returned_lease_create(files->channel_endpoint)))
+    {
+        dvm_call_channels_release(&channels);
+        dvm_styx_ref_release(&refs, 0);
+        error("cannot reserve returned channel lease");
+    }
     DVM_VfsWait *wait;
     int released = group ? dvm_vfs_path_enter(&wait) : -1;
     if (released < 0)
     {
+        dvm_returned_import_clear(&imports);
         dvm_call_channels_release(&channels);
         dvm_styx_ref_release(&refs, 0);
         error("remote managed call not sent");
@@ -185,6 +195,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     dvm_runtime_gc_native_enter(released);
     if (cancelled || outcome != 1)
     {
+        dvm_returned_import_clear(&imports);
         dvm_call_channels_release(&channels);
         dvm_styx_ref_release(&refs, 0);
         error(cancelled ? "remote managed call cancelled" : outcome < 0 ?
@@ -197,6 +208,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
         managed_reply(&files->shape, reply, response_size, &captured, &baseline);
     dvm_styx_ref_release(&refs, 0);
     dvm_call_channels_release(&channels);
+    dvm_returned_import_clear(&imports);
     if (valid < 0)
     {
         error("remote ref argument changed while waiting");
@@ -230,10 +242,11 @@ void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, co
     unsigned char reply[STYX_MANAGED_LIST_LIMIT];
     unsigned char updates[STYX_MANAGED_LIST_LIMIT];
     size_t result_size, update_size, reply_size;
+    DVM_CallChannels exports = {.returning = 1};
     int valid = shape && baseline && (styxmanaged_graph_tag(baseline->tag) ?
         identities && identities != H &&
         dvm_styx_graph_reply_write(shape, baseline, (void *const *)identities->data, (size_t)identities->len,
-            slots, size, reply, sizeof(reply), &reply_size) :
+            slots, size, &exports, reply, sizeof(reply), &reply_size) :
         ((!strcmp(shape->result, "()") ?
         fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, result, sizeof(result), &result_size) == FVM_S_OK :
         strchr(shape->result, 'r') ?
@@ -243,6 +256,11 @@ void dvm_styx_owner_finish(const StyxCallShape *shape, const void *arguments, co
         dvm_styx_ref_updates(shape->arguments, arguments, baseline, updates, sizeof(updates), &update_size) &&
         styxcall_reply_write(STYX_MANAGED_REPLY_TAG, result, result_size, updates, update_size,
             reply, sizeof(reply), &reply_size)));
+    if (valid && exports.count)
+    {
+        valid = dvm_result_channels_finish(&exports);
+    }
+    dvm_call_channels_release(&exports);
     if (!valid)
     {
         if (!styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, reply, sizeof(reply), &reply_size))

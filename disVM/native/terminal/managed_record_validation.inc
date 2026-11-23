@@ -26,6 +26,12 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
     {
     case 'c':
     {
+        if (keys->exported_channels && value.tag == STYX_MANAGED_EXPORTED_CHANNEL_TAG &&
+            value.size == STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4)
+        {
+            const unsigned char *saved = value.payload + STYX_CHANNEL_EXPORT_TOKEN_SIZE;
+            return saved[0] < 128 && (saved[0] || saved[1] || saved[2] || saved[3]);
+        }
         if (value.tag != STYX_MANAGED_CHANNEL_TAG || value.size != 4 || value.payload[0] >= 128)
         {
             return 0;

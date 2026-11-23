@@ -10,6 +10,7 @@
 #include "load_profile.h"
 #include "ref_pair_record.h"
 #include "provider.h"
+#include "channel_export.h"
 
 typedef struct StyxScalarFunction
 {
@@ -36,6 +37,12 @@ int styxscalarfunctionvalid(const StyxScalarFunction *function);
 
 struct Styxserver;
 char *styxscalarfunctionopen(struct Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure, int *workers, int *busy);
+
+
+/* EN: Open one function fid, optionally granting return-channel publication.
+ * RU: Открыть fid функции с необязательной выдачей возвращаемых каналов. */
+char *styxscalarfunctionopen_export(struct Styxserver *server, int mode, const StyxScalarFunction *function,
+    int report_transport_failure, int *workers, int *busy, StyxChannelExports *exports);
 char *styxscalarfunctionwrite(void *fid, const char *bytes, ulong count, vlong offset);
 void styxscalarfunctionclose(void *fid);
 char *styxscalarfunctionread(void *fid, char *bytes, ulong *count, vlong offset);

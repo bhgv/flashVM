@@ -5,12 +5,15 @@
 #include "channel_bus.h"
 #include "cancel.h"
 #include "channel_sync.h"
+#include "disvm/clock_port.h"
 #include "../../native/terminal/call_record.h"
 #include "../../native/terminal/scalar_record.h"
 #include <stdlib.h>
 #include <string.h>
 
 typedef struct BusFid BusFid; /* One open protocol transaction. */
+
+#define CHANNEL_ALT_WINDOW_MS 40U /* Source-side offer duration for mixed selections. */
 
 
 /* EN: All shared state is native. The lock orders admission, close and replies.
@@ -148,12 +151,22 @@ static FVM_SResult parse_request(const DVM_ChannelBus *bus, size_t size, DVM_Cha
         return FVM_S_INVALID;
     }
     request->extent = size;
-    if (record.tag != DVM_CHANNEL_BUS_ALT && record.tag != DVM_CHANNEL_BUS_TRY_ALT)
+    if (record.tag != DVM_CHANNEL_BUS_ALT && record.tag != DVM_CHANNEL_BUS_TRY_ALT &&
+        record.tag != DVM_CHANNEL_BUS_WAIT_ALT)
     {
         return parse_choice(bus, &record, request) ? FVM_S_OK : FVM_S_INVALID;
     }
     request->alt = 1;
     request->immediate = record.tag == DVM_CHANNEL_BUS_TRY_ALT;
+    if (record.tag == DVM_CHANNEL_BUS_WAIT_ALT)
+    {
+        uint64_t now;
+        if (!dvm_host_clock_ms(&now) || now > UINT64_MAX - CHANNEL_ALT_WINDOW_MS)
+        {
+            return FVM_S_INVALID;
+        }
+        request->deadline = now + CHANNEL_ALT_WINDOW_MS;
+    }
     const unsigned char *cursor = record.payload;
     size_t remaining = record.size;
     while (remaining)

@@ -166,14 +166,14 @@ init()
     if (<-buffered != 71) {
         raise "returned channel no longer uses the original queue";
     }
-    rejected := 0;
-    {
-        remote->channelresult(buffered, 2);
-    } exception {
-        * => rejected = 1;
+    fresh := remote->channelresult(buffered, 2);
+    if (fresh == nil || fresh == buffered) {
+        raise "provider-owned channel lost its independent route";
     }
-    if (!rejected || remote->channelresult(buffered, 0) != buffered) {
-        raise "provider channel result bypassed capability validation";
+    fresh <-= 83;
+    if (<-fresh != 83 || remote->channelresult(buffered, 0) != buffered) {
+        raise "provider channel route did not survive the call";
     }
+    fresh = nil;
     sys->print("PASS automatic Limbo channels over UniBus\n");
 }

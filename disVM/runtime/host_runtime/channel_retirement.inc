@@ -3,6 +3,36 @@
  * RU: Отсоединённые ожидания каналов и завершение нативных ресурсов; однократно подключается из main.c.
  */
 
+#ifdef DVM_TERMINAL_LAUNCH
+#include "vfs/channel_proxy.h"
+#endif
+
+
+/* EN: Identify an owned result binding without interpreting foreign devsrv aux state.
+ * RU: Найти привязку результата, не интерпретируя чужое состояние aux devsrv. */
+static void *returned_binding(Channel *channel)
+{
+#ifdef DVM_TERMINAL_LAUNCH
+    if (channel->aux && dvm_call_channel_is_proxy(channel))
+    {
+        return channel->aux;
+    }
+#endif
+    return NULL;
+}
+
+
+/* EN: Release a detached native result binding after dropping the queue mutex.
+ * RU: Освободить отсоединённую нативную привязку после снятия мьютекса очереди. */
+static void retire_channel_binding(void *binding)
+{
+#ifdef DVM_TERMINAL_LAUNCH
+    dvm_returned_proxy_dispose(binding);
+#else
+    USED(binding);
+#endif
+}
+
 
 /* [GC:] EN: Finish channel refill after ALT cancellation. peer/channel remain
  * independently live; refill/request and committed describe the staged transfer.
@@ -172,6 +202,7 @@ typedef struct ClosedQueues
     Progq *recv;        /* Detached second chain, if present. */
     Array *buffer;      /* Transferred buffer owner after successful detach. */
     Type *mapped;       /* Transferred mover descriptor owner, if present. */
+    void *binding;      /* Transferred native result binding, if present. */
 } ClosedQueues;
 
 
@@ -212,6 +243,11 @@ static int detach_closed_queues(void *argument)
         Channel *channel = queues->channel;
         queues->buffer = channel->buf;
         queues->mapped = channel->mover == movtmp ? channel->mid.t : nil;
+        queues->binding = returned_binding(channel);
+        if (queues->binding)
+        {
+            channel->aux = NULL;
+        }
         channel->buf = H;
         channel->mover = nil;
     }
@@ -226,7 +262,7 @@ static int detach_closed_queues(void *argument)
  * После очистки передать первую VM-ошибку. Вызывающий удерживает память очереди и допуск. */
 void killcomm(Progq **queue)
 {
-    ClosedQueues queues = {nil, queue, nil, nil, nil, H, nil};
+    ClosedQueues queues = {nil, queue, nil, nil, nil, H, nil, NULL};
     char first_error[ERRMAX];
     int failed = 0;
     dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
@@ -246,7 +282,7 @@ static int channel_quiet(Channel *channel)
 {
     Progq *send = channel->send;
     Progq *recv = channel->recv;
-    return !channel->aux && (!send || (!send->prog && !send->next && send != recv)) &&
+    return (!channel->aux || returned_binding(channel)) && (!send || (!send->prog && !send->next && send != recv)) &&
            (!recv || (!recv->prog && !recv->next)) && !dvm_runtime_channel_buffer_busy(channel);
 }
 
@@ -355,6 +391,7 @@ int dvm_runtime_channel_post_close(Channel *channel)
 int dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped, int already_claimed, int *retry)
 {
     Channel *channel = H2D(Channel *, heap);
+    void *binding = NULL;
     fvm_port_sync_lock(channel_queue_mutex);
     Progq *send = channel->send;
     Progq *recv = channel->recv;
@@ -368,6 +405,11 @@ int dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped,
     }
     if (claimed)
     {
+        binding = returned_binding(channel);
+        if (binding)
+        {
+            channel->aux = NULL;
+        }
         *mapped = channel->mover == movtmp ? channel->mid.t : nil;
         channel->send = nil;
         channel->recv = nil;
@@ -378,6 +420,7 @@ int dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped,
     {
         free(send);
         free(recv);
+        retire_channel_binding(binding);
     }
     return claimed;
 }
@@ -405,10 +448,11 @@ int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, in
  * произвольный shared-callback не разрешается. */
 void dvm_runtime_channel_finalize(Channel *channel, int swept)
 {
-    ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil, H, nil};
+    ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil, H, nil, NULL};
     char first_error[ERRMAX];
     int failed = 0;
     dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
+    retire_channel_binding(queues.binding);
     drain_closed_queue(queues.send, &queues, first_error, &failed);
     drain_closed_queue(queues.recv, &queues, first_error, &failed);
     if (queues.mapped)

@@ -22,6 +22,7 @@ typedef struct FunctionFid
     StyxScalarFunction function; /* Copied configuration, with borrowed method context. */
     int report_transport_failure; /* Interpret negative service status as missing reply. */
     DVM_Cancel *cancel; /* Owned token for this exact admitted call. */
+    DVM_Provider *channel_export; /* Owned native returned-channel lease before clunk. */
     int *workers; /* Server-owned active job counter, retained through dispatcher join. */
     int *busy; /* Export-owned mailbox gate. */
     unsigned references; /* Fid and optional worker references. */
@@ -111,7 +112,8 @@ int styxscalarfunctionvalid(const StyxScalarFunction *fn)
 
 /* EN/RU: Install private state on the current server fid for ORDWR only.
  * Закрепить отдельное состояние за текущим fid сервера только для ORDWR. */
-char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function, int report_transport_failure, int *workers, int *busy)
+char *styxscalarfunctionopen_export(Styxserver *server, int mode, const StyxScalarFunction *function,
+    int report_transport_failure, int *workers, int *busy, StyxChannelExports *exports)
 {
     if (mode != ORDWR || !styxscalarfunctionvalid(function))
     {
@@ -134,12 +136,30 @@ char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunct
     fid->busy = busy;
     fid->function = *function;
     fid->report_transport_failure = report_transport_failure;
+    if (exports && function->managed_method && strchr(function->dynamic_shape->result, 'c'))
+    {
+        fid->channel_export = styxchannel_export_create(exports);
+        if (!fid->channel_export)
+        {
+            free(fid);
+            return Enomem;
+        }
+    }
     if (styxsetauxowned(server, fid, styxscalarfunctionclose) < 0)
     {
-        free(fid);
+        styxscalarfunctionclose(fid);
         return Eperm;
     }
     return nil;
+}
+
+
+/* EN/RU: Open a function without returned-channel publication.
+ * Открыть функцию без выдачи возвращаемых каналов. */
+char *styxscalarfunctionopen(Styxserver *server, int mode, const StyxScalarFunction *function,
+    int report_transport_failure, int *workers, int *busy)
+{
+    return styxscalarfunctionopen_export(server, mode, function, report_transport_failure, workers, busy, NULL);
 }
 
 
@@ -345,6 +365,7 @@ static void release_fid(FunctionFid *fid)
     if (__atomic_sub_fetch(&fid->references, 1, __ATOMIC_ACQ_REL) == 0)
     {
         dvm_cancel_release(fid->cancel);
+        dvm_provider_release(fid->channel_export);
         free(fid);
     }
 }
@@ -359,6 +380,7 @@ void styxscalarfunctionclose(void *state)
     {
         __atomic_store_n(&fid->closed, 1, __ATOMIC_RELEASE);
         dvm_cancel_request(fid->cancel);
+        styxchannel_export_revoke(fid->channel_export);
         release_fid(fid);
     }
 }

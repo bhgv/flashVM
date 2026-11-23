@@ -5,11 +5,10 @@
 
 int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *baseline,
     void *const *identities, size_t count, const void *slots, size_t size,
-    void *bytes, size_t capacity, size_t *used)
+    DVM_CallChannels *channels, void *bytes, size_t capacity, size_t *used)
 {
     StyxRefDefinition definitions[STYX_CALL_REF_KEYS];
-    DVM_CallChannels channels = {.returning = 1};
-    DVM_StyxRefTable refs = {.count = count, .limit = STYX_CALL_REF_KEYS, .result = 1, .channels = &channels};
+    DVM_StyxRefTable refs = {.count = count, .limit = STYX_CALL_REF_KEYS, .result = 1, .channels = channels};
     StyxGraphPositions positions;
     size_t originals;
     if (count > STYX_CALL_REF_KEYS ||

@@ -136,10 +136,15 @@ void dvm_channel_bus_settle(DVM_ChannelBus *bus, uint64_t probed_through, unsign
             }
         }
     }
+    uint64_t now;
+    if (!dvm_host_clock_ms(&now))
+    {
+        now = UINT64_MAX;
+    }
     for (size_t i = 0; i < count && !dvm_cancel_requested(dvm_cancel_current()); i++)
     {
         BusFid *fid = pending[i];
-        if (!fid->size && fid->request.immediate)
+        if (!fid->size && (fid->request.immediate || (fid->request.deadline && now >= fid->request.deadline)))
         {
             fid->size = stage_bus_reply(fid, 1, 0, 0, NULL, 0);
         }

@@ -3,7 +3,7 @@
 # RU: Ожидание резерваций ALT и проверки отмены.
 import re
 from prepare_channel_queues import ALT_EXTERNAL_CANCEL
-from prepare_remote_alt import REMOTE_ALT_DISPATCH
+from prepare_remote_alt import REMOTE_ALT_DISPATCH, adapt_proxy_registration
 
 
 # EN: Prefer ready guards whose channel has no active buffer transfer.
@@ -74,12 +74,14 @@ altcommunicate(void *arg)""",
         ),
         (
             "altvalidate(a, nsend, nrecv, 0);",
+            "    uint64_t mixed_deadline = 0;\n"
             "#ifdef DVM_TERMINAL_LAUNCH\n"
             "    if (altvalidate_guarded(a, nsend, nrecv))\n"
             "    {\n"
-            "        remote_alt(a, nsend, nrecv, block, result);\n"
-            "        return;\n"
+            "        if (remote_alt(a, nsend, nrecv, block, result)) return;\n"
+            "        mixed_deadline = dvm_runtime_mixed_alt_deadline();\n"
             "    }\n"
+            "    dvm_runtime_mixed_alt_probe_end();\n"
             "#else\n"
             "    altvalidate_guarded(a, nsend, nrecv);\n"
             "#endif\n"
@@ -93,7 +95,7 @@ altcommunicate(void *arg)""",
         (
             "delrun(Palt);\n\t\t\tp->R.s = DVM_R.s;\n\t\t\tp->R.d = DVM_R.d;\n"
             "\t\t\tDVM_R.IC = 1;\n\t\t\tDVM_R.t = 1;",
-            "AltPark park = {p, generation, 0};\n"
+            "AltPark park = {p, generation, mixed_deadline, 0};\n"
             "            dvm_runtime_channel_queue_guard(publish_alt_park, &park);\n"
             "            if (!park.published) {\n"
             "                altdone(a, p, nil, -1);\n"
@@ -160,7 +162,7 @@ static int altready_guarded(void *arg)
     anchor = "/* Cancel this process's registrations"
     if source.count(anchor) != 1:
         raise ValueError("ALT reservation entry boundary drift")
-    return source.replace(anchor, ALT_SHARED_WAIT + anchor, 1)
+    return adapt_proxy_registration(source.replace(anchor, ALT_SHARED_WAIT + anchor, 1))
 
 
 ALT_SHARED_WAIT = r"""
@@ -204,6 +206,7 @@ typedef struct AltPark
 {
     Prog *process;
     uint64_t generation;
+    uint64_t mixed_deadline; /* Nonzero arms a timed local wait. */
     int published;
 } AltPark;
 
@@ -218,6 +221,11 @@ static int publish_alt_park(void *argument)
     DVM_R.IC = 1;
     DVM_R.t = 1;
     delrun(Palt);
+    if (park->mixed_deadline)
+    {
+        extern void dvm_runqueue_arm_mixed_alt(Prog *, uint64_t);
+        dvm_runqueue_arm_mixed_alt(process, park->mixed_deadline);
+    }
     park->published = 1;
     return 1;
 }
@@ -422,6 +430,9 @@ ALT_GUARD_CHECK = r"""
 #ifdef DVM_TERMINAL_LAUNCH
 #include "channel_proxy.h"
 #include "heap_hold.h"
+#define alt_is_proxy(channel) dvm_call_channel_is_proxy(channel)
+#else
+#define alt_is_proxy(channel) 0
 #endif
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 extern void dvm_runtime_channel_unmark(Progq **queue, Prog *peer);

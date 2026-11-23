@@ -11,6 +11,7 @@
 #include "ref_pair_record.h"
 #include "load_profile.h"
 #include "unibus_inbox.h"
+#include "channel_export.h"
 #include "flashvm/srecord.h"
 #include <stdio.h>
 #include <string.h>
@@ -20,6 +21,7 @@
 #include "graph_positions.inc"
 #include "table_records.inc"
 #include "channel_records.inc"
+#include "channel_export.inc"
 
 
 /* EN/RU: Return the argument or a fixture error, recording each admitted call.
@@ -447,6 +449,11 @@ int main(void)
     if (!channel_admission_records())
     {
         fputs("nested channel capability admission failed\n", stderr);
+        return 1;
+    }
+    if (!exported_channel_leases())
+    {
+        fputs("returned channel lease isolation or retirement failed\n", stderr);
         return 1;
     }
     if (!graph_reply_records() || !sparse_graph_fields() || !argument_position_updates() || !position_field_deltas())

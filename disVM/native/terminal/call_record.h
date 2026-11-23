@@ -98,6 +98,8 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_TABLE_PATCH_TAG 22UL /* Ordered removals followed by changed pairs. */
 #define STYX_MANAGED_TABLE_REMOVE_TAG 23UL /* Remove one big or string key. */
 #define STYX_MANAGED_CHANNEL_TAG 24UL /* Positive four-byte call-local channel key. */
+#define STYX_MANAGED_EXPORTED_CHANNEL_TAG 31UL /* Result-only provider lease token and channel key. */
+#define STYX_CHANNEL_EXPORT_TOKEN_SIZE 16U /* Opaque provider export token. */
 
 typedef struct StyxTableKey
 {

@@ -20,6 +20,7 @@ typedef struct DVM_ScalarFiles
     char name[INTERFACE_NAME_LIMIT + 1]; /* Mounted export name. */
     DVM_Provider *request; /* Owned captured request node. */
     DVM_Provider *reply; /* Owned captured reply node. */
+    DVM_Provider *channel_endpoint; /* Optional mounted UniBus file for provider-owned results. */
     DVM_CloseJob *close; /* Native retirement reservation. */
     uint32_t signature; /* Verified compiled import for this exact function. */
     StyxCallShape shape; /* Optional checked typed export from the same publication. */

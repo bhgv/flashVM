@@ -60,14 +60,14 @@ scalars(tiny: chan of byte, fraction: chan of real, text: chan of string): int
 }
 
 
-# EN: Return the existing input, nil, or a new unexported channel according to mode.
-# RU: Вернуть исходный вход, nil или новый неопубликованный канал согласно mode.
+# EN: Return the existing input, nil, or a new buffered provider channel according to mode.
+# RU: Вернуть исходный вход, nil или новый буферизованный канал провайдера согласно mode.
 channelresult(input: chan of int, mode: int): chan of int
 {
     case mode {
         0 => return input;
         1 => return nil;
-        * => return chan of int;
+        * => return chan[1] of int;
     }
 }
 

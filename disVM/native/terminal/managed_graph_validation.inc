@@ -128,6 +128,7 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
     {
         return 0;
     }
+    keys.exported_channels = 1;
     if ((!strcmp(shape->result, "()") ? result.tag != STYX_MANAGED_NIL_TAG || result.size :
             result.tag != STYX_DYNAMIC_REPLY_TAG ||
             !managed_payload(shape->result, result.payload, result.size, &keys)) ||
@@ -136,6 +137,7 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
     {
         return 0;
     }
+    keys.exported_channels = 0;
     size_t next = 0;
     for (size_t offset = 0; offset < updates.size; offset += used)
     {

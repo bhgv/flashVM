@@ -12,6 +12,7 @@
 #include "host_runtime/input_and_arena.inc"
 #include "host_runtime/errors_and_spawn.inc"
 #include "host_runtime/channel_claims.inc"
+#include "host_runtime/mixed_alt.inc"
 #include "host_runtime/process_control.inc"
 #include "host_runtime/channel_retirement.inc"
 #include "host_runtime/modules_and_boot.inc"

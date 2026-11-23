@@ -66,6 +66,11 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
     {
         return Eperm;
     }
+    if (fid->channel_export && !dvm_provider_set_call_export(self, fid->channel_export))
+    {
+        dvm_provider_release(self);
+        return Eperm;
+    }
     fid->submitted = 1;
     size_t length = 0;
     int outcome = fn->managed_method(fn->state, self, &arguments, fid->reply, fid->reply_capacity, &length);

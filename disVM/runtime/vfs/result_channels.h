@@ -1,0 +1,19 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Host returned Dis channels on a dedicated provider resident.
+ * RU: Обслуживание возвращаемых каналов Dis выделенным процессом провайдера.
+ */
+#ifndef DVM_RESULT_CHANNELS_H
+#define DVM_RESULT_CHANNELS_H
+#include "channel_proxy.h"
+
+/* EN: Copy the active mounted function's native publication identity, if available.
+ * RU: Скопировать идентификатор нативной публикации активного вызова при наличии. */
+int dvm_result_channels_token(unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE]);
+
+
+/* [GC:] EN: Publish the staged channels and transfer roots to a dedicated resident.
+ * Consumes the staged channels on success or leaves the caller's table releasable on failure.
+ * RU: Опубликовать подготовленные каналы и передать корни выделенному процессу.
+ * При успехе поглощает каналы, при отказе таблицу вызывающего можно освободить. */
+int dvm_result_channels_finish(DVM_CallChannels *channels);
+#endif

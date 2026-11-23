@@ -12,6 +12,7 @@
 #include "raise.h"
 #include "channel_route.h"
 #include "channel_value.h"
+#include "heap_hold.h"
 #include "cancel.h"
 #include "native_wait.h"
 #include "runtime_gc.h"
@@ -27,13 +28,22 @@ extern int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int rec
 
 /* EN: Write a complete request and accumulate its framed reply on one fid.
  * RU: Записать полный запрос и собрать ответ с того же fid. */
-static int exchange(DVM_Provider *context, const unsigned char *bytes, size_t size,
+static int exchange(DVM_Provider *context, const unsigned char *token, const unsigned char *bytes, size_t size,
     unsigned char *reply, size_t *received)
 {
     DVM_VfsHandle fid = {0};
-    if (dvm_provider_open(context, ".unibus", "rw", &fid) != FVM_OK)
+    if (dvm_provider_open(context, token ? "." : ".unibus", "rw", &fid) != FVM_OK)
     {
         return 0;
+    }
+    if (token)
+    {
+        DVM_IoResult sent = dvm_vfs_write_chunk(&fid, token, STYX_CHANNEL_EXPORT_TOKEN_SIZE);
+        if (sent.status != FVM_OK || (sent.flags & DVM_IO_UNCERTAIN) || sent.count != STYX_CHANNEL_EXPORT_TOKEN_SIZE)
+        {
+            dvm_vfs_close(&fid);
+            return 0;
+        }
     }
     int valid = 0;
     size_t offset = 0;
@@ -46,6 +56,15 @@ static int exchange(DVM_Provider *context, const unsigned char *bytes, size_t si
             break;
         }
         offset += sent.count;
+    }
+    if (token && offset == size)
+    {
+        long position;
+        if (dvm_vfs_seek(&fid, 0, FVM_FILE_SEEK_START, &position) != FVM_OK || position != 0)
+        {
+            dvm_vfs_close(&fid);
+            return 0;
+        }
     }
     size_t used = 0;
     while (offset == size && used < DVM_CHANNEL_BUS_WIRE &&
@@ -79,16 +98,16 @@ static int exchange(DVM_Provider *context, const unsigned char *bytes, size_t si
 
 /* EN: Exchange copied bytes under the exact route's cancellation source.
  * RU: Обменять копии байтов под токеном отмены точного маршрута. */
-static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigned char *bytes,
-    size_t size, unsigned char *reply, size_t *received)
+static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigned char *token,
+    const unsigned char *bytes, size_t size, unsigned char *reply, size_t *received)
 {
     DVM_VfsWait *wait;
-    int native = dvm_vfs_path_enter_cancel(&wait, cancel);
+    int native = dvm_vfs_path_enter_cancel(&wait, token ? NULL : cancel);
     if (native < 0)
     {
         error("remote channel operation cancelled");
     }
-    int valid = exchange(context, bytes, size, reply, received);
+    int valid = exchange(context, token, bytes, size, reply, received);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(native);
     if (cancelled || !valid)
@@ -217,14 +236,26 @@ static unsigned receive_selection(const unsigned char *bytes, size_t size,
 }
 
 
+/* EN: Borrow the exact guard route and optional persistent result token.
+ * RU: Заимствовать точный маршрут ветки и необязательный токен результата. */
+static const DVM_ChannelSchema *guard_route(Channel *channel, DVM_Provider **provider,
+    DVM_Cancel **scope, const unsigned char **token)
+{
+    *token = NULL;
+    return channel->aux ? dvm_returned_proxy_route(channel, provider, scope, token) :
+        dvm_channel_route_lookup((uint32_t)channel->mid.w, provider, scope);
+}
+
+
 /* EN: Submit direct or ALT guards as one operation on a single inherited route.
  * RU: Передать прямую операцию или ветки alt одной записью по общему маршруту. */
-static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, int block)
+static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, unsigned long alt_tag, int block)
 {
     static _Thread_local uint32_t random = 0x20342U; /* Same per-owner generator as local alt. */
     const DVM_ChannelSchema *schemas[DVM_CHANNEL_BUS_SLOTS];
     DVM_Provider *context = NULL;
     DVM_Cancel *cancel = NULL;
+    const unsigned char *token = NULL;
     unsigned order[DVM_CHANNEL_BUS_SLOTS];
     unsigned char payload[DVM_CHANNEL_BUS_WIRE], bytes[DVM_CHANNEL_BUS_WIRE];
     int typed = 0;
@@ -237,13 +268,15 @@ static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, in
     {
         DVM_Provider *found;
         DVM_Cancel *scope;
-        schemas[i] = dvm_channel_route_lookup((uint32_t)guards[i].channel->mid.w, &found, &scope);
-        if (!schemas[i] || (context && (found != context || scope != cancel)))
+        const unsigned char *found_token;
+        schemas[i] = guard_route(guards[i].channel, &found, &scope, &found_token);
+        if (!schemas[i] || (context && (found != context || scope != cancel || found_token != token)))
         {
             error("remote channel is outside its call");
         }
         context = found;
         cancel = scope;
+        token = found_token;
         typed |= strcmp(schemas[i]->shape, "(i)") != 0;
         order[i] = i;
     }
@@ -266,34 +299,83 @@ static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, in
         size += used;
     }
     size_t sent = size;
-    if (alt && fvm_srecord_write(block ? DVM_CHANNEL_BUS_ALT : DVM_CHANNEL_BUS_TRY_ALT,
+    if (alt_tag && fvm_srecord_write(alt_tag,
         payload, size, bytes, sizeof(bytes), &sent) != FVM_S_OK)
     {
         error("cannot encode remote alt");
     }
     size_t received;
-    if (alt)
+    if (alt_tag)
     {
-        channel_rpc(context, cancel, bytes, sent, payload, &received);
-        return receive_selection(payload, received, guards, schemas, order, count, alt, block, typed, cancel);
+        channel_rpc(context, cancel, token, bytes, sent, payload, &received);
+        return receive_selection(payload, received, guards, schemas, order, count, 1, block, typed, cancel);
     }
-    channel_rpc(context, cancel, payload, sent, bytes, &received);
-    return receive_selection(bytes, received, guards, schemas, order, count, alt, block, typed, cancel);
+    channel_rpc(context, cancel, token, payload, sent, bytes, &received);
+    return receive_selection(bytes, received, guards, schemas, order, count, 0, block, typed, cancel);
+}
+
+
+/* EN: Submit the borrowed guard while its proxy is independently rooted.
+ * RU: Отправить заимствованную ветку, пока её прокси независимо укоренён. */
+static int submit_operation(void *argument)
+{
+    submit(argument, 1, 0, 1);
+    return 1;
 }
 
 
 /* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-void dvm_call_channel_operate(Channel *channel, int receive, void *operand)
+void dvm_call_channel_operate(Channel *channel, const void *cell, int receive, void *operand)
 {
+    DVM_HeapHold hold = {0};
+    const char *problem = dvm_runtime_heap_hold(cell, &Tchannel, 0, &hold);
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    if (hold.value != channel)
+    {
+        dvm_runtime_heap_finish(&hold, 1);
+        error("remote channel operand changed");
+    }
     DVM_ProxyGuard guard = {.channel = channel, .receive = receive, .operand = operand};
-    submit(&guard, 1, 0, 1);
+    dvm_runtime_heap_finish(&hold, kprotect(submit_operation, &guard));
 }
 
 
 /* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
 unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int block)
 {
-    return submit(guards, count, 1, block);
+    return submit(guards, count, block ? DVM_CHANNEL_BUS_ALT : DVM_CHANNEL_BUS_TRY_ALT, block);
+}
+
+
+/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
+unsigned dvm_call_channel_alt_window(const DVM_ProxyGuard *guards, unsigned count, unsigned fallback)
+{
+    DVM_ProxyGuard selected[DVM_CHANNEL_BUS_SLOTS];
+    unsigned original[DVM_CHANNEL_BUS_SLOTS];
+    DVM_Cancel *group = NULL;
+    unsigned length = 0;
+    for (unsigned i = 0; i < count; i++)
+    {
+        DVM_Provider *provider;
+        DVM_Cancel *scope;
+        const unsigned char *token;
+        if (!guard_route(guards[i].channel, &provider, &scope, &token))
+        {
+            error("remote channel is outside its call");
+        }
+        if (!length || scope == group)
+        {
+            group = scope;
+            selected[length] = guards[i];
+            selected[length].index = length;
+            original[length++] = guards[i].index;
+        }
+    }
+    unsigned found = submit(selected, length, DVM_CHANNEL_BUS_WAIT_ALT, 0);
+    return found < length ? original[found] : fallback;
 }
 
 

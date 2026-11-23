@@ -121,6 +121,11 @@ static void wait_dedicated_work(ManagedWorker *worker)
     {
         publish_resident_phase(worker, DVM_RESIDENT_WAIT_WORK);
         increment_resident_counter(&worker->observed_waits);
+        if (dvm_runqueue_mixed_alt_deadline(worker->guest))
+        {
+            fvm_port_sync_wait_ms(worker->wake, DVM_MIXED_ALT_WAIT_MS);
+            break;
+        }
         fvm_port_sync_wait(worker->wake);
     }
     fvm_port_sync_unlock(worker->wake);
@@ -225,6 +230,11 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         fvm_port_sync_lock(service.sync);
         while (service.generation == generation && !service.stopping && !service.failed)
         {
+            if (dvm_runqueue_mixed_alt_pending())
+            {
+                fvm_port_sync_wait_ms(service.sync, DVM_MIXED_ALT_WAIT_MS);
+                break;
+            }
             fvm_port_sync_wait(service.sync);
         }
         fvm_port_sync_unlock(service.sync);

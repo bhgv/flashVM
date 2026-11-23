@@ -11,6 +11,7 @@
 #define PROGRAM_CATALOG 513UL /* Named launch list. */
 #define FIRST_PROGRAM 514UL /* Two consecutive qids per additional image. */
 #define FIRST_MODULE 5UL /* Three consecutive qids per module. */
+#define FIRST_MODULE_CHANNELS 262UL /* After the mounted delta-capability qids. */
 
 typedef struct MountedExport
 {
@@ -21,6 +22,7 @@ typedef struct MountedExport
     unsigned char interface[STYX_SHAPED_OFFER_MAX * STYX_MOUNTED_EXPORT_LIMIT]; /* Encoded profile. */
     Styxfile *profile_node; /* Directory leader owns the profile listing entry. */
     DVM_Provider *load_offer; /* Private load offer for this automatic export. */
+    StyxChannelExports *channel_exports; /* Native returned-channel leases, owned by the directory leader. */
     char load_name[INTERFACE_NAME_LIMIT + 1]; /* Launcher-selected name. */
     StyxScalarFunction function; /* Copied dispatch descriptor. */
 } MountedExport;

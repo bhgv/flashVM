@@ -31,6 +31,7 @@ static void destroy_files(void *state)
     DVM_ScalarFiles *files = state;
     dvm_provider_release(files->request);
     dvm_provider_release(files->reply);
+    dvm_provider_release(files->channel_endpoint);
     dvm_scalar_files_release(files->next);
     free(files);
 }
@@ -142,6 +143,17 @@ DVM_ScalarFiles *dvm_scalar_function_files(DVM_Provider *directory, const char *
     if (files)
     {
         strcpy(files->name, name);
+        DVM_Provider *endpoint = dvm_provider_capture(directory, ".unibus");
+        if (endpoint && dvm_provider_info(endpoint, ".", &info) == FVM_OK && !info.directory &&
+            (info.mode & 0444) && (info.mode & 0222) &&
+            (dvm_provider_native_flags(endpoint) & DVM_PROVIDER_CANCEL_PATH))
+        {
+            files->channel_endpoint = endpoint;
+        }
+        else
+        {
+            dvm_provider_release(endpoint);
+        }
     }
     return files;
 }

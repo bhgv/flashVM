@@ -22,6 +22,7 @@ struct DVM_Provider
     void *state; /* Owned native factory state. */
     DVM_StyxCallerKey styx_caller; /* Immutable caller identity after publication. */
     DVM_Provider *call_reply; /* Optional private reply capability bound before publication. */
+    DVM_Provider *call_export; /* Optional native publication bound to the exact forward function fid. */
     struct DVM_Cancel *call_cancel; /* Optional token bound to an unpublished call context. */
     DVM_Changes *changes; /* Owned local invalidation journal. */
     DVM_ProviderLaunch launch; /* Optional immutable per-node address discovery, never copied blindly to captured roots. */

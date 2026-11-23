@@ -15,6 +15,7 @@
 #define DVM_CHANNEL_BUS_ALT 28UL /* One selection among wrapped send/receive guards. */
 #define DVM_CHANNEL_BUS_TRY_ALT 29UL /* Selection, or zero if no guard was ready. */
 #define DVM_CHANNEL_BUS_TYPED_REPLY 30UL /* Selected guard byte and optional element. */
+#define DVM_CHANNEL_BUS_WAIT_ALT 32UL /* Bounded authoritative offer with an idle reply. */
 #define DVM_CHANNEL_BUS_WIRE STYX_MANAGED_LIST_LIMIT /* Complete message bound including its S-record. */
 
 typedef struct DVM_ChannelBus DVM_ChannelBus; /* Borrowed while its provider is retained. */
@@ -49,6 +50,7 @@ typedef struct DVM_ChannelOperation
     unsigned count; /* Number of guards to check as one operation. */
     int alt; /* Reply includes the selected guard number. */
     int immediate; /* Reply with no selected guard if none is ready. */
+    uint64_t deadline; /* Source-clock end of a bounded offer, or zero. */
     int typed; /* Use a reply with a nested value instead of the legacy int. */
     size_t extent; /* Number of valid bytes in the request buffer. */
     DVM_ChannelChoice choices[DVM_CHANNEL_BUS_SLOTS]; /* In priority order for this attempt. */
@@ -83,7 +85,7 @@ void dvm_channel_bus_finish(DVM_ChannelBus *bus, const DVM_ChannelOperation *ope
 
 /* EN: After the owner's local probe round, pair pending fids up to probed_through
  * on unbuffered_mask slots. Publish both replies under the bus lock, then settle
- * any unmatched immediate selectors. Caller owns the bus and drives its matches.
+ * immediate and expired offers. Caller owns the bus and drives its matches.
  * RU: После обхода локальных очередей сопоставить ожидающие fid до probed_through
  * для слотов unbuffered_mask. Опубликовать оба ответа под замком шины, затем
  * завершить оставшиеся пробы. Вызывающий удерживает bus и выполняет сопоставления. */

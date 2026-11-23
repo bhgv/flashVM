@@ -28,6 +28,7 @@ static int runtime_dispatch_turn(void)
         cancelled |= consume_child_reply(guest);
         dvm_managed_workers_finish_reply(guest);
         cancelled |= consume_process_wait_requests(guest);
+        cancelled |= poll_mixed_alt(guest);
         fvm_port_sync_lock(channel_queue_mutex);
         process = dvm_runqueue_select_guest(guest);
         fvm_port_sync_unlock(channel_queue_mutex);
@@ -38,6 +39,7 @@ static int runtime_dispatch_turn(void)
     }
     if (!process)
     {
+        dvm_runtime_mixed_alt_probe_end();
         return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
     }
     if (!native_spawn && dvm_native_execution()->progress_epoch != progress_epoch)
@@ -79,6 +81,7 @@ static int runtime_dispatch_turn(void)
     dvm_native_execution()->instruction_boundary_error = 0;
     if (waserror())
     {
+        dvm_runtime_mixed_alt_probe_end();
         dvm_jit_native_error(owner_error());
         dvm_native_execution()->resident_registers_valid = 0;
         dvm_native_execution()->arithmetic_retry_opcode = 0;
@@ -236,6 +239,7 @@ static int runtime_dispatch_turn(void)
             dvm_runtime_termination_checkpoint(process);
         }
         xec(process);
+        dvm_runtime_mixed_alt_probe_end();
         runtime_capture_debug_location();
         dvm_runtime_termination_checkpoint(process);
         /* The controller's initial Prog is also bound to its thread.

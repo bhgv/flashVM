@@ -27,6 +27,7 @@ enum
 
 
 #define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Child retirement/cancellation reply state. */
+#define DVM_MIXED_ALT_WAIT_MS 10UL /* Local rendezvous interval before the owner probes UniBus again. */
 
 
 /* Native allocation preserves the complete retained Prog prefix. Every Prog
@@ -53,6 +54,7 @@ typedef struct DVM_RuntimeProcess
     int cancel_delivering;             /* Owner is completing a posted cancellation. */
     DVM_OwnerMessage *retirement_reply; /* Owned reserve for this child's single retirement event. */
     const void *channel_claimed;       /* Match reservation protected by channel_queue_mutex. */
+    uint64_t mixed_alt_deadline;       /* Atomic native deadline while this process has a mixed Palt wait. */
     unsigned int arithmetic_retries;   /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */
     Prog *ready_previous;              /* Borrowed predecessor while ready. */
@@ -96,6 +98,21 @@ typedef struct DVM_RuntimeProcess
     int provider_execution; /* Native accepted execution-provider role, inherited by children; never inferred from a remote pathname. */
     int launch_adopted; /* One handoff consumed before publication; never changed by a running guest. */
 } DVM_RuntimeProcess;
+
+
+/* EN: While holding the channel mutex, associate a nonzero deadline with a parked ALT.
+ * RU: Под мьютексом каналов назначить ненулевой срок припаркованному ALT. */
+void dvm_runqueue_arm_mixed_alt(Prog *process, uint64_t deadline);
+
+
+/* EN: Read a native deadline on a borrowed resident or zero if inactive.
+ * RU: Прочитать нативный срок заимствованного процесса или ноль без ожидания. */
+uint64_t dvm_runqueue_mixed_alt_deadline(Prog *process);
+
+
+/* EN: Report whether any mixed ALT is parked for a future remote probe.
+ * RU: Проверить, ждёт ли смешанный ALT следующего удалённого запроса. */
+int dvm_runqueue_mixed_alt_pending(void);
 
 
 /* EN: Set a borrowed process's execution state and publish its scalar observation.

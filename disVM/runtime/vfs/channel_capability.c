@@ -12,6 +12,7 @@
 #include "channel_route.h"
 #include "channel_value.h"
 #include "root_registry.h"
+#include "result_channels.h"
 #include "disvm/refcount.h"
 #include <string.h>
 
@@ -100,6 +101,24 @@ static int write_key(uint32_t key, void *bytes, size_t capacity, size_t *size)
 }
 
 
+/* EN: Add the key to the opaque provider result token.
+ * RU: Добавить ключ к непрозрачному токену результата провайдера. */
+static int write_export(uint32_t key, void *bytes, size_t capacity, size_t *size)
+{
+    unsigned char identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4];
+    if (!dvm_result_channels_token(identity))
+    {
+        return 0;
+    }
+    identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE] = key >> 24;
+    identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 1] = key >> 16;
+    identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 2] = key >> 8;
+    identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 3] = key;
+    return fvm_srecord_write(STYX_MANAGED_EXPORTED_CHANNEL_TAG, identity, sizeof(identity),
+        bytes, capacity, size) == FVM_S_OK;
+}
+
+
 /* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
 int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *value,
     void *bytes, size_t capacity, size_t *size)
@@ -114,9 +133,13 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
     {
         return 0;
     }
-    if (channels->returning || channels->message)
+    if (channels->returning && !dvm_call_channel_is_proxy(channel) && strchr(schema.shape, 'c'))
     {
-        if (!dvm_call_channel_is_proxy(channel))
+        return 0;
+    }
+    if (channels->message || (channels->returning && dvm_call_channel_is_proxy(channel)))
+    {
+        if (!dvm_call_channel_is_proxy(channel) || channel->aux)
         {
             return 0;
         }
@@ -154,7 +177,64 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
     {
         return 0;
     }
-    return write_key(channels->schemas[slot].key, bytes, capacity, size);
+    uint32_t key = channels->schemas[slot].key;
+    return channels->returning ? write_export(key, bytes, capacity, size) :
+        write_key(key, bytes, capacity, size);
+}
+
+
+/* EN: Read a four-byte key in network order. data must span four bytes.
+ * RU: Прочитать четырёхбайтовый ключ в сетевом порядке. В data должно быть четыре байта. */
+static uint32_t read_key(const unsigned char *data)
+{
+    return (uint32_t)data[0] << 24 | (uint32_t)data[1] << 16 | (uint32_t)data[2] << 8 | data[3];
+}
+
+
+/* [GC:] EN: Decode one provider-owned result leaf, sharing a group pin and aliases.
+ * RU: Декодировать полномочие провайдера с общей арендой и алиасами результата. */
+static int decode_export(DVM_ReturnedImport *imports, const char *type,
+    const FVM_SRecord *record, void **result)
+{
+    if (!imports || record->size != STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4 ||
+        !dvm_returned_lease_token(imports->lease, record->payload))
+    {
+        return 0;
+    }
+    DVM_ChannelSchema schema = {.key = read_key(record->payload + STYX_CHANNEL_EXPORT_TOKEN_SIZE)};
+    if (!schema.key || schema.key > INT32_MAX || !dvm_channel_value_shape(type, schema.shape))
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < imports->count; i++)
+    {
+        if (imports->schemas[i].key == schema.key)
+        {
+            Channel *proxy = imports->objects[i];
+            if (strcmp(imports->schemas[i].shape, schema.shape) ||
+                dvm_refcount_retain_u(&D2H(proxy)->ref) != DVM_REFCOUNT_LIVE)
+            {
+                return 0;
+            }
+            *result = proxy;
+            return 1;
+        }
+    }
+    if (imports->count == DVM_CHANNEL_BUS_SLOTS)
+    {
+        return 0;
+    }
+    Channel *proxy = cnewc(&Tword, proxy_mover, 0);
+    if (!dvm_returned_proxy_arm(proxy, imports->lease, &schema) || !root_channel(proxy))
+    {
+        destroy(proxy);
+        return 0;
+    }
+    size_t slot = imports->count++;
+    imports->objects[slot] = proxy;
+    imports->schemas[slot] = schema;
+    *result = proxy;
+    return 1;
 }
 
 
@@ -168,12 +248,15 @@ int dvm_call_channel_decode(DVM_CallChannels *channels, const char *type,
         *result = H;
         return 1;
     }
+    if (record->tag == STYX_MANAGED_EXPORTED_CHANNEL_TAG)
+    {
+        return channels && channels->resolving && decode_export(channels->imports, type, record, result);
+    }
     if (!channels || record->tag != STYX_MANAGED_CHANNEL_TAG || record->size != 4)
     {
         return 0;
     }
-    const unsigned char *id = record->payload;
-    uint32_t key = (uint32_t)id[0] << 24 | (uint32_t)id[1] << 16 | (uint32_t)id[2] << 8 | id[3];
+    uint32_t key = read_key(record->payload);
     DVM_ChannelSchema schema = {.key = key};
     if (!key || key > INT32_MAX || !dvm_channel_value_shape(type, schema.shape))
     {

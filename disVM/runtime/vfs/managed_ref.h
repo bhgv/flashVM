@@ -45,7 +45,8 @@ int dvm_styx_result_fields_write(DVM_StyxRefTable *table, const char *shape, con
 int dvm_styx_graph_write(DVM_StyxRefTable *table, unsigned long tag, const char *shape,
     const void *slots, size_t size, void *bytes, size_t capacity, size_t *used);
 int dvm_styx_graph_reply_write(const StyxCallShape *shape, const FVM_SRecord *baseline,
-    void *const *identities, size_t count, const void *slots, size_t size, void *bytes, size_t capacity, size_t *used);
+    void *const *identities, size_t count, const void *slots, size_t size,
+    DVM_CallChannels *channels, void *bytes, size_t capacity, size_t *used);
 int dvm_styx_graph_reply_commit(const StyxCallShape *shape, const FVM_SRecord *baseline,
     DVM_StyxRefTable *refs, const void *slots, void *destination, const void *bytes, size_t size);
 

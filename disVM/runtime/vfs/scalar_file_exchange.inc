@@ -78,6 +78,7 @@ typedef struct ExchangeChannels
     DVM_ChannelBus *bus; /* Native provider state, alive for the exchange. */
     DVM_CallChannels *channels; /* Dis objects used only by this caller. */
     int *native; /* Restored on return even after a failed match. */
+    DVM_ReturnedLease *result; /* Optional original function fid owner after success. */
 } ExchangeChannels;
 
 
@@ -115,7 +116,7 @@ static int exchange_buffers(DVM_ScalarFiles *files, const void *request, size_t 
                     files->explicit_end == STYX_CALL_RECORD_FRAMING))
                 {
                     if (dvm_cancel_requested(dvm_cancel_current()) ||
-                        (side && !dvm_call_channel_progress(side->bus, side->channels, side->native)) ||
+                        (side && side->bus && !dvm_call_channel_progress(side->bus, side->channels, side->native)) ||
                         (files->explicit_end != STYX_CALL_RECORD_FRAMING && ++pending == 500))
                     {
                         break;
@@ -132,6 +133,10 @@ static int exchange_buffers(DVM_ScalarFiles *files, const void *request, size_t 
                 }
             }
         }
+    }
+    if (result == 1 && side && side->result && !dvm_returned_lease_take(side->result, &handle))
+    {
+        result = 0;
     }
     dvm_vfs_close(&handle);
     return result;
@@ -222,7 +227,8 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     {
         return -1;
     }
-    ExchangeChannels side = {.channels = channels, .native = native};
+    ExchangeChannels side = {.channels = channels, .native = native,
+        .result = channels->imports ? channels->imports->lease : NULL};
     DVM_Provider *bus = channels->count ? dvm_channel_bus_create(channels->schemas, channels->count, &side.bus) : NULL;
     if (channels->count && !bus)
     {
@@ -232,7 +238,7 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
     DVM_ScalarFiles route = {.request = files->request, .explicit_end = STYX_CALL_RECORD_FRAMING};
     int result = lease ? exchange_buffers(&route, reply, used, reply, capacity, received,
-        bus ? &side : NULL) : -1;
+        bus || side.result ? &side : NULL) : -1;
     dvm_channel_bus_seal(side.bus);
     if (lease)
     {

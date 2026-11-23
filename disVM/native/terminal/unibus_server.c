@@ -25,6 +25,9 @@
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
 
+#include "unibus_server_channels.inc"
+
+
 /* EN/RU: Identify a mounted entry by qid and its offset within the module.
  * Найти запись смонтированного модуля по qid и смещению внутри модуля. */
 static MountedExport *mounted_node(Path path, unsigned offset)
@@ -92,8 +95,14 @@ static char *open_node(Qid *qid, int mode)
         {
             return Eperm;
         }
-        return styxscalarfunctionopen(&current->server, mode, &module->function, module->owner.request != NULL,
-            module->function.program_root && current->loaded ? &current->function_workers : NULL, &module->busy);
+        StyxChannelExports *exports = current->modules[module->directory_leader].channel_exports;
+        return styxscalarfunctionopen_export(&current->server, mode, &module->function, module->owner.request != NULL,
+            module->function.program_root && current->loaded ? &current->function_workers : NULL, &module->busy, exports);
+    }
+    StyxChannelExports *exports = channels_for_node(qid->path);
+    if (exports)
+    {
+        return open_channel_operation(exports, mode);
     }
     if (delta_node(qid->path))
     {
@@ -161,6 +170,10 @@ static char *write_record(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return styxscalarfunctionwrite(styxgetaux(&current->server), bytes, *count, offset);
     }
+    if (channels_for_node(qid.path))
+    {
+        return write_channel_operation(bytes, count, offset);
+    }
     StyxTransfer result;
     size_t slot = program_slot(qid.path, 1);
     if ((qid.path != 1 && !slot) || offset < 0)
@@ -198,6 +211,10 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     if (mounted_node(qid.path, 1))
     {
         return styxscalarfunctionread(styxgetaux(&current->server), bytes, count, offset);
+    }
+    if (channels_for_node(qid.path))
+    {
+        return read_channel_operation(bytes, count, offset);
     }
     if (delta_node(qid.path) && offset >= 0)
     {
@@ -343,6 +360,15 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
                 return 0;
             }
             marker->d.length = STYX_MANAGED_GRAPH_VERSION;
+            if (server->caller_root)
+            {
+                directory->channel_exports = styxchannel_exports_create();
+                if (!directory->channel_exports || !styxaddfile(&server->server, parent,
+                    FIRST_MODULE_CHANNELS + leader, STYX_CHANNEL_EXPORT_FILE, 0666, "unibus"))
+                {
+                    return 0;
+                }
+            }
         }
         return directory->profile_node != NULL;
     }

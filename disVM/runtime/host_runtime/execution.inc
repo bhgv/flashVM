@@ -236,7 +236,7 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
     while ((dvm_debug_enabled && __atomic_load_n(&live, __ATOMIC_RELAXED)) || dvm_runqueue_ready() || (native_spawn && dvm_runqueue_dispatch_pending()) ||
-           (native_spawn && dvm_runqueue_inflight())
+           (native_spawn && (dvm_runqueue_inflight() || dvm_runqueue_mixed_alt_pending()))
 #ifdef DVM_RUNTIME_EDITOR
            || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
 #endif
@@ -279,6 +279,7 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
             }
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
                 (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending() ||
+                 dvm_runqueue_mixed_alt_pending() ||
 #ifdef DVM_RUNTIME_EDITOR
                  dvm_editor_attached() ||
 #endif

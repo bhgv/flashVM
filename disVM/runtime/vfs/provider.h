@@ -222,6 +222,14 @@ int dvm_provider_set_call_reply(DVM_Provider *context, DVM_Provider *reply);
  * RU: Вернуть свою ссылку на частный маршрут ответа контекста либо NULL. */
 DVM_Provider *dvm_provider_call_reply(DVM_Provider *context);
 
+
+/* EN: Attach a borrowed native publication before sharing this call context.
+ * The getter returns an owned reference or NULL.
+ * RU: Присоединить заимствованную нативную публикацию до передачи контекста.
+ * Запрос возвращает собственную ссылку либо NULL. */
+int dvm_provider_set_call_export(DVM_Provider *context, DVM_Provider *control);
+DVM_Provider *dvm_provider_call_export(DVM_Provider *context);
+
 /* EN: Set a key from the borrowed session root on a private captured context.
  * RU: Записать ключ заимствованного корня сессии в частный захваченный контекст. */
 int dvm_provider_set_styx_caller(DVM_Provider *context, DVM_Provider *session, uint32_t pid);

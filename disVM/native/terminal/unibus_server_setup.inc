@@ -86,6 +86,7 @@ static void free_modules(StyxUnibusServer *server)
         dvm_provider_release(server->modules[i].owner.request);
         dvm_provider_release(server->modules[i].owner.reply);
         dvm_provider_release(server->modules[i].load_offer);
+        styxchannel_exports_destroy(server->modules[i].channel_exports);
     }
     free(server->modules);
 }
@@ -96,7 +97,7 @@ static void free_modules(StyxUnibusServer *server)
 static int configure(MountedExport *module, const StyxMountedScalar *entry, int loaded)
 {
     if (!node_name(entry->module) || !node_name(entry->name) || !strcmp(entry->name, ".interface") ||
-        !strcmp(entry->name, STYX_MANAGED_DELTA_FILE))
+        !strcmp(entry->name, STYX_MANAGED_DELTA_FILE) || (loaded && !strcmp(entry->name, STYX_CHANNEL_EXPORT_FILE)))
     {
         return 0;
     }
