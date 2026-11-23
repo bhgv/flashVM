@@ -64,6 +64,15 @@ retire(api: Chainchannellifetime, expected: int)
 }
 
 
+# EN: Send on the second route after the first route has been offered.
+# RU: Отправить во второй маршрут после начала ожидания на первом.
+delayed_send(sys: Sys, port: chan of int)
+{
+    sys->sleep(200);
+    port <-= 79;
+}
+
+
 # EN: Run multiple returned routes concurrently and cancel just one operation fid.
 # RU: Удерживать несколько возвращённых маршрутов и отменить один fid операции.
 init()
@@ -79,6 +88,42 @@ init()
     if (first == nil || second == nil || first != alias || second != same ||
         first == second || <-second != 47 || <-alias != 31) {
         raise "returned handles lost scope, identity or buffered contents";
+    }
+    same <-= 59;
+    alt {
+        value := <-first =>
+            raise "multiple-route ALT chose the empty route";
+        value := <-second =>
+            if (value != 59) {
+                raise "multiple-route ALT lost its immediate payload";
+            }
+        * => raise "multiple-route ALT overlooked a ready route";
+    }
+    alt {
+        <-first or <-second =>
+            raise "multiple-route ALT consumed an empty route";
+        * => ;
+    }
+    spawn delayed_send(sys, second);
+    alt {
+        value := <-first =>
+            raise "blocking multiple-route ALT chose the empty route";
+        value := <-second =>
+            if (value != 79) {
+                raise "blocking multiple-route ALT lost its delayed payload";
+            }
+    }
+    first <-= 81;
+    second <-= 82;
+    alt {
+        value := <-first =>
+            if (value != 81 || <-second != 82) {
+                raise "multiple-route ALT changed the losing second branch";
+            }
+        value := <-second =>
+            if (value != 82 || <-first != 81) {
+                raise "multiple-route ALT changed the losing first branch";
+            }
     }
     (input, output) := api->worker(100);
     api = nil;

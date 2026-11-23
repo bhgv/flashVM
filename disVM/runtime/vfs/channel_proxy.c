@@ -343,40 +343,7 @@ void dvm_call_channel_operate(Channel *channel, const void *cell, int receive, v
 }
 
 
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int block)
-{
-    return submit(guards, count, block ? DVM_CHANNEL_BUS_ALT : DVM_CHANNEL_BUS_TRY_ALT, block);
-}
-
-
-/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-unsigned dvm_call_channel_alt_window(const DVM_ProxyGuard *guards, unsigned count, unsigned fallback)
-{
-    DVM_ProxyGuard selected[DVM_CHANNEL_BUS_SLOTS];
-    unsigned original[DVM_CHANNEL_BUS_SLOTS];
-    DVM_Cancel *group = NULL;
-    unsigned length = 0;
-    for (unsigned i = 0; i < count; i++)
-    {
-        DVM_Provider *provider;
-        DVM_Cancel *scope;
-        const unsigned char *token;
-        if (!guard_route(guards[i].channel, &provider, &scope, &token))
-        {
-            error("remote channel is outside its call");
-        }
-        if (!length || scope == group)
-        {
-            group = scope;
-            selected[length] = guards[i];
-            selected[length].index = length;
-            original[length++] = guards[i].index;
-        }
-    }
-    unsigned found = submit(selected, length, DVM_CHANNEL_BUS_WAIT_ALT, 0);
-    return found < length ? original[found] : fallback;
-}
+#include "channel_proxy_select.inc"
 
 
 /* EN: Attempt one native channel match from the active caller without registering a waiter.

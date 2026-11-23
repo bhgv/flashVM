@@ -54,7 +54,7 @@ python3 disVM/examples/remote-scalar/run_channel_lifetime.py mixed \
 | Case | What it checks |
 | --- | --- |
 | `mixed` | Blocking local and remote branches, two mixed selections rendezvousing on one UniBus, and cancellation. |
-| `result` | Returning a new provider channel through `load`, using it after releasing the module, shared identity, and independent lease cleanup. |
+| `result` | Returning a new provider channel through `load`, using it after releasing the module, selecting across independent leases, shared identity, and lease cleanup. |
 
 ## Channel operations
 
@@ -77,6 +77,12 @@ remote guards on one UniBus route for a bounded window of up to 40 ms at the
 owner. Two such windows can rendezvous on that bus. The VM resumes local
 selection only after an authoritative remote reply. Once a local or remote
 guard commits, that branch supplies the result of the selection.
+
+An `alt` with proxy guards on independent UniBus routes groups them by route.
+It advances to the next route only after the current owner confirms that
+no guard matched. With a fallback it probes each route once. In blocking
+mode it repeatedly gives each route a bounded offer window. This lets the
+selection wait across multiple routes while keeping one offer live at a time.
 
 Each operation opens a fresh read/write fid on the existing reverse Styx
 session. The operation and its reply share that fid. A complete record can span
@@ -105,8 +111,7 @@ The wire bound is 64 KiB per operation, including its headers and any nested
 guards. Channel handles can appear directly or in arrays and tuples of
 arguments and results. Each channel scope supports up to eight distinct
 channels, including grants made in messages. An `alt` can include up to eight
-eligible options after expanding receive arrays. An `alt` made up entirely
-of proxy channels requires one shared UniBus route. A module can
+eligible options after expanding receive arrays. A module can
 hold up to 128 active groups of returned channels. The element type of a
 new provider-owned channel must be free of channel handles. Passing a
 persistent returned proxy into another remote call is outside this protocol.
