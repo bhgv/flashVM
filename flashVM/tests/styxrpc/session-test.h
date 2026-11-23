@@ -29,4 +29,9 @@ int test_launch_call(FVM_Context *context, FVM_StyxRpcSession *binding, struct S
 /* EN: Consume fd, then exercise bounded ActionScript byte files and teardown.
  * RU: Принять fd и проверить ограниченное байтовое I/O ActionScript и закрытие. */
 int test_vfs_call(FVM_Context *context, FVM_StyxRpcSession *binding, int fd);
+
+
+/* EN: Read and modify a real Limbo .var projection on the delegated connected fd.
+ * RU: Прочитать и изменить настоящую .var Limbo на выданном связанном fd. */
+int test_variable_call(FVM_Context *context, int fd, const char *pid);
 #endif

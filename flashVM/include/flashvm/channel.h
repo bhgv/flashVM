@@ -149,6 +149,11 @@ FVM_API FVM_Result fvm_channel_set_capacity(FVM_Channel *channel, size_t capacit
 
 /* Implement channel pending for this subsystem. */
 FVM_API FVM_Result fvm_channel_pending(FVM_Channel *channel, size_t *pending);
+/* EN: Open an ordinary file channel using the owning context's mount namespace.
+ * RU: Открыть обычный файловый канал в пространстве монтирований контекста. */
+FVM_API FVM_Result fvm_channel_open_file_in(FVM_Context *context, const char *path, const char *mode, FVM_Channel **out);
+
+
 #ifdef __cplusplus
 }
 #endif

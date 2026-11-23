@@ -49,6 +49,8 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 сессии. См. [проверку запуска](../tests/styxrpc/launch.c) и
 [проверку VFS](../tests/styxrpc/vfs.c).
 
+Для обычных путей и открытых файлов используйте [монтирование файловой системы](STYX_RPC_FILESYSTEM.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

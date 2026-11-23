@@ -3,7 +3,10 @@
  * RU: Опубликовать точный файл примера Limbo и выполнить обмен через Styx.
  */
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <pthread.h>
+#include <spawn.h>
+#include <errno.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -20,11 +23,13 @@
 #include "launch/ticket.h"
 
 extern int __real_main(int argc, char **argv); /* Actual hosted DisVM entry. */
+extern char **environ; /* Inherited environment of the acceptance process. */
 extern int __real_dvm_stack_bind(DVM_ResourcePlan *, DVM_ResourcePlan *, unsigned, int64_t); /* Actual mount. */
 
 static pthread_t reader; /* Joined before the fixture exits. */
 static StyxVariableServer *server; /* Owns the exported native provider pin. */
 static int remote_fd = -1; /* Client carrier end transferred to its thread. */
+static int server_fd = -1; /* Provider end excluded from the FlashVM child. */
 static uint32_t pid; /* Limbo PID copied from the fixture mount spelling. */
 static int legacy; /* Exercise the original unscoped export too. */
 static DVM_Provider *readonly; /* First mounted cell, retained until publication. */
@@ -117,11 +122,52 @@ static int check_limit(StyxClient *client)
 }
 
 
+/* EN: Run the selected FlashVM test host on only the remote end and consume remote_fd.
+ * RU: Запустить выбранный тест FlashVM только на дальнем конце и освободить remote_fd. */
+static int run_flash(const char *host)
+{
+    char fd[24], owner[16];
+    snprintf(fd, sizeof(fd), "%d", remote_fd);
+    snprintf(owner, sizeof(owner), "%" PRIu32, pid);
+    char *arguments[] = {(char *)host, "variable", fd, owner, NULL};
+    posix_spawn_file_actions_t actions;
+    int error = posix_spawn_file_actions_init(&actions);
+    pid_t child;
+    if (!error)
+    {
+        error = posix_spawn_file_actions_addclose(&actions, server_fd);
+        if (!error)
+        {
+            error = posix_spawn(&child, host, &actions, NULL, arguments, environ);
+        }
+        posix_spawn_file_actions_destroy(&actions);
+    }
+    close(remote_fd);
+    if (error)
+    {
+        return 0;
+    }
+    int status;
+    pid_t waited;
+    do
+    {
+        waited = waitpid(child, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+    return waited == child && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+
 /* EN/RU: Read a typed owner update, then write through the same remote handle.
  * Прочитать обновление владельца и записать ответ через тот же дескриптор. */
 static void *exchange(void *unused)
 {
     (void)unused;
+    const char *flash = getenv("DVM_TEST_VARIABLE_FLASH_HOST");
+    if (flash && !legacy)
+    {
+        result = run_flash(flash);
+        return NULL;
+    }
     int breaker = dup(remote_fd);
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     StyxClient *client = styxclientmountphy(phyposixfd(remote_fd, caps), 256, "fixture", "", 1500, 4);
@@ -225,6 +271,7 @@ int __wrap_dvm_stack_bind(DVM_ResourcePlan *source, DVM_ResourcePlan *target, un
     }
     unsigned caps = PHY_STREAM | PHY_ORDERED | PHY_RELIABLE;
     RemotePhy *channel = phyposixfd(pair[0], caps);
+    server_fd = pair[0];
     legacy = getenv("DVM_TEST_VARIABLE_LEGACY") != NULL;
     if (!legacy && !duplicate_refused(source->provider, caps))
     {

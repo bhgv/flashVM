@@ -235,10 +235,11 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
 int main(int argc, char **argv)
 {
     char *end;
-    long fd = argc == 3 ? strtol(argv[2], &end, 10) : -1;
+    int variable = argc == 4 && !strcmp(argv[1], "variable");
+    long fd = argc == 3 || variable ? strtol(argv[2], &end, 10) : -1;
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
-        strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") &&
+        strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") && !variable &&
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
         strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
         strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call") &&
@@ -305,6 +306,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[1], "vfs"))
         {
             ok = test_vfs_call(context, &session, (int)fd);
+        }
+        else if (variable)
+        {
+            ok = test_variable_call(context, (int)fd, argv[3]);
         }
         else
         {

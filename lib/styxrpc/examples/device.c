@@ -333,7 +333,7 @@ int main(int argc, char **argv)
     profile_size += typed_size;
     static Styxops ops = {.open = open_file, .read = read_file, .write = write_file};
     RemotePhy *phy = phyposixfd((int)fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
-    if (styxphyinit(&server, &ops, phy, 0555, 0, 8))
+    if (styxphyinit(&server, &ops, phy, 0555, 1, 8))
     {
         return 1;
     }

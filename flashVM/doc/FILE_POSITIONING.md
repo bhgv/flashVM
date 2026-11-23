@@ -6,7 +6,7 @@
 [Native regression](../../disVM/runtime/test_file_seek.c)
 
 `fvm_port_file_seek(file, offset, origin, position)` moves the active cursor of
-an existing read-only, write-only or shared-cursor `rwo` [`FVM_PortFile`](../ports/file_port.c#L30). The caller borrows the handle,
+an existing read-only, write-only or shared-cursor `rwo` [`FVM_PortFile`](../ports/file_port.c#L28). The caller borrows the handle,
 provides writable `long` result storage, and serializes calls with reads/writes
 and close. This call may block on native stdio operations; it is not an async
 channel request. It allocates no handle and never closes the borrowed file.
@@ -68,7 +68,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_port_file_open` | function | [ports/file_port.c:135](../ports/file_port.c#L135) |
-| `fvm_port_file_seek` | function | [ports/file_port.c:313](../ports/file_port.c#L313) |
-| `FVM_PortFile` | struct | [ports/file_port.c:30](../ports/file_port.c#L30) |
+| `fvm_port_file_seek` | function | [ports/file_port.c:385](../ports/file_port.c#L385) |
+| `FVM_PortFile` | struct | [ports/file_port.c:28](../ports/file_port.c#L28) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

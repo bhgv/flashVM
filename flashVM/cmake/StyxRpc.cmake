@@ -13,7 +13,8 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/channel_export.c src/styxrpc/channel_output.c src/styxrpc/channel_local.c src/styxrpc/channel_lend.c src/styxrpc/channel_handler.c
         src/styxrpc/channel_local_state.c src/styxrpc/channel_publication.c src/styxrpc/channel_mailbox.c
         src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
-        src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c)
+        src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c
+        src/styxrpc/filesystem.c src/styxrpc/variable.c)
     target_link_libraries(flashvm_styxrpc PUBLIC flashvm StyxRpc::launch StyxRpc::serve)
     if(FVM_BUILD_TESTS)
         add_executable(flashvm_tests_styxrpc_host tests/styxrpc_host.c tests/styxrpc/managed.c

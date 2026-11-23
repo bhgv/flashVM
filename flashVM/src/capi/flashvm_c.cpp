@@ -6,6 +6,7 @@
 
 #include "../multimedia/audio/channel.hpp" /* Stop registered host outputs before releasing the context. */
 #include "../core/runtime.hpp"
+#include "../core/filesystem_internal.h"
 #include "../core/call_scope_constants.h"
 #include "../core/random_constants.h"
 #include "../core/timer.hpp"
@@ -161,6 +162,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context)
     context->timer_clock_valid = fvm_timer_read(&context->timer_origin_ms);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     context->runtime = runtime;
+    context->filesystems = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     context->global = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -325,6 +327,7 @@ void fvm_context_destroy(FVM_Context *context)
     fvm_standard_text_cleanup(context);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_capability_context_cleanup(context);
+    fvm_filesystem_cleanup(context);
     /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
     delete context;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

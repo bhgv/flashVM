@@ -474,14 +474,29 @@ create_channel(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
     FVM_Channel *ch = 0;
     FVM_Object *o = 0;
     FVM_Result r;
-    if (n >= 1 && a[0].type == FVM_VALUE_STRING && a[0].string && !std::strcmp(a[0].string, "file"))
+    if (n >= 1 && a[0].type == FVM_VALUE_STRING && a[0].string &&
+        fvm_value_string_size(a) == sizeof("file") - 1 && !std::memcmp(a[0].string, "file", sizeof("file") - 1))
     {
         if ((n != 2 && n != 3) || a[1].type != FVM_VALUE_STRING || !a[1].string ||
             (n == 3 && (a[2].type != FVM_VALUE_STRING || !a[2].string)))
         {
             return FVM_INVALID_ARGUMENT;
         }
-        r = fvm_channel_open_file(a[1].string, n == 3 ? a[2].string : 0, &ch);
+        const size_t path_size = fvm_value_string_size(a + 1);
+        const size_t mode_size = n == 3 ? fvm_value_string_size(a + 2) : 0;
+        char mode[sizeof("rwo")];
+        if (!path_size || std::memchr(a[1].string, 0, path_size) ||
+            (n == 3 && (!mode_size || mode_size >= sizeof(mode) || std::memchr(a[2].string, 0, mode_size))))
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        if (n == 3)
+        {
+            std::memcpy(mode, a[2].string, mode_size);
+            mode[mode_size] = 0;
+        }
+        const fvm_detail::string path(a[1].string, path_size);
+        r = fvm_channel_open_file_in(c, path.c_str(), n == 3 ? mode : 0, &ch);
     }
     else if (n == 2 && a[0].type == FVM_VALUE_STRING && a[1].type == FVM_VALUE_STRING && a[0].string && a[1].string &&
              !std::strcmp(a[0].string, "network"))

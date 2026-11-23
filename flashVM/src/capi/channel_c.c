@@ -6,7 +6,7 @@
 #include "../../ports/channel_sync.h"
 #include "../../ports/file_port.h"
 #include "../core/channel_packet.h"
-#include "flashvm/channel.h"
+#include "../core/filesystem_internal.h"
 #include "flashvm/debug.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -157,8 +157,8 @@ FVM_Result fvm_channel_create(FVM_Channel **out)
 }
 
 
-/* Open channel file. */
-FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel **out)
+/* EN/RU: See flashvm/channel.h. / См. flashvm/channel.h. */
+FVM_Result fvm_channel_open_file_in(FVM_Context *context, const char *path, const char *mode, FVM_Channel **out)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -174,11 +174,10 @@ FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel
     {
         return result;
     }
-    result = fvm_port_file_open(path, mode, &channel->file);
-    if (result != FVM_OK)
+    if (!path || !*path)
     {
         fvm_channel_destroy(channel);
-        return result;
+        return FVM_INVALID_ARGUMENT;
     }
     channel->file_path = (char *)malloc(strlen(path) + 1);
     if (!channel->file_path)
@@ -189,9 +188,22 @@ FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel
 
     /* Computation / Вычисление и обновление состояния. */
     strcpy(channel->file_path, path);
+    result = fvm_filesystem_open(context, path, mode, &channel->file);
+    if (result != FVM_OK)
+    {
+        fvm_channel_destroy(channel);
+        return result;
+    }
     channel->file_channel = 1;
     *out = channel;
     return FVM_OK;
+}
+
+
+/* EN/RU: See flashvm/channel.h. / См. flashvm/channel.h. */
+FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel **out)
+{
+    return fvm_channel_open_file_in(NULL, path, mode, out);
 }
 
 

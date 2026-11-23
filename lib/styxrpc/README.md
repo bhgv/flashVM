@@ -122,6 +122,8 @@ A persistent DisVM provider can launch several named images on one Styx connecti
 
 The hosted client also supports [stat](reference/vfs_stat.md), [positional read](reference/vfs_read_at.md) and [positional write](reference/vfs_write_at.md). These operations use an already mounted session, hold one fid, and report the confirmed transfer prefix.
 
+Use [open](reference/vfs_open.md) for a persistent descriptor with [stat](reference/vfs_file_stat.md), [read](reference/vfs_file_read.md), [write](reference/vfs_file_write.md) and [close](reference/vfs_close.md). [List](reference/vfs_list.md) reads a mounted directory. Native external int variables use [one-value reads](reference/vfs_int_read.md) and [writes](reference/vfs_int_write.md).
+
 ## Name, Qid and fid
 
 `Twalk` resolves a child name to a stable node ID. The example uses

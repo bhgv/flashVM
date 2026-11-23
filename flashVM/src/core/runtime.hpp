@@ -258,6 +258,7 @@ struct FVM_Context
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 { /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
     FVM_CrashState crash;                  /* Copied postmortem reports and stack-owned diagnostic links. */
+    struct FVM_FsMount *filesystems;       /* Owner-local mounts with no managed GC edges. */
     FVM_ExecutionModeState execution_mode; /* Context-owned native cache, policy and diagnostic counters. */
     FVM_Object *calling_constructor;       /* [GC:] Constructor identity of the current call mode. */
     FVM_Object *calling_function;          /* [GC:] Function whose selected method owner is recorded. */

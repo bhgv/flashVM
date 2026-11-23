@@ -1,5 +1,7 @@
 # File channels and value metatables — development 0.4, ABI 2
 
+For files on a Styx tree, see the [common mount namespace](STYX_RPC_FILESYSTEM.md).
+
 The descriptor `<"file", path, mode>` corresponds to `channel.create("file", path[, mode])` in the opt-in ActionScript bridge. The C89 entry point is `fvm_channel_open_file(path, mode, &channel)`. `path` is a nonempty UTF-8 path. `mode` is exactly `r`, `w`, or `rw`; omission/NULL means `rw`. Empty strings, other modes and invalid descriptor argument types are rejected.
 
 | Mode | Read | Write | Opening behavior |

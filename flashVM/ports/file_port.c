@@ -7,6 +7,7 @@
  */
 
 #include "file_port.h"
+#include "flashvm/filesystem.h"
 #include "filesystem_native.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,13 +24,12 @@
 #endif
 
 
-#define FVM_STDIO_TRANSFER_MAX 65536UL /* Maximum native standard-stream fragment accepted per call. */
-
-
 /* Owned file state keeps logical read/write positions independent. */
 struct FVM_PortFile
 {
     FILE *stream;        /* Owned binary stream; standard descriptors use separate borrowed APIs. */
+    FVM_FsFile backend;  /* Copied operations for an externally mounted file. */
+    void *handle;       /* Owned backend descriptor; backend.close identifies mounted mode. */
     char *path;          /* Owned UTF-8 display path; metadata never reopens it. */
     long read_position;  /* Logical next read offset, independent of appending writes. */
     long write_position; /* Logical next write offset checked against native long capacity. */
@@ -138,6 +138,41 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
 }
 
 
+/* EN/RU: See file_port.h. / См. file_port.h. */
+FVM_Result fvm_port_file_open_mounted(const FVM_Filesystem *backend, void *state,
+    const char *path, const char *mode, FVM_PortFile **out)
+{
+    FVM_PortFile *file;
+    FVM_Result status;
+    if (!mode)
+    {
+        mode = "rw";
+    }
+    *out = NULL;
+    file = (FVM_PortFile *)calloc(1, sizeof(*file));
+    if (!file)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    file->backend = backend->file;
+    file->readable = !strcmp(mode, "r") || !strcmp(mode, "rw") || !strcmp(mode, "rwo");
+    file->writable = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "wo") ||
+        !strcmp(mode, "rw") || !strcmp(mode, "rwo");
+    file->shared = !strcmp(mode, "rwo");
+    file->append = !strcmp(mode, "rw");
+    status = file->readable || file->writable ? backend->open(state, path, mode, &file->handle) : FVM_INVALID_ARGUMENT;
+    if (status == FVM_OK)
+    {
+        *out = file;
+    }
+    else
+    {
+        free(file);
+    }
+    return status;
+}
+
+
 /* EN/RU: See anchor_port.h. Parent stays owned through this blocking operation.
  * См. anchor_port.h. Parent удерживается до завершения blocking operation. */
 FVM_Result fvm_port_file_open_at(FVM_PortAnchor *parent, const char *relative, const char *mode, FVM_PortFile **out)
@@ -161,7 +196,14 @@ void fvm_port_file_close(FVM_PortFile *file)
     {
         return;
     }
-    fclose(file->stream);
+    if (file->backend.close)
+    {
+        file->backend.close(file->handle);
+    }
+    else
+    {
+        fclose(file->stream);
+    }
     free(file->path);
     free(file);
 }
@@ -204,15 +246,26 @@ FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_
     {
         return FVM_UNSUPPORTED;
     }
-    clearerr(file->stream);
-    if (fseek(file->stream, file->read_position, SEEK_SET))
+    if (file->backend.read)
     {
-        return FVM_ERROR;
+        FVM_Result status = file->backend.read(file->handle, file->read_position, data, size, &count);
+        if (status != FVM_OK || count > size)
+        {
+            return status == FVM_OK ? FVM_ERROR : status;
+        }
     }
-    count = fread(data, 1, size, file->stream);
-    if (ferror(file->stream))
+    else
     {
-        return FVM_ERROR;
+        clearerr(file->stream);
+        if (fseek(file->stream, file->read_position, SEEK_SET))
+        {
+            return FVM_ERROR;
+        }
+        count = fread(data, 1, size, file->stream);
+        if (ferror(file->stream))
+        {
+            return FVM_ERROR;
+        }
     }
 
     /* Computation / Вычисление и обновление состояния. */
@@ -231,6 +284,7 @@ FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_
  * failed legacy writes keep their existing uncertain-effect failure contract. */
 FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size)
 {
+    size_t extent;
     if (!file || (!data && size))
     {
         return FVM_INVALID_ARGUMENT;
@@ -239,17 +293,31 @@ FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size
     {
         return FVM_ERROR;
     }
-    if (file->append && (fseek(file->stream, 0, SEEK_END) || (file->write_position = ftell(file->stream)) < 0))
+    if (file->append)
     {
-        return FVM_ERROR;
+        if (file->backend.size)
+        {
+            if (fvm_port_file_size(file, &extent) != FVM_OK || extent > (size_t)LONG_MAX)
+            {
+                return FVM_ERROR;
+            }
+            file->write_position = (long)extent;
+        }
+        else if (fseek(file->stream, 0, SEEK_END) || (file->write_position = ftell(file->stream)) < 0)
+        {
+            return FVM_ERROR;
+        }
     }
     if (size > (size_t)(LONG_MAX - file->write_position))
     {
         return FVM_UNSUPPORTED;
     }
-    clearerr(file->stream);
-    if (fseek(file->stream, file->write_position, SEEK_SET) || fwrite(data, 1, size, file->stream) != size ||
-        fflush(file->stream))
+    if (file->stream)
+    {
+        clearerr(file->stream);
+    }
+    if (file->backend.write ? file->backend.write(file->handle, file->write_position, data, size) != FVM_OK :
+        fseek(file->stream, file->write_position, SEEK_SET) || fwrite(data, 1, size, file->stream) != size || fflush(file->stream))
     { /* A partial record cannot be retried on this handle. */
         file->failed = 1;
         return FVM_ERROR;
@@ -291,6 +359,10 @@ FVM_Result fvm_port_file_size(FVM_PortFile *file, size_t *size)
     if (!file || !size)
     {
         return FVM_INVALID_ARGUMENT;
+    }
+    if (file->backend.size)
+    {
+        return file->backend.size(file->handle, size);
     }
     saved = ftell(file->stream);
     if (saved < 0 || fseek(file->stream, 0, SEEK_END) != 0)
@@ -349,7 +421,7 @@ FVM_Result fvm_port_file_seek(FVM_PortFile *file, long offset, int origin, long 
         return FVM_INVALID_ARGUMENT;
     }
     target = base + offset;
-    if (fseek(file->stream, target, SEEK_SET))
+    if (file->stream && fseek(file->stream, target, SEEK_SET))
     {
         return FVM_ERROR;
     }
@@ -366,78 +438,7 @@ FVM_Result fvm_port_file_seek(FVM_PortFile *file, long offset, int origin, long 
 }
 
 
-/* Read one bounded fragment from borrowed standard input.
- * descriptor must be zero; output receives the actual extent, including EOF zero. */
-FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, size_t *received)
-{
-    long count;
-    if (descriptor != 0 || !received || (!bytes && capacity))
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    *received = 0;
-    if (!capacity)
-    {
-        return FVM_OK;
-    }
-    if (capacity > FVM_STDIO_TRANSFER_MAX)
-    {
-        capacity = FVM_STDIO_TRANSFER_MAX;
-    }
-    do
-    {
-#ifdef _WIN32
-        count = _read(descriptor, bytes, (unsigned int)capacity);
-#else
-        count = (long)read(descriptor, bytes, capacity);
-#endif
-    } while (count < 0 && errno == EINTR);
-    if (count < 0)
-    {
-        return FVM_ERROR;
-    }
-    *received = (size_t)count;
-    return FVM_OK;
-}
-
-
-/* Write one bounded fragment to borrowed standard output/error.
- * descriptor is 1 or 2; written exposes partial writes so callers can retry the remainder. */
-FVM_Result fvm_port_stdio_write(int descriptor, const void *bytes, size_t size, size_t *written)
-{
-    long count;
-    if ((descriptor != 1 && descriptor != 2) || !written || (!bytes && size))
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    *written = 0;
-    if (!size)
-    {
-        return FVM_OK;
-    }
-    if (fflush(descriptor == 1 ? stdout : stderr))
-    {
-        return FVM_ERROR;
-    }
-    if (size > FVM_STDIO_TRANSFER_MAX)
-    {
-        size = FVM_STDIO_TRANSFER_MAX;
-    }
-    do
-    {
-#ifdef _WIN32
-        count = _write(descriptor, bytes, (unsigned int)size);
-#else
-        count = (long)write(descriptor, bytes, size);
-#endif
-    } while (count < 0 && errno == EINTR);
-    if (count < 0)
-    {
-        return FVM_ERROR;
-    }
-    *written = (size_t)count;
-    return FVM_OK;
-}
+#include "file_stdio.inc"
 
 
 /* Query an actual open stream through the selected OS port. Borrow file/output;
@@ -448,5 +449,5 @@ FVM_Result fvm_port_file_info(FVM_PortFile *file, FVM_FileInfo *output)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return fvm_fs_native_stream(file->stream, file->path, output);
+    return file->stream ? fvm_fs_native_stream(file->stream, file->path, output) : FVM_UNSUPPORTED;
 }

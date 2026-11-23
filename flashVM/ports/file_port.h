@@ -77,6 +77,13 @@ FVM_Result fvm_port_stdio_read(int descriptor, void *bytes, size_t capacity, siz
 
 /* Borrow standard output/error (1/2); report actual bytes written without closing it. */
 FVM_Result fvm_port_stdio_write(int descriptor, const void *bytes, size_t size, size_t *written);
+
+struct FVM_Filesystem; /* Borrowed mount descriptor while opening. */
+
+
+/* EN: Open and wrap a backend handle using ordinary file cursors.
+ * RU: Открыть и подключить дескриптор backend к обычным файловым курсорам. */
+FVM_Result fvm_port_file_open_mounted(const struct FVM_Filesystem *, void *, const char *, const char *, FVM_PortFile **);
 #ifdef __cplusplus
 }
 #endif

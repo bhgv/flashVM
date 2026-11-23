@@ -32,6 +32,16 @@ typedef struct StyxRpcFileInfo
     int directory;   /* Nonzero for a directory. */
 } StyxRpcFileInfo;
 
+typedef struct StyxFid StyxRpcVfsFile; /* Owns one opened fid and retains its attached client. */
+typedef int (*StyxRpcVfsVisitor)(void *state, const char *name, const StyxRpcFileInfo *info); /* Borrowed entry, 1 to proceed. */
+
+typedef enum StyxRpcFileMode
+{
+    STYXRPC_FILE_READ = 0,   /* Open an existing file for reading. */
+    STYXRPC_FILE_WRITE = 1,  /* Open an existing file for writing at caller-selected offsets. */
+    STYXRPC_FILE_RDWR = 2    /* Open an existing file for both directions. */
+} StyxRpcFileMode;
+
 
 /* EN: Borrow session and path, publish metadata only on success.
  * RU: Заимствовать session и path, выдать метаданные только при успехе. */
@@ -48,6 +58,40 @@ StyxRpcIoOutcome styxrpc_vfs_read_at(struct StyxClient *session, const char *pat
  * RU: Записать подтверждённые последовательные остатки на одном fid. Не повторять сомнительную запись. */
 StyxRpcIoOutcome styxrpc_vfs_write_at(struct StyxClient *session, const char *path,
     uint64_t offset, const void *bytes, size_t size, size_t *used);
+
+
+/* EN: Open one existing regular file on the attached tree; return an owned fid.
+ * RU: Открыть существующий файл в смонтированном дереве и вернуть собственный fid. */
+StyxRpcIoOutcome styxrpc_vfs_open(struct StyxClient *session, const char *path,
+    StyxRpcFileMode mode, StyxRpcVfsFile **file);
+
+
+/* EN: Query one held file independent of path replacement.
+ * RU: Получить метаданные открытого файла независимо от замены пути. */
+StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *info);
+
+
+/* EN: Transfer a confirmed prefix on file at offset. The caller owns both cursor and buffer.
+ * RU: Передать подтверждённый префикс через file со смещения offset. Курсор и буфер у вызывающего. */
+StyxRpcIoOutcome styxrpc_vfs_file_read(StyxRpcVfsFile *file, uint64_t offset, void *bytes, size_t size, size_t *used);
+StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset, const void *bytes, size_t size, size_t *used);
+
+
+/* EN: Consume file, optionally queue the clunk for safe owner cleanup.
+ * RU: Освободить file, при необходимости отложив clunk до безопасной очистки владельца. */
+void styxrpc_vfs_close(StyxRpcVfsFile *file, int deferred);
+
+
+/* EN: Enumerate up to limit entries after skip on an opened directory. Empty path means root.
+ * RU: Перечислить до limit записей открытого каталога после skip. Пустой путь означает корень. */
+StyxRpcIoOutcome styxrpc_vfs_list(struct StyxClient *session, const char *path, size_t skip, size_t limit,
+    StyxRpcVfsVisitor visit, void *state);
+
+
+/* EN: Read or replace a whole native .var int at offset zero, with one transfer.
+ * RU: Прочитать либо заменить весь int из .var со смещения ноль одной операцией. */
+StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value);
+StyxRpcIoOutcome styxrpc_vfs_int_write(StyxRpcVfsFile *file, int32_t value);
 
 #ifdef __cplusplus
 }

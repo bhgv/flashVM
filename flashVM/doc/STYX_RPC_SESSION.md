@@ -50,6 +50,8 @@ Keep the binding alive while methods can be called. Close it before releasing
 the session. See the [named launch test](../tests/styxrpc/launch.c) and
 [VFS test](../tests/styxrpc/vfs.c).
 
+For ordinary paths and long-lived file handles, use the [mounted filesystem](STYX_RPC_FILESYSTEM.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

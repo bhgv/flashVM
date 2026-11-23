@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1726 / Контрольная точка v0.1726. FlashVM opens mounted
+Styx files through its ordinary filesystem and holds each open fid.
+Внешнее свойство int читает и изменяет ячейку владельца через libstyxrpc.
+[EN](STYX_RPC_FILESYSTEM.md) / [RU](STYX_RPC_FILESYSTEM.ru.md).
+
 Checkpoint v0.1725 / Контрольная точка v0.1725. ActionScript submits one
 native UniBus ALT through libstyxrpc for several guards on the same bus.
 Смешанный выбор сохраняет тип принятого значения. Локальная проверка

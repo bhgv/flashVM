@@ -9,8 +9,8 @@ StyxRpcIoOutcome styxrpc_vfs_stat(struct StyxClient *session, const char *path, 
 ```
 
 Resolve path on the borrowed mounted session and stat that exact fid.
-`path` is a nonempty relative path of at most 1024 bytes. Empty, dot and
-parent path components are rejected. On success `info` receives a byte
+`path` is a relative path of at most 1024 bytes. An empty string addresses
+the attach root. Within a nonempty path, empty, dot and parent components are rejected. On success `info` receives a byte
 length, mode and directory flag. Failure preserves the output. An invalid
 path or failed walk returns `STYXRPC_IO_NOT_OPEN`. A failed stat after a
 successful walk returns `STYXRPC_IO_FAILED`.

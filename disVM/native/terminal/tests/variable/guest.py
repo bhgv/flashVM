@@ -17,6 +17,7 @@ run = helpers["run"]
 # Собрать пример и выполнить полный обмен в обоих режимах runtime.
 def main():
     runtime, compiler, sdk = map(lambda arg: Path(arg).resolve(), sys.argv[1:4])
+    flash = Path(sys.argv[4]).resolve() if len(sys.argv) == 5 else None
     here = Path(__file__).resolve().parent
     disvm = here.parents[3]
     native = sdk / "terminal/CMakeFiles/terminal-scalar-route.dir"
@@ -47,6 +48,12 @@ def main():
             if marker not in result.stdout:
                 raise RuntimeError(marker + " missing\n" + result.stdout + result.stderr)
             print(marker, mode, flush=True)
+            if flash:
+                result = run([str(executable), mode, str(program)], work,
+                             dict(os.environ, DVM_TEST_VARIABLE_FLASH_HOST=str(flash)))
+                if marker not in result.stdout or "PASS FlashVM Styx RPC host" not in result.stdout:
+                    raise RuntimeError("FlashVM variable bridge did not complete\n" + result.stdout + result.stderr)
+                print("PASS FlashVM and Limbo shared variable", mode, flush=True)
 
 
 if __name__ == "__main__":
