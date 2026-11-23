@@ -20,4 +20,9 @@ int test_channel_serve(FVM_Context *context, int fd);
 /* EN: Call Dis with typed queues published through bus on the reverse session.
  * RU: Вызвать Dis с типизированными очередями, выданными во встречной сессии. */
 int test_channel_args(FVM_Context *context, StyxRpcManagedTarget *target, StyxRpcArgumentBus *bus);
+
+
+/* EN: Serve Dis-owned channel arguments on the context owner using the connected fd.
+ * RU: Обслужить аргументы-каналы Dis у владельца контекста через подключённый fd. */
+int test_channel_incoming(FVM_Context *context, int fd);
 #endif

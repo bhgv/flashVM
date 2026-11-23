@@ -242,7 +242,8 @@ int main(int argc, char **argv)
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
         strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
         strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call") &&
-        strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve") && strcmp(argv[1], "channel-args-call")))
+        strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve") && strcmp(argv[1], "channel-args-call") &&
+        strcmp(argv[1], "channel-incoming-serve")))
     {
         return 2;
     }
@@ -279,6 +280,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[1], "channel-serve"))
         {
             ok = test_channel_serve(context, (int)fd);
+        }
+        else if (!strcmp(argv[1], "channel-incoming-serve"))
+        {
+            ok = test_channel_incoming(context, (int)fd);
         }
         else if (!strcmp(argv[1], "ref-serve"))
         {

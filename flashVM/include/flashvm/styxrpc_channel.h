@@ -8,6 +8,7 @@
 #include "styxrpc/channel_client.h"
 #include "styxrpc/channel_module.h"
 #include "styxrpc/channel_arguments.h"
+#include "styxrpc/channel_handlers.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,23 @@ typedef struct FVM_StyxRpcChannelExport
  * RU: Создать дескриптор контекстного канала, заимствуя привязку и имена до teardown. */
 FVM_API FVM_Result fvm_styxrpc_channel_export(FVM_StyxRpcChannelExport *binding,
     const char *name, uint32_t signature, StyxRpcChannelExport *exported);
+
+typedef struct FVM_StyxRpcChannelHandler
+{
+    FVM_Context *context;       /* Context of the sole callback owner. */
+    const char *function;       /* Named AVM1 function on context. */
+    struct StyxClient *reverse; /* Borrowed reverse client on the same Styx session. */
+    StyxRpcSchema schema;       /* Channel arguments, copied result or void. */
+    unsigned wait_ms;           /* 1..60000 ms per reverse operation. */
+} FVM_StyxRpcChannelHandler;
+
+
+/* [GC:] EN: Bind one AVM1 callback to the exact compiled function in a hosted handler module.
+ * The binding, name and reverse client are borrowed through module teardown.
+ * RU: Связать колбэк AVM1 с компилированной функцией в хостовом модуле обработчиков.
+ * Привязка, имя и встречный клиент заимствуются до завершения модуля. */
+FVM_API FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
+    const char *name, uint32_t signature, StyxRpcChannelFunction *function);
 
 #ifdef __cplusplus
 }

@@ -29,9 +29,13 @@ static const RemoteMethod methods[] = {
 void fvm_styxrpc_channel_disarm(FVM_StyxRemoteChannel *channel, int deferred)
 {
     StyxRpcChannelLease *lease = channel ? channel->lease : NULL;
+    if (channel)
+    {
+        channel->borrowed = NULL;
+        channel->lease = NULL;
+    }
     if (lease)
     {
-        channel->lease = NULL;
         styxrpc_channel_lease_release(lease, deferred);
     }
 }
@@ -127,7 +131,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (!channel->lease)
+    if (!channel->lease && !channel->borrowed)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is closed");
     }
@@ -148,16 +152,22 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
         {
             error = "Styx RPC channel value does not fit the schema";
         }
-        else if (!channel->lease)
+        else if (!channel->lease && !channel->borrowed)
         {
             error = "Styx RPC channel is closed";
         }
         else
         {
-            rpc_status = styxrpc_channel_lease_exchange(channel->lease, channel->index, &selection,
-                channel->wait_ms, buffers + 2U * STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT,
-                buffers + 3U * STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT,
-                buffers + 4U * STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT, &result);
+            unsigned char *scratch = buffers + 2U * STYXRPC_MANAGED_LIMIT;
+            unsigned char *request = scratch + STYXRPC_MANAGED_LIMIT;
+            unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
+            rpc_status = channel->lease ?
+                styxrpc_channel_lease_exchange(channel->lease, channel->index, &selection,
+                    channel->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+                    reply, STYXRPC_MANAGED_LIMIT, &result) :
+                styxrpc_channel_exchange(channel->borrowed->reverse, channel->borrowed->call, &selection,
+                    channel->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+                    reply, STYXRPC_MANAGED_LIMIT, &result);
             if (rpc_status != STYXRPC_OK)
             {
                 error = rpc_status == STYXRPC_MORE ? "Styx RPC channel operation timed out" :
@@ -182,7 +192,8 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
 
 /* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
 FVM_Result fvm_styxrpc_channel_object(FVM_Context *context, StyxRpcChannelLease *lease,
-    const StyxRpcChannelGrant *grant, size_t index, unsigned wait_ms, FVM_Value *out)
+    FVM_StyxBorrowedChannels *borrowed, const StyxRpcChannelGrant *grant, size_t index,
+    unsigned wait_ms, FVM_Value *out)
 {
     FVM_StyxRemoteChannel *channel = calloc(1, sizeof(*channel));
     FVM_GCRootScope *roots;
@@ -190,12 +201,13 @@ FVM_Result fvm_styxrpc_channel_object(FVM_Context *context, StyxRpcChannelLease 
     FVM_Value value;
     FVM_Result status;
     unsigned i;
-    if (!channel || !styxrpc_channel_lease_retain(lease))
+    if (!channel || (lease && !styxrpc_channel_lease_retain(lease)))
     {
         free(channel);
         return FVM_OUT_OF_MEMORY;
     }
     channel->lease = lease;
+    channel->borrowed = borrowed;
     channel->grant = *grant;
     channel->index = index;
     channel->wait_ms = wait_ms;

@@ -11,19 +11,27 @@
 extern "C" {
 #endif
 
+typedef struct FVM_StyxBorrowedChannels
+{
+    struct StyxClient *reverse;      /* Same-session client while the callback is active. */
+    const StyxRpcChannelCall *call;  /* Checked reverse PID and exact grants. */
+} FVM_StyxBorrowedChannels;
+
 typedef struct FVM_StyxRemoteChannel
 {
-    StyxRpcChannelLease *lease; /* Owned reference until close or GC. */
+    StyxRpcChannelLease *lease;          /* Owned result lease until close or GC. */
+    FVM_StyxBorrowedChannels *borrowed; /* Callback-owned scope, cleared before return. */
     StyxRpcChannelGrant grant; /* Exact key and element type from the reply. */
     size_t index;              /* Its route's position within the lease. */
     unsigned wait_ms;          /* Per-operation polling budget copied at return. */
 } FVM_StyxRemoteChannel;
 
 
-/* [GC:] EN: Define one channel object and retain the caller's lease on success.
- * RU: Создать один объект канала и при успехе удержать аренду вызова. */
+/* [GC:] EN: Create one object for either a retained lease or a scope explicitly disarmed by its owner.
+ * RU: Создать объект удерживаемой аренды либо контекста, явно отзываемого владельцем. */
 FVM_Result fvm_styxrpc_channel_object(FVM_Context *context, StyxRpcChannelLease *lease,
-    const StyxRpcChannelGrant *grant, size_t index, unsigned wait_ms, FVM_Value *value);
+    FVM_StyxBorrowedChannels *borrowed, const StyxRpcChannelGrant *grant, size_t index,
+    unsigned wait_ms, FVM_Value *value);
 
 
 /* [GC:] EN: Release the native payload from the typed userdata slot.

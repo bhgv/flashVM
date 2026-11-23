@@ -1,6 +1,6 @@
 # Reverse channel argument scopes
 
-[Русский](channel_argument_scopes.ru.md) · [SDK](../README.md) · [Result leases](channel_leases.md)
+[Русский](channel_argument_scopes.ru.md) · [SDK](../README.md) · [Result leases](channel_leases.md) · [Host incoming channel calls](channel_handler_modules.md)
 
 The forward caller owns a typed FIFO or rendezvous for each channel argument. One reverse bus per connection lends these queues to the native Dis provider. The library serializes its reverse operations and admits only the keys of the active scope. Calls sharing the same bus serialize on the application owner.
 

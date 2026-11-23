@@ -45,6 +45,5 @@ program can use its delegated `.var`, `.fd` and `.vfs`. Ordinary ref arguments c
 and returned refs, shared identities and sparse copy-back. It also carries native
 hybrid tables with exact signed 64-bit values and ordered key patches.
 The scoped channel binding carries live result channels in both directions and
-lets FlashVM lend its local argument queues to DisVM. Channel arguments from
-DisVM to AS, general reverse-resource declaration and migration of the existing
-in-process editor bridges remain open.
+lends channel arguments in both directions. General reverse-resource declaration
+and migration of the existing in-process editor bridges remain open.

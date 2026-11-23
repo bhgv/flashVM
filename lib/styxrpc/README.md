@@ -152,6 +152,8 @@ The application owns the positional and keyed parts of the table. One C callback
 
 [Channel argument scopes](reference/channel_argument_scopes.md) lend owner-local queues on a stable reverse process bus. The caller verifies its exact scoped offer and keys, publishes only for that invocation, and revokes pending operations on return.
 
+[Hosted channel handlers](reference/channel_handler_modules.md) accept Dis arguments in an independent C application. The Styx dispatcher acknowledges requests and serves replies while the application callback uses the reverse bus on its own thread. The hosted target requires POSIX threads.
+
 ## Leased channel clients and modules
 
 [Hosted channel leases](reference/channel_leases.md) provide verified scoped invocations, pinned result-channel operations and callback-backed channel publication. C programs and the FlashVM bridge share these adapters.

@@ -115,7 +115,7 @@ static int decode_channel(FVM_Context *context, FVM_GCRootScope *roots, void *st
             continue;
         }
         if (channels->objects[i].type != FVM_VALUE_OBJECT &&
-            (fvm_styxrpc_channel_object(context, channels->reply->lease, &route->channel, i,
+            (fvm_styxrpc_channel_object(context, channels->reply->lease, NULL, &route->channel, i,
                 channels->wait_ms, channels->objects + i) != FVM_OK ||
                 fvm_gc_roots_add(roots, channels->objects + i) != FVM_OK))
         {

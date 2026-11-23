@@ -1,5 +1,12 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1713 / Контрольная точка v0.1713. Native DisVM lends live UniBus
+channels to AVM1 handlers through the standalone SDK. The forward dispatcher
+and the callback owner run independently. Проверены алиасы, строки с NUL,
+rendezvous, ошибки и отзыв при возврате. Входящие обработчики возвращают
+копируемое значение или void. [EN](STYX_RPC_CHANNEL_ARGUMENTS.md) /
+[RU](STYX_RPC_CHANNEL_ARGUMENTS.ru.md).
+
 Checkpoint v0.1712 / Контрольная точка v0.1712. Scoped FlashVM calls lend
 typed FIFO and rendezvous queues to DisVM as channel arguments through the
 independent C SDK. Выбор Limbo alt, алиасы и отзыв проверяются вместе с
