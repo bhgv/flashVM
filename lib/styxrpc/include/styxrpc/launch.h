@@ -5,12 +5,14 @@
 #ifndef STYXRPC_LAUNCH_H
 #define STYXRPC_LAUNCH_H
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct StyxClient; /* Borrowed from the installed Styx client. */
+struct StyxFid;    /* Owned single request on a persistent connection. */
 
 
 /* EN: Separate confirmed delivery from execution completion and uncertainty.
@@ -38,6 +40,36 @@ StyxRpcLaunchStatus styxrpc_launch_start(struct StyxClient *client, const void *
  * RU: Прочитать результат на том же одноразовом соединении после PENDING.
  * Один снимок состояния; графиком опроса управляет вызывающий. */
 StyxRpcLaunchStatus styxrpc_launch_status(struct StyxClient *client);
+
+/* EN: Identify already published reverse .prog entries for one named launch.
+ * RU: Выбрать опубликованные встречные записи .prog именованного запуска. */
+typedef struct StyxRpcProgram
+{
+    uint32_t pid;        /* Nonzero ID in the caller's reverse Styx tree. */
+    uint32_t parent_pid; /* Optional distinct parent .prog entry, zero when absent. */
+    uint32_t hidden_fds; /* Hide inherited descriptors selected by bit number. */
+} StyxRpcProgram;
+
+
+/* EN: Borrow client, program and arguments, submit once on programs/.NAME.dis.
+ * scratch is disjoint from arguments. PENDING gives request one owned fid,
+ * which pins this launch through status or close. Failure leaves request NULL.
+ * RU: Заимствовать client, program и arguments, подать один запрос programs/.NAME.dis.
+ * scratch не пересекается с аргументами. При PENDING request владеет fid до
+ * чтения статуса или закрытия. При отказе request равен NULL. */
+StyxRpcLaunchStatus styxrpc_launch_named(struct StyxClient *client, const char *name,
+    const StyxRpcProgram *program, const void *arguments, size_t size,
+    void *scratch, size_t capacity, struct StyxFid **request);
+
+
+/* EN: Read status from the same request fid; repeated reads at offset zero are allowed.
+ * RU: Прочитать статус через fid запроса; допустимо повторять чтение со смещения ноль. */
+StyxRpcLaunchStatus styxrpc_launch_named_status(struct StyxFid *request);
+
+
+/* EN: Consume and clear the fid. Clunk requests cancellation if it is still running.
+ * RU: Поглотить и очистить fid. Clunk запрашивает отмену незавершённого запуска. */
+void styxrpc_launch_named_close(struct StyxFid **request);
 
 #ifdef __cplusplus
 }

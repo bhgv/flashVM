@@ -45,3 +45,18 @@ forward Styx stream. It checks the raw launch profile, sends startup bytes on
 `.unibus` and polls `.exit` over the same connection. The script runs one
 successful and one failing program per VM execution mode. Status 2 means a
 confirmed success and 3 a confirmed program failure.
+
+## Named launches and reverse context
+
+```sh
+python3 examples/disvm/named.py --runtime /path/to/disvm \
+    --limbo /path/to/limbo-bootstrap --module /path/to/upstream/module \
+    --native-module /path/to/disVM/module --driver build/styxrpc-named
+```
+
+The script connects a persistent DisVM provider and a C client with one socket.
+The client publishes `.prog/42` on the reverse stream, selects two public
+program names, closes the fid of a running loop, and uses the same connection
+for the following request. The first image reads `.pid` and a `.vfs` file,
+updates `.var/count`, reads FD 0 and writes to FD 1 and 7.
+Expect `PASS one socket, two named Dis modules, reverse .var/.fd/.vfs` in both VM modes.

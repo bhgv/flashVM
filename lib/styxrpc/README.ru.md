@@ -54,6 +54,12 @@ fid. Диспетчер сериализует операции одного fid
 
 [`styxrpc_managed_profile`](reference/managed_profile.ru.md) · [`styxrpc_managed_open`](reference/managed_open.ru.md) · [`styxrpc_managed_write`](reference/managed_write.ru.md) · [`styxrpc_managed_finish`](reference/managed_finish.ru.md) · [`styxrpc_managed_read`](reference/managed_read.ru.md) · [`styxrpc_managed_close`](reference/managed_close.ru.md) · [`styxrpc_managed_request`](reference/managed_request.ru.md) · [`styxrpc_managed_reply`](reference/managed_reply.ru.md) · [`styxrpc_value_integer`](reference/value_integer.ru.md) · [`styxrpc_launch_start`](reference/launch_start.ru.md) · [`styxrpc_launch_status`](reference/launch_status.ru.md)
 
+## Именованный запуск и динамическое дерево
+
+Постоянный сервис DisVM запускает разные именованные образы по одному соединению Styx. Каждый запуск удерживает отдельный fid чтения и записи. C-клиент публикует встречный контекст `.prog/<pid>` через `StyxRpc::serve`. Сервер вызывает приложение при поиске и чтении каталогов. Смена ревизии останавливает чтение устаревшего каталога. Открытые файлы сохраняют свои состояния до закрытия.
+
+[`styxrpc_launch_named`](reference/launch_named.ru.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.ru.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.ru.md) · [`styxrpc_server_create`](reference/server_create.ru.md) · [`styxrpc_server_step`](reference/server_step.ru.md) · [`styxrpc_server_destroy`](reference/server_destroy.ru.md) · [`styxrpc_server_state`](reference/server_state.ru.md) · [`styxintvariableread`](reference/intvariableread.ru.md) · [`styxintvariablewrite`](reference/intvariablewrite.ru.md)
+
 ## Имя, Qid и fid
 
 При `Twalk` сервер сопоставляет имя в каталоге с устойчивым идентификатором
@@ -63,9 +69,7 @@ fid. Диспетчер сериализует операции одного fid
 Два открытия одного узла дают отдельное состояние открытия и могут обращаться
 к одной переменной. `Tclunk` или обрыв соединения освобождает состояние один раз.
 
-В примере сервер перечисляет файлы устройства при публикации дерева. Для
-каталогов, состав которых меняется, диспетчер должен вызывать перечисление при
-обходе дерева и обеспечивать стабильный порядок для открытого каталога.
+Первый пример устройства публикует постоянное дерево. Пример встречного запуска ищет и перечисляет узлы по запросу.
 
 ## Пример
 
@@ -79,15 +83,9 @@ Limbo показывает [клиент](examples/disvm/client.b). Клиент
 
 ## Что ещё нужно для общего интерфейса устройств
 
-- Генерация читаемого `.m`, вложенные графы с `ref`, именованные запуски с обратным контекстом и отмена запуска.
-- Перечисление и поиск в меняющихся каталогах при обходе Styx.
-- Типизированные переменные и права чтения/записи, прокси открытых `.fd/<n>`
-  с режимом исходного FD, каналы с `send`, `recv`, `alt` и семантикой
-  синхронизации. У каждого предоставленного ресурса свой срок жизни.
-- Согласование возможностей соединения, контексты `.prog/<pid>` и
-  `.self`, отзыв доступа, лимиты и диагностика по запросу. Полезно определить,
-  как выдавать уведомления об изменениях и завершении через существующие
-  sysevents.
+- Генерация читаемого `.m` и вложенные графы с `ref`.
+- Общие функции регистрации переменных и FD поверх колбэков. Именованный пример уже использует скаляр `int32` и FD 0, 1 и 7.
+- Типизированные каналы с `send`, `recv`, `alt`, дополнительные права и уведомления через sysevents.
 
 ## Исходники
 

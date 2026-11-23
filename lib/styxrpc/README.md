@@ -53,6 +53,12 @@ Enable `STYXRPC_HOSTED` for `StyxRpc::launch`. The native client drives the curr
 
 [`styxrpc_managed_profile`](reference/managed_profile.md) · [`styxrpc_managed_open`](reference/managed_open.md) · [`styxrpc_managed_write`](reference/managed_write.md) · [`styxrpc_managed_finish`](reference/managed_finish.md) · [`styxrpc_managed_read`](reference/managed_read.md) · [`styxrpc_managed_close`](reference/managed_close.md) · [`styxrpc_managed_request`](reference/managed_request.md) · [`styxrpc_managed_reply`](reference/managed_reply.md) · [`styxrpc_value_integer`](reference/value_integer.md) · [`styxrpc_launch_start`](reference/launch_start.md) · [`styxrpc_launch_status`](reference/launch_status.md)
 
+## Named launch and dynamic tree
+
+A persistent DisVM provider can launch several named images on one Styx connection. Each launch keeps its own read/write fid. The C peer publishes its reverse `.prog/<pid>` context using `StyxRpc::serve`. The server calls the application to enumerate and resolve directories on demand. A changed revision ends a stale directory scan. Already open file cookies retain their own state.
+
+[`styxrpc_launch_named`](reference/launch_named.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.md) · [`styxrpc_server_create`](reference/server_create.md) · [`styxrpc_server_step`](reference/server_step.md) · [`styxrpc_server_destroy`](reference/server_destroy.md) · [`styxrpc_server_state`](reference/server_state.md) · [`styxintvariableread`](reference/intvariableread.md) · [`styxintvariablewrite`](reference/intvariablewrite.md)
+
 ## Name, Qid and fid
 
 `Twalk` resolves a child name to a stable node ID. The example uses
@@ -62,9 +68,7 @@ mode to the callback and attaches the returned cookie to the opened fid.
 same node has its own state and can operate on the same shared value.
 `Tclunk` and disconnect release each opened state once.
 
-The example enumerates the device file while publishing the tree. Volatile
-directories require enumeration during traversal and stable ordering for an
-open directory cursor.
+The original device sample publishes a static tree. The reverse launch sample uses live lookup and directory enumeration.
 
 ## Example
 
@@ -75,7 +79,7 @@ loads the module, invokes `sample` twice, and reads and writes the virtual file
 with a socket and mounts the device via `--styx-mount-fd FD --raw --at /device`.
 Use `--jit` to run the same test in JIT mode.
 
-Remaining work includes generated `.m` source, graph-aware nested refs, named launches with reverse context, registered variables, numbered FD proxies, typed channels with `alt`, dynamic directory traversal, grants and on-demand diagnostics.
+Remaining work includes generated `.m` source, graph-aware nested refs, generic variable and FD registration, typed channels with `alt`, and richer grants.
 
 ## Sources
 

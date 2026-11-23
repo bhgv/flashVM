@@ -53,6 +53,8 @@ def files(root):
                  "managed_ref_validation", "managed_result_validation", "managed_sequence_edits",
                  "managed_table_wire"):
         yield rpc / (name + ".inc"), root / "lib/styxrpc/protocol" / (name + ".inc")
+    yield rpc / "variable_file.c", root / "lib/styxrpc/protocol/variable_file.c"
+    yield rpc / "variable_file.h", root / "lib/styxrpc/include/styxrpc/variable_file.h"
     yield root / "flashVM/src/capi/utf8.c", root / "lib/styxrpc/protocol/utf8.c"
     yield root / "flashVM/include/flashvm/utf8.h", root / "lib/styxrpc/protocol/flashvm/utf8.h"
     yield root / "LICENSE", root / "lib/styxrpc/LICENSE.bhgv"

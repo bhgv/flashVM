@@ -19,6 +19,8 @@
 {"path": "protocol/managed_result_validation.inc", "sha256": "f2977989a29137d560397260b1abec4397abf1fa92f8d4e4b605ef7a43a4ff2e", "source": "disVM/native/terminal/managed_result_validation.inc", "transform": "identity"}
 {"path": "protocol/managed_sequence_edits.inc", "sha256": "eb02e897e14f2083e5eff4bd5088507b00203d75faa6497416adc2dafe82ec06", "source": "disVM/native/terminal/managed_sequence_edits.inc", "transform": "identity"}
 {"path": "protocol/managed_table_wire.inc", "sha256": "c29284bfb4f9987afc46384ca5a3b5c05433e9a88d7f589f33d3b4157c591323", "source": "disVM/native/terminal/managed_table_wire.inc", "transform": "identity"}
+{"path": "protocol/variable_file.c", "sha256": "81d8aab20e5a42ca6bbca5503cd5b0f991fa8b346250b6fd6986dfebcaf01661", "source": "disVM/native/terminal/variable_file.c", "transform": "identity"}
+{"path": "include/styxrpc/variable_file.h", "sha256": "0911face361138911e92ed61696d1c407075424c8143e671656f877ae344edb0", "source": "disVM/native/terminal/variable_file.h", "transform": "identity"}
 {"path": "protocol/utf8.c", "sha256": "ae3c4427eeae1532c3ee92a467d3e8541d3777946d2f01bd86ffce9586934777", "source": "flashVM/src/capi/utf8.c", "transform": "identity"}
 {"path": "protocol/flashvm/utf8.h", "sha256": "6104e9d7d2dab60b114eb709b46c8315f71b54d00d838e983bf93861e249af02", "source": "flashVM/include/flashvm/utf8.h", "transform": "identity"}
 {"path": "LICENSE.bhgv", "sha256": "043d042cde8799fca4afc8cc0c58b5c48e0092fc8944b9ba7d5fc5b58846b468", "source": "LICENSE", "transform": "identity"}
