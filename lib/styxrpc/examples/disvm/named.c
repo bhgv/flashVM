@@ -81,7 +81,12 @@ int main(int argc, char **argv)
         return 1;
     }
     ReverseState state = {.value = 41};
-    state.server = styxrpc_server_create(phybidirchannel(mux, 1), &reverse_tree, &state);
+    if (!register_reverse(&state))
+    {
+        phybidirfree(mux);
+        return 1;
+    }
+    state.server = styxrpc_server_create(phybidirchannel(mux, 1), &styxrpc_program_tree, &state.tree);
     pthread_t reverse;
     if (!state.server || pthread_create(&reverse, NULL, run_reverse, &state))
     {

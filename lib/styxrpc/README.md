@@ -53,6 +53,30 @@ Enable `STYXRPC_HOSTED` for `StyxRpc::launch`. The native client drives the curr
 
 [`styxrpc_managed_profile`](reference/managed_profile.md) · [`styxrpc_managed_open`](reference/managed_open.md) · [`styxrpc_managed_write`](reference/managed_write.md) · [`styxrpc_managed_finish`](reference/managed_finish.md) · [`styxrpc_managed_read`](reference/managed_read.md) · [`styxrpc_managed_close`](reference/managed_close.md) · [`styxrpc_managed_request`](reference/managed_request.md) · [`styxrpc_managed_reply`](reference/managed_reply.md) · [`styxrpc_value_integer`](reference/value_integer.md) · [`styxrpc_launch_start`](reference/launch_start.md) · [`styxrpc_launch_status`](reference/launch_status.md)
 
+## Process registration
+
+Register the process and its variable, FD and VFS resources on the dispatcher, using fixed caller storage. Each open gets an independent cookie if the application supplies one.
+
+[`styxrpc_programs_init`](reference/programs_init.md) · [`styxrpc_program_add`](reference/program_add.md) · [`styxrpc_program_fd`](reference/program_fd.md) · [`styxrpc_program_int`](reference/program_int.md) · [`styxrpc_program_variable`](reference/program_variable.md) · [`styxrpc_program_file`](reference/program_file.md) · [`styxrpc_program_unibus`](reference/program_unibus.md)
+
+## Limbo source
+
+Generate a .m from the same formal types used for native dispatch. Supply ADT field names and use Limbo for the compiled signature.
+
+[`styxrpc_module_source`](reference/module_source.md)
+
+## Nested reference graphs
+
+Direct mounted Dis calls can use the positional value-only graph protocol. The example updates a nested object and preserves its Limbo identity.
+
+[`styxrpc_graph_profile`](reference/graph_profile.md) · [`styxrpc_graph_request`](reference/graph_request.md) · [`styxrpc_graph_arguments`](reference/graph_arguments.md) · [`styxrpc_graph_reply`](reference/graph_reply.md) · [`styxrpc_graph_read`](reference/graph_read.md)
+
+## UniBus channel frames
+
+The codec and per-fid API admit typed send, receive and ALT requests. The host scheduler chooses readiness, fairness and rendezvous. The socket test uses two C endpoints. Automatic channel grants and Limbo scheduler interop remain open.
+
+[`styxrpc_channel_request`](reference/channel_request.md) · [`styxrpc_channel_read`](reference/channel_read.md) · [`styxrpc_channel_reply`](reference/channel_reply.md) · [`styxrpc_channel_result`](reference/channel_result.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.md)
+
 ## Named launch and dynamic tree
 
 A persistent DisVM provider can launch several named images on one Styx connection. Each launch keeps its own read/write fid. The C peer publishes its reverse `.prog/<pid>` context using `StyxRpc::serve`. The server calls the application to enumerate and resolve directories on demand. A changed revision ends a stale directory scan. Already open file cookies retain their own state.
@@ -79,7 +103,7 @@ loads the module, invokes `sample` twice, and reads and writes the virtual file
 with a socket and mounts the device via `--styx-mount-fd FD --raw --at /device`.
 Use `--jit` to run the same test in JIT mode.
 
-Remaining work includes generated `.m` source, graph-aware nested refs, generic variable and FD registration, typed channels with `alt`, and richer grants.
+Remaining work includes cross-runtime channel grants and scheduler integration, standard operations on managed shared collections, and richer resource grants.
 
 ## Sources
 

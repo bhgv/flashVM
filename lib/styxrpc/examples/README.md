@@ -60,3 +60,23 @@ program names, closes the fid of a running loop, and uses the same connection
 for the following request. The first image reads `.pid` and a `.vfs` file,
 updates `.var/count`, reads FD 0 and writes to FD 1 and 7.
 Expect `PASS one socket, two named Dis modules, reverse .var/.fd/.vfs` in both VM modes.
+
+## Generated interface and nested ref
+
+The `styxrpc-interface` executable prints `device.m` from the device's
+registered shape. The script `examples/disvm/run.py` locates the generator
+next to `--device`, or at `--interface` if provided, and compiles the Limbo
+client with `-D RG`. After `bump`, it checks the changed field and the
+nested object's original identity. Expect
+`PASS Dis load of standalone C device` in both modes.
+
+## UniBus guarded channel operations
+
+```sh
+ctest --test-dir build -R styxrpc-unibus-socket --output-on-failure
+```
+
+Two C endpoints use `.prog/42/.unibus` over Styx. The fixture scheduler
+chooses the ready string guard while another fid is waiting to receive.
+Clunk triggers exactly one application cancellation. Cross-runtime
+`chan of T` still requires grant and Limbo scheduler integration.

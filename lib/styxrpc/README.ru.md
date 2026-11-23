@@ -60,6 +60,30 @@ fid. Диспетчер сериализует операции одного fid
 
 [`styxrpc_launch_named`](reference/launch_named.ru.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.ru.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.ru.md) · [`styxrpc_server_create`](reference/server_create.ru.md) · [`styxrpc_server_step`](reference/server_step.ru.md) · [`styxrpc_server_destroy`](reference/server_destroy.ru.md) · [`styxrpc_server_state`](reference/server_state.ru.md) · [`styxintvariableread`](reference/intvariableread.ru.md) · [`styxintvariablewrite`](reference/intvariablewrite.ru.md)
 
+## Регистрация процесса
+
+Регистрируйте переменные, FD и VFS до запуска диспетчера или в его потоке. Массив регистрации принадлежит приложению. Колбэк открытия может выделить отдельное состояние на каждый fid.
+
+[`styxrpc_programs_init`](reference/programs_init.ru.md) · [`styxrpc_program_add`](reference/program_add.ru.md) · [`styxrpc_program_fd`](reference/program_fd.ru.md) · [`styxrpc_program_int`](reference/program_int.ru.md) · [`styxrpc_program_variable`](reference/program_variable.ru.md) · [`styxrpc_program_file`](reference/program_file.ru.md) · [`styxrpc_program_unibus`](reference/program_unibus.ru.md)
+
+## Исходник Limbo
+
+Библиотека создаёт .m из используемой схемы и указанных имён полей ADT. Сигнатуру вычисляет компилятор Limbo.
+
+[`styxrpc_module_source`](reference/module_source.ru.md)
+
+## Графы вложенных ссылок
+
+Штатный load Dis через прямой Styx поддерживает позиционный формат графа значений. В примере изменяется вложенный объект с сохранением его идентичности.
+
+[`styxrpc_graph_profile`](reference/graph_profile.ru.md) · [`styxrpc_graph_request`](reference/graph_request.ru.md) · [`styxrpc_graph_arguments`](reference/graph_arguments.ru.md) · [`styxrpc_graph_reply`](reference/graph_reply.ru.md) · [`styxrpc_graph_read`](reference/graph_read.ru.md)
+
+## Кадры каналов UniBus
+
+Кодек и API fid принимают типизированные send, recv и ALT. Готовность, порядок и rendezvous определяет планировщик хоста. Тест по сокету соединяет два C-конца. Автоматическая выдача полномочий и работа с планировщиком Limbo остаются открытыми.
+
+[`styxrpc_channel_request`](reference/channel_request.ru.md) · [`styxrpc_channel_read`](reference/channel_read.ru.md) · [`styxrpc_channel_reply`](reference/channel_reply.ru.md) · [`styxrpc_channel_result`](reference/channel_result.ru.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.ru.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.ru.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.ru.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.ru.md)
+
 ## Имя, Qid и fid
 
 При `Twalk` сервер сопоставляет имя в каталоге с устойчивым идентификатором
@@ -74,18 +98,16 @@ fid. Диспетчер сериализует операции одного fid
 ## Пример
 
 [Устройство на C](examples/device.c) публикует `/mounted/device.dis`.
-Профиль создаётся из описателя `sample`, а необязательное совпадающее объявление
-Limbo показывает [клиент](examples/disvm/client.b). Клиент делает обычный
+Профиль создаётся из описателя `sample`, а [клиент](examples/disvm/client.b) компилируется с сгенерированным `device.m`. Клиент делает обычный
 `load`, дважды вызывает функцию и читает и пишет виртуальный файл `value`.
 [Сценарий проверки](examples/disvm/run.py) соединяет отдельные процессы через
 сокет и запускает DisVM с `--styx-mount-fd FD --raw --at /device`.
 Флаг `--jit` проверяет тот же сценарий в JIT.
 
-## Что ещё нужно для общего интерфейса устройств
+## Что ещё нужно
 
-- Генерация читаемого `.m` и вложенные графы с `ref`.
-- Общие функции регистрации переменных и FD поверх колбэков. Именованный пример уже использует скаляр `int32` и FD 0, 1 и 7.
-- Типизированные каналы с `send`, `recv`, `alt`, дополнительные права и уведомления через sysevents.
+- Передача `chan of T` между средами и общий планировщик готовности, rendezvous и `alt`.
+- Вложенные управляемые переменные со стандартными операциями над коллекциями и дополнительные контексты полномочий.
 
 ## Исходники
 

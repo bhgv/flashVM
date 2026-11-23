@@ -261,13 +261,15 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         {
             int table = strchr(shape.arguments, 'h') || strchr(shape.result, 'h');
             int needs_graph = table || strchr(shape.result, 'c') || styxmanaged_graph_required(shape.arguments);
-            if (needs_graph && (!caller || managed_tag != STYX_MANAGED_GRAPH_TAG))
+            /* EN: A direct mounted owner can accept value graphs without reverse resources.
+             * RU: Прямой владелец может принимать графы значений без встречных ресурсов. */
+            if (needs_graph && (managed_tag != STYX_MANAGED_GRAPH_TAG || (channels && !caller)))
             {
                 bit = 0;
             }
-            else if (managed_tag == STYX_MANAGED_GRAPH_TAG)
+            else if (managed_tag == STYX_MANAGED_GRAPH_TAG && (needs_graph || caller))
             {
-                if (caller && !read_graph_marker)
+                if (!read_graph_marker)
                 {
                     unsigned char marker[sizeof(STYX_MANAGED_POSITION_GRAPH_MARKER)];
                     size_t length = mounted_profile(directory, STYX_MANAGED_DELTA_FILE, marker, sizeof(marker));
@@ -283,12 +285,16 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
                     }
                     read_graph_marker = 1;
                 }
-                if (table && graph_tag != STYX_MANAGED_POSITION_GRAPH_TAG)
+                if ((table || !caller) && graph_tag != STYX_MANAGED_POSITION_GRAPH_TAG)
                 {
                     bit = 0;
                 }
                 managed_tag = needs_graph ? graph_tag : graph_tag == STYX_MANAGED_POSITION_GRAPH_TAG ?
                     STYX_MANAGED_POSITION_FLAT_TAG : STYX_MANAGED_WIDE_REFS_TAG;
+            }
+            else if (!needs_graph && !caller && managed_tag == STYX_MANAGED_GRAPH_TAG)
+            {
+                managed_tag = STYX_MANAGED_REQUEST_TAG;
             }
         }
         if (!bit || (bit & matched) || shape_conflict || !(*tail = dvm_scalar_function_files(directory, name)))

@@ -6,12 +6,7 @@ include "sys.m";
 
 Client: module { init: fn(); };
 
-Device: module
-{
-    Cell: adt { counter: int; };
-    adjust: fn(text: string, samples: array of int, item: ref Cell): (string, int);
-    sample: fn(value: int): int;
-};
+include "device.m";
 
 
 # EN: Require an ordinary Dis load and the C callback's returned value.
@@ -34,6 +29,11 @@ init()
     (text, counter) = device->adjust("unchanged", array[] of {0}, item);
     if (text != "unchanged" || counter != 42 || item.counter != 42) {
         raise "wrong typed reply without ref writeback";
+    }
+    box := ref Device->Box(item);
+    device->bump(box);
+    if (item.counter != 43 || box.inner != item) {
+        raise "wrong nested ref writeback";
     }
     path := "/device/mounted/device.dis/value";
     reader := sys->open(path, Sys->OREAD);

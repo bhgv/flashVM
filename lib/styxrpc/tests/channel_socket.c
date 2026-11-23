@@ -1,0 +1,204 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Exchange typed UniBus selection on registered process fids over Styx.
+ * RU: Обмен типизированным выбором UniBus через fid процесса в Styx.
+ */
+#include "styxrpc/channel_fid.h"
+#include "styxrpc/program.h"
+#include "client.h"
+#include "drivers/posix/fd.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+static const StyxRpcChannelGrant grants[] = {{1, "(i)"}, {2, "(s)"}}; /* Explicit local capabilities. */
+
+
+typedef struct Endpoint
+{
+    StyxRpcServer *server; /* Owned by server thread after pthread_create. */
+    unsigned cancelled;    /* Checked only after joining dispatcher. */
+} Endpoint;
+
+typedef struct Open
+{
+    StyxRpcChannelFid fid;     /* Portable per-fid state. */
+    unsigned char request[128]; /* One operation. */
+    unsigned char reply[128];   /* One completion. */
+} Open;
+
+
+/* EN: Complete a TRY with a ready string; retain the blocking receive until cancellation.
+ * RU: Завершить TRY готовой строкой; блокирующий приём оставить до отмены. */
+static int schedule(void *context, StyxRpcChannelFid *fid)
+{
+    (void)context;
+    if (fid->selection.mode != STYXRPC_CHANNEL_TRY)
+    {
+        return 1;
+    }
+    unsigned char field[16], value[24];
+    size_t length, used;
+    return fid->selection.count == 2 && fid->selection.guards[1].key == 2 &&
+        fvm_srecord_write(STYXRPC_VALUE_STRING, "ready", 5, field, sizeof(field), &length) == FVM_S_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, field, length, value, sizeof(value), &used) == FVM_S_OK &&
+        styxrpc_channel_fid_finish(fid, 2, value, used) == STYXRPC_OK;
+}
+
+
+/* EN: Confirm exactly one unresolved admission is retired.
+ * RU: Зафиксировать завершение ровно одной ожидающей операции. */
+static void cancel(void *context, StyxRpcChannelFid *fid)
+{
+    Endpoint *endpoint = context;
+    if (fid->selection.count == 1)
+    {
+        endpoint->cancelled++;
+    }
+}
+
+
+/* EN: Install an independently owned channel operation per read/write fid.
+ * RU: Создать независимую операцию канала на каждом fid чтения и записи. */
+static int open_bus(void *context, unsigned access, void **cookie)
+{
+    if (access != (STYXRPC_READ | STYXRPC_WRITE))
+    {
+        return 0;
+    }
+    Open *opened = calloc(1, sizeof(*opened));
+    if (!opened)
+    {
+        return 0;
+    }
+    opened->fid = (StyxRpcChannelFid){.grants = grants, .grant_count = 2,
+        .request = opened->request, .request_capacity = sizeof(opened->request),
+        .reply = opened->reply, .reply_capacity = sizeof(opened->reply),
+        .admit = schedule, .cancel = cancel, .context = context};
+    *cookie = opened;
+    return 1;
+}
+
+
+/* EN: Return a completed reply or an empty pending prefix on the selected fid.
+ * RU: Вернуть полный ответ либо пустой префикс ожидания на выбранном fid. */
+static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
+{
+    Open *opened = cookie;
+    return offset <= SIZE_MAX && styxrpc_channel_fid_read(&opened->fid,
+        (size_t)offset, bytes, capacity, size) != STYXRPC_INVALID;
+}
+
+
+/* EN: Acknowledge each accepted prefix once, even when the request is fragmented.
+ * RU: Подтвердить каждый принятый фрагмент один раз, включая разбитый запрос. */
+static int write_bus(void *cookie, uint64_t offset, const void *bytes, size_t size, size_t *written)
+{
+    Open *opened = cookie;
+    if (offset > SIZE_MAX || styxrpc_channel_fid_write(&opened->fid, (size_t)offset, bytes, size) == STYXRPC_INVALID)
+    {
+        return 0;
+    }
+    *written = size;
+    return 1;
+}
+
+
+/* EN: Retire the exact operation before returning its native buffers.
+ * RU: Закрыть точную операцию до освобождения нативных буферов. */
+static void close_bus(void *cookie)
+{
+    Open *opened = cookie;
+    styxrpc_channel_fid_close(&opened->fid);
+    free(opened);
+}
+
+
+/* EN: Serve an owned reverse endpoint until the client disconnects.
+ * RU: Обслуживать встречный endpoint до отключения клиента. */
+static void *dispatch(void *context)
+{
+    Endpoint *endpoint = context;
+    while (styxrpc_server_step(endpoint->server))
+    {
+    }
+    styxrpc_server_destroy(endpoint->server);
+    return NULL;
+}
+
+
+/* EN: Submit a delayed guard and an immediate mixed ALT on separate fids.
+ * RU: Подать ожидающую ветку и немедленный смешанный ALT на разных fid. */
+static int exchange(StyxClient *client)
+{
+    StyxFid *park = styxclientwalk(client, ".prog/42/.unibus");
+    StyxFid *ready = styxclientwalk(client, ".prog/42/.unibus");
+    const StyxRpcSelection receive = {.count = 1, .guards = {{1, 1, NULL, 0}}};
+    const StyxRpcSelection selection = {.mode = STYXRPC_CHANNEL_TRY, .count = 2,
+        .guards = {{1, 1, NULL, 0}, {2, 1, NULL, 0}}};
+    unsigned char request[128], scratch[96], reply[96];
+    size_t length;
+    StyxTransfer sent, prefix, received;
+    StyxRpcChannelResult result;
+    int good = park && ready && styxclientopen(park, 2) && styxclientopen(ready, 2) &&
+        styxrpc_channel_request(grants, 2, &receive, NULL, 0,
+            request, sizeof(request), &length) == STYXRPC_OK;
+    if (good)
+    {
+        styxclientwrite(park, 0, request, length, &sent);
+        styxclientread(park, 0, reply, sizeof(reply), &prefix);
+        good = sent.success && sent.count == length && prefix.success && !prefix.count &&
+            styxrpc_channel_request(grants, 2, &selection, scratch, sizeof(scratch),
+                request, sizeof(request), &length) == STYXRPC_OK;
+    }
+    if (good)
+    {
+        styxclientwrite(ready, 0, request, 1, &prefix);
+        styxclientwrite(ready, 1, request + 1, length - 1, &sent);
+        styxclientread(ready, 0, reply, sizeof(reply), &received);
+        good = prefix.success && prefix.count == 1 && sent.success && sent.count == length - 1 &&
+            received.success && styxrpc_channel_result(grants, 2, &selection, reply, received.count,
+                &result) == STYXRPC_OK && result.selected == 2 && result.size;
+    }
+    styxclientclunk(park);
+    styxclientclunk(ready);
+    return good;
+}
+
+
+/* EN: Run the exchange on a connected socket and verify that clunk cancelled the pending fid.
+ * RU: Выполнить обмен по сокету и проверить, что clunk отменил ожидающий fid. */
+int main(void)
+{
+    Endpoint endpoint = {0};
+    StyxRpcPrograms programs;
+    StyxRpcRegistration nodes[8];
+    const StyxRpcResource resource = {&endpoint, open_bus, read_bus, write_bus, close_bus};
+    int sockets[2];
+    if (!styxrpc_programs_init(&programs, nodes, 8) || !styxrpc_program_add(&programs, 42) ||
+        !styxrpc_program_unibus(&programs, 42, &resource) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
+    {
+        return 1;
+    }
+    endpoint.server = styxrpc_server_create(phyposixfd(sockets[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE),
+        &styxrpc_program_tree, &programs);
+    pthread_t owner;
+    if (!endpoint.server || pthread_create(&owner, NULL, dispatch, &endpoint))
+    {
+        styxrpc_server_destroy(endpoint.server);
+        close(sockets[0]);
+        return 1;
+    }
+    StyxClient *client = styxclientmountfd(sockets[0], 4096, "test", "", 1000, 8);
+    int good = client && exchange(client);
+    styxclientshutdown(client);
+    styxclientfree(client);
+    pthread_join(owner, NULL);
+    if (!good || endpoint.cancelled != 1)
+    {
+        fputs("UniBus selection or pending fid retirement failed\n", stderr);
+        return 1;
+    }
+    return 0;
+}

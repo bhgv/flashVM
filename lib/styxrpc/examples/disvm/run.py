@@ -14,12 +14,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("runtime", "limbo", "module", "device"):
         parser.add_argument("--" + name, required=True, type=lambda arg: Path(arg).resolve())
+    parser.add_argument("--interface", type=lambda arg: Path(arg).resolve())
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
     source = Path(__file__).with_name("client.b")
     with tempfile.TemporaryDirectory(prefix="styxrpc-device-") as temporary:
         image = Path(temporary) / "client.dis"
-        subprocess.run([args.limbo, "-D", "RG", "-I", args.module, "-o", image, source], check=True, timeout=15)
+        generator = args.interface or args.device.with_name("styxrpc-interface")
+        with (Path(temporary) / "device.m").open("wb") as interface:
+            subprocess.run([generator], stdout=interface, check=True, timeout=15)
+        subprocess.run([args.limbo, "-D", "RG", "-I", args.module, "-I", temporary, "-o", image, source],
+                       check=True, timeout=15)
         caller, device = socket.socketpair()
         with caller, device:
             process = subprocess.Popen([args.device, str(device.fileno())], pass_fds=(device.fileno(),))

@@ -9,6 +9,7 @@
 #include "drivers/posix/fd.h"
 #include "styxrpc/rpc.h"
 #include "adjust.h"
+#include "graph_device.h"
 #include "styxrpc/vfs.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -17,6 +18,8 @@
 #define MOUNTED 1UL /* Directory of published modules. */
 #define DEVICE 2UL /* Read/execute module directory. */
 #define PROFILE 3UL /* Compiler-compatible interface. */
+#define GRAPH 7UL /* Positional graph function. */
+#define DELTA 8UL /* Graph capability marker. */
 #define ADJUST 6UL  /* Managed function with per-fid record buffers. */
 #define VALUE 5UL /* Byte file backed by a device register. */
 #define SAMPLE 4UL /* An opened function has private request and reply state. */
@@ -141,6 +144,24 @@ static char *open_adjust(int mode)
  * RU: Выбрать узел по Qid в Topen и удержать вызов на точном fid. */
 static char *open_file(Qid *qid, int mode)
 {
+    if (qid->path == GRAPH)
+    {
+        if (mode != ORDWR)
+        {
+            return Eperm;
+        }
+        BumpCall *call = calloc(1, sizeof(*call));
+        if (!call)
+        {
+            return Enomem;
+        }
+        if (styxsetauxowned(&server, call, free) < 0)
+        {
+            free(call);
+            return Eperm;
+        }
+        return nil;
+    }
     if (qid->path == ADJUST)
     {
         return open_adjust(mode);
@@ -196,16 +217,18 @@ static char *read_file(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    if (qid.path == PROFILE)
+    if (qid.path == PROFILE || qid.path == DELTA)
     {
-        size_t available = (size_t)offset < profile_size ? profile_size - (size_t)offset : 0;
+        const void *source = qid.path == PROFILE ? (const void *)profile : STYXRPC_POSITIONAL_GRAPH;
+        size_t length = qid.path == PROFILE ? profile_size : sizeof(STYXRPC_POSITIONAL_GRAPH) - 1;
+        size_t available = (size_t)offset < length ? length - (size_t)offset : 0;
         if (*count > available)
         {
             *count = available;
         }
         if (*count)
         {
-            memcpy(bytes, profile + offset, *count);
+            memcpy(bytes, (const unsigned char *)source + offset, *count);
         }
         return nil;
     }
@@ -213,6 +236,15 @@ static char *read_file(Qid qid, char *bytes, ulong *count, vlong offset)
     if (qid.path == VALUE)
     {
         if (styxrpc_file_read(styxgetaux(&server), offset, bytes, *count, &size) != STYXRPC_OK)
+        {
+            return Ebadarg;
+        }
+        *count = size;
+        return nil;
+    }
+    if (qid.path == GRAPH)
+    {
+        if (!bump_read(styxgetaux(&server), offset, bytes, *count, &size))
         {
             return Ebadarg;
         }
@@ -258,6 +290,10 @@ static char *write_file(Qid qid, char *bytes, ulong *count, vlong offset)
         *count = size;
         return nil;
     }
+    if (qid.path == GRAPH)
+    {
+        return bump_write(styxgetaux(&server), offset, bytes, *count) ? nil : Ebadarg;
+    }
     if (qid.path == ADJUST)
     {
         AdjustFid *fid = styxgetaux(&server);
@@ -289,18 +325,26 @@ int main(int argc, char **argv)
         return 2;
     }
     profile_size += typed_size;
+    if (styxrpc_graph_profile("bump", BUMP_SIGNATURE, &bump_schema,
+        profile + profile_size, sizeof(profile) - profile_size, &typed_size) != STYXRPC_OK)
+    {
+        return 2;
+    }
+    profile_size += typed_size;
     static Styxops ops = {.open = open_file, .read = read_file, .write = write_file};
     RemotePhy *phy = phyposixfd((int)fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
     if (styxphyinit(&server, &ops, phy, 0555, 0, 8))
     {
         return 1;
     }
-    Styxfile *iface = NULL;
+    Styxfile *iface = NULL, *delta = NULL;
     int published = styxadddir(&server, Qroot, MOUNTED, "mounted", 0555, "device") &&
         styxadddir(&server, MOUNTED, DEVICE, "device.dis", 0555, "device") &&
         (iface = styxaddfile(&server, DEVICE, PROFILE, ".interface", 0444, "device")) &&
         styxaddfile(&server, DEVICE, SAMPLE, "sample", 0777, "device") &&
-        styxaddfile(&server, DEVICE, ADJUST, "adjust", 0777, "device");
+        styxaddfile(&server, DEVICE, ADJUST, "adjust", 0777, "device") &&
+        styxaddfile(&server, DEVICE, GRAPH, "bump", 0777, "device") &&
+        (delta = styxaddfile(&server, DEVICE, DELTA, ".ref-fields", 0444, "device"));
     for (size_t index = 0; published; ++index)
     {
         StyxRpcEntry entry;
@@ -315,6 +359,7 @@ int main(int argc, char **argv)
     if (published)
     {
         iface->d.length = profile_size;
+        delta->d.length = sizeof(STYXRPC_POSITIONAL_GRAPH) - 1;
         while (!styxwait(&server) && !styxprocess(&server))
         {
         }
