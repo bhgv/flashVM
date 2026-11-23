@@ -14,6 +14,7 @@ extern "C" {
 typedef struct FVM_StyxChannelSet
 {
     StyxRpcChannelLease *lease;        /* One retained result lease, if any. */
+    struct FVM_StyxLocalLoan *loans;   /* Reverse publications owned by this family. */
     struct StyxClient *reverse;        /* Borrowed reverse mount during a callback. */
     StyxRpcChannelCall *call;          /* Mutable copy of the scoped reverse grants. */
     size_t references;                 /* Owner-local count including each live wrapper. */
@@ -67,7 +68,7 @@ int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, voi
 
 typedef struct FVM_StyxPidGrant
 {
-    StyxRpcChannelLease *lease; /* Retained issuing lease shared by the intended receiver. */
+    FVM_StyxChannelSet *set;    /* Retained issuing family and its reverse publications. */
     StyxRpcChannelRoute route;  /* Host-authorized reverse endpoint. */
 } FVM_StyxPidGrant;
 
@@ -91,6 +92,11 @@ FVM_StyxPidGrant *fvm_styxrpc_pid_lookup(FVM_Context *context, FVM_Object *objec
 /* [GC:] EN: Release a PID message value and retire its native lease reference.
  * RU: Освободить значение PID и снять его ссылку на нативную аренду. */
 void fvm_styxrpc_pid_release(void *state);
+
+
+/* [GC:] EN: Retire all local publications of set before dropping its remote lease.
+ * RU: Отозвать все локальные публикации set до освобождения удалённой аренды. */
+void fvm_styxrpc_channel_retire_loans(FVM_StyxChannelSet *set);
 
 
 /* [GC:] EN: Encode a nested null or live channel on the target's exact current bus.
@@ -190,6 +196,18 @@ void *fvm_styxrpc_local_channel_lookup(FVM_Context *context, FVM_Object *object)
 /* EN: Borrow the queue of an open script-local channel.
  * RU: Заимствовать очередь открытого локального канала. */
 StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const FVM_Value *value);
+
+
+/* EN: Pin a by-value queue from value and lock out local use on its owner.
+ * Set owner to the native pin on success, otherwise return NULL.
+ * RU: Удержать очередь по значению из value и запретить параллельное использование.
+ * При успехе записать в owner удерживаемое состояние, иначе вернуть NULL. */
+StyxRpcChannelQueue *fvm_styxrpc_local_channel_borrow(FVM_Context *context, const FVM_Value *value, void **owner);
+
+
+/* [GC:] EN: Unlock and release a native pin after returning queue ownership.
+ * RU: Разблокировать и освободить owner после возврата владения очередью. */
+void fvm_styxrpc_local_channel_return(void *owner);
 
 #ifdef __cplusplus
 }

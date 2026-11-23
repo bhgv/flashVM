@@ -172,6 +172,7 @@ fid holds its lease.
 
 The C dispatcher can revoke a reverse bus immediately. Pending operations retire before the call returns, and old fids can only be clunked. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.md) The registry issues fresh PIDs for temporary buses and reuses their slots after revocation. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.md)
 
+When the application owner and the reverse dispatcher run on separate threads, use a [program server](reference/program_server_create.md). The host can [publish](reference/program_server_grant.md) and [revoke](reference/program_server_revoke.md) a PID while the dispatcher runs. A [borrowed queue resource](reference/channel_group_reverse_borrow.md) lets the peer use an existing by-value FIFO or rendezvous and returns the advanced cursor to the owner after revocation.
 
 ## Shared C module bus
 

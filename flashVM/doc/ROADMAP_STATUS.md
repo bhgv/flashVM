@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1719 / Контрольная точка v0.1719. FlashVM publishes local
+by-value queues as live reverse PIDs through the independent C SDK.
+Очередь возвращается владельцу после отзыва PID с данными завершённых
+операций. Проверен рекурсивный обмен между FlashVM и нативной DisVM.
+[EN](STYX_RPC_CHANNEL_DELEGATION.md) / [RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1718 / Контрольная точка v0.1718. ActionScript sends
 host-bound reverse PID grants and uses admitted module grants through the
 original lease. Два встречных PID и отдельный токен модуля проверены

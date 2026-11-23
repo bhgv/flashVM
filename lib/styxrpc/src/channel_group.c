@@ -25,10 +25,18 @@ static uint64_t now_ms(void *unused)
 static void release_group(void *context)
 {
     ChannelGroup *group = context;
-    for (size_t i = 0; i < group->count; ++i)
+    if (group->borrowed)
     {
-        free(group->queues[i].sizes);
-        free(group->queues[i].bytes);
+        group->borrowed->head = group->queues[0].head;
+        group->borrowed->count = group->queues[0].count;
+    }
+    else
+    {
+        for (size_t i = 0; i < group->count; ++i)
+        {
+            free(group->queues[i].sizes);
+            free(group->queues[i].bytes);
+        }
     }
     free(group);
 }
@@ -83,9 +91,11 @@ static int allocate(StyxRpcChannelQueue *queue, const StyxRpcChannelQueue *sourc
 }
 
 
-/* EN: Check every seed against its declared type and known group keys before copying.
- * RU: Проверить каждый начальный элемент по типу и ключам группы перед копированием. */
-static int seed(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *source, void *frame)
+/* EN: Check each seed from source using the typed reply builder and scratch frame.
+ * Copy to the queue at index only for an owned group.
+ * RU: Проверить элементы source построителем типизированных ответов через буфер frame.
+ * Копировать в очередь index только при владении группой. */
+static int seed(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *source, void *frame, int copy)
 {
     StyxRpcChannelQueue *queue = group->queues + index;
     const StyxRpcSelection receive = {.count = 1, .guards = {{queue->grant.key, 1, NULL, 0}},
@@ -96,12 +106,16 @@ static int seed(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *so
         size_t slot = (source->head + i) % source->capacity;
         const unsigned char *bytes = source->bytes + slot * source->stride;
         size_t size = source->sizes[slot], extent;
-        unsigned char *target = queue->bytes + i * queue->stride;
         if (!size || size > source->stride || styxrpc_channel_reply(group->grants, group->count,
             &receive, 1, bytes, size, frame, STYXRPC_MANAGED_LIMIT, &extent) != STYXRPC_OK)
         {
             return 0;
         }
+        if (!copy)
+        {
+            continue;
+        }
+        unsigned char *target = queue->bytes + i * queue->stride;
         if (nested)
         {
             if (!styxrpc_group_normalize(group, bytes, size, target, queue->stride, &size) ||
@@ -117,7 +131,6 @@ static int seed(ChannelGroup *group, size_t index, const StyxRpcChannelQueue *so
         }
         queue->sizes[i] = size;
     }
-    queue->count = source->count;
     return 1;
 }
 
@@ -147,7 +160,8 @@ static StyxRpcStatus create_output(const StyxRpcChannelQueue *queues, size_t cou
         ok = ok && styxrpc_scheduler_init(&group->scheduler, group->queues, count, now_ms, NULL);
         for (size_t i = 0; ok && i < count; ++i)
         {
-            ok = seed(group, i, queues + i, frame);
+            ok = seed(group, i, queues + i, frame, 1);
+            group->queues[i].count = queues[i].count;
         }
     }
     free(frame);
@@ -178,4 +192,50 @@ StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *qu
     size_t root, StyxRpcChannelOutput *output)
 {
     return create_output(queues, count, root, output, 1);
+}
+
+
+/* EN/RU: See styxrpc/channel_group.h. / См. styxrpc/channel_group.h. */
+StyxRpcStatus styxrpc_channel_group_reverse_borrow(StyxRpcChannelQueue *queue, StyxRpcChannelOutput *output)
+{
+    if (!queue || !output || !queue->grant.key || queue->grant.key > INT32_MAX ||
+        !memchr(queue->grant.shape, 0, sizeof(queue->grant.shape)) || strpbrk(queue->grant.shape, "crh") ||
+        queue->capacity > STYXRPC_CHANNEL_GROUP_CAPACITY || queue->count > queue->capacity ||
+        (queue->capacity ? queue->head >= queue->capacity : queue->head != 0))
+    {
+        return STYXRPC_INVALID;
+    }
+    ChannelGroup *group = calloc(1, sizeof(*group));
+    if (!group)
+    {
+        return STYXRPC_INVALID;
+    }
+    group->queues[0] = *queue;
+    group->queues[0].head = 0;
+    group->queues[0].count = 0;
+    group->grants[0] = queue->grant;
+    group->policy = (StyxRpcChannelPolicy){styxrpc_group_allows, group};
+    group->count = 1;
+    group->reverse = 1;
+    if (!styxrpc_scheduler_init(&group->scheduler, group->queues, 1, now_ms, NULL))
+    {
+        free(group);
+        return STYXRPC_INVALID;
+    }
+    if (queue->count)
+    {
+        void *frame = malloc(STYXRPC_MANAGED_LIMIT);
+        int valid = frame && seed(group, 0, queue, frame, 0);
+        free(frame);
+        if (!valid)
+        {
+            free(group);
+            return STYXRPC_INVALID;
+        }
+    }
+    group->queues[0].head = queue->head;
+    group->queues[0].count = queue->count;
+    group->borrowed = queue;
+    *output = (StyxRpcChannelOutput){styxrpc_group_resource(group), queue->grant.key, !queue->capacity, release_group};
+    return STYXRPC_OK;
 }

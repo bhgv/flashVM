@@ -6,7 +6,7 @@
 #include "channel-test.h"
 #include "flashvm/exception.h"
 #include "flashvm/avm1.h"
-#include "styxrpc/channel_group.h"
+#include "flashvm/gc.h"
 #include "styxrpc/program.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
@@ -30,16 +30,13 @@
 #define PUSH_INT 7U               /* Four-byte little-endian action integer. */
 
 static const StyxRpcChannelGrant hub = {1, "(c[c[i]])"}; /* Receives a module child and echoes it. */
-static const StyxRpcChannelGrant leaf = {2, "(i)"};       /* Final exchange through a second PID. */
 
 typedef struct TestRoutes
 {
     StyxRpcPrograms programs;          /* Reverse registrations and stable process tree. */
     StyxRpcRegistration nodes[20];    /* All slots used by the reverse tree. */
-    StyxRpcChannelOutput endpoint;    /* Owned reverse FIFO kept through server retirement. */
-    StyxRpcServer *server;             /* Owned by the dispatcher after launch. */
+    StyxRpcServer *server;            /* Served on the worker and destroyed after join. */
     uint32_t hub_pid;                  /* Published PID for the module-message hub. */
-    uint32_t leaf_pid;                 /* Published PID for the independent integer channel. */
     unsigned seen;                     /* Release/acquire count of exact module deliveries. */
     size_t extent;                     /* Immutable frame length after the first delivery. */
     unsigned char message[FRAME];      /* Captured exact module message from the native peer. */
@@ -154,33 +151,25 @@ static void hub_close(void *cookie)
 }
 
 
-/* EN: Publish both PID routes before starting the serialized dispatcher.
- * RU: Опубликовать оба маршрута PID до запуска сериализованного диспетчера. */
+/* EN: Publish the fixed hub on routes before starting the reverse dispatcher.
+ * RU: Зарегистрировать постоянную шину routes до запуска встречного диспетчера. */
 static int publish(TestRoutes *routes)
 {
-    unsigned char arena[2][FRAME];
-    size_t lengths[2];
-    const StyxRpcChannelQueue queue = {.grant = leaf, .bytes = arena[0],
-        .sizes = lengths, .capacity = 2, .stride = FRAME, .count = 1};
     const StyxRpcResource resource = {routes, hub_open, hub_read, hub_write, hub_close};
-    return styxrpc_value_integer(STYXRPC_VALUE_INT, 81, arena[0], sizeof(arena[0]), lengths) == STYXRPC_OK &&
-        styxrpc_channel_group_reverse_output(&queue, 1, 0, &routes->endpoint) == STYXRPC_OK &&
-        styxrpc_programs_init(&routes->programs, routes->nodes, sizeof(routes->nodes) / sizeof(*routes->nodes)) &&
+    return styxrpc_programs_init(&routes->programs, routes->nodes, sizeof(routes->nodes) / sizeof(*routes->nodes)) &&
         styxrpc_program_add(&routes->programs, CALL_PID) &&
-        (routes->hub_pid = styxrpc_program_unibus_grant(&routes->programs, &resource)) &&
-        (routes->leaf_pid = styxrpc_program_unibus_grant(&routes->programs, &routes->endpoint.resource));
+        (routes->hub_pid = styxrpc_program_unibus_grant(&routes->programs, &resource));
 }
 
 
-/* EN: Serialize reverse requests and close every fid before returning ownership.
- * RU: Сериализовать встречные запросы и закрыть все fid перед возвратом владения. */
+/* EN: Serve reverse requests for routes until disconnect, then return server ownership.
+ * RU: Обслуживать встречные запросы routes до обрыва и вернуть владение сервером. */
 static void *serve(void *state)
 {
     TestRoutes *routes = state;
     while (styxrpc_server_step(routes->server))
     {
     }
-    styxrpc_server_destroy(routes->server);
     return NULL;
 }
 
@@ -244,16 +233,18 @@ static int send(FVM_Context *context, const FVM_Value *object, const FVM_Value *
 }
 
 
-/* [GC:] EN: Exercise two reverse PIDs and a separate module token through AS channel methods.
- * RU: Проверить два встречных PID и отдельный токен модуля через методы каналов AS. */
-static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *client, const TestRoutes *routes)
+/* [GC:] EN: On context, exercise two PIDs and a module token across client and routes.
+ * Root temporary values in roots. Lend the caller's already rooted local FIFO.
+ * RU: В context проверить два PID и токен модуля по client и routes.
+ * Удержать значения в roots, заимствовать уже удерживаемую очередь local. */
+static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *client,
+    const TestRoutes *routes, const FVM_Value *local)
 {
     StyxRpcManagedTarget target = {
         client, "mounted/channel-lifetime.dis", "open", UINT32_C(0x1303311e),
         {"()", "((c[c[c[c[i]]]]c[i]))"}, CALL_PID, WAIT_MS
     };
     const StyxRpcChannelRoute first = {.kind = STYXRPC_ROUTE_PID, .pid = routes->hub_pid, .channel = hub, .unbuffered = 1};
-    const StyxRpcChannelRoute second = {.kind = STYXRPC_ROUTE_PID, .pid = routes->leaf_pid, .channel = leaf};
     StyxRpcChannelRoute module;
     FVM_Value tuple, other, input, result, unrelated, offered, channel, alias, value;
     if (fvm_styxrpc_channel_import(context, "openDis", &target) != FVM_OK ||
@@ -292,38 +283,79 @@ static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *cl
         return 0;
     }
     module.unbuffered = 0;
+    FVM_Value args[] = {channel, *local};
     if (fvm_styxrpc_channel_admit_module(context, &result, &module, &value) != FVM_INVALID_ARGUMENT ||
-        fvm_styxrpc_channel_delegate_pid(context, &channel, &second, &offered) != FVM_OK ||
-        !send(context, &alias, &offered))
+        fvm_call_bytes(context, "publishPort", 11, 2, args, &offered) != FVM_OK ||
+        fvm_gc_roots_add(roots, &offered) != FVM_OK ||
+        fvm_call_bytes(context, "publishPort", 11, 2, args, &value) != FVM_EXCEPTION ||
+        fvm_exception_clear(context) != FVM_OK ||
+        fvm_object_call(context, local->object, "tryReceive", 0, NULL, &value) != FVM_EXCEPTION ||
+        fvm_exception_clear(context) != FVM_OK || !send(context, &alias, &offered))
     {
         fputs("The second reverse PID could not be forwarded via the separate module token\n", stderr);
         return 0;
     }
     return fvm_object_call(context, result.object, "receive", 0, NULL, &value) == FVM_OK &&
-        value.type == FVM_VALUE_NUMBER && value.number == 81;
+        value.type == FVM_VALUE_NUMBER && value.number == 81 &&
+        fvm_object_call(context, channel.object, "close", 0, NULL, &value) == FVM_OK &&
+        fvm_object_call(context, result.object, "close", 0, NULL, &value) == FVM_OK;
 }
 
 
-/* EN: Verify the integer Dis put through the independent PID, after joining the dispatcher.
- * RU: Проверить int, отправленный Dis через отдельный PID, после остановки диспетчера. */
-static int leaf_received(const TestRoutes *routes)
+/* [GC:] EN: Create a rooted two-slot FIFO in context and enqueue the value Dis must read.
+ * RU: Создать удерживаемый в roots FIFO на два элемента и записать значение для Dis. */
+static int seed(FVM_Context *context, FVM_GCRootScope *roots, FVM_Value *local)
 {
-    const StyxRpcResource *resource = &routes->endpoint.resource;
-    const StyxRpcSelection selection = {.count = 1, .guards = {{2, 1, NULL, 0}}};
-    unsigned char frame[FRAME], reply[FRAME];
-    size_t length, extent;
-    StyxRpcChannelResult result;
-    void *cookie = NULL;
-    int valid = styxrpc_channel_request(&leaf, 1, &selection, NULL, 0, frame, sizeof(frame), &length) == STYXRPC_OK &&
-        resource->open(resource->context, STYXRPC_READ | STYXRPC_WRITE, &cookie) &&
-        resource->write(cookie, 0, frame, length, &extent) && extent == length &&
-        resource->read(cookie, length, reply, sizeof(reply), &extent) &&
-        styxrpc_channel_result(&leaf, 1, &selection, reply, extent, &result) == STYXRPC_OK && result.integer == 43;
-    if (cookie)
+    FVM_Value args[2], integer, reply;
+    fvm_value_number(args + 1, 2);
+    fvm_value_number(&integer, 81);
+    return fvm_styxrpc_channel_factory(context, "newRpcChannel") == FVM_OK &&
+        fvm_value_string_bytes(args, "i", 1) == FVM_OK &&
+        fvm_call_bytes(context, "newRpcChannel", 13, 2, args, local) == FVM_OK &&
+        local->type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, local) == FVM_OK &&
+        fvm_object_call(context, local->object, "trySend", 1, &integer, &reply) == FVM_OK &&
+        reply.type == FVM_VALUE_BOOLEAN && reply.boolean;
+}
+
+
+/* [GC:] EN: Drop the issuing family while retaining the original queue, then read
+ * the native peer's value from the exact same ActionScript object.
+ * RU: Освободить семейство, сохранив исходную очередь, и прочитать значение
+ * нативного партнёра из того же объекта ActionScript. */
+static int run_exchange(FVM_Context *context, StyxClient *client, const TestRoutes *routes)
+{
+    FVM_GCRootScope *outer, *inner;
+    FVM_Value local, value;
+    unsigned long reclaimed;
+    if (fvm_gc_roots_begin(context, &outer) != FVM_OK)
     {
-        resource->close(cookie);
+        return 0;
     }
-    return valid;
+    int ok = seed(context, outer, &local) &&
+        fvm_styxrpc_channel_publisher(context, "publishPort", routes->server) == FVM_OK &&
+        fvm_gc_roots_begin(context, &inner) == FVM_OK;
+    if (ok)
+    {
+        ok = exchange(context, inner, client, routes, &local);
+        if (!ok && fvm_exception_get(context, &value) == FVM_OK && value.type == FVM_VALUE_STRING)
+        {
+            fprintf(stderr, "%s\n", value.string);
+        }
+        fvm_gc_roots_end(inner);
+    }
+    fvm_value_undefined(&value);
+    int cleared = fvm_set_global(context, "c", &value) == FVM_OK &&
+        fvm_set_global(context, "p", &value) == FVM_OK &&
+        fvm_set_global(context, "openDis", &value) == FVM_OK &&
+        fvm_set_global(context, "publishPort", &value) == FVM_OK;
+    int collected = fvm_gc_collect(context, &reclaimed) == FVM_OK;
+    ok = ok && cleared && collected &&
+        fvm_object_call(context, local.object, "tryReceive", 0, NULL, &value) == FVM_OK &&
+        value.type == FVM_VALUE_NUMBER && value.number == 43 &&
+        fvm_object_call(context, local.object, "tryReceive", 0, NULL, &value) == FVM_OK &&
+        value.type == FVM_VALUE_UNDEFINED;
+    fvm_gc_roots_end(outer);
+    return ok;
 }
 
 
@@ -335,42 +367,27 @@ int test_channel_delegated(FVM_Context *context, int fd)
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
     if (mux && publish(&routes))
     {
-        routes.server = styxrpc_server_create(phybidirchannel(mux, 1), &styxrpc_program_tree, &routes.programs);
+        routes.server = styxrpc_program_server_create(phybidirchannel(mux, 1), &routes.programs);
     }
     int started = routes.server && !pthread_create(&thread, NULL, serve, &routes);
     int ok = 0;
     if (started)
     {
         StyxClient *client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "flash", "", WAIT_MS, 8);
-        FVM_GCRootScope *roots;
-        if (client && fvm_gc_roots_begin(context, &roots) == FVM_OK)
-        {
-            ok = exchange(context, roots, client, &routes);
-            FVM_Value error;
-            if (!ok && fvm_exception_get(context, &error) == FVM_OK && error.type == FVM_VALUE_STRING)
-            {
-                fprintf(stderr, "%s\n", error.string);
-            }
-            fvm_gc_roots_end(roots);
-        }
+        ok = client && run_exchange(context, client, &routes);
         styxclientshutdown(client);
         styxclientfree(client);
         phybidirfree(mux);
         pthread_join(thread, NULL);
-        ok = ok && leaf_received(&routes);
     }
     else
     {
-        styxrpc_server_destroy(routes.server);
         if (mux)
         {
             phybidirfree(mux);
         }
     }
-    if (routes.endpoint.release)
-    {
-        routes.endpoint.release(routes.endpoint.resource.context);
-    }
+    styxrpc_server_destroy(routes.server);
     if (!ok)
     {
         fputs("FlashVM delegated channel round trip failed\n", stderr);

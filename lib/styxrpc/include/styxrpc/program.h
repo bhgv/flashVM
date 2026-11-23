@@ -116,6 +116,30 @@ int styxrpc_program_unibus_revoke(StyxRpcPrograms *programs, uint32_t pid);
 
 extern const StyxRpcTree styxrpc_program_tree; /* Pass StyxRpcPrograms as serve context. */
 
+
+/* EN: Consume phy and serve programs until server destroy. Borrow the initialized
+ * registry exclusively. Serialize PID changes with request dispatch, excluding idle waits.
+ * Grant/revoke outside callbacks and finish all callers before destruction.
+ * RU: Принять phy и обслуживать programs до уничтожения сервера. Эксклюзивно
+ * заимствовать реестр. Сериализовать изменения PID с запросами, без ожидания сети.
+ * Выдача и отзыв вне колбэков. Завершить все вызовы до уничтожения.
+ */
+StyxRpcServer *styxrpc_program_server_create(struct RemotePhy *phy, StyxRpcPrograms *programs);
+
+
+/* EN: Publish a fresh PID with resource on a program server. Borrow its callbacks
+ * through revoke. May wait for active dispatch. Return zero on failure.
+ * RU: Опубликовать новый PID с resource. Заимствовать колбэки до отзыва.
+ * Может ждать текущий запрос. При отказе вернуть ноль. */
+uint32_t styxrpc_program_server_grant(StyxRpcServer *server, const StyxRpcResource *resource);
+
+
+/* EN: Revoke a PID and close its opened resource handles synchronously on the
+ * caller's thread. Return 1 on revocation. Keep server alive through this call.
+ * RU: Отозвать PID и синхронно закрыть его открытые ресурсы в потоке вызывающего.
+ * Вернуть 1 при отзыве. Сохранять сервер до завершения вызова. */
+int styxrpc_program_server_revoke(StyxRpcServer *server, uint32_t pid);
+
 #ifdef __cplusplus
 }
 #endif

@@ -174,6 +174,7 @@ Styx. Отправитель владеет временем жизни выда
 
 Диспетчер C может немедленно отозвать встречную шину. Ожидающие операции закрываются до возврата, а старые fid остаются доступны только для clunk. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.ru.md) Для временных шин реестр выдаёт новые PID и переиспользует слоты после отзыва. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.ru.md)
 
+Когда приложение и встречный диспетчер работают в разных потоках, используйте [сервер программ](reference/program_server_create.ru.md). Хост может [выдать](reference/program_server_grant.ru.md) и [отозвать](reference/program_server_revoke.ru.md) PID во время работы диспетчера. [Ресурс заимствованной очереди](reference/channel_group_reverse_borrow.ru.md) даёт партнёру доступ к существующему FIFO или rendezvous с элементами по значению и после отзыва возвращает обновлённый курсор владельцу.
 
 ## Общая шина C-модуля
 

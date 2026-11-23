@@ -34,6 +34,7 @@ void fvm_styxrpc_channel_set_release(FVM_StyxChannelSet *set, int deferred)
 {
     if (set && !--set->references)
     {
+        fvm_styxrpc_channel_retire_loans(set);
         styxrpc_channel_lease_release(set->lease, deferred);
         free(set);
     }
@@ -188,7 +189,7 @@ static int pack_pid(FVM_StyxChannelSend *send, const FVM_StyxPidGrant *grant, co
 {
     const FVM_StyxRemoteChannel *receiver = send->receiver;
     size_t i;
-    if (!receiver->set || receiver->set->lease != grant->lease || !same_shape(&grant->route.channel, type))
+    if (receiver->set != grant->set || !same_shape(&grant->route.channel, type))
     {
         return 0;
     }

@@ -9,11 +9,12 @@
 typedef struct ChannelGroup
 {
     StyxRpcChannelScheduler scheduler;          /* Dispatcher-owned scheduler. */
-    StyxRpcChannelQueue queues[STYXRPC_CHANNEL_SLOTS]; /* Owned copied queue arenas. */
+    StyxRpcChannelQueue queues[STYXRPC_CHANNEL_SLOTS]; /* Owned or exclusively borrowed arenas. */
     StyxRpcChannelGrant grants[STYXRPC_CHANNEL_SLOTS]; /* Exact operation keys and shapes. */
     StyxRpcChannelPolicy policy;                /* Current-group validation for each fid. */
     int reverse;                               /* Use post-request read offsets for reverse PID routes. */
     size_t count;                               /* Number of stable queue entries. */
+    StyxRpcChannelQueue *borrowed;               /* Original descriptor for returning FIFO cursors. */
 } ChannelGroup;
 
 

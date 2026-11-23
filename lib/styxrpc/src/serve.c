@@ -6,7 +6,8 @@
 #include <styx.h>
 #include <styxserver.h>
 #include "server.h"
-#include "styxrpc/serve.h"
+#include "styxrpc/program.h"
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,6 +18,8 @@ struct StyxRpcServer
     const StyxRpcTree *tree;        /* Borrowed callback table. */
     void *context;                  /* Borrowed application state. */
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
+    StyxRpcPrograms *programs;       /* Exclusive borrowed registry for a program server. */
+    pthread_mutex_t program_lock;   /* Serializes requests and changes to that registry. */
 };
 
 typedef struct TreeFid
@@ -297,6 +300,56 @@ StyxRpcServer *styxrpc_server_create(RemotePhy *phy, const StyxRpcTree *tree, vo
 }
 
 
+/* EN/RU: See program.h. / См. program.h. */
+StyxRpcServer *styxrpc_program_server_create(RemotePhy *phy, StyxRpcPrograms *programs)
+{
+    if (!programs || !programs->nodes || programs->used < 2)
+    {
+        phyfree(phy);
+        return NULL;
+    }
+    StyxRpcServer *server = styxrpc_server_create(phy, &styxrpc_program_tree, programs);
+    if (server && pthread_mutex_init(&server->program_lock, NULL))
+    {
+        styxrpc_server_destroy(server);
+        return NULL;
+    }
+    if (server)
+    {
+        server->programs = programs;
+    }
+    return server;
+}
+
+
+/* EN/RU: See program.h. / См. program.h. */
+uint32_t styxrpc_program_server_grant(StyxRpcServer *server, const StyxRpcResource *resource)
+{
+    if (!server || !server->programs)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&server->program_lock);
+    uint32_t pid = styxrpc_program_unibus_grant(server->programs, resource);
+    pthread_mutex_unlock(&server->program_lock);
+    return pid;
+}
+
+
+/* EN/RU: See program.h. / См. program.h. */
+int styxrpc_program_server_revoke(StyxRpcServer *server, uint32_t pid)
+{
+    if (!server || !server->programs)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&server->program_lock);
+    int revoked = styxrpc_program_unibus_revoke(server->programs, pid);
+    pthread_mutex_unlock(&server->program_lock);
+    return revoked;
+}
+
+
 /* EN/RU: See serve.h. / См. serve.h. */
 int styxrpc_server_step(StyxRpcServer *server)
 {
@@ -306,7 +359,19 @@ int styxrpc_server_step(StyxRpcServer *server)
     }
     StyxRpcServer *previous = active;
     active = server;
-    int ready = !styxwait(&server->wire) && !styxprocess(&server->wire);
+    int ready = !styxwait(&server->wire);
+    if (ready)
+    {
+        if (server->programs)
+        {
+            pthread_mutex_lock(&server->program_lock);
+        }
+        ready = !styxprocess(&server->wire);
+        if (server->programs)
+        {
+            pthread_mutex_unlock(&server->program_lock);
+        }
+    }
     active = previous;
     return ready;
 }
@@ -321,6 +386,10 @@ void styxrpc_server_destroy(StyxRpcServer *server)
         active = server;
         styxend(&server->wire);
         active = previous;
+        if (server->programs)
+        {
+            pthread_mutex_destroy(&server->program_lock);
+        }
         free(server);
     }
 }

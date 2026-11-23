@@ -30,6 +30,17 @@ StyxRpcStatus styxrpc_channel_group_output(const StyxRpcChannelQueue *queues, si
 StyxRpcStatus styxrpc_channel_group_reverse_output(const StyxRpcChannelQueue *queues,
     size_t count, size_t root, StyxRpcChannelOutput *output);
 
+
+/* EN: Lend one by-value FIFO or rendezvous queue exclusively to a reverse PID
+ * resource. Keep queue and its arrays alive and idle until output.release after
+ * all fids retire. Release restores the advanced cursors. On failure leave
+ * queue and output unchanged.
+ * RU: Эксклюзивно передать FIFO или rendezvous с элементами по значению ресурсу
+ * встречного PID. Хранить queue и её массивы без доступа до output.release после
+ * отзыва всех fid. Освобождение возвращает обновлённые курсоры. При ошибке
+ * queue и output не меняются. */
+StyxRpcStatus styxrpc_channel_group_reverse_borrow(StyxRpcChannelQueue *queue, StyxRpcChannelOutput *output);
+
 #ifdef __cplusplus
 }
 #endif

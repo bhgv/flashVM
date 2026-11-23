@@ -12,19 +12,26 @@
 
 typedef struct LocalChannel
 {
-    StyxRpcChannelQueue queue; /* Native queue lent only while the script owner waits. */
+    StyxRpcChannelQueue queue; /* The local queue, including when published on a reverse PID. */
     size_t sizes[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS]; /* Length of each encoded element. */
     uint32_t keys[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS][STYXRPC_CHANNEL_SLOTS]; /* Typed leaves of each physical slot. */
     int reading;               /* A local receive holds the current slot through GC. */
+    unsigned writing;          /* Active encoders may run reentrant script getters. */
     int closed;                /* Explicit close invalidates the object and aliases. */
+    int lent;                  /* Only the reverse dispatcher may use the arena. */
+    unsigned references;       /* Userdata and optional PID publication each own one. */
 } LocalChannel;
 
 
-/* [GC:] EN: Free the owner-local queue; an active call roots every borrowed object.
- * RU: Освободить очередь владельца. Активный вызов удерживает заимствованные объекты. */
+/* [GC:] EN: Drop the userdata or publication reference to this native arena.
+ * RU: Снять ссылку userdata либо публикации на этот буфер. */
 void fvm_styxrpc_local_channel_release(void *state)
 {
-    free(state);
+    LocalChannel *local = state;
+    if (!--local->references)
+    {
+        free(local);
+    }
 }
 
 
@@ -33,7 +40,33 @@ StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const
 {
     LocalChannel *local = value->type == FVM_VALUE_OBJECT ?
         fvm_styxrpc_local_channel_lookup(context, value->object) : NULL;
-    return local && !local->closed && !local->reading ? &local->queue : NULL;
+    return local && !local->closed && !local->reading && !local->lent ? &local->queue : NULL;
+}
+
+
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+StyxRpcChannelQueue *fvm_styxrpc_local_channel_borrow(FVM_Context *context, const FVM_Value *value, void **owner)
+{
+    LocalChannel *local = value && value->type == FVM_VALUE_OBJECT ?
+        fvm_styxrpc_local_channel_lookup(context, value->object) : NULL;
+    if (!local || local->closed || local->reading || local->writing || local->lent ||
+        strchr(local->queue.grant.shape, 'c'))
+    {
+        return NULL;
+    }
+    ++local->references;
+    local->lent = 1;
+    *owner = local;
+    return &local->queue;
+}
+
+
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+void fvm_styxrpc_local_channel_return(void *owner)
+{
+    LocalChannel *local = owner;
+    local->lent = 0;
+    fvm_styxrpc_local_channel_release(local);
 }
 
 
@@ -179,7 +212,7 @@ static FVM_Result try_send(FVM_Context *context, FVM_Object *self, unsigned argc
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (local->reading)
+    if (local->reading || local->lent)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
@@ -201,8 +234,10 @@ static FVM_Result try_send(FVM_Context *context, FVM_Object *self, unsigned argc
     refs.graph = 1;
     refs.encode_channel = encode_child;
     refs.channel_context = &edges;
+    ++local->writing;
     encoded = fvm_styxrpc_channel_pack_refs(context, roots, &refs, local->queue.grant.shape, args,
         buffer, buffer + STYXRPC_MANAGED_LIMIT, &guard) && still_open(context, &edges);
+    --local->writing;
     if (encoded && !local->closed && local->queue.count < local->queue.capacity)
     {
         size_t slot = (local->queue.head + local->queue.count) % local->queue.capacity;
@@ -250,7 +285,7 @@ static FVM_Result try_receive(FVM_Context *context, FVM_Object *self, unsigned a
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (local->reading)
+    if (local->reading || local->lent)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
@@ -320,7 +355,7 @@ static FVM_Result close_local(FVM_Context *context, FVM_Object *self, unsigned a
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (local->reading)
+    if (local->reading || local->lent)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
@@ -390,6 +425,7 @@ static FVM_Result create(FVM_Context *context, FVM_Object *self, unsigned argc,
         return FVM_OUT_OF_MEMORY;
     }
     local->queue.grant.key = LOCAL_CHANNEL_KEY;
+    local->references = 1;
     memcpy(local->queue.grant.shape, shape, sizeof(shape));
     local->queue.bytes = (unsigned char *)(local + 1);
     local->queue.sizes = local->sizes;

@@ -28,6 +28,25 @@ FVM_API FVM_Result fvm_styxrpc_channel_delegate_pid(FVM_Context *context, const 
     const StyxRpcChannelRoute *route, FVM_Value *out);
 
 
+/* [GC:] EN: Publish a by-value local queue on the program server from the
+ * anchor's bidirectional mount. Transfer exclusive queue access until the
+ * last wrapper or PID value of the anchor's family is released. Keep reverse
+ * alive through retirement. Call on the FlashVM owner.
+ * RU: Опубликовать локальную очередь по значению на встречном сервере
+ * монтирования anchor. Передать доступ к очереди до освобождения последней
+ * обёртки или значения PID семейства. Хранить reverse до отзыва.
+ * Вызывать в потоке владельца FlashVM. */
+FVM_API FVM_Result fvm_styxrpc_channel_delegate_local(FVM_Context *context, const FVM_Value *anchor,
+    const FVM_Value *value, StyxRpcServer *reverse, FVM_Value *out);
+
+
+/* [GC:] EN: Register global(anchor, queue) on the FlashVM owner. Borrow reverse
+ * while the global is callable and until all issued publications are retired.
+ * RU: Зарегистрировать global(anchor, queue) в потоке FlashVM. Заимствовать
+ * reverse, пока функция доступна и её публикации действуют. */
+FVM_API FVM_Result fvm_styxrpc_channel_publisher(FVM_Context *context, const char *global, StyxRpcServer *reverse);
+
+
 /* [GC:] EN: Admit a module grant authenticated by the host for the anchor's lease.
  * Return a live object on the held module, preserving known aliases.
  * RU: Принять проверенное хостом полномочие модуля в аренду anchor.
