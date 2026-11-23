@@ -92,6 +92,48 @@ check_nested(api: Chainchannellifetime)
 }
 
 
+# EN: Supply a fresh client channel and an independent provider lease in one message.
+# RU: Передать свежий клиентский канал и независимую аренду в одном сообщении.
+check_grants(api: Chainchannellifetime)
+{
+    (foreign, alias) := api->buffered(113);
+    (request, result) := api->grantworker();
+    local := chan[1] of int;
+    local <-= 107;
+    request <-= (local, foreign);
+    if (<-result != 220 || <-local != 108 || <-alias != 115) {
+        raise "provider worker did not use both original message grants";
+    }
+    (outer, original) := api->nested();
+    (skip1, skip2) := <-outer;
+    (skip3, skip4) := <-outer;
+    outer <-= (local, alias);
+    (echo_local, echo_foreign) := <-outer;
+    if (echo_local != local || echo_foreign != foreign) {
+        raise "reverse message grant did not resolve to the original";
+    }
+}
+
+
+# EN: Reject a reverse-grant cycle so neither result pins the other indefinitely.
+# RU: Отклонить цикл выдач, чтобы аренды не удерживали друг друга бессрочно.
+check_grant_cycle(api: Chainchannellifetime)
+{
+    (left, lport) := api->nested();
+    (right, rport) := api->nested();
+    left <-= (lport, rport);
+    rejected := 0;
+    {
+        right <-= (rport, lport);
+    } exception {
+        * => rejected = 1;
+    }
+    if (!rejected || <-rport != 83 || <-lport != 83) {
+        raise "cyclic reverse grant did not preserve the existing routes";
+    }
+}
+
+
 # EN: Run multiple returned routes concurrently and cancel just one operation fid.
 # RU: Удерживать несколько возвращённых маршрутов и отменить один fid операции.
 init()
@@ -150,6 +192,14 @@ init()
         raise "returned channel failed as a second call argument";
     }
     check_nested(api);
+    for (grant := 0; grant < 5; grant++) {
+        check_grants(api);
+    }
+    check_grant_cycle(api);
+    (idle, unused) := api->worker(-1);
+    if (api->relaypair(idle) != 103) {
+        raise "two threads did not rendezvous on one regranted unbuffered channel";
+    }
     (forwarded, reply) := api->worker(200);
     api->relayput(forwarded, 13);
     if (<-reply != 213) {

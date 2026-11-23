@@ -59,6 +59,36 @@ static int channel_message(uint32_t first_key, uint32_t nested_key,
 }
 
 
+/* EN: Require reverse grants and issued unbuffered keys to stay inside the proper message direction.
+ * RU: Проверить, что встречные выдачи и ключи без буфера допускаются в нужном направлении. */
+static int reverse_channel_records(const ChannelAdmissions *admissions)
+{
+    unsigned char bytes[32];
+    unsigned char grant[8] = {128, 0, 0, 1, 128, 0, 0, 7};
+    unsigned char key[4] = {1, 35, 69, 103};
+    FVM_SRecord frame = {.tag = STYX_MANAGED_GRAPH_TAG, .payload = bytes};
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_GRANT_TAG, grant, sizeof(grant),
+            bytes, sizeof(bytes), &frame.size) != FVM_S_OK ||
+        styxmanaged_request_payload("(c[i])", &frame) ||
+        styxmanaged_channel_payload("(c[i])", &frame, admit_channel_record, admissions) ||
+        !styxmanaged_channel_value("(c[i])", &frame, admit_channel_record, admissions, 1))
+    {
+        return 0;
+    }
+    grant[0] = 0;
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_GRANT_TAG, grant, sizeof(grant),
+            bytes, sizeof(bytes), &frame.size) != FVM_S_OK ||
+        styxmanaged_channel_value("(c[i])", &frame, admit_channel_record, admissions, 1))
+    {
+        return 0;
+    }
+    return fvm_srecord_write(STYX_MANAGED_UNBUFFERED_CHANNEL_TAG, key, sizeof(key),
+            bytes, sizeof(bytes), &frame.size) == FVM_S_OK &&
+        !styxmanaged_channel_value("(c[i])", &frame, admit_channel_record, admissions, 1) &&
+        styxmanaged_channel_value("(c[i])", &frame, NULL, NULL, 1);
+}
+
+
 /* EN: Check exact nested type/identity matching. Nil never reaches the visitor.
  * RU: Сверить точные вложенные типы и ключи. Обходчик для nil не вызывается. */
 static int channel_admission_records(void)
@@ -87,5 +117,5 @@ static int channel_admission_records(void)
             return 0;
         }
     }
-    return 1;
+    return reverse_channel_records(&admissions);
 }

@@ -10,11 +10,31 @@
 #include "runt.h"
 #include "close_worker.h"
 #include "returned_proxy.h"
-#include "thread_port.h"
+#include "result_channels.h"
+#include "program_view.h"
+#include "channel_value.h"
+#include "disvm/managed_reference.h"
 #include "channel_sync.h"
+#include "thread_port.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
 #include <string.h>
+
+
+/* EN: One exact reverse publication and its original channel.
+ * RU: Одна точная встречная публикация и исходный канал. */
+typedef struct ReturnedGrant
+{
+    DVM_CallerBinding binding; /* Borrowed callbacks kept alive by lease endpoint. */
+    DVM_Provider *tree; /* Owned tree, borrowed by the publication callbacks. */
+    void *publication; /* Owned exact reverse publication, if active. */
+    DVM_Cancel *cancel; /* Owned channel pump cancellation. */
+    DVM_ReturnedLease *source; /* Borrowed lease held by the rooted source proxy. */
+    Channel *original; /* Borrowed while root keeps the channel live. */
+    DVM_OwnerTransfer root; /* Owned original channel for returning same key. */
+    DVM_ChannelSchema schema; /* Immutable key and element type. */
+    uint32_t pid; /* Reverse-only tree identifier. */
+} ReturnedGrant;
 
 
 /* EN: Shared native lifetime of an exact returned capability group.
@@ -22,6 +42,8 @@
 struct DVM_ReturnedLease
 {
     FVM_PortSync *lock; /* Guards weak canonical channel entries. */
+    size_t grant_count; /* Active reverse grants protected by lock. */
+    ReturnedGrant grants[DVM_CHANNEL_BUS_SLOTS]; /* At most eight active reverse grants. */
     struct ReturnedProxy *proxies; /* Live bindings, removed before freeing their channels. */
     unsigned refs; /* Atomic pins across channel owners and the decoder. */
     DVM_Provider *endpoint; /* Owned exact module UniBus file. */
@@ -42,6 +64,9 @@ typedef struct ReturnedProxy
     struct ReturnedProxy *next; /* Next weak binding under the lease lock. */
     DVM_ChannelSchema schema; /* Immutable matched key and element type. */
 } ReturnedProxy;
+
+
+#include "returned_grants.inc"
 
 
 /* EN: Clunk the originating function and release its route on the native closer.
@@ -101,6 +126,7 @@ void dvm_returned_lease_release(DVM_ReturnedLease *lease)
     static const DVM_VfsOps cleanup = {.close = retire_lease}; /* Owned native lease cleanup. */
     if (lease && __atomic_sub_fetch(&lease->refs, 1, __ATOMIC_ACQ_REL) == 0)
     {
+        retire_grants(lease);
         DVM_VfsHandle resource = {.ops = &cleanup, .state = lease};
         dvm_close_submit_resource(lease->close, &resource);
     }
@@ -150,7 +176,7 @@ const DVM_ChannelSchema *dvm_returned_proxy_route(const Channel *channel, DVM_Pr
     }
     *endpoint = proxy->lease->endpoint;
     *cancel = proxy->lease->cancel;
-    *token = proxy->lease->token;
+    *token = proxy->lease->token_set ? proxy->lease->token : NULL;
     return &proxy->schema;
 }
 
@@ -174,7 +200,8 @@ Channel *dvm_returned_proxy_canonical(Channel *candidate)
     {
         if (entry->schema.key == binding->schema.key)
         {
-            if (strcmp(entry->schema.shape, binding->schema.shape))
+            if (entry->schema.unbuffered != binding->schema.unbuffered ||
+                strcmp(entry->schema.shape, binding->schema.shape))
             {
                 result = NULL;
                 break;

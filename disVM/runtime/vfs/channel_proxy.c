@@ -102,7 +102,8 @@ static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigne
     const unsigned char *bytes, size_t size, unsigned char *reply, size_t *received)
 {
     DVM_VfsWait *wait;
-    int native = dvm_vfs_path_enter_cancel(&wait, token ? dvm_cancel_current() : cancel);
+    DVM_Cancel *parent = dvm_cancel_current();
+    int native = dvm_vfs_path_enter_cancel(&wait, parent ? parent : (token ? NULL : cancel));
     if (native < 0)
     {
         error("remote channel operation cancelled");
@@ -463,7 +464,7 @@ int dvm_call_channel_progress(DVM_ChannelBus *bus, DVM_CallChannels *channels, i
     unsigned unbuffered = 0;
     for (size_t slot = 0; slot < channels->count; slot++)
     {
-        if (!dvm_call_channel_is_proxy(channels->objects[slot]) && channels->objects[slot]->buf == H)
+        if (channels->schemas[slot].unbuffered)
         {
             unbuffered |= 1U << slot;
         }

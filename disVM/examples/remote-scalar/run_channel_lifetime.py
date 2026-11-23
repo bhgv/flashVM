@@ -13,7 +13,8 @@ CASES = {
     "mixed": ("styx-channel-mixed-client.b", "PASS blocking mixed channel ALT"),
     "result": ("styx-channel-result-client.b", "PASS provider-owned returned channels"),
 }  # Caller's source image and required end-to-end marker.
-EXPORTS = ("mixed", "buffered", "worker", "relay", "relayput", "nested")  # Common provider interface.
+EXPORTS = ("mixed", "buffered", "worker", "relay", "relayput", "nested",
+           "relaypair", "grantworker")  # Common provider interface.
 
 
 # EN: Compile provider and client from case, run them on one TCP connection,

@@ -322,7 +322,8 @@ static int dedicated_controller_pending(void)
             (__atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) || dvm_messages_pending(resident->messages, 0, 0) ||
              dvm_messages_pending(resident->messages, 1, 0))) ||
            guest_cancel_pending() ||
-           (!dvm_debug_enabled && !dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending()
+           (!dvm_debug_enabled && !dvm_runqueue_ready() && !dvm_runqueue_inflight() &&
+            !dvm_runqueue_dispatch_pending() && !dvm_result_channels_active()
 #ifdef DVM_RUNTIME_EDITOR
             && !dvm_editor_attached()
 #endif
@@ -340,7 +341,7 @@ static int guest_cancel_pending_or_close(void)
     /* A dedicated owner can have work before its guest becomes runnable. */
     if (native_spawn)
     {
-        if (__atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE))
+        if (dvm_result_channels_active() || __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE))
         {
             fvm_port_sync_unlock(channel_queue_mutex);
             return 1;
@@ -348,7 +349,13 @@ static int guest_cancel_pending_or_close(void)
         for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-            if (process->channel_claimed || __atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) ||
+            /* EN: An owner can move from ready to a native wait between counter
+             * samples. Both states keep this exact resident live for progress.
+             * RU: Между чтениями счётчиков поток может перейти из готовности
+             * в native-ожидание. Оба состояния позволяют ему продолжить работу. */
+            int state = dvm_runqueue_observed_state(guest);
+            if (state == Pready || state == Prelease || process->channel_claimed ||
+                __atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) ||
                 (process->messages &&
                  (dvm_messages_pending(process->messages, 0, 0) || dvm_messages_pending(process->messages, 1, 0) ||
                   dvm_managed_workers_reply_in_transit(guest))))

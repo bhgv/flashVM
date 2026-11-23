@@ -139,7 +139,9 @@ worker(start: int): (chan of int, chan of int)
 {
     input := chan of int;
     output := chan of int;
-    spawn serve(start, input, output);
+    if (start >= 0) {
+        spawn serve(start, input, output);
+    }
     return (input, output);
 }
 
@@ -183,4 +185,49 @@ nested(): (chan of (chan of int, chan of int), chan of int)
     outer <-= (existing, fresh);
     outer <-= (fresh, existing);
     return (outer, existing);
+}
+
+
+# EN: Send from a child while the same remote invocation receives.
+# RU: Отправить из дочернего потока, пока тот же удалённый вызов принимает.
+relaypair(port: chan of int): int
+{
+    sent := chan of int;
+    spawn pair_send(port, sent);
+    value := <-port;
+    <-sent;
+    return value;
+}
+
+
+# EN: Acknowledge the matched send before the invocation revokes its route.
+# RU: Подтвердить отправку до отзыва маршрута вызова.
+pair_send(port, sent: chan of int)
+{
+    port <-= 103;
+    sent <-= 1;
+}
+
+
+# EN: Publish a typed input and pass two granted channels to a provider worker.
+# RU: Выдать типизированный вход и доставить два канала потоку провайдера.
+grantworker(): (chan of (chan of int, chan of int), chan of int)
+{
+    request := chan of (chan of int, chan of int);
+    result := chan of int;
+    spawn use_grants(request, result);
+    return (request, result);
+}
+
+
+# EN: Read both granted originals and acknowledge each through the same proxy.
+# RU: Прочитать оба выданных оригинала и ответить через те же прокси.
+use_grants(request: chan of (chan of int, chan of int), result: chan of int)
+{
+    (local, foreign) := <-request;
+    a := <-local;
+    b := <-foreign;
+    local <-= a+1;
+    foreign <-= b+2;
+    result <-= a+b;
 }

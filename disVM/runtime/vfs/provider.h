@@ -234,6 +234,11 @@ DVM_Provider *dvm_provider_call_export(DVM_Provider *context);
  * RU: Записать ключ заимствованного корня сессии в частный захваченный контекст. */
 int dvm_provider_set_styx_caller(DVM_Provider *context, DVM_Provider *session, uint32_t pid);
 
+/* EN: Retain the reverse session that produced a trusted caller directory.
+ * RU: Удержать встречную сессию, из которой получен доверенный каталог клиента. */
+DVM_Provider *dvm_provider_styx_caller_root(DVM_Provider *context);
+
+
 /* EN: Copy the trusted native key from a borrowed context; return 0 if absent.
  * RU: Скопировать доверенный ключ заимствованного контекста. 0 при отсутствии. */
 int dvm_provider_styx_caller(DVM_Provider *context, DVM_StyxCallerKey *key);

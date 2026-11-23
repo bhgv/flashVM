@@ -16,4 +16,16 @@ int dvm_result_channels_token(unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE
  * RU: Опубликовать подготовленные каналы и передать корни выделенному процессу.
  * При успехе поглощает каналы, при отказе таблицу вызывающего можно освободить. */
 int dvm_result_channels_finish(DVM_CallChannels *channels);
+
+/* EN: Report an external channel pump from launch reservation through retirement.
+ * RU: Проверить наличие сетевой службы с резервирования запуска до завершения. */
+int dvm_result_channels_active(void);
+
+
+/* [GC:] EN: Start a native bus pump with retained provider and cancellation.
+ * On success consumes channels; on failure leaves the table releasable.
+ * RU: Запустить службу с удержанием провайдера и отмены. При успехе
+ * принимает channels, при отказе таблицу можно освободить. */
+int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
+    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse);
 #endif

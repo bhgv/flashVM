@@ -26,6 +26,7 @@ struct DVM_ChannelBus
     DVM_ChannelSchema schemas[DVM_CHANNEL_BUS_SLOTS]; /* Types tied to the exact capability. */
     size_t count; /* Active capability count. */
     unsigned open; /* Bounded concurrent fids, including idle ones. */
+    int grants; /* Provider lease admits typed reverse message capabilities. */
     int sealed; /* Caller has retired or cancelled this route. */
 };
 
@@ -114,7 +115,7 @@ static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
         FVM_SRecord value;
         size_t used;
         if (fvm_srecord_read(id + 4, size, STYX_MANAGED_LIST_LIMIT, &value, &used) != FVM_S_OK ||
-            used != size || !styxmanaged_channel_payload(shape, &value, admit_nested, bus))
+            used != size || !styxmanaged_channel_value(shape, &value, admit_nested, bus, bus->grants))
         {
             return 0;
         }
@@ -363,6 +364,13 @@ DVM_Provider *dvm_channel_bus_create(const DVM_ChannelSchema *schemas, size_t co
     }
     *out = bus;
     return provider;
+}
+
+
+/* EN/RU: See channel_bus.h. / См. channel_bus.h. */
+void dvm_channel_bus_allow_grants(DVM_ChannelBus *bus)
+{
+    bus->grants = 1;
 }
 
 

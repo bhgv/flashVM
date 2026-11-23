@@ -54,7 +54,7 @@ python3 disVM/examples/remote-scalar/run_channel_lifetime.py mixed \
 | Case | What it checks |
 | --- | --- |
 | `mixed` | Blocking local and remote branches, two mixed selections rendezvousing on one UniBus, and cancellation. |
-| `result` | Returning a new provider channel through `load`, using it after releasing the module, selecting across independent leases, shared identity, and lease cleanup. |
+| `result` | Returning a new provider channel through `load`, using it after releasing the module, selecting across independent leases, forwarding message channels in both directions, and rendezvous through a regranted channel. |
 
 ## Channel operations
 
@@ -110,23 +110,34 @@ proxy clunks that fid and releases the provider's channel service.
 A returned proxy can be passed as an argument to a later remote call. The
 caller's reverse UniBus publishes a scoped key for it and forwards operations
 to the original owner. Echoing that key in the call result restores the
-caller's original proxy. Two remote threads waiting on opposite ends of
-the same forwarded key in one reverse call still require a peer on the
-original route.
+caller's original proxy. For a known unbuffered origin, the reverse bus
+first tries the original route. It can then match two pending fids in the
+same call under its bus lock when the owner has no ready partner.
 
 A provider-owned channel can carry channels in a typed message. The owner
-adds new keys to the same lease before publishing a receive reply. Repeated
-keys preserve identity while the corresponding proxy is live. The receiver
-can send those handles back on the same lease. Sending a fresh local channel
-or a handle from another lease as a message on this route requires a new
-grant mechanism.
+adds new keys to the same lease before publishing a receive reply. The
+client can send a local channel, a channel from another lease, or a key
+already issued on the current lease. For a new reverse grant the client
+publishes a virtual `.prog/<id>/.unibus` on the same Styx connection. The
+identifier is reserved outside the guest PID range. The provider uses a
+proxy to the original queue. Sending that proxy back on the same lease
+resolves to the original client object. Repeated keys share identity while
+their proxy is live.
+
+Each reverse message grant lasts until the destination lease is
+released. Cycles of lease dependencies are rejected. The current
+reverse grant mailbox supports existing keys in its own channel messages.
+Issuing another new reverse grant through that mailbox requires an
+additional transport direction.
 
 The wire bound is 64 KiB per operation, including its headers and any nested
 guards. Channel handles can appear directly or in arrays and tuples of
 arguments and results. Each channel scope supports up to eight distinct
 channels, including grants made in messages. An `alt` can include up to eight
 eligible options after expanding receive arrays. A module can
-hold up to 128 active groups of returned channels.
+hold up to 128 active groups of returned channels. A lease can publish
+up to eight distinct reverse grants, subject to the 16-publication limit
+shared with active caller contexts on the reverse session.
 
 ## Wire records
 
@@ -138,8 +149,13 @@ hold up to 128 active groups of returned channels.
 | 27 | Int-only reply using the [UniBus scalar record](../../native/terminal/scalar_record.h). An `alt` reply packs the one-based guard ordinal in the high 32 bits and the value bits in the low 32 bits. Zero denotes the fallback. |
 | 28, 29 | Blocking or fallback selection, respectively. The payload is an ordered sequence of send and receive records. |
 | 30 | Typed reply. The first byte is the one-based guard ordinal, zero for fallback or 255 for failure. A selected receive includes one managed value frame. |
-| 31 | Provider-owned channel in a function reply. Contains a 16-byte group token followed by a positive 32-bit channel key in network byte order. |
+| 31 | Provider-owned channel in a function reply. Contains a 16-byte group token and a network-order word with a positive 31-bit key. Its high bit marks a zero-capacity channel. |
 | 32 | Mixed selection's bounded remote offer. Uses the tag 28 payload and the tag 27 or 30 reply. An unpaired offer replies with ordinal zero at its deadline. |
+| 33 | Nested reverse grant. A network-order 32-bit publication identifier followed by the key word from tag 31. |
+| 34 | Nested provider-issued key in a channel reply. A positive 31-bit key in a four-byte word. The tag marks a zero-capacity channel. |
+
+Use matching DisVM versions on both ends for tag 31 capacity metadata and
+the nested grant records.
 
 [Native transport](../../runtime/vfs/channel_bus.c) ·
 [Dis instructions and channel matching](../../runtime/vfs/channel_proxy.c)

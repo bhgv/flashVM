@@ -163,3 +163,12 @@ int dvm_provider_caller_binding(DVM_Provider *provider, DVM_CallerBinding *bindi
     }
     return 0;
 }
+
+
+/* EN/RU: See provider.h. / См. provider.h. */
+DVM_Provider *dvm_provider_styx_caller_root(DVM_Provider *context)
+{
+    DVM_StyxCallerKey key;
+    return dvm_provider_styx_caller(context, &key) && dvm_provider_retain(context->origin) ?
+        context->origin : NULL;
+}

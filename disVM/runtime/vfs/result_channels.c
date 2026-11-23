@@ -17,6 +17,7 @@
 #include "native_wait.h"
 #include "root_registry.h"
 #include "runqueue.h"
+#include "managed_workers.h"
 #include "runtime_gc.h"
 #include "thread_port.h"
 #include "../../native/terminal/channel_export.h"
@@ -30,10 +31,21 @@ enum
 };
 
 
+static unsigned active_services; /* Live external channel pumps, including their startup. */
+
+
+/* EN/RU: See result_channels.h. / См. result_channels.h. */
+int dvm_result_channels_active(void)
+{
+    return __atomic_load_n(&active_services, __ATOMIC_ACQUIRE) != 0;
+}
+
+
 /* [GC:] EN: Rooted local channels and a native bus transferred to one dedicated Prog.
  * RU: Укоренённые локальные каналы и нативная шина для одного выделенного Prog. */
 typedef struct ResultChannelService
 {
+    int counted; /* Whether the service owns a controller activity reservation. */
     DVM_CallChannels channels; /* Owned roots, entirely inside this provider VM. */
     DVM_ChannelBus *bus; /* Borrowed from the retained provider below. */
     DVM_Provider *provider; /* Owns the bus independently of the forward lease. */
@@ -70,6 +82,11 @@ static void service_retire(void *state, int status)
     dvm_call_channels_release(&service->channels);
     dvm_provider_release(service->provider);
     dvm_cancel_release(service->cancel);
+    if (service->counted)
+    {
+        __atomic_fetch_sub(&active_services, 1, __ATOMIC_RELEASE);
+        dvm_managed_workers_wake();
+    }
     free(service);
 }
 
@@ -178,30 +195,32 @@ static int launch_service(void *state)
 
 
 /* EN/RU: See result_channels.h. / См. result_channels.h. */
-int dvm_result_channels_finish(DVM_CallChannels *channels)
+int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
+    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse)
 {
-    DVM_Provider *control = publication();
-    ResultChannelService *service = control ? calloc(1, sizeof(*service)) : NULL;
-    if (service)
+    ResultChannelService *service = calloc(1, sizeof(*service));
+    if (!service)
     {
-        service->cancel = styxchannel_export_cancel(control);
-        service->provider = dvm_channel_bus_create(channels->schemas, channels->count, &service->bus);
-    }
-    int ready = service && service->cancel && service->provider &&
-        styxchannel_export_publish(control, service->provider);
-    dvm_provider_release(control);
-    if (!ready)
-    {
-        if (service)
-        {
-            service_retire(service, 1);
-        }
         return 0;
     }
+    service->bus = bus;
+    service->provider = dvm_provider_retain(provider) ? provider : NULL;
+    service->cancel = dvm_cancel_retain(cancel) ? cancel : NULL;
+    service->channels.reverse = reverse && dvm_provider_retain(reverse) ? reverse : NULL;
+    if (!service->provider || !service->cancel || (reverse && !service->channels.reverse))
+    {
+        service_retire(service, 1);
+        return 0;
+    }
+    DVM_Provider *retained = service->channels.reverse;
     service->channels = *channels;
+    service->channels.reverse = retained;
     service->channels.resolving = 1;
+    service->channels.message_owner = reverse != NULL;
     service->channels.returning = 0;
     *channels = (DVM_CallChannels){0};
+    service->counted = 1;
+    __atomic_fetch_add(&active_services, 1, __ATOMIC_RELEASE);
     ServiceStartup startup = {.service = service, .helper = H};
     int started = kprotect(launch_service, &startup);
     if (startup.helper_root)
@@ -225,7 +244,35 @@ int dvm_result_channels_finish(DVM_CallChannels *channels)
     return started;
 }
 
+/* EN/RU: See result_channels.h. / См. result_channels.h. */
+int dvm_result_channels_finish(DVM_CallChannels *channels)
+{
+    DVM_Provider *control = publication();
+    DVM_Cancel *cancel = styxchannel_export_cancel(control);
+    DVM_ChannelBus *bus = NULL;
+    DVM_Provider *provider = cancel ? dvm_channel_bus_create(channels->schemas, channels->count, &bus) : NULL;
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)currun();
+    DVM_Provider *reverse = owner ? dvm_provider_styx_caller_root(owner->remote_call_context) : NULL;
+    if (bus && reverse)
+    {
+        dvm_channel_bus_allow_grants(bus);
+    }
+    int ready = provider && styxchannel_export_publish(control, provider) &&
+        dvm_result_channels_start(channels, bus, provider, cancel, reverse);
+    dvm_provider_release(reverse);
+    dvm_provider_release(provider);
+    dvm_cancel_release(cancel);
+    dvm_provider_release(control);
+    return ready;
+}
+
 #else
+
+/* EN/RU: No external pumps in a standalone VM. / В автономной VM нет сетевых служб. */
+int dvm_result_channels_active(void)
+{
+    return 0;
+}
 
 /* EN/RU: No mounted service in the standalone runtime. / В автономной VM нет смонтированной службы. */
 int dvm_result_channels_token(unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE])
@@ -239,6 +286,18 @@ int dvm_result_channels_token(unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE
 int dvm_result_channels_finish(DVM_CallChannels *channels)
 {
     (void)channels;
+    return 0;
+}
+
+/* EN/RU: No mounted pumps in the standalone runtime. / В автономной VM нет сетевых служб. */
+int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
+    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse)
+{
+    (void)channels;
+    (void)bus;
+    (void)provider;
+    (void)cancel;
+    (void)reverse;
     return 0;
 }
 #endif

@@ -5,6 +5,7 @@
  * единый translation unit без нового публичного ABI или общего замка исполнения.
  */
 #include "host_runtime/host_state.inc"
+#include "vfs/result_channels.h"
 #include "host_runtime/diagnostics_and_files.inc"
 #include "host_runtime/cancellations_and_stdio.inc"
 #include "host_runtime/provider_waits.inc"

@@ -98,6 +98,8 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_TABLE_PATCH_TAG 22UL /* Ordered removals followed by changed pairs. */
 #define STYX_MANAGED_TABLE_REMOVE_TAG 23UL /* Remove one big or string key. */
 #define STYX_MANAGED_CHANNEL_TAG 24UL /* Positive four-byte call-local channel key. */
+#define STYX_MANAGED_CHANNEL_GRANT_TAG 33UL /* Nested reverse message grant. */
+#define STYX_MANAGED_UNBUFFERED_CHANNEL_TAG 34UL /* Nested owner key with rendezvous semantics. */
 #define STYX_MANAGED_EXPORTED_CHANNEL_TAG 31UL /* Result-only provider lease token and channel key. */
 #define STYX_CHANNEL_EXPORT_TOKEN_SIZE 16U /* Opaque provider export token. */
 
@@ -250,6 +252,12 @@ int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list);
  * Данные context заимствуются на время синхронного обратного вызова. */
 int styxmanaged_channel_payload(const char *shape, const FVM_SRecord *list,
     int (*admit)(const void *, const char *, uint32_t), const void *context);
+
+/* EN: Validate a channel value and opt into reverse grant records.
+ * RU: Проверить типизированное сообщение с необязательными встречными полномочиями. */
+int styxmanaged_channel_value(const char *shape, const FVM_SRecord *list,
+    int (*admit)(const void *, const char *, uint32_t), const void *context, int grants);
+
 typedef struct StyxGraphPositions
 {
     unsigned short argument[STYX_CALL_REF_KEYS]; /* Earliest direct position plus one, zero for nested-only refs. */

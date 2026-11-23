@@ -25,6 +25,7 @@ typedef struct DVM_ChannelBus DVM_ChannelBus; /* Borrowed while its provider is 
  * RU: Неизменяемые сетевой ключ и полная схема элемента в пределах вызова. */
 typedef struct DVM_ChannelSchema
 {
+    int unbuffered; /* Confirmed immutable zero-capacity origin. */
     uint32_t key; /* Positive wire key. */
     char shape[STYX_SHAPE_MAX + 1]; /* Element schema wrapped in a frame. */
 } DVM_ChannelSchema;
@@ -56,6 +57,11 @@ typedef struct DVM_ChannelOperation
     DVM_ChannelChoice choices[DVM_CHANNEL_BUS_SLOTS]; /* In priority order for this attempt. */
     unsigned char bytes[DVM_CHANNEL_BUS_WIRE]; /* Only copied through the highest referenced offset. */
 } DVM_ChannelOperation;
+
+
+/* EN: Enable nested reverse capabilities before publishing the borrowed bus.
+ * RU: Разрешить вложенные встречные ключи до публикации шины. */
+void dvm_channel_bus_allow_grants(DVM_ChannelBus *bus);
 
 
 /* EN: Copy count capability schemas; return a provider owning *bus, or NULL.

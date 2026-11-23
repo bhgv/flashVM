@@ -7,5 +7,7 @@ Chainchannellifetime: module {
     relay: fn(port: chan of int, value: int): (int, chan of int);
     relayput: fn(port: chan of int, value: int);
     nested: fn(): (chan of (chan of int, chan of int), chan of int);
+    relaypair: fn(port: chan of int): int;
+    grantworker: fn(): (chan of (chan of int, chan of int), chan of int);
     worker: fn(start: int): (chan of int, chan of int);
 };

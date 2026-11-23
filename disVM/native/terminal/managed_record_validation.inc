@@ -30,9 +30,16 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
             value.size == STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4)
         {
             const unsigned char *saved = value.payload + STYX_CHANNEL_EXPORT_TOKEN_SIZE;
-            return saved[0] < 128 && (saved[0] || saved[1] || saved[2] || saved[3]);
+            return (saved[0] & 127) || saved[1] || saved[2] || saved[3];
         }
-        if (value.tag != STYX_MANAGED_CHANNEL_TAG || value.size != 4 || value.payload[0] >= 128)
+        if (keys->message_grants && value.tag == STYX_MANAGED_CHANNEL_GRANT_TAG)
+        {
+            return value.size == 8 && value.payload[0] >= 128 &&
+                ((value.payload[4] & 127) || value.payload[5] || value.payload[6] || value.payload[7]);
+        }
+        int regular = value.tag == STYX_MANAGED_CHANNEL_TAG;
+        int issued = keys->message_grants && !keys->channel && value.tag == STYX_MANAGED_UNBUFFERED_CHANNEL_TAG;
+        if ((!regular && !issued) || value.size != 4 || value.payload[0] >= 128)
         {
             return 0;
         }

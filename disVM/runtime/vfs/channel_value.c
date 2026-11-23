@@ -189,7 +189,10 @@ int dvm_channel_value_unpack(const char *shape, const void *bytes, size_t size,
 {
     FVM_SRecord record;
     DVM_StyxRefTable refs = {.result = 1, .limit = STYX_CALL_REF_KEYS, .channels = channels};
-    int valid = styxmanaged_list_read(STYX_MANAGED_GRAPH_TAG, shape, bytes, size, &record) &&
+    size_t used;
+    int valid = fvm_srecord_read(bytes, size, STYX_MANAGED_LIST_LIMIT, &record, &used) == FVM_S_OK &&
+        used == size && styxmanaged_channel_value(shape, &record, NULL, NULL,
+            channels && (channels->persistent || channels->message_owner)) &&
         dvm_styx_result_fields_read(&refs, shape, record.payload, record.size, frame);
     dvm_styx_ref_release(&refs, 0);
     return valid;

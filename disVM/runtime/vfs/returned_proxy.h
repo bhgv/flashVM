@@ -66,6 +66,18 @@ DVM_ReturnedLease *dvm_returned_proxy_lease(const struct Channel *channel);
 struct Channel *dvm_returned_proxy_canonical(struct Channel *candidate);
 
 
+/* [GC:] EN: Publish channel for the exact lease, returning its reverse PID and wire key.
+ * RU: Опубликовать канал точной аренды и вернуть встречный PID и сетевой ключ. */
+int dvm_returned_lease_grant(DVM_ReturnedLease *lease, struct Channel *channel,
+    const char *type, uint32_t *pid, uint32_t *key);
+
+
+/* [GC:] EN: Return an owned original matching the lease's exact PID, key and type.
+ * RU: Вернуть свою ссылку на оригинал по PID, ключу и типу данной аренды. */
+struct Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, uint32_t pid,
+    const DVM_ChannelSchema *schema);
+
+
 /* EN: Dispose a detached aux binding once, after its managed channel retires.
  * RU: Один раз освободить отсоединённую aux-привязку после освобождения канала. */
 void dvm_returned_proxy_dispose(void *binding);
