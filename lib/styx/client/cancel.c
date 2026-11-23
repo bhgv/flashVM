@@ -13,6 +13,7 @@ struct StyxCancel
     pthread_mutex_t lock; /* Serialize request/bind/lifetime. */
     size_t references;    /* Owner plus optional flight or logical-operation scope. */
     StyxMux *mux;         /* Borrowed until unbind, which precedes engine retirement. */
+    int wait_admission; /* Immutable opt-in to wait for the initial mux tag. */
     int requested;        /* Sticky cancellation request. */
     StyxCancel *child;    /* Owned current fragment token for one logical walk scope. */
     int used;             /* One admitted operation only; late control cannot target a later operation. */
@@ -45,6 +46,25 @@ StyxCancel *styxcancelcreate(void)
     }
     return cancel;
 }
+
+/* EN/RU: See client.h. / См. client.h. */
+StyxCancel *styxcancelcreatewait(void)
+{
+    StyxCancel *cancel = styxcancelcreate();
+    if (cancel)
+    {
+        cancel->wait_admission = 1;
+    }
+    return cancel;
+}
+
+
+/* EN/RU: See mux.h. / См. mux.h. */
+int styxcancelwaits(const StyxCancel *cancel)
+{
+    return cancel && cancel->wait_admission;
+}
+
 
 /* EN/RU: See client.h; native wake is protected against concurrent unbind/free.
  * См. client.h; native wake защищён от concurrent unbind/free. */
@@ -240,7 +260,7 @@ int styxcancelbegin(StyxCancel *cancel)
  */
 StyxCancel *styxcancelstep(StyxCancel *cancel)
 {
-    StyxCancel *child = styxcancelcreate();
+    StyxCancel *child = styxcancelwaits(cancel) ? styxcancelcreatewait() : styxcancelcreate();
     if (!child)
     {
         return NULL;

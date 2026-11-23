@@ -343,6 +343,9 @@ void styxdebug(void);
  */
 void styxsetowner(char *);
 
+/* EN: Copy the current wire fid during dispatch. / RU: Скопировать текущий fid при диспетчеризации. */
+int styxcurrentfid(Styxserver *, u32int *);
+
 /* Borrow current fid context; set transfers non-nil ownership only into an empty slot.
  * No automatic cloning: unopened walk clones start empty. Rebuild all consumers. */
 
@@ -400,6 +403,7 @@ int styxsetaux(Styxserver *server, void *aux);
  * Ownership/threading: retain the original contract immediately above and the public header's requirements.
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
+int styxsetauxowned(Styxserver *server, void *aux, void (*release)(void*));
 int styxattachroot(Styxserver *server, StyxAttach *pending, Qid qid);
 
 

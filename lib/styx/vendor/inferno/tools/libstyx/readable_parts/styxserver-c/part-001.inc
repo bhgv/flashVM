@@ -52,7 +52,8 @@ struct Fid
     vlong offset; /* in file */
     int dri;      /* dirread index */
     Qid qid;
-    void *aux;    /* owned by freefid callback until retirement */
+    void *aux;    /* Owned until fid retirement. */
+    void (*auxfree)(void *); /* Destructor selected at attachment. */
 };
 
 struct Walkqid

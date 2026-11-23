@@ -77,6 +77,7 @@ struct StyxMux
     int terminal;           /* Immutable first terminal cause. */
     pthread_mutex_t lock;   /* Protect admission, table, completion and references. */
     pthread_cond_t ended;   /* Native shutdown/probe acknowledgement predicate notifications. */
+    unsigned admission_waiters; /* Native contenders for an unsent tag, under lock. */
     RemotePhy *phy;         /* Owned carrier; only native owner performs I/O, other pinned threads may wake. */
     unsigned capacity;      /* Maximum initial offered message bytes. */
     unsigned limit;         /* Bounded outstanding request slots1..128. */

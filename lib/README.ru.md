@@ -4,7 +4,7 @@ Copyright (c) 2026 bhgv
 
 [English](README.md)
 
-Это два отдельных исходных проекта для включения во внешние программы. Ни один
+Это три отдельных исходных проекта для включения во внешние программы. Ни один
 из них не собирает и не импортирует DisVM, FlashVM, Limbo, SWF, GUI или соседнюю
 папку репозитория. Любую папку можно скопировать отдельно и собрать на новом месте.
 
@@ -12,6 +12,7 @@ Copyright (c) 2026 bhgv
 | --- | --- | --- | --- |
 | [Styx](styx/README.ru.md) | Исходные codec Inferno 9P2000, клиент/сервер, заменяемый физический носитель | C99, стандартные операции с байтами/строками, без OS/threads/allocator | Linux64, libc/libm/pthread; примерам необязательно нужен Python3 |
 | [libunibus](libunibus/README.ru.md) | Существующие binary S-record codec, вложенные пространства клиентов, номера/CRC5, очереди тегов | C89 wire-функции без выделений памяти | C99/pthread очереди; необязательный POSIX-пример шлюза |
+| [libstyxrpc](styxrpc/README.ru.md) | Протокол удалённого вызова через Styx и колбэки | C99 с Unibus wire | Необязательный пример устройства Styx |
 
 Пример соединения библиотек использует только wire-интерфейс. Это не зависимость
 при линковке: шлюз Unibus не линкует libstyx, сервер Styx не линкует Unibus. Одни
@@ -22,6 +23,7 @@ Copyright (c) 2026 bhgv
 
 - [Styx EN](styx/README.md), [RU](styx/README.ru.md), [примеры](styx/examples/README.ru.md).
 - [libunibus EN](libunibus/README.md), [RU](libunibus/README.ru.md), [примеры](libunibus/examples/README.ru.md).
+- [libstyxrpc EN](styxrpc/README.md), [RU](styxrpc/README.ru.md).
 - В каждой копируемой папке свой `view_docs.py`: `python3 view_docs.py --no-browser --port 8910`.
 - Формат справки: синтаксис, параметры, описание, результат, ошибки, доступность,
   примеры, связанные статьи и ссылки на исходный код.

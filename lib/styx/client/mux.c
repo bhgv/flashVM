@@ -3,6 +3,7 @@
  * RU: Bounded multiplex admission, native wakeup и nonwaiting owner retirement.
  */
 #include "mux_internal.h"
+#include <time.h>
 
 /* EN/RU: See mux_internal.h; cleanup owns descriptors, buffers and native locks.
  * См. mux_internal.h; cleanup владеет descriptors, buffers и locks. */
@@ -69,6 +70,10 @@ void styxmuxwake(StyxMux *mux)
 void styxmuxfinish(StyxMux *mux, StyxFlight *flight)
 {
     mux->slots[flight->slot] = NULL;
+    if (mux->admission_waiters)
+    {
+        pthread_cond_broadcast(&mux->ended);
+    }
     if (mux->sending == flight)
     {
         mux->sending = NULL;
@@ -156,6 +161,9 @@ int styxmuxalive(StyxMux *mux)
     return alive;
 }
 
+#include "readable_parts/mux-c/admission.inc"
+
+
 /* EN/RU: See mux.h; reject quota/OOM/token reuse before effects. Watching reads reserve
  * no more than limit-1 slots, retaining ordinary RPC capacity. Request bytes are copied.
  * См. mux.h; refusal до effects; watching занимает максимум limit-1 slots, bytes copied. */
@@ -185,16 +193,19 @@ StyxFlight *
 styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsigned bound, StyxCancel *cancel, int watching)
 {
     pthread_mutex_lock(&mux->lock);
-    unsigned index;
-    for (index = 0; index < mux->limit && mux->slots[index]; index++)
+    if (length < 7 || length > bound || bound > mux->capacity)
     {
+        pthread_mutex_unlock(&mux->lock);
+        return NULL;
     }
+    int wait = !watching && (styxcancelwaits(cancel) || ((const uchar *)bytes)[4] == Tclunk);
+    unsigned index = admission_slot(mux, cancel, wait);
     unsigned watches = 0;
     for (unsigned i = 0; i < mux->limit; i++)
     {
         watches += mux->slots[i] && mux->slots[i]->watching;
     }
-    if (mux->failed || mux->stopping || index == mux->limit || length < 7 || length > bound || bound > mux->capacity ||
+    if (mux->failed || mux->stopping || index == mux->limit ||
         (watching && (mux->limit < 2 || watches >= mux->limit - 1 || ((const uchar *)bytes)[4] != Tread)))
     {
         pthread_mutex_unlock(&mux->lock);
@@ -468,28 +479,4 @@ int styxmuxwatchable(StyxMux *mux)
     return valid;
 }
 
-/* EN/RU: See mux.h; ordinary construction retains the exact raw 9P framing and allocation bounds.
- * См. mux.h; ordinary constructor сохраняет raw 9P framing и allocation bounds.
- */
-
-
-/* [standalone-contract:styxmuxcreatephy]
- * EN: styxmuxcreatephy: native client mux operations and lifetime.
- * RU: styxmuxcreatephy: нативные client-операции mux и время жизни.
- * phy (RemotePhy *phy): Physical-carrier capability; ownership transfer depends on the constructor/operation.
- * RU: Capability физического носителя; передача владения зависит от конструктора/операции.
- * capacity (unsigned capacity): Actual caller-owned output capacity; it is not permission to write past the buffer.
- * RU: Фактическая ёмкость буфера вызывающего; выход за неё недопустим.
- * timeout (unsigned timeout): Native wait budget in milliseconds; zero and upper-bound behavior follow the function contract.
- * RU: Бюджет нативного ожидания в миллисекундах; поведение нуля и верхнего предела задано контрактом.
- * limit (unsigned limit): Explicit local quota; permitted ranges and wire/body units are given in the description.
- * RU: Явная локальная квота; диапазон и единицы wire/body указаны в описании.
- * Return: StyxMux *; direct result constants in this body: see Description and the implementation. Forwarded results preserve the called API's status.
- * Возврат: StyxMux *; прямые константы результата тела: see Description and the implementation. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
- */
-StyxMux *styxmuxcreatephy(RemotePhy *phy, unsigned capacity, unsigned timeout, unsigned limit)
-{
-    return styxmuxcreatewalkphy(phy, capacity, timeout, limit, 0);
-}
+#include "readable_parts/mux-c/construction.inc"

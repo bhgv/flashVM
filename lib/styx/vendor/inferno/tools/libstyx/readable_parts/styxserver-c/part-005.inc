@@ -2,7 +2,7 @@
  * EN: Sequential implementation section of styxserver.c; inherits the facade's C scope and original declarations.
  * RU: Последовательная часть реализации; наследует C scope и исходные declarations facade. */
 
-/* [standalone-contract:styxsetaux]
+/* [standalone-contract:styxsetauxowned]
  * EN: styxsetaux: original server session/fid dispatch and callback-backed namespace operations.
  * RU: styxsetaux: исходная диспетчеризация сессий/fid и callback-операции namespace.
  * server (Styxserver *server): Original server instance and dispatcher-owned state.
@@ -14,24 +14,40 @@
  * Ownership/threading: retain the original contract immediately above and the public header's requirements.
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
-int styxsetaux(Styxserver *server, void *aux)
+int
+styxsetauxowned(Styxserver *server, void *aux, void (*release)(void*))
 {
     Fid *f;
-    if (server == nil || server->curc == nil || server->ops->freefid == nil || aux == nil)
-    {
+    if(server == nil || server->curc == nil || release == nil || aux == nil)
         return -1;
-    }
     f = server->curc->current;
-    if (f == nil || f->aux != nil)
-    {
+    if(f == nil || f->aux != nil)
         return -1;
-    }
     f->aux = aux;
+    f->auxfree = release;
     return 0;
 }
 
-/* Return a borrowed native context, never a VM or wire pointer. */
+/* Preserve the server-wide destructor for callers with homogeneous contexts. */
+int
+styxsetaux(Styxserver *server, void *aux)
+{
+    return server == nil || server->ops == nil ? -1 : styxsetauxowned(server, aux, server->ops->freefid);
+}
 
+/* Return a borrowed native context, never a VM or wire pointer. */
+/* EN/RU: See styxserver.h. / См. styxserver.h. */
+int
+styxcurrentfid(Styxserver *server, u32int *number)
+{
+    Client *client = server ? server->curc : nil;
+    if (!client || !client->current || !number)
+    {
+        return 0;
+    }
+    *number = client->current->fid;
+    return 1;
+}
 
 /* [standalone-contract:styxgetaux]
  * EN: styxgetaux: original server session/fid dispatch and callback-backed namespace operations.

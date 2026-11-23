@@ -1,0 +1,194 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Scalar interface admission over existing Unibus record files.
+ * RU: Допуск скалярного интерфейса через существующие файлы Unibus.
+ */
+#include "scalar_verify.h"
+#include "load_profile.h"
+#include "call_scope.h"
+#include "flashvm/srecord.h"
+#include <string.h>
+
+/* EN/RU: Measure the borrowed nonempty name within the wire limit.
+ * Измерить непустое заимствованное имя в пределах формата. */
+size_t styxscalar_name_length(const char *name)
+{
+    size_t size = 0;
+    if (name)
+    {
+        while (size <= INTERFACE_NAME_LIMIT && name[size])
+        {
+            size++;
+        }
+    }
+    return size <= INTERFACE_NAME_LIMIT ? size : 0;
+}
+
+
+/* EN/RU: Encode a portable signature without host frame or pointer data.
+ * Закодировать сигнатуру без данных нативного кадра и указателей. */
+void styxscalar_interface_header(unsigned char *data, uint32_t signature)
+{
+    data[0] = INTERFACE_KIND;
+    for (size_t i = INTERFACE_HEADER - 1; i > 0; i--)
+    {
+        data[i] = (unsigned char)signature;
+        signature >>= 8;
+    }
+}
+
+
+/* EN/RU: See scalar_interface.h; admit exactly one canonical S-record.
+ * См. scalar_interface.h; допустить ровно одну каноническую S-запись. */
+int styxscalaraccept(unsigned long tag, const void *bytes, size_t size,
+    const char *name, uint32_t signature)
+{
+    size_t length = styxscalar_name_length(name);
+    unsigned char data[INTERFACE_HEADER];
+    FVM_SRecord record;
+    size_t used;
+    styxscalar_interface_header(data, signature);
+    return tag && length &&
+        fvm_srecord_read(bytes, size, INTERFACE_HEADER + INTERFACE_NAME_LIMIT + FVM_SRECORD_INTEGER_MAX,
+            &record, &used) == FVM_S_OK &&
+        size == used && record.tag == tag && record.size == sizeof(data) + length &&
+        !memcmp(record.payload, data, sizeof(data)) &&
+        !memcmp(record.payload + sizeof(data), name, length);
+}
+
+
+/* EN/RU: Check the complete framed sequence and identify one unambiguous match.
+ * Проверить всю последовательность кадров и найти единственное совпадение. */
+unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, StyxCallShape *shape, int *explicit_end)
+{
+    const unsigned char *cursor = bytes;
+    unsigned match = 0;
+    int scoped = 0, staged = 0;
+    StyxCallShape decoded = {{0}, {0}};
+    for (unsigned i = 0; size && i < STYX_MOUNTED_EXPORT_LIMIT; i++)
+    {
+        FVM_SRecord record;
+        size_t used;
+        if (fvm_srecord_read(cursor, size, STYX_SHAPED_OFFER_MAX, &record, &used) != FVM_S_OK)
+        {
+            return 0;
+        }
+        int selected;
+        StyxCallShape types = {{0}, {0}};
+        int scoped_shape = record.tag == STYX_SCOPED_OFFER_TAG || record.tag == STYX_SCOPED_END_OFFER_TAG ||
+            record.tag == STYX_SCOPED_PATH_OFFER_TAG || record.tag == STYX_SCOPED_RECORD_OFFER_TAG;
+        if (record.tag == STYX_SHAPED_OFFER_TAG || scoped_shape)
+        {
+            char offered_name[INTERFACE_NAME_LIMIT + 1];
+            uint32_t offered_sig;
+            unsigned long request = styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types);
+            if (!request || (scoped_shape && styxloadedrequest(offered_sig)) ||
+                ((request == STYX_MANAGED_REQUEST_TAG) != (record.tag == STYX_SCOPED_RECORD_OFFER_TAG)))
+            {
+                return 0;
+            }
+            selected = name && offered_sig == signature && !strcmp(name, offered_name);
+        }
+        else
+        {
+            if ((record.tag != STYX_FUNCTION_PROFILE_TAG && record.tag != STYX_FUNCTION_CALLER_PROFILE) ||
+                record.size <= INTERFACE_HEADER || record.size > INTERFACE_HEADER + INTERFACE_NAME_LIMIT ||
+                record.payload[0] != INTERFACE_KIND)
+            {
+                return 0;
+            }
+            selected = styxscalaraccept(record.tag, cursor, used, name, signature);
+        }
+        if (selected)
+        {
+            if (match)
+            {
+                return 0;
+            }
+            match = 1U << i;
+            scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || scoped_shape;
+            staged = record.tag == STYX_SCOPED_RECORD_OFFER_TAG ? STYX_CALL_RECORD_FRAMING :
+                record.tag == STYX_SCOPED_PATH_OFFER_TAG ? STYX_CALL_PATH_FRAMING : record.tag == STYX_SCOPED_END_OFFER_TAG;
+            decoded = types;
+        }
+        cursor += used;
+        size -= used;
+    }
+    if (size || !match)
+    {
+        return 0;
+    }
+    if (caller)
+    {
+        *caller = scoped;
+    }
+    if (shape)
+    {
+        *shape = decoded;
+    }
+    if (explicit_end)
+    {
+        *explicit_end = staged;
+    }
+    return match;
+}
+
+
+/* EN/RU: Match an import without the framing flag. / Сверить импорт без флага кадров. */
+unsigned styxscalar_profile_match_shape(const void *bytes, size_t size, const char *name, uint32_t signature,
+    int *caller, StyxCallShape *shape)
+{
+    return styxscalar_profile_match_protocol(bytes, size, name, signature, caller, shape, NULL);
+}
+
+
+/* EN: Match a compiled import without retaining its optional shape metadata.
+ * RU: Сверить компилированный импорт без сохранения необязательной схемы. */
+unsigned styxscalar_profile_match(const void *bytes, size_t size, const char *name, uint32_t signature, int *caller)
+{
+    return styxscalar_profile_match_shape(bytes, size, name, signature, caller, NULL);
+}
+
+
+/* EN/RU: See scalar_verify.h; typed tags fix the scalar width on the wire.
+ * См. scalar_verify.h; типизированный тег фиксирует ширину в записи. */
+uint32_t styxscalar_request_signature(unsigned long tag)
+{
+    switch (tag)
+    {
+    case STYX_FUNCTION_REQUEST_TAG:
+    case STYX_FUNCTION_CALLER_TAG:
+        return DVM_SCALAR_INT_SIGNATURE;
+    case STYX_FUNCTION_BIG_TAG:
+    case STYX_FUNCTION_BIG_CALLER_TAG:
+        return DVM_SCALAR_BIG_SIGNATURE;
+    case STYX_REF_PAIR_REQUEST_TAG:
+        return DVM_REF_PAIR_SIGNATURE;
+    case STYX_CALL_LIST_REQUEST_TAG:
+        return DVM_CALL_LIST_SIGNATURE;
+    case STYX_REF_REQUEST_TAG:
+    case STYX_REF_CALLER_TAG:
+        return DVM_REF_SIGNATURE;
+    case STYX_TUPLE_REQUEST_TAG:
+    case STYX_TUPLE_CALLER_TAG:
+        return DVM_TUPLE_SIGNATURE;
+    default:
+        return 0;
+    }
+}
+
+
+
+/* EN/RU: See scalar_verify.h. / См. scalar_verify.h. */
+unsigned long styxfunction_reply_tag(unsigned long request)
+{
+    if (request == STYX_DYNAMIC_REQUEST_TAG)
+    {
+        return STYX_DYNAMIC_REPLY_TAG;
+    }
+    uint32_t signature = styxscalar_request_signature(request);
+    return signature == DVM_REF_PAIR_SIGNATURE ? STYX_REF_PAIR_REPLY_TAG :
+        signature == DVM_CALL_LIST_SIGNATURE ? STYX_CALL_LIST_REPLY_TAG :
+        signature == DVM_REF_SIGNATURE ? STYX_REF_REPLY_TAG :
+        signature == DVM_TUPLE_SIGNATURE ? STYX_TUPLE_REPLY_TAG : signature ? STYX_FUNCTION_REPLY_TAG : 0;
+}

@@ -300,6 +300,11 @@ int dvm_styx_mount_cli(int argc, char **argv)
         }
         separator = 7;
     }
+    int raw = !entry && argc > separator && !strcmp(argv[separator], "--raw");
+    if (raw)
+    {
+        separator++;
+    }
     const char *path = "/peer";
     if (argc > separator + 1 && !strcmp(argv[separator], "--at"))
     {
@@ -344,10 +349,24 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
+    if (raw)
+    {
+        StyxClient *client = fd >= 0 ? styxclientmountphy(
+            phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "caller", "", 5000, 8) : NULL;
+        DVM_Provider *mount = client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
+        if (!mount)
+        {
+            fprintf(stderr, "disvm: cannot initialize raw Styx mount\n");
+            return 1;
+        }
+        int result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL);
+        dvm_provider_release(mount);
+        return result;
+    }
     int breaker = fd >= 0 ? dup(fd) : -1;
     if (breaker < 0)
     {

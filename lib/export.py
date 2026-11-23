@@ -44,6 +44,19 @@ def files(root):
         for name in ("srecord", "sstream"):
             yield root / f"flashVM/src/protocol/{name}.c", root / f"lib/{package}/protocol/{name}.c"
             yield root / f"flashVM/include/flashvm/{name}.h", root / f"lib/{package}/include/flashvm/{name}.h"
+    rpc = root / "disVM/native/terminal"
+    for name in ("call_record", "call_scope", "load_profile", "ref_pair_record",
+                 "scalar_record", "scalar_verify", "tuple_record"):
+        for suffix in (".c", ".h"):
+            yield rpc / (name + suffix), root / "lib/styxrpc/protocol" / (name + suffix)
+    for name in ("managed_array_span", "managed_graph_validation", "managed_record_validation",
+                 "managed_ref_validation", "managed_result_validation", "managed_sequence_edits",
+                 "managed_table_wire"):
+        yield rpc / (name + ".inc"), root / "lib/styxrpc/protocol" / (name + ".inc")
+    yield root / "flashVM/src/capi/utf8.c", root / "lib/styxrpc/protocol/utf8.c"
+    yield root / "flashVM/include/flashvm/utf8.h", root / "lib/styxrpc/protocol/flashvm/utf8.h"
+    yield root / "LICENSE", root / "lib/styxrpc/LICENSE.bhgv"
+
     for name in ("sbindings", "scontrol", "sslot", "sadapt", "smeasure", "smedia"):
         yield root / f"flashVM/src/protocol/{name}.c", root / f"lib/libunibus/protocol/{name}.c"
         yield root / f"flashVM/include/flashvm/{name}.h", root / f"lib/libunibus/include/flashvm/{name}.h"
@@ -60,7 +73,7 @@ def main():
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    manifests = {"styx": [], "libunibus": []}
+    manifests = {"styx": [], "libunibus": [], "styxrpc": []}
     expected_paths = set()
     for source, target in files(root):
         data = source.read_bytes()
@@ -100,7 +113,11 @@ def main():
                 raise RuntimeError("snapshot algorithm drift: " + str(target))
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
+            from tools.layout import same_tokens
+            if (not target.is_file() or
+                (target.read_bytes() != data and
+                 (target.suffix not in (".c", ".h", ".inc", ".py") or not same_tokens(data.decode(), target)))):
+                target.write_bytes(data)
         expected_paths.add(target)
         package = target.relative_to(root / "lib").parts[0]
         manifests[package].append(dict(source=str(source.relative_to(root)), path=str(target.relative_to(root / "lib" / package)),
@@ -115,7 +132,7 @@ def main():
             manifest.write_text(text)
         print(package, len(entries), "verified" if args.check else "exported")
     if not args.check:
-        for package in ("styx", "libunibus"):
+        for package in manifests:
             inventory = root / "lib" / package / "EXPORTED-PATHS.txt"
             if inventory.exists():
                 for name in inventory.read_text().splitlines():

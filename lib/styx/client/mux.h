@@ -138,6 +138,9 @@ StyxAnswer styxmuxcollect(StyxFlight *);
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
 int styxmuxalive(StyxMux *);
+
+/* EN/RU: Copy tag counts without I/O. / Скопировать число тегов без I/O. */
+void styxmuxtagcounts(StyxMux *, unsigned *, unsigned *);
 /* EN/RU: Terminally reject all work and wake native owner; no guest access.
  * Terminally отклонить всю работу и разбудить owner, без guest access. */
 
@@ -228,6 +231,18 @@ int styxcancelbind(StyxCancel *, StyxMux *);
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
 int styxcancelled(StyxCancel *);
+
+/* EN: Create an owned token for native mount I/O with bounded initial tag waiting.
+ * Cancellation and the mux timeout bound admission before any frame can be sent.
+ * RU: Создать свой токен для ожидания начального тега в операции маунта.
+ * Допуск до отправки ограничен отменой и таймаутом mux. */
+StyxCancel *styxcancelcreatewait(void);
+
+
+/* EN: Read the borrowed token's immutable admission policy.
+ * RU: Прочитать неизменяемое правило допуска заимствованного токена. */
+int styxcancelwaits(const StyxCancel *cancel);
+
 
 
 /* [standalone-contract:styxcancelunbind]

@@ -1,0 +1,7 @@
+# Copyright (c) 2026 bhgv
+# EN: Resolve the independently installed Unibus wire codec for native consumers.
+# RU: Найти независимо установленный кодек UniBus для нативных потребителей.
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+find_dependency(Unibus CONFIG)
+include("${CMAKE_CURRENT_LIST_DIR}/StyxRpcTargets.cmake")

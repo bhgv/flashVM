@@ -4,14 +4,15 @@ Copyright (c) 2026 bhgv
 
 [Русский](README.ru.md)
 
-These are two separate, redistributable source projects. Neither project builds,
+These are three separate, redistributable source projects. None builds,
 loads or imports DisVM, FlashVM, Limbo, SWF, a GUI toolkit, or a sibling directory.
-Copy either directory to another checkout and configure it there.
+Copy any directory to another checkout and configure it there.
 
 | Project | Purpose | Smallest configuration | Hosted configuration |
 | --- | --- | --- | --- |
 | [Styx](styx/README.md) | Original Inferno 9P2000 codecs, native client/server, replaceable physical carrier | C99 codec, standard byte/string operations, no OS/threads/allocator calls | Linux64, libc/libm/pthread; examples optionally use Python3 |
 | [libunibus](libunibus/README.md) | Existing binary S-record codecs, nested client namespaces, sequence/CRC5 and per-tag queues | C89 allocation-free wire functions | C99/pthread queues; optional POSIX gateway example |
+| [libstyxrpc](styxrpc/README.md) | Mounted RPC wire codec and callback endpoint | C99 with Unibus wire | Optional Styx device example |
 
 The optional example connecting the two projects uses their wire interfaces.
 It is not a link dependency: the Unibus gateway does not link libstyx; the Styx
@@ -22,6 +23,7 @@ or inside explicitly agreed nested S-records.
 
 - [Styx English guide](styx/README.md), [Russian guide](styx/README.ru.md), [examples](styx/examples/README.md).
 - [libunibus English guide](libunibus/README.md), [Russian guide](libunibus/README.ru.md), [examples](libunibus/examples/README.md).
+- [libstyxrpc English guide](styxrpc/README.md), [Russian guide](styxrpc/README.ru.md).
 - Each copied directory owns `view_docs.py`; run `python3 view_docs.py --no-browser --port 8910` inside it.
 - Reference pages follow a dictionary layout: syntax, parameters, description,
   return value, errors, availability, examples, related entries and source links.

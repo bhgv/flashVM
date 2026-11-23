@@ -319,9 +319,9 @@ static void deletefid(Client *c, Fid *d)
             {
                 c->current = nil;
             }
-            if (d->aux != nil && c->server->ops->freefid != nil)
+            if (d->aux != nil && d->auxfree != nil)
             {
-                c->server->ops->freefid(d->aux);
+                d->auxfree(d->aux);
             }
             styxfree(d);
             return;
@@ -361,9 +361,9 @@ static void deletefids(Client *c)
         {
             c->server->ops->close(f->qid, f->mode);
         }
-        if (f->aux != nil && c->server->ops->freefid != nil)
+        if (f->aux != nil && f->auxfree != nil)
         {
-            c->server->ops->freefid(f->aux);
+            f->auxfree(f->aux);
         }
         styxfree(f);
     }
