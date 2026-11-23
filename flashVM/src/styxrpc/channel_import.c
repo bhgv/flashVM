@@ -2,74 +2,11 @@
  * EN: Decode a scoped channel result into aliased owner-local FlashVM objects.
  * RU: Декодирование результата с каналами в локальные объекты FlashVM с алиасами.
  */
-#include "channel_private.h"
+#include "channel_lend.h"
 #include "managed_values.h"
 #include "styxrpc/managed_module.h"
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct ArgumentChannels
-{
-    StyxRpcArgumentScope *scope; /* Borrowed staged reverse publication. */
-    FVM_Value objects[STYXRPC_CHANNEL_SLOTS]; /* Rooted argument identities through retirement. */
-    size_t count;                /* Distinct queues already encoded. */
-} ArgumentChannels;
-
-
-/* [GC:] EN: Encode an exact local queue or nil and pin each queue for the complete call.
- * RU: Закодировать локальную очередь либо nil и удержать очередь на весь вызов. */
-static int encode_channel(FVM_Context *context, FVM_GCRootScope *roots, void *state,
-    const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
-{
-    ArgumentChannels *channels = state;
-    StyxRpcChannelQueue *queue;
-    const char *end;
-    size_t size, index;
-    if (value->type == FVM_VALUE_NULL)
-    {
-        return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
-    }
-    queue = fvm_styxrpc_local_channel_queue(context, value);
-    end = fvm_styxrpc_type_end(type);
-    if (!queue || !end)
-    {
-        return 0;
-    }
-    size = (size_t)(end - type) - 3;
-    if (strlen(queue->grant.shape) != size + 2 || memcmp(type + 2, queue->grant.shape + 1, size))
-    {
-        return 0;
-    }
-    for (index = 0; index < channels->count && channels->objects[index].object != value->object; ++index)
-    {
-    }
-    if (index == channels->count)
-    {
-        if (index == STYXRPC_CHANNEL_SLOTS || fvm_gc_roots_add(roots, value) != FVM_OK)
-        {
-            return 0;
-        }
-        channels->objects[channels->count++] = *value;
-    }
-    return styxrpc_argument_scope_value(channels->scope, queue, bytes, capacity, used) == STYXRPC_OK;
-}
-
-
-/* EN: Recheck that argument getters did not close any borrowed local channel.
- * RU: Проверить, что геттеры не закрыли заимствованные локальные каналы. */
-static int check_channels(FVM_Context *context, const ArgumentChannels *channels)
-{
-    size_t i;
-    for (i = 0; i < channels->count; ++i)
-    {
-        if (!fvm_styxrpc_local_channel_queue(context, channels->objects + i))
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
 
 /* [GC:] EN: Materialize the successful result under one shared owner-local lease.
  * RU: Создать успешный результат под общей арендой владельца. */
@@ -121,7 +58,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, const StyxRpcManagedTarget
 {
     const StyxRpcManagedTarget target = *descriptor;
     FVM_GCRootScope *roots;
-    ArgumentChannels channels = {0};
+    FVM_StyxLentChannels channels = {0};
     FVM_StyxRefs refs = {0};
     unsigned char *buffer;
     StyxRpcLeasedReply reply;
@@ -153,7 +90,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, const StyxRpcManagedTarget
     {
         channels.scope = styxrpc_argument_scope_open(bus, target.pid);
         refs.graph = 1;
-        refs.encode_channel = encode_channel;
+        refs.encode_channel = fvm_styxrpc_lend_argument;
         refs.channel_context = &channels;
     }
     if (arguments && !channels.scope)
@@ -165,7 +102,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, const StyxRpcManagedTarget
     {
         error = "Styx RPC channel arguments do not fit the schema";
     }
-    else if (arguments && !check_channels(context, &channels))
+    else if (arguments && !fvm_styxrpc_lend_prepare(context, roots, &channels))
     {
         error = "Styx RPC channel argument scope could not be published";
     }
@@ -176,6 +113,11 @@ static FVM_Result invoke_scoped(FVM_Context *context, const StyxRpcManagedTarget
                 buffer + STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT, &reply) :
             styxrpc_channel_invoke(&target, buffer, size, buffer + STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT, &reply);
         channels.scope = NULL;
+        if (arguments && outcome != STYXRPC_CALL_NOT_SENT && !fvm_styxrpc_lend_restore(context, &channels))
+        {
+            styxrpc_channel_lease_release(outcome == STYXRPC_CALL_OK ? reply.lease : NULL, 0);
+            outcome = STYXRPC_CALL_UNCERTAIN;
+        }
         switch (outcome)
         {
         case STYXRPC_CALL_OK:
@@ -197,6 +139,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, const StyxRpcManagedTarget
         }
     }
     styxrpc_argument_scope_close(channels.scope);
+    fvm_styxrpc_lend_clear(&channels);
     fvm_gc_roots_end(roots);
     free(buffer);
     return error ? fvm_styxrpc_managed_fail(context, error) : FVM_OK;
@@ -253,8 +196,7 @@ FVM_Result fvm_styxrpc_channel_import_arguments(FVM_Context *context, const char
     FVM_StyxRpcChannelArguments *binding)
 {
     if (!context || !global || !*global || !binding || !binding->bus || !checked_target(binding->target) ||
-        !strchr(binding->target->schema.arguments, 'c') ||
-        !fvm_styxrpc_channel_value_elements(binding->target->schema.arguments))
+        !strchr(binding->target->schema.arguments, 'c'))
     {
         return FVM_INVALID_ARGUMENT;
     }

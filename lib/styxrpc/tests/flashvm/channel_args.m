@@ -6,5 +6,6 @@ Arguments: module {
     reject: fn(port: chan of int);
     result: fn(port: chan of int): chan of int;
     relay: fn(port: chan of int): int;
+    nested: fn(batch: chan of array of chan of int, direct: chan of int, fail: int): int;
     wait: fn(port: chan of int): int;
 };

@@ -3,7 +3,7 @@
  * RU: Канонизация признаков ёмкости и виртуальные fid выданной группы каналов.
  */
 #include "channel_group_internal.h"
-#include "call_record.h"
+#include "channel_remap.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,65 +33,17 @@ static const StyxRpcChannelQueue *find_queue(const ChannelGroup *group, uint32_t
 }
 
 
-/* EN: Copy or canonically reframe one record from a checked typed element.
- * RU: Скопировать или заново оформить одну запись проверенного типизированного элемента. */
-static int rewrite(const ChannelGroup *group, const unsigned char *bytes, const FVM_SRecord *record,
-    size_t extent, unsigned depth, unsigned char *output, size_t capacity, size_t *used)
+/* EN: Preserve the exact buffer kind when Limbo echoes a key on this leased group.
+ * RU: Сохранить точный вид буфера при возврате ключа Limbo в эту арендованную группу. */
+static int capacity_marker(const void *context, uint32_t *key, int *unbuffered)
 {
-    if (record->tag == STYX_MANAGED_CHANNEL_TAG && record->size == 4)
-    {
-        const unsigned char *p = record->payload;
-        uint32_t key = (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
-        const StyxRpcChannelQueue *queue = find_queue(group, key);
-        if (!queue)
-        {
-            return 0;
-        }
-        if (!queue->capacity)
-        {
-            return fvm_srecord_write(STYX_MANAGED_UNBUFFERED_CHANNEL_TAG, p, 4,
-                output, capacity, used) == FVM_S_OK;
-        }
-    }
-    int children = record->tag == STYXRPC_CHANNEL_ELEMENT_TAG ||
-        record->tag == STYXRPC_VALUE_ARRAY || record->tag == STYXRPC_VALUE_TUPLE;
-    if (!children || !record->size)
-    {
-        if (extent > capacity)
-        {
-            return 0;
-        }
-        memcpy(output, bytes, extent);
-        *used = extent;
-        return 1;
-    }
-    if (depth == STYXRPC_MANAGED_SHAPE || !capacity)
+    const StyxRpcChannelQueue *queue = find_queue(context, *key);
+    if (!queue)
     {
         return 0;
     }
-    unsigned char *body = malloc(capacity);
-    if (!body)
-    {
-        return 0;
-    }
-    size_t offset = 0, written = 0;
-    int ok = 1;
-    while (ok && offset < record->size)
-    {
-        FVM_SRecord child;
-        size_t length, placed;
-        const unsigned char *source = record->payload + offset;
-        ok = fvm_srecord_read(source, record->size - offset, FRAME, &child, &length) == FVM_S_OK &&
-            rewrite(group, source, &child, length, depth + 1, body + written, capacity - written, &placed);
-        if (ok)
-        {
-            offset += length;
-            written += placed;
-        }
-    }
-    ok = ok && fvm_srecord_write(record->tag, body, written, output, capacity, used) == FVM_S_OK;
-    free(body);
-    return ok;
+    *unbuffered = !queue->capacity;
+    return 1;
 }
 
 
@@ -99,11 +51,8 @@ static int rewrite(const ChannelGroup *group, const unsigned char *bytes, const 
 int styxrpc_group_normalize(ChannelGroup *group, const void *bytes, size_t size,
     unsigned char *output, size_t capacity, size_t *used)
 {
-    FVM_SRecord outer;
-    size_t extent;
-    return fvm_srecord_read(bytes, size, FRAME, &outer, &extent) == FVM_S_OK &&
-        extent == size && outer.tag == STYXRPC_CHANNEL_ELEMENT_TAG &&
-        rewrite(group, bytes, &outer, extent, 0, output, capacity, used);
+    const ChannelKeyTransform mapping = {capacity_marker, group};
+    return styxrpc_channel_reframe(&mapping, bytes, size, output, capacity, used);
 }
 
 

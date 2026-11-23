@@ -76,3 +76,22 @@ wait(port: chan of int): int
 {
     return <-port;
 }
+
+
+# EN: Use a child introduced only through a message and compare it with a direct argument.
+# RU: Использовать дочерний канал из сообщения и сравнить его с прямым аргументом.
+nested(batch: chan of array of chan of int, direct: chan of int, fail: int): int
+{
+    values := <-batch;
+    if (len values != 4 || values[0] == nil || values[0] != values[1] ||
+        values[0] == direct || values[2] != nil || values[3] != direct) {
+        raise "nested arguments lost aliases";
+    }
+    result := <-values[0];
+    values[0] <-= result + 1;
+    batch <-= values;
+    if (fail) {
+        raise "nested operations committed before exception";
+    }
+    return result;
+}

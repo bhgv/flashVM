@@ -26,7 +26,7 @@ The function can receive from `port` and send back to the same queue before it r
 
 The SDK verifies the scoped offer, binds the exact PID and keys, then activates the bus immediately before the first write. On completion, timeout or error, it retires the generation and detaches unresolved reverse operations. Queue changes from completed operations remain visible in AS. A remote exception or uncertain timeout therefore does not imply that a send or receive was rolled back. A separately returned DisVM channel can stay live through its own result lease.
 
-Each call admits up to eight distinct queues. Each local queue has zero to eight slots. Capacity zero supports rendezvous between DisVM operations during the call. Flash-owned argument queues carry elements by value.
+Each call admits up to eight distinct queues. Each local queue has zero to eight slots. Capacity zero supports rendezvous between DisVM operations during the call. Flash-owned argument queues carry copied values and [nested channels from the same call scope](STYX_RPC_NESTED_CHANNELS.md#lend-nested-flashvm-queues-as-arguments).
 
 [Executable FlashVM caller](../tests/styxrpc/channel-args.c) · [DisVM owner](../../lib/styxrpc/tests/flashvm/channel_args_owner.b)
 

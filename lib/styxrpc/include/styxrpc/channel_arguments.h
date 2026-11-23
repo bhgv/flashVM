@@ -42,6 +42,12 @@ StyxRpcStatus styxrpc_argument_scope_value(StyxRpcArgumentScope *scope, StyxRpcC
     void *bytes, size_t capacity, size_t *used);
 
 
+/* EN: Reserve or reuse a fresh grant for queue without adding a direct argument.
+ * RU: Выделить или переиспользовать новый ключ queue без добавления прямого аргумента. */
+StyxRpcStatus styxrpc_argument_scope_nested(StyxRpcArgumentScope *scope,
+    StyxRpcChannelQueue *queue, StyxRpcChannelGrant *grant);
+
+
 /* EN: Publish all staged keys atomically just before transmitting the forward request.
  * RU: Атомарно опубликовать подготовленные ключи перед отправкой прямого запроса. */
 int styxrpc_argument_scope_activate(StyxRpcArgumentScope *scope);

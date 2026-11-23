@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1717 / Контрольная точка v0.1717. FlashVM can lend local
+FIFO and rendezvous queues reachable through typed argument messages.
+SDK назначает ключи на один вызов, а FlashVM восстанавливает сообщения
+с исходными объектами, сохраняя завершённые операции при исключении.
+[EN](STYX_RPC_NESTED_CHANNELS.md) / [RU](STYX_RPC_NESTED_CHANNELS.ru.md).
+
 Checkpoint v0.1716 / Контрольная точка v0.1716. A FlashVM result can carry
 module-owned nested FIFO and rendezvous channels under the issuing lease.
 Обычный экспорт и обработчик с заимствованными аргументами используют

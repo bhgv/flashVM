@@ -31,6 +31,8 @@ struct StyxRpcArgumentScope
     StyxRpcChannelGrant grants[STYXRPC_CHANNEL_SLOTS]; /* Immutable admitted argument keys. */
     ArgumentOpen *opens;              /* Intrusive list of this generation's operation fids. */
     size_t count;                     /* Distinct queues, in first occurrence order. */
+    size_t direct[STYXRPC_CHANNEL_SLOTS]; /* Direct slots in first encoded order. */
+    size_t direct_count;              /* Number of distinct direct argument queues. */
     int active;                       /* Zero until the complete call is ready. */
 };
 
@@ -233,37 +235,103 @@ StyxRpcArgumentScope *styxrpc_argument_scope_open(StyxRpcArgumentBus *bus, uint3
 }
 
 
-/* EN/RU: See styxrpc/channel_arguments.h. / См. styxrpc/channel_arguments.h. */
-StyxRpcStatus styxrpc_argument_scope_value(StyxRpcArgumentScope *scope, StyxRpcChannelQueue *queue,
-    void *bytes, size_t capacity, size_t *used)
+/* EN: Reserve a fresh generation key for one exact queue and return its stable slot.
+ * RU: Выделить свежий ключ поколения точной очереди и вернуть её стабильный индекс. */
+static size_t reserve(StyxRpcArgumentScope *scope, StyxRpcChannelQueue *queue)
 {
     if (!scope || !queue || scope->active)
     {
-        return STYXRPC_INVALID;
+        return STYXRPC_CHANNEL_SLOTS;
     }
     size_t index = 0;
     while (index < scope->count && scope->owners[index] != queue)
     {
         ++index;
     }
-    if (index == scope->count)
+    if (index == scope->count && index < STYXRPC_CHANNEL_SLOTS)
     {
-        if (index == STYXRPC_CHANNEL_SLOTS || scope->bus->serial == INT32_MAX)
+        if (scope->bus->serial == INT32_MAX)
         {
-            return STYXRPC_INVALID;
+            return STYXRPC_CHANNEL_SLOTS;
         }
         scope->grants[index] = queue->grant;
         scope->grants[index].key = ++scope->bus->serial;
-    }
-    /* EN: In an argument, the regular current-bus key uses the scoped caller PID.
-     * RU: Обычный ключ аргумента относится к шине PID контекстного вызывающего. */
-    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = scope->grants[index]};
-    StyxRpcStatus status = styxrpc_channel_route_value(&route, bytes, capacity, used);
-    if (status == STYXRPC_OK && index == scope->count)
-    {
         scope->owners[scope->count++] = queue;
     }
+    return index;
+}
+
+
+/* EN/RU: See channel_arguments.h. / См. channel_arguments.h. */
+StyxRpcStatus styxrpc_argument_scope_nested(StyxRpcArgumentScope *scope,
+    StyxRpcChannelQueue *queue, StyxRpcChannelGrant *grant)
+{
+    size_t index = grant ? reserve(scope, queue) : STYXRPC_CHANNEL_SLOTS;
+    if (index == STYXRPC_CHANNEL_SLOTS)
+    {
+        return STYXRPC_INVALID;
+    }
+    *grant = scope->grants[index];
+    return STYXRPC_OK;
+}
+
+
+/* EN/RU: See channel_arguments.h. / См. channel_arguments.h. */
+StyxRpcStatus styxrpc_argument_scope_value(StyxRpcArgumentScope *scope, StyxRpcChannelQueue *queue,
+    void *bytes, size_t capacity, size_t *used)
+{
+    size_t before = scope ? scope->count : 0;
+    size_t index = reserve(scope, queue);
+    if (index == STYXRPC_CHANNEL_SLOTS)
+    {
+        return STYXRPC_INVALID;
+    }
+    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = scope->grants[index]};
+    StyxRpcStatus status = styxrpc_channel_route_value(&route, bytes, capacity, used);
+    if (status == STYXRPC_OK)
+    {
+        size_t i = 0;
+        while (i < scope->direct_count && scope->direct[i] != index)
+        {
+            ++i;
+        }
+        if (i == scope->direct_count)
+        {
+            scope->direct[scope->direct_count++] = index;
+        }
+    }
+    else if (index == before)
+    {
+        --scope->count;
+    }
     return status;
+}
+
+
+/* EN: Require each seeded leaf to be an exact ordinary key in this scope.
+ * RU: Требовать точные обычные ключи области во всех начальных вложенных листьях. */
+static int seed_valid(const StyxRpcArgumentScope *scope, const char *shape, const void *bytes, size_t size)
+{
+    StyxRpcChannelRoutes routes;
+    if (styxrpc_channel_element_routes(shape, bytes, size, &routes) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < routes.count; ++i)
+    {
+        const StyxRpcChannelRoute *route = routes.entries + i;
+        size_t j = 0;
+        while (j < scope->count && scope->grants[j].key != route->channel.key)
+        {
+            ++j;
+        }
+        if (route->kind != STYXRPC_ROUTE_CURRENT || route->unbuffered ||
+            j == scope->count || strcmp(scope->grants[j].shape, route->channel.shape))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -299,7 +367,9 @@ int styxrpc_argument_scope_activate(StyxRpcArgumentScope *scope)
         size_t slot = queue->head;
         for (size_t j = 0; j < queue->count; ++j)
         {
-            if (!queue->sizes[slot] || queue->sizes[slot] > queue->stride)
+            if (!queue->sizes[slot] || queue->sizes[slot] > queue->stride ||
+                (strchr(queue->grant.shape, 'c') && !seed_valid(scope, queue->grant.shape,
+                    queue->bytes + slot * queue->stride, queue->sizes[slot])))
             {
                 return 0;
             }
@@ -318,14 +388,15 @@ int styxrpc_argument_scope_activate(StyxRpcArgumentScope *scope)
 /* EN/RU: See channel_arguments_internal.h. / См. channel_arguments_internal.h. */
 int styxrpc_argument_scope_match(StyxRpcArgumentScope *scope, const StyxRpcChannelCall *call)
 {
-    if (!scope || scope->active || call->pid != scope->bus->pid || call->count != scope->count)
+    if (!scope || scope->active || call->pid != scope->bus->pid || call->count != scope->direct_count)
     {
         return 0;
     }
-    for (size_t i = 0; i < scope->count; ++i)
+    for (size_t i = 0; i < call->count; ++i)
     {
         const StyxRpcChannelGrant *grant = &call->grants[i];
-        if (grant->key != scope->grants[i].key || strcmp(grant->shape, scope->grants[i].shape))
+        const StyxRpcChannelGrant *expected = scope->grants + scope->direct[i];
+        if (grant->key != expected->key || strcmp(grant->shape, expected->shape))
         {
             return 0;
         }

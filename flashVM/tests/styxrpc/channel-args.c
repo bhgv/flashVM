@@ -8,6 +8,7 @@
 #include "flashvm/exception.h"
 #include "flashvm/execution.h"
 #include "flashvm/gc_roots.h"
+#include "flashvm/gc.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@
 #define REJECT_SIGNATURE UINT32_C(0xe4cc716f)    /* Compiled channel argument and void result. */
 #define RESULT_SIGNATURE UINT32_C(0x9c30df25)    /* Compiled channel argument and result. */
 #define RELAY_SIGNATURE UINT32_C(0x4fef7e8c)     /* Compiled channel argument and int result. */
+#define NESTED_SIGNATURE UINT32_C(0x8e188767) /* Outer queue, direct child and result. */
 #define ARGUMENT_RPC_WAIT 3000U /* Bounded wait while the reverse dispatcher is active. */
 #define ARGUMENT_TIMEOUT_WAIT 150U /* Deadline for the controlled pending receive. */
 #define ACTION_END 0x00           /* Finish the AVM1 action block. */
@@ -164,6 +166,65 @@ static int exercise(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManaged
 }
 
 
+/* [GC:] EN: Enqueue aliases under short roots so only the FIFO keeps the hidden channel alive.
+ * RU: Поставить алиасы под короткими корнями, чтобы скрытый канал удерживала только очередь. */
+static int seed_nested(FVM_Context *context, const FVM_Value *outer, const FVM_Value *direct)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value children[4], message, value;
+    if (fvm_gc_roots_begin(context, &roots) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, 41);
+    int ok = create(context, roots, "i", 1, children) && send(context, children, &value, 1);
+    if (ok)
+    {
+        children[1] = children[0];
+        fvm_value_undefined(children + 2);
+        children[2].type = FVM_VALUE_NULL;
+        children[3] = *direct;
+        ok = fvm_exec_literal_array(context, 4, children, &message) == FVM_OK &&
+            send(context, outer, &message, 1);
+    }
+    fvm_gc_roots_end(roots);
+    return ok;
+}
+
+
+/* [GC:] EN: Check the restored message and child identity after two distinct generations.
+ * RU: Сверить восстановленное сообщение и идентичность канала после двух разных поколений. */
+static int nested_calls(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManagedTarget *target)
+{
+    const StyxRpcSchema schema = {"(c[a[c[i]]]c[i]i)", "(i)"};
+    FVM_Value args[3], out, message, child, alias, nil, direct;
+    unsigned long reclaimed;
+    fvm_value_number(args + 2, 0);
+    if (!create(context, roots, "a[c[i]]", 1, args) || !create(context, roots, "i", 1, args + 1) ||
+        !seed_nested(context, args, args + 1) || fvm_gc_collect(context, &reclaimed) != FVM_OK ||
+        call(context, target, "nested", NESTED_SIGNATURE, &schema, 3, args, &out) != FVM_OK ||
+        out.type != FVM_VALUE_NUMBER || out.number != 41)
+    {
+        return 0;
+    }
+    fvm_value_number(args + 2, 1);
+    return call(context, target, "nested", NESTED_SIGNATURE, &schema, 3, args, &out) == FVM_EXCEPTION &&
+        exception(context, "Styx RPC remote function failed") &&
+        fvm_gc_collect(context, &reclaimed) == FVM_OK &&
+        fvm_object_call(context, args[0].object, "tryReceive", 0, NULL, &message) == FVM_OK &&
+        message.type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, &message) == FVM_OK &&
+        fvm_object_get(context, message.object, "0", &child) == FVM_OK && child.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, message.object, "1", &alias) == FVM_OK &&
+        alias.type == FVM_VALUE_OBJECT && alias.object == child.object &&
+        fvm_object_get(context, message.object, "2", &nil) == FVM_OK && nil.type == FVM_VALUE_NULL &&
+        fvm_object_get(context, message.object, "3", &direct) == FVM_OK &&
+        direct.type == FVM_VALUE_OBJECT && direct.object == args[1].object &&
+        receive_int(context, &child, "tryReceive", 43) &&
+        fvm_object_call(context, args[0].object, "tryReceive", 0, NULL, &out) == FVM_OK &&
+        out.type == FVM_VALUE_UNDEFINED;
+}
+
+
 /* EN/RU: See channel-test.h. / См. channel-test.h. */
 int test_channel_args(FVM_Context *context, StyxRpcManagedTarget *target, StyxRpcArgumentBus *bus)
 {
@@ -181,7 +242,7 @@ int test_channel_args(FVM_Context *context, StyxRpcManagedTarget *target, StyxRp
         fvm_styxrpc_channel_import_arguments(context, "queueRPC", &binding) == FVM_OK &&
         create(context, roots, "i", 1, &ints) && create(context, roots, "s", 1, &text) &&
         create(context, roots, "i", 0, &sync) &&
-        exercise(context, roots, target, &ints, &text, &sync);
+        exercise(context, roots, target, &ints, &text, &sync) && nested_calls(context, roots, target);
     if (!ok)
     {
         if (fvm_exception_get(context, &error) == FVM_OK && error.type == FVM_VALUE_STRING)

@@ -107,12 +107,84 @@ static int exercise(StyxRpcArgumentBus *owner)
 }
 
 
+/* EN: Encode a child as a typed message using the local or staged key.
+ * RU: Закодировать дочерний канал как типизированное сообщение по одному ключу. */
+static int seed_child(uint32_t key, unsigned char *arena, size_t *size)
+{
+    StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = {key, "(i)"}};
+    unsigned char leaf[TEST_BUFFER_BYTES];
+    size_t extent;
+    return styxrpc_channel_route_value(&route, leaf, sizeof(leaf), &extent) == STYXRPC_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, leaf, extent, arena, TEST_BUFFER_BYTES, size) == FVM_S_OK;
+}
+
+
+/* EN: Admit a nested-only queue, revoke it and reject the identical old key in the next scope.
+ * RU: Допустить вложенную очередь, отозвать её и отклонить старый ключ в следующей области. */
+static int nested_scope(StyxRpcArgumentBus *owner)
+{
+    const StyxRpcResource bus = styxrpc_argument_bus_resource(owner);
+    const unsigned access = STYXRPC_READ | STYXRPC_WRITE;
+    const uint32_t local_key = INT32_MAX;
+    unsigned char arena[TEST_BUFFER_BYTES], staged[TEST_BUFFER_BYTES], reply[TEST_BUFFER_BYTES];
+    size_t size, staged_size, length, used;
+    StyxRpcChannelQueue child = {.grant = {1, "(i)"}};
+    StyxRpcChannelQueue parent = {.grant = {1, "(c[i])"}, .bytes = staged, .sizes = &staged_size,
+        .capacity = 1, .stride = sizeof(staged), .count = 1};
+    StyxRpcChannelGrant outer, before, after;
+    StyxRpcArgumentScope *scope = styxrpc_argument_scope_open(owner, TEST_PID);
+    void *pending = NULL, *stale = NULL;
+    int ok = scope && stage(scope, &parent, &outer) &&
+        styxrpc_argument_scope_nested(scope, &child, &before) == STYXRPC_OK &&
+        seed_child(local_key, arena, &size) && seed_child(local_key, staged, &staged_size) &&
+        !styxrpc_argument_scope_activate(scope);
+    const StyxRpcChannelKeyMap keys = {local_key, ok ? before.key : 0};
+    if (ok)
+    {
+        ok = styxrpc_channel_element_remap(parent.grant.shape, arena, size, &keys, 1,
+            staged, sizeof(staged), &staged_size) == STYXRPC_OK && styxrpc_argument_scope_activate(scope) &&
+            bus.open(bus.context, access, &pending);
+    }
+    if (ok)
+    {
+        const StyxRpcSelection receive = {.count = 1, .guards = {{before.key, 1, NULL, 0}}};
+        ok = submit(&bus, pending, &before, &receive, &length) &&
+            bus.read(pending, length, reply, sizeof(reply), &used) && !used;
+    }
+    styxrpc_argument_scope_close(scope);
+    scope = NULL;
+    if (ok)
+    {
+        scope = styxrpc_argument_scope_open(owner, TEST_PID);
+        ok = !bus.read(pending, length, reply, sizeof(reply), &used) && scope &&
+            styxrpc_argument_scope_nested(scope, &child, &after) == STYXRPC_OK &&
+            before.key != after.key && styxrpc_argument_scope_activate(scope) &&
+            bus.open(bus.context, access, &stale);
+    }
+    if (ok)
+    {
+        const StyxRpcSelection dead = {.count = 1, .guards = {{before.key, 1, NULL, 0}}};
+        ok = !submit(&bus, stale, &before, &dead, &length);
+    }
+    styxrpc_argument_scope_close(scope);
+    if (pending)
+    {
+        bus.close(pending);
+    }
+    if (stale)
+    {
+        bus.close(stale);
+    }
+    return ok;
+}
+
+
 /* EN: Validate the standalone reverse owner without an application runtime.
  * RU: Проверить независимую встречную шину без исполняющей среды приложения. */
 int main(void)
 {
     StyxRpcArgumentBus *owner = styxrpc_argument_bus_create(TEST_PID);
-    int valid = owner && !styxrpc_argument_scope_open(owner, TEST_PID + 1) && exercise(owner);
+    int valid = owner && !styxrpc_argument_scope_open(owner, TEST_PID + 1) && exercise(owner) && nested_scope(owner);
     styxrpc_argument_bus_destroy(owner);
     if (!valid)
     {

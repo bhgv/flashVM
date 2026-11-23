@@ -53,6 +53,19 @@ StyxRpcStatus styxrpc_channel_element_routes(const char *shape, const void *byte
     StyxRpcChannelRoutes *routes);
 
 
+typedef struct StyxRpcChannelKeyMap
+{
+    uint32_t source; /* Existing positive current-bus key. */
+    uint32_t target; /* Replacement positive ordinary scoped key. */
+} StyxRpcChannelKeyMap;
+
+
+/* EN: Verify and rewrite current-bus leaves using a unique key map. Buffers must be disjoint.
+ * RU: Проверить и заменить листья текущей шины по однозначной карте. Буферы раздельны. */
+StyxRpcStatus styxrpc_channel_element_remap(const char *shape, const void *bytes, size_t size,
+    const StyxRpcChannelKeyMap *keys, size_t count, void *output, size_t capacity, size_t *used);
+
+
 /* EN: Collect module addresses from the complete result field of a confirmed Dis call.
  * RU: Собрать адреса модуля из полного поля результата подтверждённого вызова Dis. */
 StyxRpcStatus styxrpc_channel_export_routes(const char *shape, const void *bytes, size_t size,

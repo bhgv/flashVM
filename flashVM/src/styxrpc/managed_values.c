@@ -135,23 +135,6 @@ int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
 }
 
 
-/* EN: Check that channel elements use only by-value types within their exact token.
- * RU: Проверить, что элементы каждого канала используют только типы по значению. */
-int fvm_styxrpc_channel_value_elements(const char *type)
-{
-    for (type = strchr(type, 'c'); type; type = strchr(type, 'c'))
-    {
-        const char *end = type_end(type, 0);
-        if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
-        {
-            return 0;
-        }
-        type = end;
-    }
-    return 1;
-}
-
-
 /* EN/RU: See managed_values.h. / См. managed_values.h. */
 int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema)
 {

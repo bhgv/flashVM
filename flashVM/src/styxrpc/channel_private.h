@@ -120,6 +120,34 @@ int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
     const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output);
 
 
+typedef struct FVM_StyxLocalRefs
+{
+    uint32_t keys[STYXRPC_CHANNEL_SLOTS]; /* Slot-local keys, unused entries are zero. */
+    FVM_Object *objects[STYXRPC_CHANNEL_SLOTS]; /* Borrowed from the traced queue storage. */
+} FVM_StyxLocalRefs;
+
+
+/* [GC:] EN: Allocate a hidden, pre-sized array tracing every queued channel reference.
+ * RU: Выделить скрытый массив фиксированного размера для трассировки ссылок в очереди. */
+FVM_Result fvm_styxrpc_local_edges_init(FVM_Context *context, FVM_Object *owner, unsigned capacity);
+
+
+/* EN: Get or update a preallocated traced reference without allocating or invoking AS.
+ * RU: Прочитать либо заменить заранее выделенную ссылку без выделения памяти и вызова AS. */
+FVM_Object *fvm_styxrpc_local_edge(FVM_Object *owner, size_t slot, size_t index, FVM_Object *value, int store);
+
+
+/* EN: Get or replace a physical slot's exact key-to-object map. No heap work.
+ * RU: Получить либо заменить соответствия ключей и объектов физического слота без работы с кучей. */
+void fvm_styxrpc_local_slot(FVM_Context *context, FVM_Object *owner, size_t slot, FVM_StyxLocalRefs *refs, int store);
+
+
+/* [GC:] EN: Decode an element using the supplied hooks and root decoded values.
+ * RU: Декодировать и удержать элемент через указанные хуки графа. */
+int fvm_styxrpc_channel_unpack_refs(FVM_Context *context, FVM_GCRootScope *roots,
+    struct FVM_StyxRefs *refs, const char *shape, const StyxRpcChannelResult *result, FVM_Value *out);
+
+
 /* [GC:] EN: Release a script-local typed queue after the owning object retires.
  * RU: Освободить локальную типизированную очередь при уничтожении объекта. */
 void fvm_styxrpc_local_channel_release(void *state);

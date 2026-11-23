@@ -96,7 +96,7 @@ int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const
 
 /* [GC:] EN: Return one confirmed received element and preserve nil and idle separately.
  * RU: Вернуть подтверждённый элемент и различать nil и отсутствие готовой ветки. */
-static int unpack(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
+int fvm_styxrpc_channel_unpack_refs(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
     const StyxRpcChannelResult *result, FVM_Value *out)
 {
     FVM_SRecord record;
@@ -122,7 +122,7 @@ static int unpack(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *re
 int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
     const StyxRpcChannelResult *result, FVM_Value *out)
 {
-    return unpack(context, roots, NULL, shape, result, out);
+    return fvm_styxrpc_channel_unpack_refs(context, roots, NULL, shape, result, out);
 }
 
 
@@ -145,7 +145,7 @@ static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxR
     refs.graph = 1;
     refs.decode_channel = fvm_styxrpc_channel_decode;
     refs.channel_context = &decode;
-    return unpack(context, roots, &refs, channel->grant.shape, result, out);
+    return fvm_styxrpc_channel_unpack_refs(context, roots, &refs, channel->grant.shape, result, out);
 }
 
 

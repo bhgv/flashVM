@@ -69,7 +69,7 @@ def main():
         owner, caller, module, exports, result = {
             "channel-incoming": (None, "channel_incoming.b", "flash-incoming.dis", (), "channel argument handlers"),
             "channel-args": ("channel_args_owner.b", None, "channel-args.dis",
-                             ("exchange", "reject", "result", "relay", "wait"), None),
+                             ("exchange", "reject", "result", "relay", "wait", "nested"), None),
             "channel": ("channel_owner.b", "channel_client.b", "channel.dis", ("ports", "empty", "nested"), "live channels"),
             "hybrid": ("hybrid_owner.b", "hybrid_client.b", "hybrid.dis", ("change", "reject", "empty"),
                        "hybrid tables"),

@@ -40,11 +40,6 @@ int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema);
 int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema);
 
 
-/* EN: Check a verified type list for channel elements with only copied data.
- * RU: Проверить список типов на каналы с элементами только по значению. */
-int fvm_styxrpc_channel_value_elements(const char *type);
-
-
 /* [GC:] EN: Read owned AS values and root them through the caller's scope.
  * RU: Читать собственные значения AS и удерживать их в области корней вызывающего. */
 int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,

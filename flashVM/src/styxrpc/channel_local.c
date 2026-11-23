@@ -14,6 +14,8 @@ typedef struct LocalChannel
 {
     StyxRpcChannelQueue queue; /* Native queue lent only while the script owner waits. */
     size_t sizes[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS]; /* Length of each encoded element. */
+    uint32_t keys[FVM_STYXRPC_CHANNEL_QUEUE_SLOTS][STYXRPC_CHANNEL_SLOTS]; /* Typed leaves of each physical slot. */
+    int reading;               /* A local receive holds the current slot through GC. */
     int closed;                /* Explicit close invalidates the object and aliases. */
 } LocalChannel;
 
@@ -31,7 +33,131 @@ StyxRpcChannelQueue *fvm_styxrpc_local_channel_queue(FVM_Context *context, const
 {
     LocalChannel *local = value->type == FVM_VALUE_OBJECT ?
         fvm_styxrpc_local_channel_lookup(context, value->object) : NULL;
-    return local && !local->closed ? &local->queue : NULL;
+    return local && !local->closed && !local->reading ? &local->queue : NULL;
+}
+
+
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+void fvm_styxrpc_local_slot(FVM_Context *context, FVM_Object *owner, size_t slot, FVM_StyxLocalRefs *refs, int store)
+{
+    LocalChannel *local = fvm_styxrpc_local_channel_lookup(context, owner);
+    size_t index;
+    for (index = 0; index < STYXRPC_CHANNEL_SLOTS; ++index)
+    {
+        if (store)
+        {
+            local->keys[slot][index] = refs->keys[index];
+        }
+        else
+        {
+            refs->keys[index] = local->keys[slot][index];
+        }
+        refs->objects[index] = fvm_styxrpc_local_edge(owner, slot, index, refs->objects[index], store);
+    }
+}
+
+
+/* [GC:] EN: Encode a matching open local channel, rooting each new alias through staging.
+ * RU: Кодировать подходящий открытый канал и удерживать каждый новый алиас при подготовке. */
+static int encode_child(FVM_Context *context, FVM_GCRootScope *roots, void *state, const char *type,
+    const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
+{
+    FVM_StyxLocalRefs *refs = state;
+    StyxRpcChannelQueue *queue;
+    StyxRpcChannelRoute route = {0};
+    const char *end;
+    size_t length, index;
+    if (value->type == FVM_VALUE_NULL)
+    {
+        return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+    }
+    queue = fvm_styxrpc_local_channel_queue(context, value);
+    end = fvm_styxrpc_type_end(type);
+    if (!queue || !end)
+    {
+        return 0;
+    }
+    length = (size_t)(end - type) - 3;
+    if (strlen(queue->grant.shape) != length + 2 || memcmp(queue->grant.shape + 1, type + 2, length))
+    {
+        return 0;
+    }
+    for (index = 0; index < STYXRPC_CHANNEL_SLOTS && refs->objects[index] &&
+        refs->objects[index] != value->object; ++index)
+    {
+    }
+    if (index == STYXRPC_CHANNEL_SLOTS || fvm_gc_roots_add(roots, value) != FVM_OK)
+    {
+        return 0;
+    }
+    refs->objects[index] = value->object;
+    refs->keys[index] = (uint32_t)(index + 1);
+    route.channel = queue->grant;
+    route.channel.key = refs->keys[index];
+    return styxrpc_channel_route_value(&route, bytes, capacity, used) == STYXRPC_OK;
+}
+
+
+/* EN: Require every staged nested object to still be open after any script getters.
+ * RU: После геттеров проверить, что все подготовленные вложенные объекты открыты. */
+static int still_open(FVM_Context *context, const FVM_StyxLocalRefs *refs)
+{
+    size_t index;
+    for (index = 0; index < STYXRPC_CHANNEL_SLOTS && refs->objects[index]; ++index)
+    {
+        const LocalChannel *child = fvm_styxrpc_local_channel_lookup(context, refs->objects[index]);
+        if (!child || child->closed)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* [GC:] EN: Decode a stored ordinary channel key using this message's traced identities.
+ * RU: Декодировать сохранённый обычный ключ по удерживаемым объектам этого сообщения. */
+static int decode_child(FVM_Context *context, FVM_GCRootScope *roots, void *state,
+    const char *type, const FVM_SRecord *record, FVM_Value *value)
+{
+    const FVM_StyxLocalRefs *refs = state;
+    size_t index;
+    const char *end = fvm_styxrpc_type_end(type);
+    unsigned char wire[48];
+    fvm_value_undefined(value);
+    if (record->tag == STYXRPC_VALUE_NIL && !record->size)
+    {
+        value->type = FVM_VALUE_NULL;
+        return 1;
+    }
+    if (!end)
+    {
+        return 0;
+    }
+    for (index = 0; index < STYXRPC_CHANNEL_SLOTS && refs->objects[index]; ++index)
+    {
+        StyxRpcChannelRoute route = {0};
+        FVM_SRecord exact;
+        size_t length, consumed;
+        const LocalChannel *child = fvm_styxrpc_local_channel_lookup(context, refs->objects[index]);
+        size_t width = (size_t)(end - type) - 3;
+        if (!child || strlen(child->queue.grant.shape) != width + 2 ||
+            memcmp(type + 2, child->queue.grant.shape + 1, width))
+        {
+            continue;
+        }
+        route.channel = child->queue.grant;
+        route.channel.key = refs->keys[index];
+        if (styxrpc_channel_route_value(&route, wire, sizeof(wire), &length) == STYXRPC_OK &&
+            fvm_srecord_read(wire, length, sizeof(wire), &exact, &consumed) == FVM_S_OK &&
+            exact.tag == record->tag && exact.size == record->size && !memcmp(exact.payload, record->payload, exact.size))
+        {
+            value->type = FVM_VALUE_OBJECT;
+            value->object = refs->objects[index];
+            return fvm_gc_roots_add(roots, value) == FVM_OK;
+        }
+    }
+    return 0;
 }
 
 
@@ -46,10 +172,16 @@ static FVM_Result try_send(FVM_Context *context, FVM_Object *self, unsigned argc
     StyxRpcGuard guard = {0};
     FVM_Result status;
     int encoded;
+    FVM_StyxLocalRefs edges = {0};
+    FVM_StyxRefs refs = {0};
     (void)unused;
     if (!local || argc != 1)
     {
         return FVM_INVALID_ARGUMENT;
+    }
+    if (local->reading)
+    {
+        return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
     if (local->closed)
     {
@@ -66,13 +198,20 @@ static FVM_Result try_send(FVM_Context *context, FVM_Object *self, unsigned argc
         free(buffer);
         return status;
     }
-    encoded = fvm_styxrpc_channel_pack(context, roots, local->queue.grant.shape, args,
-        buffer, buffer + STYXRPC_MANAGED_LIMIT, &guard);
+    refs.graph = 1;
+    refs.encode_channel = encode_child;
+    refs.channel_context = &edges;
+    encoded = fvm_styxrpc_channel_pack_refs(context, roots, &refs, local->queue.grant.shape, args,
+        buffer, buffer + STYXRPC_MANAGED_LIMIT, &guard) && still_open(context, &edges);
     if (encoded && !local->closed && local->queue.count < local->queue.capacity)
     {
         size_t slot = (local->queue.head + local->queue.count) % local->queue.capacity;
         memcpy(local->queue.bytes + slot * local->queue.stride, guard.value, guard.size);
         local->sizes[slot] = guard.size;
+        if (strchr(local->queue.grant.shape, 'c'))
+        {
+            fvm_styxrpc_local_slot(context, self, slot, &edges, 1);
+        }
         ++local->queue.count;
         fvm_value_boolean(out, 1);
     }
@@ -102,11 +241,18 @@ static FVM_Result try_receive(FVM_Context *context, FVM_Object *self, unsigned a
     const unsigned char *bytes;
     int64_t number;
     int decoded;
+    FVM_StyxLocalRefs edges = {0};
+    FVM_StyxRefs refs = {0};
+    int nested;
     (void)args;
     (void)unused;
     if (!local || argc)
     {
         return FVM_INVALID_ARGUMENT;
+    }
+    if (local->reading)
+    {
+        return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
     }
     if (local->closed)
     {
@@ -129,16 +275,32 @@ static FVM_Result try_receive(FVM_Context *context, FVM_Object *self, unsigned a
         }
         result.integer = (int32_t)number;
     }
+    local->reading = 1;
     status = fvm_gc_roots_begin(context, &roots);
     if (status != FVM_OK)
     {
+        local->reading = 0;
         return status;
     }
-    decoded = fvm_styxrpc_channel_unpack(context, roots, local->queue.grant.shape, &result, out);
+    nested = strchr(local->queue.grant.shape, 'c') != NULL;
+    if (nested)
+    {
+        fvm_styxrpc_local_slot(context, self, local->queue.head, &edges, 0);
+        refs.graph = 1;
+        refs.decode_channel = decode_child;
+        refs.channel_context = &edges;
+    }
+    decoded = fvm_styxrpc_channel_unpack_refs(context, roots, nested ? &refs : NULL, local->queue.grant.shape, &result, out);
     fvm_gc_roots_end(roots);
+    local->reading = 0;
     if (!decoded)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel result could not be decoded");
+    }
+    if (nested)
+    {
+        memset(&edges, 0, sizeof(edges));
+        fvm_styxrpc_local_slot(context, self, local->queue.head, &edges, 1);
     }
     local->queue.head = (local->queue.head + 1) % local->queue.capacity;
     --local->queue.count;
@@ -157,6 +319,19 @@ static FVM_Result close_local(FVM_Context *context, FVM_Object *self, unsigned a
     if (!local || argc)
     {
         return FVM_INVALID_ARGUMENT;
+    }
+    if (local->reading)
+    {
+        return fvm_styxrpc_managed_fail(context, "Styx RPC channel is busy");
+    }
+    if (strchr(local->queue.grant.shape, 'c'))
+    {
+        FVM_StyxLocalRefs edges = {0};
+        size_t slot;
+        for (slot = 0; slot < local->queue.capacity; ++slot)
+        {
+            fvm_styxrpc_local_slot(context, self, slot, &edges, 1);
+        }
     }
     local->closed = 1;
     fvm_value_undefined(out);
@@ -187,7 +362,7 @@ static int local_shape(const FVM_Value *args, char *shape, unsigned *slots)
     shape[size + 1] = ')';
     shape[size + 2] = 0;
     end = fvm_styxrpc_type_end(shape + 1);
-    return end && end == shape + size + 1 && !strpbrk(shape, "rhc");
+    return end && end == shape + size + 1 && !strpbrk(shape, "rh");
 }
 
 
@@ -242,6 +417,10 @@ static FVM_Result create(FVM_Context *context, FVM_Object *self, unsigned argc,
         if (status == FVM_OK)
         {
             status = fvm_object_define_method_rooted(context, object, "close", close_local, NULL, NULL);
+        }
+        if (status == FVM_OK && strchr(shape, 'c') && slots)
+        {
+            status = fvm_styxrpc_local_edges_init(context, object, slots);
         }
         if (status == FVM_OK)
         {
