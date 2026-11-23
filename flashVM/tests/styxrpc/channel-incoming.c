@@ -15,6 +15,8 @@
 #define EXCHANGE_SIGNATURE UINT32_C(0x89f34ef5) /* Compiled channel array and string port. */
 #define VOID_SIGNATURE UINT32_C(0xe4cc716f) /* Compiled int port with no result. */
 #define INT_SIGNATURE UINT32_C(0x4fef7e8c)  /* Compiled int port with int result. */
+#define LEASE_SIGNATURE UINT32_C(0x9c30df25) /* Compiled int port and int channel result. */
+#define RESULT_LEASES 4U  /* Independent result leases for the native test client. */
 #define STYX_WAIT 3000U     /* Client mount/operation polling budget, in ms. */
 #define RECEIVE_WAIT 120U  /* Controlled timeout on an empty buffered port. */
 #define ACTION_PUSH 0x96          /* Push a typed operand. */
@@ -127,12 +129,50 @@ static FVM_Result finish(FVM_Context *context, FVM_Object *self, unsigned argc,
     (void)self;
     (void)unused;
     if (argc != 1 || args->type != FVM_VALUE_OBJECT || !closed(context, "rejected") ||
+        !closed(context, "resultBorrow") ||
         fvm_object_call(context, args->object, "tryReceive", 0, NULL, out) != FVM_OK ||
         out->type != FVM_VALUE_UNDEFINED ||
         fvm_object_call(context, args->object, "close", 0, NULL, out) != FVM_OK ||
         fvm_set_global(context, "explicitlyClosed", args) != FVM_OK || !closed(context, "explicitlyClosed"))
     {
         return failure("cleanup did not preserve the current channel's scope");
+    }
+    return FVM_OK;
+}
+
+
+/* EN: Read a seed from the incoming port, then save that argument to test its retirement.
+ * RU: Прочитать начальное значение из входящего канала и сохранить аргумент для проверки отзыва. */
+static FVM_Result result_seed(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    FVM_Value previous;
+    (void)self;
+    (void)unused;
+    if (argc != 1 || args->type != FVM_VALUE_OBJECT ||
+        (fvm_get_global(context, "resultBorrow", &previous) == FVM_OK &&
+         previous.type == FVM_VALUE_OBJECT && !closed(context, "resultBorrow")) ||
+        fvm_object_call(context, args->object, "receive", 0, NULL, out) != FVM_OK ||
+        fvm_set_global(context, "resultBorrow", args) != FVM_OK)
+    {
+        return failure("invalid seed or stale argument of a leased reply");
+    }
+    return FVM_OK;
+}
+
+
+/* EN: Return undefined from an empty input port to produce an empty result rendezvous.
+ * RU: Вернуть undefined из пустого входящего канала для создания пустого rendezvous результата. */
+static FVM_Result result_empty(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    (void)self;
+    (void)unused;
+    if (argc != 1 || args->type != FVM_VALUE_OBJECT ||
+        fvm_object_call(context, args->object, "tryReceive", 0, NULL, out) != FVM_OK ||
+        out->type != FVM_VALUE_UNDEFINED)
+    {
+        return failure("expected an empty source for the result rendezvous");
     }
     return FVM_OK;
 }
@@ -193,6 +233,16 @@ int test_channel_incoming(FVM_Context *context, int fd)
         {context, "finishDis", reverse, {"(c[i])", "()"}, STYX_WAIT},
         {context, "receiveDis", reverse, {"(c[i])", "(i)"}, RECEIVE_WAIT}
     };
+    FVM_StyxRpcChannelHandlerExport result_bindings[] = {
+        {{context, "resultSeed", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 1},
+        {{context, "resultEmpty", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0},
+        {{context, "receiveDis", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0}
+    };
+    const char *result_names[] = {"make", "sync", "badseed"};
+    StyxRpcChannelExport results[sizeof(result_bindings) / sizeof(*result_bindings)];
+    size_t result_count = sizeof(results) / sizeof(*results);
+    StyxRpcModuleChannel leases[RESULT_LEASES];
+    StyxRpcModuleChannels registry;
     const char *names[] = {"exchange", "relay", "reject", "finish", "timeout"};
     const uint32_t signatures[] = {EXCHANGE_SIGNATURE, INT_SIGNATURE, VOID_SIGNATURE, VOID_SIGNATURE, INT_SIGNATURE};
     StyxRpcChannelFunction functions[sizeof(bindings) / sizeof(*bindings)];
@@ -200,13 +250,22 @@ int test_channel_incoming(FVM_Context *context, int fd)
     int ok = reverse && define_receive(context) &&
         fvm_register_function(context, "exchangeDis", exchange, NULL) == FVM_OK &&
         fvm_register_function(context, "rejectDis", reject, NULL) == FVM_OK &&
-        fvm_register_function(context, "finishDis", finish, NULL) == FVM_OK;
+        fvm_register_function(context, "finishDis", finish, NULL) == FVM_OK &&
+        fvm_register_function(context, "resultSeed", result_seed, NULL) == FVM_OK &&
+        fvm_register_function(context, "resultEmpty", result_empty, NULL) == FVM_OK &&
+        styxrpc_module_channels_init(&registry, leases, RESULT_LEASES, test_channel_entropy, NULL);
     for (size_t i = 0; ok && i < count; ++i)
     {
         ok = fvm_styxrpc_channel_handler(bindings + i, names[i], signatures[i], functions + i) == FVM_OK;
     }
+    for (size_t i = 0; ok && i < result_count; ++i)
+    {
+        ok = fvm_styxrpc_channel_handler_export(result_bindings + i, result_names[i],
+            LEASE_SIGNATURE, results + i) == FVM_OK;
+    }
     Dispatch dispatch = {0};
-    dispatch.module = ok ? styxrpc_channel_handlers_create("flash-incoming.dis", functions, count) : NULL;
+    dispatch.module = ok ? styxrpc_channel_handlers_create_with_results("flash-incoming.dis",
+        functions, count, results, result_count, &registry) : NULL;
     dispatch.server = dispatch.module ? styxrpc_server_create(phybidirchannel(mux, 0),
         &styxrpc_channel_handlers_tree, dispatch.module) : NULL;
     pthread_t thread;

@@ -25,7 +25,7 @@ typedef struct StyxRpcChannelExport
 {
     const char *name;       /* Compiled export component. */
     uint32_t signature;     /* Compiled signature. */
-    StyxRpcSchema schema;   /* Value input and exactly one typed channel result. */
+    StyxRpcSchema schema;   /* One typed channel result; accepted inputs depend on the module. */
     StyxRpcStatus (*begin)(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output); /* Owner callback. */
     void *context;          /* Borrowed provider state. */
 } StyxRpcChannelExport;

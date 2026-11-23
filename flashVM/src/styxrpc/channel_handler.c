@@ -18,6 +18,16 @@ typedef struct IncomingChannels
 } IncomingChannels;
 
 
+typedef struct HandlerResult
+{
+    void *bytes;                    /* Copied result buffer owned by the SDK. */
+    size_t capacity;                /* Byte capacity of the copied buffer. */
+    size_t *used;                   /* Number of copied children bytes written. */
+    StyxRpcChannelOutput *channel; /* Transferred channel resource for leased mode. */
+    unsigned slots;                 /* Capacity of the leased queue. */
+} HandlerResult;
+
+
 /* EN: Match record to the canonical encoding of one already validated argument grant.
  * RU: Сопоставить record с каноническим кодированием проверенного полномочия аргумента. */
 static int same_key(const StyxRpcChannelGrant *grant, const FVM_SRecord *record)
@@ -78,12 +88,26 @@ static int decode_channel(FVM_Context *context, FVM_GCRootScope *roots, void *st
 }
 
 
+/* [GC:] EN: Marshal the rooted return value to a copied result or a fresh channel.
+ * RU: Преобразовать удерживаемый результат в копируемое значение либо новый канал. */
+static int write_result(const FVM_StyxRpcChannelHandler *binding, FVM_GCRootScope *roots,
+    const FVM_Value *value, const HandlerResult *result)
+{
+    if (result->channel)
+    {
+        return fvm_styxrpc_channel_output(binding->context, roots, &binding->schema,
+            result->slots, value, result->channel);
+    }
+    return fvm_styxrpc_values_encode(binding->context, roots, NULL, binding->schema.result,
+        value, 1, result->bytes, result->capacity, result->used);
+}
+
+
 /* [GC:] EN: Run the named AVM1 function once and revoke every argument object before returning.
  * RU: Однократно вызвать функцию AVM1 и отозвать все объекты аргументов перед возвратом. */
-static StyxRpcStatus dispatch(void *state, const StyxRpcChannelCall *call, void *result,
-    size_t capacity, size_t *used)
+static StyxRpcStatus invoke(const FVM_StyxRpcChannelHandler *binding, const StyxRpcChannelCall *call,
+    const HandlerResult *result)
 {
-    const FVM_StyxRpcChannelHandler *binding = state;
     FVM_Context *context = binding->context;
     IncomingChannels incoming = {0};
     FVM_StyxRefs refs = {0};
@@ -92,7 +116,6 @@ static StyxRpcStatus dispatch(void *state, const StyxRpcChannelCall *call, void 
     unsigned count;
     size_t i;
     int ok;
-    *used = 0;
     if (fvm_exception_get(context, &value) != FVM_NOT_FOUND || fvm_gc_roots_begin(context, &roots) != FVM_OK)
     {
         return STYXRPC_REMOTE_ERROR;
@@ -108,8 +131,7 @@ static StyxRpcStatus dispatch(void *state, const StyxRpcChannelCall *call, void 
         fvm_avm1_call(context, binding->function, NULL, count, args, &value) == FVM_OK &&
         (binding->schema.result[1] == ')' ||
             (fvm_gc_roots_add(roots, &value) == FVM_OK &&
-             fvm_styxrpc_values_encode(context, roots, NULL, binding->schema.result, &value, 1,
-                result, capacity, used)));
+             write_result(binding, roots, &value, result)));
     for (i = 0; i < call->count; ++i)
     {
         if (incoming.objects[i].type == FVM_VALUE_OBJECT)
@@ -126,17 +148,50 @@ static StyxRpcStatus dispatch(void *state, const StyxRpcChannelCall *call, void 
 }
 
 
+/* [GC:] EN: Run with a caller-owned copied result buffer in bytes.
+ * RU: Запустить вызов с буфером копируемого результата в bytes. */
+static StyxRpcStatus dispatch(void *state, const StyxRpcChannelCall *call,
+    void *bytes, size_t capacity, size_t *used)
+{
+    HandlerResult result = {0};
+    result.bytes = bytes;
+    result.capacity = capacity;
+    result.used = used;
+    *used = 0;
+    return invoke(state, call, &result);
+}
+
+
+/* [GC:] EN: Run with a result resource that the dispatcher can take after return.
+ * RU: Запустить вызов с ресурсом результата, передаваемым диспетчеру после возврата. */
+static StyxRpcStatus dispatch_channel(void *state, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+{
+    const FVM_StyxRpcChannelHandlerExport *binding = state;
+    HandlerResult result = {0};
+    result.channel = output;
+    result.slots = binding->capacity;
+    return invoke(&binding->handler, call, &result);
+}
+
+
+/* EN: Check owner, route, channel inputs and the compiled profile shared by both bindings.
+ * RU: Проверить владельца, маршрут, каналы аргументов и общий компилированный профиль. */
+static int checked_binding(const FVM_StyxRpcChannelHandler *binding, const char *name, uint32_t signature)
+{
+    unsigned char offer[STYXRPC_MANAGED_PROFILE_BYTES];
+    size_t size;
+    return binding && binding->context && binding->function && *binding->function && binding->reverse &&
+        binding->wait_ms && binding->wait_ms <= STYXRPC_SCALAR_WAIT_MAX_MS &&
+        fvm_styxrpc_channel_signature(&binding->schema) && strchr(binding->schema.arguments, 'c') &&
+        styxrpc_channel_profile(name, signature, &binding->schema, offer, sizeof(offer), &size) == STYXRPC_OK;
+}
+
+
 /* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
 FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
     const char *name, uint32_t signature, StyxRpcChannelFunction *function)
 {
-    unsigned char offer[STYXRPC_MANAGED_PROFILE_BYTES];
-    size_t size;
-    if (!binding || !binding->context || !binding->function || !*binding->function || !binding->reverse ||
-        !binding->wait_ms || binding->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS || !function ||
-        !fvm_styxrpc_channel_signature(&binding->schema) || !strchr(binding->schema.arguments, 'c') ||
-        strchr(binding->schema.result, 'c') ||
-        styxrpc_channel_profile(name, signature, &binding->schema, offer, sizeof(offer), &size) != STYXRPC_OK)
+    if (!function || !checked_binding(binding, name, signature) || strchr(binding->schema.result, 'c'))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -145,5 +200,23 @@ FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
     function->schema = binding->schema;
     function->handler = dispatch;
     function->context = binding;
+    return FVM_OK;
+}
+
+
+/* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
+FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *binding,
+    const char *name, uint32_t signature, StyxRpcChannelExport *exported)
+{
+    if (!binding || !exported || binding->capacity > FVM_STYXRPC_CHANNEL_QUEUE_SLOTS ||
+        !checked_binding(&binding->handler, name, signature) || !fvm_styxrpc_single_channel_result(&binding->handler.schema))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    exported->name = name;
+    exported->signature = signature;
+    exported->schema = binding->handler.schema;
+    exported->begin = dispatch_channel;
+    exported->context = binding;
     return FVM_OK;
 }

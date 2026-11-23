@@ -13,18 +13,46 @@
 #define MODULE_CHANNEL_FRAME 64U /* One exported leaf and its wrapper. */
 
 
+/* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
+int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels)
+{
+    if (!memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
+        strpbrk(schema->arguments, channels ? "rh" : "rhc"))
+    {
+        return 0;
+    }
+    const char *type = strchr(schema->arguments, 'c');
+    while (type)
+    {
+        const char *end = styxshape_end(type);
+        if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
+        {
+            return 0;
+        }
+        type = strchr(end, 'c');
+    }
+    return 1;
+}
+
+
+/* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
+int styxrpc_channel_output_schema(const StyxRpcSchema *schema)
+{
+    const char *end;
+    return memchr(schema->result, 0, sizeof(schema->result)) &&
+        schema->result[0] == '(' && schema->result[1] == 'c' &&
+        (end = styxshape_end(schema->result + 1)) && !strcmp(end, ")") &&
+        !strpbrk(schema->result + 2, "rhc");
+}
+
+
 /* EN: Admit one value-only input and one channel result with value-only elements.
  * RU: Допустить вход по значению и один канал с элементами по значению. */
 static int offer(const StyxRpcChannelExport *exported, unsigned char *bytes, size_t capacity, size_t *used)
 {
     const StyxRpcSchema *schema = &exported->schema;
-    const char *end;
-    return exported->begin &&
-        memchr(schema->arguments, 0, sizeof(schema->arguments)) &&
-        memchr(schema->result, 0, sizeof(schema->result)) &&
-        !strpbrk(schema->arguments, "rhc") && schema->result[0] == '(' && schema->result[1] == 'c' &&
-        (end = styxshape_end(schema->result + 1)) && !strcmp(end, ")") &&
-        !strpbrk(schema->result + 2, "rhc") &&
+    return exported->begin && styxrpc_channel_input_schema(schema, 0) &&
+        styxrpc_channel_output_schema(schema) &&
         styxrpc_channel_profile(exported->name, exported->signature, schema, bytes, capacity, used) == STYXRPC_OK;
 }
 
@@ -96,6 +124,24 @@ static int write_reply(const StyxRpcSchema *schema, const StyxRpcChannelCall *ca
 
 
 /* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
+int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
+    StyxRpcModuleChannels *registry, const StyxRpcChannelOutput *output,
+    unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE], void *reply, size_t capacity, size_t *ready)
+{
+    int published = output->key && styxrpc_module_channels_publish(registry, &output->resource, token);
+    if ((!output->key || published) && write_reply(schema, call, output, token, reply, capacity, ready))
+    {
+        return 1;
+    }
+    if (published)
+    {
+        styxrpc_module_channels_revoke(registry, token);
+    }
+    return 0;
+}
+
+
+/* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
 int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcModuleChannels *registry,
     const void *request, size_t size, void *reply, size_t capacity, size_t *ready,
     StyxRpcChannelOutput *active, unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE])
@@ -107,19 +153,11 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
     {
         return 0;
     }
-    if (function->begin(function->context, &call, &output) == STYXRPC_OK)
+    if (function->begin(function->context, &call, &output) == STYXRPC_OK &&
+        styxrpc_channel_output_publish(&function->schema, &call, registry, &output, token, reply, capacity, ready))
     {
-        int published = output.key && styxrpc_module_channels_publish(registry, &output.resource, token);
-        if ((!output.key || published) && write_reply(&function->schema, &call, &output, token,
-            reply, capacity, ready))
-        {
-            *active = output;
-            return 1;
-        }
-        if (published)
-        {
-            styxrpc_module_channels_revoke(registry, token);
-        }
+        *active = output;
+        return 1;
     }
     if (output.release)
     {

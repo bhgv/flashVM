@@ -25,4 +25,9 @@ int test_channel_args(FVM_Context *context, StyxRpcManagedTarget *target, StyxRp
 /* EN: Serve Dis-owned channel arguments on the context owner using the connected fd.
  * RU: Обслужить аргументы-каналы Dis у владельца контекста через подключённый fd. */
 int test_channel_incoming(FVM_Context *context, int fd);
+
+
+/* EN: Fill length bytes of host test storage with OS entropy, returning 1 on success.
+ * RU: Заполнить length байт тестового буфера энтропией ОС. 1 при успехе. */
+int test_channel_entropy(void *unused, void *bytes, size_t length);
 #endif

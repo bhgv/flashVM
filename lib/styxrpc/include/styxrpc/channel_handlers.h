@@ -4,7 +4,7 @@
  */
 #ifndef STYXRPC_CHANNEL_HANDLERS_H
 #define STYXRPC_CHANNEL_HANDLERS_H
-#include "styxrpc/channel_call.h"
+#include "styxrpc/channel_module.h"
 #include "styxrpc/serve.h"
 
 #ifdef __cplusplus
@@ -37,6 +37,15 @@ typedef struct StyxRpcChannelFunction
  * NULL при ошибке описателей, нехватке памяти или ресурсов синхронизации. */
 StyxRpcChannelHandlers *styxrpc_channel_handlers_create(const char *name,
     const StyxRpcChannelFunction *functions, size_t count);
+
+
+/* EN: Create a mixed module. Borrow both descriptor arrays and a dispatcher-owned
+ * registry; result callbacks run on the owner and transfer a movable resource.
+ * RU: Создать смешанный модуль. Заимствовать оба массива и реестр диспетчера;
+ * колбэки результата работают у владельца и передают перемещаемый ресурс. */
+StyxRpcChannelHandlers *styxrpc_channel_handlers_create_with_results(const char *name,
+    const StyxRpcChannelFunction *functions, size_t count, const StyxRpcChannelExport *results,
+    size_t result_count, StyxRpcModuleChannels *registry);
 
 
 /* EN: In the sole callback owner, wait for and run one job. Return 0 after stop, 1 otherwise.

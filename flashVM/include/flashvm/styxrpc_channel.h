@@ -70,6 +70,20 @@ typedef struct FVM_StyxRpcChannelHandler
 FVM_API FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
     const char *name, uint32_t signature, StyxRpcChannelFunction *function);
 
+typedef struct FVM_StyxRpcChannelHandlerExport
+{
+    FVM_StyxRpcChannelHandler handler; /* Context, reverse attachment and compiled shape. */
+    unsigned capacity;                 /* Result FIFO slots, zero for rendezvous. */
+} FVM_StyxRpcChannelHandlerExport;
+
+
+/* [GC:] EN: Bind a callback with channel arguments and one separately leased result channel.
+ * Borrow binding and name until both the dispatcher and the callback owner exit.
+ * RU: Связать колбэк с аргументами-каналами и одним отдельно арендованным результатом.
+ * Заимствовать binding и name до выхода диспетчера и владельца колбэков. */
+FVM_API FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *binding,
+    const char *name, uint32_t signature, StyxRpcChannelExport *exported);
+
 #ifdef __cplusplus
 }
 #endif

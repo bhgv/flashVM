@@ -3,7 +3,7 @@
  * RU: Проверка срока токенов, изоляции fid и отката выдач каналов модуля C.
  */
 #include "styxrpc/module_channels.h"
-#include "styxrpc/channel_module.h"
+#include "styxrpc/channel_handlers.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -146,6 +146,18 @@ static void release_channel(void *state)
 }
 
 
+/* EN: Provide an owned test resource recording all writes, closes and releases.
+ * RU: Выдать собственный тестовый ресурс со счётчиками записи, закрытия и освобождения. */
+static void output_channel(Counter *counter, StyxRpcChannelOutput *output)
+{
+    counter->calls++;
+    *output = (StyxRpcChannelOutput){
+        .resource = {counter, NULL, read_byte, write_byte, close_byte},
+        .key = 1, .release = release_channel
+    };
+}
+
+
 /* EN: Issue a resource for one verified zero-argument scoped call.
  * RU: Выдать ресурс одного проверенного вызова без аргументов. */
 static StyxRpcStatus provide(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
@@ -155,11 +167,7 @@ static StyxRpcStatus provide(void *context, const StyxRpcChannelCall *call, Styx
     {
         return STYXRPC_REMOTE_ERROR;
     }
-    counter->calls++;
-    *output = (StyxRpcChannelOutput){
-        .resource = {counter, NULL, read_byte, write_byte, close_byte},
-        .key = 1, .release = release_channel
-    };
+    output_channel(counter, output);
     return STYXRPC_OK;
 }
 
@@ -227,11 +235,126 @@ static int scoped_factory(void)
 }
 
 
+/* EN: Stage the same typed resource after checking one admitted int-channel argument.
+ * RU: Подготовить тот же ресурс после проверки одного аргумента-канала int. */
+static StyxRpcStatus provide_from_argument(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+{
+    if (call->pid != 42 || call->count != 1 || call->grants[0].key != 7 || strcmp(call->grants[0].shape, "(i)"))
+    {
+        return STYXRPC_REMOTE_ERROR;
+    }
+    output_channel(context, output);
+    return STYXRPC_OK;
+}
+
+
+/* EN: Open a new leased-result fid and execute its complete request on the owner.
+ * RU: Открыть новый fid арендованного результата и выполнить запрос у владельца. */
+static int stage_result(StyxRpcChannelHandlers *module, uint64_t id, void **cookie)
+{
+    const StyxRpcVfs *files = &styxrpc_channel_handlers_tree.files;
+    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = {7, "(i)"}};
+    unsigned char pid[32], leaf[32], frame[96];
+    size_t pid_size, leaf_size, length, used;
+    return styxrpc_value_integer(STYXRPC_VALUE_BIG, 42, pid, sizeof(pid), &pid_size) == STYXRPC_OK &&
+        styxrpc_channel_route_value(&route, leaf, sizeof(leaf), &leaf_size) == STYXRPC_OK &&
+        fvm_srecord_write_pair(STYXRPC_GRAPH_REQUEST_TAG, pid, pid_size, leaf, leaf_size,
+            frame, sizeof(frame), &length) == FVM_S_OK &&
+        files->open(module, id, STYXRPC_READ | STYXRPC_WRITE, cookie) &&
+        files->write(*cookie, 0, frame, length, &used) && length == used &&
+        files->read(*cookie, 0, frame, sizeof(frame), &used) && !used &&
+        styxrpc_channel_handlers_step(module);
+}
+
+
+/* EN: Compare an issued response's channel route with the registry's exact token.
+ * RU: Сверить маршрут канала ответа с точным токеном в реестре. */
+static int issued(void *call, const unsigned char *token)
+{
+    const StyxRpcVfs *files = &styxrpc_channel_handlers_tree.files;
+    unsigned char bytes[128];
+    FVM_SRecord envelope, result;
+    StyxRpcChannelRoutes routes;
+    size_t size, used, child;
+    return files->read(call, 0, bytes, sizeof(bytes), &size) && size &&
+        fvm_srecord_read(bytes, size, sizeof(bytes), &envelope, &used) == FVM_S_OK && used == size &&
+        fvm_srecord_read(envelope.payload, envelope.size, envelope.size, &result, &child) == FVM_S_OK &&
+        styxrpc_channel_export_routes("(c[i])", envelope.payload, child, &routes) == STYXRPC_OK &&
+        routes.count == 1 && routes.entries[0].channel.key == 1 &&
+        !memcmp(routes.entries[0].token, token, STYXRPC_CHANNEL_TOKEN_SIZE);
+}
+
+
+/* EN: Check lazy publication, exhausted registry rollback and revocation of active bus fids.
+ * RU: Проверить публикацию по чтению, откат при полном реестре и отзыв активных fid шины. */
+static int owner_factory(StyxRpcChannelHandlers *module, StyxRpcModuleChannels *registry, Counter *state)
+{
+    const StyxRpcVfs *files = &styxrpc_channel_handlers_tree.files;
+    const StyxRpcEntry *function = find(files, module, 2, "relay");
+    const StyxRpcEntry *bus = find(files, module, 2, ".unibus");
+    unsigned char response[128], byte = 0;
+    void *abandoned = NULL, *first = NULL, *overflow = NULL, *operation = NULL;
+    size_t used;
+    int valid = function && bus && stage_result(module, function->id, &abandoned) &&
+        files->read(abandoned, 1, response, sizeof(response), &used) && !used && !registry->serial;
+    if (abandoned)
+    {
+        files->close(abandoned);
+    }
+    valid = valid && state->releases == 1 && !registry->serial &&
+        stage_result(module, function->id, &first) && !registry->serial &&
+        issued(first, registry->slots[0].token) && registry->serial == 1 &&
+        files->open(module, bus->id, STYXRPC_READ | STYXRPC_WRITE, &operation) &&
+        files->write(operation, 0, registry->slots[0].token, STYXRPC_CHANNEL_TOKEN_SIZE, &used) &&
+        files->write(operation, STYXRPC_CHANNEL_TOKEN_SIZE, "v", 1, &used) && used == 1 &&
+        stage_result(module, function->id, &overflow) &&
+        files->read(overflow, 0, response, sizeof(response), &used) && used &&
+        state->releases == 2 && registry->serial == 1 &&
+        files->read(operation, 0, &byte, 1, &used) && used == 1 && byte == 'v';
+    if (overflow)
+    {
+        files->close(overflow);
+    }
+    if (first)
+    {
+        files->close(first);
+    }
+    if (operation)
+    {
+        valid = valid && !files->read(operation, 0, &byte, 1, &used) && state->closes == 1 && state->releases == 3;
+        files->close(operation);
+    }
+    return valid && state->closes == 1 && state->releases == 3 && state->calls == 3;
+}
+
+
+/* EN: Create an owner-queued SDK module with one result slot and test its adapter.
+ * RU: Создать модуль SDK с очередью и одним слотом и проверить его адаптер. */
+static int asynchronous_factory(void)
+{
+    int enabled = 1;
+    Counter state = {0};
+    StyxRpcModuleChannels registry;
+    StyxRpcModuleChannel slot;
+    const StyxRpcChannelExport exported = {"relay", UINT32_C(0x9c30df25), {"(c[i])", "(c[i])"},
+        provide_from_argument, &state};
+    if (!styxrpc_module_channels_init(&registry, &slot, 1, entropy, &enabled))
+    {
+        return 0;
+    }
+    StyxRpcChannelHandlers *module = styxrpc_channel_handlers_create_with_results("relay.dis",
+        NULL, 0, &exported, 1, &registry);
+    int valid = module && owner_factory(module, &registry, &state);
+    styxrpc_channel_handlers_destroy(module);
+    return valid;
+}
+
+
 /* EN: Run the hosted bus regression without needing a VM or an entropy device.
  * RU: Выполнить регрессию шины без VM и системного источника энтропии. */
 int main(void)
 {
-    if (!exercise() || !scoped_factory())
+    if (!exercise() || !scoped_factory() || !asynchronous_factory())
     {
         fputs("module channel lease isolation failed\n", stderr);
         return 1;

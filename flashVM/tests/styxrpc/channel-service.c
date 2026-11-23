@@ -30,7 +30,7 @@
 
 /* EN: Fill the requested token bytes from the test host CSPRNG.
  * RU: Заполнить токен случайными байтами из CSPRNG тестового хоста. */
-static int entropy(void *unused, void *bytes, size_t length)
+int test_channel_entropy(void *unused, void *bytes, size_t length)
 {
     unsigned char *out = bytes;
     (void)unused;
@@ -90,7 +90,7 @@ int test_channel_serve(FVM_Context *context, int fd)
         fvm_styxrpc_channel_export(bindings, "port", PORT_SIGNATURE, exports) != FVM_OK ||
         fvm_styxrpc_channel_export(bindings + 1, "rendezvous", RENDEZVOUS_SIGNATURE, exports + 1) != FVM_OK ||
         fvm_styxrpc_channel_export(bindings + 2, "badseed", BAD_SEED_SIGNATURE, exports + 2) != FVM_OK ||
-        !styxrpc_module_channels_init(&registry, leases, TEST_CHANNEL_LEASES, entropy, NULL) ||
+        !styxrpc_module_channels_init(&registry, leases, TEST_CHANNEL_LEASES, test_channel_entropy, NULL) ||
         styxrpc_channel_module_init(&module, "flash-channels.dis", exports,
             sizeof(exports) / sizeof(*exports), &registry) != STYXRPC_OK)
     {

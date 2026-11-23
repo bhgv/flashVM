@@ -39,8 +39,27 @@ Each call admits up to eight distinct queues. Each local queue has zero to eight
 
 AS uses [the same channel methods](STYX_RPC_CHANNELS.md#use-disvm-channels-from-actionscript). Repeated references to a channel in value arrays or tuples share the same object during the callback. Nil becomes `null`. A saved AS reference is closed by the time the callback returns or throws. A later call with the same Limbo channel receives a fresh object. Closing the borrowed object affects every alias of that object and leaves DisVM's channel open.
 
-The current incoming binding accepts up to eight distinct channel keys with copied element types, and the function returns a copied value or void. A completed send or receive is visible even if the callback later fails. An operation that exceeds its wait is clunked and raises a script exception. Delegating channels inside elements and returning a new FlashVM channel from the same handler remain open.
+The incoming binding accepts up to eight distinct argument channel keys with copied element types. A completed send or receive is visible even if the callback later fails. An operation that exceeds its wait is clunked and raises a script exception. Delegating channels inside elements remains open.
 
-Run the two native integration tests from the installed-SDK build with `ctest --test-dir build -R channel-incoming --output-on-failure`. They run DisVM in interpreter and JIT modes and cover FIFO send/receive, strings containing NUL, aliases, nil, rendezvous, timeout, explicit close and scope retirement.
+### Return a separate live channel in the same call
+
+Use [the result binding](STYX_RPC_CHANNEL_HANDLER_EXPORT.md) for an offer such as `make: fn(port: chan of int): chan of int;` and publish it through [the SDK module with a result registry](../../lib/styxrpc/reference/channel_handlers_create_with_results.md). For a result FIFO of capacity one, the callback can use the received value as its seed.
+
+```actionscript
+function makeResult(port) {
+    return port.receive();
+}
+```
+
+```limbo
+port := chan[1] of int;
+port <-= 41;
+result := api->make(port);
+initial := <-result;
+```
+
+`initial` is 41. The caller can use `result` as a regular channel after `make` returns. The temporary ActionScript argument and the new result have separate lifetimes. Each result fid issues a separate token on the module's `.unibus`. The dispatcher revokes its operations on clunk. Choose capacity zero and return `undefined` for an empty rendezvous.
+
+Run the two native integration tests from the installed-SDK build with `ctest --test-dir build -R channel-incoming --output-on-failure`. They run DisVM in interpreter and JIT modes and cover FIFO send/receive, strings containing NUL, aliases, nil, rendezvous, timeout, explicit close, scope retirement and independent result leases.
 
 [FlashVM callback and host](../tests/styxrpc/channel-incoming.c) · [Executable Limbo caller](../../lib/styxrpc/tests/flashvm/channel_incoming.b) · [Configuring the native tests](../../lib/styxrpc/examples/README.md)

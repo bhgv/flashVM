@@ -1,6 +1,6 @@
 # styxrpc_channel_handlers_create
 
-[English](channel_handlers_create.md) · [Объявление](../include/styxrpc/channel_handlers.h) · [Реализация](../src/channel_handlers.c) · [Сценарий](channel_handler_modules.ru.md) · [Проверка C](../tests/channel_handlers.c)
+[English](channel_handlers_create.md) · [Объявление](../include/styxrpc/channel_handlers.h) · [Реализация](../src/channel_handlers.c) · [Сценарий](channel_handler_modules.ru.md) · [Проверка C](../tests/channel_handlers.c) · [Модуль с каналами результата](channel_handlers_create_with_results.ru.md)
 
 Подключите `<styxrpc/channel_handlers.h>` и линкуйте хостовую цель C99 `StyxRpc::serve` с поддержкой потоков POSIX.
 

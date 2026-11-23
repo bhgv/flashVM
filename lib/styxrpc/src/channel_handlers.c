@@ -2,88 +2,87 @@
  * EN: Stage checked channel calls on Styx and run them on the application owner.
  * RU: Приём проверенных вызовов каналов по Styx с исполнением у владельца приложения.
  */
-#include "styxrpc/channel_handlers.h"
+#include "channel_handlers_internal.h"
+#include "channel_module_internal.h"
 #include "styxrpc/graph.h"
-#include "styxrpc/managed_module.h"
 #include "call_record.h"
 #include "load_profile.h"
-#include "module_nodes.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define MAX_PENDING 32U /* Complete queued jobs per hosted module. */
-#define FRAME STYXRPC_MANAGED_LIMIT /* Capacity of each disjoint call buffer. */
 
-typedef struct HandlerFile
+
+/* EN: Validate one offer and add its stable function file, rejecting duplicate names.
+ * RU: Проверить предложение и добавить устойчивый файл функции, отклоняя повторы. */
+static int add_offer(StyxRpcChannelHandlers *module, size_t index, const char *name,
+    uint32_t signature, const StyxRpcSchema *schema)
 {
-    struct StyxRpcChannelHandlers *module;  /* Borrowed through close and completion. */
-    const StyxRpcChannelFunction *function; /* NULL for metadata. */
-    struct HandlerFile *next;               /* Queue link protected by module.lock. */
-    uint64_t id;                           /* Exact opened node. */
-    size_t staged;                         /* Request bytes accepted by the dispatcher. */
-    int submitted;                         /* Sealed by the dispatcher after the last write. */
-    int rejected;                          /* Sticky dispatcher-side framing failure. */
-    int pending;                           /* Queued or executing, under module.lock. */
-    int detached;                          /* FID closed while pending, under module.lock. */
-    size_t ready;                          /* Immutable reply length, published under module.lock. */
-    StyxRpcChannelCall call;                /* Verified request whose payload borrows storage. */
-    unsigned char storage[];               /* Request, reply, callback output and framed output. */
-} HandlerFile;
-
-struct StyxRpcChannelHandlers
-{
-    pthread_mutex_t lock;                  /* Protects jobs and reply publication. */
-    pthread_cond_t wake;                    /* Signals queue or stop to the single owner. */
-    HandlerFile *first;                    /* Oldest pending FID. */
-    HandlerFile *last;                     /* Newest pending FID. */
-    HandlerFile *active;                   /* FID executing on the sole owner, if any. */
-    size_t queued;                         /* Number of complete, not yet started jobs. */
-    int stopped;                           /* Admission closed. */
-    const StyxRpcChannelFunction *functions; /* Immutable borrowed descriptors. */
-    size_t count;                          /* Number of exported functions. */
-    StyxRpcEntry entries[FIRST_EXPORT + STYXRPC_MAX_EXPORTS + 2]; /* Module nodes and markers. */
-    unsigned char profile[STYXRPC_MANAGED_PROFILE_BYTES]; /* Serialized compiled offers. */
-    size_t profile_size;                   /* Bytes in the immutable interface. */
-};
-
-
-/* EN: Append the compiled offer for function to module when its schema is supported.
- * RU: Добавить компилированное предложение function в module при поддерживаемой схеме. */
-static int add_offer(StyxRpcChannelHandlers *module, const StyxRpcChannelFunction *function)
-{
-    const StyxRpcSchema *schema = &function->schema;
     size_t used;
-    if (!function->handler || !memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
-        !memchr(schema->result, 0, sizeof(schema->result)) || !strchr(schema->arguments, 'c') ||
-        strpbrk(schema->arguments, "rh") || strpbrk(schema->result, "rhc") ||
-        styxrpc_channel_profile(function->name, function->signature, schema, module->profile + module->profile_size,
-            sizeof(module->profile) - module->profile_size, &used) != STYXRPC_OK)
+    if (styxrpc_channel_profile(name, signature, schema, module->profile + module->profile_size,
+        sizeof(module->profile) - module->profile_size, &used) != STYXRPC_OK ||
+        !styxrpc_channel_input_schema(schema, 1))
     {
         return 0;
     }
-    const char *type = strchr(schema->arguments, 'c');
-    while (type)
+    for (size_t i = 0; i < index; ++i)
     {
-        const char *end = styxshape_end(type);
-        if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
+        if (!strcmp(module->entries[FIRST_EXPORT + i].name, name))
         {
             return 0;
         }
-        type = strchr(end, 'c');
     }
     module->profile_size += used;
+    styxrpc_module_export_node(module->entries, index, name);
+    return 1;
+}
+
+
+/* EN: Populate all compiled offers and metadata before creating synchronization state.
+ * RU: Заполнить предложения и метаданные до создания состояния синхронизации. */
+static int populate(StyxRpcChannelHandlers *module, const char *name,
+    const StyxRpcChannelFunction *functions, size_t count, const StyxRpcChannelExport *results, size_t result_count)
+{
+    styxrpc_module_nodes(module->entries, name);
+    for (size_t i = 0; i < count; ++i)
+    {
+        const StyxRpcChannelFunction *f = functions + i;
+        if (!f->handler || !add_offer(module, i, f->name, f->signature, &f->schema) ||
+            !strchr(f->schema.arguments, 'c') || strpbrk(f->schema.result, "rhc"))
+        {
+            return 0;
+        }
+    }
+    for (size_t i = 0; i < result_count; ++i)
+    {
+        const StyxRpcChannelExport *f = results + i;
+        if (!f->begin || !styxrpc_channel_output_schema(&f->schema) ||
+            !add_offer(module, count + i, f->name, f->signature, &f->schema))
+        {
+            return 0;
+        }
+    }
+    size_t marker = FIRST_EXPORT + count + result_count;
+    module->entries[marker] = (StyxRpcEntry){marker, STYX_MANAGED_DELTA_FILE, 0444, 0};
+    module->entries[marker + 1] = (StyxRpcEntry){marker + 1, STYX_CHANNEL_PROFILE_FILE, 0444, 0};
+    if (result_count)
+    {
+        module->entries[marker + 2] = (StyxRpcEntry){marker + 2, ".unibus", 0666, 0};
+    }
     return 1;
 }
 
 
 /* EN/RU: See styxrpc/channel_handlers.h. / См. styxrpc/channel_handlers.h. */
-StyxRpcChannelHandlers *styxrpc_channel_handlers_create(const char *name,
-    const StyxRpcChannelFunction *functions, size_t count)
+StyxRpcChannelHandlers *styxrpc_channel_handlers_create_with_results(const char *name,
+    const StyxRpcChannelFunction *functions, size_t count, const StyxRpcChannelExport *results,
+    size_t result_count, StyxRpcModuleChannels *registry)
 {
-    if (!styxrpc_module_name(name) || !functions || !count || count > STYXRPC_MAX_EXPORTS)
+    if (!styxrpc_module_name(name) || count > STYXRPC_MAX_EXPORTS || result_count > STYXRPC_MAX_EXPORTS - count ||
+        (!count && !result_count) || (count && !functions) ||
+        (result_count && (!results || !registry || !registry->slots || !registry->capacity || !registry->entropy)))
     {
         return NULL;
     }
@@ -92,28 +91,8 @@ StyxRpcChannelHandlers *styxrpc_channel_handlers_create(const char *name,
     {
         return NULL;
     }
-    styxrpc_module_nodes(module->entries, name);
-    for (size_t i = 0; i < count; ++i)
-    {
-        if (!add_offer(module, functions + i))
-        {
-            free(module);
-            return NULL;
-        }
-        for (size_t j = 0; j < i; ++j)
-        {
-            if (!strcmp(functions[i].name, functions[j].name))
-            {
-                free(module);
-                return NULL;
-            }
-        }
-        styxrpc_module_export_node(module->entries, i, functions[i].name);
-    }
-    size_t marker = FIRST_EXPORT + count;
-    module->entries[marker] = (StyxRpcEntry){marker, STYX_MANAGED_DELTA_FILE, 0444, 0};
-    module->entries[marker + 1] = (StyxRpcEntry){marker + 1, STYX_CHANNEL_PROFILE_FILE, 0444, 0};
-    if (pthread_mutex_init(&module->lock, NULL))
+    if (!populate(module, name, functions, count, results, result_count) ||
+        pthread_mutex_init(&module->lock, NULL))
     {
         free(module);
         return NULL;
@@ -125,8 +104,19 @@ StyxRpcChannelHandlers *styxrpc_channel_handlers_create(const char *name,
         return NULL;
     }
     module->functions = functions;
-    module->count = count;
+    module->results = results;
+    module->copied_count = count;
+    module->count = count + result_count;
+    module->registry = result_count ? registry : NULL;
     return module;
+}
+
+
+/* EN/RU: See styxrpc/channel_handlers.h. / См. styxrpc/channel_handlers.h. */
+StyxRpcChannelHandlers *styxrpc_channel_handlers_create(const char *name,
+    const StyxRpcChannelFunction *functions, size_t count)
+{
+    return styxrpc_channel_handlers_create_with_results(name, functions, count, NULL, 0, NULL);
 }
 
 
@@ -145,22 +135,9 @@ static HandlerFile *dequeue(StyxRpcChannelHandlers *module)
 }
 
 
-/* EN: Complete a pending file with module.lock held. The dispatcher may have detached it.
- * RU: Завершить ожидание файла под module.lock. Диспетчер мог закрыть файл. */
-static void complete(HandlerFile *file, size_t ready)
-{
-    file->pending = 0;
-    file->ready = ready;
-    if (file->detached)
-    {
-        free(file);
-    }
-}
-
-
 /* EN: Run the checked callback once and return the immutable validated reply length.
  * RU: Однократно выполнить проверенный колбэк и вернуть длину проверенного ответа. */
-static size_t run_call(HandlerFile *file)
+static size_t run_copied_call(HandlerFile *file)
 {
     unsigned char *reply = file->storage + FRAME;
     unsigned char *payload = reply + FRAME;
@@ -185,6 +162,27 @@ static size_t run_call(HandlerFile *file)
 }
 
 
+/* EN: Run one owner callback. The dispatcher will publish any staged channel.
+ * RU: Выполнить колбэк владельца. Подготовленный канал опубликует диспетчер. */
+static void run_call(HandlerFile *file)
+{
+    if (file->function)
+    {
+        file->ready = run_copied_call(file);
+    }
+    else if (file->channel->begin(file->channel->context, &file->call, &file->output) == STYXRPC_OK)
+    {
+        file->staged_output = 1;
+    }
+    else
+    {
+        styxrpc_handlers_release_output(file);
+        styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0,
+            file->storage + FRAME, FRAME, &file->ready);
+    }
+}
+
+
 /* EN/RU: See styxrpc/channel_handlers.h. / См. styxrpc/channel_handlers.h. */
 int styxrpc_channel_handlers_step(StyxRpcChannelHandlers *module)
 {
@@ -206,11 +204,16 @@ int styxrpc_channel_handlers_step(StyxRpcChannelHandlers *module)
     module->active = file;
     pthread_mutex_unlock(&module->lock);
 
-    size_t ready = run_call(file);
+    run_call(file);
     pthread_mutex_lock(&module->lock);
     module->active = NULL;
-    complete(file, ready);
+    file->pending = 0;
+    int detached = file->detached;
     pthread_mutex_unlock(&module->lock);
+    if (detached)
+    {
+        styxrpc_handlers_dispose(file);
+    }
     return 1;
 }
 
@@ -226,7 +229,7 @@ void styxrpc_channel_handlers_stop(StyxRpcChannelHandlers *module)
     module->stopped = 1;
     while (module->first)
     {
-        complete(dequeue(module), 0);
+        dequeue(module)->pending = 0;
     }
     pthread_cond_signal(&module->wake);
     pthread_mutex_unlock(&module->lock);
@@ -246,81 +249,8 @@ void styxrpc_channel_handlers_destroy(StyxRpcChannelHandlers *module)
 }
 
 
-/* EN: Look up the child's stable entry by directory ID and index.
- * RU: Найти стабильную запись потомка по ID каталога и индексу. */
-static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t index)
-{
-    const StyxRpcChannelHandlers *module = context;
-    return styxrpc_module_child(module->entries, module->count + 2, directory, index);
-}
-
-
-/* EN: Return metadata content and extent for the opened non-function ID.
- * RU: Вернуть данные метаданных и длину для открытого ID без функции. */
-static const void *metadata(const StyxRpcChannelHandlers *module, uint64_t id, size_t *size)
-{
-    if (id == INTERFACE)
-    {
-        *size = module->profile_size;
-        return module->profile;
-    }
-    if (id == FIRST_EXPORT + module->count)
-    {
-        *size = sizeof(STYXRPC_POSITIONAL_GRAPH) - 1;
-        return STYXRPC_POSITIONAL_GRAPH;
-    }
-    *size = sizeof(STYXRPC_CHANNEL_VERSION) - 1;
-    return STYXRPC_CHANNEL_VERSION;
-}
-
-
-/* EN: Describe one stable node, including the exact size of each marker.
- * RU: Описать стабильный узел с точным размером каждого маркера. */
-static int describe(void *context, uint64_t id, StyxRpcNode *node)
-{
-    const StyxRpcChannelHandlers *module = context;
-    if (!styxrpc_module_stat(module->entries, module->count + 2, module->profile_size, id, node))
-    {
-        return 0;
-    }
-    if (id >= FIRST_EXPORT + module->count)
-    {
-        size_t length;
-        metadata(module, id, &length);
-        node->length = length;
-    }
-    return 1;
-}
-
-
-/* EN: Open a read-only metadata file or allocate disjoint buffers for a function FID.
- * RU: Открыть метаданные на чтение либо выделить раздельные буферы для fid функции. */
-static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
-{
-    StyxRpcChannelHandlers *module = context;
-    size_t marker = FIRST_EXPORT + module->count;
-    int function = id >= FIRST_EXPORT && id < marker;
-    if (id < INTERFACE || id > marker + 1 ||
-        access != (function ? STYXRPC_READ | STYXRPC_WRITE : STYXRPC_READ))
-    {
-        return 0;
-    }
-    HandlerFile *file = calloc(1, sizeof(*file) + (function ? 4U * FRAME : 0));
-    if (!file)
-    {
-        return 0;
-    }
-    file->module = module;
-    file->id = id;
-    file->function = function ? module->functions + (id - FIRST_EXPORT) : NULL;
-    *cookie = file;
-    return 1;
-}
-
-
-/* EN: Queue file once unless module is stopped or the pending bound was reached.
- * RU: Поставить file в очередь один раз до остановки module либо переполнения. */
-static int submit(HandlerFile *file)
+/* EN/RU: See channel_handlers_internal.h. / См. channel_handlers_internal.h. */
+int styxrpc_handlers_submit(HandlerFile *file)
 {
     StyxRpcChannelHandlers *module = file->module;
     pthread_mutex_lock(&module->lock);
@@ -342,69 +272,6 @@ static int submit(HandlerFile *file)
     }
     pthread_mutex_unlock(&module->lock);
     return accepted;
-}
-
-
-/* EN: Accept a contiguous frame, then acknowledge the validated job without running it.
- * RU: Принять последовательный кадр, затем подтвердить проверенную работу без её исполнения. */
-static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t count, size_t *size)
-{
-    HandlerFile *file = cookie;
-    if (!file->function || file->submitted || file->rejected || offset != file->staged ||
-        !count || count > FRAME - file->staged)
-    {
-        return 0;
-    }
-    memcpy(file->storage + file->staged, bytes, count);
-    file->staged += count;
-    FVM_SRecord record;
-    size_t consumed;
-    FVM_SResult parsed = fvm_srecord_read(file->storage, file->staged, FRAME, &record, &consumed);
-    if (parsed == FVM_S_MORE && file->staged < FRAME)
-    {
-        *size = count;
-        return 1;
-    }
-    if (parsed != FVM_S_OK || consumed != file->staged || record.tag != STYXRPC_GRAPH_REQUEST_TAG ||
-        styxrpc_channel_call(&file->function->schema, file->storage, file->staged, &file->call) != STYXRPC_OK ||
-        !submit(file))
-    {
-        file->rejected = 1;
-        return 0;
-    }
-    file->submitted = 1;
-    *size = count;
-    return 1;
-}
-
-
-/* EN: Copy an immutable reply range or metadata; an unfinished call reads as empty.
- * RU: Скопировать диапазон готового ответа или метаданных; ожидающий вызов читается пустым. */
-static int read_file(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
-{
-    HandlerFile *file = cookie;
-    StyxRpcChannelHandlers *module = file->module;
-    size_t length;
-    pthread_mutex_lock(&module->lock);
-    if (file->rejected || (file->submitted && !file->pending && !file->ready))
-    {
-        pthread_mutex_unlock(&module->lock);
-        return 0;
-    }
-    const void *source = file->function ? (const void *)(file->storage + FRAME) :
-        metadata(module, file->id, &length);
-    if (file->function)
-    {
-        length = file->ready;
-    }
-    size_t remaining = offset < length ? length - (size_t)offset : 0;
-    *size = remaining < capacity ? remaining : capacity;
-    if (*size)
-    {
-        memcpy(bytes, (const unsigned char *)source + (size_t)offset, *size);
-    }
-    pthread_mutex_unlock(&module->lock);
-    return 1;
 }
 
 
@@ -433,27 +300,39 @@ static void remove_queued(StyxRpcChannelHandlers *module, HandlerFile *file)
 }
 
 
-/* EN: Retire this FID without waiting on a callback that may issue reverse Styx requests.
- * RU: Закрыть этот fid без ожидания колбэка, который может выполнять встречные запросы Styx. */
-static void close_file(void *cookie)
+/* EN/RU: See channel_handlers_internal.h. / См. channel_handlers_internal.h. */
+int styxrpc_handlers_detach(HandlerFile *file)
 {
-    HandlerFile *file = cookie;
     StyxRpcChannelHandlers *module = file->module;
     pthread_mutex_lock(&module->lock);
-    if (module->active == file)
+    int owned = module->active != file;
+    if (!owned)
     {
         file->detached = 1;
     }
-    else
+    else if (file->pending)
     {
-        if (file->pending)
-        {
-            remove_queued(module, file);
-        }
-        free(file);
+        remove_queued(module, file);
     }
     pthread_mutex_unlock(&module->lock);
+    return owned;
 }
 
-const StyxRpcTree styxrpc_channel_handlers_tree = {{enumerate, open_file, read_file, write_file, close_file},
-    describe}; /* Immutable Styx tree operations for one connection dispatcher. */
+
+/* EN/RU: See channel_handlers_internal.h. / См. channel_handlers_internal.h. */
+void styxrpc_handlers_release_output(HandlerFile *file)
+{
+    if (file->output.release)
+    {
+        file->output.release(file->output.resource.context);
+        file->output.release = NULL;
+    }
+}
+
+
+/* EN/RU: See channel_handlers_internal.h. / См. channel_handlers_internal.h. */
+void styxrpc_handlers_dispose(HandlerFile *file)
+{
+    styxrpc_handlers_release_output(file);
+    free(file);
+}

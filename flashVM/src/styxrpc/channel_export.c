@@ -127,7 +127,7 @@ static void release_port(void *context)
 
 /* EN: Allocate an empty FIFO or zero-capacity rendezvous using the compiled type.
  * RU: Выделить пустой FIFO или rendezvous нулевой ёмкости с компилированным типом. */
-static FlashPort *create_port(const FVM_StyxRpcChannelExport *binding, const StyxRpcSchema *schema)
+static FlashPort *create_port(const StyxRpcSchema *schema, unsigned capacity)
 {
     FlashPort *port = calloc(1, sizeof(*port));
     size_t length = strlen(schema->result) - CHANNEL_SCHEMA_WRAPPER;
@@ -139,10 +139,10 @@ static FlashPort *create_port(const FVM_StyxRpcChannelExport *binding, const Sty
     port->queue.grant.shape[0] = '(';
     memcpy(port->queue.grant.shape + 1, schema->result + 3, length);
     port->queue.grant.shape[length + 1] = ')';
-    port->queue.capacity = binding->capacity;
-    if (binding->capacity)
+    port->queue.capacity = capacity;
+    if (capacity)
     {
-        port->bytes = malloc(binding->capacity * (size_t)STYXRPC_MANAGED_LIMIT);
+        port->bytes = malloc(capacity * (size_t)STYXRPC_MANAGED_LIMIT);
         if (!port->bytes)
         {
             release_port(port);
@@ -193,6 +193,41 @@ static int seed_port(FVM_Context *context, FVM_GCRootScope *roots, FlashPort *po
 }
 
 
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema)
+{
+    const char *end;
+    return schema->result[1] == 'c' &&
+        (end = fvm_styxrpc_type_end(schema->result + 1)) && !strcmp(end, ")");
+}
+
+
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
+    const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output)
+{
+    FlashPort *port = create_port(schema, capacity);
+    if (!port)
+    {
+        return 0;
+    }
+    if (!seed_port(context, roots, port, seed))
+    {
+        release_port(port);
+        return 0;
+    }
+    output->key = port->queue.grant.key;
+    output->unbuffered = !port->queue.capacity;
+    output->resource.context = port;
+    output->resource.open = open_operation;
+    output->resource.read = read_operation;
+    output->resource.write = write_operation;
+    output->resource.close = close_operation;
+    output->release = release_port;
+    return 1;
+}
+
+
 /* [GC:] EN: Run the initializer under GC roots and transfer the exact resource on success.
  * RU: Выполнить инициализатор под корнями GC и передать ресурс при успехе. */
 static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
@@ -202,7 +237,6 @@ static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcC
     FVM_GCRootScope *roots;
     FVM_Value args[FVM_STYXRPC_LIST_ITEMS], seed;
     unsigned count;
-    FlashPort *port = NULL;
     int ok;
     if (fvm_exception_get(context, &seed) != FVM_NOT_FOUND ||
         fvm_gc_roots_begin(context, &roots) != FVM_OK)
@@ -213,26 +247,13 @@ static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcC
             args, FVM_STYXRPC_LIST_ITEMS, &count) &&
         fvm_avm1_call(context, binding->initializer, NULL, count, args, &seed) == FVM_OK &&
         fvm_gc_roots_add(roots, &seed) == FVM_OK &&
-        (port = create_port(binding, &binding->schema)) != NULL && seed_port(context, roots, port, &seed);
+        fvm_styxrpc_channel_output(context, roots, &binding->schema, binding->capacity, &seed, output);
     fvm_gc_roots_end(roots);
     if (!ok)
     {
-        if (port)
-        {
-            release_port(port);
-        }
         fvm_exception_clear(context);
-        return STYXRPC_REMOTE_ERROR;
     }
-    output->key = port->queue.grant.key;
-    output->unbuffered = !port->queue.capacity;
-    output->resource.context = port;
-    output->resource.open = open_operation;
-    output->resource.read = read_operation;
-    output->resource.write = write_operation;
-    output->resource.close = close_operation;
-    output->release = release_port;
-    return STYXRPC_OK;
+    return ok ? STYXRPC_OK : STYXRPC_REMOTE_ERROR;
 }
 
 
@@ -240,13 +261,11 @@ static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcC
 FVM_Result fvm_styxrpc_channel_export(FVM_StyxRpcChannelExport *binding,
     const char *name, uint32_t signature, StyxRpcChannelExport *exported)
 {
-    const char *end;
     size_t size;
     unsigned char offer[STYXRPC_MANAGED_PROFILE_BYTES];
     if (!binding || !binding->context || !binding->initializer || !*binding->initializer || !exported ||
         binding->capacity > FVM_STYXRPC_CHANNEL_QUEUE_SLOTS || !fvm_styxrpc_channel_supported(&binding->schema) ||
-        binding->schema.result[1] != 'c' ||
-        !(end = fvm_styxrpc_type_end(binding->schema.result + 1)) || strcmp(end, ")") ||
+        !fvm_styxrpc_single_channel_result(&binding->schema) ||
         styxrpc_channel_profile(name, signature, &binding->schema, offer, sizeof(offer), &size) != STYXRPC_OK)
     {
         return FVM_INVALID_ARGUMENT;

@@ -20,6 +20,7 @@ typedef struct Owner
     int count;                     /* Number of completed/started callbacks. */
     int paused;                    /* First callback entered and waiting for the dispatcher. */
     int release;                   /* Dispatcher completed its in-flight clunk. */
+    int released;                  /* Dropped result cleaned up by the owner. */
 } Owner;
 
 
@@ -49,6 +50,37 @@ static StyxRpcStatus handle(void *context, const StyxRpcChannelCall *call, void 
 }
 
 
+/* EN: Count the abandoned output's destructor on the callback owner.
+ * RU: Подсчитать освобождение отброшенного результата у владельца колбэка. */
+static void release_output(void *context)
+{
+    ((Owner *)context)->released++;
+}
+
+
+/* EN: Pause the active result callback, then hand back a nil channel with cleanup.
+ * RU: Задержать активный колбэк, затем выдать канал nil с освобождением. */
+static StyxRpcStatus handle_result(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+{
+    size_t used;
+    StyxRpcStatus status = handle(context, call, NULL, 0, &used);
+    output->resource.context = context;
+    output->release = release_output;
+    return status;
+}
+
+
+/* EN: Fail if a dropped output ever reaches the token registry.
+ * RU: Вернуть отказ, если отброшенный результат достиг реестра токенов. */
+static int unexpected_entropy(void *context, void *bytes, size_t size)
+{
+    (void)context;
+    (void)bytes;
+    (void)size;
+    return 0;
+}
+
+
 /* EN: Drive the single owner until the dispatcher stops it.
  * RU: Обслуживать единственного владельца до остановки диспетчером. */
 static void *owner_loop(void *context)
@@ -63,10 +95,10 @@ static void *owner_loop(void *context)
 
 /* EN: Open the function and write a fragmented valid request on its own fid.
  * RU: Открыть функцию и разбить правильный запрос на записи в её собственный fid. */
-static int stage(void *module, const unsigned char *frame, size_t size, void **file)
+static int stage(void *module, size_t index, const unsigned char *frame, size_t size, void **file)
 {
     const StyxRpcVfs *ops = &styxrpc_channel_handlers_tree.files;
-    const StyxRpcEntry *entry = ops->enumerate(module, 2, 1);
+    const StyxRpcEntry *entry = ops->enumerate(module, 2, index);
     size_t sent;
     return entry && ops->open(module, entry->id, STYXRPC_READ | STYXRPC_WRITE, file) &&
         ops->write(*file, 0, frame, 1, &sent) && sent == 1 &&
@@ -104,14 +136,14 @@ static int exercise(Owner *owner, const StyxRpcSchema *schema)
         fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &updates_size) == FVM_S_OK &&
         styxrpc_channel_call_reply(schema, &call, result, result_size, updates, updates_size,
             expected, sizeof(expected), &expected_size) == STYXRPC_OK &&
-        stage(owner->module, frame, size, &canceled);
+        stage(owner->module, 1, frame, size, &canceled);
     if (canceled)
     {
         ops->close(canceled);
     }
-    valid = valid && stage(owner->module, frame, size, &active) &&
+    valid = valid && stage(owner->module, 2, frame, size, &active) &&
         ops->read(active, 0, reply, sizeof(reply), &used) && !used &&
-        stage(owner->module, frame, size, &finished);
+        stage(owner->module, 1, frame, size, &finished);
     pthread_t thread;
     int started = valid && !pthread_create(&thread, NULL, owner_loop, owner);
     if (started)
@@ -142,7 +174,7 @@ static int exercise(Owner *owner, const StyxRpcSchema *schema)
     {
         pthread_join(thread, NULL);
         valid = valid && ops->read(finished, 0, reply, sizeof(reply), &used) &&
-            used == expected_size && !memcmp(reply, expected, used) && owner->count == 2;
+            used == expected_size && !memcmp(reply, expected, used) && owner->count == 2 && owner->released == 1;
     }
     if (active)
     {
@@ -162,7 +194,13 @@ int main(void)
 {
     Owner owner = {.lock = PTHREAD_MUTEX_INITIALIZER, .wake = PTHREAD_COND_INITIALIZER};
     const StyxRpcChannelFunction function = {"accept", UINT32_C(0xe4cc716f), {"(c[i])", "()"}, handle, &owner};
-    owner.module = styxrpc_channel_handlers_create("incoming.dis", &function, 1);
+    const StyxRpcChannelExport exported = {"relay", UINT32_C(0x9c30df25), {"(c[i])", "(c[i])"}, handle_result, &owner};
+    StyxRpcModuleChannels registry;
+    StyxRpcModuleChannel slot;
+    if (styxrpc_module_channels_init(&registry, &slot, 1, unexpected_entropy, NULL))
+    {
+        owner.module = styxrpc_channel_handlers_create_with_results("incoming.dis", &function, 1, &exported, 1, &registry);
+    }
     int ok = owner.module && exercise(&owner, &function.schema);
     styxrpc_channel_handlers_destroy(owner.module);
     pthread_cond_destroy(&owner.wake);

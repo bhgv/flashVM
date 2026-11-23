@@ -61,6 +61,19 @@ int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, con
     const StyxRpcChannelResult *result, FVM_Value *out);
 
 
+/* EN: Check a validated channel signature for exactly one result channel.
+ * RU: Проверить, что поддерживаемая сигнатура возвращает ровно один канал. */
+int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema);
+
+
+/* [GC:] EN: Create and seed a portable result resource under roots, transferring
+ * it to output on success. The resource contains only copied data.
+ * RU: Создать переносимый ресурс под корнями и передать его в output при успехе.
+ * Ресурс содержит только копируемые данные. */
+int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
+    const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output);
+
+
 /* [GC:] EN: Release a script-local typed queue after the owning object retires.
  * RU: Освободить локальную типизированную очередь при уничтожении объекта. */
 void fvm_styxrpc_local_channel_release(void *state);

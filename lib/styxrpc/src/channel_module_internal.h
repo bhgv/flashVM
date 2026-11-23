@@ -14,4 +14,23 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
     const void *request, size_t size, void *reply, size_t capacity, size_t *ready,
     StyxRpcChannelOutput *active, unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE]);
 
+
+/* EN: Check the terminated schema's copied argument types and optional channel leaves.
+ * RU: Проверить аргументы по значению и допустимые каналы внутри завершённой схемы. */
+int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels);
+
+
+/* EN: Check for exactly one channel with copied elements in the terminated result schema.
+ * RU: Проверить один канал с элементами по значению в завершённой схеме результата. */
+int styxrpc_channel_output_schema(const StyxRpcSchema *schema);
+
+
+/* EN: Publish and frame a checked output on the dispatcher. Revoke any provisional
+ * token on failure. The caller still owns the resource on all outcomes.
+ * RU: Опубликовать проверенный результат у диспетчера. При ошибке отозвать выданный
+ * токен. Ресурс во всех случаях принадлежит вызывающему. */
+int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
+    StyxRpcModuleChannels *registry, const StyxRpcChannelOutput *output,
+    unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE], void *reply, size_t capacity, size_t *ready);
+
 #endif

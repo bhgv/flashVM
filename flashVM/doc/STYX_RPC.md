@@ -45,5 +45,5 @@ program can use its delegated `.var`, `.fd` and `.vfs`. Ordinary ref arguments c
 and returned refs, shared identities and sparse copy-back. It also carries native
 hybrid tables with exact signed 64-bit values and ordered key patches.
 The scoped channel binding carries live result channels in both directions and
-lends channel arguments in both directions. General reverse-resource declaration
+lends channel arguments in both directions. An inbound callback can also use borrowed arguments and issue an independent result channel in the same call. General reverse-resource declaration
 and migration of the existing in-process editor bridges remain open.

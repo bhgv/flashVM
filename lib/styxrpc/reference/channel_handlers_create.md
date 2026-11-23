@@ -1,6 +1,6 @@
 # styxrpc_channel_handlers_create
 
-[Русский](channel_handlers_create.ru.md) · [Declaration](../include/styxrpc/channel_handlers.h) · [Implementation](../src/channel_handlers.c) · [Guide](channel_handler_modules.md) · [C test](../tests/channel_handlers.c)
+[Русский](channel_handlers_create.ru.md) · [Declaration](../include/styxrpc/channel_handlers.h) · [Implementation](../src/channel_handlers.c) · [Guide](channel_handler_modules.md) · [C test](../tests/channel_handlers.c) · [Module with result channels](channel_handlers_create_with_results.md)
 
 Include `<styxrpc/channel_handlers.h>` and link the hosted C99 target `StyxRpc::serve` with POSIX threads.
 
