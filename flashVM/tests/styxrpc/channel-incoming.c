@@ -17,6 +17,7 @@
 #define INT_SIGNATURE UINT32_C(0x4fef7e8c)  /* Compiled int port with int result. */
 #define NESTED_SIGNATURE UINT32_C(0x93a913ec) /* Compiled nested argument. */
 #define LEASE_SIGNATURE UINT32_C(0x9c30df25) /* Compiled int port and int channel result. */
+#define NESTED_RESULT_SIGNATURE UINT32_C(0x968341b1) /* Int argument channel, nested int result. */
 #define RESULT_LEASES 4U  /* Independent result leases for the native test client. */
 #define STYX_WAIT 3000U     /* Client mount/operation polling budget, in ms. */
 #define RECEIVE_WAIT 450U  /* Bound relay waits, including the controlled empty receive. */
@@ -162,20 +163,23 @@ static FVM_Result result_seed(FVM_Context *context, FVM_Object *self, unsigned a
 }
 
 
-/* EN: Return undefined from an empty input port to produce an empty result rendezvous.
- * RU: Вернуть undefined из пустого входящего канала для создания пустого rendezvous результата. */
+/* EN: Check the borrowed port, then seed the result with an empty rendezvous descriptor.
+ * RU: Проверить заимствованный канал, затем заполнить результат описателем пустого rendezvous. */
 static FVM_Result result_empty(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *unused)
 {
+    FVM_GCRootScope *roots;
     (void)self;
     (void)unused;
     if (argc != 1 || args->type != FVM_VALUE_OBJECT ||
         fvm_object_call(context, args->object, "tryReceive", 0, NULL, out) != FVM_OK ||
-        out->type != FVM_VALUE_UNDEFINED)
+        out->type != FVM_VALUE_UNDEFINED || fvm_gc_roots_begin(context, &roots) != FVM_OK)
     {
         return failure("expected an empty source for the result rendezvous");
     }
-    return FVM_OK;
+    FVM_Result status = test_channel_seed(context, roots, 0, 0, NULL, out);
+    fvm_gc_roots_end(roots);
+    return status;
 }
 
 
@@ -262,10 +266,11 @@ int test_channel_incoming(FVM_Context *context, int fd)
     };
     FVM_StyxRpcChannelHandlerExport result_bindings[] = {
         {{context, "resultSeed", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 1},
-        {{context, "resultEmpty", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0},
+        {{context, "resultEmpty", reverse, {"(c[i])", "(c[c[i]])"}, STYX_WAIT}, 1},
         {{context, "receiveDis", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0}
     };
     const char *result_names[] = {"make", "sync", "badseed"};
+    const uint32_t result_signatures[] = {LEASE_SIGNATURE, NESTED_RESULT_SIGNATURE, LEASE_SIGNATURE};
     StyxRpcChannelExport results[sizeof(result_bindings) / sizeof(*result_bindings)];
     size_t result_count = sizeof(results) / sizeof(*results);
     StyxRpcModuleChannel leases[RESULT_LEASES];
@@ -291,7 +296,7 @@ int test_channel_incoming(FVM_Context *context, int fd)
     for (size_t i = 0; ok && i < result_count; ++i)
     {
         ok = fvm_styxrpc_channel_handler_export(result_bindings + i, result_names[i],
-            LEASE_SIGNATURE, results + i) == FVM_OK;
+            result_signatures[i], results + i) == FVM_OK;
     }
     Dispatch dispatch = {0};
     dispatch.module = ok ? styxrpc_channel_handlers_create_with_results("flash-incoming.dis",

@@ -1,5 +1,12 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1716 / Контрольная точка v0.1716. A FlashVM result can carry
+module-owned nested FIFO and rendezvous channels under the issuing lease.
+Обычный экспорт и обработчик с заимствованными аргументами используют
+один ресурс C SDK. Проверены повторная отправка, ёмкость, алиасы и срок
+жизни вложенного канала. [EN](STYX_RPC_NESTED_CHANNELS.md) /
+[RU](STYX_RPC_NESTED_CHANNELS.ru.md).
+
 Checkpoint v0.1715 / Контрольная точка v0.1715. ActionScript receives and
 echoes Dis-owned channels inside messages on the same UniBus route, in
 borrowed calls and leased results. Алиасы переживают повторную доставку.

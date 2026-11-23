@@ -37,4 +37,10 @@ int test_channel_entropy(void *unused, void *bytes, size_t length);
  * RU: Принять и удержать вложенное сообщение, сверив алиасы и nil в позициях 0–2. */
 int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
     const FVM_Value *outer, FVM_Value *message, FVM_Value *child);
+
+
+/* EN: Create the script seed descriptor [capacity, items] with the input items rooted by caller.
+ * RU: Создать описатель сценария [ёмкость, элементы] с корнями элементов у вызывающего. */
+FVM_Result test_channel_seed(FVM_Context *context, FVM_GCRootScope *roots,
+    unsigned capacity, unsigned count, const FVM_Value *items, FVM_Value *out);
 #endif

@@ -35,7 +35,9 @@ check_results(api: Incoming, port: chan of int)
             }
         * => raise "leased FIFO is not ready after return";
     }
-    empty := api->sync(port);
+    wrapper := api->sync(port);
+    empty := <-wrapper;
+    wrapper = nil;
     if (empty == nil) {
         raise "missing result rendezvous";
     }

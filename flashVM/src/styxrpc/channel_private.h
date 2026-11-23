@@ -91,6 +91,16 @@ int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const
     const FVM_Value *value, unsigned char *payload, unsigned char *element, StyxRpcGuard *guard);
 
 
+struct FVM_StyxRefs; /* Owner-local typed graph hooks. */
+
+
+/* [GC:] EN: Encode one element using the supplied typed graph hooks for nested leaves.
+ * RU: Кодировать элемент с указанными хуками графа для вложенных листьев. */
+int fvm_styxrpc_channel_pack_refs(FVM_Context *context, FVM_GCRootScope *roots,
+    struct FVM_StyxRefs *refs, const char *shape, const FVM_Value *value,
+    unsigned char *payload, unsigned char *element, StyxRpcGuard *guard);
+
+
 /* [GC:] EN: Decode the exact channel element or a successful idle selection.
  * RU: Декодировать точный элемент канала либо подтверждённую пустую ветку. */
 int fvm_styxrpc_channel_unpack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,

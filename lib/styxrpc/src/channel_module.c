@@ -28,7 +28,7 @@ int styxrpc_channel_output_schema(const StyxRpcSchema *schema)
     return memchr(schema->result, 0, sizeof(schema->result)) &&
         schema->result[0] == '(' && schema->result[1] == 'c' &&
         (end = styxshape_end(schema->result + 1)) && !strcmp(end, ")") &&
-        !strpbrk(schema->result + 2, "rhc");
+        !strpbrk(schema->result + 2, "rh");
 }
 
 

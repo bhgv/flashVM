@@ -66,7 +66,7 @@ static FVM_Result close_channel(FVM_Context *context, FVM_Object *self, unsigned
 
 /* [GC:] EN: Encode one copied or routed operand with int or typed-element framing.
  * RU: Закодировать значение или маршруты в форме int либо типизированного элемента. */
-static int pack(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
+int fvm_styxrpc_channel_pack_refs(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,
     const FVM_Value *value, unsigned char *payload, unsigned char *element, StyxRpcGuard *guard)
 {
     size_t size;
@@ -90,7 +90,7 @@ static int pack(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs
 int fvm_styxrpc_channel_pack(FVM_Context *context, FVM_GCRootScope *roots, const char *shape,
     const FVM_Value *value, unsigned char *payload, unsigned char *element, StyxRpcGuard *guard)
 {
-    return pack(context, roots, NULL, shape, value, payload, element, guard);
+    return fvm_styxrpc_channel_pack_refs(context, roots, NULL, shape, value, payload, element, guard);
 }
 
 
@@ -187,7 +187,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
         refs.graph = 1;
         refs.encode_channel = fvm_styxrpc_channel_encode;
         refs.channel_context = channel;
-        if (argc && !pack(context, roots, &refs, channel->grant.shape, args,
+        if (argc && !fvm_styxrpc_channel_pack_refs(context, roots, &refs, channel->grant.shape, args,
             buffers, buffers + STYXRPC_MANAGED_LIMIT, selection.guards))
         {
             error = "Styx RPC channel value does not fit the schema";

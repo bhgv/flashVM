@@ -17,6 +17,51 @@ send_int(port: chan of int, done: chan of int)
 }
 
 
+# EN: Check the FlashVM group, including echoed rendezvous capacity and lease isolation.
+# RU: Проверить группу FlashVM, признак rendezvous при возврате и изоляцию аренд.
+check_tree(api: Channelservice)
+{
+    rejected := 0;
+    {
+        api->tree(-1);
+    } exception {
+        "*" => rejected = 1;
+    }
+    if (!rejected) {
+        raise "accepted a seed on a zero-capacity child";
+    }
+    one := api->tree(41);
+    other := api->tree(73);
+    if (one == nil || other == nil || one == other) {
+        raise "invalid FlashVM result groups";
+    }
+    first := <-one;
+    second := <-other;
+    if (len first != 4 || first[0] == nil || first[0] != first[1] ||
+        first[2] != nil || first[3] == nil || second[0] == first[0]) {
+        raise "nested identity or nil mismatch";
+    }
+    one <-= first;
+    echoed := <-one;
+    if (echoed[0] != first[0] || echoed[3] != first[3]) {
+        raise "the echoed unbuffered child changed identity";
+    }
+    one = nil;
+    if (<-echoed[0] != 41 || <-echoed[1] != 42 || <-second[0] != 73) {
+        raise "nested FIFO seed order or issuing fid was lost";
+    }
+    echoed[0] <-= 81;
+    if (<-first[1] != 81) {
+        raise "nested aliases did not share the queue";
+    }
+    done := chan[1] of int;
+    spawn send_int(echoed[3], done);
+    if (<-first[3] != -19 || <-done != 1) {
+        raise "nested rendezvous did not pair";
+    }
+}
+
+
 # EN: Use distinct call leases and confirm typed FIFO, guarded receive and rendezvous.
 # RU: Проверить разные аренды, типизированный FIFO, выбор приёма и rendezvous.
 init()
@@ -26,6 +71,7 @@ init()
     if (api == nil) {
         raise sys->sprint("cannot load FlashVM channel exports: %r");
     }
+    check_tree(api);
     one := api->port("a\0б");
     two := api->port("second");
     if (one == nil || two == nil || one == two) {

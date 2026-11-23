@@ -4,6 +4,7 @@
  */
 #include "channel-test.h"
 #include "flashvm/function.h"
+#include "flashvm/execution.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
@@ -14,7 +15,8 @@
 #define PORT_SIGNATURE UINT32_C(0x57a0e232)       /* fn(string): chan of string. */
 #define RENDEZVOUS_SIGNATURE UINT32_C(0x421b2140) /* fn(): chan of int. */
 #define BAD_SEED_SIGNATURE UINT32_C(0x1ecacb4d)   /* fn(string): chan of int. */
-#define TEST_CHANNEL_LEASES 3U /* Two FIFOs, plus one optional rendezvous. */
+#define TREE_SIGNATURE UINT32_C(0xe74e6a20)       /* fn(int): chan of array of chan of int. */
+#define TEST_CHANNEL_LEASES 5U /* Two nested groups, two FIFOs and a rendezvous. */
 #define TEST_MUX_LIMIT 65536U /* Shared physical carrier frame limit. */
 #define TEST_STYX_MSIZE 4096U /* Negotiated message size. */
 #define TEST_STYX_WAIT 3000U /* Native mount timeout in milliseconds. */
@@ -71,6 +73,61 @@ static int define(FVM_Context *context, const char *name, const unsigned char *a
 
 
 /* EN/RU: See channel-test.h. / См. channel-test.h. */
+FVM_Result test_channel_seed(FVM_Context *context, FVM_GCRootScope *roots,
+    unsigned capacity, unsigned count, const FVM_Value *items, FVM_Value *out)
+{
+    FVM_Value fields[2];
+    fvm_value_number(fields, capacity);
+    FVM_Result status = fvm_exec_literal_array(context, count, items, fields + 1);
+    if (status == FVM_OK)
+    {
+        status = fvm_gc_roots_add(roots, fields + 1);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_exec_literal_array(context, 2, fields, out);
+    }
+    return status;
+}
+
+
+/* [GC:] EN: Return a shared FIFO descriptor, nil, and a rendezvous descriptor for the root message.
+ * RU: Вернуть общий описатель FIFO, nil и описатель rendezvous для сообщения внешнего канала. */
+static FVM_Result tree(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value values[2], batch[4];
+    (void)self;
+    (void)unused;
+    if (argc != 1 || args->type != FVM_VALUE_NUMBER || fvm_gc_roots_begin(context, &roots) != FVM_OK)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    values[0] = args[0];
+    fvm_value_number(values + 1, args->number + 1);
+    fvm_value_undefined(batch + 2);
+    batch[2].type = FVM_VALUE_NULL;
+    FVM_Result status = test_channel_seed(context, roots, args->number < 0 ? 0 : 2, 2, values, batch);
+    if (status == FVM_OK)
+    {
+        status = fvm_gc_roots_add(roots, batch);
+    }
+    if (status == FVM_OK)
+    {
+        status = test_channel_seed(context, roots, 0, 0, NULL, batch + 3);
+    }
+    if (status == FVM_OK)
+    {
+        batch[1] = batch[0];
+        status = fvm_exec_literal_array(context, 4, batch, out);
+    }
+    fvm_gc_roots_end(roots);
+    return status;
+}
+
+
+/* EN/RU: See channel-test.h. / См. channel-test.h. */
 int test_channel_serve(FVM_Context *context, int fd)
 {
     static const unsigned char echo[] = {ACTION_PUSH, 3, 0, PUSH_STRING, 'v', 0,
@@ -79,7 +136,8 @@ int test_channel_serve(FVM_Context *context, int fd)
     FVM_StyxRpcChannelExport bindings[] = {
         {context, "seed", {"(s)", "(c[s])"}, 1},
         {context, "empty", {"()", "(c[i])"}, 0},
-        {context, "seed", {"(s)", "(c[i])"}, 1}
+        {context, "seed", {"(s)", "(c[i])"}, 1},
+        {context, "newTree", {"(i)", "(c[a[c[i]]])"}, 1}
     };
     StyxRpcChannelExport exports[sizeof(bindings) / sizeof(*bindings)];
     StyxRpcModuleChannel leases[TEST_CHANNEL_LEASES];
@@ -87,9 +145,11 @@ int test_channel_serve(FVM_Context *context, int fd)
     StyxRpcChannelModule module;
     if (!define(context, "seed", echo, sizeof(echo), 1) ||
         !define(context, "empty", empty, sizeof(empty), 0) ||
+        fvm_register_function(context, "newTree", tree, NULL) != FVM_OK ||
         fvm_styxrpc_channel_export(bindings, "port", PORT_SIGNATURE, exports) != FVM_OK ||
         fvm_styxrpc_channel_export(bindings + 1, "rendezvous", RENDEZVOUS_SIGNATURE, exports + 1) != FVM_OK ||
         fvm_styxrpc_channel_export(bindings + 2, "badseed", BAD_SEED_SIGNATURE, exports + 2) != FVM_OK ||
+        fvm_styxrpc_channel_export(bindings + 3, "tree", TREE_SIGNATURE, exports + 3) != FVM_OK ||
         !styxrpc_module_channels_init(&registry, leases, TEST_CHANNEL_LEASES, test_channel_entropy, NULL) ||
         styxrpc_channel_module_init(&module, "flash-channels.dis", exports,
             sizeof(exports) / sizeof(*exports), &registry) != STYXRPC_OK)

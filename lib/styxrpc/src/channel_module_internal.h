@@ -20,8 +20,8 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
 int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels);
 
 
-/* EN: Check for exactly one channel with copied elements in the terminated result schema.
- * RU: Проверить один канал с элементами по значению в завершённой схеме результата. */
+/* EN: Check for one channel with value and channel types in the terminated result schema.
+ * RU: Проверить один канал с типами значений и каналов в завершённой схеме результата. */
 int styxrpc_channel_output_schema(const StyxRpcSchema *schema);
 
 

@@ -8,6 +8,6 @@ Incoming: module {
     finish: fn(port: chan of int);
     nested: fn(batch: chan of array of chan of int): int;
     make: fn(port: chan of int): chan of int;
-    sync: fn(port: chan of int): chan of int;
+    sync: fn(port: chan of int): chan of chan of int;
     badseed: fn(port: chan of int): chan of int;
 };
