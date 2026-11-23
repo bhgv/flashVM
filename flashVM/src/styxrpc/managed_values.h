@@ -30,6 +30,11 @@ int fvm_styxrpc_values_supported(const StyxRpcSchema *schema);
 int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema);
 
 
+/* EN: Check value input and channel-bearing output, with by-value channel elements.
+ * RU: Проверить вход по значению и результат с каналами, чьи элементы идут по значению. */
+int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema);
+
+
 /* [GC:] EN: Read owned AS values and root them through the caller's scope.
  * RU: Читать собственные значения AS и удерживать их в области корней вызывающего. */
 int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs, const char *shape,

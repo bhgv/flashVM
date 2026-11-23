@@ -148,6 +148,10 @@ The application owns the positional and keyed parts of the table. One C callback
 
 [`styxrpc_program_bigtable`](reference/program_bigtable.md) · [Working example](examples/README.md)
 
+## Leased channel clients and modules
+
+[Hosted channel leases](reference/channel_leases.md) provide verified scoped invocations, pinned result-channel operations and callback-backed channel publication. C programs and the FlashVM bridge share these adapters.
+
 ## Delegated channels
 
 A nested channel can use a key on the current bus, a distinct reverse PID or

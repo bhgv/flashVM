@@ -3,6 +3,7 @@
  * RU: Проверка срока токенов, изоляции fid и отката выдач каналов модуля C.
  */
 #include "styxrpc/module_channels.h"
+#include "styxrpc/channel_module.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -10,6 +11,8 @@ typedef struct Counter
 {
     unsigned writes; /* Calls to the authenticated resource. */
     unsigned closes; /* Exact successful opens retired. */
+    unsigned calls;  /* Accepted factory calls. */
+    unsigned releases; /* Resources retired by the factory adapter. */
     unsigned char value; /* Byte stored through the lease. */
 } Counter;
 
@@ -135,11 +138,100 @@ static int exercise(void)
 }
 
 
+/* EN: Count retirement after the module has closed authenticated operations.
+ * RU: Подсчитать освобождение после закрытия проверенных операций модулем. */
+static void release_channel(void *state)
+{
+    ((Counter *)state)->releases++;
+}
+
+
+/* EN: Issue a resource for one verified zero-argument scoped call.
+ * RU: Выдать ресурс одного проверенного вызова без аргументов. */
+static StyxRpcStatus provide(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+{
+    Counter *counter = context;
+    if (call->pid != 42 || call->arguments.size || call->count)
+    {
+        return STYXRPC_REMOTE_ERROR;
+    }
+    counter->calls++;
+    *output = (StyxRpcChannelOutput){
+        .resource = {counter, NULL, read_byte, write_byte, close_byte},
+        .key = 1, .release = release_channel
+    };
+    return STYXRPC_OK;
+}
+
+
+/* EN: Find one public named child in the module's enumeration.
+ * RU: Найти дочерний узел по имени в публичном списке модуля. */
+static const StyxRpcEntry *find(const StyxRpcVfs *files, void *context, uint64_t parent, const char *name)
+{
+    for (size_t i = 0; ; i++)
+    {
+        const StyxRpcEntry *entry = files->enumerate(context, parent, i);
+        if (!entry || !strcmp(entry->name, name))
+        {
+            return entry;
+        }
+    }
+}
+
+
+/* EN: Stage an actual scoped request, authenticate its bus and revoke it through function clunk.
+ * RU: Принять настоящий контекстный запрос, проверить шину и отозвать её через clunk функции. */
+static int scoped_factory(void)
+{
+    int enabled = 1;
+    Counter state = {0};
+    StyxRpcModuleChannels registry;
+    StyxRpcModuleChannel slot;
+    StyxRpcChannelModule module;
+    const StyxRpcChannelExport exported = {"port", UINT32_C(0x421b2140), {"()", "(c[i])"}, provide, &state};
+    const StyxRpcVfs *files = &styxrpc_channel_module_tree.files;
+    const unsigned access = STYXRPC_READ | STYXRPC_WRITE;
+    unsigned char pid[24], request[32], response[128], byte;
+    size_t prefix, length, used;
+    if (!styxrpc_module_channels_init(&registry, &slot, 1, entropy, &enabled) ||
+        styxrpc_channel_module_init(&module, "port.dis", &exported, 1, &registry) != STYXRPC_OK ||
+        styxrpc_value_integer(STYXRPC_VALUE_BIG, 42, pid, sizeof(pid), &prefix) != STYXRPC_OK ||
+        fvm_srecord_write(STYXRPC_GRAPH_REQUEST_TAG, pid, prefix, request, sizeof(request), &length) != FVM_S_OK)
+    {
+        return 0;
+    }
+    const StyxRpcEntry *mounted = find(files, &module, 0, "mounted");
+    const StyxRpcEntry *owner = mounted ? find(files, &module, mounted->id, "port.dis") : NULL;
+    const StyxRpcEntry *function = owner ? find(files, &module, owner->id, "port") : NULL;
+    const StyxRpcEntry *bus = owner ? find(files, &module, owner->id, ".unibus") : NULL;
+    void *call = NULL, *operation = NULL;
+    int valid = function && bus && files->open(&module, function->id, access, &call) &&
+        files->write(call, 0, request, 1, &used) && used == 1 && !state.calls &&
+        files->write(call, 1, request + 1, length - 1, &used) && used == length - 1 && state.calls == 1 &&
+        files->read(call, 0, response, sizeof(response), &used) && used &&
+        !files->write(call, length, request, length, &used) && state.calls == 1 &&
+        files->open(&module, bus->id, access, &operation) &&
+        files->write(operation, 0, slot.token, sizeof(slot.token), &used) && used == sizeof(slot.token) &&
+        files->write(operation, STYXRPC_CHANNEL_TOKEN_SIZE, "a", 1, &used) && used == 1 &&
+        files->read(operation, 0, &byte, 1, &used) && used == 1 && byte == 'a';
+    if (call)
+    {
+        files->close(call);
+    }
+    if (operation)
+    {
+        valid = valid && !files->read(operation, 0, &byte, 1, &used) && state.closes == 1 && state.releases == 1;
+        files->close(operation);
+    }
+    return valid && state.closes == 1 && state.releases == 1;
+}
+
+
 /* EN: Run the hosted bus regression without needing a VM or an entropy device.
  * RU: Выполнить регрессию шины без VM и системного источника энтропии. */
 int main(void)
 {
-    if (!exercise())
+    if (!exercise() || !scoped_factory())
     {
         fputs("module channel lease isolation failed\n", stderr);
         return 1;

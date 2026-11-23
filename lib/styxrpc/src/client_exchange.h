@@ -14,6 +14,11 @@ StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const 
     uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped);
 
 
+/* EN: Open a verified scoped channel function and retain its exact module directory.
+ * RU: Открыть проверенную функцию с каналами и удержать точный каталог модуля. */
+StyxFid *styxrpc_client_channel_function(const StyxRpcManagedTarget *target, StyxFid **module);
+
+
 /* EN: Borrow the open fid and buffers; publish received only on a complete reply.
  * RU: Заимствовать fid и буферы; выдать received только при полном ответе. */
 int styxrpc_client_exchange(StyxFid *fid, const void *request, size_t size, unsigned wait_ms,

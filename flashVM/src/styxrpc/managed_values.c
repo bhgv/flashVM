@@ -26,7 +26,7 @@ static const char *type_end(const char *type, unsigned depth)
     {
     case 'i': case 'b': case 'y': case 's': case 'f': case 'h':
         return type + 1;
-    case 'a':
+    case 'a': case 'c':
         next = type[1] == '[' ? type_end(type + 2, depth + 1) : NULL;
         return next && *next == ']' ? next + 1 : NULL;
     case 'r':
@@ -122,7 +122,7 @@ static int schema_supported(const StyxRpcSchema *schema)
 int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
 {
     unsigned slots = 0;
-    return schema_supported(schema) && !strpbrk(schema->result, "rh") && !strchr(schema->arguments, 'h') &&
+    return schema_supported(schema) && !strpbrk(schema->result, "rhc") && !strpbrk(schema->arguments, "hc") &&
         ref_slots(schema->arguments, &slots);
 }
 
@@ -130,7 +130,30 @@ int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
 /* EN/RU: See managed_values.h. / См. managed_values.h. */
 int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
 {
-    return schema_supported(schema) && (strpbrk(schema->arguments, "rh") || strpbrk(schema->result, "rh"));
+    return schema_supported(schema) && !strchr(schema->arguments, 'c') && !strchr(schema->result, 'c') &&
+        (strpbrk(schema->arguments, "rh") || strpbrk(schema->result, "rh"));
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema)
+{
+    const char *type;
+    if (!schema_supported(schema) || strpbrk(schema->arguments, "rhc") ||
+        strpbrk(schema->result, "rh") || !strchr(schema->result, 'c'))
+    {
+        return 0;
+    }
+    for (type = strchr(schema->result, 'c'); type; type = strchr(type, 'c'))
+    {
+        const char *end = type_end(type, 0);
+        if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
+        {
+            return 0;
+        }
+        type = end;
+    }
+    return 1;
 }
 
 
@@ -345,6 +368,11 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     }
     cursor->payload += used;
     cursor->size -= used;
+    if (*type == 'c')
+    {
+        return refs && refs->decode_channel &&
+            refs->decode_channel(context, roots, refs->channel_context, type, &node, value);
+    }
     if (*type == 'r' || *type == 'h')
     {
         return refs && (*type == 'r' || refs->graph) &&

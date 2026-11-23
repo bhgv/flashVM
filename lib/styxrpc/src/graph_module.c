@@ -3,6 +3,7 @@
  * RU: Собрать позиционный граф на fid функции и выдавать исход по смещению.
  */
 #include "styxrpc/graph_module.h"
+#include "channel_module_internal.h"
 #include "module_nodes.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
@@ -13,6 +14,13 @@ typedef struct GraphFile
 {
     const StyxRpcGraphModule *module;  /* Borrowed backing for metadata reads. */
     const StyxRpcGraphExport *function; /* Borrowed export for a function fid. */
+    const StyxRpcChannelExport *channel; /* Borrowed scoped export for a function fid. */
+    StyxRpcModuleChannels *registry;  /* Borrowed when a channel function or bus is open. */
+    StyxRpcChannelOutput active;      /* Channel owned until the issuing fid closes. */
+    unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE]; /* Module publication token. */
+    StyxRpcResource bus;              /* Registry operations for the .unibus file. */
+    void *bus_cookie;                 /* Open registry .unibus handle. */
+    int version;                      /* This open returns the channel protocol marker. */
     uint64_t id;                      /* Exact selected node. */
     size_t staged;                    /* Contiguous accepted request bytes. */
     size_t ready;                     /* Confirmed immutable reply extent. */
@@ -91,13 +99,14 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
 
 /* EN: Allocate exact file state. Read-only metadata never allocates call buffers.
  * RU: Выделить состояние файла; метаданные не используют буферы вызова. */
-static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
+static int open_common(const StyxRpcGraphModule *module, const StyxRpcChannelModule *scoped,
+    uint64_t id, unsigned access, void **cookie)
 {
-    const StyxRpcGraphModule *module = context;
     size_t marker = FIRST_EXPORT + module->count;
     int function = id >= FIRST_EXPORT && id < marker;
-    if (id < INTERFACE || id > marker ||
-        access != (function ? STYXRPC_READ | STYXRPC_WRITE : STYXRPC_READ))
+    int bus = scoped && id == scoped->bus.id;
+    if (id < INTERFACE || id > (scoped ? scoped->bus.id : marker) ||
+        access != ((function || bus) ? STYXRPC_READ | STYXRPC_WRITE : STYXRPC_READ))
     {
         return 0;
     }
@@ -109,8 +118,71 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     }
     file->module = module;
     file->id = id;
-    file->function = function ? module->exports + (id - FIRST_EXPORT) : NULL;
+    file->function = function && module->exports ? module->exports + (id - FIRST_EXPORT) : NULL;
+    file->channel = function && scoped ? scoped->exports + (id - FIRST_EXPORT) : NULL;
+    file->registry = scoped ? scoped->registry : NULL;
+    file->version = scoped && id == scoped->version.id;
+    if (bus)
+    {
+        file->bus = styxrpc_module_channels_resource(file->registry);
+        if (!file->bus.open(file->bus.context, access, &file->bus_cookie))
+        {
+            free(file);
+            return 0;
+        }
+    }
     *cookie = file;
+    return 1;
+}
+
+
+/* EN: Open plain graph metadata or one ordinary graph function.
+ * RU: Открыть метаданные обычного графа или одну функцию графа. */
+static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
+{
+    return open_common(context, NULL, id, access, cookie);
+}
+
+
+/* EN: Open a scoped function or one node of its leased channel module.
+ * RU: Открыть контекстную функцию или узел её модуля арендованных каналов. */
+static int open_channel(void *context, uint64_t id, unsigned access, void **cookie)
+{
+    const StyxRpcChannelModule *module = context;
+    return open_common(&module->graph, module, id, access, cookie);
+}
+
+
+/* EN: Add the channel marker and bus after the common graph nodes.
+ * RU: Добавить маркер каналов и шину после общих узлов графа. */
+static const StyxRpcEntry *enumerate_channel(void *context, uint64_t directory, size_t index)
+{
+    StyxRpcChannelModule *module = context;
+    const StyxRpcEntry *entry = enumerate(&module->graph, directory, index);
+    if (entry || directory != MODULE)
+    {
+        return entry;
+    }
+    return index == module->graph.count + 2 ? &module->version :
+        index == module->graph.count + 3 ? &module->bus : NULL;
+}
+
+
+/* EN: Describe the common nodes or one of the two public channel-specific files.
+ * RU: Описать общий узел либо один из двух публичных файлов каналов. */
+static int describe_channel(void *context, uint64_t id, StyxRpcNode *node)
+{
+    StyxRpcChannelModule *module = context;
+    if (describe(&module->graph, id, node))
+    {
+        return 1;
+    }
+    if (id != module->version.id && id != module->bus.id)
+    {
+        return 0;
+    }
+    *node = (StyxRpcNode){.entry = id == module->version.id ? module->version : module->bus, .parent = MODULE,
+        .length = id == module->version.id ? sizeof(STYXRPC_CHANNEL_VERSION) - 1 : 0};
     return 1;
 }
 
@@ -152,7 +224,11 @@ static int finish(GraphFile *file)
 static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t count, size_t *size)
 {
     GraphFile *file = cookie;
-    if (!file->function || file->refused || file->ready || offset != file->staged || !count ||
+    if (file->bus.write)
+    {
+        return file->bus.write(file->bus_cookie, offset, bytes, count, size);
+    }
+    if ((!file->function && !file->channel) || file->refused || file->ready || offset != file->staged || !count ||
         count > STYXRPC_MANAGED_LIMIT - file->staged)
     {
         return 0;
@@ -167,7 +243,10 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
         *size = count;
         return 1;
     }
-    if (parsed != FVM_S_OK || used != file->staged || !finish(file))
+    if (parsed != FVM_S_OK || used != file->staged ||
+        !(file->channel ? styxrpc_channel_module_finish(file->channel, file->registry, file->storage,
+            file->staged, file->storage + STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT, &file->ready,
+            &file->active, file->token) : finish(file)))
     {
         file->refused = 1;
         return 0;
@@ -182,14 +261,20 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
 static int read_file(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
 {
     const GraphFile *file = cookie;
+    if (file->bus.read)
+    {
+        return file->bus.read(file->bus_cookie, offset, bytes, capacity, size);
+    }
     if (file->refused)
     {
         return 0;
     }
-    const void *source = file->function ? (const void *)(file->storage + STYXRPC_MANAGED_LIMIT) :
-        file->id == INTERFACE ? (const void *)file->module->profile : STYXRPC_POSITIONAL_GRAPH;
-    size_t length = file->function ? file->ready : file->id == INTERFACE ?
-        file->module->profile_size : sizeof(STYXRPC_POSITIONAL_GRAPH) - 1;
+    int call = file->function || file->channel;
+    const void *source = call ? (const void *)(file->storage + STYXRPC_MANAGED_LIMIT) :
+        file->id == INTERFACE ? (const void *)file->module->profile :
+        file->version ? STYXRPC_CHANNEL_VERSION : STYXRPC_POSITIONAL_GRAPH;
+    size_t length = call ? file->ready : file->id == INTERFACE ? file->module->profile_size :
+        file->version ? sizeof(STYXRPC_CHANNEL_VERSION) - 1 : sizeof(STYXRPC_POSITIONAL_GRAPH) - 1;
     size_t remaining = offset < length ? length - (size_t)offset : 0;
     *size = remaining < capacity ? remaining : capacity;
     if (*size)
@@ -199,4 +284,26 @@ static int read_file(void *cookie, uint64_t offset, void *bytes, size_t capacity
     return 1;
 }
 
-const StyxRpcTree styxrpc_graph_module_tree = {{enumerate, open_file, read_file, write_file, free}, describe}; /* Immutable dispatch. */
+/* EN: Revoke a function's grant before releasing its application-owned context.
+ * RU: Отозвать полномочие функции перед освобождением её контекста приложения. */
+static void close_file(void *cookie)
+{
+    GraphFile *file = cookie;
+    if (file->bus.close)
+    {
+        file->bus.close(file->bus_cookie);
+    }
+    if (file->active.key)
+    {
+        styxrpc_module_channels_revoke(file->registry, file->token);
+    }
+    if (file->active.release)
+    {
+        file->active.release(file->active.resource.context);
+    }
+    free(file);
+}
+
+const StyxRpcTree styxrpc_graph_module_tree = {{enumerate, open_file, read_file, write_file, close_file}, describe}; /* Immutable dispatch. */
+const StyxRpcTree styxrpc_channel_module_tree = {{enumerate_channel, open_channel, read_file, write_file, close_file},
+    describe_channel}; /* Scoped module dispatch using the same fid lifecycle. */

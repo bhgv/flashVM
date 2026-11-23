@@ -57,7 +57,7 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("hybrid", "hybrid"), ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
+    for option, profile in (("channel", "channel"), ("hybrid", "hybrid"), ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
         profiles.add_argument("--" + option, dest="profile", action="store_const", const=profile)
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
@@ -66,6 +66,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
         owner, caller, module, exports, result = {
+            "channel": ("channel_owner.b", "channel_client.b", "channel.dis", ("ports", "empty"), "live channels"),
             "hybrid": ("hybrid_owner.b", "hybrid_client.b", "hybrid.dis", ("change", "reject", "empty"),
                        "hybrid tables"),
             "graph": ("graph_owner.b", "graph_client.b", "graphs.dis",
@@ -108,10 +109,11 @@ def main():
             )
         else:
             image = compile_image(args, directory, tests / caller, "client.dis")
+            transport = [] if args.profile == "channel" else ["--raw"]
             exchange(
                 directory,
                 lambda fd: [args.flash_host, action + "serve", fd],
-                lambda fd: [args.runtime, "--styx-mount-fd", fd, "--raw", "--at", "/rpc",
+                lambda fd: [args.runtime, "--styx-mount-fd", fd, *transport, "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
                 f"PASS DisVM loaded FlashVM {result}",
             )

@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1711 / Контрольная точка v0.1711. Scoped Styx RPC keeps live
+result channels attached to their issuing fid in both directions. FlashVM
+consumes DisVM lease objects and exposes AVM1-initialized FIFO and rendezvous
+through the C SDK. Открыты каналы как аргументы AS и делегирование каналов
+внутри элементов. [EN](STYX_RPC_CHANNELS.md) / [RU](STYX_RPC_CHANNELS.ru.md).
+
 Checkpoint v0.1710 / Контрольная точка v0.1710. Native Dis hybrid tables cross
 the FlashVM Styx bridge in both directions with typed keys, exact signed big
 values, ordered patches and atomic copy-back together with ADT fields.

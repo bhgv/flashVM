@@ -1,6 +1,6 @@
 # Connecting FlashVM and DisVM through libstyxrpc
 
-[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md) · [Launch and file operations](STYX_RPC_SESSION.md) · [Ref arguments](STYX_RPC_REFS.md) · [Reference graphs](STYX_RPC_GRAPH.md) · [Hybrid tables](STYX_RPC_HYBRID.md)
+[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md) · [Launch and file operations](STYX_RPC_SESSION.md) · [Ref arguments](STYX_RPC_REFS.md) · [Reference graphs](STYX_RPC_GRAPH.md) · [Hybrid tables](STYX_RPC_HYBRID.md) · [Live UniBus channels](STYX_RPC_CHANNELS.md)
 
 FlashVM and DisVM communicate through libstyxrpc over Styx. Supply an authorized,
 connected carrier to the Styx SDK. A module publishes its compiled interface as
@@ -44,5 +44,6 @@ read and write of Styx files. The host selects the reverse PID. The launched
 program can use its delegated `.var`, `.fd` and `.vfs`. Ordinary ref arguments copy back to their original Arrays. The graph profile adds nested
 and returned refs, shared identities and sparse copy-back. It also carries native
 hybrid tables with exact signed 64-bit values and ordered key patches.
-ActionScript channel bindings, declaration of reverse resources and migration
+The scoped channel binding carries live result channels in both directions.
+Channel-valued arguments in AS, declaration of reverse resources and migration
 of existing in-process editor bridges remain open.

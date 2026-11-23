@@ -99,21 +99,21 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
 
 /* EN: Use one authenticated bus and close its temporary fid before publishing an outcome.
  * RU: Использовать одну шину с проверкой и закрыть временный fid до публикации результата. */
-static StyxRpcStatus exchange_on(StyxClient *session, const char *path, const unsigned char *token,
+static StyxRpcStatus exchange_on(StyxClient *session, const char *path, StyxFid *module, const unsigned char *token,
     const StyxRpcChannelGrant *grants, size_t grant_count, const StyxRpcSelection *selection,
     unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
     void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
 {
     size_t size, received;
     uint64_t began = now_ms();
-    if (!session || !path || !reply || !reply_capacity || reply_capacity > STYXRPC_MANAGED_LIMIT ||
+    if ((!module && (!session || !path)) || !reply || !reply_capacity || reply_capacity > STYXRPC_MANAGED_LIMIT ||
         !result || !began || !timeout_ms || timeout_ms > 60000 ||
         styxrpc_channel_request(grants, grant_count, selection, scratch, scratch_size,
             request, request_capacity, &size) != STYXRPC_OK)
     {
         return STYXRPC_INVALID;
     }
-    StyxFid *fid = styxclientwalk(session, path);
+    StyxFid *fid = module ? styxclientwalkfrom(module, ".unibus") : styxclientwalk(session, path);
     StyxRpcStatus status = fid && styxclientopen(fid, 2) ?
         exchange(fid, token, request, size, reply, reply_capacity, began + timeout_ms, &received) : STYXRPC_INVALID;
     styxclientclunk(fid);
@@ -133,7 +133,7 @@ StyxRpcStatus styxrpc_channel_exchange(StyxClient *reverse, const StyxRpcChannel
     }
     char path[sizeof(".prog/4294967295/.unibus")];
     snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", call->pid);
-    return exchange_on(reverse, path, NULL, call->grants, call->count, selection, timeout_ms,
+    return exchange_on(reverse, path, NULL, NULL, call->grants, call->count, selection, timeout_ms,
         scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
 }
 
@@ -168,6 +168,17 @@ StyxRpcStatus styxrpc_channel_route_exchange(StyxClient *session, const char *mo
     {
         token = route->token;
     }
-    return exchange_on(session, endpoint, token, &route->channel, 1, selection, timeout_ms,
+    return exchange_on(session, endpoint, NULL, token, &route->channel, 1, selection, timeout_ms,
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+}
+
+
+/* EN/RU: See channel_route_internal.h. / См. channel_route_internal.h. */
+StyxRpcStatus styxrpc_channel_exchange_bound(StyxFid *module, const unsigned char *token,
+    const StyxRpcChannelGrant *grants, size_t count, const StyxRpcSelection *selection,
+    unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+{
+    return exchange_on(NULL, NULL, module, token, grants, count, selection, timeout_ms,
         scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
 }

@@ -4,6 +4,7 @@
  */
 #define _POSIX_C_SOURCE 200809L
 #include "client_exchange.h"
+#include "call_record.h"
 #include "call_scope.h"
 #include "load_profile.h"
 #include "scalar_verify.h"
@@ -132,26 +133,31 @@ static int receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
 }
 
 
-/* EN: Confirm the requested graph dialect on the same captured module directory.
- * RU: Подтвердить формат графа на том же удерживаемом каталоге модуля. */
-static int verify_graph(StyxFid *module, const char *marker)
+/* EN: Confirm the exact marker on the same captured module directory.
+ * RU: Подтвердить точный маркер на том же удерживаемом каталоге модуля. */
+static int verify_marker(StyxFid *module, const char *name, const char *marker)
 {
     if (!marker)
     {
         return 1;
     }
-    StyxFid *field = styxclientwalkfrom(module, STYX_MANAGED_DELTA_FILE);
-    char bytes[sizeof(STYX_MANAGED_POSITION_GRAPH_MARKER)];
+    char bytes[sizeof(STYX_MANAGED_POSITION_GRAPH_MARKER) + sizeof(STYX_CHANNEL_PROFILE)];
+    const size_t limit = strlen(marker) + 1;
+    if (limit > sizeof(bytes))
+    {
+        return 0;
+    }
+    StyxFid *field = styxclientwalkfrom(module, name);
     size_t size = 0;
     int matched = 0;
     if (field && styxclientopen(field, 0))
     {
-        while (size < sizeof(bytes))
+        while (size < limit)
         {
             StyxTransfer part;
-            styxclientread(field, size, bytes + size, sizeof(bytes) - size, &part);
+            styxclientread(field, size, bytes + size, limit - size, &part);
             if (!part.success || !part.confirmed || part.uncertain || part.again ||
-                part.count > sizeof(bytes) - size)
+                part.count > limit - size)
             {
                 break;
             }
@@ -170,8 +176,9 @@ static int verify_graph(StyxFid *module, const char *marker)
 
 /* EN: Hold the module through profile validation and the exact function walk.
  * RU: Удерживать модуль до проверки профиля и поиска точной функции. */
-StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const char *name,
-    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped)
+static StyxFid *open_function(StyxClient *session, const char *module, const char *name,
+    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker,
+    int *scoped, StyxFid **held)
 {
     if (!session || !module || !*module || !styxscalar_name_length(name) ||
         strchr(name, '/') || name[0] == '.')
@@ -182,16 +189,41 @@ StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const 
     StyxMeta metadata;
     StyxFid *fid = directory && styxclientstat(directory, &metadata) && metadata.directory &&
         (metadata.mode & 0444U) && (metadata.mode & 0111U) && verify(directory, name, signature, schema, scoped) &&
-        verify_graph(directory, graph_marker) ?
+        verify_marker(directory, STYX_MANAGED_DELTA_FILE, graph_marker) &&
+        (!held || (*scoped && verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE))) ?
         styxclientwalkfrom(directory, name) : NULL;
-    styxclientclunk(directory);
     if (fid && (!styxclientstat(fid, &metadata) || metadata.directory || !(metadata.mode & 0444U) ||
         !(metadata.mode & 0222U) || !(metadata.mode & 0111U) || !styxclientopen(fid, 2)))
     {
         styxclientclunk(fid);
-        return NULL;
+        fid = NULL;
+    }
+    if (fid && held)
+    {
+        *held = directory;
+    }
+    else
+    {
+        styxclientclunk(directory);
     }
     return fid;
+}
+
+
+/* EN/RU: See client_exchange.h. / См. client_exchange.h. */
+StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const char *name,
+    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped)
+{
+    return open_function(session, module, name, signature, schema, graph_marker, scoped, NULL);
+}
+
+
+/* EN/RU: See client_exchange.h. / См. client_exchange.h. */
+StyxFid *styxrpc_client_channel_function(const StyxRpcManagedTarget *target, StyxFid **module)
+{
+    int scoped;
+    return open_function(target->session, target->module, target->name, target->signature,
+        &target->schema, STYX_MANAGED_POSITION_GRAPH_MARKER, &scoped, module);
 }
 
 

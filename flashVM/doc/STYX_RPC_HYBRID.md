@@ -21,6 +21,6 @@ Signed integers within ±(2⁵³−1) can use AS `Number`. Use exact decimal str
 
 The owner sends numeric keys in ascending order and text keys in insertion order. A returned patch removes keys before applying writes. It stages against current caller contents, preserving unrelated keys. It is committed with ordinary ADT changes only after all destination slots are checked. An error leaves the caller's table contents and ref slots intact. A local rejection can occur after the provider has executed.
 
-The table object and its methods belong to one FlashVM context, which owns the underlying C storage through GC. The mounted graph transport uses its existing 64 KiB frame limit. Live table projections in a reverse directory are a separate SDK operation. ActionScript reverse-resource declaration and live channel bindings are open.
+The table object and its methods belong to one FlashVM context, which owns the underlying C storage through GC. The mounted graph transport uses its existing 64 KiB frame limit. Live table projections in a reverse directory are a separate SDK operation. See the [scoped channel profile](STYX_RPC_CHANNELS.md) for live result channels.
 
 [Limbo interface](../../lib/styxrpc/tests/flashvm/hybrid.m) · [Dis client](../../lib/styxrpc/tests/flashvm/hybrid_client.b) · [FlashVM AVM1 implementation and caller checks](../tests/styxrpc/hybrid.c)

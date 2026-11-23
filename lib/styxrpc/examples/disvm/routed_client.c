@@ -3,12 +3,9 @@
  * RU: Нативный C-клиент рекурсивных каналов DisVM на одном двустороннем сокете.
  */
 #define _POSIX_C_SOURCE 200809L
-#include "styxrpc/channel_call.h"
+#include "styxrpc/channel_client.h"
 #include "styxrpc/channel_fid.h"
-#include "styxrpc/graph.h"
 #include "styxrpc/program.h"
-#include "call_record.h"
-#include "load_profile.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
@@ -210,51 +207,6 @@ static int register_reverse(Device *device)
 }
 
 
-/* EN: Call the no-arg Dis export on fid and decode both handles from its return tuple.
- * RU: Вызвать экспорт Dis без аргументов на fid и декодировать два канала из кортежа. */
-static int open_channels(StyxFid *fid, StyxRpcChannelRoutes *exports)
-{
-    unsigned char pid[16], request[24], reply[128];
-    size_t length, size;
-    StyxTransfer sent;
-    if (!fid || !styxclientopen(fid, 2) ||
-        styxrpc_value_integer(STYXRPC_VALUE_BIG, 42, pid, sizeof(pid), &length) != STYXRPC_OK ||
-        fvm_srecord_write(STYXRPC_GRAPH_REQUEST_TAG, pid, length, request, sizeof(request), &size) != FVM_S_OK)
-    {
-        return 0;
-    }
-    styxclientwrite(fid, 0, request, size, &sent);
-    if (!sent.success || !sent.confirmed || sent.uncertain || sent.count != size)
-    {
-        return 0;
-    }
-    size_t used = 0;
-    for (unsigned attempt = 0; attempt < 2000 && used < sizeof(reply); ++attempt)
-    {
-        StyxTransfer part;
-        styxclientread(fid, used, reply + used, sizeof(reply) - used, &part);
-        if (!part.success || !part.confirmed || part.uncertain || part.count > sizeof(reply) - used)
-        {
-            return 0;
-        }
-        used += part.count;
-        FVM_SRecord frame;
-        FVM_SResult status = fvm_srecord_read(reply, used, sizeof(reply), &frame, &length);
-        if (status != FVM_S_MORE)
-        {
-            StyxReplyField fields[2];
-            return status == FVM_S_OK && length == used &&
-                styxcall_reply_read(STYX_MANAGED_REPLY_TAG, reply, used, fields) &&
-                styxrpc_channel_export_routes("((c[c[c[c[i]]]]c[i]))", fields[0].bytes, fields[0].size, exports) == STYXRPC_OK &&
-                exports->count == 2 &&
-                !memcmp(exports->entries[0].token, exports->entries[1].token, STYXRPC_CHANNEL_TOKEN_SIZE);
-        }
-        nanosleep(&pause_time, NULL);
-    }
-    return 0;
-}
-
-
 /* EN: Authorize only the exact reverse address, key and rendezvous bit chosen for send.
  * RU: Разрешить только выбранный для отправки встречный адрес, ключ и признак rendezvous. */
 static int same_grant(const void *context, const StyxRpcChannelRoute *route)
@@ -302,20 +254,24 @@ static StyxRpcStatus receive_one(StyxClient *client, const char *bus, const Styx
  * RU: Передать встречное полномочие, вернуть алиас модуля, использовать и проверить отзыв по clunk. */
 static int exercise(StyxClient *client, Device *device)
 {
-    char path[sizeof(module) + sizeof("/open")];
     char bus[sizeof(module) + sizeof("/.unibus")];
-    snprintf(path, sizeof(path), "%s/open", module);
     snprintf(bus, sizeof(bus), "%s/.unibus", module);
-    StyxFid *pin = styxclientwalk(client, path);
-    StyxRpcChannelRoutes exports, delegated;
+    const StyxRpcManagedTarget call = {
+        client, module, "open", UINT32_C(0x1303311e), {"()", "((c[c[c[c[i]]]]c[i]))"}, 42, 2000
+    }; /* Exact Limbo offer and the reverse PID published by register_reverse. */
+    unsigned char reply[128]; /* Borrowed by accepted.result while inspecting the returned channels. */
+    StyxRpcLeasedReply accepted = {0}; /* Owns the forward function and exact module on success. */
+    StyxRpcChannelRoutes delegated; /* Holds the child's independently decoded route. */
     const StyxRpcChannelRoute outer = {.kind = STYXRPC_ROUTE_PID, .pid = device->hub_pid, .channel = hub, .unbuffered = 1};
     const StyxRpcChannelRoute inner = {.kind = STYXRPC_ROUTE_PID, .pid = device->leaf_pid, .channel = leaf, .unbuffered = 1};
     int step = 1;
-    int valid = open_channels(pin, &exports);
+    int valid = styxrpc_channel_invoke(&call, NULL, 0, reply, sizeof(reply), &accepted) == STYXRPC_CALL_OK &&
+        accepted.routes.count == 2 &&
+        !memcmp(accepted.routes.entries[0].token, accepted.routes.entries[1].token, STYXRPC_CHANNEL_TOKEN_SIZE);
     if (valid)
     {
         step = 2;
-        valid = send_grant(client, bus, &exports.entries[0], &outer);
+        valid = send_grant(client, bus, &accepted.routes.entries[0], &outer);
     }
     if (valid)
     {
@@ -332,7 +288,7 @@ static int exercise(StyxClient *client, Device *device)
     if (valid)
     {
         step = 4;
-        StyxRpcChannelRoute wrong = exports.entries[1];
+        StyxRpcChannelRoute wrong = accepted.routes.entries[1];
         wrong.token[0] ^= 0x80;
         StyxRpcStatus denied = receive_one(client, bus, &wrong, &result);
         valid = denied == STYXRPC_INVALID || denied == STYXRPC_REMOTE_ERROR;
@@ -340,14 +296,19 @@ static int exercise(StyxClient *client, Device *device)
     if (valid)
     {
         step = 5;
-        valid = receive_one(client, bus, &exports.entries[1], &result) == STYXRPC_OK &&
+        const StyxRpcSelection selection = {
+            .count = 1, .guards = {{accepted.routes.entries[1].channel.key, 1, NULL, 0}}
+        }; /* Receive through the captured module, preserving the caller's exact token. */
+        unsigned char request[96]; /* Single guard, so no ALT scratch is required. */
+        valid = styxrpc_channel_lease_exchange(accepted.lease, 1, &selection, 2000, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_OK &&
             result.selected == 1 && result.integer == 81;
     }
-    styxclientclunk(pin);
+    styxrpc_channel_lease_release(accepted.lease, 0); /* Revoke before the negative checks. */
     if (valid)
     {
         step = 6;
-        StyxRpcStatus revoked = receive_one(client, bus, &exports.entries[1], &result);
+        StyxRpcStatus revoked = receive_one(client, bus, &accepted.routes.entries[1], &result);
         StyxRpcStatus child = receive_one(client, bus, &delegated.entries[0], &result);
         valid = (revoked == STYXRPC_INVALID || revoked == STYXRPC_REMOTE_ERROR) &&
             (child == STYXRPC_INVALID || child == STYXRPC_REMOTE_ERROR);
