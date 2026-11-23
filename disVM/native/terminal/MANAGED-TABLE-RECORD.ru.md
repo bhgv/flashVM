@@ -2,6 +2,8 @@
 
 [English](MANAGED-TABLE-RECORD.md) · [Объявление](call_record.h) · [Реализация](managed_table_wire.inc) · [Пример с двумя VM](../../examples/remote-scalar/managed-fid/README.ru.md#передача-гибридных-таблиц)
 
+Тот же нативный формат и алгоритмы таблиц доступны в [SDK для C](../../../lib/styxrpc/reference/hybrid_tables.ru.md) и [графовой привязке FlashVM](../../../flashVM/doc/STYX_RPC_HYBRID.ru.md).
+
 Профиль управляемых вызовов передаёт нативный `Bigtable->Handle` как тип `h`.
 Первое описание содержит тег графа 10, однобайтовый индекс и полную запись
 таблицы. Повторные ссылки используют тот же индекс. Если результат ссылается

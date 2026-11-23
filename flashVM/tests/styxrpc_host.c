@@ -16,6 +16,7 @@
 #include "styxrpc/session-test.h"
 #include "styxrpc/ref-test.h"
 #include "styxrpc/graph-test.h"
+#include "styxrpc/hybrid-test.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -198,7 +199,8 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
         if (managed)
         {
             managed->session = session;
-            ok = !strcmp(role, "graph-call") ? test_graph_call(context, managed) :
+            ok = !strcmp(role, "hybrid-call") ? test_hybrid_call(context, managed) :
+                !strcmp(role, "graph-call") ? test_graph_call(context, managed) :
                 !strcmp(role, "ref-call") ? test_refs_call(context, managed) : test_managed_call(context, managed);
         }
         else if (launch)
@@ -229,7 +231,8 @@ int main(int argc, char **argv)
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
         strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") &&
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
-        strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call")))
+        strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
+        strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call")))
     {
         return 2;
     }
@@ -259,6 +262,10 @@ int main(int argc, char **argv)
         {
             ok = test_graph_serve(context, (int)fd);
         }
+        else if (!strcmp(argv[1], "hybrid-serve"))
+        {
+            ok = test_hybrid_serve(context, (int)fd);
+        }
         else if (!strcmp(argv[1], "ref-serve"))
         {
             ok = test_refs_serve(context, (int)fd);
@@ -270,7 +277,7 @@ int main(int argc, char **argv)
         else
         {
             int managed_call = !strcmp(argv[1], "ref-call") || !strcmp(argv[1], "graph-call") ||
-                !strcmp(argv[1], "managed-call");
+                !strcmp(argv[1], "hybrid-call") || !strcmp(argv[1], "managed-call");
             ok = call_dis(context, &binding, managed_call ? &managed : NULL,
                 !strcmp(argv[1], "launch") ? &session : NULL, argv[1], (int)fd);
         }

@@ -3,6 +3,7 @@
  * RU: Доступ к фиксированным собственным слотам Array и запись без колбэков AS.
  */
 #include "managed_refs.h"
+#include "hybrid.h"
 #include "flashvm/property.h"
 #include "../standard/base_state.hpp"
 #include <cstring>
@@ -93,7 +94,15 @@ int fvm_styxrpc_refs_commit(FVM_Context *context, FVM_StyxRefs *refs)
     FVM_Value *targets[STYXRPC_GRAPH_KEY_LIMIT][FVM_STYXRPC_REF_FIELDS] = {{0}};
     for (unsigned i = 0; i < refs->count; ++i)
     {
-        if (refs->definitions[i].changed && !prepare(context, refs->definitions[i], targets[i]))
+        FVM_StyxRef &ref = refs->definitions[i];
+        if (ref.type[0] == 'h')
+        {
+            if (ref.table_stage && !fvm_styxrpc_hybrid_lookup(context, ref.object))
+            {
+                return 0;
+            }
+        }
+        else if ((ref.changed || (refs->graph && i < refs->originals)) && !prepare(context, ref, targets[i]))
         {
             return 0;
         }
@@ -101,6 +110,10 @@ int fvm_styxrpc_refs_commit(FVM_Context *context, FVM_StyxRefs *refs)
     for (unsigned i = 0; i < refs->count; ++i)
     {
         FVM_StyxRef &ref = refs->definitions[i];
+        if (ref.table_stage)
+        {
+            fvm_styxrpc_hybrid_swap(ref.object, &ref.table_stage);
+        }
         for (unsigned field = 0; field < ref.count; ++field)
         {
             if (targets[i][field])

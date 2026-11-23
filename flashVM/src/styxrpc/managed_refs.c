@@ -3,6 +3,7 @@
  * RU: Кодирование и декодирование обычного профиля ссылок Dis и обратной записи.
  */
 #include "managed_values.h"
+#include "hybrid.h"
 #include "flashvm/execution.h"
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +98,36 @@ static int snapshot(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRef *r
 }
 
 
+/* [GC:] EN: Encode one owned table snapshot after pinning the script identity.
+ * RU: Закодировать снимок таблицы после удержания идентификатора AS. */
+static int encode_table(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRef *ref,
+    const FVM_Value *value, unsigned char id, unsigned char *bytes, size_t capacity, size_t *used)
+{
+    StyxRpcHybrid *table = fvm_styxrpc_hybrid_lookup(context, value->object);
+    unsigned char *snapshot_bytes;
+    size_t size;
+    int ok;
+    if (!table || !capacity || fvm_gc_roots_add(roots, value) != FVM_OK)
+    {
+        return 0;
+    }
+    snapshot_bytes = malloc(capacity);
+    if (!snapshot_bytes)
+    {
+        return 0;
+    }
+    ok = styxrpc_hybrid_snapshot(table, snapshot_bytes, capacity, &size) &&
+        fvm_srecord_write_pair(STYXRPC_VALUE_REF, &id, 1, snapshot_bytes, size, bytes, capacity, used) == FVM_S_OK;
+    free(snapshot_bytes);
+    if (ok)
+    {
+        ref->object = value->object;
+        save_type(ref, "h");
+    }
+    return ok;
+}
+
+
 /* [GC:] EN/RU: See managed_refs.h. / См. managed_refs.h. */
 int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
     const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
@@ -136,6 +167,10 @@ int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     }
     id = (unsigned char)refs->count;
     ref = refs->definitions + refs->count++;
+    if (*type == 'h')
+    {
+        return encode_table(context, roots, ref, value, id, bytes, capacity, used);
+    }
     count = fvm_styxrpc_ref_fields(type, refs->graph, fields);
     if (!snapshot(context, roots, ref, value, count))
     {
@@ -166,6 +201,32 @@ int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         save_type(ref, type);
     }
     return ok;
+}
+
+
+/* [GC:] EN: Reconstruct a table locally and retain its owner before publishing the ID.
+ * RU: Восстановить таблицу локально, удержать владельца и опубликовать ID. */
+static int decode_table(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRef *ref,
+    const FVM_SRecord *node, FVM_Value *value)
+{
+    StyxRpcHybrid *table = styxrpc_hybrid_open(node->payload + 1, node->size - 1);
+    if (!table)
+    {
+        return 0;
+    }
+    if (fvm_styxrpc_hybrid_adopt(context, table, value) != FVM_OK)
+    {
+        styxrpc_hybrid_close(table);
+        return 0;
+    }
+    if (fvm_gc_roots_add(roots, value) != FVM_OK)
+    {
+        return 0;
+    }
+    ref->record = *node;
+    ref->object = value->object;
+    save_type(ref, "h");
+    return 1;
 }
 
 
@@ -201,6 +262,11 @@ int fvm_styxrpc_ref_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         value->type = FVM_VALUE_OBJECT;
         value->object = ref->object;
         return 1;
+    }
+    if (*type == 'h')
+    {
+        ++refs->count;
+        return decode_table(context, roots, ref, node, value);
     }
     count = fvm_styxrpc_ref_fields(type, refs->graph, fields);
     if (!count)

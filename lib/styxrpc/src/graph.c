@@ -3,6 +3,7 @@
  * RU: Переиспользование полной проверки графов DisVM без ссылок на кучу.
  */
 #include "styxrpc/graph.h"
+#include "styxrpc/hybrid.h"
 #include "call_record.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
@@ -157,6 +158,19 @@ int styxrpc_graph_update_fields(const char *type, const FVM_SRecord *update, Sty
 }
 
 
+/* EN: Compare checked table definitions using the native ordered table diff.
+ * RU: Сравнить проверенные определения таблиц штатным упорядоченным патчем. */
+static int table_change(const FVM_SRecord *before, const FVM_SRecord *after,
+    void *scratch, size_t capacity, size_t *changed)
+{
+    StyxRpcHybrid *table = styxrpc_hybrid_open(after->payload + 1, after->size - 1);
+    int valid = table && styxrpc_hybrid_diff(table, before->payload + 1, before->size - 1,
+        scratch, capacity, changed);
+    styxrpc_hybrid_close(table);
+    return valid;
+}
+
+
 /* EN/RU: See graph.h. / См. graph.h. */
 int styxrpc_graph_diff(const StyxRpcSchema *schema, const FVM_SRecord *arguments, size_t index,
     const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
@@ -173,7 +187,8 @@ int styxrpc_graph_diff(const StyxRpcSchema *schema, const FVM_SRecord *arguments
         before->payload[0] != index || after->payload[0] != index ||
         !checked_shape(schema, &shape) ||
         !styxmanaged_graph_positions(shape.arguments, arguments, &positions) ||
-        !styxmanaged_graph_diff(type, before, after, scratch, scratch_size, &changed))
+        !(*type == 'h' ? type[1] == '\0' && table_change(before, after, scratch, scratch_size, &changed) :
+            styxmanaged_graph_diff(type, before, after, scratch, scratch_size, &changed)))
     {
         return 0;
     }

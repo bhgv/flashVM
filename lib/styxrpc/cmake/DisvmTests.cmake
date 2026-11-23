@@ -50,30 +50,23 @@ if(STYXRPC_FLASHVM_TEST_HOST)
             if(mode STREQUAL "jit")
                 list(APPEND mode_args --jit)
             endif()
-            set(test_name "styxrpc-${direction}-${mode}")
-            add_test(NAME "${test_name}"
-                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
-                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
-                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" ${mode_args})
-            set_tests_properties("${test_name}" PROPERTIES TIMEOUT 75)
-            set(managed_test_name "styxrpc-managed-${direction}-${mode}")
-            add_test(NAME "${managed_test_name}"
-                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
-                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
-                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --managed ${mode_args})
-            set_tests_properties("${managed_test_name}" PROPERTIES TIMEOUT 75)
-            set(ref_test_name "styxrpc-ref-${direction}-${mode}")
-            add_test(NAME "${ref_test_name}"
-                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
-                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
-                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --refs ${mode_args})
-            set_tests_properties("${ref_test_name}" PROPERTIES TIMEOUT 75)
-            set(graph_test_name "styxrpc-graph-${direction}-${mode}")
-            add_test(NAME "${graph_test_name}"
-                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
-                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
-                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --graph ${mode_args})
-            set_tests_properties("${graph_test_name}" PROPERTIES TIMEOUT 75)
+            foreach(profile IN ITEMS scalar managed ref graph hybrid)
+                set(profile_args)
+                set(prefix "")
+                if(profile STREQUAL "ref")
+                    set(prefix "ref-")
+                    set(profile_args --refs)
+                elseif(NOT profile STREQUAL "scalar")
+                    set(prefix "${profile}-")
+                    set(profile_args "--${profile}")
+                endif()
+                set(test_name "styxrpc-${prefix}${direction}-${mode}")
+                add_test(NAME "${test_name}"
+                    COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                        ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                        --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" ${profile_args} ${mode_args})
+                set_tests_properties("${test_name}" PROPERTIES TIMEOUT 75)
+            endforeach()
         endforeach()
     endforeach()
     foreach(mode IN ITEMS interpreter jit)

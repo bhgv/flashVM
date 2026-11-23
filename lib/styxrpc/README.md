@@ -100,6 +100,10 @@ Direct mounted Dis calls use the positional value graph protocol for nested and 
 
 [`styxrpc_graph_invoke`](reference/graph_invoke.md) · [`styxrpc_graph_module_init`](reference/graph_module_init.md) · [Sparse graph updates](reference/graph_updates.md)
 
+## Hybrid tables in RPC graphs
+
+The native Dis shape `h` carries one table identity with numeric and counted text keys. The C SDK supplies the same storage, ordered snapshot codec and key-level patches for standalone callers and providers. [C guide and API](reference/hybrid_tables.md).
+
 ## UniBus channel frames
 
 Dis passes live channels to a native C export. C operates on the reverse `.prog/<pid>/.unibus` and can receive a nested channel in the same call. A returned C-owned channel remains leased through the function fid. The portable C scheduler handles FIFO and synchronous channels, guard selection and clunk cancellation.

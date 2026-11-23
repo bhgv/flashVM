@@ -3,6 +3,7 @@
  * RU: Применение канонических разреженных полей графа Dis к слотам Array.
  */
 #include "graph_refs.h"
+#include "hybrid.h"
 #include "managed_values.h"
 #include "flashvm/execution.h"
 #include <stdlib.h>
@@ -15,6 +16,36 @@ typedef struct GraphLanes
     unsigned available; /* Exact selected value count. */
     FVM_Value values[FVM_STYXRPC_REF_FIELDS]; /* Rooted changed leaf values. */
 } GraphLanes;
+
+
+/* [GC:] EN: Encode the current table snapshot or all direct fields of one original.
+ * RU: Закодировать текущий снимок таблицы или все прямые поля исходного объекта. */
+static int encode_definition(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
+    FVM_StyxRef *ref, unsigned char *bytes, size_t capacity, size_t *used)
+{
+    char fields[STYXRPC_MANAGED_SHAPE];
+    FVM_Value current[FVM_STYXRPC_REF_FIELDS];
+    unsigned field;
+    if (ref->type[0] == 'h')
+    {
+        StyxRpcHybrid *table = fvm_styxrpc_hybrid_lookup(context, ref->object);
+        return styxrpc_hybrid_snapshot(table, bytes, capacity, used);
+    }
+    if (!fvm_styxrpc_ref_fields(ref->type, 1, fields) ||
+        !fvm_styxrpc_ref_snapshot(context, ref->object, ref->count, current))
+    {
+        return 0;
+    }
+    for (field = 0; field < ref->count; ++field)
+    {
+        if (fvm_gc_roots_add(roots, current + field) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return fvm_styxrpc_values_encode(context, roots, refs, fields, current, ref->count,
+        bytes, capacity, used);
+}
 
 
 /* [GC:] EN: Encode changed fields with the same identity table as the result.
@@ -37,26 +68,13 @@ int fvm_styxrpc_graph_updates(FVM_Context *context, FVM_GCRootScope *roots, FVM_
     for (i = 0; ok && i < originals; ++i)
     {
         FVM_StyxRef *ref = refs->definitions + i;
-        char fields[STYXRPC_MANAGED_SHAPE];
-        FVM_Value current[FVM_STYXRPC_REF_FIELDS];
-        FVM_SRecord after;
+        FVM_SRecord after = ref->record;
         size_t size, extent;
-        unsigned field;
-        ok = fvm_styxrpc_ref_fields(ref->type, 1, fields) &&
-            fvm_styxrpc_ref_snapshot(context, ref->object, ref->count, current);
-        for (field = 0; ok && field < ref->count; ++field)
-        {
-            ok = fvm_gc_roots_add(roots, current + field) == FVM_OK;
-        }
+        buffer[0] = (unsigned char)i;
+        ok = encode_definition(context, roots, refs, ref, buffer + 1,
+            STYXRPC_MANAGED_LIMIT - 1, &size);
         if (ok)
         {
-            buffer[0] = (unsigned char)i;
-            ok = fvm_styxrpc_values_encode(context, roots, refs, fields, current, ref->count,
-                buffer + 1, STYXRPC_MANAGED_LIMIT - 1, &size);
-        }
-        if (ok)
-        {
-            after = ref->record;
             after.payload = buffer;
             after.size = size + 1;
             ok = styxrpc_graph_diff(schema, arguments, i, ref->type, &ref->record, &after,
@@ -164,20 +182,41 @@ static int stage_ref(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs 
 }
 
 
+/* EN: Stage a table patch over the current contents so unmentioned keys stay local.
+ * RU: Подготовить патч по текущему содержимому, сохранив остальные локальные ключи. */
+static int stage_table(FVM_Context *context, FVM_StyxRef *ref, const FVM_SRecord *update)
+{
+    StyxRpcHybrid *table = fvm_styxrpc_hybrid_lookup(context, ref->object);
+    if (!table || update->size <= 1)
+    {
+        return 0;
+    }
+    ref->table_stage = styxrpc_hybrid_stage(table, update->payload + 1, update->size - 1);
+    return ref->table_stage != NULL;
+}
+
+
 /* [GC:] EN/RU: See graph_refs.h. / См. graph_refs.h. */
 int fvm_styxrpc_graph_stage(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
     const StyxRpcSchema *schema, const FVM_SRecord *arguments, unsigned originals,
     const FVM_SRecord *updates)
 {
     size_t offset = 0;
+    refs->originals = originals;
     while (offset < updates->size)
     {
         FVM_SRecord record;
+        FVM_StyxRef *ref;
         size_t used, index;
         if (fvm_srecord_read(updates->payload + offset, updates->size - offset, STYXRPC_MANAGED_LIMIT,
                 &record, &used) != FVM_S_OK ||
-            !styxrpc_graph_update_index(schema, arguments, &record, originals, &index) ||
-            !stage_ref(context, roots, refs, refs->definitions + index, &record))
+            !styxrpc_graph_update_index(schema, arguments, &record, originals, &index))
+        {
+            return 0;
+        }
+        ref = refs->definitions + index;
+        if (ref->type[0] == 'h' ? !stage_table(context, ref, &record) :
+            !stage_ref(context, roots, refs, ref, &record))
         {
             return 0;
         }

@@ -12,12 +12,13 @@ option(STYXRPC_EXAMPLES "Build the hosted Styx callback device" OFF)
 set(STYXRPC_DISVM_SOURCE "" CACHE PATH "DisVM source directory for integration tests")
 set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal launch SDK")
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
-add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/channel.c src/channel_route.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c protocol/call_record.c protocol/call_scope.c
+add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
-    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/indexed_variable.c)
+    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/indexed_variable.c
+    vendor/hybrid/table.c)
 target_link_libraries(styxrpc PUBLIC Unibus::wire)
 target_include_directories(styxrpc PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>" PRIVATE protocol include/styxrpc)
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>" PRIVATE protocol include/styxrpc vendor/hybrid)
 set_target_properties(styxrpc PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO EXPORT_NAME rpc)
 add_library(StyxRpc::rpc ALIAS styxrpc)
 set(styxrpc_targets styxrpc)
@@ -99,6 +100,9 @@ if(BUILD_TESTING)
     target_include_directories(styxrpc-records-test PRIVATE protocol)
     target_link_libraries(styxrpc-records-test PRIVATE styxrpc)
     add_test(NAME styxrpc-portable-records COMMAND styxrpc-records-test)
+    add_executable(styxrpc-hybrid-test tests/hybrid.c)
+    target_link_libraries(styxrpc-hybrid-test PRIVATE StyxRpc::rpc)
+    add_test(NAME styxrpc-portable-hybrid COMMAND styxrpc-hybrid-test)
     add_executable(styxrpc-scheduler-test tests/scheduler.c)
     target_link_libraries(styxrpc-scheduler-test PRIVATE StyxRpc::rpc)
     set_target_properties(styxrpc-scheduler-test PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)

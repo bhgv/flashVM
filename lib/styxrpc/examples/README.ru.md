@@ -170,5 +170,5 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 
 Для FlashVM соберите [исполняемый тест адаптера](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.ru.md#сборка) и передайте
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Запустите
-`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
-Шестнадцать проверок охватывают скалярные и управляемые вызовы, обычные ref и позиционные графы в двух направлениях и обоих режимах DisVM. Графовые вызовы проверяют вложенные и возвращаемые ссылки, массивы ref, изменение кортежа и откат. Ещё три проверяют именованный запуск из ActionScript, встречные ресурсы, отмену и позиционное I/O на независимом устройстве C.
+`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-|hybrid-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
+Двадцать проверок охватывают скалярные и управляемые вызовы, обычные ref, позиционные графы и гибридные таблицы в двух направлениях и обоих режимах DisVM. Графовые вызовы проверяют вложенные и возвращаемые ссылки, массивы ref, изменение кортежа и откат. [Гибридные таблицы](../reference/hybrid_tables.ru.md) добавляют упорядоченные патчи ключей, смешанные правки таблиц и ADT, 64-битные значения и профиль с таблицей только в результате. Ещё три проверяют именованный запуск из ActionScript, встречные ресурсы, отмену и позиционное I/O на независимом устройстве C.

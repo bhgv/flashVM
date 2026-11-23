@@ -24,7 +24,7 @@ static const char *type_end(const char *type, unsigned depth)
     }
     switch (*type)
     {
-    case 'i': case 'b': case 'y': case 's': case 'f':
+    case 'i': case 'b': case 'y': case 's': case 'f': case 'h':
         return type + 1;
     case 'a':
         next = type[1] == '[' ? type_end(type + 2, depth + 1) : NULL;
@@ -122,14 +122,15 @@ static int schema_supported(const StyxRpcSchema *schema)
 int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
 {
     unsigned slots = 0;
-    return schema_supported(schema) && !strchr(schema->result, 'r') && ref_slots(schema->arguments, &slots);
+    return schema_supported(schema) && !strpbrk(schema->result, "rh") && !strchr(schema->arguments, 'h') &&
+        ref_slots(schema->arguments, &slots);
 }
 
 
 /* EN/RU: See managed_values.h. / См. managed_values.h. */
 int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
 {
-    return schema_supported(schema) && (strchr(schema->arguments, 'r') || strchr(schema->result, 'r'));
+    return schema_supported(schema) && (strpbrk(schema->arguments, "rh") || strpbrk(schema->result, "rh"));
 }
 
 
@@ -213,9 +214,10 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
     int64_t number;
-    if (*type == 'r')
+    if (*type == 'r' || *type == 'h')
     {
-        return refs && fvm_styxrpc_ref_encode(context, roots, refs, type, value, bytes, capacity, used);
+        return refs && (*type == 'r' || refs->graph) &&
+            fvm_styxrpc_ref_encode(context, roots, refs, type, value, bytes, capacity, used);
     }
     if ((*type == 's' || *type == 'a') && value->type == FVM_VALUE_NULL)
     {
@@ -343,9 +345,10 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     }
     cursor->payload += used;
     cursor->size -= used;
-    if (*type == 'r')
+    if (*type == 'r' || *type == 'h')
     {
-        return refs && fvm_styxrpc_ref_decode(context, roots, refs, type, &node, value);
+        return refs && (*type == 'r' || refs->graph) &&
+            fvm_styxrpc_ref_decode(context, roots, refs, type, &node, value);
     }
     if (node.tag == STYXRPC_VALUE_NIL && !node.size && (*type == 's' || *type == 'a'))
     {

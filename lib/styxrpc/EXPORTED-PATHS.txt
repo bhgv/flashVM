@@ -15,6 +15,7 @@ lib/styxrpc/protocol/managed_record_validation.inc
 lib/styxrpc/protocol/managed_ref_validation.inc
 lib/styxrpc/protocol/managed_result_validation.inc
 lib/styxrpc/protocol/managed_sequence_edits.inc
+lib/styxrpc/protocol/managed_table_state.inc
 lib/styxrpc/protocol/managed_table_wire.inc
 lib/styxrpc/protocol/ref_pair_record.c
 lib/styxrpc/protocol/ref_pair_record.h
@@ -26,3 +27,6 @@ lib/styxrpc/protocol/tuple_record.c
 lib/styxrpc/protocol/tuple_record.h
 lib/styxrpc/protocol/utf8.c
 lib/styxrpc/protocol/variable_file.c
+lib/styxrpc/vendor/hybrid/relative.h
+lib/styxrpc/vendor/hybrid/table.c
+lib/styxrpc/vendor/hybrid/table.h

@@ -22,6 +22,19 @@ static int graph_init(FVM_StyxRefs *refs)
 }
 
 
+/* EN: Release uncommitted staged tables or retired contents after the commit.
+ * RU: Освободить подготовленные таблицы при отказе или старые данные после записи. */
+static void graph_clear(FVM_StyxRefs *refs)
+{
+    unsigned i;
+    for (i = 0; i < refs->count; ++i)
+    {
+        styxrpc_hybrid_close(refs->definitions[i].table_stage);
+    }
+    free(refs->definitions);
+}
+
+
 /* [GC:] EN: Decode result identities before applying any checked sparse updates.
  * RU: Декодировать идентификаторы результата перед применением разреженных изменений. */
 static int read_graph(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
@@ -109,7 +122,7 @@ static FVM_Result invoke_graph(FVM_Context *context, FVM_Object *self, unsigned 
         }
         fvm_gc_roots_end(roots);
     }
-    free(refs.definitions);
+    graph_clear(&refs);
     free(buffer);
     return error ? fvm_styxrpc_managed_fail(context, error) : status;
 }
@@ -166,7 +179,7 @@ static StyxRpcStatus begin_graph(void *userdata, const FVM_SRecord *arguments, S
             &output->update_size);
     }
     fvm_gc_roots_end(roots);
-    free(refs.definitions);
+    graph_clear(&refs);
     if (!ok)
     {
         fvm_exception_clear(context);

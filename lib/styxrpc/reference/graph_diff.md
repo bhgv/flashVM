@@ -7,6 +7,8 @@ original argument list, the original zero-based `index` and the corresponding
 ref `type`. The complete `before` and `after` ref records share that original
 ID. Provide disjoint scratch and output buffers. The function uses the
 original argument layout to choose a positional selector or nested ID.
+For type `h`, the definitions contain complete hybrid table snapshots and
+the update contains a [key patch](hybrid_diff.md).
 
 The function returns 1 and sets `used` to the extent of one sparse update, or
 to zero if every encoded field is equal. Invalid input or insufficient space

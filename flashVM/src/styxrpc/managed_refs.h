@@ -6,6 +6,7 @@
 #define FLASHVM_STYXRPC_MANAGED_REFS_H
 #include "flashvm/gc_roots.h"
 #include "styxrpc/graph.h"
+#include "styxrpc/hybrid.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,7 +18,7 @@ extern "C" {
 typedef struct FVM_StyxRef
 {
     char type[STYXRPC_MANAGED_SHAPE]; /* Owned exact ref token, empty while defining. */
-    FVM_Object *object;    /* Rooted same-context native Array. */
+    FVM_Object *object;    /* Rooted same-context native Array or table. */
     FVM_SRecord before;    /* Borrowed original field bytes, without the ref index. */
     FVM_SRecord record;    /* Complete original definition for graph writers. */
     FVM_Value original[FVM_STYXRPC_REF_FIELDS]; /* Rooted live slots before submission. */
@@ -25,6 +26,7 @@ typedef struct FVM_StyxRef
     unsigned count;        /* Fixed number of own fields. */
     unsigned changed;      /* Field mask prepared from the checked reply. */
     unsigned slot;         /* First ref argument position of this identity. */
+    StyxRpcHybrid *table_stage; /* Staged table, then old contents after publication. */
 } FVM_StyxRef;
 
 typedef struct FVM_StyxRefs
@@ -33,6 +35,7 @@ typedef struct FVM_StyxRefs
     unsigned capacity;     /* Exact size of the definitions array. */
     int graph;             /* Positional graph permits nested/returned identities. */
     unsigned count;        /* Number of distinct IDs. */
+    unsigned originals;    /* Original IDs whose graph slots remain selected. */
     unsigned slots;        /* Number of ref positions visited, including nil and aliases. */
     unsigned char *storage; /* Owned client baseline storage; NULL on server. */
     size_t used;           /* Stored baseline byte extent. */

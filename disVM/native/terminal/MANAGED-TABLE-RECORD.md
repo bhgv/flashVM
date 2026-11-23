@@ -2,6 +2,8 @@
 
 [Русский](MANAGED-TABLE-RECORD.ru.md) · [Declaration](call_record.h) · [Implementation](managed_table_wire.inc) · [Two-VM example](../../examples/remote-scalar/managed-fid/README.md#pass-hybrid-tables)
 
+The same native format and table algorithms are available in the [C SDK](../../../lib/styxrpc/reference/hybrid_tables.md) and [FlashVM graph binding](../../../flashVM/doc/STYX_RPC_HYBRID.md).
+
 The managed call profile carries the native `Bigtable->Handle` as shape `h`.
 A first occurrence uses graph tag 10, the one-byte object index and a complete
 table record. Later references use the same index. A returned reference to an

@@ -25,7 +25,7 @@ The identity table is shared by arguments, result and updates for one call. Repe
 2. Publish the descriptor with [`styxrpc_graph_module_init`](../../lib/styxrpc/reference/graph_module_init.md) and attach that tree to the Styx server.
 3. Use the typed Limbo `load` on the mounted module path and call the export as usual.
 
-The bridge supports frames up to 64 KiB, up to 256 ref identities per call and up to eight flattened fields in a sparse update. There are also at most eight direct fields per AS ref Array. As in the Dis codec, an alias to an incomplete definition is rejected. ActionScript mappings for hybrid tables and live channels remain open.
+The bridge supports frames up to 64 KiB, up to 256 ref identities per call and up to eight flattened fields in a sparse update. There are also at most eight direct fields per AS ref Array. As in the Dis codec, an alias to an incomplete definition is rejected. The same graph also supports [hybrid table identities and key patches](STYX_RPC_HYBRID.md). ActionScript bindings for live channels remain open.
 
 [Limbo interface](../../lib/styxrpc/tests/flashvm/graph.m) · [Dis owner](../../lib/styxrpc/tests/flashvm/graph_owner.b) · [Dis caller](../../lib/styxrpc/tests/flashvm/graph_client.b) · [FlashVM fixture](../tests/styxrpc/graph.c) · [Independent C client](../../lib/styxrpc/examples/client.c)
 

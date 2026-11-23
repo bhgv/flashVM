@@ -6,11 +6,11 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1709** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1710** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 
-[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md).
+[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md). [Гибридные таблицы](doc/STYX_RPC_HYBRID.ru.md).
 
 [Управляемая загрузка SWF/данных через explicit bridge](doc/MANAGED_SOURCE.ru.md) · [English](doc/MANAGED_SOURCE.md)
 

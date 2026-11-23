@@ -166,5 +166,5 @@ live channels and revocation of delegated routes.
 
 For FlashVM, build [the adapter test host](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.md#build) and also pass
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Then run
-`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
-Sixteen cases cover scalar, managed, ordinary ref and positional graph calls in both directions and both DisVM execution modes. Graph calls exercise nested and returned refs, arrays of refs, tuple edits and rollback. Three more cover named launch from ActionScript, reverse resources, cancellation and positional I/O against the independent C device.
+`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-|hybrid-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
+Twenty cases cover scalar, managed, ordinary ref, positional graphs and hybrid tables in both directions and both DisVM execution modes. Graph calls exercise nested and returned refs, arrays of refs, tuple edits and rollback. [Hybrid tables](../reference/hybrid_tables.md) add ordered key patches, mixed ADT/table updates, signed 64-bit values and the result-only table profile. Three more cover named launch from ActionScript, reverse resources, cancellation and positional I/O against the independent C device.

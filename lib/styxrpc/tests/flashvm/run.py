@@ -56,21 +56,29 @@ def main():
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
-    parser.add_argument("--graph", action="store_true")
-    parser.add_argument("--refs", action="store_true")
-    parser.add_argument("--managed", action="store_true")
+    profiles = parser.add_mutually_exclusive_group()
+    for option, profile in (("hybrid", "hybrid"), ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
+        profiles.add_argument("--" + option, dest="profile", action="store_const", const=profile)
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
     mode = "--jit" if args.jit else "--no-jit"
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
-        action = "graph-" if args.graph else "ref-" if args.refs else "managed-" if args.managed else ""
+        owner, caller, module, exports, result = {
+            "hybrid": ("hybrid_owner.b", "hybrid_client.b", "hybrid.dis", ("change", "reject", "empty"),
+                       "hybrid tables"),
+            "graph": ("graph_owner.b", "graph_client.b", "graphs.dis",
+                      ("nested", "replace", "make", "fail", "fan", "tupleedit"), "graph exports"),
+            "ref": ("refs_owner.b", "refs_client.b", "refs.dis", ("change",), "ref exports"),
+            "managed": ("limbo.b", "values.b", "limbo.dis", ("echo", "number"),
+                        "managed values through Styx RPC"),
+            None: ("limbo.b", "client.b", "limbo.dis", ("next",), "AVM1 through Styx RPC"),
+        }[args.profile]
+        action = f"{args.profile}-" if args.profile else ""
         if args.direction == "flash-to-dis":
-            image = compile_image(args, directory, tests / ("graph_owner.b" if args.graph else "refs_owner.b" if args.refs else "limbo.b"),
-                                  "graphs.dis" if args.graph else "refs.dis" if args.refs else "limbo.dis")
+            image = compile_image(args, directory, tests / owner, module)
             dispatcher = compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
-            exports = ["nested", "replace", "make", "fail", "fan", "tupleedit"] if args.graph else ["change"] if args.refs else ["echo", "number"] if args.managed else ["next"]
             arguments = [piece for name in exports for piece in ("--export", image.name, image.name, name)]
             exchange(
                 directory,
@@ -99,16 +107,13 @@ def main():
                 "PASS FlashVM Styx RPC host",
             )
         else:
-            image = compile_image(args, directory, tests / ("graph_client.b" if args.graph else "refs_client.b" if args.refs else "values.b" if args.managed else "client.b"), "client.dis")
+            image = compile_image(args, directory, tests / caller, "client.dis")
             exchange(
                 directory,
                 lambda fd: [args.flash_host, action + "serve", fd],
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, "--raw", "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
-                "PASS DisVM loaded FlashVM graph exports" if args.graph else
-                "PASS DisVM loaded FlashVM ref exports" if args.refs else
-                "PASS DisVM loaded FlashVM managed values through Styx RPC" if args.managed else
-                "PASS DisVM loaded FlashVM AVM1 through Styx RPC",
+                f"PASS DisVM loaded FlashVM {result}",
             )
 
 

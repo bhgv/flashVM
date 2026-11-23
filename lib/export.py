@@ -51,8 +51,10 @@ def files(root):
             yield rpc / (name + suffix), root / "lib/styxrpc/protocol" / (name + suffix)
     for name in ("managed_array_span", "managed_graph_validation", "managed_record_validation",
                  "managed_ref_validation", "managed_result_validation", "managed_sequence_edits",
-                 "managed_table_wire"):
+                 "managed_table_wire", "managed_table_state"):
         yield rpc / (name + ".inc"), root / "lib/styxrpc/protocol" / (name + ".inc")
+    for name in ("table.c", "table.h", "relative.h"):
+        yield root / "common/table" / name, root / "lib/styxrpc/vendor/hybrid" / name
     yield rpc / "variable_file.c", root / "lib/styxrpc/protocol/variable_file.c"
     yield rpc / "variable_file.h", root / "lib/styxrpc/include/styxrpc/variable_file.h"
     yield rpc / "indexed_variable.c", root / "lib/styxrpc/protocol/indexed_variable.c"
