@@ -8,6 +8,8 @@ Client: module { init: fn(); };
 
 Device: module
 {
+    Cell: adt { counter: int; };
+    adjust: fn(text: string, samples: array of int, item: ref Cell): (string, int);
     sample: fn(value: int): int;
 };
 
@@ -23,6 +25,15 @@ init()
     }
     if (device->sample(41) != 42 || device->sample(-10) != -9) {
         raise "wrong C device result";
+    }
+    item := ref Device->Cell(37);
+    (text, counter) := device->adjust("sensor", array[] of {5, 99}, item);
+    if (text != "sensor" || counter != 42 || item.counter != 42) {
+        raise "wrong typed C device result or missing ref writeback";
+    }
+    (text, counter) = device->adjust("unchanged", array[] of {0}, item);
+    if (text != "unchanged" || counter != 42 || item.counter != 42) {
+        raise "wrong typed reply without ref writeback";
     }
     path := "/device/mounted/device.dis/value";
     reader := sys->open(path, Sys->OREAD);

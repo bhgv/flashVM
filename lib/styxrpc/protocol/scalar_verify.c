@@ -74,6 +74,7 @@ unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const
             return 0;
         }
         int selected;
+        int managed = 0;
         StyxCallShape types = {{0}, {0}};
         int scoped_shape = record.tag == STYX_SCOPED_OFFER_TAG || record.tag == STYX_SCOPED_END_OFFER_TAG ||
             record.tag == STYX_SCOPED_PATH_OFFER_TAG || record.tag == STYX_SCOPED_RECORD_OFFER_TAG;
@@ -82,8 +83,9 @@ unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const
             char offered_name[INTERFACE_NAME_LIMIT + 1];
             uint32_t offered_sig;
             unsigned long request = styxshapedpayload(record.payload, record.size, offered_name, &offered_sig, &types);
-            if (!request || (scoped_shape && styxloadedrequest(offered_sig)) ||
-                ((request == STYX_MANAGED_REQUEST_TAG) != (record.tag == STYX_SCOPED_RECORD_OFFER_TAG)))
+            managed = request == STYX_MANAGED_REQUEST_TAG;
+            if (!request || (scoped_shape && (styxloadedrequest(offered_sig) ||
+                managed != (record.tag == STYX_SCOPED_RECORD_OFFER_TAG))))
             {
                 return 0;
             }
@@ -107,7 +109,7 @@ unsigned styxscalar_profile_match_protocol(const void *bytes, size_t size, const
             }
             match = 1U << i;
             scoped = record.tag == STYX_FUNCTION_CALLER_PROFILE || scoped_shape;
-            staged = record.tag == STYX_SCOPED_RECORD_OFFER_TAG ? STYX_CALL_RECORD_FRAMING :
+            staged = managed ? STYX_CALL_RECORD_FRAMING :
                 record.tag == STYX_SCOPED_PATH_OFFER_TAG ? STYX_CALL_PATH_FRAMING : record.tag == STYX_SCOPED_END_OFFER_TAG;
             decoded = types;
         }

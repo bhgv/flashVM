@@ -49,6 +49,9 @@ target_include_directories(styx_server PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_server PUBLIC styx_nine)
 add_library(styx_carrier STATIC remote_phy/phy.c remote_phy/select.c remote_phy/drivers/posix/fd.c)
 target_include_directories(styx_carrier PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/remote_phy>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/phy>")
+add_library(styx_bidir STATIC remote_phy/mux/channel.c remote_phy/mux/life.c
+    remote_phy/mux/pump.c remote_phy/mux/queue.c remote_phy/mux/wait.c)
+target_link_libraries(styx_bidir PUBLIC styx_carrier Threads::Threads)
 add_library(styx_walk STATIC walk/walk.c walk/wire.c walk/packet.c)
 target_include_directories(styx_walk PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/walk>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/walk>")
 target_link_libraries(styx_walk PUBLIC styx_wire Threads::Threads)
@@ -62,7 +65,7 @@ add_library(styx_phy_server STATIC server/phy/core.c server/phy/backend.c server
 target_include_directories(styx_phy_server PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/server/phy>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/server>" PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_phy_server PUBLIC styx_nine styx_carrier styx_walk Threads::Threads)
-foreach(target nine server carrier walk client phy_server)
+foreach(target nine server carrier bidir walk client phy_server)
     add_library(Styx::${target} ALIAS styx_${target})
     set_target_properties(styx_${target} PROPERTIES EXPORT_NAME ${target} C_STANDARD 99 C_STANDARD_REQUIRED YES)
     list(APPEND styx_targets styx_${target})

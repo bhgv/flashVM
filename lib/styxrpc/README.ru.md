@@ -46,6 +46,14 @@ fid. Диспетчер сериализует операции одного fid
 
 [Запуск примеров](examples/README.ru.md)
 
+## Типизированные вызовы и запуск
+
+Типизированный API принимает строки, массивы и кортежи по существующей грамматике Dis. Для плоских сигнатур колбэк отмечает изменённые `ref` маской позиций. Чтобы завершить вызов позже, `begin` возвращает `STYXRPC_MORE`. Диспетчер вызывает close при clunk или обрыве. Флаг `-D RG` сохраняет типы импортов в клиенте Limbo.
+
+Флаг `STYXRPC_HOSTED` подключает `StyxRpc::launch`. C-клиент использует существующий **одноразовый** сервис запуска Dis с профилем raw. Доставка запроса и завершение программы подтверждаются отдельно. Переносимое ядро по-прежнему использует только `Unibus::wire`.
+
+[`styxrpc_managed_profile`](reference/managed_profile.ru.md) · [`styxrpc_managed_open`](reference/managed_open.ru.md) · [`styxrpc_managed_write`](reference/managed_write.ru.md) · [`styxrpc_managed_finish`](reference/managed_finish.ru.md) · [`styxrpc_managed_read`](reference/managed_read.ru.md) · [`styxrpc_managed_close`](reference/managed_close.ru.md) · [`styxrpc_managed_request`](reference/managed_request.ru.md) · [`styxrpc_managed_reply`](reference/managed_reply.ru.md) · [`styxrpc_value_integer`](reference/value_integer.ru.md) · [`styxrpc_launch_start`](reference/launch_start.ru.md) · [`styxrpc_launch_status`](reference/launch_status.ru.md)
+
 ## Имя, Qid и fid
 
 При `Twalk` сервер сопоставляет имя в каталоге с устойчивым идентификатором
@@ -71,12 +79,8 @@ Limbo показывает [клиент](examples/disvm/client.b). Клиент
 
 ## Что ещё нужно для общего интерфейса устройств
 
-- Структурные описатели типов, аргументы и результаты-кортежи, вложенные
-  значения и обратная запись изменённых `ref`. Генерацию читаемого `.m` можно
-  делать из тех же описателей, из которых формируется профиль.
-- Операции запуска Dis и нативных исполнителей, ожидание завершения, отмена
-  по fid и получение статуса при обрыве. Для медленных устройств нужен
-  неблокирующий диспетчер.
+- Генерация читаемого `.m`, вложенные графы с `ref`, именованные запуски с обратным контекстом и отмена запуска.
+- Перечисление и поиск в меняющихся каталогах при обходе Styx.
 - Типизированные переменные и права чтения/записи, прокси открытых `.fd/<n>`
   с режимом исходного FD, каналы с `send`, `recv`, `alt` и семантикой
   синхронизации. У каждого предоставленного ресурса свой срок жизни.

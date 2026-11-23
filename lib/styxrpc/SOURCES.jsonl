@@ -8,7 +8,7 @@
 {"path": "protocol/ref_pair_record.h", "sha256": "f2352d971e3131234a7c85a975835a6a7b4cb5d43f2ef63584c91f115aaac2c6", "source": "disVM/native/terminal/ref_pair_record.h", "transform": "identity"}
 {"path": "protocol/scalar_record.c", "sha256": "6bd82f39796554f389b29ac93bb441b2eeeec3a35d7b17174b54044b85a656ea", "source": "disVM/native/terminal/scalar_record.c", "transform": "identity"}
 {"path": "protocol/scalar_record.h", "sha256": "5c44a866033f3cf9b057243f89ec1fc0e81621d2055e86aa4351676680d05240", "source": "disVM/native/terminal/scalar_record.h", "transform": "identity"}
-{"path": "protocol/scalar_verify.c", "sha256": "ae9e44e218e74c5d173118314207a490e0de02d2b719253e1a7917454db386e6", "source": "disVM/native/terminal/scalar_verify.c", "transform": "identity"}
+{"path": "protocol/scalar_verify.c", "sha256": "7f49af43f830106b6cca2a3005077de48fea183bcd22d4494ca31bd47e46155e", "source": "disVM/native/terminal/scalar_verify.c", "transform": "identity"}
 {"path": "protocol/scalar_verify.h", "sha256": "955897825e9eb4dde1f859c8bab334ddb69ea81c5c9fcc140ae77cc2546ef4d3", "source": "disVM/native/terminal/scalar_verify.h", "transform": "identity"}
 {"path": "protocol/tuple_record.c", "sha256": "c2dbefb87337ba78f92e3a0e74a3cec75acbc6ddbeb100b0bfaefd79fc7e6868", "source": "disVM/native/terminal/tuple_record.c", "transform": "identity"}
 {"path": "protocol/tuple_record.h", "sha256": "927a42806411b12e7b7608b67b2f6ffc629286d5c1a7588c04a743d31e6f55a9", "source": "disVM/native/terminal/tuple_record.h", "transform": "identity"}

@@ -26,7 +26,7 @@ def files(root):
                 parts = path.relative_to(root / source).parts
                 if source == "disVM/native/src" and ("tests" in parts or path.name in ("Nt.c", "Plan9.c") or parts[:2] == ("Linux", "arm")):
                     continue
-                if source == "remote_phy" and ("tests" in parts or "mux" in parts):
+                if source == "remote_phy" and "tests" in parts:
                     continue
                 yield path, root / "lib" / destination / path.relative_to(root / source)
     for name in ("prepare_fmt.py", "prepare_errstr.py", "prepare_dtoa.py", "host/decimal_sync.c"):

@@ -31,3 +31,17 @@ The launcher passes a connected descriptor with
 `--styx-mount-fd FD --raw --at /device`. Here `--raw` selects a forward-only
 Styx mount for this endpoint. The launcher owns timeouts and reaps both
 processes. The Limbo caller is compiled before the device is started.
+
+## Launch DisVM from C
+
+```sh
+python3 examples/disvm/launch.py --runtime /path/to/disvm \
+    --limbo /path/to/limbo-bootstrap --module /path/to/disVM/module \
+    --driver build/styxrpc-launch
+```
+
+The C client selects the existing bidirectional carrier framing and mounts its
+forward Styx stream. It checks the raw launch profile, sends startup bytes on
+`.unibus` and polls `.exit` over the same connection. The script runs one
+successful and one failing program per VM execution mode. Status 2 means a
+confirmed success and 3 a confirmed program failure.

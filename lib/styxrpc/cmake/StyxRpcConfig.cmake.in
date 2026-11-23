@@ -4,4 +4,7 @@
 @PACKAGE_INIT@
 include(CMakeFindDependencyMacro)
 find_dependency(Unibus CONFIG)
+if("@STYXRPC_HAS_LAUNCH@" STREQUAL "ON")
+    find_dependency(Styx CONFIG)
+endif()
 include("${CMAKE_CURRENT_LIST_DIR}/StyxRpcTargets.cmake")

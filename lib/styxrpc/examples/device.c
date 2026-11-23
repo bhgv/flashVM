@@ -8,6 +8,7 @@
 #include "server.h"
 #include "drivers/posix/fd.h"
 #include "styxrpc/rpc.h"
+#include "adjust.h"
 #include "styxrpc/vfs.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -16,11 +17,12 @@
 #define MOUNTED 1UL /* Directory of published modules. */
 #define DEVICE 2UL /* Read/execute module directory. */
 #define PROFILE 3UL /* Compiler-compatible interface. */
+#define ADJUST 6UL  /* Managed function with per-fid record buffers. */
 #define VALUE 5UL /* Byte file backed by a device register. */
 #define SAMPLE 4UL /* An opened function has private request and reply state. */
 
 static Styxserver server; /* Exactly one native dispatcher owns this example. */
-static unsigned char profile[128]; /* Immutable interface bytes after startup. */
+static unsigned char profile[256]; /* Immutable interface bytes after startup. */
 static size_t profile_size; /* Confirmed encoded extent. */
 
 
@@ -94,10 +96,55 @@ static void close_value(void *file)
     free(file);
 }
 
+typedef struct AdjustFid
+{
+    StyxRpcManagedCall call;    /* Exact this fid's checked request and reply. */
+    unsigned char request[1024]; /* Whole staged request. */
+    unsigned char reply[1024];   /* Immutable reply. */
+} AdjustFid;
+
+
+/* EN: Release the owned managed fid state, cancelling any pending work.
+ * RU: Освободить состояние fid, отменив ожидающую работу. */
+static void close_adjust(void *state)
+{
+    AdjustFid *fid = state;
+    styxrpc_managed_close(&fid->call);
+    free(fid);
+}
+
+
+/* EN: Attach a new read-write call to the server's current Topen.
+ * RU: Закрепить вызов чтения и записи на текущем Topen. */
+static char *open_adjust(int mode)
+{
+    if (mode != ORDWR)
+    {
+        return Eperm;
+    }
+    AdjustFid *fid = calloc(1, sizeof(*fid));
+    if (!fid)
+    {
+        return Enomem;
+    }
+    if (styxrpc_managed_open(&fid->call, &adjust_export, fid->request, sizeof(fid->request),
+        fid->reply, sizeof(fid->reply)) != STYXRPC_OK || styxsetauxowned(&server, fid, close_adjust) < 0)
+    {
+        close_adjust(fid);
+        return Eperm;
+    }
+    return nil;
+}
+
+
 /* EN: Route the Qid once at Topen and pin a new call on the exact wire fid.
  * RU: Выбрать узел по Qid в Topen и удержать вызов на точном fid. */
 static char *open_file(Qid *qid, int mode)
 {
+    if (qid->path == ADJUST)
+    {
+        return open_adjust(mode);
+    }
     if (qid->path == VALUE)
     {
         if (mode != OREAD && mode != OWRITE && mode != ORDWR)
@@ -172,6 +219,17 @@ static char *read_file(Qid qid, char *bytes, ulong *count, vlong offset)
         *count = size;
         return nil;
     }
+    if (qid.path == ADJUST)
+    {
+        AdjustFid *fid = styxgetaux(&server);
+        StyxRpcStatus status = styxrpc_managed_read(&fid->call, offset, bytes, *count, &size);
+        if (status == STYXRPC_INVALID)
+        {
+            return Ebadarg;
+        }
+        *count = size;
+        return nil;
+    }
     if (qid.path != SAMPLE ||
         styxrpc_read(styxgetaux(&server), (size_t)offset, bytes, *count, &size) == STYXRPC_INVALID)
     {
@@ -200,6 +258,13 @@ static char *write_file(Qid qid, char *bytes, ulong *count, vlong offset)
         *count = size;
         return nil;
     }
+    if (qid.path == ADJUST)
+    {
+        AdjustFid *fid = styxgetaux(&server);
+        unsigned char scratch[1024];
+        return styxrpc_managed_write(&fid->call, offset, bytes, *count, scratch, sizeof(scratch)) ==
+            STYXRPC_INVALID ? Ebadarg : nil;
+    }
     return qid.path == SAMPLE &&
         styxrpc_write(styxgetaux(&server), (size_t)offset, bytes, *count) != STYXRPC_INVALID ?
         nil : Ebadarg;
@@ -217,6 +282,13 @@ int main(int argc, char **argv)
     {
         return 2;
     }
+    size_t typed_size;
+    if (styxrpc_managed_profile(&adjust_export, profile + profile_size, sizeof(profile) - profile_size,
+        &typed_size) != STYXRPC_OK)
+    {
+        return 2;
+    }
+    profile_size += typed_size;
     static Styxops ops = {.open = open_file, .read = read_file, .write = write_file};
     RemotePhy *phy = phyposixfd((int)fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE);
     if (styxphyinit(&server, &ops, phy, 0555, 0, 8))
@@ -227,7 +299,8 @@ int main(int argc, char **argv)
     int published = styxadddir(&server, Qroot, MOUNTED, "mounted", 0555, "device") &&
         styxadddir(&server, MOUNTED, DEVICE, "device.dis", 0555, "device") &&
         (iface = styxaddfile(&server, DEVICE, PROFILE, ".interface", 0444, "device")) &&
-        styxaddfile(&server, DEVICE, SAMPLE, "sample", 0777, "device");
+        styxaddfile(&server, DEVICE, SAMPLE, "sample", 0777, "device") &&
+        styxaddfile(&server, DEVICE, ADJUST, "adjust", 0777, "device");
     for (size_t index = 0; published; ++index)
     {
         StyxRpcEntry entry;

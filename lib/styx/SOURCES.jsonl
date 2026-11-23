@@ -200,6 +200,13 @@
 {"path": "walk/wire.c", "sha256": "3d61cc3d0b8de5c22b6f16a4ffb04ad12b1316c36bb149cb6b765491a2cb945f", "source": "disVM/host/traversal/wire.c", "transform": "identity"}
 {"path": "remote_phy/drivers/posix/fd.c", "sha256": "8654f13ec9c21bc68cee0d46052bb7969a06a8f5532330fbde8199191a56531c", "source": "remote_phy/drivers/posix/fd.c", "transform": "identity"}
 {"path": "remote_phy/drivers/posix/fd.h", "sha256": "37313e84ac234b5b794b57d5dde9b47d09eb841eccc3dab21b588cc62c0857a2", "source": "remote_phy/drivers/posix/fd.h", "transform": "identity"}
+{"path": "remote_phy/mux/bidir.h", "sha256": "97aeec8ea4b2ba9bc2245fa5309886d216fc61f522ac6f61594549b8f80d923a", "source": "remote_phy/mux/bidir.h", "transform": "identity"}
+{"path": "remote_phy/mux/channel.c", "sha256": "7b8e9c63dbc5605728763a31358e60e5aa5ab4621c6fef24b47da280e484e86b", "source": "remote_phy/mux/channel.c", "transform": "identity"}
+{"path": "remote_phy/mux/internal.h", "sha256": "ab8b5b225728f74d72e6782823fee36b0732ea312cb3065ef6e5f103b47a8c47", "source": "remote_phy/mux/internal.h", "transform": "identity"}
+{"path": "remote_phy/mux/life.c", "sha256": "5b200f19b5f4c7aa626aecf4cf2478b1640ee548783716d0beb9bda14ee3f26e", "source": "remote_phy/mux/life.c", "transform": "identity"}
+{"path": "remote_phy/mux/pump.c", "sha256": "a7c950094f7f503e7398ab524983c8e2f9d6a70860cb8c1ef2d6919ec7d6fec6", "source": "remote_phy/mux/pump.c", "transform": "identity"}
+{"path": "remote_phy/mux/queue.c", "sha256": "6321ca25484b180ae72e805cfb9de7d9acd2cef2d3e7d473ce825fdc675ada4e", "source": "remote_phy/mux/queue.c", "transform": "identity"}
+{"path": "remote_phy/mux/wait.c", "sha256": "88b0b3f85d9ef2c182165a74cdc021ff389dc1892441d5274b90ae761edfbcc1", "source": "remote_phy/mux/wait.c", "transform": "identity"}
 {"path": "remote_phy/phy.c", "sha256": "d32a9d0692e7129c4df07f61b7c55e7d109d254613107bf8890370ae29d0cdbf", "source": "remote_phy/phy.c", "transform": "identity"}
 {"path": "remote_phy/phy.h", "sha256": "fe9de27e73e23a015c9757180f2b7d8835b8c743844eeb0b3bd6a0181cc8f111", "source": "remote_phy/phy.h", "transform": "identity"}
 {"path": "remote_phy/select.c", "sha256": "dd8671591c0792c7c04f9b9660569aa31a75af40fc7469f212fbf46f8932164f", "source": "remote_phy/select.c", "transform": "identity"}

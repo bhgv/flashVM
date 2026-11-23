@@ -45,6 +45,14 @@ callback runs synchronously when a complete request arrives.
 
 [Running the examples](examples/README.md)
 
+## Managed calls and launch
+
+The managed API accepts strings, arrays and tuples using the existing Dis shape grammar. For supported flat signatures, the callback selects changed ref arguments by bit mask. Return `STYXRPC_MORE` from begin to complete later, and route clunk or disconnect to close. Compile Limbo callers with `-D RG` to retain resolved import types.
+
+Enable `STYXRPC_HOSTED` for `StyxRpc::launch`. The native client drives the current **one-shot** raw-profile launch service over Styx. Delivery and exit status are separate observations. The portable core continues to need only `Unibus::wire`.
+
+[`styxrpc_managed_profile`](reference/managed_profile.md) · [`styxrpc_managed_open`](reference/managed_open.md) · [`styxrpc_managed_write`](reference/managed_write.md) · [`styxrpc_managed_finish`](reference/managed_finish.md) · [`styxrpc_managed_read`](reference/managed_read.md) · [`styxrpc_managed_close`](reference/managed_close.md) · [`styxrpc_managed_request`](reference/managed_request.md) · [`styxrpc_managed_reply`](reference/managed_reply.md) · [`styxrpc_value_integer`](reference/value_integer.md) · [`styxrpc_launch_start`](reference/launch_start.md) · [`styxrpc_launch_status`](reference/launch_status.md)
+
 ## Name, Qid and fid
 
 `Twalk` resolves a child name to a stable node ID. The example uses
@@ -67,10 +75,7 @@ loads the module, invokes `sample` twice, and reads and writes the virtual file
 with a socket and mounts the device via `--styx-mount-fd FD --raw --at /device`.
 Use `--jit` to run the same test in JIT mode.
 
-The full device interface still needs structural type descriptors and `ref`
-writeback, process launch and cancellation, nonblocking callbacks, registered
-variables, numbered FD proxies, typed channels with `alt`, and resource
-lifetimes, grants, version negotiation and on-demand diagnostics.
+Remaining work includes generated `.m` source, graph-aware nested refs, named launches with reverse context, registered variables, numbered FD proxies, typed channels with `alt`, dynamic directory traversal, grants and on-demand diagnostics.
 
 ## Sources
 

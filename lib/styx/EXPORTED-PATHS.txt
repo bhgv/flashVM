@@ -31,6 +31,13 @@ lib/styx/protocol/srecord.c
 lib/styx/protocol/sstream.c
 lib/styx/remote_phy/drivers/posix/fd.c
 lib/styx/remote_phy/drivers/posix/fd.h
+lib/styx/remote_phy/mux/bidir.h
+lib/styx/remote_phy/mux/channel.c
+lib/styx/remote_phy/mux/internal.h
+lib/styx/remote_phy/mux/life.c
+lib/styx/remote_phy/mux/pump.c
+lib/styx/remote_phy/mux/queue.c
+lib/styx/remote_phy/mux/wait.c
 lib/styx/remote_phy/phy.c
 lib/styx/remote_phy/phy.h
 lib/styx/remote_phy/select.c

@@ -19,7 +19,7 @@ def main():
     source = Path(__file__).with_name("client.b")
     with tempfile.TemporaryDirectory(prefix="styxrpc-device-") as temporary:
         image = Path(temporary) / "client.dis"
-        subprocess.run([args.limbo, "-I", args.module, "-o", image, source], check=True, timeout=15)
+        subprocess.run([args.limbo, "-D", "RG", "-I", args.module, "-o", image, source], check=True, timeout=15)
         caller, device = socket.socketpair()
         with caller, device:
             process = subprocess.Popen([args.device, str(device.fileno())], pass_fds=(device.fileno(),))
