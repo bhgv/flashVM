@@ -5,7 +5,7 @@
 #ifndef FLASHVM_STYXRPC_MANAGED_REFS_H
 #define FLASHVM_STYXRPC_MANAGED_REFS_H
 #include "flashvm/gc_roots.h"
-#include "styxrpc/managed.h"
+#include "styxrpc/graph.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,9 +16,10 @@ extern "C" {
 
 typedef struct FVM_StyxRef
 {
-    const char *type;      /* Borrowed exact ref token in the current schema. */
+    char type[STYXRPC_MANAGED_SHAPE]; /* Owned exact ref token, empty while defining. */
     FVM_Object *object;    /* Rooted same-context native Array. */
     FVM_SRecord before;    /* Borrowed original field bytes, without the ref index. */
+    FVM_SRecord record;    /* Complete original definition for graph writers. */
     FVM_Value original[FVM_STYXRPC_REF_FIELDS]; /* Rooted live slots before submission. */
     FVM_Value updated[FVM_STYXRPC_REF_FIELDS];  /* Rooted staged copy-back. */
     unsigned count;        /* Fixed number of own fields. */
@@ -28,12 +29,19 @@ typedef struct FVM_StyxRef
 
 typedef struct FVM_StyxRefs
 {
-    FVM_StyxRef definitions[FVM_STYXRPC_REF_SLOTS]; /* Native object indexed by wire identity. */
+    FVM_StyxRef *definitions; /* Native object indexed by wire identity. */
+    unsigned capacity;     /* Exact size of the definitions array. */
+    int graph;             /* Positional graph permits nested/returned identities. */
     unsigned count;        /* Number of distinct IDs. */
     unsigned slots;        /* Number of ref positions visited, including nil and aliases. */
     unsigned char *storage; /* Owned client baseline storage; NULL on server. */
     size_t used;           /* Stored baseline byte extent. */
 } FVM_StyxRefs;
+
+
+/* EN: Project one checked ref token to its direct field list and count.
+ * RU: Преобразовать проверенный токен ref в список его непосредственных полей. */
+unsigned fvm_styxrpc_ref_fields(const char *type, int graph, char fields[STYXRPC_MANAGED_SHAPE]);
 
 
 /* [GC:] EN: Read exact own native Array slots without callbacks.

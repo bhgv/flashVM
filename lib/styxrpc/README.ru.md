@@ -102,9 +102,11 @@ fid. Диспетчер сериализует операции одного fid
 
 ## Графы вложенных ссылок
 
-Штатный load Dis через прямой Styx поддерживает позиционный формат графа значений. В примере изменяется вложенный объект с сохранением его идентичности.
+Штатный load Dis через прямой Styx использует позиционный граф для вложенных и возвращаемых ref. Самостоятельная программа на C может выполнять такие вызовы и публиковать модули через SDK. Компилированный интерфейс, позиционные кадры и разреженные изменения общие с DisVM. Независимый клиент C проверяет изменение вложенного ref через fid Styx.
 
 [`styxrpc_graph_profile`](reference/graph_profile.ru.md) · [`styxrpc_graph_request`](reference/graph_request.ru.md) · [`styxrpc_graph_arguments`](reference/graph_arguments.ru.md) · [`styxrpc_graph_reply`](reference/graph_reply.ru.md) · [`styxrpc_graph_read`](reference/graph_read.ru.md)
+
+[`styxrpc_graph_invoke`](reference/graph_invoke.ru.md) · [`styxrpc_graph_module_init`](reference/graph_module_init.ru.md) · [Разреженные изменения графа](reference/graph_updates.ru.md)
 
 ## Кадры каналов UniBus
 

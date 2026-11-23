@@ -1,6 +1,6 @@
 # Connecting FlashVM and DisVM through libstyxrpc
 
-[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md) · [Launch and file operations](STYX_RPC_SESSION.md) · [Ref arguments](STYX_RPC_REFS.md)
+[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md) · [Launch and file operations](STYX_RPC_SESSION.md) · [Ref arguments](STYX_RPC_REFS.md) · [Reference graphs](STYX_RPC_GRAPH.md)
 
 FlashVM and DisVM communicate through libstyxrpc over Styx. Supply an authorized,
 connected carrier to the Styx SDK. A module publishes its compiled interface as
@@ -41,6 +41,7 @@ Unicode with embedded NUL, and rejection before writing on shape mismatch
 or a missing reverse PID. The AS session object adds named
 Dis launch with independent wait and cancellation tickets, and positional stat,
 read and write of Styx files. The host selects the reverse PID. The launched
-program can use its delegated `.var`, `.fd` and `.vfs`. Ordinary ref arguments copy back to their original Arrays. Graph profiles,
-channel bindings, direct declaration of reverse resources from AS, and migration of
-existing in-process editor bridges remain open.
+program can use its delegated `.var`, `.fd` and `.vfs`. Ordinary ref arguments copy back to their original Arrays. The graph profile adds nested
+and returned refs, shared identities and sparse copy-back. ActionScript bindings for
+hybrid tables and channels, direct declaration of reverse resources from AS, and
+migration of existing in-process editor bridges remain open.

@@ -11,8 +11,10 @@ python3 examples/socketpair.py build/styxrpc-device build/styxrpc-client
 
 This starts two C processes on opposite ends of a socket. The device publishes
 `sample` under `/mounted/device.dis`, opens one call state per fid and runs
-the increment callback once per complete request. The caller opens a new fid
-for each of two calls and checks both replies. Success prints
+the increment callback once per complete request. The caller uses fresh fids
+for the scalar calls, an ordinary ref update and a nested graph update through
+[`styxrpc_graph_invoke`](../reference/graph_invoke.md). It also reads and writes
+the device register through the positional VFS API. Success prints
 `PASS native C calls standalone C device`. Each reply is consumed before clunk.
 An unconfirmed transfer fails the test and the launcher closes both processes.
 
@@ -164,5 +166,5 @@ live channels and revocation of delegated routes.
 
 For FlashVM, build [the adapter test host](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.md#build) and also pass
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Then run
-`ctest --test-dir build -R 'styxrpc-((managed-|ref-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
-Twelve cases cover scalar, managed and ref calls in both directions and both DisVM execution modes. Three more cover named launch from ActionScript, reverse resources, cancellation and positional I/O against the independent C device.
+`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
+Sixteen cases cover scalar, managed, ordinary ref and positional graph calls in both directions and both DisVM execution modes. Graph calls exercise nested and returned refs, arrays of refs, tuple edits and rollback. Three more cover named launch from ActionScript, reverse resources, cancellation and positional I/O against the independent C device.

@@ -90,7 +90,7 @@ static bool prepare(FVM_Context *context, FVM_StyxRef &ref, FVM_Value **targets)
 /* [GC:] EN/RU: See managed_refs.h. / См. managed_refs.h. */
 int fvm_styxrpc_refs_commit(FVM_Context *context, FVM_StyxRefs *refs)
 {
-    FVM_Value *targets[FVM_STYXRPC_REF_SLOTS][FVM_STYXRPC_REF_FIELDS] = {{0}};
+    FVM_Value *targets[STYXRPC_GRAPH_KEY_LIMIT][FVM_STYXRPC_REF_FIELDS] = {{0}};
     for (unsigned i = 0; i < refs->count; ++i)
     {
         if (refs->definitions[i].changed && !prepare(context, refs->definitions[i], targets[i]))

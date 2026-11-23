@@ -100,12 +100,12 @@ static int ref_slots(const char *type, unsigned *slots)
 }
 
 
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
+/* EN: Verify two complete type lists and zero or one result.
+ * RU: Проверить два полных списка типов и пустой либо одиночный результат. */
+static int schema_supported(const StyxRpcSchema *schema)
 {
     const char *args;
     const char *result;
-    unsigned slots = 0;
     if (!schema || !memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
         !memchr(schema->result, 0, sizeof(schema->result)) ||
         schema->arguments[0] != '(' || schema->result[0] != '(')
@@ -114,8 +114,22 @@ int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
     }
     args = type_end(schema->arguments, 0);
     result = schema->result[1] == ')' ? schema->result + 1 : type_end(schema->result + 1, 1);
-    return args && !*args && result && *result == ')' && !result[1] &&
-        !strchr(schema->result, 'r') && ref_slots(schema->arguments, &slots);
+    return args && !*args && result && *result == ')' && !result[1];
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
+{
+    unsigned slots = 0;
+    return schema_supported(schema) && !strchr(schema->result, 'r') && ref_slots(schema->arguments, &slots);
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
+{
+    return schema_supported(schema) && (strchr(schema->arguments, 'r') || strchr(schema->result, 'r'));
 }
 
 
@@ -176,7 +190,7 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         if (*child == ')' || fvm_object_has_own(context, value->object, index, &present) != FVM_OK ||
             !present || fvm_object_get(context, value->object, index, &element) != FVM_OK ||
             fvm_gc_roots_add(roots, &element) != FVM_OK ||
-            !encode_value(context, roots, *type == 'a' ? NULL : refs, child, &element, body + size, capacity - size, &placed))
+            !encode_value(context, roots, *type == 'a' && (!refs || !refs->graph) ? NULL : refs, child, &element, body + size, capacity - size, &placed))
         {
             break;
         }
@@ -299,7 +313,7 @@ static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     }
     for (i = 0; i < count; ++i)
     {
-        if (*shape == ')' || !decode_value(context, roots, *type == 'a' ? NULL : refs, shape, &record, items + i))
+        if (*shape == ')' || !decode_value(context, roots, *type == 'a' && (!refs || !refs->graph) ? NULL : refs, shape, &record, items + i))
         {
             break;
         }

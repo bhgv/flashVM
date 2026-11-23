@@ -56,6 +56,7 @@ def main():
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
+    parser.add_argument("--graph", action="store_true")
     parser.add_argument("--refs", action="store_true")
     parser.add_argument("--managed", action="store_true")
     parser.add_argument("--jit", action="store_true")
@@ -64,12 +65,12 @@ def main():
     mode = "--jit" if args.jit else "--no-jit"
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
-        action = "ref-" if args.refs else "managed-" if args.managed else ""
+        action = "graph-" if args.graph else "ref-" if args.refs else "managed-" if args.managed else ""
         if args.direction == "flash-to-dis":
-            image = compile_image(args, directory, tests / ("refs_owner.b" if args.refs else "limbo.b"),
-                                  "refs.dis" if args.refs else "limbo.dis")
+            image = compile_image(args, directory, tests / ("graph_owner.b" if args.graph else "refs_owner.b" if args.refs else "limbo.b"),
+                                  "graphs.dis" if args.graph else "refs.dis" if args.refs else "limbo.dis")
             dispatcher = compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
-            exports = ["change"] if args.refs else ["echo", "number"] if args.managed else ["next"]
+            exports = ["nested", "replace", "make", "fail", "fan", "tupleedit"] if args.graph else ["change"] if args.refs else ["echo", "number"] if args.managed else ["next"]
             arguments = [piece for name in exports for piece in ("--export", image.name, image.name, name)]
             exchange(
                 directory,
@@ -98,12 +99,13 @@ def main():
                 "PASS FlashVM Styx RPC host",
             )
         else:
-            image = compile_image(args, directory, tests / ("refs_client.b" if args.refs else "values.b" if args.managed else "client.b"), "client.dis")
+            image = compile_image(args, directory, tests / ("graph_client.b" if args.graph else "refs_client.b" if args.refs else "values.b" if args.managed else "client.b"), "client.dis")
             exchange(
                 directory,
                 lambda fd: [args.flash_host, action + "serve", fd],
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, "--raw", "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
+                "PASS DisVM loaded FlashVM graph exports" if args.graph else
                 "PASS DisVM loaded FlashVM ref exports" if args.refs else
                 "PASS DisVM loaded FlashVM managed values through Styx RPC" if args.managed else
                 "PASS DisVM loaded FlashVM AVM1 through Styx RPC",

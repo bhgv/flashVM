@@ -68,6 +68,12 @@ if(STYXRPC_FLASHVM_TEST_HOST)
                     ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
                     --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --refs ${mode_args})
             set_tests_properties("${ref_test_name}" PROPERTIES TIMEOUT 75)
+            set(graph_test_name "styxrpc-graph-${direction}-${mode}")
+            add_test(NAME "${graph_test_name}"
+                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --graph ${mode_args})
+            set_tests_properties("${graph_test_name}" PROPERTIES TIMEOUT 75)
         endforeach()
     endforeach()
     foreach(mode IN ITEMS interpreter jit)

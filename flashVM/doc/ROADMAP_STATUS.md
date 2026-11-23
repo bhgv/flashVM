@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1709 / Контрольная точка v0.1709. The native Dis positional graph
+profile now carries nested and returned refs between FlashVM and DisVM through
+libstyxrpc, with shared identities and sparse atomic copy-back. Внешний клиент C
+использует тот же кодек для вложенного ref. Привязка гибридных таблиц и живых
+каналов к ActionScript остаётся открытой. [EN](STYX_RPC_GRAPH.md) / [RU](STYX_RPC_GRAPH.ru.md).
+
 Checkpoint v0.1708 / Контрольная точка v0.1708. Ordinary managed ref
 arguments now preserve aliases and permit atomic local copy-back across
 FlashVM and DisVM. Unchanged fields retain identity, and failed calls or

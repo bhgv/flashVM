@@ -10,7 +10,7 @@
 
 /* EN: Project one flat ref token to the exact list of its field types.
  * RU: Преобразовать плоский токен ref в точный список типов полей. */
-static unsigned fields_for(const char *type, char fields[STYXRPC_MANAGED_SHAPE])
+unsigned fvm_styxrpc_ref_fields(const char *type, int graph, char fields[STYXRPC_MANAGED_SHAPE])
 {
     const char *end = fvm_styxrpc_type_end(type);
     const char *field;
@@ -21,7 +21,7 @@ static unsigned fields_for(const char *type, char fields[STYXRPC_MANAGED_SHAPE])
         return 0;
     }
     length = (size_t)(end - type) - 3;
-    if (memchr(type + 2, 'r', length))
+    if (!graph && memchr(type + 2, 'r', length))
     {
         return 0;
     }
@@ -46,6 +46,57 @@ static int same_type(const char *left, const char *right)
 }
 
 
+/* EN: Retain a token that may have come from a temporary nested field schema.
+ * RU: Сохранить токен, который мог происходить из временной вложенной схемы. */
+static void save_type(FVM_StyxRef *ref, const char *type)
+{
+    size_t size = (size_t)(fvm_styxrpc_type_end(type) - type);
+    memcpy(ref->type, type, size);
+    ref->type[size] = 0;
+}
+
+
+/* EN: Track an ordinary argument position; graph identity ordinals are independent.
+ * RU: Учесть позицию обычного аргумента; номера идентификаторов графа независимы. */
+static int admit_slot(FVM_StyxRefs *refs)
+{
+    if (refs->graph)
+    {
+        return 1;
+    }
+    if (refs->slots == FVM_STYXRPC_REF_SLOTS)
+    {
+        return 0;
+    }
+    ++refs->slots;
+    return 1;
+}
+
+
+/* [GC:] EN: Snapshot before any nested encoding or allocation can collect the fields.
+ * RU: Снять исходные поля до вложенного кодирования и выделения памяти. */
+static int snapshot(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRef *ref,
+    const FVM_Value *value, unsigned count)
+{
+    unsigned i;
+    if (!count || !fvm_styxrpc_ref_snapshot(context, value->object, count, ref->original) ||
+        fvm_gc_roots_add(roots, value) != FVM_OK)
+    {
+        return 0;
+    }
+    ref->object = value->object;
+    ref->count = count;
+    for (i = 0; i < count; ++i)
+    {
+        if (fvm_gc_roots_add(roots, ref->original + i) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* [GC:] EN/RU: See managed_refs.h. / См. managed_refs.h. */
 int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
     const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
@@ -54,12 +105,13 @@ int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     char fields[STYXRPC_MANAGED_SHAPE];
     unsigned count, i;
     unsigned char id;
-    size_t size;
-    if (refs->slots == FVM_STYXRPC_REF_SLOTS)
+    unsigned char *body;
+    size_t size, room;
+    int ok;
+    if (!admit_slot(refs))
     {
         return 0;
     }
-    ++refs->slots;
     if (value->type == FVM_VALUE_NULL)
     {
         return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
@@ -74,43 +126,46 @@ int fvm_styxrpc_ref_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         if (ref->object == value->object)
         {
             id = (unsigned char)i;
-            return same_type(type, ref->type) &&
+            return ref->type[0] && same_type(type, ref->type) &&
                 fvm_srecord_write(STYXRPC_VALUE_REF, &id, 1, bytes, capacity, used) == FVM_S_OK;
         }
     }
-    ref = refs->definitions + refs->count;
-    count = fields_for(type, fields);
-    if (!count || !fvm_styxrpc_ref_snapshot(context, value->object, count, ref->original))
-    {
-        return 0;
-    }
-    for (i = 0; i < count; ++i)
-    {
-        if (fvm_gc_roots_add(roots, ref->original + i) != FVM_OK)
-        {
-            return 0;
-        }
-    }
-    ref->before.payload = refs->storage + refs->used;
-    if (!fvm_styxrpc_values_encode(context, roots, NULL, fields, ref->original, count,
-        refs->storage + refs->used, STYXRPC_MANAGED_LIMIT - refs->used, &size))
+    if (refs->count == refs->capacity)
     {
         return 0;
     }
     id = (unsigned char)refs->count;
-    if (fvm_srecord_write_pair(STYXRPC_VALUE_REF, &id, 1, ref->before.payload, size,
-        bytes, capacity, used) != FVM_S_OK)
+    ref = refs->definitions + refs->count++;
+    count = fvm_styxrpc_ref_fields(type, refs->graph, fields);
+    if (!snapshot(context, roots, ref, value, count))
     {
         return 0;
     }
-    ref->before.size = size;
-    ref->type = type;
-    ref->object = value->object;
-    ref->count = count;
-    ref->slot = refs->slots - 1;
-    refs->used += size;
-    ++refs->count;
-    return 1;
+    room = refs->graph ? capacity : STYXRPC_MANAGED_LIMIT - refs->used;
+    body = refs->graph ? malloc(room ? room : 1) : refs->storage + refs->used;
+    if (!body)
+    {
+        return 0;
+    }
+    ok = fvm_styxrpc_values_encode(context, roots, refs->graph ? refs : NULL, fields, ref->original, count,
+        body, room, &size) &&
+        fvm_srecord_write_pair(STYXRPC_VALUE_REF, &id, 1, body, size, bytes, capacity, used) == FVM_S_OK;
+    if (refs->graph)
+    {
+        free(body);
+    }
+    else if (ok)
+    {
+        ref->before.payload = body;
+        ref->before.size = size;
+        ref->slot = refs->slots - 1;
+        refs->used += size;
+    }
+    if (ok)
+    {
+        save_type(ref, type);
+    }
+    return ok;
 }
 
 
@@ -121,18 +176,17 @@ int fvm_styxrpc_ref_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     FVM_StyxRef *ref;
     char fields[STYXRPC_MANAGED_SHAPE];
     unsigned index, count, actual;
-    if (refs->slots == FVM_STYXRPC_REF_SLOTS)
+    if (!admit_slot(refs))
     {
         return 0;
     }
-    ++refs->slots;
     fvm_value_undefined(value);
     if (node->tag == STYXRPC_VALUE_NIL && !node->size)
     {
         value->type = FVM_VALUE_NULL;
         return 1;
     }
-    if (node->tag != STYXRPC_VALUE_REF || !node->size || node->payload[0] > refs->count)
+    if (node->tag != STYXRPC_VALUE_REF || !node->size || node->payload[0] > refs->count || node->payload[0] >= refs->capacity)
     {
         return 0;
     }
@@ -140,7 +194,7 @@ int fvm_styxrpc_ref_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     ref = refs->definitions + index;
     if (index < refs->count)
     {
-        if (node->size != 1 || !same_type(type, ref->type))
+        if (node->size != 1 || !ref->type[0] || !same_type(type, ref->type))
         {
             return 0;
         }
@@ -148,25 +202,29 @@ int fvm_styxrpc_ref_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         value->object = ref->object;
         return 1;
     }
-    count = fields_for(type, fields);
+    count = fvm_styxrpc_ref_fields(type, refs->graph, fields);
     if (!count)
     {
         return 0;
     }
+    ++refs->count;
+    ref->record = *node;
     ref->before.payload = node->payload + 1;
     ref->before.size = node->size - 1;
-    if (!fvm_styxrpc_values_decode(context, roots, NULL, fields, &ref->before,
+    if (!fvm_styxrpc_values_decode(context, roots, refs->graph ? refs : NULL, fields, &ref->before,
         ref->original, FVM_STYXRPC_REF_FIELDS, &actual) || actual != count ||
         fvm_exec_literal_array(context, count, ref->original, value) != FVM_OK ||
         fvm_gc_roots_add(roots, value) != FVM_OK)
     {
         return 0;
     }
-    ref->type = type;
+    save_type(ref, type);
     ref->object = value->object;
     ref->count = count;
-    ref->slot = refs->slots - 1;
-    ++refs->count;
+    if (!refs->graph)
+    {
+        ref->slot = refs->slots - 1;
+    }
     return 1;
 }
 
@@ -196,7 +254,7 @@ int fvm_styxrpc_refs_reply(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         FVM_Value current[FVM_STYXRPC_REF_FIELDS];
         size_t size, extent;
         unsigned field;
-        ok = fields_for(ref->type, fields) && fvm_styxrpc_ref_snapshot(context, ref->object, ref->count, current);
+        ok = fvm_styxrpc_ref_fields(ref->type, 0, fields) && fvm_styxrpc_ref_snapshot(context, ref->object, ref->count, current);
         for (field = 0; ok && field < ref->count; ++field)
         {
             ok = fvm_gc_roots_add(roots, current + field) == FVM_OK;
@@ -267,7 +325,7 @@ int fvm_styxrpc_refs_stage(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
             char fields[STYXRPC_MANAGED_SHAPE];
             size_t used;
             unsigned count;
-            if (!fields_for(ref->type, fields) ||
+            if (!fvm_styxrpc_ref_fields(ref->type, 0, fields) ||
                 fvm_srecord_read(tail.payload, tail.size, STYXRPC_MANAGED_LIMIT, &node, &used) != FVM_S_OK ||
                 node.tag != STYXRPC_VALUE_REF || node.size < 2)
             {

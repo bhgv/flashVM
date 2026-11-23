@@ -94,9 +94,11 @@ Generate a .m from the same formal types used for native dispatch. Supply ADT fi
 
 ## Nested reference graphs
 
-Direct mounted Dis calls can use the positional value-only graph protocol. The example updates a nested object and preserves its Limbo identity.
+Direct mounted Dis calls use the positional value graph protocol for nested and returned refs. A standalone C program can invoke a graph or publish a module through the hosted SDK. Both use the same compiled interface, positional frames and sparse updates as DisVM. The independent C client example checks a nested update over a Styx fid.
 
 [`styxrpc_graph_profile`](reference/graph_profile.md) · [`styxrpc_graph_request`](reference/graph_request.md) · [`styxrpc_graph_arguments`](reference/graph_arguments.md) · [`styxrpc_graph_reply`](reference/graph_reply.md) · [`styxrpc_graph_read`](reference/graph_read.md)
+
+[`styxrpc_graph_invoke`](reference/graph_invoke.md) · [`styxrpc_graph_module_init`](reference/graph_module_init.md) · [Sparse graph updates](reference/graph_updates.md)
 
 ## UniBus channel frames
 

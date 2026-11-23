@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#define STYXRPC_GRAPH_KEY_LIMIT 256U /* Full graph identity byte space. */
+#define STYXRPC_GRAPH_RESULT_TAG 90UL /* Existing typed result list. */
 #define STYXRPC_GRAPH_REQUEST_TAG 112UL /* Dis positional sparse-ref request. */
 #define STYXRPC_GRAPH_UPDATES_TAG 19UL  /* Positional sparse-ref update list. */
 #define STYXRPC_GRAPH_ARGUMENT_TAG 18UL /* Direct argument position, field mask, values. */
@@ -54,6 +56,31 @@ StyxRpcStatus styxrpc_graph_reply(const StyxRpcSchema *schema, const void *reque
  * RU: Проверить оба полных кадра и выдать представления после всех проверок. */
 StyxRpcStatus styxrpc_graph_read(const StyxRpcSchema *schema, const void *request, size_t request_size,
     const void *reply, size_t reply_size, StyxRpcGraphReply *decoded);
+
+typedef struct StyxRpcGraphFields
+{
+    char shape[STYXRPC_MANAGED_SHAPE]; /* Selected flattened field types. */
+    FVM_SRecord children;             /* Borrowed encoded selected children. */
+    unsigned mask;                    /* Flattened field bits. */
+} StyxRpcGraphFields;
+
+
+/* EN: Resolve a checked positional update to the original request identity.
+ * RU: Разрешить проверенное позиционное обновление в ID исходного запроса. */
+int styxrpc_graph_update_index(const StyxRpcSchema *schema, const FVM_SRecord *arguments,
+    const FVM_SRecord *update, size_t originals, size_t *index);
+
+
+/* EN: Extract selected flattened field types from a checked update.
+ * RU: Извлечь типы выбранных полей из проверенного обновления. */
+int styxrpc_graph_update_fields(const char *type, const FVM_SRecord *update, StyxRpcGraphFields *fields);
+
+
+/* EN: Encode one sparse positional update, or used=0 when unchanged.
+ * RU: Кодировать одно разреженное обновление; used=0 при равенстве. */
+int styxrpc_graph_diff(const StyxRpcSchema *schema, const FVM_SRecord *arguments, size_t index,
+    const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *scratch, size_t scratch_size, void *bytes, size_t capacity, size_t *used);
 
 #ifdef __cplusplus
 }

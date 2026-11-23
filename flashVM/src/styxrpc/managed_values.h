@@ -10,6 +10,11 @@
 #define FVM_STYXRPC_ARRAY_ITEMS 2048U /* Local per-array conversion limit. */
 
 
+/* EN: Raise a diagnostic, retaining any prior exception from the runtime.
+ * RU: Выдать диагностику с сохранением существующего исключения среды. */
+FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message);
+
+
 /* EN: Find the end of a verified type token including its compound fields.
  * RU: Найти конец проверенного токена вместе с составными полями. */
 const char *fvm_styxrpc_type_end(const char *type);
@@ -18,6 +23,11 @@ const char *fvm_styxrpc_type_end(const char *type);
 /* EN: Verify supported bounded lists and a void or single by-value result.
  * RU: Проверить ограниченные схемы значений и пустой либо одиночный результат. */
 int fvm_styxrpc_values_supported(const StyxRpcSchema *schema);
+
+
+/* EN: Check the bounded AS value grammar for positional graph calls.
+ * RU: Проверить ограниченную грамматику значений AS для позиционного графа. */
+int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema);
 
 
 /* [GC:] EN: Read owned AS values and root them through the caller's scope.

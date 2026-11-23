@@ -13,7 +13,7 @@
 
 /* EN: Raise a local bridge diagnostic, retaining any exception from a getter.
  * RU: Выдать диагностику моста, сохраняя исключение геттера. */
-static FVM_Result fail(FVM_Context *context, const char *message)
+FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message)
 {
     FVM_Value error;
     FVM_Result status = fvm_exception_get(context, &error);
@@ -37,6 +37,7 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
     unsigned char *reply;
     size_t size;
     unsigned count;
+    FVM_StyxRef definitions[FVM_STYXRPC_REF_SLOTS] = {0};
     FVM_StyxRefs refs = {0};
     FVM_Value decoded;
     StyxRpcManagedReply result;
@@ -45,7 +46,7 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
     (void)self;
     if (!fvm_styxrpc_values_supported(&target->schema))
     {
-        return fail(context, "Styx RPC managed schema is unsupported");
+        return fvm_styxrpc_managed_fail(context, "Styx RPC managed schema is unsupported");
     }
     buffers = malloc((strchr(target->schema.arguments, 'r') ? 3U : 2U) * STYXRPC_MANAGED_LIMIT);
     if (!buffers)
@@ -53,6 +54,8 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
         return FVM_OUT_OF_MEMORY;
     }
     reply = buffers + STYXRPC_MANAGED_LIMIT;
+    refs.definitions = definitions;
+    refs.capacity = FVM_STYXRPC_REF_SLOTS;
     refs.storage = strchr(target->schema.arguments, 'r') ? reply + STYXRPC_MANAGED_LIMIT : NULL;
     status = fvm_gc_roots_begin(context, &roots);
     if (status == FVM_OK)
@@ -100,7 +103,7 @@ static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigne
         fvm_gc_roots_end(roots);
     }
     free(buffers);
-    return error ? fail(context, error) : status;
+    return error ? fvm_styxrpc_managed_fail(context, error) : status;
 }
 
 
@@ -126,6 +129,7 @@ static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, St
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
     FVM_Value values[FVM_STYXRPC_LIST_ITEMS], result;
+    FVM_StyxRef definitions[FVM_STYXRPC_REF_SLOTS] = {0};
     FVM_StyxRefs refs = {0};
     unsigned count;
     int ok;
@@ -134,6 +138,8 @@ static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, St
     {
         return STYXRPC_REMOTE_ERROR;
     }
+    refs.definitions = definitions;
+    refs.capacity = FVM_STYXRPC_REF_SLOTS;
     ok = fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, arguments,
         values, FVM_STYXRPC_LIST_ITEMS, &count) &&
         fvm_avm1_call(context, binding->function, NULL, count, values, &result) == FVM_OK &&

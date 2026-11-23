@@ -35,7 +35,7 @@ StyxRpcStatus styxrpc_graph_profile(const char *name, uint32_t signature, const 
     *used = 0;
     return bytes && styxscalar_name_length(name) && name[0] != '.' && !strchr(name, '/') &&
         checked_shape(schema, &shape) && styxshaperequest(signature, &shape) == STYX_MANAGED_REQUEST_TAG &&
-        (strchr(shape.arguments, 'h') || strchr(shape.result, 'h') || styxmanaged_graph_required(shape.arguments)) &&
+        (styxmanaged_graph_required(shape.arguments) || strpbrk(shape.result, "rh")) &&
         styxshapedoffer(name, signature, &shape, bytes, capacity, used) ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
@@ -125,4 +125,65 @@ StyxRpcStatus styxrpc_graph_read(const StyxRpcSchema *schema, const void *reques
     }
     *decoded = result;
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See graph.h. / См. graph.h. */
+int styxrpc_graph_update_index(const StyxRpcSchema *schema, const FVM_SRecord *arguments,
+    const FVM_SRecord *update, size_t originals, size_t *index)
+{
+    StyxCallShape shape;
+    StyxGraphPositions positions;
+    return arguments && arguments->tag == STYXRPC_GRAPH_REQUEST_TAG &&
+        (arguments->payload || !arguments->size) && update && update->payload && index &&
+        originals <= STYXRPC_GRAPH_KEY_LIMIT && checked_shape(schema, &shape) &&
+        styxmanaged_graph_positions(shape.arguments, arguments, &positions) &&
+        styxmanaged_graph_update_index(&positions, update, originals, index);
+}
+
+
+/* EN/RU: See graph.h. / См. graph.h. */
+int styxrpc_graph_update_fields(const char *type, const FVM_SRecord *update, StyxRpcGraphFields *fields)
+{
+    StyxFieldDelta change;
+    if (!type || !update || !update->payload || !fields || !styxmanaged_graph_fields(type, update, &change))
+    {
+        return 0;
+    }
+    strcpy(fields->shape, change.schema);
+    fields->children = change.fields;
+    fields->mask = change.mask;
+    return 1;
+}
+
+
+/* EN/RU: See graph.h. / См. graph.h. */
+int styxrpc_graph_diff(const StyxRpcSchema *schema, const FVM_SRecord *arguments, size_t index,
+    const char *type, const FVM_SRecord *before, const FVM_SRecord *after,
+    void *scratch, size_t scratch_size, void *bytes, size_t capacity, size_t *used)
+{
+    StyxCallShape shape;
+    StyxGraphPositions positions;
+    size_t changed;
+    if (!used || !arguments || arguments->tag != STYXRPC_GRAPH_REQUEST_TAG ||
+        (!arguments->payload && arguments->size) || !type || !before || !after ||
+        before->tag != STYXRPC_VALUE_REF || after->tag != STYXRPC_VALUE_REF ||
+        !before->payload || !after->payload || !before->size || !after->size ||
+        !scratch || !scratch_size || !bytes || index >= STYXRPC_GRAPH_KEY_LIMIT ||
+        before->payload[0] != index || after->payload[0] != index ||
+        !checked_shape(schema, &shape) ||
+        !styxmanaged_graph_positions(shape.arguments, arguments, &positions) ||
+        !styxmanaged_graph_diff(type, before, after, scratch, scratch_size, &changed))
+    {
+        return 0;
+    }
+    unsigned position = positions.argument[index];
+    unsigned char selector = position ? (unsigned char)(position - 1) : (unsigned char)index;
+    if (!changed)
+    {
+        *used = 0;
+        return 1;
+    }
+    return fvm_srecord_write_pair(position ? STYXRPC_GRAPH_ARGUMENT_TAG : STYXRPC_VALUE_REF,
+        &selector, 1, scratch, changed, bytes, capacity, used) == FVM_S_OK;
 }

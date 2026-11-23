@@ -15,6 +15,7 @@
 #include "styxrpc/managed-test.h"
 #include "styxrpc/session-test.h"
 #include "styxrpc/ref-test.h"
+#include "styxrpc/graph-test.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -159,7 +160,7 @@ static void *serve_reverse(void *state)
 /* EN: Consume fd, mount the Dis provider and serve its reverse handshake concurrently.
  * RU: Принять fd, смонтировать провайдера Dis и параллельно обслуживать встречный поток. */
 static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcManagedTarget *managed,
-    FVM_StyxRpcSession *launch, int refs, int fd)
+    FVM_StyxRpcSession *launch, const char *role, int fd)
 {
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), HOST_MUX_LIMIT);
     if (!mux)
@@ -197,7 +198,8 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
         if (managed)
         {
             managed->session = session;
-            ok = refs ? test_refs_call(context, managed) : test_managed_call(context, managed);
+            ok = !strcmp(role, "graph-call") ? test_graph_call(context, managed) :
+                !strcmp(role, "ref-call") ? test_refs_call(context, managed) : test_managed_call(context, managed);
         }
         else if (launch)
         {
@@ -226,7 +228,8 @@ int main(int argc, char **argv)
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
         strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") &&
-        strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call")))
+        strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
+        strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call")))
     {
         return 2;
     }
@@ -252,6 +255,10 @@ int main(int argc, char **argv)
         {
             ok = test_managed_serve(context, (int)fd);
         }
+        else if (!strcmp(argv[1], "graph-serve"))
+        {
+            ok = test_graph_serve(context, (int)fd);
+        }
         else if (!strcmp(argv[1], "ref-serve"))
         {
             ok = test_refs_serve(context, (int)fd);
@@ -262,9 +269,10 @@ int main(int argc, char **argv)
         }
         else
         {
-            int refs = !strcmp(argv[1], "ref-call");
-            ok = call_dis(context, &binding, refs || !strcmp(argv[1], "managed-call") ? &managed : NULL,
-                !strcmp(argv[1], "launch") ? &session : NULL, refs, (int)fd);
+            int managed_call = !strcmp(argv[1], "ref-call") || !strcmp(argv[1], "graph-call") ||
+                !strcmp(argv[1], "managed-call");
+            ok = call_dis(context, &binding, managed_call ? &managed : NULL,
+                !strcmp(argv[1], "launch") ? &session : NULL, argv[1], (int)fd);
         }
         fvm_context_destroy(context);
     }

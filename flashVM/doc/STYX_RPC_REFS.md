@@ -27,10 +27,9 @@ remain rooted through the operation. A remote error or local commit
 failure leaves all participating local ref slots intact. A local commit
 failure can happen after the remote function has run.
 
-The supported profile is ordinary managed ref write-back. Returned refs,
-refs nested within ADTs or arrays, sparse graph deltas and live channels
-are outside the FlashVM mapping in this release. The SDK's existing
-graph and channel machinery remains available to external programs.
+Use the [positional graph binding](STYX_RPC_GRAPH.md) for returned refs,
+refs nested within ADTs or arrays, and sparse graph deltas. The independent SDK
+also supports live channels.
 
 The [Limbo interface](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/flashvm/refs.m) and
 [FlashVM acceptance host](../tests/styxrpc/refs.c) exercise aliasing,

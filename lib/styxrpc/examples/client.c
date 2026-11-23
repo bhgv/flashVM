@@ -1,8 +1,10 @@
 /* Copyright (c) 2026 bhgv
- * EN: Call the native scalar and managed exports via one Styx connection.
- * RU: Вызвать скалярные и управляемые экспорты по одному соединению Styx.
+ * EN: Call scalar, managed and graph exports via one Styx connection.
+ * RU: Вызвать скалярные, управляемые и графовые экспорты по одному соединению Styx.
  */
 #include "client.h"
+#include "graph_device.h"
+#include "styxrpc/graph_client.h"
 #include "styxrpc/managed_client.h"
 #include "styxrpc/vfs_client.h"
 #include <limits.h>
@@ -86,6 +88,38 @@ static int exercise_vfs(StyxClient *client)
 }
 
 
+/* EN: Invoke the nested device ref and decode its sparse change using only C.
+ * RU: Вызвать устройство с вложенным ref и декодировать изменение средствами C. */
+static int exercise_graph(StyxClient *client)
+{
+    const StyxRpcManagedTarget target = {
+        client, "mounted/device.dis", "bump", BUMP_SIGNATURE, {"(r[r[i]])", "()"}, 0, 1000
+    };
+    unsigned char value[24], leaf[48], arguments[72], request[96], reply[256];
+    const unsigned char parent_id = 0, child_id = 1;
+    size_t value_size, leaf_size, size, request_size, used, index;
+    FVM_SRecord original, update;
+    StyxRpcGraphReply decoded;
+    StyxRpcGraphFields fields;
+    int64_t counter;
+    return styxrpc_value_integer(STYXRPC_VALUE_INT, 41, value, sizeof(value), &value_size) == STYXRPC_OK &&
+        fvm_srecord_write_pair(STYXRPC_VALUE_REF, &child_id, 1, value, value_size,
+            leaf, sizeof(leaf), &leaf_size) == FVM_S_OK &&
+        fvm_srecord_write_pair(STYXRPC_VALUE_REF, &parent_id, 1, leaf, leaf_size,
+            arguments, sizeof(arguments), &size) == FVM_S_OK &&
+        styxrpc_graph_invoke(&target, arguments, size, reply, sizeof(reply), &decoded) == STYXRPC_CALL_OK &&
+        decoded.result.tag == STYXRPC_VALUE_NIL && decoded.result.size == 0 &&
+        styxrpc_graph_request(&target.schema, arguments, size, request, sizeof(request), &request_size) == STYXRPC_OK &&
+        styxrpc_graph_arguments(&target.schema, request, request_size, &original) == STYXRPC_OK &&
+        fvm_srecord_read(decoded.updates.payload, decoded.updates.size, sizeof(reply), &update, &used) == FVM_S_OK &&
+        used == decoded.updates.size &&
+        styxrpc_graph_update_index(&target.schema, &original, &update, 2, &index) && index == child_id &&
+        styxrpc_graph_update_fields("r[i]", &update, &fields) && fields.mask == 1 &&
+        styxrpc_value_get_integer(STYXRPC_VALUE_INT, fields.children.payload, fields.children.size,
+            &counter) == STYXRPC_OK && counter == 42;
+}
+
+
 /* EN: Take the connected fd in argv[1]. The mount consumes it.
  * Return 2 for bad arguments, 1 for setup/RPC failure, or 0 for checked outcomes.
  * RU: Принять подключённый fd из argv[1]. Монтирование забирает fd.
@@ -103,7 +137,7 @@ int main(int argc, char **argv)
     {
         return 1;
     }
-    int good = exercise(client) && exercise_managed(client) && exercise_vfs(client);
+    int good = exercise(client) && exercise_managed(client) && exercise_graph(client) && exercise_vfs(client);
     styxclientshutdown(client);
     styxclientfree(client);
     if (good)

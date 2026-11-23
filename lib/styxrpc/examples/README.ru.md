@@ -11,8 +11,10 @@ python3 examples/socketpair.py build/styxrpc-device build/styxrpc-client
 
 Сценарий запускает два C-процесса на разных концах сокета. Устройство
 публикует `sample` в `/mounted/device.dis`, удерживает состояние на fid и
-вызывает колбэк инкремента один раз после полного запроса. Клиент открывает
-новый fid для каждого из двух вызовов и проверяет ответы. При успехе он
+вызывает колбэк инкремента один раз после полного запроса. Клиент использует
+новые fid для скалярных вызовов, обычного обновления ref и вложенного графа
+через [`styxrpc_graph_invoke`](../reference/graph_invoke.ru.md). Через позиционный
+API VFS он читает и записывает регистр. При успехе клиент
 печатает `PASS native C calls standalone C device`. Клиент дочитывает ответ
 до clunk. Неподтверждённая передача завершает проверку с ошибкой, сценарий
 завершает оба процесса.
@@ -168,5 +170,5 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 
 Для FlashVM соберите [исполняемый тест адаптера](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.ru.md#сборка) и передайте
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Запустите
-`ctest --test-dir build -R 'styxrpc-((managed-|ref-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
-Двенадцать проверок охватывают скалярные, управляемые вызовы и передачу ref в двух направлениях и обоих режимах DisVM. Ещё три проверяют именованный запуск из ActionScript, встречные ресурсы, отмену и позиционное I/O на независимом устройстве C.
+`ctest --test-dir build -R 'styxrpc-((managed-|ref-|graph-)?(flash-to-dis|dis-to-flash)|flashvm-)' --output-on-failure`.
+Шестнадцать проверок охватывают скалярные и управляемые вызовы, обычные ref и позиционные графы в двух направлениях и обоих режимах DisVM. Графовые вызовы проверяют вложенные и возвращаемые ссылки, массивы ref, изменение кортежа и откат. Ещё три проверяют именованный запуск из ActionScript, встречные ресурсы, отмену и позиционное I/O на независимом устройстве C.

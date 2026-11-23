@@ -17,7 +17,7 @@ StyxRpcOutcome styxrpc_scalar_invoke(StyxClient *session, const char *module, co
         return STYXRPC_CALL_NOT_SENT;
     }
     int scoped;
-    StyxFid *fid = styxrpc_client_function(session, module, name, signature, NULL, &scoped);
+    StyxFid *fid = styxrpc_client_function(session, module, name, signature, NULL, NULL, &scoped);
     if (!fid)
     {
         return STYXRPC_CALL_NOT_SENT;

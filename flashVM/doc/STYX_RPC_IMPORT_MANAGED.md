@@ -22,8 +22,8 @@ strings/arrays and `undefined` for a void result. Sequences use a numeric
 length and own indexed properties. Reading those properties can execute
 getters on the owner thread. A sequence has at most 2048 entries and the
 encoded frame has at most 64 KiB. Tuples must match in arity. Arguments and
-results are copied by value. [Ordinary ref arguments](STYX_RPC_REFS.md) support copy-back. Reference
-graphs, hybrid tables and channels are outside this AS binding.
+results are copied by value. [Ordinary ref arguments](STYX_RPC_REFS.md) support copy-back.
+For nested or returned refs, use the [graph binding](STYX_RPC_IMPORT_GRAPH.md).
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) means the local registration succeeded. Invalid binding data
 returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Each call reports argument, profile,
