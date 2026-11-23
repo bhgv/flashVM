@@ -1,5 +1,13 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1706 / Контрольная точка v0.1706. The FlashVM–DisVM bridge now
+exchanges managed copied values using libstyxrpc and the same compiled-interface
+verifier as DisVM. Linux amd64 acceptance covers both directions, both DisVM
+execution modes, fragmented arrays, counted Unicode, nil and remote errors.
+Независимый C-клиент проверяет управляемый вызов и обновление плоского ref.
+Привязки ссылок, каналов, VFS и запуска к ActionScript остаются открытыми.
+[EN](STYX_RPC.md) / [RU](STYX_RPC.ru.md).
+
 Checkpoint v0.1698: directory-relative removal unlinks final symlinks and removes only empty directories. DisVM Sys.remove retains namespace selection through native I/O; opened files/modules survive unlink. Windows backend remains UNSUPPORTED, complete VFS/union and all Flash compatibility stages stay open. [EN](DIRECTORY_REMOVE.md) / [RU](DIRECTORY_REMOVE.ru.md).
 
 Checkpoint v0.1697: portable directory anchors retain POSIX directory identity through rename and support independent relative file/directory operations. DisVM namespace groups and in-flight imports retain these handles without global execution exclusion. Windows returns UNSUPPORTED; physical non-Linux acceptance, full Chan/provider VFS and all Flash compatibility stages remain open. [EN](DIRECTORY_ANCHORS.md) / [RU](DIRECTORY_ANCHORS.ru.md).

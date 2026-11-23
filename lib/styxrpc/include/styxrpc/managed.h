@@ -91,6 +91,11 @@ StyxRpcStatus styxrpc_value_integer(unsigned long tag, int64_t value, void *byte
     size_t capacity, size_t *used);
 
 
+/* EN: Decode one complete managed integer child, preserving value on failure.
+ * RU: Декодировать целую дочернюю запись, сохраняя value при отказе. */
+StyxRpcStatus styxrpc_value_get_integer(unsigned long tag, const void *bytes, size_t size, int64_t *value);
+
+
 /* EN: Write the single export's compatible shaped .interface entry into bytes.
  * RU: Записать совместимый типизированный экспорт .interface в bytes. */
 StyxRpcStatus styxrpc_managed_profile(const StyxRpcManagedExport *exported,

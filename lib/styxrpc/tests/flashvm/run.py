@@ -55,29 +55,32 @@ def main():
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash"), required=True)
+    parser.add_argument("--managed", action="store_true")
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
     mode = "--jit" if args.jit else "--no-jit"
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
+        action = "managed-" if args.managed else ""
         if args.direction == "flash-to-dis":
             image = compile_image(args, directory, tests / "limbo.b", "limbo.dis")
             dispatcher = compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
             exchange(
                 directory,
                 lambda fd: [args.runtime, "--styx-library-serve-fd", fd, "--export", image.name,
-                            image.name, "next", "--", "--native-spawn", mode, dispatcher.name],
-                lambda fd: [args.flash_host, "call", fd],
+                            image.name, "echo" if args.managed else "next", "--", "--native-spawn", mode, dispatcher.name],
+                lambda fd: [args.flash_host, action + "call", fd],
                 "PASS FlashVM Styx RPC host",
             )
         else:
-            image = compile_image(args, directory, tests / "client.b", "client.dis")
+            image = compile_image(args, directory, tests / ("values.b" if args.managed else "client.b"), "client.dis")
             exchange(
                 directory,
-                lambda fd: [args.flash_host, "serve", fd],
+                lambda fd: [args.flash_host, action + "serve", fd],
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, "--raw", "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
+                "PASS DisVM loaded FlashVM managed values through Styx RPC" if args.managed else
                 "PASS DisVM loaded FlashVM AVM1 through Styx RPC",
             )
 

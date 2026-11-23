@@ -56,6 +56,12 @@ if(STYXRPC_FLASHVM_TEST_HOST)
                     ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
                     --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" ${mode_args})
             set_tests_properties("${test_name}" PROPERTIES TIMEOUT 75)
+            set(managed_test_name "styxrpc-managed-${direction}-${mode}")
+            add_test(NAME "${managed_test_name}"
+                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                    --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction "${direction}" --managed ${mode_args})
+            set_tests_properties("${managed_test_name}" PROPERTIES TIMEOUT 75)
         endforeach()
     endforeach()
 endif()

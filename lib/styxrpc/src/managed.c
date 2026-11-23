@@ -54,6 +54,23 @@ StyxRpcStatus styxrpc_value_integer(unsigned long tag, int64_t value, void *byte
 
 
 /* EN/RU: See managed.h. / См. managed.h. */
+StyxRpcStatus styxrpc_value_get_integer(unsigned long tag, const void *bytes, size_t size, int64_t *value)
+{
+    StyxScalarKind kind;
+    int64_t decoded;
+    if (!value || !styxscalarread(tag, bytes, size, &kind, &decoded) || kind != STYX_SCALAR_VALUE ||
+        !(tag == STYXRPC_VALUE_BIG ||
+          (tag == STYXRPC_VALUE_INT && decoded >= INT32_MIN && decoded <= INT32_MAX) ||
+          (tag == STYXRPC_VALUE_BYTE && decoded >= 0 && decoded <= UINT8_MAX)))
+    {
+        return STYXRPC_INVALID;
+    }
+    *value = decoded;
+    return STYXRPC_OK;
+}
+
+
+/* EN/RU: See managed.h. / См. managed.h. */
 StyxRpcStatus styxrpc_managed_profile(const StyxRpcManagedExport *exported,
     void *bytes, size_t capacity, size_t *size)
 {

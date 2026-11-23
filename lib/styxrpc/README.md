@@ -74,6 +74,8 @@ Enable `STYXRPC_HOSTED` for `StyxRpc::launch`. The native client drives the curr
 
 [`styxrpc_managed_profile`](reference/managed_profile.md) · [`styxrpc_managed_open`](reference/managed_open.md) · [`styxrpc_managed_write`](reference/managed_write.md) · [`styxrpc_managed_finish`](reference/managed_finish.md) · [`styxrpc_managed_read`](reference/managed_read.md) · [`styxrpc_managed_close`](reference/managed_close.md) · [`styxrpc_managed_request`](reference/managed_request.md) · [`styxrpc_managed_reply`](reference/managed_reply.md) · [`styxrpc_value_integer`](reference/value_integer.md) · [`styxrpc_launch_start`](reference/launch_start.md) · [`styxrpc_launch_status`](reference/launch_status.md)
 
+Use [managed invoke](reference/managed_invoke.md) to call the compiled managed profile from an independent program and [managed module publication](reference/managed_module_init.md) to export synchronous callbacks. The portable codec also exposes [integer decoding](reference/value_get_integer.md).
+
 ## Process registration
 
 Register the process and its variable, FD and VFS resources on the dispatcher, using fixed caller storage. Each open gets an independent cookie if the application supplies one.

@@ -3,17 +3,9 @@
  * RU: Публикация неизменяемого скалярного интерфейса и независимых fid функций.
  */
 #include "styxrpc/scalar_module.h"
+#include "module_nodes.h"
 #include <stdlib.h>
 #include <string.h>
-
-enum
-{
-    ROOT = 0,     /* Server expects logical root zero. */
-    MOUNTED,      /* Directory containing published modules. */
-    MODULE,       /* Loadable module directory. */
-    INTERFACE,    /* Read-only compiled profile. */
-    FIRST_EXPORT  /* Base ID for the registered function files. */
-};
 
 typedef struct ScalarFile
 {
@@ -26,21 +18,17 @@ typedef struct ScalarFile
 StyxRpcStatus styxrpc_scalar_module_init(StyxRpcScalarModule *module, const char *name,
     const StyxRpcExport *exports, size_t count)
 {
-    if (!module || !name || !*name || strlen(name) > STYXRPC_TREE_NAME ||
-        strchr(name, '/') || !strcmp(name, ".") || !strcmp(name, "..") ||
+    if (!module || !styxrpc_module_name(name) ||
         styxrpc_profile(exports, count, module->profile, sizeof(module->profile), &module->profile_size) != STYXRPC_OK)
     {
         return STYXRPC_INVALID;
     }
     module->exports = exports;
     module->count = count;
-    module->entries[ROOT] = (StyxRpcEntry){ROOT, "/", 0555, 1};
-    module->entries[MOUNTED] = (StyxRpcEntry){MOUNTED, "mounted", 0555, 1};
-    module->entries[MODULE] = (StyxRpcEntry){MODULE, name, 0555, 1};
-    module->entries[INTERFACE] = (StyxRpcEntry){INTERFACE, ".interface", 0444, 0};
+    styxrpc_module_nodes(module->entries, name);
     for (size_t i = 0; i < count; ++i)
     {
-        module->entries[FIRST_EXPORT + i] = (StyxRpcEntry){FIRST_EXPORT + i, exports[i].name, 0777, 0};
+        styxrpc_module_export_node(module->entries, i, exports[i].name);
     }
     return STYXRPC_OK;
 }
@@ -51,11 +39,7 @@ StyxRpcStatus styxrpc_scalar_module_init(StyxRpcScalarModule *module, const char
 static const StyxRpcEntry *enumerate(void *context, uint64_t dir, size_t index)
 {
     const StyxRpcScalarModule *module = context;
-    if ((dir == ROOT || dir == MOUNTED) && !index)
-    {
-        return module->entries + dir + 1;
-    }
-    return dir == MODULE && index <= module->count ? module->entries + INTERFACE + index : NULL;
+    return styxrpc_module_child(module->entries, module->count, dir, index);
 }
 
 
@@ -64,14 +48,7 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t dir, size_t index)
 static int describe(void *context, uint64_t id, StyxRpcNode *node)
 {
     const StyxRpcScalarModule *module = context;
-    if (id >= FIRST_EXPORT + module->count)
-    {
-        return 0;
-    }
-    *node = (StyxRpcNode){.entry = module->entries[id],
-        .parent = id <= MOUNTED ? ROOT : id == MODULE ? MOUNTED : MODULE,
-        .length = id == INTERFACE ? module->profile_size : 0};
-    return 1;
+    return styxrpc_module_stat(module->entries, module->count, module->profile_size, id, node);
 }
 
 

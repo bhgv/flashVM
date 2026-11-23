@@ -1,6 +1,6 @@
 # Connecting FlashVM and DisVM through libstyxrpc
 
-[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md)
+[Русский](STYX_RPC.ru.md) · [Import an int function](STYX_RPC_IMPORT_INT.md) · [Export an int function](STYX_RPC_EXPORT_INT.md) · [Import a managed function](STYX_RPC_IMPORT_MANAGED.md) · [Export a managed function](STYX_RPC_EXPORT_MANAGED.md)
 
 FlashVM and DisVM communicate through libstyxrpc over Styx. Supply an authorized,
 connected carrier to the Styx SDK. A module publishes its compiled interface as
@@ -8,12 +8,12 @@ connected carrier to the Styx SDK. A module publishes its compiled interface as
 UniBus S-records. Values cross the connection. Each VM owns its own objects,
 garbage collector and execution threads.
 
-The current FlashVM adapter maps ActionScript numbers to exact signed
+The scalar adapter maps ActionScript numbers to exact signed
 `fn(int): int` imports and exports. An imported name is an ordinary callable AS
 global. DisVM uses a normal typed Limbo `load` to load FlashVM-backed exports.
 The adapter is in `flashvm_styxrpc`, and the independent libstyxrpc SDK is
 usable from any C program. External and DisVM-side scalar clients use the same
-interface verifier, signature checks and record format. Extending the
+interface verifier, signature and schema checks, and record format. Extending the
 DisVM-side implementation requires preserving that common contract.
 
 ## Build
@@ -34,7 +34,9 @@ Link the `flashvm_styxrpc` target in the application and include
 That test starts both VMs and checks both call directions and error recovery,
 with DisVM in interpreter and JIT mode.
 
-Use a dedicated FlashVM owner context for synchronous RPC. The adapter currently
-covers scalar `int` calls. Managed arguments and results, VFS resources, channels
-and launch are part of libstyxrpc's broader interface. Their ActionScript
-bindings and migration of existing in-process editor bridges are separate work.
+Use a dedicated FlashVM owner context for synchronous RPC. The adapter covers scalar `int` and managed copied values, including
+strings, arrays, tuples and nil. The external client uses the same signature
+and shape verification as DisVM. Acceptance covers fragmented Styx array writes,
+Unicode with embedded NUL, and rejection before writing on shape mismatch
+or a missing reverse PID. Reference, channel, VFS and launch bindings for
+ActionScript and migration of existing in-process editor bridges remain open.

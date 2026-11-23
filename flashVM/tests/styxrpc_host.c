@@ -12,6 +12,7 @@
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
+#include "styxrpc/managed-test.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -155,7 +156,7 @@ static void *serve_reverse(void *state)
 
 /* EN: Consume fd, mount the Dis provider and serve its reverse handshake concurrently.
  * RU: Принять fd, смонтировать провайдера Dis и параллельно обслуживать встречный поток. */
-static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, int fd)
+static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcManagedTarget *managed, int fd)
 {
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), HOST_MUX_LIMIT);
     if (!mux)
@@ -163,9 +164,10 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, int fd)
         return 0;
     }
     StyxRpcPrograms programs;
-    StyxRpcRegistration storage[2];
+    StyxRpcRegistration storage[16];
     StyxRpcServer *reverse = NULL;
-    if (styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)))
+    if (styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)) &&
+        (!managed || styxrpc_program_add(&programs, TEST_MANAGED_PID)))
     {
         reverse = styxrpc_server_create(phybidirchannel(mux, 1), &styxrpc_program_tree, &programs);
     }
@@ -184,7 +186,19 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, int fd)
         fputs("Cannot mount DisVM provider\n", stderr);
     }
     binding->session = session;
-    int ok = session && exercise_import(context, binding);
+    int ok = 0;
+    if (session)
+    {
+        if (managed)
+        {
+            managed->session = session;
+            ok = test_managed_call(context, managed);
+        }
+        else
+        {
+            ok = exercise_import(context, binding);
+        }
+    }
     binding->session = NULL;
     styxclientshutdown(session);
     styxclientfree(session);
@@ -200,7 +214,8 @@ int main(int argc, char **argv)
 {
     char *end;
     long fd = argc == 3 ? strtol(argv[2], &end, 10) : -1;
-    if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call")))
+    if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
+        strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call")))
     {
         return 2;
     }
@@ -214,9 +229,21 @@ int main(int argc, char **argv)
     }
     int ok = 0;
     FVM_StyxRpcImport binding = {NULL, "mounted/limbo.dis", "next", HOST_TIMEOUT};
+    StyxRpcManagedTarget managed = {0};
     if (fvm_context_create(runtime, &context) == FVM_OK)
     {
-        ok = !strcmp(argv[1], "serve") ? serve_flash(context, (int)fd) : call_dis(context, &binding, (int)fd);
+        if (!strcmp(argv[1], "serve"))
+        {
+            ok = serve_flash(context, (int)fd);
+        }
+        else if (!strcmp(argv[1], "managed-serve"))
+        {
+            ok = test_managed_serve(context, (int)fd);
+        }
+        else
+        {
+            ok = call_dis(context, &binding, !strcmp(argv[1], "managed-call") ? &managed : NULL, (int)fd);
+        }
         fvm_context_destroy(context);
     }
     fvm_runtime_destroy(runtime);

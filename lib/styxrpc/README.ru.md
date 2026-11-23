@@ -76,6 +76,8 @@ fid. Диспетчер сериализует операции одного fid
 
 [`styxrpc_managed_profile`](reference/managed_profile.ru.md) · [`styxrpc_managed_open`](reference/managed_open.ru.md) · [`styxrpc_managed_write`](reference/managed_write.ru.md) · [`styxrpc_managed_finish`](reference/managed_finish.ru.md) · [`styxrpc_managed_read`](reference/managed_read.ru.md) · [`styxrpc_managed_close`](reference/managed_close.ru.md) · [`styxrpc_managed_request`](reference/managed_request.ru.md) · [`styxrpc_managed_reply`](reference/managed_reply.ru.md) · [`styxrpc_value_integer`](reference/value_integer.ru.md) · [`styxrpc_launch_start`](reference/launch_start.ru.md) · [`styxrpc_launch_status`](reference/launch_status.ru.md)
 
+Для независимого клиента доступен [управляемый вызов](reference/managed_invoke.ru.md), для синхронных колбэков — [публикация управляемого модуля](reference/managed_module_init.ru.md). В переносимом ядре доступно [декодирование целых](reference/value_get_integer.ru.md).
+
 ## Именованный запуск и динамическое дерево
 
 Постоянный сервис DisVM запускает разные именованные образы по одному соединению Styx. Каждый запуск удерживает отдельный fid чтения и записи. C-клиент публикует встречный контекст `.prog/<pid>` через `StyxRpc::serve`. Сервер вызывает приложение при поиске и чтении каталогов. Смена ревизии останавливает чтение устаревшего каталога. Открытые файлы сохраняют свои состояния до закрытия.

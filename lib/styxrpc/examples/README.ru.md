@@ -168,5 +168,5 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 
 Для FlashVM соберите [исполняемый тест адаптера](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC.ru.md#сборка) и передайте
 `-DSTYXRPC_FLASHVM_TEST_HOST=/path/to/flashvm_tests_styxrpc_host`. Запустите
-`ctest --test-dir build -R 'styxrpc-(flash-to-dis|dis-to-flash)' --output-on-failure`.
-Четыре проверки охватывают два направления и оба режима DisVM.
+`ctest --test-dir build -R 'styxrpc-(managed-)?(flash-to-dis|dis-to-flash)' --output-on-failure`.
+Восемь проверок охватывают скалярные и управляемые вызовы в двух направлениях и обоих режимах DisVM.
