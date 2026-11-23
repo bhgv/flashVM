@@ -3,6 +3,7 @@
  * RU: Приём, планирование и закрытие одного запроса канала UniBus на fid.
  */
 #include "styxrpc/channel_fid.h"
+#include "styxrpc/channel_route.h"
 #include <string.h>
 
 
@@ -26,7 +27,8 @@ StyxRpcStatus styxrpc_channel_fid_write(StyxRpcChannelFid *fid, size_t offset, c
         return STYXRPC_MORE;
     }
     if (framing != FVM_S_OK || used != fid->staged ||
-        styxrpc_channel_read(fid->grants, fid->grant_count, fid->request, fid->staged, &fid->selection) != STYXRPC_OK)
+        styxrpc_channel_read_routed(fid->grants, fid->grant_count, fid->policy,
+            fid->request, fid->staged, &fid->selection) != STYXRPC_OK)
     {
         fid->refused = 1;
         return STYXRPC_INVALID;

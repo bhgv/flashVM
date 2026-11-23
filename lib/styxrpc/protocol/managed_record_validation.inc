@@ -26,6 +26,10 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
     {
     case 'c':
     {
+        if (keys->route)
+        {
+            return keys->route(keys->route_context, shape, &value);
+        }
         if (keys->exported_channels && value.tag == STYX_MANAGED_EXPORTED_CHANNEL_TAG &&
             value.size == STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4)
         {

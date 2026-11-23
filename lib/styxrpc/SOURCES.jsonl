@@ -1,5 +1,5 @@
 {"path": "protocol/call_record.c", "sha256": "6597f183a77310da0b8f172641d38fa081890db2ed024ee307427d141b1cca43", "source": "disVM/native/terminal/call_record.c", "transform": "identity"}
-{"path": "protocol/call_record.h", "sha256": "13a61679929185a1d75a1f8742d8a86db541ff2f17d92791f55151c061aa1fb6", "source": "disVM/native/terminal/call_record.h", "transform": "identity"}
+{"path": "protocol/call_record.h", "sha256": "7205424f05fe67af3033fc5b95c6d67ff5fb0221875b167503164aa928d41d9a", "source": "disVM/native/terminal/call_record.h", "transform": "identity"}
 {"path": "protocol/call_scope.c", "sha256": "718d6d12ed2c5f8b2a5099fb9cc19010af9687097cd4f0be91cedfb5034186ee", "source": "disVM/native/terminal/call_scope.c", "transform": "identity"}
 {"path": "protocol/call_scope.h", "sha256": "9aeaccd9ad4bd30274d2d4eaa88ae32c263facaa2d135845276cece396846041", "source": "disVM/native/terminal/call_scope.h", "transform": "identity"}
 {"path": "protocol/load_profile.c", "sha256": "a8424b148f0339e9a40b8958d96044d719fcfa838e21b16080d49659f2e485c6", "source": "disVM/native/terminal/load_profile.c", "transform": "identity"}
@@ -13,9 +13,9 @@
 {"path": "protocol/tuple_record.c", "sha256": "c2dbefb87337ba78f92e3a0e74a3cec75acbc6ddbeb100b0bfaefd79fc7e6868", "source": "disVM/native/terminal/tuple_record.c", "transform": "identity"}
 {"path": "protocol/tuple_record.h", "sha256": "927a42806411b12e7b7608b67b2f6ffc629286d5c1a7588c04a743d31e6f55a9", "source": "disVM/native/terminal/tuple_record.h", "transform": "identity"}
 {"path": "protocol/managed_array_span.inc", "sha256": "cac4ba124179672ddac666c5e682736bb2c33a65695e13f86d73023bc4d44210", "source": "disVM/native/terminal/managed_array_span.inc", "transform": "identity"}
-{"path": "protocol/managed_graph_validation.inc", "sha256": "b790b90851b80699157a42de6c10eabe08aa56ee1a9cdca7d9c878911ba99be7", "source": "disVM/native/terminal/managed_graph_validation.inc", "transform": "identity"}
-{"path": "protocol/managed_record_validation.inc", "sha256": "9da93b4c770e60f80927c7464ba86b2e30f5a0bbd8e34f65fc963df76df4cd31", "source": "disVM/native/terminal/managed_record_validation.inc", "transform": "identity"}
-{"path": "protocol/managed_ref_validation.inc", "sha256": "ac3bcfa9fd5483d822a87d957e80389cc404b240431abcae5408cbff4959888a", "source": "disVM/native/terminal/managed_ref_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_graph_validation.inc", "sha256": "88046fe077c07a3ca69bd12c304b163b3b2bf6f82ef933d0034d4c8d12b9cf96", "source": "disVM/native/terminal/managed_graph_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_record_validation.inc", "sha256": "9a43a1e6ff0c5a6d33f6f29fc196c54756802cfc2c9cb12dd921a008b208df60", "source": "disVM/native/terminal/managed_record_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_ref_validation.inc", "sha256": "f14708d1c0a96cc574f09f59dc9f7b8ca0cf047d45ce757644e82cc743bf907e", "source": "disVM/native/terminal/managed_ref_validation.inc", "transform": "identity"}
 {"path": "protocol/managed_result_validation.inc", "sha256": "f2977989a29137d560397260b1abec4397abf1fa92f8d4e4b605ef7a43a4ff2e", "source": "disVM/native/terminal/managed_result_validation.inc", "transform": "identity"}
 {"path": "protocol/managed_sequence_edits.inc", "sha256": "eb02e897e14f2083e5eff4bd5088507b00203d75faa6497416adc2dafe82ec06", "source": "disVM/native/terminal/managed_sequence_edits.inc", "transform": "identity"}
 {"path": "protocol/managed_table_wire.inc", "sha256": "c29284bfb4f9987afc46384ca5a3b5c05433e9a88d7f589f33d3b4157c591323", "source": "disVM/native/terminal/managed_table_wire.inc", "transform": "identity"}

@@ -29,6 +29,7 @@ typedef struct StyxRpcChannelFid
     int (*admit)(void *context, struct StyxRpcChannelFid *fid); /* Borrow fid and return 1 to accept. */
     void (*cancel)(void *context, struct StyxRpcChannelFid *fid); /* Remove unresolved work synchronously. */
     void *context;                    /* Borrowed scheduler context. */
+    const struct StyxRpcChannelPolicy *policy; /* Optional authenticated message scope. */
 } StyxRpcChannelFid;
 
 

@@ -116,9 +116,17 @@ Dis передаёт живые каналы C-экспорту. C выбира�
 
 [`styxrpc_program_bigtable`](reference/program_bigtable.ru.md) · [Рабочий пример](examples/README.ru.md)
 
-## Оставшаяся совместимость
+## Делегированные каналы
 
-Переносимый C-код поддерживает вложенный канал на маршруте текущего вызова. Обмен вложенными полномочиями за пределами этого маршрута через отдельный PID или токен модуля требует поддержки в C.
+Вложенный канал может использовать ключ текущей шины, отдельный встречный PID
+или токен модуля. Приложение привязывает полномочие к исходному соединению
+Styx. Отправитель владеет временем жизни выданного ресурса. На стороне C
+колбэк проверяет вложенные адреса в типизированных сообщениях, а адаптер
+открывает отдельный fid на точном `.unibus`. Опубликованный PID нельзя
+использовать повторно в той же сессии. Токен модуля действует столько, сколько
+его удерживает открытый fid, выдавший канал.
+
+[`styxrpc_channel_element_routes`](reference/channel_element_routes.ru.md) · [`styxrpc_channel_export_routes`](reference/channel_export_routes.ru.md) · [`styxrpc_channel_route_value`](reference/channel_route_value.ru.md) · [`styxrpc_channel_read_routed`](reference/channel_read_routed.ru.md) · [`styxrpc_channel_route_exchange`](reference/channel_route_exchange.ru.md)
 
 ## Исходники
 

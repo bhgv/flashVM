@@ -14,6 +14,8 @@ typedef struct RefKeys
     int message_grants; /* Allow nested keys belonging to a reverse grant. */
     int exported_channels; /* Fresh provider capabilities are valid in the return only. */
     int (*channel)(const void *, const char *, uint32_t); /* Optional capability admission in this graph. */
+    int (*route)(void *, const char *, const FVM_SRecord *); /* Typed wire leaf visitor. */
+    void *route_context; /* Borrowed visitor context. */
     const void *channel_context; /* Borrowed admissions table for the visitor. */
 } RefKeys;
 

@@ -6,6 +6,7 @@
 #include "styxrpc/graph.h"
 #include "call_record.h"
 #include <stdio.h>
+#include <string.h>
 
 
 /* EN: Round trip mixed ALT, typed receives, idle and unauthorized capability refusal.
@@ -157,11 +158,72 @@ static int nested_grants(void)
 }
 
 
+/* EN: Authorize a single exact PID for the route-policy regression.
+ * RU: Разрешить один точный PID для проверки политики маршрутов. */
+static int allow_pid(const void *context, const StyxRpcChannelRoute *route)
+{
+    const uint32_t *pid = context;
+    return route->kind == STYXRPC_ROUTE_PID && route->pid == *pid &&
+        route->channel.key == 2 && route->unbuffered && !strcmp(route->channel.shape, "(s)");
+}
+
+
+/* EN: Test routed framing, exact policy boundaries and transactional alias validation.
+ * RU: Проверить кадры маршрутов, границы политики и атомарную проверку алиасов. */
+static int routed_grants(void)
+{
+    uint32_t pid = UINT32_C(0x80001000);
+    const StyxRpcChannelRoute reverse = {.kind = STYXRPC_ROUTE_PID, .pid = pid,
+        .channel = {2, "(s)"}, .unbuffered = 1};
+    const StyxRpcChannelRoute module = {.kind = STYXRPC_ROUTE_MODULE, .token = {13, 42}, .channel = {2, "(s)"}};
+    const StyxRpcChannelGrant outer = {1, "(c[s])"};
+    const StyxRpcChannelPolicy policy = {allow_pid, &pid};
+    unsigned char child[64], frame[80], request[96];
+    size_t first, second, size, length;
+    StyxRpcChannelRoutes routes = {0};
+    if (styxrpc_channel_route_value(&reverse, child, sizeof(child), &first) != STYXRPC_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, first, frame, sizeof(frame), &size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    const StyxRpcSelection send = {.count = 1, .guards = {{1, 0, frame, size}}, .policy = &policy};
+    StyxRpcSelection read;
+    if (styxrpc_channel_request(&outer, 1, &send, NULL, 0, request, sizeof(request), &length) != STYXRPC_OK ||
+        styxrpc_channel_read(&outer, 1, request, length, &read) != STYXRPC_INVALID ||
+        styxrpc_channel_read_routed(&outer, 1, &policy, request, length, &read) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    ++pid;
+    if (styxrpc_channel_read_routed(&outer, 1, &policy, request, length, &read) != STYXRPC_INVALID ||
+        styxrpc_channel_route_value(&module, child + first, sizeof(child) - first, &second) != STYXRPC_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, first + second, frame, sizeof(frame), &size) != FVM_S_OK ||
+        styxrpc_channel_element_routes("(c[s]c[s])", frame, size, &routes) != STYXRPC_OK || routes.count != 2 ||
+        routes.entries[1].kind != STYXRPC_ROUTE_MODULE ||
+        memcmp(routes.entries[1].token, module.token, sizeof(module.token)))
+    {
+        return 0;
+    }
+    memcpy(child + first, child, first);
+    if (fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, 2 * first, frame, sizeof(frame), &size) != FVM_S_OK ||
+        styxrpc_channel_element_routes("(c[s]c[i])", frame, size, &routes) != STYXRPC_INVALID || routes.count != 2 ||
+        styxrpc_channel_element_routes("(c[s]c[s])", frame, size, &routes) != STYXRPC_OK || routes.count != 1)
+    {
+        return 0;
+    }
+    const unsigned char empty_module[STYXRPC_CHANNEL_TOKEN_SIZE + 4] = {[STYXRPC_CHANNEL_TOKEN_SIZE + 3] = 1};
+    return fvm_srecord_write(STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG, empty_module, sizeof(empty_module),
+            child, sizeof(child), &first) == FVM_S_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, first, frame, sizeof(frame), &size) == FVM_S_OK &&
+        styxrpc_channel_element_routes("(c[s])", frame, size, &routes) == STYXRPC_INVALID && routes.count == 1;
+}
+
+
 /* EN: Check both independent protocol surfaces, failing with context.
  * RU: Проверить обе части протокола и указать причину отказа. */
 int main(void)
 {
-    if (!channel_round_trip() || !channel_grants() || !nested_grants())
+    if (!channel_round_trip() || !channel_grants() || !nested_grants() || !routed_grants())
     {
         fputs("native channel admission or result failed\n", stderr);
         return 1;

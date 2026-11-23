@@ -44,11 +44,14 @@ typedef struct StyxRpcGuard
 
 /* EN: Store parsed guards. Keys and borrowed value views belong to one request.
  * RU: Хранить разобранные ветки. Ключи и данные относятся к одному запросу. */
+struct StyxRpcChannelPolicy; /* Optional delegated authority defined in channel_route.h. */
+
 typedef struct StyxRpcSelection
 {
     StyxRpcChannelMode mode;               /* Single operation or ALT mode. */
     size_t count;                          /* Valid guard count. */
     StyxRpcGuard guards[STYXRPC_CHANNEL_SLOTS]; /* In submitted preference order. */
+    const struct StyxRpcChannelPolicy *policy; /* Optional immutable policy through completion. */
 } StyxRpcSelection;
 
 

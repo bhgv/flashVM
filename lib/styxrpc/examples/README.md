@@ -114,3 +114,30 @@ same snapshot. A duplicate add and a value read after the selector is clunked
 are expected to fail. The C process owns the table state.
 
 [Registration](../reference/program_bigtable.md) · [Limbo operations](disvm/device-program.b) · [C callback](disvm/hybrid.c)
+
+## Recursive grants between C and DisVM
+
+Build with `STYXRPC_EXAMPLES=ON` and run from the libstyxrpc source directory.
+Point `--disvm-source` at a DisVM checkout containing the compiler interfaces
+and recursive Limbo channel fixture.
+
+```sh
+python3 examples/disvm/routed.py --runtime /path/to/disvm \
+    --limbo /path/to/limbo-bootstrap --disvm-source /path/to/disVM \
+    --driver build/styxrpc-routed-client
+```
+
+The C client publishes two reverse `.prog/<pid>/.unibus` endpoints and opens
+the DisVM function on the same connection. The function returns two module
+channels. C sends a grant for its reverse bus on the first channel. DisVM
+sends the same module token twice on that bus. The client compares the
+addresses and echoes the original frame. C then opens the delegated channel by
+token and sends its second reverse PID. DisVM sends 43 to that endpoint,
+receives 81 in return and passes 81 back on the second module channel.
+
+The client checks refusal of an incorrect token, plus revocation of both issued
+tokens when the function fid is clunked. Failure reports the stage number.
+Success prints `PASS delegated PID and module channels between C and DisVM`
+for both VM modes. The launcher closes the socket and waits for the provider.
+
+[C client](disvm/routed_client.c) · [Address decoding](../reference/channel_element_routes.md) · [Routed operations](../reference/channel_route_exchange.md)

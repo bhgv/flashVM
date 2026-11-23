@@ -2,7 +2,7 @@
  * EN: Validate admitted UniBus channel grants, guards and reply envelopes.
  * RU: Проверка полномочий, веток и ответов каналов UniBus.
  */
-#include "styxrpc/channel.h"
+#include "styxrpc/channel_route.h"
 #include "call_record.h"
 #include "scalar_record.h"
 #include <string.h>
@@ -75,7 +75,8 @@ static int admit_nested(const void *context, const char *type, uint32_t key)
 
 /* EN: Check the element's entire S-record, including nested typed values.
  * RU: Проверить целую S-запись элемента, включая вложенные типизированные данные. */
-static int element_valid(const char *shape, int typed, const void *value, size_t size, const GrantTable *scope)
+static int element_valid(const char *shape, int typed, const void *value, size_t size,
+    const GrantTable *scope, const StyxRpcChannelPolicy *policy)
 {
     if (!value || !size || size > STYXRPC_MANAGED_LIMIT)
     {
@@ -85,6 +86,22 @@ static int element_valid(const char *shape, int typed, const void *value, size_t
     {
         int64_t number;
         return integer_value(value, size, &number);
+    }
+    if (policy && strchr(shape, 'c'))
+    {
+        StyxRpcChannelRoutes routes;
+        if (!policy->allow || styxrpc_channel_element_routes(shape, value, size, &routes) != STYXRPC_OK)
+        {
+            return 0;
+        }
+        for (size_t i = 0; i < routes.count; ++i)
+        {
+            if (policy->allow(policy->context, &routes.entries[i]) != 1)
+            {
+                return 0;
+            }
+        }
+        return 1;
     }
     FVM_SRecord record;
     size_t used;
@@ -118,7 +135,7 @@ static int check(const StyxRpcChannelGrant *grants, size_t grant_count,
         const int managed = strcmp(shape, "(i)") != 0;
         const GrantTable scope = {grants, grant_count};
         if (guard->receive == 1 ? guard->size != 0 :
-            guard->receive != 0 || !element_valid(shape, managed, guard->value, guard->size, &scope))
+            guard->receive != 0 || !element_valid(shape, managed, guard->value, guard->size, &scope, operation->policy))
         {
             return 0;
         }
@@ -198,9 +215,9 @@ static int read_guard(const FVM_SRecord *record, StyxRpcSelection *operation)
 }
 
 
-/* EN/RU: See channel.h. / См. channel.h. */
-StyxRpcStatus styxrpc_channel_read(const StyxRpcChannelGrant *grants, size_t grant_count,
-    const void *bytes, size_t size, StyxRpcSelection *operation)
+/* EN/RU: See channel_route.h. / См. channel_route.h. */
+StyxRpcStatus styxrpc_channel_read_routed(const StyxRpcChannelGrant *grants, size_t grant_count,
+    const StyxRpcChannelPolicy *policy, const void *bytes, size_t size, StyxRpcSelection *operation)
 {
     FVM_SRecord record;
     size_t used;
@@ -209,7 +226,7 @@ StyxRpcStatus styxrpc_channel_read(const StyxRpcChannelGrant *grants, size_t gra
     {
         return STYXRPC_INVALID;
     }
-    StyxRpcSelection decoded = {0};
+    StyxRpcSelection decoded = {.policy = policy};
     if (record.tag == STYXRPC_CHANNEL_ALT || record.tag == STYXRPC_CHANNEL_TRY || record.tag == STYXRPC_CHANNEL_WAIT)
     {
         decoded.mode = (StyxRpcChannelMode)record.tag;
@@ -234,6 +251,14 @@ StyxRpcStatus styxrpc_channel_read(const StyxRpcChannelGrant *grants, size_t gra
     }
     *operation = decoded;
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See channel.h. / См. channel.h. */
+StyxRpcStatus styxrpc_channel_read(const StyxRpcChannelGrant *grants, size_t grant_count,
+    const void *bytes, size_t size, StyxRpcSelection *operation)
+{
+    return styxrpc_channel_read_routed(grants, grant_count, NULL, bytes, size, operation);
 }
 
 
@@ -264,7 +289,7 @@ StyxRpcStatus styxrpc_channel_reply(const StyxRpcChannelGrant *grants, size_t gr
     }
     int receive = selected && selected != 255 && operation->guards[selected - 1].receive;
     if (receive ? !element_valid(grant_shape(grants, grant_count, operation->guards[selected - 1].key), typed,
-        value, size, NULL) : size != 0)
+        value, size, NULL, operation->policy) : size != 0)
     {
         return STYXRPC_INVALID;
     }
@@ -351,7 +376,7 @@ static StyxRpcStatus typed_result(const StyxRpcChannelGrant *grants, size_t gran
         return record.size == 1 ? STYXRPC_OK : STYXRPC_INVALID;
     }
     const char *shape = grant_shape(grants, grant_count, operation->guards[index - 1].key);
-    if (!element_valid(shape, 1, record.payload + 1, record.size - 1, NULL))
+    if (!element_valid(shape, 1, record.payload + 1, record.size - 1, NULL, operation->policy))
     {
         return STYXRPC_INVALID;
     }

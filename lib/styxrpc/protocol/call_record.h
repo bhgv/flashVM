@@ -262,6 +262,13 @@ int styxmanaged_channel_payload(const char *shape, const FVM_SRecord *list,
 int styxmanaged_channel_value(const char *shape, const FVM_SRecord *list,
     int (*admit)(const void *, const char *, uint32_t), const void *context, int grants);
 
+/* EN: Validate the graph and delegate each non-nil channel leaf to a synchronous visitor.
+ * The visitor must validate the tag and payload and stage any changes until success.
+ * RU: Проверить граф, передав каждый ненулевой канал синхронному обработчику.
+ * Обработчик проверяет тег и данные и применяет накопленные изменения после успеха. */
+int styxmanaged_channel_routes(const char *shape, const FVM_SRecord *list,
+    int (*route)(void *, const char *, const FVM_SRecord *), void *context);
+
 typedef struct StyxGraphPositions
 {
     unsigned short argument[STYX_CALL_REF_KEYS]; /* Earliest direct position plus one, zero for nested-only refs. */

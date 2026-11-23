@@ -3,6 +3,7 @@
  * RU: Обмен типизированным выбором UniBus через fid процесса в Styx.
  */
 #include "styxrpc/channel_fid.h"
+#include "styxrpc/channel_route.h"
 #include "styxrpc/program.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
@@ -11,6 +12,8 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#define TEST_REVERSE_PID UINT32_C(0x80000001) /* Published reverse test endpoint. */
 
 static const StyxRpcChannelGrant grants[] = {{1, "(i)"}, {2, "(s)"}}; /* Explicit local capabilities. */
 
@@ -26,6 +29,7 @@ typedef struct Open
     StyxRpcChannelFid fid;     /* Portable per-fid state. */
     unsigned char request[128]; /* One operation. */
     unsigned char reply[128];   /* One completion. */
+    int stream;                /* Reply begins after the request for a routed PID. */
 } Open;
 
 
@@ -34,16 +38,25 @@ typedef struct Open
 static int schedule(void *context, StyxRpcChannelFid *fid)
 {
     (void)context;
-    if (fid->selection.mode != STYXRPC_CHANNEL_TRY)
+    unsigned selected;
+    if (fid->selection.count == 1 && fid->selection.guards[0].key == 2 && fid->selection.guards[0].receive)
     {
-        return 1;
+        selected = 1;
+    }
+    else if (fid->selection.mode == STYXRPC_CHANNEL_TRY && fid->selection.count == 2 &&
+        fid->selection.guards[1].key == 2 && fid->selection.guards[1].receive)
+    {
+        selected = 2;
+    }
+    else
+    {
+        return fid->selection.mode != STYXRPC_CHANNEL_TRY;
     }
     unsigned char field[16], value[24];
     size_t length, used;
-    return fid->selection.count == 2 && fid->selection.guards[1].key == 2 &&
-        fvm_srecord_write(STYXRPC_VALUE_STRING, "ready", 5, field, sizeof(field), &length) == FVM_S_OK &&
+    return fvm_srecord_write(STYXRPC_VALUE_STRING, "ready", 5, field, sizeof(field), &length) == FVM_S_OK &&
         fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, field, length, value, sizeof(value), &used) == FVM_S_OK &&
-        styxrpc_channel_fid_finish(fid, 2, value, used) == STYXRPC_OK;
+        styxrpc_channel_fid_finish(fid, selected, value, used) == STYXRPC_OK;
 }
 
 
@@ -81,13 +94,28 @@ static int open_bus(void *context, unsigned access, void **cookie)
 }
 
 
+/* EN: Open a routed PID using its stream reply offset.
+ * RU: Открыть маршрут PID со смещением ответа в потоке. */
+static int open_stream(void *context, unsigned access, void **cookie)
+{
+    if (!open_bus(context, access, cookie))
+    {
+        return 0;
+    }
+    Open *opened = *cookie;
+    opened->stream = 1;
+    return 1;
+}
+
+
 /* EN: Return a completed reply or an empty pending prefix on the selected fid.
  * RU: Вернуть полный ответ либо пустой префикс ожидания на выбранном fid. */
 static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
 {
     Open *opened = cookie;
-    return offset <= SIZE_MAX && styxrpc_channel_fid_read(&opened->fid,
-        (size_t)offset, bytes, capacity, size) != STYXRPC_INVALID;
+    uint64_t base = opened->stream ? opened->fid.staged : 0;
+    return offset >= base && offset - base <= SIZE_MAX && styxrpc_channel_fid_read(&opened->fid,
+        (size_t)(offset - base), bytes, capacity, size) != STYXRPC_INVALID;
 }
 
 
@@ -167,17 +195,39 @@ static int exchange(StyxClient *client)
 }
 
 
+/* EN: Follow the published PID and reject an otherwise identical unpublished route.
+ * RU: Открыть выданный PID и отклонить такой же адрес без публикации. */
+static int exchange_routed(StyxClient *client)
+{
+    StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_PID, .pid = TEST_REVERSE_PID, .channel = grants[1]};
+    unsigned char request[96], reply[96];
+    const StyxRpcSelection receive = {.count = 1, .guards = {{2, 1, NULL, 0}}};
+    StyxRpcChannelResult result;
+    if (styxrpc_channel_route_exchange(client, NULL, &route, &receive, 500, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result) != STYXRPC_OK ||
+        result.selected != 1 || !result.size)
+    {
+        return 0;
+    }
+    route.pid++;
+    return styxrpc_channel_route_exchange(client, NULL, &route, &receive, 500, NULL, 0,
+        request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_INVALID;
+}
+
+
 /* EN: Run the exchange on a connected socket and verify that clunk cancelled the pending fid.
  * RU: Выполнить обмен по сокету и проверить, что clunk отменил ожидающий fid. */
 int main(void)
 {
     Endpoint endpoint = {0};
     StyxRpcPrograms programs;
-    StyxRpcRegistration nodes[8];
+    StyxRpcRegistration nodes[14];
     const StyxRpcResource resource = {&endpoint, open_bus, read_bus, write_bus, close_bus};
+    const StyxRpcResource stream = {&endpoint, open_stream, read_bus, write_bus, close_bus};
     int sockets[2];
-    if (!styxrpc_programs_init(&programs, nodes, 8) || !styxrpc_program_add(&programs, 42) ||
-        !styxrpc_program_unibus(&programs, 42, &resource) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
+    if (!styxrpc_programs_init(&programs, nodes, sizeof(nodes) / sizeof(*nodes)) || !styxrpc_program_add(&programs, 42) ||
+        !styxrpc_program_unibus(&programs, 42, &resource) || !styxrpc_program_add(&programs, TEST_REVERSE_PID) ||
+        !styxrpc_program_unibus(&programs, TEST_REVERSE_PID, &stream) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
     {
         return 1;
     }
@@ -191,7 +241,7 @@ int main(void)
         return 1;
     }
     StyxClient *client = styxclientmountfd(sockets[0], 4096, "test", "", 1000, 8);
-    int good = client && exchange(client);
+    int good = client && exchange(client) && exchange_routed(client);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);

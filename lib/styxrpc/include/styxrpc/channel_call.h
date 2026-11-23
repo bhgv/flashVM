@@ -4,14 +4,13 @@
  */
 #ifndef STYXRPC_CHANNEL_CALL_H
 #define STYXRPC_CHANNEL_CALL_H
-#include "styxrpc/channel.h"
+#include "styxrpc/channel_route.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define STYXRPC_CHANNEL_VERSION "unibus-channel-1" /* Contents of .unibus-version. */
-#define STYXRPC_CHANNEL_TOKEN_SIZE 16U /* Existing opaque result-channel lease token. */
 
 struct StyxClient; /* Borrowed reverse attachment for an active call. */
 

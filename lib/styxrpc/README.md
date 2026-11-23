@@ -115,9 +115,17 @@ The application owns the positional and keyed parts of the table. One C callback
 
 [`styxrpc_program_bigtable`](reference/program_bigtable.md) · [Working example](examples/README.md)
 
-## Remaining interoperability
+## Delegated channels
 
-The portable C implementation handles nested channels on the current call route. Delegating nested grants beyond that route by a separate PID or module token still needs C support.
+A nested channel can use a key on the current bus, a distinct reverse PID or
+a module token. The application binds the grant to the original Styx
+connection. The publisher owns the resource lifetime. On C endpoints a
+callback authorizes nested addresses in typed messages, and the adapter
+opens a separate fid on the exact `.unibus`. A published delegated PID must
+be unique within the session. A module token remains valid while the issuing
+fid holds its lease.
+
+[`styxrpc_channel_element_routes`](reference/channel_element_routes.md) · [`styxrpc_channel_export_routes`](reference/channel_export_routes.md) · [`styxrpc_channel_route_value`](reference/channel_route_value.md) · [`styxrpc_channel_read_routed`](reference/channel_read_routed.md) · [`styxrpc_channel_route_exchange`](reference/channel_route_exchange.md)
 
 ## Sources
 
