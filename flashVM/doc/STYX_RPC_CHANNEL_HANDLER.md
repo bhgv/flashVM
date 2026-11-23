@@ -16,7 +16,7 @@ FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
 | `signature` | Limbo compiler's 32-bit signature for the export. |
 | `function` | Required caller-owned output descriptor for [creating the hosted module](../../lib/styxrpc/reference/channel_handlers_create.md). |
 
-Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) leaving the output untouched. The schema must have at least one channel argument. Copied arguments and results use the managed value shapes, and the result may be void. Channel elements use copied types. A nil channel decodes to `null`.
+Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) leaving the output untouched. The schema must have at least one channel argument. Copied arguments and results use the managed value shapes, and the result may be void. Argument channel elements can carry copied types and [same-bus channels](STYX_RPC_NESTED_CHANNELS.md). A nil channel decodes to `null`.
 
 Binding only prepares the descriptor. Use the FlashVM context owner for [each callback step](../../lib/styxrpc/reference/channel_handlers_step.md). The forward Styx dispatcher must continue separately while a channel method blocks. Keep the binding, names, context and reverse client alive until the server and active callback are finished. Every channel argument becomes closed at callback exit, including when the function throws or result encoding fails. Effects of completed operations remain visible in DisVM. Runtime callback failures are reported as RPC errors.
 

@@ -11,27 +11,63 @@
 extern "C" {
 #endif
 
-typedef struct FVM_StyxBorrowedChannels
+typedef struct FVM_StyxChannelSet
 {
-    struct StyxClient *reverse;      /* Same-session client while the callback is active. */
-    const StyxRpcChannelCall *call;  /* Checked reverse PID and exact grants. */
-} FVM_StyxBorrowedChannels;
+    StyxRpcChannelLease *lease;        /* One retained result lease, if any. */
+    struct StyxClient *reverse;        /* Borrowed reverse mount during a callback. */
+    StyxRpcChannelCall *call;          /* Mutable copy of the scoped reverse grants. */
+    size_t references;                 /* Owner-local count including each live wrapper. */
+    unsigned wait_ms;                  /* Per-operation polling budget. */
+    FVM_Object *objects[STYXRPC_CHANNEL_SLOTS]; /* Weak aliases cleared by close or GC. */
+} FVM_StyxChannelSet;
 
 typedef struct FVM_StyxRemoteChannel
 {
-    StyxRpcChannelLease *lease;          /* Owned result lease until close or GC. */
-    FVM_StyxBorrowedChannels *borrowed; /* Callback-owned scope, cleared before return. */
-    StyxRpcChannelGrant grant; /* Exact key and element type from the reply. */
-    size_t index;              /* Its route's position within the lease. */
-    unsigned wait_ms;          /* Per-operation polling budget copied at return. */
+    FVM_StyxChannelSet *set;    /* Retained family until close or GC. */
+    StyxRpcChannelGrant grant; /* Exact key and element type from the wire. */
+    size_t index;              /* Stable slot in the family's grant table. */
 } FVM_StyxRemoteChannel;
 
+typedef struct FVM_StyxChannelDecode
+{
+    FVM_StyxChannelSet *set; /* Borrowed checked scope or result set. */
+    size_t parent;           /* Present route index for a leased element. */
+    int exported;            /* Decode module export tokens in an initial result. */
+} FVM_StyxChannelDecode;
 
-/* [GC:] EN: Create one object for either a retained lease or a scope explicitly disarmed by its owner.
- * RU: Создать объект удерживаемой аренды либо контекста, явно отзываемого владельцем. */
-FVM_Result fvm_styxrpc_channel_object(FVM_Context *context, StyxRpcChannelLease *lease,
-    FVM_StyxBorrowedChannels *borrowed, const StyxRpcChannelGrant *grant, size_t index,
-    unsigned wait_ms, FVM_Value *value);
+
+/* EN: Create one owned family for a retained lease or a borrowed reverse call.
+ * RU: Создать семейство для удерживаемой аренды или заимствованного встречного вызова. */
+FVM_StyxChannelSet *fvm_styxrpc_channel_set_create(StyxRpcChannelLease *lease,
+    struct StyxClient *reverse, StyxRpcChannelCall *call, unsigned wait_ms);
+
+
+/* EN: Release a family reference and its lease on last release, deferring I/O under GC.
+ * RU: Снять ссылку семейства и освободить аренду при последней ссылке, отложив I/O под GC. */
+void fvm_styxrpc_channel_set_release(FVM_StyxChannelSet *set, int deferred);
+
+
+/* EN: Close every wrapper while retaining the owner's reference to set.
+ * RU: Закрыть все обёртки, удерживая ссылку владельца на set. */
+void fvm_styxrpc_channel_set_disarm(FVM_Context *context, FVM_StyxChannelSet *set);
+
+
+/* [GC:] EN: Find or allocate the wrapper for a checked grant and root it in roots.
+ * RU: Найти или выделить обёртку проверенного полномочия и удержать её в roots. */
+int fvm_styxrpc_channel_materialize(FVM_Context *context, FVM_GCRootScope *roots,
+    FVM_StyxChannelSet *set, size_t index, const StyxRpcChannelGrant *grant, FVM_Value *value);
+
+
+/* [GC:] EN: Decode a prevalidated leaf against its scoped family's already admitted keys.
+ * RU: Декодировать проверенный лист по уже допущенным ключам его семейства. */
+int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, void *state,
+    const char *type, const FVM_SRecord *record, FVM_Value *value);
+
+
+/* [GC:] EN: Encode a nested null or live channel on the target's exact current bus.
+ * RU: Закодировать вложенный null либо живой канал на точной шине назначения. */
+int fvm_styxrpc_channel_encode(FVM_Context *context, FVM_GCRootScope *roots, void *state,
+    const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used);
 
 
 /* [GC:] EN: Release the native payload from the typed userdata slot.

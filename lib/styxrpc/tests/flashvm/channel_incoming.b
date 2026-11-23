@@ -65,6 +65,25 @@ check_results(api: Incoming, port: chan of int)
 }
 
 
+# EN: Lend a message channel, then check the returned aliases and the nested send.
+# RU: Передать канал сообщений, затем сверить возвращённые алиасы и вложенную отправку.
+check_nested(api: Incoming)
+{
+    outer := chan[2] of array of chan of int;
+    inner := chan[1] of int;
+    inner <-= 41;
+    outer <-= array[] of {inner, inner, nil};
+    outer <-= array[] of {inner, inner, nil};
+    if (api->nested(outer) != 41) {
+        raise "nested port receive returned the wrong value";
+    }
+    aliases := <-outer;
+    if (len aliases != 3 || aliases[0] != inner || aliases[1] != inner || aliases[2] != nil || <-inner != 42) {
+        raise "returned message did not use the original nested port";
+    }
+}
+
+
 # EN: Mount the compiled interface, then exercise channel grants across several calls.
 # RU: Загрузить компилированный интерфейс и проверить полномочия в нескольких вызовах.
 init()
@@ -100,7 +119,7 @@ init()
     }
     rejected = 0;
     {
-        api->timeout(ints);
+        api->relay(ints);
     } exception {
         "*" => rejected = 1;
     }
@@ -108,6 +127,7 @@ init()
         raise "empty blocking receive returned before timing out";
     }
     check_results(api, ints);
+    check_nested(api);
     api->finish(ints);
     ints <-= 11;
     if (<-ints != 11) {

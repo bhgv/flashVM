@@ -14,7 +14,7 @@ StyxRpcChannelHandlers *styxrpc_channel_handlers_create_with_results(const char 
 | --- | --- |
 | `name` | Required module component under `mounted`. Provide a nonempty name of up to 255 bytes, excluding `.`, `..` and slash characters. |
 | `functions`, `count` | [Copied-result functions](channel_handlers_create.md) and their count. Use NULL and zero to omit this class of export. |
-| `results`, `result_count` | Functions returning a single channel and their count. Each descriptor contains the exact compiled name, signature and schema, a `begin` callback and its context. Inputs may include borrowed channels. Channel elements use copied types. Use NULL and zero to omit this class. |
+| `results`, `result_count` | Functions returning a single channel and their count. Each descriptor contains the exact compiled name, signature and schema, a `begin` callback and its context. Inputs may include borrowed channels. Argument elements can carry current-bus channels. The issued result channel carries copied elements. Use NULL and zero to omit this class. |
 | `registry` | [Initialized lease registry](module_channels_init.md), required when `result_count` is positive. Reserve slots for the simultaneous result lifetimes. The dispatcher exclusively uses the registry and its entropy callback. |
 
 The total export count must be from 1 to `STYXRPC_MAX_EXPORTS`. Names must be unique across both arrays. Returns the owned module or NULL for invalid descriptors or unavailable memory or synchronization resources. The module borrows both arrays, names, callback contexts and registry through shutdown.

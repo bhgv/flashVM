@@ -43,6 +43,18 @@ StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t 
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
+/* EN: Admit current-bus channels from a confirmed typed receive on route_index.
+ * Borrow bytes for validation only. On failure the lease stays unchanged.
+ * RU: Принять каналы текущей шины из подтверждённого приёма на route_index.
+ * Байты нужны только для проверки. Ошибка сохраняет прежнюю аренду. */
+StyxRpcStatus styxrpc_channel_lease_import_element(StyxRpcChannelLease *lease, size_t route_index,
+    const void *bytes, size_t size);
+
+
+/* EN: View the checked route at index until lease release. Return NULL outside the admitted table.
+ * RU: Получить проверенный маршрут index до освобождения аренды. NULL вне таблицы. */
+const StyxRpcChannelRoute *styxrpc_channel_lease_route(const StyxRpcChannelLease *lease, size_t index);
+
 #ifdef __cplusplus
 }
 #endif

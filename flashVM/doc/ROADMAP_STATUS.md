@@ -1,5 +1,12 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1715 / Контрольная точка v0.1715. ActionScript receives and
+echoes Dis-owned channels inside messages on the same UniBus route, in
+borrowed calls and leased results. Алиасы переживают повторную доставку.
+Вложенный результат удерживает аренду, а вложенный аргумент отзывается
+при выходе из обработчика. [EN](STYX_RPC_NESTED_CHANNELS.md) /
+[RU](STYX_RPC_NESTED_CHANNELS.ru.md).
+
 Checkpoint v0.1714 / Контрольная точка v0.1714. An incoming FlashVM
 callback can use borrowed DisVM channels and issue an independent result
 channel in the same call. Диспетчер публикует отдельную аренду FIFO или

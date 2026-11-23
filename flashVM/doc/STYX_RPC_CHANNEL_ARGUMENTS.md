@@ -26,7 +26,7 @@ The function can receive from `port` and send back to the same queue before it r
 
 The SDK verifies the scoped offer, binds the exact PID and keys, then activates the bus immediately before the first write. On completion, timeout or error, it retires the generation and detaches unresolved reverse operations. Queue changes from completed operations remain visible in AS. A remote exception or uncertain timeout therefore does not imply that a send or receive was rolled back. A separately returned DisVM channel can stay live through its own result lease.
 
-Each call admits up to eight distinct queues. Each local queue has zero to eight slots. Capacity zero supports rendezvous between DisVM operations during the call. Only by-value channel elements are bound here. Delegation of channels inside elements remains open.
+Each call admits up to eight distinct queues. Each local queue has zero to eight slots. Capacity zero supports rendezvous between DisVM operations during the call. Flash-owned argument queues carry elements by value.
 
 [Executable FlashVM caller](../tests/styxrpc/channel-args.c) · [DisVM owner](../../lib/styxrpc/tests/flashvm/channel_args_owner.b)
 
@@ -39,7 +39,7 @@ Each call admits up to eight distinct queues. Each local queue has zero to eight
 
 AS uses [the same channel methods](STYX_RPC_CHANNELS.md#use-disvm-channels-from-actionscript). Repeated references to a channel in value arrays or tuples share the same object during the callback. Nil becomes `null`. A saved AS reference is closed by the time the callback returns or throws. A later call with the same Limbo channel receives a fresh object. Closing the borrowed object affects every alias of that object and leaves DisVM's channel open.
 
-The incoming binding accepts up to eight distinct argument channel keys with copied element types. A completed send or receive is visible even if the callback later fails. An operation that exceeds its wait is clunked and raises a script exception. Delegating channels inside elements remains open.
+The incoming binding accepts up to eight distinct keys, including [children received on the same bus](STYX_RPC_NESTED_CHANNELS.md). A completed send or receive is visible even if the callback later fails. An operation that exceeds its wait is clunked and raises a script exception.
 
 ### Return a separate live channel in the same call
 

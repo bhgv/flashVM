@@ -15,10 +15,11 @@
 #define EXCHANGE_SIGNATURE UINT32_C(0x89f34ef5) /* Compiled channel array and string port. */
 #define VOID_SIGNATURE UINT32_C(0xe4cc716f) /* Compiled int port with no result. */
 #define INT_SIGNATURE UINT32_C(0x4fef7e8c)  /* Compiled int port with int result. */
+#define NESTED_SIGNATURE UINT32_C(0x93a913ec) /* Compiled nested argument. */
 #define LEASE_SIGNATURE UINT32_C(0x9c30df25) /* Compiled int port and int channel result. */
 #define RESULT_LEASES 4U  /* Independent result leases for the native test client. */
 #define STYX_WAIT 3000U     /* Client mount/operation polling budget, in ms. */
-#define RECEIVE_WAIT 120U  /* Controlled timeout on an empty buffered port. */
+#define RECEIVE_WAIT 450U  /* Bound relay waits, including the controlled empty receive. */
 #define ACTION_PUSH 0x96          /* Push a typed operand. */
 #define ACTION_GET_VARIABLE 0x1c  /* Resolve the callable's formal. */
 #define ACTION_CALL_METHOD 0x52   /* Call one method on the borrowed object. */
@@ -129,7 +130,7 @@ static FVM_Result finish(FVM_Context *context, FVM_Object *self, unsigned argc,
     (void)self;
     (void)unused;
     if (argc != 1 || args->type != FVM_VALUE_OBJECT || !closed(context, "rejected") ||
-        !closed(context, "resultBorrow") ||
+        !closed(context, "resultBorrow") || !closed(context, "nestedBorrow") ||
         fvm_object_call(context, args->object, "tryReceive", 0, NULL, out) != FVM_OK ||
         out->type != FVM_VALUE_UNDEFINED ||
         fvm_object_call(context, args->object, "close", 0, NULL, out) != FVM_OK ||
@@ -175,6 +176,32 @@ static FVM_Result result_empty(FVM_Context *context, FVM_Object *self, unsigned 
         return failure("expected an empty source for the result rendezvous");
     }
     return FVM_OK;
+}
+
+
+/* EN: Receive the same nested channel twice, echo it, send a value and save the borrowed object.
+ * RU: Дважды принять канал, вернуть его, отправить значение и сохранить заимствованный объект. */
+static FVM_Result nested(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value message, again, first, second, ack, value;
+    (void)self;
+    (void)unused;
+    if (argc != 1 || fvm_gc_roots_begin(context, &roots) != FVM_OK)
+    {
+        return failure("cannot root nested arguments");
+    }
+    fvm_value_number(&value, 42);
+    int ok = test_channel_nested_message(context, roots, args, &message, &first) &&
+        test_channel_nested_message(context, roots, args, &again, &second) &&
+        first.object == second.object &&
+        fvm_object_call(context, first.object, "receive", 0, NULL, out) == FVM_OK &&
+        out->type == FVM_VALUE_NUMBER && out->number == 41 && send(context, second.object, &value) &&
+        fvm_object_call(context, args->object, "send", 1, &message, &ack) == FVM_OK &&
+        ack.type == FVM_VALUE_BOOLEAN && ack.boolean && fvm_set_global(context, "nestedBorrow", &first) == FVM_OK;
+    fvm_gc_roots_end(roots);
+    return ok ? FVM_OK : failure("nested channel exchange failed");
 }
 
 
@@ -228,10 +255,10 @@ int test_channel_incoming(FVM_Context *context, int fd)
         "flash-incoming", "", STYX_WAIT, 8);
     FVM_StyxRpcChannelHandler bindings[] = {
         {context, "exchangeDis", reverse, {"(a[c[i]]c[s])", "(i)"}, STYX_WAIT},
-        {context, "receiveDis", reverse, {"(c[i])", "(i)"}, STYX_WAIT},
+        {context, "receiveDis", reverse, {"(c[i])", "(i)"}, RECEIVE_WAIT},
         {context, "rejectDis", reverse, {"(c[i])", "()"}, STYX_WAIT},
         {context, "finishDis", reverse, {"(c[i])", "()"}, STYX_WAIT},
-        {context, "receiveDis", reverse, {"(c[i])", "(i)"}, RECEIVE_WAIT}
+        {context, "nestedDis", reverse, {"(c[a[c[i]]])", "(i)"}, STYX_WAIT}
     };
     FVM_StyxRpcChannelHandlerExport result_bindings[] = {
         {{context, "resultSeed", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 1},
@@ -243,8 +270,10 @@ int test_channel_incoming(FVM_Context *context, int fd)
     size_t result_count = sizeof(results) / sizeof(*results);
     StyxRpcModuleChannel leases[RESULT_LEASES];
     StyxRpcModuleChannels registry;
-    const char *names[] = {"exchange", "relay", "reject", "finish", "timeout"};
-    const uint32_t signatures[] = {EXCHANGE_SIGNATURE, INT_SIGNATURE, VOID_SIGNATURE, VOID_SIGNATURE, INT_SIGNATURE};
+    const char *names[] = {"exchange", "relay", "reject", "finish", "nested"};
+    const uint32_t signatures[] = {
+        EXCHANGE_SIGNATURE, INT_SIGNATURE, VOID_SIGNATURE, VOID_SIGNATURE, NESTED_SIGNATURE
+    };
     StyxRpcChannelFunction functions[sizeof(bindings) / sizeof(*bindings)];
     size_t count = sizeof(functions) / sizeof(*functions);
     int ok = reverse && define_receive(context) &&
@@ -253,6 +282,7 @@ int test_channel_incoming(FVM_Context *context, int fd)
         fvm_register_function(context, "finishDis", finish, NULL) == FVM_OK &&
         fvm_register_function(context, "resultSeed", result_seed, NULL) == FVM_OK &&
         fvm_register_function(context, "resultEmpty", result_empty, NULL) == FVM_OK &&
+        fvm_register_function(context, "nestedDis", nested, NULL) == FVM_OK &&
         styxrpc_module_channels_init(&registry, leases, RESULT_LEASES, test_channel_entropy, NULL);
     for (size_t i = 0; ok && i < count; ++i)
     {

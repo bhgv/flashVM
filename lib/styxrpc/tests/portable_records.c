@@ -219,11 +219,42 @@ static int routed_grants(void)
 }
 
 
+/* EN: Accept the native rendezvous marker in replies and require policy for a foreign route.
+ * RU: Принять признак rendezvous в ответе и требовать политику для отдельного маршрута. */
+static int nested_replies(void)
+{
+    const uint32_t pid = UINT32_C(0x80000007);
+    const StyxRpcChannelGrant parent = {7, "(c[s])"};
+    const StyxRpcChannelPolicy policy = {allow_pid, &pid};
+    const StyxRpcSelection receive = {.count = 1, .guards = {{7, 1, NULL, 0}}};
+    StyxRpcSelection delegated = receive;
+    StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_CURRENT, .channel = {2, "(s)"}, .unbuffered = 1};
+    unsigned char leaf[32], element[48], reply[64];
+    size_t child, extent, written;
+    StyxRpcChannelResult result;
+    delegated.policy = &policy;
+    if (styxrpc_channel_route_value(&route, leaf, sizeof(leaf), &child) != STYXRPC_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, leaf, child, element, sizeof(element), &extent) != FVM_S_OK ||
+        styxrpc_channel_reply(&parent, 1, &receive, 1, element, extent, reply, sizeof(reply), &written) != STYXRPC_OK ||
+        styxrpc_channel_result(&parent, 1, &receive, reply, written, &result) != STYXRPC_OK || result.selected != 1)
+    {
+        return 0;
+    }
+    route.kind = STYXRPC_ROUTE_PID;
+    route.pid = pid;
+    return styxrpc_channel_route_value(&route, leaf, sizeof(leaf), &child) == STYXRPC_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, leaf, child, element, sizeof(element), &extent) == FVM_S_OK &&
+        styxrpc_channel_reply(&parent, 1, &delegated, 1, element, extent, reply, sizeof(reply), &written) == STYXRPC_OK &&
+        styxrpc_channel_result(&parent, 1, &receive, reply, written, &result) == STYXRPC_INVALID &&
+        styxrpc_channel_result(&parent, 1, &delegated, reply, written, &result) == STYXRPC_OK && result.selected == 1;
+}
+
+
 /* EN: Check both independent protocol surfaces, failing with context.
  * RU: Проверить обе части протокола и указать причину отказа. */
 int main(void)
 {
-    if (!channel_round_trip() || !channel_grants() || !nested_grants() || !routed_grants())
+    if (!channel_round_trip() || !channel_grants() || !nested_grants() || !routed_grants() || !nested_replies())
     {
         fputs("native channel admission or result failed\n", stderr);
         return 1;

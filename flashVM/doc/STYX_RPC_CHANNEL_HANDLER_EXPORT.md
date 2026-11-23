@@ -16,7 +16,7 @@ FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *b
 | `signature` | Exact 32-bit signature from the Limbo compiler. |
 | `exported` | Caller-owned descriptor filled on success. Pass it to [the owner-driven SDK module](../../lib/styxrpc/reference/channel_handlers_create_with_results.md). |
 
-Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) with the output unchanged. Argument channels and the result channel have copied element types. The callback returns one initial element for the new FIFO or `undefined` for an empty FIFO or rendezvous. A script exception, an invalid element, or publication failure produces an RPC error.
+Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) with the output unchanged. Argument channel messages can carry [channels on the same bus](STYX_RPC_NESTED_CHANNELS.md). The issued result channel carries copied elements. The callback returns one initial element for the new FIFO or `undefined` for an empty FIFO or rendezvous. A script exception, an invalid element, or publication failure produces an RPC error.
 
 Execute the callback on the FlashVM owner. Run the forward Styx server separately. Keep the binding, names, context and same-session reverse client alive through both threads' shutdown. Each argument object closes at callback exit. The result has its own resource and lease, which the dispatcher publishes on the forward module's `.unibus` and retires when the issuing function fid is clunked.
 

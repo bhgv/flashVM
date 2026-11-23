@@ -6,11 +6,11 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Development version: **0.1714** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1715** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 
-[Connect FlashVM and DisVM through libstyxrpc](doc/STYX_RPC.md). [Positional reference graphs](doc/STYX_RPC_GRAPH.md). [Hybrid tables](doc/STYX_RPC_HYBRID.md). [Live UniBus channels](doc/STYX_RPC_CHANNELS.md). [Channel arguments](doc/STYX_RPC_CHANNEL_ARGUMENTS.md).
+[Connect FlashVM and DisVM through libstyxrpc](doc/STYX_RPC.md). [Positional reference graphs](doc/STYX_RPC_GRAPH.md). [Hybrid tables](doc/STYX_RPC_HYBRID.md). [Live UniBus channels](doc/STYX_RPC_CHANNELS.md). [Channel arguments](doc/STYX_RPC_CHANNEL_ARGUMENTS.md). [Nested channels in messages](doc/STYX_RPC_NESTED_CHANNELS.md).
 
 [Managed source acquisition — startup/nested SWF and data through an explicit bridge](doc/MANAGED_SOURCE.md) · [Русский](doc/MANAGED_SOURCE.ru.md)
 This version identifies a development

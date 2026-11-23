@@ -8,16 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHANNEL_LEAF_BYTES 48U /* Bounded encoded module token and channel key. */
-
-typedef struct ResultChannels
-{
-    const StyxRpcLeasedReply *reply; /* Borrowed while decoding a single result. */
-    unsigned wait_ms;                /* Copied into each resulting channel object. */
-    FVM_Value objects[STYXRPC_CHANNEL_SLOTS]; /* Rooted identity cache for repeated routes. */
-} ResultChannels;
-
-
 typedef struct ArgumentChannels
 {
     StyxRpcArgumentScope *scope; /* Borrowed staged reverse publication. */
@@ -81,87 +71,46 @@ static int check_channels(FVM_Context *context, const ArgumentChannels *channels
 }
 
 
-/* [GC:] EN: Match a channel leaf to the prevalidated grants and root its unique object.
- * RU: Сопоставить канал с проверенными полномочиями и удержать его единственный объект. */
-static int decode_channel(FVM_Context *context, FVM_GCRootScope *roots, void *state,
-    const char *type, const FVM_SRecord *record, FVM_Value *out)
-{
-    ResultChannels *channels = state;
-    const char *end = fvm_styxrpc_type_end(type);
-    size_t length, i;
-    if (record->tag == STYXRPC_VALUE_NIL && !record->size)
-    {
-        fvm_value_undefined(out);
-        out->type = FVM_VALUE_NULL;
-        return 1;
-    }
-    if (!end || !channels->reply->lease)
-    {
-        return 0;
-    }
-    length = (size_t)(end - type) - 3;
-    for (i = 0; i < channels->reply->routes.count; ++i)
-    {
-        const StyxRpcChannelRoute *route = channels->reply->routes.entries + i;
-        unsigned char wire[CHANNEL_LEAF_BYTES];
-        size_t size, consumed;
-        FVM_SRecord exact;
-        if (strlen(route->channel.shape) != length + 2 || memcmp(type + 2, route->channel.shape + 1, length) ||
-            styxrpc_channel_export_value(route->token, route->channel.key, route->unbuffered,
-                wire, sizeof(wire), &size) != STYXRPC_OK ||
-            fvm_srecord_read(wire, size, sizeof(wire), &exact, &consumed) != FVM_S_OK ||
-            exact.tag != record->tag || exact.size != record->size || memcmp(exact.payload, record->payload, exact.size))
-        {
-            continue;
-        }
-        if (channels->objects[i].type != FVM_VALUE_OBJECT &&
-            (fvm_styxrpc_channel_object(context, channels->reply->lease, NULL, &route->channel, i,
-                channels->wait_ms, channels->objects + i) != FVM_OK ||
-                fvm_gc_roots_add(roots, channels->objects + i) != FVM_OK))
-        {
-            return 0;
-        }
-        *out = channels->objects[i];
-        return 1;
-    }
-    return 0;
-}
-
-
-/* [GC:] EN: Materialize the successful result under one alias cache and GC scope.
- * RU: Создать успешный результат с одним кэшем алиасов в области корней GC. */
+/* [GC:] EN: Materialize the successful result under one shared owner-local lease.
+ * RU: Создать успешный результат под общей арендой владельца. */
 static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const StyxRpcManagedTarget *target,
     const StyxRpcLeasedReply *reply, FVM_Value *out)
 {
-    ResultChannels channels = {0};
+    FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
-    unsigned count, i;
+    unsigned count;
     FVM_Value value;
+    int ok;
     if (target->schema.result[1] == ')' && reply->result.tag == STYXRPC_VALUE_NIL && !reply->result.size)
     {
         fvm_value_undefined(out);
         return 1;
     }
-    channels.reply = reply;
-    channels.wait_ms = target->wait_ms;
-    refs.graph = 1;
-    refs.decode_channel = decode_channel;
-    refs.channel_context = &channels;
-    if (reply->result.tag == STYXRPC_GRAPH_RESULT_TAG &&
-        fvm_styxrpc_values_decode(context, roots, &refs, target->schema.result, &reply->result,
-            &value, 1, &count) && count == 1)
+    if (reply->lease)
     {
-        *out = value;
-        return 1;
-    }
-    for (i = 0; i < reply->routes.count; ++i)
-    {
-        if (channels.objects[i].type == FVM_VALUE_OBJECT)
+        decode.set = fvm_styxrpc_channel_set_create(reply->lease, NULL, NULL, target->wait_ms);
+        if (!decode.set)
         {
-            fvm_styxrpc_channel_disarm(fvm_styxrpc_channel_lookup(context, channels.objects[i].object), 0);
+            return 0;
         }
     }
-    return 0;
+    decode.exported = 1;
+    refs.graph = 1;
+    refs.decode_channel = fvm_styxrpc_channel_decode;
+    refs.channel_context = &decode;
+    ok = reply->result.tag == STYXRPC_GRAPH_RESULT_TAG &&
+        fvm_styxrpc_values_decode(context, roots, &refs, target->schema.result, &reply->result,
+            &value, 1, &count) && count == 1;
+    if (ok)
+    {
+        *out = value;
+    }
+    else if (decode.set)
+    {
+        fvm_styxrpc_channel_set_disarm(context, decode.set);
+    }
+    fvm_styxrpc_channel_set_release(decode.set, 0);
+    return ok;
 }
 
 
@@ -304,7 +253,8 @@ FVM_Result fvm_styxrpc_channel_import_arguments(FVM_Context *context, const char
     FVM_StyxRpcChannelArguments *binding)
 {
     if (!context || !global || !*global || !binding || !binding->bus || !checked_target(binding->target) ||
-        !strchr(binding->target->schema.arguments, 'c'))
+        !strchr(binding->target->schema.arguments, 'c') ||
+        !fvm_styxrpc_channel_value_elements(binding->target->schema.arguments))
     {
         return FVM_INVALID_ARGUMENT;
     }

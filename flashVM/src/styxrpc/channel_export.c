@@ -197,7 +197,7 @@ static int seed_port(FVM_Context *context, FVM_GCRootScope *roots, FlashPort *po
 int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema)
 {
     const char *end;
-    return schema->result[1] == 'c' &&
+    return schema->result[1] == 'c' && fvm_styxrpc_channel_value_elements(schema->result) &&
         (end = fvm_styxrpc_type_end(schema->result + 1)) && !strcmp(end, ")");
 }
 

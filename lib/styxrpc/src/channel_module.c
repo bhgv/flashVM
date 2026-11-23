@@ -16,22 +16,8 @@
 /* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
 int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels)
 {
-    if (!memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
-        strpbrk(schema->arguments, channels ? "rh" : "rhc"))
-    {
-        return 0;
-    }
-    const char *type = strchr(schema->arguments, 'c');
-    while (type)
-    {
-        const char *end = styxshape_end(type);
-        if (!end || memchr(type + 2, 'c', (size_t)(end - type - 3)))
-        {
-            return 0;
-        }
-        type = strchr(end, 'c');
-    }
-    return 1;
+    return memchr(schema->arguments, 0, sizeof(schema->arguments)) &&
+        !strpbrk(schema->arguments, channels ? "rh" : "rhc");
 }
 
 

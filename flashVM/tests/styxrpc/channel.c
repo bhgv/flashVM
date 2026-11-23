@@ -12,6 +12,7 @@
 
 #define PORTS_SIGNATURE UINT32_C(0xedf0338d) /* Compiled ports interface. */
 #define EMPTY_SIGNATURE UINT32_C(0x421b2140) /* Compiled empty interface. */
+#define NESTED_SIGNATURE UINT32_C(0xe74e6a20) /* Compiled nested result. */
 #define CHANNEL_TEST_WAIT_MS 1500U /* Reply/operation polling budget. */
 
 
@@ -102,6 +103,76 @@ static int exercise(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Valu
 
 
 /* EN/RU: See channel-test.h. / См. channel-test.h. */
+int test_channel_nested_message(FVM_Context *context, FVM_GCRootScope *roots,
+    const FVM_Value *outer, FVM_Value *message, FVM_Value *child)
+{
+    FVM_Value alias, nil;
+    return outer->type == FVM_VALUE_OBJECT &&
+        fvm_object_call(context, outer->object, "receive", 0, NULL, message) == FVM_OK &&
+        message->type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, message) == FVM_OK &&
+        fvm_object_get(context, message->object, "0", child) == FVM_OK && child->type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, message->object, "1", &alias) == FVM_OK &&
+        alias.type == FVM_VALUE_OBJECT && alias.object == child->object &&
+        fvm_object_get(context, message->object, "2", &nil) == FVM_OK && nil.type == FVM_VALUE_NULL;
+}
+
+
+/* EN: Drop a received wrapper, collect weak aliases and materialize the key a second time.
+ * RU: Отбросить принятую обёртку, собрать слабые алиасы и повторно открыть тот же ключ. */
+static int recollect(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Value *outer)
+{
+    FVM_GCRootScope *small;
+    FVM_Value batch, child;
+    unsigned long reclaimed;
+    if (fvm_gc_roots_begin(context, &small) != FVM_OK)
+    {
+        return 0;
+    }
+    int ok = test_channel_nested_message(context, small, outer, &batch, &child);
+    fvm_gc_roots_end(small);
+    return ok && fvm_gc_collect(context, &reclaimed) == FVM_OK &&
+        test_channel_nested_message(context, roots, outer, &batch, &child) &&
+        number(context, &child, "receive", 123);
+}
+
+
+/* EN: Validate nested admission, exact lease identity and independent child lifetime after close.
+ * RU: Проверить вложенный допуск, точную аренду и независимость дочернего канала после close. */
+static int nested(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManagedTarget *target)
+{
+    const StyxRpcSchema schema = {"(i)", "(c[a[c[i]]])"};
+    FVM_Value outer, other, batch, foreign, inner, sibling, again, sync, value, reply, dropped;
+    unsigned long reclaimed;
+    target->name = "nested";
+    target->signature = NESTED_SIGNATURE;
+    target->schema = schema;
+    fvm_value_number(&value, 123);
+    if (call(context, 1, &value, &outer) != FVM_OK || fvm_gc_roots_add(roots, &outer) != FVM_OK ||
+        call(context, 1, &value, &other) != FVM_OK || fvm_gc_roots_add(roots, &other) != FVM_OK ||
+        !test_channel_nested_message(context, roots, &outer, &batch, &inner) ||
+        !test_channel_nested_message(context, roots, &other, &foreign, &sibling) ||
+        inner.object == sibling.object ||
+        fvm_object_get(context, batch.object, "3", &sync) != FVM_OK ||
+        sync.type != FVM_VALUE_OBJECT || !idle(context, &sync) ||
+        !test_channel_nested_message(context, roots, &outer, &reply, &again) || again.object != inner.object)
+    {
+        return 0;
+    }
+    return fvm_object_call(context, outer.object, "trySend", 1, &foreign, &reply) == FVM_EXCEPTION &&
+        fvm_exception_clear(context) == FVM_OK && idle(context, &outer) &&
+        fvm_object_call(context, outer.object, "trySend", 1, &batch, &reply) == FVM_OK &&
+        reply.type == FVM_VALUE_BOOLEAN && reply.boolean &&
+        test_channel_nested_message(context, roots, &outer, &reply, &again) && again.object == inner.object &&
+        fvm_object_call(context, outer.object, "close", 0, NULL, &reply) == FVM_OK &&
+        fvm_gc_collect(context, &reclaimed) == FVM_OK && number(context, &inner, "receive", 123) &&
+        number(context, &sibling, "receive", 123) &&
+        fvm_object_call(context, inner.object, "close", 0, NULL, &reply) == FVM_OK && closed(context, &again) &&
+        call(context, 1, &value, &dropped) == FVM_OK && fvm_gc_roots_add(roots, &dropped) == FVM_OK &&
+        recollect(context, roots, &dropped);
+}
+
+
+/* EN/RU: See channel-test.h. / См. channel-test.h. */
 int test_channel_call(FVM_Context *context, StyxRpcManagedTarget *target)
 {
     const StyxRpcSchema ports = {"(i)", "((c[i]c[i]c[s]))"};
@@ -129,7 +200,8 @@ int test_channel_call(FVM_Context *context, StyxRpcManagedTarget *target)
         target->name = "empty";
         target->signature = EMPTY_SIGNATURE;
         target->schema = empty;
-        ok = call(context, 0, NULL, &result) == FVM_OK && result.type == FVM_VALUE_NULL;
+        ok = call(context, 0, NULL, &result) == FVM_OK && result.type == FVM_VALUE_NULL &&
+            nested(context, roots, target);
     }
     if (!ok && fvm_exception_get(context, &result) == FVM_OK && result.type == FVM_VALUE_STRING)
     {

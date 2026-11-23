@@ -23,3 +23,17 @@ empty(): chan of int
 {
     return nil;
 }
+
+
+# EN: Return a message channel whose queued arrays introduce new same-token grants.
+# RU: Вернуть канал сообщений, массивы которого выдают новые полномочия на том же токене.
+nested(value: int): chan of array of chan of int
+{
+    batch := chan[2] of array of chan of int;
+    child := chan[1] of int;
+    sync := chan of int;
+    child <-= value;
+    batch <-= array[] of {child, child, nil, sync};
+    batch <-= array[] of {child, child, nil, sync};
+    return batch;
+}

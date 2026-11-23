@@ -137,7 +137,7 @@ int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
 
 /* EN: Check that channel elements use only by-value types within their exact token.
  * RU: Проверить, что элементы каждого канала используют только типы по значению. */
-static int channel_elements(const char *type)
+int fvm_styxrpc_channel_value_elements(const char *type)
 {
     for (type = strchr(type, 'c'); type; type = strchr(type, 'c'))
     {
@@ -156,8 +156,7 @@ static int channel_elements(const char *type)
 int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema)
 {
     return schema_supported(schema) && !strpbrk(schema->arguments, "rh") &&
-        !strpbrk(schema->result, "rh") && (strchr(schema->arguments, 'c') || strchr(schema->result, 'c')) &&
-        channel_elements(schema->arguments) && channel_elements(schema->result);
+        !strpbrk(schema->result, "rh") && (strchr(schema->arguments, 'c') || strchr(schema->result, 'c'));
 }
 
 

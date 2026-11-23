@@ -87,16 +87,17 @@ static int element_valid(const char *shape, int typed, const void *value, size_t
         int64_t number;
         return integer_value(value, size, &number);
     }
-    if (policy && strchr(shape, 'c'))
+    if ((policy || !scope) && strchr(shape, 'c'))
     {
         StyxRpcChannelRoutes routes;
-        if (!policy->allow || styxrpc_channel_element_routes(shape, value, size, &routes) != STYXRPC_OK)
+        if ((policy && !policy->allow) || styxrpc_channel_element_routes(shape, value, size, &routes) != STYXRPC_OK)
         {
             return 0;
         }
         for (size_t i = 0; i < routes.count; ++i)
         {
-            if (policy->allow(policy->context, &routes.entries[i]) != 1)
+            if (policy ? policy->allow(policy->context, &routes.entries[i]) != 1 :
+                routes.entries[i].kind != STYXRPC_ROUTE_CURRENT)
             {
                 return 0;
             }

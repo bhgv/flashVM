@@ -185,3 +185,64 @@ StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t 
     return styxrpc_channel_exchange_bound(lease->module, token, grants, count, selection, timeout_ms,
         scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
 }
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+const StyxRpcChannelRoute *styxrpc_channel_lease_route(const StyxRpcChannelLease *lease, size_t index)
+{
+    return lease && index < lease->routes.count ? lease->routes.entries + index : NULL;
+}
+
+
+/* EN: Merge a single current-bus route into a staged lease within token's namespace.
+ * RU: Добавить маршрут текущей шины в копию аренды в пределах токена. */
+static int add_nested(StyxRpcChannelRoutes *staged, const unsigned char *token,
+    const StyxRpcChannelRoute *route)
+{
+    if (route->kind != STYXRPC_ROUTE_CURRENT)
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < staged->count; ++i)
+    {
+        const StyxRpcChannelRoute *present = staged->entries + i;
+        if (present->channel.key == route->channel.key && !memcmp(present->token, token, sizeof(present->token)))
+        {
+            return present->unbuffered == route->unbuffered &&
+                !strcmp(present->channel.shape, route->channel.shape);
+        }
+    }
+    if (staged->count == STYXRPC_CHANNEL_SLOTS)
+    {
+        return 0;
+    }
+    StyxRpcChannelRoute *entry = staged->entries + staged->count++;
+    *entry = *route;
+    entry->kind = STYXRPC_ROUTE_MODULE;
+    memcpy(entry->token, token, sizeof(entry->token));
+    return 1;
+}
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+StyxRpcStatus styxrpc_channel_lease_import_element(StyxRpcChannelLease *lease, size_t route_index,
+    const void *bytes, size_t size)
+{
+    const StyxRpcChannelRoute *parent = styxrpc_channel_lease_route(lease, route_index);
+    StyxRpcChannelRoutes received;
+    if (!parent || !strchr(parent->channel.shape, 'c') ||
+        styxrpc_channel_element_routes(parent->channel.shape, bytes, size, &received) != STYXRPC_OK)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxRpcChannelRoutes staged = lease->routes;
+    for (size_t i = 0; i < received.count; ++i)
+    {
+        if (!add_nested(&staged, parent->token, received.entries + i))
+        {
+            return STYXRPC_INVALID;
+        }
+    }
+    lease->routes = staged;
+    return STYXRPC_OK;
+}

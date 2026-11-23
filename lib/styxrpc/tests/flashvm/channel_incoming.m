@@ -6,8 +6,8 @@ Incoming: module {
     relay: fn(port: chan of int): int;
     reject: fn(port: chan of int);
     finish: fn(port: chan of int);
+    nested: fn(batch: chan of array of chan of int): int;
     make: fn(port: chan of int): chan of int;
     sync: fn(port: chan of int): chan of int;
     badseed: fn(port: chan of int): chan of int;
-    timeout: fn(port: chan of int): int;
 };

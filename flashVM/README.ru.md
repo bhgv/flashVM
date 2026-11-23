@@ -6,11 +6,11 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1714** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1715** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 
-[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md). [Гибридные таблицы](doc/STYX_RPC_HYBRID.ru.md). [Живые каналы UniBus](doc/STYX_RPC_CHANNELS.ru.md). [Каналы как аргументы](doc/STYX_RPC_CHANNEL_ARGUMENTS.ru.md).
+[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md). [Гибридные таблицы](doc/STYX_RPC_HYBRID.ru.md). [Живые каналы UniBus](doc/STYX_RPC_CHANNELS.ru.md). [Каналы как аргументы](doc/STYX_RPC_CHANNEL_ARGUMENTS.ru.md). [Каналы внутри сообщений](doc/STYX_RPC_NESTED_CHANNELS.ru.md).
 
 [Управляемая загрузка SWF/данных через explicit bridge](doc/MANAGED_SOURCE.ru.md) · [English](doc/MANAGED_SOURCE.md)
 
