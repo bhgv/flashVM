@@ -107,14 +107,26 @@ S-record. The original function fid stays open while any proxy in the group
 is live, including after releasing the loaded module. Disposing of the last
 proxy clunks that fid and releases the provider's channel service.
 
+A returned proxy can be passed as an argument to a later remote call. The
+caller's reverse UniBus publishes a scoped key for it and forwards operations
+to the original owner. Echoing that key in the call result restores the
+caller's original proxy. Two remote threads waiting on opposite ends of
+the same forwarded key in one reverse call still require a peer on the
+original route.
+
+A provider-owned channel can carry channels in a typed message. The owner
+adds new keys to the same lease before publishing a receive reply. Repeated
+keys preserve identity while the corresponding proxy is live. The receiver
+can send those handles back on the same lease. Sending a fresh local channel
+or a handle from another lease as a message on this route requires a new
+grant mechanism.
+
 The wire bound is 64 KiB per operation, including its headers and any nested
 guards. Channel handles can appear directly or in arrays and tuples of
 arguments and results. Each channel scope supports up to eight distinct
 channels, including grants made in messages. An `alt` can include up to eight
 eligible options after expanding receive arrays. A module can
-hold up to 128 active groups of returned channels. The element type of a
-new provider-owned channel must be free of channel handles. Passing a
-persistent returned proxy into another remote call is outside this protocol.
+hold up to 128 active groups of returned channels.
 
 ## Wire records
 

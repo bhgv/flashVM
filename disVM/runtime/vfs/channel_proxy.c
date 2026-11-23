@@ -102,7 +102,7 @@ static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigne
     const unsigned char *bytes, size_t size, unsigned char *reply, size_t *received)
 {
     DVM_VfsWait *wait;
-    int native = dvm_vfs_path_enter_cancel(&wait, token ? NULL : cancel);
+    int native = dvm_vfs_path_enter_cancel(&wait, token ? dvm_cancel_current() : cancel);
     if (native < 0)
     {
         error("remote channel operation cancelled");
@@ -143,7 +143,8 @@ static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *g
                 dvm_styx_value_snapshot(guard->operand, &frame);
             if (valid)
             {
-                DVM_CallChannels channels = {.message = scope};
+                DVM_CallChannels channels = {.message = scope,
+                    .persistent = dvm_returned_proxy_lease(guard->channel)};
                 valid = dvm_channel_value_root(&frame) &&
                     dvm_channel_value_pack(schema->shape, &frame, &channels, value, sizeof(value), &size);
             }
@@ -161,10 +162,10 @@ static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *g
 /* [GC:] EN: Apply the selected receive, using the declared mapped layout.
  * RU: Применить выбранный приём в рамках объявленной раскладки. */
 static void receive_value(const DVM_ChannelSchema *schema, void *destination,
-    DVM_Cancel *scope, const void *bytes, size_t size)
+    DVM_Cancel *scope, DVM_ReturnedLease *lease, const void *bytes, size_t size)
 {
     DVM_StyxValueFrame frame = {0};
-    DVM_CallChannels channels = {.message = scope};
+    DVM_CallChannels channels = {.message = scope, .persistent = lease};
     if (!dvm_channel_value_unpack(schema->shape, bytes, size, &channels, &frame) ||
         !dvm_styx_value_frame_move(&frame, destination, frame.layout.size))
     {
@@ -219,7 +220,8 @@ static unsigned receive_selection(const unsigned char *bytes, size_t size,
     {
         if (typed)
         {
-            receive_value(schemas[selected], guard->operand, scope, record.payload, record.size);
+            receive_value(schemas[selected], guard->operand, scope,
+                dvm_returned_proxy_lease(guard->channel), record.payload, record.size);
         }
         else
         {
@@ -354,6 +356,7 @@ typedef struct ChannelTransfer
     DVM_StyxValueFrame frame; /* Owned managed staging, outside the transport. */
     int local_receives; /* Direction seen by the original channel. */
     int delivered; /* Real handoff or buffer operation completed. */
+    int immediate; /* The downstream operation may not wait for upstream readiness. */
 } ChannelTransfer;
 
 
@@ -362,6 +365,14 @@ typedef struct ChannelTransfer
 static int try_transfer(void *state)
 {
     ChannelTransfer *transfer = state;
+    if (dvm_call_channel_is_proxy(transfer->channel))
+    {
+        DVM_ProxyGuard guard = {.channel = transfer->channel, .operand = transfer->frame.words,
+            .receive = transfer->local_receives};
+        unsigned long tag = transfer->immediate ? DVM_CHANNEL_BUS_TRY_ALT : DVM_CHANNEL_BUS_WAIT_ALT;
+        transfer->delivered = submit(&guard, 1, tag, 0) == 0;
+        return 1;
+    }
     transfer->delivered = dvm_runtime_alt_try_transfer(transfer->channel, transfer->frame.words,
         transfer->local_receives);
     return 1;
@@ -381,7 +392,8 @@ static void progress_operation(DVM_ChannelBus *bus, DVM_CallChannels *channels,
         }
         const DVM_ChannelChoice *choice = &operation->choices[i];
         const char *shape = channels->schemas[choice->slot].shape;
-        ChannelTransfer transfer = {.channel = channels->objects[choice->slot], .local_receives = choice->receive};
+        ChannelTransfer transfer = {.channel = channels->objects[choice->slot], .local_receives = choice->receive,
+            .immediate = operation->immediate || operation->deadline};
         int scalar = !strcmp(shape, "(i)");
         int valid = choice->receive || scalar ? dvm_channel_value_empty(shape, &transfer.frame) :
             dvm_channel_value_unpack(shape, operation->bytes + choice->offset, choice->size, channels, &transfer.frame);
@@ -451,7 +463,7 @@ int dvm_call_channel_progress(DVM_ChannelBus *bus, DVM_CallChannels *channels, i
     unsigned unbuffered = 0;
     for (size_t slot = 0; slot < channels->count; slot++)
     {
-        if (channels->objects[slot]->buf == H)
+        if (!dvm_call_channel_is_proxy(channels->objects[slot]) && channels->objects[slot]->buf == H)
         {
             unbuffered |= 1U << slot;
         }

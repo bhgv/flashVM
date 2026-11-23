@@ -133,9 +133,19 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
     {
         return 0;
     }
-    if (channels->returning && !dvm_call_channel_is_proxy(channel) && strchr(schema.shape, 'c'))
+    if (channels->persistent)
     {
-        return 0;
+        if (!dvm_call_channel_is_proxy(channel) ||
+            dvm_returned_proxy_lease(channel) != channels->persistent)
+        {
+            return 0;
+        }
+        DVM_Provider *endpoint;
+        DVM_Cancel *scope;
+        const unsigned char *token;
+        const DVM_ChannelSchema *original = dvm_returned_proxy_route(channel, &endpoint, &scope, &token);
+        return original && !strcmp(original->shape, schema.shape) &&
+            write_key(original->key, bytes, capacity, size);
     }
     if (channels->message || (channels->returning && dvm_call_channel_is_proxy(channel)))
     {
@@ -152,7 +162,18 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
             (!channels->message || scope == channels->message) &&
             write_key(original->key, bytes, capacity, size);
     }
-    if (!dvm_channel_value_mover(channel, schema.shape))
+    if (dvm_call_channel_is_proxy(channel))
+    {
+        DVM_Provider *endpoint;
+        DVM_Cancel *scope;
+        const unsigned char *token;
+        const DVM_ChannelSchema *original = dvm_returned_proxy_route(channel, &endpoint, &scope, &token);
+        if (!original || strcmp(original->shape, schema.shape))
+        {
+            return 0;
+        }
+    }
+    else if (!dvm_channel_value_mover(channel, schema.shape))
     {
         return 0;
     }
@@ -180,6 +201,21 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
     uint32_t key = channels->schemas[slot].key;
     return channels->returning ? write_export(key, bytes, capacity, size) :
         write_key(key, bytes, capacity, size);
+}
+
+
+/* [GC:] EN: Create or retain the canonical proxy of schema within a live lease.
+ * RU: Создать или удержать канонический прокси схемы schema в живой аренде. */
+static Channel *lease_proxy(DVM_ReturnedLease *lease, const DVM_ChannelSchema *schema)
+{
+    Channel *candidate = cnewc(&Tword, proxy_mover, 0);
+    Channel *proxy = dvm_returned_proxy_arm(candidate, lease, schema) ?
+        dvm_returned_proxy_canonical(candidate) : NULL;
+    if (proxy != candidate)
+    {
+        destroy(candidate);
+    }
+    return proxy;
 }
 
 
@@ -224,10 +260,13 @@ static int decode_export(DVM_ReturnedImport *imports, const char *type,
     {
         return 0;
     }
-    Channel *proxy = cnewc(&Tword, proxy_mover, 0);
-    if (!dvm_returned_proxy_arm(proxy, imports->lease, &schema) || !root_channel(proxy))
+    Channel *proxy = lease_proxy(imports->lease, &schema);
+    if (!proxy || !root_channel(proxy))
     {
-        destroy(proxy);
+        if (proxy)
+        {
+            destroy(proxy);
+        }
         return 0;
     }
     size_t slot = imports->count++;
@@ -261,6 +300,16 @@ int dvm_call_channel_decode(DVM_CallChannels *channels, const char *type,
     if (!key || key > INT32_MAX || !dvm_channel_value_shape(type, schema.shape))
     {
         return 0;
+    }
+    if (channels->persistent)
+    {
+        Channel *proxy = lease_proxy(channels->persistent, &schema);
+        if (!proxy)
+        {
+            return 0;
+        }
+        *result = proxy;
+        return 1;
     }
     if (channels->resolving)
     {

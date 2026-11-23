@@ -73,6 +73,25 @@ delayed_send(sys: Sys, port: chan of int)
 }
 
 
+# EN: Exercise late-bound nested keys, exact aliases, and returning keys to their owner.
+# RU: Проверить поздние вложенные ключи, идентичность и возврат ключей владельцу.
+check_nested(api: Chainchannellifetime)
+{
+    (outer, original) := api->nested();
+    (known, fresh) := <-outer;
+    (alias, again) := <-outer;
+    if (known != original || again != original || fresh != alias ||
+        original == fresh || <-original != 83 || <-fresh != 87) {
+        raise "nested returned channel changed identity or payload";
+    }
+    outer <-= (alias, original);
+    (sent, known_again) := <-outer;
+    if (sent != fresh || known_again != original) {
+        raise "nested channel keys changed on round trip";
+    }
+}
+
+
 # EN: Run multiple returned routes concurrently and cancel just one operation fid.
 # RU: Удерживать несколько возвращённых маршрутов и отменить один fid операции.
 init()
@@ -124,6 +143,17 @@ init()
             if (value != 82 || <-first != 81) {
                 raise "multiple-route ALT changed the losing first branch";
             }
+    }
+    first <-= 89;
+    (old, relayed) := api->relay(first, 97);
+    if (old != 89 || relayed != first || <-alias != 97) {
+        raise "returned channel failed as a second call argument";
+    }
+    check_nested(api);
+    (forwarded, reply) := api->worker(200);
+    api->relayput(forwarded, 13);
+    if (<-reply != 213) {
+        raise "unbuffered send through a second call missed the original receiver";
     }
     (input, output) := api->worker(100);
     api = nil;

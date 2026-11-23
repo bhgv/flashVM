@@ -4,5 +4,8 @@
 Chainchannellifetime: module {
     mixed: fn(mode: int, remote, entered: chan of int): (int, int);
     buffered: fn(value: int): (chan of int, chan of int);
+    relay: fn(port: chan of int, value: int): (int, chan of int);
+    relayput: fn(port: chan of int, value: int);
+    nested: fn(): (chan of (chan of int, chan of int), chan of int);
     worker: fn(start: int): (chan of int, chan of int);
 };

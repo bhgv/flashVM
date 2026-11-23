@@ -151,3 +151,36 @@ serve(start: int, input, output: chan of int)
     value := <-input;
     output <-= value+start;
 }
+
+
+# EN: Use a channel granted by a new call, then return the same argument.
+# RU: Использовать канал, выданный в новом вызове, затем вернуть тот же аргумент.
+relay(port: chan of int, value: int): (int, chan of int)
+{
+    previous := <-port;
+    port <-= value;
+    return (previous, port);
+}
+
+
+# EN: Send to the original unbuffered channel granted by another call.
+# RU: Отправить в исходный небуферизованный канал, выданный другим вызовом.
+relayput(port: chan of int, value: int)
+{
+    port <-= value;
+}
+
+
+# EN: Queue one existing channel and one new channel twice in nested messages.
+# RU: Положить в составные сообщения прежний канал и дважды один новый канал.
+nested(): (chan of (chan of int, chan of int), chan of int)
+{
+    outer := chan[3] of (chan of int, chan of int);
+    existing := chan[1] of int;
+    fresh := chan[1] of int;
+    existing <-= 83;
+    fresh <-= 87;
+    outer <-= (existing, fresh);
+    outer <-= (fresh, existing);
+    return (outer, existing);
+}

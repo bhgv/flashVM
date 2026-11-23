@@ -54,6 +54,18 @@ const DVM_ChannelSchema *dvm_returned_proxy_route(const struct Channel *channel,
     DVM_Provider **endpoint, DVM_Cancel **cancel, const unsigned char **token);
 
 
+/* EN: Borrow the lease from an independently held proxy.
+ * RU: Заимствовать аренду из независимо удерживаемого прокси. */
+DVM_ReturnedLease *dvm_returned_proxy_lease(const struct Channel *channel);
+
+
+/* [GC:] EN: Register candidate or return an owned canonical alias for its key.
+ * Return NULL for a conflicting type. Candidate ownership remains with the caller.
+ * RU: Зарегистрировать candidate или вернуть свою ссылку на канонический прокси.
+ * При конфликте типов вернуть NULL. Кандидат остаётся у вызывающего. */
+struct Channel *dvm_returned_proxy_canonical(struct Channel *candidate);
+
+
 /* EN: Dispose a detached aux binding once, after its managed channel retires.
  * RU: Один раз освободить отсоединённую aux-привязку после освобождения канала. */
 void dvm_returned_proxy_dispose(void *binding);

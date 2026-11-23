@@ -24,6 +24,7 @@ typedef struct DVM_CallChannels
     int returning; /* Provider may encode only capabilities from the active call. */
     int resolving; /* Caller resolves reply keys to already exported originals. */
     DVM_Cancel *message; /* Borrowed exact provider scope while moving channel values. */
+    DVM_ReturnedLease *persistent; /* Borrowed lease for nested message keys. */
     DVM_ReturnedImport *imports; /* Borrowed caller-owned persistent result staging. */
 } DVM_CallChannels;
 
