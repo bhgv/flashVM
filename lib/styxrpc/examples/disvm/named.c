@@ -106,12 +106,14 @@ int main(int argc, char **argv)
     pthread_join(reverse, NULL);
     if (!cancelled || first != STYXRPC_LAUNCH_OK || second != STYXRPC_LAUNCH_OK ||
         failed != STYXRPC_LAUNCH_FAILED || absent != STYXRPC_LAUNCH_NOT_SENT ||
-        state.value != 42 || state.byte != 'D' || state.output != 'O')
+        state.value != 42 || state.byte != 'D' || state.output != 'O' ||
+        state.vector.length != 3 || state.values[1] != 12 || state.values[2] != 23 ||
+        state.keyed.length != 1 || state.keys[0] != 9 || state.mapped[0] != 77)
     {
         fprintf(stderr, "launch results: %d %d %d %d, cancelled=%d count=%d fd=%u stdout=%u\n",
             first, second, failed, absent, cancelled, (int)state.value, (unsigned)state.byte, (unsigned)state.output);
         return 1;
     }
-    puts("PASS one socket, two named Dis modules, reverse .var/.fd/.vfs");
+    puts("PASS one socket, two named Dis modules, reverse .var/.fd/.vfs and collections");
     return 0;
 }

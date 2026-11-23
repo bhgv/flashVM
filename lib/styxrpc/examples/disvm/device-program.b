@@ -50,4 +50,82 @@ init()
         sys->write(output, array[] of {byte 'D'}, 1) != 1) {
         raise sys->sprint("wrong reverse variable or descriptor: %r");
     }
+    collections(sys);
+
+}
+
+# EN: Write one command through its own opened mutation file.
+# RU: Передать одну команду через её отдельный открытый файл.
+put(sys: Sys, path: string, data: array of byte): int
+{
+    fd := sys->open(path, Sys->OWRITE);
+    return fd != nil && sys->write(fd, data, len data) == len data;
+}
+
+# EN: Mutate the vector and keyed map, then select each through an exact .idx fid.
+# RU: Изменить массив и таблицу ключей, затем выбрать значение точным fid .idx.
+collections(sys: Sys)
+{
+    vector := "/.prog/.self/.var/vector/";
+    keyed := "/.prog/.self/.var/keyed/";
+    if (!put(sys, vector + ".ins", array[] of {byte 0, byte 0, byte 0, byte 1,
+            byte 0, byte 0, byte 0, byte 12}) ||
+        !put(sys, vector + ".push", array[] of {byte 0, byte 0, byte 0, byte 99}) ||
+        !put(sys, keyed + ".add", array[] of {byte 0, byte 0, byte 0, byte 9,
+            byte 0, byte 0, byte 0, byte 77}) ||
+        put(sys, keyed + ".add", array[] of {byte 0, byte 0, byte 0, byte 9,
+            byte 0, byte 0, byte 0, byte 77})) {
+        raise sys->sprint("collection mutation failed: %r");
+    }
+    pop := sys->open(vector + ".pop", Sys->OREAD);
+    data := array[4] of byte;
+    if (pop == nil || sys->read(pop, data, 4) != 4 || data[3] != byte 99 ||
+        sys->seek(pop, big 0, Sys->SEEKSTART) != big 0 ||
+        sys->read(pop, data, 4) != 4 || data[3] != byte 99 ||
+        sys->read(pop, data, 4) != 0) {
+        raise "wrong or repeated collection pop";
+    }
+    selector := sys->open(vector + ".idx", Sys->OWRITE);
+    index := array[] of {byte 0, byte 0, byte 0, byte 2};
+    if (selector == nil || sys->write(selector, index, 4) != 4 ||
+        sys->open(vector + ".idx", Sys->OWRITE) != nil) {
+        raise "one collection selector was not held exclusively";
+    }
+    member := sys->open(vector + ".val", Sys->ORDWR);
+    if (member == nil || sys->read(member, data, 4) != 4 || data[3] != byte 22 ||
+        sys->seek(member, big 0, Sys->SEEKSTART) != big 0) {
+        raise "wrong selected vector value";
+    }
+    data[3] = byte 23;
+    if (sys->write(member, data, 4) != 4) {
+        raise "could not update selected vector value";
+    }
+    selector = nil;
+    for (tries := 0; tries < 100; tries++) {
+        if (sys->open(vector + ".val", Sys->OREAD) == nil) {
+            break;
+        }
+        sys->sleep(5);
+    }
+    if (tries == 100 || sys->seek(member, big 0, Sys->SEEKSTART) != big 0 ||
+        sys->read(member, data, 4) >= 0) {
+        raise "closing .idx did not retire its exact value fid";
+    }
+    dtype := sys->open(keyed + ".type", Sys->OREAD);
+    length := sys->open(vector + ".len", Sys->OREAD);
+    metadata := array[16] of byte;
+    if (dtype == nil || length == nil || sys->read(dtype, metadata, len metadata) != 13 ||
+        string metadata[0:13] != "table of int\n" || sys->read(length, metadata, len metadata) != 2 ||
+        string metadata[0:2] != "3\n") {
+        raise "wrong collection metadata";
+    }
+    selector = sys->open(keyed + ".idx", Sys->OWRITE);
+    index[3] = byte 9;
+    if (selector == nil || sys->write(selector, index, 4) != 4) {
+        raise "could not select newly added key";
+    }
+    member = sys->open(keyed + ".val", Sys->OREAD);
+    if (member == nil || sys->read(member, data, 4) != 4 || data[3] != byte 77) {
+        raise "wrong keyed collection value";
+    }
 }

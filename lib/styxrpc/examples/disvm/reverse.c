@@ -72,6 +72,98 @@ static int write_checkpoint(void *context, uint64_t offset, const void *bytes, s
 }
 
 
+/* EN: Read or replace one admitted vector position.
+ * RU: Прочитать или заменить допущенную позицию массива. */
+static int load_at(void *context, uint32_t index, int32_t *value)
+{
+    ReverseState *state = context;
+    *value = state->values[index];
+    return 1;
+}
+
+
+/* EN: Replace one value at a checked position.
+ * RU: Заменить значение в проверенной позиции. */
+static int store_at(void *context, uint32_t index, int32_t value)
+{
+    ((ReverseState *)context)->values[index] = value;
+    return 1;
+}
+
+
+/* EN: Insert within the fixed native vector's capacity.
+ * RU: Вставить элемент в пределах фиксированной нативной ёмкости. */
+static int insert_at(void *context, uint32_t index, int32_t value)
+{
+    ReverseState *state = context;
+    uint32_t length = state->vector.length;
+    if (length >= sizeof(state->values) / sizeof(*state->values))
+    {
+        return 0;
+    }
+    memmove(state->values + index + 1, state->values + index, (length - index) * sizeof(*state->values));
+    state->values[index] = value;
+    return 1;
+}
+
+
+/* EN: Read the last native value before the gateway decrements its length.
+ * RU: Прочитать последний элемент до уменьшения длины в шлюзе. */
+static int pop_value(void *context, int32_t *value)
+{
+    ReverseState *state = context;
+    *value = state->values[state->vector.length - 1];
+    return 1;
+}
+
+
+/* EN: Locate an unsigned numeric key, returning the end when absent.
+ * RU: Найти беззнаковый числовой ключ, при отсутствии вернуть конец. */
+static uint32_t key_position(const ReverseState *state, uint32_t key)
+{
+    uint32_t i = 0;
+    while (i < state->keyed.length && state->keys[i] != key)
+    {
+        ++i;
+    }
+    return i;
+}
+
+
+/* EN: Check membership without changing the table.
+ * RU: Проверить наличие ключа без изменения таблицы. */
+static int contains(void *context, uint32_t key)
+{
+    ReverseState *state = context;
+    return key_position(state, key) < state->keyed.length;
+}
+
+
+/* EN: Load one existing numeric key's value.
+ * RU: Прочитать значение существующего числового ключа. */
+static int load_key(void *context, uint32_t key, int32_t *value)
+{
+    ReverseState *state = context;
+    *value = state->mapped[key_position(state, key)];
+    return 1;
+}
+
+
+/* EN: Add one absent key and its value if the native table has room.
+ * RU: Добавить отсутствующий ключ со значением при наличии места. */
+static int add_key(void *context, uint32_t key, int32_t value)
+{
+    ReverseState *state = context;
+    if (state->keyed.length >= sizeof(state->keys) / sizeof(*state->keys))
+    {
+        return 0;
+    }
+    state->keys[state->keyed.length] = key;
+    state->mapped[state->keyed.length] = value;
+    return 1;
+}
+
+
 /* EN/RU: See reverse.h. / См. reverse.h. */
 int register_reverse(ReverseState *state)
 {
@@ -81,6 +173,11 @@ int register_reverse(ReverseState *state)
     const StyxRpcResource stdout_file = {.context = &state->output, .write = write_byte};
     const StyxRpcResource descriptor = {.context = &state->byte, .write = write_byte};
     const StyxRpcResource checkpoint = {.context = state, .write = write_checkpoint};
+    state->vector = (StyxIntArray){.state = state, .length = 2, .load = load_at, .store = store_at,
+        .insert = insert_at, .pop = pop_value};
+    state->values[0] = 11;
+    state->values[1] = 22;
+    state->keyed = (StyxIntArray){.state = state, .load = load_key, .contains = contains, .add = add_key};
     StyxRpcPrograms *tree = &state->tree;
     return styxrpc_programs_init(tree, state->nodes, sizeof(state->nodes) / sizeof(*state->nodes)) &&
         styxrpc_program_add(tree, 42) && !styxrpc_program_add(tree, 42) &&
@@ -89,6 +186,8 @@ int register_reverse(ReverseState *state)
         styxrpc_program_fd(tree, 42, 1, STYXRPC_WRITE, 0, &stdout_file) &&
         styxrpc_program_fd(tree, 42, 7, STYXRPC_WRITE, 0, &descriptor) &&
         styxrpc_program_int(tree, 42, "count", &count) &&
+        styxrpc_program_collection(tree, 42, "vector", &state->vector) &&
+        styxrpc_program_collection(tree, 42, "keyed", &state->keyed) &&
         styxrpc_program_file(tree, 42, "marker", STYXRPC_READ, sizeof(marker) - 1, &marker_file) &&
         styxrpc_program_file(tree, 42, "parked", STYXRPC_WRITE, 0, &checkpoint);
 }

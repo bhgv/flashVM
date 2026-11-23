@@ -80,3 +80,22 @@ Two C endpoints use `.prog/42/.unibus` over Styx. The fixture scheduler
 chooses the ready string guard while another fid is waiting to receive.
 Clunk triggers exactly one application cancellation. Cross-runtime
 `chan of T` still requires grant and Limbo scheduler integration.
+
+## Live channels across Dis and C
+
+```sh
+python3 examples/disvm/run.py --channels --runtime /path/to/disvm \
+    --limbo /path/to/limbo-bootstrap --module /path/to/disVM/upstream/module \
+    --device build/styxrpc-channel-device
+```
+
+Expect `PASS Limbo/C live channels over Styx`. Add `--jit` for the JIT.
+Limbo passes three channels to the C export. C tests an idle guard, receives
+a string through reverse UniBus, then sends a reply. In a separate call C
+returns a buffered channel. Limbo sends a value and receives it with
+`alt`. The module's `.unibus` verifies its lease token. Clunk of the
+function fid revokes the lease.
+
+The named [example](disvm/named.py) also accesses live Int32 collections
+held by C. It inserts, appends, pops and updates the vector, then adds
+and selects a numeric key. Closing the selector revokes the old value fid.

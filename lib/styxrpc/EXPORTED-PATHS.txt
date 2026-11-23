@@ -1,10 +1,12 @@
 lib/styxrpc/LICENSE.bhgv
+lib/styxrpc/include/styxrpc/indexed_variable.h
 lib/styxrpc/include/styxrpc/variable_file.h
 lib/styxrpc/protocol/call_record.c
 lib/styxrpc/protocol/call_record.h
 lib/styxrpc/protocol/call_scope.c
 lib/styxrpc/protocol/call_scope.h
 lib/styxrpc/protocol/flashvm/utf8.h
+lib/styxrpc/protocol/indexed_variable.c
 lib/styxrpc/protocol/load_profile.c
 lib/styxrpc/protocol/load_profile.h
 lib/styxrpc/protocol/managed_array_span.inc

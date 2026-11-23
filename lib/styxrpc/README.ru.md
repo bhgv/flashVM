@@ -66,6 +66,8 @@ fid. Диспетчер сериализует операции одного fid
 
 [`styxrpc_programs_init`](reference/programs_init.ru.md) · [`styxrpc_program_add`](reference/program_add.ru.md) · [`styxrpc_program_fd`](reference/program_fd.ru.md) · [`styxrpc_program_int`](reference/program_int.ru.md) · [`styxrpc_program_variable`](reference/program_variable.ru.md) · [`styxrpc_program_file`](reference/program_file.ru.md) · [`styxrpc_program_unibus`](reference/program_unibus.ru.md)
 
+[`styxrpc_program_collection`](reference/program_collection.ru.md) · [`styxintarrayopen`](reference/intarrayopen.ru.md) · [`styxintarrayclose`](reference/intarrayclose.ru.md) · [`styxintarrayselect`](reference/intarrayselect.ru.md) · [`styxintarrayread`](reference/intarrayread.ru.md) · [`styxintarraywrite`](reference/intarraywrite.ru.md)
+
 ## Исходник Limbo
 
 Библиотека создаёт .m из используемой схемы и указанных имён полей ADT. Сигнатуру вычисляет компилятор Limbo.
@@ -80,9 +82,11 @@ fid. Диспетчер сериализует операции одного fid
 
 ## Кадры каналов UniBus
 
-Кодек и API fid принимают типизированные send, recv и ALT. Готовность, порядок и rendezvous определяет планировщик хоста. Тест по сокету соединяет два C-конца. Автоматическая выдача полномочий и работа с планировщиком Limbo остаются открытыми.
+В примере Dis передаёт живые `chan of string` нативному C-экспорту, а C выбирает ветки через встречный `.prog/<pid>/.unibus`, обслуживаемый планировщиком Limbo. C-экспорт также возвращает свой канал; его аренда закреплена за fid функции. Буфер и выбор на стороне C определяются колбэками приложения.
 
 [`styxrpc_channel_request`](reference/channel_request.ru.md) · [`styxrpc_channel_read`](reference/channel_read.ru.md) · [`styxrpc_channel_reply`](reference/channel_reply.ru.md) · [`styxrpc_channel_result`](reference/channel_result.ru.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.ru.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.ru.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.ru.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.ru.md)
+
+[`styxrpc_channel_profile`](reference/channel_profile.ru.md) · [`styxrpc_channel_call`](reference/channel_call.ru.md) · [`styxrpc_channel_call_reply`](reference/channel_call_reply.ru.md) · [`styxrpc_channel_export_value`](reference/channel_export_value.ru.md) · [`styxrpc_channel_exchange`](reference/channel_exchange.ru.md)
 
 ## Имя, Qid и fid
 
@@ -106,8 +110,9 @@ fid. Диспетчер сериализует операции одного fid
 
 ## Что ещё нужно
 
-- Передача `chan of T` между средами и общий планировщик готовности, rendezvous и `alt`.
-- Вложенные управляемые переменные со стандартными операциями над коллекциями и дополнительные контексты полномочий.
+- Вложенные полномочия, когда сообщения каналов сами содержат каналы.
+- Встроенный планировщик для произвольных C-устройств. Текущий пример реализует буфер из одного элемента.
+- Полный гибридный `table of big` с позиционной частью и строковыми ключами. API коллекций в этом проходе поддерживает позиционный Int32 и отдельные числовые ключи.
 
 ## Исходники
 

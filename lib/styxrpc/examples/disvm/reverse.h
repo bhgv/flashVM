@@ -4,7 +4,7 @@
  */
 #ifndef STYXRPC_EXAMPLE_REVERSE_H
 #define STYXRPC_EXAMPLE_REVERSE_H
-#include "styxrpc/program.h"
+#include "styxrpc/collection.h"
 #include <pthread.h>
 
 typedef struct ReverseState
@@ -14,7 +14,12 @@ typedef struct ReverseState
     unsigned char output; /* Byte written by the guest through its standard output. */
     int parked;         /* Atomically published once the guest enters its loop. */
     StyxRpcPrograms tree;          /* Reverse registration context. */
-    StyxRpcRegistration nodes[16]; /* Fixed registration storage. */
+    StyxIntArray vector;         /* Registered positional collection. */
+    StyxIntArray keyed;          /* Registered numeric-key collection. */
+    int32_t values[4];           /* C-owned vector storage. */
+    uint32_t keys[2];            /* C-owned keyed names. */
+    int32_t mapped[2];           /* Values corresponding to keys. */
+    StyxRpcRegistration nodes[32]; /* Fixed registration storage. */
     StyxRpcServer *server; /* Owned by the dispatcher once its thread is started. */
 } ReverseState;
 

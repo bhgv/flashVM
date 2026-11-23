@@ -15,14 +15,16 @@ def main():
     for name in ("runtime", "limbo", "module", "device"):
         parser.add_argument("--" + name, required=True, type=lambda arg: Path(arg).resolve())
     parser.add_argument("--interface", type=lambda arg: Path(arg).resolve())
+    parser.add_argument("--channels", action="store_true")
     parser.add_argument("--jit", action="store_true")
     args = parser.parse_args()
-    source = Path(__file__).with_name("client.b")
+    source = Path(__file__).with_name("channel_client.b" if args.channels else "client.b")
     with tempfile.TemporaryDirectory(prefix="styxrpc-device-") as temporary:
         image = Path(temporary) / "client.dis"
         generator = args.interface or args.device.with_name("styxrpc-interface")
-        with (Path(temporary) / "device.m").open("wb") as interface:
-            subprocess.run([generator], stdout=interface, check=True, timeout=15)
+        if not args.channels:
+            with (Path(temporary) / "device.m").open("wb") as interface:
+                subprocess.run([generator], stdout=interface, check=True, timeout=15)
         subprocess.run([args.limbo, "-D", "RG", "-I", args.module, "-I", temporary, "-o", image, source],
                        check=True, timeout=15)
         caller, device = socket.socketpair()
@@ -30,11 +32,13 @@ def main():
             process = subprocess.Popen([args.device, str(device.fileno())], pass_fds=(device.fileno(),))
             device.close()
             try:
+                transport = [] if args.channels else ["--raw"]
+                expected = "PASS Limbo/C live channels over Styx" if args.channels else "PASS Dis load of standalone C device"
                 result = subprocess.run(
-                    [args.runtime, "--styx-mount-fd", str(caller.fileno()), "--raw", "--at", "/device",
+                    [args.runtime, "--styx-mount-fd", str(caller.fileno()), *transport, "--at", "/device",
                      "--", "--native-spawn", "--jit" if args.jit else "--no-jit", image],
                     pass_fds=(caller.fileno(),), cwd=temporary, capture_output=True, text=True, timeout=15)
-                if result.returncode or "PASS Dis load of standalone C device" not in result.stdout:
+                if result.returncode or expected not in result.stdout:
                     raise RuntimeError(result.stdout + result.stderr)
             finally:
                 caller.close()

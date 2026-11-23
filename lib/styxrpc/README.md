@@ -59,6 +59,8 @@ Register the process and its variable, FD and VFS resources on the dispatcher, u
 
 [`styxrpc_programs_init`](reference/programs_init.md) · [`styxrpc_program_add`](reference/program_add.md) · [`styxrpc_program_fd`](reference/program_fd.md) · [`styxrpc_program_int`](reference/program_int.md) · [`styxrpc_program_variable`](reference/program_variable.md) · [`styxrpc_program_file`](reference/program_file.md) · [`styxrpc_program_unibus`](reference/program_unibus.md)
 
+[`styxrpc_program_collection`](reference/program_collection.md) · [`styxintarrayopen`](reference/intarrayopen.md) · [`styxintarrayclose`](reference/intarrayclose.md) · [`styxintarrayselect`](reference/intarrayselect.md) · [`styxintarrayread`](reference/intarrayread.md) · [`styxintarraywrite`](reference/intarraywrite.md)
+
 ## Limbo source
 
 Generate a .m from the same formal types used for native dispatch. Supply ADT field names and use Limbo for the compiled signature.
@@ -73,9 +75,11 @@ Direct mounted Dis calls can use the positional value-only graph protocol. The e
 
 ## UniBus channel frames
 
-The codec and per-fid API admit typed send, receive and ALT requests. The host scheduler chooses readiness, fairness and rendezvous. The socket test uses two C endpoints. Automatic channel grants and Limbo scheduler interop remain open.
+Dis passes live `chan of string` values to a native C export. C operates on the reverse `.prog/<pid>/.unibus` through the Limbo scheduler. The export also returns a C-owned channel whose lease is tied to the function fid. On the C side application callbacks choose readiness and buffer behavior.
 
 [`styxrpc_channel_request`](reference/channel_request.md) · [`styxrpc_channel_read`](reference/channel_read.md) · [`styxrpc_channel_reply`](reference/channel_reply.md) · [`styxrpc_channel_result`](reference/channel_result.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.md)
+
+[`styxrpc_channel_profile`](reference/channel_profile.md) · [`styxrpc_channel_call`](reference/channel_call.md) · [`styxrpc_channel_call_reply`](reference/channel_call_reply.md) · [`styxrpc_channel_export_value`](reference/channel_export_value.md) · [`styxrpc_channel_exchange`](reference/channel_exchange.md)
 
 ## Named launch and dynamic tree
 
@@ -103,7 +107,7 @@ loads the module, invokes `sample` twice, and reads and writes the virtual file
 with a socket and mounts the device via `--styx-mount-fd FD --raw --at /device`.
 Use `--jit` to run the same test in JIT mode.
 
-Remaining work includes cross-runtime channel grants and scheduler integration, standard operations on managed shared collections, and richer resource grants.
+Remaining work includes nested channel grants in messages, a general C rendezvous scheduler, and the full hybrid `table of big` protocol alongside the current indexed Int32 collection API.
 
 ## Sources
 

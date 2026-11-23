@@ -2,7 +2,7 @@
  * EN: Verify reusable channel records and positional nested reference updates.
  * RU: Проверить переиспользуемые кадры каналов и позиционные изменения вложенных ref.
  */
-#include "styxrpc/channel.h"
+#include "styxrpc/channel_call.h"
 #include "styxrpc/graph.h"
 #include "call_record.h"
 #include <stdio.h>
@@ -92,11 +92,36 @@ static int graph_round_trip(void)
 }
 
 
+/* EN: Keep one identity for typed aliases and refuse aliasing incompatible channels.
+ * RU: Сохранить один ID для псевдонимов и отклонить несовместимые типы одного канала. */
+static int channel_grants(void)
+{
+    const StyxRpcSchema equal = {"(c[s]c[s])", "(i)"};
+    const StyxRpcSchema conflicting = {"(c[s]c[i])", "(i)"};
+    unsigned char children[64], bytes[96], token[STYXRPC_CHANNEL_TOKEN_SIZE] = {1};
+    unsigned char key[] = {0, 0, 0, 7};
+    size_t prefix, first, second, length;
+    StyxRpcChannelCall call;
+    return styxrpc_value_integer(STYXRPC_VALUE_BIG, 41, children, sizeof(children), &prefix) == STYXRPC_OK &&
+        fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, key, sizeof(key), children + prefix,
+            sizeof(children) - prefix, &first) == FVM_S_OK &&
+        fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, key, sizeof(key), children + prefix + first,
+            sizeof(children) - prefix - first, &second) == FVM_S_OK &&
+        fvm_srecord_write(STYXRPC_GRAPH_REQUEST_TAG, children, prefix + first + second,
+            bytes, sizeof(bytes), &length) == FVM_S_OK &&
+        styxrpc_channel_call(&equal, bytes, length, &call) == STYXRPC_OK &&
+        call.pid == 41 && call.count == 1 && call.grants[0].key == 7 &&
+        styxrpc_channel_call(&conflicting, bytes, length, &call) == STYXRPC_INVALID &&
+        styxrpc_channel_export_value(token, UINT32_MAX, 0, bytes, sizeof(bytes), &length) == STYXRPC_INVALID &&
+        styxrpc_channel_export_value(token, 7, 1, bytes, sizeof(bytes), &length) == STYXRPC_OK;
+}
+
+
 /* EN: Check both independent protocol surfaces, failing with context.
  * RU: Проверить обе части протокола и указать причину отказа. */
 int main(void)
 {
-    if (!channel_round_trip())
+    if (!channel_round_trip() || !channel_grants())
     {
         fputs("native channel admission or result failed\n", stderr);
         return 1;

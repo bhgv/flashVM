@@ -37,6 +37,9 @@ typedef struct StyxRpcRegistration
     char name[STYXRPC_TREE_NAME + 1]; /* Copied component. */
     StyxRpcResource resource;       /* Borrowed resource operations. */
     StyxIntVariable variable;       /* Signed scalar operations for a .var entry. */
+    struct StyxIntArray *collection; /* Borrowed indexed collection, when present. */
+    const void *collection_owner;   /* Session used to validate its selections. */
+    unsigned collection_op;         /* File operation within the collection. */
 } StyxRpcRegistration;
 
 

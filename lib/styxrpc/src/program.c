@@ -2,7 +2,7 @@
  * EN: Stable Qids and atomic, bounded registration for reverse process contexts.
  * RU: Устойчивые Qid и атомарная ограниченная регистрация встречных контекстов.
  */
-#include "styxrpc/program.h"
+#include "collection_internal.h"
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
@@ -92,25 +92,37 @@ int styxrpc_program_add(StyxRpcPrograms *programs, uint32_t pid)
 }
 
 
-/* EN: Reserve a unique named node with a mode derived from exact capabilities.
- * RU: Выделить уникальный узел с режимом по точным полномочиям. */
-static StyxRpcRegistration *add_entry(StyxRpcPrograms *programs, uint64_t parent, const char *name,
-    unsigned access, uint64_t length)
+/* EN: Check that a component is valid and not already published in this directory.
+ * RU: Проверить допустимость компонента и отсутствие его в каталоге. */
+static int free_name(const StyxRpcPrograms *programs, uint64_t parent, const char *name)
 {
     size_t count = name ? strlen(name) : 0;
-    if (!parent || !room(programs, 1) || !count || count > STYXRPC_TREE_NAME ||
-        strchr(name, '/') || !strcmp(name, ".") || !strcmp(name, "..") || !access ||
-        (access & ~(STYXRPC_READ | STYXRPC_WRITE)))
+    if (!parent || !count || count > STYXRPC_TREE_NAME || strchr(name, '/') ||
+        !strcmp(name, ".") || !strcmp(name, ".."))
     {
-        return NULL;
+        return 0;
     }
     for (size_t i = 1; i < programs->used; ++i)
     {
         const StyxRpcRegistration *node = &programs->nodes[i];
         if (node->parent == parent && !strcmp(node->name, name))
         {
-            return NULL;
+            return 0;
         }
+    }
+    return 1;
+}
+
+
+/* EN: Reserve a unique node with the exact announced byte access.
+ * RU: Выделить уникальный узел с точным объявленным доступом. */
+static StyxRpcRegistration *add_entry(StyxRpcPrograms *programs, uint64_t parent, const char *name,
+    unsigned access, uint64_t length)
+{
+    if (!room(programs, 1) || !free_name(programs, parent, name) || !access ||
+        (access & ~(STYXRPC_READ | STYXRPC_WRITE)))
+    {
+        return NULL;
     }
     unsigned mode = ((access & STYXRPC_READ) ? 0444 : 0) | ((access & STYXRPC_WRITE) ? 0222 : 0);
     StyxRpcRegistration *node = append(programs, parent, name, mode, 0);
@@ -197,6 +209,49 @@ int styxrpc_program_unibus(StyxRpcPrograms *programs, uint32_t pid, const StyxRp
 {
     size_t node = find_process(programs, pid);
     return node && add_resource(programs, node, ".unibus", STYXRPC_READ | STYXRPC_WRITE, 0, resource);
+}
+
+
+/* EN/RU: See collection.h. / См. collection.h. */
+int styxrpc_program_collection(StyxRpcPrograms *programs, uint32_t pid, const char *name, StyxIntArray *array)
+{
+    size_t process = find_process(programs, pid);
+    if (!process || !array || !array->load || (array->contains && (array->insert || array->pop)) ||
+        (array->add && !array->contains))
+    {
+        return 0;
+    }
+    uint64_t parent = process + VAR_CHILD;
+    size_t required = 5 + (array->insert ? 2 : 0) + (array->pop != NULL) + (array->add != NULL);
+    if (!room(programs, required) || !free_name(programs, parent, name))
+    {
+        return 0;
+    }
+    uint64_t directory = append(programs, parent, name, 0555, 1)->entry.id;
+    const struct
+    {
+        const char *name; /* Exact Styx name. */
+        unsigned mode;   /* Zero skips an unavailable mutation. */
+    } members[] = {
+        {".idx", 0222}, {".val", array->store ? 0666 : 0444}, {".len", 0444}, {".type", 0444},
+        {".ins", array->insert ? 0222 : 0}, {".push", array->insert ? 0222 : 0},
+        {".pop", array->pop ? 0444 : 0}, {".add", array->add ? 0222 : 0}
+    };
+    for (size_t i = 0; i < sizeof(members) / sizeof(*members); ++i)
+    {
+        if (members[i].mode)
+        {
+            StyxRpcRegistration *entry = append(programs, directory, members[i].name, members[i].mode, 0);
+            entry->length = i == CollectionLength || i == CollectionType ? 0 : 4;
+            if (i == CollectionInsert || i == CollectionAdd)
+            {
+                entry->length = 8;
+            }
+            styxrpc_collection_bind(entry, programs, array, (CollectionOperation)i);
+        }
+    }
+    programs->revision++;
+    return 1;
 }
 
 
