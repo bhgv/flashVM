@@ -136,14 +136,20 @@ char *styxscalarfunctionopen_export(Styxserver *server, int mode, const StyxScal
     fid->busy = busy;
     fid->function = *function;
     fid->report_transport_failure = report_transport_failure;
-    if (exports && function->managed_method && strchr(function->dynamic_shape->result, 'c'))
+    if (exports && function->managed_method &&
+        (strchr(function->dynamic_shape->arguments, 'c') || strchr(function->dynamic_shape->result, 'c')))
     {
         fid->channel_export = styxchannel_export_create(exports);
-        if (!fid->channel_export)
+        if (!fid->channel_export && strchr(function->dynamic_shape->result, 'c'))
         {
             free(fid);
             return Enomem;
         }
+    }
+    u32int wire_fid;
+    if (fid->channel_export && styxcurrentfid(server, &wire_fid))
+    {
+        styxchannel_export_annotate(fid->channel_export, wire_fid, 0);
     }
     if (styxsetauxowned(server, fid, styxscalarfunctionclose) < 0)
     {

@@ -15,6 +15,11 @@ extern "C" {
 #endif
 
 typedef struct StyxClient StyxClient; /* Owned connection reference. */
+/* EN: Copy occupied and available tag capacity under the client mux lock, without I/O.
+ * RU: Скопировать занятые теги и ёмкость под замком клиента, без I/O. */
+int styxclienttagcounts(StyxClient *client, unsigned *occupied, unsigned *capacity);
+
+
 typedef struct StyxCancel StyxCancel; /* Owned sticky native cancellation capability. */
 typedef struct StyxFid StyxFid; /* Owned independent remote fid and connection pin. */
 

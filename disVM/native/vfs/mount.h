@@ -65,4 +65,7 @@ typedef struct StyxLaunchOffer
  * записи даже при отказе. Массив и пути заимствуются на время настройки. */
 DVM_Provider *styxmountproviderlaunches(StyxClient *client, const char *root, unsigned access,
     const StyxLaunchOffer *offers, size_t count);
+/* EN/RU: Copy native mount tag counts without I/O. / Скопировать число тегов маунта без I/O. */
+int styxmounttagcounts(DVM_Provider *mount, unsigned *occupied, unsigned *capacity);
+
 #endif

@@ -352,3 +352,15 @@ StyxFid *styxmountgrantfid(DVM_Provider *grant, StyxClient *client, unsigned acc
     }
     return styxmountwalk(mount, ".");
 }
+
+
+/* EN/RU: See mount.h. / См. mount.h. */
+int styxmounttagcounts(DVM_Provider *provider, unsigned *occupied, unsigned *capacity)
+{
+    if (!provider || (provider->ops != &operations && provider->ops != &fileoperations))
+    {
+        return 0;
+    }
+    struct Mount *mount = provider->state;
+    return styxclienttagcounts(mount->client, occupied, capacity);
+}

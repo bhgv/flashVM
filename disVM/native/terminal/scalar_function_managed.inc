@@ -71,6 +71,7 @@ static char *managed_call(FunctionFid *fid, const void *bytes, size_t size, uint
         dvm_provider_release(self);
         return Eperm;
     }
+    styxchannel_export_annotate(fid->channel_export, UINT32_MAX, pid);
     fid->submitted = 1;
     size_t length = 0;
     int outcome = fn->managed_method(fn->state, self, &arguments, fid->reply, fid->reply_capacity, &length);

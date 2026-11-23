@@ -94,6 +94,20 @@ int styxmuxalive(StyxMux *mux)
 }
 
 
+/* EN/RU: See mux.h. / См. mux.h. */
+void styxmuxtagcounts(StyxMux *mux, unsigned *occupied, unsigned *capacity)
+{
+    pthread_mutex_lock(&mux->lock);
+    *occupied = 0;
+    *capacity = mux->limit;
+    for (unsigned i = 0; i < mux->limit; i++)
+    {
+        *occupied += mux->slots[i] != NULL;
+    }
+    pthread_mutex_unlock(&mux->lock);
+}
+
+
 /* EN: Find a free tag under the mux lock. A waiting caller holds the reusable
  * client frame, while the mux engine releases tags independently.
  * RU: Найти свободный тег под замком mux. Ожидающий удерживает буфер клиента.

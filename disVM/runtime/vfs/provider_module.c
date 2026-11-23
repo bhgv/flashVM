@@ -191,7 +191,7 @@ static size_t mounted_profile(DVM_Provider *directory, const char *name, unsigne
 
 /* EN/RU: Capture every requested function on one verified directory generation.
  * Захватить все запрошенные функции из одного проверенного поколения каталога. */
-static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarImport *imports, size_t count)
+static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarImport *imports, size_t count, int *channel_mismatch)
 {
     FVM_FileInfo info;
     if (!count || dvm_provider_info(plan->provider, plan->relative, &info) != FVM_OK ||
@@ -211,6 +211,7 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
         !delta.directory && (delta.mode & 0444);
     unsigned long graph_tag = STYX_MANAGED_GRAPH_TAG;
     int read_graph_marker = 0;
+    int channel_protocol = 0; /* Unknown, accepted positive, or incompatible negative. */
     DVM_ScalarFiles *head = NULL;
     DVM_ScalarFiles **tail = &head;
     unsigned matched = 0;
@@ -239,6 +240,19 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             {
                 bit = 0;
             }
+        }
+        int channels = bit && (strchr(shape.arguments, 'c') || strchr(shape.result, 'c'));
+        if (channels && !channel_protocol)
+        {
+            unsigned char marker[sizeof(STYX_CHANNEL_PROFILE)];
+            size_t length = mounted_profile(directory, STYX_CHANNEL_PROFILE_FILE, marker, sizeof(marker));
+            channel_protocol = length == sizeof(marker) - 1 &&
+                !memcmp(marker, STYX_CHANNEL_PROFILE, length) ? 1 : -1;
+        }
+        if (channels && channel_protocol < 0)
+        {
+            *channel_mismatch = 1;
+            bit = 0;
         }
         unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
             (strpbrk(shape.arguments, "rhc") || strpbrk(shape.result, "rhc")) ?
@@ -397,6 +411,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     int refused = 0;
     int denied = 0;
     int mismatch = 0;
+    int channel_mismatch = 0;
     unsigned long request_tag = 0, reply_tag = 0;
     struct DVM_ScalarFiles *files = NULL;
     if (released >= 0)
@@ -406,7 +421,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
         adapter = process ? dvm_module_adapter_source(plan->provider, plan->relative, &denied, &profile, &tag, &request_tag, &reply_tag, &files) : NULL;
         if (process && !denied && !adapter && !request_tag)
         {
-            image->mounted = mounted_functions(plan, copied, count);
+            image->mounted = mounted_functions(plan, copied, count, &channel_mismatch);
             if (image->mounted)
             {
                 files = image->mounted;
@@ -420,7 +435,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
             (dvm_provider_info(plan->provider, plan->relative, &original) == FVM_OK && !original.directory));
         mismatch = available && profile &&
             ((request_tag && signature != DVM_SCALAR_INT_SIGNATURE) || !check_profile(profile, tag, name, signature));
-        valid = available && !mismatch &&
+        valid = available && !mismatch && !channel_mismatch &&
             (request_tag || readimage(adapter ? adapter : plan->provider, adapter ? "." : plan->relative, image));
         closeimage(image);
         cancelled = dvm_vfs_wait_end(operation);
@@ -446,6 +461,7 @@ Module *dvm_provider_readmod(char *path, DVM_ResourcePlan *plan, const Import *i
     else
     {
         kwerrstr(cancelled || released == -2 ? "provider module load cancelled" :
+            channel_mismatch ? "incompatible Styx UniBus channel profile" :
             mismatch ? "remote scalar interface mismatch" :
             denied ? "adapter projection requires read and execute" :
             refused ? "provider module execution requires an accepted execution-provider launch" :

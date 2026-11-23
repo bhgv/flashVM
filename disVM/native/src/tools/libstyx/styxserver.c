@@ -1065,6 +1065,19 @@ styxsetaux(Styxserver *server, void *aux)
 }
 
 /* Return a borrowed native context, never a VM or wire pointer. */
+/* EN/RU: See styxserver.h. / См. styxserver.h. */
+int
+styxcurrentfid(Styxserver *server, u32int *number)
+{
+    Client *client = server ? server->curc : nil;
+    if (!client || !client->current || !number)
+    {
+        return 0;
+    }
+    *number = client->current->fid;
+    return 1;
+}
+
 void*
 styxgetaux(Styxserver *server)
 {

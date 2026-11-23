@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -32,6 +33,8 @@ struct StyxChannelExports
 struct ChannelExport
 {
     StyxChannelExports *registry; /* Owned registry reference until final destruction. */
+    uint32_t fid; /* Wire function fid, or UINT32_MAX for a derived grant. */
+    uint32_t pid; /* Remote caller PID, zero before admission. */
     int linked; /* Registry lock protects membership. */
     DVM_CancelTap *parent; /* Owned propagation from the parent lease. */
     ChannelExport *next; /* Borrowed next entry, under the registry lock. */
@@ -228,6 +231,7 @@ static DVM_Provider *create_control(StyxChannelExports *exports, ChannelExport *
     {
         return NULL;
     }
+    control->fid = UINT32_MAX;
     control->lock = fvm_port_sync_create();
     control->cancel = dvm_cancel_create();
     if (!control->lock || !control->cancel || !random_token(control->token) ||
@@ -332,6 +336,9 @@ int styxchannel_export_publish(DVM_Provider *provider, DVM_Provider *bus)
     fvm_port_sync_unlock(control->lock);
     return published;
 }
+
+
+#include "channel_export_status.inc"
 
 
 /* EN: Check the supplied opaque token without an early exit on matching prefixes.

@@ -43,6 +43,9 @@ StyxAnswer styxmuxcollect(StyxFlight *);
 /* EN/RU: Local native engine state snapshot, no network I/O.
  * Local native engine state snapshot, без network I/O. */
 int styxmuxalive(StyxMux *);
+
+/* EN/RU: Copy tag counts without I/O. / Скопировать число тегов без I/O. */
+void styxmuxtagcounts(StyxMux *, unsigned *, unsigned *);
 /* EN/RU: Terminally reject all work and wake native owner; no guest access.
  * Terminally отклонить всю работу и разбудить owner, без guest access. */
 void styxmuxfail(StyxMux *);

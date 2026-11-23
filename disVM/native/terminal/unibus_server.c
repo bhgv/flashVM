@@ -21,6 +21,8 @@
 #include "program_record.h"
 #include "cancel.h"
 #include <time.h>
+#include <stdio.h>
+#include "mount.h"
 #include "unibus_launch_queue.inc"
 static __thread StyxUnibusServer *current; /* Set only on the native server thread. */
 
@@ -84,6 +86,9 @@ static void close_launch_file(void *state)
 }
 
 
+#include "unibus_server_status.inc"
+
+
 /* EN/RU: Permit root traversal and write-only access to the published file.
  * Разрешить обход корня и доступ только на запись в опубликованный файл. */
 static char *open_node(Qid *qid, int mode)
@@ -103,6 +108,15 @@ static char *open_node(Qid *qid, int mode)
     if (exports)
     {
         return open_channel_operation(exports, mode);
+    }
+    StyxChannelExports *status = channel_metadata(qid->path, FIRST_CHANNEL_STATUS);
+    if (status)
+    {
+        return open_channel_status(status, mode);
+    }
+    if (channel_metadata(qid->path, FIRST_CHANNEL_PROFILE))
+    {
+        return mode == OREAD ? nil : Eperm;
     }
     if (delta_node(qid->path))
     {
@@ -215,6 +229,11 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     if (channels_for_node(qid.path))
     {
         return read_channel_operation(bytes, count, offset);
+    }
+    if (channel_metadata(qid.path, FIRST_CHANNEL_STATUS) ||
+        channel_metadata(qid.path, FIRST_CHANNEL_PROFILE))
+    {
+        return read_channel_metadata(qid.path, bytes, count, offset);
     }
     if (delta_node(qid.path) && offset >= 0)
     {
@@ -363,6 +382,14 @@ static int export_function(StyxUnibusServer *server, size_t index, size_t leader
             if (server->caller_root)
             {
                 directory->channel_exports = styxchannel_exports_create();
+                Styxfile *version = styxaddfile(&server->server, parent, FIRST_CHANNEL_PROFILE + leader,
+                    STYX_CHANNEL_PROFILE_FILE, 0444, "unibus");
+                if (!version || !styxaddfile(&server->server, parent, FIRST_CHANNEL_STATUS + leader,
+                    STYX_CHANNEL_STATUS_FILE, 0444, "unibus"))
+                {
+                    return 0;
+                }
+                version->d.length = sizeof(STYX_CHANNEL_PROFILE) - 1;
                 if (!directory->channel_exports || !styxaddfile(&server->server, parent,
                     FIRST_MODULE_CHANNELS + leader, STYX_CHANNEL_EXPORT_FILE, 0666, "unibus"))
                 {

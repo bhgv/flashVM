@@ -157,6 +157,37 @@ hold up to 128 active groups, including child tokens. A lease can publish
 up to eight distinct reverse grants, subject to the 16-publication limit
 shared with active caller contexts on the reverse session.
 
+## Capability check, diagnostics and link loss
+
+Before linking a channel signature, ordinary `load` checks the module's
+read-only `.unibus-version`. This release advertises `unibus-channel-1`. An
+absent or different profile raises `incompatible Styx UniBus channel profile`
+while loading. Exports with no channels keep their existing negotiation.
+
+Read `mounted/<module>/.unibus-status` to take a native snapshot. Each open
+holds one snapshot through EOF. The header shows occupied and total **reverse**
+Styx tags and active function workers on that server. Rows show the caller
+PID, the exact function fid when present and the state `pending` or
+`published`. The snapshots contain no capability tokens or managed values.
+They use existing native tables and scalar metadata recorded at call admission.
+There is no periodic sampling.
+
+Run the recovery fixture from the repository root.
+
+```sh
+python3 disVM/examples/remote-scalar/run_channel_recovery.py \
+    --runtime build/scalar-runtime/disvm \
+    --limbo build/scalar-runtime/bootstrap/limbo-bootstrap
+```
+
+The runner confirms remote function entry and breaks TCP before a reply, then
+breaks a separate connection during a channel receive. Both peers must shut
+down with empty managed-owner ledgers. A fresh pair and mount checks that
+ordinary `load` and channel operations work again. Use `--jit` for JIT, or pass
+`--legacy-runtime` with a pre-profile binary to check rejection by the new
+caller. If a submitted call loses its reply, the VM reports
+`remote managed call outcome unknown`. A fresh mount starts a new session.
+
 ## Wire records
 
 | Tag | Record |

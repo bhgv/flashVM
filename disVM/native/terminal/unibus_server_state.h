@@ -11,6 +11,8 @@
 #define PROGRAM_CATALOG 513UL /* Named launch list. */
 #define FIRST_PROGRAM 514UL /* Two consecutive qids per additional image. */
 #define FIRST_MODULE 5UL /* Three consecutive qids per module. */
+#define FIRST_CHANNEL_PROFILE 326UL /* One profile qid per possible module entry. */
+#define FIRST_CHANNEL_STATUS 390UL /* One optional diagnostic qid per module entry. */
 #define FIRST_MODULE_CHANNELS 262UL /* After the mounted delta-capability qids. */
 
 typedef struct MountedExport

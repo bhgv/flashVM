@@ -106,6 +106,11 @@ void styxfree(void *p);
 void styxdebug(void);
 void styxsetowner(char*);
 
+/* EN: Copy the current wire fid number during a dispatcher callback.
+ * RU: Скопировать номер текущего fid в callback диспетчера. */
+int styxcurrentfid(Styxserver *, u32int *);
+
+
 /* Borrow current fid context; set transfers non-nil ownership only into an empty slot.
  * No automatic cloning: unopened walk clones start empty. Rebuild all consumers. */
 void *styxgetaux(Styxserver *server);

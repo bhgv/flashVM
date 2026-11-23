@@ -206,6 +206,18 @@ int styxclientalive(StyxClient *client)
 }
 
 
+/* EN/RU: See client.h. / См. client.h. */
+int styxclienttagcounts(StyxClient *client, unsigned *occupied, unsigned *capacity)
+{
+    if (!client || !client->mux || !occupied || !capacity)
+    {
+        return 0;
+    }
+    styxmuxtagcounts(client->mux, occupied, capacity);
+    return 1;
+}
+
+
 /* EN/RU: See client.h; the final reference closes transport without waiting for protocol acknowledgement.
  * См. client.h; последняя ссылка закрывает transport без ожидания protocol acknowledgement. */
 void styxclientfree(StyxClient *client)
