@@ -75,11 +75,13 @@ Direct mounted Dis calls can use the positional value-only graph protocol. The e
 
 ## UniBus channel frames
 
-Dis passes live `chan of string` values to a native C export. C operates on the reverse `.prog/<pid>/.unibus` through the Limbo scheduler. The export also returns a C-owned channel whose lease is tied to the function fid. On the C side application callbacks choose readiness and buffer behavior.
+Dis passes live channels to a native C export. C operates on the reverse `.prog/<pid>/.unibus` and can receive a nested channel in the same call. A returned C-owned channel remains leased through the function fid. The portable C scheduler handles FIFO and synchronous channels, guard selection and clunk cancellation.
 
 [`styxrpc_channel_request`](reference/channel_request.md) · [`styxrpc_channel_read`](reference/channel_read.md) · [`styxrpc_channel_reply`](reference/channel_reply.md) · [`styxrpc_channel_result`](reference/channel_result.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.md)
 
 [`styxrpc_channel_profile`](reference/channel_profile.md) · [`styxrpc_channel_call`](reference/channel_call.md) · [`styxrpc_channel_call_reply`](reference/channel_call_reply.md) · [`styxrpc_channel_export_value`](reference/channel_export_value.md) · [`styxrpc_channel_exchange`](reference/channel_exchange.md)
+
+[`styxrpc_channel_import_element`](reference/channel_import_element.md) · [`styxrpc_scheduler_init`](reference/scheduler_init.md) · [`styxrpc_scheduler_admit`](reference/scheduler_admit.md) · [`styxrpc_scheduler_cancel`](reference/scheduler_cancel.md) · [`styxrpc_scheduler_progress`](reference/scheduler_progress.md)
 
 ## Named launch and dynamic tree
 
@@ -107,7 +109,15 @@ loads the module, invokes `sample` twice, and reads and writes the virtual file
 with a socket and mounts the device via `--styx-mount-fd FD --raw --at /device`.
 Use `--jit` to run the same test in JIT mode.
 
-Remaining work includes nested channel grants in messages, a general C rendezvous scheduler, and the full hybrid `table of big` protocol alongside the current indexed Int32 collection API.
+## Reverse `table of big`
+
+The application owns the positional and keyed parts of the table. One C callback handles operations on both parts. `.idx` distinguishes numeric and string keys, `.len` reports the dense prefix, and `.count` includes the keyed part. This complements the Int32 collection API.
+
+[`styxrpc_program_bigtable`](reference/program_bigtable.md) · [Working example](examples/README.md)
+
+## Remaining interoperability
+
+The portable C implementation handles nested channels on the current call route. Delegating nested grants beyond that route by a separate PID or module token still needs C support.
 
 ## Sources
 

@@ -3,6 +3,7 @@
  * RU: Устойчивые Qid и атомарная ограниченная регистрация встречных контекстов.
  */
 #include "collection_internal.h"
+#include "bigtable_internal.h"
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
@@ -249,6 +250,42 @@ int styxrpc_program_collection(StyxRpcPrograms *programs, uint32_t pid, const ch
             }
             styxrpc_collection_bind(entry, programs, array, (CollectionOperation)i);
         }
+    }
+    programs->revision++;
+    return 1;
+}
+
+
+/* EN/RU: See bigtable.h. / См. bigtable.h. */
+int styxrpc_program_bigtable(StyxRpcPrograms *programs, uint32_t pid, const char *name, const StyxRpcBigTable *table)
+{
+    size_t process = find_process(programs, pid);
+    if (!process || !table || !table->apply)
+    {
+        return 0;
+    }
+    uint64_t parent = process + VAR_CHILD;
+    size_t required = table->writable ? 10 : 6;
+    if (!room(programs, required) || !free_name(programs, parent, name))
+    {
+        return 0;
+    }
+    StyxRpcRegistration *directory = append(programs, parent, name, 0555, 1);
+    directory->table_spec = table;
+    const struct
+    {
+        const char *name; /* Stock command basename. */
+        unsigned mode;   /* Static access ceiling. */
+    } files[] = {
+        {".idx", 0222}, {".val", table->writable ? 0666 : 0444}, {".len", 0444},
+        {".count", 0444}, {".type", 0444}, {".ins", 0222}, {".push", 0222},
+        {".pop", 0444}, {".add", 0222}
+    };
+    for (size_t i = 0; i + 1 < required; ++i)
+    {
+        StyxRpcRegistration *entry = append(programs, directory->entry.id, files[i].name, files[i].mode, 0);
+        entry->length = i == BigValue || i == BigPop ? 8 : 0;
+        styxrpc_bigtable_bind(entry, directory, (BigNode)i);
     }
     programs->revision++;
     return 1;

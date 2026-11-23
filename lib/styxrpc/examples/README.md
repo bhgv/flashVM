@@ -73,13 +73,13 @@ nested object's original identity. Expect
 ## UniBus guarded channel operations
 
 ```sh
-ctest --test-dir build -R styxrpc-unibus-socket --output-on-failure
+ctest --test-dir build -R 'styxrpc-(unibus-socket|channel-scheduler)' --output-on-failure
 ```
 
 Two C endpoints use `.prog/42/.unibus` over Styx. The fixture scheduler
 chooses the ready string guard while another fid is waiting to receive.
-Clunk triggers exactly one application cancellation. Cross-runtime
-`chan of T` still requires grant and Limbo scheduler integration.
+Clunk triggers one application cancellation. The standalone C scheduler
+test covers FIFO, mixed `alt`, WAIT expiry and removal of a pending fid.
 
 ## Live channels across Dis and C
 
@@ -91,11 +91,26 @@ python3 examples/disvm/run.py --channels --runtime /path/to/disvm \
 
 Expect `PASS Limbo/C live channels over Styx`. Add `--jit` for the JIT.
 Limbo passes three channels to the C export. C tests an idle guard, receives
-a string through reverse UniBus, then sends a reply. In a separate call C
-returns a buffered channel. Limbo sends a value and receives it with
-`alt`. The module's `.unibus` verifies its lease token. Clunk of the
-function fid revokes the lease.
+a string through reverse UniBus and sends a reply. Limbo then passes
+an inner channel through `chan of chan of string`, checks its identity on
+return and exchanges strings on it. The third call returns a C-owned
+buffered channel. Limbo writes to it and reads through `alt`. The module's
+`.unibus` verifies its token, which clunk of the function fid revokes. The
+device reports errors on the open fid. The launcher closes the socket and
+reaps both processes.
 
 The named [example](disvm/named.py) also accesses live Int32 collections
 held by C. It inserts, appends, pops and updates the vector, then adds
 and selects a numeric key. Closing the selector revokes the old value fid.
+
+## Reverse hybrid table
+
+Run the [named launch example](disvm/named.py) using the command in the named
+launch section. `device-program.b` opens `.prog/.self/.var/hybrid` and compares
+position `1`, string `"1"` and sparse numeric key `5`. Key `-1` selects the
+last dense position. The program inserts and appends values, pops the last
+value and checks `.len` and `.count`. Re-reading an opened `.pop` returns the
+same snapshot. A duplicate add and a value read after the selector is clunked
+are expected to fail. The C process owns the table state.
+
+[Registration](../reference/program_bigtable.md) · [Limbo operations](disvm/device-program.b) · [C callback](disvm/hybrid.c)

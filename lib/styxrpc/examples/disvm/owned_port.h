@@ -5,7 +5,7 @@
 #ifndef STYXRPC_EXAMPLE_OWNED_PORT_H
 #define STYXRPC_EXAMPLE_OWNED_PORT_H
 #include "styxrpc/channel_call.h"
-#include "styxrpc/channel_fid.h"
+#include "styxrpc/channel_scheduler.h"
 #include "styxrpc/program.h"
 
 extern const StyxRpcSchema port_schema; /* port(): chan of string. */
@@ -15,7 +15,9 @@ typedef struct DevicePort
 {
     unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE]; /* Opaque result authorization. */
     unsigned char value[64];                      /* One complete admitted string frame. */
-    size_t size;                                  /* Zero means no buffered value. */
+    size_t size;                                  /* Size of the current FIFO slot. */
+    StyxRpcChannelQueue queue;                    /* One registered buffered channel. */
+    StyxRpcChannelScheduler scheduler;            /* Borrowed by module operation fids. */
     int active;                                   /* Forward function fid still owns this lease. */
 } DevicePort;
 

@@ -51,6 +51,7 @@ init()
         raise sys->sprint("wrong reverse variable or descriptor: %r");
     }
     collections(sys);
+    hybridtable(sys);
 
 }
 
@@ -128,4 +129,81 @@ collections(sys: Sys)
     if (member == nil || sys->read(member, data, 4) != 4 || data[3] != byte 77) {
         raise "wrong keyed collection value";
     }
+}
+
+# EN: Check and close one precise typed selector while the old value fid still exists.
+# RU: Проверить и закрыть типизированный селектор, оставив старый fid значения открытым.
+hybridcell(sys: Sys, path: string, key: array of byte, expected, replacement: int)
+{
+    selector := sys->open(path + ".idx", Sys->OWRITE);
+    if (selector == nil || sys->write(selector, key, len key) != len key) {
+        raise sys->sprint("hybrid selector: %r");
+    }
+    member := sys->open(path + ".val", Sys->ORDWR);
+    data := array[8] of byte;
+    if (member == nil || sys->read(member, data, 3) != 3 ||
+        sys->read(member, data[3:], 5) != 5 || data[7] != byte expected) {
+        raise "wrong selected hybrid table value";
+    }
+    if (replacement >= 0) {
+        data[7] = byte replacement;
+        if (sys->seek(member, big 0, Sys->SEEKSTART) != big 0 || sys->write(member, data, 8) != 8) {
+            raise "hybrid table update denied";
+        }
+    }
+    selector = nil;
+    for (tries := 0; tries < 100; tries++) {
+        if (sys->open(path + ".val", Sys->OREAD) == nil) {
+            break;
+        }
+        sys->sleep(5);
+    }
+    if (tries == 100 || sys->seek(member, big 0, Sys->SEEKSTART) != big 0 || sys->read(member, data, 8) >= 0) {
+        raise "hybrid table value fid survived selector clunk";
+    }
+}
+
+
+# EN: Exercise both halves of a hybrid table through the stock Limbo file format.
+# RU: Проверить обе части гибридной таблицы в штатном файловом формате Limbo.
+hybridtable(sys: Sys)
+{
+    path := "/.prog/.self/.var/hybrid/";
+    push := array[] of {byte 0, byte 0, byte 0, byte 0, byte 0, byte 0, byte 0, byte 99};
+    insert := array[16] of { * => byte 0 };
+    insert[7] = byte 1;
+    insert[15] = byte 15;
+    add := array[10] of { * => byte 0 };
+    add[0] = byte 1;
+    add[1] = byte 'x';
+    add[9] = byte 77;
+    if (!put(sys, path + ".ins", insert) || !put(sys, path + ".push", push) ||
+        !put(sys, path + ".add", add) || put(sys, path + ".add", add)) {
+        raise "wrong hybrid table mutation result";
+    }
+    pop := sys->open(path + ".pop", Sys->OREAD);
+    data := array[24] of byte;
+    if (pop == nil || sys->read(pop, data, 2) != 2 || sys->read(pop, data[2:], 6) != 6 ||
+        data[7] != byte 99 || sys->seek(pop, big 0, Sys->SEEKSTART) != big 0 ||
+        sys->read(pop, data, 8) != 8 || data[7] != byte 99) {
+        raise "hybrid table pop was not cached";
+    }
+    count := sys->open(path + ".count", Sys->OREAD);
+    length := sys->open(path + ".len", Sys->OREAD);
+    typefile := sys->open(path + ".type", Sys->OREAD);
+    if (count == nil || length == nil || typefile == nil ||
+        sys->read(count, data, 24) != 2 || string data[0:2] != "6\n" ||
+        sys->read(length, data, 24) != 2 || string data[0:2] != "3\n" ||
+        sys->read(typefile, data, 24) != 13 || string data[0:13] != "table of big\n") {
+        raise "wrong hybrid table metadata";
+    }
+    numeric := array[9] of { * => byte 0 };
+    relative := array[9] of { * => byte 255 };
+    relative[0] = byte 0;
+    numeric[8] = byte 1;
+    hybridcell(sys, path, numeric, 15, 17);
+    hybridcell(sys, path, array[] of {byte 1, byte '1'}, 90, 91);
+    hybridcell(sys, path, relative, 20, -1);
+    numeric[8] = byte 5;
+    hybridcell(sys, path, numeric, 50, -1);
 }

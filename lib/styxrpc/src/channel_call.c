@@ -57,7 +57,7 @@ static int admit(const void *context, const char *type, uint32_t key)
         return 0;
     }
     const size_t length = (size_t)(end - type) - 3;
-    if (length + 3 > STYXRPC_MANAGED_SHAPE || memchr(type + 2, 'c', length) || memchr(type + 2, 'h', length))
+    if (length + 3 > STYXRPC_MANAGED_SHAPE || memchr(type + 2, 'h', length))
     {
         return 0;
     }
@@ -156,4 +156,35 @@ StyxRpcStatus styxrpc_channel_export_value(const unsigned char token[STYXRPC_CHA
     unsigned char identity[] = {wire >> 24, wire >> 16, wire >> 8, wire};
     return fvm_srecord_write_pair(STYX_MANAGED_EXPORTED_CHANNEL_TAG, token, sizeof(missing),
         identity, sizeof(identity), bytes, capacity, used) == FVM_S_OK ? STYXRPC_OK : STYXRPC_INVALID;
+}
+
+
+/* EN/RU: See channel_call.h. / См. channel_call.h. */
+StyxRpcStatus styxrpc_channel_import_element(StyxRpcChannelCall *call, uint32_t via,
+    const void *bytes, size_t size)
+{
+    if (!call || !call->pid || call->count > STYXRPC_CHANNEL_SLOTS || !bytes || size > STYXRPC_MANAGED_LIMIT)
+    {
+        return STYXRPC_INVALID;
+    }
+    const char *shape = NULL;
+    for (size_t i = 0; i < call->count; ++i)
+    {
+        if (call->grants[i].key == via)
+        {
+            shape = call->grants[i].shape;
+            break;
+        }
+    }
+    FVM_SRecord record;
+    size_t consumed;
+    StyxRpcChannelCall staged = *call;
+    if (!shape || !memchr(shape, 0, STYXRPC_MANAGED_SHAPE) ||
+        fvm_srecord_read(bytes, size, STYXRPC_MANAGED_LIMIT, &record, &consumed) != FVM_S_OK ||
+        consumed != size || !styxmanaged_channel_payload(shape, &record, admit, &staged))
+    {
+        return STYXRPC_INVALID;
+    }
+    *call = staged;
+    return STYXRPC_OK;
 }

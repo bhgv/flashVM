@@ -34,7 +34,7 @@ static const char *grant_shape(const StyxRpcChannelGrant *grants, size_t count, 
         }
     }
     if (!shape || !memchr(shape, 0, STYXRPC_MANAGED_SHAPE) || shape[0] != '(' ||
-        strpbrk(shape, "ch"))
+        strchr(shape, 'h'))
     {
         return NULL;
     }
@@ -53,9 +53,29 @@ static int integer_value(const void *value, size_t size, int64_t *number)
 }
 
 
+typedef struct GrantTable
+{
+    const StyxRpcChannelGrant *grants; /* Borrowed immutable scope. */
+    size_t count;                     /* Number of admitted grants. */
+} GrantTable;
+
+
+/* EN: Send only nested keys already admitted with the exact structure on this route.
+ * RU: Отправлять только вложенные ключи, выданные на этом маршруте с точной структурой. */
+static int admit_nested(const void *context, const char *type, uint32_t key)
+{
+    const GrantTable *table = context;
+    const char *shape = grant_shape(table->grants, table->count, key);
+    const char *end = styxshape_end(type);
+    size_t length = end ? (size_t)(end - type) : 0;
+    return shape && length > 3 && strlen(shape) == length - 1 &&
+        !memcmp(shape + 1, type + 2, length - 3);
+}
+
+
 /* EN: Check the element's entire S-record, including nested typed values.
  * RU: Проверить целую S-запись элемента, включая вложенные типизированные данные. */
-static int element_valid(const char *shape, int typed, const void *value, size_t size)
+static int element_valid(const char *shape, int typed, const void *value, size_t size, const GrantTable *scope)
 {
     if (!value || !size || size > STYXRPC_MANAGED_LIMIT)
     {
@@ -69,7 +89,8 @@ static int element_valid(const char *shape, int typed, const void *value, size_t
     FVM_SRecord record;
     size_t used;
     return fvm_srecord_read(value, size, STYXRPC_MANAGED_LIMIT, &record, &used) == FVM_S_OK &&
-        used == size && styxmanaged_channel_value(shape, &record, NULL, NULL, 0);
+        used == size && styxmanaged_channel_value(shape, &record,
+            scope ? admit_nested : NULL, scope, 0);
 }
 
 
@@ -95,8 +116,9 @@ static int check(const StyxRpcChannelGrant *grants, size_t grant_count,
             return 0;
         }
         const int managed = strcmp(shape, "(i)") != 0;
+        const GrantTable scope = {grants, grant_count};
         if (guard->receive == 1 ? guard->size != 0 :
-            guard->receive != 0 || !element_valid(shape, managed, guard->value, guard->size))
+            guard->receive != 0 || !element_valid(shape, managed, guard->value, guard->size, &scope))
         {
             return 0;
         }
@@ -242,7 +264,7 @@ StyxRpcStatus styxrpc_channel_reply(const StyxRpcChannelGrant *grants, size_t gr
     }
     int receive = selected && selected != 255 && operation->guards[selected - 1].receive;
     if (receive ? !element_valid(grant_shape(grants, grant_count, operation->guards[selected - 1].key), typed,
-        value, size) : size != 0)
+        value, size, NULL) : size != 0)
     {
         return STYXRPC_INVALID;
     }
@@ -329,7 +351,7 @@ static StyxRpcStatus typed_result(const StyxRpcChannelGrant *grants, size_t gran
         return record.size == 1 ? STYXRPC_OK : STYXRPC_INVALID;
     }
     const char *shape = grant_shape(grants, grant_count, operation->guards[index - 1].key);
-    if (!element_valid(shape, 1, record.payload + 1, record.size - 1))
+    if (!element_valid(shape, 1, record.payload + 1, record.size - 1, NULL))
     {
         return STYXRPC_INVALID;
     }

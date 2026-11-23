@@ -82,11 +82,13 @@ fid. Диспетчер сериализует операции одного fid
 
 ## Кадры каналов UniBus
 
-В примере Dis передаёт живые `chan of string` нативному C-экспорту, а C выбирает ветки через встречный `.prog/<pid>/.unibus`, обслуживаемый планировщиком Limbo. C-экспорт также возвращает свой канал; его аренда закреплена за fid функции. Буфер и выбор на стороне C определяются колбэками приложения.
+Dis передаёт живые каналы C-экспорту. C выбирает ветки через встречный `.prog/<pid>/.unibus` и может принять вложенный канал в пределах того же вызова. Выданный C-канал сохраняет аренду до закрытия fid функции. Переносимый планировщик C обслуживает FIFO и синхронные каналы, выбирает ветки и снимает ожидание при clunk.
 
 [`styxrpc_channel_request`](reference/channel_request.ru.md) · [`styxrpc_channel_read`](reference/channel_read.ru.md) · [`styxrpc_channel_reply`](reference/channel_reply.ru.md) · [`styxrpc_channel_result`](reference/channel_result.ru.md) · [`styxrpc_channel_fid_write`](reference/channel_fid_write.ru.md) · [`styxrpc_channel_fid_finish`](reference/channel_fid_finish.ru.md) · [`styxrpc_channel_fid_read`](reference/channel_fid_read.ru.md) · [`styxrpc_channel_fid_close`](reference/channel_fid_close.ru.md)
 
 [`styxrpc_channel_profile`](reference/channel_profile.ru.md) · [`styxrpc_channel_call`](reference/channel_call.ru.md) · [`styxrpc_channel_call_reply`](reference/channel_call_reply.ru.md) · [`styxrpc_channel_export_value`](reference/channel_export_value.ru.md) · [`styxrpc_channel_exchange`](reference/channel_exchange.ru.md)
+
+[`styxrpc_channel_import_element`](reference/channel_import_element.ru.md) · [`styxrpc_scheduler_init`](reference/scheduler_init.ru.md) · [`styxrpc_scheduler_admit`](reference/scheduler_admit.ru.md) · [`styxrpc_scheduler_cancel`](reference/scheduler_cancel.ru.md) · [`styxrpc_scheduler_progress`](reference/scheduler_progress.ru.md)
 
 ## Имя, Qid и fid
 
@@ -108,11 +110,15 @@ fid. Диспетчер сериализует операции одного fid
 сокет и запускает DisVM с `--styx-mount-fd FD --raw --at /device`.
 Флаг `--jit` проверяет тот же сценарий в JIT.
 
-## Что ещё нужно
+## Встречная таблица `table of big`
 
-- Вложенные полномочия, когда сообщения каналов сами содержат каналы.
-- Встроенный планировщик для произвольных C-устройств. Текущий пример реализует буфер из одного элемента.
-- Полный гибридный `table of big` с позиционной частью и строковыми ключами. API коллекций в этом проходе поддерживает позиционный Int32 и отдельные числовые ключи.
+Приложение хранит позиционную и ключевую части таблицы. Один колбэк C принимает операции над обеими частями. `.idx` различает числовые и строковые ключи, `.len` возвращает длину плотной части, а `.count` учитывает и ключевую часть. Это дополняет API коллекций Int32.
+
+[`styxrpc_program_bigtable`](reference/program_bigtable.ru.md) · [Рабочий пример](examples/README.ru.md)
+
+## Оставшаяся совместимость
+
+Переносимый C-код поддерживает вложенный канал на маршруте текущего вызова. Обмен вложенными полномочиями за пределами этого маршрута через отдельный PID или токен модуля требует поддержки в C.
 
 ## Исходники
 

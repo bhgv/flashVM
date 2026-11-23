@@ -17,6 +17,8 @@
 
 static const StyxRpcSchema schema = {"(c[s]c[s]c[s])", "(i)"}; /* Compiled Bridge.exchange types. */
 
+static const StyxRpcSchema nested_schema = {"(c[c[s]])", "(i)"}; /* Compiled Bridge.nested types. */
+
 enum
 {
     Root,      /* Session root. */
@@ -27,13 +29,14 @@ enum
     Version,   /* UniBus channel version. */
     Exchange,  /* A function taking caller-owned channels. */
     Port,      /* A function returning a C-owned channel. */
+    Nested,    /* A function receiving a channel through another channel. */
     Bus        /* Module-scoped UniBus for result leases. */
 };
 
 typedef struct Device
 {
     StyxClient *reverse; /* Exact reverse connection borrowed through all function fids. */
-    unsigned char profile[192]; /* Immutable .interface bytes. */
+    unsigned char profile[256]; /* Immutable .interface bytes. */
     size_t profile_size;        /* Byte extent of the profile. */
     DevicePort port;             /* Lease and queue owned by the dispatcher only. */
 } Device;
@@ -59,9 +62,9 @@ static const StyxRpcEntry files[] = { /* Exact Qids and names on the forward con
     {Root, "/", 0555, 1}, {Mounted, "mounted", 0555, 1}, {Module, "bridge.dis", 0555, 1},
     {Interface, ".interface", 0444, 0}, {Fields, ".ref-fields", 0444, 0},
     {Version, ".unibus-version", 0444, 0}, {Exchange, "exchange", 0777, 0},
-    {Port, "port", 0777, 0}, {Bus, ".unibus", 0666, 0}
+    {Port, "port", 0777, 0}, {Nested, "nested", 0777, 0}, {Bus, ".unibus", 0666, 0}
 };
-static const uint64_t parents[] = {Root, Root, Mounted, Module, Module, Module, Module, Module, Module};
+static const uint64_t parents[] = {Root, Root, Mounted, Module, Module, Module, Module, Module, Module, Module};
 
 
 /* EN: Return the requested immediate child, or NULL at end.
@@ -207,13 +210,56 @@ static int run_exchange(Call *call, const StyxRpcChannelCall *context)
 }
 
 
+/* EN: Receive a same-scope channel, import its exact typed grant and exchange a string.
+ * RU: Принять канал текущего вызова, добавить его типизированное полномочие и обменяться строкой. */
+static int run_nested(Call *call, StyxRpcChannelCall *context)
+{
+    const uint32_t outer_key = context->grants[0].key;
+    const StyxRpcSelection receive_outer = {.count = 1, .guards = {{outer_key, 1, NULL, 0}}};
+    StyxRpcChannelResult result;
+    unsigned char reply[128], child[32], value[48];
+    if (!operate(call, context, &receive_outer, reply, sizeof(reply), &result) || result.selected != 1 ||
+        styxrpc_channel_import_element(context, outer_key, result.value, result.size) != STYXRPC_OK ||
+        context->count != 2 || strcmp(context->grants[1].shape, "(s)"))
+    {
+        return 0;
+    }
+
+    const uint32_t inner_key = context->grants[1].key;
+    const StyxRpcSelection return_inner = {.count = 1, .guards = {{outer_key, 0, result.value, result.size}}};
+    if (!operate(call, context, &return_inner, child, sizeof(child), &result) || result.selected != 1)
+    {
+        return 0;
+    }
+
+    const StyxRpcSelection receive_inner = {.count = 1, .guards = {{inner_key, 1, NULL, 0}}};
+    FVM_SRecord outer, message;
+    size_t length, extent;
+    if (!operate(call, context, &receive_inner, reply, sizeof(reply), &result) || result.selected != 1 ||
+        fvm_srecord_read(result.value, result.size, sizeof(reply), &outer, &extent) != FVM_S_OK ||
+        outer.tag != STYXRPC_CHANNEL_ELEMENT_TAG || extent != result.size ||
+        fvm_srecord_read(outer.payload, outer.size, sizeof(reply), &message, &extent) != FVM_S_OK ||
+        extent != outer.size || message.tag != STYXRPC_VALUE_STRING ||
+        message.size != 10 || memcmp(message.payload, "nested-dis", 10) ||
+        fvm_srecord_write(STYXRPC_VALUE_STRING, "nested-c", 8, child, sizeof(child), &length) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, length, value, sizeof(value), &extent) != FVM_S_OK)
+    {
+        return 0;
+    }
+    const StyxRpcSelection send = {.count = 1, .guards = {{inner_key, 0, value, extent}}};
+    return operate(call, context, &send, reply, sizeof(reply), &result) && result.selected == 1;
+}
+
+
 /* EN: Validate the complete call, use its channel grants, and emit an int result plus no updates.
  * RU: Проверить полный вызов, использовать полномочия и вернуть int с пустыми обновлениями. */
 static int finish(Call *call)
 {
     StyxRpcChannelCall context;
-    if (styxrpc_channel_call(&schema, call->request, call->staged, &context) != STYXRPC_OK ||
-        context.count != 3 || !run_exchange(call, &context))
+    const StyxRpcSchema *call_schema = call->id == Nested ? &nested_schema : &schema;
+    const size_t expected = call->id == Nested ? 1 : 3;
+    if (styxrpc_channel_call(call_schema, call->request, call->staged, &context) != STYXRPC_OK ||
+        context.count != expected || !(call->id == Nested ? run_nested(call, &context) : run_exchange(call, &context)))
     {
         return 0;
     }
@@ -222,7 +268,7 @@ static int finish(Call *call)
     return styxrpc_value_integer(STYXRPC_VALUE_INT, 42, child, sizeof(child), &length) == STYXRPC_OK &&
         fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, child, length, result, sizeof(result), &result_size) == FVM_S_OK &&
         fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
-        styxrpc_channel_call_reply(&schema, &context, result, result_size, updates, update_size,
+        styxrpc_channel_call_reply(call_schema, &context, result, result_size, updates, update_size,
             call->response, sizeof(call->response), &call->ready) == STYXRPC_OK;
 }
 
@@ -298,7 +344,7 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
     if (status == FVM_S_OK && extent == call->staged)
     {
         int done = call->id == Port ? publish_port(call) : !pthread_create(&call->worker, NULL, work, call);
-        call->started = done && call->id == Exchange;
+        call->started = done && call->id != Port;
         call->refused = !done;
     }
     else
@@ -329,6 +375,12 @@ int main(int argc, char **argv)
     }
     size_t extent;
     if (styxrpc_channel_profile("port", PORT_SIGNATURE, &port_schema,
+        device.profile + device.profile_size, sizeof(device.profile) - device.profile_size, &extent) != STYXRPC_OK)
+    {
+        return 2;
+    }
+    device.profile_size += extent;
+    if (styxrpc_channel_profile("nested", UINT32_C(0x61952ef2), &nested_schema,
         device.profile + device.profile_size, sizeof(device.profile) - device.profile_size, &extent) != STYXRPC_OK)
     {
         return 2;

@@ -188,6 +188,7 @@ int register_reverse(ReverseState *state)
         styxrpc_program_int(tree, 42, "count", &count) &&
         styxrpc_program_collection(tree, 42, "vector", &state->vector) &&
         styxrpc_program_collection(tree, 42, "keyed", &state->keyed) &&
+        register_hybrid(tree, 42, &state->hybrid) &&
         styxrpc_program_file(tree, 42, "marker", STYXRPC_READ, sizeof(marker) - 1, &marker_file) &&
         styxrpc_program_file(tree, 42, "parked", STYXRPC_WRITE, 0, &checkpoint);
 }

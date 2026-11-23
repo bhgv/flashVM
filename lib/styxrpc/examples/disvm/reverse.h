@@ -5,6 +5,7 @@
 #ifndef STYXRPC_EXAMPLE_REVERSE_H
 #define STYXRPC_EXAMPLE_REVERSE_H
 #include "styxrpc/collection.h"
+#include "hybrid.h"
 #include <pthread.h>
 
 typedef struct ReverseState
@@ -19,7 +20,8 @@ typedef struct ReverseState
     int32_t values[4];           /* C-owned vector storage. */
     uint32_t keys[2];            /* C-owned keyed names. */
     int32_t mapped[2];           /* Values corresponding to keys. */
-    StyxRpcRegistration nodes[32]; /* Fixed registration storage. */
+    Hybrid hybrid;                      /* C-owned dense and keyed table. */
+    StyxRpcRegistration nodes[44]; /* Fixed registration storage. */
     StyxRpcServer *server; /* Owned by the dispatcher once its thread is started. */
 } ReverseState;
 

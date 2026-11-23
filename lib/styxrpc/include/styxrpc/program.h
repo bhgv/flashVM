@@ -39,6 +39,9 @@ typedef struct StyxRpcRegistration
     StyxIntVariable variable;       /* Signed scalar operations for a .var entry. */
     struct StyxIntArray *collection; /* Borrowed indexed collection, when present. */
     const void *collection_owner;   /* Session used to validate its selections. */
+    struct StyxRpcRegistration *table_directory; /* Hybrid table command's parent slot. */
+    const struct StyxRpcBigTable *table_spec;     /* Borrowed on the hybrid table directory. */
+    void *table_selection;                       /* Active selector owned by the dispatcher. */
     unsigned collection_op;         /* File operation within the collection. */
 } StyxRpcRegistration;
 

@@ -9,6 +9,7 @@ Client: module { init: fn(); };
 Bridge: module {
     exchange: fn(input: chan of string, output: chan of string, idle: chan of string): int;
     port: fn(): chan of string;
+    nested: fn(input: chan of chan of string): int;
 };
 
 
@@ -23,6 +24,20 @@ worker(input, output, idle, done: chan of string)
     <-idle =>
         done <-= "wrong guard";
     }
+}
+
+
+# EN: Send the inner channel as a value and use the same channel after receiving it back.
+# RU: Передать внутренний канал как значение и использовать тот же канал после обратного приёма.
+nested_worker(outer: chan of chan of string, inner, done: chan of string)
+{
+    outer <-= inner;
+    returned := <-outer;
+    if (returned != inner) {
+        raise "remote nested exchange lost channel identity";
+    }
+    inner <-= "nested-dis";
+    done <-= <-inner;
 }
 
 
@@ -42,6 +57,12 @@ init()
     spawn worker(input, output, idle, done);
     if (bridge->exchange(input, output, idle) != 42 || <-done != "from-c") {
         raise "wrong remote channel exchange";
+    }
+    outer := chan of chan of string;
+    inner := chan of string;
+    spawn nested_worker(outer, inner, done);
+    if (bridge->nested(outer) != 42 || <-done != "nested-c") {
+        raise "wrong remote nested channel exchange";
     }
     port := bridge->port();
     if (port == nil) {

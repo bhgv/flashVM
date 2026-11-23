@@ -23,8 +23,18 @@ typedef struct Operation
     unsigned char request[192]; /* Complete buffered operation. */
     unsigned char reply[192];   /* Completed selection. */
     StyxRpcChannelFid fid;      /* Shared portable lifecycle. */
-    uint64_t deadline;          /* Monotonic deadline for bounded WAIT. */
 } Operation;
+
+
+/* EN: Supply the owner's monotonic clock to the native channel scheduler.
+ * RU: Передать часы владельца нативному планировщику каналов. */
+static uint64_t now_ms(void *context)
+{
+    struct timespec time;
+    (void)context;
+    return !clock_gettime(CLOCK_MONOTONIC, &time) ?
+        UINT64_C(1000) * (uint64_t)time.tv_sec + (uint64_t)time.tv_nsec / 1000000 : 0;
+}
 
 
 /* EN/RU: See owned_port.h. / См. owned_port.h. */
@@ -37,7 +47,10 @@ int device_port_publish(DevicePort *port, const StyxRpcChannelCall *call,
     }
     unsigned char child[48], result[64], updates[12];
     size_t length, result_size, update_size;
-    port->active = styxrpc_channel_export_value(port->token, grant.key, 0,
+    port->queue = (StyxRpcChannelQueue){.grant = grant, .bytes = port->value,
+        .sizes = &port->size, .capacity = 1, .stride = sizeof(port->value)};
+    port->active = styxrpc_scheduler_init(&port->scheduler, &port->queue, 1, now_ms, NULL) &&
+        styxrpc_channel_export_value(port->token, grant.key, 0,
         child, sizeof(child), &length) == STYXRPC_OK &&
         fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, child, length, result, sizeof(result), &result_size) == FVM_S_OK &&
         fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
@@ -50,6 +63,10 @@ int device_port_publish(DevicePort *port, const StyxRpcChannelCall *call,
 /* EN/RU: See owned_port.h. / См. owned_port.h. */
 void device_port_revoke(DevicePort *port)
 {
+    while (port->scheduler.used)
+    {
+        styxrpc_channel_fid_close(port->scheduler.pending[0].fid);
+    }
     memset(port, 0, sizeof(*port));
 }
 
@@ -60,67 +77,6 @@ static int current(const Operation *operation)
 {
     return operation->authenticated && operation->port->active &&
         !memcmp(operation->token, operation->port->token, sizeof(operation->token));
-}
-
-
-/* EN: Read monotonic milliseconds for the bounded WAIT selection.
- * RU: Прочитать монотонные миллисекунды для ограниченного WAIT. */
-static uint64_t now_ms(void)
-{
-    struct timespec time;
-    return !clock_gettime(CLOCK_MONOTONIC, &time) ?
-        UINT64_C(1000) * (uint64_t)time.tv_sec + (uint64_t)time.tv_nsec / 1000000 : 0;
-}
-
-
-/* EN: Commit only one ready guard after constructing a complete reply.
- * RU: Выполнить только одну готовую ветку после кодирования полного ответа. */
-static int advance(Operation *operation, StyxRpcChannelFid *fid)
-{
-    DevicePort *port = operation->port;
-    for (size_t i = 0; i < fid->selection.count; ++i)
-    {
-        const StyxRpcGuard *guard = &fid->selection.guards[i];
-        if (guard->receive && port->size)
-        {
-            if (styxrpc_channel_fid_finish(fid, (unsigned)i + 1, port->value, port->size) != STYXRPC_OK)
-            {
-                return 0;
-            }
-            port->size = 0;
-            return 1;
-        }
-        if (!guard->receive && !port->size)
-        {
-            if (guard->size > sizeof(port->value))
-            {
-                return styxrpc_channel_fid_finish(fid, 255, NULL, 0) == STYXRPC_OK;
-            }
-            if (styxrpc_channel_fid_finish(fid, (unsigned)i + 1, NULL, 0) != STYXRPC_OK)
-            {
-                return 0;
-            }
-            memcpy(port->value, guard->value, guard->size);
-            port->size = guard->size;
-            return 1;
-        }
-    }
-    int idle = fid->selection.mode == STYXRPC_CHANNEL_TRY ||
-        (fid->selection.mode == STYXRPC_CHANNEL_WAIT && now_ms() >= operation->deadline);
-    return !idle || styxrpc_channel_fid_finish(fid, 0, NULL, 0) == STYXRPC_OK;
-}
-
-
-/* EN: Poll belongs to the dispatcher, so an operation has no worker to cancel.
- * RU: Опрос выполняет диспетчер, выделенного рабочего потока для отмены нет. */
-static int admit(void *context, StyxRpcChannelFid *fid)
-{
-    Operation *operation = context;
-    if (fid->selection.mode == STYXRPC_CHANNEL_WAIT)
-    {
-        operation->deadline = now_ms() + 40;
-    }
-    return advance(operation, fid);
 }
 
 
@@ -141,7 +97,8 @@ static int open_bus(void *context, unsigned access, void **cookie)
     operation->fid = (StyxRpcChannelFid){.grants = &grant, .grant_count = 1,
         .request = operation->request, .request_capacity = sizeof(operation->request),
         .reply = operation->reply, .reply_capacity = sizeof(operation->reply),
-        .admit = admit, .context = operation};
+        .admit = styxrpc_scheduler_admit, .cancel = styxrpc_scheduler_cancel,
+        .context = &operation->port->scheduler};
     *cookie = operation;
     return 1;
 }
@@ -179,9 +136,12 @@ static int write_bus(void *cookie, uint64_t offset, const void *bytes, size_t co
 static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
 {
     Operation *operation = cookie;
-    return current(operation) && offset <= SIZE_MAX &&
-        (!operation->fid.pending || advance(operation, &operation->fid)) &&
-        styxrpc_channel_fid_read(&operation->fid, (size_t)offset, bytes, capacity, size) != STYXRPC_INVALID;
+    if (!current(operation) || offset > SIZE_MAX)
+    {
+        return 0;
+    }
+    styxrpc_scheduler_progress(&operation->port->scheduler);
+    return styxrpc_channel_fid_read(&operation->fid, (size_t)offset, bytes, capacity, size) != STYXRPC_INVALID;
 }
 
 

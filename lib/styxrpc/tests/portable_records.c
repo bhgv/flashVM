@@ -117,11 +117,51 @@ static int channel_grants(void)
 }
 
 
+/* EN: Require a confirmed same-route key and roll back a partially validated element.
+ * RU: Требовать ключ текущего маршрута и отменять добавления частично верного элемента. */
+static int nested_grants(void)
+{
+    StyxRpcChannelCall call = {.pid = 41, .count = 1, .grants = {{1, "(c[s])"}}};
+    unsigned char key[] = {0, 0, 0, 2};
+    unsigned char child[32], element[48], request[64];
+    size_t length, extent, used;
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, key, sizeof(key), child, sizeof(child), &length) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, length, element, sizeof(element), &extent) != FVM_S_OK)
+    {
+        return 0;
+    }
+    const StyxRpcSelection send = {.count = 1, .guards = {{1, 0, element, extent}}};
+    if (styxrpc_channel_request(call.grants, call.count, &send, NULL, 0,
+            request, sizeof(request), &used) != STYXRPC_INVALID ||
+        styxrpc_channel_import_element(&call, 1, element, extent) != STYXRPC_OK ||
+        styxrpc_channel_import_element(&call, 1, element, extent) != STYXRPC_OK ||
+        call.count != 2 || call.grants[1].key != 2 ||
+        styxrpc_channel_request(call.grants, call.count, &send, NULL, 0,
+            request, sizeof(request), &used) != STYXRPC_OK)
+    {
+        return 0;
+    }
+
+    call.grants[0] = (StyxRpcChannelGrant){1, "((c[i]c[i]))"};
+    const unsigned char new_key[] = {0, 0, 0, 3};
+    size_t second;
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, new_key, sizeof(new_key), child, sizeof(child), &length) != FVM_S_OK ||
+        fvm_srecord_write(STYX_MANAGED_CHANNEL_TAG, key, sizeof(key), child + length,
+            sizeof(child) - length, &second) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_VALUE_TUPLE, child, length + second, request, sizeof(request), &used) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, request, used, element, sizeof(element), &extent) != FVM_S_OK)
+    {
+        return 0;
+    }
+    return styxrpc_channel_import_element(&call, 1, element, extent) == STYXRPC_INVALID && call.count == 2;
+}
+
+
 /* EN: Check both independent protocol surfaces, failing with context.
  * RU: Проверить обе части протокола и указать причину отказа. */
 int main(void)
 {
-    if (!channel_round_trip() || !channel_grants())
+    if (!channel_round_trip() || !channel_grants() || !nested_grants())
     {
         fputs("native channel admission or result failed\n", stderr);
         return 1;

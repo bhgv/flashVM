@@ -54,6 +54,14 @@ StyxRpcStatus styxrpc_channel_export_value(const unsigned char token[STYXRPC_CHA
     uint32_t key, int unbuffered, void *bytes, size_t capacity, size_t *used);
 
 
+/* EN: Admit nested keys from a confirmed typed receive on this call's own route.
+ * via is the original receive key. On failure the call and all grants stay unchanged.
+ * RU: Принять вложенные ключи подтверждённого приёма на маршруте этого вызова.
+ * via — ключ исходного приёма. При ошибке вызов и полномочия не меняются. */
+StyxRpcStatus styxrpc_channel_import_element(StyxRpcChannelCall *call, uint32_t via,
+    const void *bytes, size_t size);
+
+
 /* EN: Run a selection on the active caller's reverse .unibus. Each operation uses one fid.
  * Buffers are disjoint and already sized for the selected types. timeout_ms is 1..60000,
  * checked between synchronous Styx calls. MORE means timeout, with the fid clunked.

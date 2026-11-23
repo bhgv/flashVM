@@ -108,7 +108,9 @@ int main(int argc, char **argv)
         failed != STYXRPC_LAUNCH_FAILED || absent != STYXRPC_LAUNCH_NOT_SENT ||
         state.value != 42 || state.byte != 'D' || state.output != 'O' ||
         state.vector.length != 3 || state.values[1] != 12 || state.values[2] != 23 ||
-        state.keyed.length != 1 || state.keys[0] != 9 || state.mapped[0] != 77)
+        state.keyed.length != 1 || state.keys[0] != 9 || state.mapped[0] != 77 ||
+        state.hybrid.length != 3 || state.hybrid.count != 3 || state.hybrid.dense[1] != 17 ||
+        state.hybrid.sparse[0].value != 91)
     {
         fprintf(stderr, "launch results: %d %d %d %d, cancelled=%d count=%d fd=%u stdout=%u\n",
             first, second, failed, absent, cancelled, (int)state.value, (unsigned)state.byte, (unsigned)state.output);
