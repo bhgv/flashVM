@@ -12,4 +12,4 @@ For a complete reverse message delivered for this result, use [message import](c
 
 A [reverse mailbox](channel_mailbox_create.md) provides separate bounded FIFOs for the peer and the owner on one PID. The dispatcher validates the typed frames. The owner can dequeue a frame and import its module grants under the pinned lease.
 
-A [module-result mailbox](channel_mailbox_result_create.md) accepts the caller's reverse PIDs. The owner [imports the confirmed PID identities](channel_pid_import.md) and uses routed exchange on the same attachment. Clunk retires the resource, and the owner releases its handle separately.
+A [module-result mailbox](channel_mailbox_result_create.md) accepts the caller's reverse PIDs. The owner [imports the confirmed PID identities](channel_pid_import.md) and uses [PID exchange](channel_pid_exchange.md) to operate and admit nested keys on the same attachment. Clunk retires the resource, and the owner releases its handle separately.

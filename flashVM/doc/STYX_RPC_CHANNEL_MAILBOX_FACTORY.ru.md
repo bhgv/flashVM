@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_mailbox_factory
 
-[English](STYX_RPC_CHANNEL_MAILBOX_FACTORY.md) · [Объявление](../include/flashvm/styxrpc_channel.h#L141) · [Реализация](../src/styxrpc/channel_mailbox.c#L284)
+[English](STYX_RPC_CHANNEL_MAILBOX_FACTORY.md) · [Объявление](../include/flashvm/styxrpc_channel.h#L141) · [Реализация](../src/styxrpc/channel_mailbox.c#L293)
 
 ```c
 #include <flashvm/styxrpc_channel.h>

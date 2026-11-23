@@ -140,19 +140,30 @@ static StyxRpcStatus exchange_on(StyxClient *session, const char *path, StyxFid 
 }
 
 
+/* EN/RU: See channel_route_internal.h. / См. channel_route_internal.h. */
+StyxRpcStatus styxrpc_channel_exchange_pid_bound(StyxClient *reverse, uint32_t pid,
+    const StyxRpcChannelGrant *grants, size_t count,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+{
+    if (!pid)
+    {
+        return STYXRPC_INVALID;
+    }
+    char path[sizeof(".prog/4294967295/.unibus")];
+    snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", pid);
+    return exchange_on(reverse, path, NULL, NULL, grants, count, selection, timeout_ms,
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+}
+
+
 /* EN/RU: See channel_call.h. / См. channel_call.h. */
 StyxRpcStatus styxrpc_channel_exchange(StyxClient *reverse, const StyxRpcChannelCall *call,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
 {
-    if (!call || !call->pid)
-    {
-        return STYXRPC_INVALID;
-    }
-    char path[sizeof(".prog/4294967295/.unibus")];
-    snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", call->pid);
-    return exchange_on(reverse, path, NULL, NULL, call->grants, call->count, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+    return call ? styxrpc_channel_exchange_pid_bound(reverse, call->pid, call->grants, call->count, selection,
+        timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity, result) : STYXRPC_INVALID;
 }
 
 
@@ -166,27 +177,16 @@ StyxRpcStatus styxrpc_channel_route_exchange(StyxClient *session, const char *mo
     {
         return STYXRPC_INVALID;
     }
-    char path[sizeof(".prog/4294967295/.unibus")];
-    const unsigned char *token = NULL;
-    const char *endpoint = module_bus;
     if (route->kind == STYXRPC_ROUTE_PID)
     {
-        if (module_bus)
-        {
-            return STYXRPC_INVALID;
-        }
-        snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", route->pid);
-        endpoint = path;
+        return module_bus ? STYXRPC_INVALID : styxrpc_channel_exchange_pid_bound(session, route->pid, &route->channel,
+            1, selection, timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
     }
-    else if (!module_bus || !*module_bus)
+    if (!module_bus || !*module_bus)
     {
         return STYXRPC_INVALID;
     }
-    else
-    {
-        token = route->token;
-    }
-    return exchange_on(session, endpoint, NULL, token, &route->channel, 1, selection, timeout_ms,
+    return exchange_on(session, module_bus, NULL, route->token, &route->channel, 1, selection, timeout_ms,
         scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
 }
 

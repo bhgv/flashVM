@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_mailbox
 
-[Русский](STYX_RPC_CHANNEL_MAILBOX.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L135) · [Implementation](../src/styxrpc/channel_mailbox.c#L186)
+[Русский](STYX_RPC_CHANNEL_MAILBOX.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L135) · [Implementation](../src/styxrpc/channel_mailbox.c#L195)
 
 ```c
 #include <flashvm/styxrpc_channel.h>

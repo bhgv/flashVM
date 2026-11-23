@@ -102,7 +102,7 @@ int fvm_styxrpc_channel_encode_grant(FVM_Context *context, FVM_GCRootScope *root
     FVM_StyxRemoteChannel *channel;
     const StyxRpcChannelRoute *route;
     const char *end;
-    size_t width;
+    size_t width, index;
     (void)roots;
     if (value->type == FVM_VALUE_NULL)
     {
@@ -115,6 +115,16 @@ int fvm_styxrpc_channel_encode_grant(FVM_Context *context, FVM_GCRootScope *root
         return 0;
     }
     route = fvm_styxrpc_channel_set_route(set, channel->index);
+    if (route && route->kind == STYXRPC_ROUTE_PID)
+    {
+        for (index = 0; index < channel->index; ++index)
+        {
+            if (set->pid_routes.entries[index].pid == route->pid)
+            {
+                return 0;
+            }
+        }
+    }
     width = (size_t)(end - type) - 3;
     return route && strlen(route->channel.shape) == width + 2 &&
         !memcmp(route->channel.shape + 1, type + 2, width) &&

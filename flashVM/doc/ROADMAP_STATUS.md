@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1724 / Контрольная точка v0.1724. FlashVM receives and
+returns nested native Dis channels through libstyxrpc on the reverse PID.
+Алиасы сохраняются, вложенный канал переживает закрытие родительского
+прокси и отзывается по clunk результата. [EN](STYX_RPC_CHANNEL_DELEGATION.md) /
+[RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1723 / Контрольная точка v0.1723. A hosted FlashVM result
 accepts native Dis reverse PIDs through libstyxrpc. FlashVM сохраняет
 алиасы при обмене и отзывает прокси по clunk исходного результата.

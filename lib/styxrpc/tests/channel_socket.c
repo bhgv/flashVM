@@ -245,6 +245,26 @@ static int import_pid(StyxClient *client, uint32_t pid, StyxRpcStatus expected, 
 }
 
 
+/* EN: Exercise an admitted key and reject an unadmitted key on the same client and PID table.
+ * RU: Проверить допущенный ключ и отказ для неизвестного ключа на том же клиенте и таблице PID. */
+static int exchange_imported(StyxClient *client, StyxRpcChannelRoutes *routes)
+{
+    unsigned char request[96], reply[96];
+    StyxRpcSelection receive = {.count = 1, .guards = {{2, 1, NULL, 0}}};
+    StyxRpcChannelResult result;
+    if (styxrpc_channel_pid_exchange(client, routes, 0, &receive, 500, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result) != STYXRPC_OK ||
+        result.selected != 1 || !result.size)
+    {
+        return 0;
+    }
+    receive.guards[0].key = grants[0].key;
+    return styxrpc_channel_pid_exchange(client, routes, 0, &receive, 500, NULL, 0,
+        request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_INVALID &&
+        result.selected == 1 && routes->count == 1;
+}
+
+
 /* EN: Park two operations, revoke through the owner and reject old and fresh access.
  * RU: Поставить две операции в ожидание, отозвать через владельца и проверить отказ доступа. */
 static int revoke_routed(StyxClient *client, uint32_t pid)
@@ -327,7 +347,7 @@ int main(void)
     StyxRpcChannelRoutes imported = {0};
     int good = client && exchange(client) && import_pid(client, pid, STYXRPC_OK, &imported) &&
         import_pid(client, pid + 1, STYXRPC_INVALID, &imported) && imported.count == 1 &&
-        imported.entries[0].pid == pid;
+        imported.entries[0].pid == pid && exchange_imported(client, &imported);
     for (unsigned i = 0; good && i < REVOKE_ROUNDS; ++i)
     {
         good = exchange_routed(client, pid + i) && revoke_routed(client, pid + i);

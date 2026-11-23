@@ -13,6 +13,7 @@
 
 #define WAIT_MS 2000U /* Native reverse I/O budget. */
 #define CREATE_SIG UINT32_C(0xe747e7ab) /* Limbo int-to-mailbox export. */
+#define NESTED_SIG UINT32_C(0xc1105a8b) /* Limbo int-to-nested-mailbox export. */
 #define CHECK_SIG UINT32_C(0x4fef7e8c)  /* Limbo chan(int)-to-int owner probe. */
 
 
@@ -81,6 +82,79 @@ static FVM_Result drain(FVM_Context *context, FVM_Object *self, unsigned argc,
 }
 
 
+/* [GC:] EN: Receive a live object through port and retain it in the fixture roots.
+ * RU: Принять живой объект через port и добавить его к корням проверки. */
+static int receive_object(FVM_Context *context, FVM_GCRootScope *roots,
+    const FVM_Value *port, const char *method, FVM_Value *out)
+{
+    return fvm_object_call(context, port->object, method, 0, NULL, out) == FVM_OK &&
+        out->type == FVM_VALUE_OBJECT && fvm_gc_roots_add(roots, out) == FVM_OK;
+}
+
+
+/* EN: Confirm a single send completed on a remote channel or local mailbox.
+ * RU: Подтвердить одну отправку по удалённому каналу либо в локальную очередь. */
+static int send_value(FVM_Context *context, const FVM_Value *port, const char *method, const FVM_Value *value)
+{
+    FVM_Value reply;
+    return fvm_object_call(context, port->object, method, 1, value, &reply) == FVM_OK &&
+        reply.type == FVM_VALUE_BOOLEAN && reply.boolean;
+}
+
+
+/* [GC:] EN: Check nested aliases, reject cross-PID leaves and retain the child past parent close.
+ * RU: Проверить алиасы, отказ для ссылок другого PID и работу потомка после закрытия родителя. */
+static FVM_Result drain_nested(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value mailbox, first, alias, second, left, right, child, sync, value;
+    (void)self;
+    (void)args;
+    (void)unused;
+    if (argc != 1 || fvm_gc_roots_begin(context, &roots) != FVM_OK)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    int ok = fvm_get_global(context, "heldMailbox", &mailbox) == FVM_OK && mailbox.type == FVM_VALUE_OBJECT &&
+        receive_object(context, roots, &mailbox, "tryReceive", &first) &&
+        receive_object(context, roots, &mailbox, "tryReceive", &alias) && first.object == alias.object &&
+        receive_object(context, roots, &mailbox, "tryReceive", &second) && first.object != second.object &&
+        receive_object(context, roots, &first, "receive", &left) &&
+        receive_object(context, roots, &second, "receive", &right) &&
+        fvm_object_get(context, left.object, "0", &child) == FVM_OK && child.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, left.object, "1", &alias) == FVM_OK && alias.type == FVM_VALUE_OBJECT &&
+        alias.object == child.object &&
+        fvm_object_get(context, left.object, "2", &value) == FVM_OK && value.type == FVM_VALUE_NULL &&
+        fvm_object_get(context, left.object, "3", &sync) == FVM_OK && sync.type == FVM_VALUE_OBJECT &&
+        fvm_object_call(context, first.object, "send", 1, &right, &value) == FVM_EXCEPTION &&
+        fvm_exception_get(context, &value) == FVM_OK && value.type == FVM_VALUE_STRING &&
+        !strcmp(value.string, "Styx RPC channel value does not fit the schema") && fvm_exception_clear(context) == FVM_OK &&
+        send_value(context, &first, "send", &left) && send_value(context, &second, "send", &right) &&
+        send_value(context, &mailbox, "trySend", &first) &&
+        fvm_object_call(context, first.object, "close", 0, NULL, &value) == FVM_OK &&
+        fvm_object_call(context, sync.object, "receive", 0, NULL, &value) == FVM_OK &&
+        value.type == FVM_VALUE_NUMBER && value.number == 19 &&
+        fvm_object_call(context, child.object, "receive", 0, NULL, out) == FVM_OK &&
+        out->type == FVM_VALUE_NUMBER && out->number == 81;
+    if (ok)
+    {
+        fvm_value_number(&value, 43);
+        ok = send_value(context, &child, "send", &value) && fvm_set_global(context, "heldProxy", &child) == FVM_OK;
+    }
+    if (!ok)
+    {
+        if (fvm_exception_get(context, &value) == FVM_OK && value.type == FVM_VALUE_STRING)
+        {
+            fprintf(stderr, "%s\n", value.string);
+        }
+        fputs("Nested PID receive, echo or isolation failed\n", stderr);
+    }
+    fvm_gc_roots_end(roots);
+    return ok ? FVM_OK : FVM_ERROR;
+}
+
+
 /* EN: Poll for clunk of the hosted resource, then confirm the saved proxy was revoked.
  * RU: Дождаться clunk ресурса, затем подтвердить отзыв сохранённого прокси. */
 static FVM_Result retired(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -140,25 +214,32 @@ int test_channel_pid_result(FVM_Context *context, int fd)
         return 0;
     }
     StyxClient *reverse = styxclientmountphy(phybidirchannel(mux, 1), 4096, "flash", "", WAIT_MS, 8);
-    FVM_StyxRpcPidMailboxExport binding = {context, "rememberMailbox", reverse, {"(i)", "(c[c[i]])"}, 2, WAIT_MS};
+    FVM_StyxRpcPidMailboxExport bindings[] = {
+        {context, "rememberMailbox", reverse, {"(i)", "(c[c[i]])"}, 2, WAIT_MS},
+        {context, "rememberMailbox", reverse, {"(i)", "(c[c[a[c[i]]]])"}, 3, WAIT_MS}
+    };
     FVM_StyxRpcChannelHandler calls[] = {
         {context, "drainMailbox", reverse, {"(c[i])", "(i)"}, WAIT_MS},
-        {context, "retiredMailbox", reverse, {"(c[i])", "(i)"}, WAIT_MS}
+        {context, "retiredMailbox", reverse, {"(c[i])", "(i)"}, WAIT_MS},
+        {context, "drainNestedMailbox", reverse, {"(c[i])", "(i)"}, WAIT_MS}
     };
-    StyxRpcChannelFunction functions[2];
-    StyxRpcChannelExport result;
+    StyxRpcChannelFunction functions[3];
+    StyxRpcChannelExport results[2];
     StyxRpcModuleChannels registry;
     StyxRpcModuleChannel slots[2];
     int ok = reverse && fvm_register_function(context, "rememberMailbox", remember, NULL) == FVM_OK &&
         fvm_register_function(context, "drainMailbox", drain, NULL) == FVM_OK &&
+        fvm_register_function(context, "drainNestedMailbox", drain_nested, NULL) == FVM_OK &&
         fvm_register_function(context, "retiredMailbox", retired, NULL) == FVM_OK &&
         fvm_styxrpc_channel_handler(calls, "drain", CHECK_SIG, functions) == FVM_OK &&
         fvm_styxrpc_channel_handler(calls + 1, "retired", CHECK_SIG, functions + 1) == FVM_OK &&
-        fvm_styxrpc_pid_mailbox_export(&binding, "mailbox", CREATE_SIG, &result) == FVM_OK &&
+        fvm_styxrpc_channel_handler(calls + 2, "drainNested", CHECK_SIG, functions + 2) == FVM_OK &&
+        fvm_styxrpc_pid_mailbox_export(bindings, "mailbox", CREATE_SIG, results) == FVM_OK &&
+        fvm_styxrpc_pid_mailbox_export(bindings + 1, "nestedbox", NESTED_SIG, results + 1) == FVM_OK &&
         styxrpc_module_channels_init(&registry, slots, 2, test_channel_entropy, NULL);
     Dispatch owner = {0};
     owner.module = ok ? styxrpc_channel_handlers_create_with_results("flash-pid-result.dis",
-        functions, 2, &result, 1, &registry) : NULL;
+        functions, 3, results, 2, &registry) : NULL;
     owner.server = owner.module ? styxrpc_server_create(phybidirchannel(mux, 0),
         &styxrpc_channel_handlers_tree, owner.module) : NULL;
     pthread_t thread;

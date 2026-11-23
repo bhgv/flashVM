@@ -61,13 +61,13 @@ void fvm_styxrpc_channel_set_disarm(FVM_Context *context, FVM_StyxChannelSet *se
 }
 
 
-/* EN: Check two leased indexes for the same module token.
- * RU: Сверить токен модуля двух арендованных индексов. */
-static int same_bus(StyxRpcChannelLease *lease, size_t left, size_t right)
+/* EN: Check two admitted indices for the same native PID or module token.
+ * RU: Сверить нативный PID либо токен модуля двух допущенных индексов. */
+static int same_bus(const FVM_StyxChannelSet *set, size_t left, size_t right)
 {
-    const StyxRpcChannelRoute *a = styxrpc_channel_lease_route(lease, left);
-    const StyxRpcChannelRoute *b = styxrpc_channel_lease_route(lease, right);
-    return a && b && !memcmp(a->token, b->token, sizeof(a->token));
+    const StyxRpcChannelRoute *a = fvm_styxrpc_channel_set_route(set, left);
+    const StyxRpcChannelRoute *b = fvm_styxrpc_channel_set_route(set, right);
+    return a && b && a->kind == b->kind && a->pid == b->pid && !memcmp(a->token, b->token, sizeof(a->token));
 }
 
 
@@ -128,7 +128,7 @@ int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, voi
         const StyxRpcChannelRoute *route = fvm_styxrpc_channel_set_route(set, index);
         const StyxRpcChannelGrant *grant = route ? &route->channel :
             set->call && index < set->call->count ? set->call->grants + index : NULL;
-        if (grant && (!route || decode->exported || decode->delegated || same_bus(set->lease, decode->parent, index)) &&
+        if (grant && (!route || decode->exported || decode->delegated || same_bus(set, decode->parent, index)) &&
             same_leaf(decode, index, grant, record))
         {
             return fvm_styxrpc_channel_materialize(context, roots, set, index, grant, value);
@@ -180,11 +180,11 @@ int fvm_styxrpc_channel_send_allow(const void *context, const StyxRpcChannelRout
     }
     else if (route->kind == STYXRPC_ROUTE_CURRENT && !route->unbuffered)
     {
-        StyxRpcChannelLease *lease = receiver->set->lease;
+        const FVM_StyxChannelSet *set = receiver->set;
         for (i = 0; i < STYXRPC_CHANNEL_SLOTS; ++i)
         {
-            const StyxRpcChannelRoute *known = styxrpc_channel_lease_route(lease, i);
-            if (known && known->channel.key == route->channel.key && same_bus(lease, receiver->index, i) &&
+            const StyxRpcChannelRoute *known = fvm_styxrpc_channel_set_route(set, i);
+            if (known && known->channel.key == route->channel.key && same_bus(set, receiver->index, i) &&
                 !strcmp(known->channel.shape, route->channel.shape))
             {
                 return 1;
@@ -249,7 +249,7 @@ int fvm_styxrpc_channel_encode(FVM_Context *context, FVM_GCRootScope *roots, voi
     }
     child = fvm_styxrpc_channel_lookup(context, value->object);
     if (!child || !receiver->set || child->set != receiver->set ||
-        (child->set->lease && !same_bus(child->set->lease, receiver->index, child->index)) ||
+        ((child->set->lease || child->set->pid_mailbox) && !same_bus(child->set, receiver->index, child->index)) ||
         !same_shape(&child->grant, type))
     {
         return 0;

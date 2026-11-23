@@ -135,7 +135,7 @@ static int unpack_remote(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxR
     FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
     int ok;
-    if (result->selected && strchr(channel->grant.shape, 'c') &&
+    if (!set->pid_mailbox && result->selected && strchr(channel->grant.shape, 'c') &&
         (set->lease ? styxrpc_channel_lease_import_element(set->lease, channel->index, result->value, result->size) :
             styxrpc_channel_import_element(set->call, channel->grant.key, result->value, result->size)) != STYXRPC_OK)
     {
@@ -215,7 +215,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
             if (set->pid_mailbox)
             {
                 rpc_status = styxrpc_channel_mailbox_active(set->pid_mailbox) ?
-                    styxrpc_channel_route_exchange(set->reverse, NULL, fvm_styxrpc_channel_set_route(set, channel->index),
+                    styxrpc_channel_pid_exchange(set->reverse, &set->pid_routes, channel->index,
                         &selection, set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
                         reply, STYXRPC_MANAGED_LIMIT, &result) : STYXRPC_REMOTE_ERROR;
             }
