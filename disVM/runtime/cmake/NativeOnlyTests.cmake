@@ -48,7 +48,7 @@ if(DVM_RUNTIME_TESTS)
             # EN: Isolate mixed selection and post-return channel lifetimes on TCP.
             # RU: Проверять смешанный ALT и каналы после возврата отдельно через TCP.
             set(channel_lifetime_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_channel_lifetime.py")
-            foreach(channel_case mixed result recursive)
+            foreach(channel_case mixed result recursive bridge)
                 add_test(NAME disvm_native_styx_channel_${channel_case}_interpreter COMMAND "${PYTHON_EXECUTABLE}"
                     "${channel_lifetime_example}" ${channel_case} --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>")
                 add_test(NAME disvm_native_styx_channel_${channel_case}_jit COMMAND "${PYTHON_EXECUTABLE}"

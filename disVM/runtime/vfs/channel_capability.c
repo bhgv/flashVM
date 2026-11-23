@@ -198,9 +198,10 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
         return !strcmp(original->shape, schema.shape) &&
             write_grant(&imported->identity, key, bytes, capacity, size);
     }
-    if (channels->message || (channels->returning && dvm_call_channel_is_proxy(channel)))
+    int proxy = dvm_call_channel_is_proxy(channel);
+    if (channels->message || (channels->returning && proxy && !channel->aux))
     {
-        if (!dvm_call_channel_is_proxy(channel) || channel->aux)
+        if (!proxy || channel->aux)
         {
             return 0;
         }
@@ -213,12 +214,14 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
             (!channels->message || scope == channels->message) &&
             write_key(original->key, bytes, capacity, size);
     }
-    if (dvm_call_channel_is_proxy(channel))
+    if (proxy)
     {
         DVM_Provider *endpoint;
         DVM_Cancel *scope;
         const unsigned char *token;
-        const DVM_ChannelSchema *original = dvm_returned_proxy_route(channel, &endpoint, &scope, &token);
+        const DVM_ChannelSchema *original = channel->aux ?
+            dvm_returned_proxy_route(channel, &endpoint, &scope, &token) :
+            dvm_channel_route_lookup((uint32_t)channel->mid.w, &endpoint, &scope);
         if (!original || strcmp(original->shape, schema.shape))
         {
             return 0;

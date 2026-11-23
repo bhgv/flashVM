@@ -231,3 +231,12 @@ use_grants(request: chan of (chan of int, chan of int), result: chan of int)
     foreign <-= b+2;
     result <-= a+b;
 }
+
+
+# EN: Report arrival at the owner and wait for a value from the original caller.
+# RU: Сообщить о входе у владельца и ждать значение исходного клиента.
+waitvalue(port, entered: chan of int): int
+{
+    entered <-= 1;
+    return <-port;
+}

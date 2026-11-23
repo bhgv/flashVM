@@ -56,6 +56,7 @@ python3 disVM/examples/remote-scalar/run_channel_lifetime.py mixed \
 | `mixed` | Blocking local and remote branches, two mixed selections rendezvousing on one UniBus, and cancellation. |
 | `result` | Returning a new provider channel through `load`, using it after releasing the module, selecting across independent leases, forwarding message channels in both directions, and rendezvous through a regranted channel. |
 | `recursive` | New grants through a channel that was itself granted in a message. It alternates directions, checks aliases and recycles the routes. |
+| `bridge` | Three DisVMs, two TCP sessions. B forwards A’s channel to C, returns C’s channels, and propagates cancellation. |
 
 ## Channel operations
 
@@ -131,6 +132,12 @@ registry. In the reverse direction, its owner publishes a synthetic
 `.prog/<id>/.unibus` on the existing reverse Styx session. A receiver uses
 the transport already associated with the enclosing message. Echoing a
 grant on that channel resolves to the original object.
+
+A module on B can pass a live argument from A into a library loaded from C.
+The second call holds its own key until it returns. If C echoes the
+argument, A receives its original channel. B can also publish a new
+result lease for a channel returned by C. B retains the route to C while
+A uses the returned proxy, including after A releases its module link.
 
 When all Styx request tags are busy, mounted channel I/O and fid
 retirement wait for a free tag before sending. Cancellation can stop
