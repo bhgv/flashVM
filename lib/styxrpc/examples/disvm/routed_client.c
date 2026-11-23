@@ -19,8 +19,6 @@
 #include <string.h>
 #include <time.h>
 
-#define REVERSE_PID UINT32_C(0x80000001) /* Independent reverse channel publication. */
-#define LEAF_PID UINT32_C(0x80000002)    /* Reverse publication for the final integer exchange. */
 
 static const char module[] = "mounted/channel-lifetime.dis"; /* Exact published Dis module. */
 static const struct timespec pause_time = {0, 1000000};         /* One millisecond between confirmed polls. */
@@ -32,6 +30,8 @@ typedef struct Device
     StyxRpcPrograms programs;      /* Owns the two reverse publications. */
     StyxRpcRegistration nodes[20]; /* Stable registrations for the reverse tree. */
     StyxRpcServer *server;          /* Dispatcher-owned after thread start. */
+    uint32_t hub_pid;               /* Temporary reverse hub identity. */
+    uint32_t leaf_pid;              /* Temporary integer channel identity. */
     unsigned seen;                  /* Release/acquire count of matching module grants. */
     unsigned char received[64];    /* First exact grant frame, immutable after publication. */
     size_t size;                    /* Received frame extent, published by seen. */
@@ -205,10 +205,8 @@ static int register_reverse(Device *device)
     const StyxRpcResource inner = {device, open_leaf, read_bus, write_bus, close_bus};
     return styxrpc_programs_init(&device->programs, device->nodes, sizeof(device->nodes) / sizeof(*device->nodes)) &&
         styxrpc_program_add(&device->programs, 42) &&
-        styxrpc_program_add(&device->programs, REVERSE_PID) &&
-        styxrpc_program_unibus(&device->programs, REVERSE_PID, &outer) &&
-        styxrpc_program_add(&device->programs, LEAF_PID) &&
-        styxrpc_program_unibus(&device->programs, LEAF_PID, &inner);
+        (device->hub_pid = styxrpc_program_unibus_grant(&device->programs, &outer)) &&
+        (device->leaf_pid = styxrpc_program_unibus_grant(&device->programs, &inner));
 }
 
 
@@ -310,8 +308,8 @@ static int exercise(StyxClient *client, Device *device)
     snprintf(bus, sizeof(bus), "%s/.unibus", module);
     StyxFid *pin = styxclientwalk(client, path);
     StyxRpcChannelRoutes exports, delegated;
-    const StyxRpcChannelRoute outer = {.kind = STYXRPC_ROUTE_PID, .pid = REVERSE_PID, .channel = hub, .unbuffered = 1};
-    const StyxRpcChannelRoute inner = {.kind = STYXRPC_ROUTE_PID, .pid = LEAF_PID, .channel = leaf, .unbuffered = 1};
+    const StyxRpcChannelRoute outer = {.kind = STYXRPC_ROUTE_PID, .pid = device->hub_pid, .channel = hub, .unbuffered = 1};
+    const StyxRpcChannelRoute inner = {.kind = STYXRPC_ROUTE_PID, .pid = device->leaf_pid, .channel = leaf, .unbuffered = 1};
     int step = 1;
     int valid = open_channels(pin, &exports);
     if (valid)

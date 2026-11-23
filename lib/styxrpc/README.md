@@ -127,7 +127,7 @@ fid holds its lease.
 
 [`styxrpc_channel_element_routes`](reference/channel_element_routes.md) · [`styxrpc_channel_export_routes`](reference/channel_export_routes.md) · [`styxrpc_channel_route_value`](reference/channel_route_value.md) · [`styxrpc_channel_read_routed`](reference/channel_read_routed.md) · [`styxrpc_channel_route_exchange`](reference/channel_route_exchange.md)
 
-The C dispatcher can revoke a reverse bus immediately. Pending operations retire before the call returns, and old fids can only be clunked. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.md)
+The C dispatcher can revoke a reverse bus immediately. Pending operations retire before the call returns, and old fids can only be clunked. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.md) The registry issues fresh PIDs for temporary buses and reuses their slots after revocation. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.md)
 
 
 ## Sources

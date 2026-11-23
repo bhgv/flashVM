@@ -16,9 +16,10 @@ With a channel fid close callback, pending selections are cancelled before
 the function returns. Already committed operations keep their effects.
 
 Old fids reject new reads, writes and opens. Later clunks release the
-Styx wrapper without invoking the application callback again. The file's
-slot and PID remain reserved for this session so a stale grant cannot
-reach another resource. Other process files keep their normal access.
+Styx wrapper without invoking the application callback again. For a temporary
+grant the whole directory disappears and its slots are released. Its PID
+remains reserved for the session. For a regular `.unibus` the bus slot stays
+reserved and other files in the process directory keep their normal access.
 The application may free the revoked resource's callback state when this
 call returns if no other resource shares it.
 
@@ -27,4 +28,6 @@ bus, a repeated revocation or invalid registry state. Use the owning
 dispatcher outside callbacks of the target resource. Close callbacks
 execute inline and determine whether the call blocks. Link `StyxRpc::serve`.
 
-[Publication](program_unibus.md) · [Socket test](../tests/channel_socket.c) · [Source](../src/program.c)
+[Publication](program_unibus.md) · [Socket test](../tests/channel_socket.c) · [Source](../src/program_resource.inc)
+
+[`styxrpc_program_unibus_grant`](program_unibus_grant.md)

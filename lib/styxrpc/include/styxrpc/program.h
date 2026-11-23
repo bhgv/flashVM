@@ -43,7 +43,7 @@ typedef struct StyxRpcRegistration
     const struct StyxRpcBigTable *table_spec;     /* Borrowed on the hybrid table directory. */
     void *table_selection;                       /* Active selector owned by the dispatcher. */
     struct StyxRpcProgramOpen *opens; /* Intrusive list of opened callback handles. */
-    int revoked;                    /* Hidden slot reserved against stale Qids. */
+    int revoked;                    /* Zero for live entries, nonzero for hidden entries. */
     unsigned collection_op;         /* File operation within the collection. */
 } StyxRpcRegistration;
 
@@ -57,6 +57,7 @@ typedef struct StyxRpcPrograms
     StyxRpcRegistration *nodes; /* Borrowed contiguous registration slots. */
     size_t capacity;            /* Slot count. */
     size_t used;                /* Occupied slots, including revoked entries. */
+    uint64_t next_grant_pid;    /* High-bit delegated namespace, widened for exhaustion. */
     uint32_t revision;          /* Revision of membership for this context tree. */
 } StyxRpcPrograms;
 
@@ -99,10 +100,17 @@ int styxrpc_program_file(StyxRpcPrograms *programs, uint32_t pid, const char *na
 int styxrpc_program_unibus(StyxRpcPrograms *programs, uint32_t pid, const StyxRpcResource *resource);
 
 
+/* EN: Publish a temporary reverse .prog/<pid> with .pid and .unibus.
+ * Return a fresh nonzero PID or zero on failure. Revoke on the owning dispatcher.
+ * RU: Опубликовать временный встречный .prog/<pid> с .pid и .unibus.
+ * Вернуть новый ненулевой PID либо ноль при отказе. Отзывать в диспетчере. */
+uint32_t styxrpc_program_unibus_grant(StyxRpcPrograms *programs, const StyxRpcResource *resource);
+
+
 /* EN: Hide the registered .unibus and synchronously close its active callback handles.
- * Run on the dispatcher outside the target's callbacks. Return 1 on first revocation.
+ * Temporary grants also release their directory and slots. Run outside the target's callbacks. Return 1 on first revocation.
  * RU: Скрыть зарегистрированный .unibus и синхронно закрыть его активные колбэки.
- * Вызывать в диспетчере вне колбэков целевого ресурса. Первый отзыв возвращает 1. */
+ * Временная выдача также освобождает каталог и слоты. Вызывать вне её колбэков. Первый отзыв возвращает 1. */
 int styxrpc_program_unibus_revoke(StyxRpcPrograms *programs, uint32_t pid);
 
 

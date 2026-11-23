@@ -128,7 +128,7 @@ Styx. Отправитель владеет временем жизни выда
 
 [`styxrpc_channel_element_routes`](reference/channel_element_routes.ru.md) · [`styxrpc_channel_export_routes`](reference/channel_export_routes.ru.md) · [`styxrpc_channel_route_value`](reference/channel_route_value.ru.md) · [`styxrpc_channel_read_routed`](reference/channel_read_routed.ru.md) · [`styxrpc_channel_route_exchange`](reference/channel_route_exchange.ru.md)
 
-Диспетчер C может немедленно отозвать встречную шину. Ожидающие операции закрываются до возврата, а старые fid остаются доступны только для clunk. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.ru.md)
+Диспетчер C может немедленно отозвать встречную шину. Ожидающие операции закрываются до возврата, а старые fid остаются доступны только для clunk. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.ru.md) Для временных шин реестр выдаёт новые PID и переиспользует слоты после отзыва. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.ru.md)
 
 
 ## Исходники

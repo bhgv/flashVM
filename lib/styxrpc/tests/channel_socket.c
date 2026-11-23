@@ -8,12 +8,13 @@
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include <pthread.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define TEST_REVERSE_PID UINT32_C(0x80000001) /* Published reverse test endpoint. */
+#define REVOKE_ROUNDS 132U /* Reuse the same three slots across one live session. */
 
 static const StyxRpcChannelGrant grants[] = {{1, "(i)"}, {2, "(s)"}}; /* Explicit local capabilities. */
 
@@ -22,6 +23,8 @@ typedef struct Endpoint
 {
     StyxRpcServer *server; /* Owned by server thread after pthread_create. */
     StyxRpcPrograms *programs; /* Reverse tree owned by the same dispatcher. */
+    const StyxRpcResource *stream; /* Borrowed callbacks for each issued route. */
+    uint32_t pid;                 /* Current grant, mutated on the dispatcher. */
     unsigned cancelled;    /* Checked only after joining dispatcher. */
 } Endpoint;
 
@@ -43,11 +46,14 @@ static int schedule(void *context, StyxRpcChannelFid *fid)
         fid->selection.guards[0].key == 1 && fid->selection.guards[0].receive)
     {
         unsigned before = endpoint->cancelled;
-        return styxrpc_program_unibus_revoke(endpoint->programs, TEST_REVERSE_PID) &&
-            endpoint->cancelled == before + 2 &&
-            !styxrpc_program_unibus_revoke(endpoint->programs, TEST_REVERSE_PID) &&
-            !styxrpc_program_add(endpoint->programs, TEST_REVERSE_PID) &&
-            styxrpc_channel_fid_finish(fid, 0, NULL, 0) == STYXRPC_OK;
+        uint32_t retired = endpoint->pid;
+        if (!styxrpc_program_unibus_revoke(endpoint->programs, retired) ||
+            endpoint->cancelled != before + 2 || styxrpc_program_unibus_revoke(endpoint->programs, retired))
+        {
+            return 0;
+        }
+        endpoint->pid = styxrpc_program_unibus_grant(endpoint->programs, endpoint->stream);
+        return endpoint->pid == retired + 1 && styxrpc_channel_fid_finish(fid, 0, NULL, 0) == STYXRPC_OK;
     }
     unsigned selected;
     if (fid->selection.count == 1 && fid->selection.guards[0].key == 2 && fid->selection.guards[0].receive)
@@ -208,9 +214,9 @@ static int exchange(StyxClient *client)
 
 /* EN: Follow the published PID and reject an otherwise identical unpublished route.
  * RU: Открыть выданный PID и отклонить такой же адрес без публикации. */
-static int exchange_routed(StyxClient *client)
+static int exchange_routed(StyxClient *client, uint32_t pid)
 {
-    StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_PID, .pid = TEST_REVERSE_PID, .channel = grants[1]};
+    StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_PID, .pid = pid, .channel = grants[1]};
     unsigned char request[96], reply[96];
     const StyxRpcSelection receive = {.count = 1, .guards = {{2, 1, NULL, 0}}};
     StyxRpcChannelResult result;
@@ -228,9 +234,13 @@ static int exchange_routed(StyxClient *client)
 
 /* EN: Park two operations, revoke through the owner and reject old and fresh access.
  * RU: Поставить две операции в ожидание, отозвать через владельца и проверить отказ доступа. */
-static int revoke_routed(StyxClient *client)
+static int revoke_routed(StyxClient *client, uint32_t pid)
 {
-    static const char path[] = ".prog/2147483649/.unibus"; /* Exact routed PID on this session. */
+    char directory[sizeof(".prog/4294967295")];
+    char path[sizeof(".prog/4294967295/.unibus")];
+    snprintf(directory, sizeof(directory), ".prog/%" PRIu32, pid);
+    snprintf(path, sizeof(path), "%s/.unibus", directory);
+    StyxFid *old_directory = styxclientwalk(client, directory);
     StyxFid *first = styxclientwalk(client, path);
     StyxFid *second = styxclientwalk(client, path);
     StyxFid *walked = styxclientwalk(client, path);
@@ -240,7 +250,7 @@ static int revoke_routed(StyxClient *client)
     unsigned char scratch[96], request[96], reply[96];
     size_t length;
     StyxTransfer sent, received;
-    int good = first && second && walked && control && styxclientopen(first, 2) &&
+    int good = old_directory && first && second && walked && control && styxclientopen(first, 2) &&
         styxclientopen(second, 2) && styxclientopen(control, 2) &&
         styxrpc_channel_request(grants, 2, &park, NULL, 0, request, sizeof(request), &length) == STYXRPC_OK;
     if (good)
@@ -258,9 +268,12 @@ static int revoke_routed(StyxClient *client)
         good = sent.success && sent.count == length && !received.success && !styxclientopen(walked, 2);
         styxclientwrite(second, 0, request, length, &sent);
         StyxFid *fresh = styxclientwalk(client, path);
-        good = good && !sent.success && !fresh;
+        StyxFid *from_old = styxclientwalkfrom(old_directory, ".unibus");
+        good = good && !sent.success && !fresh && !from_old;
+        styxclientclunk(from_old);
         styxclientclunk(fresh);
     }
+    styxclientclunk(old_directory);
     styxclientclunk(walked);
     styxclientclunk(second);
     styxclientclunk(first);
@@ -275,16 +288,19 @@ int main(void)
 {
     StyxRpcPrograms programs;
     Endpoint endpoint = {.programs = &programs};
-    StyxRpcRegistration nodes[20];
+    StyxRpcRegistration nodes[11];
     const StyxRpcResource resource = {&endpoint, open_bus, read_bus, write_bus, close_bus};
     const StyxRpcResource stream = {&endpoint, open_stream, read_bus, write_bus, close_bus};
     int sockets[2];
     if (!styxrpc_programs_init(&programs, nodes, sizeof(nodes) / sizeof(*nodes)) || !styxrpc_program_add(&programs, 42) ||
-        !styxrpc_program_unibus(&programs, 42, &resource) || !styxrpc_program_add(&programs, TEST_REVERSE_PID) ||
-        !styxrpc_program_unibus(&programs, TEST_REVERSE_PID, &stream) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
+        !styxrpc_program_unibus(&programs, 42, &resource) ||
+        !(endpoint.pid = styxrpc_program_unibus_grant(&programs, &stream)) ||
+        styxrpc_program_unibus_grant(&programs, &stream) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
     {
         return 1;
     }
+    uint32_t pid = endpoint.pid;
+    endpoint.stream = &stream;
     endpoint.server = styxrpc_server_create(phyposixfd(sockets[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE),
         &styxrpc_program_tree, &programs);
     pthread_t owner;
@@ -295,11 +311,16 @@ int main(void)
         return 1;
     }
     StyxClient *client = styxclientmountfd(sockets[0], 4096, "test", "", 1000, 8);
-    int good = client && exchange(client) && exchange_routed(client) && revoke_routed(client) && exchange(client);
+    int good = client && exchange(client);
+    for (unsigned i = 0; good && i < REVOKE_ROUNDS; ++i)
+    {
+        good = exchange_routed(client, pid + i) && revoke_routed(client, pid + i);
+    }
+    good = good && exchange_routed(client, pid + REVOKE_ROUNDS) && exchange(client);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);
-    if (!good || endpoint.cancelled != 4)
+    if (!good || endpoint.cancelled != 2 + 2 * REVOKE_ROUNDS)
     {
         fputs("UniBus selection or pending fid retirement failed\n", stderr);
         return 1;
