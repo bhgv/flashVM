@@ -7,9 +7,11 @@
 #include "fns.h"
 #include "isa.h"
 #include "interp.h"
+#include "kernel.h"
 #include "runt.h"
 #include "channel_value.h"
 #include "managed_ref.h"
+#include "root_registry.h"
 #include <string.h>
 
 extern void movb(void);
@@ -27,8 +29,7 @@ int dvm_channel_value_shape(const char *type, char shape[STYX_SHAPE_MAX + 1])
         return 0;
     }
     const char *end = styxshape_end(type + 2);
-    if (!end || *end != ']' || end - type >= STYX_SHAPE_MAX ||
-        memchr(type + 2, 'c', (size_t)(end - type - 2)))
+    if (!end || *end != ']' || end - type >= STYX_SHAPE_MAX)
     {
         return 0;
     }
@@ -56,6 +57,7 @@ int dvm_channel_value_mover(const Channel *channel, const char *shape)
     case 'y': return channel->mover == movb;
     case 's':
     case 'a':
+    case 'c':
     case 'r':
     case 'h':
         return channel->mover == movp;
@@ -122,7 +124,7 @@ int dvm_channel_value_empty(const char *shape, DVM_StyxValueFrame *frame)
 
 
 /* EN/RU: See channel_value.h. / См. channel_value.h. */
-void dvm_channel_value_root(DVM_StyxValueFrame *frame)
+int dvm_channel_value_root(DVM_StyxValueFrame *frame)
 {
     for (size_t i = 0; i < frame->layout.count; i++)
     {
@@ -132,22 +134,50 @@ void dvm_channel_value_root(DVM_StyxValueFrame *frame)
             memcpy(&object, (unsigned char *)frame->words + frame->layout.offset[i], sizeof(object));
             if (object != H)
             {
-                ptradd(D2H(object));
+                if (!object || !dvm_runtime_root_add(D2H(object)))
+                {
+                    return 0;
+                }
                 Setmark(D2H(object));
                 frame->roots |= 1U << i;
             }
         }
     }
+    return 1;
+}
+
+
+/* [GC:] EN: Hold partial graph owners outside the protected encoder invocation.
+ * RU: Удержать частично закодированные объекты вне защищённого вызова кодека. */
+typedef struct ChannelValueEncoding
+{
+    const char *shape; /* Borrowed checked frame schema. */
+    const DVM_StyxValueFrame *frame; /* Borrowed rooted element. */
+    DVM_StyxRefTable *refs; /* Borrowed graph ledger, retained after a VM error. */
+    void *bytes; /* Borrowed destination buffer. */
+    size_t capacity; /* Extent of bytes. */
+    size_t *used; /* Borrowed output count. */
+} ChannelValueEncoding;
+
+
+/* [GC:] EN: Encode the borrowed value using the externally owned graph ledger.
+ * RU: Кодировать заимствованное значение с журналом объектов вызывающего. */
+static int pack_value(void *state)
+{
+    ChannelValueEncoding *encoding = state;
+    return dvm_styx_graph_write(encoding->refs, STYX_MANAGED_GRAPH_TAG, encoding->shape,
+        encoding->frame->words, encoding->frame->layout.size, encoding->bytes,
+        encoding->capacity, encoding->used);
 }
 
 
 /* EN/RU: See channel_value.h. / См. channel_value.h. */
 int dvm_channel_value_pack(const char *shape, const DVM_StyxValueFrame *frame,
-    void *bytes, size_t capacity, size_t *used)
+    DVM_CallChannels *channels, void *bytes, size_t capacity, size_t *used)
 {
-    DVM_StyxRefTable refs = {.result = 1, .limit = STYX_CALL_REF_KEYS};
-    int valid = dvm_styx_graph_write(&refs, STYX_MANAGED_GRAPH_TAG,
-        shape, frame->words, frame->layout.size, bytes, capacity, used);
+    DVM_StyxRefTable refs = {.result = 1, .limit = STYX_CALL_REF_KEYS, .channels = channels};
+    ChannelValueEncoding encoding = {shape, frame, &refs, bytes, capacity, used};
+    int valid = kprotect(pack_value, &encoding);
     dvm_styx_ref_release(&refs, 0);
     return valid;
 }
@@ -155,10 +185,10 @@ int dvm_channel_value_pack(const char *shape, const DVM_StyxValueFrame *frame,
 
 /* EN/RU: See channel_value.h. / См. channel_value.h. */
 int dvm_channel_value_unpack(const char *shape, const void *bytes, size_t size,
-    DVM_StyxValueFrame *frame)
+    DVM_CallChannels *channels, DVM_StyxValueFrame *frame)
 {
     FVM_SRecord record;
-    DVM_StyxRefTable refs = {.result = 1, .limit = STYX_CALL_REF_KEYS};
+    DVM_StyxRefTable refs = {.result = 1, .limit = STYX_CALL_REF_KEYS, .channels = channels};
     int valid = styxmanaged_list_read(STYX_MANAGED_GRAPH_TAG, shape, bytes, size, &record) &&
         dvm_styx_result_fields_read(&refs, shape, record.payload, record.size, frame);
     dvm_styx_ref_release(&refs, 0);
@@ -166,11 +196,11 @@ int dvm_channel_value_unpack(const char *shape, const void *bytes, size_t size,
 }
 
 
-/* EN: Allow channel capabilities in direct argument slots, including tuples.
- * RU: Разрешить полномочия каналов в аргументах, включая кортежи. */
-static int channel_positions_supported(const char *type)
+/* EN: Check the borrowed schema range, allowing channels in value arrays and tuples.
+ * RU: Проверить заимствованный диапазон схемы, допустив каналы в массивах и кортежах. */
+static int channel_positions_supported(const char *type, const char *limit)
 {
-    while (*type)
+    while (type < limit)
     {
         if (*type == '(' || *type == ')')
         {
@@ -179,8 +209,19 @@ static int channel_positions_supported(const char *type)
         }
         const char *end = styxshape_end(type);
         char element[STYX_SHAPE_MAX + 1];
-        if (!end || (*type == 'c' ? !dvm_channel_value_shape(type, element) :
-            memchr(type, 'c', (size_t)(end - type)) != NULL))
+        if (!end || end > limit)
+        {
+            return 0;
+        }
+        if (*type == 'c' && !dvm_channel_value_shape(type, element))
+        {
+            return 0;
+        }
+        if (*type == 'a' && !channel_positions_supported(type + 2, end - 1))
+        {
+            return 0;
+        }
+        if (*type == 'r' && memchr(type, 'c', (size_t)(end - type)))
         {
             return 0;
         }
@@ -193,5 +234,6 @@ static int channel_positions_supported(const char *type)
 /* EN/RU: See managed_value.h. / См. managed_value.h. */
 int dvm_styx_channel_shape_supported(const StyxCallShape *shape)
 {
-    return channel_positions_supported(shape->arguments) && channel_positions_supported(shape->result);
+    return channel_positions_supported(shape->arguments, shape->arguments + strlen(shape->arguments)) &&
+        channel_positions_supported(shape->result, shape->result + strlen(shape->result));
 }

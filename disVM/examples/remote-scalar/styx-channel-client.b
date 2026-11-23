@@ -9,6 +9,33 @@ include "chain-channel.m";
 Channelclient: module { init: fn(); };
 
 
+# EN: Advertise a channel inside its first message and verify identity across both directions.
+# RU: Выдать канал внутри первого сообщения и проверить идентичность в обоих направлениях.
+check_nested(remote: Chainchannel)
+{
+    input := chan[2] of Chainchannel->Relayed;
+    output := chan[1] of Chainchannel->Relayed;
+    known := chan of int;
+    fresh := chan[1] of int;
+    input <-= ("new", array[] of {fresh, nil, known}, known);
+    input <-= ("alias", array[] of {fresh, fresh}, fresh);
+    if (remote->nested(input, output, known) != fresh) {
+        raise "nested channel was not returned as its original";
+    }
+    (text, ports, left) := <-output;
+    if (text != "back" || len ports != 3 || ports[0] != fresh || ports[1] != nil ||
+        ports[2] != known || left != fresh || <-fresh != 44) {
+        raise "nested channel was not delivered with its original queue";
+    }
+    fresh <-= 65;
+    (slot, value, chosen) := remote->choose(array[] of {nil, known, fresh, fresh});
+    if ((slot != 2 && slot != 3) || value != 65 || len chosen != 4 || chosen[0] != nil ||
+        chosen[1] != known || chosen[2] != fresh || chosen[3] != fresh) {
+        raise "channel array changed its member index or identity";
+    }
+}
+
+
 # EN: Pass an aggregate exceeding a single Styx message and validate the reconstructed result.
 # RU: Передать составное значение больше сообщения Styx и проверить восстановленный итог.
 check_typed(remote: Chainchannel)
@@ -119,7 +146,18 @@ init()
         remote->exchange(7, input, (nil, input)) != -5) {
         raise "mixed fallback alt chose the wrong guard";
     }
+    buffered <-= 61;
+    if (remote->exchange(8, input, (buffered, input)) != 361 ||
+        remote->exchange(9, input, (nil, input)) != 341 ||
+        remote->exchange(10, input, (nil, input)) != -1923) {
+        raise "remote alt array lost its member index or changed the fallback destination";
+    }
+    buffered <-= 17;
+    if (remote->exchange(11, buffered, (nil, buffered)) != 117) {
+        raise "mixed alt array missed its remote member";
+    }
     check_typed(remote);
+    check_nested(remote);
     returned := remote->channelresult(buffered, 0);
     if (returned != buffered || remote->channelresult(buffered, 1) != nil) {
         raise "returned channel lost caller identity";

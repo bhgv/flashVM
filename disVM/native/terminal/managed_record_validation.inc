@@ -25,8 +25,15 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
     switch (type)
     {
     case 'c':
-        return value.tag == STYX_MANAGED_CHANNEL_TAG && value.size == 4 && value.payload[0] < 128 &&
-            (value.payload[0] || value.payload[1] || value.payload[2] || value.payload[3]);
+    {
+        if (value.tag != STYX_MANAGED_CHANNEL_TAG || value.size != 4 || value.payload[0] >= 128)
+        {
+            return 0;
+        }
+        uint32_t key = (uint32_t)value.payload[0] << 24 | (uint32_t)value.payload[1] << 16 |
+            (uint32_t)value.payload[2] << 8 | value.payload[3];
+        return key && (!keys->channel || keys->channel(keys->channel_context, shape, key));
+    }
     case 'r':
     case 'h':
         return managed_ref(shape, &value, depth, keys);

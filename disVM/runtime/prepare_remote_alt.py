@@ -3,8 +3,37 @@
 # RU: Генерация прокси-диспетчера ALT и неблокирующей проверки смешанных веток.
 REMOTE_ALT_DISPATCH = r"""
 #ifdef DVM_TERMINAL_LAUNCH
-/* EN: Probe direct local and remote guards once in randomized order for a fallback ALT.
- * RU: Один раз проверить прямые локальные и удалённые ветки ALT в случайном порядке. */
+/* EN: Identify the Dis branch and optional array member for one wire ordinal.
+ * RU: Определить ветку Dis и элемент массива по номеру сетевого варианта. */
+typedef struct RemoteAltResult
+{
+    WORD branch; /* Original Dis branch. */
+    WORD member; /* Array index, when tuple is present. */
+    void *tuple; /* Borrowed mapped destination for the member index. */
+} RemoteAltResult;
+
+
+/* [GC:] EN: Capture ALT operands and keep an owner-local pin per channel.
+ * RU: Захватить операнды ALT и удерживать ссылку своего исполнителя на канал. */
+typedef struct RemoteAlt
+{
+    Alt *alt; /* Borrowed Dis guard table. */
+    void *result; /* Borrowed Dis branch result slot. */
+    int sends; /* Number of leading send branches. */
+    int branches; /* Total number of Dis branches. */
+    int block; /* True when the instruction has no default branch. */
+    unsigned count; /* Number of flattened, non-nil channel guards. */
+    unsigned proxies; /* Number of captured proxy guards. */
+    DVM_HeapHold current; /* Owned top-level channel or array during capture. */
+    DVM_HeapHold member; /* Owned array member during capture. */
+    DVM_HeapHold owners[DVM_CHANNEL_BUS_SLOTS]; /* Owned guards until publication. */
+    DVM_ProxyGuard guards[DVM_CHANNEL_BUS_SLOTS]; /* Channel operations borrowed from owners. */
+    RemoteAltResult results[DVM_CHANNEL_BUS_SLOTS]; /* Ordinal-to-branch correspondence. */
+} RemoteAlt;
+
+
+/* EN: Probe captured guards once in randomized order. Return count for default.
+ * RU: Проверить захваченные ветки в случайном порядке. Для default вернуть count. */
 static unsigned mixed_alt(DVM_ProxyGuard *guards, unsigned count)
 {
     static _Thread_local uint32_t random = 0x20342U; /* Per-resident ordering state. */
@@ -42,55 +71,166 @@ static unsigned mixed_alt(DVM_ProxyGuard *guards, unsigned count)
 }
 
 
-/* EN: Use one UniBus transaction for an ALT with direct proxy guards.
- * RU: Использовать одну операцию UniBus для ALT с прямыми прокси-ветками. */
-static int remote_alt(Alt *alt, int sends, int receives, int block, void *result)
+/* [GC:] EN: Consume one captured channel in hold. Keep the operand and tuple
+ * borrowed from the active Dis frame. Reject an oversized flattened request.
+ * RU: Принять владение захваченным каналом hold. Операнд и кортеж заимствуются
+ * из активного кадра Dis. Отклонить запрос при превышении числа вариантов. */
+static void remote_alt_append(RemoteAlt *state, DVM_HeapHold *hold,
+    int branch, void *operand, void *tuple, WORD member)
 {
-    int count = sends + receives;
-    int remote = 0;
-    for (int i = 0; i < count; i++)
+    unsigned index = state->count;
+    if (index == DVM_CHANNEL_BUS_SLOTS)
     {
-        Channel *channel;
-        memmove(&channel, (uchar *)alt + offsetof(Alt, ac) +
-            (uintptr)i * sizeof(Altc) + offsetof(Altc, c), sizeof(channel));
-        if (D2H(channel)->t == &Tchannel)
+        error("remote alt requires at most eight eligible channel guards");
+    }
+    Channel *channel = hold->value;
+    DVM_HeapHold retained = *hold;
+    *hold = (DVM_HeapHold){0};
+    state->owners[index] = retained;
+    state->guards[index] = (DVM_ProxyGuard){.channel = channel, .operand = operand,
+        .index = index, .receive = branch >= state->sends};
+    state->results[index] = (RemoteAltResult){.branch = branch, .member = member, .tuple = tuple};
+    state->proxies += dvm_call_channel_is_proxy(channel);
+    state->count++;
+}
+
+
+/* [GC:] EN: Snapshot non-nil members from the rooted receive array. Each
+ * member keeps its original array index and writes after the tuple index.
+ * RU: Захватить отличные от nil элементы удерживаемого массива приёма.
+ * Каждый сохраняет исходный индекс и записывает значение после индекса кортежа. */
+static void remote_alt_array(RemoteAlt *state, Array *array, int branch, void *tuple)
+{
+    if (branch < state->sends || !altarrayvalid(array) || !altresultvalid(tuple))
+    {
+        error(exBounds);
+    }
+    void *operand = (uchar *)tuple + sizeof(WORD);
+    for (WORD member = 0; member < array->len; member++)
+    {
+        const void *cell = array->data + (uintptr)member * sizeof(Channel *);
+        const char *problem = dvm_runtime_heap_hold(cell, &Tchannel, 1, &state->member);
+        if (problem)
         {
-            remote += dvm_call_channel_is_proxy(channel);
+            error((char *)problem);
+        }
+        if (state->member.value == H)
+        {
+            dvm_runtime_heap_finish(&state->member, 1);
+            continue;
+        }
+        remote_alt_append(state, &state->member, branch, operand, tuple, member);
+    }
+}
+
+
+/* [GC:] EN: Capture the borrowed Dis guard table under managed cell guards.
+ * Submit one proxy transaction or probe a mixed default ALT, then publish the
+ * Dis branch and optional member index. Runs on the resident owning this ALT.
+ * RU: Захватить заимствованную таблицу Dis под защитой ячеек. Отправить одну
+ * операцию с прокси либо проверить смешанный ALT с default и опубликовать
+ * ветку Dis с индексом элемента. Работает на исполнителе, владеющем ALT. */
+static int remote_alt_select(void *argument)
+{
+    RemoteAlt *state = argument;
+    for (int branch = 0; branch < state->branches; branch++)
+    {
+        Altc *entry = (Altc *)((uchar *)state->alt + offsetof(Alt, ac)) + branch;
+        void *operand;
+        const char *problem = dvm_runtime_bytes_snapshot((uchar *)entry + offsetof(Altc, ptr),
+            &operand, sizeof(operand));
+        if (!problem)
+        {
+            problem = dvm_runtime_heap_hold((uchar *)entry + offsetof(Altc, c), NULL, 0, &state->current);
+        }
+        if (problem)
+        {
+            error((char *)problem);
+        }
+        void *object = state->current.value;
+        if (D2H(object)->t == &Tarray)
+        {
+            remote_alt_array(state, object, branch, operand);
+            dvm_runtime_heap_finish(&state->current, 1);
+        }
+        else if (D2H(object)->t == &Tchannel)
+        {
+            remote_alt_append(state, &state->current, branch, operand, NULL, 0);
+        }
+        else
+        {
+            error(exHeap);
         }
     }
-    if (!remote)
+    if (!state->proxies)
     {
-        return 0;
+        error("remote alt guards changed during capture");
     }
-    if (count > DVM_CHANNEL_BUS_SLOTS)
-    {
-        error("remote alt requires at most eight direct channel guards");
-    }
-    if (block && remote != count)
+    if (state->block && state->proxies != state->count)
     {
         error("mixed remote alt requires a fallback");
     }
-    DVM_ProxyGuard guards[DVM_CHANNEL_BUS_SLOTS];
-    for (int i = 0; i < count; i++)
+    unsigned selected = state->proxies == state->count ?
+        dvm_call_channel_alt(state->guards, state->count, state->block) :
+        mixed_alt(state->guards, state->count);
+    RemoteAltResult result = {.branch = state->branches};
+    if (selected < state->count)
     {
-        Altc *entry = (Altc *)((uchar *)alt + offsetof(Alt, ac)) + i;
-        altcapture(entry, &guards[i].channel, &guards[i].operand);
-        if (D2H(guards[i].channel)->t != &Tchannel ||
-            (remote == count && !dvm_call_channel_is_proxy(guards[i].channel)))
-        {
-            error("remote alt requires direct channel guards");
-        }
-        guards[i].index = (unsigned)i;
-        guards[i].receive = i >= sends;
+        result = state->results[selected];
     }
-    WORD selected = remote == count ?
-        dvm_call_channel_alt(guards, (unsigned)count, block) : mixed_alt(guards, (unsigned)count);
-    const char *problem = altpublish(result, selected, NULL, 0);
+    const char *problem = altpublish(state->result, result.branch, result.tuple, result.member);
     if (problem)
     {
         error((char *)problem);
     }
     return 1;
+}
+
+
+/* [GC:] EN: Release one optional hold on the resident under kprotect.
+ * RU: Освободить одну необязательную ссылку на её исполнителе под kprotect. */
+static int remote_alt_release(void *argument)
+{
+    DVM_HeapHold *hold = argument;
+    if (hold->roots)
+    {
+        dvm_runtime_heap_finish(hold, 1);
+    }
+    return 1;
+}
+
+
+/* [GC:] EN: Execute a detected remote ALT and release every capture on success
+ * or exception. The borrowed result receives the original Dis branch number.
+ * RU: Выполнить удалённый ALT и освободить все ссылки при успехе и исключении.
+ * В заимствованный результат записывается исходный номер ветки Dis. */
+static void remote_alt(Alt *alt, int sends, int receives, int block, void *result)
+{
+    RemoteAlt state = {.alt = alt, .result = result, .sends = sends,
+        .branches = sends + receives, .block = block};
+    char first_error[ERRMAX];
+    int failure = !kprotect(remote_alt_select, &state);
+    if (failure)
+    {
+        kgerrstr(first_error, sizeof(first_error));
+    }
+    DVM_HeapHold *holds[DVM_CHANNEL_BUS_SLOTS + 2] = {&state.current, &state.member};
+    for (unsigned i = 0; i < state.count; i++)
+    {
+        holds[i + 2] = &state.owners[i];
+    }
+    for (unsigned i = 0; i < state.count + 2; i++)
+    {
+        if (!kprotect(remote_alt_release, holds[i]) && !failure)
+        {
+            kgerrstr(first_error, sizeof(first_error));
+            failure = 1;
+        }
+    }
+    if (failure)
+    {
+        error(first_error);
+    }
 }
 #endif
 

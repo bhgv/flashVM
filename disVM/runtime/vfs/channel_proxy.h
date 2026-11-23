@@ -22,6 +22,7 @@ typedef struct DVM_CallChannels
     size_t count; /* Number of live entries. */
     int returning; /* Provider may encode only capabilities from the active call. */
     int resolving; /* Caller resolves reply keys to already exported originals. */
+    DVM_Cancel *message; /* Borrowed exact provider scope while moving channel values. */
 } DVM_CallChannels;
 
 
@@ -29,6 +30,10 @@ typedef struct DVM_CallChannels
  * RU: Снять все корни каналов на том же допущенном исполнителе Dis. */
 void dvm_call_channels_release(DVM_CallChannels *channels);
 
+
+/* [GC:] EN: Drop unpublished caller capabilities from first through the live tail.
+ * RU: Освободить неопубликованные полномочия клиента от first до конца таблицы. */
+void dvm_call_channels_truncate(DVM_CallChannels *channels, size_t first);
 
 /* EN: Encode a borrowed channel of the declared type or nil. Retain each exported original.
  * RU: Кодировать заимствованный канал объявленного типа либо nil. Удержать каждый исходный канал. */
@@ -86,6 +91,6 @@ unsigned dvm_call_channel_alt(const DVM_ProxyGuard *guards, unsigned count, int 
 
 /* EN: Drain one bounded round on the current caller, restoring GC wait mode.
  * RU: Выполнить один ограниченный проход у клиента, восстановив ожидание GC. */
-int dvm_call_channel_progress(DVM_ChannelBus *bus, const DVM_CallChannels *channels, int *native);
+int dvm_call_channel_progress(DVM_ChannelBus *bus, DVM_CallChannels *channels, int *native);
 
 #endif

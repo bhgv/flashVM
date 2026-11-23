@@ -240,6 +240,14 @@ int styxmanaged_payload_valid(const char *shape, const void *bytes, size_t size)
 /* EN: Validate the argument payload according to its negotiated request tag.
  * RU: Проверить аргументы по согласованному тегу запроса. */
 int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list);
+
+
+/* EN: Validate a message graph and require admission for each non-nil channel.
+ * The optional application data is borrowed through the synchronous callback.
+ * RU: Проверить граф сообщения и полномочие каждого канала, отличного от nil.
+ * Данные context заимствуются на время синхронного обратного вызова. */
+int styxmanaged_channel_payload(const char *shape, const FVM_SRecord *list,
+    int (*admit)(const void *, const char *, uint32_t), const void *context);
 typedef struct StyxGraphPositions
 {
     unsigned short argument[STYX_CALL_REF_KEYS]; /* Earliest direct position plus one, zero for nested-only refs. */

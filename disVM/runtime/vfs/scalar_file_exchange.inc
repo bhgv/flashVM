@@ -76,7 +76,7 @@ static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, i
 typedef struct ExchangeChannels
 {
     DVM_ChannelBus *bus; /* Native provider state, alive for the exchange. */
-    const DVM_CallChannels *channels; /* Dis objects used only by this caller. */
+    DVM_CallChannels *channels; /* Dis objects used only by this caller. */
     int *native; /* Restored on return even after a failed match. */
 } ExchangeChannels;
 
@@ -201,7 +201,7 @@ static int exchange_compiled(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_L
 int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     DVM_LaunchFiles *descriptors, uint32_t pid, const FVM_SRecord *arguments,
     const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received,
-    const DVM_CallChannels *channels, int *native)
+    DVM_CallChannels *channels, int *native)
 {
     if (!files || !files->dynamic || !arguments || !request || !size || !reply || !capacity || !received)
     {

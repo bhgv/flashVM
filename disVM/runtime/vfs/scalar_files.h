@@ -94,5 +94,5 @@ struct DVM_CallChannels;
 int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid, const FVM_SRecord *arguments,
     const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received,
-    const struct DVM_CallChannels *channels, int *native);
+    struct DVM_CallChannels *channels, int *native);
 #endif

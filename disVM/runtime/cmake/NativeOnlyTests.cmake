@@ -38,6 +38,13 @@ if(DVM_RUNTIME_TESTS)
                 "${channel_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" --jit)
             set_tests_properties(disvm_native_styx_channel_tcp_interpreter disvm_native_styx_channel_tcp_jit
                 PROPERTIES TIMEOUT 120 LABELS "native")
+            set(channel_pair_example "${CMAKE_CURRENT_SOURCE_DIR}/../examples/remote-scalar/run_channel_pair.py")
+            add_test(NAME disvm_native_styx_channel_pair_interpreter COMMAND "${PYTHON_EXECUTABLE}"
+                "${channel_pair_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>")
+            add_test(NAME disvm_native_styx_channel_pair_jit COMMAND "${PYTHON_EXECUTABLE}"
+                "${channel_pair_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" --jit)
+            set_tests_properties(disvm_native_styx_channel_pair_interpreter disvm_native_styx_channel_pair_jit
+                PROPERTIES TIMEOUT 120 LABELS "native")
             add_test(NAME disvm_native_styx_chain_tcp_interpreter COMMAND "${PYTHON_EXECUTABLE}"
                 "${chain_example}" --runtime "$<TARGET_FILE:disvm>" --limbo "$<TARGET_FILE:limbo-bootstrap>" local)
             add_test(NAME disvm_native_styx_chain_tcp_jit COMMAND "${PYTHON_EXECUTABLE}"

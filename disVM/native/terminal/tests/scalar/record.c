@@ -19,6 +19,7 @@
 #include "managed_records.inc"
 #include "graph_positions.inc"
 #include "table_records.inc"
+#include "channel_records.inc"
 
 
 /* EN/RU: Return the argument or a fixture error, recording each admitted call.
@@ -441,6 +442,11 @@ int main(void)
     if (!table_records())
     {
         fputs("managed hybrid table validation failed\n", stderr);
+        return 1;
+    }
+    if (!channel_admission_records())
+    {
+        fputs("nested channel capability admission failed\n", stderr);
         return 1;
     }
     if (!graph_reply_records() || !sparse_graph_fields() || !argument_position_updates() || !position_field_deltas())

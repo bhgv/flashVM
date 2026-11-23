@@ -74,12 +74,14 @@ altcommunicate(void *arg)""",
         ),
         (
             "altvalidate(a, nsend, nrecv, 0);",
-            "altvalidate_guarded(a, nsend, nrecv);\n"
             "#ifdef DVM_TERMINAL_LAUNCH\n"
-            "    if (remote_alt(a, nsend, nrecv, block, result))\n"
+            "    if (altvalidate_guarded(a, nsend, nrecv))\n"
             "    {\n"
+            "        remote_alt(a, nsend, nrecv, block, result);\n"
             "        return;\n"
             "    }\n"
+            "#else\n"
+            "    altvalidate_guarded(a, nsend, nrecv);\n"
             "#endif\n"
             "    if (block && altwaitshared(a, nsend, nrecv))\n"
             "    {\n"
@@ -174,22 +176,24 @@ extern int dvm_runtime_guarded_copies;
 
 typedef struct AltValidation
 {
-    Alt *alt;
-    int sends;
-    int receives;
+    Alt *alt; /* Borrowed guard table. */
+    int sends; /* Validated send count. */
+    int receives; /* Validated receive count. */
+    int proxy; /* True when validation found a remote channel. */
 } AltValidation;
 
 static int altvalidate_locked(void *argument)
 {
     AltValidation *check = argument;
-    altvalidate(check->alt, check->sends, check->receives, 0);
+    check->proxy = altvalidate(check->alt, check->sends, check->receives, 0);
     return 1;
 }
 
-static void altvalidate_guarded(Alt *alt, int sends, int receives)
+static int altvalidate_guarded(Alt *alt, int sends, int receives)
 {
-    AltValidation check = {alt, sends, receives};
+    AltValidation check = {.alt = alt, .sends = sends, .receives = receives};
     dvm_runtime_channel_queue_guard(altvalidate_locked, &check);
+    return check.proxy;
 }
 
 
@@ -366,8 +370,8 @@ def adapt_alt_preflight(source):
     """Reuse guard traversal with cancellation-specific queue checks."""
     changes = (
         (
-            "altvalidate(Alt *a, int nsend, int nrecv)",
-            "altvalidate(Alt *a, int nsend, int nrecv, int cancelling)",
+            "static void\naltvalidate(Alt *a, int nsend, int nrecv)",
+            "static int\naltvalidate(Alt *a, int nsend, int nrecv, int cancelling)",
         ),
         ("altvalidate(a, nsend, nrecv);", "altvalidate(a, nsend, nrecv, 0);"),
         (
@@ -376,17 +380,12 @@ def adapt_alt_preflight(source):
             "\t\tif(cancelling && (c == nil || c == H)) continue;\n"
             "\t\tif(!altobject(c)){",
         ),
-        ("altchannel(c, receive);", "altcheckguard(c, receive, cancelling);"),
+        ("int guard, receive;", "int guard, receive, proxy = 0;"),
+        ("altchannel(c, receive);", "proxy |= altcheckguard(c, receive, cancelling);"),
         (
             "if(member != H)\n\t\t\t\taltchannel(member, 1);",
             "if(member != H && (!cancelling || member != nil)){\n"
-            "\t\t\t\taltcheckguard(member, 1, cancelling);\n"
-            "#ifdef DVM_TERMINAL_LAUNCH\n"
-            "                if (!cancelling && dvm_call_channel_is_proxy(member))\n"
-            "                {\n"
-            "                    error(\"remote alt does not accept channel arrays\");\n"
-            "                }\n"
-            "#endif\n"
+            "\t\t\t\tproxy |= altcheckguard(member, 1, cancelling);\n"
             "            }",
         ),
     )
@@ -394,6 +393,8 @@ def adapt_alt_preflight(source):
         if source.count(old) != 1:
             raise ValueError("ALT preflight boundary drift: " + old)
         source = source.replace(old, new, 1)
+    end = source.index("\n}", source.index("static int\naltvalidate("))
+    source = source[:end] + "\n    return proxy;" + source[end:]
     for condition, queue in (
         ("c != H && c != nil && c->recv != nil && c->recv->prog", "recv"),
         ("c->send != nil && c->send->prog", "send"),
@@ -420,25 +421,31 @@ def adapt_alt_preflight(source):
 ALT_GUARD_CHECK = r"""
 #ifdef DVM_TERMINAL_LAUNCH
 #include "channel_proxy.h"
+#include "heap_hold.h"
 #endif
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 extern void dvm_runtime_channel_unmark(Progq **queue, Prog *peer);
 extern void dvm_runtime_alt_register_locked(Progq **queue, Prog *peer);
 /* Cancellation checks only the affected queue. A finalized queue may already
  * be detached. Registration still checks both queues and buffer readiness. */
-static void altcheckguard(Channel *channel, int receive, int cancelling)
+static int altcheckguard(Channel *channel, int receive, int cancelling)
 {
     Progq **queue;
     if (!cancelling)
     {
         altchannel(channel, receive);
-        return;
+#ifdef DVM_TERMINAL_LAUNCH
+        return dvm_call_channel_is_proxy(channel);
+#else
+        return 0;
+#endif
     }
     if (altobject(channel))
         error(exHeap);
     queue = receive ? &channel->recv : &channel->send;
     if (*queue)
         vmchanend(queue);
+    return 0;
 }
 
 

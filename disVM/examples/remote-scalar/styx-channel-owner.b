@@ -21,9 +21,13 @@ typed_worker(input, output: chan of Payload, wide: chan of big, result: chan of 
 {
     passed := 0;
     {
+        wires := array[3] of chan of Payload;
+        wires[1] = input;
+        selected: (int, Payload);
         alt {
-            (text, values, first, second) := <-input =>
-                if (text != "Юнибас" || len values != 900 || values[899] != 1798 ||
+            selected = <-wires =>
+                (member, (text, values, first, second)) := selected;
+                if (member != 1 || text != "Юнибас" || len values != 900 || values[899] != 1798 ||
                     first == nil || first != second || first.number != 37) {
                     raise "wrong typed channel payload";
                 }
@@ -64,6 +68,51 @@ channelresult(input: chan of int, mode: int): chan of int
         0 => return input;
         1 => return nil;
         * => return chan of int;
+    }
+}
+
+
+# EN: Run the message exchange in a provider child and return the received channel.
+# RU: Выполнить обмен сообщениями в дочернем потоке и вернуть принятый канал.
+nested(input, output: chan of Relayed, known: chan of int): chan of int
+{
+    done := chan of chan of int;
+    spawn relay_channels(input, output, known, done);
+    return <-done;
+}
+
+
+# EN: Select from the caller's array and return it with the original slot and value.
+# RU: Выбрать из массива клиента и вернуть его вместе с исходным индексом и значением.
+choose(ports: array of chan of int): (int, int, array of chan of int)
+{
+    picked: (int, int);
+    alt {
+        picked = <-ports =>
+            (slot, value) := picked;
+            return (slot, value, ports);
+    }
+}
+
+
+# EN: Check repeated and previously granted handles, then send them back.
+# RU: Проверить повторный и ранее выданный каналы, затем отправить их обратно.
+relay_channels(input, output: chan of Relayed, known: chan of int, done: chan of chan of int)
+{
+    {
+        (first, ports, previously) := <-input;
+        (second, repeated, again) := <-input;
+        left := ports[0];
+        if (first != "new" || second != "alias" || previously != known || len ports != 3 ||
+            ports[1] != nil || ports[2] != known || left == nil || left != repeated[0] ||
+            left != repeated[1] || left != again || left == known) {
+            raise "channel identities changed inside a message";
+        }
+        left <-= 44;
+        output <-= ("back", ports, left);
+        done <-= left;
+    } exception {
+        * => done <-= nil;
     }
 }
 
@@ -119,8 +168,44 @@ exchange(op: int, input: chan of int, ports: (chan of int, chan of int)): int
                 * =>
                     return -5;
             }
+        8 or 9 or 10 or 11 =>
+            return array_exchange(op, input, output);
     }
     raise "invalid channel example operation";
+}
+
+
+# EN: Select from a sparse proxy array and return its original index and value.
+# op 8 blocks with two remote members. Modes 9–11 use a local member and a default.
+# RU: Выбрать из разреженного массива прокси и вернуть исходный индекс и значение.
+# Режим 8 ждёт два удалённых элемента. Режимы 9–11 добавляют локальный канал и default.
+array_exchange(op: int, input, output: chan of int): int
+{
+    wires := array[4] of chan of int;
+    wires[1] = input;
+    picked := (19, 23);
+    if (op == 8) {
+        wires[3] = output;
+        alt {
+            value := <-input => return -1;
+            picked = <-wires => {}
+        }
+    } else {
+        local := chan[1] of int;
+        if (op == 9) {
+            local <-= 41;
+        }
+        wires[3] = local;
+        alt {
+            picked = <-wires => {}
+            * => {
+                (index, value) := picked;
+                return -(index*100 + value);
+            }
+        }
+    }
+    (index, value) := picked;
+    return index*100 + value;
 }
 
 

@@ -61,6 +61,10 @@ typedef struct DVM_ChannelOperation
 DVM_Provider *dvm_channel_bus_create(const DVM_ChannelSchema *schemas, size_t count, DVM_ChannelBus **bus);
 
 
+/* EN: Publish caller-owned capabilities after successfully encoding one message.
+ * RU: Опубликовать полномочия клиента после успешного кодирования сообщения. */
+int dvm_channel_bus_extend(DVM_ChannelBus *bus, const DVM_ChannelSchema *schemas, size_t count);
+
 /* EN: Copy a pending operation after sequence, or report none. No guest access.
  * RU: Скопировать операцию после sequence либо вернуть 0. Куча VM не затрагивается. */
 int dvm_channel_bus_next(DVM_ChannelBus *bus, uint64_t sequence, DVM_ChannelOperation *operation);
@@ -75,6 +79,15 @@ int dvm_channel_bus_pending(DVM_ChannelBus *bus, uint64_t sequence);
  * RU: Завершить открытую операцию на её fid. Закрытая операция пропускается. */
 void dvm_channel_bus_finish(DVM_ChannelBus *bus, const DVM_ChannelOperation *operation,
     int success, int64_t value, unsigned selected, const void *element, size_t size);
+
+
+/* EN: After the owner's local probe round, pair pending fids up to probed_through
+ * on unbuffered_mask slots. Publish both replies under the bus lock, then settle
+ * any unmatched immediate selectors. Caller owns the bus and drives its matches.
+ * RU: После обхода локальных очередей сопоставить ожидающие fid до probed_through
+ * для слотов unbuffered_mask. Опубликовать оба ответа под замком шины, затем
+ * завершить оставшиеся пробы. Вызывающий удерживает bus и выполняет сопоставления. */
+void dvm_channel_bus_settle(DVM_ChannelBus *bus, uint64_t probed_through, unsigned unbuffered_mask);
 
 
 /* EN: Stop admission and invalidate pending operations before retiring the caller.

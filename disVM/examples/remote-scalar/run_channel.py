@@ -28,11 +28,13 @@ def exercise(runtime, compiler, root, mode):
                  "--export", "channel.dis", "channel.dis", "exchange",
                  "--export", "channel.dis", "channel.dis", "typed",
                  "--export", "channel.dis", "channel.dis", "scalars",
-                 "--export", "channel.dis", "channel.dis", "channelresult", "--", mode, "dispatcher.dis"],
+                 "--export", "channel.dis", "channel.dis", "channelresult",
+                 "--export", "channel.dis", "channel.dis", "nested",
+                 "--export", "channel.dis", "channel.dis", "choose", "--", "--native-spawn", mode, "dispatcher.dis"],
                 (reverse,), owner)
             stdout, stderr = delegate(
                 [runtime, "--styx-mount-fd", str(forward.fileno()), "--at", "/transport",
-                 "--", mode, "client.dis"], (forward,), caller)
+                 "--", "--native-spawn", mode, "client.dis"], (forward,), caller)
             server.result()
     if "PASS automatic Limbo channels over UniBus" not in stdout:
         raise RuntimeError(stdout + stderr)

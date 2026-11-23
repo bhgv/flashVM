@@ -101,7 +101,7 @@ static void channel_rpc(DVM_Provider *context, DVM_Cancel *cancel, const unsigne
 /* [GC:] EN: Encode one captured send element or the empty payload of a receive.
  * RU: Кодировать один зафиксированный элемент отправки или пустое тело приёма. */
 static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *guard,
-    unsigned char *bytes, size_t capacity, size_t *used)
+    DVM_Cancel *scope, unsigned char *bytes, size_t capacity, size_t *used)
 {
     unsigned char value[DVM_CHANNEL_BUS_WIRE];
     size_t size = 0;
@@ -124,8 +124,9 @@ static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *g
                 dvm_styx_value_snapshot(guard->operand, &frame);
             if (valid)
             {
-                dvm_channel_value_root(&frame);
-                valid = dvm_channel_value_pack(schema->shape, &frame, value, sizeof(value), &size);
+                DVM_CallChannels channels = {.message = scope};
+                valid = dvm_channel_value_root(&frame) &&
+                    dvm_channel_value_pack(schema->shape, &frame, &channels, value, sizeof(value), &size);
             }
             dvm_styx_value_frame_clear(&frame);
             if (!valid)
@@ -141,10 +142,11 @@ static int write_choice(const DVM_ChannelSchema *schema, const DVM_ProxyGuard *g
 /* [GC:] EN: Apply the selected receive, using the declared mapped layout.
  * RU: Применить выбранный приём в рамках объявленной раскладки. */
 static void receive_value(const DVM_ChannelSchema *schema, void *destination,
-    const void *bytes, size_t size)
+    DVM_Cancel *scope, const void *bytes, size_t size)
 {
     DVM_StyxValueFrame frame = {0};
-    if (!dvm_channel_value_unpack(schema->shape, bytes, size, &frame) ||
+    DVM_CallChannels channels = {.message = scope};
+    if (!dvm_channel_value_unpack(schema->shape, bytes, size, &channels, &frame) ||
         !dvm_styx_value_frame_move(&frame, destination, frame.layout.size))
     {
         dvm_styx_value_frame_clear(&frame);
@@ -157,7 +159,7 @@ static void receive_value(const DVM_ChannelSchema *schema, void *destination,
  * RU: Декодировать ответ, проверить номер ветки и применить её значение при наличии. */
 static unsigned receive_selection(const unsigned char *bytes, size_t size,
     const DVM_ProxyGuard *guards, const DVM_ChannelSchema *const *schemas,
-    const unsigned *order, unsigned count, int alt, int block, int typed)
+    const unsigned *order, unsigned count, int alt, int block, int typed, DVM_Cancel *scope)
 {
     unsigned ordinal;
     FVM_SRecord record;
@@ -198,7 +200,7 @@ static unsigned receive_selection(const unsigned char *bytes, size_t size,
     {
         if (typed)
         {
-            receive_value(schemas[selected], guard->operand, record.payload, record.size);
+            receive_value(schemas[selected], guard->operand, scope, record.payload, record.size);
         }
         else
         {
@@ -257,7 +259,7 @@ static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, in
     {
         unsigned selected = order[i];
         size_t used;
-        if (!write_choice(schemas[selected], &guards[selected], payload + size, sizeof(payload) - size, &used))
+        if (!write_choice(schemas[selected], &guards[selected], cancel, payload + size, sizeof(payload) - size, &used))
         {
             error("cannot encode remote channel operation");
         }
@@ -273,10 +275,10 @@ static unsigned submit(const DVM_ProxyGuard *guards, unsigned count, int alt, in
     if (alt)
     {
         channel_rpc(context, cancel, bytes, sent, payload, &received);
-        return receive_selection(payload, received, guards, schemas, order, count, alt, block, typed);
+        return receive_selection(payload, received, guards, schemas, order, count, alt, block, typed, cancel);
     }
     channel_rpc(context, cancel, payload, sent, bytes, &received);
-    return receive_selection(bytes, received, guards, schemas, order, count, alt, block, typed);
+    return receive_selection(bytes, received, guards, schemas, order, count, alt, block, typed, cancel);
 }
 
 
@@ -319,7 +321,7 @@ static int try_transfer(void *state)
 
 /* EN: Try guards in submitted order and complete at most one channel operation.
  * RU: Проверить ветки в переданном порядке и выполнить не более одной операции. */
-static void progress_operation(DVM_ChannelBus *bus, const DVM_CallChannels *channels,
+static void progress_operation(DVM_ChannelBus *bus, DVM_CallChannels *channels,
     const DVM_ChannelOperation *operation)
 {
     for (unsigned i = 0; i < operation->count; i++)
@@ -333,7 +335,7 @@ static void progress_operation(DVM_ChannelBus *bus, const DVM_CallChannels *chan
         ChannelTransfer transfer = {.channel = channels->objects[choice->slot], .local_receives = choice->receive};
         int scalar = !strcmp(shape, "(i)");
         int valid = choice->receive || scalar ? dvm_channel_value_empty(shape, &transfer.frame) :
-            dvm_channel_value_unpack(shape, operation->bytes + choice->offset, choice->size, &transfer.frame);
+            dvm_channel_value_unpack(shape, operation->bytes + choice->offset, choice->size, channels, &transfer.frame);
         if (!choice->receive && scalar)
         {
             WORD value = choice->integer;
@@ -347,8 +349,18 @@ static void progress_operation(DVM_ChannelBus *bus, const DVM_CallChannels *chan
         int settled = !valid || transfer.delivered;
         if (transfer.delivered && choice->receive && operation->typed)
         {
-            dvm_channel_value_root(&transfer.frame);
-            valid = valid && dvm_channel_value_pack(shape, &transfer.frame, element, sizeof(element), &size);
+            const size_t previous = channels->count;
+            valid = valid && dvm_channel_value_root(&transfer.frame) &&
+                dvm_channel_value_pack(shape, &transfer.frame, channels, element,
+                    sizeof(element) - 16, &size);
+            if (valid && channels->count != previous)
+            {
+                valid = dvm_channel_bus_extend(bus, channels->schemas + previous, channels->count - previous);
+            }
+            if (!valid)
+            {
+                dvm_call_channels_truncate(channels, previous);
+            }
         }
         int64_t legacy = 0;
         if (settled && !operation->typed)
@@ -367,15 +379,11 @@ static void progress_operation(DVM_ChannelBus *bus, const DVM_CallChannels *chan
             return;
         }
     }
-    if (operation->immediate)
-    {
-        dvm_channel_bus_finish(bus, operation, 1, 0, 0, NULL, 0);
-    }
 }
 
 
 /* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
-int dvm_call_channel_progress(DVM_ChannelBus *bus, const DVM_CallChannels *channels, int *native)
+int dvm_call_channel_progress(DVM_ChannelBus *bus, DVM_CallChannels *channels, int *native)
 {
     DVM_ChannelOperation operation;
     if (!dvm_channel_bus_next(bus, 0, &operation))
@@ -391,6 +399,15 @@ int dvm_call_channel_progress(DVM_ChannelBus *bus, const DVM_CallChannels *chann
         after = operation.sequence;
         progress_operation(bus, channels, &operation);
     }
+    unsigned unbuffered = 0;
+    for (size_t slot = 0; slot < channels->count; slot++)
+    {
+        if (channels->objects[slot]->buf == H)
+        {
+            unbuffered |= 1U << slot;
+        }
+    }
+    dvm_channel_bus_settle(bus, after, unbuffered);
     int released = dvm_runtime_gc_native_try_leave();
     *native = released < 0 ? 0 : released;
     return released >= 0;

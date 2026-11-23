@@ -53,6 +53,25 @@ int dvm_channel_bus_write(uint32_t key, int receive, const void *element, size_t
 }
 
 
+/* EN: Admit a nested capability only if this bus already issued its exact key and type.
+ * RU: Допустить вложенное полномочие только после выдачи точного ключа и типа этой шиной. */
+static int admit_nested(const void *context, const char *type, uint32_t key)
+{
+    const DVM_ChannelBus *bus = context;
+    const char *end = styxshape_end(type);
+    size_t size = (size_t)(end - type) - 3;
+    for (size_t i = 0; i < bus->count; i++)
+    {
+        if (bus->schemas[i].key == key)
+        {
+            const char *shape = bus->schemas[i].shape;
+            return strlen(shape) == size + 2 && !memcmp(shape + 1, type + 2, size);
+        }
+    }
+    return 0;
+}
+
+
 /* EN: Parse one direction and check its key against immutable call keys.
  * RU: Разобрать одно направление и проверить его ключ по ключам вызова. */
 static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
@@ -90,7 +109,9 @@ static int parse_choice(const DVM_ChannelBus *bus, const FVM_SRecord *record,
     else if (typed)
     {
         FVM_SRecord value;
-        if (!styxmanaged_list_read(STYX_MANAGED_GRAPH_TAG, shape, id + 4, size, &value))
+        size_t used;
+        if (fvm_srecord_read(id + 4, size, STYX_MANAGED_LIST_LIMIT, &value, &used) != FVM_S_OK ||
+            used != size || !styxmanaged_channel_payload(shape, &value, admit_nested, bus))
         {
             return 0;
         }
@@ -333,6 +354,21 @@ DVM_Provider *dvm_channel_bus_create(const DVM_ChannelSchema *schemas, size_t co
 
 
 /* EN/RU: See channel_bus.h. / См. channel_bus.h. */
+int dvm_channel_bus_extend(DVM_ChannelBus *bus, const DVM_ChannelSchema *schemas, size_t count)
+{
+    fvm_port_sync_lock(bus->lock);
+    int valid = !bus->sealed && count <= DVM_CHANNEL_BUS_SLOTS - bus->count;
+    if (valid)
+    {
+        memcpy(bus->schemas + bus->count, schemas, count * sizeof(*schemas));
+        bus->count += count;
+    }
+    fvm_port_sync_unlock(bus->lock);
+    return valid;
+}
+
+
+/* EN/RU: See channel_bus.h. / См. channel_bus.h. */
 int dvm_channel_bus_next(DVM_ChannelBus *bus, uint64_t after, DVM_ChannelOperation *operation)
 {
     uint64_t selected = 0;
@@ -374,6 +410,9 @@ int dvm_channel_bus_pending(DVM_ChannelBus *bus, uint64_t sequence)
 }
 
 
+#include "channel_bus_pair.inc"
+
+
 /* EN/RU: See channel_bus.h. / См. channel_bus.h. */
 void dvm_channel_bus_finish(DVM_ChannelBus *bus, const DVM_ChannelOperation *operation,
     int success, int64_t value, unsigned selected, const void *element, size_t size)
@@ -383,23 +422,10 @@ void dvm_channel_bus_finish(DVM_ChannelBus *bus, const DVM_ChannelOperation *ope
     {
         if (fid->request.sequence == operation->sequence && !fid->size)
         {
-            if (operation->typed)
+            fid->size = stage_bus_reply(fid, success, value, selected, element, size);
+            if (!fid->size)
             {
-                unsigned char outcome = success ? selected : 255;
-                FVM_SResult written = fvm_srecord_write_pair(DVM_CHANNEL_BUS_TYPED_REPLY,
-                    &outcome, 1, success ? element : NULL, success ? size : 0,
-                    fid->reply, sizeof(fid->reply), &fid->size);
-                if (written != FVM_S_OK)
-                {
-                    outcome = 255;
-                    fvm_srecord_write(DVM_CHANNEL_BUS_TYPED_REPLY, &outcome, 1,
-                        fid->reply, sizeof(fid->reply), &fid->size);
-                }
-            }
-            else
-            {
-                styxscalarwrite(DVM_CHANNEL_BUS_REPLY, success ? STYX_SCALAR_VALUE : STYX_SCALAR_ERROR,
-                    value, fid->reply, sizeof(fid->reply), &fid->size);
+                fid->size = stage_bus_reply(fid, 0, 0, 0, NULL, 0);
             }
             break;
         }

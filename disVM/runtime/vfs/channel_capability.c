@@ -11,6 +11,7 @@
 #include "raise.h"
 #include "channel_route.h"
 #include "channel_value.h"
+#include "root_registry.h"
 #include "disvm/refcount.h"
 #include <string.h>
 
@@ -38,11 +39,15 @@ int dvm_call_channel_is_proxy(Channel *channel)
 static int root_channel(Channel *channel)
 {
     Heap *heap = D2H(channel);
-    if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+    if (!dvm_runtime_root_add(heap))
     {
         return 0;
     }
-    ptradd(heap);
+    if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+    {
+        ptrdel(heap);
+        return 0;
+    }
     Setmark(heap);
     return 1;
 }
@@ -53,7 +58,14 @@ void dvm_call_channels_release(DVM_CallChannels *channels)
 {
     dvm_channel_route_release(channels->route);
     channels->route = NULL;
-    while (channels->count)
+    dvm_call_channels_truncate(channels, 0);
+}
+
+
+/* EN/RU: See channel_proxy.h. / См. channel_proxy.h. */
+void dvm_call_channels_truncate(DVM_CallChannels *channels, size_t first)
+{
+    while (channels->count > first)
     {
         Channel *object = channels->objects[--channels->count];
         ptrdel(D2H(object));
@@ -102,11 +114,19 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
     {
         return 0;
     }
-    if (channels->returning)
+    if (channels->returning || channels->message)
     {
-        const DVM_ChannelSchema *original = dvm_call_channel_is_proxy(channel) ?
-            dvm_channel_route_result((uint32_t)channel->mid.w) : NULL;
+        if (!dvm_call_channel_is_proxy(channel))
+        {
+            return 0;
+        }
+        uint32_t token = (uint32_t)channel->mid.w;
+        DVM_Provider *provider;
+        DVM_Cancel *scope = NULL;
+        const DVM_ChannelSchema *original = channels->message ?
+            dvm_channel_route_lookup(token, &provider, &scope) : dvm_channel_route_result(token);
         return original && !strcmp(original->shape, schema.shape) &&
+            (!channels->message || scope == channels->message) &&
             write_key(original->key, bytes, capacity, size);
     }
     if (!dvm_channel_value_mover(channel, schema.shape))
@@ -159,43 +179,58 @@ int dvm_call_channel_decode(DVM_CallChannels *channels, const char *type,
     {
         return 0;
     }
-    for (size_t i = 0; i < channels->count; i++)
+    if (channels->resolving)
     {
-        if (channels->schemas[i].key == key)
+        for (size_t i = 0; i < channels->count; i++)
         {
-            Channel *alias = channels->objects[i];
-            if (strcmp(channels->schemas[i].shape, schema.shape) ||
-                dvm_refcount_retain_u(&D2H(alias)->ref) != DVM_REFCOUNT_LIVE)
+            if (channels->schemas[i].key == key)
             {
-                return 0;
+                Channel *alias = channels->objects[i];
+                if (strcmp(channels->schemas[i].shape, schema.shape) ||
+                    dvm_refcount_retain_u(&D2H(alias)->ref) != DVM_REFCOUNT_LIVE)
+                {
+                    return 0;
+                }
+                *result = alias;
+                return 1;
             }
-            *result = alias;
-            return 1;
         }
-    }
-    if (channels->resolving || channels->count == DVM_CHANNEL_BUS_SLOTS)
-    {
         return 0;
     }
-    if (!channels->route)
+    if (!channels->message && !channels->route)
     {
         channels->route = dvm_channel_route_create();
     }
+    DVM_ChannelRoute *route = channels->message ?
+        dvm_channel_route_for_message(channels->message) : channels->route;
+    if (!route)
+    {
+        return 0;
+    }
+    Channel *proxy = dvm_channel_route_proxy(route, &schema, NULL);
+    if (proxy)
+    {
+        *result = proxy;
+        return 1;
+    }
     uint32_t token = allocate_key();
-    if (!dvm_channel_route_add(channels->route, token, &schema))
+    if (!token)
     {
         return 0;
     }
-    Channel *proxy = cnewc(&Tword, proxy_mover, 0);
-    proxy->mid.w = token;
-    if (!root_channel(proxy))
+    Channel *candidate = cnewc(&Tword, proxy_mover, 0);
+    candidate->mid.w = token;
+    if (dvm_runtime_root_add(D2H(candidate)))
     {
-        destroy(proxy);
+        Setmark(D2H(candidate));
+        proxy = dvm_channel_route_proxy(route, &schema, candidate);
+        ptrdel(D2H(candidate));
+    }
+    destroy(candidate);
+    if (!proxy)
+    {
         return 0;
     }
-    size_t slot = channels->count++;
-    channels->objects[slot] = proxy;
-    channels->schemas[slot] = schema;
     *result = proxy;
     return 1;
 }

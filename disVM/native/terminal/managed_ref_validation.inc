@@ -11,6 +11,8 @@ typedef struct RefKeys
     size_t count; /* Number of reserved snapshot indices. */
     size_t limit; /* Maximum count, or zero for the standalone limit. */
     int nested; /* Result traversal may define references inside values. */
+    int (*channel)(const void *, const char *, uint32_t); /* Optional capability admission in this graph. */
+    const void *channel_context; /* Borrowed admissions table for the visitor. */
 } RefKeys;
 
 

@@ -97,6 +97,16 @@ int styxmanaged_request_payload(const char *shape, const FVM_SRecord *list)
     return managed_payload(shape, list->payload, list->size, &keys);
 }
 
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_channel_payload(const char *shape, const FVM_SRecord *list,
+    int (*admit)(const void *, const char *, uint32_t), const void *context)
+{
+    RefKeys keys = {.nested = 1, .limit = STYX_CALL_REF_KEYS, .channel = admit, .channel_context = context};
+    return list && list->tag == STYX_MANAGED_GRAPH_TAG && admit &&
+        managed_payload(shape, list->payload, list->size, &keys);
+}
+
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,
     const StyxReplyField fields[2])
