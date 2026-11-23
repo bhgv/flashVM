@@ -36,8 +36,17 @@ void fvm_styxrpc_channel_set_release(FVM_StyxChannelSet *set, int deferred)
     {
         fvm_styxrpc_channel_retire_loans(set);
         styxrpc_channel_lease_release(set->lease, deferred);
+        styxrpc_channel_mailbox_owner_release(set->pid_mailbox);
         free(set);
     }
+}
+
+
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+const StyxRpcChannelRoute *fvm_styxrpc_channel_set_route(const FVM_StyxChannelSet *set, size_t index)
+{
+    return set->pid_mailbox && index < set->pid_routes.count ? set->pid_routes.entries + index :
+        styxrpc_channel_lease_route(set->lease, index);
 }
 
 
@@ -67,7 +76,7 @@ static int same_bus(StyxRpcChannelLease *lease, size_t left, size_t right)
 static int same_leaf(const FVM_StyxChannelDecode *decode, size_t index,
     const StyxRpcChannelGrant *grant, const FVM_SRecord *record)
 {
-    const StyxRpcChannelRoute *leased = styxrpc_channel_lease_route(decode->set->lease, index);
+    const StyxRpcChannelRoute *leased = fvm_styxrpc_channel_set_route(decode->set, index);
     StyxRpcChannelRoute route = {0};
     unsigned char wire[CHANNEL_LEAF_BYTES];
     FVM_SRecord exact;
@@ -116,7 +125,7 @@ int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, voi
     }
     for (index = 0; index < STYXRPC_CHANNEL_SLOTS; ++index)
     {
-        const StyxRpcChannelRoute *route = styxrpc_channel_lease_route(set->lease, index);
+        const StyxRpcChannelRoute *route = fvm_styxrpc_channel_set_route(set, index);
         const StyxRpcChannelGrant *grant = route ? &route->channel :
             set->call && index < set->call->count ? set->call->grants + index : NULL;
         if (grant && (!route || decode->exported || decode->delegated || same_bus(set->lease, decode->parent, index)) &&

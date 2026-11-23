@@ -18,6 +18,9 @@ typedef struct FVM_StyxChannelSet
     struct FVM_StyxLocalLoan *loans;   /* Reverse publications owned by this family. */
     struct StyxClient *reverse;        /* Borrowed reverse mount during a callback. */
     StyxRpcChannelCall *call;          /* Mutable copy of the scoped reverse grants. */
+    StyxRpcChannelMailbox *pid_mailbox; /* Owned result-mailbox reference, if serving Dis. */
+    StyxRpcChannelRoutes pid_routes;     /* Checked reverse PIDs for this result only. */
+    char pid_shape[STYXRPC_MANAGED_SHAPE]; /* Typed element of the hosted mailbox. */
     size_t references;                 /* Owner-local count including each live wrapper. */
     unsigned wait_ms;                  /* Per-operation polling budget. */
     unsigned staging;                  /* Wrapper slots under construction. */
@@ -38,6 +41,32 @@ typedef struct FVM_StyxChannelDecode
     int exported;            /* Decode module export tokens in an initial result. */
     int delegated;           /* Decode authenticated module grants from a reverse message. */
 } FVM_StyxChannelDecode;
+
+
+/* EN: Borrow one route from a module lease or a hosted PID mailbox.
+ * RU: Заимствовать маршрут аренды модуля или очереди PID. */
+const StyxRpcChannelRoute *fvm_styxrpc_channel_set_route(const FVM_StyxChannelSet *set, size_t index);
+
+
+/* [GC:] EN: Encode an admitted channel from set as its separately addressed grant or nil.
+ * RU: Закодировать допущенный канал set отдельным полномочием либо nil. */
+int fvm_styxrpc_channel_encode_grant(FVM_Context *context, FVM_GCRootScope *roots, void *set,
+    const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used);
+
+
+/* EN: Return the native mailbox family of an exact object, or NULL.
+ * RU: Вернуть семейство нативной очереди точного объекта либо NULL. */
+FVM_StyxChannelSet *fvm_styxrpc_result_mailbox_lookup(FVM_Context *context, FVM_Object *object);
+
+
+/* [GC:] EN: Drop the mailbox object's family reference during native cleanup.
+ * RU: Снять ссылку объекта очереди на семейство при нативном освобождении. */
+void fvm_styxrpc_result_mailbox_release(void *state);
+
+
+/* EN: Copy the element of a channel type into a parenthesized shape.
+ * RU: Скопировать элемент типа канала в схему в скобках. */
+int fvm_styxrpc_channel_element_shape(const char *type, char *shape);
 
 
 /* EN: Create one owned family for a retained lease or a borrowed reverse call.

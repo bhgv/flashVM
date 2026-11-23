@@ -21,7 +21,7 @@ typedef struct ChannelSeeds
 
 /* EN: Store one compiled channel's element shape as a parenthesized type list.
  * RU: Записать тип элемента компилированного канала в виде списка в скобках. */
-static int element_shape(const char *type, char *shape)
+int fvm_styxrpc_channel_element_shape(const char *type, char *shape)
 {
     const char *end = fvm_styxrpc_type_end(type);
     size_t length;
@@ -167,7 +167,7 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, void *state, con
     {
         return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
-    if (value->type != FVM_VALUE_OBJECT || !element_shape(type, shape))
+    if (value->type != FVM_VALUE_OBJECT || !fvm_styxrpc_channel_element_shape(type, shape))
     {
         return 0;
     }
@@ -208,7 +208,7 @@ int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
     size_t index;
     int ok;
     seeds.count = 1;
-    ok = count <= capacity && element_shape(schema->result + 1, shape) &&
+    ok = count <= capacity && fvm_styxrpc_channel_element_shape(schema->result + 1, shape) &&
         prepare(&seeds, 0, shape, capacity, count) &&
         (!count || append(context, roots, &seeds, 0, seed)) &&
         styxrpc_channel_group_output(seeds.queues, seeds.count, 0, output) == STYXRPC_OK;

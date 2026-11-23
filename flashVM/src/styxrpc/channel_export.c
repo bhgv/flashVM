@@ -18,7 +18,7 @@ int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema)
 }
 
 
-/* [GC:] EN: Run the initializer under GC roots and transfer the exact resource on success.
+/* [GC:] [ASINC] EN: Run the initializer under GC roots and transfer the exact resource on success.
  * RU: Выполнить инициализатор под корнями GC и передать ресурс при успехе. */
 static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
 {

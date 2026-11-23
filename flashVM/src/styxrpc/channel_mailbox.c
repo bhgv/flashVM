@@ -94,9 +94,8 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
 }
 
 
-/* EN: Encode a live channel from set as its exact module grant or write nil.
- * RU: Закодировать живой канал из set точным полномочием модуля либо записать nil. */
-static int encode_module(FVM_Context *context, FVM_GCRootScope *roots, void *state,
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channel_encode_grant(FVM_Context *context, FVM_GCRootScope *roots, void *state,
     const char *type, const FVM_Value *value, unsigned char *bytes, size_t capacity, size_t *used)
 {
     FVM_StyxChannelSet *set = state;
@@ -115,7 +114,7 @@ static int encode_module(FVM_Context *context, FVM_GCRootScope *roots, void *sta
     {
         return 0;
     }
-    route = styxrpc_channel_lease_route(set->lease, channel->index);
+    route = fvm_styxrpc_channel_set_route(set, channel->index);
     width = (size_t)(end - type) - 3;
     return route && strlen(route->channel.shape) == width + 2 &&
         !memcmp(route->channel.shape + 1, type + 2, width) &&
@@ -155,7 +154,7 @@ static FVM_Result send(FVM_Context *context, FVM_Object *self, unsigned argc,
     if (status == FVM_OK)
     {
         refs.graph = 1;
-        refs.encode_channel = encode_module;
+        refs.encode_channel = fvm_styxrpc_channel_encode_grant;
         refs.channel_context = set;
         if (!fvm_styxrpc_channel_pack_refs(context, roots, &refs, grant->route.channel.shape,
             args, scratch, scratch + FRAME, &frame) || !grant->mailbox)

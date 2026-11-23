@@ -47,3 +47,5 @@ hybrid tables with exact signed 64-bit values and ordered key patches.
 The scoped channel binding carries live result channels in both directions and
 lends channel arguments in both directions. Typed messages can [carry Dis-owned channels](STYX_RPC_NESTED_CHANNELS.md) on the same bus. An inbound callback can also use borrowed arguments and issue an independent result channel in the same call. General reverse-resource declaration
 and migration of the existing in-process editor bridges remain open.
+
+The C entry points that invoke ActionScript exports and initializers carry an `[ASINC]` marker. They currently execute on the owner of the FlashVM context. The planned [`asinc` execution model](../../compiler/ASINC.md) moves the marked script bodies to system worker threads while preserving the issuing call, its arguments, and the result lease through completion. Styx file callbacks continue to manage wire frames and fids on their dispatcher.

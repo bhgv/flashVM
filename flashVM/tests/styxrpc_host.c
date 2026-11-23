@@ -244,7 +244,7 @@ int main(int argc, char **argv)
         strcmp(argv[1], "hybrid-serve") && strcmp(argv[1], "hybrid-call") &&
         strcmp(argv[1], "channel-call") && strcmp(argv[1], "channel-serve") && strcmp(argv[1], "channel-args-call") &&
         strcmp(argv[1], "channel-incoming-serve") && strcmp(argv[1], "channel-delegated-call") &&
-        strcmp(argv[1], "channel-pid-graph-call")))
+        strcmp(argv[1], "channel-pid-graph-call") && strcmp(argv[1], "channel-pid-result-serve")))
     {
         return 2;
     }
@@ -293,6 +293,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[1], "channel-incoming-serve"))
         {
             ok = test_channel_incoming(context, (int)fd);
+        }
+        else if (!strcmp(argv[1], "channel-pid-result-serve"))
+        {
+            ok = test_channel_pid_result(context, (int)fd);
         }
         else if (!strcmp(argv[1], "ref-serve"))
         {

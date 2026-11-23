@@ -63,4 +63,9 @@ int test_channel_pid_graph(FVM_Context *context, int fd);
 /* [GC:] EN: Use the production mailbox methods with the native recursive Dis module.
  * RU: Проверить штатные методы встречной очереди с рекурсивным модулем Dis. */
 int test_channel_mailbox(FVM_Context *context, struct StyxClient *client, StyxRpcServer *reverse);
+
+
+/* [GC:] EN: Confirm and echo a native Dis PID received on a FlashVM result mailbox.
+ * RU: Подтвердить и вернуть нативный PID Dis, принятый очередью результата FlashVM. */
+int test_channel_pid_result(FVM_Context *context, int fd);
 #endif

@@ -96,6 +96,14 @@ StyxRpcStatus styxrpc_channel_route_exchange(struct StyxClient *session, const c
     void *scratch, size_t scratch_size, void *request, size_t request_capacity,
     void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
+
+/* EN: Admit all by-value PID channels in an element on the exact reverse mount.
+ * Confirm each PID identity and bus. A failed import preserves routes and indices.
+ * RU: Принять все PID-каналы по значению в элементе на точном встречном монтировании.
+ * Проверить PID и шину. При отказе сохранить routes и индексы. */
+StyxRpcStatus styxrpc_channel_pid_import(struct StyxClient *reverse, const char *shape,
+    const void *bytes, size_t size, StyxRpcChannelRoutes *routes);
+
 #ifdef __cplusplus
 }
 #endif

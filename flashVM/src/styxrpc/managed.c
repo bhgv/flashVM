@@ -121,7 +121,7 @@ FVM_Result fvm_styxrpc_import_managed(FVM_Context *context, const char *global, 
 }
 
 
-/* [GC:] EN: Run a named AS export and stage its rooted result and ref changes.
+/* [GC:] [ASINC] EN: Run a named AS export and stage its rooted result and ref changes.
  * RU: Вызвать экспорт AS и подготовить результат и изменения ref под корнями. */
 static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, StyxRpcOutput *output)
 {

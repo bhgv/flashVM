@@ -174,7 +174,7 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (!channel->set)
+    if (!channel->set || (channel->set->pid_mailbox && !styxrpc_channel_mailbox_active(channel->set->pid_mailbox)))
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC channel is closed");
     }
@@ -212,13 +212,25 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
             unsigned char *request = scratch + STYXRPC_MANAGED_LIMIT;
             unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
             selection.policy = send.delegated.count ? &policy : NULL;
-            rpc_status = set->lease ?
-                styxrpc_channel_lease_exchange(set->lease, channel->index, &selection,
-                    set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-                    reply, STYXRPC_MANAGED_LIMIT, &result) :
-                styxrpc_channel_exchange(set->reverse, set->call, &selection,
+            if (set->pid_mailbox)
+            {
+                rpc_status = styxrpc_channel_mailbox_active(set->pid_mailbox) ?
+                    styxrpc_channel_route_exchange(set->reverse, NULL, fvm_styxrpc_channel_set_route(set, channel->index),
+                        &selection, set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+                        reply, STYXRPC_MANAGED_LIMIT, &result) : STYXRPC_REMOTE_ERROR;
+            }
+            else if (set->lease)
+            {
+                rpc_status = styxrpc_channel_lease_exchange(set->lease, channel->index, &selection,
                     set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
                     reply, STYXRPC_MANAGED_LIMIT, &result);
+            }
+            else
+            {
+                rpc_status = styxrpc_channel_exchange(set->reverse, set->call, &selection,
+                    set->wait_ms, scratch, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
+                    reply, STYXRPC_MANAGED_LIMIT, &result);
+            }
             if (rpc_status != STYXRPC_OK)
             {
                 error = rpc_status == STYXRPC_MORE ? "Styx RPC channel operation timed out" :

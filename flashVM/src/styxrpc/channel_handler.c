@@ -33,7 +33,7 @@ static int write_result(const FVM_StyxRpcChannelHandler *binding, FVM_GCRootScop
 }
 
 
-/* [GC:] EN: Run the named AVM1 function once and revoke every argument object before returning.
+/* [GC:] [ASINC] EN: Run the named AVM1 function once and revoke every argument object before returning.
  * RU: Однократно вызвать функцию AVM1 и отозвать все объекты аргументов перед возвратом. */
 static StyxRpcStatus invoke(const FVM_StyxRpcChannelHandler *binding, const StyxRpcChannelCall *call,
     const HandlerResult *result)

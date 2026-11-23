@@ -11,15 +11,13 @@
 static const StyxRpcChannelGrant grant = {1, "(c[i])"}; /* Native key and sole mailbox element type. */
 
 
-/* EN: Allow module routes in the synthetic peer's request and response codec.
- * RU: Допустить маршруты модулей в кодеке тестового партнёра. */
-static int allow(const void *unused, const StyxRpcChannelRoute *route)
+/* EN: Allow the expected address kind in the synthetic peer's codec.
+ * RU: Допустить ожидаемый тип адреса в кодеке тестового партнёра. */
+static int allow(const void *context, const StyxRpcChannelRoute *route)
 {
-    (void)unused;
-    return route->kind == STYXRPC_ROUTE_MODULE;
+    const StyxRpcChannelRouteKind *kind = context;
+    return route->kind == *kind;
 }
-
-static const StyxRpcChannelPolicy policy = {allow, NULL}; /* Matching wire codec policy. */
 
 
 /* EN: Stage one complete operation on a fresh virtual fid owned by the caller.
@@ -36,12 +34,21 @@ static int start(const StyxRpcResource *bus, const StyxRpcSelection *operation, 
 
 /* EN: Stage ordinary peer writes and check that only the owner can drain them.
  * RU: Записать сообщения партнёра и проверить, что их извлекает только владелец. */
-static int exercise(StyxRpcChannelMailbox *mailbox, const StyxRpcResource *bus)
+static int exercise(StyxRpcChannelMailbox *mailbox, const StyxRpcResource *bus, int result)
 {
-    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_MODULE, .channel = {23, "(i)"}, .token = {1}};
+    StyxRpcChannelRoute route = {.kind = result ? STYXRPC_ROUTE_PID : STYXRPC_ROUTE_MODULE, .channel = {23, "(i)"}};
+    const StyxRpcChannelPolicy policy = {allow, &route.kind};
     unsigned char child[FRAME], value[FRAME], copy[FRAME], reply[FRAME];
     size_t child_size, length, extents[3], size;
     void *fids[3] = {NULL, NULL, NULL};
+    if (result)
+    {
+        route.pid = UINT32_C(0x80000001);
+    }
+    else
+    {
+        route.token[0] = 1;
+    }
     if (styxrpc_channel_route_value(&route, child, sizeof(child), &child_size) != STYXRPC_OK ||
         fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, child_size, value, sizeof(value), &length) != FVM_S_OK)
     {
@@ -52,11 +59,11 @@ static int exercise(StyxRpcChannelMailbox *mailbox, const StyxRpcResource *bus)
     StyxRpcChannelResult decoded;
     int ok = styxrpc_channel_mailbox_receive(mailbox, copy, sizeof(copy), &size) == STYXRPC_MORE &&
         start(bus, &send, fids, extents) && start(bus, &send, fids + 1, extents + 1) &&
-        bus->read(fids[1], extents[1], reply, sizeof(reply), &size) && !size &&
+        bus->read(fids[1], result ? 0 : extents[1], reply, sizeof(reply), &size) && !size &&
         start(bus, &receive, fids + 2, extents + 2) &&
-        bus->read(fids[2], extents[2], reply, sizeof(reply), &size) && !size &&
+        bus->read(fids[2], result ? 0 : extents[2], reply, sizeof(reply), &size) && !size &&
         styxrpc_channel_mailbox_send(mailbox, value, length) == STYXRPC_OK &&
-        bus->read(fids[2], extents[2], reply, sizeof(reply), &size) &&
+        bus->read(fids[2], result ? 0 : extents[2], reply, sizeof(reply), &size) &&
         styxrpc_channel_result(&grant, 1, &receive, reply, size, &decoded) == STYXRPC_OK &&
         decoded.size == length && !memcmp(decoded.value, value, length) &&
         styxrpc_channel_mailbox_send(mailbox, value, length) == STYXRPC_OK &&
@@ -64,7 +71,7 @@ static int exercise(StyxRpcChannelMailbox *mailbox, const StyxRpcResource *bus)
         styxrpc_channel_mailbox_receive(mailbox, copy, 1, &size) == STYXRPC_INVALID &&
         styxrpc_channel_mailbox_receive(mailbox, copy, sizeof(copy), &size) == STYXRPC_OK &&
         size == length && !memcmp(copy, value, length) &&
-        bus->read(fids[1], extents[1], reply, sizeof(reply), &size) &&
+        bus->read(fids[1], result ? 0 : extents[1], reply, sizeof(reply), &size) &&
         styxrpc_channel_result(&grant, 1, &send, reply, size, &decoded) == STYXRPC_OK &&
         decoded.selected == 1 &&
         styxrpc_channel_mailbox_receive(mailbox, copy, sizeof(copy), &size) == STYXRPC_OK &&
@@ -80,6 +87,27 @@ static int exercise(StyxRpcChannelMailbox *mailbox, const StyxRpcResource *bus)
 }
 
 
+/* EN: Verify that an independent owner handle survives result retirement as closed.
+ * RU: Проверить, что отдельная ссылка владельца переживает отзыв в закрытом состоянии. */
+static int module_result(void)
+{
+    StyxRpcChannelOutput output;
+    StyxRpcChannelMailbox *mailbox;
+    unsigned char byte;
+    size_t size;
+    if (styxrpc_channel_mailbox_result_create(grant.shape, 1, &mailbox, &output) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    int ok = styxrpc_channel_mailbox_active(mailbox) && exercise(mailbox, &output.resource, 1);
+    output.release(output.resource.context);
+    ok = ok && !styxrpc_channel_mailbox_active(mailbox) &&
+        styxrpc_channel_mailbox_receive(mailbox, &byte, 1, &size) == STYXRPC_INVALID;
+    styxrpc_channel_mailbox_owner_release(mailbox);
+    return ok;
+}
+
+
 /* EN: Exercise the independent C mailbox and release its resource after clunk.
  * RU: Проверить отдельную очередь C и освободить ресурс после clunk. */
 int main(void)
@@ -90,8 +118,9 @@ int main(void)
     {
         return 1;
     }
-    int ok = exercise(mailbox, &output.resource);
+    int ok = exercise(mailbox, &output.resource, 0);
     output.release(output.resource.context);
+    ok = ok && module_result();
     if (!ok)
     {
         fputs("mailbox direction or backpressure failed\n", stderr);

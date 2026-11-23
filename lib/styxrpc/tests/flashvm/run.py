@@ -57,7 +57,7 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("channel-pid-graph", "channel-pid-graph"),
+    for option, profile in (("channel-pid-graph", "channel-pid-graph"), ("channel-pid-result", "channel-pid-result"),
                             ("channel-delegated", "channel-delegated"), ("channel-incoming", "channel-incoming"),
                             ("channel-args", "channel-args"), ("channel", "channel"), ("hybrid", "hybrid"),
                             ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
@@ -72,6 +72,7 @@ def main():
             "channel-delegated": (args.source / "examples/remote-scalar/styx-channel-recursive-owner.b",
                                   None, "channel-lifetime.dis", ("open", "idle"), None),
             "channel-pid-graph": ("channel_pid_graph.b", None, "channel-pid-graph.dis", ("open",), None),
+            "channel-pid-result": (None, "channel_pid_result.b", "flash-pid-result.dis", (), "PID result mailbox"),
             "channel-incoming": (None, "channel_incoming.b", "flash-incoming.dis", (), "channel argument handlers"),
             "channel-args": ("channel_args_owner.b", None, "channel-args.dis",
                              ("exchange", "reject", "result", "relay", "wait", "nested"), None),
@@ -118,7 +119,7 @@ def main():
             )
         else:
             image = compile_image(args, directory, tests / caller, "client.dis")
-            transport = [] if args.profile in ("channel", "channel-incoming") else ["--raw"]
+            transport = [] if args.profile in ("channel", "channel-incoming", "channel-pid-result") else ["--raw"]
             exchange(
                 directory,
                 lambda fd: [args.flash_host, action + "serve", fd],

@@ -232,6 +232,19 @@ static int exchange_routed(StyxClient *client, uint32_t pid)
 }
 
 
+/* EN: Admit a live PID and refuse its replacement address without changing routes.
+ * RU: Принять живой PID и отклонить другой адрес без изменения routes. */
+static int import_pid(StyxClient *client, uint32_t pid, StyxRpcStatus expected, StyxRpcChannelRoutes *routes)
+{
+    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_PID, .pid = pid, .channel = grants[1]};
+    unsigned char child[96], frame[96];
+    size_t leaf, extent;
+    return styxrpc_channel_route_value(&route, child, sizeof(child), &leaf) == STYXRPC_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, leaf, frame, sizeof(frame), &extent) == FVM_S_OK &&
+        styxrpc_channel_pid_import(client, "(c[s])", frame, extent, routes) == expected;
+}
+
+
 /* EN: Park two operations, revoke through the owner and reject old and fresh access.
  * RU: Поставить две операции в ожидание, отозвать через владельца и проверить отказ доступа. */
 static int revoke_routed(StyxClient *client, uint32_t pid)
@@ -311,12 +324,16 @@ int main(void)
         return 1;
     }
     StyxClient *client = styxclientmountfd(sockets[0], 4096, "test", "", 1000, 8);
-    int good = client && exchange(client);
+    StyxRpcChannelRoutes imported = {0};
+    int good = client && exchange(client) && import_pid(client, pid, STYXRPC_OK, &imported) &&
+        import_pid(client, pid + 1, STYXRPC_INVALID, &imported) && imported.count == 1 &&
+        imported.entries[0].pid == pid;
     for (unsigned i = 0; good && i < REVOKE_ROUNDS; ++i)
     {
         good = exchange_routed(client, pid + i) && revoke_routed(client, pid + i);
     }
-    good = good && exchange_routed(client, pid + REVOKE_ROUNDS) && exchange(client);
+    good = good && import_pid(client, pid, STYXRPC_INVALID, &imported) && imported.count == 1 &&
+        imported.entries[0].pid == pid && exchange_routed(client, pid + REVOKE_ROUNDS) && exchange(client);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);

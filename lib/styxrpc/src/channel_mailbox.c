@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Bind separate native send and receive queues to one reverse PID.
- * RU: Две раздельные нативные очереди отправки и приёма под одним встречным PID.
+ * EN: Bind separate native send and receive queues to a PID or module result.
+ * RU: Привязка отдельных очередей отправки и приёма к PID или результату модуля.
  */
 #define _POSIX_C_SOURCE 200809L
 #include "styxrpc/channel_mailbox.h"
@@ -31,6 +31,10 @@ struct StyxRpcChannelMailbox
     MailboxLane incoming;       /* Peer sends; host receives. */
     MailboxLane outgoing;       /* Host sends; peer receives. */
     StyxRpcChannelGrant grant;  /* Immutable key and element type. */
+    StyxRpcChannelPolicy policy; /* Immutable matching route profile. */
+    int result;                  /* Module-result wire offsets and PID leaves if set. */
+    unsigned references;        /* Resource and optional independent result owner. */
+    int active;                  /* Resource remains pending publication or live. */
     unsigned char arena[];      /* Disjoint frame slots for the two directions. */
 };
 
@@ -57,15 +61,13 @@ static uint64_t clock_ms(void *unused)
 }
 
 
-/* EN: Require a separately addressed module grant for every non-nil channel leaf.
- * RU: Требовать отдельное полномочие модуля для каждой ссылки канала кроме nil. */
-static int allow_module(const void *unused, const StyxRpcChannelRoute *route)
+/* EN: Require the mailbox's exact address kind for every non-nil leaf.
+ * RU: Требовать точный вид адреса очереди для каждой ссылки кроме nil. */
+static int allow_route(const void *context, const StyxRpcChannelRoute *route)
 {
-    (void)unused;
-    return route->kind == STYXRPC_ROUTE_MODULE;
+    const StyxRpcChannelMailbox *mailbox = context;
+    return route->kind == (mailbox->result ? STYXRPC_ROUTE_PID : STYXRPC_ROUTE_MODULE);
 }
-
-static const StyxRpcChannelPolicy policy = {allow_module, NULL}; /* Same profile in both directions. */
 
 
 /* EN: Admit one peer guard to the corresponding directional scheduler under lock.
@@ -108,7 +110,7 @@ static int open_bus(void *context, unsigned access, void **cookie)
     opened->mailbox = mailbox;
     opened->fid = (StyxRpcChannelFid){.grants = &mailbox->grant, .grant_count = 1,
         .request = opened->storage, .request_capacity = FRAME, .reply = opened->storage + FRAME,
-        .reply_capacity = FRAME, .admit = admit, .cancel = cancel, .context = opened, .policy = &policy};
+        .reply_capacity = FRAME, .admit = admit, .cancel = cancel, .context = opened, .policy = &mailbox->policy};
     *cookie = opened;
     return 1;
 }
@@ -141,7 +143,7 @@ static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity,
     {
         styxrpc_scheduler_progress(&opened->lane->scheduler);
     }
-    size_t origin = opened->fid.staged;
+    size_t origin = opened->mailbox->result ? 0 : opened->fid.staged;
     int accepted = offset >= origin && offset - origin <= SIZE_MAX &&
         styxrpc_channel_fid_read(&opened->fid, (size_t)(offset - origin), bytes, capacity, size) != STYXRPC_INVALID;
     pthread_mutex_unlock(&opened->mailbox->lock);
@@ -161,13 +163,30 @@ static void close_bus(void *cookie)
 }
 
 
-/* EN: Destroy both FIFOs after the host has retired all calls and fids.
- * RU: Освободить оба FIFO после отзыва всех вызовов и fid. */
+/* EN: Drop one reference, marking the resource retired when requested.
+ * RU: Снять одну ссылку и при необходимости пометить ресурс отозванным. */
+static void drop(StyxRpcChannelMailbox *mailbox, int retired)
+{
+    pthread_mutex_lock(&mailbox->lock);
+    if (retired)
+    {
+        mailbox->active = 0;
+    }
+    unsigned references = --mailbox->references;
+    pthread_mutex_unlock(&mailbox->lock);
+    if (!references)
+    {
+        pthread_mutex_destroy(&mailbox->lock);
+        free(mailbox);
+    }
+}
+
+
+/* EN: Retire the exported resource after all operation fids have closed.
+ * RU: Отозвать выданный ресурс после закрытия всех fid операций. */
 static void release(void *context)
 {
-    StyxRpcChannelMailbox *mailbox = context;
-    pthread_mutex_destroy(&mailbox->lock);
-    free(mailbox);
+    drop(context, 1);
 }
 
 
@@ -181,9 +200,10 @@ static int init_lane(MailboxLane *lane, const StyxRpcChannelGrant *grant, unsign
 }
 
 
-/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
-StyxRpcStatus styxrpc_channel_mailbox_create(const char *shape, unsigned slots,
-    StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output)
+/* EN: Create a mailbox for a reverse PID or a module result with both output owners.
+ * RU: Создать очередь встречного PID или результата модуля с двумя владельцами. */
+static StyxRpcStatus create(const char *shape, unsigned slots,
+    StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output, int result)
 {
     const char *end = shape && *shape == '(' && strlen(shape) < STYXRPC_MANAGED_SHAPE ?
         styxshape_end(shape + 1) : NULL;
@@ -200,6 +220,10 @@ StyxRpcStatus styxrpc_channel_mailbox_create(const char *shape, unsigned slots,
     }
     state->grant.key = MAILBOX_KEY;
     strcpy(state->grant.shape, shape);
+    state->result = result;
+    state->policy = (StyxRpcChannelPolicy){allow_route, state};
+    state->references = result ? 2 : 1;
+    state->active = 1;
     if (!init_lane(&state->incoming, &state->grant, slots, state->arena) ||
         !init_lane(&state->outgoing, &state->grant, slots, state->arena + extent) ||
         pthread_mutex_init(&state->lock, NULL))
@@ -213,18 +237,58 @@ StyxRpcStatus styxrpc_channel_mailbox_create(const char *shape, unsigned slots,
 }
 
 
+/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
+StyxRpcStatus styxrpc_channel_mailbox_create(const char *shape, unsigned slots,
+    StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output)
+{
+    return create(shape, slots, mailbox, output, 0);
+}
+
+
+/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
+StyxRpcStatus styxrpc_channel_mailbox_result_create(const char *shape, unsigned slots,
+    StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output)
+{
+    return create(shape, slots, mailbox, output, 1);
+}
+
+
+/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
+int styxrpc_channel_mailbox_active(StyxRpcChannelMailbox *mailbox)
+{
+    if (!mailbox)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&mailbox->lock);
+    int active = mailbox->active;
+    pthread_mutex_unlock(&mailbox->lock);
+    return active;
+}
+
+
+/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
+void styxrpc_channel_mailbox_owner_release(StyxRpcChannelMailbox *mailbox)
+{
+    if (mailbox && mailbox->result)
+    {
+        drop(mailbox, 0);
+    }
+}
+
+
 /* EN: Check that a near-limit frame fits its real native receive reply.
  * RU: Проверить, что почти предельный кадр помещается в штатный ответ приёма. */
-static int fits_reply(const StyxRpcChannelGrant *grant, const void *bytes, size_t size)
+static int fits_reply(const StyxRpcChannelMailbox *mailbox, const void *bytes, size_t size)
 {
     if (size <= FRAME - MAX_REPLY_OVERHEAD)
     {
         return 1;
     }
     unsigned char *reply = malloc(FRAME);
-    const StyxRpcSelection receive = {.count = 1, .guards = {{MAILBOX_KEY, 1, NULL, 0}}, .policy = &policy};
+    const StyxRpcSelection receive = {.count = 1, .guards = {{MAILBOX_KEY, 1, NULL, 0}}, .policy = &mailbox->policy};
     size_t used;
-    int fits = reply && styxrpc_channel_reply(grant, 1, &receive, 1, bytes, size, reply, FRAME, &used) == STYXRPC_OK;
+    int fits = reply && styxrpc_channel_reply(&mailbox->grant, 1, &receive, 1, bytes, size, reply, FRAME, &used) == STYXRPC_OK;
     free(reply);
     return fits;
 }
@@ -240,20 +304,20 @@ StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const
     }
     for (size_t i = 0; i < routes.count; ++i)
     {
-        if (!allow_module(NULL, routes.entries + i))
+        if (!allow_route(mailbox, routes.entries + i))
         {
             return STYXRPC_INVALID;
         }
     }
-    if (!fits_reply(&mailbox->grant, bytes, size))
+    if (!fits_reply(mailbox, bytes, size))
     {
         return STYXRPC_INVALID;
     }
     MailboxLane *lane = &mailbox->outgoing;
     StyxRpcChannelQueue *queue = &lane->queue;
     pthread_mutex_lock(&mailbox->lock);
-    StyxRpcStatus status = STYXRPC_MORE;
-    if (queue->count < queue->capacity)
+    StyxRpcStatus status = mailbox->active ? STYXRPC_MORE : STYXRPC_INVALID;
+    if (mailbox->active && queue->count < queue->capacity)
     {
         size_t tail = (queue->head + queue->count) % queue->capacity;
         memcpy(queue->bytes + tail * queue->stride, bytes, size);
@@ -277,8 +341,8 @@ StyxRpcStatus styxrpc_channel_mailbox_receive(StyxRpcChannelMailbox *mailbox, vo
     MailboxLane *lane = &mailbox->incoming;
     StyxRpcChannelQueue *queue = &lane->queue;
     pthread_mutex_lock(&mailbox->lock);
-    StyxRpcStatus status = STYXRPC_MORE;
-    if (queue->count)
+    StyxRpcStatus status = mailbox->active ? STYXRPC_MORE : STYXRPC_INVALID;
+    if (mailbox->active && queue->count)
     {
         size_t length = queue->sizes[queue->head];
         status = STYXRPC_INVALID;

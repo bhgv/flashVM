@@ -146,7 +146,7 @@ FVM_Result fvm_styxrpc_import_graph(FVM_Context *context, const char *global, St
 }
 
 
-/* [GC:] EN: Execute an AS export, using one identity table for arguments, result and updates.
+/* [GC:] [ASINC] EN: Execute an AS export, using one identity table for arguments, result and updates.
  * RU: Выполнить экспорт AS с одной таблицей идентификаторов для аргументов, результата и обновлений. */
 static StyxRpcStatus begin_graph(void *userdata, const FVM_SRecord *arguments, StyxRpcGraphOutput *output)
 {

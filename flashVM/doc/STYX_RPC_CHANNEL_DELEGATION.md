@@ -49,4 +49,10 @@ The [recursive Limbo fixture](../../disVM/examples/remote-scalar/styx-channel-re
 
 Local queue graphs admit exact keys on their own bus. The mailbox admits module grants from its pinned module. Applications can serve other route profiles through a resource with an appropriate route policy.
 
-After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'channel-(delegated|pid-graph)' --output-on-failure`. Both scenarios run on the native interpreter and JIT.
+## Accept a reverse PID from a Dis caller
+
+Use a [hosted mailbox export](STYX_RPC_PID_MAILBOX_EXPORT.md) to return a live channel from a FlashVM module. Bind the export to the same reverse attachment used by the native Dis caller. The initializer receives the owner-side mailbox and the copied arguments. The Dis caller receives the ordinary leased module result and can send its channels through it.
+
+When ActionScript calls `tryReceive()`, [libstyxrpc](../../lib/styxrpc/reference/channel_pid_import.md) checks the PID and its bus on that attachment. Repeated addresses reuse the same object. The object uses `.prog/<pid>/.unibus` for channel operations. Pass it to `trySend()` on the same mailbox to return the original channel to Dis. Channel leaves in this direction carry by-value elements. Once Dis clunks the result fid, the local mailbox and any retained proxies refuse future operations. [Native fixture](../../lib/styxrpc/tests/flashvm/channel_pid_result.b)
+
+After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'channel-(delegated|pid-graph|pid-result)' --output-on-failure`. The scenarios run on the native interpreter and JIT.

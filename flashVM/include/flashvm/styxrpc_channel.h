@@ -140,6 +140,25 @@ FVM_API FVM_Result fvm_styxrpc_channel_mailbox(FVM_Context *context, const FVM_V
  * RU: Установить global(anchor, shape, slots) для встречного сервера хоста. */
 FVM_API FVM_Result fvm_styxrpc_channel_mailbox_factory(FVM_Context *context, const char *global, StyxRpcServer *reverse);
 
+
+/* EN: Bind a hosted result mailbox to the native caller's reverse mount.
+ * RU: Привязать очередь результата к встречному монтированию нативного клиента. */
+typedef struct FVM_StyxRpcPidMailboxExport
+{
+    FVM_Context *context;       /* Owner running initializer and mailbox methods. */
+    const char *initializer;   /* Script function called with mailbox then copied arguments. */
+    struct StyxClient *reverse; /* Borrowed reverse mount for the same peer. */
+    StyxRpcSchema schema;      /* Copied inputs and one typed mailbox channel result. */
+    unsigned slots;            /* FIFO slots per direction, from 1 to 8. */
+    unsigned wait_ms;          /* Reverse channel operation polling budget. */
+} FVM_StyxRpcPidMailboxExport;
+
+
+/* [GC:] EN: Configure one hosted mailbox export using the native module result lease.
+ * RU: Настроить экспорт очереди по нативной аренде результата модуля. */
+FVM_API FVM_Result fvm_styxrpc_pid_mailbox_export(FVM_StyxRpcPidMailboxExport *binding,
+    const char *name, uint32_t signature, StyxRpcChannelExport *exported);
+
 #ifdef __cplusplus
 }
 #endif

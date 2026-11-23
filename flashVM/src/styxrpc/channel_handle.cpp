@@ -36,6 +36,16 @@ extern "C" FVM_StyxPidGrant *fvm_styxrpc_pid_lookup(FVM_Context *context, FVM_Ob
 }
 
 
+/* EN/RU: See channel_private.h. / См. channel_private.h. */
+extern "C" FVM_StyxChannelSet *fvm_styxrpc_result_mailbox_lookup(FVM_Context *context, FVM_Object *object)
+{
+    return context && !context->destroying && !context->gc_releasing && object &&
+        object->owner == context && object->resource_kind == FVM_RESOURCE_USERDATA &&
+        object->release_resource == fvm_styxrpc_result_mailbox_release ?
+        static_cast<FVM_StyxChannelSet *>(object->resource) : NULL;
+}
+
+
 /* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
 extern "C" FVM_Result fvm_styxrpc_local_edges_init(FVM_Context *context, FVM_Object *owner, unsigned capacity)
 {

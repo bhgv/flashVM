@@ -76,7 +76,7 @@ FVM_Result fvm_styxrpc_import_int(FVM_Context *context, const char *global, FVM_
 }
 
 
-/* EN: Execute the named FlashVM function and encode only an exact Int32 result.
+/* [ASINC] EN: Execute the named FlashVM function and encode only an exact Int32 result.
  * RU: Выполнить именованную функцию FlashVM и вернуть только точный Int32. */
 static int invoke_flash(void *userdata, int64_t argument, int64_t *result)
 {
