@@ -74,6 +74,12 @@ altcommunicate(void *arg)""",
         (
             "altvalidate(a, nsend, nrecv, 0);",
             "altvalidate_guarded(a, nsend, nrecv);\n"
+            "#ifdef DVM_TERMINAL_LAUNCH\n"
+            "    if (remote_alt(a, nsend, nrecv, block, result))\n"
+            "    {\n"
+            "        return;\n"
+            "    }\n"
+            "#endif\n"
             "    if (block && altwaitshared(a, nsend, nrecv))\n"
             "    {\n"
             "        altvalidate_guarded(a, nsend, nrecv);\n"
@@ -115,6 +121,10 @@ altcommunicate(void *arg)""",
         if source.count(old) != expected:
             raise ValueError("ALT reservation boundary drift: " + old)
         source = source.replace(old, new)
+    anchor = "/* Cancel this process's registrations"
+    if source.count(anchor) != 1:
+        raise ValueError("remote ALT dispatch boundary drift")
+    source = source.replace(anchor, REMOTE_ALT_DISPATCH + anchor, 1)
     source, count = re.subn(
         r"(?m)^([ \t]*)nrdy\+\+;",
         r"\1nrdy++;\n\1*available += !dvm_runtime_channel_buffer_busy(c);",
@@ -368,8 +378,15 @@ def adapt_alt_preflight(source):
         ("altchannel(c, receive);", "altcheckguard(c, receive, cancelling);"),
         (
             "if(member != H)\n\t\t\t\taltchannel(member, 1);",
-            "if(member != H && (!cancelling || member != nil))\n"
-            "\t\t\t\taltcheckguard(member, 1, cancelling);",
+            "if(member != H && (!cancelling || member != nil)){\n"
+            "\t\t\t\taltcheckguard(member, 1, cancelling);\n"
+            "#ifdef DVM_TERMINAL_LAUNCH\n"
+            "                if (!cancelling && dvm_call_channel_is_proxy(member))\n"
+            "                {\n"
+            "                    error(\"remote alt does not accept channel arrays\");\n"
+            "                }\n"
+            "#endif\n"
+            "            }",
         ),
     )
     for old, new in changes:
@@ -400,6 +417,9 @@ def adapt_alt_preflight(source):
 
 
 ALT_GUARD_CHECK = r"""
+#ifdef DVM_TERMINAL_LAUNCH
+#include "channel_proxy.h"
+#endif
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 extern void dvm_runtime_channel_unmark(Progq **queue, Prog *peer);
 extern void dvm_runtime_alt_register_locked(Progq **queue, Prog *peer);
@@ -419,6 +439,64 @@ static void altcheckguard(Channel *channel, int receive, int cancelling)
     if (*queue)
         vmchanend(queue);
 }
+
+
+"""
+
+
+# EN: One selection over direct remote guards is submitted as one record.
+# RU: Выбор между прямыми удалёнными ветками передаётся одной записью.
+REMOTE_ALT_DISPATCH = r"""
+#ifdef DVM_TERMINAL_LAUNCH
+/* EN: Use one UniBus transaction for an ALT with direct proxy guards.
+ * RU: Использовать одну операцию UniBus для ALT с прямыми прокси-ветками. */
+static int remote_alt(Alt *alt, int sends, int receives, int block, void *result)
+{
+    int count = sends + receives;
+    int remote = 0;
+    for (int i = 0; i < count; i++)
+    {
+        Channel *channel;
+        memmove(&channel, (uchar *)alt + offsetof(Alt, ac) +
+            (uintptr)i * sizeof(Altc) + offsetof(Altc, c), sizeof(channel));
+        if (D2H(channel)->t == &Tchannel)
+        {
+            remote += dvm_call_channel_is_proxy(channel);
+        }
+    }
+    if (!remote)
+    {
+        return 0;
+    }
+    if (remote != count || count > DVM_CHANNEL_BUS_SLOTS)
+    {
+        error("remote alt requires at most eight direct proxy guards");
+    }
+    DVM_ProxyGuard guards[DVM_CHANNEL_BUS_SLOTS];
+    for (int i = 0; i < count; i++)
+    {
+        Altc *entry = (Altc *)((uchar *)alt + offsetof(Alt, ac)) + i;
+        altcapture(entry, &guards[i].channel, &guards[i].operand);
+        if (!dvm_call_channel_is_proxy(guards[i].channel))
+        {
+            error("remote alt operand changed");
+        }
+        guards[i].index = (unsigned)i;
+        guards[i].receive = i >= sends;
+        if (guards[i].receive)
+        {
+            altresult(guards[i].operand);
+        }
+    }
+    WORD selected = dvm_call_channel_alt(guards, (unsigned)count, block);
+    const char *problem = altpublish(result, selected, NULL, 0);
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    return 1;
+}
+#endif
 
 
 """

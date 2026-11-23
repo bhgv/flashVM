@@ -20,6 +20,7 @@ typedef struct DVM_ProgramView
     DVM_Provider *vfs; /* Granted namespace subtree, including ordinary env files. */
     DVM_Provider *events; /* Optional read-only event stream for the published grants. */
     DVM_Provider *vars; /* Granted shared variable proxies. */
+    DVM_Provider *unibus; /* Optional private UniBus endpoint for this call. */
 } DVM_ProgramView;
 
 
@@ -73,6 +74,12 @@ FVM_Result dvm_program_child(DVM_Provider *program, const char *name, DVM_Provid
  * RU: Опубликовать выданные ресурсы процесса при ожидании. Явные маунты имеют
  * приоритет над входящим контекстом вызова или унаследованными ресурсами запуска. */
 DVM_Provider *dvm_program_current(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors, uint32_t pid);
+
+
+/* EN: Same current-process grants, also retaining an optional .unibus file.
+ * RU: Те же полномочия текущего процесса с удержанием необязательного .unibus. */
+DVM_Provider *dvm_program_current_unibus(DVM_Namespace *group, struct DVM_LaunchFiles *descriptors,
+    uint32_t pid, DVM_Provider *unibus);
 
 
 /* EN: Return an owned private .prog root over one borrowed context directory.

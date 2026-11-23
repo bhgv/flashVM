@@ -34,6 +34,11 @@ int dvm_styx_managed_write(const char *type, void *value, void *bytes, size_t ca
  */
 int dvm_styx_value_shape_supported(const char *shape);
 
+
+/* EN: Check where call-scoped channel capabilities may occur in a checked schema.
+ * RU: Проверить допустимые позиции полномочий каналов в проверенной схеме. */
+int dvm_styx_channel_shape_supported(const StyxCallShape *shape);
+
 typedef struct DVM_StyxValueFrame
 {
     StyxScalarLayout layout; /* NC64 offsets and managed ownership slots. */

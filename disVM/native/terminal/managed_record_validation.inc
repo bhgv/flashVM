@@ -17,12 +17,16 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
         return 0;
     }
     const char type = *shape;
-    if ((type == 's' || type == 'a' || type == 'r' || type == 'h') && value.tag == STYX_MANAGED_NIL_TAG)
+    if ((type == 's' || type == 'a' || type == 'r' || type == 'h' || type == 'c') &&
+        value.tag == STYX_MANAGED_NIL_TAG)
     {
         return value.size == 0;
     }
     switch (type)
     {
+    case 'c':
+        return value.tag == STYX_MANAGED_CHANNEL_TAG && value.size == 4 && value.payload[0] < 128 &&
+            (value.payload[0] || value.payload[1] || value.payload[2] || value.payload[3]);
     case 'r':
     case 'h':
         return managed_ref(shape, &value, depth, keys);

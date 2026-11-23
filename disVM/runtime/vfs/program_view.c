@@ -51,7 +51,10 @@ static int map_program(DVM_View *view, const DVM_ProgramView *program)
     int mapped = identity && dvm_view_map(view, path, identity, ".", FVM_ACCESS_READ, 0);
     dvm_provider_release(identity);
     snprintf(path, sizeof(path), "/.prog/%" PRIu32 "/.sysevents", program->pid);
-    return mapped && (!program->events || dvm_view_map(view, path, program->events, ".", FVM_ACCESS_READ, 0)) &&
+    mapped = mapped && (!program->events || dvm_view_map(view, path, program->events, ".", FVM_ACCESS_READ, 0));
+    snprintf(path, sizeof(path), "/.prog/%" PRIu32 "/.unibus", program->pid);
+    return mapped && (!program->unibus ||
+        dvm_view_map(view, path, program->unibus, ".", FVM_ACCESS_READ | FVM_ACCESS_WRITE, 0)) &&
         map_tree(view, program->pid, ".fd", program->fds) &&
         map_tree(view, program->pid, ".vfs", program->vfs) &&
         map_tree(view, program->pid, ".var", program->vars);
@@ -201,9 +204,10 @@ static int inherit_grant(DVM_Provider *context, const char *name, DVM_Provider *
 
 /* EN/RU: See program_view.h. Return an owned tree built from the caller's grants.
  * См. program_view.h. Вернуть своё дерево из полномочий клиента. */
-DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descriptors, uint32_t pid)
+DVM_Provider *dvm_program_current_unibus(DVM_Namespace *group, DVM_LaunchFiles *descriptors,
+    uint32_t pid, DVM_Provider *unibus)
 {
-    DVM_ProgramView entry = {.pid = pid};
+    DVM_ProgramView entry = {.pid = pid, .unibus = unibus};
     int captured = capture_grant(group, "/.fd", &entry.fds) &&
         capture_grant(group, "/.vfs", &entry.vfs) &&
         capture_grant(group, "/.var", &entry.vars);
@@ -232,4 +236,11 @@ DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descrip
     dvm_provider_release(entry.vfs);
     dvm_provider_release(entry.vars);
     return tree;
+}
+
+
+/* EN/RU: See program_view.h. / См. program_view.h. */
+DVM_Provider *dvm_program_current(DVM_Namespace *group, DVM_LaunchFiles *descriptors, uint32_t pid)
+{
+    return dvm_program_current_unibus(group, descriptors, pid, NULL);
 }

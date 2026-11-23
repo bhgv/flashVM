@@ -97,6 +97,7 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_TABLE_PAIR_TAG 21UL /* Big or string key followed by a big value. */
 #define STYX_MANAGED_TABLE_PATCH_TAG 22UL /* Ordered removals followed by changed pairs. */
 #define STYX_MANAGED_TABLE_REMOVE_TAG 23UL /* Remove one big or string key. */
+#define STYX_MANAGED_CHANNEL_TAG 24UL /* Positive four-byte call-local channel key. */
 
 typedef struct StyxTableKey
 {

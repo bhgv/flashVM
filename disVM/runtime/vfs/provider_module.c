@@ -233,14 +233,15 @@ static DVM_ScalarFiles *mounted_functions(DVM_ResourcePlan *plan, const ScalarIm
             ref_profile = styxshaperef(&shape, &result);
             int managed = explicit_end == STYX_CALL_RECORD_FRAMING;
             if (!local->arguments[0] || (managed ?
-                !dvm_styx_value_shape_supported(shape.arguments) || !dvm_styx_value_shape_supported(shape.result) :
+                !dvm_styx_value_shape_supported(shape.arguments) || !dvm_styx_value_shape_supported(shape.result) ||
+                    !dvm_styx_channel_shape_supported(&shape) :
                 !ref_profile && !styxshapecells(&shape, &arguments, &result)))
             {
                 bit = 0;
             }
         }
         unsigned long managed_tag = bit && field_deltas && explicit_end == STYX_CALL_RECORD_FRAMING &&
-            (strpbrk(shape.arguments, "rh") || strpbrk(shape.result, "rh")) ?
+            (strpbrk(shape.arguments, "rhc") || strpbrk(shape.result, "rh")) ?
             styxmanaged_capability(delta.length.high, delta.length.low) : STYX_MANAGED_REQUEST_TAG;
         if (bit && explicit_end == STYX_CALL_RECORD_FRAMING)
         {

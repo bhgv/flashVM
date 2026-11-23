@@ -7,6 +7,7 @@
 #include "../../native/terminal/call_scope.h"
 #include "flashvm/srecord.h"
 #include "program_view.h"
+#include "channel_proxy.h"
 #include "lib9.h"
 #include "../../native/terminal/scalar_function.h"
 #include "dat.h"

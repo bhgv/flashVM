@@ -201,7 +201,7 @@ static int scalar_field(const char **cursor, unsigned depth, int managed, StyxSc
         layout->size = align_field(size, *alignment);
         return 1;
     }
-    int pointer = managed && (type == 's' || type == 'a' || type == 'r' || type == 'h');
+    int pointer = managed && (type == 's' || type == 'a' || type == 'r' || type == 'h' || type == 'c');
     if ((!pointer && type != 'i' && type != 'b' && type != 'f' && type != 'y') ||
         layout->count == STYX_CALL_VALUES)
     {

@@ -82,13 +82,15 @@ static void prepare_call(void *frame)
     unsigned long tag = gateway_tag(wire);
     if (styxmanaged_graph_tag(tag))
     {
-        DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
+        DVM_CallChannels channels = {0};
+        DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1, .channels = &channels};
         GatewayIdentities identities = {.refs = &refs, .array = H};
         FVM_SRecord baseline;
         int valid = styxmanaged_list_read(tag, data->shape.arguments, wire->data, (size_t)wire->len, &baseline) &&
             dvm_styx_result_fields_read(&refs, data->shape.arguments, baseline.payload, baseline.size, &arguments) &&
             kprotect(retain_identities, &identities);
         dvm_styx_ref_release(&refs, 0);
+        dvm_call_channels_release(&channels);
         if (!valid)
         {
             dvm_styx_value_frame_clear(&arguments);
@@ -286,6 +288,7 @@ Modlink *dvm_styx_managed_gateway(Modlink *target, const StyxCallShape *shape)
     if (!target || target == H || !target->prog || target->nlinks != 1 ||
         !dvm_styx_value_shape_supported(shape->arguments) ||
         !dvm_styx_value_shape_supported(shape->result) ||
+        !dvm_styx_channel_shape_supported(shape) ||
         !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
         !dvm_styx_export_frame(target->links[0].frame, words, references))
     {

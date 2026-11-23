@@ -82,11 +82,17 @@ int dvm_ref_pair_invoke(DVM_ScalarFiles *files, DVM_Namespace *group, struct DVM
     uint32_t pid, StyxRefPair *value);
 
 
+struct DVM_CallChannels;
+
+
 /* EN: Borrow the validated argument view into request for one fid exchange.
  * The distinct reply buffer holds the scoped PID envelope until the write completes.
+ * Borrow channels from the current caller and preserve its native wait token.
  * RU: Заимствовать проверенные аргументы из request на время обмена через fid.
- * Отдельный буфер reply хранит оболочку PID до завершения записи. */
+ * Отдельный буфер reply хранит оболочку PID до завершения записи. Каналы
+ * заимствуются у текущего вызывающего, токен его ожидания сохраняется. */
 int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     struct DVM_LaunchFiles *descriptors, uint32_t pid, const FVM_SRecord *arguments,
-    const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received);
+    const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received,
+    const struct DVM_CallChannels *channels, int *native);
 #endif

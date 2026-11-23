@@ -149,7 +149,8 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     unsigned char request[STYX_MANAGED_LIST_LIMIT + 1];
     size_t request_size, response_size = 0;
     int graph = styxmanaged_graph_tag(files->managed_tag);
-    DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1};
+    DVM_CallChannels channels = {0};
+    DVM_StyxRefTable refs = {.limit = STYX_CALL_REF_KEYS, .result = 1, .channels = &channels};
     unsigned long tag = graph ? files->managed_tag : STYX_MANAGED_REQUEST_TAG;
     int encoded = graph ?
         dvm_styx_graph_write(&refs, tag, files->shape.arguments, captured.arguments,
@@ -160,6 +161,7 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     FVM_SRecord baseline;
     if (!encoded || !styxmanaged_list_read(tag, files->shape.arguments, request, request_size, &baseline))
     {
+        dvm_call_channels_release(&channels);
         dvm_styx_ref_release(&refs, 0);
         error("cannot encode remote managed call");
     }
@@ -172,13 +174,15 @@ void dvm_managed_call_entry(void *frame, Type *expected_type, DVM_ScalarFiles *f
     int released = group ? dvm_vfs_path_enter(&wait) : -1;
     if (released < 0)
     {
+        dvm_call_channels_release(&channels);
         dvm_styx_ref_release(&refs, 0);
         error("remote managed call not sent");
     }
     int outcome = dvm_managed_function_exchange(files, group, descriptors, pid,
-        &baseline, request, request_size, reply, sizeof(reply), &response_size);
+        &baseline, request, request_size, reply, sizeof(reply), &response_size, &channels, &released);
     int cancelled = dvm_vfs_wait_end(wait);
     dvm_runtime_gc_native_enter(released);
+    dvm_call_channels_release(&channels);
     if (cancelled || outcome != 1)
     {
         dvm_styx_ref_release(&refs, 0);

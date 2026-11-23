@@ -5,6 +5,7 @@
 #ifndef DVM_STYX_MANAGED_REF_H
 #define DVM_STYX_MANAGED_REF_H
 #include "managed_value.h"
+#include "channel_proxy.h"
 
 typedef struct DVM_StyxRefTable
 {
@@ -12,6 +13,7 @@ typedef struct DVM_StyxRefTable
     size_t count; /* Number of reserved reference indices. */
     size_t limit; /* Maximum result indices, or zero for the standalone limit. */
     int result; /* Share the table through the validated result tree. */
+    DVM_CallChannels *channels; /* Borrowed channel identities while encoding this call. */
 } DVM_StyxRefTable;
 
 

@@ -26,7 +26,7 @@ add_custom_command(OUTPUT "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h"
     DEPENDS limbo-bootstrap prepare_proxyhost.py "${root}/disVM/module/vfsexport.m" VERBATIM)
 add_custom_target(disvm_vfsexport_sources DEPENDS "${view}/vfsexport_decl.h" "${view}/vfsexport_table.h")
 add_dependencies(disvm disvm_vfsexport_sources)
-target_sources(disvm PRIVATE vfs/record_pipe.c vfs/cap_record_pipe.c)
+target_sources(disvm PRIVATE vfs/record_pipe.c vfs/cap_record_pipe.c vfs/channel_bus.c vfs/channel_proxy.c)
 target_sources(disvm PRIVATE vfs/cap_gc.c vfs/cap_variable.c vfs/cap_array.c vfs/cap_array_index.c vfs/cap_record.c vfs/cap_bigtable.c vfs/cap_tree.c vfs/cap_open.c vfs/cap_publication.c vfs/cap_requests.c vfs/cap_tickets.c vfs/cap_notify.c)
 target_sources(disvm PRIVATE vfs/launch/process.c vfs/launch/startup.c vfs/launch/hosted.c vfs/cap_launch.c)
 target_sources(disvm PRIVATE vfs/intent.c)

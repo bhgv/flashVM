@@ -165,6 +165,32 @@ int dvm_styx_value_shape_supported(const char *shape)
 }
 
 
+/* EN: Allow channel capabilities in direct argument slots, including tuples.
+ * RU: Разрешить полномочия каналов в аргументах, включая кортежи. */
+int dvm_styx_channel_shape_supported(const StyxCallShape *shape)
+{
+    if (strchr(shape->result, 'c'))
+    {
+        return 0;
+    }
+    for (const char *type = shape->arguments; *type; )
+    {
+        if (*type == '(' || *type == ')')
+        {
+            type++;
+            continue;
+        }
+        const char *end = styxshape_end(type);
+        if (!end || (*type != 'c' && memchr(type, 'c', (size_t)(end - type))))
+        {
+            return 0;
+        }
+        type = end;
+    }
+    return 1;
+}
+
+
 typedef struct FrameDecode
 {
     const char *shape; /* Borrowed validated list shape. */
@@ -212,7 +238,14 @@ static int decode_nodes(FrameDecode *decode, const char *shape, const unsigned c
             {
                 char type[STYX_SHAPE_MAX + 1] = {0};
                 void *object;
-                if (*shape == 'r' || *shape == 'h')
+                if (*shape == 'c')
+                {
+                    if (!dvm_call_channel_decode(decode->refs->channels, &node, &object))
+                    {
+                        return 0;
+                    }
+                }
+                else if (*shape == 'r' || *shape == 'h')
                 {
                     if (!dvm_styx_ref_read(decode->refs, shape, &node, &object))
                     {
@@ -362,6 +395,10 @@ static int encode_leaf(FrameEncode *encode, const char *shape, const char *end,
         char type[STYX_SHAPE_MAX + 1] = {0};
         void *value;
         memcpy(&value, slot, sizeof(value));
+        if (*shape == 'c')
+        {
+            return dvm_call_channel_encode(encode->refs->channels, value, bytes, capacity, used);
+        }
         if (*shape == 'r' || *shape == 'h')
         {
             return dvm_styx_ref_write(encode->refs, shape, value, bytes, capacity, used);

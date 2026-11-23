@@ -224,10 +224,30 @@ def adapt_channel_operand_replay(source):
         receive = operation == "irecv"
         mover = "cgetb(c, DVM_R.d)" if receive else "cputb(c, DVM_R.s)"
         value = "DVM_R.d" if receive else "DVM_R.s"
+        direction = int(receive)
+        prefix = f"\tif((p = dvm_runtime_channel_peer(c, {direction}, DVM_R.{operand}))"
+        if body.count(prefix) != 1:
+            raise ValueError("remote channel operand boundary drift: " + operation)
+        dispatch = f"""#ifdef DVM_TERMINAL_LAUNCH
+    if (c && c != H && channelspan(c, sizeof(*c)) && dvm_call_channel_is_proxy(c))
+    {{
+        WORD scalar = 0;
+        if (!{direction} && !guarded_channel_input({opcode}, {value}, &scalar, sizeof(scalar)))
+        {{
+            return;
+        }}
+        dvm_call_channel_operate(c, {direction}, {value}, scalar);
+        return;
+    }}
+#endif
+"""
+        body = body.replace(prefix, dispatch + prefix, 1)
         if body.count(mover) != 1:
             raise ValueError("direct channel buffer route drift: " + operation)
         body = body.replace(
             mover, f"transfer_channel_buffer(c, {value}, {int(receive)}, {opcode}, NULL, NULL)", 1
         )
         source = source[:start] + body + source[end:]
-    return source
+    declarations = '#ifdef DVM_TERMINAL_LAUNCH\n#include "channel_proxy.h"\n#endif\n'
+    return source.replace("static int guarded_channel_selected(void)", declarations +
+                          "static int guarded_channel_selected(void)", 1)

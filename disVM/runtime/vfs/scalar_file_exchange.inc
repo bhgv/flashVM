@@ -71,10 +71,20 @@ static int submit_frame(DVM_VfsHandle *handle, const void *bytes, size_t size, i
 }
 
 
-/* EN: Exchange one native function frame and return the exact reply.
- * RU: Обменять кадр функции и вернуть точный ответ. */
+/* EN: Borrow a native mailbox, local channel roots and the current wait token.
+ * RU: Заимствовать нативный ящик, корни каналов и текущий токен ожидания. */
+typedef struct ExchangeChannels
+{
+    DVM_ChannelBus *bus; /* Native provider state, alive for the exchange. */
+    const DVM_CallChannels *channels; /* Dis objects used only by this caller. */
+    int *native; /* Restored on return even after a failed match. */
+} ExchangeChannels;
+
+
+/* EN: Exchange one function frame, servicing optional reverse UniBus requests.
+ * RU: Обменять кадр функции, обслуживая необязательные встречные запросы UniBus. */
 static int exchange_buffers(DVM_ScalarFiles *files, const void *request, size_t size,
-    unsigned char *reply, size_t capacity, size_t *received)
+    unsigned char *reply, size_t capacity, size_t *received, const ExchangeChannels *side)
 {
     DVM_VfsHandle handle = {0};
     if (dvm_provider_open(files->request, ".", "rw", &handle) != FVM_OK)
@@ -105,6 +115,7 @@ static int exchange_buffers(DVM_ScalarFiles *files, const void *request, size_t 
                     files->explicit_end == STYX_CALL_RECORD_FRAMING))
                 {
                     if (dvm_cancel_requested(dvm_cancel_current()) ||
+                        (side && !dvm_call_channel_progress(side->bus, side->channels, side->native)) ||
                         (files->explicit_end != STYX_CALL_RECORD_FRAMING && ++pending == 500))
                     {
                         break;
@@ -132,7 +143,7 @@ static int exchange_buffers(DVM_ScalarFiles *files, const void *request, size_t 
 static int exchange_frame(DVM_ScalarFiles *files, unsigned char *bytes, size_t size, size_t capacity,
     size_t *received)
 {
-    return exchange_buffers(files, bytes, size, bytes, capacity, received);
+    return exchange_buffers(files, bytes, size, bytes, capacity, received, NULL);
 }
 
 
@@ -189,7 +200,8 @@ static int exchange_compiled(DVM_ScalarFiles *files, DVM_Namespace *group, DVM_L
  */
 int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     DVM_LaunchFiles *descriptors, uint32_t pid, const FVM_SRecord *arguments,
-    const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received)
+    const void *request, size_t size, unsigned char *reply, size_t capacity, size_t *received,
+    const DVM_CallChannels *channels, int *native)
 {
     if (!files || !files->dynamic || !arguments || !request || !size || !reply || !capacity || !received)
     {
@@ -197,7 +209,7 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     }
     if (!files->caller)
     {
-        return exchange_buffers(files, request, size, reply, capacity, received);
+        return channels->count ? -1 : exchange_buffers(files, request, size, reply, capacity, received, NULL);
     }
     unsigned char first[STYX_SCALAR_RECORD_CAPACITY];
     size_t prefix, used;
@@ -210,14 +222,23 @@ int dvm_managed_function_exchange(DVM_ScalarFiles *files, DVM_Namespace *group,
     {
         return -1;
     }
-    DVM_Provider *tree = dvm_program_current(group, descriptors, pid);
+    ExchangeChannels side = {.channels = channels, .native = native};
+    DVM_Provider *bus = channels->count ? dvm_channel_bus_create(channels->keys, channels->count, &side.bus) : NULL;
+    if (channels->count && !bus)
+    {
+        return -1;
+    }
+    DVM_Provider *tree = dvm_program_current_unibus(group, descriptors, pid, bus);
     void *lease = tree ? binding.begin(binding.state, files->request, tree, pid) : NULL;
     DVM_ScalarFiles route = {.request = files->request, .explicit_end = STYX_CALL_RECORD_FRAMING};
-    int result = lease ? exchange_frame(&route, reply, used, capacity, received) : -1;
+    int result = lease ? exchange_buffers(&route, reply, used, reply, capacity, received,
+        bus ? &side : NULL) : -1;
+    dvm_channel_bus_seal(side.bus);
     if (lease)
     {
         binding.end(binding.state, lease);
     }
     dvm_provider_release(tree);
+    dvm_provider_release(bus);
     return result;
 }
