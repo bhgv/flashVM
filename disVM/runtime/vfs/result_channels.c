@@ -45,6 +45,7 @@ int dvm_result_channels_active(void)
  * RU: Укоренённые локальные каналы и нативная шина для одного выделенного Prog. */
 typedef struct ResultChannelService
 {
+    int revoke; /* This service owns a derived publication control. */
     int counted; /* Whether the service owns a controller activity reservation. */
     DVM_CallChannels channels; /* Owned roots, entirely inside this provider VM. */
     DVM_ChannelBus *bus; /* Borrowed from the retained provider below. */
@@ -79,6 +80,10 @@ static void service_retire(void *state, int status)
     ResultChannelService *service = state;
     (void)status;
     dvm_channel_bus_seal(service->bus);
+    if (service->revoke)
+    {
+        styxchannel_export_revoke(service->channels.control);
+    }
     dvm_call_channels_release(&service->channels);
     dvm_provider_release(service->provider);
     dvm_cancel_release(service->cancel);
@@ -196,7 +201,7 @@ static int launch_service(void *state)
 
 /* EN/RU: See result_channels.h. / См. result_channels.h. */
 int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
-    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse)
+    DVM_Provider *provider, DVM_Cancel *cancel, const DVM_ChannelTransport *transport)
 {
     ResultChannelService *service = calloc(1, sizeof(*service));
     if (!service)
@@ -206,17 +211,28 @@ int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
     service->bus = bus;
     service->provider = dvm_provider_retain(provider) ? provider : NULL;
     service->cancel = dvm_cancel_retain(cancel) ? cancel : NULL;
-    service->channels.reverse = reverse && dvm_provider_retain(reverse) ? reverse : NULL;
-    if (!service->provider || !service->cancel || (reverse && !service->channels.reverse))
+    DVM_CallChannels routes = {0};
+    if (transport)
+    {
+        routes.reverse = dvm_provider_retain(transport->reverse) ? transport->reverse : NULL;
+        routes.forward = dvm_provider_retain(transport->forward) ? transport->forward : NULL;
+        routes.control = dvm_provider_retain(transport->control) ? transport->control : NULL;
+        service->revoke = transport->revoke;
+    }
+    service->channels = routes;
+    if (!service->provider || !service->cancel || (transport &&
+        (transport->forward != routes.forward || transport->reverse != routes.reverse ||
+            transport->control != routes.control)))
     {
         service_retire(service, 1);
         return 0;
     }
-    DVM_Provider *retained = service->channels.reverse;
     service->channels = *channels;
-    service->channels.reverse = retained;
+    service->channels.reverse = routes.reverse;
+    service->channels.forward = routes.forward;
+    service->channels.control = routes.control;
     service->channels.resolving = 1;
-    service->channels.message_owner = reverse != NULL;
+    service->channels.message_owner = routes.reverse || routes.forward;
     service->channels.returning = 0;
     *channels = (DVM_CallChannels){0};
     service->counted = 1;
@@ -257,8 +273,9 @@ int dvm_result_channels_finish(DVM_CallChannels *channels)
     {
         dvm_channel_bus_allow_grants(bus);
     }
+    DVM_ChannelTransport transport = {.reverse = reverse, .control = control};
     int ready = provider && styxchannel_export_publish(control, provider) &&
-        dvm_result_channels_start(channels, bus, provider, cancel, reverse);
+        dvm_result_channels_start(channels, bus, provider, cancel, &transport);
     dvm_provider_release(reverse);
     dvm_provider_release(provider);
     dvm_cancel_release(cancel);
@@ -291,13 +308,13 @@ int dvm_result_channels_finish(DVM_CallChannels *channels)
 
 /* EN/RU: No mounted pumps in the standalone runtime. / В автономной VM нет сетевых служб. */
 int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
-    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse)
+    DVM_Provider *provider, DVM_Cancel *cancel, const DVM_ChannelTransport *transport)
 {
     (void)channels;
     (void)bus;
     (void)provider;
     (void)cancel;
-    (void)reverse;
+    (void)transport;
     return 0;
 }
 #endif

@@ -103,6 +103,7 @@ static int exchange(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel
     StyxFlight *flight = length ? styxmuxsubmit(client->mux, client->send, length, client->msize, cancel, watching) : NULL;
     if (!flight)
     {
+        client->cancelled = styxcancelled(cancel);
         if (!styxmuxalive(client->mux))
         {
             client->failed = 1;

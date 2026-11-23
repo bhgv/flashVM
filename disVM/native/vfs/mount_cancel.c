@@ -3,6 +3,7 @@
  * RU: Native VFS data-operation cancellation доходит до Styx Tflush без guest callbacks.
  */
 #include "mount_cancel.h"
+#include "../client/mux.h"
 #include <string.h>
 
 
@@ -32,7 +33,7 @@ int styxmountcancel(StyxClient *client, StyxMountCancel *output)
     {
         return 1;
     }
-    StyxCancel *token = styxcancelcreate();
+    StyxCancel *token = styxcancelcreatewait();
     if (!token)
     {
         return 0;

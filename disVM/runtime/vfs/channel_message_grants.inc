@@ -8,7 +8,7 @@
  * RU: Один канонический встречный маршрут на срок службы. */
 typedef struct MessageImport
 {
-    uint32_t pid; /* Exact reverse grant address. */
+    DVM_GrantIdentity identity; /* Exact PID or module token. */
     Channel *proxy; /* Owned and rooted while the service admits this grant. */
     DVM_ChannelSchema schema; /* Immutable original wire identity and type. */
 } MessageImport;
@@ -39,19 +39,42 @@ static void release_message_grants(DVM_CallChannels *channels)
         free(imports);
     }
     dvm_provider_release(channels->reverse);
+    dvm_provider_release(channels->forward);
+    dvm_provider_release(channels->control);
     channels->message_imports = NULL;
     channels->reverse = NULL;
+    channels->forward = NULL;
+    channels->control = NULL;
 }
 
 
-/* EN: Pack the reverse identity and exact key, including its capacity bit.
- * RU: Записать встречный идентификатор и ключ с битом ёмкости. */
-static int write_grant(uint32_t pid, uint32_t key, void *bytes, size_t capacity, size_t *size)
+/* EN: Pack a grant address followed by its exact key, including the capacity bit.
+ * RU: Записать адрес выдачи и ключ с битом ёмкости. */
+static int write_grant(const DVM_GrantIdentity *address, uint32_t key,
+    void *bytes, size_t capacity, size_t *size)
 {
-    unsigned char identity[8] = {pid >> 24, pid >> 16, pid >> 8, pid,
-        key >> 24, key >> 16, key >> 8, key};
-    return fvm_srecord_write(STYX_MANAGED_CHANNEL_GRANT_TAG, identity, sizeof(identity),
-        bytes, capacity, size) == FVM_S_OK;
+    unsigned char identity[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4];
+    size_t prefix = sizeof(address->token);
+    unsigned long tag = STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG;
+    if (address->pid)
+    {
+        uint32_t pid = address->pid;
+        identity[0] = pid >> 24;
+        identity[1] = pid >> 16;
+        identity[2] = pid >> 8;
+        identity[3] = pid;
+        prefix = 4;
+        tag = STYX_MANAGED_CHANNEL_GRANT_TAG;
+    }
+    else
+    {
+        memcpy(identity, address->token, prefix);
+    }
+    identity[prefix] = key >> 24;
+    identity[prefix + 1] = key >> 16;
+    identity[prefix + 2] = key >> 8;
+    identity[prefix + 3] = key;
+    return fvm_srecord_write(tag, identity, prefix + 4, bytes, capacity, size) == FVM_S_OK;
 }
 
 
@@ -97,7 +120,8 @@ static DVM_Provider *capture_grant(DVM_Provider *root, uint32_t pid)
  * Return an owned reference. The service ledger holds an independent root.
  * RU: Найти или создать встречный прокси по проверенным идентификатору и типу.
  * Вернуть свою ссылку. Журнал службы держит независимый корень. */
-static Channel *import_grant(DVM_CallChannels *channels, uint32_t pid, const DVM_ChannelSchema *schema)
+static Channel *import_grant(DVM_CallChannels *channels, const DVM_GrantIdentity *identity,
+    const DVM_ChannelSchema *schema)
 {
     DVM_MessageImports *imports = channels->message_imports;
     if (!imports)
@@ -111,7 +135,7 @@ static Channel *import_grant(DVM_CallChannels *channels, uint32_t pid, const DVM
     for (size_t i = 0; i < imports->count; i++)
     {
         const MessageImport *entry = &imports->bindings[i];
-        if (entry->pid == pid)
+        if (dvm_grant_identity_equal(&entry->identity, identity))
         {
             return entry->schema.key == schema->key && entry->schema.unbuffered == schema->unbuffered &&
                 !strcmp(entry->schema.shape, schema->shape) &&
@@ -123,9 +147,17 @@ static Channel *import_grant(DVM_CallChannels *channels, uint32_t pid, const DVM
     {
         return NULL;
     }
-    DVM_Provider *target = capture_grant(channels->reverse, pid);
-    DVM_ReturnedLease *lease = target ? dvm_returned_lease_create(target) : NULL;
-    dvm_provider_release(target);
+    DVM_ReturnedLease *lease = NULL;
+    if (identity->pid)
+    {
+        DVM_Provider *target = capture_grant(channels->reverse, identity->pid);
+        lease = dvm_returned_lease_import(target, channels->control, channels->reverse, identity);
+        dvm_provider_release(target);
+    }
+    else
+    {
+        lease = dvm_returned_lease_import(channels->forward, NULL, NULL, identity);
+    }
     Channel *proxy = lease ? lease_proxy(lease, schema) : NULL;
     dvm_returned_lease_release(lease);
     if (!proxy)
@@ -137,7 +169,7 @@ static Channel *import_grant(DVM_CallChannels *channels, uint32_t pid, const DVM
         destroy(proxy);
         return NULL;
     }
-    imports->bindings[imports->count++] = (MessageImport){.pid = pid, .schema = *schema, .proxy = proxy};
+    imports->bindings[imports->count++] = (MessageImport){.identity = *identity, .schema = *schema, .proxy = proxy};
     return proxy;
 }
 
@@ -147,20 +179,30 @@ static Channel *import_grant(DVM_CallChannels *channels, uint32_t pid, const DVM
 static int decode_grant(DVM_CallChannels *channels, const char *type,
     const FVM_SRecord *record, void **result)
 {
-    if ((!channels->persistent && !channels->reverse) || record->size != 8 ||
-        record->payload[0] < 128)
+    size_t prefix = record->tag == STYX_MANAGED_CHANNEL_GRANT_TAG ? 4 : STYX_CHANNEL_EXPORT_TOKEN_SIZE;
+    if (record->size != prefix + 4 ||
+        (prefix == 4 ? record->payload[0] < 128 || (!channels->persistent && !channels->reverse) :
+            !channels->persistent && !channels->forward))
     {
         return 0;
     }
-    uint32_t pid = read_key(record->payload);
-    uint32_t wire = read_key(record->payload + 4);
+    DVM_GrantIdentity identity = {0};
+    if (prefix == 4)
+    {
+        identity.pid = read_key(record->payload);
+    }
+    else
+    {
+        memcpy(identity.token, record->payload, prefix);
+    }
+    uint32_t wire = read_key(record->payload + prefix);
     DVM_ChannelSchema schema = {.key = wire & INT32_MAX, .unbuffered = wire >> 31};
     if (!schema.key || !dvm_channel_value_shape(type, schema.shape))
     {
         return 0;
     }
-    Channel *proxy = channels->persistent ? dvm_returned_lease_original(channels->persistent, pid, &schema) :
-        import_grant(channels, pid, &schema);
+    Channel *proxy = channels->persistent ? dvm_returned_lease_original(channels->persistent, &identity, &schema) :
+        import_grant(channels, &identity, &schema);
     if (!proxy)
     {
         return 0;

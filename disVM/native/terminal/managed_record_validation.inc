@@ -32,10 +32,13 @@ static int managed_value(const char *shape, const unsigned char *bytes, size_t s
             const unsigned char *saved = value.payload + STYX_CHANNEL_EXPORT_TOKEN_SIZE;
             return (saved[0] & 127) || saved[1] || saved[2] || saved[3];
         }
-        if (keys->message_grants && value.tag == STYX_MANAGED_CHANNEL_GRANT_TAG)
+        if (keys->message_grants && (value.tag == STYX_MANAGED_CHANNEL_GRANT_TAG ||
+            value.tag == STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG))
         {
-            return value.size == 8 && value.payload[0] >= 128 &&
-                ((value.payload[4] & 127) || value.payload[5] || value.payload[6] || value.payload[7]);
+            size_t offset = value.tag == STYX_MANAGED_CHANNEL_GRANT_TAG ? 4 : STYX_CHANNEL_EXPORT_TOKEN_SIZE;
+            const unsigned char *data = value.payload;
+            return value.size == offset + 4 && (offset != 4 || data[0] >= 128) &&
+                ((data[offset] & 127) || data[offset + 1] || data[offset + 2] || data[offset + 3]);
         }
         int regular = value.tag == STYX_MANAGED_CHANNEL_TAG;
         int issued = keys->message_grants && !keys->channel && value.tag == STYX_MANAGED_UNBUFFERED_CHANNEL_TAG;

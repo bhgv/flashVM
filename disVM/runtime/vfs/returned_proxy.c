@@ -16,6 +16,7 @@
 #include "disvm/managed_reference.h"
 #include "channel_sync.h"
 #include "thread_port.h"
+#include "../../native/terminal/channel_export.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
 #include <string.h>
@@ -33,7 +34,8 @@ typedef struct ReturnedGrant
     Channel *original; /* Borrowed while root keeps the channel live. */
     DVM_OwnerTransfer root; /* Owned original channel for returning same key. */
     DVM_ChannelSchema schema; /* Immutable key and element type. */
-    uint32_t pid; /* Reverse-only tree identifier. */
+    DVM_GrantIdentity identity; /* Exact PID or module token. */
+    DVM_Provider *control; /* Owned derived module publication, if present. */
 } ReturnedGrant;
 
 
@@ -46,6 +48,8 @@ struct DVM_ReturnedLease
     ReturnedGrant grants[DVM_CHANNEL_BUS_SLOTS]; /* At most eight active reverse grants. */
     struct ReturnedProxy *proxies; /* Live bindings, removed before freeing their channels. */
     unsigned refs; /* Atomic pins across channel owners and the decoder. */
+    DVM_Provider *publication; /* Owned local module control on imported reverse routes. */
+    DVM_Provider *reverse; /* Owned reverse session for descendants of that control. */
     DVM_Provider *endpoint; /* Owned exact module UniBus file. */
     DVM_VfsHandle fid; /* Owned original function fid, closed off-thread. */
     DVM_CloseJob *close; /* Preallocated native retirement job. */
@@ -66,6 +70,14 @@ typedef struct ReturnedProxy
 } ReturnedProxy;
 
 
+/* EN/RU: See returned_proxy.h. / См. returned_proxy.h. */
+int dvm_grant_identity_equal(const DVM_GrantIdentity *left, const DVM_GrantIdentity *right)
+{
+    return left->pid == right->pid &&
+        (left->pid || !memcmp(left->token, right->token, sizeof(left->token)));
+}
+
+
 #include "returned_grants.inc"
 
 
@@ -76,6 +88,8 @@ static void retire_lease(void *state)
     DVM_ReturnedLease *lease = state;
     dvm_vfs_close(&lease->fid);
     dvm_provider_release(lease->endpoint);
+    dvm_provider_release(lease->publication);
+    dvm_provider_release(lease->reverse);
     dvm_cancel_release(lease->cancel);
     if (lease->lock)
     {
@@ -108,6 +122,31 @@ DVM_ReturnedLease *dvm_returned_lease_create(DVM_Provider *endpoint)
         dvm_close_discard(lease->close);
         retire_lease(lease);
         return NULL;
+    }
+    return lease;
+}
+
+
+/* EN/RU: See returned_proxy.h. / См. returned_proxy.h. */
+DVM_ReturnedLease *dvm_returned_lease_import(DVM_Provider *endpoint, DVM_Provider *control,
+    DVM_Provider *reverse, const DVM_GrantIdentity *identity)
+{
+    DVM_ReturnedLease *lease = dvm_returned_lease_create(endpoint);
+    if (!lease)
+    {
+        return NULL;
+    }
+    lease->publication = dvm_provider_retain(control) ? control : NULL;
+    lease->reverse = dvm_provider_retain(reverse) ? reverse : NULL;
+    if (lease->publication != control || lease->reverse != reverse)
+    {
+        dvm_returned_lease_release(lease);
+        return NULL;
+    }
+    if (!identity->pid)
+    {
+        memcpy(lease->token, identity->token, sizeof(lease->token));
+        lease->token_set = 1;
     }
     return lease;
 }

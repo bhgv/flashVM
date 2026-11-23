@@ -451,7 +451,7 @@ int main(void)
         fputs("nested channel capability admission failed\n", stderr);
         return 1;
     }
-    if (!exported_channel_leases())
+    if (!exported_channel_leases() || !nested_channel_leases())
     {
         fputs("returned channel lease isolation or retirement failed\n", stderr);
         return 1;

@@ -82,6 +82,24 @@ static int reverse_channel_records(const ChannelAdmissions *admissions)
     {
         return 0;
     }
+    unsigned char module[STYX_CHANNEL_EXPORT_TOKEN_SIZE + 4] = {0};
+    module[0] = 0x51;
+    module[sizeof(module) - 1] = 7;
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG, module, sizeof(module),
+            bytes, sizeof(bytes), &frame.size) != FVM_S_OK ||
+        styxmanaged_request_payload("(c[i])", &frame) ||
+        styxmanaged_channel_payload("(c[i])", &frame, admit_channel_record, admissions) ||
+        !styxmanaged_channel_value("(c[i])", &frame, admit_channel_record, admissions, 1))
+    {
+        return 0;
+    }
+    module[sizeof(module) - 1] = 0;
+    if (fvm_srecord_write(STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG, module, sizeof(module),
+            bytes, sizeof(bytes), &frame.size) != FVM_S_OK ||
+        styxmanaged_channel_value("(c[i])", &frame, NULL, NULL, 1))
+    {
+        return 0;
+    }
     return fvm_srecord_write(STYX_MANAGED_UNBUFFERED_CHANNEL_TAG, key, sizeof(key),
             bytes, sizeof(bytes), &frame.size) == FVM_S_OK &&
         !styxmanaged_channel_value("(c[i])", &frame, admit_channel_record, admissions, 1) &&

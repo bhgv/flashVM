@@ -21,6 +21,8 @@ struct StyxChannelExports
 {
     FVM_PortSync *lock; /* Serializes publication, lookup, and clunk. */
     ChannelExport *head; /* Borrowed controls pinned by their function fids. */
+    size_t refs; /* Server reference and controls, protected by lock. */
+    int closed; /* Server no longer admits controls. */
     size_t count; /* Includes unpublished reserved leases. */
 };
 
@@ -29,7 +31,9 @@ struct StyxChannelExports
  * RU: Отделить долгоживущую прямую аренду от встречного доступа вызова. */
 struct ChannelExport
 {
-    StyxChannelExports *registry; /* Borrowed until exact fid revokes this control. */
+    StyxChannelExports *registry; /* Owned registry reference until final destruction. */
+    int linked; /* Registry lock protects membership. */
+    DVM_CancelTap *parent; /* Owned propagation from the parent lease. */
     ChannelExport *next; /* Borrowed next entry, under the registry lock. */
     FVM_PortSync *lock; /* Protects the published provider and revocation. */
     DVM_Provider *bus; /* Owned native operation provider while published. */
@@ -88,7 +92,29 @@ StyxChannelExports *styxchannel_exports_create(void)
         free(exports);
         exports = NULL;
     }
+    if (exports)
+    {
+        exports->refs = 1;
+    }
     return exports;
+}
+
+
+/* EN: Release an owned registry reference after all its controls are unlinked.
+ * RU: Снять свою ссылку на реестр после снятия его записей. */
+static void release_registry(StyxChannelExports *exports)
+{
+    if (exports)
+    {
+        fvm_port_sync_lock(exports->lock);
+        int last = --exports->refs == 0;
+        fvm_port_sync_unlock(exports->lock);
+        if (last)
+        {
+            fvm_port_sync_destroy(exports->lock);
+            free(exports);
+        }
+    }
 }
 
 
@@ -97,12 +123,10 @@ void styxchannel_exports_destroy(StyxChannelExports *exports)
 {
     if (exports)
     {
-        if (exports->head)
-        {
-            abort();
-        }
-        fvm_port_sync_destroy(exports->lock);
-        free(exports);
+        fvm_port_sync_lock(exports->lock);
+        exports->closed = 1;
+        fvm_port_sync_unlock(exports->lock);
+        release_registry(exports);
     }
 }
 
@@ -130,11 +154,49 @@ static FVM_Result private_open(void *state, const char *path, const char *mode, 
 }
 
 
+/* EN: Unlink an owned control exactly once. Pins keep the registry and bus alive.
+ * RU: Снять свою запись ровно один раз. Ссылки удерживают реестр и UniBus. */
+static void revoke_control(ChannelExport *control)
+{
+    StyxChannelExports *exports = control->registry;
+    if (!exports)
+    {
+        return;
+    }
+    fvm_port_sync_lock(exports->lock);
+    int linked = control->linked;
+    if (linked)
+    {
+        ChannelExport **entry = &exports->head;
+        while (*entry != control)
+        {
+            entry = &(*entry)->next;
+        }
+        *entry = control->next;
+        control->linked = 0;
+        exports->count--;
+    }
+    fvm_port_sync_unlock(exports->lock);
+    if (linked)
+    {
+        dvm_cancel_request(control->cancel);
+        fvm_port_sync_lock(control->lock);
+        DVM_Provider *bus = control->bus;
+        control->bus = NULL;
+        fvm_port_sync_unlock(control->lock);
+        dvm_provider_release(bus);
+    }
+}
+
+
 /* EN: Consume native state after its registered function fid has retired.
  * RU: Освободить нативное состояние после закрытия зарегистрированного fid. */
 static void destroy_control(void *state)
 {
     ChannelExport *control = state;
+    revoke_control(control);
+    dvm_cancel_unsubscribe(control->parent);
+    release_registry(control->registry);
     dvm_provider_release(control->bus);
     dvm_cancel_release(control->cancel);
     if (control->lock)
@@ -157,8 +219,9 @@ static ChannelExport *state_of(DVM_Provider *provider)
 }
 
 
-/* EN/RU: See channel_export.h. / См. channel_export.h. */
-DVM_Provider *styxchannel_export_create(StyxChannelExports *exports)
+/* EN: Create a control, checking optional parent membership under the registry lock.
+ * RU: Создать управление, проверив наличие родителя под замком реестра. */
+static DVM_Provider *create_control(StyxChannelExports *exports, ChannelExport *parent)
 {
     ChannelExport *control = exports ? calloc(1, sizeof(*control)) : NULL;
     if (!control)
@@ -167,7 +230,8 @@ DVM_Provider *styxchannel_export_create(StyxChannelExports *exports)
     }
     control->lock = fvm_port_sync_create();
     control->cancel = dvm_cancel_create();
-    if (!control->lock || !control->cancel || !random_token(control->token))
+    if (!control->lock || !control->cancel || !random_token(control->token) ||
+        (parent && !(control->parent = dvm_cancel_forward(parent->cancel, control->cancel))))
     {
         destroy_control(control);
         return NULL;
@@ -179,14 +243,17 @@ DVM_Provider *styxchannel_export_create(StyxChannelExports *exports)
         return NULL;
     }
     fvm_port_sync_lock(exports->lock);
-    int admitted = exports->count < CHANNEL_EXPORT_LIMIT;
+    int admitted = !exports->closed && exports->count < CHANNEL_EXPORT_LIMIT &&
+        (!parent || (parent->linked && !dvm_cancel_requested(parent->cancel)));
     for (const ChannelExport *entry = exports->head; admitted && entry; entry = entry->next)
     {
         admitted = memcmp(entry->token, control->token, sizeof(control->token)) != 0;
     }
     if (admitted)
     {
+        exports->refs++;
         control->registry = exports;
+        control->linked = 1;
         control->next = exports->head;
         exports->head = control;
         exports->count++;
@@ -202,31 +269,28 @@ DVM_Provider *styxchannel_export_create(StyxChannelExports *exports)
 
 
 /* EN/RU: See channel_export.h. / См. channel_export.h. */
+DVM_Provider *styxchannel_export_create(StyxChannelExports *exports)
+{
+    return create_control(exports, NULL);
+}
+
+
+/* EN/RU: See channel_export.h. / См. channel_export.h. */
+DVM_Provider *styxchannel_export_child(DVM_Provider *provider)
+{
+    ChannelExport *parent = state_of(provider);
+    return parent ? create_control(parent->registry, parent) : NULL;
+}
+
+
+/* EN/RU: See channel_export.h. / См. channel_export.h. */
 void styxchannel_export_revoke(DVM_Provider *provider)
 {
     ChannelExport *control = state_of(provider);
-    if (!control || !control->registry)
+    if (control)
     {
-        return;
+        revoke_control(control);
     }
-    StyxChannelExports *exports = control->registry;
-    fvm_port_sync_lock(exports->lock);
-    ChannelExport **entry = &exports->head;
-    while (*entry != control)
-    {
-        entry = &(*entry)->next;
-    }
-    *entry = control->next;
-    control->registry = NULL;
-    exports->count--;
-    fvm_port_sync_unlock(exports->lock);
-
-    dvm_cancel_request(control->cancel);
-    fvm_port_sync_lock(control->lock);
-    DVM_Provider *bus = control->bus;
-    control->bus = NULL;
-    fvm_port_sync_unlock(control->lock);
-    dvm_provider_release(bus);
 }
 
 

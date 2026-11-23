@@ -63,6 +63,10 @@ static int acyclic_grant(const DVM_ReturnedLease *source, const DVM_ReturnedLeas
 static void retire_grant(ReturnedGrant *grant)
 {
     dvm_cancel_request(grant->cancel);
+#ifdef DVM_TERMINAL_LAUNCH
+    styxchannel_export_revoke(grant->control);
+#endif
+    dvm_provider_release(grant->control);
     if (grant->publication)
     {
         grant->binding.end(grant->binding.state, grant->publication);
@@ -111,9 +115,52 @@ static uint32_t grant_pid(void)
 }
 
 
-/* [GC:] EN: Root the original channel and publish one independent reverse channel pump.
+/* EN: Publish a reverse PID tree and prepare the mounted route for peer grants.
+ * RU: Выдать встречное дерево PID и подготовить маршрут для выдач партнёра. */
+static int publish_reverse(DVM_ReturnedLease *lease, ReturnedGrant *grant,
+    DVM_Provider *provider, DVM_ChannelTransport *transport)
+{
+    if (!dvm_provider_caller_binding(lease->endpoint, &grant->binding))
+    {
+        return 0;
+    }
+    grant->identity.pid = grant_pid();
+    grant->cancel = grant->identity.pid ? dvm_cancel_create() : NULL;
+    DVM_ProgramView entry = {.pid = grant->identity.pid, .unibus = provider};
+    grant->tree = grant->cancel ? dvm_program_view(&entry, 1) : NULL;
+    grant->publication = grant->tree ? grant->binding.begin(grant->binding.state,
+        lease->endpoint, grant->tree, grant->identity.pid) : NULL;
+    transport->forward = lease->endpoint;
+    return grant->publication != NULL;
+}
+
+
+/* EN: Publish a child control in the same module and prepare the reverse route.
+ * RU: Выдать дочернее управление тому же модулю и подготовить встречный маршрут. */
+static int publish_module(DVM_ReturnedLease *lease, ReturnedGrant *grant,
+    DVM_Provider *provider, DVM_ChannelTransport *transport)
+{
+#ifdef DVM_TERMINAL_LAUNCH
+    grant->control = styxchannel_export_child(lease->publication);
+    grant->cancel = styxchannel_export_cancel(grant->control);
+    transport->reverse = lease->reverse;
+    transport->control = grant->control;
+    transport->revoke = 1;
+    return grant->cancel && styxchannel_export_token(grant->control, grant->identity.token) &&
+        styxchannel_export_publish(grant->control, provider);
+#else
+    (void)lease;
+    (void)grant;
+    (void)provider;
+    (void)transport;
+    return 0;
+#endif
+}
+
+
+/* [GC:] EN: Root the original and publish one independent pump in either direction.
  * The active Dis resident lends its channel, and cleanup rolls back partial publication.
- * RU: Укоренить исходный канал и опубликовать свою встречную службу.
+ * RU: Укоренить исходный канал и опубликовать свою службу в нужном направлении.
  * Текущий поток заимствует канал. При отказе снять частичную публикацию. */
 static int start_grant(DVM_ReturnedLease *lease, ReturnedGrant *grant,
     Channel *channel, const char *type)
@@ -123,19 +170,23 @@ static int start_grant(DVM_ReturnedLease *lease, ReturnedGrant *grant,
     DVM_CallChannels channels = {0};
     unsigned char record[32];
     size_t used;
-    int valid = dvm_provider_caller_binding(lease->endpoint, &grant->binding) &&
-        dvm_call_channel_encode(&channels, type, channel, record, sizeof(record), &used) &&
+    int valid = dvm_call_channel_encode(&channels, type, channel, record, sizeof(record), &used) &&
         channels.count == 1 && dvm_managed_owner_capture(channel, &grant->root);
     DVM_ChannelBus *bus = NULL;
     DVM_Provider *provider = valid ? dvm_channel_bus_create(channels.schemas, 1, &bus) : NULL;
-    grant->pid = provider ? grant_pid() : 0;
-    grant->cancel = grant->pid ? dvm_cancel_create() : NULL;
-    DVM_ProgramView entry = {.pid = grant->pid, .unibus = provider};
-    grant->tree = grant->cancel ? dvm_program_view(&entry, 1) : NULL;
-    grant->publication = grant->tree ? grant->binding.begin(grant->binding.state,
-        lease->endpoint, grant->tree, grant->pid) : NULL;
+    DVM_ChannelTransport transport = {0};
     grant->schema = channels.schemas[0];
-    valid = grant->publication && dvm_result_channels_start(&channels, bus, provider, grant->cancel, NULL);
+    if (provider)
+    {
+        dvm_channel_bus_allow_grants(bus);
+        valid = lease->publication ? publish_module(lease, grant, provider, &transport) :
+            publish_reverse(lease, grant, provider, &transport);
+        valid = valid && dvm_result_channels_start(&channels, bus, provider, grant->cancel, &transport);
+    }
+    else
+    {
+        valid = 0;
+    }
     dvm_provider_release(provider);
     dvm_call_channels_release(&channels);
     return valid;
@@ -157,10 +208,10 @@ static size_t grant_slot(const DVM_ReturnedLease *lease, const Channel *channel)
 
 /* EN/RU: See returned_proxy.h. / См. returned_proxy.h. */
 int dvm_returned_lease_grant(DVM_ReturnedLease *lease, Channel *channel,
-    const char *type, uint32_t *pid, uint32_t *key)
+    const char *type, DVM_GrantIdentity *identity, uint32_t *key)
 {
     char shape[STYX_SHAPE_MAX + 1];
-    if (!lease->token_set || !dvm_channel_value_shape(type, shape))
+    if ((!lease->token_set && !lease->publication) || !dvm_channel_value_shape(type, shape))
     {
         return 0;
     }
@@ -187,7 +238,7 @@ int dvm_returned_lease_grant(DVM_ReturnedLease *lease, Channel *channel,
     if (valid)
     {
         const ReturnedGrant *grant = &lease->grants[slot];
-        *pid = grant->pid;
+        *identity = grant->identity;
         *key = grant->schema.key | (grant->schema.unbuffered ? UINT32_C(0x80000000) : 0);
     }
     fvm_port_sync_unlock(lease->lock);
@@ -197,7 +248,7 @@ int dvm_returned_lease_grant(DVM_ReturnedLease *lease, Channel *channel,
 
 
 /* EN/RU: See returned_proxy.h. / См. returned_proxy.h. */
-Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, uint32_t pid,
+Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, const DVM_GrantIdentity *identity,
     const DVM_ChannelSchema *schema)
 {
     Channel *result = NULL;
@@ -205,7 +256,7 @@ Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, uint32_t pid,
     for (size_t i = 0; i < lease->grant_count; i++)
     {
         const ReturnedGrant *grant = &lease->grants[i];
-        if (grant->pid == pid && grant->schema.key == schema->key &&
+        if (dvm_grant_identity_equal(&grant->identity, identity) && grant->schema.key == schema->key &&
             grant->schema.unbuffered == schema->unbuffered && !strcmp(grant->schema.shape, schema->shape))
         {
             Channel *channel = grant->original;

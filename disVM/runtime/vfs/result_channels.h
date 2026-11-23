@@ -22,10 +22,21 @@ int dvm_result_channels_finish(DVM_CallChannels *channels);
 int dvm_result_channels_active(void);
 
 
+/* EN: Borrowed native transport routes to retain for a message service.
+ * RU: Заимствованные нативные маршруты для удержания службой сообщений. */
+typedef struct DVM_ChannelTransport
+{
+    DVM_Provider *reverse; /* Reverse session root for PID grants. */
+    DVM_Provider *forward; /* Mounted UniBus for module token grants. */
+    DVM_Provider *control; /* Provider registry anchor, revoked when owned by this service. */
+    int revoke; /* Revoke a derived control at service retirement. */
+} DVM_ChannelTransport;
+
+
 /* [GC:] EN: Start a native bus pump with retained provider and cancellation.
  * On success consumes channels; on failure leaves the table releasable.
  * RU: Запустить службу с удержанием провайдера и отмены. При успехе
  * принимает channels, при отказе таблицу можно освободить. */
 int dvm_result_channels_start(DVM_CallChannels *channels, DVM_ChannelBus *bus,
-    DVM_Provider *provider, DVM_Cancel *cancel, DVM_Provider *reverse);
+    DVM_Provider *provider, DVM_Cancel *cancel, const DVM_ChannelTransport *transport);
 #endif

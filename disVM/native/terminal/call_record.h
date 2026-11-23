@@ -98,6 +98,7 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
 #define STYX_MANAGED_TABLE_PATCH_TAG 22UL /* Ordered removals followed by changed pairs. */
 #define STYX_MANAGED_TABLE_REMOVE_TAG 23UL /* Remove one big or string key. */
 #define STYX_MANAGED_CHANNEL_TAG 24UL /* Positive four-byte call-local channel key. */
+#define STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG 35UL /* Nested module token and channel key. */
 #define STYX_MANAGED_CHANNEL_GRANT_TAG 33UL /* Nested reverse message grant. */
 #define STYX_MANAGED_UNBUFFERED_CHANNEL_TAG 34UL /* Nested owner key with rendezvous semantics. */
 #define STYX_MANAGED_EXPORTED_CHANNEL_TAG 31UL /* Result-only provider lease token and channel key. */

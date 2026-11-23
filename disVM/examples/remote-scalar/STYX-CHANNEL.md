@@ -55,6 +55,7 @@ python3 disVM/examples/remote-scalar/run_channel_lifetime.py mixed \
 | --- | --- |
 | `mixed` | Blocking local and remote branches, two mixed selections rendezvousing on one UniBus, and cancellation. |
 | `result` | Returning a new provider channel through `load`, using it after releasing the module, selecting across independent leases, forwarding message channels in both directions, and rendezvous through a regranted channel. |
+| `recursive` | New grants through a channel that was itself granted in a message. It alternates directions, checks aliases and recycles the routes. |
 
 ## Channel operations
 
@@ -124,18 +125,28 @@ proxy to the original queue. Sending that proxy back on the same lease
 resolves to the original client object. Repeated keys share identity while
 their proxy is live.
 
-Each reverse message grant lasts until the destination lease is
-released. Cycles of lease dependencies are rejected. The current
-reverse grant mailbox supports existing keys in its own channel messages.
-Issuing another new reverse grant through that mailbox requires an
-additional transport direction.
+An imported channel can itself carry a new grant. In the mounted-module
+direction, its owner reserves a child token in the same module's `.unibus`
+registry. In the reverse direction, its owner publishes a synthetic
+`.prog/<id>/.unibus` on the existing reverse Styx session. A receiver uses
+the transport already associated with the enclosing message. Echoing a
+grant on that channel resolves to the original object.
+
+When all Styx request tags are busy, mounted channel I/O and fid
+retirement wait for a free tag before sending. Cancellation can stop
+the wait, and the session timeout bounds it.
+
+Message grants live within the enclosing result's lease. Revoking the
+function fid cancels the module's descendant tokens. Releasing the
+destination lease also withdraws its reverse publications. Cycles of
+lease dependencies are rejected.
 
 The wire bound is 64 KiB per operation, including its headers and any nested
 guards. Channel handles can appear directly or in arrays and tuples of
 arguments and results. Each channel scope supports up to eight distinct
 channels, including grants made in messages. An `alt` can include up to eight
 eligible options after expanding receive arrays. A module can
-hold up to 128 active groups of returned channels. A lease can publish
+hold up to 128 active groups, including child tokens. A lease can publish
 up to eight distinct reverse grants, subject to the 16-publication limit
 shared with active caller contexts on the reverse session.
 
@@ -153,6 +164,7 @@ shared with active caller contexts on the reverse session.
 | 32 | Mixed selection's bounded remote offer. Uses the tag 28 payload and the tag 27 or 30 reply. An unpaired offer replies with ordinal zero at its deadline. |
 | 33 | Nested reverse grant. A network-order 32-bit publication identifier followed by the key word from tag 31. |
 | 34 | Nested provider-issued key in a channel reply. A positive 31-bit key in a four-byte word. The tag marks a zero-capacity channel. |
+| 35 | Nested module grant. A 16-byte token from the same module registry followed by the key word from tag 31. |
 
 Use matching DisVM versions on both ends for tag 31 capacity metadata and
 the nested grant records.

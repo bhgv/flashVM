@@ -178,9 +178,10 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
         if (!dvm_call_channel_is_proxy(channel) ||
             dvm_returned_proxy_lease(channel) != channels->persistent)
         {
-            uint32_t pid, key;
-            return dvm_returned_lease_grant(channels->persistent, channel, type, &pid, &key) &&
-                write_grant(pid, key, bytes, capacity, size);
+            DVM_GrantIdentity identity;
+            uint32_t key;
+            return dvm_returned_lease_grant(channels->persistent, channel, type, &identity, &key) &&
+                write_grant(&identity, key, bytes, capacity, size);
         }
         DVM_Provider *endpoint;
         DVM_Cancel *scope;
@@ -195,7 +196,7 @@ int dvm_call_channel_encode(DVM_CallChannels *channels, const char *type, void *
         const DVM_ChannelSchema *original = &imported->schema;
         uint32_t key = original->key | (original->unbuffered ? UINT32_C(0x80000000) : 0);
         return !strcmp(original->shape, schema.shape) &&
-            write_grant(imported->pid, key, bytes, capacity, size);
+            write_grant(&imported->identity, key, bytes, capacity, size);
     }
     if (channels->message || (channels->returning && dvm_call_channel_is_proxy(channel)))
     {
@@ -326,7 +327,8 @@ int dvm_call_channel_decode(DVM_CallChannels *channels, const char *type,
         *result = H;
         return 1;
     }
-    if (channels && record->tag == STYX_MANAGED_CHANNEL_GRANT_TAG)
+    if (channels && (record->tag == STYX_MANAGED_CHANNEL_GRANT_TAG ||
+        record->tag == STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG))
     {
         return decode_grant(channels, type, record, result);
     }

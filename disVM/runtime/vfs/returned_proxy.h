@@ -11,6 +11,28 @@ struct Channel;
 typedef struct DVM_ReturnedLease DVM_ReturnedLease; /* Shared native ownership of one function fid. */
 
 
+/* EN: One bounded message grant address. A zero PID selects the module token.
+ * RU: Адрес выдачи из сообщения. Нулевой PID выбирает токен модуля. */
+typedef struct DVM_GrantIdentity
+{
+    uint32_t pid; /* Synthetic reverse PID, or zero for the module direction. */
+    unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE]; /* Module token when pid is zero. */
+} DVM_GrantIdentity;
+
+
+/* EN: Compare exact addresses in their respective transport directions.
+ * RU: Сверить точные адреса в соответствующих направлениях транспорта. */
+int dvm_grant_identity_equal(const DVM_GrantIdentity *left, const DVM_GrantIdentity *right);
+
+
+/* EN: Create an imported message route with a borrowed native publication anchor,
+ * reverse root, or module token. Return an owned unpublished lease or NULL.
+ * RU: Создать входящий маршрут с заимствованным управлением публикацией,
+ * встречным корнем либо токеном модуля. Вернуть свою аренду или NULL. */
+DVM_ReturnedLease *dvm_returned_lease_import(DVM_Provider *endpoint,
+    DVM_Provider *control, DVM_Provider *reverse, const DVM_GrantIdentity *identity);
+
+
 /* [GC:] EN: Cache result aliases until the decoded graph has been installed.
  * RU: Сохранить алиасы результата до установки декодированного графа. */
 typedef struct DVM_ReturnedImport
@@ -66,15 +88,15 @@ DVM_ReturnedLease *dvm_returned_proxy_lease(const struct Channel *channel);
 struct Channel *dvm_returned_proxy_canonical(struct Channel *candidate);
 
 
-/* [GC:] EN: Publish channel for the exact lease, returning its reverse PID and wire key.
- * RU: Опубликовать канал точной аренды и вернуть встречный PID и сетевой ключ. */
+/* [GC:] EN: Publish channel for the exact lease, returning its address and wire key.
+ * RU: Опубликовать канал точной аренды и вернуть адрес и сетевой ключ. */
 int dvm_returned_lease_grant(DVM_ReturnedLease *lease, struct Channel *channel,
-    const char *type, uint32_t *pid, uint32_t *key);
+    const char *type, DVM_GrantIdentity *identity, uint32_t *key);
 
 
-/* [GC:] EN: Return an owned original matching the lease's exact PID, key and type.
- * RU: Вернуть свою ссылку на оригинал по PID, ключу и типу данной аренды. */
-struct Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, uint32_t pid,
+/* [GC:] EN: Return an owned original matching the lease's exact address, key and type.
+ * RU: Вернуть свою ссылку на оригинал по адресу, ключу и типу данной аренды. */
+struct Channel *dvm_returned_lease_original(DVM_ReturnedLease *lease, const DVM_GrantIdentity *identity,
     const DVM_ChannelSchema *schema);
 
 

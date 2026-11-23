@@ -3,6 +3,7 @@
  * RU: Bounded multiplex admission, native wakeup и nonwaiting owner retirement.
  */
 #include "mux_internal.h"
+#include <time.h>
 
 
 /* EN/RU: See mux_internal.h; cleanup owns descriptors, buffers and native locks.
@@ -34,6 +35,10 @@ void styxmuxwake(StyxMux *mux)
 void styxmuxfinish(StyxMux *mux, StyxFlight *flight)
 {
     mux->slots[flight->slot] = NULL;
+    if (mux->admission_waiters)
+    {
+        pthread_cond_broadcast(&mux->ended);
+    }
     if (mux->sending == flight)
     {
         mux->sending = NULL;
@@ -89,22 +94,66 @@ int styxmuxalive(StyxMux *mux)
 }
 
 
+/* EN: Find a free tag under the mux lock. A waiting caller holds the reusable
+ * client frame, while the mux engine releases tags independently.
+ * RU: Найти свободный тег под замком mux. Ожидающий удерживает буфер клиента.
+ * Поток mux освобождает теги независимо. */
+static unsigned admission_slot(StyxMux *mux, StyxCancel *cancel, int wait)
+{
+    double end = wait ? styxmuxtime() + mux->timeout : 0;
+    for (;;)
+    {
+        unsigned index = 0;
+        while (index < mux->limit && mux->slots[index])
+        {
+            index++;
+        }
+        if (mux->failed || mux->stopping || (wait && styxcancelled(cancel)))
+        {
+            return mux->limit;
+        }
+        if (!wait || index < mux->limit || styxmuxtime() >= end)
+        {
+            return index;
+        }
+        struct timespec poll;
+        if (clock_gettime(CLOCK_REALTIME, &poll))
+        {
+            return mux->limit;
+        }
+        /* A token waiting for its first tag is not yet bound to the mux. */
+        poll.tv_nsec += 5 * 1000 * 1000;
+        if (poll.tv_nsec >= 1000 * 1000 * 1000)
+        {
+            poll.tv_sec++;
+            poll.tv_nsec -= 1000 * 1000 * 1000;
+        }
+        mux->admission_waiters++;
+        pthread_cond_timedwait(&mux->ended, &mux->lock, &poll);
+        mux->admission_waiters--;
+    }
+}
+
+
 /* EN/RU: See mux.h; reject quota/OOM/token reuse before effects. Watching reads reserve
  * no more than limit-1 slots, retaining ordinary RPC capacity. Request bytes are copied.
  * См. mux.h; refusal до effects; watching занимает максимум limit-1 slots, bytes copied. */
 StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsigned bound, StyxCancel *cancel, int watching)
 {
     pthread_mutex_lock(&mux->lock);
-    unsigned index;
-    for (index = 0; index < mux->limit && mux->slots[index]; index++)
+    if (length < 7 || length > bound || bound > mux->capacity)
     {
+        pthread_mutex_unlock(&mux->lock);
+        return NULL;
     }
+    int wait = !watching && (styxcancelwaits(cancel) || ((const uchar *)bytes)[4] == Tclunk);
+    unsigned index = admission_slot(mux, cancel, wait);
     unsigned watches = 0;
     for (unsigned i = 0; i < mux->limit; i++)
     {
         watches += mux->slots[i] && mux->slots[i]->watching;
     }
-    if (mux->failed || mux->stopping || index == mux->limit || length < 7 || length > bound || bound > mux->capacity ||
+    if (mux->failed || mux->stopping || index == mux->limit ||
         (watching && (mux->limit < 2 || watches >= mux->limit-1 || ((const uchar *)bytes)[4] != Tread)))
     {
         pthread_mutex_unlock(&mux->lock);

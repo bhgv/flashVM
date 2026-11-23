@@ -24,6 +24,13 @@ void styxchannel_exports_destroy(StyxChannelExports *exports);
 DVM_Provider *styxchannel_export_create(StyxChannelExports *exports);
 
 
+/* EN: Create an owned child control in the parent's module registry.
+ * Revocation of the parent cancels the child. Release the returned native pin.
+ * RU: Создать своё дочернее управление в реестре модуля родителя.
+ * Отзыв родителя отменяет потомка. Вернувшуюся нативную ссылку нужно снять. */
+DVM_Provider *styxchannel_export_child(DVM_Provider *parent);
+
+
 /* EN: Revoke the borrowed control on clunk. Existing operations wake with cancellation.
  * RU: Отозвать заимствованное управление при clunk. Текущие операции отменяются. */
 void styxchannel_export_revoke(DVM_Provider *control);

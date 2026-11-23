@@ -32,8 +32,10 @@ StyxMux *styxmuxcreatewalkphy(RemotePhy *phy, unsigned capacity, unsigned timeou
 StyxLife *styxmuxlife(StyxMux *mux);
 
 
-/* EN/RU: Admit copied frame within quota; caller owns flight/NULL. Client lock held.
- * Принять copied frame в quota; свой flight/NULL, client lock удержан. */
+/* EN: Admit a copied frame within quota and return an owned flight or NULL.
+ * Clunks and opt-in tokens may wait for an initial tag with the client lock held.
+ * RU: Принять копию кадра в пределах квоты и вернуть свой flight или NULL.
+ * Tclunk и токены ожидания могут ждать начального тега под замком клиента. */
 StyxFlight *styxmuxsubmit(StyxMux *, const void *, unsigned, unsigned, StyxCancel *, int);
 /* EN/RU: Collect owned raw response after native completion; consumes flight.
  * Получить свой raw response после native completion; поглощает flight. */
@@ -57,6 +59,17 @@ void styxmuxwake(StyxMux *);
  * Bind удерживает token до unbind; только один flight на token. */
 int styxcancelbind(StyxCancel *, StyxMux *);
 int styxcancelled(StyxCancel *);
+
+/* EN: Create an owned token for native mount I/O with bounded initial tag waiting.
+ * Cancellation and the mux timeout bound admission before any frame can be sent.
+ * RU: Создать свой токен для ожидания начального тега в операции маунта.
+ * Допуск до отправки ограничен отменой и таймаутом mux. */
+StyxCancel *styxcancelcreatewait(void);
+
+
+/* EN: Read the borrowed token's immutable admission policy.
+ * RU: Прочитать неизменяемое правило допуска заимствованного токена. */
+int styxcancelwaits(const StyxCancel *cancel);
 void styxcancelunbind(StyxCancel *);
 
 

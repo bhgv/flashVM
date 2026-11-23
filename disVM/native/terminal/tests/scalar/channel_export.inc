@@ -112,3 +112,43 @@ static int exported_channel_leases(void)
     styxchannel_exports_destroy(module);
     return valid;
 }
+
+
+
+/* EN: A revoked parent cancels its descendants even with opened operation fids.
+ * RU: Отзыв родителя отменяет потомков даже при открытых fid операций. */
+static int nested_channel_leases(void)
+{
+    static const DVM_ProviderOps ops = {.info = info_lease_byte,
+        .open = open_lease_byte, .destroy = release_lease_byte}; /* Test-only byte storage. */
+    unsigned char byte = 0x46;
+    StyxChannelExports *module = styxchannel_exports_create();
+    DVM_Provider *parent = styxchannel_export_create(module);
+    DVM_Provider *child = styxchannel_export_child(parent);
+    DVM_Provider *grandchild = styxchannel_export_child(child);
+    DVM_Provider *bus = dvm_provider_create_native(&ops, &byte, NULL, 1, 0);
+    DVM_Cancel *child_cancel = styxchannel_export_cancel(child);
+    DVM_Cancel *leaf_cancel = styxchannel_export_cancel(grandchild);
+    DVM_VfsHandle opened = {0};
+    unsigned char token[STYX_CHANNEL_EXPORT_TOKEN_SIZE], result = 0;
+    int valid = child_cancel && leaf_cancel && bus && styxchannel_export_token(grandchild, token) &&
+        styxchannel_export_publish(grandchild, bus) && styxchannel_export_open(module, &opened) &&
+        dvm_vfs_write_chunk(&opened, token, sizeof(token)).count == sizeof(token) &&
+        dvm_vfs_read_chunk(&opened, &result, 1).count == 1 && result == byte;
+    styxchannel_export_revoke(parent);
+    DVM_Provider *late = styxchannel_export_child(child);
+    valid = valid && !late && dvm_cancel_requested(child_cancel) && dvm_cancel_requested(leaf_cancel) &&
+        dvm_vfs_read_chunk(&opened, &result, 1).status != FVM_OK;
+    dvm_vfs_close(&opened);
+    styxchannel_exports_destroy(module);
+    styxchannel_export_revoke(grandchild);
+    styxchannel_export_revoke(grandchild);
+    dvm_provider_release(late);
+    dvm_provider_release(grandchild);
+    dvm_provider_release(child);
+    dvm_provider_release(parent);
+    dvm_provider_release(bus);
+    dvm_cancel_release(leaf_cancel);
+    dvm_cancel_release(child_cancel);
+    return valid;
+}

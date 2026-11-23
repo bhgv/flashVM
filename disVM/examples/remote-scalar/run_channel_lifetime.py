@@ -12,6 +12,7 @@ from run_chain import DISVM, EXAMPLE, accept, compile_images, connect, delegate,
 CASES = {
     "mixed": ("styx-channel-mixed-client.b", "PASS blocking mixed channel ALT"),
     "result": ("styx-channel-result-client.b", "PASS provider-owned returned channels"),
+    "recursive": ("styx-channel-recursive-client.b", "PASS nested grants across both UniBus directions"),
 }  # Caller's source image and required end-to-end marker.
 EXPORTS = ("mixed", "buffered", "worker", "relay", "relayput", "nested",
            "relaypair", "grantworker")  # Common provider interface.
@@ -28,12 +29,14 @@ def exercise(runtime, compiler, root, mode, case):
     caller.mkdir()
     module = "channel-lifetime.dis"
     source, marker = CASES[case]
+    owner_source = "styx-channel-recursive-owner.b" if case == "recursive" else "styx-channel-lifetime-owner.b"
+    names = ("open",) if case == "recursive" else EXPORTS
     compile_images(compiler, owner, (
         (DISVM / "limbo/scalarowner.b", "dispatcher.dis"),
-        (EXAMPLE / "styx-channel-lifetime-owner.b", module),
+        (EXAMPLE / owner_source, module),
     ))
     compile_images(compiler, caller, ((EXAMPLE / source, "client.dis"),))
-    exports = [arg for name in EXPORTS for arg in ("--export", module, module, name)]
+    exports = [arg for name in names for arg in ("--export", module, module, name)]
     with listen(("127.0.0.1", 0)) as listener, ThreadPoolExecutor(max_workers=1) as worker:
         with connect(listener.getsockname()) as forward, accept(listener) as reverse:
             server = worker.submit(delegate,
