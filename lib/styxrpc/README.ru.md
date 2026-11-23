@@ -131,6 +131,19 @@ Styx. Отправитель владеет временем жизни выда
 Диспетчер C может немедленно отозвать встречную шину. Ожидающие операции закрываются до возврата, а старые fid остаются доступны только для clunk. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.ru.md) Для временных шин реестр выдаёт новые PID и переиспользует слоты после отзыва. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.ru.md)
 
 
+## Общая шина C-модуля
+
+Хостовая библиотека позволяет нескольким открытым вызовам вернуть свои
+каналы через один файл `.unibus`. Токен выбирает очередь, а fid операции
+хранит её открытое состояние. Реестр обслуживает токены и отзыв. Приложение
+владеет очередями, выделяет память реестра и связывает отзыв с выдавшим fid.
+Для C-публикатора используйте `StyxRpc::serve`. Для чтения и записи по
+полученному маршруту используйте `StyxRpc::launch`.
+
+[`styxrpc_module_channels_init`](reference/module_channels_init.ru.md) · [`styxrpc_module_channels_publish`](reference/module_channels_publish.ru.md) · [`styxrpc_module_channels_resource`](reference/module_channels_resource.ru.md) · [`styxrpc_module_channels_revoke`](reference/module_channels_revoke.ru.md)
+
+[Два канала через один сокет](examples/module_channels.ru.md)
+
 ## Исходники
 
 [Вызовы и профиль](include/styxrpc/rpc.h) · [Виртуальная ФС](include/styxrpc/vfs.h) ·

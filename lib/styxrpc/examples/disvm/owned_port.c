@@ -6,9 +6,7 @@
 #include "owned_port.h"
 #include "styxrpc/graph.h"
 #include "load_profile.h"
-#include <sys/random.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -18,8 +16,6 @@ static const StyxRpcChannelGrant grant = {1, "(s)"}; /* Opaque token scopes this
 typedef struct Operation
 {
     DevicePort *port;    /* Owned by server until each open retires. */
-    int authenticated;  /* The first write matched the current result lease. */
-    unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE]; /* Exact fid's authorization. */
     unsigned char request[192]; /* Complete buffered operation. */
     unsigned char reply[192];   /* Completed selection. */
     StyxRpcChannelFid fid;      /* Shared portable lifecycle. */
@@ -37,51 +33,8 @@ static uint64_t now_ms(void *context)
 }
 
 
-/* EN/RU: See owned_port.h. / См. owned_port.h. */
-int device_port_publish(DevicePort *port, const StyxRpcChannelCall *call,
-    void *reply, size_t capacity, size_t *size)
-{
-    if (port->active || getrandom(port->token, sizeof(port->token), 0) != (ssize_t)sizeof(port->token))
-    {
-        return 0;
-    }
-    unsigned char child[48], result[64], updates[12];
-    size_t length, result_size, update_size;
-    port->queue = (StyxRpcChannelQueue){.grant = grant, .bytes = port->value,
-        .sizes = &port->size, .capacity = 1, .stride = sizeof(port->value)};
-    port->active = styxrpc_scheduler_init(&port->scheduler, &port->queue, 1, now_ms, NULL) &&
-        styxrpc_channel_export_value(port->token, grant.key, 0,
-        child, sizeof(child), &length) == STYXRPC_OK &&
-        fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, child, length, result, sizeof(result), &result_size) == FVM_S_OK &&
-        fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
-        styxrpc_channel_call_reply(&port_schema, call, result, result_size, updates, update_size,
-            reply, capacity, size) == STYXRPC_OK;
-    return port->active;
-}
-
-
-/* EN/RU: See owned_port.h. / См. owned_port.h. */
-void device_port_revoke(DevicePort *port)
-{
-    while (port->scheduler.used)
-    {
-        styxrpc_channel_fid_close(port->scheduler.pending[0].fid);
-    }
-    memset(port, 0, sizeof(*port));
-}
-
-
-/* EN: Verify this open's token against the still-live function fid.
- * RU: Сверить токен открытия с ещё действующим fid функции. */
-static int current(const Operation *operation)
-{
-    return operation->authenticated && operation->port->active &&
-        !memcmp(operation->token, operation->port->token, sizeof(operation->token));
-}
-
-
-/* EN: Allocate per-operation buffers; the first write must identify a live lease.
- * RU: Выделить буферы операции. Первая запись должна указать действующую аренду. */
+/* EN: Allocate operation buffers after the shared bus has authenticated the token.
+ * RU: Выделить буферы операции после проверки токена на общей шине. */
 static int open_bus(void *context, unsigned access, void **cookie)
 {
     if (access != (STYXRPC_READ | STYXRPC_WRITE))
@@ -104,25 +57,13 @@ static int open_bus(void *context, unsigned access, void **cookie)
 }
 
 
-/* EN: Admit the token at offset zero or forward a contiguous operation prefix.
- * RU: Принять токен при смещении ноль либо передать последовательный фрагмент операции. */
+/* EN: Feed each confirmed operation fragment to the scheduler-facing fid.
+ * RU: Передать каждый подтверждённый фрагмент операции fid планировщика. */
 static int write_bus(void *cookie, uint64_t offset, const void *bytes, size_t count, size_t *size)
 {
     Operation *operation = cookie;
-    if (!operation->authenticated)
-    {
-        if (offset || count != sizeof(operation->token) || !operation->port->active ||
-            memcmp(bytes, operation->port->token, count))
-        {
-            return 0;
-        }
-        memcpy(operation->token, bytes, count);
-        operation->authenticated = 1;
-    }
-    else if (!current(operation) || offset < sizeof(operation->token) ||
-        offset - sizeof(operation->token) > SIZE_MAX ||
-        styxrpc_channel_fid_write(&operation->fid, (size_t)(offset - sizeof(operation->token)),
-            bytes, count) == STYXRPC_INVALID)
+    if (offset > SIZE_MAX ||
+        styxrpc_channel_fid_write(&operation->fid, (size_t)offset, bytes, count) == STYXRPC_INVALID)
     {
         return 0;
     }
@@ -136,7 +77,7 @@ static int write_bus(void *cookie, uint64_t offset, const void *bytes, size_t co
 static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity, size_t *size)
 {
     Operation *operation = cookie;
-    if (!current(operation) || offset > SIZE_MAX)
+    if (offset > SIZE_MAX)
     {
         return 0;
     }
@@ -156,7 +97,27 @@ static void close_bus(void *cookie)
 
 
 /* EN/RU: See owned_port.h. / См. owned_port.h. */
-StyxRpcResource device_port_resource(DevicePort *port)
+int device_port_publish(StyxRpcModuleChannels *channels, DevicePort *port, const StyxRpcChannelCall *call,
+    void *reply, size_t capacity, size_t *size)
 {
-    return (StyxRpcResource){port, open_bus, read_bus, write_bus, close_bus};
+    unsigned char child[48], result[64], updates[12];
+    size_t length, result_size, update_size;
+    port->queue = (StyxRpcChannelQueue){.grant = grant, .bytes = port->value,
+        .sizes = &port->size, .capacity = 1, .stride = sizeof(port->value)};
+    const StyxRpcResource resource = {port, open_bus, read_bus, write_bus, close_bus};
+    if (!styxrpc_scheduler_init(&port->scheduler, &port->queue, 1, now_ms, NULL) ||
+        !styxrpc_module_channels_publish(channels, &resource, port->token))
+    {
+        return 0;
+    }
+    if (styxrpc_channel_export_value(port->token, grant.key, 0, child, sizeof(child), &length) == STYXRPC_OK &&
+        fvm_srecord_write(STYX_DYNAMIC_REPLY_TAG, child, length, result, sizeof(result), &result_size) == FVM_S_OK &&
+        fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
+        styxrpc_channel_call_reply(&port_schema, call, result, result_size, updates, update_size,
+            reply, capacity, size) == STYXRPC_OK)
+    {
+        return 1;
+    }
+    styxrpc_module_channels_revoke(channels, port->token);
+    return 0;
 }

@@ -130,6 +130,19 @@ fid holds its lease.
 The C dispatcher can revoke a reverse bus immediately. Pending operations retire before the call returns, and old fids can only be clunked. [`styxrpc_program_unibus_revoke`](reference/program_unibus_revoke.md) The registry issues fresh PIDs for temporary buses and reuses their slots after revocation. [`styxrpc_program_unibus_grant`](reference/program_unibus_grant.md)
 
 
+## Shared C module bus
+
+The hosted library lets several opened calls return independent channels on
+one `.unibus` file. The token selects a queue, and each operation fid holds
+its own open state. The registry handles tokens and revocation. The
+application owns the queues, supplies the registry storage and ties
+revocation to the issuing fid. Use `StyxRpc::serve` on the publisher and
+`StyxRpc::launch` for a C caller operating on a received route.
+
+[`styxrpc_module_channels_init`](reference/module_channels_init.md) · [`styxrpc_module_channels_publish`](reference/module_channels_publish.md) · [`styxrpc_module_channels_resource`](reference/module_channels_resource.md) · [`styxrpc_module_channels_revoke`](reference/module_channels_revoke.md)
+
+[Two channels over one socket](examples/module_channels.md)
+
 ## Sources
 
 [Calls and profiles](include/styxrpc/rpc.h) · [Virtual files](include/styxrpc/vfs.h) ·

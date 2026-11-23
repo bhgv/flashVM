@@ -65,10 +65,12 @@ init()
         raise "wrong remote nested channel exchange";
     }
     port := bridge->port();
-    if (port == nil) {
+    second := bridge->port();
+    if (port == nil || second == nil || port == second) {
         raise "missing C-owned channel";
     }
     port <-= "held-by-c";
+    second <-= "separate-buffer";
     alt {
     message := <-port =>
         if (message != "held-by-c") {
@@ -76,6 +78,9 @@ init()
         }
     * =>
         raise "C-owned channel lost a ready guard";
+    }
+    if (<-second != "separate-buffer") {
+        raise "C-owned ports shared a buffer";
     }
     sys->print("PASS Limbo/C live channels over Styx\n");
 }

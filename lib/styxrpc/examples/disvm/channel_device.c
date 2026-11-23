@@ -11,6 +11,8 @@
 #include "load_profile.h"
 #include "owned_port.h"
 #include <limits.h>
+#include <errno.h>
+#include <sys/random.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +40,8 @@ typedef struct Device
     StyxClient *reverse; /* Exact reverse connection borrowed through all function fids. */
     unsigned char profile[256]; /* Immutable .interface bytes. */
     size_t profile_size;        /* Byte extent of the profile. */
-    DevicePort port;             /* Lease and queue owned by the dispatcher only. */
+    StyxRpcModuleChannels channels; /* Shared bus registry of result leases. */
+    StyxRpcModuleChannel leases[8]; /* Concurrent function-owned ports. */
 } Device;
 
 typedef struct Call
@@ -55,7 +58,7 @@ typedef struct Call
     pthread_t worker;            /* Joined before releasing this fid. */
     StyxRpcResource bus;         /* Module bus callbacks on Bus fids. */
     void *bus_cookie;            /* Opened channel operation on Bus fids. */
-    int owns_port;               /* Revoke this result channel on close. */
+    DevicePort *port;            /* Owned result and independent FIFO, or NULL. */
 } Call;
 
 static const StyxRpcEntry files[] = { /* Exact Qids and names on the forward connection. */
@@ -117,7 +120,7 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     call->id = id;
     if (id == Bus)
     {
-        call->bus = device_port_resource(&call->device->port);
+        call->bus = styxrpc_module_channels_resource(&call->device->channels);
         if (!call->bus.open(call->bus.context, access, &call->bus_cookie))
         {
             free(call);
@@ -293,9 +296,10 @@ static void close_file(void *state)
     {
         pthread_join(call->worker, NULL);
     }
-    if (call->owns_port)
+    if (call->port)
     {
-        device_port_revoke(&call->device->port);
+        styxrpc_module_channels_revoke(&call->device->channels, call->port->token);
+        free(call->port);
     }
     if (call->id == Bus)
     {
@@ -310,13 +314,18 @@ static void close_file(void *state)
 static int publish_port(Call *call)
 {
     StyxRpcChannelCall context;
-    if (styxrpc_channel_call(&port_schema, call->request, call->staged, &context) != STYXRPC_OK ||
-        !device_port_publish(&call->device->port, &context,
-            call->response, sizeof(call->response), &call->ready))
+    if (styxrpc_channel_call(&port_schema, call->request, call->staged, &context) != STYXRPC_OK)
     {
         return 0;
     }
-    call->owns_port = 1;
+    DevicePort *port = calloc(1, sizeof(*port));
+    if (!port || !device_port_publish(&call->device->channels, port, &context,
+        call->response, sizeof(call->response), &call->ready))
+    {
+        free(port);
+        return 0;
+    }
+    call->port = port;
     __atomic_store_n(&call->outcome, 1, __ATOMIC_RELEASE);
     return 1;
 }
@@ -331,7 +340,7 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
     {
         return call->bus.write(call->bus_cookie, offset, bytes, count, written);
     }
-    if (call->id < Exchange || call->started || call->owns_port || call->refused || call->staged != offset ||
+    if (call->id < Exchange || call->started || call->port || call->refused || call->staged != offset ||
         !count || count > sizeof(call->request) - call->staged)
     {
         return 0;
@@ -360,6 +369,30 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
 }
 
 
+/* EN: Fill a token prefix from the system generator, retrying interrupted reads.
+ * RU: Заполнить префикс токена из системного генератора с повтором прерванных чтений. */
+static int fill_entropy(void *context, void *bytes, size_t length)
+{
+    (void)context;
+    unsigned char *cursor = bytes;
+    while (length)
+    {
+        ssize_t count = getrandom(cursor, length, 0);
+        if (count < 0 && errno == EINTR)
+        {
+            continue;
+        }
+        if (count <= 0)
+        {
+            return 0;
+        }
+        cursor += count;
+        length -= (size_t)count;
+    }
+    return 1;
+}
+
+
 /* EN: Consume one connected socket and serve through independent forward/reverse Styx sessions.
  * RU: Принять подключённый сокет и обслуживать прямую и встречную сессии Styx. */
 int main(int argc, char **argv)
@@ -368,6 +401,8 @@ int main(int argc, char **argv)
     long fd = argc == 2 ? strtol(argv[1], &end, 10) : -1;
     Device device = {0};
     if (fd < 3 || fd > INT_MAX || *end ||
+        !styxrpc_module_channels_init(&device.channels, device.leases, sizeof(device.leases) / sizeof(*device.leases),
+            fill_entropy, NULL) ||
         styxrpc_channel_profile("exchange", UINT32_C(0x0c61e66a), &schema,
             device.profile, sizeof(device.profile), &device.profile_size) != STYXRPC_OK)
     {

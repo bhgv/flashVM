@@ -93,8 +93,8 @@ Expect `PASS Limbo/C live channels over Styx`. Add `--jit` for the JIT.
 Limbo passes three channels to the C export. C tests an idle guard, receives
 a string through reverse UniBus and sends a reply. Limbo then passes
 an inner channel through `chan of chan of string`, checks its identity on
-return and exchanges strings on it. The third call returns a C-owned
-buffered channel. Limbo writes to it and reads through `alt`. The module's
+return and exchanges strings on it. Two `port()` calls return channels with separate C-owned
+buffers. Limbo checks receive and `alt`. The module's
 `.unibus` verifies its token, which clunk of the function fid revokes. The
 device reports errors on the open fid. The launcher closes the socket and
 reaps both processes.
@@ -141,3 +141,5 @@ Success prints `PASS delegated PID and module channels between C and DisVM`
 for both VM modes. The launcher closes the socket and waits for the provider.
 
 [C client](disvm/routed_client.c) · [Address decoding](../reference/channel_element_routes.md) · [Routed operations](../reference/channel_route_exchange.md)
+
+[Two channels over one socket](module_channels.md)
