@@ -34,10 +34,19 @@ After revocation, the borrowed graph returns FIFO data to the original queues. T
 
 ## Admit a delegated module channel
 
+Use a [reverse mailbox](STYX_RPC_CHANNEL_MAILBOX.md) when ActionScript should receive and return module grants without a host callback for each frame. The host registers [the mailbox factory](STYX_RPC_CHANNEL_MAILBOX_FACTORY.md) on the reverse server and the script creates the mailbox using a live result as its anchor.
+
+```actionscript
+var mailbox = openMailbox(input, "(c[c[i]])", 1);
+input.send(mailbox);
+```
+
+Poll `mailbox.tryReceive()` from the ActionScript owner. An empty input returns undefined. A received value holds live channels from the issuing module. Use `mailbox.trySend(value)` to give a known channel back to the peer. It returns false on an outbound FIFO that is full. Keep the mailbox reachable until the peer has finished with it, then call `mailbox.close()`. The [C resource](../../lib/styxrpc/reference/channel_mailbox_create.md) can also serve a standalone application. The [recursive mailbox test](../tests/styxrpc/channel-mailbox.c) closes the anchor wrapper and verifies that the mailbox still returns the same module channel twice.
+
 When DisVM sends a module grant to a reverse resource, the host associates that resource with the issuing result. The C dispatcher can use [the route policy](../../lib/styxrpc/reference/channel_read_routed.md) to accept and hand off the frame. On the FlashVM owner, pass the complete frame and an open result channel to [message admission](STYX_RPC_CHANNEL_ADMIT_MESSAGE.md). The C SDK presents each token on the module held by the result. FlashVM decodes the typed value and reuses the same live AS object for a repeated grant. Use the returned channels' `send()`, `receive()` or nonblocking methods. Applications with an already verified route can still use [single-grant admission](STYX_RPC_CHANNEL_ADMIT_MODULE.md).
 
 The [recursive Limbo fixture](../../disVM/examples/remote-scalar/styx-channel-recursive-owner.b) receives a PID from FlashVM, sends its module child to that reverse resource and receives the identical child back. The [FlashVM host](../tests/styxrpc/channel-delegated.c) sends a second PID backed by a two-slot ActionScript queue through that module channel. Dis writes 43, receives the preloaded 81, and reports 81 through the result channel. FlashVM releases the family and reads 43 from the original queue.
 
-Local queue graphs admit exact keys on their own bus. A host-managed resource with an appropriate route policy handles separately addressed PID or module grants. The host delivers received module messages to the owner with the original result as their anchor.
+Local queue graphs admit exact keys on their own bus. The mailbox admits module grants from its pinned module. Applications can serve other route profiles through a resource with an appropriate route policy.
 
 After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'channel-(delegated|pid-graph)' --output-on-failure`. Both scenarios run on the native interpreter and JIT.

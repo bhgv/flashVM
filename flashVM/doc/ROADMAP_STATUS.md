@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1722 / Контрольная точка v0.1722. A reverse mailbox serves
+two independent FIFO directions through libstyxrpc. ActionScript получает
+проверенные каналы модулей под исходной арендой и возвращает их партнёру.
+[EN](STYX_RPC_CHANNEL_DELEGATION.md) / [RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1721 / Контрольная точка v0.1721. The C SDK authenticates
 module tokens from complete reverse messages on the pinned module.
 FlashVM материализует каналы под исходной арендой и сохраняет алиасы.

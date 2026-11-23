@@ -23,6 +23,10 @@ FVM_StyxChannelSet *fvm_styxrpc_channel_lease_set(FVM_Context *context, const FV
 void fvm_styxrpc_pid_release(void *state)
 {
     FVM_StyxPidGrant *grant = state;
+    if (grant->mailbox)
+    {
+        fvm_styxrpc_channel_mailbox_close(grant, 1);
+    }
     fvm_styxrpc_channel_set_release(grant->set, 1);
     free(grant);
 }
@@ -164,13 +168,11 @@ FVM_Result fvm_styxrpc_channel_admit_module(FVM_Context *context, const FVM_Valu
 
 
 /* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
-FVM_Result fvm_styxrpc_channel_admit_message(FVM_Context *context, const FVM_Value *anchor,
-    const char *shape, const void *bytes, size_t size, FVM_Value *out)
+FVM_Result fvm_styxrpc_channel_decode_message(FVM_Context *context, FVM_GCRootScope *roots,
+    FVM_StyxChannelSet *set, const char *shape, const void *bytes, size_t size, FVM_Value *out)
 {
-    FVM_StyxChannelSet *set = fvm_styxrpc_channel_lease_set(context, anchor);
     FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
-    FVM_GCRootScope *roots;
     FVM_Value value;
     FVM_Result status;
     FVM_SRecord element;
@@ -187,34 +189,47 @@ FVM_Result fvm_styxrpc_channel_admit_message(FVM_Context *context, const FVM_Val
     {
         return FVM_OUT_OF_MEMORY;
     }
+    if (styxrpc_channel_lease_import_message(set->lease, shape, bytes, size) != STYXRPC_OK)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
     ++set->references;
+    decode.set = set;
+    decode.delegated = 1;
+    refs.graph = 1;
+    refs.decode_channel = fvm_styxrpc_channel_decode;
+    refs.channel_context = &decode;
+    status = FVM_ERROR;
+    if (fvm_styxrpc_values_decode(context, roots, &refs, shape, &element, &value, 1, &count) && count == 1)
+    {
+        *out = value;
+        status = FVM_OK;
+    }
+    fvm_styxrpc_channel_set_release(set, 0);
+    return status;
+}
+
+
+/* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
+FVM_Result fvm_styxrpc_channel_admit_message(FVM_Context *context, const FVM_Value *anchor,
+    const char *shape, const void *bytes, size_t size, FVM_Value *out)
+{
+    FVM_StyxChannelSet *set = fvm_styxrpc_channel_lease_set(context, anchor);
+    FVM_GCRootScope *roots;
+    FVM_Result status;
+    if (!set || !out)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
     status = fvm_gc_roots_begin(context, &roots);
     if (status == FVM_OK)
     {
         status = fvm_gc_roots_add(roots, anchor);
-        if (status == FVM_OK &&
-            styxrpc_channel_lease_import_message(set->lease, shape, bytes, size) != STYXRPC_OK)
-        {
-            status = FVM_INVALID_ARGUMENT;
-        }
         if (status == FVM_OK)
         {
-            decode.set = set;
-            decode.delegated = 1;
-            refs.graph = 1;
-            refs.decode_channel = fvm_styxrpc_channel_decode;
-            refs.channel_context = &decode;
-            if (fvm_styxrpc_values_decode(context, roots, &refs, shape, &element, &value, 1, &count) && count == 1)
-            {
-                *out = value;
-            }
-            else
-            {
-                status = FVM_ERROR;
-            }
+            status = fvm_styxrpc_channel_decode_message(context, roots, set, shape, bytes, size, out);
         }
         fvm_gc_roots_end(roots);
     }
-    fvm_styxrpc_channel_set_release(set, 0);
     return status;
 }

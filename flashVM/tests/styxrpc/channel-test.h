@@ -58,4 +58,9 @@ int test_channel_avm1_send(FVM_Context *context, const FVM_Value *object, const 
 /* [GC:] EN: Exchange and restore nested live queues over fd in the owning context.
  * RU: Обменяться вложенными живыми очередями и вернуть их в context через fd. */
 int test_channel_pid_graph(FVM_Context *context, int fd);
+
+
+/* [GC:] EN: Use the production mailbox methods with the native recursive Dis module.
+ * RU: Проверить штатные методы встречной очереди с рекурсивным модулем Dis. */
+int test_channel_mailbox(FVM_Context *context, struct StyxClient *client, StyxRpcServer *reverse);
 #endif

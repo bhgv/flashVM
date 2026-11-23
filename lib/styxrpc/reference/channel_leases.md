@@ -9,3 +9,5 @@ Use [leased exchange](channel_lease_exchange.md) for routes issued in the origin
 A C application can serve scoped factories with [module initialization](channel_module_init.md). The provider's callback returns a channel resource, and the library authenticates the module bus and revokes the token on function clunk. The application supplies storage and operations or uses [a copied group resource](channel_group_output.md) for initialized nested queues. The portable [scheduler](scheduler_init.md) provides bounded FIFO and synchronous rendezvous for these operations.
 
 For a complete reverse message delivered for this result, use [message import](channel_lease_import_message.md). It confirms each module token on the pinned module and appends routes only after every token succeeds.
+
+A [reverse mailbox](channel_mailbox_create.md) provides separate bounded FIFOs for the peer and the owner on one PID. The dispatcher validates the typed frames. The owner can dequeue a frame and import its module grants under the pinned lease.

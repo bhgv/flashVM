@@ -5,6 +5,7 @@
 #ifndef FVM_STYXRPC_CHANNEL_PRIVATE_H
 #define FVM_STYXRPC_CHANNEL_PRIVATE_H
 #include "flashvm/styxrpc_channel.h"
+#include "styxrpc/channel_mailbox.h"
 #include "flashvm/gc_roots.h"
 
 #ifdef __cplusplus
@@ -71,6 +72,9 @@ typedef struct FVM_StyxPidGrant
 {
     FVM_StyxChannelSet *set;    /* Retained issuing family and its reverse publications. */
     StyxRpcChannelRoute route;  /* Host-authorized reverse endpoint. */
+    StyxRpcChannelMailbox *mailbox; /* Borrowed from mailbox_output when open. */
+    StyxRpcChannelOutput mailbox_output; /* Optional native FIFO resource. */
+    StyxRpcServer *mailbox_server; /* Borrowed server through the endpoint's retirement. */
 } FVM_StyxPidGrant;
 
 typedef struct FVM_StyxChannelSend
@@ -106,6 +110,17 @@ FVM_Result fvm_styxrpc_channel_create_pid(FVM_Context *context, FVM_StyxChannelS
 /* [GC:] EN: Release a PID message value and retire its native lease reference.
  * RU: Освободить значение PID и снять его ссылку на нативную аренду. */
 void fvm_styxrpc_pid_release(void *state);
+
+
+/* [GC:] EN: Revoke grant's mailbox and disarm it, deferring lease clunk if requested.
+ * RU: Отозвать очередь grant и отключить её, при необходимости отложив clunk. */
+void fvm_styxrpc_channel_mailbox_close(FVM_StyxPidGrant *grant, int deferred);
+
+
+/* [GC:] EN: Validate and decode a reverse module frame into out under roots and set.
+ * RU: Проверить и декодировать встречный кадр в out под корнями roots и арендой set. */
+FVM_Result fvm_styxrpc_channel_decode_message(FVM_Context *context, FVM_GCRootScope *roots,
+    FVM_StyxChannelSet *set, const char *shape, const void *bytes, size_t size, FVM_Value *out);
 
 
 /* [GC:] EN: Retire all local publications of set before dropping its remote lease.

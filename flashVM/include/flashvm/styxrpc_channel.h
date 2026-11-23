@@ -127,6 +127,19 @@ typedef struct FVM_StyxRpcChannelHandlerExport
 FVM_API FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *binding,
     const char *name, uint32_t signature, StyxRpcChannelExport *exported);
 
+
+/* [GC:] EN: Publish a duplex reverse mailbox bound to a live result. Return its
+ * script capability with tryReceive, trySend and close. Borrow reverse through close.
+ * RU: Опубликовать двустороннюю встречную очередь для живого результата. Вернуть
+ * объект со tryReceive, trySend и close. Заимствовать reverse до закрытия. */
+FVM_API FVM_Result fvm_styxrpc_channel_mailbox(FVM_Context *context, const FVM_Value *anchor,
+    const char *shape, unsigned slots, StyxRpcServer *reverse, FVM_Value *out);
+
+
+/* [GC:] EN: Install global(anchor, shape, slots) for the hosted reverse server.
+ * RU: Установить global(anchor, shape, slots) для встречного сервера хоста. */
+FVM_API FVM_Result fvm_styxrpc_channel_mailbox_factory(FVM_Context *context, const char *global, StyxRpcServer *reverse);
+
 #ifdef __cplusplus
 }
 #endif

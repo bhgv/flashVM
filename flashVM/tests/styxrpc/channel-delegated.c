@@ -410,7 +410,7 @@ int test_channel_delegated(FVM_Context *context, int fd)
     if (started)
     {
         StyxClient *client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "flash", "", WAIT_MS, 8);
-        ok = client && run_exchange(context, client, &routes);
+        ok = client && run_exchange(context, client, &routes) && test_channel_mailbox(context, client, routes.server);
         styxclientshutdown(client);
         styxclientfree(client);
         phybidirfree(mux);

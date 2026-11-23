@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_admit_message
 
-[Русский](STYX_RPC_CHANNEL_ADMIT_MESSAGE.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L62) · [Implementation](../src/styxrpc/channel_delegate.c#L167) · [Delegation guide](STYX_RPC_CHANNEL_DELEGATION.md)
+[Русский](STYX_RPC_CHANNEL_ADMIT_MESSAGE.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L62) · [Implementation](../src/styxrpc/channel_delegate.c#L214) · [Delegation guide](STYX_RPC_CHANNEL_DELEGATION.md)
 
 ```c
 #include <flashvm/styxrpc_channel.h>
