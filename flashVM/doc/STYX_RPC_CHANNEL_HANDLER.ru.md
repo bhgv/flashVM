@@ -34,6 +34,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_channel_handler` | function | [include/flashvm/styxrpc_channel.h:105](../include/flashvm/styxrpc_channel.h#L105) |
-| `FVM_StyxRpcChannelHandler` | struct | [include/flashvm/styxrpc_channel.h:91](../include/flashvm/styxrpc_channel.h#L91) |
+| `fvm_styxrpc_channel_handler` | function | [include/flashvm/styxrpc_channel.h:113](../include/flashvm/styxrpc_channel.h#L113) |
+| `FVM_StyxRpcChannelHandler` | struct | [include/flashvm/styxrpc_channel.h:99](../include/flashvm/styxrpc_channel.h#L99) |
 <!-- source-links:end -->

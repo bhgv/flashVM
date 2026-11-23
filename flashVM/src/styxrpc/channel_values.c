@@ -78,6 +78,10 @@ static int same_leaf(const FVM_StyxChannelDecode *decode, size_t index,
         status = styxrpc_channel_export_value(leased->token, grant->key, leased->unbuffered,
             wire, sizeof(wire), &size);
     }
+    else if (decode->delegated)
+    {
+        status = styxrpc_channel_route_value(leased, wire, sizeof(wire), &size);
+    }
     else
     {
         route.kind = STYXRPC_ROUTE_CURRENT;
@@ -115,7 +119,7 @@ int fvm_styxrpc_channel_decode(FVM_Context *context, FVM_GCRootScope *roots, voi
         const StyxRpcChannelRoute *route = styxrpc_channel_lease_route(set->lease, index);
         const StyxRpcChannelGrant *grant = route ? &route->channel :
             set->call && index < set->call->count ? set->call->grants + index : NULL;
-        if (grant && (!route || decode->exported || same_bus(set->lease, decode->parent, index)) &&
+        if (grant && (!route || decode->exported || decode->delegated || same_bus(set->lease, decode->parent, index)) &&
             same_leaf(decode, index, grant, record))
         {
             return fvm_styxrpc_channel_materialize(context, roots, set, index, grant, value);

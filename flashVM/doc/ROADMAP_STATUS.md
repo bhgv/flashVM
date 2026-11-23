@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1721 / Контрольная точка v0.1721. The C SDK authenticates
+module tokens from complete reverse messages on the pinned module.
+FlashVM материализует каналы под исходной арендой и сохраняет алиасы.
+[EN](STYX_RPC_CHANNEL_DELEGATION.md) / [RU](STYX_RPC_CHANNEL_DELEGATION.ru.md).
+
 Checkpoint v0.1720 / Контрольная точка v0.1720. One reverse PID serves
 the graph of local FlashVM queues through the independent C SDK.
 Нативная DisVM перемещает вложенный канал между очередями. Отзыв

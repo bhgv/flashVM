@@ -3,6 +3,7 @@
  * RU: Привязка одобренных хостом полномочий встречного PID и модуля к живой аренде AS.
  */
 #include "channel_private.h"
+#include "managed_refs.h"
 #include "managed_values.h"
 #include "flashvm/userdata.h"
 #include <stdlib.h>
@@ -153,6 +154,63 @@ FVM_Result fvm_styxrpc_channel_admit_module(FVM_Context *context, const FVM_Valu
             else
             {
                 status = FVM_OUT_OF_MEMORY;
+            }
+        }
+        fvm_gc_roots_end(roots);
+    }
+    fvm_styxrpc_channel_set_release(set, 0);
+    return status;
+}
+
+
+/* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
+FVM_Result fvm_styxrpc_channel_admit_message(FVM_Context *context, const FVM_Value *anchor,
+    const char *shape, const void *bytes, size_t size, FVM_Value *out)
+{
+    FVM_StyxChannelSet *set = fvm_styxrpc_channel_lease_set(context, anchor);
+    FVM_StyxChannelDecode decode = {0};
+    FVM_StyxRefs refs = {0};
+    FVM_GCRootScope *roots;
+    FVM_Value value;
+    FVM_Result status;
+    FVM_SRecord element;
+    unsigned count;
+    size_t used;
+    const char *end = shape && *shape == '(' ? fvm_styxrpc_type_end(shape + 1) : NULL;
+    if (!set || !out || !end || end[0] != ')' || end[1] || !bytes || size > STYXRPC_MANAGED_LIMIT ||
+        fvm_srecord_read(bytes, size, STYXRPC_MANAGED_LIMIT, &element, &used) != FVM_S_OK ||
+        used != size || element.tag != STYXRPC_CHANNEL_ELEMENT_TAG)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (set->references == (size_t)-1)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    ++set->references;
+    status = fvm_gc_roots_begin(context, &roots);
+    if (status == FVM_OK)
+    {
+        status = fvm_gc_roots_add(roots, anchor);
+        if (status == FVM_OK &&
+            styxrpc_channel_lease_import_message(set->lease, shape, bytes, size) != STYXRPC_OK)
+        {
+            status = FVM_INVALID_ARGUMENT;
+        }
+        if (status == FVM_OK)
+        {
+            decode.set = set;
+            decode.delegated = 1;
+            refs.graph = 1;
+            refs.decode_channel = fvm_styxrpc_channel_decode;
+            refs.channel_context = &decode;
+            if (fvm_styxrpc_values_decode(context, roots, &refs, shape, &element, &value, 1, &count) && count == 1)
+            {
+                *out = value;
+            }
+            else
+            {
+                status = FVM_ERROR;
             }
         }
         fvm_gc_roots_end(roots);

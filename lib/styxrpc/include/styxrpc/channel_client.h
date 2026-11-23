@@ -62,6 +62,14 @@ const StyxRpcChannelRoute *styxrpc_channel_lease_route(const StyxRpcChannelLease
 StyxRpcStatus styxrpc_channel_lease_admit_module(StyxRpcChannelLease *lease,
     const StyxRpcChannelRoute *route, size_t *index);
 
+
+/* EN: Import a typed reverse message delivered for lease, authenticating each
+ * module token on the pinned module before changing the route table.
+ * RU: Принять типизированное встречное сообщение для lease, проверив каждый
+ * токен на удерживаемом модуле до изменения таблицы маршрутов. */
+StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
+    const char *shape, const void *bytes, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

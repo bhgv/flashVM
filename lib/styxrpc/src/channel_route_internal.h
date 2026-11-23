@@ -14,6 +14,11 @@ int styxrpc_route_valid(const StyxRpcChannelRoute *route);
 struct StyxFid; /* Exact unopened module held by a function lease. */
 
 
+/* EN: Present token on a temporary bus fid under module, without sending a guard.
+ * RU: Предъявить token на временном fid шины модуля, не отправляя ветку. */
+int styxrpc_channel_authenticate_bound(struct StyxFid *module, const unsigned char *token);
+
+
 /* EN: Exchange through the module held at admission, without a fresh module-name lookup.
  * RU: Выполнить обмен через удерживаемый модуль без нового поиска по имени. */
 StyxRpcStatus styxrpc_channel_exchange_bound(struct StyxFid *module, const unsigned char *token,

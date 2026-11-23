@@ -21,6 +21,26 @@ static uint64_t now_ms(void)
 }
 
 
+/* EN: Require a confirmed complete token write at offset zero on fid.
+ * RU: Потребовать подтверждённую запись полного токена на fid со смещения ноль. */
+static int authenticate(StyxFid *fid, const unsigned char *token)
+{
+    StyxTransfer auth;
+    styxclientwrite(fid, 0, token, STYXRPC_CHANNEL_TOKEN_SIZE, &auth);
+    return auth.success && auth.confirmed && !auth.uncertain && auth.count == STYXRPC_CHANNEL_TOKEN_SIZE;
+}
+
+
+/* EN/RU: See channel_route_internal.h. / См. channel_route_internal.h. */
+int styxrpc_channel_authenticate_bound(StyxFid *module, const unsigned char *token)
+{
+    StyxFid *fid = styxclientwalkfrom(module, ".unibus");
+    int accepted = fid && styxclientopen(fid, 2) && authenticate(fid, token);
+    styxclientclunk(fid);
+    return accepted;
+}
+
+
 /* EN: Send one framed request on fid and collect its reply before deadline.
  * A module token is a separate first write. Module replies start at offset zero.
  * RU: Послать кадр через fid и собрать ответ до deadline.
@@ -36,9 +56,7 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
         {
             return STYXRPC_MORE;
         }
-        StyxTransfer auth;
-        styxclientwrite(fid, 0, token, prefix, &auth);
-        if (!auth.success || !auth.confirmed || auth.uncertain || auth.count != prefix)
+        if (!authenticate(fid, token))
         {
             return STYXRPC_INVALID;
         }

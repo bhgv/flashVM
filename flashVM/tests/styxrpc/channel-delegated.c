@@ -195,6 +195,40 @@ static int module_route(const TestRoutes *routes, StyxRpcChannelRoute *route)
 }
 
 
+/* [GC:] EN: Decode two references together, or reject a bad second token without a result.
+ * RU: Декодировать две ссылки вместе либо отклонить неверный второй токен без результата. */
+static int check_pair(FVM_Context *context, const FVM_Value *anchor, const StyxRpcChannelRoute *route,
+    const FVM_Value *expected)
+{
+    unsigned char left[FRAME], right[FRAME], pair[FRAME], frame[FRAME];
+    size_t first, second, length, extent;
+    FVM_Value result, alias;
+    StyxRpcChannelRoute other = *route;
+    if (!expected)
+    {
+        other.token[0] ^= 128U;
+    }
+    fvm_value_number(&result, 19);
+    if (styxrpc_channel_route_value(route, left, sizeof(left), &first) != STYXRPC_OK ||
+        styxrpc_channel_route_value(&other, right, sizeof(right), &second) != STYXRPC_OK ||
+        fvm_srecord_write_pair(STYXRPC_VALUE_TUPLE, left, first, right, second, pair, sizeof(pair), &length) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, pair, length, frame, sizeof(frame), &extent) != FVM_S_OK)
+    {
+        return 0;
+    }
+    FVM_Result status = fvm_styxrpc_channel_admit_message(context, anchor, "((c[c[i]]c[c[i]]))", frame, extent, &result);
+    if (!expected)
+    {
+        return status == FVM_INVALID_ARGUMENT && result.type == FVM_VALUE_NUMBER && result.number == 19;
+    }
+    return status == FVM_OK && result.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, result.object, "0", &alias) == FVM_OK && alias.type == FVM_VALUE_OBJECT &&
+        alias.object == expected->object &&
+        fvm_object_get(context, result.object, "1", &alias) == FVM_OK && alias.type == FVM_VALUE_OBJECT &&
+        alias.object == expected->object;
+}
+
+
 /* [GC:] EN: Load a live tuple and root it through the complete recursive scenario.
  * RU: Загрузить живой кортеж и удерживать его на весь рекурсивный сценарий. */
 static int open_ports(FVM_Context *context, FVM_GCRootScope *roots, FVM_Value *tuple)
@@ -274,10 +308,12 @@ static int exchange(FVM_Context *context, FVM_GCRootScope *roots, StyxClient *cl
         fputs("The first reverse PID did not return a module grant\n", stderr);
         return 0;
     }
-    if (fvm_styxrpc_channel_admit_module(context, &input, &module, &channel) != FVM_OK ||
+    if (!check_pair(context, &input, &module, NULL) ||
+        fvm_styxrpc_channel_admit_message(context, &input, hub.shape, routes->message, routes->extent, &channel) != FVM_OK ||
         fvm_gc_roots_add(roots, &channel) != FVM_OK ||
-        fvm_styxrpc_channel_admit_module(context, &result, &module, &alias) != FVM_OK ||
-        alias.object != channel.object || fvm_object_call(context, input.object, "close", 0, NULL, &value) != FVM_OK)
+        fvm_styxrpc_channel_admit_message(context, &result, hub.shape, routes->message, routes->extent, &alias) != FVM_OK ||
+        alias.object != channel.object || !check_pair(context, &input, &module, &channel) ||
+        fvm_object_call(context, input.object, "close", 0, NULL, &value) != FVM_OK)
     {
         fputs("Could not canonicalize the separate module grant on its anchor\n", stderr);
         return 0;

@@ -35,6 +35,7 @@ typedef struct FVM_StyxChannelDecode
     FVM_StyxChannelSet *set; /* Borrowed checked scope or result set. */
     size_t parent;           /* Present route index for a leased element. */
     int exported;            /* Decode module export tokens in an initial result. */
+    int delegated;           /* Decode authenticated module grants from a reverse message. */
 } FVM_StyxChannelDecode;
 
 

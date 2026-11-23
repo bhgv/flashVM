@@ -8,6 +8,7 @@
 #include "channel_route_internal.h"
 #include "client_exchange.h"
 #include "call_record.h"
+#include "load_profile.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
 #include <stdlib.h>
@@ -255,6 +256,54 @@ StyxRpcStatus styxrpc_channel_lease_import_element(StyxRpcChannelLease *lease, s
         route.kind = STYXRPC_ROUTE_MODULE;
         memcpy(route.token, parent->token, sizeof(route.token));
         if (!admit_route(&staged, &route, &index))
+        {
+            return STYXRPC_INVALID;
+        }
+    }
+    lease->routes = staged;
+    return STYXRPC_OK;
+}
+
+
+/* EN: Check whether this token was already authenticated for the same message.
+ * RU: Проверить, был ли этот токен уже подтверждён для данного сообщения. */
+static int seen_token(const StyxRpcChannelRoutes *received, size_t index)
+{
+    for (size_t i = 0; i < index; ++i)
+    {
+        if (!memcmp(received->entries[i].token, received->entries[index].token, STYXRPC_CHANNEL_TOKEN_SIZE))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
+    const char *shape, const void *bytes, size_t size)
+{
+    StyxRpcChannelRoutes received;
+    const char *end = shape && *shape == '(' ? styxshape_end(shape + 1) : NULL;
+    if (!lease || !end || *end != ')' || end[1] || !strchr(shape, 'c') || strpbrk(shape, "rh") ||
+        styxrpc_channel_element_routes(shape, bytes, size, &received) != STYXRPC_OK)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxRpcChannelRoutes staged = lease->routes;
+    for (size_t i = 0; i < received.count; ++i)
+    {
+        const StyxRpcChannelRoute *route = received.entries + i;
+        size_t index;
+        if (route->kind != STYXRPC_ROUTE_MODULE || !admit_route(&staged, route, &index))
+        {
+            return STYXRPC_INVALID;
+        }
+    }
+    for (size_t i = 0; i < received.count; ++i)
+    {
+        if (!seen_token(&received, i) && !styxrpc_channel_authenticate_bound(lease->module, received.entries[i].token))
         {
             return STYXRPC_INVALID;
         }

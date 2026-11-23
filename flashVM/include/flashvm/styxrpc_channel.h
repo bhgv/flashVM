@@ -55,6 +55,14 @@ FVM_API FVM_Result fvm_styxrpc_channel_admit_module(FVM_Context *context, const 
     const StyxRpcChannelRoute *route, FVM_Value *out);
 
 
+/* [GC:] EN: Decode one typed reverse message routed to anchor by the host.
+ * Authenticate its module grants through the pinned module. Return the value in out.
+ * RU: Декодировать типизированное встречное сообщение, направленное хостом к anchor.
+ * Проверить полномочия на удерживаемом модуле. Вернуть значение через out. */
+FVM_API FVM_Result fvm_styxrpc_channel_admit_message(FVM_Context *context, const FVM_Value *anchor,
+    const char *shape, const void *bytes, size_t size, FVM_Value *out);
+
+
 typedef struct FVM_StyxRpcChannelArguments
 {
     StyxRpcManagedTarget *target; /* Borrowed exact remote offer and caller PID. */
