@@ -182,42 +182,7 @@ static size_t branch(Bytes *b, int conditional)
 }
 
 
-/* EN: Stage an anonymous zero-argument function after its root receiver and key.
- * RU: Записать заголовок анонимной функции после корневого объекта и имени. */
-static size_t frame_begin(Bytes *b)
-{
-    size_t offset;
-    text(b, "_root");
-    byte(b, 0x1c); /* GetVariable */
-    text(b, "onEnterFrame");
-    offset = b->n;
-    byte(b, 0x9b); /* DefineFunction */
-    word(b, 0); /* Patched payload size. */
-    byte(b, 0); /* Empty function name. */
-    word(b, 0); /* Zero parameters. */
-    word(b, 0); /* Patched body size. */
-    return offset;
-}
-
-
-/* EN: Complete the nested action length and install the handler on the root.
- * RU: Записать длину вложенного блока и установить обработчик на корневом клипе. */
-static int frame_end(Bytes *b, size_t offset)
-{
-    size_t length = b->n - offset - 3;
-    size_t body = length - 5;
-    if (length > 65535u)
-    {
-        return 0;
-    }
-    b->data[offset + 1] = (unsigned char)length;
-    b->data[offset + 2] = (unsigned char)(length >> 8);
-    b->data[offset + 6] = (unsigned char)body;
-    b->data[offset + 7] = (unsigned char)(body >> 8);
-    byte(b, 0x4f); /* SetMember */
-    byte(b, 0); /* End initializer, after the frame body already ended. */
-    return !b->failed;
-}
+#include "object_method.inc"
 
 
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
@@ -239,12 +204,12 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     if (m->avm1_frame)
     {
-        frame = frame_begin(&actions);
+        frame = frame_begin(&actions, m->avm1_method[0] ? m->avm1_method + 1 : "onEnterFrame");
     }
     for (i = 0; i < m->count; ++i)
     {
         const FirInstruction *in = &m->instructions[i];
-        if (in->removed)
+        if (in->removed || in->op == O_AS_ARG)
         {
             continue;
         }
@@ -275,15 +240,28 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             byte(&actions, 0x4f);
             break;
         case O_AS_MEMBER_CALL:
-            if (in->b >= 0)
+        case O_AS_MEMBER_ARGS:
+        {
+            int count = 0;
+            int argument = in->b;
+            while (argument >= 0 && in->op == O_AS_MEMBER_ARGS)
             {
-                load(&actions, m, in->b);
+                const FirInstruction *node = &m->instructions[m->values[argument].definition];
+                load(&actions, m, node->a);
+                argument = node->b;
+                ++count;
             }
-            integer(&actions, in->b >= 0);
+            if (argument >= 0)
+            {
+                load(&actions, m, argument);
+                ++count;
+            }
+            integer(&actions, count);
             load(&actions, m, in->a);
             text(&actions, in->text);
             byte(&actions, 0x52);
             break;
+        }
         case O_AS_TO_BOOLEAN:
             load(&actions, m, in->a);
             byte(&actions, 0x12); /* Not converts through AVM1 truthiness. */

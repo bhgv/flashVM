@@ -205,7 +205,11 @@ PRODUCTIONS
                                                                         (. capture(B_SEMANTICS); .)
     ]
     [
-        "source_entry" "avm1_frame"                                     (. fir_build_avm1_frame(); .)
+        "source_entry"
+        (
+            "avm1_frame"                                                (. fir_build_avm1_frame(); .)
+            | "avm1_method" global                                      (. capture(B_AVM1_METHOD); .)
+        )
     ]
     [
         "requires" "flashvm.channels"                                   (. fir_build_channels(); .)
@@ -268,6 +272,7 @@ PRODUCTIONS
         | "key.cell"
         | "i32.slot"
         | "f64.slot"
+        | "as.args"
     )
                                                                         (. capture(B_TYPE); .)
   .
@@ -367,6 +372,10 @@ PRODUCTIONS
     textlit (. capture(B_LITERAL); .)
     | "as.member_call" (. fir_build_op(O_AS_MEMBER_CALL); .)
     A "," textlit (. capture(B_LITERAL); .) [ "," B ]
+    | "as.arg" (. fir_build_op(O_AS_ARG); .)
+    A [ "," B ]
+    | "as.member_call_args" (. fir_build_op(O_AS_MEMBER_ARGS); .)
+    A "," textlit (. capture(B_LITERAL); .) "," B
     | "as.add"                                                          (. fir_build_op(O_ASADD); .)
     A "," B
     | "as.to_number"                                                    (. fir_build_op(O_NUMBER); .)

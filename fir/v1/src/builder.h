@@ -18,7 +18,8 @@ enum
     B_NO,
     B_LITERAL,
     B_LANGUAGE,
-    B_SEMANTICS
+    B_SEMANTICS,
+    B_AVM1_METHOD
 };
 
 

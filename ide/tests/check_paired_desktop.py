@@ -4,33 +4,21 @@
 import argparse
 from pathlib import Path
 from shutil import copy2
-import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[2]  # EN/RU: Repository root / корень проекта.
 sys.path.insert(0, str(ROOT / "lib/styxrpc/tests/flashvm"))
+sys.path.insert(0, str(ROOT / "ide"))
+from build_paired_view import build_movie
 from run import exchange
 
 
 # EN: Compile the AS test source with the same AS2, FIR and SWL pipeline as IDE assets.
 # RU: Собрать тест AS тем же трактом AS2, FIR и SWL, что используется для ресурсов IDE.
 def compile_movie(args, directory):
-    source = Path(__file__).with_name("paired-desktop.as").resolve()
-    fir = directory / "desktop.fir"
-    optimized = directory / "desktop.opt.fir"
-    obj = directory / "desktop.swo"
-    movie = directory / "desktop-view.swf"
-    commands = (
-        (args.as2, source, fir),
-        (args.fir / "fir1", "check", fir),
-        (args.fir / "fir1_opt", fir, optimized),
-        (args.fir / "fir1", "object", optimized, obj),
-        (args.swl, "link", movie, obj, "--size", "960", "640", "--fps", "60"),
-    )
-    for command in commands:
-        subprocess.run(command, check=True, timeout=20)
-    return movie
+    observer = Path(__file__).resolve().with_name("paired-desktop.as")
+    return build_movie(directory / "desktop-view.swf", args.as2, args.fir, args.swl, (observer,))
 
 
 # EN: Run the original desktop controllers in an isolated module/document directory.
@@ -40,11 +28,13 @@ def check(args, directory, movie, mode):
     for module in args.disvm.glob("*.dis"):
         copy2(module, directory / module.name)
     copy2(movie, directory / "desktop-view.swf")
+    capture = directory / "scene.ppm"
 
     # EN: Each command receives one connected descriptor from exchange.
     # RU: Каждая команда получает один связанный дескриптор от exchange.
     def player(fd):
-        return [args.player, "--fd", fd, mode]
+        options = ["--capture", capture] if args.capture else []
+        return [args.player, "--fd", fd, mode, *options]
 
     def desktop(fd):
         return [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
@@ -54,6 +44,26 @@ def check(args, directory, movie, mode):
     if (directory / "paired-output.txt").read_bytes() != "Яpaired".encode("utf-8"):
         raise RuntimeError(f"{mode}: the desktop did not save the exact edited UTF-8 text")
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
+    if args.capture:
+        verify_pixels(capture)
+
+
+# EN: Check the composed 960 × 640 desktop rather than just the protocol output.
+# RU: Проверить собранный растр desktop 960 × 640 вместе с обменом по протоколу.
+def verify_pixels(path):
+    header = b"P6\n960 640\n255\n"
+    data = path.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong desktop raster extent")
+    expected = ((5, 400, "303744"), (858, 400, "303744"), (954, 400, "ffffff"),
+                (90, 52, "c8d3dc"), (120, 78, "255ac4"), (120, 110, "e6ecf5"),
+                (120, 370, "415a50"), (120, 400, "e6ecf5"))
+    for x, y, color in expected:
+        offset = len(header) + (960 * y + x) * 3
+        actual = data[offset:offset + 3].hex()
+        if actual != color:
+            raise RuntimeError(f"desktop raster at {x},{y}: expected {color}, received {actual}")
+    print("PASS desktop raster: resized stage, both rails and pane interiors")
 
 
 # EN: Accept explicit in-tree tool outputs and check both supported dispatch modes.
@@ -62,6 +72,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("disvm", "player", "as2", "fir", "swl"):
         parser.add_argument("--" + name, type=lambda path: Path(path).resolve(), required=True)
+    parser.add_argument("--capture", action="store_true", help="check pixel output with a raster-enabled player")
     args = parser.parse_args()
     with TemporaryDirectory(prefix="paired-desktop-") as temporary:
         directory = Path(temporary)

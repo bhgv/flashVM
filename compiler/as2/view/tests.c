@@ -12,10 +12,9 @@ int main(void)
                           "if (received) { sent = bus.send(received); } } else { ready = true; } }";
     const char *bad[] = {"panel.x = 2147483648;",
                          "panel.x = value();",
-                         "panel.x = bus.send(1, 2);",
+                         "panel.x = bus.send(1, 2, 3, 4, 5, 6, 7, 8, 9);",
                          "panel.x = 3; @",
                          "panel.x = (3;",
-                         "function unsupported() { ready = true; }",
                          "function onEnterFrame(arg) { ready = arg; }",
                          "if (ready) ready = false;",
                          "panel.x = 3; // \xc0\xaf",
@@ -29,6 +28,19 @@ int main(void)
     size_t index;
     int cycle;
     As2ViewDiagnostic diagnostic;
+    const char *method = "function drawItem() { value = target.draw(1, bus.receive(), 3); }";
+    if (!as2_view_compile(method, strlen(method), output, sizeof(output) - 1, &length, &diagnostic))
+    {
+        fprintf(stderr, "valid named root method rejected\n");
+        return 1;
+    }
+    output[length] = 0;
+    if (!strstr((const char *)output, "source_entry avm1_method @drawItem\n") ||
+        !strstr((const char *)output, "as.member_call_args") || !strstr((const char *)output, "as.args = as.arg"))
+    {
+        fprintf(stderr, "method name or argument list was lost\n");
+        return 1;
+    }
     if (!as2_view_compile(handler, strlen(handler), output, sizeof(output) - 1, &length, &diagnostic))
     {
         fprintf(stderr, "valid timeline handler rejected\n");

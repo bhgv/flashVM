@@ -37,8 +37,8 @@ PRODUCTIONS
         EOF
     .
 
-    /* EN: Only the named root callback with an empty parameter list is admitted.
-     * RU: Поддерживается именованный обработчик корня с пустым списком параметров. */
+    /* EN: Install one named root method with an empty parameter list.
+     * RU: Установить именованный метод корня с пустым списком параметров. */
     FrameHandler =
         "function" ident                                                (. emit_frame_handler(); .)
         "(" ")" "{" Statements "}"
@@ -119,7 +119,9 @@ PRODUCTIONS
                                                                           int argc = 0; .)
         "." ident                                                       (. emit_method_name(key); .)
         "("
-        [ Expression                                                    (. argc = 1; .) ]
+        [ Expression                                                    (. argc = 1; .)
+          { "," Expression                                              (. ++argc; .) }
+        ]
         ")"                                                             (. emit_method_call(key, argc); .)
     .
 END View.

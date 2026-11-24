@@ -45,7 +45,8 @@ int fir_object_admit(FirModule *module, char *error, size_t capacity)
         if (((in->op > O_RETURN && in->op < O_AS_GLOBAL_GET) && in->op != O_BOOL_LOCAL && in->op != O_BOOL_STORE &&
              in->op != O_BOOL_LOAD && in->op != O_I32_SHL && in->op != O_I32_SHR && in->op != O_I32_DIV &&
              in->op != O_I32_MOD) ||
-            (in->type > T_CHANNEL && in->type != T_BOOL_SLOT && in->type != T_I32_SLOT && in->type != T_F64_SLOT))
+            (in->type > T_CHANNEL && in->type != T_BOOL_SLOT && in->type != T_I32_SLOT &&
+             in->type != T_F64_SLOT && in->type != T_AS_ARGS))
         {
             snprintf(error, capacity, "table/big operations require a table-capable backend");
             return 0;

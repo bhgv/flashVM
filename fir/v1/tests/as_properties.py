@@ -26,6 +26,9 @@ def main():
                 'as.member_set %owner, "text", %value\n'
                 '%received: any = as.member_call %owner, "receive"\n'
                 '%sent: any = as.member_call %owner, "send", %received\n'
+                '%first: as.args = as.arg %received\n'
+                '%last: as.args = as.arg %value, %first\n'
+                '%drawn: any = as.member_call_args %owner, "draw", %last\n'
                 '%again: any = as.global_get "owner"\n'
                 'as.global_set "captured", %again\n')
         source.write_text('FIR 1.0\nmodule @view\nfunc @main() -> void {\n^entry:\n' + body + 'return\n}\n')
@@ -35,6 +38,7 @@ def main():
         expected = ['as.global_get "owner"', 'as.global_get "value"', 'as.member_set',
                     '%received: any = as.member_call %owner, "receive"',
                     '%sent: any = as.member_call %owner, "send", %received',
+                    '%drawn: any = as.member_call_args %owner, "draw", %last',
                     'as.global_get "owner"', 'as.global_set "captured"']
         offset = 0
         for operation in expected:
@@ -62,6 +66,16 @@ def main():
             raise RuntimeError('non-AVM1 target overwrote an output for an AVM1 callback')
         source.write_text('FIR 1.0\nmodule @frame\nsource_entry avm1_frame\n' + empty_frame)
         command([compiler, 'check', source], success=False)
+        method_header = frame_header.replace('avm1_frame', 'avm1_method @drawItem')
+        source.write_text('FIR 1.0\nmodule @frame\n' + method_header + empty_frame)
+        command([optimizer, source, optimized])
+        if method_header not in optimized.read_text():
+            raise RuntimeError('optimizer discarded named root method metadata')
+        command([compiler, 'object', optimized, work / 'method.swo'])
+        args = '%v: i32 = const.i32 1\n%a0: as.args = as.arg %v\n'
+        args += ''.join(f'%a{i}: as.args = as.arg %v, %a{i-1}\n' for i in range(1, 9))
+        source.write_text('FIR 1.0\nmodule @bad\nfunc @main() -> void {\n^entry:\n' + args + 'return\n}\n')
+        command([compiler, 'check', source], success=False)
         for replacement in ('%bad: any = as.global_get "__fir1$x"',
                             '%bad: any = as.global_get ""',
                             '%bad: i32 = as.global_get "owner"',
@@ -69,6 +83,9 @@ def main():
                             '%bad: any = as.member_call %value, "method"',
                             '%bad: i32 = as.member_call %owner, "method"',
                             '%bad: any = as.member_call %owner, "method", %channel',
+                            '%bad: any = as.member_call_args %owner, "method", %value',
+                            '%bad: as.args = as.arg %channel',
+                            '%bad: as.args = as.arg %value, %value',
                             '%bad: bool = as.to_boolean %channel',
                             '%bad: i32 = as.to_boolean %value',
                             'as.member_set %value, "text", %missing',

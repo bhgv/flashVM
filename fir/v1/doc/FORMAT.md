@@ -149,6 +149,8 @@ switch. C API: `FirModule.source_language/source_semantics`; 0 means unspecified
 backend installs `@main` as the root's parameterless `onEnterFrame`. The body uses
 frame-local SSA storage and its own branch targets. Dis and the table runner
 reject this entry kind. C API: `FirModule.avm1_frame`.
+`source_entry avm1_method @name` uses the same standalone body to install the
+named root method. The name lives in `FirModule.avm1_method`, including `@`.
 Rebuild both clients and libraries after C structure changes.
 
 Numeric literals admit explicit +, .5/2. for f64 and 0x/0X. i32 is still signed:

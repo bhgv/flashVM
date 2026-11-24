@@ -146,7 +146,7 @@ static void literal(const char *text, int line)
     char *end;
     errno = 0;
     if (in->op == O_STRING || in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET ||
-        in->op == O_AS_MEMBER_CALL)
+        in->op == O_AS_MEMBER_CALL || in->op == O_AS_MEMBER_ARGS)
     {
         size_t i, n = 0, size = strlen(text);
         for (i = 1; i + 1 < size; ++i)
@@ -224,7 +224,7 @@ void fir_build_token(int role, const char *text, int line)
     static const char *const types[] = {
         "void",      "i32",         "f64",        "bool",      "string",    "any",       "channel",     "i64",
         "table.big", "table.slot",  "big.range",  "keys",      "table.key", "bool.slot", "table.range", "string.range",
-        "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot"};
+        "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot", "as.args"};
     int index;
     if (active->failed)
     {
@@ -267,6 +267,12 @@ void fir_build_token(int role, const char *text, int line)
                                                               : FIR_LIMBO_I32;
         return;
     }
+    if (role == B_AVM1_METHOD)
+    {
+        m->avm1_frame = 1;
+        strcpy(m->avm1_method, text);
+        return;
+    }
     if (role == B_LITERAL)
     {
         literal(text, line);
@@ -274,14 +280,14 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_TYPE)
     {
-        for (index = T_I32; index <= T_F64_SLOT; ++index)
+        for (index = T_I32; index <= T_AS_ARGS; ++index)
         {
             if (!strcmp(types[index], text))
             {
                 break;
             }
         }
-        if (index > T_F64_SLOT || in->result < 0)
+        if (index > T_AS_ARGS || in->result < 0)
         {
             fir_build_error("invalid type", line);
             return;

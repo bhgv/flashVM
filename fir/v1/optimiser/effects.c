@@ -54,6 +54,7 @@ unsigned fir_effects(FirOp op)
     case O_F64_LE:
     case O_BOOL_NOT:
     case O_AS_TO_BOOLEAN:
+    case O_AS_ARG:
     case O_BOOL_EQ:
     case O_I32_AND:
     case O_I32_OR:
@@ -106,6 +107,7 @@ unsigned fir_effects(FirOp op)
     case O_AS_GLOBAL_SET:
     case O_AS_MEMBER_SET:
     case O_AS_MEMBER_CALL:
+    case O_AS_MEMBER_ARGS:
     case O_ASADD:
     case O_NUMBER:
     case O_CHANNEL:

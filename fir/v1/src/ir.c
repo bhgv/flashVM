@@ -46,7 +46,7 @@ static int symbol_name(const char *text, char prefix)
 static const char *const types[] = {
     "void",      "i32",         "f64",        "bool",      "string",    "any",       "channel",     "i64",
     "table.big", "table.slot",  "big.range",  "keys",      "table.key", "bool.slot", "table.range", "string.range",
-    "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot"};
+    "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot", "as.args"};
 static const char *const ops[] = {"const.i32",
                                   "const.f64",
                                   "const.bool",
@@ -149,7 +149,9 @@ static const char *const ops[] = {"const.i32",
                                   "f64.store",
                                   "f64.load",
                                   "as.member_call",
-                                  "as.to_boolean"};
+                                  "as.to_boolean",
+                                  "as.arg",
+                                  "as.member_call_args"};
 
 
 /* Map a private retained-cell type to its exact source payload type.
@@ -453,9 +455,30 @@ done:
 }
 
 
-/* Check reachable/terminated CFG blocks, dominance, SSA types and retained-owner
- * flow. Borrow m without mutation; return zero with error/cap diagnostic on any
- * invalid field/path or ownership workspace failure. No generated code executes. */
+/* EN: Count one bounded borrowed argument chain. Reject broken links.
+ * RU: Подсчитать аргументы ограниченной заимствованной цепочки с проверкой звеньев. */
+static int argument_count(const FirModule *module, int value)
+{
+    int count = 0;
+    while (value >= 0 && count < FIR_AS_ARGUMENTS)
+    {
+        int definition = module->values[value].definition;
+        if (definition < 0 || module->instructions[definition].removed ||
+            module->instructions[definition].op != O_AS_ARG)
+        {
+            return -1;
+        }
+        value = module->instructions[definition].b;
+        ++count;
+    }
+    return value < 0 ? count : -1;
+}
+
+
+/* EN: Check reachable CFG blocks, dominance, SSA and retained-owner flow.
+ * Borrow m while checking. On failure return zero with a bounded diagnostic.
+ * RU: Проверить достижимые блоки, доминирование, SSA и владение. При ошибке
+ * вернуть ноль и ограниченную диагностику. Код модуля не выполняется. */
 int fir_verify(FirModule *m, char *error, size_t cap)
 {
     unsigned char edge[FIR_BLOCKS][FIR_BLOCKS] = {{0}};
@@ -483,6 +506,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "avm1_frame requires the AS2 source profile");
     }
+    if (m->avm1_method[0] && (!m->avm1_frame || !symbol_name(m->avm1_method, '@')))
+    {
+        return fail(error, cap, "invalid AVM1 root method name");
+    }
     if (!symbol_name(m->module, '@'))
     {
         return fail(error, cap, "invalid module spelling");
@@ -505,7 +532,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         int d = m->values[i].definition;
         if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count ||
-            (unsigned)m->values[i].type > T_F64_SLOT ||
+            (unsigned)m->values[i].type > T_AS_ARGS ||
             (d >= 0 && (m->instructions[d].result != i || m->instructions[d].type != m->values[i].type)))
         {
             return fail(error, cap, "invalid value definition table");
@@ -522,7 +549,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_AS_TO_BOOLEAN || (unsigned)in->type > T_F64_SLOT || in->block < 0 ||
+        if ((unsigned)in->op > O_AS_MEMBER_ARGS || (unsigned)in->type > T_AS_ARGS || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -543,7 +570,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             return fail(error, cap, "empty or reserved AS global binding");
         }
-        if (in->op == O_AS_MEMBER_CALL && !in->text[0])
+        if ((in->op == O_AS_MEMBER_CALL || in->op == O_AS_MEMBER_ARGS) && !in->text[0])
         {
             return fail(error, cap, "empty AS method name");
         }
@@ -560,7 +587,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN ||
                 in->op == O_VALUE_TYPE || in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT ||
                 in->op == O_BIG_NEG || in->op == O_BIG_NOT;
-        binary = in->op == O_I32_STORE || in->op == O_F64_STORE || in->op == O_F64_EQ || in->op == O_F64_LT ||
+        binary = in->op == O_AS_MEMBER_ARGS || in->op == O_I32_STORE || in->op == O_F64_STORE ||
+                 in->op == O_F64_EQ || in->op == O_F64_LT ||
                  in->op == O_F64_LE || in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR ||
                  in->op == O_I32_XOR || in->op == O_AS_MEMBER_SET || in->op == O_REF_STORE || in->op == O_BIG_STORE ||
                  in->op == O_STRING_LT || in->op == O_I32_SHL || in->op == O_I32_SHR || in->op == O_STRING_EQ ||
@@ -572,8 +600,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                  in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE || in->op == O_TABLE_RANGE ||
                  in->op == O_TABLE_SPLICE || in->op == O_STRING_RANGE || in->op == O_STRING_SPLICE ||
                  in->op == O_STRING_CHAR_RANGE;
-        if ((in->a >= 0) != (unary || binary || in->op == O_AS_MEMBER_CALL) ||
-            (in->op != O_AS_MEMBER_CALL && (in->b >= 0) != binary) ||
+        if ((in->a >= 0) != (unary || binary || in->op == O_AS_MEMBER_CALL || in->op == O_AS_ARG) ||
+            (in->op != O_AS_MEMBER_CALL && in->op != O_AS_ARG && (in->b >= 0) != binary) ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
         {
@@ -1034,7 +1062,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             expected = T_STRING;
             break;
         case O_COPY:
-            if (a == T_I32_SLOT || a == T_F64_SLOT || a == T_BOOL_SLOT || a == T_BIG_SLOT ||
+            if (a == T_I32_SLOT || a == T_F64_SLOT || a == T_BOOL_SLOT || a == T_BIG_SLOT || a == T_AS_ARGS ||
                 reference_payload(a) != T_VOID)
             {
                 goto bad_type;
@@ -1109,6 +1137,20 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             break;
         case O_AS_MEMBER_CALL:
             if (a != T_ANY || (in->b >= 0 && (!c || c > T_ANY)))
+            {
+                goto bad_type;
+            }
+            expected = T_ANY;
+            break;
+        case O_AS_ARG:
+            if (!a || a > T_ANY || (in->b >= 0 && c != T_AS_ARGS) || argument_count(m, in->result) < 1)
+            {
+                goto bad_type;
+            }
+            expected = T_AS_ARGS;
+            break;
+        case O_AS_MEMBER_ARGS:
+            if (a != T_ANY || c != T_AS_ARGS || argument_count(m, in->b) < 1)
             {
                 goto bad_type;
             }
@@ -1299,7 +1341,11 @@ int fir_print(FILE *out, const FirModule *m)
                 : m->source_semantics == FIR_LIMBO_REAL   ? "limbo_real"
                                                           : "avm1_numeric");
     }
-    if (m->avm1_frame)
+    if (m->avm1_method[0])
+    {
+        fprintf(out, "source_entry avm1_method %s\n", m->avm1_method);
+    }
+    else if (m->avm1_frame)
     {
         fputs("source_entry avm1_frame\n", out);
     }
@@ -1343,10 +1389,10 @@ int fir_print(FILE *out, const FirModule *m)
             fprintf(out, " %s", in->integer ? "true" : "false");
         }
         else if (in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET ||
-                 in->op == O_AS_MEMBER_CALL)
+                 in->op == O_AS_MEMBER_CALL || in->op == O_AS_MEMBER_ARGS)
         {
             fputc(' ', out);
-            if (in->op == O_AS_MEMBER_SET || in->op == O_AS_MEMBER_CALL)
+            if (in->op == O_AS_MEMBER_SET || in->op == O_AS_MEMBER_CALL || in->op == O_AS_MEMBER_ARGS)
             {
                 fprintf(out, "%s, ", m->values[in->a].name);
             }

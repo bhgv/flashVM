@@ -84,26 +84,46 @@ static int pop(void)
 }
 
 
+/* EN: Write source provenance and one unique module name.
+ * RU: Записать происхождение исходника и уникальное имя модуля. */
+static void header(const char *suffix)
+{
+    append("FIR 1.0\nmodule @ide_view%s\nsource_language as2\nsource_semantics avm1_numeric\n", suffix);
+}
+
+
 /* EN: Begin the FIR entry block for an initializer.
  * RU: Открыть входной блок FIR для инициализатора. */
 void emit_initializer(void)
 {
+    header("");
     append("func @main() -> void {\n^entry:\n");
 }
 
 
-/* EN: Require the root timeline callback name before setting target metadata.
- * RU: Проверить имя обработчика корневого клипа перед записью метаданных. */
+/* EN: Encode the root method's exact name separately from its unique module spelling.
+ * RU: Записать точное имя метода корня отдельно от уникального имени модуля. */
 void emit_frame_handler(void)
 {
     char key[256];
-    if (!name(key) || strcmp(key, "onEnterFrame"))
+    if (!name(key) || strlen(key) > 244)
     {
         failed = 1;
         return;
     }
-    append("source_entry avm1_frame\n");
-    emit_initializer();
+    if (!strcmp(key, "onEnterFrame"))
+    {
+        header("");
+        append("source_entry avm1_frame\n");
+    }
+    else
+    {
+        char suffix[256];
+        snprintf(suffix, sizeof(suffix), "_%s", key);
+        header(suffix);
+        append("source_entry avm1_method @%s\n", key);
+    }
+    append("func @main() -> void {\n^entry:\n");
 }
 
 
@@ -233,19 +253,51 @@ void emit_method_name(char key[256])
     name(key);
 }
 
-/* EN: Replace the receiver and argc operands with one observable call result.
- * RU: Заменить получателя и argc аргументов одним результатом вызова. */
+/* EN: Capture zero to eight operands and one receiver in source evaluation order.
+ * RU: Захватить от нуля до восьми аргументов и получателя в порядке исходника. */
 void emit_method_call(const char *key, int argc)
 {
-    int argument = argc ? pop() : -1;
-    int receiver = pop();
-    int value = values++;
-    append("    %%v%d: any = as.member_call %%v%d, \"%s\"", value, receiver, key);
-    if (argc)
+    int arguments[8];
+    int list = -1;
+    int receiver, value, i;
+    if (argc > (int)(sizeof(arguments) / sizeof(arguments[0])))
     {
-        append(", %%v%d", argument);
+        failed = 1;
+        return;
     }
-    append("\n");
+    for (i = argc; i > 0; --i)
+    {
+        arguments[i - 1] = pop();
+    }
+    receiver = pop();
+    if (argc > 1)
+    {
+        for (i = 0; i < argc; ++i)
+        {
+            int argument = values++;
+            append("    %%v%d: as.args = as.arg %%v%d", argument, arguments[i]);
+            if (list >= 0)
+            {
+                append(", %%v%d", list);
+            }
+            append("\n");
+            list = argument;
+        }
+    }
+    value = values++;
+    if (list >= 0)
+    {
+        append("    %%v%d: any = as.member_call_args %%v%d, \"%s\", %%v%d\n", value, receiver, key, list);
+    }
+    else
+    {
+        append("    %%v%d: any = as.member_call %%v%d, \"%s\"", value, receiver, key);
+        if (argc == 1)
+        {
+            append(", %%v%d", arguments[0]);
+        }
+        append("\n");
+    }
     push(value);
 }
 
@@ -373,8 +425,6 @@ int as2_view_compile(const void *bytes,
     owner = -1;
     failed = 0;
     active = diagnostic;
-    append(
-        "FIR 1.0\nmodule @ide_view\nsource_language as2\nsource_semantics avm1_numeric\n");
     Custom_Error = diagnostic_callback;
     view_parser_reset();
     if (!view_parser_run(source, (int)size))

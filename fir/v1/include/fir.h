@@ -35,6 +35,7 @@ extern "C"
 #define FIR_LIMIT 4096
 #define FIR_BLOCKS 256
 #define FIR_TEXT 256
+#define FIR_AS_ARGUMENTS 8 /* Limit for static AVM1 argument lists. */
 
 
 /* Optional source provenance; this is not a claim of complete language support. */
@@ -82,7 +83,8 @@ typedef enum
     T_KEYS_CELL,    /* [GC:] Private retained key-sequence cell; initialized, noncopyable. */
     T_KEY_CELL,     /* [GC:] Private retained snapshot-key cell; owner plus scalar position. */
     T_I32_SLOT,     /* Private mutable signed32 frame cell; no copy or escape. */
-    T_F64_SLOT      /* Private mutable binary64 frame cell; no GC pointer or escape. */
+    T_F64_SLOT,     /* Private mutable binary64 frame cell; no GC pointer or escape. */
+    T_AS_ARGS       /* Compile-time AVM1 argument list. Never a VM value. */
 } FirType;
 
 
@@ -190,7 +192,9 @@ typedef enum
     O_F64_STORE,         /* Store a binary64 payload without retaining an owner. */
     O_F64_LOAD,          /* Snapshot a binary64 payload into immutable SSA. */
     O_AS_MEMBER_CALL,    /* Call a named method with zero or one argument. */
-    O_AS_TO_BOOLEAN      /* Convert a scalar to AVM1 truthiness. */
+    O_AS_TO_BOOLEAN,     /* Convert a scalar to AVM1 truthiness. */
+    O_AS_ARG,            /* Add a captured scalar at the head of an AVM1 argument list. */
+    O_AS_MEMBER_ARGS     /* Call a named method with a verified static list of arguments. */
 } FirOp;
 
 
@@ -254,7 +258,8 @@ typedef struct
     int count, value_count, block_count, channels;
     FirLanguage source_language;
     FirSemantics source_semantics;
-    int avm1_frame; /* Install @main as a root onEnterFrame handler, otherwise run it at load. */
+    int avm1_frame; /* Install @main as a root method, otherwise run it at load. */
+    char avm1_method[FIR_TEXT]; /* Optional @name for a different root callback. */
     char module[FIR_TEXT];
 } FirModule;
 

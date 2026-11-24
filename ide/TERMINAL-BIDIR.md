@@ -42,9 +42,9 @@ retirement close the port and release retained channels.
 
 Paired startup reports an empty selected path, no new-document override,
 and an initial disabled line-number preference. `rows`, ink operations
-and `attachbulk` still require their service bindings. The complete
-desktop SWF also needs to apply the desktop's view records and publish
-native input through the adapter.
+and `attachbulk` still require their service bindings. The paired desktop SWF
+paints committed rectangular layouts. Text presentation and native input
+through the adapter are still pending.
 
 ## What stays / Что сохраняется
 

@@ -25,8 +25,8 @@ context; Dis passes checked values, never native heap addresses.
 Nonempty sequences of explicit-semicolon assignments are supported:
 `object.property = expression;` and `global = expression;`. Expressions support
 global reads, nonnegative decimal int32 constants, booleans, double-quoted UTF-8
-strings, and `object.method()` or `object.method(expression)`. The receiver is
-evaluated before an argument. The operators `+ - * /` use ordinary precedence.
+strings, and named method calls with zero to eight arguments. The receiver is
+evaluated first, then arguments from left to right. The operators `+ - * /` use ordinary precedence.
 Unary `!` inverts AVM1 truthiness, and parentheses group expressions.
 `+` lowers to dynamic `as.add`; the other arithmetic operators explicitly
 convert operands with `as.to_number` before f64 arithmetic. Values retain AS
@@ -36,12 +36,13 @@ may end at EOF. The profile uses CR/LF line boundaries.
 
 Braced `if (expression) { ... }` supports an optional braced `else`. The condition
 uses AVM1 truthiness. The entire unit can be a parameterless
-`function onEnterFrame() { ... }`. The SWF initializer installs that function on
-the root MovieClip, then FlashVM runs it on timeline ticks. SSA temporaries are
+`function name() { ... }`. The SWF initializer installs that method on
+the root MovieClip. FlashVM calls `onEnterFrame` on timeline ticks, and a script
+can call another named method on `_root`. SSA temporaries are
 local to each invocation. Plain assignments follow normal AVM1 name resolution.
 
-General function declarations, standalone call statements, multi-argument calls,
-member reads, loops and classes remain outside the profile. The shared syntax frontend
+Parameters in declarations, standalone call statements, member reads, loops
+and classes remain outside the profile. The shared syntax frontend
 can recognize more than this profile; unsupported lowering fails explicitly.
 Bounds: source 16 KiB, names 253 bytes, spelled string contents 255 bytes,
 staged FIR 64 KiB. Quoted strings support `\"`, `\\`, `\n`, `\r` and `\t`. Assignment comments
@@ -111,4 +112,6 @@ remaining C-rendered editor widgets stay open. Document/browser policy is Limbo;
 AS handles the implemented TextField content/geometry; native font/raster/window
 and OS ports provide primitives.
 
-The current profile emits one `@ide_view` initializer; combining multiple profile units requires distinct module naming in a later API. / Текущий профиль выдаёт один инициализатор `@ide_view`; выбор разных имён модулей для нескольких единиц — следующий шаг API.
+Initializer and `onEnterFrame` units use `@ide_view`. Other root methods use
+`@ide_view_<name>` so their SWO objects can be linked together. Root method names
+are limited to 244 ASCII bytes to fit the generated module name.

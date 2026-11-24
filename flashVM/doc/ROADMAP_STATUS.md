@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1741 / Контрольная точка v0.1741. The paired AS2 movie paints
+committed MovieClip panes from the real desktop scene. Проверяются смена
+компоновки по запросу, точные пиксели и сохранение UTF-8.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1740 / Контрольная точка v0.1740. The actual menu 8 Limbo desktop
 builds on ordinary DisVM. Парный SWF проходит штатный ввод Unicode и Save As,
 затем ожидает подтверждённого завершения desktop.
