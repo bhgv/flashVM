@@ -142,7 +142,10 @@ static char *walk(Qid *qid, char *name)
             *qid = styxqid(PROG_QID, 1);
             return nil;
         }
-        return walk_child(qid, name, owner->shared_root, &owner->permanent);
+        StyxBacking *root = styxtree(owner->shared);
+        styxbackingfree(owner->shared_root);
+        owner->shared_root = root;
+        return walk_child(qid, name, root, &owner->permanent);
     }
     if (qid->path == PROG_QID)
     {

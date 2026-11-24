@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1733 / Контрольная точка v0.1733. The bidirectional DisVM
+mount exports its current ordinary namespace by default. Новые запросы
+разрешаются с учётом живого стека привязок. [EN](STYX_RPC_PLAYER.md) /
+[RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1732 / Контрольная точка v0.1732. Ordinary SDK VFS hides
 service paths and named UniBus exchange roots. Служебные корни открываются
 от точки подключения Styx. [EN](../../lib/styxrpc/reference/custom_messages.md) /

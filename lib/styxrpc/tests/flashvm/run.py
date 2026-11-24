@@ -51,24 +51,26 @@ def exchange(directory, server_command, client_command, expected, provider_trace
                     provider.kill()
 
 
-# EN: Run installed-equivalent processes against a real DisVM shared root with selected access.
-# RU: Запустить штатные процессы с настоящим общим корнем DisVM и заданным доступом.
-def native_player(args, directory, tests, mode, writable):
+# EN: Exercise the default reverse namespace with both production executables.
+# RU: Проверить встречное пространство имён по умолчанию на штатной паре.
+def native_player(args, directory, tests, mode):
     directory.mkdir()
-    prepare_movies(directory, native=True, writable=writable)
-    image = compile_image(args, directory, tests / "native_player.b", "native-player.dis")
-    share = "--share-vfs-rw" if writable else "--share-vfs"
+    prepare_movies(directory, native=True, writable=True)
+    root = directory / "share"
+    (directory / "paired-root.swf").rename(root / "paired-root.swf")
+    (root / "movies").rename(root / "assets")
+    (root / "movies").mkdir()
+    image = compile_image(args, root, tests / "native_player.b", "native-player.dis")
     exchange(
-        directory,
+        root,
         lambda fd: [args.flash_host, "--fd", fd, mode],
-        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc", share, "share",
+        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS native FlashVM and DisVM pair",
         ("styx-child", "styx-leaf"),
     )
-    expected = b"Z" if writable else b"A"
-    if (directory / "share" / "marker.txt").read_bytes() != expected:
-        raise RuntimeError("native shared-root write differs")
+    if (root / "marker.txt").read_bytes() != b"Z":
+        raise RuntimeError("native namespace write differs")
 
 
 # EN: Select provider and caller, using only the real VM entry points.
@@ -116,8 +118,7 @@ def main():
         }[args.profile]
         action = f"{args.profile}-" if args.profile else ""
         if args.direction == "native-player":
-            native_player(args, directory / "readonly", tests, mode, writable=False)
-            native_player(args, directory / "writable", tests, mode, writable=True)
+            native_player(args, directory / "live", tests, mode)
         elif args.direction == "flash-to-dis":
             if args.profile == "module-load":
                 (directory / "local-only").write_bytes(b"native file excluded by the paired root")

@@ -57,7 +57,7 @@ def prepare(directory, native=False, writable=False):
     first += load(".prog/child.swf", "child")
     first += load("http://example.invalid/child.swf", "child")
     if native:
-        first += load("/movies/chapter/escape.swf", "child")
+        first += load("/movies/chapter/missing.swf", "child")
     if writable:
         first += push("_root.marker", "wo", "marker.txt", 2, "fs") + b"\x1c" + push("open") + b"\x52\x1d"
         first += push(90, 1) + b"\x42" + push(1, "_root.marker") + b"\x1c" + push("write") + b"\x52\x17"
@@ -77,7 +77,6 @@ def prepare(directory, native=False, writable=False):
         chapter.mkdir(parents=True)
         (share / "child.swf").rename(chapter / "child.swf")
         (share / "leaf.swf").rename(share / "movies" / "leaf.swf")
-        (chapter / "escape.swf").symlink_to(directory / "local-only.swf")
         hidden = share / ".prog"
         hidden.mkdir()
         (hidden / "child.swf").write_bytes((directory / "local-only.swf").read_bytes())

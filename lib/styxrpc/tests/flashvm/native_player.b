@@ -68,11 +68,38 @@ upload()
 }
 
 
+# EN: Remove the layer, then check a second run on the existing Styx connection.
+# RU: Удалить слой и проверить повторный запуск в том же соединении Styx.
+check_unmounted()
+{
+    if (sys->unmount("/assets", "/movies") < 0) {
+        raise "could not remove the live movie binding";
+    }
+    upload();
+    command("start");
+    for (attempt := 0; attempt < 100; ++attempt) {
+        current := state();
+        if (int field(current, "ticks=") >= 3) {
+            if (field(current, "movies_loaded=") != "0" ||
+                field(current, "movie_load_errors=") != "6") {
+                raise "old layer was still visible after unmount";
+            }
+            return;
+        }
+        sys->sleep(20);
+    }
+    raise "player did not run after unmount";
+}
+
+
 # EN: Wait for three automatic ticks and a grandchild load, then confirm pause.
 # RU: Дождаться трёх автоматических тактов и вложенного файла, затем подтвердить паузу.
 init()
 {
     sys = load Sys Sys->PATH;
+    if (sys->bind("/assets", "/movies", Sys->MREPL) < 0) {
+        raise "could not bind the live movie provider";
+    }
     upload();
     if (field(state(), "state=") != "ready") {
         raise "player did not prepare the upload";
@@ -91,6 +118,7 @@ init()
             if (field(after, "state=") != "paused" || field(frozen, "ticks=") != field(after, "ticks=")) {
                 raise "paused owner advanced a frame";
             }
+            check_unmounted();
             sys->print("PASS native FlashVM and DisVM pair\n");
             return;
         }

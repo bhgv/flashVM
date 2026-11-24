@@ -26,21 +26,34 @@
 #include <unistd.h>
 
 
-/* EN: Install the mount as a capability in a fresh hosted namespace and run the guest.
- * RU: Установить маунт в новом пространстве имён и запустить программу. */
-static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path, const int *descriptors)
+/* EN: Create and pin the same live group used by the mounted guest and the reverse server.
+ * RU: Создать и закрепить общую живую группу гостя и встречного сервера. */
+static DVM_Namespace *mounted_group(void)
 {
     char cwd[DVM_NS_PATH_LIMIT];
-    if (!getcwd(cwd, sizeof(cwd)))
+    DVM_Namespace *group = getcwd(cwd, sizeof(cwd)) ? dvm_namespace_create(cwd, "/", NULL) : NULL;
+    if (group && !dvm_namespace_pin(group))
+    {
+        dvm_namespace_release(group);
+        group = NULL;
+    }
+    return group;
+}
+
+
+/* EN: Install the mount in group and run the guest. The caller retains group.
+ * RU: Установить маунт в group и запустить гостя. Ссылка group остаётся у вызывающего. */
+static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path,
+    const int *descriptors, DVM_Namespace *group)
+{
+    if (!group || !dvm_namespace_retain(group))
     {
         return 1;
     }
-    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_TERMINAL};
-    handoff.group = dvm_namespace_create(cwd, "/", NULL);
+    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_TERMINAL, .group = group};
     strcpy(handoff.description.module, "styx-mounted");
     DVM_NamespacePlan target;
-    int installed = handoff.group && dvm_namespace_pin(handoff.group) &&
-        dvm_namespace_plan(handoff.group, path, &target) &&
+    int installed = dvm_namespace_plan(handoff.group, path, &target) &&
         dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
     if (installed && descriptors)
     {
@@ -301,24 +314,7 @@ static int visible_shared_path(void *state, const char *path, unsigned access)
 }
 
 
-/* EN: Grant a confined directory with the access ceiling selected by the DisVM host.
- * RU: Выдать удерживаемый каталог с выбранным хостом DisVM пределом доступа. */
-static DVM_Provider *share_vfs(const char *path, unsigned access)
-{
-    DVM_ResourcePlan plan = {0};
-    plan.anchor = dvm_anchor_open(NULL, path);
-    memcpy(plan.relative, ".", sizeof("."));
-    DVM_Provider *source = plan.anchor ? dvm_export_native(&plan, 1) : NULL;
-    dvm_anchor_release(plan.anchor);
-    DVM_View *view = source ? dvm_view_create(visible_shared_path, NULL, NULL) : NULL;
-    if (view && !dvm_view_map(view, "/", source, ".", access, DVM_VIEW_TREE))
-    {
-        dvm_view_discard(view);
-        view = NULL;
-    }
-    dvm_provider_release(source);
-    return dvm_view_freeze(view);
-}
+#include "live_namespace.inc"
 
 
 /* EN: Consume a delegated stream duplicate and run with forward channel 0 and reverse channel 1.
@@ -360,23 +356,6 @@ int dvm_styx_mount_cli(int argc, char **argv)
             return 2;
         }
     }
-    const char *shared_path = NULL;
-    unsigned shared_access = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
-    if (argc > separator + 1 && (!strcmp(argv[separator], "--share-vfs") ||
-        !strcmp(argv[separator], "--share-vfs-rw")))
-    {
-        if (raw || !argv[separator + 1][0])
-        {
-            fprintf(stderr, "disvm: --share-vfs requires a bidirectional mount and a directory\n");
-            return 2;
-        }
-        if (!strcmp(argv[separator], "--share-vfs-rw"))
-        {
-            shared_access |= FVM_ACCESS_WRITE;
-        }
-        shared_path = argv[separator + 1];
-        separator += 2;
-    }
     int descriptors[DVM_LAUNCH_FD_COUNT] = {0};
     int granted = 0;
     while (argc > separator + 1 && (!strcmp(argv[separator], "--fd3") || !strcmp(argv[separator], "--fd")))
@@ -410,7 +389,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--share-vfs DIR | --share-vfs-rw DIR] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -424,7 +403,10 @@ int dvm_styx_mount_cli(int argc, char **argv)
             fprintf(stderr, "disvm: cannot initialize raw Styx mount\n");
             return 1;
         }
-        int result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL);
+        DVM_Namespace *group = mounted_group();
+        int result = run_mounted(argc - separator, argv + separator, mount, path,
+            granted ? descriptors : NULL, group);
+        dvm_namespace_release(group);
         dvm_provider_release(mount);
         return result;
     }
@@ -438,10 +420,12 @@ int dvm_styx_mount_cli(int argc, char **argv)
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
         return 2;
     }
-    DVM_Provider *shared = shared_path ? share_vfs(shared_path, shared_access) : NULL;
-    if (shared_path && !shared)
+    DVM_Namespace *group = mounted_group();
+    DVM_Provider *shared = live_namespace(group);
+    if (!shared)
     {
-        fprintf(stderr, "disvm: cannot prepare shared VFS directory\n");
+        fprintf(stderr, "disvm: cannot publish live VFS namespace\n");
+        dvm_namespace_release(group);
         close(breaker);
         close(fd);
         return 1;
@@ -455,7 +439,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL);
+        result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL, group);
     }
     else
     {
@@ -464,6 +448,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxcallerjoin(reverse);
+    dvm_namespace_release(group);
     dvm_provider_release(mount);
     phybidirfree(mux);
     return result;
