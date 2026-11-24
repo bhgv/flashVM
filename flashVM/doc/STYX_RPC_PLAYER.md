@@ -25,6 +25,14 @@ The controller sends the startup SWF length as four big-endian bytes followed by
 
 This is the headless player entry point. The desktop window, debugger frontend, and a typed Dis module catalog are supplied by embedding applications. The same control and VFS protocol applies to each owner.
 
+## ActionScript session
+
+Uploaded movies receive `styxrpc` and `styxChannel`. The `styxrpc` object
+uses the mounted DisVM session. For example, `styxrpc.read("project.txt", 0, 32)`
+returns a status and a byte array. `styxChannel("(i)", 1)` creates a local
+typed queue. Each new movie owns its own session object and replacement
+closes the previous movie’s launch fids.
+
 ## Run acceptance
 
 Configure the SDK test build with the matching DisVM source/build and pass `-DSTYXRPC_FLASHVM_PLAYER=/path/to/flashvm_styx_player`. These tests execute the production binaries. They check clock-driven playback, pause, nested SWFs, hidden and post-connect bindings, and writing an existing file.

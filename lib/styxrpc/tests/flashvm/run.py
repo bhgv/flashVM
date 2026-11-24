@@ -2,6 +2,7 @@
 # EN: Run two processes over one delegated socket per VM-bridge direction.
 # RU: Запуск двух процессов через выданный сокет для каждого направления моста VM.
 import argparse
+from collections import Counter
 from pathlib import Path
 import socket
 import subprocess
@@ -39,7 +40,7 @@ def exchange(directory, server_command, client_command, expected, provider_trace
                 client.close()
                 output, _ = provider.communicate(timeout=10)
                 if (result.returncode or provider.returncode or expected not in result.stdout
-                        or any(line not in output.splitlines() for line in provider_trace)
+                        or Counter(provider_trace) - Counter(output.splitlines())
                         or "local-fallback" in output.splitlines()):
                     raise RuntimeError(
                         f"client ({result.returncode}):\n{result.stdout}\n"
@@ -67,7 +68,8 @@ def native_player(args, directory, tests, mode):
         lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS native FlashVM and DisVM pair",
-        ("styx-child", "styx-leaf"),
+        ("styx-child", "styx-leaf", "styxrpc-read:0", "styxrpc-read:0",
+         "styx-channel:object", "styx-channel:object"),
     )
     if (root / "marker.txt").read_bytes() != b"Z":
         raise RuntimeError("native namespace write differs")

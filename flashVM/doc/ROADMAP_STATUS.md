@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1734 / Контрольная точка v0.1734. Paired FlashVM movies
+receive their ActionScript session and typed channel factory at upload.
+Объект сессии живёт до замены фильма. [EN](STYX_RPC_PLAYER.md) /
+[RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1733 / Контрольная точка v0.1733. The bidirectional DisVM
 mount exports its current ordinary namespace by default. Новые запросы
 разрешаются с учётом живого стека привязок. [EN](STYX_RPC_PLAYER.md) /

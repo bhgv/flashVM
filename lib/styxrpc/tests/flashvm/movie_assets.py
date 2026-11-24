@@ -57,6 +57,10 @@ def prepare(directory, native=False, writable=False):
     first += load(".prog/child.swf", "child")
     first += load("http://example.invalid/child.swf", "child")
     if native:
+        first += push(1, 0, "marker.txt", 3, "styxrpc") + b"\x1c" + push("read") + b"\x52"
+        first += push(0) + b"\x4e" + push("styxrpc-read:") + b"\x4d\x47\x26"
+        first += push(1, "(i)", 2, "styxChannel") + b"\x3d\x44"
+        first += push("styx-channel:") + b"\x4d\x47\x26"
         first += load("/movies/chapter/missing.swf", "child")
     if writable:
         first += push("_root.marker", "wo", "marker.txt", 2, "fs") + b"\x1c" + push("open") + b"\x52\x1d"
