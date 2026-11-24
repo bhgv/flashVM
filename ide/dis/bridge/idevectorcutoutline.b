@@ -12,26 +12,27 @@ CutResult: adt
 };
 
 
-# EN: Boundary edges of one filled path. Every edge has fill on its right
-# in page coordinates. Successors wrap at each individual closed subpath.
-# RU: Граница одной заливки. Заливка справа по ходу каждого ребра.
-# Следующие индексы замыкаются отдельно для каждого подпути.
+# EN: Edges of one filled path. Ordinary outlines keep fill on the right.
+# Internal arrangements keep original directions for signed winding.
+# RU: Рёбра одной заливки. У обычного контура заливка справа, у сложного
+# сохраняется исходное направление для знакового обхода.
 CutOutline: adt
 {
     edges: array of CutCurve; # Owned oriented edge values.
     next: array of int;       # End vertex ID for each edge.
     modes: array of int;      # Join mode of the start vertex of each edge.
+    internal: int;           # Discover and classify events within this fill.
 };
 
 
-# EN: One validated, simple input ring before nonzero winding classification.
-# RU: Одно проверенное простое кольцо до классификации ненулевого обхода.
+# EN: One closed input ring before nonzero winding classification.
+# RU: Один замкнутый подпуть до классификации ненулевого обхода.
 CutRing: adt
 {
     edges: array of CutCurve; # Owned segments in original direction.
     first: int;               # First source command of this subpath.
     end: int;                 # Exclusive source command bound.
-    sign: int;                # +1 clockwise, -1 counterclockwise.
+    sign: int;                # Sign of area, zero when it vanishes.
 };
 
 
@@ -128,15 +129,78 @@ cutorient(source: CutResult, rings: array of CutRing, search: ref CutSearch): re
     if (used == 0) {
         return nil;
     }
-    return ref CutOutline(edges[0:used], successors[0:used], modes[0:used]);
+    return ref CutOutline(edges[0:used], successors[0:used], modes[0:used], 0);
 }
 
 
-# EN: Accept the borrowed source as a bounded collection of simple,
-# non-touching closed subpaths. Nil defers uncertain topology to the mask.
-# RU: Принять ограниченный набор простых замкнутых непересекающихся подпутей.
-# Nil передаёт неоднозначную топологию обработке по маске.
-cutoutline(source: CutResult, search: ref CutSearch): ref CutOutline
+# EN: Select the inexpensive orientation path when every ring is simple
+# and disjoint from other ring boundaries. The caller resets trial hits.
+# RU: Выбрать быструю ориентацию для простых колец с раздельными границами.
+# Вызывающий сбрасывает события пробной проверки.
+cutplain(rings: array of CutRing, search: ref CutSearch): int
+{
+    for (i := 0; i < len rings; i++) {
+        ring := rings[i];
+        if (ring.sign == 0 || !cutsimple(ring.edges, search)) {
+            return 0;
+        }
+        for (j := 0; j < i; j++) {
+            if (!cutringapart(ring.edges, rings[j].edges, search)) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
+# EN: Retain original winding for intersecting rings, expanding nonmonotone
+# original edges into exact spans admitted by the contact finder.
+# RU: Сохранить исходный обход пересекающихся колец, разделяя немонотонные
+# рёбра на точные участки для поиска контактов.
+cutraw(source: CutResult, rings: array of CutRing, math: Math, work: ref Work): ref CutOutline
+{
+    expanded := ref CutExpansion(array[192] of CutCurve, 0, work);
+    successors := array[len expanded.edges] of int;
+    modes := array[len expanded.edges] of {* => 1};
+    for (i := 0; i < len rings; i++) {
+        checkwork(work);
+        ring := rings[i];
+        base := expanded.used;
+        previoussplit := 0;
+        for (j := 0; j < len ring.edges; j++) {
+            edge := ring.edges[j];
+            first := expanded.used;
+            cutexpand(expanded, edge, math);
+            if (expanded.used < 0) {
+                return nil;
+            }
+            split := expanded.used-first > 1;
+            mode := cutanchormode(source, ring, edge.a);
+            if (mode == 2 && (previoussplit || split)) {
+                mode = 1;
+            }
+            modes[first] = mode;
+            previoussplit = split;
+        }
+        if (modes[base] == 2 && previoussplit) {
+            modes[base] = 1;
+        }
+        for (j = base; j < expanded.used-1; j++) {
+            successors[j] = j+1;
+        }
+        successors[expanded.used-1] = base;
+    }
+    used := expanded.used;
+    return ref CutOutline(expanded.edges[0:used], successors[0:used], modes[0:used], 1);
+}
+
+
+# EN: Parse bounded closed subpaths, admitting either a simple orientation
+# or a raw arrangement whose within-source crossings are processed later.
+# RU: Прочитать ограниченные замкнутые подпути. Простые ориентируются сразу,
+# у сложных пересечения одного источника будут обработаны позднее.
+cutoutline(source: CutResult, search: ref CutSearch, math: Math): ref CutOutline
 {
     nodes := source.nodes;
     if (len nodes < 4 || len nodes > 192) {
@@ -154,27 +218,24 @@ cutoutline(source: CutResult, search: ref CutSearch): ref CutOutline
         }
         span := nodes[base:i+1];
         edges := cutcurves(span);
-        if (edges == nil || !cutsimple(edges, search)) {
+        if (edges == nil) {
             return nil;
         }
         (area, ignored) := paintmeasure(span, Point(0, 0), search.work);
-        if (area == big 0) {
-            return nil;
-        }
-        for (j := 0; j < count; j++) {
-            if (!cutringapart(edges, rings[j].edges, search)) {
-                return nil;
-            }
-        }
-        sign := 1;
-        if (area < big 0) {
-            sign = -1;
-        }
+        sign := (area > big 0)-(area < big 0);
         rings[count++] = CutRing(edges, base, i+1, sign);
         base = i+1;
     }
     if (base != len nodes || count == 0) {
         return nil;
     }
-    return cutorient(source, rings[0:count], search);
+    rings = rings[0:count];
+    if (cutplain(rings, search)) {
+        return cutorient(source, rings, search);
+    }
+    search.count = 0;
+    if (search.budget < 1) {
+        return nil;
+    }
+    return cutraw(source, rings, math, search.work);
 }

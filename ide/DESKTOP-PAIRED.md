@@ -176,8 +176,10 @@ stroke can unite several visible same-color fills in the same operation.
 Shared straight edges and matching full or partial Bézier segments use the
 fill on each side to decide if the edge survives. Curves can also touch at a
 shared separating tangent and remain separately selectable. The bounded
-coverage path handles unresolved free-form tangencies, overlapping subpaths
-of a single fill, and cases that exceed the vector operation's limits.
+vector operation also handles crossings and repeated subpaths within one
+fill under SVG nonzero winding. It preserves the original Béziers in
+surviving portions, including loops inside one cubic. Unresolved tangencies
+and cases outside the vector operation's limits use the bounded mask.
 
 Escape, focus or another input transition can remove an unreleased
 preview. A complete replacement scene also removes it and retires a
@@ -186,9 +188,9 @@ released preview when the new document is drawn.
 Use `--ink` with the same SDL fixture. It suspends its own Dis process
 to observe preview pixels and cancellation, then sends a surviving stroke
 across more than one fragment and verifies the saved SVG and final raster.
-Use `--merge` to paint across an existing SVG fill, move the stroke away,
-and verify the two remaining fill islands, the original cubic handles, the
-untouched hole, and the visible gap.
+Use `--merge` to paint across an SVG fill drawn twice in the same path, move
+the stroke away, and verify the two remaining islands, the original cubic
+handles, the untouched hole, and the visible gap.
 
 Multiple touch contacts and vector editing overlays still need paired
 integration. Menu 8 currently starts the installed graphical runtime.

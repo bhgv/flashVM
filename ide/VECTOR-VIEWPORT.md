@@ -28,8 +28,17 @@ separating normal using extrema of their scalar projections. It accepts a
 point contact only when both support positions coincide. Local directions at
 the contact keep the two fill faces independently editable.
 
-Tight turns, intersecting subpaths within one source, unresolved curve-to-curve
-contacts and cases outside the vector budget use the bounded mask. The worker traces its coverage and fits the closed
+For self-intersecting input, the worker finds events within the source along
+with events between fills. At each surviving span it counts signed crossings
+on a ray perpendicular to the span. The jump at the ray origin includes all
+coincident source edges. Nonzero winding on both sides discards an internal
+edge, while zero winding leaves an empty face even when surrounded by paths.
+A loop within one cubic is split at its two visits to the crossing, with
+further exact subdivision where needed. The quick interior punch also checks
+that no source edge enters the brush's control box before appending a hole.
+
+Tight turns, unresolved contacts, and inputs outside the vector budget use
+the bounded mask. The worker traces its coverage and fits the closed
 contours with cubic Bézier segments using chord parameters and interval least
 squares. Every sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
@@ -50,6 +59,9 @@ and `dis/bridge/idevectorcutboundary.b`. The [contact tests](dis/tests/idepaint_
 exercise partial seams, subtraction and line/curve and curve/curve tangency.
 The partial seam and separating tangent checks are in
 `dis/bridge/idevectorcutcoincidence.b` and `dis/bridge/idevectorcutsupport.b`.
+Within-source winding and cubic subdivision are in `dis/bridge/idevectorcutwinding.b`
+and `dis/bridge/idevectorcutspans.b`. The [winding tests](dis/tests/idepaint_winding.b)
+cover crossed and repeated paths, opposite windings and a loop within one cubic.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

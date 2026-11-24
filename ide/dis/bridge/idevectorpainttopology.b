@@ -78,6 +78,83 @@ paintmeasure(nodes: array of Node, p: Point, work: ref Work): (big, int)
 }
 
 
+# EN: Bound one original command from start to finish, including controls.
+# RU: Ограничить исходную команду от начала до конца вместе с ручками.
+paintnodebox(node: Node, start, finish: CutPoint): CutBox
+{
+    first := start;
+    second := finish;
+    if (node.verb == Cubic || node.verb == Quadratic) {
+        first = cutpoint(node.cx, node.cy);
+        second = first;
+    }
+    if (node.verb == Cubic) {
+        second = cutpoint(node.c2x, node.c2y);
+    }
+    return cutbounds(CutCurve(node.verb, start, first, second, finish));
+}
+
+
+# EN: Bound the brush and prove no source edge reaches its control box.
+# The source winding must be constant there, even if a redundant subpath
+# changes it elsewhere inside the same visibly filled shape.
+# RU: Ограничить кисть и убедиться, что ни одно исходное ребро не достигает
+# её оболочки. Обход должен быть постоянным, даже если лишний подпуть
+# меняет его в пределах одной видимой заливки.
+paintpunchclear(nodes, brush: array of Node, work: ref Work): int
+{
+    origin := cutpoint(brush[0].x, brush[0].y);
+    box := CutBox(origin.x, origin.y, origin.x, origin.y);
+    previous := origin;
+    for (i := 1; i < len brush; i++) {
+        node := brush[i];
+        if (node.verb == Close) {
+            break;
+        }
+        finish := cutpoint(node.x, node.y);
+        bound := paintnodebox(node, previous, finish);
+        if (bound.left < box.left) {
+            box.left = bound.left;
+        }
+        if (bound.right > box.right) {
+            box.right = bound.right;
+        }
+        if (bound.top < box.top) {
+            box.top = bound.top;
+        }
+        if (bound.bottom > box.bottom) {
+            box.bottom = bound.bottom;
+        }
+        previous = finish;
+    }
+    opened := 0;
+    for (i = 0; i < len nodes; i++) {
+        if (i % 128 == 0) {
+            checkwork(work);
+        }
+        node := nodes[i];
+        finish := cutpoint(node.x, node.y);
+        if (node.verb == Move) {
+            if (opened && !cutapart(paintnodebox(node, previous, origin), box)) {
+                return 0;
+            }
+            opened = 1;
+            origin = finish;
+        } else {
+            if (node.verb == Close) {
+                opened = 0;
+                finish = origin;
+            }
+            if (!cutapart(paintnodebox(node, previous, finish), box)) {
+                return 0;
+            }
+        }
+        previous = finish;
+    }
+    return !opened || cutapart(paintnodebox(Node(Close, 0, 0, 0, 0, 0, 0), previous, origin), box);
+}
+
+
 # EN: Preserve the old SVG and append an opposite-winding brush contour if
 # the entire stamp has a one-cell margin inside old. Crossing edges and
 # ambiguous winding return nil, asking the caller to trace the cut coverage.
@@ -86,7 +163,7 @@ paintmeasure(nodes: array of Node, p: Point, work: ref Work): (big, int)
 # обходе вернуть nil, чтобы вызывающий построил контур оставшегося покрытия.
 painthole(nodes, brush: array of Node, footprint, old: array of byte, work: ref Work): array of Node
 {
-    if (len nodes + len brush > MaxNodes) {
+    if (len nodes + len brush > MaxNodes || !paintpunchclear(nodes, brush, work)) {
         return nil;
     }
     for (i := 0; i < GridBytes; i++) {

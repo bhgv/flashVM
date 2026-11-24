@@ -82,25 +82,34 @@ cutseamside(contacts: ref CutContacts, edge, first, end: int, t: real): int
 
 # EN: Classify both sides of the active interval. Common edges use their
 # recorded direction. Open intervals between contacts use ordinary winding.
-# Return +1 to keep the direction, -1 to reverse, and zero to drop it.
+# Return +1 to keep, -1 to reverse, zero to drop, or 2 for ambiguity.
 # RU: Классифицировать обе стороны участка. Общая кромка использует
 # сохранённое направление, остальные участки используют правило обхода.
-# +1 сохраняет направление, -1 обращает, ноль удаляет участок.
+# +1 сохраняет направление, -1 обращает, ноль удаляет, 2 означает сомнение.
 cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, lo, hi: real, unite: int): int
 {
     source := sources.outlines[owner];
     t := (hi+lo)*0.5;
-    (point, ignored) := cuteval(source.edges[index], t);
+    (point, tangent) := cuteval(source.edges[index], t);
     edge := sources.offsets[owner]+index;
     right := 0;
     left := 0;
     for (i := 0; i < len sources.outlines; i++) {
         r := 1;
         l := 0;
+        other := sources.outlines[i];
+        start := sources.offsets[i];
+        side := 0;
         if (i != owner) {
-            other := sources.outlines[i];
-            start := sources.offsets[i];
-            side := cutseamside(contacts, edge, start, start+len other.edges, t);
+            side = cutseamside(contacts, edge, start, start+len other.edges, t);
+        }
+        if (other.internal && (i == owner || side != 0)) {
+            valid: int;
+            (r, l, valid) = cutrawsides(other, start, edge, point, tangent, t, contacts);
+            if (!valid) {
+                return 2;
+            }
+        } else if (i != owner) {
             if (side == 0) {
                 r = cutwinding(other.edges, point) != 0;
                 l = r;
@@ -173,6 +182,9 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
                 terminal = -1;
             }
             side := cutclassify(sources, contacts, owner, i, lo, hi, unite);
+            if (side == 2) {
+                return 0;
+            }
             if (side != 0 && !cutinsert(boundary, source.edges[i], from, destination, initial, terminal, lo, hi, side < 0)) {
                 return 0;
             }
@@ -185,14 +197,46 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
 }
 
 
-# EN: Find all crossings and supported contacts between different sources.
-# No crossings are needed for disjoint or fully nested boundaries.
-# RU: Найти пересечения и поддерживаемые касания разных источников.
-# Для вложенных или раздельных границ пересечения не обязательны.
+# EN: Discover events inside an intersecting source. Drop the ordinary
+# shared endpoint of adjacent spans while retaining other hits and seams.
+# RU: Найти внутренние пересечения. Удалить обычные общие концы соседних
+# сегментов, сохраняя прочие пересечения и совпадающие участки.
+cutinternal(source: ref CutOutline, shift: int, contacts: ref CutContacts): int
+{
+    search := contacts.search;
+    for (i := 0; i < len source.edges; i++) {
+        for (j := i+1; j < len source.edges; j++) {
+            base := search.count;
+            cutcontactpair(CutPair(shift+i, shift+j, source.edges[i], source.edges[j], 1), contacts);
+            if (search.count < 0) {
+                return 0;
+            }
+            kept := base;
+            for (k := base; k < search.count; k++) {
+                hit := search.hits[k];
+                forward := source.next[i] == j && hit.t >= 1.0-1.0e-9 && hit.u <= 1.0e-9;
+                backward := source.next[j] == i && hit.u >= 1.0-1.0e-9 && hit.t <= 1.0e-9;
+                if (!forward && !backward) {
+                    search.hits[kept++] = hit;
+                }
+            }
+            search.count = kept;
+        }
+    }
+    return 1;
+}
+
+
+# EN: Discover within-source events and crossings across different fills.
+# RU: Найти события внутри отдельных заливок и пересечения между заливками.
 cutcrossings(sources: CutSources, contacts: ref CutContacts): int
 {
     for (i := 0; i < len sources.outlines; i++) {
-        a := sources.outlines[i].edges;
+        source := sources.outlines[i];
+        if (source.internal && !cutinternal(source, sources.offsets[i], contacts)) {
+            return 0;
+        }
+        a := source.edges;
         for (j := i+1; j < len sources.outlines; j++) {
             b := sources.outlines[j].edges;
             for (left := 0; left < len a; left++) {
@@ -256,7 +300,7 @@ cutboolean(paths: array of CutResult, unite: int, work: ref Work): ref CutResult
     contacts := ref CutContacts(search, array[48] of CutSeam, 0, math);
     sources := CutSources(array[len paths] of ref CutOutline, array[len paths] of int, 0);
     for (i := 0; i < len paths; i++) {
-        outline := cutoutline(paths[i], search);
+        outline := cutoutline(paths[i], search, math);
         if (outline == nil || sources.count+len outline.edges > 192) {
             return nil;
         }

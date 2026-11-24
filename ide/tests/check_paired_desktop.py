@@ -25,9 +25,12 @@ def seed_vector(path, merge=False):
         hole = " M 260 94 L 260 121 L 280 121 L 280 94 Z"
     else:
         edge = " ".join(f"L {60 + 8 * index} 280" for index in range(30))
+    outline = f"M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z{hole}"
+    if merge:
+        outline = f"{outline} {outline}"
     path.write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">'
-        f'<path d="M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z{hole}" '
+        f'<path d="{outline}" '
         'fill="#e04444" stroke="none"/></svg>',
         encoding="utf-8",
     )
@@ -207,8 +210,8 @@ def verify_merge_drawing(drawing, capture):
     if shapes[2].attrib.get("d", "").count("C") != 4:
         raise RuntimeError("moved straight stroke lost its four cubic arcs")
     upper = shapes[0].attrib.get("d", "")
-    if "C 120 30 220 30 292 80" not in upper or "M 260 94 L 260 121 L 280 121 L 280 94" not in upper:
-        raise RuntimeError("vector cut replaced the untouched source cubic or hole\n" +
+    if upper.count("C 120 30 220 30 292 80") != 1 or upper.count("M 260 94 L 260 121 L 280 121 L 280 94") != 1:
+        raise RuntimeError("vector cut lost the original cubic or hole of the doubled source\n" +
                            drawing.read_text(encoding="utf-8"))
     header = b"P6\n960 640\n255\n"
     data = capture.read_bytes()
@@ -220,7 +223,7 @@ def verify_merge_drawing(drawing, capture):
         at = len(header) + (960 * y + x) * 3
         if data[at:at + 3].hex() != color:
             raise RuntimeError(f"wrong Merge Drawing pixel at {x},{y}: {data[at:at + 3].hex()}")
-    print("PASS paired Merge Drawing preserves the source cubic, the untouched hole and the cut")
+    print("PASS paired Merge Drawing preserves the cubic and hole of the doubled source")
     return data
 
 
