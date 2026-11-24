@@ -7,11 +7,6 @@
 #include "flashvm/styxrpc_session.h"
 
 
-/* EN: Install paired script services and expose allocated cleanup state even on partial failure.
- * RU: Установить парные службы AS и выдать состояние очистки даже при частичном отказе. */
-FVM_Result fvm_styxrpc_install_session(FVM_Context *context, struct StyxClient *client, FVM_StyxRpcSession **out);
-
-
 /* EN: Add named launch methods to a rooted, unpublished object.
  * RU: Добавить методы запуска к удерживаемому неопубликованному объекту. */
 FVM_Result fvm_styxrpc_launch_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);

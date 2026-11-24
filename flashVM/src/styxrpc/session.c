@@ -4,9 +4,6 @@
  */
 #include "session_methods.h"
 #include "flashvm/gc_roots.h"
-#include "flashvm/extensions.h"
-#include "flashvm/styxrpc_channel.h"
-#include <stdlib.h>
 #include <string.h>
 
 
@@ -106,45 +103,4 @@ void fvm_styxrpc_session_close(FVM_StyxRpcSession *binding)
         styxrpc_launch_named_close(&binding->tickets[i].fid);
         binding->tickets[i].token = 0;
     }
-}
-
-
-/* [GC:] EN: Publish the mounted session and local channel factory in a fresh movie context.
- * RU: Опубликовать смонтированную сессию и фабрику локальных каналов в новом контексте. */
-FVM_Result fvm_styxrpc_install_session(FVM_Context *context, struct StyxClient *client, FVM_StyxRpcSession **out)
-{
-    FVM_StyxRpcSession *session;
-    FVM_Value object;
-    FVM_GCRootScope *roots;
-    FVM_Result status = fvm_extensions_install(context);
-    if (status != FVM_OK)
-    {
-        return status;
-    }
-    session = calloc(1, sizeof(*session));
-    if (!session)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
-    *out = session;
-    status = fvm_gc_roots_begin(context, &roots);
-    if (status != FVM_OK)
-    {
-        return status;
-    }
-    status = fvm_styxrpc_session_bind(context, session, client, NULL, &object);
-    if (status == FVM_OK)
-    {
-        status = fvm_gc_roots_add(roots, &object);
-    }
-    if (status == FVM_OK)
-    {
-        status = fvm_set_global(context, "styxrpc", &object);
-    }
-    fvm_gc_roots_end(roots);
-    if (status == FVM_OK)
-    {
-        status = fvm_styxrpc_channel_factory(context, "styxChannel");
-    }
-    return status;
 }

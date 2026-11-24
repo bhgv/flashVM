@@ -145,8 +145,8 @@ static int run(int fd, FVM_ExecutionMode mode)
         spec.setup = setup;
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
         {
-            server = styxrpc_server_create(phybidirchannel(mux, 0), &styxrpc_control_tree,
-                fvm_styxrpc_playback_control(playback));
+            server = styxrpc_server_create(phybidirchannel(mux, 0), &styxrpc_module_slot_tree,
+                fvm_styxrpc_playback_slot(playback));
         }
     }
     if (server)

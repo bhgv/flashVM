@@ -23,7 +23,7 @@ The Dis program `controller.dis` controls FlashVM through `/flash/.upload` and `
 
 The controller sends the startup SWF length as four big-endian bytes followed by the SWF. It writes `start` to `/flash/.state` once to begin. Frame scheduling uses the uploaded header rate, or 12 frames per second when the header rate is zero. The player waits for the next frame or incoming Styx work. `pause` stops frame advances while leaving control files reachable, and `restart` starts again from the uploaded bytes. In this executable `debug` pauses and selects the interpreter. The embeddable owner supports an application debugger hook. Either VM can select `--jit` if its host build supports it.
 
-This is the headless player entry point. The desktop window, debugger frontend, and a typed Dis module catalog are supplied by embedding applications. The same control and VFS protocol applies to each owner.
+This is the headless player entry point. The desktop window, debugger frontend, and a catalog of Dis modules imported by FlashVM are supplied by embedding applications. The same control and VFS protocol applies to each owner.
 
 ## ActionScript session
 
@@ -33,9 +33,24 @@ returns a status and a byte array. `styxChannel("(i)", 1)` creates a local
 typed queue. Each new movie owns its own session object and replacement
 closes the previous movie’s launch fids.
 
+## Publishing a movie object
+
+Call `styxrpc.publishObject("view.dis", receiver, ["key", "onKey"])`. DisVM
+loads the image with ordinary `load` at `/flash/mounted/view.dis`. In this
+example Limbo declares `key: fn(code: int): int` and AS implements
+`onKey`. Supply up to eight method descriptors. A managed method takes five
+fields, for example `["label", "describe", 0xac26a778, "(s)", "((fs))"]`
+for `fn(string): (real, string)`. Use the compiled Dis signature and
+the ordinary libstyxrpc codec for shaped values.
+
+A movie can publish one object image. A replacement can publish a fresh image
+with its own fids. Fids of the withdrawn image return an error. Embedders pass
+`fvm_styxrpc_playback_slot(playback)` as the tree context for
+`styxrpc_module_slot_tree`.
+
 ## Run acceptance
 
-Configure the SDK test build with the matching DisVM source/build and pass `-DSTYXRPC_FLASHVM_PLAYER=/path/to/flashvm_styx_player`. These tests execute the production binaries. They check clock-driven playback, pause, nested SWFs, hidden and post-connect bindings, and writing an existing file.
+Configure the SDK test build with the matching DisVM source/build and pass `-DSTYXRPC_FLASHVM_PLAYER=/path/to/flashvm_styx_player`. These tests execute the production binaries. They check clock-driven playback, pause, live VFS bindings, nested SWFs, calls to the movie’s object and retirement of old fids.
 
 ```sh
 ctest --test-dir build/styxrpc -R 'styxrpc-native-player' --output-on-failure

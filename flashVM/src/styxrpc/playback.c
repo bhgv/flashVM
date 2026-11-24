@@ -12,8 +12,7 @@
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
 #include "flashvm/styxrpc_filesystem.h"
-#include "session_methods.h"
-#include "../../ports/styxrpc_stats_port.h"
+#include "playback_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,43 +23,12 @@
 #define PLAYBACK_FALLBACK_FPS 12.0 /* A zero header rate uses twelve frames per second. */
 #define PLAYBACK_SECONDS_MS 1000.0 /* Milliseconds per second. */
 
-typedef enum PlaybackState
-{
-    PLAYBACK_EMPTY,   /* No upload has passed validation. */
-    PLAYBACK_READY,   /* Prepared movie at its initial timeline position. */
-    PLAYBACK_RUNNING, /* Subsequent owner ticks advance the movie. */
-    PLAYBACK_PAUSED,  /* Owner ticks leave the timeline unchanged. */
-    PLAYBACK_DEBUG,   /* Paused with the interpreter and optional debugger configured. */
-    PLAYBACK_FAILED   /* A timeline operation failed; restart can rebuild the image. */
-} PlaybackState;
-
-struct FVM_StyxRpcPlayback
-{
-    FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
-    StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */
-    FVM_Context *context;         /* Current movie context, NULL until a successful upload. */
-    FVM_StyxRpcSession *script;  /* Owned per-movie AS session and launch tickets. */
-    FVM_StyxRpcMovies *movies;   /* Owned deferred SWF loader for the current paired context. */
-    FVM_Object *root;             /* [GC:] Root clip pinned in the current context. */
-    unsigned char *swf;           /* Owned copy used by restart. */
-    size_t size;                  /* Length of the retained SWF, in bytes. */
-    PlaybackState state;         /* State reported to the controller. */
-    FVM_Result last;              /* Last timeline or control operation status. */
-    double period;                /* Milliseconds per frame from the uploaded SWF. */
-    unsigned long schedule;        /* Changes when start establishes a new frame deadline. */
-    unsigned long ticks;          /* Successfully advanced ticks for the current movie. */
-    double last_wall;             /* Last available monotonic sample in seconds. */
-    double last_cpu;              /* Last available owner CPU sample in seconds. */
-    FVM_StyxRpcProcessStats process; /* Previous kernel sample for matching CPU deltas by thread identity. */
-};
-
-
 /* [GC:] EN: Drop deferred roots before the VM and free the retained callback storage.
  * RU: Снять отложенные корни до освобождения VM, затем освободить колбэки. */
-static void dispose_movie(FVM_Context *context, FVM_StyxRpcMovies *movies, FVM_StyxRpcSession *script)
+static void dispose_movie(FVM_Context *context, FVM_StyxRpcMovies *movies, FVM_StyxRpcPlayerServices *script)
 {
     fvm_styxrpc_movies_finish(movies, 0);
-    fvm_styxrpc_session_close(script);
+    fvm_styxrpc_player_disarm(script);
     fvm_context_destroy(context);
     free(script);
     free(movies);
@@ -74,7 +42,7 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     FVM_Context *context = NULL;
     FVM_Object *root = NULL;
     FVM_StyxRpcMovies *movies = NULL;
-    FVM_StyxRpcSession *script = NULL;
+    FVM_StyxRpcPlayerServices *script = NULL;
     FVM_SWFInfo info;
     FVM_Result status = fvm_context_create(playback->spec.runtime, &context);
     if (status == FVM_OK)
@@ -99,7 +67,7 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
         }
         if (status == FVM_OK)
         {
-            status = fvm_styxrpc_install_session(context, playback->spec.session, &script);
+            status = fvm_styxrpc_player_services(context, playback->spec.session, playback->slot, &script);
         }
     }
     if (status == FVM_OK)
@@ -137,6 +105,10 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
             }
             status = fvm_styxrpc_movies_bind(movies);
         }
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_styxrpc_player_activate(playback->slot, script);
     }
     if (status != FVM_OK)
     {
@@ -474,6 +446,13 @@ FVM_Result fvm_styxrpc_playback_create(const FVM_StyxRpcPlaybackSpec *spec, FVM_
         free(playback);
         return FVM_INVALID_ARGUMENT;
     }
+    playback->slot = styxrpc_module_slot_create(playback->control);
+    if (!playback->slot)
+    {
+        styxrpc_control_destroy(playback->control);
+        free(playback);
+        return FVM_OUT_OF_MEMORY;
+    }
     *out = playback;
     return FVM_OK;
 }
@@ -487,10 +466,19 @@ StyxRpcControl *fvm_styxrpc_playback_control(FVM_StyxRpcPlayback *playback)
 
 
 /* EN/RU: See flashvm/styxrpc_playback.h. / См. flashvm/styxrpc_playback.h. */
+StyxRpcModuleSlot *fvm_styxrpc_playback_slot(FVM_StyxRpcPlayback *playback)
+{
+    return playback ? playback->slot : NULL;
+}
+
+
+/* EN/RU: See flashvm/styxrpc_playback.h. / См. flashvm/styxrpc_playback.h. */
 void fvm_styxrpc_playback_destroy(FVM_StyxRpcPlayback *playback)
 {
     if (playback)
     {
+        fvm_styxrpc_player_activate(playback->slot, NULL);
+        styxrpc_module_slot_destroy(playback->slot);
         styxrpc_control_destroy(playback->control);
         dispose_movie(playback->context, playback->movies, playback->script);
         free(playback->swf);

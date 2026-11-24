@@ -8,7 +8,9 @@ import struct
 # RU: Кодировать строки и целые для следующей операции AVM1.
 def push(*values):
     payload = b"".join(
-        b"\0" + value.encode() + b"\0" if isinstance(value, str) else b"\x07" + struct.pack("<i", value)
+        b"\0" + value.encode() + b"\0" if isinstance(value, str)
+        else b"\x06" + struct.pack("<d", value)[4:] + struct.pack("<d", value)[:4] if isinstance(value, float)
+        else b"\x07" + struct.pack("<i", value)
         for value in values
     )
     return b"\x96" + struct.pack("<H", len(payload)) + payload
@@ -18,6 +20,36 @@ def push(*values):
 # RU: Вызвать метод выбранного клипа и отбросить результат.
 def method(receiver, name, *args):
     return push(*reversed(args), len(args), receiver) + b"\x1c" + push(name) + b"\x52\x17"
+
+
+# EN: Emit an anonymous AVM1 function whose return is used by the loaded Dis module.
+# RU: Сформировать анонимную функцию AVM1 для вызывающего модуля Dis.
+def anonymous(parameters, body):
+    header = b"\0" + struct.pack("<H", len(parameters))
+    header += b"".join(parameter.encode() + b"\0" for parameter in parameters)
+    payload = header + struct.pack("<H", len(body)) + body
+    return b"\x9b" + struct.pack("<H", len(payload)) + payload
+
+
+# EN: Publish the movie's key input and clip position methods through the player SDK.
+# RU: Опубликовать ввод клавиш и чтение координаты клипа через SDK плеера.
+def view_module():
+    view = push("_root") + b"\x1c" + push("keyView") + b"\x4e"
+    code = push("code") + b"\x1c"
+    first = method("_root", "createEmptyMovieClip", "keyView", 9)
+    first += view + push("_x", 0) + b"\x4f"
+    first += push("_root") + b"\x1c" + push("onKey")
+    first += anonymous(("code",), view + push("_x") + code + b"\x4f" + code + b"\x3e\0")
+    first += b"\x4f" + push("_root") + b"\x1c" + push("snapshot")
+    first += anonymous(("unused",), view + push("_x") + b"\x4e\x3e\0")
+    first += b"\x4f" + push("_root") + b"\x1c" + push("describe")
+    first += anonymous(("text",), push("text") + b"\x1c" + view + push("_x") +
+                       b"\x4e" + push(2) + b"\x42\x3e\0")
+    first += b"\x4f" + push("((fs))", "(s)", float(0xac26a778), "describe", "label", 5) + b"\x42"
+    first += push("snapshot", "snapshot", 2) + b"\x42"
+    first += push("onKey", "key", 2) + b"\x42"
+    first += push("_root") + b"\x1c"
+    return first + push("movie-view.dis", 5, "styxrpc") + b"\x1c" + push("publishObject") + b"\x52\x17"
 
 
 # EN: Compile the ordinary global loadMovie call.
@@ -62,6 +94,7 @@ def prepare(directory, native=False, writable=False):
         first += push(1, "(i)", 2, "styxChannel") + b"\x3d\x44"
         first += push("styx-channel:") + b"\x4d\x47\x26"
         first += load("/movies/chapter/missing.swf", "child")
+        first += view_module()
     if writable:
         first += push("_root.marker", "wo", "marker.txt", 2, "fs") + b"\x1c" + push("open") + b"\x52\x1d"
         first += push(90, 1) + b"\x42" + push(1, "_root.marker") + b"\x1c" + push("write") + b"\x52\x17"

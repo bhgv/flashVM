@@ -34,6 +34,9 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 
+[Replaceable module images](reference/module_slot.md) share a server tree
+with stable playback controls.
+
 ## Build
 
 Install [libunibus](../libunibus/README.md) first. The core is C99 and links

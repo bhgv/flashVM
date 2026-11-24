@@ -5,6 +5,11 @@ implement Client;
 include "sys.m";
 
 Client: module { init: fn(); };
+Movieview: module {
+    key: fn(code: int): int;
+    snapshot: fn(unused: int): int;
+    label: fn(text: string): (real, string);
+};
 sys: Sys;
 
 
@@ -68,9 +73,34 @@ upload()
 }
 
 
+# EN: Invoke input and read back the live MovieClip position through ordinary typed Dis load.
+# RU: Подать ввод и прочитать координату MovieClip через обычный типизированный load Dis.
+check_view(initial, code: int): ref Sys->FD
+{
+    path := "/rpc/mounted/movie-view.dis";
+    image := load Movieview path;
+    if (image == nil) {
+        raise sys->sprint("cannot load SWF view: %r");
+    }
+    if (image->snapshot(0) != initial || image->key(code) != code || image->snapshot(0) != code) {
+        raise "input did not update the SWF movie clip";
+    }
+    (coordinate, label) := image->label("а\0b");
+    if (coordinate != real code || label != "а\0b") {
+        raise "managed callback lost the movie state or counted input";
+    }
+    fid := sys->open(path + "/.interface", Sys->OREAD);
+    bytes := array[1] of byte;
+    if (fid == nil || sys->read(fid, bytes, 1) != 1) {
+        raise "could not keep original image fid";
+    }
+    return fid;
+}
+
+
 # EN: Remove the layer, then check a second run on the existing Styx connection.
 # RU: Удалить слой и проверить повторный запуск в том же соединении Styx.
-check_unmounted()
+check_unmounted(old: ref Sys->FD)
 {
     if (sys->unmount("/assets", "/movies") < 0) {
         raise "could not remove the live movie binding";
@@ -84,6 +114,11 @@ check_unmounted()
                 field(current, "movie_load_errors=") != "6") {
                 raise "old layer was still visible after unmount";
             }
+            bytes := array[1] of byte;
+            if (sys->read(old, bytes, 1) >= 0) {
+                raise "old fid reached the replacement movie";
+            }
+            check_view(0, 66);
             return;
         }
         sys->sleep(20);
@@ -118,7 +153,8 @@ init()
             if (field(after, "state=") != "paused" || field(frozen, "ticks=") != field(after, "ticks=")) {
                 raise "paused owner advanced a frame";
             }
-            check_unmounted();
+            old := check_view(0, 65);
+            check_unmounted(old);
             sys->print("PASS native FlashVM and DisVM pair\n");
             return;
         }

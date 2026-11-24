@@ -5,7 +5,7 @@
 #ifndef FLASHVM_STYXRPC_PLAYBACK_H
 #define FLASHVM_STYXRPC_PLAYBACK_H
 #include "flashvm/execution_mode.h"
-#include "styxrpc/control.h"
+#include "styxrpc/module_slot.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +35,13 @@ FVM_Result fvm_styxrpc_playback_create(const FVM_StyxRpcPlaybackSpec *spec, FVM_
 /* EN: Borrow the control tree context until destruction of the playback owner.
  * RU: Заимствовать контекст дерева управления до освобождения плеера. */
 StyxRpcControl *fvm_styxrpc_playback_control(FVM_StyxRpcPlayback *playback);
+
+
+/* EN: Borrow the combined server tree context through playback destruction.
+ * Serve it with styxrpc_module_slot_tree to expose a current movie's object image.
+ * RU: Заимствовать контекст общего дерева до уничтожения playback.
+ * Обслуживать его через styxrpc_module_slot_tree для публикации образа текущего фильма. */
+StyxRpcModuleSlot *fvm_styxrpc_playback_slot(FVM_StyxRpcPlayback *playback);
 
 
 /* [ASINC] EN: Advance running playback on the same owner thread as the Styx server.

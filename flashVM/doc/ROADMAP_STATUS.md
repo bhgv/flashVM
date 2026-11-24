@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1735 / Контрольная точка v0.1735. Uploaded SWFs publish
+ActionScript object methods for ordinary DisVM `load` on the same connection.
+При смене фильма старые fid образа отзываются. [EN](STYX_RPC_PLAYER.md) /
+[RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1734 / Контрольная точка v0.1734. Paired FlashVM movies
 receive their ActionScript session and typed channel factory at upload.
 Объект сессии живёт до замены фильма. [EN](STYX_RPC_PLAYER.md) /
