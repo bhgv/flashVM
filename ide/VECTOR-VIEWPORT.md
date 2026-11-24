@@ -18,8 +18,16 @@ for all participating outlines before rounding to the editor's SVG grid. New cro
 are cusp nodes. Unchanged source anchors keep their join mode. A symmetric anchor
 becomes smooth when one of its adjoining segments is shortened.
 
-Tight turns, intersecting subpaths within one source, ambiguous contacts and cases
-outside the vector budget use the bounded mask. The worker traces its coverage and fits the closed
+For shared straight intervals and identical complete curves, the operation
+compares fill on both sides of the common boundary. Polynomial roots find
+points where a Bézier meets a straight edge, including tangencies. It also
+accepts endpoint contacts of two curves when their non-flat control hulls
+meet only along an axis. At a contact with several outgoing fragments, the
+local curve directions determine each closed path. A point-only contact can
+therefore leave two independently editable shapes.
+
+Tight turns, intersecting subpaths within one source, unresolved curve-to-curve
+contacts and cases outside the vector budget use the bounded mask. The worker traces its coverage and fits the closed
 contours with cubic Bézier segments using chord parameters and interval least
 squares. Every sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
@@ -35,6 +43,9 @@ Merge policy and topology live in `dis/bridge/idevectormergedrawing.b` and
 `dis/bridge/idevectorbrushsweep.b`. Intersection isolation and contour assembly
 are in `dis/bridge/idevectorcutintersections.b` and `dis/bridge/idevectorcutgraph.b`.
 Compound input and winding are handled by `dis/bridge/idevectorcutoutline.b`.
+Contact detection and path assembly are in `dis/bridge/idevectorcutcontacts.b`
+and `dis/bridge/idevectorcutboundary.b`. The [contact tests](dis/tests/idepaint_contacts.b)
+exercise shared seams, subtraction and a point-only tangency through the brush.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

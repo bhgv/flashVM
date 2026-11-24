@@ -47,6 +47,28 @@ CutInterval: adt
 };
 
 
+# EN: Store one shared crossing or contact, deduplicating repeated leaves
+# of the same original pair. Coincident span endpoints use the same table.
+# RU: Записать пересечение или касание, удаляя повторы одной пары сегментов.
+# Концы совпавших участков используют ту же таблицу.
+cuthitadd(search: ref CutSearch, pair: CutPair, t, u: real, point: CutPoint)
+{
+    for (i := 0; i < search.count; i++) {
+        hit := search.hits[i];
+        dt := t-hit.t;
+        du := u-hit.u;
+        if (hit.first == pair.first && hit.second == pair.second && dt*dt+du*du < 1.0e-12) {
+            return;
+        }
+    }
+    if (search.count == len search.hits) {
+        search.count = -1;
+        return;
+    }
+    search.hits[search.count++] = CutHit(pair.first, pair.second, t, u, point);
+}
+
+
 # EN: Refine one isolated root, rejecting unresolved overlap and tangencies.
 # Intersections near original vertices use the coverage path. Multiple leaves
 # can converge to the same root, which is stored only once.
@@ -68,19 +90,10 @@ cutroot(pair: CutPair, a, b: CutInterval, search: ref CutSearch)
             if (t < a.lo-0.000001 || t > a.hi+0.000001 || u < b.lo-0.000001 || u > b.hi+0.000001) {
                 return;
             }
-            if (t <= 0.00001 || t >= 0.99999 || u <= 0.00001 || u >= 0.99999 ||
-                search.count == len search.hits) {
+            if (t <= 0.00001 || t >= 0.99999 || u <= 0.00001 || u >= 0.99999) {
                 break;
             }
-            for (j := 0; j < search.count; j++) {
-                hit := search.hits[j];
-                dt := t-hit.t;
-                du := u-hit.u;
-                if (hit.first == pair.first && hit.second == pair.second && dt*dt+du*du < 1.0e-10) {
-                    return;
-                }
-            }
-            search.hits[search.count++] = CutHit(pair.first, pair.second, t, u, cutlerp(p, q, 0.5));
+            cuthitadd(search, pair, t, u, cutlerp(p, q, 0.5));
             return;
         }
         t -= cutcross(delta, dq)/cross;

@@ -464,6 +464,8 @@ list(APPEND module_headers "${root}/ide/dis/bridge/idedeskpane-ink.b"
   "${root}/ide/dis/bridge/idevectorpainttopology.b"
   "${root}/ide/dis/bridge/idevectorcutcurve.b"
   "${root}/ide/dis/bridge/idevectorcutintersections.b"
+  "${root}/ide/dis/bridge/idevectorcutcontacts.b"
+  "${root}/ide/dis/bridge/idevectorcutboundary.b"
   "${root}/ide/dis/bridge/idevectorcutgraph.b"
   "${root}/ide/dis/bridge/idevectorcutoutline.b"
   "${root}/ide/dis/bridge/idevectorbrushsweep.b")

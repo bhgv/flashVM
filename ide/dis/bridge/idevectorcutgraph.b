@@ -3,21 +3,6 @@
 # RU: Собирать сохранённые участки Безье в редактируемые контуры.
 
 
-# EN: Private directed graph with exactly one predecessor and successor
-# at each retained vertex. Intersection IDs join the two source outlines.
-# RU: Частный граф с одним входом и выходом в каждой вершине результата.
-# Номера пересечений соединяют оба исходных контура.
-CutGraph: adt
-{
-    points: array of CutPoint; # Endpoint of each source or intersection vertex.
-    next: array of int;        # Successor ID or -1 if no retained outgoing edge.
-    previous: array of int;    # Predecessor ID or -1.
-    spans: array of CutCurve;  # Outgoing curve when next is present.
-    modes: array of int;       # Inherited mode per source vertex. Crossings are cusps.
-    whole: array of int;       # True where the outgoing source span was not shortened.
-};
-
-
 # EN: Compute the signed winding contribution of one borrowed curve at p.
 # Split only when Y is non-monotonic, then bisect its unique ray crossing.
 # RU: Вычислить знаковый вклад сегмента в обход точки p. При немонотонности
@@ -63,50 +48,88 @@ cutray(edge: CutCurve, p: CutPoint, depth: int): int
 }
 
 
-# EN: Classify the midpoint against every filled source except its own.
-# RU: Классифицировать середину относительно всех заливок, кроме исходной.
-cutinside(outlines: array of ref CutOutline, owner: int, edge: CutCurve, lo, hi: real): int
+# EN: Validated input outlines and their IDs in this operation's shared space.
+# RU: Проверенные контуры и их номера в общем пространстве операции.
+CutSources: adt
 {
-    (p, ignored) := cuteval(edge, (hi+lo)*0.5);
-    for (i := 0; i < len outlines; i++) {
-        if (i != owner && cutwinding(outlines[i].edges, p) != 0) {
-            return 1;
+    outlines: array of ref CutOutline; # One normalized fill boundary per source.
+    offsets: array of int;              # First global edge ID for each source.
+    count: int;                         # Total number of source edges.
+};
+
+
+# EN: Check whether the active span runs on another source's boundary.
+# Return the side of that source's fill relative to the active orientation.
+# RU: Проверить совпадение участка с границей другого источника. Вернуть
+# сторону чужой заливки относительно направления текущего участка.
+cutseamside(contacts: ref CutContacts, edge, first, end: int, t: real): int
+{
+    for (i := 0; i < contacts.count; i++) {
+        seam := contacts.seams[i];
+        other := -1;
+        if (seam.first == edge && seam.firstlo < t && t < seam.firsthi) {
+            other = seam.second;
+        } else if (seam.second == edge && seam.otherlo < t && t < seam.otherhi) {
+            other = seam.first;
+        }
+        if (other >= first && other < end) {
+            return 2*seam.same-1;
         }
     }
     return 0;
 }
 
 
-# EN: Insert one directed subcurve in the owned graph. Refuse branch points
-# or edges whose endpoints collapse at public integer coordinate resolution.
-# RU: Вставить направленный участок. Разветвления и совпадение округлённых
-# концов отклоняются.
-cutinsert(graph: ref CutGraph, edge: CutCurve, from, destination: int, lo, hi: real, reverse: int): int
+# EN: Classify both sides of the active interval. Common edges use their
+# recorded direction. Open intervals between contacts use ordinary winding.
+# Return +1 to keep the direction, -1 to reverse, and zero to drop it.
+# RU: Классифицировать обе стороны участка. Общая кромка использует
+# сохранённое направление, остальные участки используют правило обхода.
+# +1 сохраняет направление, -1 обращает, ноль удаляет участок.
+cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, lo, hi: real, unite: int): int
 {
-    if (reverse) {
-        (from, destination) = (destination, from);
+    source := sources.outlines[owner];
+    t := (hi+lo)*0.5;
+    (point, ignored) := cuteval(source.edges[index], t);
+    edge := sources.offsets[owner]+index;
+    right := 0;
+    left := 0;
+    for (i := 0; i < len sources.outlines; i++) {
+        r := 1;
+        l := 0;
+        if (i != owner) {
+            other := sources.outlines[i];
+            start := sources.offsets[i];
+            side := cutseamside(contacts, edge, start, start+len other.edges, t);
+            if (side == 0) {
+                r = cutwinding(other.edges, point) != 0;
+                l = r;
+            } else {
+                r = side > 0;
+                l = side < 0;
+            }
+        }
+        if (unite) {
+            right |= r;
+            left |= l;
+            if (right && left) {
+                return 0;
+            }
+        } else if (i == 0) {
+            (right, left) = (r, l);
+        } else {
+            right &= !r;
+            left &= !l;
+        }
     }
-    a := graph.points[from];
-    b := graph.points[destination];
-    if (graph.next[from] >= 0 || graph.previous[destination] >= 0 ||
-        (int a.x == int b.x && int a.y == int b.y)) {
-        return 0;
-    }
-    clipped := cutslice(edge, lo, hi);
-    if (reverse) {
-        clipped = cutreverse(clipped);
-    }
-    graph.spans[from] = clipped;
-    graph.next[from] = destination;
-    graph.previous[destination] = from;
-    graph.whole[from] = lo == 0.0 && hi == 1.0;
-    return 1;
+    return right-left;
 }
 
 
-# EN: Find the next crossing on edge after lo. Return (-1, 1.0) at its end.
-# RU: Найти следующее пересечение на сегменте после lo. В конце вернуть
-# (-1, 1.0).
+# EN: Find the next interior event on a source edge after lo. Original
+# endpoints already share canonical IDs, regardless of endpoint events.
+# RU: Найти следующее внутреннее событие ребра после lo. Исходные концы
+# уже связаны общими номерами независимо от событий на концах.
 cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
 {
     at := -1;
@@ -119,7 +142,7 @@ cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
             index = hit.first;
             t = hit.t;
         }
-        if (index == edge && t > lo && t < hi) {
+        if (index == edge && t > lo+1.0e-9 && t < hi && t < 1.0-1.0e-9) {
             (at, hi) = (i, t);
         }
     }
@@ -127,196 +150,128 @@ cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
 }
 
 
-# EN: Retain outer spans for a union or first-minus-second operation. In the
-# difference, second's inside spans reverse direction to bound the cut.
-# RU: Сохранить внешние участки для слияния или разности. Для разности
-# внутренние участки второго контура обращаются и окаймляют вырез.
-cutkeep(graph: ref CutGraph, outlines: array of ref CutOutline, hits: array of CutHit,
-    shift, hitbase, owner, unite: int, work: ref Work): int
+# EN: Feed retained fragments of one outline into the shared graph with
+# original anchor IDs, separately from geometric endpoint aliases.
+# RU: Передать фрагменты одного контура в общий граф с исходными номерами
+# узлов, отдельно от общих геометрических концов.
+cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContacts, owner, unite: int): int
 {
-    source := outlines[owner];
-    edges := source.edges;
-    reverse := owner != 0 && !unite;
-    for (i := 0; i < len edges; i++) {
-        checkwork(work);
+    source := sources.outlines[owner];
+    shift := sources.offsets[owner];
+    hits := contacts.search.hits[0:contacts.search.count];
+    for (i := 0; i < len source.edges; i++) {
+        checkwork(contacts.search.work);
         lo := 0.0;
         from := shift+i;
+        initial := from;
         while (lo < 1.0) {
             (hit, hi) := cutnext(hits, shift+i, lo);
-            destination := shift+source.next[i];
+            terminal := shift+source.next[i];
+            destination := terminal;
             if (hit >= 0) {
-                destination = hitbase+hit;
+                destination = sources.count+hit;
+                terminal = -1;
             }
-            inside := cutinside(outlines, owner, edges[i], lo, hi);
-            if (inside == reverse && !cutinsert(graph, edges[i], from, destination, lo, hi, reverse)) {
+            side := cutclassify(sources, contacts, owner, i, lo, hi, unite);
+            if (side != 0 && !cutinsert(boundary, source.edges[i], from, destination, initial, terminal, lo, hi, side < 0)) {
                 return 0;
             }
             lo = hi;
             from = destination;
+            initial = -1;
         }
     }
     return 1;
 }
 
 
-# EN: Retain an inherited join mode. Shortening either neighbouring handle
-# can break symmetry while preserving the tangent at the surviving anchor.
-# RU: Сохранить исходный тип стыка. Укороченная ручка может нарушить
-# симметрию, сохраняя касательную в уцелевшем узле.
-cutjoinmode(graph: ref CutGraph, id: int): int
+# EN: Find all crossings and supported contacts between different sources.
+# No crossings are needed for disjoint or fully nested boundaries.
+# RU: Найти пересечения и поддерживаемые касания разных источников.
+# Для вложенных или раздельных границ пересечения не обязательны.
+cutcrossings(sources: CutSources, contacts: ref CutContacts): int
 {
-    mode := graph.modes[id];
-    if (mode == 2 && (!graph.whole[id] || !graph.whole[graph.previous[id]])) {
-        return 1;
-    }
-    return mode;
-}
-
-
-# EN: Walk directed loops and serialize their original line/Q/C fragments.
-# A broken cycle, unrepresentable handle or node limit rejects the operation.
-# RU: Обойти циклы и записать исходные фрагменты L/Q/C. Разорванный обход,
-# недопустимая ручка или превышение лимита отклоняют операцию.
-cutloops(graph: ref CutGraph, work: ref Work): ref CutResult
-{
-    seen := array[len graph.next] of {* => 0};
-    nodes := array[3*len graph.next] of Node;
-    modes := array[len nodes] of {* => 0};
-    styled := 0;
-    for (i := 0; i < len graph.next; i++) {
-        checkwork(work);
-        if ((graph.next[i] < 0) != (graph.previous[i] < 0)) {
-            return nil;
-        }
-        if (graph.next[i] < 0) {
-            continue;
-        }
-        p := graph.points[i];
-        for (j := 0; j < i; j++) {
-            q := graph.points[j];
-            if (graph.next[j] >= 0 && int p.x == int q.x && int p.y == int q.y) {
-                return nil;
-            }
-        }
-    }
-    used := 0;
-    for (i = 0; i < len graph.next; i++) {
-        checkwork(work);
-        if (graph.next[i] < 0 || seen[i]) {
-            continue;
-        }
-        base := used;
-        start := graph.points[i];
-        modes[used] = cutjoinmode(graph, i);
-        styled |= modes[used] != 0;
-        nodes[used++] = Node(Move, int start.x, int start.y, 0, 0, 0, 0);
-        here := i;
-        edges := 0;
-        while (here >= 0 && !seen[here]) {
-            destination := graph.next[here];
-            if (destination < 0) {
-                return nil;
-            }
-            node := cutnode(graph.spans[here], graph.points[destination]);
-            if (!pointok(node.x, node.y) || !pointok(node.cx, node.cy) || !pointok(node.c2x, node.c2y)) {
-                return nil;
-            }
-            modes[used] = cutjoinmode(graph, destination);
-            styled |= modes[used] != 0;
-            nodes[used++] = node;
-            seen[here] = 1;
-            here = destination;
-            edges++;
-        }
-        if (here != i || edges < 2) {
-            return nil;
-        }
-        nodes[used++] = Node(Close, 0, 0, 0, 0, 0, 0);
-        (area, ignored) := paintmeasure(nodes[base:used], Point(0, 0), work);
-        if (area == big 0) {
-            return nil;
-        }
-    }
-    if (used == 0 || used > MaxNodes) {
-        return nil;
-    }
-    if (styled) {
-        return ref CutResult(nodes[0:used], modes[0:used]);
-    }
-    return ref CutResult(nodes[0:used], nil);
-}
-
-
-# EN: Find all borrowed-outline crossings under one shared operation budget.
-# Noncrossing nesting and disjoint boundaries have no hit and are valid.
-# RU: Найти пересечения контуров в общем бюджете. Допустимы вложенные и
-# раздельные границы без пересечений.
-cutcrossings(outlines: array of ref CutOutline, offsets: array of int, search: ref CutSearch): int
-{
-    for (i := 0; i < len outlines; i++) {
-        a := outlines[i].edges;
-        for (j := i+1; j < len outlines; j++) {
-            b := outlines[j].edges;
+    for (i := 0; i < len sources.outlines; i++) {
+        a := sources.outlines[i].edges;
+        for (j := i+1; j < len sources.outlines; j++) {
+            b := sources.outlines[j].edges;
             for (left := 0; left < len a; left++) {
                 for (right := 0; right < len b; right++) {
-                    cutpair(a[left], b[right], offsets[i]+left, offsets[j]+right, search);
-                    if (search.count < 0) {
+                    pair := CutPair(sources.offsets[i]+left, sources.offsets[j]+right, a[left], b[right]);
+                    cutcontactpair(pair, contacts);
+                    if (contacts.search.count < 0) {
                         return 0;
                     }
                 }
             }
         }
     }
-    return search.count % 2 == 0;
+    return 1;
+}
+
+
+# EN: Allocate graph storage and copy positions before aliasing. The upper
+# bound is one source span plus at most two splits per crossing/contact.
+# RU: Выделить граф и скопировать позиции до объединения номеров.
+# Каждый сегмент даёт один участок, событие добавляет не больше двух.
+cutboundary(sources: CutSources, search: ref CutSearch): ref CutBoundary
+{
+    size := sources.count+search.count;
+    spans := sources.count+2*search.count;
+    boundary := ref CutBoundary(array[size] of CutPoint, array[size] of int,
+        array[sources.count] of int, array[spans] of CutArc, array[size] of {* => -1},
+        array[spans] of int, 0);
+    for (i := 0; i < len sources.outlines; i++) {
+        source := sources.outlines[i];
+        shift := sources.offsets[i];
+        for (j := 0; j < len source.edges; j++) {
+            boundary.points[shift+j] = source.edges[j].a;
+        }
+        boundary.modes[shift:] = source.modes;
+    }
+    for (i = 0; i < search.count; i++) {
+        boundary.points[sources.count+i] = search.hits[i].at;
+    }
+    cutaliases(boundary, search.work);
+    return boundary;
 }
 
 
 # EN: Unite borrowed filled paths or subtract the second from the first.
-# A compound input can contain holes and disconnected islands. Resolve all
-# crossings before the single integer serialization. Nil defers to coverage.
-# RU: Объединить заливки или вычесть вторую из первой. Во входном пути
-# допустимы отверстия и островки. Все пересечения вычисляются до одного
-# округления координат. Nil передаёт работу обработке по покрытию.
+# Resolve eligible contacts before publishing private editable contours.
+# Nil defers ambiguous topology or an exhausted budget to coverage.
+# RU: Объединить заливки или вычесть вторую из первой. Обработать касания
+# до публикации редактируемых контуров. Nil оставляет неоднозначную
+# топологию или исчерпанный бюджет обработке по покрытию.
 cutboolean(paths: array of CutResult, unite: int, work: ref Work): ref CutResult
 {
     if (len paths < 2 || len paths > 16 || (!unite && len paths != 2)) {
         return nil;
     }
-    search := ref CutSearch(array[96] of CutHit, 0, 40000, work);
-    outlines := array[len paths] of ref CutOutline;
-    offsets := array[len paths] of int;
-    hitbase := 0;
-    for (i := 0; i < len paths; i++) {
-        outline := cutoutline(paths[i], search);
-        if (outline == nil || hitbase+len outline.edges > 192) {
-            return nil;
-        }
-        outlines[i] = outline;
-        offsets[i] = hitbase;
-        hitbase += len outline.edges;
-    }
-    if (!cutcrossings(outlines, offsets, search)) {
+    math := load Math Math->PATH;
+    if (math == nil) {
         return nil;
     }
-    size := hitbase+search.count;
-    graph := ref CutGraph(array[size] of CutPoint, array[size] of {* => -1},
-        array[size] of {* => -1}, array[size] of CutCurve, array[size] of {* => 0}, array[size] of int);
-    for (i = 0; i < len outlines; i++) {
-        source := outlines[i];
-        shift := offsets[i];
-        for (j := 0; j < len source.edges; j++) {
-            graph.points[shift+j] = source.edges[j].a;
+    search := ref CutSearch(array[96] of CutHit, 0, 40000, work);
+    contacts := ref CutContacts(search, array[48] of CutSeam, 0, math);
+    sources := CutSources(array[len paths] of ref CutOutline, array[len paths] of int, 0);
+    for (i := 0; i < len paths; i++) {
+        outline := cutoutline(paths[i], search);
+        if (outline == nil || sources.count+len outline.edges > 192) {
+            return nil;
         }
-        graph.modes[shift:] = source.modes;
+        sources.outlines[i] = outline;
+        sources.offsets[i] = sources.count;
+        sources.count += len outline.edges;
     }
-    for (i = 0; i < search.count; i++) {
-        graph.points[hitbase+i] = search.hits[i].at;
+    if (!cutcrossings(sources, contacts)) {
+        return nil;
     }
-    hits := search.hits[0:search.count];
-    for (i = 0; i < len outlines; i++) {
-        if (!cutkeep(graph, outlines, hits, offsets[i], hitbase, i, unite, work)) {
+    boundary := cutboundary(sources, search);
+    for (i = 0; i < len sources.outlines; i++) {
+        if (!cutkeep(boundary, sources, contacts, i, unite)) {
             return nil;
         }
     }
-    return cutloops(graph, work);
+    return cutloops(boundary, math, work);
 }

@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1753 / Контрольная точка v0.1753. The SVG brush handles shared
+straight edges, identical complete curves, and supported point contacts.
+При точечном касании фигуры можно выделять раздельно.
+[EN](../../ide/VECTOR-VIEWPORT.md) / [RU](../../ide/VECTOR-VIEWPORT.ru.md).
+
 Checkpoint v0.1752 / Контрольная точка v0.1752. The brush cuts compound SVG
 paths and can join several fills in one vector operation. Сохраняются отверстия,
 островки и типы нетронутых узлов.
