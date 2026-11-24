@@ -5,6 +5,7 @@ Idedesktop: module
     VectorVersion: con 2; # Explicit private UI stream revision; unrelated to Dis64 formats.
     VectorBegin: con 65576; # Staged vector pane/revision and exact command-stream byte count.
     VectorData: con 65577; # Ordered ASCII hex fragment, same view ticket and pane.
+    InkStroke: con 65578; # One released portable stroke, fragment format in desktop-ink.b.
     VectorEditor: con 17; # Create another independently owned vector document.
     BeginView: con 65569; # width/height, ticket/count/scroll/table-scale/pan/reveal metadata.
     ItemView: con 65570; # Stable MovieClip ID and copied descriptor.

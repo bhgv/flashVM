@@ -11,6 +11,7 @@
 // растр обрезает контуры, используя то же преобразование, что и указатель.
 function finishDesktopVector() {
     desktopVectorAt = (("0x" + desktopVectorSlot) * 1 - 1) * 25;
+    desktopInkStyleRegistered = _root.registerDesktopInkStyle();
     desktopVectorMode = !(desktopVectorTool - 8);
     desktopVectorModeDigit = desktopVectorMode * 1;
     desktopStagedVectorCameras = desktopStagedVectorCameras.substr(0, desktopVectorAt)

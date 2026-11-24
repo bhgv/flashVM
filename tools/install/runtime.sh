@@ -112,6 +112,7 @@ install_runtime_package() {
     copy_file "$ROOT/ide/dis/bridge/idedesktopatlas.b" "$destination/source/idedesktopatlas.b"
     copy_file "$ROOT/ide/dis/bridge/idedesktoptools.b" "$destination/source/idedesktoptools.b"
     copy_file "$ROOT/ide/dis/bridge/idedeskpane.b" "$destination/source/idedeskpane.b"
+    copy_file "$ROOT/ide/dis/bridge/idedeskpane-ink.b" "$destination/source/idedeskpane-ink.b"
     copy_file "$ROOT/ide/dis/tests/desktop_test.b" "$destination/examples/desktop-owners.b"
     copy_file "$ROOT/ide/dis/bridge/ideartifact.b" "$destination/source/ideartifact.b"
     copy_file "$ROOT/ide/dis/bridge/idefileops.b" "$destination/source/idefileops.b"
@@ -226,6 +227,7 @@ install_runtime_package() {
     copy_file "$ROOT/ide/DESKTOP-PAIRED.md" "$destination/DESKTOP-PAIRED.md"
     copy_file "$ROOT/ide/DESKTOP-PAIRED.ru.md" "$destination/DESKTOP-PAIRED.ru.md"
     copy_file "$ROOT/ide/dis/app/desktop.b" "$destination/source/desktop.b"
+    copy_file "$ROOT/ide/dis/app/desktop-ink.b" "$destination/source/desktop-ink.b"
     copy_file "$ROOT/ide/dis/app/desktop.m" "$destination/include/limbo/desktop.m"
     if [[ -f "$base/desktop-paired.dis" ]]; then
         copy_file "$ROOT/ide/dis/app/desktop-paired.b" "$destination/source/desktop-paired.b"

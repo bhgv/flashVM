@@ -10,6 +10,7 @@ function decodeDesktopVectorRecord() {
         desktopVectorHeader = ("0x" + desktopVectorRecord.substr(0, 8)) * 1;
         desktopVectorFlags = Math.floor(desktopVectorHeader / 65536);
         desktopVectorTool = desktopVectorHeader - 65536 * desktopVectorFlags;
+        desktopVectorInkStyle = desktopVectorRevision + desktopVectorRecord.substr(8, 16) + desktopVectorTool;
         if (!desktopVectorHeader) {
             desktopVectorFailed = true;
         }

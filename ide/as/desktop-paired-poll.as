@@ -7,6 +7,10 @@
 // RU: Подготовить одно событие к передаче существующим отправителем с кредитом.
 function pollDesktopInput() {
     desktopInputKind = hostInput.take();
+    if (desktopInputKind * (desktopInputKind - 2) * !(!desktopInkClip)) {
+        desktopInkDiscarded = _root.discardDesktopInk();
+        desktopInkPresented = _root.publishDesktopInk();
+    }
     if (!(desktopInputKind - 1)) {
         desktopWord = hostInput.get("code");
         desktopEncoded = _root.encodeDesktopWord();

@@ -11,6 +11,9 @@ function onTerminalFrame() {
         if (desktopAccepted) {
             desktopOutgoing = "";
             desktopReady = false;
+            if (desktopInkSending) {
+                desktopInkFragmentAdvanced = _root.advanceDesktopInkSend();
+            }
         }
     } else {
         desktopWire = styxTerminal.tryReceiveFrame();

@@ -8,7 +8,8 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis"
     "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.sbl"
     COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis"
         "${root}/ide/dis/app/desktop.b"
-    DEPENDS limbo-bootstrap "${root}/ide/dis/app/desktop.b" ${module_headers} VERBATIM)
+    DEPENDS limbo-bootstrap "${root}/ide/dis/app/desktop.b" "${root}/ide/dis/app/desktop-ink.b"
+        ${module_headers} VERBATIM)
 add_custom_target(disvm_desktop_app ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis")
 add_dependencies(disvm_desktop_app disvm_native_modules)
 

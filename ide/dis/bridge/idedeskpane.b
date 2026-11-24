@@ -586,6 +586,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             request.operation == ExportSelection || request.operation == CutSelection || request.operation == PasteSelection ||
             (request.operation == VectorControl && request.event != nil &&
              (request.event.code == 5 || request.event.code == 6)) ||
+            (request.operation == DrawStroke && nativepending) ||
             (request.operation == Draw && request.event != nil && request.event.code == 1 && request.event.text == "" &&
              (nativepending || (doc.tool != vector->Brush && doc.tool != vector->Pen))) ||
             (request.operation == Input && request.event != nil &&
@@ -614,6 +615,11 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (request.operation == Shutdown) {
             vector->cancel(doc);
             stop = 1;
+        } else if (request.operation == DrawStroke) {
+            status = Idecore->Conflict;
+            if (!inkfailure) {
+                status = portablestroke(vector, doc, request, jobs != nil);
+            }
         } else if (request.operation == Draw) {
             e := request.event;
             expected := doc.revision + (len doc.points != 0);
@@ -954,3 +960,5 @@ vectorfilestatus(status: int): int
     }
     return Idecore->Invalid;
 }
+
+include "idedeskpane-ink.b";

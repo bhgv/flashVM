@@ -48,7 +48,7 @@ def check(args, directory, movie, mode):
         copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
-    if args.vector or args.camera:
+    if args.vector or args.camera or args.ink:
         seed_vector(drawing)
 
     # EN: Each command receives one connected descriptor from exchange.
@@ -68,12 +68,17 @@ def check(args, directory, movie, mode):
                 environment.append("FVM_PAIRED_TEST_VECTOR=1")
             if args.camera:
                 environment.append("FVM_PAIRED_TEST_VECTOR_CAMERA=1")
+            if args.ink:
+                environment.append("FVM_PAIRED_TEST_LOCAL_INK=1")
             return [*environment, *argv]
         return argv
 
     def desktop(fd):
-        return [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
+        argv = [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
                 "--native-spawn", mode, "desktop-paired.dis"]
+        if args.ink:
+            return ["sh", "-c", 'printf "%s\\n" "$$" > paired-ink-dis.pid; exec "$@"', "paired-ink", *argv]
+        return argv
 
     timeout = 40 if args.native_events else 15
     expected = {"paired-output.txt": "Я🙂paired" if args.native_events else "Яpaired"}
@@ -86,13 +91,21 @@ def check(args, directory, movie, mode):
     if args.vector or args.camera:
         timeout = 65
         expected = {}
+    provider_trace = ()
+    if args.ink:
+        timeout = 100
+        expected = {}
+        provider_trace = ("PASS local ink drew and canceled while Dis was suspended",
+                          "PASS 201 local ink motions before release")
     exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
-             timeout=timeout)
+             provider_trace=provider_trace, timeout=timeout)
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
     if args.camera:
         return verify_vector_camera(drawing, capture)
+    if args.ink:
+        return verify_local_ink(drawing, capture)
     if args.vector:
         return verify_vector(drawing, capture)
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
@@ -150,6 +163,28 @@ def verify_vector_camera(drawing, capture):
         if data[at:at + 3].hex() != rgb:
             raise RuntimeError(f"wrong camera projection or clip at {x},{y}")
     print("PASS SVG camera wheel, marquee, reset, saved page coordinates and clipped raster")
+    return data
+
+
+# EN: Match the surviving brush contour and its separate final area in the raster.
+# RU: Проверить единственный сохранённый штрих и его отдельную область на растре.
+def verify_local_ink(drawing, capture):
+    shapes = list(ET.parse(drawing).getroot())
+    if (len(shapes) != 2 or shapes[0].attrib["fill"] != "#e04444"
+            or shapes[1].attrib["fill"] != "#245ac4" or "Z" not in shapes[1].attrib["d"]):
+        raise RuntimeError("expected one committed brush contour: " + drawing.read_text(encoding="utf-8"))
+    header = b"P6\n960 640\n255\n"
+    data = capture.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong local ink raster extent")
+
+    def pixel(x, y):
+        at = len(header) + (960 * y + x) * 3
+        return data[at:at + 3].hex()
+
+    if pixel(255, 490) != "ffffff" or pixel(255, 518) != "245ac4" or pixel(376, 523) != "245ac4":
+        raise RuntimeError("canceled preview leaked or released contour lost its later samples")
+    print("PASS local ink preview, cancellation and one saved multi-fragment stroke")
     return data
 
 
@@ -277,8 +312,9 @@ def main():
     scenarios.add_argument("--thumbnails", action="store_true", help="exercise real shelf and overview navigation")
     scenarios.add_argument("--vector", action="store_true", help="open, edit and save an SVG through the real window")
     scenarios.add_argument("--camera", action="store_true", help="zoom, draw and reset the paired SVG camera")
+    scenarios.add_argument("--ink", action="store_true", help="preview and cancel ink while the test Dis child is suspended")
     args = parser.parse_args()
-    if (args.mdi or args.thumbnails or args.vector or args.camera) and not args.native_events:
+    if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink) and not args.native_events:
         parser.error("the selected desktop scenario requires --native-events")
     if args.native_events:
         args.text = args.window = True

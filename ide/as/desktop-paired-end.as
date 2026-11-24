@@ -32,7 +32,11 @@ function endDesktopScene() {
                     desktopFrontTableScale = desktopScale;
                     desktopFrontVectorCameras = desktopStagedVectorCameras;
                     desktopFrontVectorSlots = desktopVectorSlots;
-                    desktopReady = true;
+                    desktopFrontInkStyles = desktopStagedInkStyles;
+                    if (desktopInkClip) {
+                        desktopInkDiscarded = _root.discardDesktopInk();
+                    }
+                    desktopReady = !desktopInkSending;
                     if (desktopResizePending) {
                         if (Math.abs(desktopResizeWidth - desktopWidth) + Math.abs(desktopResizeHeight - desktopHeight)) {
                             desktopResizeSent = _root.sendDesktopResize();

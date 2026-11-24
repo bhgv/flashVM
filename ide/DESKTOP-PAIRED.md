@@ -154,9 +154,27 @@ pixels in interpreter and JIT modes. `--camera` also exercises wheel zoom,
 rectangle fitting, reset and drawing at the same screen position with two
 different cameras. The native event fixture supplies input only.
 
-Multiple touch contacts, vector editing overlays, and
-FlashVM-local ink preview still need paired integration. Menu 8 currently
-starts the installed graphical runtime.
+### Local Brush and Pen preview
+
+Start a brush or pen stroke on the displayed SVG page. FlashVM draws the
+delivered motion samples on a temporary MovieClip using the displayed
+camera and tool style. It sends the copied page coordinates on release
+over the same UniBus session. A stroke holds up to 4,096 points, with one
+slot reserved for the last point. Each fragment carries the scene ticket
+and source revision. The pane owner receives one complete stroke and
+commits one history entry. Its normal fitting path prepares the saved
+contour. This preview runs on the MovieClip owner.
+
+Escape, focus or another input transition can remove an unreleased
+preview. A complete replacement scene also removes it and retires a
+released preview when the new document is drawn.
+
+Use `--ink` with the same SDL fixture. It suspends its own Dis process
+to observe preview pixels and cancellation, then sends a surviving stroke
+across more than one fragment and verifies the saved SVG and final raster.
+
+Multiple touch contacts and vector editing overlays still need paired
+integration. Menu 8 currently starts the installed graphical runtime.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

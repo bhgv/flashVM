@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1749 / Контрольная точка v0.1749. FlashVM previews paired Brush
+and Pen strokes locally and sends bounded copied points on release. Limbo
+принимает штрих целиком и сохраняет итоговый контур в SVG.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1748 / Контрольная точка v0.1748. The paired SVG pane presents
 and clips its document camera and maps drawing gestures to page coordinates.
 Проверяются увеличение, вписывание области, сброс камеры и сохранение SVG.

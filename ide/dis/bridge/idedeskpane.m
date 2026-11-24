@@ -8,6 +8,7 @@ Idedeskpane: module
     FindText, ReplaceText: con iota + 15; # Exact-revision literal search / one atomic ReplaceAll; event.text is replacement.
     VectorControl: con 14; # Revision-bound toolbar cell1..16; copied event code, no source coordinates.
     Draw: con 13; # Revision-bound logical canvas gesture; event code=phase, first/second=X/Y.
+    DrawStroke: con 17; # Released Brush/Pen. text is packed points; event.flags is source revision.
 
     Request: adt
     {

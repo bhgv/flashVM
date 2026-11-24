@@ -331,6 +331,9 @@ static void burst(void)
 }
 
 
+#include "paired-sdl-ink.inc"
+
+
 /* EN: Let the actual SDL pump process everything, adding this burst once.
  * RU: Единожды добавить пачку и передать обработку штатному опросу SDL. */
 int SDLCALL SDL_PollEvent(SDL_Event *event)
@@ -370,6 +373,10 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
         else if (getenv("FVM_PAIRED_TEST_VECTOR_CAMERA"))
         {
             vector_camera_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_LOCAL_INK"))
+        {
+            local_ink_burst();
         }
         else
         {

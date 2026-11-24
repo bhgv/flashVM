@@ -23,6 +23,7 @@ function beginDesktopVector() {
             desktopVectorFailed = true;
         } else {
             desktopVectorSlots = desktopVectorSlots + desktopVectorKey;
+            desktopVectorRevision = desktopWire.substr(53, 8);
             desktopVectorPane = desktopMirrorSource;
             desktopVectorPaneWidth = desktopSourceWidth;
             desktopVectorPaneHeight = desktopSourceHeight;

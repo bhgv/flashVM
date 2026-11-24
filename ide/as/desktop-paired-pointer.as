@@ -25,20 +25,11 @@ function sendDesktopPointer() {
             }
         }
     }
-    desktopWord = Math.floor(desktopPointerX);
-    desktopEncoded = _root.encodeDesktopWord();
-    desktopPointerXWord = desktopHexWord;
-    desktopWord = Math.floor(desktopPointerY);
-    desktopEncoded = _root.encodeDesktopWord();
-    desktopPointerYWord = desktopHexWord;
-    desktopWord = desktopPointerPhase;
-    desktopEncoded = _root.encodeDesktopWord();
-    desktopPointerPhaseWord = desktopHexWord;
-    desktopWord = desktopPointerCode;
-    desktopEncoded = _root.encodeDesktopWord();
-    desktopPointerCodeWord = desktopHexWord;
-    desktopWord = desktopPointerOffset;
-    desktopEncoded = _root.encodeDesktopWord();
-    desktopOutgoing = "fvd1:000000010000000100010024" + desktopFrontTicket + desktopPointerXWord
-        + desktopPointerYWord + desktopPointerPhaseWord + desktopPointerCodeWord + desktopPointerId + desktopHexWord;
+    desktopInkConsumed = false;
+    if (!(desktopPointerCode - 1)) {
+        desktopInkRouted = _root.routeDesktopInk();
+    }
+    if (!desktopInkConsumed) {
+        desktopPointerQueued = _root.queueDesktopPointer();
+    }
 }

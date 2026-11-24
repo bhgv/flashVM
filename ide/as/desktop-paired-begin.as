@@ -36,5 +36,6 @@ function beginDesktopScene() {
     desktopEmptyCamera = "00000064000001f40000012c0";
     desktopEmptyCameras = desktopEmptyCamera + desktopEmptyCamera + desktopEmptyCamera + desktopEmptyCamera;
     desktopStagedVectorCameras = desktopEmptyCameras + desktopEmptyCameras;
+    desktopStagedInkStyles = desktopEmptySources + desktopEmptySources;
     desktopOpen = desktopTicket;
 }

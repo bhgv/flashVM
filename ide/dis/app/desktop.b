@@ -7,6 +7,7 @@ include "ideinput.m";
 include "idefield.m";
 include "unibus.m";
 include "idebulk.m";
+include "idevector.m";
 include "idedeskpane.m";
 include "idedesktop.m";
 include "idedeskclip.m";
@@ -442,12 +443,27 @@ run(paired: int)
         for (index = 0; !paired && index < transfers; index++) {
             <-delivered;
         }
-        raw: array of byte;
+        event: ref Uibridge->Message;
+        stroke: ref PairedInk;
         vectorready := 0;
         for (;;) {
             receivedinput := 0;
             alt {
-            raw = <-input => receivedinput = 1;
+            raw := <-input =>
+                (valid, decoded) := codec->decode(raw);
+                if (!valid) {
+                    raise "fail: desktop event envelope";
+                }
+                event = decoded;
+                if (paired && event.kind == codec->Request && event.code == desk->InkStroke) {
+                    stroke = appendink(codec, event, view.ticket, stroke);
+                    if (stroke != nil && stroke.used < len stroke.points) {
+                        continue;
+                    }
+                } else {
+                    stroke = nil;
+                }
+                receivedinput = 1;
             id := <-notices =>
                 if (id < 1 || id > len windows || windows[id-1] == nil) {
                     continue;
@@ -480,9 +496,34 @@ run(paired: int)
         if (vectorready) {
             continue;
         }
-        (valid, event) := codec->decode(raw);
-        if (!valid) {
-            raise "fail: desktop event envelope";
+        if (paired && event.kind == codec->Request && event.code == desk->InkStroke) {
+            if (stroke != nil && drawing == 0 && windows[stroke.slot-1] != nil && shown[stroke.slot-1].kind == panes->Vector &&
+                shown[stroke.slot-1].revision == stroke.revision) {
+                request.operation = desk->TextHit;
+                request.ticket = event.flags;
+                request.window = stroke.slot;
+                request.x = stroke.x;
+                request.y = stroke.y;
+                admitted := deskcall(layout, request);
+                if (admitted.status == desk->Ok) {
+                    result := panecall(windows[stroke.slot-1], panes->DrawStroke, string stroke.points,
+                        ref Uibridge->Message(codec->Request, 1, 0, stroke.revision, 0, 0, ""));
+                    if (result.status == Idecore->Ok) {
+                        if (pointing != 0) {
+                            panecall(windows[pointing-1], panes->CancelPointer, "", nil);
+                            pointing = 0;
+                        }
+                        if (active != stroke.slot) {
+                            panecall(windows[active-1], panes->Input, "",
+                                ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                        }
+                        active = stroke.slot;
+                        request.operation = desk->Activate;
+                        view = deskcall(layout, request);
+                    }
+                }
+            }
+            continue;
         }
         if ((event.kind == codec->Key && (event.flags < 0 || event.flags > 1 || event.code < 1 || event.code > 255)) ||
             (event.kind == codec->Focus && (event.flags < 0 || event.flags > 1))) {
@@ -1251,3 +1292,5 @@ run(paired: int)
     host->detach();
     sys->print("PASS MovieClip desktop: independent panes and acknowledged shutdown\n");
 }
+
+include "desktop-ink.b";
