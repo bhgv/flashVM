@@ -30,11 +30,40 @@ PRAGMAS
 IGNORE CHR(9) + CHR(10) + CHR(13) + CHR(32)
 
 PRODUCTIONS
-    /* A nonempty complete unit: trailing unsupported tokens may not disappear. */
+    /* EN: A complete initializer or one timeline callback.
+     * RU: Полный инициализатор или обработчик шкалы времени. */
     View =
-        Assignment
-        { Assignment }
+        ( FrameHandler | (. emit_initializer(); .) Statements )
         EOF
+    .
+
+    /* EN: Only the named root callback with an empty parameter list is admitted.
+     * RU: Поддерживается именованный обработчик корня с пустым списком параметров. */
+    FrameHandler =
+        "function" ident                                                (. emit_frame_handler(); .)
+        "(" ")" "{" Statements "}"
+    .
+
+    /* EN: Lower a nonempty sequence of statements, each with a balanced expression stack.
+     * RU: Понизить непустую последовательность инструкций, сохраняющих баланс стека. */
+    Statements =
+        Statement { Statement }
+    .
+
+    /* EN: Dispatch by the first token to an assignment or a braced conditional.
+     * RU: Выбрать присваивание или ветвление с блоками по первому токену. */
+    Statement =
+        Assignment
+        | Conditional
+    .
+
+    /* EN: Terminate each arm at a distinct merge block; optional else may be empty.
+     * RU: Замкнуть каждую ветвь блоком слияния; else можно опустить. */
+    Conditional =                                                       (. int label; .)
+        "if" "(" Expression ")"                                        (. label = emit_if(); .)
+        "{" [ Statements ] "}"                                         (. emit_else(label); .)
+        [ "else" "{" [ Statements ] "}" ]
+                                                                        (. emit_merge(label); .)
     .
 
     /* Capture the LHS object before the RHS; explicit semicolons define this profile. */

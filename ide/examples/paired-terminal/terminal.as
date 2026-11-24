@@ -1,12 +1,23 @@
 // Copyright (c) 2026 bhgv
-// EN: Return one portable view frame through the paired player's typed terminal.
-// RU: Вернуть кадр представления через типизированный терминал парного плеера.
+// EN: Apply portable view frames on timeline ticks and retain a reply until it is accepted.
+// RU: Применять кадры представления при обновлении клипа, сохраняя ответ до приёма.
 
-// The Dis controller publishes the frame before starting this timeline.
-// Контроллер Dis передаёт кадр до запуска шкалы времени.
-terminalFrame = styxTerminal.tryReceiveFrame();
-// The fvd1 header is 53 characters. The demo payload has one prefix character and an x offset.
-// Заголовок fvd1 занимает 53 символа. Данные примера содержат префикс из одного символа и смещение x.
-terminalX = terminalFrame.substr(54) * 1;
-_root._x = terminalX;
-terminalQueued = styxTerminal.trySendFrame(terminalFrame + " AS2");
+// EN: Root timeline callback. Limit work to one queued reply or one incoming view per tick.
+// RU: Обработчик корневого клипа. За кадр обработать один ответ либо одно представление.
+function onEnterFrame() {
+    if (terminalPending) {
+        terminalAccepted = styxTerminal.trySendFrame(terminalPending);
+        if (terminalAccepted) {
+            terminalPending = "";
+        }
+    } else {
+        terminalFrame = styxTerminal.tryReceiveFrame();
+        if (terminalFrame) {
+            // The 53-character fvd1 header and one prefix character precede the offset.
+            // Смещению предшествует 53-символьный заголовок fvd1 и один символ префикса.
+            terminalX = terminalFrame.substr(54) * 1;
+            _root._x = terminalX;
+            terminalPending = terminalFrame + " AS2";
+        }
+    }
+}

@@ -314,6 +314,11 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
     {
         return 0;
     }
+    if (module->avm1_frame)
+    {
+        snprintf(error, capacity, "AVM1 frame entries cannot target Dis");
+        return 0;
+    }
     if (strlen(module->module) >= 128)
     {
         snprintf(error, capacity, "Dis module name exceeds the loader's 127-byte limit");

@@ -1,4 +1,4 @@
-# SWL linker 0.3.15
+# SWL linker 0.3.16
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -32,7 +32,7 @@ failure, 2 invalid arguments. Inputs/output are bounded by 64 MiB, at most 1024
 objects. Validation failures preserve existing output; a write failure itself
 may leave a partial output file.
 
-[Resources, SVF1 and scene](ASSETS.md).
+[SVG, bitmap and audio resources](ASSETS.md).
 
 [Verification and limitations](TESTING.md).
 

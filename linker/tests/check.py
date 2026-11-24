@@ -31,6 +31,12 @@ def trace(text):
     return b"\x96" + struct.pack("<H", len(data)) + data + b"\x26\0"
 
 
+# EN: Build an anonymous parameterless action for independent framing checks.
+# RU: Собрать анонимную команду без параметров для проверки границ вложенного блока.
+def define_function(body):
+    return b"\x9b" + struct.pack("<H", len(body) + 5) + b"\0\0\0" + struct.pack("<H", len(body)) + body
+
+
 def tags(data):
     if not (data[:4] == b"FWS\x08" and struct.unpack_from("<I", data, 4)[0] == len(data)):
         raise AssertionError("condition check failed: linker/tests/check.py:33")
@@ -109,6 +115,25 @@ with tempfile.TemporaryDirectory() as tmp:
         call("link", out, a, good=False)
         if not (out.read_bytes() == b"preserve"):
             raise AssertionError("condition check failed: linker/tests/check.py:101")
+    branch_to_end = b"\x99\x02\0\0\0\0"
+    frame = define_function(branch_to_end) + b"\x17\0"
+    a.write_bytes(object("frame", frame))
+    call("link", out, a)
+    if [body for tag, body in tags(out.read_bytes()) if tag == 12] != [frame]:
+        raise AssertionError("frame action was changed during linking")
+    for broken in (
+        b"\x99\x02\0\x08\0" + define_function(branch_to_end),
+        define_function(b"\x99\x02\0\x01\0\0"),
+        define_function(b"\x99\x02\0\xfa\xff\0"),
+        define_function(define_function(b"\0") + b"\0"),
+        define_function(branch_to_end)[:6] + b"\0\0" + branch_to_end,
+        define_function(branch_to_end)[:-1] + b"\x17",
+    ):
+        a.write_bytes(object("frame", broken + b"\x17\0"))
+        out.write_bytes(b"preserve")
+        call("link", out, a, good=False)
+        if out.read_bytes() != b"preserve":
+            raise AssertionError("a rejected nested action overwrote the SWF")
     a.write_bytes(object("channels", trace("extension"), 1))
     out.write_bytes(b"preserve")
     call("link", out, a, good=False)
@@ -175,15 +200,15 @@ def rect(data, offset):
 with tempfile.TemporaryDirectory() as tmp:
     p = Path(tmp)
     out = p / "scene.swf"
-    svf = p / "shape.svf"
+    svg = p / "shape.svg"
     wav = p / "tone.wav"
     root = Path(__file__).resolve().parents[1] / "examples"
     call(
         "link",
         out,
-        "--svf",
+        "--svg",
         "panel",
-        root / "panel.svf",
+        root / "panel.svg",
         "--jpeg",
         "tile",
         root / "tile.jpg",
@@ -299,20 +324,43 @@ with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(
             [os.environ["FIR_FLASHVM_RUNNER"], str(out)], check=True, capture_output=True
         )
+    panel = (root / "panel.svg").read_text()
     for bad in [
-        "SVF 2 rect 1 1 FFFFFFFF",
-        "SVF1 rect 1 1 FFFFFFFF",
-        "SVF 1 rect -1 1 FFFFFFFF",
-        "SVF 1 rect " + "9" * 150 + " 1 FFFFFFFF",
-        "SVF 1 rect 1 1 FFFFFFFF extra",
-        "SVF 1 rect 1 1 GGGGGGGG",
-        "SVF 1 rect 0 1 FFFFFFFF",
+        "",
+        panel.replace("www.w3.org", "example.invalid"),
+        panel.replace('width="120"', 'width="-1"'),
+        panel.replace('width="120"', 'width="' + "9" * 150 + '"'),
+        panel.replace('width="120"', 'width="0"'),
+        panel.replace('width="120"', 'width="120" width="120"'),
+        panel.replace('<rect width="120"', '<rect width="119"'),
+        panel.replace('fill="#20a060"', 'fill="url(#gradient)"'),
+        panel.replace('fill="#20a060"', 'fill-opacity="1.5"'),
+        panel.replace("<rect ", '<rect transform="translate(1 2)" '),
+        panel.replace("<rect ", '<rect x="1" '),
+        panel.replace("</svg>", "<path d='M0 0h2'/></svg>"),
+        panel + "<svg/>",
+        panel.replace("</svg>", "<!-- unclosed</svg>"),
+        panel.replace("</svg>", "<!-- bad\x01character --></svg>"),
+        "<!DOCTYPE svg>" + panel,
     ]:
-        svf.write_text(bad)
+        svg.write_text(bad, encoding="utf-8")
         out.write_bytes(b"keep")
-        call("link", out, "--svf", "shape", svf, good=False)
+        call("link", out, "--svg", "shape", svg, good=False)
         if not (out.read_bytes() == b"keep"):
-            raise AssertionError("condition check failed: linker/tests/check.py:274")
+            raise AssertionError("rejected SVG changed the existing output")
+    svg.write_bytes(b"<!--\xc0\xae-->" + panel.encode("utf-8"))
+    call("link", out, "--svg", "shape", svg, good=False)
+    svg.write_text(
+        "\ufeff<?xml version='1.0' encoding='UTF-8'?><!-- панель -->"
+        "<svg width='2px' height='1' xmlns='http://www.w3.org/2000/svg'>"
+        "<rect x='0px' y='0' height='1px' width='2' fill-opacity='.5' fill='#c5A'></rect></svg>",
+        encoding="utf-8",
+    )
+    call("link", out, "--svg", "shape", svg)
+    _, shape = tags(out.read_bytes())[0]
+    bounds, pos = rect(shape, 2)
+    if bounds != [0, 40, 0, 20] or shape[pos:pos + 6] != b"\x01\x00\xcc\x55\xaa\x80":
+        raise AssertionError("SVG size, fill, or alpha differs in DefineShape3")
     for kind, source in [("jpeg", root / "tile.jpg"), ("wav", root / "tone.wav")]:
         data = source.read_bytes()
         for cut in [0, 1, 4, 12, len(data) // 2, len(data) - 1]:
@@ -340,9 +388,9 @@ with tempfile.TemporaryDirectory() as tmp:
     call(
         "link",
         out,
-        "--svf",
+        "--svg",
         "panel",
-        root / "panel.svf",
+        root / "panel.svg",
         "--place",
         "missing",
         "0",
@@ -455,9 +503,9 @@ with tempfile.TemporaryDirectory() as tmp:
     a.write_bytes(object("channels", b"\0", 1))
     out.write_bytes(b"preserve")
     root = Path(__file__).resolve().parents[1] / "examples"
-    (p / "--extensions").write_bytes((root / "panel.svf").read_bytes())
+    (p / "--extensions").write_bytes((root / "panel.svg").read_bytes())
     for explicit, expected_status in [(False, 1), (True, 0)]:
-        args = [EXE, "link", str(out), str(a), "--svf", "panel", "--extensions"]
+        args = [EXE, "link", str(out), str(a), "--svg", "panel", "--extensions"]
         if explicit:
             args.append("--extensions")
         result = subprocess.run(args, cwd=p, capture_output=True, timeout=15)

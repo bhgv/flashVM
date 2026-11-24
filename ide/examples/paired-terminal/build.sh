@@ -27,7 +27,7 @@ trap 'exit 1' HUP INT TERM
 "$fir/fir1_opt" "$stage/terminal.fir" "$stage/terminal.opt.fir"
 "$fir/fir1" object "$stage/terminal.opt.fir" "$stage/terminal.swo"
 "$swl" link "$stage/terminal.swf" "$stage/terminal.swo" --size 320 240 --fps 30 \
-    --svf panel "$source/panel.svf" --place panel 20 30 1
+    --svg panel "$source/panel.svg" --place panel 20 30 1
 "$limbo_parse" "$source/terminal.b"
 # The bootstrap compiler records a path relative to its Inferno root.
 # Bootstrap-компилятор записывает путь относительно корня Inferno.

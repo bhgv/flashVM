@@ -320,6 +320,11 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     unsigned strings = 1; /* The imported module path is always the first String root. */
     int i;
     unsigned nil_roots = 0;
+    if (module->avm1_frame)
+    {
+        snprintf(error, capacity, "AVM1 frame entries cannot target Dis tables");
+        return 0;
+    }
     if (module->channels || !fir_verify(module, error, capacity))
     {
         if (module->channels)

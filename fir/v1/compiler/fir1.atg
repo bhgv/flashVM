@@ -205,6 +205,9 @@ PRODUCTIONS
                                                                         (. capture(B_SEMANTICS); .)
     ]
     [
+        "source_entry" "avm1_frame"                                     (. fir_build_avm1_frame(); .)
+    ]
+    [
         "requires" "flashvm.channels"                                   (. fir_build_channels(); .)
     ]
     "func" global                                                       (. capture(B_FUNCTION); .)
@@ -367,6 +370,8 @@ PRODUCTIONS
     | "as.add"                                                          (. fir_build_op(O_ASADD); .)
     A "," B
     | "as.to_number"                                                    (. fir_build_op(O_NUMBER); .)
+    A
+    | "as.to_boolean"                                                   (. fir_build_op(O_AS_TO_BOOLEAN); .)
     A
     | "limbo.chan_create"                                               (. fir_build_op(O_CHANNEL); .)
     | "limbo.chan_receive"                                              (. fir_build_op(O_RECEIVE); .)

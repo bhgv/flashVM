@@ -28,7 +28,7 @@ target_compile_definitions(fir1_generated PRIVATE CUSTOM_BUFF)
 target_include_directories(fir1_generated PRIVATE include src)
 target_include_directories(fir1_generated PUBLIC "${generated}")
 add_library(fir1_io src/input.c)
-add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c optimiser/integer_facts.c optimiser/locality.c optimiser/private_table.c compiler/object.c compiler/dis.c compiler/dis_table.c)
+add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c optimiser/integer_facts.c optimiser/locality.c optimiser/private_table.c compiler/object.c compiler/object_format.c compiler/dis.c compiler/dis_table.c)
 # Preserve object inclusion and private generated headers on CMake 3.10.
 target_sources(fir1_ir PRIVATE $<TARGET_OBJECTS:fir1_generated>)
 target_include_directories(fir1_ir PRIVATE "${generated}")

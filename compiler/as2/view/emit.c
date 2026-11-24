@@ -13,6 +13,7 @@ static unsigned char fir_text[65536];             /* Private FIR staging buffer;
 static size_t used;                               /* Number of staged FIR bytes. */
 static int failed;                                /* Sticky host, parser or emission failure. */
 static int values;                                /* Next unique SSA value identity. */
+static int labels;                                /* Next distinct conditional's label identity. */
 static int stack[4096];                           /* Expression values, never VM heap pointers. */
 static int depth;                                 /* Number of initialized expression-stack entries. */
 static char target[256];                          /* Copied current assignment name. */
@@ -80,6 +81,58 @@ static int pop(void)
         return 0;
     }
     return stack[--depth];
+}
+
+
+/* EN: Begin the FIR entry block for an initializer.
+ * RU: Открыть входной блок FIR для инициализатора. */
+void emit_initializer(void)
+{
+    append("func @main() -> void {\n^entry:\n");
+}
+
+
+/* EN: Require the root timeline callback name before setting target metadata.
+ * RU: Проверить имя обработчика корневого клипа перед записью метаданных. */
+void emit_frame_handler(void)
+{
+    char key[256];
+    if (!name(key) || strcmp(key, "onEnterFrame"))
+    {
+        failed = 1;
+        return;
+    }
+    append("source_entry avm1_frame\n");
+    emit_initializer();
+}
+
+
+/* EN: Consume an expression and branch on the converted AS boolean.
+ * RU: Снять значение выражения и выполнить ветвление по логическому значению AS. */
+int emit_if(void)
+{
+    int value = pop();
+    int converted = values++;
+    int label = labels++;
+    append("    %%v%d: bool = as.to_boolean %%v%d\n", converted, value);
+    append("    if %%v%d, ^then%d, ^else%d\n^then%d:\n", converted, label, label, label);
+    return label;
+}
+
+
+/* EN: Finish the true arm and open the matching false arm.
+ * RU: Завершить истинную ветвь и открыть соответствующую ложную. */
+void emit_else(int label)
+{
+    append("    jump ^merge%d\n^else%d:\n", label, label);
+}
+
+
+/* EN: Finish the false arm and enter the shared continuation.
+ * RU: Завершить ложную ветвь и перейти к общему продолжению. */
+void emit_merge(int label)
+{
+    append("    jump ^merge%d\n^merge%d:\n", label, label);
 }
 
 /* Capture an assignment target; source comments preserve token line/column, not a debug ABI. */
@@ -295,12 +348,13 @@ int as2_view_compile(const void *bytes,
     source[size++] = '\n';
     used = 0;
     values = 0;
+    labels = 0;
     depth = 0;
     owner = -1;
     failed = 0;
     active = diagnostic;
     append(
-        "FIR 1.0\nmodule @ide_view\nsource_language as2\nsource_semantics avm1_numeric\nfunc @main() -> void {\n^entry:\n");
+        "FIR 1.0\nmodule @ide_view\nsource_language as2\nsource_semantics avm1_numeric\n");
     Custom_Error = diagnostic_callback;
     view_parser_reset();
     if (!view_parser_run(source, (int)size))

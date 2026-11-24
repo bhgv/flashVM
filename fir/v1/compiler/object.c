@@ -1,12 +1,9 @@
 /* Standalone SWO1 object emitter. Values are object-local generated variables.
  * Build everything in memory before writing: branch range failures never
  * produce a partially emitted object. No private FlashVM structures are used. */
-#include "fir.h"
+#include "object_format.h"
 #include <stdlib.h>
 #include <string.h>
-#include <float.h>
-
-#define BYTE_LIMIT (2u * 1024u * 1024u)
 
 
 typedef struct
@@ -17,17 +14,10 @@ typedef struct
 } Bytes;
 
 
-typedef struct
-{
-    size_t at;
-    int target;
-} Fixup;
-
-
 /* Append one byte, recording capacity failure without writing out of bounds. */
 static void byte(Bytes *b, unsigned x)
 {
-    if (b->n >= BYTE_LIMIT)
+    if (b->n >= FIR_OBJECT_LIMIT)
     {
         b->failed = 1;
     }
@@ -192,58 +182,64 @@ static size_t branch(Bytes *b, int conditional)
 }
 
 
-/* Lower a verified module, resolve all branch relocations, then write bytes. */
-int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
+/* EN: Stage an anonymous zero-argument function after its root receiver and key.
+ * RU: Записать заголовок анонимной функции после корневого объекта и имени. */
+static size_t frame_begin(Bytes *b)
 {
-    Bytes actions, object;
-    FirIntegerFacts facts; /* Fresh successful-evaluation facts for preflight only. */
-    Fixup fixes[FIR_LIMIT * 2];
-    size_t labels[FIR_BLOCKS], end;
-    int i, nf = 0, previous = -1, ok = 0;
-    if (!fir_verify(m, error, cap))
+    size_t offset;
+    text(b, "_root");
+    byte(b, 0x1c); /* GetVariable */
+    text(b, "onEnterFrame");
+    offset = b->n;
+    byte(b, 0x9b); /* DefineFunction */
+    word(b, 0); /* Patched payload size. */
+    byte(b, 0); /* Empty function name. */
+    word(b, 0); /* Zero parameters. */
+    word(b, 0); /* Patched body size. */
+    return offset;
+}
+
+
+/* EN: Complete the nested action length and install the handler on the root.
+ * RU: Записать длину вложенного блока и установить обработчик на корневом клипе. */
+static int frame_end(Bytes *b, size_t offset)
+{
+    size_t length = b->n - offset - 3;
+    size_t body = length - 5;
+    if (length > 65535u)
     {
         return 0;
     }
-    fir_integer_facts(m, &facts);
-    for (i = 0; i < m->count; i++)
+    b->data[offset + 1] = (unsigned char)length;
+    b->data[offset + 2] = (unsigned char)(length >> 8);
+    b->data[offset + 6] = (unsigned char)body;
+    b->data[offset + 7] = (unsigned char)(body >> 8);
+    byte(b, 0x4f); /* SetMember */
+    byte(b, 0); /* End initializer, after the frame body already ended. */
+    return !b->failed;
+}
+
+
+/* Lower a verified module, resolve all branch relocations, then write bytes. */
+int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
+{
+    Bytes actions = {0};
+    FirAvm1Fixup fixes[FIR_LIMIT * 2];
+    size_t labels[FIR_BLOCKS], end, frame = 0;
+    int i, nf = 0, previous = -1, ok = 0;
+    if (!fir_object_admit(m, error, cap))
     {
-        const FirInstruction *in = &m->instructions[i];
-        if (!in->removed && (in->op == O_I32_SHL || in->op == O_I32_SHR) && !fir_integer_shift_count(&facts, in->b, 32))
-        {
-            snprintf(error, cap, "AVM1 checked int shift requires a proven literal count or bit proof in [0,31]");
-            return 0;
-        }
-        if (!in->removed && (in->op == O_I32_DIV || in->op == O_I32_MOD) && !fir_integer_nonzero(&facts, in->b))
-        {
-            snprintf(error, cap, "AVM1 signed int division/remainder requires a proven nonzero literal divisor or known set bit");
-            return 0;
-        }
-        if (!m->instructions[i].removed &&
-            (((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) &&
-              m->instructions[i].op != O_BOOL_LOCAL && m->instructions[i].op != O_BOOL_STORE &&
-              m->instructions[i].op != O_BOOL_LOAD && m->instructions[i].op != O_I32_SHL &&
-              m->instructions[i].op != O_I32_SHR && m->instructions[i].op != O_I32_DIV &&
-              m->instructions[i].op != O_I32_MOD) ||
-             (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT &&
-              m->instructions[i].type != T_I32_SLOT && m->instructions[i].type != T_F64_SLOT)))
-        {
-            snprintf(error, cap, "table/big operations require a table-capable backend");
-            return 0;
-        }
+        return 0;
     }
-    actions.data = (unsigned char *)malloc(BYTE_LIMIT);
-    object.data = (unsigned char *)malloc(BYTE_LIMIT);
-    actions.n = object.n = 0;
-    actions.failed = object.failed = 0;
-    if (!actions.data || !object.data)
+    actions.data = malloc(FIR_OBJECT_LIMIT);
+    if (!actions.data)
     {
         snprintf(error, cap, "out of memory");
-        goto done;
+        return 0;
     }
-    if (sizeof(double) != 8 || DBL_MANT_DIG != 53)
+    if (m->avm1_frame)
     {
-        snprintf(error, cap, "backend requires IEEE binary64 double");
-        goto done;
+        frame = frame_begin(&actions);
     }
     for (i = 0; i < m->count; ++i)
     {
@@ -287,6 +283,11 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             load(&actions, m, in->a);
             text(&actions, in->text);
             byte(&actions, 0x52);
+            break;
+        case O_AS_TO_BOOLEAN:
+            load(&actions, m, in->a);
+            byte(&actions, 0x12); /* Not converts through AVM1 truthiness. */
+            byte(&actions, 0x12);
             break;
         case O_I32:
             integer(&actions, in->integer);
@@ -470,73 +471,26 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
         }
         if (in->result >= 0)
         {
-            byte(&actions, 0x1d); /* SetVariable consumes both operands. */
+            byte(&actions, m->avm1_frame ? 0x3c : 0x1d); /* DefineLocal or SetVariable. */
         }
-    }
-    end = actions.n;
-    byte(&actions, 0); /* ActionEnd */
-    for (i = 0; i < nf; ++i)
-    {
-        long offset = (long)(fixes[i].target < 0 ? end : labels[fixes[i].target]) - (long)(fixes[i].at + 2);
-        unsigned bits;
-        if (offset < -32768 || offset > 32767)
-        {
-            snprintf(error, cap, "AVM1 branch exceeds signed 16-bit range");
-            goto done;
-        }
-        bits = (unsigned)((uint32_t)offset & 65535u);
-        actions.data[fixes[i].at] = (unsigned char)bits;
-        actions.data[fixes[i].at + 1] = (unsigned char)(bits >> 8);
     }
     if (actions.failed)
     {
         snprintf(error, cap, "action size limit exceeded");
         goto done;
     }
-    /* SWO1 v1: explicit little-endian fields, never a C structure dump.
-     * FNV-1a detects accidental corruption; it is not authentication. */
+    end = actions.n;
+    byte(&actions, 0); /* ActionEnd */
+    if (actions.failed || (m->avm1_frame && !frame_end(&actions, frame)))
     {
-        uint32_t hash = UINT32_C(2166136261);
-        const unsigned char *name = (const unsigned char *)m->module + 1;
-        size_t length = strlen((const char *)name);
-        for (end = 0; end < length; ++end)
-        {
-            hash = (hash ^ name[end]) * UINT32_C(16777619);
-        }
-        for (end = 0; end < actions.n; ++end)
-        {
-            hash = (hash ^ actions.data[end]) * UINT32_C(16777619);
-        }
-        byte(&object, 'S');
-        byte(&object, 'W');
-        byte(&object, 'O');
-        byte(&object, '1');
-        dword(&object, 1);
-        dword(&object, m->channels ? 1 : 0);
-        dword(&object, (uint32_t)length);
-        dword(&object, (uint32_t)actions.n);
-        dword(&object, hash);
-        for (end = 0; end < length; ++end)
-        {
-            byte(&object, name[end]);
-        }
-        for (end = 0; end < actions.n; ++end)
-        {
-            byte(&object, actions.data[end]);
-        }
-        if (object.failed)
-        {
-            snprintf(error, cap, "object size limit exceeded");
-            goto done;
-        }
-        ok = fwrite(object.data, 1, object.n, output) == object.n;
+        snprintf(error, cap, "AVM1 action or frame body size limit exceeded");
+        goto done;
     }
-    if (!ok)
+    if (fir_object_relocate(actions.data, fixes, nf, labels, end, error, cap))
     {
-        snprintf(error, cap, "output write failed");
+        ok = fir_object_write(output, m, actions.data, actions.n, error, cap);
     }
 done:
     free(actions.data);
-    free(object.data);
     return ok;
 }

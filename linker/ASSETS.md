@@ -1,4 +1,4 @@
-# SWL 0.3.0 resources
+# SWL resources
 
 Resources are added through C API or CLI. The linker allocates CharacterIds,
 emits definitions before code and exports names using ExportAssets. JPEG uses
@@ -7,7 +7,7 @@ is displayable. Resource-only SWF files need no `.swo` input.
 
 ```sh
 build/linker/swl link scene.swf \
-  --svf panel linker/examples/panel.svf \
+  --svg panel linker/examples/panel.svg \
   --jpeg tile linker/examples/tile.jpg \
   --wav tone linker/examples/tone.wav \
   --place panel 20 30 1 --place tile 150 30 2 --play tone
@@ -15,7 +15,7 @@ build/linker/swl link scene.swf \
 
 | Input | C API | SWF tags |
 | --- | --- | --- |
-| SVF1 / rectangle | `swl_add_svf`, `swl_add_rect` | DefineShape3 |
+| SVG rectangle | [`swl_add_svg`](SVG.md), `swl_add_rect` | DefineShape3 |
 | Baseline JPEG | `swl_add_jpeg` | DefineBitsJPEG2 + DefineShape3 |
 | PCM WAV | `swl_add_wav` | DefineSound |
 | Display placement | `swl_place(name,x,y,depth)` | PlaceObject2 |
@@ -28,11 +28,9 @@ module names occupy separate namespaces. Placements require an already-added
 resource and a unique depth 1..65535; x/y are nonnegative pixels 0..3276. Placement
 and sound-start events appear in event order before DoAction in the single frame.
 
-SVF1 is an **initial project-specific subset**, not SVG:
-`SVF 1 rect WIDTH HEIGHT RRGGBBAA`, with ASCII whitespace-separated tokens.
-Exactly one rectangle, dimensions 1..3276 pixels, eight hexadecimal RGBA digits.
-No arbitrary paths, gradients, strokes or transforms. Future shapes require a
-versioned contract. [Example](examples/panel.svf).
+[SVG rectangles](SVG.md) can come from an ordinary `.svg` file. The linker
+accepts a single filled rectangle covering its viewport and emits a native SWF
+shape. [Example](examples/panel.svg).
 
 JPEG: baseline SOF0, 8-bit, 1/3 components, SOI/SOS/EOI, dimensions up to 3276.
 Headers and segment bounds are validated; entropy data is not decoded here.

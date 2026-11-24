@@ -152,7 +152,7 @@ static int configure(int argc, char **argv, int archive, SwlOptions *options)
         {
             options->allow_flashvm_extensions = 1;
         }
-        else if (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav"))
+        else if (!strcmp(argv[i], "--svg") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav"))
         {
             operands = 2;
         }
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
     char error[256] = "read/allocation failure";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("swl 0.3.15 (SWO1/SWA1 to SWF8)");
+        puts("swl 0.3.16 (SWO1/SWA1 to SWF8)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
              "       swl archive OUTPUT.swa INPUT.swo ...\n"
              "       swl inspect INPUT.swo|INPUT.swa\n"
              "Stage: --size WIDTH HEIGHT (1..3276 pixels) --fps RATE (1..255)\n"
-             "Resources: --svf NAME FILE --jpeg NAME FILE --wav NAME FILE\n"
+             "Resources: --svg NAME FILE --jpeg NAME FILE --wav NAME FILE\n"
              "Events (after resources): --place NAME X Y DEPTH --play NAME\n"
              "Initializers run in input/member order. Duplicate modules fail.\n"
              "Libraries include all members. No implicit paths or lazy resolution.\n"
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
         {
             continue;
         }
-        if (!archive && (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav")))
+        if (!archive && (!strcmp(argv[i], "--svg") || !strcmp(argv[i], "--jpeg") || !strcmp(argv[i], "--wav")))
         {
             const char *kind = argv[i], *name;
             if (i + 2 >= argc)
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
                 ok = 0;
                 break;
             }
-            ok = !strcmp(kind, "--svf")    ? swl_add_svf(c, name, data, n, error, sizeof(error))
+            ok = !strcmp(kind, "--svg")    ? swl_add_svg(c, name, data, n, error, sizeof(error))
                  : !strcmp(kind, "--jpeg") ? swl_add_jpeg(c, name, data, n, error, sizeof(error))
                                            : swl_add_wav(c, name, data, n, error, sizeof(error));
             free(data);

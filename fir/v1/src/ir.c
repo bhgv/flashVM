@@ -148,7 +148,8 @@ static const char *const ops[] = {"const.i32",
                                   "f64.local",
                                   "f64.store",
                                   "f64.load",
-                                  "as.member_call"};
+                                  "as.member_call",
+                                  "as.to_boolean"};
 
 
 /* Map a private retained-cell type to its exact source payload type.
@@ -478,6 +479,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "incompatible source language/semantics profile");
     }
+    if (m->avm1_frame && (m->avm1_frame != 1 || m->source_language != FIR_AS2))
+    {
+        return fail(error, cap, "avm1_frame requires the AS2 source profile");
+    }
     if (!symbol_name(m->module, '@'))
     {
         return fail(error, cap, "invalid module spelling");
@@ -517,7 +522,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_AS_MEMBER_CALL || (unsigned)in->type > T_F64_SLOT || in->block < 0 ||
+        if ((unsigned)in->op > O_AS_TO_BOOLEAN || (unsigned)in->type > T_F64_SLOT || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -546,7 +551,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             return fail(error, cap, "invalid constant payload");
         }
-        unary = in->op == O_I32_LOAD || in->op == O_F64_LOAD || in->op == O_BOOL_NOT || in->op == O_AS_GLOBAL_SET ||
+        unary = in->op == O_AS_TO_BOOLEAN || in->op == O_I32_LOAD || in->op == O_F64_LOAD ||
+                in->op == O_BOOL_NOT || in->op == O_AS_GLOBAL_SET ||
                 in->op == O_REF_LOCAL || in->op == O_REF_LOAD || in->op == O_BIG_LOAD || in->op == O_TABLE_LOCK ||
                 in->op == O_TABLE_UNLOCK || in->op == O_RUNE_TEXT || in->op == O_STRING_LEN || in->op == O_BOOL_LOAD ||
                 in->op == O_TABLE_COUNT || in->op == O_TABLE_HAS || in->op == O_TABLE_DELETE || in->op == O_COPY ||
@@ -1122,6 +1128,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             }
             expected = T_F64;
             break;
+        case O_AS_TO_BOOLEAN:
+            if (!a || a > T_ANY)
+            {
+                goto bad_type;
+            }
+            expected = T_BOOL;
+            break;
         case O_CHANNEL:
             if (!m->channels)
             {
@@ -1285,6 +1298,10 @@ int fir_print(FILE *out, const FirModule *m)
                 : m->source_semantics == FIR_LIMBO_TABLES ? "limbo_tables"
                 : m->source_semantics == FIR_LIMBO_REAL   ? "limbo_real"
                                                           : "avm1_numeric");
+    }
+    if (m->avm1_frame)
+    {
+        fputs("source_entry avm1_frame\n", out);
     }
     if (m->channels)
     {

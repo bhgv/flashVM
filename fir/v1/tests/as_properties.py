@@ -49,6 +49,19 @@ def main():
         command([compiler, 'dis', optimized, output], success=False)
         if output.read_bytes() != b'previous valid product':
             raise RuntimeError('unsupported Dis target damaged a previous product')
+        frame_header = ('source_language as2\nsource_semantics avm1_numeric\n'
+                        'source_entry avm1_frame\n')
+        empty_frame = 'func @main() -> void {\n^entry:\nreturn\n}\n'
+        source.write_text('FIR 1.0\nmodule @frame\n' + frame_header + empty_frame)
+        command([optimizer, source, optimized])
+        if frame_header not in optimized.read_text():
+            raise RuntimeError('optimizer discarded frame entry metadata')
+        command([compiler, 'object', optimized, work / 'frame.swo'])
+        command([compiler, 'dis', optimized, output], success=False)
+        if output.read_bytes() != b'previous valid product':
+            raise RuntimeError('non-AVM1 target overwrote an output for an AVM1 callback')
+        source.write_text('FIR 1.0\nmodule @frame\nsource_entry avm1_frame\n' + empty_frame)
+        command([compiler, 'check', source], success=False)
         for replacement in ('%bad: any = as.global_get "__fir1$x"',
                             '%bad: any = as.global_get ""',
                             '%bad: i32 = as.global_get "owner"',
@@ -56,6 +69,8 @@ def main():
                             '%bad: any = as.member_call %value, "method"',
                             '%bad: i32 = as.member_call %owner, "method"',
                             '%bad: any = as.member_call %owner, "method", %channel',
+                            '%bad: bool = as.to_boolean %channel',
+                            '%bad: i32 = as.to_boolean %value',
                             'as.member_set %value, "text", %missing',
                             'as.member_set %value, "text", %channel'):
             extra = '%channel: channel = limbo.chan_create\n' if '%channel' in replacement else ''

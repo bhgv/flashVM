@@ -122,6 +122,11 @@ static int64_t big_bits(uint64_t bits)
 static int coverage(FirModule *module, char *error, size_t capacity)
 {
     int i;
+    if (module->avm1_frame)
+    {
+        snprintf(error, capacity, "AVM1 frame entries cannot run in the table runner");
+        return 0;
+    }
     if (module->channels || !fir_verify(module, error, capacity))
     {
         if (module->channels)

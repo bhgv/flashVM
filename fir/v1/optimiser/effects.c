@@ -53,6 +53,7 @@ unsigned fir_effects(FirOp op)
     case O_F64_LT:
     case O_F64_LE:
     case O_BOOL_NOT:
+    case O_AS_TO_BOOLEAN:
     case O_BOOL_EQ:
     case O_I32_AND:
     case O_I32_OR:

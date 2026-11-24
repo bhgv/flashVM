@@ -72,6 +72,7 @@ func @main() -> void {
 | `f64.add/sub/mul/div %a, %b` | f64,f64 → f64 | Три отдельные операции строгой вещественной арифметики |
 | `as.add %a, %b` | scalar,scalar → any | Преобразования/конкатенация AVM1 Add2, SWF8 |
 | `as.to_number %a` | scalar → f64 | AVM1 ToNumber, SWF8 |
+| `as.to_boolean %a` | scalar → bool | Логическое значение AVM1, SWF8 |
 | `trace %a` | scalar → void | ActionTrace: преобразование в строку, передача sink хоста |
 | `if %c, ^yes, ^no` | bool → void | Два явных исхода |
 | `jump ^block` | → void | Безусловный переход |
@@ -143,6 +144,11 @@ limbo_i32. По отдельности, с неизвестным значени
 Это provenance и профиль frontend, не реконструкция исходника и не переключатель
 семантики opcodes. C API: `FirModule.source_language/source_semantics`; 0 означает
 отсутствие полей. После изменения C-структур нужно пересобрать клиент и библиотеку.
+
+Необязательное `source_entry avm1_frame` после профиля AS2 поручает backend
+установить `@main` как `onEnterFrame` корневого клипа без параметров.
+Тело использует локальные SSA и собственные цели переходов. Dis и табличный
+исполнитель отклоняют такую точку входа. C API: `FirModule.avm1_frame`.
 
 Числовые литералы допускают явный +, формы .5/2. для f64 и 0x/0X. Диапазон i32
 по-прежнему signed: +0x7fffffff и -0x80000000 допустимы, 0x80000000 — нет.

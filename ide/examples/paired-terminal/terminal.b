@@ -47,8 +47,8 @@ uploadmovie(sys: Sys)
 }
 
 
-# EN: Exchange one view with the paired player and compare the complete reply.
-# RU: Обменяться кадром с парным плеером и сравнить ответ целиком.
+# EN: Start with an empty terminal, then send two views and verify both replies in order.
+# RU: Запустить плеер с пустым терминалом, затем отправить два кадра и проверить порядок ответов.
 init()
 {
     sys := load Sys Sys->PATH;
@@ -60,18 +60,19 @@ init()
         raise "attach paired Unibus";
     }
 
-    # On the controller scheduler, the unbuffered send precedes the next guest turn.
-    # В планировщике контроллера небуферизованная отправка предшествует следующему такту программы.
-    view := "fvd1:000000020000002a00000000000000000000004200000000Я64";
-    output <-= array of byte view;
     state := sys->open("/rpc/.state", Sys->OWRITE);
     if (state == nil || sys->write(state, array of byte "start", 5) != 5) {
         raise sys->sprint("start terminal.swf: %r");
     }
-    reply := <-input;
+    first := "fvd1:000000020000002a00000000000000000000004200000000Я64";
+    second := "fvd1:000000020000002a00000000000000000000004300000000界96";
+    output <-= array of byte first;
+    output <-= array of byte second;
+    first_reply := string <-input;
+    second_reply := string <-input;
     bus->detach();
-    if (string reply != view + " AS2") {
+    if (first_reply != first + " AS2" || second_reply != second + " AS2") {
         raise "paired Unicode frame mismatch";
     }
-    sys->print("PASS compiled AS2 + Limbo: %s\n", string reply);
+    sys->print("PASS compiled AS2 + Limbo: %s / %s\n", first_reply, second_reply);
 }

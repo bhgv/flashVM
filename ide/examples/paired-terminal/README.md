@@ -2,14 +2,14 @@
 
 [Русский](README.ru.md)
 
-The two bytecode files exercise one view update on the paired IDE transport.
+The two bytecode files exercise successive view updates on the paired IDE transport.
 The Limbo application uploads the linked movie to `.upload`, attaches two
-ordinary `chan of array of byte` channels with `$Unibus.attach` and sends a
-portable fvd1 view frame. It starts playback by writing `start` to `.state`.
-The ActionScript receives the frame through `styxTerminal`, moves a panel
-64 pixels to the right and returns the same Unicode payload with the suffix
-` AS2`. Limbo compares the complete result and detaches. Both paths use the
-same libstyxrpc session. This sample covers the initial view round trip.
+ordinary `chan of array of byte` channels with `$Unibus.attach` and starts playback
+by writing `start` to `.state`. It then sends two fvd1 views with Unicode payloads.
+The ActionScript `onEnterFrame` handler reads from `styxTerminal`, applies the requested
+horizontal offsets of 64 and 96 pixels, and returns each payload with the suffix
+` AS2`. It retains an unaccepted reply until the terminal has credit. Limbo checks
+both replies in order and detaches. Both paths use the same libstyxrpc session.
 
 ## Run
 
@@ -18,8 +18,7 @@ Run the included `terminal.dis` and `terminal.swf` with the project's mounted
 `flashvm_styx_player`. On POSIX, the optional Python 3 launcher creates the
 socketpair, passes file descriptors to the two executables and checks exit
 status. Application logic runs entirely from `terminal.dis` and `terminal.swf`.
-The sample uses DisVM's default controller scheduler so the unbuffered send is
-pumped before the controller resumes to start the one-shot SWF.
+Delivery takes place while the movie is running. Its callback polls once per tick.
 
 ```sh
 python3 launch.py /path/to/disvm /path/to/flashvm_styx_player
@@ -32,7 +31,7 @@ The launcher defaults to interpretation. `--jit` selects JIT in both VMs.
 the window and writes the checked final 320×240 image to the specified PPM
 path. Use the graphics/SDL2-enabled player for either option. With
 `SDL_VIDEODRIVER=dummy` the same raster check runs without a physical display.
-Success prints `PASS compiled AS2 + Limbo`, followed by the echoed frame.
+Success prints `PASS compiled AS2 + Limbo` with the two echoed frames.
 
 ## Build
 
@@ -52,7 +51,7 @@ python3 launch.py /path/to/disvm /path/to/flashvm_styx_player --directory /outpu
 ```
 
 `terminal.as` goes through AS2 → verified and optimized FIR → SWO → SWL → SWF.
-The linker supplies the rectangle from `panel.svf`. The Limbo frontend checks
+The linker imports the rectangle from `panel.svg` with `--svg`. The Limbo frontend checks
 `terminal.b` and the project's bootstrap compiler resolves module types and
 emits `terminal.dis`. Only the two bytecode files are needed by the guest
 applications.

@@ -15,7 +15,8 @@ def check_capture(path):
     data = path.read_bytes()
     if not data.startswith(header) or len(data) != len(header) + 320 * 240 * 3:
         raise RuntimeError("malformed 320 × 240 PPM")
-    for x, y, color in ((25, 35, b"\xff\xff\xff"), (100, 42, b"\x17\x62\x46")):
+    expected = ((25, 35, b"\xff\xff\xff"), (100, 42, b"\xff\xff\xff"), (132, 42, b"\x17\x62\x46"))
+    for x, y, color in expected:
         offset = len(header) + (y * 320 + x) * 3
         if data[offset:offset + 3] != color:
             raise RuntimeError(f"unexpected panel position at {x},{y}")

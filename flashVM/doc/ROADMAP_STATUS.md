@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1739 / Контрольная точка v0.1739. SWL imports the paired panel
+from SVG. Собранный из AS2 обработчик `onEnterFrame` принимает два кадра от
+Limbo после старта и подтверждает их по порядку.
+[EN](../../ide/examples/paired-terminal/README.md) /
+[RU](../../ide/examples/paired-terminal/README.ru.md).
+
 Checkpoint v0.1738 / Контрольная точка v0.1738. A project-built AS2 SWF and Limbo
 Dis image exchange a Unicode view on the stock pair and verify the rendered
 panel position. [EN](../../ide/examples/paired-terminal/README.md) /

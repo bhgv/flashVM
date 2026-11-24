@@ -73,6 +73,7 @@ every use; a same-block definition must precede its use. Forward labels are allo
 | `f64.add/sub/mul/div %a, %b` | f64,f64 → f64 | Strict floating arithmetic; four separate opcodes |
 | `as.add %a, %b` | scalar,scalar → any | SWF8 AVM1 Add2 coercion/concatenation |
 | `as.to_number %a` | scalar → f64 | SWF8 AVM1 ToNumber |
+| `as.to_boolean %a` | scalar → bool | SWF8 AVM1 truthiness |
 | `trace %a` | scalar → void | ActionTrace string conversion and delivery to host sink |
 | `if %c, ^yes, ^no` | bool → void | Exactly two explicit destinations |
 | `jump ^block` | → void | Unconditional transfer |
@@ -143,6 +144,11 @@ limbo_i32. Missing partners, unknown values and mismatched pairs fail. Old FIR
 without these fields remains valid; printer/optimizer preserve them. This is
 provenance and frontend profile, not source reconstruction or an opcode-semantics
 switch. C API: `FirModule.source_language/source_semantics`; 0 means unspecified.
+
+`source_entry avm1_frame` optionally follows the AS2 source profile. The AVM1
+backend installs `@main` as the root's parameterless `onEnterFrame`. The body uses
+frame-local SSA storage and its own branch targets. Dis and the table runner
+reject this entry kind. C API: `FirModule.avm1_frame`.
 Rebuild both clients and libraries after C structure changes.
 
 Numeric literals admit explicit +, .5/2. for f64 and 0x/0X. i32 is still signed:

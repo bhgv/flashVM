@@ -52,15 +52,16 @@ int swl_add_object(SwlContext *, const void *, size_t, char *, size_t);
 int swl_add_archive(SwlContext *, const void *, size_t, char *, size_t);
 
 
-/* Named resources are exported; JPEG is wrapped in a bitmap-filled shape.
-     * SVF1 initially supports a single filled rectangle, not arbitrary SVG. */
+/* Named resources are exported; JPEG is wrapped in a bitmap-filled shape. */
 int swl_add_jpeg(SwlContext *, const char *name, const void *, size_t, char *, size_t);
 
 
 int swl_add_wav(SwlContext *, const char *name, const void *, size_t, char *, size_t);
 
 
-int swl_add_svf(SwlContext *, const char *name, const void *, size_t, char *, size_t);
+/* EN: Import one filled, origin-aligned rectangle from a bounded SVG document.
+ * RU: Импортировать закрашенный прямоугольник из SVG с началом в (0, 0). */
+int swl_add_svg(SwlContext *, const char *name, const void *, size_t, char *, size_t);
 
 
 int swl_add_rect(SwlContext *, const char *name, unsigned width, unsigned height, uint32_t rgba, char *, size_t);

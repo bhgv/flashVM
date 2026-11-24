@@ -130,6 +130,14 @@ void fir_build_channels(void)
 }
 
 
+/* EN: Mark the parsed entry as an AVM1 movie callback.
+ * RU: Пометить входную точку как обработчик кадра AVM1. */
+void fir_build_avm1_frame(void)
+{
+    active->module->avm1_frame = 1;
+}
+
+
 /* Decimal parsing is independent of host long width. String escapes are
  * decoded after Coco/R has recognised a complete, bounded quoted token. */
 static void literal(const char *text, int line)

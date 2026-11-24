@@ -123,8 +123,9 @@ static int push(const unsigned char *p, size_t n)
 }
 
 
-/* Branches must land on instruction starts, not inside immediate data. */
-static int actions(const unsigned char *p, size_t n)
+/* EN: Check instruction boundaries in one action block and one permitted function level.
+ * RU: Проверить границы инструкций в блоке и на одном допустимом уровне функции. */
+static int actions(const unsigned char *p, size_t n, int file_scope)
 {
     unsigned char *starts;
     size_t i = 0, length, end;
@@ -170,6 +171,19 @@ static int actions(const unsigned char *p, size_t n)
                     goto done;
                 }
             }
+            else if (op == 0x9b)
+            {
+                size_t body;
+                if (!file_scope || length < 6 || p[i] || p[i + 1] || p[i + 2])
+                {
+                    goto done;
+                }
+                body = (size_t)p[i + 3] | (size_t)p[i + 4] << 8;
+                if (body != length - 5 || !actions(p + i + 5, body, 0))
+                {
+                    goto done;
+                }
+            }
             else if ((op != 0x99 && op != 0x9d) || length != 2)
             {
                 goto done;
@@ -184,6 +198,7 @@ static int actions(const unsigned char *p, size_t n)
             case 0x12: /* Not emitted by verified normalized bool inversion. */
             case 0x1c:
             case 0x1d:
+            case 0x3c: /* DefineLocal for callback-local FIR values. */
             case 0x4f: /* SetMember emitted by verified FIR dynamic AS stores. */
             case 0x0c:
             case 0x0d:
@@ -336,7 +351,7 @@ int swl_add_object(SwlContext *c, const void *data, size_t n, char *e, size_t ca
     {
         return swl_fail(e, cap, "link input limit exceeded");
     }
-    if (!actions(p + 24 + name, code))
+    if (!actions(p + 24 + name, code, 1))
     {
         return swl_fail(e, cap, "invalid AVM1 records or branch targets");
     }

@@ -300,6 +300,7 @@ PRODUCTIONS
   ModuleItem =
     "source_language" ident
     | "source_semantics" ident
+    | "source_entry" ident
     | "file" metadata textlit
     | "loc" metadata metadata ":" numeric ":" numeric
     | "requires"

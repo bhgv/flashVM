@@ -1,4 +1,4 @@
-# Ресурсы SWL 0.3.0
+# Ресурсы SWL
 
 Ресурсы добавляются через C API или консоль. Линкер выделяет CharacterId,
 пишет определения до кода и экспортирует имена через ExportAssets. Для JPEG
@@ -7,7 +7,7 @@
 
 ```sh
 build/linker/swl link scene.swf \
-  --svf panel linker/examples/panel.svf \
+  --svg panel linker/examples/panel.svg \
   --jpeg tile linker/examples/tile.jpg \
   --wav tone linker/examples/tone.wav \
   --place panel 20 30 1 --place tile 150 30 2 --play tone
@@ -15,7 +15,7 @@ build/linker/swl link scene.swf \
 
 | Input | C API | SWF tags |
 | --- | --- | --- |
-| SVF1 / rectangle | `swl_add_svf`, `swl_add_rect` | DefineShape3 |
+| Прямоугольник SVG | [`swl_add_svg`](SVG.ru.md), `swl_add_rect` | DefineShape3 |
 | Baseline JPEG | `swl_add_jpeg` | DefineBitsJPEG2 + DefineShape3 |
 | PCM WAV | `swl_add_wav` | DefineSound |
 | Display placement | `swl_place(name,x,y,depth)` | PlaceObject2 |
@@ -29,11 +29,9 @@ build/linker/swl link scene.swf \
 x/y — неотрицательные пиксели 0..3276. Теги размещения/старта звучания идут
 в порядке событий до DoAction в единственном кадре.
 
-SVF1 пока определён здесь как **начальное собственное подмножество**, не SVG:
-`SVF 1 rect WIDTH HEIGHT RRGGBBAA`, токены разделены ASCII-пробелами/переводами
-строк. Ровно один прямоугольник; размеры 1..3276 пикселей; RGBA — восемь hex-цифр.
-Нет произвольных путей, градиентов, обводок и трансформаций. Будущие формы
-требуют версионирования контракта. [Пример](examples/panel.svf).
+[Прямоугольник SVG](SVG.ru.md) можно передать обычным файлом `.svg`. Линкер
+принимает одну закрашенную фигуру, заполняющую область просмотра, и выпускает
+нативную фигуру SWF. [Пример](examples/panel.svg).
 
 JPEG: baseline SOF0, 8 бит, 1/3 компоненты, SOI/SOS/EOI, размеры до 3276;
 проверяются заголовки и границы сегментов, entropy-код не декодируется линкером.

@@ -1,5 +1,15 @@
 #ifndef AS2_VIEW_EMIT_H
 #define AS2_VIEW_EMIT_H
+/* EN/RU: Mark a regular initializer / Начать обычный инициализатор. */
+void emit_initializer(void);
+/* EN/RU: Validate the callback name and mark a frame handler / Начать обработчик кадра. */
+void emit_frame_handler(void);
+/* EN/RU: Emit a branch and return its label index / Выдать ветвление и вернуть номер метки. */
+int emit_if(void);
+/* EN/RU: Close the true arm and enter the false arm / Перейти с истинной ветви на ложную. */
+void emit_else(int label);
+/* EN/RU: Close the false arm and enter the merge / Завершить ложную ветвь и выдать слияние. */
+void emit_merge(int label);
 /* Capture current ASCII target token; no runtime global is read for a simple assignment. */
 void emit_target(void);
 /* Capture member name and emit a FIR read of the LHS owner before its RHS. */
