@@ -196,6 +196,9 @@ install_runtime_package() {
     copy_file "$ROOT/ide/dis/bridge/idevectorcancel.b" "$destination/source/idevectorcancel.b"
     copy_file "$ROOT/ide/dis/bridge/idevectorpick.b" "$destination/source/idevectorpick.b"
     copy_file "$ROOT/ide/dis/bridge/idevectorbrushfit.b" "$destination/source/idevectorbrushfit.b"
+    for geometry in idevectorbrushgeometry idevectormergedrawing idevectorpainttopology; do
+        copy_file "$ROOT/ide/dis/bridge/$geometry.b" "$destination/source/$geometry.b"
+    done
     copy_file "$ROOT/ide/dis/bridge/idevectorviewport.b" "$destination/source/idevectorviewport.b"
     copy_file "$ROOT/ide/dis/bridge/idevectoredit.b" "$destination/source/idevectoredit.b"
     copy_file "$ROOT/ide/dis/bridge/idevectorchain.b" "$destination/source/idevectorchain.b"

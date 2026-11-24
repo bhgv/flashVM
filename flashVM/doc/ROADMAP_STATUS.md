@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1750 / Контрольная точка v0.1750. The SVG Brush merges connected
+fills of the same color and cuts through other paint as one history entry.
+После переноса мазка остаётся вырез. Островки выделяются независимо.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1749 / Контрольная точка v0.1749. FlashVM previews paired Brush
 and Pen strokes locally and sends bounded copied points on release. Limbo
 принимает штрих целиком и сохраняет итоговый контур в SVG.

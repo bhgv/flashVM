@@ -162,8 +162,15 @@ camera and tool style. It sends the copied page coordinates on release
 over the same UniBus session. A stroke holds up to 4,096 points, with one
 slot reserved for the last point. Each fragment carries the scene ticket
 and source revision. The pane owner receives one complete stroke and
-commits one history entry. Its normal fitting path prepares the saved
-contour. This preview runs on the MovieClip owner.
+commits one history entry. The preview runs on the MovieClip owner.
+
+The SVG Brush works like Merge Drawing with Paint Normal in the current
+document plane. A stroke joins connected visible fills of the same color
+and cuts away covered paint of a different color. If a cut separates a fill
+into islands, each remainder can be selected and moved independently. Moving
+the upper stroke later exposes the cut. Undo restores the original geometry
+in one step. Dots and straight strokes retain four cubic arcs. Complex
+intersections and turns use contours traced from a bounded coverage mask.
 
 Escape, focus or another input transition can remove an unreleased
 preview. A complete replacement scene also removes it and retires a
@@ -172,6 +179,8 @@ released preview when the new document is drawn.
 Use `--ink` with the same SDL fixture. It suspends its own Dis process
 to observe preview pixels and cancellation, then sends a surviving stroke
 across more than one fragment and verifies the saved SVG and final raster.
+Use `--merge` to paint across an existing SVG fill, move the stroke away,
+and verify the two remaining fill islands and the visible gap.
 
 Multiple touch contacts and vector editing overlays still need paired
 integration. Menu 8 currently starts the installed graphical runtime.

@@ -242,6 +242,23 @@ static void vector_burst(void)
 }
 
 
+/* EN: Cut across the red fill with a brush, then move the blue stroke away.
+ * RU: Разрезать красный контур кистью, затем отодвинуть синий мазок. */
+static void merge_drawing_burst(void)
+{
+    SDL_Event event;
+    open_vector();
+    text("++++++++");
+    drag(111, 470, 225, 470);
+    key(SDL_KEYDOWN, SDLK_v, KMOD_NONE);
+    drag(170, 470, 170, 569);
+    shortcut(SDLK_s);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
+}
+
+
 /* EN: Post a positive wheel step at the current window position in pixels.
  * RU: Передать положительный шаг колеса в указанной точке окна. */
 static void vector_wheel(int x, int y)
@@ -377,6 +394,10 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
         else if (getenv("FVM_PAIRED_TEST_LOCAL_INK"))
         {
             local_ink_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_MERGE_DRAWING"))
+        {
+            merge_drawing_burst();
         }
         else
         {

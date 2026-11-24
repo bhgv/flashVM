@@ -1292,85 +1292,7 @@ refineone(doc: ref Document): int
     if (last.author != Brush) {
         return Ok;
     }
-    area := shapearea(last,doc.work);
-    merged := array[count] of { * => 0 };
-    candidates := array[count] of array of byte;
-    palette := zerobytes(GridWidth * GridHeight);
-    for (index := 0; index < count - 1; index++) {
-        checkwork(doc.work);
-        old := doc.shapes[index];
-        source := shapearea(old,doc.work);
-        for (part := 0; part < GridBytes; part++) {
-            if (part % 512 == 0) {
-                checkwork(doc.work);
-            }
-            bits := int source[part];
-            if (bits == 0) {
-                continue;
-            }
-            for (bit := 0; bit < 8; bit++) {
-                if ((bits & (1 << bit)) != 0) {
-                    palette[part * 8 + bit] = byte (index + 1);
-                }
-            }
-        }
-        if (old.color == last.color && (old.fill || old.author == Brush)) {
-            candidates[index] = zerobytes(GridBytes);
-        }
-    }
-    for (cell := 0; count > 1 && cell < len palette; cell++) {
-        if (cell % 4096 == 0) {
-            checkwork(doc.work);
-        }
-        slot := int palette[cell] - 1;
-        if (slot >= 0 && candidates[slot] != nil) {
-            candidates[slot][cell >> 3] |= byte (1 << (cell & 7));
-        }
-    }
-    # Copy before union; canonical old coverage belongs to immutable history.
-    combined := zerobytes(GridBytes);
-    combined[0:] = area;
-    changed := 1;
-    while (changed) {
-        changed = 0;
-        for (index = 0; index < count - 1; index++) {
-            if (!merged[index] && candidates[index] != nil && touches(combined, candidates[index],doc.work)) {
-                merged[index] = 1;
-                changed = 1;
-                for (part := 0; part < GridBytes; part++) {
-            if (part % 512 == 0) {
-                checkwork(doc.work);
-            }
-                    combined[part] |= candidates[index][part];
-                }
-            }
-        }
-    }
-    nodes := contours(combined,doc.work);
-    if (len nodes < 2) {
-        return Limit;
-    }
-    retained := 1;
-    total := len nodes;
-    for (index = 0; index < count - 1; index++) {
-        if (!merged[index]) {
-            retained++;
-            total += len doc.shapes[index].nodes;
-        }
-    }
-    if (retained > MaxShapes || total > MaxTotal) {
-        return Limit;
-    }
-    replacement := array[retained] of ref Shape;
-    used := 0;
-    for (index = 0; index < count - 1; index++) {
-        if (!merged[index]) {
-            replacement[used++] = doc.shapes[index];
-        }
-    }
-    replacement[used] = ref Shape(last.color, 0, 1, nodes, combined, 0, nil);
-    doc.shapes = replacement;
-    return Ok;
+    return mergebrush(doc, last);
 }
 
 
@@ -1416,3 +1338,7 @@ include "idevectorviewport.b";
 include "idevectorbrushfit.b";
 
 include "idevectorcancel.b";
+
+include "idevectorbrushgeometry.b";
+include "idevectormergedrawing.b";
+include "idevectorpainttopology.b";

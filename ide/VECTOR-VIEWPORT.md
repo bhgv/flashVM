@@ -6,9 +6,12 @@
 
 [Русский](VECTOR-VIEWPORT.ru.md) · [Object/node editing](VECTOR-EDITING.md)
 
-After release, the separate Limbo worker fits closed brush contours with cubic
-Bézier segments, using chord parameters and interval least squares. Every input
-sample is checked against the rounded curve with per-axis extent/100 tolerances
+After release, the separate Limbo worker applies the stroke to the current paint.
+It constructs dots and straight brush sweeps from four cubic arcs and preserves
+an existing outer path when an interior cut can append a reverse-wound hole.
+For complex cuts and turns, it traces the resulting coverage and fits the closed
+contours with cubic Bézier segments, using chord parameters and interval least
+squares. Every input sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
 retain lines. A bounded reverse sampling check rejects bows between knots.
 This is a discrete fitting bound, not a continuous Hausdorff proof. Motion keeps
@@ -17,6 +20,8 @@ raw native ink. The owner replaces geometry only for a matching completion.
 Nodes edits endpoints and both cubic controls independently, with Ctrl/marquee,
 Undo/Cancel and SVG C round trips. Legacy Q paths remain editable. The algorithm
 lives in `dis/bridge/idevectorbrushfit.b`; the linked release gives full limitations.
+Merge policy and topology live in `dis/bridge/idevectormergedrawing.b` and
+`dis/bridge/idevectorpainttopology.b`.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

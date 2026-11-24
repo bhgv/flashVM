@@ -48,7 +48,7 @@ def check(args, directory, movie, mode):
         copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
-    if args.vector or args.camera or args.ink:
+    if args.vector or args.camera or args.ink or args.merge:
         seed_vector(drawing)
 
     # EN: Each command receives one connected descriptor from exchange.
@@ -70,6 +70,8 @@ def check(args, directory, movie, mode):
                 environment.append("FVM_PAIRED_TEST_VECTOR_CAMERA=1")
             if args.ink:
                 environment.append("FVM_PAIRED_TEST_LOCAL_INK=1")
+            if args.merge:
+                environment.append("FVM_PAIRED_TEST_MERGE_DRAWING=1")
             return [*environment, *argv]
         return argv
 
@@ -88,7 +90,7 @@ def check(args, directory, movie, mode):
     if args.thumbnails:
         timeout = 80
         expected = {"paired-thumb-first.txt": "1-первая\nстрока один", "paired-thumb-second.txt": "2-вторая\nстрока два"}
-    if args.vector or args.camera:
+    if args.vector or args.camera or args.merge:
         timeout = 65
         expected = {}
     provider_trace = ()
@@ -106,6 +108,8 @@ def check(args, directory, movie, mode):
         return verify_vector_camera(drawing, capture)
     if args.ink:
         return verify_local_ink(drawing, capture)
+    if args.merge:
+        return verify_merge_drawing(drawing, capture)
     if args.vector:
         return verify_vector(drawing, capture)
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
@@ -185,6 +189,27 @@ def verify_local_ink(drawing, capture):
     if pixel(255, 490) != "ffffff" or pixel(255, 518) != "245ac4" or pixel(376, 523) != "245ac4":
         raise RuntimeError("canceled preview leaked or released contour lost its later samples")
     print("PASS local ink preview, cancellation and one saved multi-fragment stroke")
+    return data
+
+
+# EN: Read the persisted colour islands and the real gap exposed by moving the stroke.
+# RU: Проверить сохранённые островки и просвет после переноса мазка по реальным пикселям.
+def verify_merge_drawing(drawing, capture):
+    shapes = list(ET.parse(drawing).getroot())
+    if [shape.attrib.get("fill") for shape in shapes] != ["#e04444", "#e04444", "#245ac4"]:
+        raise RuntimeError("expected two red islands and the moved blue stroke\n" +
+                           drawing.read_text(encoding="utf-8"))
+    if shapes[2].attrib.get("d", "").count("C") != 4:
+        raise RuntimeError("moved straight stroke lost its four cubic arcs")
+    header = b"P6\n960 640\n255\n"
+    data = capture.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong Merge Drawing raster extent")
+    for y, color in ((454, "e04444"), (470, "ffffff"), (485, "e04444"), (569, "245ac4")):
+        at = len(header) + (960 * y + 195) * 3
+        if data[at:at + 3].hex() != color:
+            raise RuntimeError(f"wrong Merge Drawing pixel at row {y}: {data[at:at + 3].hex()}")
+    print("PASS paired Merge Drawing leaves a real gap after moving the blue stroke")
     return data
 
 
@@ -313,8 +338,9 @@ def main():
     scenarios.add_argument("--vector", action="store_true", help="open, edit and save an SVG through the real window")
     scenarios.add_argument("--camera", action="store_true", help="zoom, draw and reset the paired SVG camera")
     scenarios.add_argument("--ink", action="store_true", help="preview and cancel ink while the test Dis child is suspended")
+    scenarios.add_argument("--merge", action="store_true", help="cut a fill with the brush and move the resulting stroke")
     args = parser.parse_args()
-    if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink) and not args.native_events:
+    if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink or args.merge) and not args.native_events:
         parser.error("the selected desktop scenario requires --native-events")
     if args.native_events:
         args.text = args.window = True
