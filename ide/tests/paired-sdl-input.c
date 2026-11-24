@@ -12,6 +12,8 @@
 #define EVENT_DELAY_MS 650U /* Let the player mount, open and opt in before posting input. */
 #define EDIT_ROW 106        /* First line of the standard paired editor. */
 #define BUTTON_LEFT SDL_BUTTON_LEFT /* Native primary pointer. */
+#define MDI_WIDTH 860       /* One-column desktop width exercised in the resize test. */
+#define MDI_HEIGHT 620      /* New native window height during the MDI test. */
 
 
 /* EN: Submit a copied event to SDL and fail the fixture if SDL discards it.
@@ -54,7 +56,7 @@ static void text(const char *string)
 
 /* EN: Post one primary button transition at the editor's first row.
  * RU: Передать нажатие или отпускание основной кнопки в первой строке редактора. */
-static void button(Uint32 type, int x)
+static void button(Uint32 type, int x, int y)
 {
     SDL_Event event;
     memset(&event, 0, sizeof(event));
@@ -62,7 +64,7 @@ static void button(Uint32 type, int x)
     event.button.button = BUTTON_LEFT;
     event.button.state = (type == SDL_MOUSEBUTTONDOWN) ? SDL_PRESSED : SDL_RELEASED;
     event.button.x = x;
-    event.button.y = EDIT_ROW;
+    event.button.y = y;
     post(&event);
 }
 
@@ -72,14 +74,84 @@ static void button(Uint32 type, int x)
 static void select_range(int first, int last)
 {
     SDL_Event event;
-    button(SDL_MOUSEBUTTONDOWN, first);
+    button(SDL_MOUSEBUTTONDOWN, first, EDIT_ROW);
     memset(&event, 0, sizeof(event));
     event.type = SDL_MOUSEMOTION;
     event.motion.state = SDL_BUTTON_LMASK;
     event.motion.x = last;
     event.motion.y = EDIT_ROW;
     post(&event);
-    button(SDL_MOUSEBUTTONUP, last);
+    button(SDL_MOUSEBUTTONUP, last, EDIT_ROW);
+}
+
+
+/* EN: Post a complete primary click at a visible pane or tab in window pixels.
+ * RU: Передать полный щелчок по видимой панели или вкладке в пикселях окна. */
+static void click(int x, int y)
+{
+    button(SDL_MOUSEBUTTONDOWN, x, y);
+    button(SDL_MOUSEBUTTONUP, x, y);
+}
+
+
+/* EN: Post one Ctrl shortcut with clean release before the next visible action.
+ * RU: Передать сочетание Ctrl с отпусканием перед следующим действием. */
+static void shortcut(SDL_Keycode code)
+{
+    key(SDL_KEYDOWN, SDLK_LCTRL, KMOD_LCTRL);
+    key(SDL_KEYDOWN, code, KMOD_LCTRL);
+    key(SDL_KEYUP, SDLK_LCTRL, KMOD_NONE);
+}
+
+
+/* EN: Save the active dirty document under a fresh relative name.
+ * RU: Сохранить активный изменённый документ под новым относительным именем. */
+static void save(const char *name)
+{
+    shortcut(SDLK_s);
+    text(name);
+    key(SDL_KEYDOWN, SDLK_RETURN, KMOD_NONE);
+}
+
+
+/* EN: Resize the actual dummy SDL window and exercise MDI owners on both sides of the change.
+ * RU: Изменить размер настоящего окна SDL dummy и проверить MDI до и после перестройки. */
+static void mdi_burst(void)
+{
+    SDL_Window *window = SDL_GetWindowFromID(1);
+    SDL_Event event;
+    int width, height;
+    if (!window)
+    {
+        fputs("paired SDL fixture: no native window to resize\n", stderr);
+        exit(2);
+    }
+    text("Первый");
+    shortcut(SDLK_g);
+    click(520, 520);
+    text("Второй");
+    shortcut(SDLK_g);
+    SDL_SetWindowSize(window, MDI_WIDTH, MDI_HEIGHT);
+    SDL_GetWindowSize(window, &width, &height);
+    if (width != MDI_WIDTH || height != MDI_HEIGHT)
+    {
+        fputs("paired SDL fixture: native window size did not change\n", stderr);
+        exit(2);
+    }
+    click(132, 112);
+    click(110, 164);
+    text("1-");
+    save("paired-first.txt");
+    click(450, 112);
+    click(110, 164);
+    text("2-");
+    shortcut(SDLK_d);
+    save("paired-second.txt");
+    shortcut(SDLK_g);
+    click(132, 112);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
 }
 
 
@@ -149,7 +221,14 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
     if (!posted && SDL_GetTicks() + 1 - first_poll >= EVENT_DELAY_MS && SDL_IsTextInputActive())
     {
         posted = 1;
-        burst();
+        if (getenv("FVM_PAIRED_TEST_MDI"))
+        {
+            mdi_burst();
+        }
+        else
+        {
+            burst();
+        }
     }
     return poll_real(event);
 }

@@ -43,7 +43,10 @@ def check(args, directory, movie, mode):
             options.append("--window")
         argv = [args.player, "--fd", fd, mode, *options]
         if args.native_events:
-            return ["env", "LD_PRELOAD=" + os.fspath(args.native_events), *argv]
+            environment = ["env", "LD_PRELOAD=" + os.fspath(args.native_events)]
+            if args.mdi:
+                environment.append("FVM_PAIRED_TEST_MDI=1")
+            return [*environment, *argv]
         return argv
 
     def desktop(fd):
@@ -51,12 +54,17 @@ def check(args, directory, movie, mode):
                 "--native-spawn", mode, "desktop-paired.dis"]
 
     exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
-             timeout=40 if args.native_events else 15)
-    expected = "Я🙂paired" if args.native_events else "Яpaired"
-    if (directory / "paired-output.txt").read_bytes() != expected.encode("utf-8"):
-        raise RuntimeError(f"{mode}: the desktop did not save the exact edited UTF-8 text")
+             timeout=65 if args.mdi else 40 if args.native_events else 15)
+    expected = {"paired-output.txt": "Я🙂paired" if args.native_events else "Яpaired"}
+    if args.mdi:
+        expected = {"paired-first.txt": "1-Первый", "paired-second.txt": "2-Второй"}
+    for name, body in expected.items():
+        if (directory / name).read_bytes() != body.encode("utf-8"):
+            raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
     if args.capture:
+        if args.mdi:
+            return verify_mdi(capture)
         if args.native_events:
             return verify_selection(capture)
         return verify_pixels(capture, args.text)
@@ -105,14 +113,39 @@ def verify_selection(path):
         return data[offset:offset + 3]
 
     selected = bytes.fromhex("ccdeff")
-    if pixel(180, 76) != bytes.fromhex("c8d3dc") or pixel(180, 81) != bytes.fromhex("255ac4"):
+    if pixel(180, 72) != bytes.fromhex("c8d3dc") or pixel(180, 77) != bytes.fromhex("255ac4"):
         raise RuntimeError("Ctrl+wheel did not move the header to the scaled desktop position")
-    highlight = sum(pixel(x, y) == selected for y in range(110, 128) for x in range(112, 126))
-    suffix = sum(pixel(x, y) == selected for y in range(110, 128) for x in range(128, 160))
-    caret = sum(pixel(126, y) == bytes.fromhex("7e9dd1") for y in range(110, 128))
+    highlight = sum(pixel(x, y) == selected for y in range(106, 125) for x in range(104, 118))
+    suffix = sum(pixel(x, y) == selected for y in range(106, 125) for x in range(120, 152))
+    caret = sum(pixel(118, y) == bytes.fromhex("5b81c2") for y in range(106, 125))
     if highlight < 80 or suffix or caret < 12:
         raise RuntimeError(f"selection and caret differ: {highlight=}, {suffix=}, {caret=}")
     print("PASS SDL2 pointer selection and Ctrl+wheel: two Unicode scalars with a visible scaled caret")
+    return data
+
+
+# EN: Check the native resize extent and the visible active MDI tab and body.
+# RU: Проверить новый размер окна, активную вкладку MDI и её содержимое.
+def verify_mdi(path):
+    width, height = 860, 620
+    header = b"P6\n860 620\n255\n"
+    data = path.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + width * height * 3:
+        raise RuntimeError("SDL resize did not publish the matching 860 × 620 scene")
+
+    def pixel(x, y):
+        offset = len(header) + (width * y + x) * 3
+        return data[offset:offset + 3]
+
+    expected = ((5, 500, "303744"), (858, 500, "303744"), (180, 86, "415a50"),
+                (230, 112, "255ac4"), (590, 112, "e6ecf5"), (230, 145, "255ac4"))
+    for x, y, color in expected:
+        if pixel(x, y).hex() != color:
+            raise RuntimeError(f"resized MDI raster at {x},{y}: {pixel(x, y).hex()} != {color}")
+    ink = sum(pixel(x, y)[0] < 150 for y in range(160, 178) for x in range(110, 168))
+    if ink < 40:
+        raise RuntimeError(f"the selected MDI child's body was not drawn: {ink=}")
+    print("PASS SDL2 window resize and MDI: acknowledged extent, active tab and nested editor raster")
     return data
 
 
@@ -127,7 +160,10 @@ def main():
     parser.add_argument("--window", action="store_true", help="open the player window during the run")
     parser.add_argument("--native-events", type=lambda path: Path(path).resolve(),
                         help="load the Linux SDL2 event fixture and exercise the production SWF")
+    parser.add_argument("--mdi", action="store_true", help="exercise native resize and MDI in the SDL2 fixture")
     args = parser.parse_args()
+    if args.mdi and not args.native_events:
+        parser.error("--mdi requires --native-events")
     if args.native_events:
         args.text = args.window = True
     args.capture = args.capture or args.text

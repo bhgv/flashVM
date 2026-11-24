@@ -8,13 +8,10 @@
 function sendDesktopPointer() {
     desktopPointerX = hostInput.get("x");
     desktopPointerY = hostInput.get("y");
-    desktopPointerDepth = desktopFront.getChildDepthAtPoint(desktopPointerX, desktopPointerY);
-    desktopPointerId = "00000000";
+    desktopPicked = _root.pickDesktopPane();
     desktopPointerOffset = 0 - 1;
-    if (desktopPointerDepth) {
-        desktopPointerId = desktopFrontOrder.substr((desktopPointerDepth - 1) * 8, 8);
+    if (desktopPointerPane) {
         if (!(desktopPointerCode - 1)) {
-            desktopPointerPane = desktopFront.getInstanceAtDepth(desktopPointerDepth);
             desktopPointerScalar = desktopPointerPane.getTextScalarAtPoint(2, desktopPointerX, desktopPointerY);
             if (desktopPointerScalar + 1) {
                 desktopPointerCaption = desktopPointerPane.getInstanceAtDepth(1);

@@ -91,6 +91,9 @@ static int stage_surface(FVM_PairedView *view, FVM_Context *context, FVM_Affine 
     h = (unsigned int)height;
     w += w < width;
     h += h < height;
+#ifdef FVM_STYXRPC_WINDOW
+    observe_canvas(context, &w, &h);
+#endif
     if (w != view->surface.width || h != view->surface.height)
     {
         pixels = realloc(view->surface.pixels, (size_t)w * h * PAIRED_RGBA_BYTES);
@@ -133,7 +136,12 @@ static int render(FVM_RasterSurface *surface, FVM_Context *context, FVM_Object *
             pixel[3] = background.a;
         }
     }
-    return fvm_movieclip_render_view(context, root, surface, viewport) == FVM_OK;
+    status = fvm_movieclip_render_view(context, root, surface, viewport);
+    if (status != FVM_OK)
+    {
+        fprintf(stderr, "flashvm_styx_player: scene raster status %d\n", (int)status);
+    }
+    return status == FVM_OK;
 }
 
 
@@ -146,7 +154,8 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
     FVM_Affine viewport;
     double now;
     unsigned int previous_width, previous_height;
-    int direct;
+    unsigned int bounds[4] = {0, 0, 0, 0};
+    int direct, follow;
     if (!view || !view->windowed || !fvm_styxrpc_playback_scene(playback, &context, &root))
     {
         return 1;
@@ -166,11 +175,12 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
     view->next = now + PAIRED_WINDOW_PERIOD_MS;
     previous_width = view->surface.width;
     previous_height = view->surface.height;
+    follow = resize_policy(context, bounds) != NULL;
     if (!stage_surface(view, context, &viewport))
     {
         return -1;
     }
-    if (view->window && (previous_width != view->surface.width || previous_height != view->surface.height))
+    if (view->window && !follow && (previous_width != view->surface.width || previous_height != view->surface.height))
     {
         fvm_desktop_window_close(view->window);
         view->window = NULL;
@@ -184,6 +194,13 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
         }
     }
     direct = update_input_owner(view, context);
+    if (direct < 0 || !fvm_desktop_window_follow_size(view->window, follow ? bounds[0] : 0, follow ? bounds[1] : 0,
+            follow ? bounds[2] : 0, follow ? bounds[3] : 0) ||
+        (follow && !fvm_desktop_window_canvas(view->window, view->surface.width, view->surface.height)))
+    {
+        fprintf(stderr, "flashvm_styx_player: window extent update: %s\n", fvm_desktop_window_error());
+        return -1;
+    }
     if (!fvm_desktop_window_events(view->window, 0))
     {
         return fvm_desktop_window_status(view->window) == FVM_OK ? 0 : -1;

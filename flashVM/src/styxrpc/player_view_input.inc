@@ -13,6 +13,7 @@ static FVM_Result input_number(FVM_Context *c, FVM_Object *receiver, const char 
     return fvm_object_set(c, receiver, name, &value);
 }
 
+#include "player_view_resize.inc"
 
 /* EN: Opt the current movie into polling. The SDL owner applies the change on its next turn.
  * RU: Включить опрос для фильма. Владелец SDL применит его на следующем шаге. */
@@ -116,6 +117,10 @@ static int update_input_owner(FVM_PairedView *view, FVM_Context *c)
     }
     if (owner != view->input_owner)
     {
+        if (!fvm_desktop_window_follow_size(view->window, 0, 0, 0, 0))
+        {
+            return -1;
+        }
         fvm_desktop_window_host_input(view->window, 0);
         view->input_owner = owner;
     }
@@ -160,6 +165,15 @@ FVM_Result fvm_paired_view_install_input(FVM_PairedView *view, FVM_Context *cont
         if (result == FVM_OK)
         {
             result = fvm_object_define_method_rooted(context, object.object, "get", input_field, view, NULL);
+        }
+        if (result == FVM_OK)
+        {
+            result = fvm_object_define_method_rooted(context, object.object, "enableResize", enable_resize, NULL, NULL);
+        }
+        if (result == FVM_OK)
+        {
+            result = fvm_object_define_method_rooted(context, object.object, "commitViewport", commit_viewport,
+                NULL, NULL);
         }
         if (result == FVM_OK)
         {

@@ -54,7 +54,11 @@ This movie handles `BeginView`, `ItemView` and `EndView`. It prepares MovieClips
 at an inactive depth and publishes them only when the end record matches the
 pending ticket and the declared item count. It paints the stage, rails and
 rectangular panes from their coordinates and colours the active header.
-The table's pan, scroll and scale come from the scene records.
+The renderer stages five layers. The table layer uses the Dis pan, scroll and
+zoom anchor, so drawing and hit admission share the same coordinate system.
+Grouped editors are real children of their MDI MovieClip. Their tabs use the
+Dis layout and select the corresponding document owner. Ctrl+G groups an
+editor, a tab click switches documents, and Ctrl+D detaches the current editor.
 Standard TextFields draw each pane's title and body, along with the labels on
 the workspace controls. The same scene that carries positions carries the text.
 The visible editor's caret and selection come from the same completed scene.
@@ -73,6 +77,10 @@ gesture. Focus loss clears held modifiers in Dis. The native window close
 button sends the normal Quit request, including the unsaved-document check.
 FlashVM polls its input FIFO through `hostInput` and the SWF sends events through
 the same UniBus connection that supplies scenes.
+An SDL resize proposes the window's width and height using the current scene
+ticket. DisVM recomputes and returns the layout. FlashVM applies the new raster
+extent after the matching `EndView` and keeps the same native window and queue.
+The IDE accepts widths of 240–2048 and heights of 160–2048 pixels.
 
 Add `--text --window` to the
 repository check to serve the font and verify glyphs in the editor and console
@@ -97,10 +105,12 @@ SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
   --native-events build/paired-sdl-input.so
 ```
 
-Native window resize still scales the authored stage. Resizing the Dis layout
-from that window event, multiple touch contacts, MDI composition, live thumbnails
-and vector bulk/ink still need integration. Menu 8 continues to use the installed
-graphical runtime.
+Add `--mdi` to that command to resize the SDL window from 960 × 640 to 860 × 620,
+edit two documents by switching tabs, detach and rejoin one editor, and verify
+both saved byte sequences plus the final active tab and editor raster.
+
+Multiple touch contacts, live thumbnails and vector bulk/ink still need paired
+integration. Menu 8 uses the installed graphical runtime.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

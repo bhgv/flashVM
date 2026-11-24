@@ -12,6 +12,8 @@ decides which messages to send over the application's existing connection.
 | `hostInput.enable()` | Returns true. On the next window-owner turn the movie starts polling one FIFO in place of ordinary Key, Mouse and ClipActions delivery. |
 | `hostInput.take()` | Copies and removes one event. Returns its kind as a number, or zero when no event is available. |
 | `hostInput.get(name)` | Reads the named field of the last successfully dequeued event. Treat it as relevant only after a nonzero return from `take()`. |
+| `hostInput.enableResize(minWidth, minHeight, maxWidth, maxHeight)` | Requests native-pixel input and resize events when polling is enabled. Each dimension is a whole pixel in 1–4096. Returns true on acceptance. |
+| `hostInput.commitViewport(width, height)` | Publishes a whole-pixel raster extent within the movie's resize bounds. The next render and PPM capture use these dimensions. Returns true on acceptance. |
 
 | Kind | Event and fields |
 | --- | --- |
@@ -21,6 +23,7 @@ decides which messages to send over the application's existing connection.
 | 4 | Committed text. `text` is a counted Unicode string from SDL text input. |
 | 5 | Focus. `phase` is 1 for gained and 0 for lost. |
 | 6 | Window close request. An opted-in movie handles it as an application event. |
+| 7 | Window resize. `x` is the new width and `y` the new height in native window pixels. |
 
 The FIFO holds 128 events. Consecutive drag moves of the same button can
 collapse to the latest point. When full, the poller yields before removing
@@ -28,6 +31,13 @@ another event from SDL. Escape reaches the opted-in movie as a key. Focus
 loss resets the native modifiers and is delivered in FIFO order. Movie
 replacement retires the previous movie's input events. Methods run on the
 VM and presentation owner. The snapshot carries copied numbers and strings.
+
+After `enableResize`, pointer coordinates use native window pixels. Consecutive
+undelivered resizes can collapse to the latest extent. A movie whose layout is
+computed by a peer can hold the preceding frame while it waits for approval,
+then call `commitViewport` with the acknowledged dimensions. Invalid or
+out-of-range method arguments raise an input error. SDL updates the texture on
+its owner turn and retains the same window and input queue.
 
 For a remote editor, `MovieClip.getChildDepthAtPoint(x, y)` takes world pixels
 and returns the frontmost direct visible MovieClip's depth, using bounds.

@@ -11,6 +11,7 @@ function onEnterFrame() {
         desktopNotifications = styxTerminal.enableNotifications();
         if (hostInput) {
             desktopInputEnabled = hostInput.enable();
+            desktopResizeEnabled = hostInput.enableResize(240, 160, 2048, 2048);
         }
     }
     desktopTerminalTurn = _root.onTerminalFrame();

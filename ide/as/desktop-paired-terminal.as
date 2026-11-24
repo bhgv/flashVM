@@ -16,23 +16,7 @@ function onTerminalFrame() {
         desktopWire = styxTerminal.tryReceiveFrame();
         if (desktopWire) {
             if (!desktopWire.indexOf("fvd1:000000070000000000010021")) {
-                // Reuse the hidden depth. Keep the preceding scene visible during transfer.
-                // Переиспользовать скрытую глубину, оставляя предыдущую сцену видимой.
-                desktopDepth = 21 - desktopFrontDepth;
-                desktopPending = _root.createEmptyMovieClip("desktopScene" + desktopDepth, desktopDepth);
-                desktopPending._visible = false;
-                desktopTicket = desktopWire.substr(53, 8);
-                desktopExpected = ("0x" + desktopWire.substr(61, 8)) * 1;
-                desktopScroll = ("0x" + desktopWire.substr(69, 8)) * 1;
-                desktopScale = ("0x" + desktopWire.substr(77, 8)) / 100;
-                desktopPan = ("0x" + desktopWire.substr(85, 8)) * 1;
-                if (desktopSign.indexOf(desktopWire.substr(85, 1)) + 1) {
-                    desktopPan = desktopPan - 65536 * 65536;
-                }
-                desktopWidth = ("0x" + desktopWire.substr(37, 8)) * 1;
-                desktopSeen = 0;
-                desktopStagedOrder = "";
-                desktopOpen = desktopTicket;
+                desktopBegan = _root.beginDesktopScene();
             }
             if (!desktopWire.indexOf("fvd1:000000070000000000010022")) {
                 if (desktopOpen) {
@@ -45,25 +29,7 @@ function onTerminalFrame() {
                 }
             }
             if (!desktopWire.indexOf("fvd1:000000070000000000010023")) {
-                if (desktopOpen) {
-                    desktopRecordTicket = desktopWire.substr(29, 8);
-                    if (!desktopRecordTicket.indexOf(desktopTicket)) {
-                        if (desktopExpected) {
-                            if (!(desktopSeen - desktopExpected)) {
-                                if (desktopFront) {
-                                    desktopFront._visible = false;
-                                }
-                                desktopFront = desktopPending;
-                                desktopFrontDepth = desktopDepth;
-                                desktopFront._visible = true;
-                                desktopFrontOrder = desktopStagedOrder;
-                                desktopFrontTicket = desktopTicket;
-                                desktopReady = true;
-                            }
-                        }
-                        desktopOpen = false;
-                    }
-                }
+                desktopEnded = _root.endDesktopScene();
             }
             if (onDesktopRecord) {
                 desktopObserved = _root.onDesktopRecord();

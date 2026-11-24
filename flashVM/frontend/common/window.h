@@ -18,6 +18,7 @@
 #define FVM_DESKTOP_EVENT_TEXT 4U                             /* Committed UTF-8 input for an opted-in scene. */
 #define FVM_DESKTOP_EVENT_FOCUS 5U                            /* Focus gain or loss in the opted-in FIFO. */
 #define FVM_DESKTOP_EVENT_CLOSE 6U                            /* Ask the opted-in application to close. */
+#define FVM_DESKTOP_EVENT_RESIZE 7U                           /* Copied native width/height in window pixels. */
 #define FVM_DESKTOP_INPUT_UTF8 32U                            /* SDL2 text packet, including the terminator. */
 #define FVM_DESKTOP_MAX_PIXELS 4096U                          /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U                                    /* Red offset in a packed RGBA pixel. */
@@ -59,7 +60,7 @@ typedef struct FVM_DesktopHostEvent
     unsigned int kind; /* FVM_DESKTOP_EVENT_* variant. */
     unsigned int code; /* Virtual key, pointer button, or zero. */
     int phase;         /* Mouse event type or pressed/focused Boolean. */
-    double x, y;      /* Logical stage pixels. */
+    double x, y;      /* Logical pointer pixels, or width/height for a resize. */
     double wheel;     /* Signed vertical scroll in lines. */
     int control;      /* Control modifier at the event's position in the queue. */
     char text[FVM_DESKTOP_INPUT_UTF8]; /* Terminated committed UTF-8. */
@@ -74,6 +75,17 @@ void fvm_desktop_window_host_input(FVM_DesktopWindow *, int enabled);
 /* EN: Copy/pop the oldest opted-in event; return zero when the FIFO is empty.
  * RU: Снять копию первого события, вернуть ноль при пустой очереди. */
 int fvm_desktop_window_take_input(FVM_DesktopWindow *, FVM_DesktopHostEvent *);
+
+
+/* EN: Follow native window pixels within the movie's min/max extent. A zero minimum restores fixed-stage input.
+ * RU: Следовать пикселям окна в пределах фильма. Нулевой минимум возвращает ввод фиксированной сцены. */
+int fvm_desktop_window_follow_size(FVM_DesktopWindow *, unsigned min_width, unsigned min_height,
+    unsigned max_width, unsigned max_height);
+
+
+/* EN: Replace the live texture extent on the window owner; keep the OS window and input queue.
+ * RU: Заменить размер текстуры у владельца, сохраняя окно ОС и очередь ввода. */
+int fvm_desktop_window_canvas(FVM_DesktopWindow *, unsigned width, unsigned height);
 
 
 /* Acquire private timer/video SDL references on the main thread and own presentation objects.

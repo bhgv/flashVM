@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1744 / Контрольная точка v0.1744. The paired desktop follows native
+SDL window resize after a matching Dis scene and renders editor tabs with real
+MDI MovieClip parents. Ввод по вкладкам и сохранение двух документов проверяются
+через одну сессию. [EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1743 / Контрольная точка v0.1743. The production paired desktop
 handles copied native SDL2 input, editing and acknowledged glyph selections over
 UniBus. Штатный SWF передаёт ввод через одну сессию, а Limbo подтверждает правку

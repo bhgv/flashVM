@@ -65,4 +65,12 @@ function pollDesktopInput() {
     if (!(desktopInputKind - 6)) {
         desktopOutgoing = "fvd1:000000010000000100010003000000000000000000000000";
     }
+    if (!(desktopInputKind - 7)) {
+        desktopResizeWidth = hostInput.get("x");
+        desktopResizeHeight = hostInput.get("y");
+        if (Math.abs(desktopResizeWidth - desktopFrontWidth) + Math.abs(desktopResizeHeight - desktopFrontHeight)) {
+            desktopResizePending = true;
+            desktopResizeSent = _root.sendDesktopResize();
+        }
+    }
 }

@@ -48,6 +48,8 @@ struct FVM_DesktopWindow
     int pumping_events;             /* Reject recursive host pumping from a script/native handler. */
     int direct_input;               /* The scene pulls copied native input from the ordered FIFO. */
     int started_text;               /* This window acquired SDL text input and must end it. */
+    unsigned int min_width, min_height; /* Native-pixel resize policy; zero selects the fixed stage. */
+    unsigned int max_width, max_height; /* Largest emitted window sizes in native-pixel mode. */
     int ready;                      /* Nonzero after a complete upload; permits repaint without another VM tick. */
     int texture_invalid;            /* Defer lost-device storage recreation until foreground. */
     unsigned char *last_frame;      /* Owned packed RGBA snapshot; never a borrowed VM/raster pointer. */
@@ -403,11 +405,14 @@ int fvm_desktop_window_take_input(FVM_DesktopWindow *view, FVM_DesktopHostEvent 
     return 1;
 }
 
+#include "sdl_window_resize.inc"
+
 
 /* SDL's logical-size event filter already maps normalized touches into the logical viewport. */
 static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *event)
 {
     FVM_MouseEventType type;
+    int width = (int)view->logical_width, height = (int)view->logical_height;
     /* Older supported SDK headers do not define mouse-to-finger synthesis identities. */
 #ifdef SDL_MOUSE_TOUCHID
     if (event->touchId == SDL_MOUSE_TOUCHID)
@@ -431,14 +436,18 @@ static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *eve
         }
         type = event->type == SDL_FINGERUP ? FVM_MOUSE_EVENT_UP : FVM_MOUSE_EVENT_MOVE;
     }
-    if (!view->logical_width || !view->logical_height ||
+    if (view->min_width)
+    {
+        SDL_GetWindowSize(view->window, &width, &height);
+    }
+    if (width <= 0 || height <= 0 ||
         !(event->x >= 0 && event->x <= 1 && event->y >= 0 && event->y <= 1))
     {
         view->event_error = FVM_INVALID_ARGUMENT;
         return;
     }
-    view->input.x = (double)event->x * view->logical_width;
-    view->input.y = (double)event->y * view->logical_height;
+    view->input.x = (double)event->x * width;
+    view->input.y = (double)event->y * height;
     if (type == FVM_MOUSE_EVENT_DOWN)
     {
         view->touch_device = event->touchId;
@@ -613,6 +622,10 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     {
         queue_input(view, FVM_DESKTOP_EVENT_FOCUS, FVM_MOUSE_EVENT_MOVE, 1, 0);
     }
+    if (view->min_width && event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+    {
+        queue_resize(view, event->window.data1, event->window.data2);
+    }
     if (event->type == SDL_MOUSEWHEEL)
     {
         double delta = event->wheel.y;
@@ -639,7 +652,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
              * Convert native window coordinates exactly once through the live viewport. */
             float logical_x = (float)event->wheel.mouseX;
             float logical_y = (float)event->wheel.mouseY;
-            if (event->wheel.windowID)
+            if (event->wheel.windowID && !view->min_width)
             {
                 SDL_RenderWindowToLogical(
                     view->renderer, event->wheel.mouseX, event->wheel.mouseY, &logical_x, &logical_y);

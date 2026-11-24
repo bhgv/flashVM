@@ -14,27 +14,28 @@ function drawDesktopText() {
         desktopHasLabel = true;
     }
     if (desktopHasLabel) {
-        desktopTextSize = 11 * desktopItemScale;
-        desktopLabelY = 2 * desktopItemScale;
-        desktopLabelX = 4 * desktopItemScale;
-        desktopLabelW = desktopW - 8 * desktopItemScale;
-        desktopLabelH = desktopH - 4 * desktopItemScale;
+        desktopLabelY = 2;
+        desktopLabelX = 4;
+        desktopLabelW = desktopW - 8;
+        desktopLabelH = desktopH - 4;
         if (desktopBand) {
             desktopBreak = desktopLabelText.indexOf("\n");
+            desktopCaptionText = desktopLabelText;
+            desktopLabelText = "";
             if (desktopBreak + 1) {
-                desktopCaptionText = desktopLabelText.substr(0, desktopBreak);
-                desktopCaption = desktopPane.createTextField("caption", 1, desktopLabelX,
-                    desktopLabelY, desktopLabelW, 20 * desktopItemScale);
-                desktopCaptionFormat = desktopCaption.getNewTextFormat();
-                desktopCaptionFormat.size = desktopTextSize;
-                desktopCaptionFormat.color = 16185078;
-                desktopTextResult = desktopCaption.setNewTextFormat(desktopCaptionFormat);
-                desktopCaption.text = desktopCaptionText;
-                desktopLabelText = desktopLabelText.substr(desktopBreak + 1);
-                desktopPrefix = desktopCaption.getScalarCount() + 1;
-                desktopCaret = desktopCaret - desktopPrefix;
-                desktopAnchor = desktopAnchor - desktopPrefix;
+                desktopLabelText = desktopCaptionText.substr(desktopBreak + 1);
+                desktopCaptionText = desktopCaptionText.substr(0, desktopBreak);
             }
+            desktopCaption = desktopPane.createTextField("caption", 1, desktopLabelX,
+                desktopLabelY, desktopLabelW, desktopHeaderHeight - 4);
+            desktopCaptionFormat = desktopCaption.getNewTextFormat();
+            desktopCaptionFormat.size = 11;
+            desktopCaptionFormat.color = 16185078;
+            desktopTextResult = desktopCaption.setNewTextFormat(desktopCaptionFormat);
+            desktopCaption.text = desktopCaptionText;
+            desktopPrefix = desktopCaption.getScalarCount() + 1;
+            desktopCaret = desktopCaret - desktopPrefix;
+            desktopAnchor = desktopAnchor - desktopPrefix;
             desktopLabelY = desktopLabelY + desktopHeaderHeight;
             desktopLabelH = desktopLabelH - desktopHeaderHeight;
         }
@@ -46,8 +47,11 @@ function drawDesktopText() {
             desktopLabel = desktopPane.createTextField("body", 2, desktopLabelX,
                 desktopLabelY, desktopLabelW, desktopLabelH);
             desktopLabelFormat = desktopLabel.getNewTextFormat();
-            desktopLabelFormat.size = desktopTextSize;
+            desktopLabelFormat.size = 11;
             desktopLabelFormat.color = 2107702;
+            if (desktopActiveTab) {
+                desktopLabelFormat.color = 16185078;
+            }
             desktopTextResult = desktopLabel.setNewTextFormat(desktopLabelFormat);
             desktopLabel.multiline = true;
             desktopLabel.wordWrap = true;
