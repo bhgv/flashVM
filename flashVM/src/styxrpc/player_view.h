@@ -12,6 +12,11 @@ typedef struct FVM_PairedView FVM_PairedView; /* Owned native surface and option
  * RU: Проверить функции сборки и выделить представление либо вернуть NULL. */
 FVM_PairedView *fvm_paired_view_create(int windowed, const char *capture);
 
+
+/* EN: Install the generic polled window input namespace into an uploaded movie.
+ * RU: Установить общий интерфейс опроса оконного ввода в загруженный фильм. */
+FVM_Result fvm_paired_view_install_input(FVM_PairedView *, FVM_Context *);
+
 /* EN: Poll input and present at the owner deadline. Clamp wait_ms for pending GUI work.
  * Return 1 to continue, 0 on window close and -1 on failure. NULL is headless.
  * RU: Обработать ввод и отрисовать по сроку у владельца. Ограничить wait_ms для GUI.

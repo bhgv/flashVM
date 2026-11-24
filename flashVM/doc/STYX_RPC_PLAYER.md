@@ -41,6 +41,9 @@ still update the scene. Closing the window ends the session.
 Pass `--capture frame.ppm` on a raster-enabled build to save the final frame
 on normal shutdown, with or without a window.
 
+Movies that forward input to another owner can opt in to the
+[window input FIFO](STYX_RPC_HOST_INPUT.md) with `hostInput.enable()`.
+
 The `text-jit.defs` profile adds standard TextField rendering. At movie setup
 the player opens `fonts/NotoSansMono-Regular.ttf` through the same DisVM VFS
 session. An absent file leaves the text library unavailable. A present font
@@ -64,6 +67,13 @@ on acceptance. A false result permits a later attempt. `tryReceiveFrame()`
 returns the next string or undefined. A movie can poll these methods
 from `onEnterFrame`. Each direction has space for one frame. Consumption
 grants credit for the next frame.
+
+Define a root method `onTerminalFrame()` and call
+`styxTerminal.enableNotifications()` to receive a turn after the player has
+copied an inbound frame. The player calls the method with no arguments between
+Styx dispatches while playback is running. Read the frame through
+`tryReceiveFrame()` to return credit. A frame left unread can trigger another
+turn. The callback runs on the FlashVM owner alongside the movie clock.
 
 The [IDE terminal contract](../../ide/TERMINAL-BIDIR.md) shows how to pass
 this object to the existing ActionScript adapter.

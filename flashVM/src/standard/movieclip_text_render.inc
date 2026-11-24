@@ -138,18 +138,32 @@ FVM_Result render_text(FVM_Context *c, FVM_Object *field, const FVM_Affine &pare
     }
     const FVM_Affine offset = {1, 0, 0, 1, x, y};
     const FVM_Affine world = multiply(parent_world, offset);
-    FVM_Path *glyphs = 0;
-    result = fvm_textfield_path(c, field, &glyphs);
-    OwnedPath owner(glyphs);
-    if (result != FVM_OK || !fvm_path_count(glyphs))
+    FVM_Path *selection = 0, *caret = 0;
+    double selection_rgb = 0, caret_rgb = 0;
+    result = fvm_textfield_preview_paths(c, field, &selection, &caret, selection_rgb, caret_rgb);
+    OwnedPath selection_owner(selection), caret_owner(caret);
+    if (result == FVM_OK && selection && fvm_path_count(selection))
     {
-        return result;
+        result = paint_text_tile(c, selection, world, viewport, color(selection_rgb, 100, transform), surface);
     }
-    result = paint_text_tile(c, glyphs, world, viewport, color(rgb, 100, transform), surface);
-    if (result == FVM_OK && coverage)
+    FVM_Path *glyphs = 0;
+    if (result == FVM_OK)
     {
-        const FVM_RasterColor opaque = {255, 255, 255, 255};
-        result = paint_text_tile(c, glyphs, world, viewport, opaque, coverage);
+        result = fvm_textfield_path(c, field, &glyphs);
+    }
+    OwnedPath owner(glyphs);
+    if (result == FVM_OK && fvm_path_count(glyphs))
+    {
+        result = paint_text_tile(c, glyphs, world, viewport, color(rgb, 100, transform), surface);
+        if (result == FVM_OK && coverage)
+        {
+            const FVM_RasterColor opaque = {255, 255, 255, 255};
+            result = paint_text_tile(c, glyphs, world, viewport, opaque, coverage);
+        }
+    }
+    if (result == FVM_OK && caret && fvm_path_count(caret))
+    {
+        result = paint_text_tile(c, caret, world, viewport, color(caret_rgb, 100, transform), surface);
     }
     return result;
 }

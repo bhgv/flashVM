@@ -17,4 +17,9 @@ int fvm_styxrpc_player_publish_terminal(StyxRpcServer *server, StyxRpcTerminal *
  * RU: Установить styxTerminal у нового владельца FlashVM и заимствовать terminal до закрытия. */
 FVM_Result fvm_styxrpc_player_terminal(FVM_Context *context, StyxRpcTerminal *terminal);
 
+
+/* EN: Give an opted-in running movie one receive turn for the pending credited frame.
+ * RU: Дать активному подписанному фильму один шаг для приёма ожидающего кадра. */
+FVM_Result fvm_styxrpc_player_terminal_notify(FVM_Context *, FVM_Object *, const StyxRpcTerminal *);
+
 #endif

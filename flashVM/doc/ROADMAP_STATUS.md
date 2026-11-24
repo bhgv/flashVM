@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1743 / Контрольная точка v0.1743. The production paired desktop
+handles copied native SDL2 input, editing and acknowledged glyph selections over
+UniBus. Штатный SWF передаёт ввод через одну сессию, а Limbo подтверждает правку
+и сохраняет Unicode. [EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1742 / Контрольная точка v0.1742. Standard TextFields paint the
 paired desktop's Unicode titles and contents. Плеер получает шрифт через ту же
 VFS DisVM. SDL2, JIT и интерпретатор дают одинаковый итоговый растр после правки.

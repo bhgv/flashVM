@@ -43,8 +43,9 @@ retirement close the port and release retained channels.
 Paired startup reports an empty selected path, no new-document override,
 and an initial disabled line-number preference. `rows`, ink operations
 and `attachbulk` still require their service bindings. The paired desktop SWF
-paints committed panel layouts with standard TextFields. The adapter still
-needs to route native input and present caret and selection state.
+paints committed panel layouts and the acknowledged caret and selection with
+standard TextFields. Its AS input adapter copies keyboard, text, pointer and
+window events into the same ordinary fvd1 channel.
 
 ## What stays / Что сохраняется
 

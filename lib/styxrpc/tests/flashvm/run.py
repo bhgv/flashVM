@@ -22,9 +22,9 @@ def compile_image(args, directory, source, image):
     return target
 
 
-# EN: Connect the two argv builders to opposite ends; check output and both exit codes.
-# RU: Подключить команды к концам сокета и проверить вывод и оба кода завершения.
-def exchange(directory, server_command, client_command, expected, provider_trace=()):
+# EN: Connect the argv builders; bound the client by timeout seconds and check both exit codes.
+# RU: Соединить команды, ограничить работу клиента по timeout и проверить коды завершения.
+def exchange(directory, server_command, client_command, expected, provider_trace=(), *, timeout=15):
     client, server = socket.socketpair()
     with client, server:
         with subprocess.Popen(
@@ -35,7 +35,7 @@ def exchange(directory, server_command, client_command, expected, provider_trace
             try:
                 result = subprocess.run(
                     client_command(str(client.fileno())), cwd=directory, pass_fds=(client.fileno(),),
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=15,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout,
                 )
                 client.close()
                 output, _ = provider.communicate(timeout=10)

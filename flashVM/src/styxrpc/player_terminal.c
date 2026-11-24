@@ -103,6 +103,33 @@ static FVM_Result receive_frame(FVM_Context *context, FVM_Object *object, unsign
 }
 
 
+/* EN: Opt into owner-loop notifications, separate from the wire callback that copies bytes.
+ * RU: Включить уведомления цикла владельца, отдельно от копирования байтов из сети. */
+static FVM_Result enable_notifications(FVM_Context *context, FVM_Object *object, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    (void)args;
+    (void)state;
+    fvm_value_boolean(out, 1);
+    return argc ? FVM_INVALID_ARGUMENT : fvm_object_set(context, object, "notifications", out);
+}
+
+
+/* EN/RU: See player_terminal.h. / См. player_terminal.h. */
+FVM_Result fvm_styxrpc_player_terminal_notify(FVM_Context *context, FVM_Object *root,
+    const StyxRpcTerminal *terminal)
+{
+    FVM_Value object, enabled, ignored;
+    if (terminal->size && fvm_get_global(context, "styxTerminal", &object) == FVM_OK &&
+        object.type == FVM_VALUE_OBJECT && fvm_object_get(context, object.object, "notifications", &enabled) == FVM_OK &&
+        enabled.type == FVM_VALUE_BOOLEAN && enabled.boolean)
+    {
+        return fvm_object_call(context, root, "onTerminalFrame", 0, NULL, &ignored);
+    }
+    return FVM_OK;
+}
+
+
 /* EN/RU: See player_terminal.h. / См. player_terminal.h. */
 FVM_Result fvm_styxrpc_player_terminal(FVM_Context *context, StyxRpcTerminal *terminal)
 {
@@ -132,6 +159,11 @@ FVM_Result fvm_styxrpc_player_terminal(FVM_Context *context, StyxRpcTerminal *te
     if (status == FVM_OK)
     {
         status = fvm_object_define_method_rooted(context, object.object, "tryReceiveFrame", receive_frame, terminal, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object.object, "enableNotifications", enable_notifications,
+            NULL, NULL);
     }
     if (status == FVM_OK)
     {

@@ -41,7 +41,7 @@ modules into isolated working directories, and provides the two VMs with the
 ends of one connected socket. Application behavior runs in the compiled Dis
 modules and the SWF.
 
-## Paired graphical preview
+## Paired graphical desktop
 
 Build the production preview with the same tools.
 
@@ -57,6 +57,9 @@ rectangular panes from their coordinates and colours the active header.
 The table's pan, scroll and scale come from the scene records.
 Standard TextFields draw each pane's title and body, along with the labels on
 the workspace controls. The same scene that carries positions carries the text.
+The visible editor's caret and selection come from the same completed scene.
+FlashVM maps primary-pointer hits to Unicode scalar positions using that
+field's shaped layout. DisVM validates the scene ticket and owns the edit.
 
 Build the player with `flashVM/cmake/profiles/text-jit.defs` and the SDL2 frontend
 to see the text in a window. Place `ide/assets/fonts/NotoSansMono-Regular.ttf`
@@ -64,19 +67,40 @@ at `fonts/NotoSansMono-Regular.ttf` in the DisVM launch directory. FlashVM reads
 it from the live DisVM VFS over the paired connection at movie setup. The preview
 shows panel geometry when the player has no font support or the file is absent.
 
-Run the player with `--window` for the preview. Add `--text --window` to the
+Run the player with `--window` for keyboard input, committed Unicode text,
+mouse selection and vertical scrolling. Ctrl+wheel sends the existing zoom
+gesture. Focus loss clears held modifiers in Dis. The native window close
+button sends the normal Quit request, including the unsaved-document check.
+FlashVM polls its input FIFO through `hostInput` and the SWF sends events through
+the same UniBus connection that supplies scenes.
+
+Add `--text --window` to the
 repository check to serve the font and verify glyphs in the editor and console
 after the resize and edit. `--capture` alone checks the pane, header and rail
 geometry. The check links a separate ActionScript observer to the
 same production drawing code. The production SWF has no scripted test inputs.
-The prebuilt archive contains `desktop-view.swf` for the preview and
+The prebuilt archive contains `desktop-view.swf` for live input and
 `desktop-check.swf` for the automated sequence, with the font and its license.
 To repeat the sequence, use
 the check movie as `desktop-view.swf` in a separate copy of the directory.
 
-Caret and selection, native mouse and keyboard routing,
-MDI composition, live thumbnails and the vector bulk/ink services still need
-integration. Menu 8 uses the installed graphical runtime for these features.
+On Linux the native acceptance fixture posts SDL2 key, focus, text and pointer
+events into the live player. It runs the production movie with SDL's dummy
+video driver, edits and saves `Я🙂paired`, and verifies the final selection,
+caret and Ctrl+wheel zoom in both dispatch modes.
+
+```sh
+cc -shared -fPIC $(pkg-config --cflags sdl2) ide/tests/paired-sdl-input.c -ldl -o build/paired-sdl-input.so
+SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
+  --disvm build/disvm-runtime --player build/flashvm/flashvm_styx_player \
+  --as2 build/as2/view/as2_viewc --fir build/fir --swl build/linker/swl \
+  --native-events build/paired-sdl-input.so
+```
+
+Native window resize still scales the authored stage. Resizing the Dis layout
+from that window event, multiple touch contacts, MDI composition, live thumbnails
+and vector bulk/ink still need integration. Menu 8 continues to use the installed
+graphical runtime.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

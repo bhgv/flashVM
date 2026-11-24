@@ -33,6 +33,7 @@ typedef struct PlayerHost
 {
     StyxRpcTerminal terminal;   /* Live reserved UniBus channel for this playback. */
     struct StyxClient *session; /* Borrowed reverse filesystem mount. */
+    FVM_PairedView *view;        /* Borrowed player presentation for all movie generations. */
 } PlayerHost;
 
 
@@ -83,13 +84,17 @@ static FVM_Result setup(void *state, FVM_Context *context)
         free(bytes);
     }
 #endif
+    if (result == FVM_OK)
+    {
+        result = fvm_paired_view_install_input(host->view, context);
+    }
     return result == FVM_OK ? fvm_avm1_set_trace_rooted(context, trace, NULL, NULL) : result;
 }
 
 
 /* [ASINC] EN: Alternate wire dispatch and monotonic frame deadlines on the playback owner.
  * RU: Чередовать обработку соединения и монотонные сроки кадров у владельца. */
-static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, FVM_PairedView *view)
+static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, PlayerHost *host)
 {
     unsigned long previous = 0;
     double deadline = 0;
@@ -101,7 +106,15 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, FVM_Pair
         int presentation;
         if (fvm_styxrpc_playback_clock(playback, &period, &current))
         {
+            FVM_Context *context;
+            FVM_Object *root;
             double now;
+            if (fvm_styxrpc_playback_scene(playback, &context, &root) &&
+                fvm_styxrpc_player_terminal_notify(context, root, &host->terminal) != FVM_OK)
+            {
+                fputs("flashvm_styx_player: terminal notification failed\n", stderr);
+                return 1;
+            }
             if (!fvm_port_monotonic_ms(&now))
             {
                 return 1;
@@ -134,7 +147,7 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, FVM_Pair
         {
             deadline = 0;
         }
-        presentation = fvm_paired_view_step(view, playback, &wait_ms);
+        presentation = fvm_paired_view_step(host->view, playback, &wait_ms);
         if (presentation <= 0)
         {
             if (presentation < 0)
@@ -184,6 +197,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
     StyxClient *root = mux ? styxclientmountphy(phybidirchannel(mux, 1), PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS,
         PLAYER_TAGS) : NULL;
     host.session = root;
+    host.view = view;
     if (root && fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK)
     {
         FVM_StyxRpcPlaybackSpec spec = {0};
@@ -201,7 +215,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
     }
     if (server && fvm_styxrpc_player_publish_terminal(server, &host.terminal))
     {
-        status = replay(server, playback, view);
+        status = replay(server, playback, &host);
         if (!status && !fvm_paired_view_capture(view, playback))
         {
             fputs("flashvm_styx_player: could not capture the final movie frame\n", stderr);

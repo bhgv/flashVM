@@ -20,6 +20,7 @@
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/table.h"
 #include "text_constants.h"
+#include "text_display.hpp"
 
 
 /* Release standard text state owned by the destroyed context. */
@@ -192,12 +193,18 @@ struct Field
     unsigned long anchor;          /* Left, center or right automatic horizontal anchor. */
     unsigned long scroll, hscroll; /* Stored one-based line and zero-based pixel requests. */
     FVM_TextLayout *layout;        /* Owned cache, replaced only after a successful measured edit. */
+    bool preview;                  /* Whether the application published a selection for display. */
+    size_t preview_anchor;         /* Application selection anchor, in Unicode scalars. */
+    size_t preview_caret;          /* Application caret, in Unicode scalars. */
+    double preview_fill;           /* Application-selected RGB highlight. */
+    double preview_ink;            /* Application-selected RGB caret. */
 
 
     /* Initialize Field and its owned state. */
     Field()
         : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), auto_size_left(false), x(0),
-          y(0), anchor(FVM_TEXT_ANCHOR_LEFT), scroll(1), hscroll(0), layout(0)
+          y(0), anchor(FVM_TEXT_ANCHOR_LEFT), scroll(1), hscroll(0), layout(0), preview(false),
+          preview_anchor(0), preview_caret(0), preview_fill(0), preview_ink(0)
     {
     }
 
@@ -1296,6 +1303,9 @@ static FVM_Result text_index(FVM_Context *c, const FVM_Value &value, size_t &ind
 
 
 /* Compute and return text range. */
+#include "text_preview_methods.inc"
+
+
 static FVM_Result text_range(FVM_Context *c,
                              const char *text,
                              size_t bytes,
@@ -2340,6 +2350,11 @@ fvm_textfield_create(FVM_Context *c, const char *font_name, double width, double
         FVM_NativeEntry replace;
         replace.callback = replace_text;
         object->methods["replaceText"] = replace;
+        FVM_NativeEntry preview;
+        preview.callback = field_scalar_count;
+        object->methods["getScalarCount"] = preview;
+        preview.callback = field_selection_preview;
+        object->methods["setSelectionPreview"] = preview;
         const char *scroll_names[] = {"scroll", "hscroll", "maxscroll", "maxhscroll", "bottomScroll"};
         for (size_t i = 0; i < sizeof(scroll_names) / sizeof(scroll_names[0]); ++i)
         {
@@ -2447,6 +2462,9 @@ static double field_line_shift(const Field *field, const FVM_TextLayoutLine &lin
  * owner-thread borrowed values; ranges/count are validated before layout. selected
  * excludes uniform underline. On success out owns a detached path; errors clear it.
  * No script callbacks or native raster worker accesses to the VM occur here. */
+#include "text_display.inc"
+
+
 static FVM_Result textfield_paths(
     FVM_Context *c, FVM_Object *object, const FVM_TextPathRange *ranges, size_t count, bool selected, FVM_Path **out)
 {

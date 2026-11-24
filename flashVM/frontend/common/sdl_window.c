@@ -19,6 +19,8 @@ typedef struct FVM_DesktopEvent
     FVM_KeyboardState state;       /* Complete post-transition polling state. */
     double wheel_delta;            /* Signed host-normalized lines, used only by wheel entries. */
     int pressed;                   /* One for physical down/repeat, zero for release. */
+    unsigned int code;             /* Virtual key or button for direct input. */
+    char text[FVM_DESKTOP_INPUT_UTF8]; /* Copied committed text only for text events. */
 } FVM_DesktopEvent;
 
 
@@ -44,6 +46,8 @@ struct FVM_DesktopWindow
     size_t event_head, event_count; /* First pending transition and number of occupied slots. */
     FVM_Result event_error;         /* Latched overflow, never silently reported as successful delivery. */
     int pumping_events;             /* Reject recursive host pumping from a script/native handler. */
+    int direct_input;               /* The scene pulls copied native input from the ordered FIFO. */
+    int started_text;               /* This window acquired SDL text input and must end it. */
     int ready;                      /* Nonzero after a complete upload; permits repaint without another VM tick. */
     int texture_invalid;            /* Defer lost-device storage recreation until foreground. */
     unsigned char *last_frame;      /* Owned packed RGBA snapshot; never a borrowed VM/raster pointer. */
@@ -293,19 +297,19 @@ int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface 
 
 
 /* Queue one copied event in shared key/pointer order; overflow is latched until close. */
-static void
+static FVM_DesktopEvent *
 queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEventType mouse_type, int pressed, double wheel_delta)
 {
     size_t slot;
     FVM_DesktopEvent *queued;
     if (view->event_error != FVM_OK)
     {
-        return;
+        return NULL;
     }
     if (view->event_count == FVM_DESKTOP_PENDING_EVENTS)
     {
         view->event_error = FVM_ERROR;
-        return;
+        return NULL;
     }
     slot = (view->event_head + view->event_count) % FVM_DESKTOP_PENDING_EVENTS;
     queued = view->pending_events + slot;
@@ -316,7 +320,87 @@ queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEventType mouse
     queued->wheel_delta = wheel_delta;
     queued->x = view->input.x;
     queued->y = view->input.y;
+    queued->code = 0;
+    queued->text[0] = '\0';
     ++view->event_count;
+    return queued;
+}
+
+
+/* EN: Queue a pointer transition, collapsing successive moves of the same held button.
+ * RU: Поставить событие указателя в очередь, объединяя соседние движения с той же кнопкой. */
+static void queue_pointer(FVM_DesktopWindow *view, FVM_MouseEventType type, unsigned int button)
+{
+    FVM_DesktopEvent *event;
+    if (view->direct_input && type == FVM_MOUSE_EVENT_MOVE)
+    {
+        if (!button)
+        {
+            return;
+        }
+        if (view->event_count)
+        {
+            size_t last = (view->event_head + view->event_count - 1) % FVM_DESKTOP_PENDING_EVENTS;
+            event = view->pending_events + last;
+            if (event->kind == FVM_DESKTOP_EVENT_MOUSE && event->mouse_type == type && event->code == button)
+            {
+                event->x = view->input.x;
+                event->y = view->input.y;
+                return;
+            }
+        }
+    }
+    event = queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0, 0);
+    if (event)
+    {
+        event->code = button;
+    }
+}
+
+
+/* EN/RU: See window.h. / См. window.h. */
+void fvm_desktop_window_host_input(FVM_DesktopWindow *view, int enabled)
+{
+    if (!view || !view->window || view->direct_input == enabled)
+    {
+        return;
+    }
+    if (enabled && !SDL_IsTextInputActive())
+    {
+        SDL_StartTextInput();
+        view->started_text = 1;
+    }
+    if (!enabled && view->started_text)
+    {
+        SDL_StopTextInput();
+        view->started_text = 0;
+    }
+    view->direct_input = enabled;
+    view->event_head = view->event_count = 0;
+    ++view->event_epoch;
+}
+
+
+/* EN/RU: See window.h. / См. window.h. */
+int fvm_desktop_window_take_input(FVM_DesktopWindow *view, FVM_DesktopHostEvent *out)
+{
+    const FVM_DesktopEvent *event;
+    if (!view || !view->direct_input || !view->event_count)
+    {
+        return 0;
+    }
+    event = view->pending_events + view->event_head;
+    out->kind = event->kind;
+    out->code = event->code;
+    out->phase = event->kind == FVM_DESKTOP_EVENT_MOUSE ? (int)event->mouse_type : event->pressed;
+    out->x = event->x;
+    out->y = event->y;
+    out->wheel = event->wheel_delta;
+    out->control = event->state.down[FVM_KEY_CONTROL];
+    memcpy(out->text, event->text, sizeof(out->text));
+    view->event_head = (view->event_head + 1) % FVM_DESKTOP_PENDING_EVENTS;
+    --view->event_count;
+    return 1;
 }
 
 
@@ -368,7 +452,7 @@ static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *eve
         view->touch_active = 0;
         view->input.buttons &= ~FVM_DESKTOP_BUTTON_LEFT;
     }
-    queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0, 0);
+    queue_pointer(view, type, FVM_DESKTOP_BUTTON_LEFT);
 }
 
 
@@ -392,6 +476,9 @@ static int belongs_to_window(FVM_DesktopWindow *view, const SDL_Event *event)
     case SDL_KEYDOWN:
     case SDL_KEYUP:
         id = event->key.windowID;
+        break;
+    case SDL_TEXTINPUT:
+        id = event->text.windowID;
         break;
     case SDL_MOUSEWHEEL:
         id = event->wheel.windowID;
@@ -437,6 +524,11 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     }
     if (event->type == SDL_QUIT || (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE))
     {
+        if (view->direct_input)
+        {
+            queue_input(view, FVM_DESKTOP_EVENT_CLOSE, FVM_MOUSE_EVENT_MOVE, 0, 0);
+            return 1;
+        }
         return 0;
     }
     if (event->type == SDL_WINDOWEVENT)
@@ -487,7 +579,14 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->touch_active = 0;
         memset(&view->input.keyboard, 0, sizeof(view->input.keyboard));
         view->input.keyboard.struct_size = sizeof(view->input.keyboard);
-        view->event_head = view->event_count = 0;
+        if (view->direct_input)
+        {
+            queue_input(view, FVM_DESKTOP_EVENT_FOCUS, FVM_MOUSE_EVENT_MOVE, 0, 0);
+        }
+        else
+        {
+            view->event_head = view->event_count = 0;
+        }
         ++view->event_epoch;
     }
     /* Suppress stale physical transitions until DIDENTERFOREGROUND. Lifecycle,
@@ -496,9 +595,23 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     {
         return 1;
     }
-    if (event->type == SDL_KEYDOWN && (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK))
+    if (event->type == SDL_KEYDOWN && ((!view->direct_input && event->key.keysym.sym == SDLK_ESCAPE) ||
+                                    event->key.keysym.sym == SDLK_AC_BACK))
     {
         return 0;
+    }
+    if (view->direct_input && event->type == SDL_TEXTINPUT)
+    {
+        FVM_DesktopEvent *queued = queue_input(view, FVM_DESKTOP_EVENT_TEXT, FVM_MOUSE_EVENT_MOVE, 0, 0);
+        if (queued)
+        {
+            memcpy(queued->text, event->text.text, sizeof(queued->text) - 1);
+            queued->text[sizeof(queued->text) - 1] = '\0';
+        }
+    }
+    if (view->direct_input && event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+    {
+        queue_input(view, FVM_DESKTOP_EVENT_FOCUS, FVM_MOUSE_EVENT_MOVE, 1, 0);
     }
     if (event->type == SDL_MOUSEWHEEL)
     {
@@ -546,7 +659,9 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         }
         view->input.x = event->motion.x;
         view->input.y = event->motion.y;
-        queue_input(view, FVM_DESKTOP_EVENT_MOUSE, FVM_MOUSE_EVENT_MOVE, 0, 0);
+        queue_pointer(view, FVM_MOUSE_EVENT_MOVE,
+            view->input.buttons & FVM_DESKTOP_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE :
+                view->input.buttons & FVM_DESKTOP_BUTTON_LEFT);
     }
     if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
     {
@@ -570,13 +685,9 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         {
             view->input.buttons &= ~bit;
         }
-        if (bit == FVM_DESKTOP_BUTTON_LEFT)
+        if (bit == FVM_DESKTOP_BUTTON_LEFT || (view->direct_input && bit == FVM_DESKTOP_BUTTON_MIDDLE))
         {
-            queue_input(view,
-                        FVM_DESKTOP_EVENT_MOUSE,
-                        event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP,
-                        0,
-                        0);
+            queue_pointer(view, event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP, bit);
         }
     }
     if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION || event->type == SDL_FINGERUP)
@@ -586,6 +697,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP)
     {
         SDL_Keycode key = event->key.keysym.sym;
+        unsigned int virtual_key = fvm_desktop_key_code(key);
         int down = event->type == SDL_KEYDOWN;
         int code = key >= SDLK_a && key <= SDLK_z                  ? (int)(key - SDLK_a + 'A')
                    : key >= 0 && key < FVM_DESKTOP_KEY_ASCII_LIMIT ? (int)key
@@ -617,9 +729,18 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         }
         view->input.key_code = code;
         view->input.key_down = down;
-        if (fvm_desktop_key_code(key))
+        if (virtual_key)
         {
-            queue_input(view, FVM_DESKTOP_EVENT_KEY, FVM_MOUSE_EVENT_MOVE, down, 0);
+            FVM_DesktopEvent *queued = queue_input(view, FVM_DESKTOP_EVENT_KEY, FVM_MOUSE_EVENT_MOVE, down, 0);
+            if (queued)
+            {
+                queued->code = virtual_key;
+                if (view->direct_input &&
+                    (virtual_key == FVM_KEY_SHIFT || virtual_key == FVM_KEY_CONTROL || virtual_key == FVM_KEY_ALT))
+                {
+                    queued->pressed = queued->state.down[virtual_key];
+                }
+            }
         }
         if (down && !event->key.repeat)
         {
@@ -749,7 +870,8 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
         }
         return 1;
     }
-    while (handled < FVM_DESKTOP_EVENT_BATCH && SDL_PollEvent(&event))
+    while (handled < FVM_DESKTOP_EVENT_BATCH &&
+           (!view->direct_input || view->event_count < FVM_DESKTOP_PENDING_EVENTS) && SDL_PollEvent(&event))
     {
         ++handled;
         if (!handle_event(view, &event))
@@ -757,7 +879,8 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
             return 0;
         }
     }
-    if (handled == FVM_DESKTOP_EVENT_BATCH)
+    if (handled == FVM_DESKTOP_EVENT_BATCH ||
+        (view->direct_input && view->event_count == FVM_DESKTOP_PENDING_EVENTS))
     {
         return 1; /* Yield to input delivery/timers/GC; do not block behind queued records. */
     }
@@ -847,6 +970,7 @@ void fvm_desktop_window_close(FVM_DesktopWindow *view)
     {
         return;
     }
+    fvm_desktop_window_host_input(view, 0);
     if (view->cursor_initial != FVM_DESKTOP_CURSOR_UNSET)
     {
         SDL_ShowCursor(view->cursor_initial); /* Best effort; close has no error return. */

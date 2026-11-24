@@ -2,6 +2,7 @@
 """Check the real desktop over one libstyxrpc session. / Проверка desktop через одну сессию."""
 
 import argparse
+import os
 from pathlib import Path
 from shutil import copy2
 import sys
@@ -18,7 +19,8 @@ from run import exchange
 # RU: Собрать тест AS тем же трактом AS2, FIR и SWL, что используется для ресурсов IDE.
 def compile_movie(args, directory):
     observer = Path(__file__).resolve().with_name("paired-desktop.as")
-    return build_movie(directory / "desktop-view.swf", args.as2, args.fir, args.swl, (observer,))
+    scripts = () if args.native_events else (observer,)
+    return build_movie(directory / "desktop-view.swf", args.as2, args.fir, args.swl, scripts)
 
 
 # EN: Run the original desktop controllers in an isolated module/document directory.
@@ -39,17 +41,24 @@ def check(args, directory, movie, mode):
         options = ["--capture", capture] if args.capture else []
         if args.window:
             options.append("--window")
-        return [args.player, "--fd", fd, mode, *options]
+        argv = [args.player, "--fd", fd, mode, *options]
+        if args.native_events:
+            return ["env", "LD_PRELOAD=" + os.fspath(args.native_events), *argv]
+        return argv
 
     def desktop(fd):
         return [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
                 "--native-spawn", mode, "desktop-paired.dis"]
 
-    exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown")
-    if (directory / "paired-output.txt").read_bytes() != "Яpaired".encode("utf-8"):
+    exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
+             timeout=40 if args.native_events else 15)
+    expected = "Я🙂paired" if args.native_events else "Яpaired"
+    if (directory / "paired-output.txt").read_bytes() != expected.encode("utf-8"):
         raise RuntimeError(f"{mode}: the desktop did not save the exact edited UTF-8 text")
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
     if args.capture:
+        if args.native_events:
+            return verify_selection(capture)
         return verify_pixels(capture, args.text)
 
 
@@ -83,6 +92,30 @@ def verify_pixels(path, text):
     return data
 
 
+# EN: Check the actual placement, length and caret edge of the final native selection.
+# RU: Проверить положение, длину и границу каретки в итоговом выделении мышью.
+def verify_selection(path):
+    header = b"P6\n960 640\n255\n"
+    data = path.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong native desktop raster extent")
+
+    def pixel(x, y):
+        offset = len(header) + (960 * y + x) * 3
+        return data[offset:offset + 3]
+
+    selected = bytes.fromhex("ccdeff")
+    if pixel(180, 76) != bytes.fromhex("c8d3dc") or pixel(180, 81) != bytes.fromhex("255ac4"):
+        raise RuntimeError("Ctrl+wheel did not move the header to the scaled desktop position")
+    highlight = sum(pixel(x, y) == selected for y in range(110, 128) for x in range(112, 126))
+    suffix = sum(pixel(x, y) == selected for y in range(110, 128) for x in range(128, 160))
+    caret = sum(pixel(126, y) == bytes.fromhex("7e9dd1") for y in range(110, 128))
+    if highlight < 80 or suffix or caret < 12:
+        raise RuntimeError(f"selection and caret differ: {highlight=}, {suffix=}, {caret=}")
+    print("PASS SDL2 pointer selection and Ctrl+wheel: two Unicode scalars with a visible scaled caret")
+    return data
+
+
 # EN: Accept explicit in-tree tool outputs and check both supported dispatch modes.
 # RU: Принять пути к инструментам проекта и проверить оба режима выполнения.
 def main():
@@ -92,7 +125,11 @@ def main():
     parser.add_argument("--capture", action="store_true", help="check pixel output with a raster-enabled player")
     parser.add_argument("--text", action="store_true", help="serve the project font through VFS and verify text pixels")
     parser.add_argument("--window", action="store_true", help="open the player window during the run")
+    parser.add_argument("--native-events", type=lambda path: Path(path).resolve(),
+                        help="load the Linux SDL2 event fixture and exercise the production SWF")
     args = parser.parse_args()
+    if args.native_events:
+        args.text = args.window = True
     args.capture = args.capture or args.text
     with TemporaryDirectory(prefix="paired-desktop-") as temporary:
         directory = Path(temporary)

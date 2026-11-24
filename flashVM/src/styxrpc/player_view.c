@@ -8,6 +8,7 @@
 #include "flashvm/movieclip.h"
 #include "flashvm/stage.h"
 #include "flashvm/swf.h"
+#include "flashvm/gc_roots.h"
 #include "../../ports/monotonic_port.h"
 #ifdef FVM_STYXRPC_WINDOW
 #include "window.h"
@@ -30,9 +31,12 @@ struct FVM_PairedView
     FVM_DesktopWindow *window; /* Owned on the same thread as the VM. */
     double next;              /* Next monotonic presentation deadline in milliseconds. */
     int windowed;             /* Open a window after the first movie arrives. */
+    unsigned long input_serial; /* Identity assigned to each newly installed input object. */
+    unsigned long input_owner;  /* Identity whose queued events belong to the visible movie. */
 #endif
 };
 
+#include "player_view_input.inc"
 
 /* EN/RU: See player_view.h. / См. player_view.h. */
 FVM_PairedView *fvm_paired_view_create(int windowed, const char *capture)
@@ -142,6 +146,7 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
     FVM_Affine viewport;
     double now;
     unsigned int previous_width, previous_height;
+    int direct;
     if (!view || !view->windowed || !fvm_styxrpc_playback_scene(playback, &context, &root))
     {
         return 1;
@@ -178,11 +183,13 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
             return -1;
         }
     }
+    direct = update_input_owner(view, context);
     if (!fvm_desktop_window_events(view->window, 0))
     {
         return fvm_desktop_window_status(view->window) == FVM_OK ? 0 : -1;
     }
-    if (fvm_desktop_window_pump_clip_input(view->window, context, root, -viewport.x0, -viewport.y0) != FVM_OK ||
+    if (fvm_desktop_window_status(view->window) != FVM_OK ||
+        (!direct && fvm_desktop_window_pump_clip_input(view->window, context, root, -viewport.x0, -viewport.y0) != FVM_OK) ||
         !render(&view->surface, context, root, &viewport) ||
         !fvm_desktop_window_present(view->window, &view->surface, view->surface.stride * view->surface.height) ||
         fvm_desktop_window_sync_cursor(view->window, context) != FVM_OK)

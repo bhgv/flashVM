@@ -15,6 +15,10 @@
 #define FVM_DESKTOP_EVENT_WHEEL 3U                            /* Vertical wheel entry in the shared native FIFO. */
 #define FVM_DESKTOP_WHEEL_LINES_PER_UNIT 3.0                  /* Explicit host scroll-line policy per SDL unit. */
 #define FVM_DESKTOP_EVENT_MOUSE 2U                            /* Shared FIFO primary-pointer variant. */
+#define FVM_DESKTOP_EVENT_TEXT 4U                             /* Committed UTF-8 input for an opted-in scene. */
+#define FVM_DESKTOP_EVENT_FOCUS 5U                            /* Focus gain or loss in the opted-in FIFO. */
+#define FVM_DESKTOP_EVENT_CLOSE 6U                            /* Ask the opted-in application to close. */
+#define FVM_DESKTOP_INPUT_UTF8 32U                            /* SDL2 text packet, including the terminator. */
 #define FVM_DESKTOP_MAX_PIXELS 4096U                          /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U                                    /* Red offset in a packed RGBA pixel. */
 #define FVM_DESKTOP_GREEN 1U                                  /* Green offset in a packed RGBA pixel. */
@@ -46,6 +50,30 @@ typedef struct FVM_DesktopInput
     unsigned long clicks, key_presses; /* Counts of physical down transitions, excluding key repeats. */
 } FVM_DesktopInput;
 typedef struct FVM_DesktopWindow FVM_DesktopWindow;
+
+
+/* EN: Copy one opted-in ordered event, independent of SDL and the VM heap.
+ * RU: Копия события в порядке приёма, независимая от SDL и кучи VM. */
+typedef struct FVM_DesktopHostEvent
+{
+    unsigned int kind; /* FVM_DESKTOP_EVENT_* variant. */
+    unsigned int code; /* Virtual key, pointer button, or zero. */
+    int phase;         /* Mouse event type or pressed/focused Boolean. */
+    double x, y;      /* Logical stage pixels. */
+    double wheel;     /* Signed vertical scroll in lines. */
+    int control;      /* Control modifier at the event's position in the queue. */
+    char text[FVM_DESKTOP_INPUT_UTF8]; /* Terminated committed UTF-8. */
+} FVM_DesktopHostEvent;
+
+
+/* EN: Select script-polled input on this window, clearing old-mode transitions on change.
+ * RU: Выбрать опрос событий сценой, сбросив события прошлого режима при переключении. */
+void fvm_desktop_window_host_input(FVM_DesktopWindow *, int enabled);
+
+
+/* EN: Copy/pop the oldest opted-in event; return zero when the FIFO is empty.
+ * RU: Снять копию первого события, вернуть ноль при пустой очереди. */
+int fvm_desktop_window_take_input(FVM_DesktopWindow *, FVM_DesktopHostEvent *);
 
 
 /* Acquire private timer/video SDL references on the main thread and own presentation objects.

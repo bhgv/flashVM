@@ -6,7 +6,14 @@
 // RU: Отделить первую строку панели для заголовка, сохраняя оставшийся текст целиком.
 function drawDesktopText() {
     desktopLabelText = desktopWire.substr(125);
-    if (desktopLabelText) {
+    desktopCaret = ("0x" + desktopWire.substr(101, 8)) * 1;
+    desktopAnchor = ("0x" + desktopWire.substr(117, 8)) * 1;
+    desktopHasCaret = !(desktopSign.indexOf(desktopWire.substr(101, 1)) + 1);
+    desktopHasLabel = desktopLabelText;
+    if (desktopHasCaret) {
+        desktopHasLabel = true;
+    }
+    if (desktopHasLabel) {
         desktopTextSize = 11 * desktopItemScale;
         desktopLabelY = 2 * desktopItemScale;
         desktopLabelX = 4 * desktopItemScale;
@@ -24,11 +31,18 @@ function drawDesktopText() {
                 desktopTextResult = desktopCaption.setNewTextFormat(desktopCaptionFormat);
                 desktopCaption.text = desktopCaptionText;
                 desktopLabelText = desktopLabelText.substr(desktopBreak + 1);
+                desktopPrefix = desktopCaption.getScalarCount() + 1;
+                desktopCaret = desktopCaret - desktopPrefix;
+                desktopAnchor = desktopAnchor - desktopPrefix;
             }
             desktopLabelY = desktopLabelY + desktopHeaderHeight;
             desktopLabelH = desktopLabelH - desktopHeaderHeight;
         }
-        if (desktopLabelText) {
+        desktopHasLabel = desktopLabelText;
+        if (desktopHasCaret) {
+            desktopHasLabel = true;
+        }
+        if (desktopHasLabel) {
             desktopLabel = desktopPane.createTextField("body", 2, desktopLabelX,
                 desktopLabelY, desktopLabelW, desktopLabelH);
             desktopLabelFormat = desktopLabel.getNewTextFormat();
@@ -38,6 +52,12 @@ function drawDesktopText() {
             desktopLabel.multiline = true;
             desktopLabel.wordWrap = true;
             desktopLabel.text = desktopLabelText;
+            if (desktopHasCaret) {
+                if (desktopSign.indexOf(desktopWire.substr(117, 1)) + 1) {
+                    desktopAnchor = desktopCaret;
+                }
+                desktopTextResult = desktopLabel.setSelectionPreview(desktopAnchor, desktopCaret, 13426431, 2315690);
+            }
         }
     }
 }

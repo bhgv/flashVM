@@ -46,6 +46,7 @@
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
 #include "flashvm/standard_text.h"
+#include "text_display.hpp"
 #include "flashvm/avm1.h"
 #include "flashvm/path.h"
 #include "flashvm/gc.h"
@@ -2979,6 +2980,7 @@ FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
 }
 
 
+#include "movieclip_text_hits.inc"
 #include "movieclip_text_render.inc"
 
 /* Render the current value. */
@@ -3999,7 +4001,9 @@ const Method methods[] = {{"toString", clip_string},
                           {"getBytesTotal", fvm_movieclip_bytes_total},
                           {"getSWFVersion", fvm_movieclip_swf_version},
                           {"lineGradientStyle", fvm_movieclip_line_gradient_begin},
-                          {"createTextField", create_text_field}};
+                          {"createTextField", create_text_field},
+                          {"getChildDepthAtPoint", pick_child_depth},
+                          {"getTextScalarAtPoint", pick_text_scalar}};
 } // namespace
 
 
