@@ -18,6 +18,7 @@ if(DVM_RUNTIME_EDITOR)
   endif()
   get_target_property(runtime_sources disvm SOURCES)
   get_target_property(runtime_includes disvm INCLUDE_DIRECTORIES)
+  get_target_property(runtime_generation disvm MANUALLY_ADDED_DEPENDENCIES)
   add_executable(disvm-editor ${runtime_sources} editor_host.c editor_thread.c editor_bulk.c editor_view.c editor_raster.c editor_stamp.c editor_ink.c
     "${root}/disVM/host/dis_ui_channel.c")
   if(DVM_RUNTIME_TESTS)
@@ -41,7 +42,9 @@ if(DVM_RUNTIME_EDITOR)
     add_test(NAME disvm_editor_detached_raster COMMAND disvm_editor_raster_test)
     set_tests_properties(disvm_editor_detached_raster PROPERTIES TIMEOUT 30)
   endif()
-  add_dependencies(disvm-editor disvm_runtime_sources)
+  # EN: The same runtime sources need the same generated interfaces in either executable.
+  # RU: Одинаковым исходникам runtime нужны те же генерируемые интерфейсы в обоих приложениях.
+  add_dependencies(disvm-editor ${runtime_generation})
   if(DVM_RUNTIME_COMPILER)
     target_compile_definitions(disvm-editor PRIVATE DVM_RUNTIME_COMPILER=1)
     target_link_libraries(disvm-editor PRIVATE disvm_compiler_engine)

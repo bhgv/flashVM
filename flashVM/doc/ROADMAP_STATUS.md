@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1740 / Контрольная точка v0.1740. The actual menu 8 Limbo desktop
+builds on ordinary DisVM. Парный SWF проходит штатный ввод Unicode и Save As,
+затем ожидает подтверждённого завершения desktop.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1739 / Контрольная точка v0.1739. SWL imports the paired panel
 from SVG. Собранный из AS2 обработчик `onEnterFrame` принимает два кадра от
 Limbo после старта и подтверждает их по порядку.

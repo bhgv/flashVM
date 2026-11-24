@@ -223,6 +223,13 @@ install_runtime_package() {
     copy_file "$ROOT/ide/DESKTOP-CLIPBOARD.ru.md" "$destination/DESKTOP-CLIPBOARD.ru.md"
     copy_tree "$ROOT/ide/dis/examples/desktop-clipboard" "$destination/examples/desktop-clipboard"
     copy_file "$ROOT/ide/ENTRYPOINTS.md" "$destination/ENTRYPOINTS.md"
+    copy_file "$ROOT/ide/DESKTOP-PAIRED.md" "$destination/DESKTOP-PAIRED.md"
+    copy_file "$ROOT/ide/DESKTOP-PAIRED.ru.md" "$destination/DESKTOP-PAIRED.ru.md"
+    copy_file "$ROOT/ide/dis/app/desktop.b" "$destination/source/desktop.b"
+    copy_file "$ROOT/ide/dis/app/desktop.m" "$destination/include/limbo/desktop.m"
+    if [[ -f "$base/desktop-paired.dis" ]]; then
+        copy_file "$ROOT/ide/dis/app/desktop-paired.b" "$destination/source/desktop-paired.b"
+    fi
     install_program "$base" disvm "$destination"
     if [[ "$component" == disvm-editor ]]; then
         for module in desktop-ide desktop-example ide graphical-editor; do
@@ -231,8 +238,6 @@ install_runtime_package() {
         install_program "$base" disvm-editor "$destination"
         copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
         copy_tree "$ROOT/ide/dis/examples/desktop" "$destination/examples/desktop"
-        copy_file "$ROOT/ide/dis/app/desktop.b" "$destination/source/desktop.b"
-        copy_file "$ROOT/ide/dis/app/desktop.m" "$destination/include/limbo/desktop.m"
         copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/check.py"
         copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/test_desktop.py"
         copy_file "$ROOT/disVM/runtime/test_desktop_pointer.py" "$destination/examples/desktop/check-pointer.py"

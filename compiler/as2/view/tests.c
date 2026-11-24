@@ -8,7 +8,7 @@ int main(void)
 {
     const char *good = "panel.text = text; panel._x = width - 16; "
                        "sent = bus.send(bus.receive() + \"Я\\n\\\"\"); // EOF comment";
-    const char *handler = "function onEnterFrame() { if (ready) { received = bus.receive(); "
+    const char *handler = "function onEnterFrame() { if (!(position - 1)) { received = bus.receive(); "
                           "if (received) { sent = bus.send(received); } } else { ready = true; } }";
     const char *bad[] = {"panel.x = 2147483648;",
                          "panel.x = value();",
@@ -36,7 +36,8 @@ int main(void)
     }
     output[length] = 0;
     if (!strstr((const char *)output, "source_entry avm1_frame\n") ||
-        !strstr((const char *)output, "as.to_boolean") || !strstr((const char *)output, "^merge1:"))
+        !strstr((const char *)output, "as.to_boolean") || !strstr((const char *)output, "bool.not") ||
+        !strstr((const char *)output, "^merge1:"))
     {
         fprintf(stderr, "frame handler metadata or nested control flow was lost\n");
         return 1;

@@ -27,7 +27,8 @@ Nonempty sequences of explicit-semicolon assignments are supported:
 global reads, nonnegative decimal int32 constants, booleans, double-quoted UTF-8
 strings, and `object.method()` or `object.method(expression)`. The receiver is
 evaluated before an argument. The operators `+ - * /` use ordinary precedence.
-`+` lowers to dynamic `as.add`; the other operators explicitly
+Unary `!` inverts AVM1 truthiness, and parentheses group expressions.
+`+` lowers to dynamic `as.add`; the other arithmetic operators explicitly
 convert operands with `as.to_number` before f64 arithmetic. Values retain AS
 semantics, including strings passed to a property. The LHS object is read before
 the RHS is evaluated. Identifiers and separators are ASCII. UTF-8 `//` comments
@@ -40,7 +41,7 @@ the root MovieClip, then FlashVM runs it on timeline ticks. SSA temporaries are
 local to each invocation. Plain assignments follow normal AVM1 name resolution.
 
 General function declarations, standalone call statements, multi-argument calls,
-member reads, grouping parentheses, loops and classes remain outside the profile. The shared syntax frontend
+member reads, loops and classes remain outside the profile. The shared syntax frontend
 can recognize more than this profile; unsupported lowering fails explicitly.
 Bounds: source 16 KiB, names 253 bytes, spelled string contents 255 bytes,
 staged FIR 64 KiB. Quoted strings support `\"`, `\\`, `\n`, `\r` and `\t`. Assignment comments

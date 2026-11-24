@@ -61,6 +61,11 @@ separately from the verified paired terminal example.
 
 ## Verification / Проверки
 
+[Stock desktop on the paired connection](DESKTOP-PAIRED.md) /
+[Штатный desktop на паре VM](DESKTOP-PAIRED.ru.md).
+The real `desktop-ide.dis` sends its scene to a compiled AS test and saves
+the UTF-8 text entered through UniBus using its own dialog and document owner.
+
 [Compiled AS2 and Limbo pair](examples/paired-terminal/README.md) /
 [Парные .swf и .dis с исходниками](examples/paired-terminal/README.ru.md).
 The compiled SWF receives successive views in `onEnterFrame` after playback starts.

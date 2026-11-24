@@ -89,11 +89,18 @@ PRODUCTIONS
 
     /* Numeric multiply/divide bind more tightly and lower explicit coercions. */
     Product =
-        Value
+        Unary
         {
-            "*" Value                                                 (. emit_binary(2); .)
-            | "/" Value                                               (. emit_binary(3); .)
+            "*" Unary                                                 (. emit_binary(2); .)
+            | "/" Unary                                               (. emit_binary(3); .)
         }
+    .
+
+    /* EN: Logical negation binds before arithmetic and associates right-to-left.
+     * RU: Логическое отрицание связывается до арифметики и вычисляется справа налево. */
+    Unary =
+        "!" Unary                                                      (. emit_not(); .)
+        | Value
     .
 
     /* Read a binding or call one of its methods; literals become typed SSA values. */
@@ -104,6 +111,7 @@ PRODUCTIONS
         | string                                                        (. emit_string(); .)
         | "true"                                                       (. emit_boolean(1); .)
         | "false"                                                      (. emit_boolean(0); .)
+        | "(" Expression ")"
     .
 
     /* The receiver is already on the expression stack when argument evaluation starts. */

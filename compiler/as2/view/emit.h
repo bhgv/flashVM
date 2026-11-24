@@ -26,6 +26,8 @@ void emit_method_name(char key[256]);
 void emit_method_call(const char *key, int argc);
 /* Emit a literal boolean constant, then push its SSA identity. */
 void emit_boolean(int value);
+/* EN/RU: Negate AS truthiness / Инвертировать логическое значение AS. */
+void emit_not(void);
 /* Combine the two expression operands: 0 AS addition; 1/2/3 numeric sub/mul/div. */
 void emit_binary(int operation);
 /* Finish the current assignment; member selects object property versus global destination. */

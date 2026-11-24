@@ -107,16 +107,36 @@ void emit_frame_handler(void)
 }
 
 
+/* EN: Consume an expression and return its boolean SSA identity.
+ * RU: Снять значение выражения и вернуть идентификатор логического SSA. */
+static int truth(void)
+{
+    int value = pop();
+    int converted = values++;
+    append("    %%v%d: bool = as.to_boolean %%v%d\n", converted, value);
+    return converted;
+}
+
+
 /* EN: Consume an expression and branch on the converted AS boolean.
  * RU: Снять значение выражения и выполнить ветвление по логическому значению AS. */
 int emit_if(void)
 {
-    int value = pop();
-    int converted = values++;
+    int converted = truth();
     int label = labels++;
-    append("    %%v%d: bool = as.to_boolean %%v%d\n", converted, value);
     append("    if %%v%d, ^then%d, ^else%d\n^then%d:\n", converted, label, label, label);
     return label;
+}
+
+
+/* EN: Push the negated AS truth value without reevaluating the expression.
+ * RU: Поместить на стек отрицание логического значения без повторного вычисления. */
+void emit_not(void)
+{
+    int operand = truth();
+    int value = values++;
+    append("    %%v%d: bool = bool.not %%v%d\n", value, operand);
+    push(value);
 }
 
 
