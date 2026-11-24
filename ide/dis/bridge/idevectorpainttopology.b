@@ -109,7 +109,13 @@ paintpunchclear(nodes, brush: array of Node, work: ref Work): int
     for (i := 1; i < len brush; i++) {
         node := brush[i];
         if (node.verb == Close) {
+            if (i != len brush-1) {
+                return 0;
+            }
             break;
+        }
+        if (node.verb == Move) {
+            return 0;
         }
         finish := cutpoint(node.x, node.y);
         bound := paintnodebox(node, previous, finish);

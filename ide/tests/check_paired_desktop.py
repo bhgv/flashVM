@@ -56,7 +56,9 @@ def check(args, directory, movie, mode):
         copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
-    if args.vector or args.camera or args.ink or args.merge:
+    if args.sweep:
+        drawing.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600"/>', encoding="utf-8")
+    elif args.vector or args.camera or args.ink or args.merge:
         seed_vector(drawing, args.merge)
 
     # EN: Each command receives one connected descriptor from exchange.
@@ -80,6 +82,8 @@ def check(args, directory, movie, mode):
                 environment.append("FVM_PAIRED_TEST_LOCAL_INK=1")
             if args.merge:
                 environment.append("FVM_PAIRED_TEST_MERGE_DRAWING=1")
+            if args.sweep:
+                environment.append("FVM_PAIRED_TEST_BRUSH_SWEEP=1")
             return [*environment, *argv]
         return argv
 
@@ -98,7 +102,7 @@ def check(args, directory, movie, mode):
     if args.thumbnails:
         timeout = 80
         expected = {"paired-thumb-first.txt": "1-первая\nстрока один", "paired-thumb-second.txt": "2-вторая\nстрока два"}
-    if args.vector or args.camera or args.merge:
+    if args.vector or args.camera or args.merge or args.sweep:
         timeout = 65
         expected = {}
     provider_trace = ()
@@ -118,6 +122,8 @@ def check(args, directory, movie, mode):
         return verify_local_ink(drawing, capture)
     if args.merge:
         return verify_merge_drawing(drawing, capture)
+    if args.sweep:
+        return verify_brush_sweep(drawing, capture)
     if args.vector:
         return verify_vector(drawing, capture)
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
@@ -224,6 +230,29 @@ def verify_merge_drawing(drawing, capture):
         if data[at:at + 3].hex() != color:
             raise RuntimeError(f"wrong Merge Drawing pixel at {x},{y}: {data[at:at + 3].hex()}")
     print("PASS paired Merge Drawing preserves the cubic and hole of the doubled source")
+    return data
+
+
+# EN: Match an actual closed pointer gesture against both its SVG and raster.
+# RU: Сверить замкнутый жест указателя по SVG и пикселям.
+def verify_brush_sweep(drawing, capture):
+    shapes = list(ET.parse(drawing).getroot())
+    if len(shapes) != 1 or shapes[0].attrib.get("fill") != "#245ac4":
+        raise RuntimeError("expected one blue closed brush sweep")
+    outline = shapes[0].attrib.get("d", "")
+    if outline.count("M") != 2 or outline.count("C") != 4:
+        raise RuntimeError(f"closed sweep lost its hole or fixed-nib corners: {outline}")
+    header = b"P6\n960 640\n255\n"
+    data = capture.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong brush sweep raster extent")
+    expected = ((220, 448, "245ac4"), (220, 540, "245ac4"), (160, 490, "245ac4"),
+                (285, 490, "245ac4"), (220, 490, "ffffff"), (146, 490, "ffffff"))
+    for x, y, color in expected:
+        at = len(header) + (960 * y + x) * 3
+        if data[at:at + 3].hex() != color:
+            raise RuntimeError(f"wrong brush sweep pixel at {x},{y}: {data[at:at + 3].hex()}")
+    print("PASS paired brush sweep retains a cubic boundary and an empty center")
     return data
 
 
@@ -353,8 +382,9 @@ def main():
     scenarios.add_argument("--camera", action="store_true", help="zoom, draw and reset the paired SVG camera")
     scenarios.add_argument("--ink", action="store_true", help="preview and cancel ink while the test Dis child is suspended")
     scenarios.add_argument("--merge", action="store_true", help="cut a fill with the brush and move the resulting stroke")
+    scenarios.add_argument("--sweep", action="store_true", help="draw one closed vector brush loop with SDL input")
     args = parser.parse_args()
-    if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink or args.merge) and not args.native_events:
+    if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink or args.merge or args.sweep) and not args.native_events:
         parser.error("the selected desktop scenario requires --native-events")
     if args.native_events:
         args.text = args.window = True

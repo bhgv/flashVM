@@ -37,8 +37,16 @@ A loop within one cubic is split at its two visits to the crossing, with
 further exact subdivision where needed. The quick interior punch also checks
 that no source edge enters the brush's control box before appending a hole.
 
-Tight turns, unresolved contacts, and inputs outside the vector budget use
-the bounded mask. The worker traces its coverage and fits the closed
+For loops, sharp turns, retracing and page edges, the worker sweeps a single
+four-cubic nib along the simplified centerline. Each span contributes a strip
+between the two tangential support points, and each distinct endpoint supplies
+a full stamp. Overlapping collinear intervals merge before construction. The
+worker unions the strips and stamps and intersects the result with the page
+when needed, all before rounding. Subtracting an annular stroke preserves an
+independently editable island of the underlying fill in its empty center.
+
+Unresolved contacts and inputs outside the vector budget use the bounded mask.
+The worker traces its coverage and fits the closed
 contours with cubic Bézier segments using chord parameters and interval least
 squares. Every sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
@@ -62,6 +70,9 @@ The partial seam and separating tangent checks are in
 Within-source winding and cubic subdivision are in `dis/bridge/idevectorcutwinding.b`
 and `dis/bridge/idevectorcutspans.b`. The [winding tests](dis/tests/idepaint_winding.b)
 cover crossed and repeated paths, opposite windings and a loop within one cubic.
+General nib sweeps live in `dis/bridge/idevectorbrushunion.b`. The
+[sweep tests](dis/tests/idepaint_sweep.b) exercise closed loops, reversal, oblique
+crossing, clipping and a move that exposes the cut around a central island.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

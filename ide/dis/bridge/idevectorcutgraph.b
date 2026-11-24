@@ -57,6 +57,8 @@ CutSources: adt
     count: int;                         # Total number of source edges.
 };
 
+CutSubtract, CutUnion, CutIntersect: con iota; # Fill combination in the shared graph.
+
 
 # EN: Check whether the active span runs on another source's boundary.
 # Return the side of that source's fill relative to the active orientation.
@@ -86,7 +88,7 @@ cutseamside(contacts: ref CutContacts, edge, first, end: int, t: real): int
 # RU: Классифицировать обе стороны участка. Общая кромка использует
 # сохранённое направление, остальные участки используют правило обхода.
 # +1 сохраняет направление, -1 обращает, ноль удаляет, 2 означает сомнение.
-cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, lo, hi: real, unite: int): int
+cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, lo, hi: real, operation: int): int
 {
     source := sources.outlines[owner];
     t := (hi+lo)*0.5;
@@ -118,7 +120,7 @@ cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, l
                 l = side < 0;
             }
         }
-        if (unite) {
+        if (operation == CutUnion) {
             right |= r;
             left |= l;
             if (right && left) {
@@ -126,9 +128,12 @@ cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, l
             }
         } else if (i == 0) {
             (right, left) = (r, l);
-        } else {
+        } else if (operation == CutSubtract) {
             right &= !r;
             left &= !l;
+        } else {
+            right &= r;
+            left &= l;
         }
     }
     return right-left;
@@ -163,7 +168,7 @@ cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
 # original anchor IDs, separately from geometric endpoint aliases.
 # RU: Передать фрагменты одного контура в общий граф с исходными номерами
 # узлов, отдельно от общих геометрических концов.
-cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContacts, owner, unite: int): int
+cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContacts, owner, operation: int): int
 {
     source := sources.outlines[owner];
     shift := sources.offsets[owner];
@@ -181,7 +186,7 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
                 destination = sources.count+hit;
                 terminal = -1;
             }
-            side := cutclassify(sources, contacts, owner, i, lo, hi, unite);
+            side := cutclassify(sources, contacts, owner, i, lo, hi, operation);
             if (side == 2) {
                 return 0;
             }
@@ -194,6 +199,26 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
         }
     }
     return 1;
+}
+
+
+# EN: Build and serialize the boundary of prepared real-coordinate outlines.
+# The brush also uses this entry before any intermediate integer conversion.
+# RU: Собрать и записать границу подготовленных вещественных контуров.
+# Кисть использует эту точку входа до промежуточного округления.
+cutcompose(sources: CutSources, contacts: ref CutContacts, operation: int): ref CutResult
+{
+    if (!cutcrossings(sources, contacts)) {
+        return nil;
+    }
+    search := contacts.search;
+    boundary := cutboundary(sources, search);
+    for (i := 0; i < len sources.outlines; i++) {
+        if (!cutkeep(boundary, sources, contacts, i, operation)) {
+            return nil;
+        }
+    }
+    return cutloops(boundary, contacts.math, search.work);
 }
 
 
@@ -308,14 +333,9 @@ cutboolean(paths: array of CutResult, unite: int, work: ref Work): ref CutResult
         sources.offsets[i] = sources.count;
         sources.count += len outline.edges;
     }
-    if (!cutcrossings(sources, contacts)) {
-        return nil;
+    operation := CutSubtract;
+    if (unite) {
+        operation = CutUnion;
     }
-    boundary := cutboundary(sources, search);
-    for (i = 0; i < len sources.outlines; i++) {
-        if (!cutkeep(boundary, sources, contacts, i, unite)) {
-            return nil;
-        }
-    }
-    return cutloops(boundary, math, work);
+    return cutcompose(sources, contacts, operation);
 }

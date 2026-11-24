@@ -199,7 +199,7 @@ install_runtime_package() {
     for geometry in idevectorbrushgeometry idevectormergedrawing idevectorpainttopology \
         idevectorcutcurve idevectorcutintersections idevectorcutcontacts idevectorcutcoincidence \
         idevectorcutsupport idevectorcutwinding idevectorcutspans idevectorcutboundary \
-        idevectorcutgraph idevectorcutoutline idevectorbrushsweep; do
+        idevectorcutgraph idevectorcutoutline idevectorbrushsweep idevectorbrushunion; do
         copy_file "$ROOT/ide/dis/bridge/$geometry.b" "$destination/source/$geometry.b"
     done
     copy_file "$ROOT/ide/dis/bridge/idevectorviewport.b" "$destination/source/idevectorviewport.b"

@@ -45,7 +45,7 @@ brushsimplify(samples: array of Node, first, last, depth: int, spine: ref BrushS
     b := cutpoint(samples[last].x, samples[last].y);
     direction := cutsub(b, a);
     length2 := cutdot(direction, direction);
-    if (length2 == 0.0 || depth == 16 || spine.count == len spine.points) {
+    if (depth == 16 || spine.count == len spine.points) {
         spine.count = -1;
         return;
     }
@@ -56,7 +56,10 @@ brushsimplify(samples: array of Node, first, last, depth: int, spine: ref BrushS
             checkwork(work);
         }
         p := cutpoint(samples[i].x, samples[i].y);
-        t := cutdot(cutsub(p, a), direction)/length2;
+        t := 0.0;
+        if (length2 > 0.0) {
+            t = cutdot(cutsub(p, a), direction)/length2;
+        }
         if (t < 0.0) {
             t = 0.0;
         }
@@ -75,7 +78,10 @@ brushsimplify(samples: array of Node, first, last, depth: int, spine: ref BrushS
         brushsimplify(samples, split, last, depth+1, spine, work);
         return;
     }
-    spine.points[spine.count++] = Point(samples[last].x, samples[last].y);
+    point := Point(samples[last].x, samples[last].y);
+    if (!brushequal(spine.points[spine.count-1], point)) {
+        spine.points[spine.count++] = point;
+    }
 }
 
 
@@ -202,49 +208,27 @@ brushside(out: ref BrushOutline, path: array of Point, legs: array of BrushLeg,
 }
 
 
-# EN: Return a closed editable vector outline for a bent monotone stroke.
-# Unsupported self-overlaps, sharp turns and page clipping use coverage tracing.
-# RU: Вернуть замкнутый векторный контур многоугольного хода кисти.
-# Самопересечения, резкие повороты и обрезка листом идут по маске.
-brushsweep(raw: ref Shape, work: ref Work): array of Node
+# EN: Prepare the short boundary of a forward sweep with ample space for
+# its corner offsets. This retains the established gentle-turn anchors.
+# RU: Построить короткую границу прямого по ходу мазка с местом для смещений.
+# Сохраняются привычные узлы плавных поворотов.
+brushforward(path: array of Point, width: int, math: Math, work: ref Work): array of Node
 {
-    samples := raw.nodes;
-    if (raw.width < 4 || len samples < 3 || samples[len samples-1].verb != Segment) {
-        return nil;
-    }
-    spine := ref BrushSpine(array[24] of Point, 1);
-    spine.points[0] = Point(samples[0].x, samples[0].y);
-    brushsimplify(samples, 0, len samples-1, 0, spine, work);
-    if (spine.count < 2) {
-        return nil;
-    }
-    path := spine.points[0:spine.count];
-    bound := (raw.width+1)/2;
-    for (i := 0; i < len path; i++) {
-        p := path[i];
-        if (!pointok(p.x-bound, p.y-bound) || !pointok(p.x+bound, p.y+bound)) {
-            return nil;
-        }
-    }
-    math := load Math Math->PATH;
-    if (math == nil) {
-        return nil;
-    }
     if (len path == 2) {
-        return brushround(path[0], path[1], raw.width);
+        return brushround(path[0], path[1], width);
     }
     legs := brushlegs(path, math);
     if (legs == nil) {
         return nil;
     }
-    out := ref BrushOutline(array[4*len path+6] of Node, 0, real raw.width/2.0);
+    out := ref BrushOutline(array[4*len path+6] of Node, 0, real width/2.0);
     if (!brushside(out, path, legs, 0, len path-1, 1, math) ||
         !brushside(out, path, legs, len path-1, 0, -1, math)) {
         return nil;
     }
     out.nodes[out.count++] = Node(Close, 0, 0, 0, 0, 0, 0);
     nodes := out.nodes[0:out.count];
-    for (i = 0; i < len nodes; i++) {
+    for (i := 0; i < len nodes; i++) {
         node := nodes[i];
         if (!pointok(node.x, node.y) || !pointok(node.cx, node.cy) || !pointok(node.c2x, node.c2y)) {
             return nil;
@@ -256,4 +240,44 @@ brushsweep(raw: ref Shape, work: ref Work): array of Node
         return nil;
     }
     return nodes;
+}
+
+
+# EN: Build an editable swept boundary for a copied raw stroke. Keep the
+# compact forward construction when possible, then use the fixed-nib graph.
+# RU: Построить редактируемую границу сырого мазка. Для простого прохода
+# сохранить короткое построение, иначе использовать граф круглого отпечатка.
+brushsweep(raw: ref Shape, work: ref Work): array of Node
+{
+    samples := raw.nodes;
+    if (raw.width < 2 || len samples < 2 || samples[len samples-1].verb != Segment) {
+        return nil;
+    }
+    spine := ref BrushSpine(array[24] of Point, 1);
+    spine.points[0] = Point(samples[0].x, samples[0].y);
+    brushsimplify(samples, 0, len samples-1, 0, spine, work);
+    if (spine.count < 2) {
+        return nil;
+    }
+    path := spine.points[0:spine.count];
+    bound := (raw.width+1)/2;
+    clipped := 0;
+    for (i := 0; i < len path; i++) {
+        p := path[i];
+        if (!pointok(p.x-bound, p.y-bound) || !pointok(p.x+bound, p.y+bound)) {
+            clipped = 1;
+            break;
+        }
+    }
+    math := load Math Math->PATH;
+    if (math == nil) {
+        return nil;
+    }
+    if (!clipped && raw.width >= 4) {
+        nodes := brushforward(path, raw.width, math, work);
+        if (nodes != nil) {
+            return nodes;
+        }
+    }
+    return brushunion(path, raw.width, clipped, math, work);
 }

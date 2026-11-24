@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1756 / Контрольная точка v0.1756. The brush sweeps one fixed
+cubic nib through closed loops, sharp turns and reversals. Векторный мазок
+обрезается по листу и оставляет отдельную заливку внутри кольцевого выреза.
+[EN](../../ide/VECTOR-VIEWPORT.md) / [RU](../../ide/VECTOR-VIEWPORT.ru.md).
+
 Checkpoint v0.1755 / Контрольная точка v0.1755. The brush cuts self-crossing and
 retraced SVG paths under nonzero winding, including a loop inside one cubic.
 Отверстие вырезается целиком при переходе через область кратного обхода.

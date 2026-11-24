@@ -8,6 +8,7 @@
 static pid_t ink_dis;        /* Verified child in this fixture's process group. */
 static unsigned ink_phase;  /* Zero until requested; 1..6 track presented transitions. */
 static unsigned ink_steps;  /* Samples posted after the second stroke becomes visible. */
+static unsigned sweep_phase; /* Blank canvas, four previewed sides, then completed save. */
 
 
 /* EN: Resume the child on normal completion or an explicit fixture failure.
@@ -138,6 +139,57 @@ static void inspect_ink_frame(SDL_Renderer *renderer)
 }
 
 
+/* EN: Open the blank SVG before injecting any samples of the closed stroke.
+ * RU: Открыть пустой SVG до передачи точек замкнутого мазка. */
+static void sweep_burst(void)
+{
+    sweep_phase = 1;
+    open_vector();
+}
+
+
+/* EN: Wait for each side to appear in the local ink preview before moving
+ * to the next corner. Release at the original position and save normally.
+ * RU: Дождаться каждого участка локального следа, затем перейти к следующему
+ * углу. Отпустить в исходной позиции и сохранить обычным способом. */
+static void inspect_sweep_frame(SDL_Renderer *renderer)
+{
+    SDL_Event event;
+    if (sweep_phase == 1 && ink_pixel(renderer, 220, 490) == 0xffffff &&
+        ink_pixel(renderer, 285, 448) == 0xffffff)
+    {
+        sweep_phase = 2;
+        text("++++++++");
+        button(SDL_MOUSEBUTTONDOWN, 160, 448);
+        ink_motion(285, 448);
+    }
+    else if (sweep_phase == 2 && ink_pixel(renderer, 220, 448) == 0x245ac4)
+    {
+        sweep_phase = 3;
+        ink_motion(285, 540);
+    }
+    else if (sweep_phase == 3 && ink_pixel(renderer, 285, 490) == 0x245ac4)
+    {
+        sweep_phase = 4;
+        ink_motion(160, 540);
+    }
+    else if (sweep_phase == 4 && ink_pixel(renderer, 220, 540) == 0x245ac4)
+    {
+        sweep_phase = 5;
+        ink_motion(160, 448);
+    }
+    else if (sweep_phase == 5 && ink_pixel(renderer, 160, 490) == 0x245ac4)
+    {
+        sweep_phase = 6;
+        button(SDL_MOUSEBUTTONUP, 160, 448);
+        shortcut(SDLK_s);
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_QUIT;
+        post(&event);
+    }
+}
+
+
 /* EN: Read the actual renderer before present, then forward the host operation.
  * RU: Прочитать настоящий растр перед показом и передать вызов SDL. */
 void SDLCALL SDL_RenderPresent(SDL_Renderer *renderer)
@@ -155,6 +207,10 @@ void SDLCALL SDL_RenderPresent(SDL_Renderer *renderer)
     if (ink_phase && ink_phase < 6)
     {
         inspect_ink_frame(renderer);
+    }
+    if (sweep_phase && sweep_phase < 6)
+    {
+        inspect_sweep_frame(renderer);
     }
     present_real(renderer);
 }

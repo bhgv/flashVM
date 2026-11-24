@@ -1353,3 +1353,4 @@ include "idevectorcutboundary.b";
 include "idevectorcutgraph.b";
 include "idevectorcutoutline.b";
 include "idevectorbrushsweep.b";
+include "idevectorbrushunion.b";

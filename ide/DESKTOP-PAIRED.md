@@ -170,7 +170,10 @@ and cuts away covered paint of a different color. If a cut separates a fill
 into islands, each remainder can be selected and moved independently. Moving
 the upper stroke later exposes the cut. Undo restores the original geometry
 in one step. Dots and straight strokes retain four cubic arcs. Gentle turns
-keep cubic arcs along the outside of the nib. The vector cut and union preserve
+keep cubic arcs along the outside of the nib. Closed paths, sharp turns and
+reversals can use one fixed round nib swept along the entire path. Loops
+preserve empty interiors, and the same vector operation clips to the page.
+The vector cut and union preserve
 untouched Bézier handles in compound paths with holes and islands. A single
 stroke can unite several visible same-color fills in the same operation.
 Shared straight edges and matching full or partial Bézier segments use the
@@ -191,6 +194,8 @@ across more than one fragment and verifies the saved SVG and final raster.
 Use `--merge` to paint across an SVG fill drawn twice in the same path, move
 the stroke away, and verify the two remaining islands, the original cubic
 handles, the untouched hole, and the visible gap.
+Use `--sweep` to close a four-corner brush gesture and check its cubic corners
+and white center in both the saved SVG and the displayed raster.
 
 Multiple touch contacts and vector editing overlays still need paired
 integration. Menu 8 currently starts the installed graphical runtime.

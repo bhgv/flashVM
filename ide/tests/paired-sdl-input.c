@@ -399,6 +399,10 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
         {
             merge_drawing_burst();
         }
+        else if (getenv("FVM_PAIRED_TEST_BRUSH_SWEEP"))
+        {
+            sweep_burst();
+        }
         else
         {
             burst();
