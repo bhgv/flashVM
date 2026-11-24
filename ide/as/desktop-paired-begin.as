@@ -33,5 +33,8 @@ function beginDesktopScene() {
     desktopVectorCount = 0;
     desktopVectorFailed = false;
     desktopVectorSlots = "";
+    desktopEmptyCamera = "00000064000001f40000012c0";
+    desktopEmptyCameras = desktopEmptyCamera + desktopEmptyCamera + desktopEmptyCamera + desktopEmptyCamera;
+    desktopStagedVectorCameras = desktopEmptyCameras + desktopEmptyCameras;
     desktopOpen = desktopTicket;
 }

@@ -7,11 +7,15 @@
 // RU: Прочитать заголовок или передать запись контура, выставив точный следующий размер.
 function decodeDesktopVectorRecord() {
     if (!(desktopVectorStep - 0)) {
-        desktopVectorFlags = ("0x" + desktopVectorRecord.substr(0, 8)) * 1;
-        if (!desktopVectorFlags + Math.max(0, desktopVectorFlags - 196616)) {
+        desktopVectorHeader = ("0x" + desktopVectorRecord.substr(0, 8)) * 1;
+        desktopVectorFlags = Math.floor(desktopVectorHeader / 65536);
+        desktopVectorTool = desktopVectorHeader - 65536 * desktopVectorFlags;
+        if (!desktopVectorHeader) {
             desktopVectorFailed = true;
         }
-        desktopVectorFlags = Math.floor(desktopVectorFlags / 65536);
+        if (!desktopVectorTool + Math.max(0, desktopVectorTool - 8) + Math.max(0, desktopVectorFlags - 3)) {
+            desktopVectorFailed = true;
+        }
         desktopVectorStride = 40 + Math.floor(desktopVectorFlags / 2) * 16;
         if (desktopVectorFlags - 2 * Math.floor(desktopVectorFlags / 2)) {
             desktopVectorStep = 1;
@@ -22,12 +26,23 @@ function decodeDesktopVectorRecord() {
         }
     } else {
         if (!(desktopVectorStep - 1)) {
+            desktopVectorCamera = desktopVectorRecord;
+            desktopVectorZoom = ("0x" + desktopVectorCamera.substr(0, 8)) * 1;
+            desktopVectorCenterX = ("0x" + desktopVectorCamera.substr(8, 8)) * 1;
+            desktopVectorCenterY = ("0x" + desktopVectorCamera.substr(16, 8)) * 1;
+            if (!((desktopVectorCenterX + 1) * (desktopVectorCenterY + 1) * desktopVectorZoom)) {
+                desktopVectorFailed = true;
+            }
+            if (Math.max(0, 25 - desktopVectorZoom) + Math.max(0, desktopVectorZoom - 1600)
+                + Math.max(0, desktopVectorCenterX - 1000) + Math.max(0, desktopVectorCenterY - 600)) {
+                desktopVectorFailed = true;
+            }
             desktopVectorStep = 2;
             desktopVectorNeed = 8;
         } else {
             if (!(desktopVectorStep - 2)) {
                 desktopVectorShapes = ("0x" + desktopVectorRecord) * 1;
-                if (Math.max(0, desktopVectorShapes - 32)) {
+                if (Math.max(0, desktopVectorShapes - 32 - !(desktopVectorTool - 8))) {
                     desktopVectorFailed = true;
                 }
                 desktopVectorStep = 3;

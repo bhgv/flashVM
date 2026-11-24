@@ -34,13 +34,13 @@ function placeDesktopVectorPointer() {
     desktopVectorPointerScale = Math.min((desktopVectorPointerWidth - 16) / 1000,
         (desktopVectorPointerHeight - 32) / 600);
     desktopVectorPointerScale = Math.max(1 / 1000, desktopVectorPointerScale);
-    desktopVectorMouseX = (desktopVectorMouseX - desktopVectorPaneX
-        - (desktopVectorPointerWidth - 1000 * desktopVectorPointerScale) / 2) / desktopVectorPointerScale;
-    desktopVectorMouseY = (desktopVectorMouseY - desktopVectorPaneY - 28) / desktopVectorPointerScale;
-    if (Math.max(0, 0 - desktopVectorMouseX) + Math.max(0, desktopVectorMouseX - 1000)
-        + Math.max(0, 0 - desktopVectorMouseY) + Math.max(0, desktopVectorMouseY - 600)) {
-        desktopPointerId = "00000000";
+    desktopVectorMouseX = desktopVectorMouseX - desktopVectorPaneX
+        - (desktopVectorPointerWidth - 1000 * desktopVectorPointerScale) / 2;
+    desktopVectorMouseY = desktopVectorMouseY - desktopVectorPaneY - 28;
+    if (Math.max(0, 0 - desktopVectorMouseX) + Math.max(0, desktopVectorMouseX - 1000 * desktopVectorPointerScale)
+        + Math.max(0, 0 - desktopVectorMouseY) + Math.max(0, desktopVectorMouseY - 600 * desktopVectorPointerScale)) {
+        desktopVectorPointerInside = false;
     } else {
-        desktopPointerOffset = Math.round(desktopVectorMouseX) + Math.round(desktopVectorMouseY) * 1001;
+        desktopVectorUnprojected = _root.unprojectDesktopVectorPointer();
     }
 }

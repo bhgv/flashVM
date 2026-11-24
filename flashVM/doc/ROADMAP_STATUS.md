@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1748 / Контрольная точка v0.1748. The paired SVG pane presents
+and clips its document camera and maps drawing gestures to page coordinates.
+Проверяются увеличение, вписывание области, сброс камеры и сохранение SVG.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1747 / Контрольная точка v0.1747. The paired desktop draws SVG
 paths from the same UniBus session as other views. Сквозная проверка открывает
 SVG, добавляет фигуру мышью, сохраняет документ и сверяет растр в обоих режимах.

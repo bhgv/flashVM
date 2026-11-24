@@ -258,10 +258,11 @@ stackslot(order, focus: int): int
 }
 
 
-# Admit a text-body identity from copied pixels in the same paint/hit order.
-# Borrowed windows contain presentation only. Return zero for rails, headers,
-# opaque scrolls and no hit; source kind/revision/ranges stay with the pane owner.
-texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom, pan, rightscroll: int): int
+# EN: Resolve the frontmost pane under pixel x/y. includeheader admits its fixed
+# header. Borrow layout state, reject covered/rail coordinates and return zero on miss.
+# RU: Найти переднюю панель под x/y. includeheader разрешает неподвижный заголовок.
+# Состояние компоновки заимствуется. Перекрытия и полки дают нулевой результат.
+panetarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom, pan, rightscroll, includeheader: int): int
 {
     if (x < 80 || x >= width - tools->RightWidth || y < 48 || y >= height) {
         return 0;
@@ -292,7 +293,7 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
         y0 -= scroll;
         if (x >= x0 && x < x0 + wide && y >= y0 && y < y0 + high) {
             target = 0;
-            if (y >= y0 + 24 * controlzoom(windows[index], zoom) / 100) {
+            if (includeheader || y >= y0 + 24 * controlzoom(windows[index], zoom) / 100) {
                 target = index + 1;
             }
         }
@@ -711,10 +712,11 @@ serve(requests: chan of Request)
                 }
                 changed = 1;
                 status = Ok;
-            } else if (request.operation == TextHit) {
+            } else if (request.operation == TextHit || request.operation == PaneHit) {
                 status = Conflict;
                 if (request.ticket == ticket && request.window >= 1 && request.window <= MaxWindows &&
-                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom, deskpan, rightscroll) == request.window) {
+                    panetarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom,
+                               deskpan, rightscroll, request.operation == PaneHit) == request.window) {
                     status = Ok;
                 }
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {

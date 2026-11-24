@@ -41,6 +41,9 @@ function receiveDesktopVector() {
                 if (desktopVectorNeed + desktopVectorBuffered) {
                     desktopVectorFailed = true;
                 } else {
+                    if (!desktopVectorFailed) {
+                        desktopVectorFinished = _root.finishDesktopVector();
+                    }
                     desktopVectorCount = desktopVectorCount + 1;
                 }
             }

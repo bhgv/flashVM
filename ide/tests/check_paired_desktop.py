@@ -48,7 +48,7 @@ def check(args, directory, movie, mode):
         copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
-    if args.vector:
+    if args.vector or args.camera:
         seed_vector(drawing)
 
     # EN: Each command receives one connected descriptor from exchange.
@@ -66,6 +66,8 @@ def check(args, directory, movie, mode):
                 environment.append("FVM_PAIRED_TEST_THUMBNAILS=1")
             if args.vector:
                 environment.append("FVM_PAIRED_TEST_VECTOR=1")
+            if args.camera:
+                environment.append("FVM_PAIRED_TEST_VECTOR_CAMERA=1")
             return [*environment, *argv]
         return argv
 
@@ -81,7 +83,7 @@ def check(args, directory, movie, mode):
     if args.thumbnails:
         timeout = 80
         expected = {"paired-thumb-first.txt": "1-первая\nстрока один", "paired-thumb-second.txt": "2-вторая\nстрока два"}
-    if args.vector:
+    if args.vector or args.camera:
         timeout = 65
         expected = {}
     exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
@@ -89,6 +91,8 @@ def check(args, directory, movie, mode):
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
+    if args.camera:
+        return verify_vector_camera(drawing, capture)
     if args.vector:
         return verify_vector(drawing, capture)
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
@@ -123,6 +127,29 @@ def verify_vector(drawing, capture):
     if original < 1000 or added < 80:
         raise RuntimeError("the raster lost the filled SVG contour")
     print("PASS SVG opened, rendered across fragments, edited with SDL2 and saved through Dis")
+    return data
+
+
+# EN: Check exact SVG points before/after reset and the clipped final camera.
+# RU: Проверить точные координаты SVG до и после сброса и обрезку итоговой камеры.
+def verify_vector_camera(drawing, capture):
+    shapes = list(ET.parse(drawing).getroot())
+    if (len(shapes) != 3 or "C 120 30 220 30 292 80" not in shapes[0].attrib["d"]
+            or shapes[1].attrib["d"].strip() != "M 443 247 L 586 247 L 586 321 L 443 321 Z"
+            or shapes[2].attrib["d"].strip() != "M 354 236 L 733 236 L 733 433 L 354 433 Z"):
+        raise RuntimeError("the camera did not remap the drawing gesture: " + drawing.read_text(encoding="utf-8"))
+    header = b"P6\n960 640\n255\n"
+    data = capture.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong camera desktop raster extent")
+    # The zoomed curve crosses the top of the white viewport; the pane gutter
+    # one pixel above it must retain its background.
+    expected = ((180, 411, "e04444"), (180, 410, "e6ecf5"), (210, 480, "e04444"), (235, 480, "ffffff"))
+    for x, y, rgb in expected:
+        at = len(header) + (960 * y + x) * 3
+        if data[at:at + 3].hex() != rgb:
+            raise RuntimeError(f"wrong camera projection or clip at {x},{y}")
+    print("PASS SVG camera wheel, marquee, reset, saved page coordinates and clipped raster")
     return data
 
 
@@ -249,9 +276,10 @@ def main():
     scenarios.add_argument("--mdi", action="store_true", help="exercise native resize and MDI in the SDL2 fixture")
     scenarios.add_argument("--thumbnails", action="store_true", help="exercise real shelf and overview navigation")
     scenarios.add_argument("--vector", action="store_true", help="open, edit and save an SVG through the real window")
+    scenarios.add_argument("--camera", action="store_true", help="zoom, draw and reset the paired SVG camera")
     args = parser.parse_args()
-    if (args.mdi or args.thumbnails or args.vector) and not args.native_events:
-        parser.error("--mdi, --thumbnails and --vector require --native-events")
+    if (args.mdi or args.thumbnails or args.vector or args.camera) and not args.native_events:
+        parser.error("the selected desktop scenario requires --native-events")
     if args.native_events:
         args.text = args.window = True
     args.capture = args.capture or args.text

@@ -135,14 +135,26 @@ then sends consecutive fragments before `EndView`. ActionScript decodes
 one record at a time and constructs paths on the staged MovieClip. The new
 scene becomes visible after every declared stream completes. Cubic SVG paths
 retain their original controls in Dis and use a segmented approximation in
-the FlashVM presentation. The paired canvas fits the page to the pane.
+the FlashVM presentation.
+
+The two buttons on the right of the vector pane header turn the magnifier
+on or off and reset the camera to the fitted page. In magnifier mode, use
+the wheel over the page to zoom around the pointer or drag a rectangle to
+fit an area. You can resume drawing at the new scale. Limbo owns the camera
+and sends its scale and centre with the vector stream. ActionScript uses
+the camera for both presentation and inverse pointer mapping, including
+inside an MDI parent. Zoomed paths are rasterized into the fixed page
+viewport before presentation. The camera stays out of SVG and document
+history.
 
 Use `--vector` with `--native-events` in the command above. The check opens a
 filled SVG containing a cubic and enough nodes to span multiple fragments,
 draws a rectangle with SDL mouse events, saves it, and compares the file and
-pixels in interpreter and JIT modes. The native event fixture supplies input only.
+pixels in interpreter and JIT modes. `--camera` also exercises wheel zoom,
+rectangle fitting, reset and drawing at the same screen position with two
+different cameras. The native event fixture supplies input only.
 
-Multiple touch contacts, the vector viewport and editing overlays, and
+Multiple touch contacts, vector editing overlays, and
 FlashVM-local ink preview still need paired integration. Menu 8 currently
 starts the installed graphical runtime.
 

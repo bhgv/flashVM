@@ -143,12 +143,12 @@ wireparts(doc: ref Document): array of string
 
 
 # EN: Publish the same committed shapes for a portable MovieClip renderer,
-# including draft stroke samples in drawing tools. Selection plans remain local.
+# including draft stroke samples and the magnifier marquee. Selection plans remain local.
 # RU: Опубликовать те же сохранённые контуры для MovieClip, включая черновые
-# точки инструментов рисования. Планы выделения остаются у локального интерфейса.
+# точки рисования и рамку лупы. Планы выделения остаются у локального интерфейса.
 pairedparts(doc: ref Document): array of string
 {
-    if (doc.tool < Select) {
+    if (doc.tool < Select || doc.tool == Zoom) {
         return wireparts(doc);
     }
     preparewire(doc);

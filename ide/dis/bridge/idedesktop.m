@@ -22,6 +22,7 @@ Idedesktop: module
     MaxPaneText: con 232; # Title+body scalar budget preserves bounded UTF-8 envelopes.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
     View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Activate, TextHit, Shutdown: con iota; # FIFO operations.
+    PaneHit: con 16; # Ticket-bound frontmost pane hit including its header.
     Ok, Invalid, Conflict: con iota; # Explicit layout/input admission.
     OpenFile, SaveFile, Compile, NewEditor, Debugger, Help, Quit, CloseEditor, ClipboardTool, ShowAll, MaxNorm, Focus, CancelClose, CopySelection, CutSelection, PasteSelection: con iota + 1; # Tool/activation actions.
 
@@ -29,8 +30,8 @@ Idedesktop: module
     {
         id: int; # Nonnegative correlation identity.
         operation: int; # Operation above.
-        ticket: int; # Exact view for Pointer/Scroll/TextHit; zero for controller updates.
-        window: int; # Update/Select/Activate/Remove/TextHit: 1..8 ID; Tool: action.
+        ticket: int; # Exact view for Pointer/Scroll/TextHit/PaneHit; zero for controller updates.
+        window: int; # Update/Select/Activate/Remove/TextHit/PaneHit: 1..8 ID; Tool: action.
         x: int; # Pointer pixel X; Scroll delta in pixels; Resize width.
         y: int; # Pointer pixel Y; Resize height.
         phase: int; # Pointer 1/2/3 mouse, 4/5 window/table zoom, 6 native double-click/tap, 9/10/11 two contacts, 13/14/15 three contacts.

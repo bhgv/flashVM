@@ -11,11 +11,10 @@ function sendDesktopPointer() {
     desktopPicked = _root.pickDesktopPane();
     desktopPointerOffset = 0 - 1;
     if (desktopPointerPane) {
-        if (!(desktopPointerCode - 1)) {
-            desktopPointerCanvas = desktopPointerPane.getInstanceAtDepth(8);
-            if (desktopPointerCanvas) {
-                desktopVectorPointMapped = _root.placeDesktopVectorPointer();
-            } else {
+        if (desktopFrontVectorSlots.indexOf("|" + desktopPointerId + "|") + 1) {
+            desktopVectorPointMapped = _root.routeDesktopVectorPointer();
+        } else {
+            if (!(desktopPointerCode - 1)) {
                 desktopPointerScalar = desktopPointerPane.getTextScalarAtPoint(2, desktopPointerX, desktopPointerY);
                 if (desktopPointerScalar + 1) {
                     desktopPointerCaption = desktopPointerPane.getInstanceAtDepth(1);

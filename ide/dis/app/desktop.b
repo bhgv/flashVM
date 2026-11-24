@@ -633,13 +633,25 @@ run(paired: int)
                 continue;
             }
             if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5 || code == 6 || code == 7 || code == 8 || code == 9 || code == 10 || code == 12 || code == desk->ContactCancel)) {
-                if (code == 12 && hit >= 1 && hit <= len windows && windows[hit-1] != nil && offset == -21) {
+                if (code == 12 && event.flags == view.ticket && hit >= 1 && hit <= len windows &&
+                    windows[hit-1] != nil && shown[hit-1].kind == panes->Vector && offset == -21) {
+                    if (paired) {
+                        request.operation = desk->PaneHit;
+                        request.ticket = event.flags;
+                        request.window = hit;
+                        request.x = event.first;
+                        request.y = event.second;
+                        admitted := deskcall(layout, request);
+                        if (admitted.status != desk->Ok) {
+                            continue;
+                        }
+                    }
                     panecall(windows[hit-1],panes->VectorControl,"",
                         ref Uibridge->Message(codec->Request,0,23,shown[hit-1].revision,0,0,""));
                     continue;
                 }
-                if ((code == 4 || code == 5 || code == 8 || code == 9) && hit >= 1 &&
-                    hit <= len windows && windows[hit-1] != nil && offset >= 0 &&
+                if ((code == 4 || code == 5 || code == 8 || code == 9) && event.flags == view.ticket && hit >= 1 &&
+                    hit <= len windows && windows[hit-1] != nil && offset >= 0 && offset <= 601600 &&
                     shown[hit-1].kind == panes->Vector) {
                     command := 21;
                     if (code == 5 || code == 9) {
@@ -684,6 +696,9 @@ run(paired: int)
                         continue;
                     }
                     request.operation = desk->TextHit;
+                    if (paired && offset == -21) {
+                        request.operation = desk->PaneHit;
+                    }
                     request.ticket = event.flags;
                     request.window = hit;
                     request.x = event.first;

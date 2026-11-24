@@ -30,6 +30,8 @@ function endDesktopScene() {
                     desktopFrontTableX = desktopTableX;
                     desktopFrontTableY = desktopTableY;
                     desktopFrontTableScale = desktopScale;
+                    desktopFrontVectorCameras = desktopStagedVectorCameras;
+                    desktopFrontVectorSlots = desktopVectorSlots;
                     desktopReady = true;
                     if (desktopResizePending) {
                         if (Math.abs(desktopResizeWidth - desktopWidth) + Math.abs(desktopResizeHeight - desktopHeight)) {

@@ -203,11 +203,10 @@ static void thumbnails_burst(void)
 }
 
 
-/* EN: Open an SVG in a new vector pane, draw via the window and save in place.
- * RU: Открыть SVG в новой векторной панели, нарисовать через окно и сохранить на месте. */
-static void vector_burst(void)
+/* EN: Open the prepared SVG through the ordinary shortcuts and Open dialog.
+ * RU: Открыть подготовленный SVG штатными сочетаниями и диалогом открытия. */
+static void open_vector(void)
 {
-    SDL_Event event;
     key(SDL_KEYDOWN, SDLK_LCTRL, KMOD_LCTRL);
     key(SDL_KEYDOWN, SDLK_LSHIFT, KMOD_LCTRL | KMOD_LSHIFT);
     key(SDL_KEYDOWN, SDLK_n, KMOD_LCTRL | KMOD_LSHIFT);
@@ -217,9 +216,73 @@ static void vector_burst(void)
     shortcut(SDLK_o);
     text("paired-drawing.svg");
     key(SDL_KEYDOWN, SDLK_RETURN, KMOD_NONE);
+}
+
+
+/* EN: Add a rectangle with the ordinary tool key, then save the active SVG.
+ * RU: Добавить прямоугольник штатной клавишей и сохранить активный SVG. */
+static void vector_rectangle(void)
+{
     key(SDL_KEYDOWN, SDLK_r, KMOD_NONE);
     drag(230, 495, 365, 565);
     shortcut(SDLK_s);
+}
+
+
+/* EN: Open and save an SVG at its initial camera, then close the window.
+ * RU: Открыть и сохранить SVG при исходной камере, затем закрыть окно. */
+static void vector_burst(void)
+{
+    SDL_Event event;
+    open_vector();
+    vector_rectangle();
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
+}
+
+
+/* EN: Post a positive wheel step at the current window position in pixels.
+ * RU: Передать положительный шаг колеса в указанной точке окна. */
+static void vector_wheel(int x, int y)
+{
+    SDL_Event event;
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_MOUSEMOTION;
+    event.motion.x = x;
+    event.motion.y = y;
+    post(&event);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_MOUSEWHEEL;
+    event.wheel.y = 1;
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    event.wheel.preciseY = 1;
+#endif
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+    event.wheel.mouseX = x;
+    event.wheel.mouseY = y;
+#endif
+    post(&event);
+}
+
+
+/* EN: Use wheel and marquee, draw while zoomed, then reset and repeat the drag.
+ * Leave the last zoom visible in the raster without a final document change.
+ * RU: Увеличить колесом и рамкой, нарисовать, сбросить масштаб и повторить жест.
+ * Оставить последнее увеличение на растре без изменения документа. */
+static void vector_camera_burst(void)
+{
+    SDL_Event event;
+    open_vector();
+    click(403, 397);
+    vector_wheel(235, 480);
+    drag(220, 465, 366, 565);
+    vector_rectangle();
+    click(425, 397);
+    vector_rectangle();
+    click(403, 397);
+    vector_wheel(169, 475);
+    vector_wheel(169, 475);
     memset(&event, 0, sizeof(event));
     event.type = SDL_QUIT;
     post(&event);
@@ -303,6 +366,10 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
         else if (getenv("FVM_PAIRED_TEST_VECTOR"))
         {
             vector_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_VECTOR_CAMERA"))
+        {
+            vector_camera_burst();
         }
         else
         {
