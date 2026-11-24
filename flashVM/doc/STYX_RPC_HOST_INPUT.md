@@ -14,6 +14,7 @@ decides which messages to send over the application's existing connection.
 | `hostInput.get(name)` | Reads the named field of the last successfully dequeued event. Treat it as relevant only after a nonzero return from `take()`. |
 | `hostInput.enableResize(minWidth, minHeight, maxWidth, maxHeight)` | Requests native-pixel input and resize events when polling is enabled. Each dimension is a whole pixel in 1–4096. Returns true on acceptance. |
 | `hostInput.commitViewport(width, height)` | Publishes a whole-pixel raster extent within the movie's resize bounds. The next render and PPM capture use these dimensions. Returns true on acceptance. |
+| `hostInput.publishFrame(revision)` | Publishes a whole revision in 0–4294967295. A positive revision requests one raster for the latest committed scene. Zero selects continuous rendering. Returns true on acceptance. |
 
 | Kind | Event and fields |
 | --- | --- |
@@ -38,6 +39,12 @@ computed by a peer can hold the preceding frame while it waits for approval,
 then call `commitViewport` with the acknowledged dimensions. Invalid or
 out-of-range method arguments raise an input error. SDL updates the texture on
 its owner turn and retains the same window and input queue.
+
+Choose a new positive revision when a complete scene changes.
+The player presents the latest revision and reuses that raster during input
+polling. SDL expose and device recovery can repaint it. Window extent changes
+also trigger a render, and explicit PPM capture renders the current scene.
+The paired IDE uses this with [MovieClip snapshots](MOVIECLIP_SNAPSHOT_BITMAP.md).
 
 For a remote editor, `MovieClip.getChildDepthAtPoint(x, y)` takes world pixels
 and returns the frontmost direct visible MovieClip's depth, using bounds.

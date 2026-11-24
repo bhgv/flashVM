@@ -33,6 +33,7 @@ struct FVM_PairedView
     int windowed;             /* Open a window after the first movie arrives. */
     unsigned long input_serial; /* Identity assigned to each newly installed input object. */
     unsigned long input_owner;  /* Identity whose queued events belong to the visible movie. */
+    unsigned long painted_revision; /* Most recent explicitly published raster, or zero initially. */
 #endif
 };
 
@@ -155,6 +156,7 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
     double now;
     unsigned int previous_width, previous_height;
     unsigned int bounds[4] = {0, 0, 0, 0};
+    unsigned long revision;
     int direct, follow;
     if (!view || !view->windowed || !fvm_styxrpc_playback_scene(playback, &context, &root))
     {
@@ -193,6 +195,10 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
             return -1;
         }
     }
+    if (previous_width != view->surface.width || previous_height != view->surface.height)
+    {
+        view->painted_revision = 0;
+    }
     direct = update_input_owner(view, context);
     if (direct < 0 || !fvm_desktop_window_follow_size(view->window, follow ? bounds[0] : 0, follow ? bounds[1] : 0,
             follow ? bounds[2] : 0, follow ? bounds[3] : 0) ||
@@ -206,10 +212,21 @@ int fvm_paired_view_step(FVM_PairedView *view, FVM_StyxRpcPlayback *playback, in
         return fvm_desktop_window_status(view->window) == FVM_OK ? 0 : -1;
     }
     if (fvm_desktop_window_status(view->window) != FVM_OK ||
-        (!direct && fvm_desktop_window_pump_clip_input(view->window, context, root, -viewport.x0, -viewport.y0) != FVM_OK) ||
-        !render(&view->surface, context, root, &viewport) ||
-        !fvm_desktop_window_present(view->window, &view->surface, view->surface.stride * view->surface.height) ||
-        fvm_desktop_window_sync_cursor(view->window, context) != FVM_OK)
+        (!direct && fvm_desktop_window_pump_clip_input(view->window, context, root, -viewport.x0, -viewport.y0) != FVM_OK))
+    {
+        return -1;
+    }
+    revision = frame_revision(context);
+    if (!revision || revision != view->painted_revision)
+    {
+        if (!render(&view->surface, context, root, &viewport) ||
+            !fvm_desktop_window_present(view->window, &view->surface, view->surface.stride * view->surface.height))
+        {
+            return -1;
+        }
+        view->painted_revision = revision;
+    }
+    if (fvm_desktop_window_sync_cursor(view->window, context) != FVM_OK)
     {
         return -1;
     }

@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1745 / Контрольная точка v0.1745. The paired IDE draws shelf and
+overview previews from the same committed MovieClips as the document panels.
+Проверяются порядок карточек, открытие документов MDI с полки и сохранение
+независимых правок. [EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1744 / Контрольная точка v0.1744. The paired desktop follows native
 SDL window resize after a matching Dis scene and renders editor tabs with real
 MDI MovieClip parents. Ввод по вкладкам и сохранение двух документов проверяются

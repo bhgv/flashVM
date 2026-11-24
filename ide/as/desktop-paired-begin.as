@@ -24,5 +24,8 @@ function beginDesktopScene() {
     desktopLayersSet = _root.setupDesktopLayers();
     desktopSeen = 0;
     desktopStagedOrder = "";
+    desktopEmptySource = "0000000000000000000000000";
+    desktopEmptySources = desktopEmptySource + desktopEmptySource + desktopEmptySource + desktopEmptySource;
+    desktopSources = desktopEmptySources + desktopEmptySources;
     desktopOpen = desktopTicket;
 }

@@ -3958,6 +3958,8 @@ attach_bitmap(FVM_Context *c, FVM_Object *parent_clip, unsigned n, const FVM_Val
 }
 
 
+#include "movieclip_snapshot.inc"
+
 /* Define Method struct and its representation. */
 struct Method
 {
@@ -4003,7 +4005,8 @@ const Method methods[] = {{"toString", clip_string},
                           {"lineGradientStyle", fvm_movieclip_line_gradient_begin},
                           {"createTextField", create_text_field},
                           {"getChildDepthAtPoint", pick_child_depth},
-                          {"getTextScalarAtPoint", pick_text_scalar}};
+                          {"getTextScalarAtPoint", pick_text_scalar},
+                          {"snapshotBitmap", snapshot_bitmap}};
 } // namespace
 
 

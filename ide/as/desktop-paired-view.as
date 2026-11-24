@@ -8,6 +8,7 @@ function onEnterFrame() {
     if (!desktopFrontDepth) {
         desktopFrontDepth = 10;
         desktopSign = "89abcdef";
+        desktopPresentation = 0;
         desktopNotifications = styxTerminal.enableNotifications();
         if (hostInput) {
             desktopInputEnabled = hostInput.enable();

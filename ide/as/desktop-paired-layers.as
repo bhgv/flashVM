@@ -13,7 +13,9 @@ function setupDesktopLayers() {
     desktopOverlayLayer = desktopPending.createEmptyMovieClip("overlay", 5);
     desktopTableLayer._xscale = 100 * desktopScale;
     desktopTableLayer._yscale = 100 * desktopScale;
-    desktopTableLayer._x = 84 * (1 - desktopScale) + desktopPan;
-    desktopTableLayer._y = 48 * (1 - desktopScale) - desktopScroll;
+    desktopTableX = 84 * (1 - desktopScale) + desktopPan;
+    desktopTableY = 48 * (1 - desktopScale) - desktopScroll;
+    desktopTableLayer._x = desktopTableX;
+    desktopTableLayer._y = desktopTableY;
     desktopStagedGroups = "000000000000000000000000000000000000000000000000000000000000000000000000";
 }

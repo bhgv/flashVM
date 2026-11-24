@@ -3,6 +3,8 @@
 #define FVM_BITMAP_STATE_HPP /* Include guard for managed bitmap integration. */
 #include "geometry_support.hpp"
 
+#define FVM_BITMAP_MAX_EXTENT 2880U /* Maximum public BitmapData width or height in pixels. */
+
 
 /* [GC:] Owned pixel allocation released by the object's internal resource destructor. */
 struct FVM_BitmapState

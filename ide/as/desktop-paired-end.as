@@ -30,6 +30,10 @@ function endDesktopScene() {
                             desktopResizePending = false;
                         }
                     }
+                    if (desktopInputEnabled) {
+                        desktopPresentation = desktopPresentation + 1;
+                        desktopPresented = hostInput.publishFrame(desktopPresentation);
+                    }
                 }
             }
             desktopOpen = false;

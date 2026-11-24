@@ -82,6 +82,14 @@ ticket. DisVM recomputes and returns the layout. FlashVM applies the new raster
 extent after the matching `EndView` and keeps the same native window and queue.
 The IDE accepts widths of 240–2048 and heights of 160–2048 pixels.
 
+The left shelf and overview map show small rasters of the staged document
+MovieClips, including their text. Docked panes and inactive MDI tabs keep a
+local source for the shelf. The miniature and the full document appear with the
+same completed scene. The viewport outline leaves the overview previews visible.
+Click or drag the left cards to reveal or reorder documents. Click or drag the
+overview map to move the viewport. DisVM owns all camera, ordering and focus
+changes. FlashVM presents the new raster on each scene revision.
+
 Add `--text --window` to the
 repository check to serve the font and verify glyphs in the editor and console
 after the resize and edit. `--capture` alone checks the pane, header and rail
@@ -109,8 +117,13 @@ Add `--mdi` to that command to resize the SDL window from 960 × 640 to 860 × 6
 edit two documents by switching tabs, detach and rejoin one editor, and verify
 both saved byte sequences plus the final active tab and editor raster.
 
-Multiple touch contacts, live thumbnails and vector bulk/ink still need paired
-integration. Menu 8 uses the installed graphical runtime.
+Use `--thumbnails` with `--native-events` to dock a grouped pair, reopen both
+documents through the shelf, save independent edits, navigate with the overview
+and reorder a card. The final frame checks source ink inside both cards, including
+the inactive tab's moved preview, and the overview image and viewport outline.
+
+Multiple touch contacts and vector bulk/ink still need paired integration.
+Menu 8 uses the installed graphical runtime.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

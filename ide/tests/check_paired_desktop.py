@@ -46,6 +46,8 @@ def check(args, directory, movie, mode):
             environment = ["env", "LD_PRELOAD=" + os.fspath(args.native_events)]
             if args.mdi:
                 environment.append("FVM_PAIRED_TEST_MDI=1")
+            if args.thumbnails:
+                environment.append("FVM_PAIRED_TEST_THUMBNAILS=1")
             return [*environment, *argv]
         return argv
 
@@ -53,16 +55,23 @@ def check(args, directory, movie, mode):
         return [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
                 "--native-spawn", mode, "desktop-paired.dis"]
 
-    exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
-             timeout=65 if args.mdi else 40 if args.native_events else 15)
+    timeout = 40 if args.native_events else 15
     expected = {"paired-output.txt": "Я🙂paired" if args.native_events else "Яpaired"}
     if args.mdi:
+        timeout = 65
         expected = {"paired-first.txt": "1-Первый", "paired-second.txt": "2-Второй"}
+    if args.thumbnails:
+        timeout = 80
+        expected = {"paired-thumb-first.txt": "1-первая\nстрока один", "paired-thumb-second.txt": "2-вторая\nстрока два"}
+    exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
+             timeout=timeout)
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
     if args.capture:
+        if args.thumbnails:
+            return verify_thumbnails(capture)
         if args.mdi:
             return verify_mdi(capture)
         if args.native_events:
@@ -97,6 +106,35 @@ def verify_pixels(path, text):
         if caption < 40 or first_letter < 8 or edit < 40 or console < 40:
             raise RuntimeError(f"missing desktop text pixels: {caption=}, {first_letter=}, {edit=}, {console=}")
         print("PASS TextField ink: editor caption, Unicode edit and console")
+    return data
+
+
+# EN: Verify painted content in the active and hidden/reordered cards and a transparent map cursor.
+# RU: Проверить содержимое активной и переставленной скрытой карточки и прозрачную рамку карты.
+def verify_thumbnails(path):
+    header = b"P6\n960 640\n255\n"
+    data = path.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong thumbnail desktop raster extent")
+
+    def pixel(x, y):
+        offset = len(header) + (960 * y + x) * 3
+        return data[offset:offset + 3]
+
+    expected = ((10, 73, "255ac4"), (10, 345, "413a70"), (40, 410, "e6ecf5"),
+                (924, 432, "e6ecf5"), (924, 560, "202936"))
+    for x, y, color in expected:
+        if pixel(x, y).hex() != color:
+            raise RuntimeError(f"live thumbnail or map pixels at {x},{y}: {pixel(x, y).hex()} != {color}")
+    for top in (132, 404):
+        ink = sum(pixel(x, y)[0] < 220 for y in range(top, top + 3) for x in range(9, 31))
+        if ink < 6:
+            raise RuntimeError(f"preview contained no document ink at row {top}: {ink=}")
+    border = bytes.fromhex("ffcd69")
+    outline = sum(pixel(x, y) == border for y in range(410, 450) for x in range(908, 952))
+    if outline < 80:
+        raise RuntimeError("the overview viewport outline is missing from the raster")
+    print("PASS live shelf/map rasters, MDI reveal through cards, and reordered inactive preview")
     return data
 
 
@@ -160,10 +198,12 @@ def main():
     parser.add_argument("--window", action="store_true", help="open the player window during the run")
     parser.add_argument("--native-events", type=lambda path: Path(path).resolve(),
                         help="load the Linux SDL2 event fixture and exercise the production SWF")
-    parser.add_argument("--mdi", action="store_true", help="exercise native resize and MDI in the SDL2 fixture")
+    scenarios = parser.add_mutually_exclusive_group()
+    scenarios.add_argument("--mdi", action="store_true", help="exercise native resize and MDI in the SDL2 fixture")
+    scenarios.add_argument("--thumbnails", action="store_true", help="exercise real shelf and overview navigation")
     args = parser.parse_args()
-    if args.mdi and not args.native_events:
-        parser.error("--mdi requires --native-events")
+    if (args.mdi or args.thumbnails) and not args.native_events:
+        parser.error("--mdi and --thumbnails require --native-events")
     if args.native_events:
         args.text = args.window = True
     args.capture = args.capture or args.text

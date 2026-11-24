@@ -11,15 +11,37 @@ function drawDesktopItem() {
     desktopY = ("0x" + desktopWire.substr(69, 8)) * 1;
     desktopW = ("0x" + desktopWire.substr(77, 8)) * 1;
     desktopH = ("0x" + desktopWire.substr(85, 8)) * 1;
+    desktopMirror = ("0x" + desktopWire.substr(109, 8)) * 1;
     if (desktopSign.indexOf(desktopWire.substr(61, 1)) + 1) {
         desktopX = desktopX - 65536 * 65536;
     }
     if (desktopSign.indexOf(desktopWire.substr(69, 1)) + 1) {
         desktopY = desktopY - 65536 * 65536;
     }
-    // Dis places hidden panes outside the legal raster coordinate domain.
-    // Dis помечает скрытые панели координатами вне диапазона растера.
-    if (desktopX - 65536) {
-        desktopComposed = _root.composeDesktopItem();
+    if (desktopMirror) {
+        desktopComposed = _root.drawDesktopMirror();
+    } else {
+        if (!(desktopId - 62)) {
+            desktopComposed = _root.drawDesktopAtlasViewport();
+        } else {
+            desktopItemVisible = desktopX - 65536;
+            desktopItemDrawable = desktopItemVisible;
+            if (!desktopItemVisible) {
+                // Hidden documents still own a source clip for the shelf.
+                // Скрытый документ сохраняет исходный клип для полки.
+                desktopSourceIds = ",1,2,3,4,5,6,7,8,";
+                desktopItemDrawable = desktopSourceIds.indexOf("," + desktopId + ",") + 1;
+                desktopX = 0;
+                desktopY = 0;
+            }
+            if (desktopItemDrawable) {
+                if (desktopItemVisible) {
+                    if (!(desktopParent - 1)) {
+                        desktopCulled = _root.cullDesktopTableItem();
+                    }
+                }
+                desktopComposed = _root.composeDesktopItem();
+            }
+        }
     }
 }

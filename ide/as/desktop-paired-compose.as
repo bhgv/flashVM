@@ -27,6 +27,9 @@ function composeDesktopItem() {
         desktopFill = 3159876;
         desktopRightLayer._x = desktopWidth - desktopW;
     }
+    if (!(desktopId - 60)) {
+        desktopFill = 2107702;
+    }
     desktopPanes = ",1,2,3,4,5,6,7,8,";
     if (desktopPanes.indexOf("," + desktopId + ",") + 1) {
         desktopBand = true;
@@ -47,6 +50,9 @@ function composeDesktopItem() {
         desktopPane = desktopOwner.createEmptyMovieClip("item" + desktopId, desktopSeen);
         desktopPane._x = desktopX;
         desktopPane._y = desktopY;
+        if (!desktopItemVisible) {
+            desktopPane._visible = false;
+        }
         desktopPaint = desktopPane.beginFill(desktopFill);
         desktopPaint = desktopPane.moveTo(0, 0);
         desktopPaint = desktopPane.lineTo(desktopW, 0);
@@ -66,5 +72,6 @@ function composeDesktopItem() {
         if (TextField) {
             desktopTextDrawn = _root.drawDesktopText();
         }
+        desktopSourceRegistered = _root.registerDesktopSource();
     }
 }

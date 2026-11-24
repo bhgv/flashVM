@@ -739,7 +739,8 @@ FVM_Result fvm_bitmap_create_pixels(FVM_Context *c,
                                     const fvm_detail::vector<unsigned char> &pixels,
                                     FVM_Value *out)
 {
-    if (!c || !out || !width || !height || width > 2880 || height > 2880 || pixels.size() != (size_t)width * height * 4)
+    if (!c || !out || !width || !height || width > FVM_BITMAP_MAX_EXTENT || height > FVM_BITMAP_MAX_EXTENT ||
+        pixels.size() != (size_t)width * height * 4)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -988,7 +989,8 @@ bool fvm_bitmap_snapshot_valid(const fvm_detail::string &bytes)
     {
         return !w && !h && bytes.size() == 12;
     }
-    if (!(w >= 1 && w <= 2880 && h >= 1 && h <= 2880 && bytes.size() == 12 + (size_t)w * h * 4))
+    if (!(w >= 1 && w <= FVM_BITMAP_MAX_EXTENT && h >= 1 && h <= FVM_BITMAP_MAX_EXTENT &&
+          bytes.size() == 12 + (size_t)w * h * 4))
     {
         return false;
     }

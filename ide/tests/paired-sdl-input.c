@@ -94,6 +94,22 @@ static void click(int x, int y)
 }
 
 
+/* EN: Drag within one continuous physical gesture so the layout owns docking and shelf reorder.
+ * RU: Передать непрерывный жест, чтобы компоновка обработала стыковку или порядок полки. */
+static void drag(int from_x, int from_y, int to_x, int to_y)
+{
+    SDL_Event event;
+    button(SDL_MOUSEBUTTONDOWN, from_x, from_y);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_MOUSEMOTION;
+    event.motion.state = SDL_BUTTON_LMASK;
+    event.motion.x = to_x;
+    event.motion.y = to_y;
+    post(&event);
+    button(SDL_MOUSEBUTTONUP, to_x, to_y);
+}
+
+
 /* EN: Post one Ctrl shortcut with clean release before the next visible action.
  * RU: Передать сочетание Ctrl с отпусканием перед следующим действием. */
 static void shortcut(SDL_Keycode code)
@@ -149,6 +165,38 @@ static void mdi_burst(void)
     save("paired-second.txt");
     shortcut(SDLK_g);
     click(132, 112);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
+}
+
+
+/* EN: Dock a real MDI group, reveal both source owners via their live cards and reorder a card.
+ * RU: Свернуть настоящую группу MDI, открыть оба документа с полки и переставить карточку. */
+static void thumbnails_burst(void)
+{
+    SDL_Event event;
+    text("первая");
+    key(SDL_KEYDOWN, SDLK_RETURN, KMOD_NONE);
+    text("строка один");
+    shortcut(SDLK_g);
+    click(520, 520);
+    text("вторая");
+    key(SDL_KEYDOWN, SDLK_RETURN, KMOD_NONE);
+    text("строка два");
+    shortcut(SDLK_g);
+    drag(650, 85, 30, 85);
+    click(40, 100);
+    click(110, 164);
+    text("1-");
+    save("paired-thumb-first.txt");
+    click(927, 612);
+    click(40, 520);
+    click(110, 164);
+    text("2-");
+    save("paired-thumb-second.txt");
+    drag(40, 520, 40, 362);
+    click(40, 100);
     memset(&event, 0, sizeof(event));
     event.type = SDL_QUIT;
     post(&event);
@@ -221,7 +269,11 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
     if (!posted && SDL_GetTicks() + 1 - first_poll >= EVENT_DELAY_MS && SDL_IsTextInputActive())
     {
         posted = 1;
-        if (getenv("FVM_PAIRED_TEST_MDI"))
+        if (getenv("FVM_PAIRED_TEST_THUMBNAILS"))
+        {
+            thumbnails_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_MDI"))
         {
             mdi_burst();
         }
