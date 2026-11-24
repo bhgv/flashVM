@@ -5,9 +5,52 @@
 #include "styxrpc/vfs_client.h"
 #include "client.h"
 #include "vfs_client_internal.h"
+#include "message_internal.h"
 #include "styxrpc/variable_file.h"
 #include <stdlib.h>
 #include <string.h>
+
+
+typedef enum VfsPathKind
+{
+    VFS_FILE_PATH,     /* Ordinary user-visible paths. */
+    VFS_VARIABLE_PATH, /* Protocol-selected variable path. */
+    VFS_EXCHANGE_PATH  /* Protocol-selected exchange root. */
+} VfsPathKind;
+
+
+/* EN: Classify one exact service component, without reserving arbitrary dotfiles.
+ * RU: Определить точное служебное имя, сохраняя доступ к остальным скрытым файлам. */
+static int service_name(const char *name, size_t size)
+{
+    static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs", ".unibus",
+        ".messages", ".interface", ".programs", ".sysevents", ".state", ".upload", ".exit",
+        ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop", ".add", ".count"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+    {
+        if (strlen(names[i]) == size && !memcmp(name, names[i], size))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/* EN: Identify exchange roots with arbitrary names by their reserved Qid range.
+ * RU: Определить корни обмена с произвольными именами по диапазону Qid. */
+static int exchange_meta(const StyxMeta *meta)
+{
+    return STYXRPC_MESSAGE_NODE - meta->identity < STYXRPC_MESSAGE_ROOTS_MAX;
+}
+
+
+/* EN: Reject stat data for a service entry even when the path used an alias.
+ * RU: Отклонить stat служебного узла, в том числе при проходе по псевдониму. */
+static int service_meta(const StyxMeta *meta)
+{
+    return exchange_meta(meta) || service_name(meta->name, strlen(meta->name));
+}
 
 
 /* EN: Reject absolute, empty, dot and parent components within the byte limit.
@@ -26,7 +69,7 @@ static int relative_path(const char *path, int internal)
             size_t length = i - start;
             if (!length || (length == 1 && path[start] == '.') ||
                 (length == 2 && path[start] == '.' && path[start + 1] == '.') ||
-                (!internal && length == sizeof(".prog") - 1 && !memcmp(path + start, ".prog", length)))
+                (!internal && service_name(path + start, length)))
             {
                 return 0;
             }
@@ -78,7 +121,17 @@ StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *in
 StyxRpcIoOutcome styxrpc_vfs_stat(StyxClient *session, const char *path, StyxRpcFileInfo *info)
 {
     StyxFid *fid = info ? walk_path(session, path, 1, 0) : NULL;
-    StyxRpcIoOutcome status = styxrpc_vfs_file_stat(fid, info);
+    StyxMeta meta;
+    StyxRpcIoOutcome status = STYXRPC_IO_NOT_OPEN;
+    if (fid && !styxclientstat(fid, &meta))
+    {
+        status = STYXRPC_IO_FAILED;
+    }
+    else if (fid && !service_meta(&meta))
+    {
+        *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
+        status = STYXRPC_IO_OK;
+    }
     styxclientclunk(fid);
     return status;
 }
@@ -86,11 +139,13 @@ StyxRpcIoOutcome styxrpc_vfs_stat(StyxClient *session, const char *path, StyxRpc
 
 /* EN: Keep one exact opened file or directory fid. Reject a type mismatch before Topen.
  * RU: Удерживать точный открытый fid файла или каталога. Отклонить неверный тип до Topen. */
-static StyxFid *open_entry(StyxClient *session, const char *path, StyxRpcFileMode mode, int directory, int internal)
+static StyxFid *open_entry(StyxClient *session, const char *path, StyxRpcFileMode mode, int directory, VfsPathKind kind)
 {
-    StyxFid *fid = walk_path(session, path, directory, internal);
+    StyxFid *fid = walk_path(session, path, directory, kind != VFS_FILE_PATH);
     StyxMeta meta;
-    if (fid && (!styxclientstat(fid, &meta) || !!meta.directory != directory || !styxclientopen(fid, mode)))
+    if (fid && (!styxclientstat(fid, &meta) || !!meta.directory != directory ||
+        (kind == VFS_FILE_PATH && service_meta(&meta)) ||
+        (kind == VFS_EXCHANGE_PATH && !exchange_meta(&meta)) || !styxclientopen(fid, mode)))
     {
         styxclientclunk(fid);
         return NULL;
@@ -99,20 +154,36 @@ static StyxFid *open_entry(StyxClient *session, const char *path, StyxRpcFileMod
 }
 
 
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_open(StyxClient *session, const char *path, StyxRpcFileMode mode, StyxRpcVfsFile **file)
+/* EN: Publish one opened regular file on success under the selected visibility rules.
+ * RU: При успехе выдать открытый обычный файл по выбранным правилам видимости. */
+static StyxRpcIoOutcome open_file(StyxClient *session, const char *path, StyxRpcFileMode mode, StyxRpcVfsFile **file, VfsPathKind kind)
 {
     if (!file || mode < STYXRPC_FILE_READ || mode > STYXRPC_FILE_RDWR)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = open_entry(session, path, mode, 0, 0);
+    StyxFid *fid = open_entry(session, path, mode, 0, kind);
     if (!fid)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
     *file = fid;
     return STYXRPC_IO_OK;
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_open(StyxClient *session, const char *path, StyxRpcFileMode mode, StyxRpcVfsFile **file)
+{
+    return open_file(session, path, mode, file, VFS_FILE_PATH);
+}
+
+
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxRpcIoOutcome styxrpc_vfs_exchange_open(StyxClient *session, const char *path,
+    StyxRpcFileMode mode, StyxRpcVfsFile **file)
+{
+    return open_file(session, path, mode, file, VFS_EXCHANGE_PATH);
 }
 
 
@@ -282,7 +353,7 @@ static StyxRpcIoOutcome list_open(StyxFid *fid, unsigned char *bytes, size_t cap
                 return STYXRPC_IO_FAILED;
             }
             cursor += consumed;
-            if (!strcmp(meta.name, ".prog"))
+            if (service_meta(&meta))
             {
                 continue;
             }
@@ -321,7 +392,7 @@ StyxRpcIoOutcome styxrpc_vfs_list(StyxClient *session, const char *path, size_t 
     {
         return STYXRPC_IO_FAILED;
     }
-    StyxFid *fid = open_entry(session, path, STYXRPC_FILE_READ, 1, 0);
+    StyxFid *fid = open_entry(session, path, STYXRPC_FILE_READ, 1, VFS_FILE_PATH);
     StyxRpcIoOutcome status = fid ? list_open(fid, bytes, capacity, skip, limit, visit, state) : STYXRPC_IO_NOT_OPEN;
     styxclientclunk(fid);
     free(bytes);
@@ -346,7 +417,7 @@ StyxRpcIoOutcome styxrpc_vfs_int_open(StyxClient *session, const char *path, int
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ, 0, 1);
+    StyxFid *fid = open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ, 0, VFS_VARIABLE_PATH);
     if (!fid)
     {
         return STYXRPC_IO_NOT_OPEN;

@@ -159,6 +159,8 @@ int test_object_module_call(FVM_Context *context, StyxClient *session)
         fvm_value_string(args, "local-only") != FVM_OK ||
         fvm_object_call(context, fs.object, "open", 1, args, &result) == FVM_OK ||
         fvm_value_string(args, "/mounted/limbo.dis/.interface") != FVM_OK ||
+        fvm_object_call(context, fs.object, "stat", 1, args, &result) == FVM_OK ||
+        fvm_value_string(args, "/mounted/limbo.dis") != FVM_OK ||
         fvm_object_call(context, fs.object, "stat", 1, args, &result) != FVM_OK)
     {
         fputs("Could not mount paired filesystem\n", stderr);

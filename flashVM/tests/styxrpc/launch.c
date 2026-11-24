@@ -208,8 +208,7 @@ int test_launch_call(FVM_Context *context, FVM_StyxRpcSession *binding, struct S
 {
     const StyxRpcProgram program = {CONTEXT_PID, 0, 0};
     FVM_Value object, path, metadata, directory;
-    unsigned char profile[64];
-    size_t size = 0;
+    StyxRpcFileInfo profile;
     int ok = fvm_styxrpc_session_bind(context, binding, client, &program, &object) == FVM_OK &&
         fvm_set_global(context, "r", &object) == FVM_OK &&
         fvm_value_string(&path, "programs") == FVM_OK &&
@@ -217,8 +216,7 @@ int test_launch_call(FVM_Context *context, FVM_StyxRpcSession *binding, struct S
         metadata.type == FVM_VALUE_OBJECT &&
         fvm_object_get(context, metadata.object, "4", &directory) == FVM_OK &&
         directory.type == FVM_VALUE_BOOLEAN && directory.boolean &&
-        styxrpc_vfs_read_at(client, ".interface", 0, profile, sizeof(profile), &size) == STYXRPC_IO_OK &&
-        size > 0 && profile[0] == 'd' &&
+        styxrpc_vfs_stat(client, ".interface", &profile) == STYXRPC_IO_NOT_OPEN &&
         exercise_jobs(context, object.object, state) && exercise_teardown(context, object.object, binding, state);
     fvm_styxrpc_session_close(binding);
     return ok;

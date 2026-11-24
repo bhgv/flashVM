@@ -24,6 +24,14 @@ different sets of schemas. The client selects a name with
 `.unibus`. The original enable/open API continues to use `.messages`.
 A server supports up to 16 roots and eight open ports per root.
 
+Ordinary VFS operations hide all exchange roots, including arbitrary names,
+and the reserved components `.fd`, `.prog`, `.pid`, `.var`, `.vfs`,
+`.interface`, `.programs`, `.sysevents`, `.state` and `.upload`, as well as `.exit` and the collection service entries
+`.idx`, `.val`, `.len`, `.type`, `.ins`, `.push`, `.pop`, `.add` and `.count`.
+The service API resolves the exchange path from the Styx attachment root,
+independent of the application's current directory. Low-level Styx requests
+remain governed by their protocol grants.
+
 ## Set up one port
 
 1. Install the hosted SDK with `STYXRPC_HOSTED=ON`. Include

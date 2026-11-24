@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1732 / Контрольная точка v0.1732. Ordinary SDK VFS hides
+service paths and named UniBus exchange roots. Служебные корни открываются
+от точки подключения Styx. [EN](../../lib/styxrpc/reference/custom_messages.md) /
+[RU](../../lib/styxrpc/reference/custom_messages.ru.md).
+
 Checkpoint v0.1731 / Контрольная точка v0.1731. The hosted libstyxrpc SDK
 serves named UniBus exchange roots with an independent registry per root.
 По умолчанию новый API выбирает `.unibus`.

@@ -3,7 +3,7 @@
  * RU: Обмен пользовательскими сообщениями через fid в существующей сессии Styx.
  */
 #include "message_internal.h"
-#include "styxrpc/vfs_client.h"
+#include "vfs_client_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,7 +25,7 @@ StyxRpcStatus styxrpc_messages_open_at(struct StyxClient *session, const char *n
     StyxRpcMessagePort **out)
 {
     name = name ? name : STYXRPC_UNIBUS_FILE;
-    if (!session || strchr(name, '/') || !out)
+    if (!session || !*name || strchr(name, '/') || !strcmp(name, ".prog") || !out)
     {
         return STYXRPC_INVALID;
     }
@@ -36,7 +36,7 @@ StyxRpcStatus styxrpc_messages_open_at(struct StyxClient *session, const char *n
     }
     if (!styxrpc_message_config(&opened->config, spec) ||
         !styxrpc_message_port_init(&opened->port, &opened->config) ||
-        styxrpc_vfs_open(session, name, STYXRPC_FILE_RDWR, &opened->file) != STYXRPC_IO_OK)
+        styxrpc_vfs_exchange_open(session, name, STYXRPC_FILE_RDWR, &opened->file) != STYXRPC_IO_OK)
     {
         free(opened);
         return STYXRPC_INVALID;

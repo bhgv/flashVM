@@ -7,6 +7,7 @@
 #include "styxrpc/scalar_client.h"
 #include "styxrpc/vfs_client.h"
 #include "client.h"
+#include "../src/vfs_client_internal.h"
 #include "drivers/posix/fd.h"
 #include "flashvm/sbindings.h"
 #include <pthread.h>
@@ -148,7 +149,8 @@ static int call_increment(StyxClient *client)
  * RU: Учесть запись сообщений в корне в context и проверить её метаданные. */
 static int visit(void *context, const char *name, const StyxRpcFileInfo *info)
 {
-    if (!strcmp(name, STYXRPC_MESSAGES_FILE) && !info->directory && !info->length)
+    if ((!strcmp(name, STYXRPC_MESSAGES_FILE) || !strcmp(name, "events") ||
+        !strcmp(name, STYXRPC_UNIBUS_FILE)) && !info->directory && !info->length)
     {
         ++*(unsigned *)context;
     }
@@ -187,10 +189,13 @@ static int exchange(StyxClient *client)
     StyxRpcVfsFile *read_only = NULL;
     unsigned entries = 0;
     int good = call_increment(client) &&
-        styxrpc_vfs_list(client, "", 0, 2, visit, &entries) == STYXRPC_IO_OK && entries == 1 &&
-        styxrpc_vfs_open(client, STYXRPC_MESSAGES_FILE, STYXRPC_FILE_READ, &read_only) == STYXRPC_IO_NOT_OPEN &&
+        styxrpc_vfs_list(client, "", 0, 2, visit, &entries) == STYXRPC_IO_OK && entries == 0 &&
+        styxrpc_vfs_open(client, STYXRPC_MESSAGES_FILE, STYXRPC_FILE_RDWR, &read_only) == STYXRPC_IO_NOT_OPEN &&
         styxrpc_messages_open(client, &spec, &port) == STYXRPC_OK &&
         styxrpc_messages_open_at(client, NULL, &other_spec, &other) == STYXRPC_OK;
+    StyxRpcFileInfo hidden;
+    good = good && styxrpc_vfs_stat(client, "events", &hidden) == STYXRPC_IO_NOT_OPEN &&
+        styxrpc_vfs_open(client, "events", STYXRPC_FILE_RDWR, &read_only) == STYXRPC_IO_NOT_OPEN;
     sample_name[0] = '!';
     unsigned char bytes[STYXRPC_MESSAGE_PAYLOAD_MAX];
     for (size_t i = 0; i < sizeof(bytes); ++i)
@@ -261,6 +266,7 @@ int main(void)
         styxrpc_messages_publish(test.server, "mounted", &isolated) != STYXRPC_INVALID ||
         styxrpc_messages_publish(test.server, NULL, &isolated) != STYXRPC_OK ||
         styxrpc_messages_publish(test.server, STYXRPC_UNIBUS_FILE, &isolated) != STYXRPC_INVALID ||
+        styxrpc_messages_publish(test.server, "events", &isolated) != STYXRPC_OK ||
         pthread_create(&owner, NULL, dispatch, &test))
     {
         styxrpc_server_destroy(test.server);
@@ -271,7 +277,7 @@ int main(void)
     StyxClient *client = styxclientmountfd(sockets[0], 256, "test", "", 1000, 8);
     StyxRpcVfsFile *raw = NULL;
     int good = client && exchange(client) &&
-        styxrpc_vfs_open(client, STYXRPC_MESSAGES_FILE, STYXRPC_FILE_RDWR, &raw) == STYXRPC_IO_OK &&
+        styxrpc_vfs_exchange_open(client, "events", STYXRPC_FILE_RDWR, &raw) == STYXRPC_IO_OK &&
         reject_corrupt(raw) && call_increment(client);
     styxrpc_vfs_close(raw, 0);
     styxclientshutdown(client);
