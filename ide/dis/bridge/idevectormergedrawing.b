@@ -92,6 +92,29 @@ paintlayers(doc: ref Document, color, count: int): (array of array of byte, arra
 }
 
 
+# EN: Retain a compatible source fill or directly unite one visible outline
+# with an exact nib. Occluded or multi-shape unions use the combined mask.
+# RU: Сохранить исходную заливку или объединить один видимый контур с точной
+# кистью. Для перекрытых фигур и нескольких заливок используется общая маска.
+paintjoin(doc: ref Document, used: array of int, areas, visible: array of array of byte,
+    combined: array of byte, exact: array of Node, merged: int): (ref Shape, array of Node)
+{
+    for (i := 0; i < len used; i++) {
+        if (!used[i]) {
+            continue;
+        }
+        old := doc.shapes[i];
+        if (paintsame(combined, areas[i], doc.work)) {
+            return (old, nil);
+        }
+        if (merged == 1 && exact != nil && old.width == 0 && paintsame(visible[i], areas[i], doc.work)) {
+            return (nil, cutboolean(old.nodes, exact, 1, doc.work));
+        }
+    }
+    return (nil, nil);
+}
+
+
 # EN: Apply one stroke to a private document. Only publish complete bounded
 # geometry. The original shapes and their masks belong to immutable Undo.
 # RU: Применить один мазок к частному документу. Публиковать только полный
@@ -101,6 +124,8 @@ mergebrush(doc: ref Document, raw: ref Shape): int
     exact := brushcapsule(raw, doc.work);
     if (raw.fill && raw.width == 0) {
         exact = raw.nodes;
+    } else if (exact == nil) {
+        exact = brushsweep(raw, doc.work);
     }
     footprint: array of byte;
     if (exact != nil) {
@@ -132,23 +157,29 @@ mergebrush(doc: ref Document, raw: ref Shape): int
             }
         }
     }
+    original: ref Shape;
+    outline := exact;
+    if (merged > 0) {
+        (original, outline) = paintjoin(doc, used, areas, visible, combined, exact, merged);
+    }
     replacement := array[MaxShapes] of ref Shape;
     retained := 0;
     total := 0;
     for (index := 0; index <= count; index++) {
         pieces: array of ref Shape = nil;
         if (index == count) {
-            if (merged != 0) {
-                exact = nil;
-                for (old := 0; old < count; old++) {
-                    if (used[old] && paintsame(combined, areas[old], doc.work)) {
-                        pieces = array[] of {doc.shapes[old]};
-                        break;
-                    }
-                }
+            if (original != nil) {
+                pieces = array[] of {original};
+            } else if (merged > 0 && outline != nil) {
+                geometric := shapearea(ref Shape(raw.color, 0, 1, outline, nil, 0, nil), doc.work);
+                pieces = paintregions(raw.color, geometric, outline, doc.work);
             }
             if (pieces == nil) {
-                pieces = paintislands(raw.color, combined, exact, doc.work);
+                if (merged == 0) {
+                    pieces = paintislands(raw.color, combined, exact, doc.work);
+                } else {
+                    pieces = paintislands(raw.color, combined, nil, doc.work);
+                }
             }
             if (pieces == nil) {
                 return Limit;
@@ -163,7 +194,13 @@ mergebrush(doc: ref Document, raw: ref Shape): int
                 if (merged == 0 && exact != nil && prior.fill && prior.width == 0) {
                     hole = painthole(prior.nodes, exact, footprint, areas[index], doc.work);
                 }
-                pieces = paintislands(prior.color, cut, hole, doc.work);
+                if (hole == nil && outline != nil && prior.fill && prior.width == 0) {
+                    outlinecut := cutboolean(prior.nodes, outline, 0, doc.work);
+                    pieces = paintregions(prior.color, nil, outlinecut, doc.work);
+                }
+                if (pieces == nil) {
+                    pieces = paintislands(prior.color, cut, hole, doc.work);
+                }
                 if (pieces == nil) {
                     return Limit;
                 }

@@ -169,8 +169,11 @@ document plane. A stroke joins connected visible fills of the same color
 and cuts away covered paint of a different color. If a cut separates a fill
 into islands, each remainder can be selected and moved independently. Moving
 the upper stroke later exposes the cut. Undo restores the original geometry
-in one step. Dots and straight strokes retain four cubic arcs. Complex
-intersections and turns use contours traced from a bounded coverage mask.
+in one step. Dots and straight strokes retain four cubic arcs. Gentle turns
+keep cubic arcs along the outside of the nib. When two simple contours cross,
+the cut or union keeps untouched Bézier handles and splits the intersected
+segments in their original degree. Tangencies, compound or self-overlapping
+outlines, and multi-shape unions can use contours traced from a bounded mask.
 
 Escape, focus or another input transition can remove an unreleased
 preview. A complete replacement scene also removes it and retires a
@@ -180,7 +183,8 @@ Use `--ink` with the same SDL fixture. It suspends its own Dis process
 to observe preview pixels and cancellation, then sends a surviving stroke
 across more than one fragment and verifies the saved SVG and final raster.
 Use `--merge` to paint across an existing SVG fill, move the stroke away,
-and verify the two remaining fill islands and the visible gap.
+and verify the two remaining fill islands, the original cubic handles, and
+the visible gap.
 
 Multiple touch contacts and vector editing overlays still need paired
 integration. Menu 8 currently starts the installed graphical runtime.

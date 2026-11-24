@@ -146,6 +146,16 @@ paintislands(color: int, mask: array of byte, exact: array of Node, work: ref Wo
         return array[] of {ref Shape(color, 0, 1, exact, mask, 0, nil)};
     }
     nodes := contours(mask, work);
+    return paintregions(color, mask, nodes, work);
+}
+
+
+# EN: Split positive regions from copied vector or traced coverage contours.
+# Assign each hole to its enclosing region. A nil mask is computed lazily.
+# RU: Разделить внешние области векторных контуров или контуров маски.
+# Присоединить отверстия к своим областям. Нулевая маска строится по запросу.
+paintregions(color: int, mask: array of byte, nodes: array of Node, work: ref Work): array of ref Shape
+{
     if (len nodes < 2) {
         return nil;
     }

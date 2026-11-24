@@ -1342,3 +1342,7 @@ include "idevectorcancel.b";
 include "idevectorbrushgeometry.b";
 include "idevectormergedrawing.b";
 include "idevectorpainttopology.b";
+include "idevectorcutcurve.b";
+include "idevectorcutintersections.b";
+include "idevectorcutgraph.b";
+include "idevectorbrushsweep.b";

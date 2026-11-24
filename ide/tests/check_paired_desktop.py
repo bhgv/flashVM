@@ -18,8 +18,10 @@ from run import exchange
 
 # EN: Seed a bounded SVG with line and cubic geometry crossing a fragment boundary.
 # RU: Подготовить SVG с линиями и кубической кривой по обе стороны границы фрагмента.
-def seed_vector(path):
-    edge = " ".join(f"L {60 + 8 * index} 280" for index in range(30))
+def seed_vector(path, merge=False):
+    edge = ""
+    if not merge:
+        edge = " ".join(f"L {60 + 8 * index} 280" for index in range(30))
     path.write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">'
         f'<path d="M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z" '
@@ -49,7 +51,7 @@ def check(args, directory, movie, mode):
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
     if args.vector or args.camera or args.ink or args.merge:
-        seed_vector(drawing)
+        seed_vector(drawing, args.merge)
 
     # EN: Each command receives one connected descriptor from exchange.
     # RU: Каждая команда получает один связанный дескриптор от exchange.
@@ -201,6 +203,8 @@ def verify_merge_drawing(drawing, capture):
                            drawing.read_text(encoding="utf-8"))
     if shapes[2].attrib.get("d", "").count("C") != 4:
         raise RuntimeError("moved straight stroke lost its four cubic arcs")
+    if "C 120 30 220 30 292 80" not in shapes[0].attrib.get("d", ""):
+        raise RuntimeError("vector cut replaced the untouched source cubic\n" + drawing.read_text(encoding="utf-8"))
     header = b"P6\n960 640\n255\n"
     data = capture.read_bytes()
     if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
@@ -209,7 +213,7 @@ def verify_merge_drawing(drawing, capture):
         at = len(header) + (960 * y + 195) * 3
         if data[at:at + 3].hex() != color:
             raise RuntimeError(f"wrong Merge Drawing pixel at row {y}: {data[at:at + 3].hex()}")
-    print("PASS paired Merge Drawing leaves a real gap after moving the blue stroke")
+    print("PASS paired Merge Drawing preserves the source cubic and leaves a real gap after moving the blue stroke")
     return data
 
 

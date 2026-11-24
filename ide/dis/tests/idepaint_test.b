@@ -140,6 +140,90 @@ mergeoutlined()
 }
 
 
+# EN: Check the edited side curves and the untouched upper and lower cubics.
+# RU: Проверить разрезанные боковые кривые и неизменные верхнюю и нижнюю кубики.
+curveparts(doc: ref Idevector->Document, color: int): (int, int, int, int)
+{
+    quadratics := 0;
+    side := 0;
+    top := 0;
+    bottom := 0;
+    for (i := 0; i < len doc.shapes; i++) {
+        shape := doc.shapes[i];
+        if (shape.color != color) {
+            continue;
+        }
+        for (j := 0; j < len shape.nodes; j++) {
+            node := shape.nodes[j];
+            quadratics += node.verb == v->Quadratic;
+            if (node.verb == v->Cubic) {
+                side += node.cx >= 400 && node.cx <= 445 && node.c2x >= 400 && node.c2x <= 445;
+                top += node.x == 400 && node.y == 100 && node.cx == 170 && node.cy == 40 &&
+                    node.c2x == 330 && node.c2y == 40;
+                bottom += node.x == 100 && node.y == 240 && node.cx == 325 && node.cy == 300 &&
+                    node.c2x == 175 && node.c2y == 300;
+            }
+        }
+    }
+    return (quadratics, side, top, bottom);
+}
+
+
+# EN: Cross a quadratic and a cubic twice, retaining two other cubics verbatim in
+# independent islands. A same-colour sweep then exercises direct union.
+# RU: Пересечь квадратичный и кубический сегменты дважды, сохраняя другие кубики
+# в отдельных островках. Мазок того же цвета проверяет прямое объединение.
+mergecurves()
+{
+    start := "<svg width=\"1000\" height=\"600\"><path fill=\"#e04444\" d=\"M 100 100 C 170 40 330 40 400 100 C 445 135 445 205 400 240 C 325 300 175 300 100 240 Q 48 170 100 100 Z\"/></svg>";
+    (status, doc) := v->parse(start);
+    require(status == v->Ok, "read curved Merge Drawing target");
+    source := v->svg(doc);
+    doc.width = 20;
+    line(doc, 50, 170, 480, 170);
+    require(v->refine(doc) == v->Ok && len doc.shapes == 3, "vector difference splits curved fill");
+    (quads, side, top, bottom) := curveparts(doc, 16re04444);
+    require(quads == 2 && side == 2 && top == 1 && bottom == 1, "difference retains exact handles and splits Q/C sides");
+    saved := v->svg(doc);
+    reopened: ref Idevector->Document;
+    (status, reopened) = v->parse(saved);
+    require(status == v->Ok && v->svg(reopened) == saved, "vector cut survives SVG roundtrip");
+    require(v->history(doc, 0) && v->svg(doc) == source, "undo direct vector cut");
+    doc.color = 16re04444;
+    line(doc, 280, 170, 480, 170);
+    require(v->refine(doc) == v->Ok && len doc.shapes == 1, "same-colour vector union");
+    (quads, side, top, bottom) = curveparts(doc, doc.color);
+    require(quads == 1 && side == 2 && top == 1 && bottom == 1 && ink(doc.shapes[0].area, 470, 170),
+            "union keeps untouched cubics and joins the extended round nib");
+}
+
+
+# EN: Two turns and a long horizontal terminal leg preserve the exact cap.
+# RU: Два поворота и горизонтальный конец сохраняют точное закругление.
+mergebend()
+{
+    doc := v->create();
+    doc.width = 20;
+    require(v->defer(doc, 1, 80, 190) == v->Ok && v->defer(doc, 2, 160, 130) == v->Ok &&
+            v->defer(doc, 2, 250, 125) == v->Ok && v->defer(doc, 2, 340, 175) == v->Ok &&
+            v->defer(doc, 3, 420, 175) == v->Ok, "release bent brush sweep");
+    require(v->refine(doc) == v->Ok && len doc.shapes == 1, "refine bent stroke");
+    nodes := doc.shapes[0].nodes;
+    cap := 0;
+    arcs := 0;
+    for (i := 0; i < len nodes; i++) {
+        node := nodes[i];
+        if (node.verb == v->Cubic) {
+            arcs++;
+            cap += node.x == 430 && node.y == 175 && node.cx == 426 && node.cy == 165 &&
+                node.c2x == 430 && node.c2y == 169;
+        }
+    }
+    require(cap == 1 && arcs == 7 && ink(doc.shapes[0].area, 250, 125),
+            "bent brush keeps cubic caps and three outer circular joins");
+}
+
+
 # Verify distinct tools, delayed smoothing, compound holes, same-colour union,
 # immutable history and processing of multiple queued raw gestures in one snapshot.
 init()
@@ -222,6 +306,9 @@ init()
     mergecut();
     mergehole();
     mergeoutlined();
+    mergecurves();
+    mergebend();
+    sys->print("PASS vector Merge Drawing: retained C handles, split Q/C sides and swept cubic joins\n");
     sys->print("PASS Merge Drawing: destructive cut, independent islands, cubic hole, move and Undo\n");
     sys->print("PASS paint: raw pen, final curves, brush fill/hole, union, queued gestures and immutable Undo\n");
 }

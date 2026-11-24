@@ -9,9 +9,17 @@
 After release, the separate Limbo worker applies the stroke to the current paint.
 It constructs dots and straight brush sweeps from four cubic arcs and preserves
 an existing outer path when an interior cut can append a reverse-wound hole.
-For complex cuts and turns, it traces the resulting coverage and fits the closed
-contours with cubic Bézier segments, using chord parameters and interval least
-squares. Every input sample is checked against the rounded curve with per-axis extent/100 tolerances
+For a simple forward-moving stroke, the worker simplifies the sampled centerline
+within one logical unit and joins its offsets with tangent cubic arcs. The simple
+contour boolean isolates transverse curve intersections by subdividing the Bézier
+control hulls. It cuts the input curves at those parameters and assembles the
+surviving segments. Intersection positions and split controls are rounded to
+the editor's integer SVG grid at serialization. New crossings are cusp nodes.
+
+Tight turns, self-overlaps, ambiguous intersections and unsupported compound
+booleans use the bounded mask. The worker traces its coverage and fits the closed
+contours with cubic Bézier segments using chord parameters and interval least
+squares. Every sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
 retain lines. A bounded reverse sampling check rejects bows between knots.
 This is a discrete fitting bound, not a continuous Hausdorff proof. Motion keeps
@@ -21,7 +29,9 @@ Nodes edits endpoints and both cubic controls independently, with Ctrl/marquee,
 Undo/Cancel and SVG C round trips. Legacy Q paths remain editable. The algorithm
 lives in `dis/bridge/idevectorbrushfit.b`; the linked release gives full limitations.
 Merge policy and topology live in `dis/bridge/idevectormergedrawing.b` and
-`dis/bridge/idevectorpainttopology.b`.
+`dis/bridge/idevectorpainttopology.b`. The sampled nib is in
+`dis/bridge/idevectorbrushsweep.b`. Intersection isolation and contour assembly
+are in `dis/bridge/idevectorcutintersections.b` and `dis/bridge/idevectorcutgraph.b`.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;
