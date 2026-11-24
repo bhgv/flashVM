@@ -8,6 +8,7 @@
 PaintLoop: adt
 {
     nodes: array of Node; # Immutable slice including Move and Close.
+    modes: array of int;  # Optional matching join-mode slice.
     area: big; # Signed doubled area for winding and hole nesting.
     owner: int; # Outer loop index or -1 until the hole is assigned.
 };
@@ -146,7 +147,7 @@ paintislands(color: int, mask: array of byte, exact: array of Node, work: ref Wo
         return array[] of {ref Shape(color, 0, 1, exact, mask, 0, nil)};
     }
     nodes := contours(mask, work);
-    return paintregions(color, mask, nodes, work);
+    return paintregions(color, mask, nodes, nil, work);
 }
 
 
@@ -154,7 +155,7 @@ paintislands(color: int, mask: array of byte, exact: array of Node, work: ref Wo
 # Assign each hole to its enclosing region. A nil mask is computed lazily.
 # RU: Разделить внешние области векторных контуров или контуров маски.
 # Присоединить отверстия к своим областям. Нулевая маска строится по запросу.
-paintregions(color: int, mask: array of byte, nodes: array of Node, work: ref Work): array of ref Shape
+paintregions(color: int, mask: array of byte, nodes: array of Node, modes: array of int, work: ref Work): array of ref Shape
 {
     if (len nodes < 2) {
         return nil;
@@ -170,12 +171,16 @@ paintregions(color: int, mask: array of byte, nodes: array of Node, work: ref Wo
             if (area > big 0) {
                 islands++;
             }
-            loops[count++] = PaintLoop(path, area, -1);
+            style: array of int = nil;
+            if (modes != nil) {
+                style = modes[pos:i+1];
+            }
+            loops[count++] = PaintLoop(path, style, area, -1);
             pos = i+1;
         }
     }
     if (islands <= 1) {
-        return array[] of {ref Shape(color, 0, 1, nodes, mask, 0, nil)};
+        return array[] of {ref Shape(color, 0, 1, nodes, mask, 0, modes)};
     }
     if (islands > MaxShapes) {
         return nil;
@@ -214,13 +219,21 @@ paintregions(color: int, mask: array of byte, nodes: array of Node, work: ref Wo
         region := array[length] of Node;
         region[0:] = loops[i].nodes;
         at := len loops[i].nodes;
+        joins: array of int = nil;
+        if (modes != nil) {
+            joins = array[length] of int;
+            joins[0:] = loops[i].modes;
+        }
         for (j = 0; j < count; j++) {
             if (loops[j].owner == i) {
                 region[at:] = loops[j].nodes;
+                if (joins != nil) {
+                    joins[at:] = loops[j].modes;
+                }
                 at += len loops[j].nodes;
             }
         }
-        shapes[out++] = ref Shape(color, 0, 1, region, nil, 0, nil);
+        shapes[out++] = ref Shape(color, 0, 1, region, nil, 0, joins);
     }
     return shapes;
 }

@@ -224,6 +224,105 @@ mergebend()
 }
 
 
+# EN: Count closed-path headers without depending on contour traversal order.
+# RU: Сосчитать начала замкнутых путей независимо от порядка обхода.
+movesin(shape: ref Idevector->Shape): int
+{
+    count := 0;
+    for (i := 0; i < len shape.nodes; i++) {
+        count += shape.nodes[i].verb == v->Move;
+    }
+    return count;
+}
+
+
+# EN: Cut a compound fill with an island inside a hole, a redundant
+# same-winding subpath, an untouched cubic hole, and a detached region.
+# RU: Разрезать составную заливку с островком в отверстии, лишним подпутём
+# того же обхода, нетронутым кубическим отверстием и отдельной областью.
+mergecompound()
+{
+    source := "<svg width=\"1000\" height=\"600\"><path fill=\"#e04444\" data-flashvm-joins=\"" +
+        "00000" + "00000" + "02000" + "00000" + "000000" + "00000" + "\" d=\"" +
+        "M 100 100 C 170 40 330 40 400 100 L 400 300 L 100 300 Z " +
+        "M 160 140 L 160 260 L 340 260 L 340 140 Z " +
+        "M 210 165 C 220 150 280 150 290 165 L 290 186 L 210 186 Z " +
+        "M 360 145 L 380 145 L 380 162 L 360 162 Z " +
+        "M 130 150 C 121 150 115 158 115 166 C 115 174 121 182 130 182 " +
+        "C 139 182 145 174 145 166 C 145 158 139 150 130 150 Z " +
+        "M 530 130 C 540 105 580 105 590 130 L 590 180 L 530 180 Z\"/></svg>";
+    (status, doc) := v->parse(source);
+    require(status == v->Ok, "read nested compound fill");
+    original := doc.shapes[0];
+    doc.width = 20;
+    line(doc, 70, 220, 440, 220);
+    require(v->refine(doc) == v->Ok && len doc.shapes == 5, "four red islands and the blue sweep");
+    doc.tool = v->Select;
+    doc.pickradius = 0.0;
+    upper := atpoint(doc, 150, 110);
+    island := atpoint(doc, 242, 173);
+    require(upper >= 0 && island >= 0 && island != upper && movesin(doc.shapes[upper]) == 2,
+            "small hole stays with upper island and redundant winding disappears");
+    require(atpoint(doc, 130, 166) == -1 && atpoint(doc, 178, 177) == -1 && atpoint(doc, 365, 152) == upper,
+            "nonzero compound winding remains visible after the cut");
+    islandshape := doc.shapes[island];
+    require(islandshape.nodes[1].verb == v->Cubic && islandshape.nodes[1].cx == 220 &&
+            islandshape.joins[1] == 2, "untouched island cubic and symmetrical join survive");
+    saved := v->svg(doc);
+    reopened: ref Idevector->Document;
+    (status, reopened) = v->parse(saved);
+    require(status == v->Ok && v->svg(reopened) == saved, "compound split SVG roundtrip");
+    require(v->pointer(doc, 1, 140, 220) == v->Ok && v->pointer(doc, 3, 140, 390) == v->Ok &&
+            atpoint(doc, 140, 220) == -1, "moving the stroke exposes the compound cut");
+    require(v->history(doc, 0) && v->history(doc, 0) && len doc.shapes == 1 && doc.shapes[0] == original,
+            "Undo restores exact pre-cut compound source");
+}
+
+
+# EN: Join three same-colour shapes at once and punch their combined outline
+# into another colour by containment, keeping all unrelated cubic controls.
+# RU: Объединить три одноцветные фигуры одним мазком и вырезать общий контур
+# из фоновой заливки, сохраняя остальные кубические ручки.
+mergemany()
+{
+    source := "<svg width=\"1000\" height=\"600\">" +
+        "<path fill=\"#e04444\" d=\"M 20 70 C 80 30 490 30 540 70 L 540 317 L 20 317 Z\"/>";
+    for (i := 0; i < 3; i++) {
+        x := 80+150*i;
+        source += sys->sprint("<path fill=\"#245ac4\" data-flashvm-joins=\"02000\" " +
+            "d=\"M %d 140 C %d 105 %d 105 %d 140 L %d 235 L %d 235 Z\"/>",
+            x, x+15, x+55, x+72, x+72, x);
+    }
+    source += "</svg>";
+    (status, doc) := v->parse(source);
+    require(status == v->Ok, "read several fills over a curved background");
+    original := v->svg(doc);
+    doc.width = 20;
+    line(doc, 43, 190, 505, 190);
+    require(v->refine(doc) == v->Ok && len doc.shapes == 2 && movesin(doc.shapes[0]) == 2 &&
+            doc.shapes[0].nodes[1].cx == 80 && doc.shapes[0].nodes[1].c2x == 490,
+            "multi-union makes one exact interior hole in the original red cubic");
+    blue := doc.shapes[1];
+    curves := 0;
+    styles := 0;
+    for (i = 0; i < len blue.nodes; i++) {
+        node := blue.nodes[i];
+        if (node.verb == v->Cubic && node.cy == 105 && node.c2y == 105) {
+            curves++;
+            styles += blue.joins[i] == 1;
+        }
+    }
+    require(movesin(blue) == 1 && curves == 3 && styles == 3 && ink(blue.area, 350, 190),
+            "union keeps every original blue cubic and downgrades shortened symmetric joins to smooth");
+    doc.tool = v->Select;
+    doc.pickradius = 0.0;
+    require(v->pointer(doc, 1, 200, 190) == v->Ok && v->pointer(doc, 3, 200, 390) == v->Ok &&
+            atpoint(doc, 200, 190) == -1 && atpoint(doc, 100, 155) == -1,
+            "moving the union exposes all of its original footprint");
+    require(v->history(doc, 0) && v->history(doc, 0) && v->svg(doc) == original, "Undo restores all original fills");
+}
+
+
 # Verify distinct tools, delayed smoothing, compound holes, same-colour union,
 # immutable history and processing of multiple queued raw gestures in one snapshot.
 init()
@@ -308,6 +407,9 @@ init()
     mergeoutlined();
     mergecurves();
     mergebend();
+    mergecompound();
+    mergemany();
+    sys->print("PASS compound Merge Drawing: nonzero winding, nested island, join modes and one multi-fill union\n");
     sys->print("PASS vector Merge Drawing: retained C handles, split Q/C sides and swept cubic joins\n");
     sys->print("PASS Merge Drawing: destructive cut, independent islands, cubic hole, move and Undo\n");
     sys->print("PASS paint: raw pen, final curves, brush fill/hole, union, queued gestures and immutable Undo\n");

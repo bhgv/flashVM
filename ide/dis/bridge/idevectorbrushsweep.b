@@ -250,7 +250,7 @@ brushsweep(raw: ref Shape, work: ref Work): array of Node
             return nil;
         }
     }
-    edges := cutcurves(nodes, work);
+    edges := cutcurves(nodes);
     search := ref CutSearch(array[1] of CutHit, 0, 5000, work);
     if (edges == nil || !cutsimple(edges, search)) {
         return nil;

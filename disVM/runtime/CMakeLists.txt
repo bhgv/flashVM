@@ -465,6 +465,7 @@ list(APPEND module_headers "${root}/ide/dis/bridge/idedeskpane-ink.b"
   "${root}/ide/dis/bridge/idevectorcutcurve.b"
   "${root}/ide/dis/bridge/idevectorcutintersections.b"
   "${root}/ide/dis/bridge/idevectorcutgraph.b"
+  "${root}/ide/dis/bridge/idevectorcutoutline.b"
   "${root}/ide/dis/bridge/idevectorbrushsweep.b")
 list(APPEND module_headers "${root}/ide/dis/tests/idevectoredit_checks.b" "${root}/ide/dis/tests/idevectornodes_checks.b" "${root}/ide/dis/tests/idevectorclip_checks.b" "${root}/ide/dis/tests/idevectorfit_checks.b" "${root}/ide/dis/bridge/idevectorwire.b" "${root}/ide/dis/bridge/idevectorpresentation.b" "${root}/ide/dis/bridge/idevectorchain.b" "${root}/ide/dis/bridge/idevectoredit.b" "${root}/ide/dis/bridge/idevectorbrushfit.b" "${root}/ide/dis/bridge/idevectorpick.b" "${root}/ide/dis/bridge/idevectorcancel.b" "${root}/ide/dis/bridge/idevectorlocal.b" "${root}/ide/dis/bridge/idevectornodes.b" "${root}/ide/dis/bridge/idevectornodecurve.b" "${root}/ide/dis/bridge/idevectornodebreak.b" "${root}/ide/dis/bridge/idevectoroverlaycache.b" "${root}/ide/dis/bridge/idevectorclipboard.b" "${root}/ide/dis/bridge/ideinkacquire.b" "${root}/ide/dis/bridge/ideinkfit.b" "${root}/ide/dis/bridge/idevectorviewport.b" "${root}/ide/dis/bridge/idedesktopatlas.b" "${root}/ide/dis/bridge/idedesktoptools.b")
 list(APPEND module_names capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)

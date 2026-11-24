@@ -176,11 +176,11 @@ cutextent(box: CutBox): real
 }
 
 
-# EN: Convert a borrowed single closed path to clockwise segment values.
-# Nil leaves compound, tiny or overly complex contours on the existing path.
-# RU: Перевести один замкнутый путь в сегменты с обходом по часовой стрелке.
-# Nil оставляет составные, вырожденные и слишком сложные контуры старому пути.
-cutcurves(nodes: array of Node, work: ref Work): array of CutCurve
+# EN: Convert a borrowed closed subpath in its original direction. Nil
+# rejects degenerate or overly complex contours before intersections.
+# RU: Перевести замкнутый подпуть в сегменты по исходному направлению.
+# Nil отклоняет вырожденные и слишком сложные контуры до пересечений.
+cutcurves(nodes: array of Node): array of CutCurve
 {
     if (len nodes < 4 || len nodes > 98 || nodes[0].verb != Move || nodes[len nodes-1].verb != Close) {
         return nil;
@@ -220,18 +220,8 @@ cutcurves(nodes: array of Node, work: ref Work): array of CutCurve
         result[count++] = CutCurve(verb, a, b, c, d);
         a = d;
     }
-    (area, ignored) := paintmeasure(nodes, Point(0, 0), work);
-    if (count < 2 || area == big 0) {
+    if (count < 2) {
         return nil;
-    }
-    if (area < big 0) {
-        for (i = 0; i < count/2; i++) {
-            back := count-1-i;
-            (result[i], result[back]) = (cutreverse(result[back]), cutreverse(result[i]));
-        }
-        if (count % 2 != 0) {
-            result[count/2] = cutreverse(result[count/2]);
-        }
     }
     return result[0:count];
 }

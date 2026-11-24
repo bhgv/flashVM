@@ -92,26 +92,53 @@ paintlayers(doc: ref Document, color, count: int): (array of array of byte, arra
 }
 
 
-# EN: Retain a compatible source fill or directly unite one visible outline
-# with an exact nib. Occluded or multi-shape unions use the combined mask.
-# RU: Сохранить исходную заливку или объединить один видимый контур с точной
-# кистью. Для перекрытых фигур и нескольких заливок используется общая маска.
-paintjoin(doc: ref Document, used: array of int, areas, visible: array of array of byte,
-    combined: array of byte, exact: array of Node, merged: int): (ref Shape, array of Node)
+# EN: Test that a whole input contributes no covered cell outside the visible
+# union. Hidden parts can enter geometry only if other joined paint covers them.
+# RU: Проверить, что полная фигура не добавляет ячеек за пределами видимого
+# объединения. Скрытые части допустимы, если их покрывает объединяемый рисунок.
+paintsubset(input, combined: array of byte, work: ref Work): int
 {
-    for (i := 0; i < len used; i++) {
-        if (!used[i]) {
-            continue;
+    for (i := 0; i < len input; i++) {
+        if (i % 512 == 0) {
+            checkwork(work);
         }
-        old := doc.shapes[i];
-        if (paintsame(combined, areas[i], doc.work)) {
-            return (old, nil);
-        }
-        if (merged == 1 && exact != nil && old.width == 0 && paintsame(visible[i], areas[i], doc.work)) {
-            return (nil, cutboolean(old.nodes, exact, 1, doc.work));
+        if ((input[i] & (byte 255 ^ combined[i])) != byte 0) {
+            return 0;
         }
     }
-    return (nil, nil);
+    return 1;
+}
+
+
+# EN: Retain an exact source fill or unite all compatible outlines with the
+# nib in one vector operation. Outlines with partly hidden coverage outside
+# the visible union and unsupported stroke styles use the combined mask.
+# RU: Сохранить исходную заливку или объединить совместимые контуры с кистью
+# одной операцией. Скрытое покрытие вне видимой области и обводки идут по маске.
+paintjoin(doc: ref Document, used: array of int, areas: array of array of byte,
+    combined: array of byte, exact: array of Node, merged: int): (ref Shape, ref CutResult)
+{
+    for (i := 0; i < len used; i++) {
+        if (used[i] && paintsame(combined, areas[i], doc.work)) {
+            return (doc.shapes[i], nil);
+        }
+    }
+    if (exact == nil || merged >= 16) {
+        return (nil, nil);
+    }
+    inputs := array[merged+1] of CutResult;
+    inputs[0] = CutResult(exact, nil);
+    next := 1;
+    for (i = 0; i < len used; i++) {
+        if (used[i]) {
+            old := doc.shapes[i];
+            if (old.width != 0 || !paintsubset(areas[i], combined, doc.work)) {
+                return (nil, nil);
+            }
+            inputs[next++] = CutResult(old.nodes, old.joins);
+        }
+    }
+    return (nil, cutboolean(inputs, 1, doc.work));
 }
 
 
@@ -158,9 +185,11 @@ mergebrush(doc: ref Document, raw: ref Shape): int
         }
     }
     original: ref Shape;
-    outline := exact;
+    outline: ref CutResult;
     if (merged > 0) {
-        (original, outline) = paintjoin(doc, used, areas, visible, combined, exact, merged);
+        (original, outline) = paintjoin(doc, used, areas, combined, exact, merged);
+    } else if (exact != nil) {
+        outline = ref CutResult(exact, nil);
     }
     replacement := array[MaxShapes] of ref Shape;
     retained := 0;
@@ -171,8 +200,8 @@ mergebrush(doc: ref Document, raw: ref Shape): int
             if (original != nil) {
                 pieces = array[] of {original};
             } else if (merged > 0 && outline != nil) {
-                geometric := shapearea(ref Shape(raw.color, 0, 1, outline, nil, 0, nil), doc.work);
-                pieces = paintregions(raw.color, geometric, outline, doc.work);
+                geometric := shapearea(ref Shape(raw.color, 0, 1, outline.nodes, nil, 0, nil), doc.work);
+                pieces = paintregions(raw.color, geometric, outline.nodes, outline.modes, doc.work);
             }
             if (pieces == nil) {
                 if (merged == 0) {
@@ -195,8 +224,11 @@ mergebrush(doc: ref Document, raw: ref Shape): int
                     hole = painthole(prior.nodes, exact, footprint, areas[index], doc.work);
                 }
                 if (hole == nil && outline != nil && prior.fill && prior.width == 0) {
-                    outlinecut := cutboolean(prior.nodes, outline, 0, doc.work);
-                    pieces = paintregions(prior.color, nil, outlinecut, doc.work);
+                    inputs := array[] of {CutResult(prior.nodes, prior.joins), *outline};
+                    outlinecut := cutboolean(inputs, 0, doc.work);
+                    if (outlinecut != nil) {
+                        pieces = paintregions(prior.color, nil, outlinecut.nodes, outlinecut.modes, doc.work);
+                    }
                 }
                 if (pieces == nil) {
                     pieces = paintislands(prior.color, cut, hole, doc.work);

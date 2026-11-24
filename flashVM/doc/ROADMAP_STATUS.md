@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1752 / Контрольная точка v0.1752. The brush cuts compound SVG
+paths and can join several fills in one vector operation. Сохраняются отверстия,
+островки и типы нетронутых узлов.
+[EN](../../ide/VECTOR-VIEWPORT.md) / [RU](../../ide/VECTOR-VIEWPORT.ru.md).
+
 Checkpoint v0.1751 / Контрольная точка v0.1751. Simple brush cuts and unions
 split the original SVG curves at transverse intersections. Плавные повороты
 кисти получают кубические дуги. Разрез сохраняет нетронутые ручки Безье.

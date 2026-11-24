@@ -20,11 +20,14 @@ from run import exchange
 # RU: Подготовить SVG с линиями и кубической кривой по обе стороны границы фрагмента.
 def seed_vector(path, merge=False):
     edge = ""
-    if not merge:
+    hole = ""
+    if merge:
+        hole = " M 260 94 L 260 121 L 280 121 L 280 94 Z"
+    else:
         edge = " ".join(f"L {60 + 8 * index} 280" for index in range(30))
     path.write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">'
-        f'<path d="M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z" '
+        f'<path d="M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z{hole}" '
         'fill="#e04444" stroke="none"/></svg>',
         encoding="utf-8",
     )
@@ -203,17 +206,21 @@ def verify_merge_drawing(drawing, capture):
                            drawing.read_text(encoding="utf-8"))
     if shapes[2].attrib.get("d", "").count("C") != 4:
         raise RuntimeError("moved straight stroke lost its four cubic arcs")
-    if "C 120 30 220 30 292 80" not in shapes[0].attrib.get("d", ""):
-        raise RuntimeError("vector cut replaced the untouched source cubic\n" + drawing.read_text(encoding="utf-8"))
+    upper = shapes[0].attrib.get("d", "")
+    if "C 120 30 220 30 292 80" not in upper or "M 260 94 L 260 121 L 280 121 L 280 94" not in upper:
+        raise RuntimeError("vector cut replaced the untouched source cubic or hole\n" +
+                           drawing.read_text(encoding="utf-8"))
     header = b"P6\n960 640\n255\n"
     data = capture.read_bytes()
     if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
         raise RuntimeError("wrong Merge Drawing raster extent")
-    for y, color in ((454, "e04444"), (470, "ffffff"), (485, "e04444"), (569, "245ac4")):
-        at = len(header) + (960 * y + 195) * 3
+    expected = ((195, 454, "e04444"), (195, 470, "ffffff"), (195, 485, "e04444"),
+                (195, 569, "245ac4"), (200, 449, "ffffff"), (194, 449, "e04444"))
+    for x, y, color in expected:
+        at = len(header) + (960 * y + x) * 3
         if data[at:at + 3].hex() != color:
-            raise RuntimeError(f"wrong Merge Drawing pixel at row {y}: {data[at:at + 3].hex()}")
-    print("PASS paired Merge Drawing preserves the source cubic and leaves a real gap after moving the blue stroke")
+            raise RuntimeError(f"wrong Merge Drawing pixel at {x},{y}: {data[at:at + 3].hex()}")
+    print("PASS paired Merge Drawing preserves the source cubic, the untouched hole and the cut")
     return data
 
 
