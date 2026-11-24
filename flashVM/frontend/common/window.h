@@ -63,6 +63,7 @@ typedef struct FVM_DesktopHostEvent
     double x, y;      /* Logical pointer pixels, or width/height for a resize. */
     double wheel;     /* Signed vertical scroll in lines. */
     int control;      /* Control modifier at the event's position in the queue. */
+    unsigned long time_ms; /* SDL pointer timestamp in milliseconds, modulo 2^32. */
     char text[FVM_DESKTOP_INPUT_UTF8]; /* Terminated committed UTF-8. */
 } FVM_DesktopHostEvent;
 

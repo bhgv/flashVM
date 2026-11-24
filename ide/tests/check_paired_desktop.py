@@ -106,6 +106,8 @@ def check(args, directory, movie, mode):
         timeout = 65
         expected = {}
     provider_trace = ()
+    if args.sweep:
+        provider_trace = ("PASS one Undo and Redo for the smoothed brush stroke",)
     if args.ink:
         timeout = 100
         expected = {}
@@ -247,12 +249,13 @@ def verify_brush_sweep(drawing, capture):
     if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
         raise RuntimeError("wrong brush sweep raster extent")
     expected = ((220, 448, "245ac4"), (220, 540, "245ac4"), (160, 490, "245ac4"),
-                (285, 490, "245ac4"), (220, 490, "ffffff"), (146, 490, "ffffff"))
+                (285, 490, "245ac4"), (220, 490, "ffffff"), (146, 490, "ffffff"),
+                (204, 477, "ffffff"), (210, 470, "ffffff"))
     for x, y, color in expected:
         at = len(header) + (960 * y + x) * 3
         if data[at:at + 3].hex() != color:
             raise RuntimeError(f"wrong brush sweep pixel at {x},{y}: {data[at:at + 3].hex()}")
-    print("PASS paired brush sweep retains a cubic boundary and an empty center")
+    print("PASS 40 ms brush anchors, smoothed jitter, exact closure and cubic corners")
     return data
 
 

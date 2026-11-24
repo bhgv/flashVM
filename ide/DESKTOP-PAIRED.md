@@ -2,10 +2,11 @@
 
 [Русский](DESKTOP-PAIRED.ru.md) · [Entry points](https://github.com/bhgv/flashVM/blob/master/ide/ENTRYPOINTS.md)
 
-The ordinary DisVM build now produces the same `desktop-ide.dis` that menu 8
-uses. Its pane owners, layout, dialogs and file operations come from the
-existing Limbo sources. The graphical menu chooses the installed
-`run-desktop-ide.sh`, which executes `disvm-editor` to render the full desktop.
+The paired IDE runs Limbo `.dis` modules in DisVM and an ActionScript `.swf`
+in FlashVM. The machines exchange data through their standard Styx RPC
+channel. The current menu 8 entry starts the installed local display path
+through `run-desktop-ide.sh` and its `disvm-editor` host. The paired launcher
+below uses `desktop-ide.dis` with the SWF presentation instead.
 
 ## Verified paired path
 
@@ -16,6 +17,10 @@ launcher uploads the movie through `/rpc/.upload`, writes `start` to
 `/rpc/.state` and enters `DesktopIDE.init()` on the same owner. The real
 `$Unibus.attach` then carries scene and input frames in both directions on
 the existing libstyxrpc session.
+
+The launcher uses an already connected Styx stream. The acceptance test
+below supplies a local socket pair. Deployment can provide a connected
+network stream using the same entry points and application modules.
 
 The AS acceptance movie reads the scene with two editors, a build console
 and Help. It requests a ticket-bound resize from 960 to 860 pixels, so
@@ -158,8 +163,12 @@ different cameras. The native event fixture supplies input only.
 
 Start a brush or pen stroke on the displayed SVG page. FlashVM draws the
 delivered motion samples on a temporary MovieClip using the displayed
-camera and tool style. It sends the copied page coordinates on release
-over the same UniBus session. A stroke holds up to 4,096 points, with one
+camera and tool style. On release it sends page coordinates and elapsed
+pointer times over the same UniBus session. Limbo averages interior brush
+samples in 40 ms windows before constructing the SVG contour. The exact
+press and release points anchor the two ends. These times come from SDL
+mouse or touch events and are independent of frame delivery. A stroke
+holds up to 4,096 points, with one
 slot reserved for the last point. Each fragment carries the scene ticket
 and source revision. The pane owner receives one complete stroke and
 commits one history entry. The preview runs on the MovieClip owner.
@@ -196,8 +205,8 @@ across more than one fragment and verifies the saved SVG and final raster.
 Use `--merge` to paint across an SVG fill drawn twice in the same path, move
 the stroke away, and verify the two remaining islands, the original cubic
 handles, the untouched hole, and the visible gap.
-Use `--sweep` to close a four-corner brush gesture and check its cubic corners
-and white center in both the saved SVG and the displayed raster.
+Use `--sweep` to check the 40 ms threshold, short jitter, a closed gesture's
+cubic corners and empty center, and one Undo and Redo before saving the SVG.
 
 Multiple touch contacts and vector editing overlays still need paired
 integration. Menu 8 currently starts the installed graphical runtime.

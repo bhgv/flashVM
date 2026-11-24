@@ -20,6 +20,7 @@ typedef struct FVM_DesktopEvent
     double wheel_delta;            /* Signed host-normalized lines, used only by wheel entries. */
     int pressed;                   /* One for physical down/repeat, zero for release. */
     unsigned int code;             /* Virtual key or button for direct input. */
+    Uint32 time_ms;                /* Original SDL pointer timestamp. */
     char text[FVM_DESKTOP_INPUT_UTF8]; /* Copied committed text only for text events. */
 } FVM_DesktopEvent;
 
@@ -323,15 +324,18 @@ queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEventType mouse
     queued->x = view->input.x;
     queued->y = view->input.y;
     queued->code = 0;
+    queued->time_ms = 0;
     queued->text[0] = '\0';
     ++view->event_count;
     return queued;
 }
 
 
-/* EN: Queue a pointer transition, collapsing successive moves of the same held button.
- * RU: Поставить событие указателя в очередь, объединяя соседние движения с той же кнопкой. */
-static void queue_pointer(FVM_DesktopWindow *view, FVM_MouseEventType type, unsigned int button)
+/* EN: Queue a pointer transition and its SDL time on the window owner. Keep
+ * separate primary moves for distinct milliseconds even in one poll batch.
+ * RU: Поставить событие и время SDL в очередь владельца окна. Хранить движения
+ * основной кнопки из разных миллисекунд раздельно внутри одного опроса. */
+static void queue_pointer(FVM_DesktopWindow *view, FVM_MouseEventType type, unsigned int button, Uint32 time_ms)
 {
     FVM_DesktopEvent *event;
     if (view->direct_input && type == FVM_MOUSE_EVENT_MOVE)
@@ -344,10 +348,12 @@ static void queue_pointer(FVM_DesktopWindow *view, FVM_MouseEventType type, unsi
         {
             size_t last = (view->event_head + view->event_count - 1) % FVM_DESKTOP_PENDING_EVENTS;
             event = view->pending_events + last;
-            if (event->kind == FVM_DESKTOP_EVENT_MOUSE && event->mouse_type == type && event->code == button)
+            if (event->kind == FVM_DESKTOP_EVENT_MOUSE && event->mouse_type == type && event->code == button &&
+                (button != FVM_DESKTOP_BUTTON_LEFT || event->time_ms == time_ms))
             {
                 event->x = view->input.x;
                 event->y = view->input.y;
+                event->time_ms = time_ms;
                 return;
             }
         }
@@ -356,6 +362,7 @@ static void queue_pointer(FVM_DesktopWindow *view, FVM_MouseEventType type, unsi
     if (event)
     {
         event->code = button;
+        event->time_ms = time_ms;
     }
 }
 
@@ -399,6 +406,7 @@ int fvm_desktop_window_take_input(FVM_DesktopWindow *view, FVM_DesktopHostEvent 
     out->y = event->y;
     out->wheel = event->wheel_delta;
     out->control = event->state.down[FVM_KEY_CONTROL];
+    out->time_ms = event->time_ms;
     memcpy(out->text, event->text, sizeof(out->text));
     view->event_head = (view->event_head + 1) % FVM_DESKTOP_PENDING_EVENTS;
     --view->event_count;
@@ -461,7 +469,7 @@ static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *eve
         view->touch_active = 0;
         view->input.buttons &= ~FVM_DESKTOP_BUTTON_LEFT;
     }
-    queue_pointer(view, type, FVM_DESKTOP_BUTTON_LEFT);
+    queue_pointer(view, type, FVM_DESKTOP_BUTTON_LEFT, event->timestamp);
 }
 
 
@@ -674,7 +682,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.y = event->motion.y;
         queue_pointer(view, FVM_MOUSE_EVENT_MOVE,
             view->input.buttons & FVM_DESKTOP_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE :
-                view->input.buttons & FVM_DESKTOP_BUTTON_LEFT);
+                view->input.buttons & FVM_DESKTOP_BUTTON_LEFT, event->motion.timestamp);
     }
     if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
     {
@@ -700,7 +708,8 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         }
         if (bit == FVM_DESKTOP_BUTTON_LEFT || (view->direct_input && bit == FVM_DESKTOP_BUTTON_MIDDLE))
         {
-            queue_pointer(view, event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP, bit);
+            queue_pointer(view, event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP,
+                bit, event->button.timestamp);
         }
     }
     if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION || event->type == SDL_FINGERUP)

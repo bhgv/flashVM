@@ -22,6 +22,7 @@ function pollDesktopInput() {
     if (!(desktopInputKind - 2)) {
         desktopPointerPhase = hostInput.get("phase");
         desktopPointerCode = hostInput.get("code");
+        desktopPointerTime = hostInput.get("timeMs");
         if (!(desktopPointerCode - 2)) {
             desktopPointerCode = 7;
         }

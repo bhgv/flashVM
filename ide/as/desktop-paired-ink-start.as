@@ -14,6 +14,8 @@ function startDesktopInk() {
     desktopInkDownY = Math.floor(desktopPointerY);
     desktopInkPoints = "";
     desktopInkCount = 0;
+    desktopInkStartTime = desktopPointerTime;
+    desktopInkElapsed = 0;
     desktopInkViewport = desktopPointerPane.getInstanceAtDepth(8);
     desktopInkClip = desktopInkViewport.createEmptyMovieClip("localInk", 3);
     desktopInkColor = ("0x" + desktopInkStyle.substr(8, 8)) * 1;

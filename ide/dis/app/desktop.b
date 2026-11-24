@@ -507,7 +507,7 @@ run(paired: int)
                 admitted := deskcall(layout, request);
                 if (admitted.status == desk->Ok) {
                     result := panecall(windows[stroke.slot-1], panes->DrawStroke, string stroke.points,
-                        ref Uibridge->Message(codec->Request, 1, 0, stroke.revision, 0, 0, ""));
+                        ref Uibridge->Message(codec->Request, 1, 0, stroke.revision, stroke.width == 11, 0, ""));
                     if (result.status == Idecore->Ok) {
                         if (pointing != 0) {
                             panecall(windows[pointing-1], panes->CancelPointer, "", nil);

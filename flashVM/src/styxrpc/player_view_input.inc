@@ -50,7 +50,7 @@ static FVM_Result take_input(FVM_Context *c, FVM_Object *receiver, unsigned coun
     FVM_PairedView *view = state;
     FVM_DesktopHostEvent event;
     FVM_Result result;
-    const char *names[] = {"code", "phase", "x", "y", "wheel", "control"};
+    const char *names[] = {"code", "phase", "x", "y", "wheel", "control", "timeMs"};
     double numbers[sizeof(names) / sizeof(names[0])];
     size_t i;
     (void)args;
@@ -69,6 +69,7 @@ static FVM_Result take_input(FVM_Context *c, FVM_Object *receiver, unsigned coun
     numbers[3] = event.y;
     numbers[4] = event.wheel;
     numbers[5] = event.control;
+    numbers[6] = event.time_ms;
     result = FVM_OK;
     for (i = 0; result == FVM_OK && i < sizeof(names) / sizeof(names[0]); ++i)
     {

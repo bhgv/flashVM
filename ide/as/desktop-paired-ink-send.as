@@ -3,10 +3,10 @@
 // RU: Закодировать ограниченный фрагмент завершённого штриха для UniBus.
 
 
-// EN: Stage at most 192 points. The send callback advances only on credit.
-// RU: Подготовить до 192 точек. Обработчик продвигается только при наличии кредита.
+// EN: Stage at most 87 timed points within the old byte budget. Advance on credit.
+// RU: Подготовить до 87 точек со временем в прежнем лимите байтов. Продвигаться по кредиту.
 function queueDesktopInkSend() {
-    desktopInkChunk = Math.min(192, desktopInkCount - desktopInkSent);
+    desktopInkChunk = Math.min(87, desktopInkCount - desktopInkSent);
     desktopWord = desktopInkDownX;
     desktopInkEncoded = _root.encodeDesktopWord();
     desktopInkXWord = desktopHexWord;
@@ -19,6 +19,6 @@ function queueDesktopInkSend() {
     desktopWord = desktopInkCount;
     desktopInkEncoded = _root.encodeDesktopWord();
     desktopOutgoing = "fvd1:00000001000000010001002a" + desktopInkTicket + desktopInkXWord + desktopInkYWord
-        + desktopInkSlot + desktopInkRevision + desktopInkOffsetWord + desktopHexWord
-        + desktopInkPoints.substr(desktopInkSent * 5, desktopInkChunk * 5);
+        + desktopInkSlot + desktopInkRevision + desktopInkOffsetWord + desktopHexWord + "t"
+        + desktopInkPoints.substr(desktopInkSent * 11, desktopInkChunk * 11);
 }
