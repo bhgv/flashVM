@@ -11,8 +11,8 @@ The AS2 project now has a bounded executable profile through the common pipeline
 
 `as2_check` validates the full input before the generated Coco/R profile parser
 lowers supported constructs to textual FIR. This frontend contains no AVM1 opcode
-emitter. Existing FIR operations handle constants/coercion/arithmetic; three new
-FIR operations handle dynamic AS globals/member stores. The FIR AVM1 backend emits
+emitter. Existing FIR operations handle constants, coercion and arithmetic.
+Dynamic AS operations handle globals, member stores and method calls. The FIR AVM1 backend emits
 target instructions, and the existing SWL linker creates the SWF container.
 
 The IDE embeds the linked SWF and executes its actions in FlashVM for every
@@ -24,17 +24,20 @@ context; Dis passes checked values, never native heap addresses.
 
 Nonempty sequences of explicit-semicolon assignments are supported:
 `object.property = expression;` and `global = expression;`. Expressions support
-global reads, nonnegative decimal int32 constants, booleans and `+ - * /` with
-ordinary precedence. `+` lowers to dynamic `as.add`; the other operators explicitly
+global reads, nonnegative decimal int32 constants, booleans, double-quoted UTF-8
+strings, and `object.method()` or `object.method(expression)`. The receiver is
+evaluated before an argument. The operators `+ - * /` use ordinary precedence.
+`+` lowers to dynamic `as.add`; the other operators explicitly
 convert operands with `as.to_number` before f64 arithmetic. Values retain AS
 semantics, including strings passed to a property. The LHS object is read before
-the RHS is evaluated. ASCII source identifiers/whitespace and `//` comments,
-including EOF comments, are accepted. Unicode data arrives through runtime values.
+the RHS is evaluated. Identifiers and separators are ASCII. UTF-8 `//` comments
+may end at EOF. The profile uses CR/LF line boundaries.
 
-Functions/calls, source string literals, nested member reads, parentheses, control
-flow, classes and general AS2 lowering remain absent. The shared syntax frontend
+Function declarations, standalone call statements, multi-argument calls, member reads,
+grouping parentheses, control flow and classes remain outside the profile. The shared syntax frontend
 can recognize more than this profile; unsupported lowering fails explicitly.
-Bounds: source 16 KiB, names 253 bytes, staged FIR 64 KiB. Assignment comments
+Bounds: source 16 KiB, names 253 bytes, spelled string contents 255 bytes,
+staged FIR 64 KiB. Quoted strings support `\"`, `\\`, `\n`, `\r` and `\t`. Assignment comments
 retain source line/column/byte positions; they are not full debugger source maps.
 The profile currently targets AVM1/SWF. Dis rejects these AS object operations
 until a typed foreign-object adapter/backend exists; it does not reinterpret them.
@@ -88,14 +91,15 @@ callers must honor its nonzero exit status. The IDE build stops on any stage err
 
 ## Evidence and remaining scope
 
-The embedding test checks 600 failure/recovery cycles and atomic output capacity
-failure. FIR tests check operation types, effect ordering, canonical roundtrip and
+The embedding test checks nested calls, UTF-8 strings, failure recovery and
+atomic output on capacity failure. FIR tests check operation types, effect ordering, canonical roundtrip and
 Dis rejection. `disvm_as_view_execution` loads the **linked SWF** into FlashVM,
 changes geometry and checks Unicode values across GC. Graphical browser replay
 checks actual TextField pixels, row highlighting and native mouse actions. These
-are separate from physical desktop/touch acceptance.
+are separate from physical desktop/touch acceptance. The [paired terminal](../../../ide/examples/paired-terminal/README.md)
+uses this compiler to receive and reply on `styxTerminal` and verifies the final pixels.
 
-General AS AST/FIR lowering, calls/functions, full source maps and migration of
+General AS AST/FIR lowering, function bodies, full source maps and migration of
 remaining C-rendered editor widgets stay open. Document/browser policy is Limbo;
 AS handles the implemented TextField content/geometry; native font/raster/window
 and OS ports provide primitives.

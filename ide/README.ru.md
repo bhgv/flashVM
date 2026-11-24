@@ -1,5 +1,7 @@
 [Native UI/Dis owners / Системные потоки UI и Dis](../disVM/runtime/THREADING.md) · [RU](../disVM/runtime/THREADING.ru.md)
 
+[Собранный парный терминал с исходниками ActionScript и Limbo](examples/paired-terminal/README.ru.md)
+
 [Node bar, SVG clipboard and local gestures / Узлы, SVG-буфер и локальные жесты](NODE-TOOLS.md) · [RU](NODE-TOOLS.ru.md)
 
 [Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)

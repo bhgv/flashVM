@@ -10,12 +10,18 @@ CHARACTERS
     digit = "0123456789".
     /* Complete line comments are skipped as pragmas, including at EOF. */
     linechar = ANY - CHR(10) - CHR(13).
+    /* Raw bytes of a UTF-8 string, leaving escape syntax explicit. */
+    stringchar = CHR(32)..CHR(126) + CHR(128)..CHR(255) - '"' - "\\".
+    /* Escapes shared with FIR's canonical text format. */
+    escaped = '"' + "\\" + "nrt".
 
 TOKENS
     /* One global or member name; the emitter independently enforces its length. */
     ident = letter {letter | digit}.
     /* Nonnegative decimal integer; the emitter rejects int32 overflow. */
     number = digit {digit}.
+    /* Double-quoted AS string admitted by this lowering profile. */
+    string = '"' {stringchar | "\\" escaped} '"'.
 
 PRAGMAS
     /* Do not confuse source comments with the shared FIR output's source notes. */
@@ -61,11 +67,22 @@ PRODUCTIONS
         }
     .
 
-    /* Identifiers read AS bindings; constants become typed FIR SSA values. */
+    /* Read a binding or call one of its methods; literals become typed SSA values. */
     Value =
         ident                                                           (. emit_global(); .)
+        [ Method ]
         | number                                                        (. emit_number(); .)
+        | string                                                        (. emit_string(); .)
         | "true"                                                       (. emit_boolean(1); .)
         | "false"                                                      (. emit_boolean(0); .)
+    .
+
+    /* The receiver is already on the expression stack when argument evaluation starts. */
+    Method =                                                            (. char key[256] = {0};
+                                                                          int argc = 0; .)
+        "." ident                                                       (. emit_method_name(key); .)
+        "("
+        [ Expression                                                    (. argc = 1; .) ]
+        ")"                                                             (. emit_method_call(key, argc); .)
     .
 END View.

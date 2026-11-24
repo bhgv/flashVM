@@ -61,6 +61,11 @@ separately from the verified paired terminal example.
 
 ## Verification / Проверки
 
+[Compiled AS2 and Limbo pair](examples/paired-terminal/README.md) /
+[Парные .swf и .dis с исходниками](examples/paired-terminal/README.ru.md).
+The compiled SWF moves a panel after receiving a view from the Dis application.
+Проверяется обратная передача Unicode и положение панели в кадре SDL2.
+
 [`terminal-tests.js`](as/terminal-tests.js) loads the actual AS adapter, original
 UI codec and presentation helper under Node for algorithm tests: ordinary/missing
 capabilities refuse, pressure is not acceptance, two records are received in two

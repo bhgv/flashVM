@@ -362,6 +362,8 @@ PRODUCTIONS
     | FloatingBinary A "," B
     | "as.global_get" (. fir_build_op(O_AS_GLOBAL_GET); .)
     textlit (. capture(B_LITERAL); .)
+    | "as.member_call" (. fir_build_op(O_AS_MEMBER_CALL); .)
+    A "," textlit (. capture(B_LITERAL); .) [ "," B ]
     | "as.add"                                                          (. fir_build_op(O_ASADD); .)
     A "," B
     | "as.to_number"                                                    (. fir_build_op(O_NUMBER); .)

@@ -188,7 +188,8 @@ typedef enum
     O_I32_LOAD,          /* Snapshot one private signed32 payload into SSA. */
     O_F64_LOCAL,         /* Initialize a private binary64 cell to positive zero. */
     O_F64_STORE,         /* Store a binary64 payload without retaining an owner. */
-    O_F64_LOAD           /* Snapshot a binary64 payload into immutable SSA. */
+    O_F64_LOAD,          /* Snapshot a binary64 payload into immutable SSA. */
+    O_AS_MEMBER_CALL      /* Call a named method with zero or one argument. */
 } FirOp;
 
 

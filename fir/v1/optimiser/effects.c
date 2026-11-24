@@ -104,6 +104,7 @@ unsigned fir_effects(FirOp op)
     case O_AS_GLOBAL_GET:
     case O_AS_GLOBAL_SET:
     case O_AS_MEMBER_SET:
+    case O_AS_MEMBER_CALL:
     case O_ASADD:
     case O_NUMBER:
     case O_CHANNEL:

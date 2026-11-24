@@ -131,6 +131,51 @@ void emit_number(void)
     push(value);
 }
 
+/* EN: Copy validated token quoting into FIR within its literal capacity.
+ * RU: Скопировать проверенный строковый токен в пределах размера литерала FIR. */
+void emit_string(void)
+{
+    char literal[258];
+    int index;
+    int value;
+    if (S_Len > 257)
+    {
+        failed = 1;
+        return;
+    }
+    for (index = 0; index < S_Len; index++)
+    {
+        literal[index] = (char)S_CurrentCh(S_Pos + index);
+    }
+    literal[index] = 0;
+    value = values++;
+    append("    %%v%d: string = const.string %s\n", value, literal);
+    push(value);
+}
+
+/* EN: Capture the method key in the caller's buffer before parsing its argument.
+ * RU: Сохранить имя метода в буфере вызывающего кода до разбора аргумента. */
+void emit_method_name(char key[256])
+{
+    name(key);
+}
+
+/* EN: Replace the receiver and argc operands with one observable call result.
+ * RU: Заменить получателя и argc аргументов одним результатом вызова. */
+void emit_method_call(const char *key, int argc)
+{
+    int argument = argc ? pop() : -1;
+    int receiver = pop();
+    int value = values++;
+    append("    %%v%d: any = as.member_call %%v%d, \"%s\"", value, receiver, key);
+    if (argc)
+    {
+        append(", %%v%d", argument);
+    }
+    append("\n");
+    push(value);
+}
+
 /* Emit a literal bool SSA value; no numeric/target encoding occurs in the frontend. */
 void emit_boolean(int truth)
 {
@@ -209,6 +254,7 @@ int as2_view_compile(const void *bytes,
                      As2ViewDiagnostic *diagnostic)
 {
     unsigned char source[16385];
+    const unsigned char *input = bytes;
     As2Diagnostic syntax;
     size_t index;
     if (written)
@@ -234,14 +280,17 @@ int as2_view_compile(const void *bytes,
         }
         return 0;
     }
-    memcpy(source, bytes, size);
-    for (index = 0; index < size; index++)
+    /* EN: Use CR/LF boundaries consistently when parsing line comments.
+     * RU: Однозначно разделять комментарии и инструкции по границам CR/LF. */
+    for (index = 0; index + 2 < size; index++)
     {
-        if (source[index] == 0 || source[index] >= 128)
+        if (input[index] == 0xe2 && input[index + 1] == 0x80 &&
+            (input[index + 2] == 0xa8 || input[index + 2] == 0xa9))
         {
             return 0;
         }
     }
+    memcpy(source, bytes, size);
     /* A synthetic final newline closes an ordinary EOF line comment. */
     source[size++] = '\n';
     used = 0;

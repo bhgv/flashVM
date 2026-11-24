@@ -147,7 +147,8 @@ static const char *const ops[] = {"const.i32",
                                   "i32.load",
                                   "f64.local",
                                   "f64.store",
-                                  "f64.load"};
+                                  "f64.load",
+                                  "as.member_call"};
 
 
 /* Map a private retained-cell type to its exact source payload type.
@@ -516,7 +517,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_F64_LOAD || (unsigned)in->type > T_F64_SLOT || in->block < 0 ||
+        if ((unsigned)in->op > O_AS_MEMBER_CALL || (unsigned)in->type > T_F64_SLOT || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -536,6 +537,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             (!in->text[0] || !strncmp(in->text, "__fir1$", 7)))
         {
             return fail(error, cap, "empty or reserved AS global binding");
+        }
+        if (in->op == O_AS_MEMBER_CALL && !in->text[0])
+        {
+            return fail(error, cap, "empty AS method name");
         }
         if ((in->op == O_BOOL && in->integer != 0 && in->integer != 1) || (in->op == O_F64 && !isfinite(in->real)))
         {
@@ -561,7 +566,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                  in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE || in->op == O_TABLE_RANGE ||
                  in->op == O_TABLE_SPLICE || in->op == O_STRING_RANGE || in->op == O_STRING_SPLICE ||
                  in->op == O_STRING_CHAR_RANGE;
-        if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
+        if ((in->a >= 0) != (unary || binary || in->op == O_AS_MEMBER_CALL) ||
+            (in->op != O_AS_MEMBER_CALL && (in->b >= 0) != binary) ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
         {
@@ -1095,6 +1101,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 goto bad_type;
             }
             break;
+        case O_AS_MEMBER_CALL:
+            if (a != T_ANY || (in->b >= 0 && (!c || c > T_ANY)))
+            {
+                goto bad_type;
+            }
+            expected = T_ANY;
+            break;
         case O_ASADD:
             if (!a || !c || a > T_ANY || c > T_ANY)
             {
@@ -1312,15 +1325,16 @@ int fir_print(FILE *out, const FirModule *m)
         {
             fprintf(out, " %s", in->integer ? "true" : "false");
         }
-        else if (in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET)
+        else if (in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET ||
+                 in->op == O_AS_MEMBER_CALL)
         {
             fputc(' ', out);
-            if (in->op == O_AS_MEMBER_SET)
+            if (in->op == O_AS_MEMBER_SET || in->op == O_AS_MEMBER_CALL)
             {
                 fprintf(out, "%s, ", m->values[in->a].name);
             }
             quoted(out, in->text);
-            if (in->op != O_AS_GLOBAL_GET)
+            if (in->op == O_AS_GLOBAL_SET || in->b >= 0)
             {
                 fprintf(out, ", %s", m->values[in->op == O_AS_GLOBAL_SET ? in->a : in->b].name);
             }

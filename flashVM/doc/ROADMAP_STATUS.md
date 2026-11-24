@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1738 / Контрольная точка v0.1738. A project-built AS2 SWF and Limbo
+Dis image exchange a Unicode view on the stock pair and verify the rendered
+panel position. [EN](../../ide/examples/paired-terminal/README.md) /
+[RU](../../ide/examples/paired-terminal/README.ru.md).
+
 Checkpoint v0.1737 / Контрольная точка v0.1737. Mounted DisVM connects
 ordinary Limbo channels via `$Unibus.attach` to `styxTerminal` in the SWF.
 Кадры fvd1 идут через общий `.unibus` на той же сессии.

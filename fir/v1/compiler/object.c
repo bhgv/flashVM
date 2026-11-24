@@ -278,6 +278,16 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             load(&actions, m, in->b);
             byte(&actions, 0x4f);
             break;
+        case O_AS_MEMBER_CALL:
+            if (in->b >= 0)
+            {
+                load(&actions, m, in->b);
+            }
+            integer(&actions, in->b >= 0);
+            load(&actions, m, in->a);
+            text(&actions, in->text);
+            byte(&actions, 0x52);
+            break;
         case O_I32:
             integer(&actions, in->integer);
             break;

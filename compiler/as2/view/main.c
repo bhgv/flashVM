@@ -2,14 +2,13 @@
 #include <stdio.h>
 #include "view.h"
 
-/* Compile ASCII profile source into the shared FIR representation.
+/* Compile UTF-8 profile source into the shared FIR representation.
  * argv contains input/output paths. Return nonzero on I/O, syntax or emission failure.
  * Source is at most 16 KiB; Unicode document values arrive at execution through bindings. */
 int main(int argc, char **argv)
 {
     unsigned char source[16385];
     size_t size;
-    size_t index;
     unsigned char fir_text[65536];
     size_t used;
     int failed;
@@ -33,16 +32,9 @@ int main(int argc, char **argv)
     {
         failed = 1;
     }
-    for (index = 0; index < size; index++)
-    {
-        if (source[index] == 0 || source[index] >= 128)
-        {
-            failed = 1;
-        }
-    }
     if (failed)
     {
-        fprintf(stderr, "AS2 view source must be ASCII and at most 16384 bytes\n");
+        fprintf(stderr, "AS2 view source read failed or exceeded 16384 bytes\n");
         return 1;
     }
     if (!as2_view_compile(source, size, fir_text, sizeof(fir_text), &used, &diagnostic))
