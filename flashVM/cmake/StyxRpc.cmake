@@ -15,7 +15,7 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
         src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/object_image.c src/styxrpc/module_import.c
-        src/styxrpc/playback.c ports/styxrpc_stats_port.c)
+        src/styxrpc/playback.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c ports/styxrpc_stats_port.c)
     target_link_libraries(flashvm_styxrpc PUBLIC flashvm StyxRpc::launch StyxRpc::serve)
     if(FVM_BUILD_TESTS)
         add_executable(flashvm_tests_styxrpc_host tests/styxrpc_host.c tests/styxrpc/managed.c
@@ -23,7 +23,7 @@ if(FVM_ENABLE_STYXRPC)
             tests/styxrpc/hybrid.c tests/styxrpc/channel.c tests/styxrpc/channel-service.c tests/styxrpc/channel-args.c
             tests/styxrpc/channel-incoming.c tests/styxrpc/channel-delegated.c tests/styxrpc/channel-pid-graph.c
             tests/styxrpc/channel-mailbox.c tests/styxrpc/channel-pid-result.c tests/styxrpc/object-module.c
-            tests/styxrpc/playback.c)
+            tests/styxrpc/playback.c tests/styxrpc/movie-assets.c)
         target_link_libraries(flashvm_tests_styxrpc_host PRIVATE flashvm_styxrpc Styx::bidir)
         set_property(TARGET flashvm_tests_styxrpc_host PROPERTY C_STANDARD 99)
     endif()

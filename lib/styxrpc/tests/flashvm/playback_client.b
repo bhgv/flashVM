@@ -36,6 +36,21 @@ getstate(): string
     return readstate(sys->open(state, Sys->OREAD), 4096);
 }
 
+# EN: Allow deferred Dis fid retirement before reopening the single upload slot.
+# RU: Дождаться отложенного закрытия fid Dis перед повторным открытием слота загрузки.
+nextupload(): ref Sys->FD
+{
+    for (attempt := 0; attempt < 200; ++attempt) {
+        fd := sys->open(upload, Sys->OWRITE);
+        if (fd != nil) {
+            return fd;
+        }
+        sys->sleep(1);
+    }
+    raise sys->sprint("could not acquire upload slot: %r");
+}
+
+
 # EN: Send a counted command at offset zero, checking its expected acknowledgement.
 # RU: Передать команду с длиной со смещения ноль и проверить ожидаемый ответ.
 send(word: string, succeeds: int)
@@ -63,6 +78,49 @@ metric(snapshot, key: string): string
 }
 
 
+# EN: Verify real child and grandchild execution plus local, malformed and private rejections.
+# RU: Проверить выполнение двух вложенных SWF и отклонение локального, битого и закрытого файла.
+paired(source: ref Sys->FD)
+{
+    wire := array[4096] of byte;
+    size := sys->read(source, wire[4:], len wire - 4);
+    if (size <= 0 || size >= len wire - 4) {
+        raise "could not read paired root fixture";
+    }
+    wire[2] = byte (size >> 8);
+    wire[3] = byte size;
+    target := sys->open(upload, Sys->OWRITE);
+    if (target == nil || sys->write(target, wire, size + 4) != size + 4) {
+        raise sys->sprint("cannot upload fixture root: %r");
+    }
+    target = nil;
+    send("start", 1);
+    snapshot := getstate();
+    if (metric(snapshot, "movies_loaded=") != "1" || metric(snapshot, "movie_load_errors=") != "4" ||
+        metric(snapshot, "child_traces=") != "0") {
+        raise "first frame did not stage exactly one valid remote movie: " + snapshot;
+    }
+    send("pause", 1);
+    send("start", 1);
+    snapshot = getstate();
+    if (metric(snapshot, "movies_loaded=") != "2" || metric(snapshot, "child_traces=") != "1" ||
+        metric(snapshot, "leaf_traces=") != "0") {
+        raise sys->sprint("child provenance: loads=%s errors=%s last=%s child=%s leaf=%s",
+            metric(snapshot, "movies_loaded="), metric(snapshot, "movie_load_errors="),
+            metric(snapshot, "last_movie_result="), metric(snapshot, "child_traces="), metric(snapshot, "leaf_traces="));
+    }
+    send("pause", 1);
+    send("start", 1);
+    snapshot = getstate();
+    if (metric(snapshot, "leaf_traces=") != "1" || metric(snapshot, "other_traces=") != "0" ||
+        metric(snapshot, "movie_load_errors=") != "4") {
+        raise "grandchild execution or fallback is incorrect: " + snapshot;
+    }
+    send("debug", 1);
+    sys->print("PASS DisVM loaded FlashVM nested SWFs through Styx VFS\n");
+}
+
+
 # EN: Upload an AVM1 frame and exercise each lifecycle transition over a real mount.
 # RU: Загрузить кадр AVM1 и провести каждый переход через настоящее монтирование.
 init()
@@ -70,6 +128,11 @@ init()
     sys = load Sys Sys->PATH;
     state = "/rpc/.state";
     upload = "/rpc/.upload";
+    fixture := sys->open("paired-root.swf", Sys->OREAD);
+    if (fixture != nil) {
+        paired(fixture);
+        return;
+    }
     old := sys->open(state, Sys->OREAD);
     expect(readstate(old, 6), "state=");
     expect(getstate(), "state=empty\n");
@@ -86,7 +149,7 @@ init()
     }
     fd = nil;
     expect(getstate(), "state=empty\n");
-    fd = sys->open(upload, Sys->OWRITE);
+    fd = nextupload();
     if (fd == nil || sys->write(fd, swf, 2) != 2 ||
         sys->write(fd, swf[2:], len swf - 2) != len swf - 2) {
         raise sys->sprint("fragmented upload: %r");
@@ -108,7 +171,7 @@ init()
     send("pause", 1);
     expect(getstate(), "state=paused\nlast_result=0\nticks=1\n");
     bad := array[] of {byte 0, byte 0, byte 0, byte 1, byte 7};
-    fd = sys->open(upload, Sys->OWRITE);
+    fd = nextupload();
     if (fd == nil || sys->write(fd, bad, len bad) >= 0) {
         raise "invalid SWF was accepted";
     }

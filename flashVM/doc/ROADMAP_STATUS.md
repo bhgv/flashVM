@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1728 / Контрольная точка v0.1728. Paired playback resolves
+AVM1 movie loads against the attached Dis filesystem and commits validated child
+SWFs between frames. Вложенные фильмы используют путь своего источника, ошибки
+загрузки видны в `.state`. [EN](STYX_RPC_MODULES.md#load-further-swfs-from-actionscript) /
+[RU](STYX_RPC_MODULES.ru.md#загрузка-других-swf-из-actionscript).
+
 Checkpoint v0.1727 / Контрольная точка v0.1727. DisVM loads live Flash
 object modules, and FlashVM calls checked Dis modules through libstyxrpc.
 Парный корень скрывает `.prog` при обычной работе с файлами. Плеер принимает

@@ -4,6 +4,9 @@
  */
 #define _POSIX_C_SOURCE 200809L /* Expose optional POSIX owner CPU and monotonic clocks. */
 #include "flashvm/styxrpc_playback.h"
+#include "movie_load.h"
+#include "../standard/movieclip_constants.h"
+#include "flashvm/swf.h"
 #include "flashvm/extensions.h"
 #include "flashvm/gc.h"
 #include "flashvm/movieclip.h"
@@ -32,6 +35,7 @@ struct FVM_StyxRpcPlayback
     FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
     StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */
     FVM_Context *context;         /* Current movie context, NULL until a successful upload. */
+    FVM_StyxRpcMovies *movies;   /* Owned deferred SWF loader for the current paired context. */
     FVM_Object *root;             /* [GC:] Root clip pinned in the current context. */
     unsigned char *swf;           /* Owned copy used by restart. */
     size_t size;                  /* Length of the retained SWF, in bytes. */
@@ -44,12 +48,23 @@ struct FVM_StyxRpcPlayback
 };
 
 
+/* [GC:] EN: Drop deferred roots before the VM and free the retained callback storage.
+ * RU: Снять отложенные корни до освобождения VM, затем освободить колбэки. */
+static void dispose_movie(FVM_Context *context, FVM_StyxRpcMovies *movies)
+{
+    fvm_styxrpc_movies_finish(movies, 0);
+    fvm_context_destroy(context);
+    free(movies);
+}
+
+
 /* [GC:] EN: Prepare a separate context before changing the active movie.
  * RU: Подготовить отдельный контекст до изменения текущего фильма. */
 static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size_t size)
 {
     FVM_Context *context = NULL;
     FVM_Object *root = NULL;
+    FVM_StyxRpcMovies *movies = NULL;
     FVM_Result status = fvm_context_create(playback->spec.runtime, &context);
     if (status == FVM_OK)
     {
@@ -87,13 +102,34 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     {
         status = fvm_gc_pin(context, root);
     }
+    if (status == FVM_OK && playback->spec.session)
+    {
+        movies = calloc(1, sizeof(*movies));
+        if (!movies)
+        {
+            status = FVM_OUT_OF_MEMORY;
+        }
+        else
+        {
+            movies->context = context;
+            movies->root = root;
+            movies->session = playback->spec.session;
+            movies->limit = playback->spec.upload_limit;
+            if (movies->limit > FVM_SWF_DEFAULT_LIMIT)
+            {
+                movies->limit = FVM_SWF_DEFAULT_LIMIT;
+            }
+            status = fvm_styxrpc_movies_bind(movies);
+        }
+    }
     if (status != FVM_OK)
     {
-        fvm_context_destroy(context);
+        dispose_movie(context, movies);
         return status;
     }
 
-    fvm_context_destroy(playback->context);
+    dispose_movie(playback->context, playback->movies);
+    playback->movies = movies;
     playback->context = context;
     playback->root = root;
     playback->ticks = 0;
@@ -138,14 +174,31 @@ FVM_Result fvm_styxrpc_playback_tick(FVM_StyxRpcPlayback *playback, unsigned int
     {
         return FVM_OK;
     }
-    playback->last = fvm_movieclip_advance(playback->context, playback->root, ticks);
-    if (playback->last != FVM_OK)
+    if (!playback->movies || ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
     {
-        playback->state = PLAYBACK_FAILED;
+        playback->last = fvm_movieclip_advance(playback->context, playback->root, ticks);
+        if (playback->last == FVM_OK)
+        {
+            playback->ticks += ticks;
+        }
     }
     else
     {
-        playback->ticks += ticks;
+        unsigned int index;
+        for (index = 0; index < ticks; ++index)
+        {
+            playback->last = fvm_movieclip_advance(playback->context, playback->root, PLAYBACK_FIRST_TICK);
+            fvm_styxrpc_movies_finish(playback->movies, playback->last == FVM_OK);
+            if (playback->last != FVM_OK)
+            {
+                break;
+            }
+            ++playback->ticks;
+        }
+    }
+    if (playback->last != FVM_OK)
+    {
+        playback->state = PLAYBACK_FAILED;
     }
     return playback->last;
 }
@@ -333,11 +386,15 @@ static int snapshot(void *data, char *bytes, size_t capacity, size_t *used)
     length = snprintf(bytes, capacity,
         "state=%s\nlast_result=%d\nticks=%lu\nthreads.owner=1\nthread.owner.cpu_percent=%s\n"
         "swf_bytes=%lu\nstring_bytes=%lu\nlive_objects=%lu\npinned_objects=%lu\ngc_pending=%lu\n"
-        "interpreter_entries=%lu\nnative_entries=%lu\ncompiled_bodies=%lu\n",
+        "interpreter_entries=%lu\nnative_entries=%lu\ncompiled_bodies=%lu\n"
+        "movies_loaded=%lu\nmovie_load_errors=%lu\nlast_movie_result=%d\n",
         states[playback->state], (int)playback->last, playback->ticks, load,
         (unsigned long)playback->size, (unsigned long)strings.allocated_bytes,
         gc.live_objects, gc.pinned_objects, gc.pending_allocations,
-        execution.interpreter_entries, execution.native_entries, execution.compiled_bodies);
+        execution.interpreter_entries, execution.native_entries, execution.compiled_bodies,
+        playback->movies ? playback->movies->loaded : 0UL,
+        playback->movies ? playback->movies->failed : 0UL,
+        playback->movies ? (int)playback->movies->last : FVM_OK);
     if (length < 0 || (size_t)length >= capacity)
     {
         return 0;
@@ -402,7 +459,7 @@ void fvm_styxrpc_playback_destroy(FVM_StyxRpcPlayback *playback)
     if (playback)
     {
         styxrpc_control_destroy(playback->control);
-        fvm_context_destroy(playback->context);
+        dispose_movie(playback->context, playback->movies);
         free(playback->swf);
         free(playback);
     }

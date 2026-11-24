@@ -39,6 +39,21 @@ The snapshot reports the state, last result, completed ticks, SWF and string mem
 
 This bridge provides an embeddable owner. The application supplies the timeline clock and debugger and can install further bindings on each new context. The desktop player has its own startup path. Legacy script worker spawning is disabled while an exclusive root is installed because those workers create independent filesystem namespaces.
 
+## Load further SWFs from ActionScript
+
+A paired [playback owner](STYX_RPC_PLAYBACK_CREATE.md) automatically installs AVM1 movie loading when its spec contains the attached Dis session. In an uploaded movie, create a target clip and load a file published at the remote path.
+
+```actionscript
+var slot = _root.createEmptyMovieClip("slot", 1);
+slot.loadMovie("/movies/chapter/child.swf");
+```
+
+The same bridge handles global `loadMovie(url, target)`, AVM1 `GetURL2` movie-target requests, and `loadMovieNum(url, 0)`. The startup SWF uses the attach root for relative names because its upload contains no filename. A child has the canonical path it was fetched from. If `/movies/chapter/child.swf` requests `../leaf.swf`, the loader opens `/movies/leaf.swf`. A leading slash always selects the same attached VFS root. The paths accept literal UTF-8 bytes. URL schemes, query and fragment syntax, paths escaping the attach root and the private `.prog` component are refused.
+
+The load captures the destination clip and its source during the calling frame. Between frames, the owner reads a complete SWF through one open Styx fid and publishes it only after validation. The loaded clip can execute on the next tick. The loader can queue up to 16 requests in one frame. Each file is limited by the smaller of the playback upload limit and the default SWF size limit. Missing, malformed or oversized files leave the clip unchanged and are recorded in `.state` as `movie_load_errors` and `last_movie_result`. Successful replacements increment `movies_loaded`. A new upload or restart resets these counters. The loader uses only the attached VFS for acquisition.
+
+This profile covers AVM1 clip and level-zero loading of supported SWFs. Numbered levels above zero, HTTP methods other than the accepted GET spelling, variable loading and the MovieClipLoader event API are outside this binding. The host still provides the playback clock. The native `playback-movies` checks execute two levels of SWF actions and include a real local file with a name missing from the attached tree.
+
 Run the native checks after configuring the SDK tests with the DisVM build and the FlashVM test host.
 
 ```sh

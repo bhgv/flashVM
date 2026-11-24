@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
+from movie_assets import prepare as prepare_movies
 
 
 # EN: Compile a source with resolved imports/exports and return the image path.
@@ -57,7 +58,7 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("playback", "playback"), ("object-image", "object-image"), ("module-load", "module-load"),
+    for option, profile in (("playback", "playback"), ("playback-movies", "playback-movies"), ("object-image", "object-image"), ("module-load", "module-load"),
                             ("channel-pid-graph", "channel-pid-graph"), ("channel-pid-result", "channel-pid-result"),
                             ("channel-delegated", "channel-delegated"), ("channel-incoming", "channel-incoming"),
                             ("channel-args", "channel-args"), ("channel", "channel"), ("hybrid", "hybrid"),
@@ -71,6 +72,7 @@ def main():
         directory = Path(scratch)
         owner, caller, module, exports, result = {
             "playback": (None, "playback_client.b", "playback.dis", (), "SWF controls"),
+            "playback-movies": (None, "playback_client.b", "playback.dis", (), "nested SWFs through Styx VFS"),
             "object-image": (None, "object_image_client.b", "flash-object.dis", (), "object image"),
             "module-load": ("limbo.b", None, "limbo.dis", ("next", "number"), None),
             "channel-delegated": (args.source / "examples/remote-scalar/styx-channel-recursive-owner.b",
@@ -124,12 +126,14 @@ def main():
                 "PASS FlashVM Styx RPC host",
             )
         else:
+            if args.profile == "playback-movies":
+                prepare_movies(directory)
             image = compile_image(args, directory, tests / caller, "client.dis")
             transport = [] if args.profile in ("channel", "channel-incoming", "channel-pid-result", "object-image") else ["--raw"]
+            jit_role = args.jit and args.profile in ("playback", "playback-movies")
             exchange(
                 directory,
-                lambda fd: [args.flash_host, "playback-jit-serve" if args.jit and args.profile == "playback"
-                            else action + "serve", fd],
+                lambda fd: [args.flash_host, action + ("jit-serve" if jit_role else "serve"), fd],
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, *transport, "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
                 f"PASS DisVM loaded FlashVM {result}",

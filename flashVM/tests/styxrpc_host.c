@@ -238,7 +238,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
 
 /* EN: Create a dedicated interpreter context and run the selected test role.
  * RU: Создать выделенный контекст интерпретатора и выполнить выбранную роль проверки. */
-int test_playback_serve(FVM_Runtime *runtime, int fd, int jit);
+int test_playback_serve(FVM_Runtime *runtime, int fd, int jit, int children);
 
 int main(int argc, char **argv)
 {
@@ -248,6 +248,7 @@ int main(int argc, char **argv)
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
         strcmp(argv[1], "playback-serve") && strcmp(argv[1], "playback-jit-serve") &&
+        strcmp(argv[1], "playback-movies-serve") && strcmp(argv[1], "playback-movies-jit-serve") &&
         strcmp(argv[1], "object-image-serve") && strcmp(argv[1], "module-load-call") &&
         strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") && !variable &&
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
@@ -277,9 +278,10 @@ int main(int argc, char **argv)
         {
             ok = serve_flash(context, (int)fd);
         }
-        else if (!strcmp(argv[1], "playback-serve") || !strcmp(argv[1], "playback-jit-serve"))
+        else if (!strncmp(argv[1], "playback-", sizeof("playback-") - 1))
         {
-            ok = test_playback_serve(runtime, (int)fd, !strcmp(argv[1], "playback-jit-serve") && fvm_jit_available());
+            ok = test_playback_serve(runtime, (int)fd, strstr(argv[1], "-jit-") && fvm_jit_available(),
+                strstr(argv[1], "-movies-") != NULL);
         }
         else if (!strcmp(argv[1], "object-image-serve"))
         {

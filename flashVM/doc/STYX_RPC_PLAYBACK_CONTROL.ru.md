@@ -21,5 +21,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_StyxRpcPlayback` | struct | [src/styxrpc/playback.c:30](../src/styxrpc/playback.c#L30) |
+| `FVM_StyxRpcPlayback` | struct | [src/styxrpc/playback.c:33](../src/styxrpc/playback.c#L33) |
 <!-- source-links:end -->
