@@ -173,6 +173,8 @@ in one step. Dots and straight strokes retain four cubic arcs. Gentle turns
 keep cubic arcs along the outside of the nib. Closed paths, sharp turns and
 reversals can use one fixed round nib swept along the entire path. Loops
 preserve empty interiors, and the same vector operation clips to the page.
+Long strokes admit up to 128 simplified centerline knots. Their saved SVG
+can take part in a later cut or union within the vector operation's limits.
 The vector cut and union preserve
 untouched Bézier handles in compound paths with holes and islands. A single
 stroke can unite several visible same-color fills in the same operation.

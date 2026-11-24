@@ -11,6 +11,8 @@ BrushSpine: adt
     count: int;             # Initialized knots or -1.
 };
 
+BrushKnotLimit: con 128; # Simplified centerline budget, independent of capture size.
+
 
 # EN: Unit tangent and length of one centerline interval.
 # RU: Единичная касательная и длина интервала осевой линии.
@@ -31,26 +33,20 @@ BrushOutline: adt
 };
 
 
-# EN: Retain centerline knots within one logical unit of all captured samples.
-# For backtracking the nearest point is clamped to the chord. The caller
-# installs the initial knot and provides a bounded private output array.
-# RU: Сохранить узлы осевой линии с допуском одной единицы листа. При ходе
-# назад ближайшая точка ограничена хордой. Первый узел и буфер даёт вызывающий.
-brushsimplify(samples: array of Node, first, last, depth: int, spine: ref BrushSpine, work: ref Work)
+# EN: Find the sample that most exceeds the one-unit chord tolerance. Use
+# the closest point on the finite chord, even when the input backtracks.
+# RU: Найти отсчёт с наибольшим выходом за допуск одной единицы. При обратном
+# ходе расстояние считается до конечной хорды.
+brushsplit(samples: array of Node, first, last: int, work: ref Work): int
 {
-    if (spine.count < 0) {
-        return;
-    }
     a := cutpoint(samples[first].x, samples[first].y);
     b := cutpoint(samples[last].x, samples[last].y);
     direction := cutsub(b, a);
     length2 := cutdot(direction, direction);
-    if (depth == 16 || spine.count == len spine.points) {
-        spine.count = -1;
-        return;
-    }
     maxdist := 1.0;
     split := -1;
+    middle := (first+last)/2;
+    balance := 0;
     for (i := first+1; i < last; i++) {
         if (i % 128 == 0) {
             checkwork(work);
@@ -68,19 +64,49 @@ brushsimplify(samples: array of Node, first, last, depth: int, spine: ref BrushS
         }
         delta := cutsub(p, cutoffset(a, direction, t));
         dist := cutdot(delta, delta);
-        if (dist > maxdist) {
+        distance := (i-middle)*(i-middle);
+        if (dist > maxdist || (split >= 0 && dist == maxdist && distance < balance)) {
             split = i;
             maxdist = dist;
+            balance = distance;
         }
     }
-    if (split >= 0) {
-        brushsimplify(samples, first, split, depth+1, spine, work);
-        brushsimplify(samples, split, last, depth+1, spine, work);
-        return;
-    }
-    point := Point(samples[last].x, samples[last].y);
-    if (!brushequal(spine.points[spine.count-1], point)) {
-        spine.points[spine.count++] = point;
+    return split;
+}
+
+
+# EN: Retain the samples in traversal order using a bounded private stack.
+# Repeated sharp turns can make the partition uneven without using the call stack.
+# RU: Сохранить точки по порядку в ограниченном частном стеке. Неравномерное
+# деление на повторяющихся поворотах не расходует стек вызовов.
+brushsimplify(samples: array of Node, spine: ref BrushSpine, work: ref Work)
+{
+    pending := array[len spine.points] of (int, int);
+    pending[0] = (0, len samples-1);
+    count := 1;
+    splits := 0;
+    while (count > 0) {
+        checkwork(work);
+        (first, last) := pending[--count];
+        pivot := brushsplit(samples, first, last, work);
+        if (pivot >= 0) {
+            splits++;
+            if (count+2 > len pending || splits >= 2*len spine.points) {
+                spine.count = -1;
+                return;
+            }
+            pending[count++] = (pivot, last);
+            pending[count++] = (first, pivot);
+        } else {
+            point := Point(samples[last].x, samples[last].y);
+            if (!brushequal(spine.points[spine.count-1], point)) {
+                if (spine.count == len spine.points) {
+                    spine.count = -1;
+                    return;
+                }
+                spine.points[spine.count++] = point;
+            }
+        }
     }
 }
 
@@ -253,9 +279,9 @@ brushsweep(raw: ref Shape, work: ref Work): array of Node
     if (raw.width < 2 || len samples < 2 || samples[len samples-1].verb != Segment) {
         return nil;
     }
-    spine := ref BrushSpine(array[24] of Point, 1);
+    spine := ref BrushSpine(array[BrushKnotLimit] of Point, 1);
     spine.points[0] = Point(samples[0].x, samples[0].y);
-    brushsimplify(samples, 0, len samples-1, 0, spine, work);
+    brushsimplify(samples, spine, work);
     if (spine.count < 2) {
         return nil;
     }

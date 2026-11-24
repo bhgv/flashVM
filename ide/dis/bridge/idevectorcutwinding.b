@@ -144,21 +144,30 @@ cutrawsides(source: ref CutOutline, start, active: int, point, tangent: CutPoint
     ray := CutPoint(-tangent.y*scale, tangent.x*scale);
     right := 0;
     change := 0;
-    for (i := 0; i < len source.edges; i++) {
-        if (i % 16 == 0) {
+    for (ringindex := 0; ringindex < len source.rings; ringindex++) {
+        if (ringindex % 16 == 0) {
             checkwork(contacts.search.work);
         }
-        id := start+i;
-        expected := -1;
-        if (id != active) {
-            expected = -cutseamside(contacts, active, id, id+1, t);
+        ring := source.rings[ringindex];
+        if (!cutboxcontains(ring.box, point)) {
+            continue;
         }
-        (far, jump, hits) := cutraycounts(cutraycurve(source.edges[i], point, ray), math);
-        if (jump != expected || hits != (expected != 0)) {
-            return (0, 0, 0);
+        for (i := ring.first; i < ring.end; i++) {
+            if (i % 16 == 0) {
+                checkwork(contacts.search.work);
+            }
+            id := start+i;
+            expected := -1;
+            if (id != active) {
+                expected = -cutseamside(contacts, active, id, id+1, t);
+            }
+            (far, jump, hits) := cutraycounts(cutraycurve(source.edges[i], point, ray), math);
+            if (jump != expected || hits != (expected != 0)) {
+                return (0, 0, 0);
+            }
+            right += far;
+            change += jump;
         }
-        right += far;
-        change += jump;
     }
     return (right != 0, right+change != 0, 1);
 }

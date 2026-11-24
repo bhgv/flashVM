@@ -12,6 +12,16 @@ CutResult: adt
 };
 
 
+# EN: One closed ring and its conservative control hull.
+# RU: Одно замкнутое кольцо и его консервативная управляющая оболочка.
+CutLoopBox: adt
+{
+    first: int; # First local source edge.
+    end: int;   # Exclusive end of the ring.
+    box: CutBox; # Bounds of all its controls.
+};
+
+
 # EN: Edges of one filled path. Ordinary outlines keep fill on the right.
 # Internal arrangements keep original directions for signed winding.
 # RU: Рёбра одной заливки. У обычного контура заливка справа, у сложного
@@ -22,6 +32,7 @@ CutOutline: adt
     next: array of int;       # End vertex ID for each edge.
     modes: array of int;      # Join mode of the start vertex of each edge.
     internal: int;           # Discover and classify events within this fill.
+    rings: array of CutLoopBox; # Ring index built for winding classification.
 };
 
 
@@ -43,6 +54,59 @@ cutwinding(edges: array of CutCurve, p: CutPoint): int
     winding := 0;
     for (i := 0; i < len edges; i++) {
         winding += cutray(edges[i], p, 0);
+    }
+    return winding;
+}
+
+
+# EN: Check whether a point can have nonzero winding within the ring's hull.
+# A small band also retains near-boundary events for the original checks.
+# RU: Проверить, возможен ли ненулевой обход внутри оболочки кольца.
+# Небольшой допуск оставляет пограничные случаи исходным проверкам.
+cutboxcontains(box: CutBox, p: CutPoint): int
+{
+    return p.x >= box.left-1.0e-6 && p.x <= box.right+1.0e-6 &&
+        p.y >= box.top-1.0e-6 && p.y <= box.bottom+1.0e-6;
+}
+
+
+# EN: Index contiguous closed rings. A ring outside the query point can
+# contribute neither winding nor the jump at that point.
+# RU: Индексировать последовательные замкнутые кольца. Кольцо вне точки
+# запроса не даёт ни обхода, ни скачка в этой точке.
+cutringindex(source: ref CutOutline, work: ref Work)
+{
+    rings := array[len source.edges/2+1] of CutLoopBox;
+    base := 0;
+    count := 0;
+    box := cutbounds(source.edges[0]);
+    for (i := 0; i < len source.edges; i++) {
+        checkwork(work);
+        edgebox := cutbounds(source.edges[i]);
+        if (i == base) {
+            box = edgebox;
+        } else {
+            box = cutboxunion(box, edgebox);
+        }
+        if (source.next[i] == base) {
+            rings[count++] = CutLoopBox(base, i+1, box);
+            base = i+1;
+        }
+    }
+    source.rings = rings[0:count];
+}
+
+
+# EN: Sum windings only for indexed source rings that can contain p.
+# RU: Сложить обходы только у проиндексированных колец, содержащих точку.
+cutsourcewinding(source: ref CutOutline, p: CutPoint): int
+{
+    winding := 0;
+    for (i := 0; i < len source.rings; i++) {
+        ring := source.rings[i];
+        if (cutboxcontains(ring.box, p)) {
+            winding += cutwinding(source.edges[ring.first:ring.end], p);
+        }
     }
     return winding;
 }
@@ -129,7 +193,7 @@ cutorient(source: CutResult, rings: array of CutRing, search: ref CutSearch): re
     if (used == 0) {
         return nil;
     }
-    return ref CutOutline(edges[0:used], successors[0:used], modes[0:used], 0);
+    return ref CutOutline(edges[0:used], successors[0:used], modes[0:used], 0, nil);
 }
 
 
@@ -160,7 +224,7 @@ cutplain(rings: array of CutRing, search: ref CutSearch): int
 # рёбра на точные участки для поиска контактов.
 cutraw(source: CutResult, rings: array of CutRing, math: Math, work: ref Work): ref CutOutline
 {
-    expanded := ref CutExpansion(array[192] of CutCurve, 0, work);
+    expanded := ref CutExpansion(array[CutSpanLimit] of CutCurve, 0, work);
     successors := array[len expanded.edges] of int;
     modes := array[len expanded.edges] of {* => 1};
     for (i := 0; i < len rings; i++) {
@@ -192,7 +256,7 @@ cutraw(source: CutResult, rings: array of CutRing, math: Math, work: ref Work): 
         successors[expanded.used-1] = base;
     }
     used := expanded.used;
-    return ref CutOutline(expanded.edges[0:used], successors[0:used], modes[0:used], 1);
+    return ref CutOutline(expanded.edges[0:used], successors[0:used], modes[0:used], 1, nil);
 }
 
 
@@ -203,10 +267,10 @@ cutraw(source: CutResult, rings: array of CutRing, math: Math, work: ref Work): 
 cutoutline(source: CutResult, search: ref CutSearch, math: Math): ref CutOutline
 {
     nodes := source.nodes;
-    if (len nodes < 4 || len nodes > 192) {
+    if (len nodes < 4 || len nodes > CutCommandLimit) {
         return nil;
     }
-    rings := array[16] of CutRing;
+    rings := array[128] of CutRing;
     base := 0;
     count := 0;
     for (i := 0; i < len nodes; i++) {
@@ -230,7 +294,9 @@ cutoutline(source: CutResult, search: ref CutSearch, math: Math): ref CutOutline
         return nil;
     }
     rings = rings[0:count];
-    if (cutplain(rings, search)) {
+    # Larger paths go through the indexed arrangement only once.
+    # Для больших путей достаточно одного индексированного прохода.
+    if (len nodes <= 192 && cutplain(rings, search)) {
         return cutorient(source, rings, search);
     }
     search.count = 0;

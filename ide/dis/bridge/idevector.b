@@ -1350,6 +1350,7 @@ include "idevectorcutsupport.b";
 include "idevectorcutwinding.b";
 include "idevectorcutspans.b";
 include "idevectorcutboundary.b";
+include "idevectorcutindex.b";
 include "idevectorcutgraph.b";
 include "idevectorcutoutline.b";
 include "idevectorbrushsweep.b";

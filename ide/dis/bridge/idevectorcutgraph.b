@@ -59,6 +59,9 @@ CutSources: adt
 
 CutSubtract, CutUnion, CutIntersect: con iota; # Fill combination in the shared graph.
 
+CutSpanLimit: con 1200;       # Maximum prepared vector edges in one composition.
+CutCommandLimit: con 1328;    # SVG commands admitted including Move and Close.
+
 
 # EN: Check whether the active span runs on another source's boundary.
 # Return the side of that source's fill relative to the active orientation.
@@ -66,8 +69,9 @@ CutSubtract, CutUnion, CutIntersect: con iota; # Fill combination in the shared 
 # сторону чужой заливки относительно направления текущего участка.
 cutseamside(contacts: ref CutContacts, edge, first, end: int, t: real): int
 {
-    for (i := 0; i < contacts.count; i++) {
-        seam := contacts.seams[i];
+    index := contacts.index;
+    for (slot := index.heads[edge]; slot >= 0; slot = index.next[slot]) {
+        seam := contacts.seams[slot/2];
         other := -1;
         if (seam.first == edge && seam.firstlo < t && t < seam.firsthi) {
             other = seam.second;
@@ -113,7 +117,7 @@ cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, l
             }
         } else if (i != owner) {
             if (side == 0) {
-                r = cutwinding(other.edges, point) != 0;
+                r = cutsourcewinding(other, point) != 0;
                 l = r;
             } else {
                 r = side > 0;
@@ -144,20 +148,19 @@ cutclassify(sources: CutSources, contacts: ref CutContacts, owner, index: int, l
 # endpoints already share canonical IDs, regardless of endpoint events.
 # RU: Найти следующее внутреннее событие ребра после lo. Исходные концы
 # уже связаны общими номерами независимо от событий на концах.
-cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
+cutnext(hits: array of CutHit, index: ref CutChain, edge: int, lo: real): (int, real)
 {
     at := -1;
     hi := 1.0;
-    for (i := 0; i < len hits; i++) {
-        hit := hits[i];
-        index := hit.second;
+    for (slot := index.heads[edge]; slot >= 0; slot = index.next[slot]) {
+        event := slot/2;
+        hit := hits[event];
         t := hit.u;
-        if (hit.first == edge) {
-            index = hit.first;
+        if (slot % 2 == 0) {
             t = hit.t;
         }
-        if (index == edge && t > lo+1.0e-9 && t < hi && t < 1.0-1.0e-9) {
-            (at, hi) = (i, t);
+        if (t > lo+1.0e-9 && t < hi && t < 1.0-1.0e-9) {
+            (at, hi) = (event, t);
         }
     }
     return (at, hi);
@@ -168,7 +171,8 @@ cutnext(hits: array of CutHit, edge: int, lo: real): (int, real)
 # original anchor IDs, separately from geometric endpoint aliases.
 # RU: Передать фрагменты одного контура в общий граф с исходными номерами
 # узлов, отдельно от общих геометрических концов.
-cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContacts, owner, operation: int): int
+cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContacts, index: ref CutChain,
+    owner, operation: int): int
 {
     source := sources.outlines[owner];
     shift := sources.offsets[owner];
@@ -179,7 +183,7 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
         from := shift+i;
         initial := from;
         while (lo < 1.0) {
-            (hit, hi) := cutnext(hits, shift+i, lo);
+            (hit, hi) := cutnext(hits, index, shift+i, lo);
             terminal := shift+source.next[i];
             destination := terminal;
             if (hit >= 0) {
@@ -208,13 +212,17 @@ cutkeep(boundary: ref CutBoundary, sources: CutSources, contacts: ref CutContact
 # Кисть использует эту точку входа до промежуточного округления.
 cutcompose(sources: CutSources, contacts: ref CutContacts, operation: int): ref CutResult
 {
-    if (!cutcrossings(sources, contacts)) {
+    if (!cutbroadphase(sources, contacts)) {
         return nil;
     }
     search := contacts.search;
+    index := cutincidence(contacts, sources.count);
     boundary := cutboundary(sources, search);
     for (i := 0; i < len sources.outlines; i++) {
-        if (!cutkeep(boundary, sources, contacts, i, operation)) {
+        cutringindex(sources.outlines[i], search.work);
+    }
+    for (i = 0; i < len sources.outlines; i++) {
+        if (!cutkeep(boundary, sources, contacts, index, i, operation)) {
             return nil;
         }
     }
@@ -222,60 +230,17 @@ cutcompose(sources: CutSources, contacts: ref CutContacts, operation: int): ref 
 }
 
 
-# EN: Discover events inside an intersecting source. Drop the ordinary
-# shared endpoint of adjacent spans while retaining other hits and seams.
-# RU: Найти внутренние пересечения. Удалить обычные общие концы соседних
-# сегментов, сохраняя прочие пересечения и совпадающие участки.
-cutinternal(source: ref CutOutline, shift: int, contacts: ref CutContacts): int
+# EN: Allocate a single bounded solver for the prepared workload. Incoming
+# command counts are only an upper-bound hint for the event tables.
+# RU: Выделить один ограниченный решатель. Число исходных команд задаёт
+# верхнюю подсказку для таблиц пересечений и совпадений.
+cutcontactbudget(hint: int, work: ref Work, math: Math): ref CutContacts
 {
-    search := contacts.search;
-    for (i := 0; i < len source.edges; i++) {
-        for (j := i+1; j < len source.edges; j++) {
-            base := search.count;
-            cutcontactpair(CutPair(shift+i, shift+j, source.edges[i], source.edges[j], 1), contacts);
-            if (search.count < 0) {
-                return 0;
-            }
-            kept := base;
-            for (k := base; k < search.count; k++) {
-                hit := search.hits[k];
-                forward := source.next[i] == j && hit.t >= 1.0-1.0e-9 && hit.u <= 1.0e-9;
-                backward := source.next[j] == i && hit.u >= 1.0-1.0e-9 && hit.t <= 1.0e-9;
-                if (!forward && !backward) {
-                    search.hits[kept++] = hit;
-                }
-            }
-            search.count = kept;
-        }
+    if (hint > CutSpanLimit) {
+        hint = CutSpanLimit;
     }
-    return 1;
-}
-
-
-# EN: Discover within-source events and crossings across different fills.
-# RU: Найти события внутри отдельных заливок и пересечения между заливками.
-cutcrossings(sources: CutSources, contacts: ref CutContacts): int
-{
-    for (i := 0; i < len sources.outlines; i++) {
-        source := sources.outlines[i];
-        if (source.internal && !cutinternal(source, sources.offsets[i], contacts)) {
-            return 0;
-        }
-        a := source.edges;
-        for (j := i+1; j < len sources.outlines; j++) {
-            b := sources.outlines[j].edges;
-            for (left := 0; left < len a; left++) {
-                for (right := 0; right < len b; right++) {
-                    pair := CutPair(sources.offsets[i]+left, sources.offsets[j]+right, a[left], b[right], 1);
-                    cutcontactpair(pair, contacts);
-                    if (contacts.search.count < 0) {
-                        return 0;
-                    }
-                }
-            }
-        }
-    }
-    return 1;
+    search := ref CutSearch(array[96+6*hint] of CutHit, 0, 40000+300*hint, work);
+    return ref CutContacts(search, array[48+hint] of CutSeam, 0, math, nil);
 }
 
 
@@ -321,12 +286,16 @@ cutboolean(paths: array of CutResult, unite: int, work: ref Work): ref CutResult
     if (math == nil) {
         return nil;
     }
-    search := ref CutSearch(array[96] of CutHit, 0, 40000, work);
-    contacts := ref CutContacts(search, array[48] of CutSeam, 0, math);
-    sources := CutSources(array[len paths] of ref CutOutline, array[len paths] of int, 0);
+    hint := 0;
     for (i := 0; i < len paths; i++) {
+        hint += len paths[i].nodes;
+    }
+    contacts := cutcontactbudget(hint, work, math);
+    search := contacts.search;
+    sources := CutSources(array[len paths] of ref CutOutline, array[len paths] of int, 0);
+    for (i = 0; i < len paths; i++) {
         outline := cutoutline(paths[i], search, math);
-        if (outline == nil || sources.count+len outline.edges > 192) {
+        if (outline == nil || sources.count+len outline.edges > CutSpanLimit) {
             return nil;
         }
         sources.outlines[i] = outline;

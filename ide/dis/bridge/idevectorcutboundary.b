@@ -34,21 +34,85 @@ CutBoundary: adt
 };
 
 
+# EN: Hash bins for already visited geometric vertices.
+# RU: Хеш-ячейки уже обработанных геометрических вершин.
+CutPointBins: adt
+{
+    heads: array of int; # First inserted index for a hashed cell, or -1.
+    next: array of int;  # Chain link for each inserted vertex.
+};
+
+
+# EN: Allocate scratch cells with space proportional to the input vertices.
+# RU: Выделить временные ячейки пропорционально числу входных вершин.
+cutpointbins(count: int): ref CutPointBins
+{
+    size := 8;
+    while (size < 4*count) {
+        size *= 2;
+    }
+    return ref CutPointBins(array[size] of {* => -1}, array[count] of int);
+}
+
+
+# EN: Hash a copied integer cell into a power-of-two table.
+# RU: Отобразить целочисленную ячейку в таблицу размера степени двойки.
+cutpointcell(bins: ref CutPointBins, x, y: int): int
+{
+    return ((7919*x)^(104729*y)) & (len bins.heads-1);
+}
+
+
+# EN: Add a source vertex to its rounded-coordinate bucket.
+# RU: Добавить исходную вершину в ячейку округлённых координат.
+cutpointadd(bins: ref CutPointBins, point: CutPoint, id: int)
+{
+    cell := cutpointcell(bins, int point.x, int point.y);
+    bins.next[id] = bins.heads[cell];
+    bins.heads[cell] = id;
+}
+
+
+# EN: Find the earliest previous match. Tolerant queries check neighbouring
+# cells because a real coincidence can straddle a rounding boundary.
+# RU: Найти первое совпадение. Для вещественного допуска проверяются
+# соседние ячейки, поскольку совпадение может пересечь границу округления.
+cutpointfind(bins: ref CutPointBins, points: array of CutPoint, id, nearby: int): int
+{
+    p := points[id];
+    x := int p.x;
+    y := int p.y;
+    best := id;
+    for (dy := -nearby; dy <= nearby; dy++) {
+        for (dx := -nearby; dx <= nearby; dx++) {
+            cell := cutpointcell(bins, x+dx, y+dy);
+            for (j := bins.heads[cell]; j >= 0; j = bins.next[j]) {
+                q := points[j];
+                if (j < best) {
+                    if ((nearby && cutsamepoint(p, q)) || (!nearby && x == int q.x && y == int q.y)) {
+                        best = j;
+                    }
+                }
+            }
+        }
+    }
+    return best;
+}
+
+
 # EN: Prepare canonical position IDs, leaving actual source directions alone.
 # Distinct positions which only meet after rounding remain distinct here.
 # RU: Назначить общие номера совпадающим позициям. Точки, совпадающие только
 # после округления, пока остаются раздельными.
 cutaliases(boundary: ref CutBoundary, work: ref Work)
 {
+    bins := cutpointbins(len boundary.points);
     for (i := 0; i < len boundary.points; i++) {
         checkwork(work);
         boundary.aliases[i] = i;
-        for (j := 0; j < i; j++) {
-            if (cutsamepoint(boundary.points[i], boundary.points[j])) {
-                boundary.aliases[i] = boundary.aliases[j];
-                break;
-            }
-        }
+        previous := cutpointfind(bins, boundary.points, i, 1);
+        boundary.aliases[i] = boundary.aliases[previous];
+        cutpointadd(bins, boundary.points[i], i);
     }
 }
 
@@ -147,18 +211,16 @@ cutfollowing(boundary: ref CutBoundary, arc: CutArc, math: Math): int
 # Разные точки, совпавшие только на сетке результата, отклоняются.
 cutlinks(boundary: ref CutBoundary, math: Math, work: ref Work): array of int
 {
+    bins := cutpointbins(len boundary.points);
     for (i := 0; i < len boundary.points; i++) {
         checkwork(work);
         if (boundary.starts[i] < 0) {
             continue;
         }
-        p := boundary.points[i];
-        for (j := 0; j < i; j++) {
-            q := boundary.points[j];
-            if (boundary.starts[j] >= 0 && int p.x == int q.x && int p.y == int q.y) {
-                return nil;
-            }
+        if (cutpointfind(bins, boundary.points, i, 0) != i) {
+            return nil;
         }
+        cutpointadd(bins, boundary.points[i], i);
     }
     following := array[boundary.count] of int;
     predecessor := array[boundary.count] of {* => 0};

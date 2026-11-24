@@ -54,11 +54,16 @@ CutInterval: adt
 # Концы совпавших участков используют ту же таблицу.
 cuthitadd(search: ref CutSearch, pair: CutPair, t, u: real, point: CutPoint)
 {
-    for (i := 0; i < search.count; i++) {
+    # Hits of one examined pair are contiguous in the discovery table.
+    # События одной проверяемой пары идут подряд в таблице.
+    for (i := search.count-1; i >= 0; i--) {
         hit := search.hits[i];
+        if (hit.first != pair.first || hit.second != pair.second) {
+            break;
+        }
         dt := t-hit.t;
         du := u-hit.u;
-        if (hit.first == pair.first && hit.second == pair.second && dt*dt+du*du < 1.0e-12) {
+        if (dt*dt+du*du < 1.0e-12) {
             return;
         }
     }

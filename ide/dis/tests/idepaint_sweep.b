@@ -203,6 +203,76 @@ ringcut()
 }
 
 
+# EN: Draw 64 closely spaced horizontal runs from 640 captured samples.
+# Keep all 128 corner knots while simplifying points on each straight run.
+# RU: Провести 64 близких горизонтальных прохода из 640 отсчётов. Сохранить
+# все 128 угловых узлов, упрощая точки на каждом прямом проходе.
+longserpentine()
+{
+    doc := openpage("");
+    doc.width = 4;
+    points := array[640] of (int, int);
+    for (row := 0; row < 64; row++) {
+        y := 62+8*row;
+        left := 180;
+        right := 820;
+        if (row % 2) {
+            (left, right) = (right, left);
+        }
+        for (sample := 0; sample < 10; sample++) {
+            points[10*row+sample] = (left+sample*(right-left)/9, y);
+        }
+    }
+    draw(doc, points);
+    require(len doc.shapes == 1 && verbs(doc.shapes[0], v->Move) == 1 &&
+            verbs(doc.shapes[0], v->Cubic) == 130 && arc(doc.shapes[0], 180, 60, 178, 61),
+            "128-knot stroke keeps all tangent turns and both caps");
+    require(atpoint(doc, 500, 62) == 0 && atpoint(doc, 500, 66) == -1 && atpoint(doc, 500, 70) == 0,
+            "long serpentine preserves the gap between runs");
+    roundtrip(doc);
+}
+
+
+# EN: A large stepped loop stays vector through subtraction from an
+# imported cubic fill. Check the outer source controls, center and history.
+# RU: Большая ступенчатая петля остаётся векторной при разрезе импортированной
+# кубической заливки. Проверить внешние ручки, середину и историю.
+longring()
+{
+    doc := openpage("<path fill=\"#e04444\" d=\"M 45 50 C 130 25 770 25 820 50 L 820 480 L 45 480 Z\"/>");
+    source := doc.shapes[0];
+    doc.width = 12;
+    points := array[83] of (int, int);
+    y := 140;
+    points[0] = (100, y);
+    count := 1;
+    for (i := 1; i <= 40; i++) {
+        x := 100+16*i;
+        points[count++] = (x, y);
+        if (i < 40) {
+            y = 300-y;
+            points[count++] = (x, y);
+        }
+    }
+    points[count++] = (740, 380);
+    points[count++] = (100, 380);
+    points[count++] = (100, 140);
+    draw(doc, points[0:count]);
+    require(len doc.shapes == 3 && arc(doc.shapes[0], 820, 50, 130, 25) &&
+            len doc.shapes[2].nodes > 192 && verbs(doc.shapes[2], v->Move) == 2 &&
+            verbs(doc.shapes[2], v->Cubic) >= 78, "long loop cuts the red cubic without refitting it");
+    outside := atpoint(doc, 80, 300);
+    center := atpoint(doc, 500, 300);
+    require(outside >= 0 && center >= 0 && outside != center, "long ring leaves a separate red center");
+    roundtrip(doc);
+    require(v->pointer(doc, 1, 155, 160) == v->Ok && doc.edit.selected == 2 &&
+            v->pointer(doc, 3, 155, 230) == v->Ok && atpoint(doc, 155, 160) == -1 &&
+            atpoint(doc, 500, 300) == center, "move a long ring and reveal its annular gap");
+    require(v->history(doc, 0) && v->history(doc, 0) && doc.shapes[0] == source,
+            "undo long ring movement and stroke");
+}
+
+
 # EN: Execute the user-visible outcomes on the real model.
 # RU: Проверить пользовательские результаты на рабочей модели.
 init()
@@ -220,4 +290,8 @@ init()
     sys->print("PASS brush sweep vector page clip\n");
     ringcut();
     sys->print("PASS brush sweep annular cut, move and Undo\n");
+    longserpentine();
+    sys->print("PASS brush sweep 640 samples and 128-knot serpentine\n");
+    longring();
+    sys->print("PASS brush sweep 83-knot vector ring, cut and Undo\n");
 }

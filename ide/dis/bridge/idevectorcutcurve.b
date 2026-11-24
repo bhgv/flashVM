@@ -182,7 +182,7 @@ cutextent(box: CutBox): real
 # Nil отклоняет вырожденные и слишком сложные контуры до пересечений.
 cutcurves(nodes: array of Node): array of CutCurve
 {
-    if (len nodes < 4 || len nodes > 98 || nodes[0].verb != Move || nodes[len nodes-1].verb != Close) {
+    if (len nodes < 4 || len nodes > CutCommandLimit || nodes[0].verb != Move || nodes[len nodes-1].verb != Close) {
         return nil;
     }
     result := array[len nodes-1] of CutCurve;

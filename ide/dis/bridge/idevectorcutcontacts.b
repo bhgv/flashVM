@@ -25,6 +25,7 @@ CutContacts: adt
     seams: array of CutSeam; # Owned shared spans, initialized up to count.
     count: int;              # Number of stored shared spans.
     math: Math;              # Available pure scalar math operations.
+    index: ref CutChain;     # Built after discovery for directed seam lookup.
 };
 
 

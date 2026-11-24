@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1757 / Контрольная точка v0.1757. Indexed curve contacts extend
+the vector brush to 128 centerline knots. Длинная петля участвует в вычитании
+и сохраняет редактируемый контур, отдельный островок и историю Undo.
+[EN](../../ide/VECTOR-VIEWPORT.md) / [RU](../../ide/VECTOR-VIEWPORT.ru.md).
+
 Checkpoint v0.1756 / Контрольная точка v0.1756. The brush sweeps one fixed
 cubic nib through closed loops, sharp turns and reversals. Векторный мазок
 обрезается по листу и оставляет отдельную заливку внутри кольцевого выреза.

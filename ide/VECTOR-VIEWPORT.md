@@ -45,6 +45,14 @@ worker unions the strips and stamps and intersects the result with the page
 when needed, all before rounding. Subtracting an annular stroke preserves an
 independently editable island of the underlying fill in its empty center.
 
+Dense samples are simplified with an explicit stack, to at most 128 centerline
+knots. The arrangement caches control hulls and sweeps the less crowded axis,
+so only pairs whose bounds overlap in both dimensions reach curve intersection.
+Each edge has its own contact list. The worker skips rings outside a winding
+query and uses spatial buckets to keep vertex matching separate from SVG
+rounding. Later cuts and unions accept long saved paths within the shared
+limit of 1,200 prepared edges, including subdivisions where applicable.
+
 Unresolved contacts and inputs outside the vector budget use the bounded mask.
 The worker traces its coverage and fits the closed
 contours with cubic Bézier segments using chord parameters and interval least
@@ -73,6 +81,9 @@ cover crossed and repeated paths, opposite windings and a loop within one cubic.
 General nib sweeps live in `dis/bridge/idevectorbrushunion.b`. The
 [sweep tests](dis/tests/idepaint_sweep.b) exercise closed loops, reversal, oblique
 crossing, clipping and a move that exposes the cut around a central island.
+They also cover a 640-sample stroke and a long stepped ring that can be moved
+and undone after cutting an imported cubic fill. Intersection indexes are in
+`dis/bridge/idevectorcutindex.b`.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

@@ -234,7 +234,7 @@ brushpage(): ref CutOutline
     c := CutPoint(real GridWidth, real GridHeight);
     d := CutPoint(0.0, real GridHeight);
     edges := array[] of {brushline(a, b), brushline(b, c), brushline(c, d), brushline(d, a)};
-    return ref CutOutline(edges, array[] of {1, 2, 3, 0}, array[4] of {* => 0}, 0);
+    return ref CutOutline(edges, array[] of {1, 2, 3, 0}, array[4] of {* => 0}, 0, nil);
 }
 
 
@@ -249,7 +249,11 @@ brushunion(path: array of Point, width, clip: int, math: Math, work: ref Work): 
         return nil;
     }
     kernel := brushkernel(real width*0.5);
-    buffer := ref BrushVector(array[192] of CutCurve, array[192] of int, 0);
+    capacity := 12*len intervals;
+    if (capacity > CutSpanLimit-4*clip) {
+        capacity = CutSpanLimit-4*clip;
+    }
+    buffer := ref BrushVector(array[capacity] of CutCurve, array[capacity] of int, 0);
     if (!brushends(buffer, intervals, kernel, work)) {
         return nil;
     }
@@ -260,15 +264,14 @@ brushunion(path: array of Point, width, clip: int, math: Math, work: ref Work): 
         }
     }
     count := buffer.count;
-    swept := ref CutOutline(buffer.edges[0:count], buffer.next[0:count], array[count] of {* => 0}, 1);
+    swept := ref CutOutline(buffer.edges[0:count], buffer.next[0:count], array[count] of {* => 0}, 1, nil);
     sources := CutSources(array[] of {swept}, array[] of {0}, count);
     operation := CutUnion;
     if (clip) {
         sources = CutSources(array[] of {swept, brushpage()}, array[] of {0, count}, count+4);
         operation = CutIntersect;
     }
-    search := ref CutSearch(array[320] of CutHit, 0, 110000, work);
-    contacts := ref CutContacts(search, array[96] of CutSeam, 0, math);
+    contacts := cutcontactbudget(sources.count, work, math);
     result := cutcompose(sources, contacts, operation);
     if (result == nil) {
         return nil;
