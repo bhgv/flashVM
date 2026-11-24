@@ -53,6 +53,13 @@ StyxRpcServer *styxrpc_server_create(struct RemotePhy *phy, const StyxRpcTree *t
 int styxrpc_server_step(StyxRpcServer *server);
 
 
+/* EN: Process one cycle with a native wait budget in milliseconds. Zero polls, -1 waits indefinitely.
+ * Timeout returns 1 (keep serving). Callback duration is separate. All calls stay on the owner.
+ * RU: Обработать цикл с бюджетом ожидания в мс. Ноль опрашивает, -1 ждёт бессрочно.
+ * Истечение даёт 1 (продолжать). Время колбэка отдельно. Вызовы остаются у владельца. */
+int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms);
+
+
 /* EN: Consume the server, closing all owned fid cookies including on link loss.
  * RU: Освободить сервер и закрыть все состояния fid, в том числе после обрыва. */
 void styxrpc_server_destroy(StyxRpcServer *server);

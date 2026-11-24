@@ -23,7 +23,7 @@ def compile_image(args, directory, source, image):
 
 # EN: Connect the two argv builders to opposite ends; check output and both exit codes.
 # RU: Подключить команды к концам сокета и проверить вывод и оба кода завершения.
-def exchange(directory, server_command, client_command, expected):
+def exchange(directory, server_command, client_command, expected, provider_trace=()):
     client, server = socket.socketpair()
     with client, server:
         with subprocess.Popen(
@@ -38,7 +38,9 @@ def exchange(directory, server_command, client_command, expected):
                 )
                 client.close()
                 output, _ = provider.communicate(timeout=10)
-                if result.returncode or provider.returncode or expected not in result.stdout:
+                if (result.returncode or provider.returncode or expected not in result.stdout
+                        or any(line not in output.splitlines() for line in provider_trace)
+                        or "local-fallback" in output.splitlines()):
                     raise RuntimeError(
                         f"client ({result.returncode}):\n{result.stdout}\n"
                         f"provider ({provider.returncode}):\n{output}"
@@ -49,13 +51,33 @@ def exchange(directory, server_command, client_command, expected):
                     provider.kill()
 
 
+# EN: Run installed-equivalent processes against a real DisVM shared root with selected access.
+# RU: Запустить штатные процессы с настоящим общим корнем DisVM и заданным доступом.
+def native_player(args, directory, tests, mode, writable):
+    directory.mkdir()
+    prepare_movies(directory, native=True, writable=writable)
+    image = compile_image(args, directory, tests / "native_player.b", "native-player.dis")
+    share = "--share-vfs-rw" if writable else "--share-vfs"
+    exchange(
+        directory,
+        lambda fd: [args.flash_host, "--fd", fd, mode],
+        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc", share, "share",
+                    "--", "--native-spawn", mode, image.name],
+        "PASS native FlashVM and DisVM pair",
+        ("styx-child", "styx-leaf"),
+    )
+    expected = b"Z" if writable else b"A"
+    if (directory / "share" / "marker.txt").read_bytes() != expected:
+        raise RuntimeError("native shared-root write differs")
+
+
 # EN: Select provider and caller, using only the real VM entry points.
 # RU: Выбрать провайдера и клиента с использованием штатных точек входа VM.
 def main():
     parser = argparse.ArgumentParser(description="Check the production FlashVM/DisVM Styx RPC bridge")
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
+    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
     for option, profile in (("playback", "playback"), ("playback-movies", "playback-movies"), ("object-image", "object-image"), ("module-load", "module-load"),
@@ -93,7 +115,10 @@ def main():
             None: ("limbo.b", "client.b", "limbo.dis", ("next",), "AVM1 through Styx RPC"),
         }[args.profile]
         action = f"{args.profile}-" if args.profile else ""
-        if args.direction == "flash-to-dis":
+        if args.direction == "native-player":
+            native_player(args, directory / "readonly", tests, mode, writable=False)
+            native_player(args, directory / "writable", tests, mode, writable=True)
+        elif args.direction == "flash-to-dis":
             if args.profile == "module-load":
                 (directory / "local-only").write_bytes(b"native file excluded by the paired root")
             image = compile_image(args, directory, tests / owner, module)

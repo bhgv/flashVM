@@ -14,3 +14,5 @@ int styxrpc_server_step(StyxRpcServer *server);
 Hosted Linux64. `StyxRpc::serve`.
 
 [Пример](../tests/directory.c) · [Исходник](../src/serve.c)
+
+[Обслуживать запросы до ближайшего срока](server_step_for.ru.md).

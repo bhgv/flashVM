@@ -1,6 +1,6 @@
 # Парная работа FlashVM и DisVM
 
-[English](STYX_RPC_MODULES.md) · [Сценарий Styx RPC](STYX_RPC.ru.md) · [Обычные файлы](STYX_RPC_FILESYSTEM.ru.md)
+[English](STYX_RPC_MODULES.md) · [Сценарий Styx RPC](STYX_RPC.ru.md) · [Обычные файлы](STYX_RPC_FILESYSTEM.ru.md) · [Запуск штатного парного плеера](STYX_RPC_PLAYER.ru.md)
 
 ## Файловая система и загрузка модуля DisVM
 

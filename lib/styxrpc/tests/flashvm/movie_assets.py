@@ -47,7 +47,7 @@ def movie(*frames, padding=0):
 
 # EN: Prepare separate provider and local-decoy trees, with known delayed trace order.
 # RU: Подготовить дерево провайдера и локальную приманку с заданным порядком trace.
-def prepare(directory):
+def prepare(directory, native=False, writable=False):
     share = directory / "share"
     share.mkdir()
     first = method("_root", "createEmptyMovieClip", "child", 1)
@@ -56,6 +56,11 @@ def prepare(directory):
     first += load("/broken.swf", "child")
     first += load(".prog/child.swf", "child")
     first += load("http://example.invalid/child.swf", "child")
+    if native:
+        first += load("/movies/chapter/escape.swf", "child")
+    if writable:
+        first += push("_root.marker", "wo", "marker.txt", 2, "fs") + b"\x1c" + push("open") + b"\x52\x1d"
+        first += push(90, 1) + b"\x42" + push(1, "_root.marker") + b"\x1c" + push("write") + b"\x52\x17"
     (directory / "paired-root.swf").write_bytes(movie(first, b"", b"\x07"))
     (directory / "local-only.swf").write_bytes(movie(push("local-fallback") + b"\x26\x07"))
 
@@ -65,3 +70,14 @@ def prepare(directory):
     (share / "child.swf").write_bytes(movie(child))
     (share / "leaf.swf").write_bytes(movie(push("styx-leaf") + b"\x26\x07", padding=5000))
     (share / "broken.swf").write_bytes(b"FWS\x08\x08\0\0\0")
+
+    if native:
+        (share / "marker.txt").write_bytes(b"A")
+        chapter = share / "movies" / "chapter"
+        chapter.mkdir(parents=True)
+        (share / "child.swf").rename(chapter / "child.swf")
+        (share / "leaf.swf").rename(share / "movies" / "leaf.swf")
+        (chapter / "escape.swf").symlink_to(directory / "local-only.swf")
+        hidden = share / ".prog"
+        hidden.mkdir()
+        (hidden / "child.swf").write_bytes((directory / "local-only.swf").read_bytes())

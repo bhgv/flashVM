@@ -16,6 +16,11 @@ typedef struct StyxCallerServer StyxCallerServer; /* Owned server and binding st
 StyxCallerServer *styxcallerserver(RemotePhy *reverse);
 
 
+/* EN: Start the same reverse server with an optional retained ordinary view beside its process portal.
+ * RU: Запустить тот же встречный сервер с удерживаемым обычным деревом рядом с порталом процессов. */
+StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared);
+
+
 /* EN: Bind a fresh unpublished forward provider. The provider pins the server state.
  * RU: Привязать свежий неопубликованный провайдер. Провайдер удерживает состояние сервера. */
 int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward);

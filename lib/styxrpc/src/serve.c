@@ -351,15 +351,15 @@ int styxrpc_program_server_revoke(StyxRpcServer *server, uint32_t pid)
 
 
 /* EN/RU: See serve.h. / См. serve.h. */
-int styxrpc_server_step(StyxRpcServer *server)
+int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms)
 {
-    if (!server)
+    if (!server || timeout_ms < -1)
     {
         return 0;
     }
     StyxRpcServer *previous = active;
     active = server;
-    int ready = !styxwait(&server->wire);
+    int ready = !styxphywait(&server->wire, timeout_ms);
     if (ready)
     {
         if (server->programs)
@@ -374,6 +374,13 @@ int styxrpc_server_step(StyxRpcServer *server)
     }
     active = previous;
     return ready;
+}
+
+
+/* EN/RU: See serve.h. / См. serve.h. */
+int styxrpc_server_step(StyxRpcServer *server)
+{
+    return styxrpc_server_step_for(server, -1);
 }
 
 

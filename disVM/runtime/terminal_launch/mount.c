@@ -277,6 +277,50 @@ DVM_Provider *dvm_terminal_mount_peer(StyxCallerServer *reverse, StyxClient *cli
 }
 
 
+/* EN: Hide private process components anywhere in the shared ordinary files.
+ * RU: Скрыть служебные компоненты процессов на любой глубине обычного дерева. */
+static int visible_shared_path(void *state, const char *path, unsigned access)
+{
+    (void)state;
+    (void)access;
+    while (*path)
+    {
+        if (*path == '/')
+        {
+            ++path;
+            continue;
+        }
+        size_t length = strcspn(path, "/");
+        if (length == sizeof(".prog") - 1 && !memcmp(path, ".prog", length))
+        {
+            return 0;
+        }
+        path += length;
+    }
+    return 1;
+}
+
+
+/* EN: Grant a confined directory with the access ceiling selected by the DisVM host.
+ * RU: Выдать удерживаемый каталог с выбранным хостом DisVM пределом доступа. */
+static DVM_Provider *share_vfs(const char *path, unsigned access)
+{
+    DVM_ResourcePlan plan = {0};
+    plan.anchor = dvm_anchor_open(NULL, path);
+    memcpy(plan.relative, ".", sizeof("."));
+    DVM_Provider *source = plan.anchor ? dvm_export_native(&plan, 1) : NULL;
+    dvm_anchor_release(plan.anchor);
+    DVM_View *view = source ? dvm_view_create(visible_shared_path, NULL, NULL) : NULL;
+    if (view && !dvm_view_map(view, "/", source, ".", access, DVM_VIEW_TREE))
+    {
+        dvm_view_discard(view);
+        view = NULL;
+    }
+    dvm_provider_release(source);
+    return dvm_view_freeze(view);
+}
+
+
 /* EN: Consume a delegated stream duplicate and run with forward channel 0 and reverse channel 1.
  * RU: Принять дубликат выданного потока и запустить с прямым каналом 0 и встречным 1. */
 int dvm_styx_mount_cli(int argc, char **argv)
@@ -316,6 +360,23 @@ int dvm_styx_mount_cli(int argc, char **argv)
             return 2;
         }
     }
+    const char *shared_path = NULL;
+    unsigned shared_access = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
+    if (argc > separator + 1 && (!strcmp(argv[separator], "--share-vfs") ||
+        !strcmp(argv[separator], "--share-vfs-rw")))
+    {
+        if (raw || !argv[separator + 1][0])
+        {
+            fprintf(stderr, "disvm: --share-vfs requires a bidirectional mount and a directory\n");
+            return 2;
+        }
+        if (!strcmp(argv[separator], "--share-vfs-rw"))
+        {
+            shared_access |= FVM_ACCESS_WRITE;
+        }
+        shared_path = argv[separator + 1];
+        separator += 2;
+    }
     int descriptors[DVM_LAUNCH_FD_COUNT] = {0};
     int granted = 0;
     while (argc > separator + 1 && (!strcmp(argv[separator], "--fd3") || !strcmp(argv[separator], "--fd")))
@@ -349,7 +410,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--share-vfs DIR | --share-vfs-rw DIR] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = dvm_terminal_connected(argv[2]);
@@ -377,8 +438,17 @@ int dvm_styx_mount_cli(int argc, char **argv)
         fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
         return 2;
     }
+    DVM_Provider *shared = shared_path ? share_vfs(shared_path, shared_access) : NULL;
+    if (shared_path && !shared)
+    {
+        fprintf(stderr, "disvm: cannot prepare shared VFS directory\n");
+        close(breaker);
+        close(fd);
+        return 1;
+    }
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
-    StyxCallerServer *reverse = mux ? styxcallerserver(phybidirchannel(mux, 1)) : NULL;
+    StyxCallerServer *reverse = mux ? styxcallerserver_view(phybidirchannel(mux, 1), shared) : NULL;
+    dvm_provider_release(shared);
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
     DVM_Provider *mount = client ? dvm_terminal_mount_peer(reverse, client, entry, request, tag, scoped) : NULL;

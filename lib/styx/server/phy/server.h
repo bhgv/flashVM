@@ -219,6 +219,12 @@ size_t styxphypending(struct Styxserver *server);
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
 int styxphyflush(struct Styxserver *server, unsigned timeout);
+
+/* EN: Wait for readiness or the same monotonic budget in milliseconds. Zero polls and -1 waits indefinitely.
+ * Return NULL on progress, timeout or wake. The owner calls styxprocess next to dispatch or detect link loss.
+ * RU: Ждать готовности в пределах одного монотонного бюджета в мс. Ноль опрашивает, -1 ждёт бессрочно.
+ * NULL при готовности, сроке или пробуждении. Владелец затем вызывает styxprocess. */
+char *styxphywait(struct Styxserver *server, int timeout);
 #ifdef __cplusplus
 }
 #endif

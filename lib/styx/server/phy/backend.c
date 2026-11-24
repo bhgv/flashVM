@@ -216,9 +216,9 @@ int styxnewmsg(Styxserver *server, int token)
  * Owner обрабатывает native queues и PHY wait; return при local wake/space, без guest cooperation. */
 
 
-/* [standalone-contract:styxwaitmsg]
- * EN: styxwaitmsg: phy/backend implementation and native state.
- * RU: styxwaitmsg: реализация phy/backend и нативное состояние.
+/* [standalone-contract:styxphywait]
+ * EN: styxphywait: phy/backend implementation and native state.
+ * RU: styxphywait: реализация phy/backend и нативное состояние.
  * server (Styxserver *server): Original server instance and dispatcher-owned state.
  * RU: Экземпляр исходного сервера и состояние его dispatcher.
  * Return: char *; direct result constants in this body: nil. Forwarded results preserve the called API's status.
@@ -226,9 +226,23 @@ int styxnewmsg(Styxserver *server, int token)
  * Ownership/threading: retain the original contract immediately above and the public header's requirements.
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
-char *styxwaitmsg(Styxserver *server)
+char *styxphywait(Styxserver *server, int timeout)
 {
-    StyxPhyWake *context = server->priv;
+    StyxPhyWake *context = server ? server->priv : NULL;
+    double deadline = 0;
+    if (!context || timeout < -1)
+    {
+        return "invalid PHY wait";
+    }
+    if (timeout > 0)
+    {
+        double now = styxphytime();
+        if (now < 0)
+        {
+            return "PHY wait clock unavailable";
+        }
+        deadline = now + timeout;
+    }
     if (!context->accepted)
     {
         return nil;
@@ -250,8 +264,27 @@ char *styxwaitmsg(Styxserver *server)
         {
             wanted |= PHY_WRITE;
         }
+        int remaining = timeout;
+        if (timeout >= 0)
+        {
+            double now = styxphytime();
+            if (!timeout || now >= deadline)
+            {
+                return nil;
+            }
+            if (now < 0)
+            {
+                return "PHY wait clock unavailable";
+            }
+            double budget = deadline - now;
+            remaining = (int)budget;
+            if (remaining < budget)
+            {
+                ++remaining;
+            }
+        }
         unsigned ready;
-        if (phywait(context->phy, wanted, -1, &ready) != PHY_OK || (ready & PHY_FAILED))
+        if (phywait(context->phy, wanted, remaining, &ready) != PHY_OK || (ready & PHY_FAILED))
         {
             context->failed = 1;
             return nil;
@@ -261,6 +294,14 @@ char *styxwaitmsg(Styxserver *server)
             return nil;
         }
     }
+}
+
+
+/* EN/RU: Original wait retains its indefinitely blocking behavior.
+ * Исходное ожидание сохраняет неограниченное блокирование. */
+char *styxwaitmsg(Styxserver *server)
+{
+    return styxphywait(server, -1);
 }
 
 /* EN/RU: Preserve the original platform fatal-exit hook, without introducing a guest control API.

@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L /* Expose optional POSIX owner CPU and monotonic clocks. */
 #include "flashvm/styxrpc_playback.h"
 #include "movie_load.h"
+#include "playback_clock.h"
 #include "../standard/movieclip_constants.h"
 #include "flashvm/swf.h"
 #include "flashvm/extensions.h"
@@ -19,6 +20,9 @@
 #include <time.h>
 
 #define PLAYBACK_FIRST_TICK 1U /* Start/restart enter the first available timeline tick. */
+#define PLAYBACK_FIXED8_RATE_UNIT 256.0 /* SWF header frame-rate denominator. */
+#define PLAYBACK_FALLBACK_FPS 12.0 /* A zero header rate uses twelve frames per second. */
+#define PLAYBACK_SECONDS_MS 1000.0 /* Milliseconds per second. */
 
 typedef enum PlaybackState
 {
@@ -41,6 +45,8 @@ struct FVM_StyxRpcPlayback
     size_t size;                  /* Length of the retained SWF, in bytes. */
     PlaybackState state;         /* State reported to the controller. */
     FVM_Result last;              /* Last timeline or control operation status. */
+    double period;                /* Milliseconds per frame from the uploaded SWF. */
+    unsigned long schedule;        /* Changes when start establishes a new frame deadline. */
     unsigned long ticks;          /* Successfully advanced ticks for the current movie. */
     double last_wall;             /* Last available monotonic sample in seconds. */
     double last_cpu;              /* Last available owner CPU sample in seconds. */
@@ -65,10 +71,16 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     FVM_Context *context = NULL;
     FVM_Object *root = NULL;
     FVM_StyxRpcMovies *movies = NULL;
+    FVM_SWFInfo info;
     FVM_Result status = fvm_context_create(playback->spec.runtime, &context);
     if (status == FVM_OK)
     {
         status = fvm_load_memory(context, bytes, size);
+    }
+    if (status == FVM_OK)
+    {
+        info.struct_size = sizeof(info);
+        status = fvm_swf_info(context, &info);
     }
     if (status == FVM_OK)
     {
@@ -132,6 +144,8 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     playback->movies = movies;
     playback->context = context;
     playback->root = root;
+    playback->period = PLAYBACK_SECONDS_MS / (info.frame_rate_fixed8 ?
+        (double)info.frame_rate_fixed8 / PLAYBACK_FIXED8_RATE_UNIT : PLAYBACK_FALLBACK_FPS);
     playback->ticks = 0;
     playback->state = PLAYBACK_READY;
     return FVM_OK;
@@ -260,7 +274,21 @@ static int command(void *data, StyxRpcControlCommand what)
         return 0;
     }
     playback->state = PLAYBACK_RUNNING;
+    ++playback->schedule;
     return fvm_styxrpc_playback_tick(playback, PLAYBACK_FIRST_TICK) == FVM_OK;
+}
+
+
+/* EN/RU: See playback_clock.h. / См. playback_clock.h. */
+int fvm_styxrpc_playback_clock(FVM_StyxRpcPlayback *playback, double *period, unsigned long *schedule)
+{
+    if (playback->state != PLAYBACK_RUNNING)
+    {
+        return 0;
+    }
+    *period = playback->period;
+    *schedule = playback->schedule;
+    return 1;
 }
 
 

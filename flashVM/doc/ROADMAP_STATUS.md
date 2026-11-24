@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1729 / Контрольная точка v0.1729. A native headless FlashVM
+player advances uploaded SWFs by their frame clock and serves .state over Styx.
+DisVM выдаёт корень обычной VFS по встречному направлению того же соединения.
+[EN](STYX_RPC_PLAYER.md) / [RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1728 / Контрольная точка v0.1728. Paired playback resolves
 AVM1 movie loads against the attached Dis filesystem and commits validated child
 SWFs between frames. Вложенные фильмы используют путь своего источника, ошибки

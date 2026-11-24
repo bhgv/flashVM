@@ -14,3 +14,5 @@ Wait for a server event and dispatch it on the owning thread. Return 1 if the se
 Hosted Linux64. `StyxRpc::serve`.
 
 [Example](../tests/directory.c) · [Source](../src/serve.c)
+
+[Serve waiting for the next deadline](server_step_for.md).

@@ -92,3 +92,22 @@ if(STYXRPC_FLASHVM_TEST_HOST)
             --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction vfs --device "$<TARGET_FILE:styxrpc-device>")
     set_tests_properties(styxrpc-flashvm-vfs PROPERTIES TIMEOUT 45)
 endif()
+
+
+if(STYXRPC_FLASHVM_PLAYER)
+    if(NOT EXISTS "${STYXRPC_FLASHVM_PLAYER}")
+        message(FATAL_ERROR "Missing paired FlashVM player: ${STYXRPC_FLASHVM_PLAYER}")
+    endif()
+    foreach(mode IN ITEMS interpreter jit)
+        set(mode_args)
+        if(mode STREQUAL "jit")
+            list(APPEND mode_args --jit)
+        endif()
+        set(test_name "styxrpc-native-player-${mode}")
+        add_test(NAME "${test_name}"
+            COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --flash-host "${STYXRPC_FLASHVM_PLAYER}"
+                --direction native-player ${mode_args})
+        set_tests_properties("${test_name}" PROPERTIES TIMEOUT 45)
+    endforeach()
+endif()

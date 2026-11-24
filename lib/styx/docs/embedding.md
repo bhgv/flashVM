@@ -94,3 +94,5 @@ This is a complete application CMakeLists with a copied package directory alongs
 | Component unavailable | Library build option and exact component name/case |
 | C++ undefined reference | Matching headers/library and the exported target |
 | Header missing after moving SDK | Move the whole prefix; remove hardcoded old include paths |
+
+[Hosted server deadline wait](reference/styxphywait.md).

@@ -14,6 +14,25 @@ identity. The selected directory then remains a normal changing service root.
 не требуются. Видимость namespace и права операций дополняют друг друга.
 Одна и та же информация может быть представлена разным клиентам по-разному.
 
+## Shared root on a bidirectional mount / Общий корень встречного подключения
+
+The `disvm --styx-mount-fd FD --at PATH --share-vfs DIR -- …` form prepares
+DIR as the ordinary reverse VFS root on the same inherited bidirectional
+carrier. `--share-vfs-rw DIR` additionally grants writes to existing nodes
+accepted by the host filesystem. Both options reject raw one-way mounts.
+The root is confined to its retained directory, with physical `.prog`
+components suppressed and descendant symlinks rejected. The scoped process
+portal retains its existing routing.
+
+Параметр `--share-vfs DIR` выдаёт каталог на чтение и проход, а
+`--share-vfs-rw DIR` разрешает и запись в существующие файлы при наличии
+прав. Порядок параметров указан в команде выше. Встречный корень остаётся
+на том же соединении. Область доступа ограничена удерживаемым каталогом,
+физические `.prog` скрыты, переходы по вложенным символьным ссылкам
+отклоняются. Служебный портал контекстов процессов сохраняет свои правила.
+
+[FlashVM startup / Запуск FlashVM](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC_PLAYER.ru.md)
+
 ## Protocol contract / Контракт протокола
 
 | Operation | Meaning / Значение |

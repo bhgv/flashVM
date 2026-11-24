@@ -2,39 +2,12 @@
  * EN: Export the active caller capability through ordinary 9P operations.
  * RU: Экспортировать активный контекст клиента обычными операциями 9P.
  */
-#include <lib9.h>
-#include <styx.h>
-#include <styxserver.h>
-#include "caller_styx.h"
-#include "caller_scope.h"
-#include "server.h"
+#include "caller_styx_state.h"
 #include "file_provider.h"
-#include "mount.h"
-#include "tree.h"
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-#define PROG_QID 1U /* Permanent virtual directory for active process IDs. */
-
-typedef struct CallerNodes
-{
-    uint64_t generation; /* Publication represented by this dispatcher cache. */
-    size_t count; /* Number of visited nodes for this publication. */
-    StyxBacking *nodes[STYX_CALLER_NODES]; /* Owned visited nodes. */
-} CallerNodes;
-
-struct StyxCallerServer
-{
-    Styxserver server; /* Owned original Styx dispatcher. */
-    StyxPhyWake *wake; /* Owned dispatcher wake pin through mount retirement. */
-    pthread_t worker; /* Owns dispatcher, nodes and stat scratch. */
-    StyxCallerScopes scopes; /* Concurrent per-PID publications. */
-    size_t references; /* Control and bound mount owners, under scopes.lock. */
-    CallerNodes cache[STYX_CALLER_SLOTS]; /* Dispatcher-owned node caches. */
-    StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
-};
 
 typedef struct CallerOpen
 {
@@ -43,26 +16,6 @@ typedef struct CallerOpen
 } CallerOpen;
 
 static __thread StyxCallerServer *owner; /* Current dispatcher on its native thread. */
-
-
-/* EN: Publish a caller tree for its PID until the matching release.
- * RU: Опубликовать дерево клиента для его PID до освобождения. */
-static void *begin(void *state, DVM_Provider *target, DVM_Provider *tree, uint32_t pid)
-{
-    StyxCallerServer *server = state;
-    (void)target;
-    return styxcallerscopeadd(&server->scopes, tree, pid) ? tree : NULL;
-}
-
-
-/* EN: Revoke this invocation without affecting other PIDs.
- * RU: Отозвать этот вызов, сохранив остальные PID. */
-static void end(void *state, void *lease)
-{
-    StyxCallerServer *server = state;
-    styxcallerscopedrop(&server->scopes, lease);
-    styxphywake(server->wake);
-}
 
 
 /* EN: Release visited nodes from one dispatcher cache.
@@ -83,6 +36,11 @@ static StyxBacking *find(Path path, CallerNodes **cache)
 {
     uint64_t generation = path / STYX_CALLER_NODES;
     size_t offset = path % STYX_CALLER_NODES;
+    if (!generation && path > PROG_QID)
+    {
+        *cache = &owner->permanent;
+        return offset < (*cache)->count ? (*cache)->nodes[offset] : NULL;
+    }
     int index = generation ? styxcallerscopefind(&owner->scopes, 0, generation, NULL) : -1;
     if (index < 0)
     {
@@ -107,6 +65,12 @@ static char *walk_child(Qid *qid, const char *name, StyxBacking *parent, CallerN
     {
         styxbackingfree(node);
         return Enonexist;
+    }
+    if (cache == &owner->permanent && styxbackingsamenode(owner->shared_root, node))
+    {
+        styxbackingfree(node);
+        *qid = styxqid(Qroot, 1);
+        return nil;
     }
     for (size_t i = 0; i < cache->count; i++)
     {
@@ -178,7 +142,7 @@ static char *walk(Qid *qid, char *name)
             *qid = styxqid(PROG_QID, 1);
             return nil;
         }
-        return Enonexist;
+        return walk_child(qid, name, owner->shared_root, &owner->permanent);
     }
     if (qid->path == PROG_QID)
     {
@@ -204,7 +168,7 @@ static char *walk(Qid *qid, char *name)
  * RU: Собрать свой снимок для открытия или stat общего каталога. */
 static StyxBacking *portal(Path path)
 {
-    DVM_Provider *view = styxcallerscopeview(&owner->scopes);
+    DVM_Provider *view = styxcallerscopeview(&owner->scopes, owner->shared);
     StyxBacking *root = view ? styxtree(view) : NULL;
     dvm_provider_release(view);
     if (path == Qroot || !root)
@@ -381,6 +345,9 @@ static void *serve(void *state)
         }
     }
     styxend(&owner->server);
+    clear(&owner->permanent);
+    styxbackingfree(owner->shared_root);
+    dvm_provider_release(owner->shared);
     for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
     {
         clear(&owner->cache[i]);
@@ -395,7 +362,7 @@ static void *serve(void *state)
 
 /* EN/RU: See caller_styx.h. The binding is installed only on a fresh mount.
  * См. caller_styx.h. Связь устанавливается только на свежий маунт. */
-StyxCallerServer *styxcallerserver(RemotePhy *reverse)
+StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared)
 {
     StyxCallerServer *server = calloc(1, sizeof(*server));
     if (!server || pthread_mutex_init(&server->scopes.lock, NULL))
@@ -404,9 +371,25 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
         phyfree(reverse);
         return NULL;
     }
+    if (shared)
+    {
+        server->shared_root = styxtree(shared);
+        if (!server->shared_root || !dvm_provider_retain(shared))
+        {
+            styxbackingfree(server->shared_root);
+            pthread_mutex_destroy(&server->scopes.lock);
+            free(server);
+            phyfree(reverse);
+            return NULL;
+        }
+        server->shared = shared;
+        server->permanent.count = PROG_QID + 1;
+    }
     server->references = 1;
     if (styxphyinit(&server->server, &operations, reverse, 0555, 0, 8))
     {
+        styxbackingfree(server->shared_root);
+        dvm_provider_release(server->shared);
         pthread_mutex_destroy(&server->scopes.lock);
         free(server);
         return NULL;
@@ -416,6 +399,8 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
     {
         styxend(&server->server);
         styxphywakefree(server->wake);
+        styxbackingfree(server->shared_root);
+        dvm_provider_release(server->shared);
         pthread_mutex_destroy(&server->scopes.lock);
         free(server);
         return NULL;
@@ -424,73 +409,9 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse)
 }
 
 
-/* EN: Release one control or provider reference without joining the worker.
- * RU: Снять ссылку управления или провайдера без ожидания потока. */
-static void drop(void *state)
+
+/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
+StyxCallerServer *styxcallerserver(RemotePhy *reverse)
 {
-    StyxCallerServer *server = state;
-    pthread_mutex_lock(&server->scopes.lock);
-    int last = --server->references == 0;
-    pthread_mutex_unlock(&server->scopes.lock);
-    if (last)
-    {
-        styxphywakefree(server->wake);
-        pthread_mutex_destroy(&server->scopes.lock);
-        free(server);
-    }
-}
-
-
-/* EN/RU: See caller_styx.h. On successful binding the provider owns a pin.
- * См. caller_styx.h. При успехе провайдер владеет ссылкой. */
-int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
-{
-    if (!server)
-    {
-        return 0;
-    }
-    pthread_mutex_lock(&server->scopes.lock);
-    int retained = !server->scopes.stopped && server->references < (size_t)-1;
-    if (retained)
-    {
-        server->references++;
-    }
-    pthread_mutex_unlock(&server->scopes.lock);
-    if (!retained)
-    {
-        return 0;
-    }
-    DVM_CallerBinding binding = {.begin = begin, .end = end, .state = server, .release = drop};
-    if (!dvm_provider_bind_caller(forward, &binding))
-    {
-        drop(server);
-        return 0;
-    }
-    return 1;
-}
-
-
-/* EN/RU: See caller_styx.h. Do not expose a partially configured mount.
- * См. caller_styx.h. Публиковать только полностью настроенный маунт. */
-DVM_Provider *styxcallermount(StyxCallerServer *server, StyxClient *forward, unsigned access)
-{
-    DVM_Provider *mount = styxmountprovider(forward, access);
-    if (!mount || !styxcallerbind(server, mount))
-    {
-        dvm_provider_release(mount);
-        return NULL;
-    }
-    return mount;
-}
-
-
-/* EN/RU: See caller_styx.h. The references held by mounts retire independently.
- * См. caller_styx.h. Ссылки маунтов освобождаются независимо. */
-void styxcallerjoin(StyxCallerServer *server)
-{
-    if (server)
-    {
-        pthread_join(server->worker, NULL);
-        drop(server);
-    }
+    return styxcallerserver_view(reverse, NULL);
 }

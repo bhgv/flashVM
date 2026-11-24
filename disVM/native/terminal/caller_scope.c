@@ -89,7 +89,7 @@ int styxcallerscopefind(StyxCallerScopes *scopes, uint32_t pid, uint64_t generat
 
 /* EN/RU: See caller_scope.h. The view snapshots ownership under the lock.
  * См. caller_scope.h. Снимок удерживает ссылки под блокировкой. */
-DVM_Provider *styxcallerscopeview(StyxCallerScopes *scopes)
+DVM_Provider *styxcallerscopeview(StyxCallerScopes *scopes, DVM_Provider *shared)
 {
     StyxCallerGrant grants[STYX_CALLER_SLOTS] = {0};
     int valid = 1;
@@ -109,6 +109,11 @@ DVM_Provider *styxcallerscopeview(StyxCallerScopes *scopes)
     }
     pthread_mutex_unlock(&scopes->lock);
     DVM_View *view = valid ? dvm_view_create(NULL, NULL, NULL) : NULL;
+    if (view && shared && !dvm_view_map(view, "/", shared, ".", FVM_ACCESS_MASK, DVM_VIEW_TREE))
+    {
+        dvm_view_discard(view);
+        view = NULL;
+    }
     for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
     {
         if (view && grants[i].tree)

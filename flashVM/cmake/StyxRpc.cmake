@@ -17,6 +17,11 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/object_image.c src/styxrpc/module_import.c
         src/styxrpc/playback.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c ports/styxrpc_stats_port.c)
     target_link_libraries(flashvm_styxrpc PUBLIC flashvm StyxRpc::launch StyxRpc::serve)
+    if(UNIX AND NOT ANDROID AND TARGET Styx::bidir)
+        add_executable(flashvm_styx_player src/styxrpc/player_main.c)
+        target_link_libraries(flashvm_styx_player PRIVATE flashvm_styxrpc Styx::bidir)
+        install(TARGETS flashvm_styx_player RUNTIME DESTINATION bin)
+    endif()
     if(FVM_BUILD_TESTS)
         add_executable(flashvm_tests_styxrpc_host tests/styxrpc_host.c tests/styxrpc/managed.c
             tests/styxrpc/launch.c tests/styxrpc/vfs.c tests/styxrpc/refs.c tests/styxrpc/graph.c

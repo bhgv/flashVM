@@ -1,6 +1,6 @@
 # Paired FlashVM and DisVM
 
-[Русский](STYX_RPC_MODULES.ru.md) · [Styx RPC integration](STYX_RPC.md) · [Ordinary files](STYX_RPC_FILESYSTEM.md)
+[Русский](STYX_RPC_MODULES.ru.md) · [Styx RPC integration](STYX_RPC.md) · [Ordinary files](STYX_RPC_FILESYSTEM.md) · [Run the native paired player](STYX_RPC_PLAYER.md)
 
 ## Use the DisVM filesystem and load a module
 

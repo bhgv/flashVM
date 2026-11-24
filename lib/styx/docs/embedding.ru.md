@@ -94,3 +94,5 @@ target_link_libraries(device PRIVATE Styx::codec)
 | Компонент недоступен | Build option библиотеки; имя/регистр компонента |
 | C++ undefined reference | Соответствие заголовка и библиотеки; использование экспортированного target |
 | После переноса не виден header | Переносить весь prefix; не добавлять старый include-путь вручную |
+
+[Ожидание срока в хостовом сервере](reference/styxphywait.ru.md).

@@ -77,6 +77,12 @@ size_t styxphypending(struct Styxserver *server);
  * Owner flush с единым budget0..120000ms;1 drained/0 pending/failure, tail сохраняется,
  * uncertain terminal, без replay/reconnect. styxend явно отбрасывает остаток. */
 int styxphyflush(struct Styxserver *server, unsigned timeout);
+
+/* EN: Wait for readiness or the same monotonic budget in milliseconds. Zero polls and -1 waits indefinitely.
+ * Return NULL on progress, timeout or wake. The owner calls styxprocess next to dispatch or detect link loss.
+ * RU: Ждать готовности в пределах одного монотонного бюджета в мс. Ноль опрашивает, -1 ждёт бессрочно.
+ * NULL при готовности, сроке или пробуждении. Владелец затем вызывает styxprocess. */
+char *styxphywait(struct Styxserver *server, int timeout);
 #ifdef __cplusplus
 }
 #endif
