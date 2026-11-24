@@ -55,16 +55,26 @@ at an inactive depth and publishes them only when the end record matches the
 pending ticket and the declared item count. It paints the stage, rails and
 rectangular panes from their coordinates and colours the active header.
 The table's pan, scroll and scale come from the scene records.
+Standard TextFields draw each pane's title and body, along with the labels on
+the workspace controls. The same scene that carries positions carries the text.
 
-Run the player with `--window` for the preview. Add `--capture` to the repository
-check with a raster-enabled player to verify pane, header and rail pixels
-after the resize. The check links a separate ActionScript observer to the
+Build the player with `flashVM/cmake/profiles/text-jit.defs` and the SDL2 frontend
+to see the text in a window. Place `ide/assets/fonts/NotoSansMono-Regular.ttf`
+at `fonts/NotoSansMono-Regular.ttf` in the DisVM launch directory. FlashVM reads
+it from the live DisVM VFS over the paired connection at movie setup. The preview
+shows panel geometry when the player has no font support or the file is absent.
+
+Run the player with `--window` for the preview. Add `--text --window` to the
+repository check to serve the font and verify glyphs in the editor and console
+after the resize and edit. `--capture` alone checks the pane, header and rail
+geometry. The check links a separate ActionScript observer to the
 same production drawing code. The production SWF has no scripted test inputs.
 The prebuilt archive contains `desktop-view.swf` for the preview and
-`desktop-check.swf` for the automated sequence. To repeat the sequence, use
+`desktop-check.swf` for the automated sequence, with the font and its license.
+To repeat the sequence, use
 the check movie as `desktop-view.swf` in a separate copy of the directory.
 
-TextField content, caret and selection, native mouse and keyboard routing,
+Caret and selection, native mouse and keyboard routing,
 MDI composition, live thumbnails and the vector bulk/ink services still need
 integration. Menu 8 uses the installed graphical runtime for these features.
 

@@ -5,8 +5,10 @@
 #include "playback_clock.h"
 #include "player_view.h"
 #include "player_terminal.h"
+#include "movie_load.h"
 #include "../../ports/monotonic_port.h"
 #include "flashvm/swf.h"
+#include "flashvm/standard_text.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
@@ -22,6 +24,16 @@
 #define PLAYER_WAIT_MS 5000U   /* Per-operation mount and file timeout. */
 #define PLAYER_TAGS 8U         /* Pending reverse Styx tags. */
 #define PLAYER_TICK 1U         /* Timed operation advances one frame with no backlog burst. */
+#define PLAYER_FONT_LIMIT (4U * 1024U * 1024U) /* Maximum TTF bytes read from the attached VFS. */
+
+
+/* EN: Borrow the reverse namespace and own the live terminal during one playback session.
+ * RU: Заимствовать встречное пространство имён и владеть терминалом в одной сессии. */
+typedef struct PlayerHost
+{
+    StyxRpcTerminal terminal;   /* Live reserved UniBus channel for this playback. */
+    struct StyxClient *session; /* Borrowed reverse filesystem mount. */
+} PlayerHost;
 
 
 /* EN: Consume one traced ActionScript string and publish it on the owner's stdout.
@@ -47,7 +59,30 @@ static FVM_Result trace(FVM_Context *context, FVM_Object *receiver, unsigned arg
  * RU: Подключить диагностику в каждом новом контексте фильма. */
 static FVM_Result setup(void *state, FVM_Context *context)
 {
-    FVM_Result result = fvm_styxrpc_player_terminal(context, state);
+    PlayerHost *host = state;
+    FVM_Result result = fvm_styxrpc_player_terminal(context, &host->terminal);
+#ifdef FVM_HAS_FONTS
+    if (result == FVM_OK)
+    {
+        unsigned char *bytes;
+        size_t size;
+        result = fvm_styxrpc_read_asset(host->session, "fonts/NotoSansMono-Regular.ttf",
+            PLAYER_FONT_LIMIT, &bytes, &size);
+        if (result == FVM_OK)
+        {
+            result = fvm_standard_text_register_font(context, "Noto Sans Mono", bytes, size, 0);
+            if (result == FVM_OK)
+            {
+                result = fvm_standard_text_install(context);
+            }
+        }
+        else if (result == FVM_NOT_FOUND)
+        {
+            result = FVM_OK;
+        }
+        free(bytes);
+    }
+#endif
     return result == FVM_OK ? fvm_avm1_set_trace_rooted(context, trace, NULL, NULL) : result;
 }
 
@@ -140,7 +175,7 @@ static int connected(const char *value)
 static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
 {
     FVM_Config config;
-    StyxRpcTerminal terminal = {0};
+    PlayerHost host = {0};
     FVM_Runtime *runtime = NULL;
     FVM_StyxRpcPlayback *playback = NULL;
     StyxRpcServer *server = NULL;
@@ -148,6 +183,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), PLAYER_MUX_LIMIT);
     StyxClient *root = mux ? styxclientmountphy(phybidirchannel(mux, 1), PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS,
         PLAYER_TAGS) : NULL;
+    host.session = root;
     if (root && fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK)
     {
         FVM_StyxRpcPlaybackSpec spec = {0};
@@ -156,14 +192,14 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
         spec.upload_limit = FVM_SWF_DEFAULT_LIMIT;
         spec.mode = mode;
         spec.setup = setup;
-        spec.host = &terminal;
+        spec.host = &host;
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
         {
             server = styxrpc_server_create(phybidirchannel(mux, 0), &styxrpc_module_slot_tree,
                 fvm_styxrpc_playback_slot(playback));
         }
     }
-    if (server && fvm_styxrpc_player_publish_terminal(server, &terminal))
+    if (server && fvm_styxrpc_player_publish_terminal(server, &host.terminal))
     {
         status = replay(server, playback, view);
         if (!status && !fvm_paired_view_capture(view, playback))

@@ -21,7 +21,9 @@ function drawDesktopItem() {
     desktopFill = 15133941; // Pale paper, RGB #e6ecf5.
     desktopHeader = 4282960; // Slate pane header, RGB #415a50.
     desktopBand = false;
+    desktopItemScale = 1;
     if (!(desktopParent - 1)) {
+        desktopItemScale = desktopScale;
         desktopX = desktopX * desktopScale + desktopPan;
         desktopY = (desktopY - desktopScroll) * desktopScale;
         desktopW = desktopW * desktopScale;
@@ -64,13 +66,17 @@ function drawDesktopItem() {
         desktopPaint = desktopPane.lineTo(0, 0);
         desktopPaint = desktopPane.endFill();
         if (desktopBand) {
+            desktopHeaderHeight = 24 * desktopItemScale;
             desktopPaint = desktopPane.beginFill(desktopHeader);
             desktopPaint = desktopPane.moveTo(0, 0);
             desktopPaint = desktopPane.lineTo(desktopW, 0);
-            desktopPaint = desktopPane.lineTo(desktopW, 24);
-            desktopPaint = desktopPane.lineTo(0, 24);
+            desktopPaint = desktopPane.lineTo(desktopW, desktopHeaderHeight);
+            desktopPaint = desktopPane.lineTo(0, desktopHeaderHeight);
             desktopPaint = desktopPane.lineTo(0, 0);
             desktopPaint = desktopPane.endFill();
+        }
+        if (TextField) {
+            desktopTextDrawn = _root.drawDesktopText();
         }
     }
 }

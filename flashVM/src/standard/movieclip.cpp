@@ -45,6 +45,7 @@
 #include "flashvm/movieclip.h"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
+#include "flashvm/standard_text.h"
 #include "flashvm/avm1.h"
 #include "flashvm/path.h"
 #include "flashvm/gc.h"
@@ -525,6 +526,22 @@ FVM_Result clip_string(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Va
 }
 
 
+/* [GC:] EN: Text slots expose their attached TextField while keeping the internal clip private.
+ * RU: Текстовая глубина показывает TextField и скрывает внутренний клип. */
+FVM_Object *display_value(FVM_Object *child)
+{
+    FVM_Object *data = 0;
+    FVM_Value field_value;
+    if (state(child, data) == FVM_OK && field(data, "text_field", field_value) == FVM_OK &&
+        field_value.type == FVM_VALUE_OBJECT && field_value.object && field_value.object->owner == child->owner &&
+        field_value.object->resource_kind == FVM_RESOURCE_TEXT_FIELD)
+    {
+        return field_value.object;
+    }
+    return child;
+}
+
+
 /* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
 FVM_Result publish_child(FVM_Context *c, FVM_Object *o, FVM_Object *child, const char *name, long depth)
 {
@@ -576,16 +593,17 @@ FVM_Result publish_child(FVM_Context *c, FVM_Object *o, FVM_Object *child, const
             /* Preserve embedded NUL bytes when removing the replaced child's binding. */
             fvm_detail::string binding(old_name.string, fvm_string_size(old_name));
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p = props.find(binding);
-            if (p != props.end() && p->second.type == FVM_VALUE_OBJECT && p->second.object == replaced)
+            if (p != props.end() && p->second.type == FVM_VALUE_OBJECT && p->second.object == display_value(replaced))
             {
                 props.erase(binding);
             }
         }
     }
     next[key] = object(child);
-    if (!static_art(child) && props.find(name) == props.end())
+    FVM_Object *published = display_value(child);
+    if ((published != child || !static_art(child)) && props.find(name) == props.end())
     {
-        props[name] = object(child);
+        props[name] = object(published);
     }
     /* [GC:] Stage detachment before publishing anything; OOM must preserve the old child graph. */
     FVM_Object *old_data = 0;
@@ -614,6 +632,7 @@ FVM_Result publish_child(FVM_Context *c, FVM_Object *o, FVM_Object *child, const
     return FVM_OK;
 }
 
+#include "movieclip_text_attach.inc"
 
 /* Validate counted string arguments before using the current NUL-terminated name model. */
 FVM_Result clip_name(FVM_Context *c, const FVM_Value *input, FVM_Value &name)
@@ -1139,13 +1158,26 @@ FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Val
         return r;
     }
     Slots::iterator i = children->indexed.find(key);
-    if (i == children->indexed.end() || (i->second.type == FVM_VALUE_OBJECT && static_art(i->second.object)))
+    if (i == children->indexed.end())
     {
         fvm_value_undefined(out);
     }
     else
     {
         *out = i->second;
+        if (out->type == FVM_VALUE_OBJECT)
+        {
+            FVM_Object *child = out->object;
+            FVM_Object *published = display_value(child);
+            if (published == child && static_art(child))
+            {
+                fvm_value_undefined(out);
+            }
+            else
+            {
+                *out = object(published);
+            }
+        }
     }
     return FVM_OK;
 }
@@ -2947,6 +2979,8 @@ FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
 }
 
 
+#include "movieclip_text_render.inc"
+
 /* Render the current value. */
 FVM_Result render(FVM_Context *c,
                   FVM_Object *o,
@@ -3043,6 +3077,11 @@ FVM_Result render(FVM_Context *c,
         {
             return r;
         }
+    }
+    FVM_Object *published = display_value(o);
+    if (published != o)
+    {
+        return sink ? FVM_UNSUPPORTED : render_text(c, published, world, transform, surface, coverage);
     }
     for (Slots::iterator i = paths->indexed.begin(); i != paths->indexed.end(); ++i)
     {
@@ -3959,7 +3998,8 @@ const Method methods[] = {{"toString", clip_string},
                           {"getBytesLoaded", fvm_movieclip_bytes_loaded},
                           {"getBytesTotal", fvm_movieclip_bytes_total},
                           {"getSWFVersion", fvm_movieclip_swf_version},
-                          {"lineGradientStyle", fvm_movieclip_line_gradient_begin}};
+                          {"lineGradientStyle", fvm_movieclip_line_gradient_begin},
+                          {"createTextField", create_text_field}};
 } // namespace
 
 

@@ -46,6 +46,12 @@ FVM_Result fvm_styxrpc_movie_queue(FVM_StyxRpcMovies *movies, FVM_Object *origin
 FVM_Result fvm_styxrpc_movie_reject(FVM_StyxRpcMovies *movies, FVM_Result result);
 
 
+/* EN: Read a nonempty file through one VFS fid up to limit bytes. Caller frees *bytes on success.
+ * RU: Прочитать непустой файл до limit байт через один fid VFS. При успехе владелец освобождает *bytes. */
+FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, size_t limit,
+    unsigned char **bytes, size_t *length);
+
+
 /* [GC:] EN: Release or apply pending requests in order on the owner after a timeline call.
  * RU: Освободить либо применить запросы по порядку у владельца после выполнения кадра. */
 void fvm_styxrpc_movies_finish(FVM_StyxRpcMovies *movies, int apply);

@@ -43,8 +43,8 @@ retirement close the port and release retained channels.
 Paired startup reports an empty selected path, no new-document override,
 and an initial disabled line-number preference. `rows`, ink operations
 and `attachbulk` still require their service bindings. The paired desktop SWF
-paints committed rectangular layouts. Text presentation and native input
-through the adapter are still pending.
+paints committed panel layouts with standard TextFields. The adapter still
+needs to route native input and present caret and selection state.
 
 ## What stays / Что сохраняется
 

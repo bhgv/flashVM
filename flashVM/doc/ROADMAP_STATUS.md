@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1742 / Контрольная точка v0.1742. Standard TextFields paint the
+paired desktop's Unicode titles and contents. Плеер получает шрифт через ту же
+VFS DisVM. SDL2, JIT и интерпретатор дают одинаковый итоговый растр после правки.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1741 / Контрольная точка v0.1741. The paired AS2 movie paints
 committed MovieClip panes from the real desktop scene. Проверяются смена
 компоновки по запросу, точные пиксели и сохранение UTF-8.

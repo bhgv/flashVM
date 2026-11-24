@@ -143,7 +143,7 @@ FVM_Result fvm_styxrpc_movie_queue(FVM_StyxRpcMovies *movies, FVM_Object *origin
 
 /* EN: Read exactly the recorded extent on a held fid, checking EOF and confirmed progress.
  * RU: Прочитать точную длину с удерживаемого fid, проверив EOF и подтверждённый прогресс. */
-static FVM_Result read_movie(StyxRpcVfsFile *file, unsigned char *bytes, size_t length)
+static FVM_Result read_extent(StyxRpcVfsFile *file, unsigned char *bytes, size_t length)
 {
     size_t offset = 0, received;
     unsigned char extra;
@@ -166,15 +166,17 @@ static FVM_Result read_movie(StyxRpcVfsFile *file, unsigned char *bytes, size_t 
 }
 
 
-/* EN: Stage one bounded SWF from the attached VFS and publish only after complete validation.
- * RU: Получить SWF ограниченного размера из VFS и опубликовать после полной проверки. */
-static FVM_Result replace_movie(FVM_StyxRpcMovies *movies, const FVM_StyxRpcMovieRequest *request)
+/* EN/RU: See movie_load.h. / См. movie_load.h. */
+FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, size_t limit,
+    unsigned char **out, size_t *length)
 {
     StyxRpcVfsFile *file = NULL;
     StyxRpcFileInfo info;
     unsigned char *bytes;
     FVM_Result result;
-    if (styxrpc_vfs_open(movies->session, request->path + 1, STYXRPC_FILE_READ, &file) != STYXRPC_IO_OK)
+    *out = NULL;
+    *length = 0;
+    if (styxrpc_vfs_open(session, path, STYXRPC_FILE_READ, &file) != STYXRPC_IO_OK)
     {
         return FVM_NOT_FOUND;
     }
@@ -183,17 +185,37 @@ static FVM_Result replace_movie(FVM_StyxRpcMovies *movies, const FVM_StyxRpcMovi
         styxrpc_vfs_close(file, 0);
         return FVM_ERROR;
     }
-    if (!info.length || info.length > movies->limit)
+    if (!info.length || info.length > limit)
     {
         styxrpc_vfs_close(file, 0);
         return info.length ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
     }
     bytes = malloc((size_t)info.length);
-    result = bytes ? read_movie(file, bytes, (size_t)info.length) : FVM_OUT_OF_MEMORY;
+    result = bytes ? read_extent(file, bytes, (size_t)info.length) : FVM_OUT_OF_MEMORY;
     styxrpc_vfs_close(file, 0);
     if (result == FVM_OK)
     {
-        result = fvm_movieclip_replace_swf(movies->context, request->target, bytes, (size_t)info.length,
+        *out = bytes;
+        *length = (size_t)info.length;
+    }
+    else
+    {
+        free(bytes);
+    }
+    return result;
+}
+
+
+/* EN: Stage one bounded SWF and publish only after complete validation.
+ * RU: Получить SWF ограниченного размера и опубликовать после полной проверки. */
+static FVM_Result replace_movie(FVM_StyxRpcMovies *movies, const FVM_StyxRpcMovieRequest *request)
+{
+    unsigned char *bytes;
+    size_t length;
+    FVM_Result result = fvm_styxrpc_read_asset(movies->session, request->path + 1, movies->limit, &bytes, &length);
+    if (result == FVM_OK)
+    {
+        result = fvm_movieclip_replace_swf(movies->context, request->target, bytes, length,
             request->path, strlen(request->path));
     }
     free(bytes);

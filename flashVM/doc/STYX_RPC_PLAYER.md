@@ -41,6 +41,11 @@ still update the scene. Closing the window ends the session.
 Pass `--capture frame.ppm` on a raster-enabled build to save the final frame
 on normal shutdown, with or without a window.
 
+The `text-jit.defs` profile adds standard TextField rendering. At movie setup
+the player opens `fonts/NotoSansMono-Regular.ttf` through the same DisVM VFS
+session. An absent file leaves the text library unavailable. A present font
+must be valid TTF and no larger than 4 MiB. Each movie owns its font copy.
+
 ## ActionScript session
 
 Uploaded movies receive `styxrpc` and `styxChannel`. The `styxrpc` object

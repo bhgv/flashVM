@@ -14,7 +14,7 @@ read-only maxscroll/maxhscroll/bottomScroll properties, plus a copied native
 viewport observation. See [scroll geometry and transfer contract](TEXT_SCROLL.md).
 Contours include scroll displacement and remain host-clipped. Explicit offset
 changes support [onScroller and listeners](TEXT_SCROLL_EVENTS.md); reflow outside
-native setters, HTML/mixed-font and SWF display-list acceptance remain open.
+native setters, HTML/mixed-font and authored SWF text tags remain open.
 
 
 Native _x/_y and left/center/right automatic anchors are supported within the [bounded geometry contract](TEXT_AUTOSIZE.md). Other display transforms remain unsupported.
@@ -32,7 +32,8 @@ on repeat calls. No libraries are downloaded or linked dynamically.
 | Native properties | Own/prototype getters and setters, original receiver binding, read-only ignored writes, GC-traced captures |
 | new TextFormat | Thirteen positional parameters; missing properties are null; additional Flash 8 fields are initially null |
 | TextFormat.getTextExtent | Six numeric metrics, optional measured wrapping, 4-pixel total gutter, font size and leading |
-| Host-created TextField | text, multiline, wordWrap, _width, _height, textColor and read-only length/textWidth/textHeight |
+| TextField | text, multiline, wordWrap, _width, _height, textColor and read-only length/textWidth/textHeight |
+| MovieClip.createTextField(name, depth, x, y, width, height) | Dynamic TextField returned and published by name and depth, painted in depth order with parent transforms and the field viewport |
 | Formatting methods | Whole-field format writes, uniform getTextFormat character/range snapshots, independent current/future snapshots |
 | replaceText | UTF-16 range replacement, insertion/deletion, transactional validation and layout invalidation |
 | Geometry | Independent editable text-field outline including the 2-pixel origin gutter |
@@ -60,6 +61,13 @@ child/depth entry. [fvm_textfield_path](../include/flashvm/standard_text.h#L91) 
 collection of the field and destruction of the context. The host draws or masks
 it with AGG/Cairo through path.h and chooses the color, e.g. from textColor.
 The exported contours are not clipped to the field rectangle.
+
+With a registered default font, `MovieClip.createTextField` retains the new
+field in the clip's display list. The raster renderer uses `textColor` and
+clips the glyphs to the field's viewport after the parent transform. Replacing
+the depth withdraws the old binding. This path covers dynamic display text.
+Direct mouse targeting, text bounds in MovieClip queries, and Flash's input
+editing and selection behavior remain outside this integration.
 
 Setter text values are copied into context-owned strings. Previously returned
 text string snapshots remain valid until context destruction, even after later
