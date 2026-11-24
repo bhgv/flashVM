@@ -19,6 +19,7 @@ domains: Idesourcedomain; # Immutable classifier module; no document ownership.
 DesktopIDE: module
 {
     init: fn(); # Own the MovieClip desktop and independent pane processes.
+    initpaired: fn(); # Same controllers, with portable geometry on the session's output channel.
 };
 
 
@@ -155,10 +156,26 @@ caption(reply: Idedeskpane->Reply, index: int): string
 }
 
 
+# EN: Run the desktop with native-private geometry channels until shutdown.
+# RU: Запустить рабочий стол с локальными каналами геометрии до завершения.
+init()
+{
+    run(0);
+}
+
+
+# EN: Run the desktop with ordered geometry in the paired session until shutdown.
+# RU: Запустить рабочий стол с упорядоченной геометрией в парной сессии до завершения.
+initpaired()
+{
+    run(1);
+}
+
+
 # Own the application channel registry, not window text. Each editor/log/help has
 # its own spawned Limbo controller; all MovieClip capabilities stay on FlashVM.
 # Native compilation/I/O remain blocking primitives. No parallel native VM claim.
-init()
+run(paired: int)
 {
     sys := load Sys Sys->PATH;
     recents := load Iderecent Iderecent->PATH;
@@ -268,6 +285,10 @@ init()
     finished := 0;
     refresh := 1; # Geometry-only motion reuses immutable pane snapshots.
     dirty := 0; # Last source-authoritative dirty count, refreshed after edits.
+    snapshotmode := "";
+    if (paired) {
+        snapshotmode = "paired";
+    }
     for (;;) {
         if (refresh) {
             dirty = 0;
@@ -276,7 +297,7 @@ init()
             if (!refresh || windows[index] == nil) {
                 continue;
             }
-            snapshot := panecall(windows[index], panes->Snapshot, "", nil);
+            snapshot := panecall(windows[index], panes->Snapshot, snapshotmode, nil);
             shown[index] = snapshot;
             if (snapshot.kind == panes->Editor || snapshot.kind == panes->Vector) {
                 family := sourcefamily(snapshot.kind, snapshot.path);
@@ -348,12 +369,19 @@ init()
         }
         send(codec, output, desk->BeginView, 0, width, height,
              codec->hexword(view.ticket) + codec->hexword(count) + codec->hexword(view.scroll) + codec->hexword(view.zoom) + codec->hexword(view.pan) + codec->hexword(view.reveal));
+        transfers := 0;
         for (index = 0; index < len view.items; index++) {
             item := view.items[index];
             metadata := codec->hexword(item.parent) + codec->hexword(item.x) + codec->hexword(item.y)
                 + codec->hexword(item.width) + codec->hexword(item.height) + codec->hexword(item.style)
                 + codec->hexword(item.caret) + codec->hexword(item.mirror) + codec->hexword(item.anchor);
             send(codec, output, desk->ItemView, view.ticket, item.id, 0, metadata + item.text);
+            if (paired && item.id >= 1 && item.id <= len windows && windows[item.id-1] != nil &&
+                len shown[item.id-1].parts != 0) {
+                snapshot := shown[item.id-1];
+                bulk->publish(codec, output, view.ticket, item.id, snapshot.revision, snapshot.parts);
+                transfers++;
+            }
         }
         if (modal != 0) {
             x := width - 416;
@@ -385,8 +413,7 @@ init()
                     shown[id-1].revision, shown[id-1].colors);
             }
         }
-        transfers := 0;
-        for (index = 0; index < len windows; index++) {
+        for (index = 0; !paired && index < len windows; index++) {
             if (windows[index] == nil || len shown[index].parts == 0) {
                 continue;
             }
@@ -412,7 +439,7 @@ init()
         # Keep one atomic scene publication. Encoding/fragment rendezvous belongs
         # to independent senders/brokers; other Dis owners and ports keep running.
         # Do not start a second scene or act on partially published hit geometry.
-        for (index = 0; index < transfers; index++) {
+        for (index = 0; !paired && index < transfers; index++) {
             <-delivered;
         }
         raw: array of byte;

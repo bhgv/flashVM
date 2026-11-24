@@ -3,4 +3,5 @@ DesktopIDE: module
 {
     PATH: con "desktop-ide.dis"; # Resolve the matched application beside its dependencies.
     init: fn(); # Block until all pane/layout owners acknowledge shutdown.
+    initpaired: fn(); # Carry complete views on the paired UniBus terminal.
 };

@@ -20,5 +20,8 @@ function registerDesktopSource() {
         desktopSources = desktopSources.substr(0, desktopSourceOffset) + desktopParent.toString(16)
             + desktopSourceDepthWord + desktopSourceWidthWord + desktopHexWord
             + desktopSources.substr(desktopSourceOffset + 25);
+        desktopSourcePositionOffset = (desktopId - 1) * 16;
+        desktopSourcePositions = desktopSourcePositions.substr(0, desktopSourcePositionOffset)
+            + desktopWire.substr(61, 16) + desktopSourcePositions.substr(desktopSourcePositionOffset + 16);
     }
 }

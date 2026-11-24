@@ -122,8 +122,29 @@ documents through the shelf, save independent edits, navigate with the overview
 and reorder a card. The final frame checks source ink inside both cards, including
 the inactive tab's moved preview, and the overview image and viewport outline.
 
-Multiple touch contacts and vector bulk/ink still need paired integration.
-Menu 8 uses the installed graphical runtime.
+## SVG documents on the pair
+
+Use Ctrl+Shift+N to create a vector pane. Ctrl+O opens SVG in that pane.
+Choose a drawing tool with its usual key, for example R for Rectangle, and drag
+on the white page. Ctrl+S saves through the active Limbo document. Ctrl+G places
+a vector document in its own graphics MDI group.
+
+The geometry travels on the same UniBus session as input and scene descriptors.
+Dis declares the snapshot ticket, pane, document revision and byte count,
+then sends consecutive fragments before `EndView`. ActionScript decodes
+one record at a time and constructs paths on the staged MovieClip. The new
+scene becomes visible after every declared stream completes. Cubic SVG paths
+retain their original controls in Dis and use a segmented approximation in
+the FlashVM presentation. The paired canvas fits the page to the pane.
+
+Use `--vector` with `--native-events` in the command above. The check opens a
+filled SVG containing a cubic and enough nodes to span multiple fragments,
+draws a rectangle with SDL mouse events, saves it, and compares the file and
+pixels in interpreter and JIT modes. The native event fixture supplies input only.
+
+Multiple touch contacts, the vector viewport and editing overlays, and
+FlashVM-local ink preview still need paired integration. Menu 8 currently
+starts the installed graphical runtime.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

@@ -31,6 +31,12 @@ function onTerminalFrame() {
             if (!desktopWire.indexOf("fvd1:000000070000000000010023")) {
                 desktopEnded = _root.endDesktopScene();
             }
+            if (!desktopWire.indexOf("fvd1:000000070000000000010028")) {
+                desktopVectorStarted = _root.beginDesktopVector();
+            }
+            if (!desktopWire.indexOf("fvd1:000000070000000000010029")) {
+                desktopVectorReceived = _root.receiveDesktopVector();
+            }
             if (onDesktopRecord) {
                 desktopObserved = _root.onDesktopRecord();
             }

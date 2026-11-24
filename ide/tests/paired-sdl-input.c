@@ -203,6 +203,29 @@ static void thumbnails_burst(void)
 }
 
 
+/* EN: Open an SVG in a new vector pane, draw via the window and save in place.
+ * RU: Открыть SVG в новой векторной панели, нарисовать через окно и сохранить на месте. */
+static void vector_burst(void)
+{
+    SDL_Event event;
+    key(SDL_KEYDOWN, SDLK_LCTRL, KMOD_LCTRL);
+    key(SDL_KEYDOWN, SDLK_LSHIFT, KMOD_LCTRL | KMOD_LSHIFT);
+    key(SDL_KEYDOWN, SDLK_n, KMOD_LCTRL | KMOD_LSHIFT);
+    key(SDL_KEYUP, SDLK_n, KMOD_LCTRL | KMOD_LSHIFT);
+    key(SDL_KEYUP, SDLK_LSHIFT, KMOD_LCTRL);
+    key(SDL_KEYUP, SDLK_LCTRL, KMOD_NONE);
+    shortcut(SDLK_o);
+    text("paired-drawing.svg");
+    key(SDL_KEYDOWN, SDLK_RETURN, KMOD_NONE);
+    key(SDL_KEYDOWN, SDLK_r, KMOD_NONE);
+    drag(230, 495, 365, 565);
+    shortcut(SDLK_s);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
+}
+
+
 /* EN: Type, replace a pointer-selected range, save, select again and close normally.
  * RU: Ввести текст, заменить выделенное мышью, сохранить, выделить ещё раз и закрыть. */
 static void burst(void)
@@ -276,6 +299,10 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
         else if (getenv("FVM_PAIRED_TEST_MDI"))
         {
             mdi_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_VECTOR"))
+        {
+            vector_burst();
         }
         else
         {

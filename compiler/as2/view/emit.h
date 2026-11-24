@@ -10,6 +10,12 @@ int emit_if(void);
 void emit_else(int label);
 /* EN/RU: Close the false arm and enter the merge / Завершить ложную ветвь и выдать слияние. */
 void emit_merge(int label);
+/* EN/RU: Open a condition block and return its label / Открыть блок условия и вернуть метку. */
+int emit_while(void);
+/* EN/RU: Enter the loop body on a truthy condition / Войти в тело при истинном условии. */
+void emit_while_test(int label);
+/* EN/RU: Return to the condition and open the exit / Вернуться к условию и открыть выход. */
+void emit_while_end(int label);
 /* Capture current ASCII target token; no runtime global is read for a simple assignment. */
 void emit_target(void);
 /* Capture member name and emit a FIR read of the LHS owner before its RHS. */

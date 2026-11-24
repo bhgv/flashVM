@@ -142,6 +142,24 @@ wireparts(doc: ref Document): array of string
 }
 
 
+# EN: Publish the same committed shapes for a portable MovieClip renderer,
+# including draft stroke samples in drawing tools. Selection plans remain local.
+# RU: Опубликовать те же сохранённые контуры для MovieClip, включая черновые
+# точки инструментов рисования. Планы выделения остаются у локального интерфейса.
+pairedparts(doc: ref Document): array of string
+{
+    if (doc.tool < Select) {
+        return wireparts(doc);
+    }
+    preparewire(doc);
+    header := cameraheader(doc);
+    extra := doc.zoom != 100 || doc.center.x != 500 || doc.center.y != 300;
+    header = header[:48+24*extra];
+    putword(header, 0, doc.tool | (extra << 16) | (doc.wirecubic << 17));
+    return array[] of {string header, doc.wirebody};
+}
+
+
 # Write one uint32 in the existing eight-hex-digit scalar encoding.
 # Caller owns the admitted bytes/range; no allocation or user work occurs here.
 putword(bytes: array of byte, at, value: int)

@@ -13,7 +13,7 @@ static unsigned char fir_text[65536];             /* Private FIR staging buffer;
 static size_t used;                               /* Number of staged FIR bytes. */
 static int failed;                                /* Sticky host, parser or emission failure. */
 static int values;                                /* Next unique SSA value identity. */
-static int labels;                                /* Next distinct conditional's label identity. */
+static int labels;                                /* Next distinct control-flow label identity. */
 static int stack[4096];                           /* Expression values, never VM heap pointers. */
 static int depth;                                 /* Number of initialized expression-stack entries. */
 static char target[256];                          /* Copied current assignment name. */
@@ -173,6 +173,33 @@ void emit_else(int label)
 void emit_merge(int label)
 {
     append("    jump ^merge%d\n^merge%d:\n", label, label);
+}
+
+
+/* EN: Open a condition block and return the loop's unique label.
+ * RU: Открыть блок условия и вернуть уникальную метку цикла. */
+int emit_while(void)
+{
+    int label = labels++;
+    append("    jump ^while%d\n^while%d:\n", label, label);
+    return label;
+}
+
+
+/* EN: Consume the condition and enter the body of loop label when truthy.
+ * RU: Снять условие и войти в тело цикла label при истинном значении. */
+void emit_while_test(int label)
+{
+    int converted = truth();
+    append("    if %%v%d, ^body%d, ^exit%d\n^body%d:\n", converted, label, label, label);
+}
+
+
+/* EN: Close the body at label's back edge and open the false continuation.
+ * RU: Замкнуть тело по обратному ребру label и открыть выход по ложному условию. */
+void emit_while_end(int label)
+{
+    append("    jump ^while%d\n^exit%d:\n", label, label);
 }
 
 /* Capture an assignment target; source comments preserve token line/column, not a debug ABI. */

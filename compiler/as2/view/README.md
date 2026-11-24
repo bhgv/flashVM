@@ -34,14 +34,15 @@ semantics, including strings passed to a property. The LHS object is read before
 the RHS is evaluated. Identifiers and separators are ASCII. UTF-8 `//` comments
 may end at EOF. The profile uses CR/LF line boundaries.
 
-Braced `if (expression) { ... }` supports an optional braced `else`. The condition
-uses AVM1 truthiness. The entire unit can be a parameterless
+Braced `if (expression) { ... }` supports an optional braced `else`. A braced
+`while (expression) { ... }` reevaluates its condition before each iteration,
+using AVM1 truthiness. The entire unit can be a parameterless
 `function name() { ... }`. The SWF initializer installs that method on
 the root MovieClip. FlashVM calls `onEnterFrame` on timeline ticks, and a script
 can call another named method on `_root`. SSA temporaries are
 local to each invocation. Plain assignments follow normal AVM1 name resolution.
 
-Parameters in declarations, standalone call statements, member reads, loops
+Parameters in declarations, standalone call statements, member reads, other loop forms
 and classes remain outside the profile. The shared syntax frontend
 can recognize more than this profile; unsupported lowering fails explicitly.
 Bounds: source 16 KiB, names 253 bytes, spelled string contents 255 bytes,

@@ -12,11 +12,16 @@ function sendDesktopPointer() {
     desktopPointerOffset = 0 - 1;
     if (desktopPointerPane) {
         if (!(desktopPointerCode - 1)) {
-            desktopPointerScalar = desktopPointerPane.getTextScalarAtPoint(2, desktopPointerX, desktopPointerY);
-            if (desktopPointerScalar + 1) {
-                desktopPointerCaption = desktopPointerPane.getInstanceAtDepth(1);
-                if (desktopPointerCaption) {
-                    desktopPointerOffset = desktopPointerScalar + desktopPointerCaption.getScalarCount() + 1;
+            desktopPointerCanvas = desktopPointerPane.getInstanceAtDepth(8);
+            if (desktopPointerCanvas) {
+                desktopVectorPointMapped = _root.placeDesktopVectorPointer();
+            } else {
+                desktopPointerScalar = desktopPointerPane.getTextScalarAtPoint(2, desktopPointerX, desktopPointerY);
+                if (desktopPointerScalar + 1) {
+                    desktopPointerCaption = desktopPointerPane.getInstanceAtDepth(1);
+                    if (desktopPointerCaption) {
+                        desktopPointerOffset = desktopPointerScalar + desktopPointerCaption.getScalarCount() + 1;
+                    }
                 }
             }
         }

@@ -10,7 +10,9 @@ function endDesktopScene() {
         desktopRecordTicket = desktopWire.substr(29, 8);
         if (!desktopRecordTicket.indexOf(desktopTicket)) {
             if (desktopExpected) {
-                if (!(desktopSeen - desktopExpected)) {
+                desktopVectorExpected = ("0x" + desktopWire.substr(37, 8)) * 1;
+                if (!(desktopSeen - desktopExpected) * !desktopVectorFailed * !desktopVectorRemaining
+                    * !(desktopVectorCount - desktopVectorExpected)) {
                     if (desktopFront) {
                         desktopFront._visible = false;
                     }
@@ -21,6 +23,13 @@ function endDesktopScene() {
                     desktopFrontTicket = desktopTicket;
                     desktopFrontWidth = desktopWidth;
                     desktopFrontHeight = desktopHeight;
+                    desktopFrontSources = desktopSources;
+                    desktopFrontSourcePositions = desktopSourcePositions;
+                    desktopFrontGroups = desktopStagedGroups;
+                    desktopFrontGroupPositions = desktopGroupPositions;
+                    desktopFrontTableX = desktopTableX;
+                    desktopFrontTableY = desktopTableY;
+                    desktopFrontTableScale = desktopScale;
                     desktopReady = true;
                     if (desktopResizePending) {
                         if (Math.abs(desktopResizeWidth - desktopWidth) + Math.abs(desktopResizeHeight - desktopHeight)) {

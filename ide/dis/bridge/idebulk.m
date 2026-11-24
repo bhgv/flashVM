@@ -13,4 +13,9 @@ Idebulk: module
     # Return nil on invalid dependencies/slot or native registration refusal.
     start: fn(codec: Uibridge, host: Unibus, slot: int,
               completed: chan of int): chan of ref Job;
+
+    # EN: Send declared geometry and bounded fragments in scene order on output.
+    # RU: Передать объявление и ограниченные фрагменты геометрии по output в порядке сцены.
+    publish: fn(codec: Uibridge, output: chan of array of byte, ticket, slot, revision: int,
+                parts: array of string);
 };

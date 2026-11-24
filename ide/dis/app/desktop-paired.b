@@ -70,5 +70,5 @@ init()
         raise sys->sprint("start desktop-view.swf: %r");
     }
     state = nil;
-    desktop->init();
+    desktop->initpaired();
 }

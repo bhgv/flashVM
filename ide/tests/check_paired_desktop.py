@@ -7,12 +7,25 @@ from pathlib import Path
 from shutil import copy2
 import sys
 from tempfile import TemporaryDirectory
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]  # EN/RU: Repository root / корень проекта.
 sys.path.insert(0, str(ROOT / "lib/styxrpc/tests/flashvm"))
 sys.path.insert(0, str(ROOT / "ide"))
 from build_paired_view import build_movie
 from run import exchange
+
+
+# EN: Seed a bounded SVG with line and cubic geometry crossing a fragment boundary.
+# RU: Подготовить SVG с линиями и кубической кривой по обе стороны границы фрагмента.
+def seed_vector(path):
+    edge = " ".join(f"L {60 + 8 * index} 280" for index in range(30))
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">'
+        f'<path d="M 60 80 C 120 30 220 30 292 80 L 292 280 {edge} Z" '
+        'fill="#e04444" stroke="none"/></svg>',
+        encoding="utf-8",
+    )
 
 
 # EN: Compile the AS test source with the same AS2, FIR and SWL pipeline as IDE assets.
@@ -34,6 +47,9 @@ def check(args, directory, movie, mode):
         (directory / "fonts").mkdir()
         copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
+    drawing = directory / "paired-drawing.svg"
+    if args.vector:
+        seed_vector(drawing)
 
     # EN: Each command receives one connected descriptor from exchange.
     # RU: Каждая команда получает один связанный дескриптор от exchange.
@@ -48,6 +64,8 @@ def check(args, directory, movie, mode):
                 environment.append("FVM_PAIRED_TEST_MDI=1")
             if args.thumbnails:
                 environment.append("FVM_PAIRED_TEST_THUMBNAILS=1")
+            if args.vector:
+                environment.append("FVM_PAIRED_TEST_VECTOR=1")
             return [*environment, *argv]
         return argv
 
@@ -63,11 +81,16 @@ def check(args, directory, movie, mode):
     if args.thumbnails:
         timeout = 80
         expected = {"paired-thumb-first.txt": "1-первая\nстрока один", "paired-thumb-second.txt": "2-вторая\nстрока два"}
+    if args.vector:
+        timeout = 65
+        expected = {}
     exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
              timeout=timeout)
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
+    if args.vector:
+        return verify_vector(drawing, capture)
     print(f"PASS {mode}: desktop saved the UTF-8 edit on the mounted pair")
     if args.capture:
         if args.thumbnails:
@@ -77,6 +100,30 @@ def check(args, directory, movie, mode):
         if args.native_events:
             return verify_selection(capture)
         return verify_pixels(capture, args.text)
+
+
+# EN: Verify source geometry, the added shape and painted SVG pixels.
+# RU: Проверить исходный контур, новую фигуру и пиксели отображённого SVG.
+def verify_vector(drawing, capture):
+    shapes = list(ET.parse(drawing).getroot())
+    if (len(shapes) != 2 or "C 120 30 220 30 292 80" not in shapes[0].attrib.get("d", "")
+            or shapes[1].attrib.get("d", "").strip() != "M 354 236 L 733 236 L 733 433 L 354 433 Z"):
+        raise RuntimeError("the saved SVG must preserve the cubic and contain the new closed shape: " +
+                           drawing.read_text(encoding="utf-8"))
+    header = b"P6\n960 640\n255\n"
+    data = capture.read_bytes()
+    if not data.startswith(header) or len(data) != len(header) + 960 * 640 * 3:
+        raise RuntimeError("wrong vector desktop raster extent")
+    def pixel(x, y):
+        offset = len(header) + (960 * y + x) * 3
+        return data[offset:offset + 3]
+
+    original = sum(pixel(x, y) == bytes.fromhex("e04444") for x in range(123, 209) for y in range(440, 510))
+    added = sum(pixel(x, 565) == bytes.fromhex("b8c9ec") for x in range(235, 360))
+    if original < 1000 or added < 80:
+        raise RuntimeError("the raster lost the filled SVG contour")
+    print("PASS SVG opened, rendered across fragments, edited with SDL2 and saved through Dis")
+    return data
 
 
 # EN: Check the composed 960 × 640 desktop rather than just the protocol output.
@@ -201,9 +248,10 @@ def main():
     scenarios = parser.add_mutually_exclusive_group()
     scenarios.add_argument("--mdi", action="store_true", help="exercise native resize and MDI in the SDL2 fixture")
     scenarios.add_argument("--thumbnails", action="store_true", help="exercise real shelf and overview navigation")
+    scenarios.add_argument("--vector", action="store_true", help="open, edit and save an SVG through the real window")
     args = parser.parse_args()
-    if (args.mdi or args.thumbnails) and not args.native_events:
-        parser.error("--mdi and --thumbnails require --native-events")
+    if (args.mdi or args.thumbnails or args.vector) and not args.native_events:
+        parser.error("--mdi, --thumbnails and --vector require --native-events")
     if args.native_events:
         args.text = args.window = True
     args.capture = args.capture or args.text

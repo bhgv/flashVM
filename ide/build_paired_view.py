@@ -15,7 +15,8 @@ def build_movie(output, as2, fir, swl, observers=()):
     output = output.resolve()
     parts = ("word", "layers", "placement", "group", "pick-layer", "pick", "resize", "pointer",
              "poll", "text", "source", "mirror-source", "mirror-card", "mirror-pixels", "mirror", "atlas",
-             "compose", "cull", "item", "begin", "end", "terminal", "view")
+             "compose", "cull", "item", "vector", "vector-fragment", "vector-decode", "vector-path",
+             "vector-node", "vector-cubic", "vector-pointer", "vector-origin", "begin", "end", "terminal", "view")
     sources = tuple(SOURCES / f"desktop-paired-{part}.as" for part in parts) + tuple(observers)
     with TemporaryDirectory(prefix="desktop-view-", dir=output.parent) as temporary:
         work = Path(temporary)

@@ -847,7 +847,12 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (len doc.points != 0) {
             revision++;
         }
-        parts := vector->wireparts(doc);
+        parts: array of string;
+        if (request.operation == Snapshot && request.text == "paired") {
+            parts = vector->pairedparts(doc);
+        } else {
+            parts = vector->wireparts(doc);
+        }
         drawing := "";
         if (notices == nil || identity <= 0) {
             drawing = vector->wire(doc);

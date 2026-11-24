@@ -27,5 +27,11 @@ function beginDesktopScene() {
     desktopEmptySource = "0000000000000000000000000";
     desktopEmptySources = desktopEmptySource + desktopEmptySource + desktopEmptySource + desktopEmptySource;
     desktopSources = desktopEmptySources + desktopEmptySources;
+    desktopSourcePositions = desktopEmptySources + desktopEmptySources;
+    desktopGroupPositions = desktopEmptySources + desktopEmptySources;
+    desktopVectorRemaining = 0;
+    desktopVectorCount = 0;
+    desktopVectorFailed = false;
+    desktopVectorSlots = "";
     desktopOpen = desktopTicket;
 }

@@ -55,6 +55,15 @@ PRODUCTIONS
     Statement =
         Assignment
         | Conditional
+        | WhileLoop
+    .
+
+    /* EN: Reevaluate the condition before each iteration.
+     * RU: Вычислять условие перед каждой итерацией. */
+    WhileLoop =                                                         (. int label; .)
+        "while"                                                         (. label = emit_while(); .)
+        "(" Expression ")"                                              (. emit_while_test(label); .)
+        "{" [ Statements ] "}"                                          (. emit_while_end(label); .)
     .
 
     /* EN: Terminate each arm at a distinct merge block; optional else may be empty.

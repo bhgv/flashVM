@@ -153,6 +153,7 @@ Idevector: module
     # Return immutable stream segments: small current header + cached geometry
     # by reference. An active portable draft uses the legacy contiguous snapshot.
     wireparts: fn(doc: ref Document): array of string;
+    pairedparts: fn(doc: ref Document): array of string; # Copied drawing without native overlay plans.
     # Serialize complete committed SVG. Callers refuse Save while a gesture is active.
     svg: fn(doc: ref Document): string;
     # Parse the documented strict SVG subset transactionally. On error return nil;

@@ -2,6 +2,55 @@ implement Idebulk;
 include "uibridge.m";
 include "unibus.m";
 include "idebulk.m";
+include "idedesktop.m";
+
+
+# EN: Send borrowed immutable parts with consecutive byte offsets. Blocks only
+# for the output receiver. Encoding failure raises before sending that fragment.
+# RU: Передать заимствованные неизменяемые части с последовательными смещениями.
+# Ожидает только получателя output. Ошибка кодирования прерывает отправку фрагмента.
+fragments(codec: Uibridge, output: chan of array of byte, ticket, slot: int, parts: array of string)
+{
+    offset := 0;
+    for (part := 0; part < len parts; part++) {
+        segment := parts[part];
+        for (start := 0; start < len segment; start += 1024) {
+            end := start + 1024;
+            if (end > len segment) {
+                end = len segment;
+            }
+            (valid, wire) := codec->encode(ref Uibridge->Message(codec->View, 0,
+                Idedesktop->VectorData, ticket, slot, offset, segment[start:end]));
+            if (!valid) {
+                raise "fail: bulk geometry encoding";
+            }
+            output <-= wire;
+            offset += end - start;
+        }
+    }
+}
+
+
+# EN: Announce the exact ASCII extent for slot/revision, then send its parts on
+# the same ordered output. Ticket comes from the view owner. Raises on bad encoding.
+# RU: Объявить точный размер ASCII для slot/revision, затем передать части в тот же упорядоченный
+# output. Билет выдаёт владелец сцены. Ошибка кодирования вызывает исключение.
+publish(codec: Uibridge, output: chan of array of byte, ticket, slot, revision: int,
+        parts: array of string)
+{
+    extent := 0;
+    for (index := 0; index < len parts; index++) {
+        extent += len parts[index];
+    }
+    (valid, wire) := codec->encode(ref Uibridge->Message(codec->View, 0,
+        Idedesktop->VectorBegin, ticket, slot, extent,
+        codec->hexword(revision) + codec->hexword(Idedesktop->VectorVersion)));
+    if (!valid) {
+        raise "fail: paired vector declaration encoding";
+    }
+    output <-= wire;
+    fragments(codec, output, ticket, slot, parts);
+}
 
 
 # Own one rooted native output and one bounded job queue. Immutable job strings
@@ -30,23 +79,7 @@ serve(codec: Uibridge, host: Unibus, slot: int, output: chan of array of byte,
             }
             host->inkdone(job.token, drawing);
         }
-        offset := 0;
-        for (part := 0; part < len job.parts; part++) {
-            segment := job.parts[part];
-            for (start := 0; start < len segment; start += 1024) {
-                end := start + 1024;
-                if (end > len segment) {
-                    end = len segment;
-                }
-                (valid, wire) := codec->encode(ref Uibridge->Message(codec->View, 0,
-                    65577, job.ticket, slot, offset, segment[start:end]));
-                if (!valid) {
-                    raise "fail: bulk geometry encoding";
-                }
-                output <-= wire;
-                offset += end - start;
-            }
-        }
+        fragments(codec, output, job.ticket, slot, job.parts);
         completed <-= slot;
         job = nil;
     }

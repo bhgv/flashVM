@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1747 / Контрольная точка v0.1747. The paired desktop draws SVG
+paths from the same UniBus session as other views. Сквозная проверка открывает
+SVG, добавляет фигуру мышью, сохраняет документ и сверяет растр в обоих режимах.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1746 / Контрольная точка v0.1746. The DisVM heap merges adjacent
 free blocks on demand when it cannot fit an allocation in one block. Это устраняет
 отказ из-за фрагментации кучи при отрисовке векторной панели MDI. [EN](../../disVM/runtime/MEMORY-STATISTICS.md) / [RU](../../disVM/runtime/MEMORY-STATISTICS.ru.md).
