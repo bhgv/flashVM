@@ -24,23 +24,18 @@ typedef struct ServerMessagePort
     uint64_t write_offset;     /* Next position for client-to-server bytes. */
 } ServerMessagePort;
 
-const StyxRpcNode styxrpc_message_node = {
-    .entry = {STYXRPC_MESSAGE_NODE, STYXRPC_MESSAGES_FILE, 0666, 0}
-}; /* Root-owned regular stream; stat length is zero. */
-
-
 /* EN: Check root capacity and reject collisions before copying spec into owned storage.
  * RU: Проверить в дереве размер корня и коллизии до копирования spec в своё хранилище. */
 MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
-    const StyxRpcMessageSpec *spec)
+    const StyxRpcNode *node, size_t roots, const StyxRpcMessageSpec *spec)
 {
     StyxRpcNode existing;
-    if (tree->stat(context, STYXRPC_MESSAGE_NODE, &existing))
+    if (tree->stat(context, node->entry.id, &existing))
     {
         return NULL;
     }
     size_t index;
-    for (index = 0; index < STYXRPC_TREE_CHILDREN; ++index)
+    for (index = 0; index < STYXRPC_TREE_CHILDREN - roots; ++index)
     {
         StyxRpcEntry entry;
         StyxRpcStatus status = styxrpc_dir_entry(&tree->files, context, 0, index, &entry);
@@ -48,13 +43,13 @@ MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
         {
             break;
         }
-        if (status != STYXRPC_OK || entry.id == STYXRPC_MESSAGE_NODE ||
-            !strcmp(entry.name, STYXRPC_MESSAGES_FILE))
+        if (status != STYXRPC_OK || entry.id == node->entry.id ||
+            !strcmp(entry.name, node->entry.name))
         {
             return NULL;
         }
     }
-    if (index == STYXRPC_TREE_CHILDREN)
+    if (index == STYXRPC_TREE_CHILDREN - roots)
     {
         return NULL;
     }
@@ -80,7 +75,7 @@ MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
 static int open_messages(void *context, uint64_t node, unsigned access, void **cookie)
 {
     MessageService *service = context;
-    if (node != STYXRPC_MESSAGE_NODE || access != (STYXRPC_READ | STYXRPC_WRITE) ||
+    if (!node || access != (STYXRPC_READ | STYXRPC_WRITE) ||
         service->ports == STYXRPC_MESSAGES_PORTS_MAX)
     {
         return 0;

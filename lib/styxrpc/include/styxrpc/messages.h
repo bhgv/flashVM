@@ -10,11 +10,13 @@
 extern "C" {
 #endif
 
-#define STYXRPC_MESSAGES_FILE ".messages"  /* Relative path at the hosted tree root. */
+#define STYXRPC_MESSAGES_FILE ".messages"  /* Compatibility path for enable/open. */
+#define STYXRPC_UNIBUS_FILE ".unibus"      /* Default name for publish/open_at. */
 #define STYXRPC_MESSAGE_TYPES_MAX 32U     /* Maximum declarations in either direction. */
 #define STYXRPC_MESSAGE_NAME_MAX 63U      /* Maximum identity bytes, excluding NUL. */
 #define STYXRPC_MESSAGE_PAYLOAD_MAX 16384U /* Maximum payload bytes in one record. */
-#define STYXRPC_MESSAGES_PORTS_MAX 8U      /* Maximum simultaneous ports per hosted server. */
+#define STYXRPC_MESSAGE_ROOTS_MAX 16U     /* Named exchange roots per hosted server. */
+#define STYXRPC_MESSAGES_PORTS_MAX 8U      /* Maximum simultaneous ports per exchange root. */
 
 struct StyxClient; /* An attached Styx session, owned by its caller. */
 typedef struct StyxRpcMessagePort StyxRpcMessagePort; /* One duplex stream on one open fid. */
@@ -51,6 +53,20 @@ typedef struct StyxRpcMessageSpec
     void (*closed)(StyxRpcMessagePort *port, void *context); /* Before disposal, port cannot send. */
     void *context;                  /* Borrowed hook state; ignored on the client. */
 } StyxRpcMessageSpec;
+
+
+/* EN: Publish a named exchange root before the first server step. Copy name and spec.
+ * Name is one root child component, or NULL for .unibus. Return INVALID for a collision or invalid arguments.
+ * RU: Опубликовать именованный корень обмена до первого шага. Скопировать name и spec.
+ * Имя — один компонент в корне или NULL для .unibus. Коллизия или неверные аргументы дают INVALID. */
+StyxRpcStatus styxrpc_messages_publish(StyxRpcServer *server, const char *name,
+    const StyxRpcMessageSpec *spec);
+
+
+/* EN: Open a named message root on session (NULL name selects .unibus). Ownership and results match messages_open.
+ * RU: Открыть именованный корень в session (NULL выбирает .unibus). Владение и результат как у messages_open. */
+StyxRpcStatus styxrpc_messages_open_at(struct StyxClient *session, const char *name,
+    const StyxRpcMessageSpec *spec, StyxRpcMessagePort **out);
 
 
 /* EN: Copy spec and publish the message endpoint before the server's first step.

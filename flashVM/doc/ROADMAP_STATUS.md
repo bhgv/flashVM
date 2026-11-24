@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1731 / Контрольная точка v0.1731. The hosted libstyxrpc SDK
+serves named UniBus exchange roots with an independent registry per root.
+По умолчанию новый API выбирает `.unibus`.
+[EN](../../lib/styxrpc/reference/custom_messages.md) /
+[RU](../../lib/styxrpc/reference/custom_messages.ru.md).
+
 Checkpoint v0.1730 / Контрольная точка v0.1730. The hosted libstyxrpc SDK
 registers application schemas and callbacks on the existing Styx session.
 Собственные теги UniBus объявляются при открытии двустороннего `.messages`.

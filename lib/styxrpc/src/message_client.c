@@ -5,6 +5,7 @@
 #include "message_internal.h"
 #include "styxrpc/vfs_client.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define MESSAGE_READ_BATCH 4096U /* Byte budget per pump, before negotiated Styx fragmentation. */
 
@@ -20,10 +21,11 @@ typedef struct ClientMessagePort
 
 
 /* EN/RU: See messages.h. / См. messages.h. */
-StyxRpcStatus styxrpc_messages_open(struct StyxClient *session, const StyxRpcMessageSpec *spec,
+StyxRpcStatus styxrpc_messages_open_at(struct StyxClient *session, const char *name, const StyxRpcMessageSpec *spec,
     StyxRpcMessagePort **out)
 {
-    if (!session || !out)
+    name = name ? name : STYXRPC_UNIBUS_FILE;
+    if (!session || strchr(name, '/') || !out)
     {
         return STYXRPC_INVALID;
     }
@@ -34,7 +36,7 @@ StyxRpcStatus styxrpc_messages_open(struct StyxClient *session, const StyxRpcMes
     }
     if (!styxrpc_message_config(&opened->config, spec) ||
         !styxrpc_message_port_init(&opened->port, &opened->config) ||
-        styxrpc_vfs_open(session, STYXRPC_MESSAGES_FILE, STYXRPC_FILE_RDWR, &opened->file) != STYXRPC_IO_OK)
+        styxrpc_vfs_open(session, name, STYXRPC_FILE_RDWR, &opened->file) != STYXRPC_IO_OK)
     {
         free(opened);
         return STYXRPC_INVALID;
@@ -42,6 +44,14 @@ StyxRpcStatus styxrpc_messages_open(struct StyxClient *session, const StyxRpcMes
     opened->port.client = 1;
     *out = &opened->port;
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See messages.h. / См. messages.h. */
+StyxRpcStatus styxrpc_messages_open(struct StyxClient *session, const StyxRpcMessageSpec *spec,
+    StyxRpcMessagePort **out)
+{
+    return styxrpc_messages_open_at(session, STYXRPC_MESSAGES_FILE, spec, out);
 }
 
 

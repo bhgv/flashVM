@@ -39,7 +39,6 @@ struct StyxRpcMessagePort
 
 typedef struct MessageService MessageService; /* Hosted registration and open-port count. */
 extern const StyxRpcVfs styxrpc_message_files; /* Per-fid callbacks for the root node. */
-extern const StyxRpcNode styxrpc_message_node; /* Metadata for the reserved endpoint. */
 
 
 /* EN: Copy and validate spec's type registrations into config, 1 on success.
@@ -65,6 +64,6 @@ void styxrpc_message_drain(StyxRpcMessagePort *port, size_t size);
 /* EN: Copy spec and verify available space and identity in tree/context. Return owned service.
  * RU: Скопировать spec и проверить свободное место и ID в tree/context. Вернуть свой сервис. */
 MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
-    const StyxRpcMessageSpec *spec);
+    const StyxRpcNode *node, size_t roots, const StyxRpcMessageSpec *spec);
 
 #endif

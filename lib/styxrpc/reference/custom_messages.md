@@ -15,6 +15,15 @@ independent byte offsets and a registry for each direction. Closing its fid
 releases only that stream. The client uses an existing `StyxClient`, including
 one on a bidirectional link.
 
+## Named exchange roots
+
+Use [styxrpc_messages_publish](messages_publish.md) to publish a separate
+root for each group. For example, publish `.input` and `.render` with
+different sets of schemas. The client selects a name with
+[styxrpc_messages_open_at](messages_open_at.md). NULL in either call selects
+`.unibus`. The original enable/open API continues to use `.messages`.
+A server supports up to 16 roots and eight open ports per root.
+
 ## Set up one port
 
 1. Install the hosted SDK with `STYXRPC_HOSTED=ON`. Include
@@ -62,7 +71,7 @@ application that needs confirmations can register a reply schema and carry
 request IDs in its payload.
 
 Limits are 32 registrations per side, 16,384 payload bytes per record, and
-eight ports per hosted server. The example in
+eight ports per exchange root. The example in
 [`tests/message_socket.c`](../tests/message_socket.c) mounts one real socket,
 exchanges a maximum-size binary sample in fragmented Styx transfers, and
 calls `increment` on the same client. Run it from the SDK source directory.

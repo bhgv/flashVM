@@ -190,7 +190,7 @@ static int exchange(StyxClient *client)
         styxrpc_vfs_list(client, "", 0, 2, visit, &entries) == STYXRPC_IO_OK && entries == 1 &&
         styxrpc_vfs_open(client, STYXRPC_MESSAGES_FILE, STYXRPC_FILE_READ, &read_only) == STYXRPC_IO_NOT_OPEN &&
         styxrpc_messages_open(client, &spec, &port) == STYXRPC_OK &&
-        styxrpc_messages_open(client, &other_spec, &other) == STYXRPC_OK;
+        styxrpc_messages_open_at(client, NULL, &other_spec, &other) == STYXRPC_OK;
     sample_name[0] = '!';
     unsigned char bytes[STYXRPC_MESSAGE_PAYLOAD_MAX];
     for (size_t i = 0; i < sizeof(bytes); ++i)
@@ -254,9 +254,13 @@ int main(void)
         &styxrpc_scalar_module_tree, &module);
     int rejected = test.server && styxrpc_messages_enable(test.server, &spec) == STYXRPC_INVALID;
     types[1].send_tag = 55;
+    StyxRpcMessageSpec isolated = {types + 1, 1, opened_port, closed_port, &test};
     pthread_t owner;
     if (!rejected || styxrpc_messages_enable(test.server, &spec) != STYXRPC_OK ||
         styxrpc_messages_enable(test.server, &spec) != STYXRPC_INVALID ||
+        styxrpc_messages_publish(test.server, "mounted", &isolated) != STYXRPC_INVALID ||
+        styxrpc_messages_publish(test.server, NULL, &isolated) != STYXRPC_OK ||
+        styxrpc_messages_publish(test.server, STYXRPC_UNIBUS_FILE, &isolated) != STYXRPC_INVALID ||
         pthread_create(&owner, NULL, dispatch, &test))
     {
         styxrpc_server_destroy(test.server);

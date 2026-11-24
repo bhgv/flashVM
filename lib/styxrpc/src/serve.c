@@ -19,7 +19,9 @@ struct StyxRpcServer
     const StyxRpcTree *tree;        /* Borrowed callback table. */
     void *context;                  /* Borrowed application state. */
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
-    MessageService *messages;       /* Optional owned message registry. */
+    MessageService *messages[STYXRPC_MESSAGE_ROOTS_MAX]; /* Owned exchange registries. */
+    char message_names[STYXRPC_MESSAGE_ROOTS_MAX][STYXRPC_TREE_NAME + 1]; /* Owned names. */
+    size_t message_count;          /* Published exchange roots. */
     int started;                    /* Publication is fixed after stepping. */
     StyxRpcPrograms *programs;       /* Exclusive borrowed registry for a program server. */
     pthread_mutex_t program_lock;   /* Serializes requests and changes to that registry. */
@@ -36,13 +38,21 @@ typedef struct TreeFid
 static __thread StyxRpcServer *active; /* Current host dispatcher on this native thread. */
 
 
+/* EN: Map id to an exchange slot, or return an out-of-range index.
+ * RU: Найти индекс корня обмена по id либо вернуть индекс вне диапазона. */
+static uint64_t message_slot(uint64_t id)
+{
+    return STYXRPC_MESSAGE_NODE - id;
+}
+
+
 /* EN: Obtain current metadata for an exact ID, within the exported contract.
  * RU: Получить текущие метаданные точного ID в рамках контракта экспорта. */
 static int lookup(StyxRpcServer *server, uint64_t id, StyxRpcNode *node)
 {
-    if (server->messages && id == STYXRPC_MESSAGE_NODE)
+    if (message_slot(id) < server->message_count)
     {
-        *node = styxrpc_message_node;
+        *node = (StyxRpcNode){.entry = {id, server->message_names[message_slot(id)], 0666, 0}};
         return 1;
     }
     return server->tree->stat(server->context, id, node) == 1 &&
@@ -58,22 +68,13 @@ static int lookup(StyxRpcServer *server, uint64_t id, StyxRpcNode *node)
  * RU: Прочитать запись каталога server, включая необязательный узел в корне. */
 static StyxRpcStatus child_entry(StyxRpcServer *server, uint64_t directory, size_t index, StyxRpcEntry *entry)
 {
-    if (server->messages && !directory)
+    if (!directory && index < server->message_count)
     {
-        if (!index)
-        {
-            *entry = styxrpc_message_node.entry;
-            return STYXRPC_OK;
-        }
-        StyxRpcStatus status = styxrpc_dir_entry(&server->tree->files, server->context, 0, index - 1, entry);
-        if (status == STYXRPC_OK && (entry->id == STYXRPC_MESSAGE_NODE ||
-            !strcmp(entry->name, STYXRPC_MESSAGES_FILE)))
-        {
-            return STYXRPC_INVALID;
-        }
-        return status;
+        *entry = (StyxRpcEntry){STYXRPC_MESSAGE_NODE - index, server->message_names[index], 0666, 0};
+        return STYXRPC_OK;
     }
-    return styxrpc_dir_entry(&server->tree->files, server->context, directory, index, entry);
+    return styxrpc_dir_entry(&server->tree->files, server->context, directory,
+        directory ? index : index - server->message_count, entry);
 }
 
 
@@ -175,9 +176,10 @@ static char *open_node(Qid *qid, int mode)
     {
         return Enomem;
     }
-    int messages = active->messages && qid->path == STYXRPC_MESSAGE_NODE;
+    uint64_t slot = message_slot(qid->path);
+    int messages = slot < active->message_count;
     const StyxRpcVfs *files = messages ? &styxrpc_message_files : &active->tree->files;
-    void *context = messages ? active->messages : active->context;
+    void *context = messages ? active->messages[slot] : active->context;
     if ((!node.entry.directory && styxrpc_file_open(&fid->file, files, context,
         qid->path, access) != STYXRPC_OK) || styxsetauxowned(&active->wire, fid, release_fid) < 0)
     {
@@ -385,14 +387,41 @@ int styxrpc_program_server_revoke(StyxRpcServer *server, uint32_t pid)
 
 
 /* EN/RU: See messages.h. / См. messages.h. */
-StyxRpcStatus styxrpc_messages_enable(StyxRpcServer *server, const StyxRpcMessageSpec *spec)
+StyxRpcStatus styxrpc_messages_publish(StyxRpcServer *server, const char *name,
+    const StyxRpcMessageSpec *spec)
 {
-    if (!server || server->messages || server->started)
+    name = name ? name : STYXRPC_UNIBUS_FILE;
+    if (!server || server->started || server->message_count == STYXRPC_MESSAGE_ROOTS_MAX ||
+        !*name || strlen(name) > STYXRPC_TREE_NAME || strchr(name, '/') ||
+        !strcmp(name, ".") || !strcmp(name, "..") || !strcmp(name, ".prog"))
     {
         return STYXRPC_INVALID;
     }
-    server->messages = styxrpc_message_service(server->tree, server->context, spec);
-    return server->messages ? STYXRPC_OK : STYXRPC_INVALID;
+    size_t slot = server->message_count;
+    for (size_t i = 0; i < slot; ++i)
+    {
+        if (!strcmp(name, server->message_names[i]))
+        {
+            return STYXRPC_INVALID;
+        }
+    }
+    StyxRpcNode node = {.entry = {STYXRPC_MESSAGE_NODE - slot, name, 0666, 0}};
+    MessageService *service = styxrpc_message_service(server->tree, server->context, &node, slot + 1, spec);
+    if (!service)
+    {
+        return STYXRPC_INVALID;
+    }
+    strcpy(server->message_names[slot], name);
+    server->messages[slot] = service;
+    ++server->message_count;
+    return STYXRPC_OK;
+}
+
+
+/* EN/RU: See messages.h. / См. messages.h. */
+StyxRpcStatus styxrpc_messages_enable(StyxRpcServer *server, const StyxRpcMessageSpec *spec)
+{
+    return styxrpc_messages_publish(server, STYXRPC_MESSAGES_FILE, spec);
 }
 
 
@@ -444,7 +473,10 @@ void styxrpc_server_destroy(StyxRpcServer *server)
         {
             pthread_mutex_destroy(&server->program_lock);
         }
-        free(server->messages);
+        for (size_t i = 0; i < server->message_count; ++i)
+        {
+            free(server->messages[i]);
+        }
         free(server);
     }
 }
