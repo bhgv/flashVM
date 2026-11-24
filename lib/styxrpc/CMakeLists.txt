@@ -13,7 +13,7 @@ set(STYXRPC_DISVM_SOURCE "" CACHE PATH "DisVM source directory for integration t
 set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal launch SDK")
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
-add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c protocol/call_record.c protocol/call_scope.c
+add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
     protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
@@ -28,7 +28,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Threads REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
     add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_pid.c src/channel_client.c src/channel_arguments.c
-        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/graph_client.c)
+        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/graph_client.c src/message_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)
@@ -38,7 +38,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
         src/scalar_module.c src/managed_module.c src/module.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
-        src/channel_mailbox.c)
+        src/channel_mailbox.c src/message_server.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)
     target_link_libraries(styxrpc_serve PUBLIC StyxRpc::rpc Styx::phy_server Threads::Threads)
     set_target_properties(styxrpc_serve PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME serve)
@@ -105,7 +105,10 @@ if(BUILD_TESTING)
         add_executable(styxrpc-channel-mailbox-test tests/channel_mailbox.c)
         target_link_libraries(styxrpc-channel-mailbox-test PRIVATE StyxRpc::serve)
         add_test(NAME styxrpc-channel-mailbox COMMAND styxrpc-channel-mailbox-test)
-        set_tests_properties(styxrpc-channel-mailbox PROPERTIES TIMEOUT 10)
+        add_executable(styxrpc-messages-test tests/message_socket.c)
+        target_link_libraries(styxrpc-messages-test PRIVATE StyxRpc::serve StyxRpc::launch)
+        add_test(NAME styxrpc-custom-messages COMMAND styxrpc-messages-test)
+        set_tests_properties(styxrpc-channel-mailbox styxrpc-custom-messages PROPERTIES TIMEOUT 10)
         set_tests_properties(styxrpc-unibus-socket styxrpc-channel-handlers styxrpc-channel-group PROPERTIES TIMEOUT 10)
         set_tests_properties(styxrpc-live-directory styxrpc-program-server PROPERTIES TIMEOUT 10)
     endif()

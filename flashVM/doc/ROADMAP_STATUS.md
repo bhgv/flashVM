@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1730 / Контрольная точка v0.1730. The hosted libstyxrpc SDK
+registers application schemas and callbacks on the existing Styx session.
+Собственные теги UniBus объявляются при открытии двустороннего `.messages`.
+[EN](../../lib/styxrpc/reference/custom_messages.md) /
+[RU](../../lib/styxrpc/reference/custom_messages.ru.md).
+
 Checkpoint v0.1729 / Контрольная точка v0.1729. A native headless FlashVM
 player advances uploaded SWFs by their frame clock and serves .state over Styx.
 DisVM выдаёт корень обычной VFS по встречному направлению того же соединения.
