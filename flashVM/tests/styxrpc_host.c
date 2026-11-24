@@ -5,6 +5,7 @@
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
 #include "flashvm/function.h"
+#include "flashvm/jit.h"
 #include "flashvm/styxrpc.h"
 #include "styxrpc/program.h"
 #include "styxrpc/scalar_client.h"
@@ -18,6 +19,7 @@
 #include "styxrpc/graph-test.h"
 #include "styxrpc/hybrid-test.h"
 #include "styxrpc/channel-test.h"
+#include "styxrpc/object-module.h"
 #include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -177,7 +179,7 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
     StyxRpcArgumentBus *bus = has_channel_args ? styxrpc_argument_bus_create(TEST_MANAGED_PID) : NULL;
     StyxRpcResource resource = styxrpc_argument_bus_resource(bus);
     if ((!has_channel_args || bus) && styxrpc_programs_init(&programs, storage, sizeof(storage) / sizeof(*storage)) &&
-        (!managed || styxrpc_program_add(&programs, TEST_MANAGED_PID)) &&
+        ((!managed && strcmp(role, "module-load-call")) || styxrpc_program_add(&programs, TEST_MANAGED_PID)) &&
         (!bus || styxrpc_program_unibus(&programs, TEST_MANAGED_PID, &resource)) &&
         (!launch || test_launch_resources(&programs, &launch_state)))
     {
@@ -211,6 +213,10 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
                 !strcmp(role, "graph-call") ? test_graph_call(context, managed) :
                 !strcmp(role, "ref-call") ? test_refs_call(context, managed) : test_managed_call(context, managed);
         }
+        else if (!strcmp(role, "module-load-call"))
+        {
+            ok = test_object_module_call(context, session);
+        }
         else if (launch)
         {
             ok = test_launch_call(context, launch, session, &launch_state);
@@ -232,6 +238,8 @@ static int call_dis(FVM_Context *context, FVM_StyxRpcImport *binding, StyxRpcMan
 
 /* EN: Create a dedicated interpreter context and run the selected test role.
  * RU: Создать выделенный контекст интерпретатора и выполнить выбранную роль проверки. */
+int test_playback_serve(FVM_Runtime *runtime, int fd, int jit);
+
 int main(int argc, char **argv)
 {
     char *end;
@@ -239,6 +247,8 @@ int main(int argc, char **argv)
     long fd = argc == 3 || variable ? strtol(argv[2], &end, 10) : -1;
     if (fd < 3 || fd > INT_MAX || *end || (strcmp(argv[1], "serve") && strcmp(argv[1], "call") &&
         strcmp(argv[1], "managed-serve") && strcmp(argv[1], "managed-call") &&
+        strcmp(argv[1], "playback-serve") && strcmp(argv[1], "playback-jit-serve") &&
+        strcmp(argv[1], "object-image-serve") && strcmp(argv[1], "module-load-call") &&
         strcmp(argv[1], "launch") && strcmp(argv[1], "vfs") && !variable &&
         strcmp(argv[1], "ref-serve") && strcmp(argv[1], "ref-call") &&
         strcmp(argv[1], "graph-serve") && strcmp(argv[1], "graph-call") &&
@@ -266,6 +276,14 @@ int main(int argc, char **argv)
         if (!strcmp(argv[1], "serve"))
         {
             ok = serve_flash(context, (int)fd);
+        }
+        else if (!strcmp(argv[1], "playback-serve") || !strcmp(argv[1], "playback-jit-serve"))
+        {
+            ok = test_playback_serve(runtime, (int)fd, !strcmp(argv[1], "playback-jit-serve") && fvm_jit_available());
+        }
+        else if (!strcmp(argv[1], "object-image-serve"))
+        {
+            ok = test_object_image_serve(context, (int)fd);
         }
         else if (!strcmp(argv[1], "channel-delegated-call"))
         {

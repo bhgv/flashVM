@@ -9,6 +9,7 @@ FVM_Result fvm_filesystem_mount(FVM_Context *context, const char *path,
 ```
 
 Установите провайдер обычных операций с путями в контексте владельца. Передайте один абсолютный компонент вроде `/dis` до 255 байтов после начальной косой черты. Контекст копирует путь и описатели и заимствует `state` до снятия монтирования или освобождения. Провайдер получает относительный путь. Пустой путь адресует корень. Успешное открытие передаёт независимый дескриптор, который удерживает свои ресурсы до закрытия, в том числе при GC. Вызовы сериализуются владельцем контекста либо мьютексом файлового канала. Передайте все колбэки. Неверный ввод и повторный путь дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47), нехватка памяти — [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L46).
+В свежем контексте `/` монтирует исключительный корень. Через него разрешаются все пути, в том числе относительные. Дополнительная точка отклоняется, а уничтожение контекста освобождает корень.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -21,7 +22,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
 | `FVM_Filesystem` | struct | [include/flashvm/filesystem.h:31](../include/flashvm/filesystem.h#L31) |
-| `fvm_filesystem_mount` | function | [include/flashvm/filesystem.h:44](../include/flashvm/filesystem.h#L44) |
+| `fvm_filesystem_mount` | function | [include/flashvm/filesystem.h:46](../include/flashvm/filesystem.h#L46) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

@@ -2,6 +2,8 @@
  * EN: Connect managed AS values to compiled Dis calls on the context owner thread.
  * RU: Связь управляемых значений AS с вызовами Dis в потоке владельца контекста.
  */
+#include "module_import.h"
+#include "object_handlers.h"
 #include "flashvm/styxrpc_managed.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
@@ -28,7 +30,7 @@ FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message)
 
 /* [GC:] EN: Encode checked arguments, perform exactly one call and root its decoded result.
  * RU: Закодировать аргументы, выполнить один вызов и удержать декодированный результат. */
-static FVM_Result invoke_managed(FVM_Context *context, FVM_Object *self, unsigned argc,
+FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *value, void *state)
 {
     const StyxRpcManagedTarget *target = state;
@@ -117,15 +119,15 @@ FVM_Result fvm_styxrpc_import_managed(FVM_Context *context, const char *global, 
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return fvm_register_function(context, global, invoke_managed, target);
+    return fvm_register_function(context, global, fvm_styxrpc_invoke_managed, target);
 }
 
 
 /* [GC:] [ASINC] EN: Run a named AS export and stage its rooted result and ref changes.
  * RU: Вызвать экспорт AS и подготовить результат и изменения ref под корнями. */
-static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, StyxRpcOutput *output)
+StyxRpcStatus fvm_styxrpc_run_managed(FVM_StyxRpcManagedExport *binding, FVM_Object *receiver,
+    const FVM_SRecord *arguments, StyxRpcOutput *output)
 {
-    FVM_StyxRpcManagedExport *binding = state;
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
     FVM_Value values[FVM_STYXRPC_LIST_ITEMS], result;
@@ -142,7 +144,8 @@ static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, St
     refs.capacity = FVM_STYXRPC_REF_SLOTS;
     ok = fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, arguments,
         values, FVM_STYXRPC_LIST_ITEMS, &count) &&
-        fvm_avm1_call(context, binding->function, NULL, count, values, &result) == FVM_OK &&
+        (receiver ? fvm_object_call(context, receiver, binding->function, count, values, &result) :
+            fvm_avm1_call(context, binding->function, NULL, count, values, &result)) == FVM_OK &&
         fvm_gc_roots_add(roots, &result) == FVM_OK &&
         fvm_styxrpc_values_encode(context, roots, NULL, binding->schema.result, &result,
             binding->schema.result[1] == ')' ? 0 : 1, binding->result_buffer,
@@ -157,6 +160,14 @@ static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, St
     }
     output->result = binding->result_buffer;
     return STYXRPC_OK;
+}
+
+
+/* [ASINC] EN: Adapt the ordinary global binding to the shared export callback.
+ * RU: Передать глобальную привязку общему экспортному колбэку. */
+static StyxRpcStatus begin_managed(void *state, const FVM_SRecord *arguments, StyxRpcOutput *output)
+{
+    return fvm_styxrpc_run_managed(state, NULL, arguments, output);
 }
 
 

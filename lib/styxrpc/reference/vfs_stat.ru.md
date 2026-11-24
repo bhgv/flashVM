@@ -16,3 +16,5 @@ StyxRpcIoOutcome styxrpc_vfs_stat(struct StyxClient *session, const char *path, 
 `STYXRPC_IO_NOT_OPEN`, ошибка stat после обхода — `STYXRPC_IO_FAILED`.
 
 Операция синхронна и использует сроки сессии Styx. Сессия и буферы должны жить до возврата. [Проверка на C](../examples/client.c).
+
+Обычные пути отклоняют служебный компонент `.prog` на любой глубине.

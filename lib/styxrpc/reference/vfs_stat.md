@@ -16,3 +16,5 @@ path or failed walk returns `STYXRPC_IO_NOT_OPEN`. A failed stat after a
 successful walk returns `STYXRPC_IO_FAILED`.
 
 The operation is synchronous and uses Styx session deadlines. Keep the session and storage alive through return. [C acceptance client](../examples/client.c).
+
+Ordinary paths also refuse the reserved `.prog` component at any depth.

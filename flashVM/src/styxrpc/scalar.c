@@ -2,6 +2,8 @@
  * EN: Translate exact signed Int32 values between a FlashVM owner and libstyxrpc.
  * RU: Передача точных знаковых Int32 между владельцем FlashVM и libstyxrpc.
  */
+#include "module_import.h"
+#include "object_handlers.h"
 #include "flashvm/styxrpc.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
@@ -34,7 +36,7 @@ static FVM_Result raise_status(FVM_Context *context, const char *message)
 
 /* EN: Borrow binding from userdata and call once on the context owner thread.
  * RU: Заимствовать binding из userdata и вызвать один раз в потоке владельца. */
-static FVM_Result invoke_dis(FVM_Context *context, FVM_Object *self, unsigned int argc,
+FVM_Result fvm_styxrpc_invoke_int(FVM_Context *context, FVM_Object *self, unsigned int argc,
     const FVM_Value *argv, FVM_Value *result, void *userdata)
 {
     FVM_StyxRpcImport *binding = userdata;
@@ -72,15 +74,14 @@ FVM_Result fvm_styxrpc_import_int(FVM_Context *context, const char *global, FVM_
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return fvm_register_function(context, global, invoke_dis, binding);
+    return fvm_register_function(context, global, fvm_styxrpc_invoke_int, binding);
 }
 
 
 /* [ASINC] EN: Execute the named FlashVM function and encode only an exact Int32 result.
  * RU: Выполнить именованную функцию FlashVM и вернуть только точный Int32. */
-static int invoke_flash(void *userdata, int64_t argument, int64_t *result)
+int fvm_styxrpc_run_int(const FVM_StyxRpcExport *binding, FVM_Object *receiver, int64_t argument, int64_t *result)
 {
-    const FVM_StyxRpcExport *binding = userdata;
     FVM_Value arg;
     FVM_Value value;
     FVM_Result status;
@@ -90,12 +91,21 @@ static int invoke_flash(void *userdata, int64_t argument, int64_t *result)
         return 0;
     }
     fvm_value_number(&arg, (double)argument);
-    status = fvm_avm1_call(binding->context, binding->function, NULL, 1, &arg, &value);
+    status = receiver ? fvm_object_call(binding->context, receiver, binding->function, 1, &arg, &value) :
+        fvm_avm1_call(binding->context, binding->function, NULL, 1, &arg, &value);
     if (status == FVM_EXCEPTION)
     {
         fvm_exception_clear(binding->context);
     }
     return status == FVM_OK && scalar_int(&value, result);
+}
+
+
+/* [ASINC] EN: Adapt the ordinary global binding to the shared export callback.
+ * RU: Передать глобальную привязку общему экспортному колбэку. */
+static int invoke_flash(void *state, int64_t argument, int64_t *result)
+{
+    return fvm_styxrpc_run_int(state, NULL, argument, result);
 }
 
 

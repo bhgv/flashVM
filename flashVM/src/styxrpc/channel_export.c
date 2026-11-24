@@ -2,6 +2,7 @@
  * EN: Issue native UniBus FIFO and rendezvous channels from a FlashVM initializer.
  * RU: Выдача нативных каналов UniBus FIFO и rendezvous из инициализатора FlashVM.
  */
+#include "object_handlers.h"
 #include "channel_private.h"
 #include "managed_values.h"
 #include "flashvm/avm1.h"
@@ -20,9 +21,9 @@ int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema)
 
 /* [GC:] [ASINC] EN: Run the initializer under GC roots and transfer the exact resource on success.
  * RU: Выполнить инициализатор под корнями GC и передать ресурс при успехе. */
-static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+StyxRpcStatus fvm_styxrpc_run_channel(const FVM_StyxRpcChannelExport *binding, FVM_Object *receiver,
+    const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
 {
-    const FVM_StyxRpcChannelExport *binding = state;
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
     FVM_Value args[FVM_STYXRPC_LIST_ITEMS], seed;
@@ -35,7 +36,8 @@ static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcC
     }
     ok = fvm_styxrpc_values_decode(context, roots, NULL, binding->schema.arguments, &call->arguments,
             args, FVM_STYXRPC_LIST_ITEMS, &count) &&
-        fvm_avm1_call(context, binding->initializer, NULL, count, args, &seed) == FVM_OK &&
+        (receiver ? fvm_object_call(context, receiver, binding->initializer, count, args, &seed) :
+            fvm_avm1_call(context, binding->initializer, NULL, count, args, &seed)) == FVM_OK &&
         fvm_gc_roots_add(roots, &seed) == FVM_OK &&
         fvm_styxrpc_channel_output(context, roots, &binding->schema, binding->capacity, &seed, output);
     fvm_gc_roots_end(roots);
@@ -44,6 +46,14 @@ static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcC
         fvm_exception_clear(context);
     }
     return ok ? STYXRPC_OK : STYXRPC_REMOTE_ERROR;
+}
+
+
+/* [ASINC] EN: Adapt the ordinary global binding to the shared export callback.
+ * RU: Передать глобальную привязку общему экспортному колбэку. */
+static StyxRpcStatus begin(void *state, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output)
+{
+    return fvm_styxrpc_run_channel(state, NULL, call, output);
 }
 
 

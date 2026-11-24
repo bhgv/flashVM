@@ -13,9 +13,11 @@ extern "C" {
 struct StyxClient; /* Already attached Styx client selected by the host. */
 
 
-/* EN: Mount session as ordinary files under path. Borrow session until unmount or context teardown.
+/* EN: Mount session as ordinary files under path. Use / for exclusive paired mode in a fresh context.
+ * Borrow session until unmount or context teardown.
  * Open fids independently retain its transport. The host can disconnect it explicitly.
- * RU: Смонтировать session как обычные файлы под path. Заимствовать session до снятия монтирования
+ * RU: Смонтировать session как обычные файлы под path. Для парного режима укажите / в новом контексте.
+ * Заимствовать session до снятия монтирования
  * или освобождения контекста. Открытые fid удерживают транспорт независимо. Хост может отключить его. */
 FVM_Result fvm_styxrpc_filesystem_mount(FVM_Context *context, const char *path, struct StyxClient *session);
 

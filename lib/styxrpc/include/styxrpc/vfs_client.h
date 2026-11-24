@@ -88,6 +88,11 @@ StyxRpcIoOutcome styxrpc_vfs_list(struct StyxClient *session, const char *path, 
     StyxRpcVfsVisitor visit, void *state);
 
 
+/* EN: Open a host-selected raw .var cell, including one inside a scoped .prog.
+ * RU: Открыть выбранную хостом ячейку .var, включая контекстную .prog. */
+StyxRpcIoOutcome styxrpc_vfs_int_open(struct StyxClient *session, const char *path, int writable, StyxRpcVfsFile **out);
+
+
 /* EN: Read or replace a whole native .var int at offset zero, with one transfer.
  * RU: Прочитать либо заменить весь int из .var со смещения ноль одной операцией. */
 StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value);

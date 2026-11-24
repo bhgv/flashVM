@@ -1,5 +1,11 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1727 / Контрольная точка v0.1727. DisVM loads live Flash
+object modules, and FlashVM calls checked Dis modules through libstyxrpc.
+Парный корень скрывает `.prog` при обычной работе с файлами. Плеер принимает
+SWF и команды через `.upload` и `.state`. [EN](STYX_RPC_MODULES.md) /
+[RU](STYX_RPC_MODULES.ru.md).
+
 Checkpoint v0.1726 / Контрольная точка v0.1726. FlashVM opens mounted
 Styx files through its ordinary filesystem and holds each open fid.
 Внешнее свойство int читает и изменяет ячейку владельца через libstyxrpc.

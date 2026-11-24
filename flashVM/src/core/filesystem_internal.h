@@ -28,6 +28,11 @@ FVM_Result fvm_filesystem_list(FVM_Context *context, const char *path, size_t sk
     FVM_FsVisit visit, void *state);
 
 
+/* EN: Test whether this context has an exclusive root with no native fallback.
+ * RU: Проверить, что у контекста исключительный корень без нативного доступа. */
+int fvm_filesystem_exclusive(FVM_Context *context);
+
+
 /* EN: Drop context-owned mount descriptors after finalizing script objects.
  * RU: Освободить монтирования контекста после финализации объектов сценария. */
 void fvm_filesystem_cleanup(FVM_Context *context);

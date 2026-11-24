@@ -35,7 +35,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     set_target_properties(styxrpc_launch PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME launch)
     add_library(StyxRpc::launch ALIAS styxrpc_launch)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
-        src/scalar_module.c src/managed_module.c src/module_nodes.c src/graph_module.c src/channel_module.c
+        src/scalar_module.c src/managed_module.c src/module.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
         src/channel_mailbox.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)

@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "../core/filesystem_internal.h"
 #include "channel_method_constants.h"
 #include "flashvm/extensions.h"
 #include "flashvm/mutex.h"
@@ -763,6 +764,12 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
 /* Run worker. */
 static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a, FVM_Value *out, bool suspended)
 {
+    /* EN: This legacy spawn creates a new filesystem namespace.
+     * RU: Этот вариант запуска создаёт новое пространство файлов. */
+    if (fvm_filesystem_exclusive(c))
+    {
+        return FVM_UNSUPPORTED;
+    }
     if (n < 1 || n > 3 || a[0].type != FVM_VALUE_STRING)
     {
         return FVM_INVALID_ARGUMENT;

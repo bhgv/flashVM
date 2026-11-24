@@ -2,6 +2,7 @@
  * EN: Decode a scoped channel result into aliased owner-local FlashVM objects.
  * RU: Декодирование результата с каналами в локальные объекты FlashVM с алиасами.
  */
+#include "module_import.h"
 #include "channel_lend.h"
 #include "managed_values.h"
 #include "styxrpc/managed_module.h"
@@ -158,7 +159,7 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
 
 /* [GC:] EN: Call a descriptor that can lend owner-local argument channels.
  * RU: Вызвать описатель, передающий локальные каналы владельца как аргументы. */
-static FVM_Result invoke_arguments(FVM_Context *context, FVM_Object *self, unsigned argc,
+FVM_Result fvm_styxrpc_invoke_channels(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *out, void *state)
 {
     const FVM_StyxRpcChannelArguments *binding = state;
@@ -200,5 +201,5 @@ FVM_Result fvm_styxrpc_channel_import_arguments(FVM_Context *context, const char
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return fvm_register_function(context, global, invoke_arguments, binding);
+    return fvm_register_function(context, global, fvm_styxrpc_invoke_channels, binding);
 }

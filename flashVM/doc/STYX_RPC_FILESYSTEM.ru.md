@@ -4,6 +4,8 @@
 
 Хост выбирает уже смонтированное подключение Styx. Подключите `flashvm_styxrpc` и передайте его в [fvm_styxrpc_filesystem_mount](STYX_RPC_FILESYSTEM_MOUNT.ru.md), например с точкой `/dis`. В том же контексте установите [файловые операции](FILESYSTEM_INSTALL.ru.md) под именем `fs`. Сценарий пользуется теми же операциями для локального файла и файла на Styx.
 
+Для парной работы монтируйте в `/` в свежем контексте. Корень исключителен. Все пути сценария и обычные файловые каналы используют эту сессию до уничтожения контекста. Обычное представление исключает `.prog` из списков и отклоняет этот компонент на любой глубине. Типизированная привязка внешней переменной открывает выданный путь ячейки.
+
 ```actionscript
 var rows = fs.list("/dis");
 var info = fs.stat("/dis/data/sample");
@@ -43,5 +45,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_channel_open_file_in` | function | [include/flashvm/channel.h:154](../include/flashvm/channel.h#L154) |
-| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:20](../include/flashvm/styxrpc_filesystem.h#L20) |
+| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:22](../include/flashvm/styxrpc_filesystem.h#L22) |
 <!-- source-links:end -->

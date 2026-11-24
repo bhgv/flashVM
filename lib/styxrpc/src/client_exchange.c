@@ -4,6 +4,8 @@
  */
 #define _POSIX_C_SOURCE 200809L
 #include "client_exchange.h"
+#include "styxrpc/module_client.h"
+#include "vfs_client_internal.h"
 #include "call_record.h"
 #include "call_scope.h"
 #include "load_profile.h"
@@ -15,44 +17,47 @@
 #define PROFILE_CAPACITY (STYX_MOUNTED_EXPORT_LIMIT * STYX_SHAPED_OFFER_MAX) /* Whole interface bound. */
 
 
-/* EN: Read a complete, bounded interface from the same held module used for the call.
- * RU: Прочитать полный ограниченный интерфейс из того же удерживаемого модуля. */
-static int verify(StyxFid *module, const char *name, uint32_t signature,
-    const StyxRpcSchema *schema, int *scoped)
+/* EN: Read a complete, bounded interface on one held directory.
+ * RU: Прочитать полный ограниченный интерфейс удерживаемого каталога. */
+static size_t read_interface(StyxFid *module, unsigned char *bytes, size_t capacity)
 {
     StyxFid *profile = styxclientwalkfrom(module, ".interface");
-    unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = 0;
-    int matched = 0;
+    size_t size = 0, complete = 0;
     if (profile && styxclientopen(profile, 0))
     {
-        while (size < sizeof(bytes))
+        while (size < capacity)
         {
             StyxTransfer part;
-            styxclientread(profile, size, bytes + size, sizeof(bytes) - size, &part);
-            if (!part.success || !part.confirmed || part.uncertain || part.again ||
-                part.count > sizeof(bytes) - size)
+            styxclientread(profile, size, bytes + size, capacity - size, &part);
+            if (!part.success || !part.confirmed || part.uncertain || part.again || part.count > capacity - size)
             {
                 break;
             }
             if (!part.count)
             {
-                StyxCallShape shape;
-                int framing;
-                matched = styxscalar_profile_match_protocol(bytes, size, name, signature, scoped, &shape, &framing);
-                if (matched)
-                {
-                    matched = schema ? !strcmp(schema->arguments, shape.arguments) &&
-                        !strcmp(schema->result, shape.result) &&
-                        (!*scoped || framing == STYX_CALL_RECORD_FRAMING) : !*scoped;
-                }
+                complete = size;
                 break;
             }
             size += part.count;
         }
     }
     styxclientclunk(profile);
-    return matched;
+    return complete;
+}
+
+
+/* EN: Match one ordinary client offer on the same held module used for the call.
+ * RU: Сопоставить одно предложение клиента на том же удерживаемом модуле. */
+static int verify(StyxFid *module, const char *name, uint32_t signature,
+    const StyxRpcSchema *schema, int *scoped)
+{
+    unsigned char bytes[PROFILE_CAPACITY + 1];
+    size_t size = read_interface(module, bytes, sizeof(bytes));
+    StyxCallShape shape;
+    int framing;
+    return styxscalar_profile_match_protocol(bytes, size, name, signature, scoped, &shape, &framing) &&
+        (schema ? !strcmp(schema->arguments, shape.arguments) && !strcmp(schema->result, shape.result) &&
+            (!*scoped || framing == STYX_CALL_RECORD_FRAMING) : !*scoped);
 }
 
 
@@ -171,6 +176,74 @@ static int verify_marker(StyxFid *module, const char *name, const char *marker)
     }
     styxclientclunk(field);
     return matched;
+}
+
+
+/* EN: Match a requested codec and verify a callable file without opening a call fid.
+ * RU: Проверить запрошенный кодек и файл вызова без открытия fid функции. */
+static int check_import(StyxFid *directory, const void *bytes, size_t size, const StyxRpcModuleImport *required,
+    uint32_t pid)
+{
+    const char *name = required->name;
+    int scoped, framing;
+    StyxCallShape shape;
+    if (!styxscalar_name_length(name) || name[0] == '.' || strchr(name, '/') ||
+        !styxscalar_profile_match_protocol(bytes, size, name, required->signature, &scoped, &shape, &framing))
+    {
+        return 0;
+    }
+    if (required->kind == STYXRPC_MODULE_INT)
+    {
+        if (required->signature != STYXRPC_INT_SIGNATURE || scoped || framing)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        const StyxRpcSchema *schema = &required->schema;
+        if (required->kind < STYXRPC_MODULE_MANAGED || required->kind > STYXRPC_MODULE_CHANNEL ||
+            !memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
+            !memchr(schema->result, 0, sizeof(schema->result)) ||
+            strcmp(schema->arguments, shape.arguments) || strcmp(schema->result, shape.result) ||
+            framing != STYX_CALL_RECORD_FRAMING || (scoped && !pid) ||
+            (required->kind != STYXRPC_MODULE_MANAGED &&
+                !verify_marker(directory, STYX_MANAGED_DELTA_FILE, STYX_MANAGED_POSITION_GRAPH_MARKER)) ||
+            (required->kind == STYXRPC_MODULE_CHANNEL &&
+                (!scoped || !verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE))))
+        {
+            return 0;
+        }
+    }
+    StyxMeta metadata;
+    StyxFid *function = styxclientwalkfrom(directory, name);
+    int valid = function && styxclientstat(function, &metadata) && !metadata.directory &&
+        (metadata.mode & 0444U) && (metadata.mode & 0222U) && (metadata.mode & 0111U);
+    styxclientclunk(function);
+    return valid;
+}
+
+
+/* EN/RU: See styxrpc/module_client.h. / См. styxrpc/module_client.h. */
+StyxRpcStatus styxrpc_module_check(StyxClient *session, const char *module,
+    const StyxRpcModuleImport *imports, size_t count, uint32_t pid)
+{
+    if (!session || !styxrpc_vfs_visible_path(module) || !imports || !count || count > STYXRPC_MAX_EXPORTS)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxFid *directory = styxclientwalk(session, module);
+    StyxMeta metadata;
+    unsigned char bytes[PROFILE_CAPACITY + 1];
+    size_t size = directory && styxclientstat(directory, &metadata) && metadata.directory &&
+        (metadata.mode & 0444U) && (metadata.mode & 0111U) ? read_interface(directory, bytes, sizeof(bytes)) : 0;
+    int valid = size != 0;
+    for (size_t i = 0; valid && i < count; ++i)
+    {
+        valid = check_import(directory, bytes, size, imports + i, pid);
+    }
+    styxclientclunk(directory);
+    return valid ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
 

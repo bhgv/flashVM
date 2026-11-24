@@ -37,9 +37,11 @@ typedef struct FVM_Filesystem
 } FVM_Filesystem;
 
 
-/* EN: Mount backend at one absolute component such as /shared. Copy callbacks and path.
+/* EN: Mount backend at one absolute component such as /shared, or at / in a fresh namespace.
+ * The root mount is exclusive and lasts until destruction. Copy callbacks and path.
  * Borrow state through unmount or context destruction. Roots and handles stay owner-local.
- * RU: Смонтировать backend по одному абсолютному компоненту вроде /shared.
+ * RU: Смонтировать backend по одному компоненту вроде /shared либо в / нового пространства.
+ * Корневое монтирование исключительное и действует до уничтожения.
  * Скопировать колбэки и путь. Заимствовать state до снятия монтирования или уничтожения контекста. */
 FVM_API FVM_Result fvm_filesystem_mount(FVM_Context *context, const char *path,
     const FVM_Filesystem *backend, void *state);

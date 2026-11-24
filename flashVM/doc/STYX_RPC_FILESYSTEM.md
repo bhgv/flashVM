@@ -4,6 +4,8 @@
 
 The host selects an attached Styx client. Link `flashvm_styxrpc` and pass the client to [fvm_styxrpc_filesystem_mount](STYX_RPC_FILESYSTEM_MOUNT.md) at a path such as `/dis`. Install the [file operations](FILESYSTEM_INSTALL.md) as `fs` in the same context. Script uses the same operations for local files and Styx files.
 
+For paired operation mount at `/` in a fresh context. A root mount is exclusive. Every script path and ordinary file channel uses that session until context teardown. The ordinary view filters `.prog` from listings and rejects the component at any depth. Typed external variable bindings still use an authorized cell path.
+
 ```actionscript
 var rows = fs.list("/dis");
 var info = fs.stat("/dis/data/sample");
@@ -43,5 +45,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_channel_open_file_in` | function | [include/flashvm/channel.h:154](../include/flashvm/channel.h#L154) |
-| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:20](../include/flashvm/styxrpc_filesystem.h#L20) |
+| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:22](../include/flashvm/styxrpc_filesystem.h#L22) |
 <!-- source-links:end -->

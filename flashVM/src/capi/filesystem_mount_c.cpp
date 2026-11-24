@@ -40,6 +40,11 @@ static FVM_FsMount *find_mount(FVM_Context *context, const char *path, const cha
 {
     for (FVM_FsMount *mount = context ? context->filesystems : 0; mount; mount = mount->next)
     {
+        if (mount->length == 1)
+        {
+            *relative = path + (*path == '/');
+            return mount;
+        }
         if (!std::strncmp(path, mount->path, mount->length) &&
             (!path[mount->length] || path[mount->length] == '/'))
         {
@@ -54,7 +59,7 @@ static FVM_FsMount *find_mount(FVM_Context *context, const char *path, const cha
 /* EN/RU: See flashvm/filesystem.h. / См. flashvm/filesystem.h. */
 FVM_Result fvm_filesystem_mount(FVM_Context *context, const char *path, const FVM_Filesystem *backend, void *state)
 {
-    const size_t length = mount_length(path);
+    const size_t length = path && !std::strcmp(path, "/") ? 1 : mount_length(path);
     if (!context || context->destroying || context->gc_collecting || context->gc_releasing || !length || !backend ||
         !backend->open || !backend->stat || !backend->list || !backend->file.read ||
         !backend->file.write || !backend->file.size || !backend->file.close)
@@ -62,7 +67,7 @@ FVM_Result fvm_filesystem_mount(FVM_Context *context, const char *path, const FV
         return FVM_INVALID_ARGUMENT;
     }
     const char *relative;
-    if (find_mount(context, path, &relative))
+    if ((length == 1 && context->filesystems) || find_mount(context, path, &relative))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -84,6 +89,10 @@ FVM_Result fvm_filesystem_mount(FVM_Context *context, const char *path, const FV
 /* EN/RU: See flashvm/filesystem.h. / См. flashvm/filesystem.h. */
 FVM_Result fvm_filesystem_unmount(FVM_Context *context, const char *path)
 {
+    if (context && path && !std::strcmp(path, "/"))
+    {
+        return FVM_UNSUPPORTED;
+    }
     if (!context || context->destroying || context->gc_collecting || context->gc_releasing || !mount_length(path))
     {
         return FVM_INVALID_ARGUMENT;
@@ -101,6 +110,13 @@ FVM_Result fvm_filesystem_unmount(FVM_Context *context, const char *path)
     *slot = mount->next;
     std::free(mount);
     return FVM_OK;
+}
+
+
+/* EN/RU: See filesystem_internal.h. / См. filesystem_internal.h. */
+int fvm_filesystem_exclusive(FVM_Context *context)
+{
+    return context && context->filesystems && context->filesystems->length == 1;
 }
 
 

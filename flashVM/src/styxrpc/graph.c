@@ -2,6 +2,8 @@
  * EN: Synchronous FlashVM graph adapter over the independent positional RPC codec.
  * RU: Синхронный адаптер графов FlashVM поверх независимого позиционного RPC.
  */
+#include "module_import.h"
+#include "object_handlers.h"
 #include "flashvm/styxrpc_graph.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
@@ -65,7 +67,7 @@ static int read_graph(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs
 
 /* [GC:] EN: Encode once, exchange one graph, then validate and commit under roots.
  * RU: Однократно кодировать и обменять граф, затем проверить и применить под GC-корнями. */
-static FVM_Result invoke_graph(FVM_Context *context, FVM_Object *self, unsigned argc,
+FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *out, void *userdata)
 {
     const StyxRpcManagedTarget *target = userdata;
@@ -142,15 +144,15 @@ FVM_Result fvm_styxrpc_import_graph(FVM_Context *context, const char *global, St
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return fvm_register_function(context, global, invoke_graph, target);
+    return fvm_register_function(context, global, fvm_styxrpc_invoke_graph, target);
 }
 
 
 /* [GC:] [ASINC] EN: Execute an AS export, using one identity table for arguments, result and updates.
  * RU: Выполнить экспорт AS с одной таблицей идентификаторов для аргументов, результата и обновлений. */
-static StyxRpcStatus begin_graph(void *userdata, const FVM_SRecord *arguments, StyxRpcGraphOutput *output)
+StyxRpcStatus fvm_styxrpc_run_graph(FVM_StyxRpcManagedExport *binding, FVM_Object *receiver,
+    const FVM_SRecord *arguments, StyxRpcGraphOutput *output)
 {
-    FVM_StyxRpcManagedExport *binding = userdata;
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
     FVM_StyxRefs refs = {0};
@@ -165,7 +167,8 @@ static StyxRpcStatus begin_graph(void *userdata, const FVM_SRecord *arguments, S
     ok = graph_init(&refs) && fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments,
         arguments, values, FVM_STYXRPC_LIST_ITEMS, &count);
     originals = refs.count;
-    ok = ok && fvm_avm1_call(context, binding->function, NULL, count, values, &result) == FVM_OK &&
+    ok = ok && (receiver ? fvm_object_call(context, receiver, binding->function, count, values, &result) :
+            fvm_avm1_call(context, binding->function, NULL, count, values, &result)) == FVM_OK &&
         fvm_gc_roots_add(roots, &result) == FVM_OK &&
         fvm_styxrpc_values_encode(context, roots, &refs, binding->schema.result, &result,
             binding->schema.result[1] == ')' ? 0 : 1, binding->result_buffer,
@@ -186,6 +189,14 @@ static StyxRpcStatus begin_graph(void *userdata, const FVM_SRecord *arguments, S
         return STYXRPC_REMOTE_ERROR;
     }
     return STYXRPC_OK;
+}
+
+
+/* [ASINC] EN: Adapt the ordinary global binding to the shared export callback.
+ * RU: Передать глобальную привязку общему экспортному колбэку. */
+static StyxRpcStatus begin_graph(void *state, const FVM_SRecord *arguments, StyxRpcGraphOutput *output)
+{
+    return fvm_styxrpc_run_graph(state, NULL, arguments, output);
 }
 
 

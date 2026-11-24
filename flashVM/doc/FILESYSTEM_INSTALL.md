@@ -19,7 +19,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
-| `fvm_filesystem_install` | function | [include/flashvm/filesystem.h:55](../include/flashvm/filesystem.h#L55) |
+| `fvm_filesystem_install` | function | [include/flashvm/filesystem.h:57](../include/flashvm/filesystem.h#L57) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 <!-- source-links:end -->

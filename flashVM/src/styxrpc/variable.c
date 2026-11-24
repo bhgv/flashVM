@@ -7,7 +7,6 @@
 #include "flashvm/userdata.h"
 #include "managed_values.h"
 #include "styxrpc/vfs_client.h"
-#include "styxrpc/variable_file.h"
 #include <stdlib.h>
 
 typedef struct IntBinding
@@ -87,7 +86,6 @@ FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *objec
     FVM_Value value;
     FVM_Result status;
     IntBinding *binding;
-    StyxRpcFileInfo info;
     int own;
     if (!session || !path || !*path || (writable != 0 && writable != 1) || !name || !*name ||
         fvm_object_has_own(context, object, name, &own) != FVM_OK || own)
@@ -118,9 +116,7 @@ FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *objec
         if (status == FVM_OK)
         {
             binding->writable = writable;
-            status = styxrpc_vfs_open(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ,
-                    &binding->file) == STYXRPC_IO_OK &&
-                styxrpc_vfs_file_stat(binding->file, &info) == STYXRPC_IO_OK && info.length == STYX_VARIABLE_INT_SIZE ?
+            status = styxrpc_vfs_int_open(session, path, writable, &binding->file) == STYXRPC_IO_OK ?
                 fvm_object_define_accessor_rooted(context, object, name, read_variable, write_variable, binding, value.object) :
                 FVM_ERROR;
             if (status != FVM_OK)

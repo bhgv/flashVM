@@ -24,5 +24,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:133](../src/core/runtime.hpp#L133) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_int_variable_bind` | function | [include/flashvm/styxrpc_filesystem.h:27](../include/flashvm/styxrpc_filesystem.h#L27) |
+| `fvm_styxrpc_int_variable_bind` | function | [include/flashvm/styxrpc_filesystem.h:29](../include/flashvm/styxrpc_filesystem.h#L29) |
 <!-- source-links:end -->

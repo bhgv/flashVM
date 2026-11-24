@@ -57,7 +57,8 @@ def main():
     parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
-    for option, profile in (("channel-pid-graph", "channel-pid-graph"), ("channel-pid-result", "channel-pid-result"),
+    for option, profile in (("playback", "playback"), ("object-image", "object-image"), ("module-load", "module-load"),
+                            ("channel-pid-graph", "channel-pid-graph"), ("channel-pid-result", "channel-pid-result"),
                             ("channel-delegated", "channel-delegated"), ("channel-incoming", "channel-incoming"),
                             ("channel-args", "channel-args"), ("channel", "channel"), ("hybrid", "hybrid"),
                             ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
@@ -69,6 +70,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix="flashvm-styxrpc-") as scratch:
         directory = Path(scratch)
         owner, caller, module, exports, result = {
+            "playback": (None, "playback_client.b", "playback.dis", (), "SWF controls"),
+            "object-image": (None, "object_image_client.b", "flash-object.dis", (), "object image"),
+            "module-load": ("limbo.b", None, "limbo.dis", ("next", "number"), None),
             "channel-delegated": (args.source / "examples/remote-scalar/styx-channel-recursive-owner.b",
                                   None, "channel-lifetime.dis", ("open", "idle"), None),
             "channel-pid-graph": ("channel_pid_graph.b", None, "channel-pid-graph.dis", ("open",), None),
@@ -88,6 +92,8 @@ def main():
         }[args.profile]
         action = f"{args.profile}-" if args.profile else ""
         if args.direction == "flash-to-dis":
+            if args.profile == "module-load":
+                (directory / "local-only").write_bytes(b"native file excluded by the paired root")
             image = compile_image(args, directory, tests / owner, module)
             dispatcher = compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
             arguments = [piece for name in exports for piece in ("--export", image.name, image.name, name)]
@@ -119,10 +125,11 @@ def main():
             )
         else:
             image = compile_image(args, directory, tests / caller, "client.dis")
-            transport = [] if args.profile in ("channel", "channel-incoming", "channel-pid-result") else ["--raw"]
+            transport = [] if args.profile in ("channel", "channel-incoming", "channel-pid-result", "object-image") else ["--raw"]
             exchange(
                 directory,
-                lambda fd: [args.flash_host, action + "serve", fd],
+                lambda fd: [args.flash_host, "playback-jit-serve" if args.jit and args.profile == "playback"
+                            else action + "serve", fd],
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, *transport, "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
                 f"PASS DisVM loaded FlashVM {result}",

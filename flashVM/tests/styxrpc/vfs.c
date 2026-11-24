@@ -224,8 +224,8 @@ static int replace_cell(FVM_Context *context, FVM_Object *scope)
 }
 
 
-/* EN: Inspect and open the actual native .var tree through ordinary FlashVM paths.
- * RU: Просмотреть и открыть настоящее дерево .var через обычные пути FlashVM. */
+/* EN: Hide the native .prog subtree from ordinary listing, stat and file open.
+ * RU: Скрыть нативную .prog из обычных list, stat и открытия файлов. */
 static int native_filesystem(FVM_Context *context, StyxClient *client, const char *pid)
 {
     const char *mount = "/__dis__";
@@ -238,17 +238,15 @@ static int native_filesystem(FVM_Context *context, StyxClient *client, const cha
         return 0;
     }
     snprintf(path, sizeof(path), "%s/limit", directory);
-    unsigned char bytes[4];
-    const unsigned char expected[] = {0, 0, 0, 73};
-    size_t size;
     int ok = fvm_filesystem_install(context, "fs") == FVM_OK &&
         fvm_get_global(context, "fs", &fs) == FVM_OK && fs.type == FVM_VALUE_OBJECT &&
-        fvm_value_string(&arg, directory) == FVM_OK &&
+        fvm_value_string(&arg, "/__dis__/loaded.dis") == FVM_OK &&
         fvm_object_call(context, fs.object, "list", 1, &arg, &result) == FVM_OK && result.type == FVM_VALUE_OBJECT &&
-        fvm_object_get(context, result.object, "length", &item) == FVM_OK && item.type == FVM_VALUE_NUMBER && item.number == 2 &&
-        fvm_channel_open_file_in(context, path, "r", &file) == FVM_OK &&
-        fvm_channel_file_read(file, bytes, sizeof(bytes), &size) == FVM_OK && size == sizeof(bytes) &&
-        !memcmp(bytes, expected, sizeof(bytes));
+        fvm_object_get(context, result.object, "length", &item) == FVM_OK && item.type == FVM_VALUE_NUMBER && item.number == 0 &&
+        fvm_value_string(&arg, directory) == FVM_OK &&
+        fvm_object_call(context, fs.object, "list", 1, &arg, &result) == FVM_NOT_FOUND &&
+        fvm_object_call(context, fs.object, "stat", 1, &arg, &result) == FVM_NOT_FOUND &&
+        fvm_channel_open_file_in(context, path, "r", &file) == FVM_NOT_FOUND && !file;
     fvm_channel_release(file);
     return fvm_filesystem_unmount(context, mount) == FVM_OK && ok;
 }

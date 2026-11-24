@@ -9,6 +9,8 @@ functions and publishes a virtual module. DisVM loads it through ordinary
 `load`. A C caller can encode requests and decode replies using its own
 Styx connection.
 
+[Mixed module images, typed imports and owner control files](MODULES.md).
+
 ## Integration scenario
 
 An external application, such as a FlashVM host or a device controller,

@@ -9,6 +9,7 @@ FVM_Result fvm_styxrpc_filesystem_mount(FVM_Context *context, const char *path,
 ```
 
 Линкуйте `flashvm_styxrpc`. В потоке-владельце привяжите уже смонтированную `session` к пути вроде `/dis`. Контекст копирует путь и заимствует клиент до снятия монтирования либо освобождения. Каждый открытый fid удерживает клиент независимо. Хост может явно отключить транспорт. Формат пути, повторные пути и ошибки выделения обрабатываются общим API монтирования. Дополнительное подключение не открывается.
+Передайте `/` в свежем контексте, чтобы обычные пути и файловые каналы обращались к подключённой файловой системе Dis. Корень действует до уничтожения контекста.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -21,5 +22,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:20](../include/flashvm/styxrpc_filesystem.h#L20) |
+| `fvm_styxrpc_filesystem_mount` | function | [include/flashvm/styxrpc_filesystem.h:22](../include/flashvm/styxrpc_filesystem.h#L22) |
 <!-- source-links:end -->
