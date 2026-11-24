@@ -40,9 +40,11 @@ with the arena and mutex.
 
 The cursor and all block metadata use the existing pool mutex. Allocation/refusal,
 generation assignment, invalid-pointer contracts and callback-after-unlock rules
-remain in force. There is no coalescing, block relocation, compaction or managed
-payload destruction under that mutex. Raw GC walks still require independent
-quiescence; their block addresses remain stable. Pool is a private native owner
+remain in force. If neither interval produces a fit, the allocator looks for a
+run of adjacent free blocks and merges it so the remainder can serve future
+allocations.
+Live and immutable blocks keep their addresses. Raw GC walks still require
+independent quiescence. Pool is a private native owner
 whose consumers must be rebuilt together. Bhdr, Heap, Type and Dis64 layouts do
 not change.
 

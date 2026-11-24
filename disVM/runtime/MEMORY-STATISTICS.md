@@ -34,8 +34,10 @@ Pool destruction requires joined users/no live blocks and resets accounting.
 `livecapacity = live - liveblocks*overhead`, likewise for free. Capacity still
 includes alignment slack and managed Heap headers. It is not requested payload,
 reachable application data, per-type bytes or a count of published variables.
-This allocator does not coalesce free blocks. Aggregate free capacity is not the
-largest free extent and does not guarantee one equally large allocation succeeds.
+When no single block fits an allocation, the allocator looks for a large enough
+run of adjacent free blocks and merges those blocks before allocating. This can
+reduce `freeblocks` by more than one on a successful allocation. Aggregate free
+capacity can include runs separated by live blocks.
 
 Native malloc metadata outside the pool, code/Type/module storage allocated
 elsewhere, OS stacks, files/sockets, diagnostic buffers, origin/retainer attribution

@@ -10,10 +10,12 @@ from test_desktop_vector import create_events
 from test_graphical_editor import shortcut
 
 
-# Finish detached visual interpolation through the explicit replay clock only.
-# No source/layout mutation is injected; document actions use normal key input.
+# EN: Return a replay event that advances the full 240 ms transition before
+# checking settled MDI geometry. Document actions still use normal input.
+# RU: Вернуть событие, продвигающее часы на все 240 мс перехода перед проверкой
+# итоговой геометрии MDI. Действия с документами идут через обычный ввод.
 def settle():
-    return [envelope(1, 65574, first=16) for _ in range(20)]
+    return [envelope(1, 65574, first=240)]
 
 
 # Group a vector and two source owners; inspect actual composed MovieClip parents.

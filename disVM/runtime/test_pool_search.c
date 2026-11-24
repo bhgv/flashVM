@@ -38,6 +38,66 @@ void dvm_test_pool_search_visit(void)
 }
 
 
+/* EN: Exhaust a private arena, then exercise allocation over adjacent holes
+ * across the cursor. Verify separated holes, accounting and live identities.
+ * No arguments or shared pool; destroy all owned allocations before return.
+ * RU: Заполнить частную арену и проверить выделение на соседних свободных
+ * блоках по обе стороны курсора, раздельные блоки, учёт и живые идентификаторы.
+ * Аргументов и общего pool нет; снять все выделения перед возвратом. */
+static void fragmented_arena(void)
+{
+    Pool pool = {0};
+    DVM_HeapPoolStats before;
+    DVM_HeapPoolStats after;
+    require(dvm_heap_pool_init(&pool, 4096), "fragmented arena initialization");
+    void *first = poolalloc(&pool, 128);
+    void *second = poolalloc(&pool, 128);
+    void *third = poolalloc(&pool, 128);
+    unsigned char *separator = poolalloc(&pool, 128);
+    void *isolated = poolalloc(&pool, 128);
+    require(first && second && third && separator && isolated, "fragmented arena blocks");
+    DVM_HeapKey old = dvm_heap_pool_key(&pool, first);
+    DVM_HeapKey separator_key = dvm_heap_pool_key(&pool, separator);
+    memset(separator, 0x5a, 128);
+    require(dvm_heap_pool_snapshot(&pool, &before), "free tail accounting");
+    void *tail = poolalloc(&pool, before.free_span - before.block_overhead);
+    require(tail != NULL, "consume free tail");
+    poolfree(&pool, first);
+    poolfree(&pool, isolated);
+    require(dvm_heap_pool_snapshot(&pool, &before) && before.free_blocks == 2,
+            "separated hole accounting");
+    require(!poolalloc(&pool, 256) && dvm_heap_pool_snapshot(&pool, &after) &&
+            !memcmp(&before, &after, sizeof(before)), "separated holes cannot be merged");
+    poolfree(&pool, third);
+    poolfree(&pool, second);
+    require(dvm_heap_pool_snapshot(&pool, &before) && before.free_blocks == 4,
+            "adjacent hole accounting");
+    void *merged = poolalloc(&pool, 256);
+    require(merged == first && poolmsize(&pool, merged) >= 256, "reuse adjacent holes across cursor");
+    memset(merged, 0xab, 256);
+    require(!dvm_heap_pool_key_matches(&pool, merged, old) &&
+            dvm_heap_pool_key_matches(&pool, separator, separator_key), "live and reused generations");
+    for (unsigned index = 0; index < 128; index++)
+    {
+        require(separator[index] == 0x5a, "live payload survives adjacent merge");
+    }
+    require(dvm_heap_pool_snapshot(&pool, &after) && after.free_blocks == 2 &&
+            after.live_blocks == before.live_blocks + 1 &&
+            after.live_span - before.live_span == before.free_span - after.free_span &&
+            after.allocations == before.allocations + 1 && after.releases == before.releases,
+            "coalesced allocation accounting");
+    void *remainder = poolalloc(&pool, 144);
+    require(remainder != NULL, "reuse coalesced run remainder");
+    require(poolalloc(&pool, 128) == isolated, "reuse isolated hole after merging");
+    poolfree(&pool, isolated);
+    poolfree(&pool, remainder);
+    poolfree(&pool, merged);
+    poolfree(&pool, separator);
+    poolfree(&pool, tail);
+    require(dvm_heap_pool_destroy(&pool), "fragmented arena cleanup");
+}
+
+
 /* EN: Keep thousands of actual native blocks live, then force wrap, reuse,
  * exhaustion and clean destruction. Validate payloads, generation changes and
  * stable block addresses. Native scratch and arena are owned through cleanup.
@@ -97,6 +157,7 @@ int main(void)
         poolfree(&memory, objects[index]);
     }
     require(dvm_heap_pool_destroy(&memory) && !memory.cursor && !memory.arena, "quiescent arena cleanup");
+    fragmented_arena();
     printf("PASS pool search live=%u initial_visits=%u total_visits=%u extras=%u\n", OBJECTS, initial, visits, extras);
     return 0;
 }

@@ -1,5 +1,9 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1746 / Контрольная точка v0.1746. The DisVM heap merges adjacent
+free blocks on demand when it cannot fit an allocation in one block. Это устраняет
+отказ из-за фрагментации кучи при отрисовке векторной панели MDI. [EN](../../disVM/runtime/MEMORY-STATISTICS.md) / [RU](../../disVM/runtime/MEMORY-STATISTICS.ru.md).
+
 Checkpoint v0.1745 / Контрольная точка v0.1745. The paired IDE draws shelf and
 overview previews from the same committed MovieClips as the document panels.
 Проверяются порядок карточек, открытие документов MDI с полки и сохранение

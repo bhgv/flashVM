@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Native arena allocation, stable block boundaries and bounded metadata search.
- * RU: Выделение native-арены, стабильные границы блоков и поиск под замком метаданных.
+ * EN: Native arena allocation, stable live blocks and bounded metadata search.
+ * RU: Выделение native-арены, стабильные живые блоки и поиск под замком метаданных.
  */
 #include "lib9.h"
 #include "pool.h"
@@ -158,11 +158,64 @@ static Bhdr *find_free(Bhdr *start, uchar *end, ulong need, int *corrupt)
 }
 
 
+/* EN: Find and merge a sufficient run of adjacent free blocks under pool->sync.
+ * end bounds the arena, need is the aligned allocation span, and corrupt
+ * receives a geometry failure. Return the merged block or nil. Merge the whole
+ * run so the remainder can serve future allocations. The caller takes its
+ * allocation and advances the cursor before unlocking. No live block moves.
+ * RU: Найти и объединить достаточную цепочку соседних свободных блоков под
+ * pool->sync. end ограничивает арену, need — выровненный размер, corrupt
+ * отмечает ошибку геометрии. Вернуть объединённый блок либо nil. Свободный
+ * остаток цепочки доступен следующим запросам. Вызывающий выделяет блок
+ * и сдвигает курсор до unlock.
+ * Живые блоки остаются на своих адресах. */
+static Bhdr *merge_free_run(Pool *pool, uchar *end, ulong need, int *corrupt)
+{
+    Bhdr *first = nil;
+    ulong span = 0;
+    ulong blocks = 0;
+    for (Bhdr *block = B2NB(pool->arena); ; block = B2NB(block))
+    {
+        int at_end = (uchar *)block == end;
+        if (!at_end && !valid_block(block, end))
+        {
+            *corrupt = 1;
+            return nil;
+        }
+        if (at_end || block->magic != MAGIC_F)
+        {
+            if (span >= need)
+            {
+                first->size = span;
+                pool->statistics.free_blocks -= blocks - 1;
+                return first;
+            }
+            if (at_end)
+            {
+                return nil;
+            }
+            first = nil;
+            span = 0;
+            blocks = 0;
+            continue;
+        }
+        if (!first)
+        {
+            first = block;
+        }
+        span += block->size;
+        blocks++;
+    }
+}
+
+
 /* EN: Search from the protected cursor, then wrap once through the prefix.
+ * If no single block fits, try merging the adjacent free blocks needed.
  * pool is borrowed/live; size is payload bytes, report_fault permits diagnostics
  * after unlock. Preserve block addresses and return NULL on refusal/corruption.
  * No managed initialization/destruction or callback runs under the mutex.
- * RU: Искать от защищённого курсора, затем один раз обойти префикс. pool живёт
+ * RU: Искать от защищённого курсора, затем один раз обойти префикс. Если одного
+ * блока мало, попробовать объединить соседние свободные блоки. pool живёт
  * весь вызов; size — размер данных, report_fault разрешает диагностику после
  * unlock. Сохранять адреса блоков; NULL — отказ/повреждение. Под мьютексом нет
  * управляемой инициализации/удаления и callback. */
@@ -192,6 +245,10 @@ static void *allocate(Pool *pool, ulong size, int report_fault)
     if (!block && !corrupt && start != B2NB(pool->arena))
     {
         block = find_free(B2NB(pool->arena), (uchar *)start, need, &corrupt);
+    }
+    if (!block && !corrupt && pool->statistics.free_blocks > 1 && pool->statistics.free_span >= need)
+    {
+        block = merge_free_run(pool, end, need, &corrupt);
     }
     if (block)
     {
@@ -346,10 +403,10 @@ int dvm_heap_pool_key_matches(Pool *pool, void *value, DVM_HeapKey key)
 
 /* [GC:] EN: Borrow live pool's stable arena header without locking. Raw walking
  * requires independent quiescence/exclusion; no ownership or concurrent payload
- * permission is granted. Header/block addresses remain stable across next-fit.
+ * permission is granted. Live block addresses remain stable across allocation.
  * RU: Заимствовать стабильный заголовок арены pool без захвата. Сырой обход
  * требует отдельного покоя/исключения; владение и конкурентный доступ к данным
- * не даются. Адреса заголовка/блоков стабильны при поиске от курсора. */
+ * не даются. Живые блоки сохраняют адреса при выделении. */
 Bhdr *poolchain(Pool *pool)
 {
     return pool->arena;

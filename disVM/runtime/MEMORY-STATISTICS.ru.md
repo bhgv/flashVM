@@ -34,8 +34,10 @@ Peak — точный максимум за жизнь pool. Отказавши�
 `livecapacity = live - liveblocks*overhead`, аналогично для free. Capacity всё ещё
 включает alignment slack и managed Heap headers. Это не requested payload,
 reachable application data, per-type bytes или число опубликованных переменных.
-Аллокатор не объединяет соседние free blocks. Суммарная free capacity не равна
-крупнейшему свободному extent и не гарантирует одно столь же большое выделение.
+Если ни один свободный блок не подходит по размеру, аллокатор ищет подходящую
+цепочку соседних свободных блоков и объединяет её перед выделением памяти.
+При таком выделении `freeblocks` может уменьшиться больше чем на один блок.
+В суммарную свободную ёмкость входят и участки, разделённые живыми блоками.
 
 Исключены native malloc metadata вне pool, выделенные отдельно code/Type/modules,
 OS stacks, files/sockets, diagnostic buffers, origin/retainer attribution и RSS.

@@ -27,7 +27,7 @@ typedef struct DVM_HeapPoolStats
     uint64_t live_span;      /* Sum of all allocated block spans, including overhead/slack. */
     uint64_t free_span;      /* Sum of all free block spans; fragmentation is preserved. */
     uint64_t live_blocks;    /* Allocated native pool blocks, not necessarily published objects. */
-    uint64_t free_blocks;    /* Free extents; this allocator does not coalesce them. */
+    uint64_t free_blocks;    /* Free blocks after splitting and on-demand coalescing. */
     uint64_t block_overhead; /* Per-block native header/generation/tail bytes, excluding alignment. */
     uint64_t allocations;    /* Successful allocations, saturates at INT64_MAX. */
     uint64_t releases;       /* Successful frees, saturates at INT64_MAX. */

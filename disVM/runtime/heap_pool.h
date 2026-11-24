@@ -17,7 +17,7 @@ struct Pool
 {
     Bhdr *arena;        /* Owned arena/header, stable until quiescent destruction. */
     ulong bytes;        /* Native checked extent, not a serialized VM field. */
-    Bhdr *cursor;       /* Next-fit search boundary, under sync; block addresses never move. */
+    Bhdr *cursor;       /* Next-fit search boundary, under sync. */
     FVM_PortSync *sync; /* Protects allocation headers, not managed payload. */
     DVM_HeapPoolStats statistics; /* Exact gauges and saturating history, under sync. */
 };
