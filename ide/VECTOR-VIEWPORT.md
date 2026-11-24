@@ -18,13 +18,15 @@ for all participating outlines before rounding to the editor's SVG grid. New cro
 are cusp nodes. Unchanged source anchors keep their join mode. A symmetric anchor
 becomes smooth when one of its adjoining segments is shortened.
 
-For shared straight intervals and identical complete curves, the operation
-compares fill on both sides of the common boundary. Polynomial roots find
-points where a Bézier meets a straight edge, including tangencies. It also
-accepts endpoint contacts of two curves when their non-flat control hulls
-meet only along an axis. At a contact with several outgoing fragments, the
-local curve directions determine each closed path. A point-only contact can
-therefore leave two independently editable shapes.
+For shared straight or curved intervals, the operation compares the fill on
+both sides. It proves partial coincidence by mapping source endpoints to the
+other curve and comparing the restricted Bézier controls on a common monotone
+axis. Collinear Q and C spans also take part and keep their command type on
+surviving portions. A line meets a Bézier at roots of signed distance. When
+the transverse solver cannot resolve two curves, the worker looks for a
+separating normal using extrema of their scalar projections. It accepts a
+point contact only when both support positions coincide. Local directions at
+the contact keep the two fill faces independently editable.
 
 Tight turns, intersecting subpaths within one source, unresolved curve-to-curve
 contacts and cases outside the vector budget use the bounded mask. The worker traces its coverage and fits the closed
@@ -45,7 +47,9 @@ are in `dis/bridge/idevectorcutintersections.b` and `dis/bridge/idevectorcutgrap
 Compound input and winding are handled by `dis/bridge/idevectorcutoutline.b`.
 Contact detection and path assembly are in `dis/bridge/idevectorcutcontacts.b`
 and `dis/bridge/idevectorcutboundary.b`. The [contact tests](dis/tests/idepaint_contacts.b)
-exercise shared seams, subtraction and a point-only tangency through the brush.
+exercise partial seams, subtraction and line/curve and curve/curve tangency.
+The partial seam and separating tangent checks are in
+`dis/bridge/idevectorcutcoincidence.b` and `dis/bridge/idevectorcutsupport.b`.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

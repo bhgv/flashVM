@@ -34,6 +34,7 @@ CutPair: adt
     second: int; # Second contour edge index.
     a: CutCurve; # Unsubdivided first edge.
     b: CutCurve; # Unsubdivided second edge.
+    closed: int; # Admit original endpoints between different filled sources.
 };
 
 
@@ -69,11 +70,10 @@ cuthitadd(search: ref CutSearch, pair: CutPair, t, u: real, point: CutPoint)
 }
 
 
-# EN: Refine one isolated root, rejecting unresolved overlap and tangencies.
-# Intersections near original vertices use the coverage path. Multiple leaves
-# can converge to the same root, which is stored only once.
-# RU: Уточнить один корень. Неопределённые наложения, касания и попадания
-# в исходные вершины идут по маске. Повторные корни сохраняются один раз.
+# EN: Refine one isolated transverse root. Closed searches can identify
+# original endpoints. Degenerate pairs can use a separate support certificate.
+# RU: Уточнить поперечный корень. Замкнутый поиск принимает исходные концы.
+# Вырожденные пары могут пройти отдельную опорную проверку.
 cutroot(pair: CutPair, a, b: CutInterval, search: ref CutSearch)
 {
     t := (a.lo+a.hi)*0.5;
@@ -86,18 +86,30 @@ cutroot(pair: CutPair, a, b: CutInterval, search: ref CutSearch)
         if (cross*cross <= 1.0e-10*cutdot(dp, dp)*cutdot(dq, dq)) {
             break;
         }
-        if (cutdot(delta, delta) < 1.0e-12) {
+        dt := cutcross(delta, dq)/cross;
+        du := cutcross(delta, dp)/cross;
+        # A small distance alone can admit two false intersections near a
+        # tangency. Require convergence in both parameters as well.
+        # Малое расстояние само по себе допускает ложные корни около касания.
+        # Нужна сходимость и по обоим параметрам.
+        if (cutdot(delta, delta) < 1.0e-12 && dt*dt+du*du < 1.0e-14) {
             if (t < a.lo-0.000001 || t > a.hi+0.000001 || u < b.lo-0.000001 || u > b.hi+0.000001) {
                 return;
             }
-            if (t <= 0.00001 || t >= 0.99999 || u <= 0.00001 || u >= 0.99999) {
+            if (pair.closed) {
+                if (t < -1.0e-9 || t > 1.0+1.0e-9 || u < -1.0e-9 || u > 1.0+1.0e-9) {
+                    return;
+                }
+                t = cutunit(t);
+                u = cutunit(u);
+            } else if (t <= 0.00001 || t >= 0.99999 || u <= 0.00001 || u >= 0.99999) {
                 break;
             }
             cuthitadd(search, pair, t, u, cutlerp(p, q, 0.5));
             return;
         }
-        t -= cutcross(delta, dq)/cross;
-        u -= cutcross(delta, dp)/cross;
+        t -= dt;
+        u -= du;
         if (t < -0.01 || t > 1.01 || u < -0.01 || u > 1.01) {
             break;
         }
@@ -152,7 +164,8 @@ cutsearch(pair: CutPair, a, b: CutInterval, search: ref CutSearch, depth: int)
 # RU: Проверить одну неизменяемую пару целых сегментов с исходными номерами.
 cutpair(a, b: CutCurve, i, j: int, search: ref CutSearch)
 {
-    cutsearch(CutPair(i, j, a, b), CutInterval(a, 0.0, 1.0), CutInterval(b, 0.0, 1.0), search, 0);
+    pair := CutPair(i, j, a, b, 0);
+    cutsearch(pair, CutInterval(a, 0.0, 1.0), CutInterval(b, 0.0, 1.0), search, 0);
 }
 
 
@@ -166,9 +179,7 @@ cutsimple(edges: array of CutCurve, search: ref CutSearch): int
     for (i := 0; i < len edges; i++) {
         a := edges[i];
         direction := cutsub(a.d, a.a);
-        if (cutdot(cutsub(a.b, a.a), direction) < 0.0 ||
-            cutdot(cutsub(a.c, a.b), direction) < 0.0 ||
-            cutdot(cutsub(a.d, a.c), direction) < 0.0) {
+        if (!cutprojection(a, direction)) {
             return 0;
         }
         for (j := i+1; j < len edges; j++) {

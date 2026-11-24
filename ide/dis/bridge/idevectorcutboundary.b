@@ -77,7 +77,8 @@ cutinsert(boundary: ref CutBoundary, edge: CutCurve, from, destination, initial,
     }
     for (i := boundary.starts[from]; i >= 0; i = boundary.siblings[i]) {
         arc := boundary.arcs[i];
-        if (arc.last == destination && cutsamecurve(arc.curve, clipped)) {
+        if (arc.last == destination && (cutsamecurve(arc.curve, clipped) ||
+            (cutstraight(arc.curve) && cutstraight(clipped)))) {
             return 1;
         }
     }

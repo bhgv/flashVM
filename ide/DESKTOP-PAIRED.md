@@ -173,11 +173,11 @@ in one step. Dots and straight strokes retain four cubic arcs. Gentle turns
 keep cubic arcs along the outside of the nib. The vector cut and union preserve
 untouched Bézier handles in compound paths with holes and islands. A single
 stroke can unite several visible same-color fills in the same operation.
-Shared straight edges and coincident complete Bézier segments use the fill on
-each side to decide if the edge survives. Fills that only touch at a supported
-point remain separately selectable. The bounded coverage path handles
-unresolved free-form tangencies, overlapping subpaths of a single fill, and
-cases that exceed the vector operation's limits.
+Shared straight edges and matching full or partial Bézier segments use the
+fill on each side to decide if the edge survives. Curves can also touch at a
+shared separating tangent and remain separately selectable. The bounded
+coverage path handles unresolved free-form tangencies, overlapping subpaths
+of a single fill, and cases that exceed the vector operation's limits.
 
 Escape, focus or another input transition can remove an unreleased
 preview. A complete replacement scene also removes it and retires a

@@ -1345,6 +1345,8 @@ include "idevectorpainttopology.b";
 include "idevectorcutcurve.b";
 include "idevectorcutintersections.b";
 include "idevectorcutcontacts.b";
+include "idevectorcutcoincidence.b";
+include "idevectorcutsupport.b";
 include "idevectorcutboundary.b";
 include "idevectorcutgraph.b";
 include "idevectorcutoutline.b";

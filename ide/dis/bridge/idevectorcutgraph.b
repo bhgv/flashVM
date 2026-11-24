@@ -197,7 +197,7 @@ cutcrossings(sources: CutSources, contacts: ref CutContacts): int
             b := sources.outlines[j].edges;
             for (left := 0; left < len a; left++) {
                 for (right := 0; right < len b; right++) {
-                    pair := CutPair(sources.offsets[i]+left, sources.offsets[j]+right, a[left], b[right]);
+                    pair := CutPair(sources.offsets[i]+left, sources.offsets[j]+right, a[left], b[right], 1);
                     cutcontactpair(pair, contacts);
                     if (contacts.search.count < 0) {
                         return 0;

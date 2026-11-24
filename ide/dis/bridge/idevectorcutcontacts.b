@@ -90,7 +90,14 @@ cutlinelines(pair: CutPair, contacts: ref CutContacts)
         if (t >= -0.00000001 && t <= 1.00000001 && u >= -0.00000001 && u <= 1.00000001) {
             t = cutunit(t);
             u = cutunit(u);
-            cuthitadd(contacts.search, pair, t, u, cutoffset(pair.a.a, a, t));
+            p := cutoffset(pair.a.a, a, t);
+            t = cutlineparameter(pair.a, t);
+            u = cutlineparameter(pair.b, u);
+            if (t < 0.0 || u < 0.0) {
+                contacts.search.count = -1;
+            } else {
+                cuthitadd(contacts.search, pair, t, u, p);
+            }
         }
         return;
     }
@@ -111,6 +118,14 @@ cutlinelines(pair: CutPair, contacts: ref CutContacts)
     hi = cutunit(hi);
     u := cutunit(cutdot(cutsub(cutoffset(pair.a.a, a, lo), pair.b.a), b)/blen);
     v := cutunit(cutdot(cutsub(cutoffset(pair.a.a, a, hi), pair.b.a), b)/blen);
+    lo = cutlineparameter(pair.a, lo);
+    hi = cutlineparameter(pair.a, hi);
+    u = cutlineparameter(pair.b, u);
+    v = cutlineparameter(pair.b, v);
+    if (lo < 0.0 || hi < 0.0 || u < 0.0 || v < 0.0) {
+        contacts.search.count = -1;
+        return;
+    }
     cutseam(pair, lo, hi, u, v, contacts);
 }
 
@@ -177,7 +192,11 @@ cutlinehit(pair: CutPair, a, b: CutCurve, direction: CutPoint, t: real, swapped:
     if (u < -0.00000001 || u > 1.00000001) {
         return;
     }
-    u = cutunit(u);
+    u = cutlineparameter(a, cutunit(u));
+    if (u < 0.0) {
+        search.count = -1;
+        return;
+    }
     if (swapped) {
         cuthitadd(search, pair, t, u, p);
     } else {
@@ -231,10 +250,8 @@ cutlinecurve(pair: CutPair, line, curve: CutCurve, swapped: int, contacts: ref C
 }
 
 
-# EN: Compare directed cubic geometry before clipping. A line and a curve
-# use the polynomial route unless they are both actual straight segments.
-# RU: Сравнить направленную геометрию кубики до обрезки. Отрезок и кривая
-# обрабатываются по полиному, кроме пары обычных отрезков.
+# EN: Compare directed control polygons after elevation to cubic degree.
+# RU: Сравнить направленные управляющие многоугольники после повышения степени.
 cutsamecurve(a, b: CutCurve): int
 {
     return cutsamepoint(a.a, b.a) && cutsamepoint(a.b, b.b) &&
@@ -260,10 +277,12 @@ cutaxiscontacts(pair: CutPair, search: ref CutSearch)
 }
 
 
-# EN: Dispatch supported pairs of edges from different filled outlines.
-# General free-form curve intersections retain the bounded hull solver.
+# EN: Dispatch edges from different filled outlines. Partial coincidence
+# is certified before transverse search. A failed curve pair can recover
+# on a separating tangent with shared support points.
 # RU: Разобрать поддерживаемые пары ребер разных заливок. Для общих
-# пересечений кривых сохраняется ограниченный поиск по оболочкам.
+# участков проверяется совпадение. При отказе поиск проверяет разделяющую
+# касательную с общей опорной точкой.
 cutcontactpair(pair: CutPair, contacts: ref CutContacts)
 {
     search := contacts.search;
@@ -280,11 +299,13 @@ cutcontactpair(pair: CutPair, contacts: ref CutContacts)
     if (cutapart(a, b)) {
         return;
     }
-    if (pair.a.verb == Segment && pair.b.verb == Segment) {
+    firstline := cutstraight(pair.a);
+    secondline := cutstraight(pair.b);
+    if (firstline && secondline) {
         cutlinelines(pair, contacts);
-    } else if (pair.a.verb == Segment) {
+    } else if (firstline) {
         cutlinecurve(pair, pair.a, pair.b, 0, contacts);
-    } else if (pair.b.verb == Segment) {
+    } else if (secondline) {
         cutlinecurve(pair, pair.b, pair.a, 1, contacts);
     } else if (cutsamecurve(pair.a, pair.b)) {
         cutseam(pair, 0.0, 1.0, 0.0, 1.0, contacts);
@@ -294,6 +315,16 @@ cutcontactpair(pair: CutPair, contacts: ref CutContacts)
         ((a.bottom == b.top || b.bottom == a.top) && a.top < a.bottom && b.top < b.bottom)) {
         cutaxiscontacts(pair, search);
     } else {
-        cutpair(pair.a, pair.b, pair.first, pair.second, search);
+        if (cutpartial(pair, contacts)) {
+            return;
+        }
+        before := search.count;
+        cutsearch(pair, CutInterval(pair.a, 0.0, 1.0), CutInterval(pair.b, 0.0, 1.0), search, 0);
+        if (search.count < 0) {
+            search.count = before;
+            if (!cutsupport(pair, contacts)) {
+                search.count = -1;
+            }
+        }
     }
 }

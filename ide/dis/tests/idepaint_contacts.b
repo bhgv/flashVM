@@ -10,8 +10,8 @@ sys: Sys;     # Failure reporting through this test process.
 v: Idevector; # Real model loaded by the hosted runtime.
 
 
-# EN: This isolated application runs the four vector contact cases.
-# RU: Изолированное приложение выполняет четыре сценария контакта контуров.
+# EN: This isolated application runs the vector contact cases.
+# RU: Изолированное приложение проверяет контакты векторных контуров.
 IdepaintContacts: module
 {
     init: fn(); # Test application's VM entry.
@@ -175,6 +175,78 @@ curveseam()
 }
 
 
+# EN: The right fill owns exactly the first half of the left fill's cubic,
+# reversed. The second half remains an editable cubic after joining them.
+# RU: Правая заливка совпадает с первой половиной левой кубики в обратном
+# направлении. Вторая половина остаётся редактируемой кубикой.
+partialseam()
+{
+    left := "<path fill=\"#245ac4\" d=\"M 100 100 C 128 62 191 62 210 100 " +
+        "C 250 140 170 220 210 260 L 100 260 Z\"/>";
+    right := "<path fill=\"#245ac4\" d=\"M 210 100 C 241 63 310 63 340 100 L 340 180 L 210 180 " +
+        "C 220 150 230 120 210 100 Z\"/>";
+    doc := open(left+right);
+    before := v->svg(doc);
+    stroke(doc, 55, 150, 225);
+    require(len doc.shapes == 1 && verbs(doc.shapes[0], v->Move) == 1 &&
+            cubic(doc.shapes[0], 128, 191) && cubic(doc.shapes[0], 241, 310) &&
+            cubic(doc.shapes[0], 200, 190) && !cubic(doc.shapes[0], 220, 230),
+            "partial reversed cubic seam removes only its shared half");
+    roundtrip(doc);
+    require(v->history(doc, 0) && v->svg(doc) == before, "Undo partial shared cubic");
+}
+
+
+# EN: Opposite quadratics touch at a sloping tangent, at 2/3 and 1/3 of
+# their parameters. The brush joins only the lower lobe along its left edge.
+# RU: Противоположные квадратичные кривые касаются под наклоном при параметрах
+# 2/3 и 1/3. Кисть присоединяется только к левой кромке нижней фигуры.
+twocurves()
+{
+    upper := "<path fill=\"#245ac4\" d=\"M 140 85 C 176 48 279 48 320 85 " +
+        "L 320 140 Q 230 230 140 140 Z\"/>";
+    lower := "<path fill=\"#245ac4\" d=\"M 140 180 Q 230 150 320 300 " +
+        "L 320 370 C 278 394 172 394 140 370 Z\"/>";
+    doc := open(upper+lower);
+    stroke(doc, 90, 175, 250);
+    require(len doc.shapes == 2 && verbs(doc.shapes[0], v->Quadratic) == 2 &&
+            verbs(doc.shapes[1], v->Quadratic) == 2,
+            "sloping interior Q/Q contact retains two split quadratic outlines");
+    doc.tool = v->Select;
+    doc.pickradius = 0.0;
+    require(v->pointer(doc, 1, 215, 135) == v->Ok && doc.edit.selected >= 0, "pick upper tangent fill");
+    chosen := doc.edit.selected;
+    v->cancel(doc);
+    require(v->pointer(doc, 1, 215, 250) == v->Ok && doc.edit.selected >= 0 && doc.edit.selected != chosen,
+            "pick the lower tangent fill separately");
+    v->cancel(doc);
+    roundtrip(doc);
+}
+
+
+# EN: Find a straight seam encoded with nonuniform cubic controls. The
+# exposed section stays a cubic with its own original parameterization.
+# RU: Найти прямую кромку, заданную неравномерными кубическими ручками.
+# Оставшийся участок сохраняет свой исходный тип и параметризацию.
+encodedseam()
+{
+    source := "<path fill=\"#245ac4\" d=\"M 100 100 C 145 65 260 65 300 100 L 300 170 " +
+        "C 280 170 160 170 100 170 Z\"/>";
+    doc := open(source);
+    stroke(doc, 160, 380, 180);
+    require(len doc.shapes == 1 && cubic(doc.shapes[0], 145, 260), "merge cubic-encoded straight seam");
+    shape := doc.shapes[0];
+    exposed := 0;
+    for (i := 0; i < len shape.nodes; i++) {
+        node := shape.nodes[i];
+        exposed += node.verb == v->Cubic && node.x == 100 && node.y == 170 && node.cy == 170 &&
+            node.c2y == 170 && node.cx < 160 && node.c2x > 100;
+    }
+    require(exposed == 1, "exposed collinear span retains its nonuniform cubic verb");
+    roundtrip(doc);
+}
+
+
 # EN: Start the real model and run every supported contact case.
 # RU: Запустить модель и проверить все поддерживаемые типы контакта.
 init()
@@ -187,4 +259,8 @@ init()
     pointcontact();
     curveseam();
     sys->print("PASS brush contacts: shared line, same-side subtraction, tangent Q and shared cubic\n");
+    partialseam();
+    twocurves();
+    encodedseam();
+    sys->print("PASS Bezier contacts: partial cubic, angled Q/Q and cubic-encoded line\n");
 }
