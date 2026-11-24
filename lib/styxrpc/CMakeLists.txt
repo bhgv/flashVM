@@ -13,6 +13,7 @@ set(STYXRPC_DISVM_SOURCE "" CACHE PATH "DisVM source directory for integration t
 set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal launch SDK")
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
+set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
 add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
     protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/indexed_variable.c
@@ -72,7 +73,7 @@ if(STYXRPC_EXAMPLES)
         endif()
     endif()
 endif()
-if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR STYXRPC_FLASHVM_PLAYER)
+if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR STYXRPC_FLASHVM_PLAYER OR STYXRPC_FLASHVM_WINDOW_PLAYER)
     if(NOT BUILD_TESTING OR NOT STYXRPC_EXAMPLES OR NOT STYXRPC_DISVM_SOURCE OR NOT STYXRPC_DISVM_BUILD)
         message(FATAL_ERROR "DisVM tests require both DisVM paths, BUILD_TESTING and STYXRPC_EXAMPLES")
     endif()

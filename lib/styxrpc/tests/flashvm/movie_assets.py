@@ -36,7 +36,14 @@ def anonymous(parameters, body):
 def view_module():
     view = push("_root") + b"\x1c" + push("keyView") + b"\x4e"
     code = push("code") + b"\x1c"
+    shape = "_root.keyView"
     first = method("_root", "createEmptyMovieClip", "keyView", 9)
+    first += method(shape, "beginFill", 0xff0000)
+    first += method(shape, "moveTo", 0, 5)
+    first += method(shape, "lineTo", 10, 5)
+    first += method(shape, "lineTo", 10, 15)
+    first += method(shape, "lineTo", 0, 15)
+    first += method(shape, "endFill")
     first += view + push("_x", 0) + b"\x4f"
     first += push("_root") + b"\x1c" + push("onKey")
     first += anonymous(("code",), view + push("_x") + code + b"\x4f" + code + b"\x3e\0")
@@ -67,8 +74,17 @@ def tag(kind, payload=b""):
 
 # EN: Encode uncompressed SWF8 with one DoAction block per frame and optional large metadata.
 # RU: Сформировать SWF8 без сжатия с DoAction на кадр и необязательными крупными метаданными.
-def movie(*frames, padding=0):
-    body = b"\x08\0" + struct.pack("<HH", 24 * 256, len(frames))
+def movie(*frames, padding=0, width=0, height=0):
+    if width and height:
+        # RECT has four signed coordinates, followed by zero bits to a byte boundary.
+        w, h = width * 20, height * 20
+        size = max(w, h).bit_length() + 1
+        bits = f"{size:05b}" + "".join(f"{n:0{size}b}" for n in (0, w, 0, h))
+        bits += "0" * (-len(bits) % 8)
+        rect = int(bits, 2).to_bytes(len(bits) // 8, "big")
+    else:
+        rect = b"\x08\0"
+    body = rect + struct.pack("<HH", 24 * 256, len(frames))
     if padding:
         body += tag(69, struct.pack("<I", 0x10)) + tag(77, b"<movie>" + b" " * padding + b"</movie>\0")
     for actions in frames:
@@ -98,7 +114,7 @@ def prepare(directory, native=False, writable=False):
     if writable:
         first += push("_root.marker", "wo", "marker.txt", 2, "fs") + b"\x1c" + push("open") + b"\x52\x1d"
         first += push(90, 1) + b"\x42" + push(1, "_root.marker") + b"\x1c" + push("write") + b"\x52\x17"
-    (directory / "paired-root.swf").write_bytes(movie(first, b"", b"\x07"))
+    (directory / "paired-root.swf").write_bytes(movie(first, b"", b"\x07", width=100, height=60))
     (directory / "local-only.swf").write_bytes(movie(push("local-fallback") + b"\x26\x07"))
 
     child = push("styx-child") + b"\x26"

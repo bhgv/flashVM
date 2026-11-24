@@ -472,6 +472,19 @@ StyxRpcModuleSlot *fvm_styxrpc_playback_slot(FVM_StyxRpcPlayback *playback)
 }
 
 
+/* EN/RU: See playback_clock.h. / См. playback_clock.h. */
+int fvm_styxrpc_playback_scene(FVM_StyxRpcPlayback *playback, FVM_Context **context, FVM_Object **root)
+{
+    if (!playback || !playback->root || !context || !root)
+    {
+        return 0;
+    }
+    *context = playback->context;
+    *root = playback->root;
+    return 1;
+}
+
+
 /* EN/RU: See flashvm/styxrpc_playback.h. / См. flashvm/styxrpc_playback.h. */
 void fvm_styxrpc_playback_destroy(FVM_StyxRpcPlayback *playback)
 {

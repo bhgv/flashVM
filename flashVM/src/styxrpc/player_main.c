@@ -3,6 +3,7 @@
  * RU: Запуск парного плеера без окна на выданном двустороннем соединении Styx.
  */
 #include "playback_clock.h"
+#include "player_view.h"
 #include "../../ports/monotonic_port.h"
 #include "flashvm/swf.h"
 #include "client.h"
@@ -52,7 +53,7 @@ static FVM_Result setup(void *state, FVM_Context *context)
 
 /* [ASINC] EN: Alternate wire dispatch and monotonic frame deadlines on the playback owner.
  * RU: Чередовать обработку соединения и монотонные сроки кадров у владельца. */
-static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback)
+static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, FVM_PairedView *view)
 {
     unsigned long previous = 0;
     double deadline = 0;
@@ -61,6 +62,7 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback)
         int wait_ms = -1;
         double period;
         unsigned long current;
+        int presentation;
         if (fvm_styxrpc_playback_clock(playback, &period, &current))
         {
             double now;
@@ -96,6 +98,15 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback)
         {
             deadline = 0;
         }
+        presentation = fvm_paired_view_step(view, playback, &wait_ms);
+        if (presentation <= 0)
+        {
+            if (presentation < 0)
+            {
+                fputs("flashvm_styx_player: window update failed\n", stderr);
+            }
+            return presentation < 0;
+        }
         if (!styxrpc_server_step_for(server, wait_ms))
         {
             return 0;
@@ -125,7 +136,7 @@ static int connected(const char *value)
 
 /* EN: Attach the DisVM filesystem on lane 1 and serve playback control on lane 0.
  * RU: Подключить файловую систему DisVM на канале 1 и обслуживать управление на канале 0. */
-static int run(int fd, FVM_ExecutionMode mode)
+static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
 {
     FVM_Config config;
     FVM_Runtime *runtime = NULL;
@@ -151,7 +162,12 @@ static int run(int fd, FVM_ExecutionMode mode)
     }
     if (server)
     {
-        status = replay(server, playback);
+        status = replay(server, playback, view);
+        if (!status && !fvm_paired_view_capture(view, playback))
+        {
+            fputs("flashvm_styx_player: could not capture the final movie frame\n", stderr);
+            status = 1;
+        }
     }
     else
     {
@@ -172,33 +188,64 @@ static int run(int fd, FVM_ExecutionMode mode)
 int main(int argc, char **argv)
 {
     FVM_ExecutionMode mode = FVM_EXECUTION_INTERPRETER;
-    int fd = -1;
+    FVM_PairedView *view = NULL;
+    const char *capture = NULL;
+    int windowed = 0, mode_seen = 0;
+    int fd, i, result;
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
-        puts("usage: flashvm_styx_player --fd FD [--jit | --no-jit]");
+        puts("usage: flashvm_styx_player --fd FD [--jit | --no-jit] [--window] [--capture PATH]");
         return 0;
     }
-    if ((argc == 3 || argc == 4) && !strcmp(argv[1], "--fd"))
+    if (argc < 3 || strcmp(argv[1], "--fd"))
     {
-        fd = connected(argv[2]);
-        if (argc == 4 && !strcmp(argv[3], "--jit"))
-        {
-            if (!fvm_jit_available())
-            {
-                fputs("flashvm_styx_player: JIT unavailable\n", stderr);
-                return 2;
-            }
-            mode = FVM_EXECUTION_JIT;
-        }
-        else if (argc == 4 && strcmp(argv[3], "--no-jit"))
-        {
-            fd = -1;
-        }
-    }
-    if (fd < 0)
-    {
-        fputs("flashvm_styx_player: expected --fd FD for a connected stream and optional --jit or --no-jit\n", stderr);
+        fputs("flashvm_styx_player: expected --fd FD for a connected stream\n", stderr);
         return 2;
     }
-    return run(fd, mode);
+    for (i = 3; i < argc; ++i)
+    {
+        if (!mode_seen && (!strcmp(argv[i], "--jit") || !strcmp(argv[i], "--no-jit")))
+        {
+            mode_seen = 1;
+            if (!strcmp(argv[i], "--jit"))
+            {
+                if (!fvm_jit_available())
+                {
+                    fputs("flashvm_styx_player: JIT unavailable\n", stderr);
+                    return 2;
+                }
+                mode = FVM_EXECUTION_JIT;
+            }
+        }
+        else if (!windowed && !strcmp(argv[i], "--window"))
+        {
+            windowed = 1;
+        }
+        else if (!capture && !strcmp(argv[i], "--capture") && i + 1 < argc && argv[i + 1][0])
+        {
+            capture = argv[++i];
+        }
+        else
+        {
+            fputs("flashvm_styx_player: invalid option or missing option argument\n", stderr);
+            return 2;
+        }
+    }
+    fd = connected(argv[2]);
+    if (fd < 0)
+    {
+        fputs("flashvm_styx_player: expected --fd FD for a connected stream\n", stderr);
+        return 2;
+    }
+    if (windowed || capture)
+    {
+        view = fvm_paired_view_create(windowed, capture);
+        if (!view)
+        {
+            return 2;
+        }
+    }
+    result = run(fd, mode, view);
+    fvm_paired_view_destroy(view);
+    return result;
 }

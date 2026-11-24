@@ -119,6 +119,7 @@ check_unmounted(old: ref Sys->FD)
                 raise "old fid reached the replacement movie";
             }
             check_view(0, 66);
+            sys->sleep(40); # Allow the owner to present the new scene before disconnect.
             return;
         }
         sys->sleep(20);

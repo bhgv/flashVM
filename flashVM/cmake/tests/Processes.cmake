@@ -268,6 +268,10 @@ if(FVM_BUILD_DESKTOP_FRONTEND)
         message(FATAL_ERROR "Desktop playback requires GRAPHICS_AGG or GRAPHICS_CAIRO")
     endif()
     add_subdirectory(frontend)
+    if(TARGET flashvm_styx_player)
+        target_link_libraries(flashvm_styx_player PRIVATE flashvm_player_host)
+        target_compile_definitions(flashvm_styx_player PRIVATE FVM_STYXRPC_WINDOW)
+    endif()
 endif()
 
 # Check the bounded C89 MP3 exporter using native voices and normalized streams after VM teardown.

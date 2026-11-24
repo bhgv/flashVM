@@ -12,4 +12,10 @@
  * RU: Вернуть 1 и записать период в мс и ревизию срока при исполнении.
  * В паузе и без фильма вернуть 0 без записи. Вызывать между запросами. */
 int fvm_styxrpc_playback_clock(FVM_StyxRpcPlayback *playback, double *period, unsigned long *schedule);
+
+
+/* EN: Borrow the live scene between owner requests. A movie replacement invalidates both pointers.
+ * RU: Заимствовать живую сцену между запросами владельца. Замена фильма отзывает оба указателя. */
+int fvm_styxrpc_playback_scene(FVM_StyxRpcPlayback *playback, FVM_Context **context, FVM_Object **root);
+
 #endif

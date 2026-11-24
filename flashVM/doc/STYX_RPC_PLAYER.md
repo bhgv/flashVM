@@ -23,7 +23,23 @@ The Dis program `controller.dis` controls FlashVM through `/flash/.upload` and `
 
 The controller sends the startup SWF length as four big-endian bytes followed by the SWF. It writes `start` to `/flash/.state` once to begin. Frame scheduling uses the uploaded header rate, or 12 frames per second when the header rate is zero. The player waits for the next frame or incoming Styx work. `pause` stops frame advances while leaving control files reachable, and `restart` starts again from the uploaded bytes. In this executable `debug` pauses and selects the interpreter. The embeddable owner supports an application debugger hook. Either VM can select `--jit` if its host build supports it.
 
-This is the headless player entry point. The desktop window, debugger frontend, and a catalog of Dis modules imported by FlashVM are supplied by embedding applications. The same control and VFS protocol applies to each owner.
+The player starts headless by default. Build the raster backend and the
+stock SDL2 frontend to use a window. For example, from the repository root:
+
+```sh
+cmake -S flashVM -B build/flash-window \
+  -DFVM_ENABLE_STYXRPC=ON -DFVM_BUILD_DESKTOP_FRONTEND=ON \
+  -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" \
+  -DCMAKE_PREFIX_PATH=/path/to/sdk
+cmake --build build/flash-window --target flashvm_styx_player
+```
+
+Pass `--window` on launch. The window opens after upload and sends native
+keyboard and mouse events to the SWF's ordinary input handlers. Presentation
+continues while the timeline is paused, so methods called from DisVM can
+still update the scene. Closing the window ends the session.
+Pass `--capture frame.ppm` on a raster-enabled build to save the final frame
+on normal shutdown, with or without a window.
 
 ## ActionScript session
 
@@ -55,5 +71,9 @@ Configure the SDK test build with the matching DisVM source/build and pass `-DST
 ```sh
 ctest --test-dir build/styxrpc -R 'styxrpc-native-player' --output-on-failure
 ```
+
+Set `STYXRPC_FLASHVM_WINDOW_PLAYER` to the SDL-enabled executable. The
+`styxrpc-native-window-*` tests use SDL's dummy driver and check the new
+and old positions of a shape moved by a DisVM call.
 
 [Player implementation](../src/styxrpc/player_main.c) · [DisVM mount command](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

@@ -54,7 +54,7 @@ def exchange(directory, server_command, client_command, expected, provider_trace
 
 # EN: Exercise the default reverse namespace with both production executables.
 # RU: Проверить встречное пространство имён по умолчанию на штатной паре.
-def native_player(args, directory, tests, mode):
+def native_player(args, directory, tests, mode, windowed=False):
     directory.mkdir()
     prepare_movies(directory, native=True, writable=True)
     root = directory / "share"
@@ -62,9 +62,11 @@ def native_player(args, directory, tests, mode):
     (root / "movies").rename(root / "assets")
     (root / "movies").mkdir()
     image = compile_image(args, root, tests / "native_player.b", "native-player.dis")
+    capture = root / "frame.ppm"
+    options = ["--window", "--capture", capture] if windowed else []
     exchange(
         root,
-        lambda fd: [args.flash_host, "--fd", fd, mode],
+        lambda fd: [args.flash_host, "--fd", fd, mode, *options],
         lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS native FlashVM and DisVM pair",
@@ -75,13 +77,25 @@ def native_player(args, directory, tests, mode):
         raise RuntimeError("native namespace write differs")
 
 
+    if windowed:
+        header = b"P6\n100 60\n255\n"
+        frame = capture.read_bytes()
+        if not frame.startswith(header) or len(frame) != len(header) + 100 * 60 * 3:
+            raise RuntimeError("missing or malformed paired frame")
+        # The last Limbo call sets x=66. Verify the new fill and the cleared original position.
+        for x, y, expected in ((70, 10, b"\xff\x00\x00"), (4, 10, b"\xff\xff\xff")):
+            start = len(header) + (y * 100 + x) * 3
+            if frame[start:start + 3] != expected:
+                raise RuntimeError(f"paired frame mismatch at {x},{y}: {frame[start:start + 3].hex()}")
+
+
 # EN: Select provider and caller, using only the real VM entry points.
 # RU: Выбрать провайдера и клиента с использованием штатных точек входа VM.
 def main():
     parser = argparse.ArgumentParser(description="Check the production FlashVM/DisVM Styx RPC bridge")
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player"), required=True)
+    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player", "native-window"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
     for option, profile in (("playback", "playback"), ("playback-movies", "playback-movies"), ("object-image", "object-image"), ("module-load", "module-load"),
@@ -119,8 +133,8 @@ def main():
             None: ("limbo.b", "client.b", "limbo.dis", ("next",), "AVM1 through Styx RPC"),
         }[args.profile]
         action = f"{args.profile}-" if args.profile else ""
-        if args.direction == "native-player":
-            native_player(args, directory / "live", tests, mode)
+        if args.direction in ("native-player", "native-window"):
+            native_player(args, directory / "live", tests, mode, args.direction == "native-window")
         elif args.direction == "flash-to-dis":
             if args.profile == "module-load":
                 (directory / "local-only").write_bytes(b"native file excluded by the paired root")

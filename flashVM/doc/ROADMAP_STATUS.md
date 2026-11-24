@@ -1,5 +1,9 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1736 / Контрольная точка v0.1736. The paired FlashVM player
+uses the stock SDL window and AVM1 input path. Вызов из DisVM сдвигает
+фигуру в растровом кадре. [EN](STYX_RPC_PLAYER.md) / [RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1735 / Контрольная точка v0.1735. Uploaded SWFs publish
 ActionScript object methods for ordinary DisVM `load` on the same connection.
 При смене фильма старые fid образа отзываются. [EN](STYX_RPC_PLAYER.md) /
