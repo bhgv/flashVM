@@ -66,6 +66,10 @@
 #include "vfs/boot.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
+#ifdef DVM_TERMINAL_LAUNCH
+#include "terminal_launch/paired_ui.h"
+#include "thread_port.h"
+#endif
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>

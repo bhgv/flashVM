@@ -6,16 +6,15 @@ presentation and carries copied UI values through ordinary typed channels. Its
 or Dis heap address is part of that envelope. This is the reusable basis for the
 new terminal architecture, rather than a reason to rewrite IDE commands or forms.
 
-Основные изменения относятся к engine/host: соединение, VFS, запуск, S-record
-диспетчер, владение каналами и завершение. В IDE достаточно небольшого adapter у
-канальной границы. Но автоматическое получение terminal capability и маршрутизация
-её в `$Unibus` ещё должны быть подключены — одного изменения названия режима мало.
+The stock bidirectional launch attaches the initial Dis process's
+`$Unibus` to the player's `styxTerminal`. Ordinary Limbo channels carry
+complete fvd1 frame bytes. The hosted libstyxrpc dispatcher carries them
+over the existing attachment's `.unibus` service.
 
-[`Unibus`](../docs/UNIBUS.md) is the universal application interface, not an IDE
-execution mode. The [per-launch native binding](../disVM/runtime/host_interface/README.md)
-now installs that authority before `init`, with explicit inheritance and lifetime
-policies. A wire-backed implementation of its calls still needs the remote
-endpoint/marshalling below. All shared terminal traffic stays inside S-records.
+При штатном двунаправленном запуске `$Unibus.attach` подключает обычные
+каналы Limbo к объекту `styxTerminal` в загруженном SWF. Кадры fvd1
+передаются через `.unibus` на той же сессии libstyxrpc.
+[Штатный плеер](../flashVM/doc/STYX_RPC_PLAYER.ru.md)
 
 ## Implemented adapter / Реализованный adapter
 
@@ -33,29 +32,19 @@ UI frame or undefined. The capability remains alive on the FlashVM owner through
 all adapter uses. It is an embedding capability, not a native object serialized
 over the network. Other terminal types never pass through its UI-only reader.
 
-The [native S-record transport](../disVM/native/terminal/README.md) now supplies
-bounded record queues and automatic RX/TX I/O over the prepared bidir handoff.
-The native [`styx_terminal_ui` route](../disVM/native/terminal/ui/frame.h) now
-encodes/sends and validates copied `fvd1` values using the same codec as local
-queues. Its decode helper receives already dispatched records and does not become
-a second terminal reader. The host must still bind that route to this FlashVM
-capability and attach it to `$Unibus`. Events, resource
-loading, timer/render notifications and proxy messages remain independent typed
-routes on the same general terminal connection. No new UI wire schema is assigned
-by this adapter, and no mandatory AS relay is imposed on unrelated typed calls.
+The two sides register the existing fvd1 envelope under
+`_inferno.fvd1` version 1 and grant one frame at a time with
+`_inferno.credit` version 1. The tags follow ordinary per-direction
+UniBus binding rules. The Dis controller copies bytes between the native
+mailboxes and the exact managed channel roots on its turn. The FlashVM
+owner materializes each reply in its own context. Detach and process
+retirement close the port and release retained channels.
 
-An opt-in [native binding dispatcher](../disVM/native/terminal/route/README.md)
-now discovers agreed UI type/version bindings on its own native thread and
-provides one-message copied UI/general mailboxes. It consumes no guest execution
-turns. The existing `$Unibus` additionally has rows/path/ink/bulk RPCs; their
-remote endpoint and runtime attachment are separate remaining integration work.
-
-The [native host-channel relay](../disVM/native/terminal/bridge/README.md) now
-provides a real `DVM_UIBridge` endpoint on that route. The ordinary local codec
-and actual AS channel wrappers work on it; relay workers exchange only copied
-values. Both local roles and context retirement are covered by original 9P peer
-tests. This does not yet register a remote `$Unibus` instance or implement its
-non-message RPC endpoints.
+Paired startup reports an empty selected path, no new-document override,
+and an initial disabled line-number preference. `rows`, ink operations
+and `attachbulk` still require their service bindings. The complete
+desktop SWF also needs to apply the desktop's view records and publish
+native input through the adapter.
 
 ## What stays / Что сохраняется
 
@@ -65,11 +54,10 @@ be handled on the FlashVM owner; the new transport does not require a Dis round
 trip for every sample. User files/devices/channels still use VFS; executable
 resources retain the agreed provider-first lookup policy.
 
-The current installed desktop still obtains local ports from `$Unibus` through
-its parameterless bootstrap. It is **not yet automatically launched remotely**
-by this change. The remaining host integration must provide the bidir terminal
-capability, route existing UI frames and retire it with the job. Its owner/queue
-logic belongs in the engine; editor behavior remains in executable Dis/SWF modules.
+The graphical `disvm-editor` continues to supply its local UI binding.
+The paired player supplies the transport capability to the uploaded SWF.
+The complete desktop scene and its remaining host services are tracked
+separately from the verified paired terminal example.
 
 ## Verification / Проверки
 
@@ -79,7 +67,9 @@ capabilities refuse, pressure is not acceptance, two records are received in two
 calls, signed values and Unicode/NUL survive, and the existing presentation factory
 attaches. The optional IDE CMake checks now include this test and AS parser input.
 
-These Node checks are not FlashVM movie execution, remote desktop acceptance or
-physical input tests. Native bidir/record/handoff execution is tested separately
-through original libstyx peers. A complete remote IDE execution remains to be
-verified after the host attachment step.
+The stock-pair integration runs [native_terminal.b](../lib/styxrpc/tests/flashvm/native_terminal.b)
+and an uploaded SWF in interpreter and JIT modes. It checks exclusive
+attach, a synthetic key frame reaching the Limbo input channel, delivery
+of a Unicode reply and a second frame acknowledging it. The windowed
+run also checks pixels after that reply moves the clip. The SDL tests use
+a dummy video driver.

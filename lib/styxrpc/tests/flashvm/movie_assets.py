@@ -31,11 +31,9 @@ def anonymous(parameters, body):
     return b"\x9b" + struct.pack("<H", len(payload)) + payload
 
 
-# EN: Publish the movie's key input and clip position methods through the player SDK.
-# RU: Опубликовать ввод клавиш и чтение координаты клипа через SDK плеера.
-def view_module():
-    view = push("_root") + b"\x1c" + push("keyView") + b"\x4e"
-    code = push("code") + b"\x1c"
+# EN: Create the red fixture whose live position the terminal updates.
+# RU: Создать красную фигуру, чью текущую координату меняет терминал.
+def key_shape():
     shape = "_root.keyView"
     first = method("_root", "createEmptyMovieClip", "keyView", 9)
     first += method(shape, "beginFill", 0xff0000)
@@ -44,6 +42,15 @@ def view_module():
     first += method(shape, "lineTo", 10, 15)
     first += method(shape, "lineTo", 0, 15)
     first += method(shape, "endFill")
+    return first
+
+
+# EN: Publish the movie's key input and clip position methods through the player SDK.
+# RU: Опубликовать ввод клавиш и чтение координаты клипа через SDK плеера.
+def view_module():
+    view = push("_root") + b"\x1c" + push("keyView") + b"\x4e"
+    code = push("code") + b"\x1c"
+    first = key_shape()
     first += view + push("_x", 0) + b"\x4f"
     first += push("_root") + b"\x1c" + push("onKey")
     first += anonymous(("code",), view + push("_x") + code + b"\x4f" + code + b"\x3e\0")
@@ -133,3 +140,30 @@ def prepare(directory, native=False, writable=False):
         hidden = share / ".prog"
         hidden.mkdir()
         (hidden / "child.swf").write_bytes((directory / "local-only.swf").read_bytes())
+
+# EN: Emit a branch over a block when the preceding stack value is true.
+# RU: Сформировать переход через блок, когда предыдущий элемент стека истинен.
+def skip_when_true(condition, block):
+    return condition + b"\x9d\x02\0" + struct.pack("<h", len(block)) + block
+
+
+# EN: Generate a SWF that exchanges two credited frames with a real Limbo channel owner.
+# RU: Сформировать SWF для обмена кадрами с настоящим владельцем канала Limbo.
+def terminal_movie():
+    event = "fvd1:000000040000000000000041000000010000004100000000"
+    reply = "fvd1:000000020000002a00000000000000000000004200000000Я"
+    done = "fvd1:000000070000000000000000000000000000004200000000"
+    terminal = push("styxTerminal") + b"\x1c"
+    send = push("trySendFrame") + b"\x52"
+    receive = push(0) + terminal + push("tryReceiveFrame") + b"\x52"
+    sent = push("_root.sent") + b"\x1c"
+    received = push("_root.received") + b"\x1c"
+    finished = push("_root.finished") + b"\x1c"
+    poll = skip_when_true(sent, push("_root.sent", event, 1) + terminal + send + b"\x1d")
+    poll += skip_when_true(received, push("_root.received") + receive + push(reply) + b"\x49\x1d")
+    view = push("_root") + b"\x1c" + push("keyView") + b"\x4e"
+    ack = view + push("_x", 66) + b"\x4f"
+    ack += push("_root.finished", done, 1) + terminal + send + b"\x1d"
+    poll += skip_when_true(finished + received + b"\x12\x11", ack)
+    first = key_shape() + push("_root") + b"\x1c" + push("onEnterFrame") + anonymous((), poll + b"\0") + b"\x4f"
+    return movie(first, b"", b"\x07", width=100, height=60)

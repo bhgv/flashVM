@@ -50,6 +50,21 @@ cmake --build build/flash-window --target flashvm_styx_player
 Каждый новый фильм получает собственный объект сессии. При замене фильма
 плеер закрывает его старые дескрипторы запуска.
 
+## Терминал Unibus
+
+При двунаправленном запуске Limbo-программа подключает свои
+`chan of array of byte` через `$Unibus.attach(input, output)` и завершает
+обмен через `detach()`. SWF получает глобальный объект `styxTerminal` с
+`bidir == true`. `trySendFrame(frame)` принимает одну посчитанную строку
+fvd1 и возвращает true, когда кадр поставлен в очередь. false означает,
+что кадр ещё можно отправить позднее. `tryReceiveFrame()` возвращает
+следующую строку либо undefined. Например, эти методы можно вызывать в
+`onEnterFrame`. Для каждого направления в пути есть место для одного
+кадра. Разрешение на следующий кадр выдаётся после приёма предыдущего.
+
+[Контракт терминала IDE](../../ide/TERMINAL-BIDIR.md) описывает, как
+передать этот объект существующему адаптеру ActionScript.
+
 ## Публикация объекта фильма
 
 Вызовите `styxrpc.publishObject("view.dis", receiver, ["key", "onKey"])`.
@@ -77,5 +92,9 @@ ctest --test-dir build/styxrpc -R 'styxrpc-native-player' --output-on-failure
 Для оконной сборки задайте `STYXRPC_FLASHVM_WINDOW_PLAYER`. Проверки
 `styxrpc-native-window-*` используют SDL dummy driver и сравнивают пиксели
 до и после перемещения фигуры вызовом из DisVM.
+
+Проверки `styxrpc-native-terminal-*` запускают `.dis` и `.swf` на
+штатной паре. Кадр клавиши идёт в канал Limbo, ответ с Unicode
+возвращается в SWF и меняет итоговый растр в оконном прогоне.
 
 [Исходник плеера](../src/styxrpc/player_main.c) · [Команда монтирования DisVM](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

@@ -7,7 +7,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
-from movie_assets import prepare as prepare_movies
+from movie_assets import prepare as prepare_movies, terminal_movie
 
 
 # EN: Compile a source with resolved imports/exports and return the image path.
@@ -78,15 +78,41 @@ def native_player(args, directory, tests, mode, windowed=False):
 
 
     if windowed:
-        header = b"P6\n100 60\n255\n"
-        frame = capture.read_bytes()
-        if not frame.startswith(header) or len(frame) != len(header) + 100 * 60 * 3:
-            raise RuntimeError("missing or malformed paired frame")
-        # The last Limbo call sets x=66. Verify the new fill and the cleared original position.
-        for x, y, expected in ((70, 10, b"\xff\x00\x00"), (4, 10, b"\xff\xff\xff")):
-            start = len(header) + (y * 100 + x) * 3
-            if frame[start:start + 3] != expected:
-                raise RuntimeError(f"paired frame mismatch at {x},{y}: {frame[start:start + 3].hex()}")
+        check_frame(capture)
+
+
+# EN: Check final RGB pixels through the raster backend shared with SDL.
+# RU: Проверить RGB итогового кадра через общий с SDL растер.
+def check_frame(capture):
+    header = b"P6\n100 60\n255\n"
+    frame = capture.read_bytes()
+    if not frame.startswith(header) or len(frame) != len(header) + 100 * 60 * 3:
+        raise RuntimeError("missing or malformed paired frame")
+    # The selected path sets x=66. Verify the new fill and the cleared original position.
+    for x, y, expected in ((70, 10, b"\xff\x00\x00"), (4, 10, b"\xff\xff\xff")):
+        start = len(header) + (y * 100 + x) * 3
+        if frame[start:start + 3] != expected:
+            raise RuntimeError(f"paired frame mismatch at {x},{y}: {frame[start:start + 3].hex()}")
+
+
+# EN: Run the real mounted DisVM and SWF on one connection with no application host.
+# RU: Запустить штатный DisVM и SWF на одном соединении без хоста приложения.
+def native_terminal(args, directory, tests, mode, windowed=False):
+    (directory / "terminal.swf").write_bytes(terminal_movie())
+    image = compile_image(args, directory, tests / "native_terminal.b", "terminal-test.dis")
+    capture = directory / "terminal.ppm"
+    options = ["--window", "--capture", capture] if windowed else []
+    exchange(
+        directory,
+        lambda fd: [args.flash_host, "--fd", fd, mode, *options],
+        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
+                    "--", "--native-spawn", mode, image.name],
+        "PASS paired Unibus channels",
+    )
+
+
+    if windowed:
+        check_frame(capture)
 
 
 # EN: Select provider and caller, using only the real VM entry points.
@@ -95,7 +121,7 @@ def main():
     parser = argparse.ArgumentParser(description="Check the production FlashVM/DisVM Styx RPC bridge")
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player", "native-window"), required=True)
+    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player", "native-window", "native-terminal", "native-terminal-window"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
     for option, profile in (("playback", "playback"), ("playback-movies", "playback-movies"), ("object-image", "object-image"), ("module-load", "module-load"),
@@ -135,6 +161,8 @@ def main():
         action = f"{args.profile}-" if args.profile else ""
         if args.direction in ("native-player", "native-window"):
             native_player(args, directory / "live", tests, mode, args.direction == "native-window")
+        elif args.direction in ("native-terminal", "native-terminal-window"):
+            native_terminal(args, directory, tests, mode, args.direction == "native-terminal-window")
         elif args.direction == "flash-to-dis":
             if args.profile == "module-load":
                 (directory / "local-only").write_bytes(b"native file excluded by the paired root")

@@ -240,6 +240,9 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
 #ifdef DVM_RUNTIME_EDITOR
            || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
 #endif
+#ifdef DVM_TERMINAL_LAUNCH
+           || dvm_paired_ui_active()
+#endif
            || guest_cancel_pending_or_close())
     {
 
@@ -247,6 +250,12 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
         {
             error("native collector safepoint failed");
         }
+#ifdef DVM_TERMINAL_LAUNCH
+        if (!dvm_paired_ui_poll())
+        {
+            error("paired Unibus channel transport failed");
+        }
+#endif
 #ifdef DVM_RUNTIME_EDITOR
         if (dvm_editor_attached())
         {
@@ -277,6 +286,20 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
             {
                 dvm_managed_workers_record();
             }
+#ifdef DVM_TERMINAL_LAUNCH
+            if (progress == DVM_MANAGED_TURN_IDLE && dvm_paired_ui_active())
+            {
+                if (!native_spawn)
+                {
+                    fvm_port_thread_sleep_us(1000);
+                }
+                if (!dvm_managed_workers_yield(1))
+                {
+                    error("paired Unibus controller wait failed");
+                }
+                continue;
+            }
+#endif
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
                 (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending() ||
                  dvm_runqueue_mixed_alt_pending() || dvm_result_channels_active() ||
@@ -330,6 +353,9 @@ static int runtime_execute(void *argument)
     {
         result = 1;
     }
+#ifdef DVM_TERMINAL_LAUNCH
+    dvm_paired_ui_finish();
+#endif
     if (stdio_gates[1] == stdio_gates[2])
     {
         stdio_gates[2] = NULL;

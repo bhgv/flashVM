@@ -37,6 +37,8 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 [Replaceable module images](reference/module_slot.md) share a server tree
 with stable playback controls.
 
+[Credited terminal mailbox](reference/unibus_terminal.md)
+
 ## Build
 
 Install [libunibus](../libunibus/README.md) first. The core is C99 and links

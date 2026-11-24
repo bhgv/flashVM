@@ -49,5 +49,16 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         "${root}/disVM/native/terminal/order" "${root}/disVM/native/vfs"
         "${root}/disVM/native/launch" "${CMAKE_CURRENT_SOURCE_DIR}/vfs"
         "${root}/disVM/host/traversal" "${root}/remote_phy")
+    set(styxrpc_terminal_sources
+        terminal_launch/paired_ui.c
+        "${root}/lib/styxrpc/src/unibus_terminal.c"
+        "${root}/lib/styxrpc/src/message_port.c"
+        "${root}/lib/styxrpc/src/message_client.c"
+        "${root}/lib/styxrpc/src/vfs_client.c")
+    target_sources(disvm PRIVATE ${styxrpc_terminal_sources})
+    set_property(SOURCE ${styxrpc_terminal_sources} APPEND PROPERTY INCLUDE_DIRECTORIES
+        "${root}/lib/styxrpc/include"
+        "${root}/disVM/native/client" "${root}/disVM/native/vfs"
+        "${root}/disVM/native/terminal" "${root}/remote_phy")
     target_link_libraries(disvm PRIVATE "-Wl,--start-group" ${terminal_launch_libraries} "-Wl,--end-group")
 endif()

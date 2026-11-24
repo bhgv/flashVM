@@ -38,6 +38,8 @@ Copyright (c) 2026 bhgv
 [Заменяемые образы модулей](reference/module_slot.ru.md) обслуживаются на том
 же дереве, что и постоянные файлы управления.
 
+[Терминальная очередь с одним кадром](reference/unibus_terminal.ru.md)
+
 ## Сборка
 
 Установите [libunibus](../libunibus/README.ru.md) и передайте путь установки

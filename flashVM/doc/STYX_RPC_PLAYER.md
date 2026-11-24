@@ -49,6 +49,20 @@ returns a status and a byte array. `styxChannel("(i)", 1)` creates a local
 typed queue. Each new movie owns its own session object and replacement
 closes the previous movie’s launch fids.
 
+## Unibus terminal
+
+In a bidirectional launch, the Limbo program registers its
+`chan of array of byte` with `$Unibus.attach(input, output)` and disconnects
+them with `detach()`. The SWF receives `styxTerminal` with `bidir == true`.
+`trySendFrame(frame)` queues a single counted fvd1 string and returns true
+on acceptance. A false result permits a later attempt. `tryReceiveFrame()`
+returns the next string or undefined. A movie can poll these methods
+from `onEnterFrame`. Each direction has space for one frame. Consumption
+grants credit for the next frame.
+
+The [IDE terminal contract](../../ide/TERMINAL-BIDIR.md) shows how to pass
+this object to the existing ActionScript adapter.
+
 ## Publishing a movie object
 
 Call `styxrpc.publishObject("view.dis", receiver, ["key", "onKey"])`. DisVM
@@ -75,5 +89,9 @@ ctest --test-dir build/styxrpc -R 'styxrpc-native-player' --output-on-failure
 Set `STYXRPC_FLASHVM_WINDOW_PLAYER` to the SDL-enabled executable. The
 `styxrpc-native-window-*` tests use SDL's dummy driver and check the new
 and old positions of a shape moved by a DisVM call.
+
+The `styxrpc-native-terminal-*` tests run a `.dis` and `.swf` on the
+stock pair. A key frame reaches a Limbo channel and its Unicode reply
+updates the raster in the windowed run.
 
 [Player implementation](../src/styxrpc/player_main.c) · [DisVM mount command](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

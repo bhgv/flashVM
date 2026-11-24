@@ -4,6 +4,7 @@
  */
 #include "playback_clock.h"
 #include "player_view.h"
+#include "player_terminal.h"
 #include "../../ports/monotonic_port.h"
 #include "flashvm/swf.h"
 #include "client.h"
@@ -46,8 +47,8 @@ static FVM_Result trace(FVM_Context *context, FVM_Object *receiver, unsigned arg
  * RU: Подключить диагностику в каждом новом контексте фильма. */
 static FVM_Result setup(void *state, FVM_Context *context)
 {
-    (void)state;
-    return fvm_avm1_set_trace_rooted(context, trace, NULL, NULL);
+    FVM_Result result = fvm_styxrpc_player_terminal(context, state);
+    return result == FVM_OK ? fvm_avm1_set_trace_rooted(context, trace, NULL, NULL) : result;
 }
 
 
@@ -139,6 +140,7 @@ static int connected(const char *value)
 static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
 {
     FVM_Config config;
+    StyxRpcTerminal terminal = {0};
     FVM_Runtime *runtime = NULL;
     FVM_StyxRpcPlayback *playback = NULL;
     StyxRpcServer *server = NULL;
@@ -154,13 +156,14 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
         spec.upload_limit = FVM_SWF_DEFAULT_LIMIT;
         spec.mode = mode;
         spec.setup = setup;
+        spec.host = &terminal;
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
         {
             server = styxrpc_server_create(phybidirchannel(mux, 0), &styxrpc_module_slot_tree,
                 fvm_styxrpc_playback_slot(playback));
         }
     }
-    if (server)
+    if (server && fvm_styxrpc_player_publish_terminal(server, &terminal))
     {
         status = replay(server, playback, view);
         if (!status && !fvm_paired_view_capture(view, playback))
