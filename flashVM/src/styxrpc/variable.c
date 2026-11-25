@@ -6,7 +6,7 @@
 #include "flashvm/gc_roots.h"
 #include "flashvm/userdata.h"
 #include "managed_values.h"
-#include "styxrpc/vfs_client.h"
+#include "variable_ref_adapter.h"
 #include <stdlib.h>
 
 typedef struct IntBinding
@@ -78,16 +78,17 @@ static FVM_Result write_variable(FVM_Context *context, FVM_Object *self, unsigne
 }
 
 
-/* [GC:] EN/RU: See flashvm/styxrpc_filesystem.h. / См. flashvm/styxrpc_filesystem.h. */
-FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *object, const char *name,
-    struct StyxClient *session, const char *path, int writable)
+/* [GC:] EN: Bind the exact opened variable, selected by path or by its reference.
+ * RU: Привязать точную переменную, выбранную путём или ссылкой. */
+static FVM_Result bind_variable(FVM_Context *context, FVM_Object *object, const char *name,
+    struct StyxClient *session, const char *path, int writable, const StyxRpcIntRef *reference)
 {
     FVM_GCRootScope *roots;
     FVM_Value value;
     FVM_Result status;
     IntBinding *binding;
     int own;
-    if (!session || !path || !*path || (writable != 0 && writable != 1) || !name || !*name ||
+    if (!session || (!reference && (!path || !*path)) || (writable != 0 && writable != 1) || !name || !*name ||
         fvm_object_has_own(context, object, name, &own) != FVM_OK || own)
     {
         return FVM_INVALID_ARGUMENT;
@@ -115,9 +116,11 @@ FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *objec
         status = binding ? fvm_userdata_attach(context, value.object, binding, release_variable) : FVM_OUT_OF_MEMORY;
         if (status == FVM_OK)
         {
+            StyxRpcIoOutcome opened;
             binding->writable = writable;
-            status = styxrpc_vfs_int_open(session, path, writable, &binding->file) == STYXRPC_IO_OK ?
-                fvm_object_define_accessor_rooted(context, object, name, read_variable, write_variable, binding, value.object) :
+            opened = reference ? styxrpc_int_ref_open(session, reference, &binding->file) :
+                styxrpc_vfs_int_open(session, path, writable, &binding->file);
+            status = opened == STYXRPC_IO_OK ? fvm_object_define_accessor_rooted(context, object, name, read_variable, write_variable, binding, value.object) :
                 FVM_ERROR;
             if (status != FVM_OK)
             {
@@ -132,4 +135,21 @@ FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *objec
     }
     fvm_gc_roots_end(roots);
     return status;
+}
+
+
+/* [GC:] EN/RU: See flashvm/styxrpc_filesystem.h. / См. flashvm/styxrpc_filesystem.h. */
+FVM_Result fvm_styxrpc_int_variable_bind(FVM_Context *context, FVM_Object *object, const char *name,
+    struct StyxClient *session, const char *path, int writable)
+{
+    return bind_variable(context, object, name, session, path, writable, NULL);
+}
+
+
+/* [GC:] EN/RU: See variable_ref_adapter.h. / См. variable_ref_adapter.h. */
+FVM_Result fvm_styxrpc_int_ref_bind(FVM_Context *context, FVM_Object *object,
+    struct StyxClient *session, const StyxRpcIntRef *reference)
+{
+    return reference ? bind_variable(context, object, "value", session, NULL, reference->writable, reference) :
+        FVM_INVALID_ARGUMENT;
 }

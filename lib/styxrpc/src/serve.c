@@ -7,6 +7,7 @@
 #include <styxserver.h>
 #include "server.h"
 #include "message_internal.h"
+#include "variable_ref_internal.h"
 #include "styxrpc/program.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -358,32 +359,7 @@ StyxRpcServer *styxrpc_program_server_create(RemotePhy *phy, StyxRpcPrograms *pr
 }
 
 
-/* EN/RU: See program.h. / См. program.h. */
-uint32_t styxrpc_program_server_grant(StyxRpcServer *server, const StyxRpcResource *resource)
-{
-    if (!server || !server->programs)
-    {
-        return 0;
-    }
-    pthread_mutex_lock(&server->program_lock);
-    uint32_t pid = styxrpc_program_unibus_grant(server->programs, resource);
-    pthread_mutex_unlock(&server->program_lock);
-    return pid;
-}
-
-
-/* EN/RU: See program.h. / См. program.h. */
-int styxrpc_program_server_revoke(StyxRpcServer *server, uint32_t pid)
-{
-    if (!server || !server->programs)
-    {
-        return 0;
-    }
-    pthread_mutex_lock(&server->program_lock);
-    int revoked = styxrpc_program_unibus_revoke(server->programs, pid);
-    pthread_mutex_unlock(&server->program_lock);
-    return revoked;
-}
+#include "serve_grants.inc"
 
 
 /* EN/RU: See messages.h. / См. messages.h. */

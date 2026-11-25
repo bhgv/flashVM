@@ -46,16 +46,16 @@ int styxrpc_program_unibus_revoke(StyxRpcPrograms *programs, uint32_t pid)
         return 0;
     }
     uint64_t parent = programs->nodes[slot].entry.id;
-    if (parent != slot)
-    {
-        revoke_grant(programs, parent);
-        return 1;
-    }
     for (size_t i = 1; i < programs->used; ++i)
     {
         StyxRpcRegistration *entry = &programs->nodes[i];
         if (entry->parent == parent && !entry->revoked && !strcmp(entry->name, ".unibus"))
         {
+            if (parent != slot)
+            {
+                revoke_grant(programs, parent);
+                return 1;
+            }
             entry->revoked = 1;
             programs->revision++;
             while (entry->opens)

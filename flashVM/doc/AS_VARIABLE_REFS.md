@@ -28,6 +28,6 @@ the FIFO is full. `recv()` returns the oldest message or undefined while the
 queue is empty. `close()` discards the queue. The FIFO and the aliases keep
 their source owners reachable through GC.
 
-This stage supports local references. Cross-context and libstyxrpc transfer,
-including Limbo receivers, requires a wire representation. A read followed by
-a write uses two operations.
+The reference FIFO stays within one context. Live Int32 references from
+another process use [wire descriptors](../../lib/styxrpc/reference/int_variable_refs.md).
+A read followed by a write uses two operations.

@@ -3,6 +3,7 @@
  * RU: Проверяемый импорт модулей и живые переменные Int32 в действующей сессии фильма.
  */
 #include "session_methods.h"
+#include "variable_ref_adapter.h"
 #include "flashvm/styxrpc_filesystem.h"
 #include "flashvm/styxrpc_module.h"
 #include "styxrpc/vfs_client.h"
@@ -137,6 +138,17 @@ static FVM_Result int_variable(FVM_Context *context, FVM_Object *self, unsigned 
 FVM_Result fvm_styxrpc_module_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding)
 {
     FVM_Result status = fvm_object_define_method_rooted(context, object, "loadModule", load_module, binding, NULL);
-    return status == FVM_OK ?
-        fvm_object_define_method_rooted(context, object, "intVariable", int_variable, binding, NULL) : status;
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "intVariable", int_variable, binding, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "acceptIntRef", fvm_styxrpc_accept_int_ref, binding, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "intRefBytes", fvm_styxrpc_int_ref_bytes, binding, NULL);
+    }
+    return status;
 }

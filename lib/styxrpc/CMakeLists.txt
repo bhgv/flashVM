@@ -16,7 +16,7 @@ set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
 add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
-    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/indexed_variable.c
+    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
 target_link_libraries(styxrpc PUBLIC Unibus::wire)
 target_include_directories(styxrpc PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -29,7 +29,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Threads REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
     add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_pid.c src/channel_client.c src/channel_arguments.c
-        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_directory.c src/graph_client.c src/message_client.c)
+        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_directory.c src/variable_ref_client.c src/graph_client.c src/message_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)
@@ -88,6 +88,23 @@ if(BUILD_TESTING)
         add_executable(styxrpc-program-server-test tests/program_server.c)
         target_link_libraries(styxrpc-program-server-test PRIVATE StyxRpc::serve Styx::client)
         add_test(NAME styxrpc-program-server COMMAND styxrpc-program-server-test)
+        add_executable(styxrpc-variable-ref-test tests/variable_ref_socket.c)
+        target_link_libraries(styxrpc-variable-ref-test PRIVATE StyxRpc::serve StyxRpc::launch Styx::bidir)
+        add_test(NAME styxrpc-variable-ref COMMAND styxrpc-variable-ref-test)
+        set_tests_properties(styxrpc-variable-ref PROPERTIES TIMEOUT 10)
+        if(STYXRPC_DISVM_BUILD AND STYXRPC_DISVM_SOURCE)
+            foreach(mode interpreter jit)
+                set(ref_mode)
+                if(mode STREQUAL "jit")
+                    set(ref_mode --jit)
+                endif()
+                add_test(NAME styxrpc-variable-ref-disvm-${mode} COMMAND "${PYTHON_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/variable_ref_guest.py"
+                    --runtime "${disvm_runtime}" --limbo "${disvm_limbo}"
+                    --source "${STYXRPC_DISVM_SOURCE}" --provider "$<TARGET_FILE:styxrpc-variable-ref-test>" ${ref_mode})
+                set_tests_properties(styxrpc-variable-ref-disvm-${mode} PROPERTIES TIMEOUT 25)
+            endforeach()
+        endif()
         add_executable(styxrpc-channel-test tests/channel_socket.c)
         target_link_libraries(styxrpc-channel-test PRIVATE StyxRpc::serve StyxRpc::launch)
         add_test(NAME styxrpc-unibus-socket COMMAND styxrpc-channel-test)

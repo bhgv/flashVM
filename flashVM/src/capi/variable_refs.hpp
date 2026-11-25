@@ -16,7 +16,7 @@ FVM_Result fvm_bind_variable_ref(FVM_Context *, FVM_Object *, const char *, size
 
 
 /* EN/RU: Capture a named own variable. / Захватить именованную собственную переменную. */
-FVM_Result fvm_capture_variable_ref(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
+extern "C" FVM_Result fvm_capture_variable_ref(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
 
 
 /* EN/RU: Make a bounded local FIFO for references and scalars. / Создать локальную очередь ссылок и скаляров. */

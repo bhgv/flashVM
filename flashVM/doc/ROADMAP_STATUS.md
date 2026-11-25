@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1765 / Контрольная точка v0.1765. StyxRPC carries live Int32
+reference descriptors over an explicit byte message. FlashVM принимает
+прозрачную привязку, а Limbo выдаёт ref Cell. Отзыв закрывает старые fid.
+[EN](../../lib/styxrpc/reference/int_variable_refs.md) / [RU](../../lib/styxrpc/reference/int_variable_refs.ru.md).
+
 Checkpoint v0.1764 / Контрольная точка v0.1764. AS2 view movies can
 capture variables and forward aliases through a same-context FIFO.
 Обычное чтение и запись обращаются к исходной ячейке.

@@ -1,0 +1,121 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Exercise a wire Int32 payload as an ordinary ActionScript variable.
+ * RU: Проверить сетевой дескриптор Int32 как обычную переменную ActionScript.
+ */
+#include "flashvm/execution.h"
+#include "flashvm/gc.h"
+#include "flashvm/styxrpc_session.h"
+#include "styxrpc/variable_ref.h"
+#include "client.h"
+#include "drivers/posix/fd.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+
+/* EN/RU: Read one cell from its owner. / Прочитать ячейку владельца. */
+static int load(void *state, int32_t *out)
+{
+    *out = *(int32_t *)state;
+    return 1;
+}
+
+
+/* EN/RU: Write one cell on its owner. / Записать ячейку владельца. */
+static int store(void *state, int32_t value)
+{
+    *(int32_t *)state = value;
+    return 1;
+}
+
+
+/* EN/RU: Run the issuer until disconnect. / Обслуживать владельца до отключения. */
+static void *serve(void *server)
+{
+    while (styxrpc_server_step(server))
+    {
+    }
+    return NULL;
+}
+
+
+/* EN: Pass an array as a script would, then use the two aliases without member access.
+ * RU: Передать массив как из сценария, затем использовать две привязки без членов. */
+static int script(FVM_Context *context, StyxClient *client, StyxRpcIntRef *reference, FVM_StyxRpcSession *binding)
+{
+    FVM_Value object, args, values[STYXRPC_INT_REF_SIZE], ref, result;
+    unsigned char bytes[STYXRPC_INT_REF_SIZE];
+    if (!styxrpc_int_ref_encode(reference, bytes, sizeof(bytes)) ||
+        fvm_styxrpc_session_bind(context, binding, client, NULL, &object) != FVM_OK ||
+        fvm_set_global(context, "styxrpc", &object) != FVM_OK)
+    {
+        return 0;
+    }
+    for (size_t i = 0; i < sizeof(bytes); ++i)
+    {
+        fvm_value_number(values + i, bytes[i]);
+    }
+    int ok = fvm_exec_literal_array(context, sizeof(bytes), values, &args) == FVM_OK &&
+        fvm_set_global(context, "wire", &args) == FVM_OK &&
+        fvm_object_call(context, object.object, "acceptIntRef", 1, &args, &ref) == FVM_OK &&
+        fvm_set_global(context, "first", &ref) == FVM_OK &&
+        fvm_object_call(context, object.object, "intRefBytes", 1, &ref, &args) == FVM_OK &&
+        fvm_object_call(context, object.object, "acceptIntRef", 1, &args, &ref) == FVM_OK &&
+        fvm_set_global(context, "second", &ref) == FVM_OK &&
+        fvm_gc_collect(context, NULL) == FVM_OK &&
+        fvm_get_global(context, "first", &result) == FVM_OK &&
+        result.type == FVM_VALUE_NUMBER && result.number == 41;
+    fvm_value_number(&result, -32);
+    ok = ok && fvm_set_global(context, "first", &result) == FVM_OK &&
+        fvm_get_global(context, "second", &result) == FVM_OK &&
+        result.type == FVM_VALUE_NUMBER && result.number == -32;
+    return ok;
+}
+
+
+/* EN: Run the bound reference on one real carrier and close every owner.
+ * RU: Проверить привязку на настоящем потоке и закрыть каждого владельца. */
+int main(void)
+{
+    StyxRpcRegistration nodes[6];
+    StyxRpcPrograms programs;
+    int sockets[2];
+    if (!styxrpc_programs_init(&programs, nodes, 6) || socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
+    {
+        return 1;
+    }
+    StyxRpcServer *server = styxrpc_program_server_create(
+        phyposixfd(sockets[1], PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), &programs);
+    int32_t cell = 41;
+    const StyxIntVariable variable = {&cell, load, store};
+    StyxRpcIntRef reference;
+    pthread_t worker;
+    if (!server || !styxrpc_int_ref_grant(server, &variable, 1, &reference) ||
+        pthread_create(&worker, NULL, serve, server))
+    {
+        close(sockets[0]);
+        styxrpc_server_destroy(server);
+        return 1;
+    }
+    StyxClient *client = styxclientmountfd(sockets[0], 4096, "test", "", 1000, 8);
+    FVM_Config config;
+    FVM_Runtime *runtime = NULL;
+    FVM_Context *context = NULL;
+    FVM_StyxRpcSession binding = {0};
+    int ok = client && fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK &&
+        fvm_context_create(runtime, &context) == FVM_OK && script(context, client, &reference, &binding);
+    fvm_styxrpc_session_close(&binding);
+    fvm_context_destroy(context);
+    fvm_runtime_destroy(runtime);
+    styxclientshutdown(client);
+    styxclientfree(client);
+    pthread_join(worker, NULL);
+    styxrpc_server_destroy(server);
+    if (!ok || cell != -32)
+    {
+        fputs("FlashVM did not bind the live wire reference\n", stderr);
+        return 1;
+    }
+    return 0;
+}

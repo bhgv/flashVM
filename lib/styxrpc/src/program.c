@@ -3,13 +3,13 @@
  * RU: Устойчивые Qid и атомарная ограниченная регистрация встречных контекстов.
  */
 #include "collection_internal.h"
+#include "variable_ref_internal.h"
 #include "bigtable_internal.h"
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 
-#define FIRST_GRANT_PID UINT32_C(0x80000000) /* First delegated PID. */
 #define FREE_GRANT_SLOT 2 /* Revoked temporary node available for reuse. */
 
 #define PROCESS_NODES 5U /* One process directory and four standard children. */
@@ -84,7 +84,7 @@ int styxrpc_programs_init(StyxRpcPrograms *programs, StyxRpcRegistration *storag
     {
         return 0;
     }
-    *programs = (StyxRpcPrograms){.nodes = storage, .capacity = capacity, .next_grant_pid = FIRST_GRANT_PID};
+    *programs = (StyxRpcPrograms){.nodes = storage, .capacity = capacity, .next_grant_pid = STYXRPC_INT_REF_FIRST_PID};
     append(programs, 0, "/", 0555, 1);
     append(programs, 0, ".prog", 0555, 1);
     return 1;
@@ -95,7 +95,7 @@ int styxrpc_programs_init(StyxRpcPrograms *programs, StyxRpcRegistration *storag
 int styxrpc_program_add(StyxRpcPrograms *programs, uint32_t pid)
 {
     if (!room(programs, PROCESS_NODES) || !pid || find_pid(programs, pid) ||
-        (pid >= FIRST_GRANT_PID && pid < programs->next_grant_pid))
+        (pid >= STYXRPC_INT_REF_FIRST_PID && pid < programs->next_grant_pid))
     {
         return 0;
     }
