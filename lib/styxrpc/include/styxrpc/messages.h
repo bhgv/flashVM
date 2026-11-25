@@ -98,6 +98,15 @@ StyxRpcStatus styxrpc_message_send(StyxRpcMessagePort *port, const char *name, u
     const void *payload, size_t size);
 
 
+/* EN: Write queued records on a client port without reading or invoking receive
+ * callbacks. OK confirms the Styx write; INVALID retires the port on I/O failure.
+ * Owner thread only, outside callbacks on the same port/session.
+ * RU: Записать очередь клиентского порта без чтения и вызова обработчиков.
+ * OK подтверждает запись Styx; INVALID выводит порт из работы при ошибке I/O.
+ * Только поток владельца, вне колбэков этого порта или сессии. */
+StyxRpcStatus styxrpc_messages_flush(StyxRpcMessagePort *port);
+
+
 /* EN: Flush queued bytes and read one bounded batch on an open client port.
  * OK means at least one user message delivered, MORE means none ready. An I/O,
  * protocol or handler error returns INVALID and retires the port. Uses normal Styx

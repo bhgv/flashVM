@@ -1,6 +1,6 @@
 # Custom UniBus messages
 
-[Русский](custom_messages.ru.md) · [SDK build](../README.md#build)
+[Русский](custom_messages.ru.md) · [SDK build](../README.md#build) · [Mixed channel schemas](channel_messages.md)
 
 Use a message port when both applications need to send typed events or binary
 data at their own pace. For example, an instrument may publish samples and

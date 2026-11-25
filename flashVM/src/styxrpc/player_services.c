@@ -204,6 +204,10 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
     {
         status = fvm_set_global(context, "styxrpc", &object);
     }
+    if (status == FVM_OK)
+    {
+        status = fvm_set_global(context, "rpc", &object);
+    }
     fvm_gc_roots_end(roots);
     if (status == FVM_OK)
     {

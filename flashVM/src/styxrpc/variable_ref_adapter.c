@@ -7,27 +7,14 @@
 
 
 /* [ASINC] [GC:] EN/RU: See variable_ref_adapter.h. / См. variable_ref_adapter.h. */
-FVM_Result fvm_styxrpc_accept_int_ref(FVM_Context *context, FVM_Object *self, unsigned argc,
-    const FVM_Value *args, FVM_Value *out, void *state)
+FVM_Result fvm_styxrpc_decode_int_ref(FVM_Context *context, FVM_StyxRpcSession *binding,
+    const void *bytes, size_t size, FVM_Value *out)
 {
-    FVM_StyxRpcSession *binding = state;
-    unsigned char bytes[STYXRPC_INT_REF_SIZE];
-    size_t size;
     StyxRpcIntRef reference;
     FVM_GCRootScope *roots;
     FVM_Value capture[2];
     FVM_Result status;
-    (void)self;
-    if (!binding->client || argc != 1)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    status = fvm_styxrpc_bytes(context, args, bytes, sizeof(bytes), &size);
-    if (status != FVM_OK)
-    {
-        return status;
-    }
-    if (!styxrpc_int_ref_decode(bytes, size, &reference))
+    if (!binding->client || !styxrpc_int_ref_decode(bytes, size, &reference))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -54,8 +41,26 @@ FVM_Result fvm_styxrpc_accept_int_ref(FVM_Context *context, FVM_Object *self, un
     if (status == FVM_OK)
     {
         fvm_value_string(capture + 1, "value");
-        status = fvm_capture_variable_ref(context, self, 2, capture, out, NULL);
+        status = fvm_capture_variable_ref(context, NULL, 2, capture, out, NULL);
     }
     fvm_gc_roots_end(roots);
     return status;
+}
+
+
+/* [ASINC] [GC:] EN/RU: See variable_ref_adapter.h. / См. variable_ref_adapter.h. */
+FVM_Result fvm_styxrpc_accept_int_ref(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_StyxRpcSession *binding = state;
+    unsigned char bytes[STYXRPC_INT_REF_SIZE];
+    size_t size;
+    FVM_Result status;
+    (void)self;
+    if (!binding->client || argc != 1)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    status = fvm_styxrpc_bytes(context, args, bytes, sizeof(bytes), &size);
+    return status == FVM_OK ? fvm_styxrpc_decode_int_ref(context, binding, bytes, size, out) : status;
 }

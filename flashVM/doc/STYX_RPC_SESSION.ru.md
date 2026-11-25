@@ -34,6 +34,7 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.ru.md) | Проверенный результат `fn(int): int`. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.ru.md) | Проверить и загрузить методы. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.ru.md) | Открыть прокси живой переменной. |
+| [`newchan(address)`](STYX_RPC_NEWCHAN.ru.md) | Открыть обмен разными типами значений и живыми ссылками. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.ru.md) | Открыть именованный порт UniBus. |
 
 Одновременно открываются до восьми запусков. Положительные целые токены

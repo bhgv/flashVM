@@ -35,6 +35,11 @@ FVM_Result fvm_styxrpc_module_members(FVM_Context *context, FVM_Object *object, 
 FVM_Result fvm_styxrpc_message_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
+/* [GC:] EN: Install newchan for the rooted session object, borrowing binding.
+ * RU: Установить newchan для удерживаемого объекта сессии, заимствуя binding. */
+FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
+
+
 /* EN: Copy exact own byte properties into bytes up to capacity. Set size on success.
  * RU: Скопировать точные собственные байты в bytes до capacity. При успехе задать size. */
 FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsigned char *bytes,

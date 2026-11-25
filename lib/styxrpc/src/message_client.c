@@ -16,7 +16,7 @@ typedef struct ClientMessagePort
     StyxRpcVfsFile *file;    /* The single held read/write fid. */
     uint64_t read_offset;    /* Next confirmed server-to-client byte offset. */
     uint64_t write_offset;   /* Next confirmed client-to-server byte offset. */
-    int pumping;            /* Reject recursive use from a receive callback. */
+    int pumping;            /* Reject recursive transport use and close. */
 } ClientMessagePort;
 
 
@@ -55,21 +55,55 @@ StyxRpcStatus styxrpc_messages_open(struct StyxClient *session, const StyxRpcMes
 }
 
 
+/* EN: Commit the queued output on opened, advancing offsets only after a full write.
+ * RU: Записать очередь opened, продвигая смещение только после полной записи. */
+static StyxRpcStatus flush_port(ClientMessagePort *opened)
+{
+    StyxRpcMessagePort *port = &opened->port;
+    if (!port->output_size)
+    {
+        return STYXRPC_OK;
+    }
+    size_t sent;
+    if (styxrpc_vfs_file_write(opened->file, opened->write_offset, port->output,
+        port->output_size, &sent) != STYXRPC_IO_OK || sent != port->output_size)
+    {
+        return STYXRPC_INVALID;
+    }
+    opened->write_offset += sent;
+    styxrpc_message_drain(port, sent);
+    return STYXRPC_OK;
+}
+
+
+/* EN/RU: See messages.h. / См. messages.h. */
+StyxRpcStatus styxrpc_messages_flush(StyxRpcMessagePort *port)
+{
+    if (!port || !port->client || port->failed)
+    {
+        return STYXRPC_INVALID;
+    }
+    ClientMessagePort *opened = (ClientMessagePort *)port;
+    if (opened->pumping)
+    {
+        return STYXRPC_INVALID;
+    }
+    opened->pumping = 1;
+    StyxRpcStatus status = flush_port(opened);
+    opened->pumping = 0;
+    port->failed = status == STYXRPC_INVALID;
+    return status;
+}
+
+
 /* EN: Transfer queued output and one batch of input on opened, without retrying errors.
  * RU: Передать очередь и принять одну порцию через opened, без повтора ошибок. */
 static StyxRpcStatus pump_port(ClientMessagePort *opened)
 {
     StyxRpcMessagePort *port = &opened->port;
-    if (port->output_size)
+    if (flush_port(opened) != STYXRPC_OK)
     {
-        size_t sent;
-        if (styxrpc_vfs_file_write(opened->file, opened->write_offset, port->output,
-            port->output_size, &sent) != STYXRPC_IO_OK || sent != port->output_size)
-        {
-            return STYXRPC_INVALID;
-        }
-        opened->write_offset += sent;
-        styxrpc_message_drain(port, sent);
+        return STYXRPC_INVALID;
     }
     unsigned char bytes[MESSAGE_READ_BATCH];
     size_t got;

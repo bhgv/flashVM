@@ -1,5 +1,9 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1767 / Контрольная точка v0.1767. The paired player opens
+one mixed UniBus exchange through `rpc.newchan`. Значения и ранее выданные
+ссылки Int32 идут через один fid. [EN](STYX_RPC_NEWCHAN.md) / [RU](STYX_RPC_NEWCHAN.ru.md).
+
 Checkpoint v0.1766 / Контрольная точка v0.1766. Explicit Int32 reference
 channels encode existing references on send and bind them on receive.
 [EN](../../lib/styxrpc/reference/int_variable_refs.md) / [RU](../../lib/styxrpc/reference/int_variable_refs.ru.md).
