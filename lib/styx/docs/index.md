@@ -84,6 +84,9 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [phyposixfd](reference/phyposixfd.md) — `Styx::carrier; hosted native build`
 - [phyread](reference/phyread.md) — `Styx::carrier; hosted native build`
 - [physelect](reference/physelect.md) — `Styx::carrier; hosted native build`
+- [phytcpaccept](reference/phytcpaccept.md) — `Styx::carrier; hosted native build`
+- [phytcpdial](reference/phytcpdial.md) — `Styx::carrier; hosted native build`
+- [phytcplisten](reference/phytcplisten.md) — `Styx::carrier; hosted native build`
 - [phywait](reference/phywait.md) — `Styx::carrier; hosted native build`
 - [phywake](reference/phywake.md) — `Styx::carrier; hosted native build`
 - [phywrite](reference/phywrite.md) — `Styx::carrier; hosted native build`

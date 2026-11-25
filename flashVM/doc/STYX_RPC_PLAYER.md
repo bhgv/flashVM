@@ -2,7 +2,7 @@
 
 [Русский](STYX_RPC_PLAYER.ru.md) · [Playback protocol](STYX_RPC_MODULES.md) · [File and module APIs](STYX_RPC.md)
 
-The `flashvm_styx_player` executable runs a paired FlashVM owner with a monotonic frame clock. It accepts one already connected, full-duplex stream on an inherited descriptor at least 3. A local socket or a TCP connection can carry the Styx session. The executable logs ActionScript `trace` to standard output. Build it with the installed hosted Styx and libstyxrpc SDK.
+The `flashvm_styx_player` executable runs a paired FlashVM owner with a monotonic frame clock. It accepts a connected full-duplex stream on an inherited descriptor at least 3 or opens an explicit TCP endpoint. The executable logs ActionScript `trace` to standard output. Build it with the installed hosted Styx and libstyxrpc SDK.
 
 ```sh
 cmake -S flashVM -B build/flash -DFVM_ENABLE_STYXRPC=ON -DCMAKE_PREFIX_PATH=/path/to/sdk
@@ -57,14 +57,37 @@ returns a status and a byte array. `styxChannel("(i)", 1)` creates a local
 typed queue. Each new movie owns its own session object and replacement
 closes the previous movie’s launch fids.
 
-## Connect two FlashVMs
+## Start over TCP
 
-Pass one end of the same connected stream to each player. Choose complementary
-roles so each mounted client reaches the other player's server.
+Run the listener on the FlashVM machine. Set `HOST` to a local interface's
+address and `PORT` to a decimal port. Loopback is suitable when both processes
+run on the same host. A reachable interface can serve a peer on another host.
 
 ```sh
-flashvm_styx_player --fd 3 --peer forward --movie view-a.swf --jit
-flashvm_styx_player --fd 4 --peer reverse --movie view-b.swf --jit
+flashvm_styx_player --listen 127.0.0.1 7474 --jit --window
+disvm --styx-mount-tcp 127.0.0.1 7474 --at /rpc -- --native-spawn --jit desktop-paired.dis
+```
+
+`--listen HOST PORT` accepts one connection and closes the listening socket.
+Use port `0` to let the kernel choose. The first output line is
+`styx listening PORT` with the actual port. `--connect HOST PORT` dials a
+listener. Connect attempts share a five-second budget after name resolution.
+The equivalent `--fd FD` accepts a stream supplied by a supervisor. These
+choices all use the same StyxRPC session. The direct TCP carrier is plaintext
+and relies on a trusted network or an independently protected stream.
+
+See the [paired IDE guide](../../ide/DESKTOP-PAIRED.md) for the application
+modules and asset layout, and the [DisVM TCP reference](../../disVM/runtime/TERMINAL-LAUNCH-CLI.md#tcp-endpoints)
+for serving a remote named program or library.
+
+## Connect two FlashVMs
+
+Choose complementary roles so each mounted client reaches the other player's
+server. The TCP listener and dialer can take either role.
+
+```sh
+flashvm_styx_player --listen 127.0.0.1 7474 --peer forward --movie view-a.swf --jit
+flashvm_styx_player --connect 127.0.0.1 7474 --peer reverse --movie view-b.swf --jit
 ```
 
 `forward` serves lane 0 and mounts lane 1. `reverse` serves lane 1 and mounts
@@ -72,9 +95,8 @@ lane 0. Each role serves version and attach requests while its own mount
 negotiates. `--movie FILE` in peer mode loads a local startup SWF and starts
 it at the first clock turn after the connection is attached. Omit `--movie`
 to wait for upload through the peer connection. Each player retires its
-session when the connection closes. The launcher supplies a connected
-descriptor and controls which peer receives it. TCP uses the same wire format
-and requires transport protection at deployment when needed.
+session when the connection closes. To use an externally supplied transport,
+substitute `--fd FD` for each TCP endpoint.
 
 Each movie can [publish an object](#publishing-a-movie-object) and use
 [`styxrpc.callInt`](STYX_RPC_SESSION_CALL_INT.md) to call a published Int32

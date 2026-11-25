@@ -47,7 +47,8 @@ target_link_libraries(styx_nine PUBLIC Threads::Threads m)
 add_library(styx_server STATIC "${src}/tools/libstyx/styxserver.c" "${src}/tools/libstyx/Posix.c")
 target_include_directories(styx_server PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_server PUBLIC styx_nine)
-add_library(styx_carrier STATIC remote_phy/phy.c remote_phy/select.c remote_phy/drivers/posix/fd.c)
+add_library(styx_carrier STATIC remote_phy/phy.c remote_phy/select.c
+    remote_phy/drivers/posix/fd.c remote_phy/drivers/posix/tcp.c)
 target_include_directories(styx_carrier PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/remote_phy>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/phy>")
 add_library(styx_bidir STATIC remote_phy/mux/channel.c remote_phy/mux/life.c
     remote_phy/mux/pump.c remote_phy/mux/queue.c remote_phy/mux/wait.c)

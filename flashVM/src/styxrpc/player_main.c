@@ -12,15 +12,18 @@
 #include "flashvm/standard_text.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
+#include "drivers/posix/tcp.h"
 #include "mux/bidir.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #define PLAYER_MIN_FD 3         /* Standard streams remain available for diagnostics. */
 #define PLAYER_MUX_LIMIT 65536U /* Maximum frame on the bidirectional carrier. */
+#define PLAYER_TCP_DIAL_MS 5000 /* TCP connect budget after name resolution. */
 #define PLAYER_TICK 1U         /* Timed operation advances one frame with no backlog burst. */
 #define PLAYER_FONT_LIMIT (4U * 1024U * 1024U) /* Maximum TTF bytes read from the attached VFS. */
 
@@ -182,6 +185,32 @@ static int connected(const char *value)
 }
 
 
+/* EN: Open the explicit TCP address. Announce a listening port before accepting
+ * one peer. Return an owned stream or -1 on failure.
+ * RU: Открыть указанный TCP-адрес. Объявить порт до приёма одного соединения.
+ * Вернуть свой поток или -1 при ошибке. */
+static int open_tcp(const char *host, const char *port, int listen_once)
+{
+    unsigned actual;
+    int listener;
+    int fd = -1;
+    if (!listen_once)
+    {
+        return phytcpdial(host, port, PLAYER_TCP_DIAL_MS);
+    }
+    listener = phytcplisten(host, port, &actual);
+    if (listener >= 0)
+    {
+        if (printf("styx listening %u\n", actual) >= 0 && !fflush(stdout))
+        {
+            fd = phytcpaccept(listener);
+        }
+        close(listener);
+    }
+    return fd;
+}
+
+
 /* EN: Adopt fd, attach the complementary client lane and serve playback on
  * serve_lane. Stage the optional local startup image on the same owner.
  * RU: Принять fd, подключить встречный клиентский канал и обслуживать плеер
@@ -274,19 +303,21 @@ int main(int argc, char **argv)
     unsigned serve_lane = PLAYER_SERVE_FORWARD;
     int flash_peer = 0;
     int windowed = 0, mode_seen = 0;
-    int fd, i, result;
+    int fd, i, result, dial, listen_once;
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
-        puts("usage: flashvm_styx_player --fd FD [--peer forward|reverse [--movie FILE]]\n"
-             "                            [--jit | --no-jit] [--window] [--capture PATH]");
+        puts("usage: flashvm_styx_player (--fd FD | --listen HOST PORT | --connect HOST PORT)\n"
+             "       [--peer forward|reverse [--movie FILE]] [--jit | --no-jit] [--window] [--capture PATH]");
         return 0;
     }
-    if (argc < 3 || strcmp(argv[1], "--fd"))
+    dial = argc >= 4 && !strcmp(argv[1], "--connect");
+    listen_once = argc >= 4 && !strcmp(argv[1], "--listen");
+    if (!dial && !listen_once && (argc < 3 || strcmp(argv[1], "--fd")))
     {
-        fputs("flashvm_styx_player: expected --fd FD for a connected stream\n", stderr);
+        fputs("flashvm_styx_player: expected --fd FD, --listen HOST PORT or --connect HOST PORT\n", stderr);
         return 2;
     }
-    for (i = 3; i < argc; ++i)
+    for (i = dial || listen_once ? 4 : 3; i < argc; ++i)
     {
         if (!mode_seen && (!strcmp(argv[i], "--jit") || !strcmp(argv[i], "--no-jit")))
         {
@@ -330,11 +361,15 @@ int main(int argc, char **argv)
         fputs("flashvm_styx_player: --movie requires --peer\n", stderr);
         return 2;
     }
-    fd = connected(argv[2]);
-    if (fd < 0)
+    fd = -1;
+    if (!dial && !listen_once)
     {
-        fputs("flashvm_styx_player: expected --fd FD for a connected stream\n", stderr);
-        return 2;
+        fd = connected(argv[2]);
+        if (fd < 0)
+        {
+            fputs("flashvm_styx_player: expected --fd FD for a connected stream\n", stderr);
+            return 2;
+        }
     }
     if (windowed || capture)
     {
@@ -344,7 +379,19 @@ int main(int argc, char **argv)
             return 2;
         }
     }
-    result = run(fd, mode, view, serve_lane, flash_peer, movie);
+    if (dial || listen_once)
+    {
+        fd = open_tcp(argv[2], argv[3], listen_once);
+    }
+    if (fd < 0)
+    {
+        fputs("flashvm_styx_player: cannot open TCP Styx endpoint\n", stderr);
+        result = 2;
+    }
+    else
+    {
+        result = run(fd, mode, view, serve_lane, flash_peer, movie);
+    }
     fvm_paired_view_destroy(view);
     return result;
 }

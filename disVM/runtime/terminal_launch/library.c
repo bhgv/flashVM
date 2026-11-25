@@ -67,11 +67,12 @@ int dvm_styx_library_cli(int argc, char **argv)
     StyxMountedScalar entries[STYX_MOUNTED_SCALAR_LIMIT] = {0};
     const char *images[STYX_MOUNTED_SCALAR_LIMIT];
     size_t count = 0;
-    int separator = 3;
+    int tcp = !strcmp(argv[1], "--styx-library-serve-tcp");
+    int separator = tcp ? 4 : 3;
     const char *execute = NULL;
-    if (argc > 4 && !strcmp(argv[3], "--execute"))
+    if (argc > separator + 1 && !strcmp(argv[separator], "--execute"))
     {
-        execute = argv[4];
+        execute = argv[separator + 1];
         separator += 2;
     }
     DVM_TerminalPrograms programs = {0};
@@ -100,10 +101,10 @@ int dvm_styx_library_cli(int argc, char **argv)
     }
     if (!valid || !count || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-library-serve-fd FD [--execute PROGRAM.dis [--execute-as NAME.dis IMAGE.dis]...] --export PUBLIC.dis OWNER.dis NAME [...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] scalarowner.dis\n");
+        fprintf(stderr, "usage: disvm (--styx-library-serve-fd FD | --styx-library-serve-tcp HOST PORT) [--execute PROGRAM.dis [--execute-as NAME.dis IMAGE.dis]...] --export PUBLIC.dis OWNER.dis NAME [...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] scalarowner.dis\n");
         return 2;
     }
-    int fd = dvm_terminal_connected(argv[2]);
+    int fd = tcp ? dvm_terminal_tcp(argv[2], argv[3], 1) : dvm_terminal_connected(argv[2]);
     int breaker = fd >= 0 ? dup(fd) : -1;
     if (breaker < 0)
     {
@@ -111,7 +112,8 @@ int dvm_styx_library_cli(int argc, char **argv)
         {
             close(fd);
         }
-        fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
+        fprintf(stderr, "%s\n", tcp ? "disvm: cannot open TCP Styx library endpoint" :
+            "disvm: expected a delegated connected stream FD >= 3");
         return 2;
     }
     if (!dvm_terminal_distinct_carriers(fd, libraries, library_count))

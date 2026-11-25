@@ -84,6 +84,9 @@ Copyright (c) 2026 bhgv
 - [phyposixfd](reference/phyposixfd.ru.md) — `Styx::carrier; hosted native build`
 - [phyread](reference/phyread.ru.md) — `Styx::carrier; hosted native build`
 - [physelect](reference/physelect.ru.md) — `Styx::carrier; hosted native build`
+- [phytcpaccept](reference/phytcpaccept.ru.md) — `Styx::carrier; hosted native build`
+- [phytcpdial](reference/phytcpdial.ru.md) — `Styx::carrier; hosted native build`
+- [phytcplisten](reference/phytcplisten.ru.md) — `Styx::carrier; hosted native build`
 - [phywait](reference/phywait.ru.md) — `Styx::carrier; hosted native build`
 - [phywake](reference/phywake.ru.md) — `Styx::carrier; hosted native build`
 - [phywrite](reference/phywrite.ru.md) — `Styx::carrier; hosted native build`

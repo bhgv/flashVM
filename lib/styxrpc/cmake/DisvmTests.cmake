@@ -85,6 +85,16 @@ if(STYXRPC_FLASHVM_TEST_HOST)
                 ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
                 --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction launch ${mode_args})
         set_tests_properties("styxrpc-flashvm-launch-${mode}" PROPERTIES TIMEOUT 75)
+        add_test(NAME "styxrpc-flashvm-launch-${mode}-tcp"
+            COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction launch --tcp ${mode_args})
+        set_tests_properties("styxrpc-flashvm-launch-${mode}-tcp" PROPERTIES TIMEOUT 45)
+        add_test(NAME "styxrpc-flashvm-library-${mode}-tcp"
+            COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}"
+                --flash-host "${STYXRPC_FLASHVM_TEST_HOST}" --direction flash-to-dis --module-load --tcp ${mode_args})
+        set_tests_properties("styxrpc-flashvm-library-${mode}-tcp" PROPERTIES TIMEOUT 45)
     endforeach()
     add_test(NAME styxrpc-flashvm-vfs
         COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"

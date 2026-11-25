@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]  # EN/RU: Repository root / коре�
 sys.path.insert(0, str(ROOT / "lib/styxrpc/tests/flashvm"))
 sys.path.insert(0, str(ROOT / "ide"))
 from build_paired_view import build_movie
-from run import exchange
+from run import paired_exchange
 
 
 # EN: Seed a bounded SVG with line and cubic geometry crossing a fragment boundary.
@@ -61,13 +61,13 @@ def check(args, directory, movie, mode):
     elif args.vector or args.camera or args.ink or args.merge:
         seed_vector(drawing, args.merge)
 
-    # EN: Each command receives one connected descriptor from exchange.
-    # RU: Каждая команда получает один связанный дескриптор от exchange.
-    def player(fd):
+    # EN: Add the descriptor or TCP arguments to both native commands.
+    # RU: Добавить аргументы дескриптора или TCP к обеим командам.
+    def player(connection):
         options = ["--capture", capture] if args.capture else []
         if args.window:
             options.append("--window")
-        argv = [args.player, "--fd", fd, mode, *options]
+        argv = [args.player, *connection, mode, *options]
         if args.native_events:
             environment = ["env", "LD_PRELOAD=" + os.fspath(args.native_events)]
             if args.mdi:
@@ -87,8 +87,8 @@ def check(args, directory, movie, mode):
             return [*environment, *argv]
         return argv
 
-    def desktop(fd):
-        argv = [args.disvm / "disvm", "--styx-mount-fd", fd, "--at", "/rpc", "--",
+    def desktop(connection):
+        argv = [args.disvm / "disvm", *connection, "--at", "/rpc", "--",
                 "--native-spawn", mode, "desktop-paired.dis"]
         if args.ink:
             return ["sh", "-c", 'printf "%s\\n" "$$" > paired-ink-dis.pid; exec "$@"', "paired-ink", *argv]
@@ -113,8 +113,8 @@ def check(args, directory, movie, mode):
         expected = {}
         provider_trace = ("PASS local ink drew and canceled while Dis was suspended",
                           "PASS 201 local ink motions before release")
-    exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
-             provider_trace=provider_trace, timeout=timeout, tcp=args.tcp)
+    paired_exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
+                    provider_trace=provider_trace, timeout=timeout, tcp=args.tcp)
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")

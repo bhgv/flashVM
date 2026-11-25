@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1760 / Контрольная точка v0.1760. Hosted players and DisVM
+open TCP carriers at launch using the same StyxRPC session and live VFS.
+Штатные команды проверены на TCP loopback с IDE и двумя плеерами.
+[EN](STYX_RPC_PLAYER.md#start-over-tcp) / [RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1759 / Контрольная точка v0.1759. Stock FlashVM peers serve
 opposite lanes on one StyxRPC connection. AS can call a named Int32 export
 of the peer movie. TCP loopback проверяет оба направления и запуск парной IDE.

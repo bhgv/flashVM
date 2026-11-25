@@ -36,6 +36,9 @@ int dvm_terminal_launch_config(int argc, char **argv, TerminalLaunchConfig *conf
 /* EN: Duplicate the borrowed delegated stream descriptor, or return -1.
  * RU: Дублировать выданный потоковый FD либо вернуть -1. */
 int dvm_terminal_connected(const char *value);
+/* EN: Return an owned TCP fd. Server mode announces its port and accepts once.
+ * RU: Вернуть свой TCP fd. Сервер объявляет порт и принимает одно соединение. */
+int dvm_terminal_tcp(const char *host, const char *port, int listen_once);
 /* EN: Validate an absolute mount target outside reserved caller trees.
  * RU: Проверить абсолютную точку вне служебных деревьев клиента. */
 int dvm_terminal_mount_path_valid(const char *path);

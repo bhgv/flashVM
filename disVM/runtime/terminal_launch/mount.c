@@ -326,28 +326,30 @@ static int visible_shared_path(void *state, const char *path, unsigned access)
 #include "live_namespace.inc"
 
 
-/* EN: Consume a delegated stream duplicate and run with forward channel 0 and reverse channel 1.
- * RU: Принять дубликат выданного потока и запустить с прямым каналом 0 и встречным 1. */
+/* EN: Adopt the configured stream and mount with forward lane 0 and reverse lane 1.
+ * RU: Принять настроенный поток и монтировать с прямым каналом 0 и встречным 1. */
 int dvm_styx_mount_cli(int argc, char **argv)
 {
-    int separator = 3;
+    int tcp = !strcmp(argv[1], "--styx-mount-tcp");
+    int separator = tcp ? 4 : 3;
     const char *entry = NULL;
     const char *request = NULL;
     unsigned long tag = 0;
-    int scoped = argc > 3 && !strcmp(argv[3], "--launch-context");
-    if (argc >= 8 && (scoped || !strcmp(argv[3], "--launch")))
+    int scoped = argc > separator && !strcmp(argv[separator], "--launch-context");
+    if (argc >= separator + 5 && (scoped || !strcmp(argv[separator], "--launch")))
     {
-        entry = argv[4];
-        request = argv[5];
+        entry = argv[separator + 1];
+        request = argv[separator + 2];
+        const char *tag_text = argv[separator + 3];
         char *end;
         errno = 0;
-        tag = strtoul(argv[6], &end, 10);
-        if (errno || argv[6][0] < '0' || argv[6][0] > '9' || *end || !tag || tag > UINT32_MAX)
+        tag = strtoul(tag_text, &end, 10);
+        if (errno || tag_text[0] < '0' || tag_text[0] > '9' || *end || !tag || tag > UINT32_MAX)
         {
             fprintf(stderr, "disvm: invalid launch record tag\n");
             return 2;
         }
-        separator = 7;
+        separator += 4;
     }
     int raw = !entry && argc > separator && !strcmp(argv[separator], "--raw");
     if (raw)
@@ -398,14 +400,25 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-mount-fd FD [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm (--styx-mount-fd FD | --styx-mount-tcp HOST PORT) [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
-    int fd = dvm_terminal_connected(argv[2]);
+    int fd = tcp ? dvm_terminal_tcp(argv[2], argv[3], 0) : dvm_terminal_connected(argv[2]);
+    if (fd < 0)
+    {
+        if (raw && !tcp)
+        {
+            fprintf(stderr, "disvm: cannot initialize raw Styx mount\n");
+            return 1;
+        }
+        fprintf(stderr, "%s\n", tcp ? "disvm: cannot connect TCP Styx endpoint" :
+            "disvm: expected a delegated connected stream FD >= 3");
+        return 2;
+    }
     if (raw)
     {
-        StyxClient *client = fd >= 0 ? styxclientmountphy(
-            phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "caller", "", 5000, 8) : NULL;
+        StyxClient *client = styxclientmountphy(
+            phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 4096, "caller", "", 5000, 8);
         DVM_Provider *mount = client ? styxmountprovider(client, FVM_ACCESS_MASK) : NULL;
         if (!mount)
         {
@@ -419,14 +432,11 @@ int dvm_styx_mount_cli(int argc, char **argv)
         dvm_provider_release(mount);
         return result;
     }
-    int breaker = fd >= 0 ? dup(fd) : -1;
+    int breaker = dup(fd);
     if (breaker < 0)
     {
-        if (fd >= 0)
-        {
-            close(fd);
-        }
-        fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
+        close(fd);
+        fprintf(stderr, "disvm: cannot retain Styx shutdown descriptor\n");
         return 2;
     }
     DVM_Namespace *group = mounted_group();

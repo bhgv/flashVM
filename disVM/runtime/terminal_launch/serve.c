@@ -177,12 +177,13 @@ static void report_shared_launch(void *ticket, int status)
 }
 
 
-/* EN: Serve the host-selected image on a delegated Styx stream.
- * RU: Обслужить настроенный хостом образ на выданном транспорте Styx. */
+/* EN: Serve the host-selected image on the configured Styx stream.
+ * RU: Обслужить настроенный хостом образ на выбранном потоке Styx. */
 int dvm_styx_serve_cli(int argc, char **argv)
 {
     int scoped = 0, persistent = 0;
-    int separator = 3;
+    int tcp = !strcmp(argv[1], "--styx-serve-tcp");
+    int separator = tcp ? 4 : 3;
     while (argc > separator)
     {
         if (!scoped && !strcmp(argv[separator], "--context"))
@@ -208,10 +209,10 @@ int dvm_styx_serve_cli(int argc, char **argv)
     valid = valid && dvm_terminal_parse_libraries(libraries, &count, argc, argv, &separator);
     if (!valid || argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm --styx-serve-fd FD [--context] [--persistent [--execute-as NAME.dis IMAGE.dis]...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
+        fprintf(stderr, "usage: disvm (--styx-serve-fd FD | --styx-serve-tcp HOST PORT) [--context] [--persistent [--execute-as NAME.dis IMAGE.dis]...] [(--library-fd|--library-bidir-fd) FD [--library-at PATH]]... -- [VM OPTIONS] OWNER.dis\n");
         return 2;
     }
-    int fd = dvm_terminal_connected(argv[2]);
+    int fd = tcp ? dvm_terminal_tcp(argv[2], argv[3], 1) : dvm_terminal_connected(argv[2]);
     int breaker = fd >= 0 ? dup(fd) : -1;
     if (breaker < 0)
     {
@@ -219,7 +220,8 @@ int dvm_styx_serve_cli(int argc, char **argv)
         {
             close(fd);
         }
-        fprintf(stderr, "disvm: expected a delegated connected stream FD >= 3\n");
+        fprintf(stderr, "%s\n", tcp ? "disvm: cannot open TCP Styx launch endpoint" :
+            "disvm: expected a delegated connected stream FD >= 3");
         return 2;
     }
     if (!dvm_terminal_distinct_carriers(fd, libraries, count))

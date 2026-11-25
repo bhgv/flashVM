@@ -9,6 +9,7 @@
 #include "../../native/terminal/route/launch.h"
 #include "../../native/vfs/mount.h"
 #include "drivers/posix/fd.h"
+#include "drivers/posix/tcp.h"
 #include "mux/bidir.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -22,6 +23,30 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define DVM_STYX_TCP_DIAL_MS 5000 /* Connect budget after name resolution. */
+
+
+/* EN/RU: See config.h. / См. config.h. */
+int dvm_terminal_tcp(const char *host, const char *port, int listen_once)
+{
+    if (!listen_once)
+    {
+        return phytcpdial(host, port, DVM_STYX_TCP_DIAL_MS);
+    }
+    unsigned actual;
+    int listener = phytcplisten(host, port, &actual);
+    if (listener < 0)
+    {
+        return -1;
+    }
+    int fd = -1;
+    if (printf("styx listening %u\n", actual) >= 0 && !fflush(stdout))
+    {
+        fd = phytcpaccept(listener);
+    }
+    close(listener);
+    return fd;
+}
 
 /* EN/RU: Duplicate a delegated connected socket, preserving the original FD.
  * Дублировать выданный подключённый сокет, сохранив исходный FD. */

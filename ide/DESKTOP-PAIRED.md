@@ -18,10 +18,19 @@ launcher uploads the movie through `/rpc/.upload`, writes `start` to
 `$Unibus.attach` then carries scene and input frames in both directions on
 the existing libstyxrpc session.
 
-The launcher uses an already connected Styx stream. The acceptance test
-below supplies a local socket pair. Deployment can provide a connected
-network stream using the same entry points and application modules.
-Pass `--tcp` to the check below to exercise that route over TCP loopback.
+For a direct TCP launch, run the first command on the presentation machine.
+Run the second in the directory with the built `.dis` modules, `desktop-view.swf`
+and `fonts/`. Use the listener's reachable address on both command lines.
+
+```sh
+flashvm_styx_player --listen 127.0.0.1 7474 --jit --window
+disvm --styx-mount-tcp 127.0.0.1 7474 --at /rpc -- --native-spawn --jit desktop-paired.dis
+```
+
+The acceptance test below uses an inherited socket by default. `--tcp`
+exercises the two native TCP commands on loopback. See the
+[player reference](../flashVM/doc/STYX_RPC_PLAYER.md#start-over-tcp) for the
+transport contract.
 
 The AS acceptance movie reads the scene with two editors, a build console
 and Help. It requests a ticket-bound resize from 960 to 860 pixels, so

@@ -10,7 +10,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]  # Repository root / Корень репозитория.
 sys.path.insert(0, str(ROOT / "lib/styxrpc/tests/flashvm"))
-from run import stream_pair
+from run import listener_port, stream_pair
 
 
 # EN: Compile the role's AS source with project AS2, FIR and linker.
@@ -34,26 +34,44 @@ def compile_role(args, directory, role):
     return swf
 
 
-# EN: Spawn both owners, await the caller's exact result, then check the
-# provider retires after its connection closes. No wire relay is involved.
-# RU: Запустить обоих владельцев, проверить ответ и завершение провайдера
-# при разрыве связи. Поток идёт напрямую между плеерами.
+# EN: Start provider then caller using either their TCP CLI or two delegated FDs.
+# RU: Запустить провайдера и вызывающего командами TCP либо с выданными FD.
+def start_pair(args, directory, caller_options, provider_options, caller_log, provider_log, processes):
+    if args.tcp:
+        host = "::1" if getattr(args, "ipv6", False) else "127.0.0.1"
+        provider = subprocess.Popen((args.player, "--listen", host, "0", *provider_options), cwd=directory,
+                                    stdout=subprocess.PIPE, stderr=provider_log, text=True)
+        processes.append(provider)
+        port = listener_port(provider.stdout)
+        caller = subprocess.Popen((args.player, "--connect", host, port, *caller_options), cwd=directory,
+                                  stdout=caller_log, stderr=subprocess.STDOUT)
+        processes.append(caller)
+        return caller, provider
+    caller_socket, provider_socket = stream_pair()
+    with caller_socket, provider_socket:
+        provider_fd = provider_socket.fileno()
+        provider = subprocess.Popen((args.player, "--fd", str(provider_fd), *provider_options), cwd=directory,
+                                    pass_fds=(provider_fd,), stdout=provider_log, stderr=subprocess.STDOUT)
+        processes.append(provider)
+        caller_fd = caller_socket.fileno()
+        caller = subprocess.Popen((args.player, "--fd", str(caller_fd), *caller_options), cwd=directory,
+                                  pass_fds=(caller_fd,), stdout=caller_log, stderr=subprocess.STDOUT)
+        processes.append(caller)
+        return caller, provider
+
+
+# EN: Await the exact result, then require the provider to retire after disconnect.
+# RU: Дождаться точного ответа и завершения провайдера после разрыва связи.
 def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
     caller_lane, provider_lane = ("reverse", "forward") if reverse else ("forward", "reverse")
-    caller_socket, provider_socket = stream_pair(args.tcp)
+    caller_options = ("--peer", caller_lane, "--movie", caller_swf, mode)
+    provider_options = ("--peer", provider_lane, "--movie", provider_swf, mode)
     caller_log = directory / "caller.log"
     provider_log = directory / "provider.log"
-    with caller_socket, provider_socket, caller_log.open("w") as c_log, provider_log.open("w") as p_log:
+    with caller_log.open("w") as c_log, provider_log.open("w") as p_log:
         processes = []
         try:
-            for endpoint, lane, swf, log in ((caller_socket, caller_lane, caller_swf, c_log),
-                                             (provider_socket, provider_lane, provider_swf, p_log)):
-                fd = endpoint.fileno()
-                command = (args.player, "--fd", str(fd), "--peer", lane, "--movie", swf, mode)
-                processes.append(subprocess.Popen(command, cwd=directory, pass_fds=(fd,), stdout=log,
-                                                  stderr=subprocess.STDOUT))
-                endpoint.close()
-            caller, provider = processes
+            caller, provider = start_pair(args, directory, caller_options, provider_options, c_log, p_log, processes)
             cutoff = time.monotonic() + 15
             while "PASS FlashVM peer replied 12" not in caller_log.read_text():
                 if caller.poll() is not None or provider.poll() is not None or time.monotonic() >= cutoff:
@@ -62,13 +80,14 @@ def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
                 time.sleep(0.02)
             caller.terminate()
             caller.wait(timeout=5)
-            if provider.wait(timeout=5):
-                raise RuntimeError(f"provider failed on disconnect: {provider_log.read_text()}")
+            output, _ = provider.communicate(timeout=5)
+            if provider.returncode:
+                raise RuntimeError(f"provider failed on disconnect: {provider_log.read_text()}\n{output or ''}")
         finally:
             for process in processes:
                 if process.poll() is None:
                     process.kill()
-                    process.wait()
+                process.communicate()
     print(f"PASS {mode} {caller_lane} caller, exact Int32 and peer retirement")
 
 
@@ -79,7 +98,10 @@ def main():
     for name in ("player", "as2", "fir", "swl"):
         parser.add_argument("--" + name, type=lambda path: Path(path).resolve(), required=True)
     parser.add_argument("--tcp", action="store_true", help="use a direct TCP loopback connection")
+    parser.add_argument("--ipv6", action="store_true", help="use ::1 for the TCP loopback test")
     args = parser.parse_args()
+    if args.ipv6 and not args.tcp:
+        parser.error("--ipv6 requires --tcp")
     with TemporaryDirectory(prefix="flashvm-peer-") as scratch:
         directory = Path(scratch)
         caller = compile_role(args, directory, "caller")

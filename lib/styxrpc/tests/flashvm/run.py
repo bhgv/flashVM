@@ -4,6 +4,7 @@
 import argparse
 from collections import Counter
 from pathlib import Path
+import selectors
 import socket
 import subprocess
 import tempfile
@@ -40,6 +41,35 @@ def stream_pair(tcp=False):
     return client, server
 
 
+# EN: Read the native listener's first readiness line from a borrowed pipe.
+# RU: Прочитать первую строку готовности штатного слушателя из канала вывода.
+def listener_port(output, timeout=10):
+    with selectors.DefaultSelector() as selector:
+        selector.register(output, selectors.EVENT_READ)
+        if not selector.select(timeout):
+            raise RuntimeError("native Styx listener did not announce its port")
+        line = output.readline().strip()
+    prefix = "styx listening "
+    port = line.removeprefix(prefix)
+    if port == line or not port.isdecimal() or not 1 <= int(port) <= 65535:
+        raise RuntimeError(f"invalid native Styx listener announcement: {line!r}")
+    return port
+
+
+# EN: Collect provider output and require the agreed exit codes and VM markers.
+# RU: Собрать вывод провайдера и проверить коды завершения и маркеры VM.
+def verify_exchange(provider, result, expected, provider_trace):
+    output, _ = provider.communicate(timeout=10)
+    if (result.returncode or provider.returncode or expected not in result.stdout
+            or Counter(provider_trace) - Counter(output.splitlines())
+            or "local-fallback" in output.splitlines()):
+        raise RuntimeError(
+            f"client ({result.returncode}):\n{result.stdout}\n"
+            f"provider ({provider.returncode}):\n{output}"
+        )
+    print(result.stdout, end="")
+
+
 # EN: Connect the argv builders; bound the client by timeout seconds and check both exit codes.
 # RU: Соединить команды, ограничить работу клиента по timeout и проверить коды завершения.
 def exchange(directory, server_command, client_command, expected, provider_trace=(), *, timeout=15, tcp=False):
@@ -56,18 +86,54 @@ def exchange(directory, server_command, client_command, expected, provider_trace
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout,
                 )
                 client.close()
-                output, _ = provider.communicate(timeout=10)
-                if (result.returncode or provider.returncode or expected not in result.stdout
-                        or Counter(provider_trace) - Counter(output.splitlines())
-                        or "local-fallback" in output.splitlines()):
-                    raise RuntimeError(
-                        f"client ({result.returncode}):\n{result.stdout}\n"
-                        f"provider ({provider.returncode}):\n{output}"
-                    )
-                print(result.stdout, end="")
+                verify_exchange(provider, result, expected, provider_trace)
             finally:
                 if provider.poll() is None:
                     provider.kill()
+
+
+# EN: Pass only an address between real FlashVM and DisVM commands over TCP.
+# RU: Передать штатным командам FlashVM и DisVM по TCP только адрес.
+def paired_exchange(directory, player, desktop, expected, provider_trace=(), *, timeout=15, tcp=False):
+    if not tcp:
+        return exchange(directory, lambda fd: player(["--fd", fd]),
+                        lambda fd: desktop(["--styx-mount-fd", fd]), expected, provider_trace,
+                        timeout=timeout)
+    host = "127.0.0.1"
+    with subprocess.Popen(player(["--listen", host, "0"]), cwd=directory, stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, text=True) as provider:
+        try:
+            port = listener_port(provider.stdout)
+            result = subprocess.run(desktop(["--styx-mount-tcp", host, port]), cwd=directory,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout)
+            verify_exchange(provider, result, expected, provider_trace)
+        finally:
+            if provider.poll() is None:
+                provider.kill()
+
+
+# EN: Exercise a DisVM TCP listener with the SDK's FlashVM test caller, whose
+# entry point still takes a delegated FD. Only the test caller receives an FD.
+# RU: Проверить слушатель DisVM клиентом SDK на FlashVM. Дескриптор передаётся
+# только тестовому клиенту, штатный DisVM сам слушает TCP.
+def disvm_listener_exchange(directory, server_command, client_command, expected, *, tcp=False):
+    if not tcp:
+        return exchange(directory, lambda fd: server_command("fd", fd), client_command, expected)
+    host = "127.0.0.1"
+    with subprocess.Popen(server_command("tcp", host, "0"), cwd=directory, stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, text=True) as provider:
+        try:
+            port = listener_port(provider.stdout)
+            with socket.create_connection((host, int(port)), timeout=5) as stream:
+                stream.settimeout(None)
+                stream.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                fd = stream.fileno()
+                result = subprocess.run(client_command(str(fd)), cwd=directory, pass_fds=(fd,),
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=15)
+            verify_exchange(provider, result, expected, ())
+        finally:
+            if provider.poll() is None:
+                provider.kill()
 
 
 # EN: Exercise the default reverse namespace with both production executables.
@@ -82,10 +148,10 @@ def native_player(args, directory, tests, mode, windowed=False):
     image = compile_image(args, root, tests / "native_player.b", "native-player.dis")
     capture = root / "frame.ppm"
     options = ["--window", "--capture", capture] if windowed else []
-    exchange(
+    paired_exchange(
         root,
-        lambda fd: [args.flash_host, "--fd", fd, mode, *options],
-        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
+        lambda connection: [args.flash_host, *connection, mode, *options],
+        lambda connection: [args.runtime, *connection, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS native FlashVM and DisVM pair",
         ("styx-child", "styx-leaf", "styxrpc-read:0", "styxrpc-read:0",
@@ -121,10 +187,10 @@ def native_terminal(args, directory, tests, mode, windowed=False):
     image = compile_image(args, directory, tests / "native_terminal.b", "terminal-test.dis")
     capture = directory / "terminal.ppm"
     options = ["--window", "--capture", capture] if windowed else []
-    exchange(
+    paired_exchange(
         directory,
-        lambda fd: [args.flash_host, "--fd", fd, mode, *options],
-        lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
+        lambda connection: [args.flash_host, *connection, mode, *options],
+        lambda connection: [args.runtime, *connection, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS paired Unibus channels",
         tcp=args.tcp,
@@ -190,9 +256,9 @@ def main():
             image = compile_image(args, directory, tests / owner, module)
             dispatcher = compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
             arguments = [piece for name in exports for piece in ("--export", image.name, image.name, name)]
-            exchange(
+            disvm_listener_exchange(
                 directory,
-                lambda fd: [args.runtime, "--styx-library-serve-fd", fd, *arguments,
+                lambda kind, *address: [args.runtime, "--styx-library-serve-" + kind, *address, *arguments,
                             "--", "--native-spawn", mode, dispatcher.name],
                 lambda fd: [args.flash_host, action + "call", fd],
                 "PASS FlashVM Styx RPC host",
@@ -200,9 +266,9 @@ def main():
             )
         elif args.direction == "launch":
             image = compile_image(args, directory, tests / "context.b", "context.dis")
-            exchange(
+            disvm_listener_exchange(
                 directory,
-                lambda fd: [args.runtime, "--styx-serve-fd", fd, "--persistent",
+                lambda kind, *address: [args.runtime, "--styx-serve-" + kind, *address, "--persistent",
                             "--execute-as", "context.dis", image.name, "--execute-as", "park.dis", image.name,
                             "--", "--native-spawn", mode, image.name],
                 lambda fd: [args.flash_host, "launch", fd],

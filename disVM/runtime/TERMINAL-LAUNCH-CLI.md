@@ -11,6 +11,32 @@ Styx. Вызывающий устанавливает соединение и п
 сокета. Оператор задаёт имя запуска, разрешённые пути кода и доверенный локальный
 bootstrap. Терминал передаёт стартовые байты через согласованный маршрут.
 
+## TCP endpoints
+
+The hosted Linux64 build can open its own carrier. Use
+`--styx-mount-tcp HOST PORT` in place of `--styx-mount-fd FD`,
+`--styx-serve-tcp HOST PORT` in place of `--styx-serve-fd FD`, or
+`--styx-library-serve-tcp HOST PORT` in place of `--styx-library-serve-fd FD`.
+Keep the remaining arguments of the corresponding command. A mounted Dis
+program sees the same live VFS and delegated StyxRPC context.
+
+```sh
+disvm --styx-serve-tcp 127.0.0.1 7474 --persistent --execute-as job.dis job.dis -- --native-spawn owner.dis
+disvm --styx-mount-tcp 127.0.0.1 7474 --at /peer -- --native-spawn caller.dis
+```
+
+Run the listener first. `HOST` is its local bind address or the dialer's peer
+address. The port is decimal. Listen on port `0` to select an ephemeral port
+and read `styx listening PORT` from the first stdout line. Each listener
+accepts one transport connection. `--persistent` permits multiple job launches
+on that connection. Select `--raw` on a mount only for a server that speaks
+ordinary Styx without the bidirectional carrier. TCP is plaintext and does
+not authenticate the peer. Use loopback, a trusted network, or a separately
+protected stream delegated through the FD command.
+
+[FlashVM player commands](../../flashVM/doc/STYX_RPC_PLAYER.md#start-over-tcp) ·
+[Carrier API](../../lib/styx/docs/reference/phytcpdial.md)
+
 ## Build / Сборка
 
 From the repository root, build the native SDK, then configure the runtime

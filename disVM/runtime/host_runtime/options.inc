@@ -492,15 +492,15 @@ int main(int argc, char **argv)
     extern int dvm_styx_mount_cli(int, char **);
     extern int dvm_styx_serve_cli(int, char **);
     extern int dvm_styx_library_cli(int, char **);
-    if (argc > 1 && !strcmp(argv[1], "--styx-library-serve-fd"))
+    if (argc > 1 && (!strcmp(argv[1], "--styx-library-serve-fd") || !strcmp(argv[1], "--styx-library-serve-tcp")))
     {
         return dvm_styx_library_cli(argc, argv);
     }
-    if (argc > 1 && !strcmp(argv[1], "--styx-serve-fd"))
+    if (argc > 1 && (!strcmp(argv[1], "--styx-serve-fd") || !strcmp(argv[1], "--styx-serve-tcp")))
     {
         return dvm_styx_serve_cli(argc, argv);
     }
-    if (argc > 1 && !strcmp(argv[1], "--styx-mount-fd"))
+    if (argc > 1 && (!strcmp(argv[1], "--styx-mount-fd") || !strcmp(argv[1], "--styx-mount-tcp")))
     {
         return dvm_styx_mount_cli(argc, argv);
     }
