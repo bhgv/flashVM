@@ -7,9 +7,9 @@
 // RU: Загрузить проверяемый интерфейс Int32 и проверить вызов через DisVM.
 function onEnterFrame() {
     if (!peerDone) {
-        importText = "next";
-        nextImport = importText.split(",");
-        disModule = styxrpc.loadModule("mounted/limbo.dis", nextImport);
+        image = os.open("mounted/limbo.dis");
+        disModule = image.load();
+        closed = image.close();
         reply = disModule.next(41);
         if (!(reply - 42)) {
             peerReported = _root.reportPeerResult();

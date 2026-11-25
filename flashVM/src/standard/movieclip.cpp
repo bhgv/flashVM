@@ -39,6 +39,7 @@
 #include "../core/call_scope.hpp"
 #include "../core/optional_method.hpp"
 #include "../core/depth_order.hpp"
+#include "../core/object_root_scope.hpp"
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
 #include "flashvm/serialization.h"
@@ -4008,6 +4009,50 @@ const Method methods[] = {{"toString", clip_string},
                           {"getTextScalarAtPoint", pick_text_scalar},
                           {"snapshotBitmap", snapshot_bitmap}};
 } // namespace
+
+
+/* [GC:] EN/RU: See movieclip.h. / См. movieclip.h. */
+extern "C" FVM_Result fvm_movieclip_load_child_swf(FVM_Context *c, FVM_Object *parent_clip,
+    const void *bytes, size_t size, const char *source, FVM_Object **out)
+{
+    if (!c || !parent_clip || parent_clip->owner != c || !source || !out ||
+        c->destroying || c->gc_collecting || c->gc_releasing)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    try
+    {
+        FVM_ObjectRootScope parent_root(c, parent_clip);
+        FVM_Value depth;
+        FVM_Result status = next_depth(c, parent_clip, 0, NULL, &depth, NULL);
+        if (status != FVM_OK || depth.number > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH)
+        {
+            return status == FVM_OK ? FVM_UNSUPPORTED : status;
+        }
+        char name[32];
+        snprintf(name, sizeof(name), "loaded%lu", (unsigned long)depth.number);
+        FVM_Object *child;
+        status = fvm_movieclip_load_swf(c, bytes, size, name, &child);
+        if (status == FVM_OK)
+        {
+            FVM_ObjectRootScope root(c, child);
+            status = fvm_movieclip_set_source(c, child, source, strlen(source));
+            if (status == FVM_OK)
+            {
+                status = publish_child(c, parent_clip, child, name, (long)depth.number);
+            }
+            if (status == FVM_OK)
+            {
+                *out = child;
+            }
+        }
+        return status;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
 
 
 /* Compose intrinsic world geometry under the caller's root/native-barrier scope. */

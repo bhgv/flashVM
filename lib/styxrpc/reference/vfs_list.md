@@ -11,3 +11,5 @@ StyxRpcIoOutcome styxrpc_vfs_list(struct StyxClient *session, const char *path,
 `StyxRpc::launch`
 
 Open the directory on attached `session` for one enumeration. The [relative path](vfs_stat.md) may be empty for the attach root. Drop the first `skip` entries and visit up to the nonzero `limit` in provider order. `visit(state, name, info)` borrows all arguments for the callback and returns 1 to proceed. A record, transfer or visitor failure ends enumeration. The visitor can have observed earlier entries before an error. The SDK closes the directory before returning. EOF gives success with fewer entries.
+
+For a cursor retained across calls, see [open directories](vfs_directory.md).

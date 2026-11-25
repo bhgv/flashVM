@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1763 / Контрольная точка v0.1763. The stock player exposes
+os file and directory handles over libstyxrpc. Из живой VFS загружается
+дочерний SWF, а опубликованный образ Dis выдаёт прокси методов.
+[EN](STYX_RPC_OS.md) / [RU](STYX_RPC_OS.ru.md).
+
 Checkpoint v0.1762 / Контрольная точка v0.1762. Stock AS imports checked
 module methods and opens live Int32 properties and registered UniBus messages
 on the attached session. DisVM вызывает скалярные, managed и graph-входы

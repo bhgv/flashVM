@@ -130,6 +130,12 @@ FVM_API FVM_Result fvm_movieclip_load_swf(FVM_Context *, const void *data, size_
                                           const char *name, FVM_Object **out);
 
 
+/* [GC:] EN: Decode a SWF and attach it at the next free public depth of parent.
+ * RU: Декодировать SWF и добавить в parent на следующей свободной публичной глубине. */
+FVM_API FVM_Result fvm_movieclip_load_child_swf(FVM_Context *, FVM_Object *parent,
+    const void *, size_t, const char *source, FVM_Object **);
+
+
 /* Query the local affine transform in pixels, preserving authored shear/reflection. */
 FVM_API FVM_Result fvm_movieclip_get_matrix(FVM_Context *, FVM_Object *, FVM_Affine *);
 

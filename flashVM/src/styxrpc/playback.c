@@ -104,6 +104,10 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
                 movies->limit = FVM_SWF_DEFAULT_LIMIT;
             }
             status = fvm_styxrpc_movies_bind(movies);
+            if (status == FVM_OK)
+            {
+                status = fvm_styxrpc_os_install(movies);
+            }
         }
     }
     if (status == FVM_OK)

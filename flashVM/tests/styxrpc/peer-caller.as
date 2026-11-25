@@ -27,6 +27,10 @@ function onEnterFrame() {
             peerLeafLength = peerLeaf.push(43);
             peerBoxLength = peerBox.push(peerLeaf);
             peerGraph = peerModule.graphMagnitude(0 - 29 / 2, peerBox);
+            peerImage = os.open("mounted/peer.dis");
+            peerAutoModule = peerImage.load();
+            peerImageClosed = peerImage.close();
+            peerAutoGraph = peerAutoModule.graphMagnitude(0 - 31 / 2, peerBox);
             peerOldCall = styxrpc.callInt("mounted/peer.dis", "magnitude", 0 - 8);
             peerVar = styxrpc.intVariable("/mounted/peer.dis/.var/count", true);
             peerVar.value = 77;
@@ -50,9 +54,9 @@ function onEnterFrame() {
             peerReceived = peerMessages.pump(_root);
             if (peerReceivedFrame) {
                 if (peerReceivedCredit) {
-                    peerResultText = "[" + peerResult + "," + peerReal + "," + peerGraph + "," + peerOldCall + "," + peerQueued + "]";
+                    peerResultText = "[" + peerResult + "," + peerReal + "," + peerGraph + "," + peerAutoGraph + "," + peerOldCall + "," + peerQueued + "]";
                     if (!peerHiddenText.indexOf("1,")) {
-                        if (!peerResultText.indexOf("[12,12.5,14.5,8,0]")) {
+                        if (!peerResultText.indexOf("[12,12.5,14.5,15.5,8,0]")) {
                             peerClosed = peerMessages.close();
                             peerClosedAgain = peerMessages.close();
                             peerReported = _root.reportPeerResult();

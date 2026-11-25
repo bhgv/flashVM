@@ -143,6 +143,23 @@ def flash_calls_dis(args, directory, movie, mode):
     print(f"PASS {mode} FlashVM loaded and called a compiled Dis export")
 
 
+# EN: Compile OS fixtures and run both movies against stock DisVM and its live VFS.
+# RU: Собрать фильмы OS и запустить их на штатной паре с живой VFS DisVM.
+def os_files(args, directory, mode):
+    directory.mkdir()
+    assets = directory / "os-assets"
+    assets.mkdir()
+    for name, path in (("os-client", directory / "os-client.swf"), ("os-child", assets / "child.swf")):
+        subprocess.run((args.swl, "link", path, compile_unit(args, directory, name)), check=True, timeout=20)
+    (assets / "marker.txt").write_bytes(b"A")
+    (directory / "child.txt").write_bytes(b"A")
+    compile_image(args, directory, ROOT / "lib/styxrpc/tests/flashvm/os_check.b", "os-check.dis")
+    paired_exchange(directory, lambda connection: [args.player, *connection, mode],
+                    lambda connection: [args.runtime, *connection, "--at", "/rpc", "--", "--native-spawn",
+                                        mode, "os-check.dis"],
+                    "PASS os VFS handles and attached SWF", tcp=args.tcp)
+
+
 # EN: Exercise both service lane assignments in each execution mode.
 # RU: Проверить оба назначения серверных каналов в каждом режиме.
 def main():
@@ -175,6 +192,7 @@ def main():
             if args.runtime:
                 dis_calls_flash(args, directory, mode)
                 flash_calls_dis(args, directory, dis_caller, mode)
+                os_files(args, directory / mode[2:], mode)
 
 
 if __name__ == "__main__":

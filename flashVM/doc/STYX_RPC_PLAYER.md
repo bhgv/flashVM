@@ -125,6 +125,10 @@ turn. The callback runs on the FlashVM owner alongside the movie clock.
 The [IDE terminal contract](../../ide/TERMINAL-BIDIR.md) shows how to pass
 this object to the existing ActionScript adapter.
 
+## System file handles
+
+Movies with a mounted VFS can use the [os system object](STYX_RPC_OS.md).
+
 ## Publishing and using movie modules
 
 A movie can expose several typed callbacks and live Int32 properties on a

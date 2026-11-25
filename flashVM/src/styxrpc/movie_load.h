@@ -5,6 +5,7 @@
 #ifndef FVM_STYXRPC_MOVIE_LOAD_H
 #define FVM_STYXRPC_MOVIE_LOAD_H
 #include "flashvm/flashvm.h"
+#include "flashvm/value.h"
 #include "styxrpc/vfs_client.h"
 
 #define FVM_STYXRPC_MOVIE_QUEUE 16U /* Maximum outstanding requests per playback owner. */
@@ -46,6 +47,10 @@ FVM_Result fvm_styxrpc_movie_queue(FVM_StyxRpcMovies *movies, FVM_Object *origin
 FVM_Result fvm_styxrpc_movie_reject(FVM_StyxRpcMovies *movies, FVM_Result result);
 
 
+/* EN: Read a complete asset from one borrowed fid independently of the script cursor.
+ * RU: Прочитать ресурс с одного заимствованного fid независимо от курсора скрипта. */
+FVM_Result fvm_styxrpc_read_open_asset(StyxRpcVfsFile *, size_t, unsigned char **, size_t *);
+
 /* EN: Read a nonempty file through one VFS fid up to limit bytes. Caller frees *bytes on success.
  * RU: Прочитать непустой файл до limit байт через один fid VFS. При успехе владелец освобождает *bytes. */
 FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, size_t limit,
@@ -55,5 +60,9 @@ FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, 
 /* [GC:] EN: Release or apply pending requests in order on the owner after a timeline call.
  * RU: Освободить либо применить запросы по порядку у владельца после выполнения кадра. */
 void fvm_styxrpc_movies_finish(FVM_StyxRpcMovies *movies, int apply);
+
+/* EN: Install the system os object on the movie's attached session.
+ * RU: Установить системный объект os в подключённой сессии фильма. */
+FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *);
 
 #endif

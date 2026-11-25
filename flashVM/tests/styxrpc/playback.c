@@ -4,6 +4,8 @@
  */
 #include "flashvm/styxrpc_playback.h"
 #include "movie-assets.h"
+#include "../../src/styxrpc/movie_load.h"
+#include "flashvm/gc.h"
 #include "styxrpc/module.h"
 #include "drivers/posix/fd.h"
 #include <stdio.h>
@@ -97,6 +99,33 @@ static int status(void *host, char *bytes, size_t capacity, size_t *used)
 }
 
 
+/* [GC:] EN: Drop an unrooted file and directory without explicit close, collect, and reuse the session.
+ * RU: Потерять необерегаемые файл и каталог без close, собрать мусор и повторно использовать сессию. */
+static int collect_os_handles(FVM_Runtime *runtime, StyxClient *client)
+{
+    FVM_Context *context = NULL;
+    FVM_StyxRpcMovies movies = {0};
+    FVM_Value os, path, handle;
+    unsigned long reclaimed = 0;
+    if (fvm_context_create(runtime, &context) != FVM_OK)
+    {
+        return 0;
+    }
+    movies.context = context;
+    movies.session = client;
+    int ok = fvm_styxrpc_os_install(&movies) == FVM_OK &&
+        fvm_get_global(context, "os", &os) == FVM_OK &&
+        fvm_value_string(&path, "/movies/chapter/child.swf") == FVM_OK &&
+        fvm_object_call(context, os.object, "open", 1, &path, &handle) == FVM_OK &&
+        fvm_value_string(&path, "/movies") == FVM_OK &&
+        fvm_object_call(context, os.object, "opendir", 1, &path, &handle) == FVM_OK &&
+        fvm_gc_collect(context, &reclaimed) == FVM_OK && reclaimed >= 2 &&
+        fvm_object_call(context, os.object, "attr", 1, &path, &handle) == FVM_OK;
+    fvm_context_destroy(context);
+    return ok;
+}
+
+
 /* EN: Serve the mixed tree on the native owner and verify the debugger callback.
  * RU: Обслужить смешанное дерево у владельца и проверить колбэк отладчика. */
 int test_playback_serve(FVM_Runtime *runtime, int fd, int jit, int children)
@@ -107,6 +136,12 @@ int test_playback_serve(FVM_Runtime *runtime, int fd, int jit, int children)
     {
         test_movie_assets_stop(&assets);
         fputs("Cannot start fixture asset provider\n", stderr);
+        return 0;
+    }
+    if (children && !collect_os_handles(runtime, assets.client))
+    {
+        test_movie_assets_stop(&assets);
+        fputs("Cannot collect abandoned OS handles\n", stderr);
         return 0;
     }
     FVM_StyxRpcPlaybackSpec playback_spec = {runtime, assets.client, children ? 16384 : 4096,

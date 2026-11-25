@@ -47,7 +47,7 @@ static int exchange_meta(const StyxMeta *meta)
 
 /* EN: Reject stat data for a service entry even when the path used an alias.
  * RU: Отклонить stat служебного узла, в том числе при проходе по псевдониму. */
-static int service_meta(const StyxMeta *meta)
+int styxrpc_vfs_service_meta(const StyxMeta *meta)
 {
     return exchange_meta(meta) || service_name(meta->name, strlen(meta->name));
 }
@@ -127,7 +127,7 @@ StyxRpcIoOutcome styxrpc_vfs_stat(StyxClient *session, const char *path, StyxRpc
     {
         status = STYXRPC_IO_FAILED;
     }
-    else if (fid && !service_meta(&meta))
+    else if (fid && !styxrpc_vfs_service_meta(&meta))
     {
         *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
         status = STYXRPC_IO_OK;
@@ -144,7 +144,7 @@ static StyxFid *open_entry(StyxClient *session, const char *path, StyxRpcFileMod
     StyxFid *fid = walk_path(session, path, directory, kind != VFS_FILE_PATH);
     StyxMeta meta;
     if (fid && (!styxclientstat(fid, &meta) || !!meta.directory != directory ||
-        (kind == VFS_FILE_PATH && service_meta(&meta)) ||
+        (kind == VFS_FILE_PATH && styxrpc_vfs_service_meta(&meta)) ||
         (kind == VFS_EXCHANGE_PATH && !exchange_meta(&meta)) || !styxclientopen(fid, mode)))
     {
         styxclientclunk(fid);
@@ -203,7 +203,7 @@ void styxrpc_vfs_close(StyxRpcVfsFile *file, int deferred)
 
 /* EN: Classify one acknowledged native chunk; an uncertain chunk adds no bytes.
  * RU: Классифицировать нативный фрагмент; неподтверждённый фрагмент не прибавляет байты. */
-static StyxRpcIoOutcome outcome(const StyxTransfer *part, size_t remaining)
+StyxRpcIoOutcome styxrpc_vfs_transfer_outcome(const StyxTransfer *part, size_t remaining)
 {
     if (part->uncertain || !part->confirmed || part->count > remaining)
     {
@@ -250,7 +250,7 @@ static StyxRpcIoOutcome transfer(StyxRpcVfsFile *file, uint64_t offset, void *re
         {
             styxclientwrite(file, offset + *used, (const unsigned char *)write + *used, size - *used, &part);
         }
-        status = outcome(&part, size - *used);
+        status = styxrpc_vfs_transfer_outcome(&part, size - *used);
         if (status != STYXRPC_IO_OK || !part.count)
         {
             break;
@@ -313,90 +313,10 @@ StyxRpcIoOutcome styxrpc_vfs_write_at(StyxClient *session, const char *path,
 }
 
 
-/* EN: Consume consecutive directory stat records from the held directory.
- * size may hold a partial record across fragments; a malformed record fails the listing.
- * RU: Прочитать последовательные записи stat из удерживаемого каталога.
- * size может содержать частичную запись. Неверная запись прерывает перечисление. */
-static StyxRpcIoOutcome list_open(StyxFid *fid, unsigned char *bytes, size_t capacity, size_t skip, size_t limit,
-    StyxRpcVfsVisitor visit, void *state)
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxFid *styxrpc_vfs_open_directory_fid(StyxClient *session, const char *path)
 {
-    uint64_t offset = 0;
-    size_t size = 0;
-    while (limit)
-    {
-        StyxTransfer part;
-        if (offset > STYXRPC_VFS_OFFSET_MAX - capacity || size == capacity)
-        {
-            return STYXRPC_IO_FAILED;
-        }
-        styxclientread(fid, offset, bytes + size, capacity - size, &part);
-        StyxRpcIoOutcome status = outcome(&part, capacity - size);
-        if (status != STYXRPC_IO_OK || !part.count)
-        {
-            return status == STYXRPC_IO_OK && size ? STYXRPC_IO_FAILED : status;
-        }
-        offset += part.count;
-        size += part.count;
-        size_t cursor = 0;
-        while (limit && size - cursor >= 2)
-        {
-            const unsigned char *record = bytes + cursor;
-            size_t length = 2U + record[0] + 256U * record[1];
-            if (length > size - cursor)
-            {
-                break;
-            }
-            StyxMeta meta;
-            size_t consumed;
-            if (!styxclientrecord(record, length, &meta, &consumed) || consumed != length)
-            {
-                return STYXRPC_IO_FAILED;
-            }
-            cursor += consumed;
-            if (service_meta(&meta))
-            {
-                continue;
-            }
-            if (skip)
-            {
-                --skip;
-            }
-            else
-            {
-                const StyxRpcFileInfo info = {meta.length, (unsigned)meta.mode, meta.directory};
-                if (!visit(state, meta.name, &info))
-                {
-                    return STYXRPC_IO_FAILED;
-                }
-                --limit;
-            }
-        }
-        memmove(bytes, bytes + cursor, size - cursor);
-        size -= cursor;
-    }
-    return STYXRPC_IO_OK;
-}
-
-
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_list(StyxClient *session, const char *path, size_t skip, size_t limit,
-    StyxRpcVfsVisitor visit, void *state)
-{
-    if (!limit || !visit)
-    {
-        return STYXRPC_IO_NOT_OPEN;
-    }
-    const size_t capacity = (size_t)UINT16_MAX + 2;
-    unsigned char *bytes = malloc(capacity);
-    if (!bytes)
-    {
-        return STYXRPC_IO_FAILED;
-    }
-    StyxFid *fid = open_entry(session, path, STYXRPC_FILE_READ, 1, VFS_FILE_PATH);
-    StyxRpcIoOutcome status = fid ? list_open(fid, bytes, capacity, skip, limit, visit, state) : STYXRPC_IO_NOT_OPEN;
-    styxclientclunk(fid);
-    free(bytes);
-    return status;
+    return open_entry(session, path, STYXRPC_FILE_READ, 1, VFS_FILE_PATH);
 }
 
 
@@ -461,7 +381,7 @@ StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value)
     unsigned char bytes[STYX_VARIABLE_INT_SIZE];
     StyxTransfer part;
     styxclientread(file, 0, bytes, sizeof(bytes), &part);
-    StyxRpcIoOutcome status = outcome(&part, sizeof(bytes));
+    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, sizeof(bytes));
     if (status != STYXRPC_IO_OK)
     {
         return status;
@@ -487,6 +407,6 @@ StyxRpcIoOutcome styxrpc_vfs_int_write(StyxRpcVfsFile *file, int32_t value)
     }
     StyxTransfer part;
     styxclientwrite(file, 0, bytes, size, &part);
-    StyxRpcIoOutcome status = outcome(&part, size);
+    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, size);
     return status == STYXRPC_IO_OK && part.count != size ? STYXRPC_IO_FAILED : status;
 }

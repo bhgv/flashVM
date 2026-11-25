@@ -82,6 +82,18 @@ StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset, c
 void styxrpc_vfs_close(StyxRpcVfsFile *file, int deferred);
 
 
+typedef struct StyxRpcVfsDir StyxRpcVfsDir; /* Open directory and its private cursor. */
+
+/* EN/RU: Open an owned directory cursor. / Открыть собственный итератор каталога. */
+StyxRpcIoOutcome styxrpc_vfs_dir_open(struct StyxClient *, const char *, StyxRpcVfsDir **);
+
+/* EN: Visit one visible entry. Set found to zero at EOF. Names are borrowed during visit.
+ * RU: Передать одну видимую запись. На EOF found равен нулю. Имя заимствуется на время visit. */
+StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *, StyxRpcVfsVisitor, void *, int *found);
+
+/* EN/RU: Consume dir and optionally defer clunk. / Освободить dir и при необходимости отложить clunk. */
+void styxrpc_vfs_dir_close(StyxRpcVfsDir *, int deferred);
+
 /* EN: Enumerate up to limit entries after skip on an opened directory. Empty path means root.
  * RU: Перечислить до limit записей открытого каталога после skip. Пустой путь означает корень. */
 StyxRpcIoOutcome styxrpc_vfs_list(struct StyxClient *session, const char *path, size_t skip, size_t limit,

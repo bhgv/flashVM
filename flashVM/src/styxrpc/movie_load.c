@@ -167,12 +167,39 @@ static FVM_Result read_extent(StyxRpcVfsFile *file, unsigned char *bytes, size_t
 
 
 /* EN/RU: See movie_load.h. / См. movie_load.h. */
+FVM_Result fvm_styxrpc_read_open_asset(StyxRpcVfsFile *file, size_t limit, unsigned char **out, size_t *length)
+{
+    StyxRpcFileInfo info;
+    *out = NULL;
+    *length = 0;
+    if (styxrpc_vfs_file_stat(file, &info) != STYXRPC_IO_OK)
+    {
+        return FVM_ERROR;
+    }
+    if (!info.length || info.length > limit)
+    {
+        return info.length ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
+    }
+    {
+        unsigned char *bytes = malloc((size_t)info.length);
+        FVM_Result result = bytes ? read_extent(file, bytes, (size_t)info.length) : FVM_OUT_OF_MEMORY;
+        if (result != FVM_OK)
+        {
+            free(bytes);
+            return result;
+        }
+        *out = bytes;
+        *length = (size_t)info.length;
+    }
+    return FVM_OK;
+}
+
+
+/* EN/RU: See movie_load.h. / См. movie_load.h. */
 FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, size_t limit,
     unsigned char **out, size_t *length)
 {
     StyxRpcVfsFile *file = NULL;
-    StyxRpcFileInfo info;
-    unsigned char *bytes;
     FVM_Result result;
     *out = NULL;
     *length = 0;
@@ -180,28 +207,8 @@ FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, 
     {
         return FVM_NOT_FOUND;
     }
-    if (styxrpc_vfs_file_stat(file, &info) != STYXRPC_IO_OK)
-    {
-        styxrpc_vfs_close(file, 0);
-        return FVM_ERROR;
-    }
-    if (!info.length || info.length > limit)
-    {
-        styxrpc_vfs_close(file, 0);
-        return info.length ? FVM_UNSUPPORTED : FVM_INVALID_ARGUMENT;
-    }
-    bytes = malloc((size_t)info.length);
-    result = bytes ? read_extent(file, bytes, (size_t)info.length) : FVM_OUT_OF_MEMORY;
+    result = fvm_styxrpc_read_open_asset(file, limit, out, length);
     styxrpc_vfs_close(file, 0);
-    if (result == FVM_OK)
-    {
-        *out = bytes;
-        *length = (size_t)info.length;
-    }
-    else
-    {
-        free(bytes);
-    }
     return result;
 }
 

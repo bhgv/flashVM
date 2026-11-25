@@ -20,6 +20,19 @@ typedef struct StyxRpcModuleImport
 } StyxRpcModuleImport;
 
 
+/* EN: Own discovered names alongside their checked contracts.
+ * RU: Хранить найденные имена вместе с проверенными контрактами. */
+typedef struct StyxRpcModuleExports
+{
+    StyxRpcModuleImport methods[STYXRPC_MAX_EXPORTS];      /* Verified contracts. */
+    char names[STYXRPC_MAX_EXPORTS][STYXRPC_TREE_NAME + 1]; /* Owned export names. */
+    size_t count;                                        /* Number of contracts. */
+} StyxRpcModuleExports;
+
+/* EN: Discover directly callable exports. Keep out at its original address after success.
+ * RU: Найти доступные для прямого вызова экспорты. После успеха не перемещать out. */
+StyxRpcStatus styxrpc_module_exports(struct StyxClient *, const char *, uint32_t, StyxRpcModuleExports *);
+
 /* EN: Check all requirements on one held directory of the attached session.
  * The path is relative. A nonzero PID is required by any scoped requirement.
  * RU: Проверить все требования на одном удерживаемом каталоге смонтированной сессии.
