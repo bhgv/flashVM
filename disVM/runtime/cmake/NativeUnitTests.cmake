@@ -119,7 +119,7 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(disvm_anchor_port_test vfs/test_anchor_port.c)
     target_include_directories(disvm_anchor_port_test PRIVATE ${anchor_includes})
     target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host vfs_walk Threads::Threads)
-    target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
+    target_link_libraries(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
 endif()
 
 add_test(NAME disvm_system_identity COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_system_identity.py")

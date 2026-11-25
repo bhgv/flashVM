@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Self-contained original Inferno Styx libraries, optional hosted Linux64 client/server and portable wire codec.
 # RU: Самостоятельные исходные библиотеки Styx Inferno, необязательные Linux64 client/server и переносимый wire codec.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(Styx VERSION 0.1.0 LANGUAGES C)
 include(CTest)
 include(GNUInstallDirs)
@@ -45,8 +45,13 @@ install(EXPORT StyxTargets NAMESPACE Styx:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/
 # Relocatable package discovery and an explicit same-minor source compatibility policy.
 configure_package_config_file(cmake/StyxConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/StyxConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Styx")
+# CMake 3.10 can validate the exact SDK release. Newer CMake knows the minor series.
+set(package_compatibility SameMinorVersion)
+if(CMAKE_VERSION VERSION_LESS 3.11)
+    set(package_compatibility ExactVersion)
+endif()
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/StyxConfigVersion.cmake"
-    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
+    VERSION "${PROJECT_VERSION}" COMPATIBILITY ${package_compatibility})
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/StyxConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/StyxConfigVersion.cmake" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Styx")
 install(FILES README.md LICENSE.bhgv SOURCES.jsonl vendor/UPSTREAM.json DESTINATION ${CMAKE_INSTALL_DATADIR}/styx)

@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Independent allocation-free wire library and optional native per-tag queues; no Styx or VM dependency.
 # RU: Независимый wire codec без выделений и необязательные нативные очереди тегов; без Styx и VM.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(libunibus VERSION 0.1.0 LANGUAGES C)
 include(CTest)
 include(GNUInstallDirs)
@@ -36,8 +36,13 @@ install(EXPORT UnibusTargets NAMESPACE Unibus:: DESTINATION ${CMAKE_INSTALL_LIBD
 # Relocatable package discovery and an explicit same-minor source compatibility policy.
 configure_package_config_file(cmake/UnibusConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/UnibusConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Unibus")
+# CMake 3.10 can validate the exact SDK release. Newer CMake knows the minor series.
+set(package_compatibility SameMinorVersion)
+if(CMAKE_VERSION VERSION_LESS 3.11)
+    set(package_compatibility ExactVersion)
+endif()
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/UnibusConfigVersion.cmake"
-    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
+    VERSION "${PROJECT_VERSION}" COMPATIBILITY ${package_compatibility})
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/UnibusConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/UnibusConfigVersion.cmake" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Unibus")
 install(FILES README.md LICENSE.bhgv SOURCES.jsonl DESTINATION ${CMAKE_INSTALL_DATADIR}/libunibus)

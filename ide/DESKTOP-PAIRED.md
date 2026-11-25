@@ -1,7 +1,7 @@
 # Menu 8 desktop on two VMs
 
 
-Building the paired IDE on Linux64 requires CMake 3.16 or later. Set `CMAKE` to select a different executable.
+Building the paired IDE on Linux64 requires CMake 3.10 or later. Set `CMAKE` to select a different executable.
 
 [Русский](DESKTOP-PAIRED.ru.md) · [Entry points](https://github.com/bhgv/flashVM/blob/master/ide/ENTRYPOINTS.md)
 

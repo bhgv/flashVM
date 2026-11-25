@@ -12,7 +12,7 @@ foreach(required_path IN ITEMS "${disvm_runtime}" "${disvm_limbo}"
         message(FATAL_ERROR "Missing DisVM integration test input: ${required_path}")
     endif()
 endforeach()
-set(disvm_command "${Python3_EXECUTABLE}")
+set(disvm_command "${PYTHON_EXECUTABLE}")
 set(disvm_common --runtime "${disvm_runtime}" --limbo "${disvm_limbo}")
 
 foreach(mode IN ITEMS interpreter jit)

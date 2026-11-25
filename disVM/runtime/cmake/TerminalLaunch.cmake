@@ -44,7 +44,9 @@ if(DVM_TERMINAL_LAUNCH_SDK)
     target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
     target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c terminal_launch/local_pair.c terminal_launch/mount_assets.c)
     target_compile_definitions(disvm PRIVATE DVM_TERMINAL_LAUNCH=1)
-    set_property(SOURCE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c APPEND PROPERTY INCLUDE_DIRECTORIES
+    set(launch_sources terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c
+        terminal_launch/serve.c terminal_launch/library.c)
+    set(launch_includes
         "${root}/disVM/native/client" "${root}/disVM/native/terminal"
         "${root}/disVM/native/terminal/order" "${root}/disVM/native/vfs"
         "${root}/disVM/native/launch" "${CMAKE_CURRENT_SOURCE_DIR}/vfs"
@@ -56,9 +58,22 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         "${root}/lib/styxrpc/src/message_client.c"
         "${root}/lib/styxrpc/src/vfs_client.c")
     target_sources(disvm PRIVATE ${styxrpc_terminal_sources})
-    set_property(SOURCE ${styxrpc_terminal_sources} APPEND PROPERTY INCLUDE_DIRECTORIES
+    set(styxrpc_terminal_includes
         "${root}/lib/styxrpc/include"
         "${root}/disVM/native/client" "${root}/disVM/native/vfs"
         "${root}/disVM/native/terminal" "${root}/remote_phy")
+    if(CMAKE_VERSION VERSION_LESS 3.11)
+        # Keep these quoted headers ahead of the target includes, including its other client.h.
+        foreach(group launch styxrpc_terminal)
+            set(flags "")
+            foreach(directory IN LISTS ${group}_includes)
+                string(APPEND flags " -iquote \"${directory}\"")
+            endforeach()
+            set_property(SOURCE ${${group}_sources} APPEND_STRING PROPERTY COMPILE_FLAGS "${flags}")
+        endforeach()
+    else()
+        set_property(SOURCE ${launch_sources} APPEND PROPERTY INCLUDE_DIRECTORIES ${launch_includes})
+        set_property(SOURCE ${styxrpc_terminal_sources} APPEND PROPERTY INCLUDE_DIRECTORIES ${styxrpc_terminal_includes})
+    endif()
     target_link_libraries(disvm PRIVATE "-Wl,--start-group" ${terminal_launch_libraries} "-Wl,--end-group")
 endif()

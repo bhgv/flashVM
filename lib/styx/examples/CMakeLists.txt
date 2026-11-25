@@ -16,11 +16,11 @@ foreach(example flat tree database live http)
     target_link_libraries(styx-${example} PRIVATE Styx::server)
     set_target_properties(styx-${example} PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
     target_compile_options(styx-${example} PRIVATE -Wall -Wextra -Werror -Wno-unknown-pragmas)
-    add_test(NAME styx-${example} COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/check.py" "$<TARGET_FILE:styx-${example}>" ${example} "$<TARGET_FILE:styx-cat>")
+    add_test(NAME styx-${example} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/check.py" "$<TARGET_FILE:styx-${example}>" ${example} "$<TARGET_FILE:styx-cat>")
     set_tests_properties(styx-${example} PROPERTIES TIMEOUT 120)
 endforeach()
 target_compile_definitions(styx-tree PRIVATE CATALOG_TREE=1)
-target_compile_definitions(styx-http PRIVATE CATALOG_PYTHON="${Python3_EXECUTABLE}" CATALOG_HELPER="${CMAKE_CURRENT_SOURCE_DIR}/http_query.py")
+target_compile_definitions(styx-http PRIVATE CATALOG_PYTHON="${PYTHON_EXECUTABLE}" CATALOG_HELPER="${CMAKE_CURRENT_SOURCE_DIR}/http_query.py")
 
 # A real server/client on a caller-provided memory carrier; keep the original POSIX server backend out.
 set(memory_driver memory_phy/memory.c memory_phy/io.c memory_phy/wait.c)
@@ -40,14 +40,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(styx-memory-construction ../tests/memory_construction.c ${memory_driver})
     target_include_directories(styx-memory-construction PRIVATE memory_phy)
     target_link_libraries(styx-memory-construction PRIVATE Styx::carrier Threads::Threads)
-    target_link_options(styx-memory-construction PRIVATE -Wl,--wrap=calloc -Wl,--wrap=free
+    target_link_libraries(styx-memory-construction PRIVATE -Wl,--wrap=calloc -Wl,--wrap=free
         -Wl,--wrap=pthread_mutex_init -Wl,--wrap=phycreate)
     set_target_properties(styx-memory-construction PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
     add_test(NAME styx-memory-construction COMMAND styx-memory-construction)
     set_tests_properties(styx-memory-construction PROPERTIES TIMEOUT 10)
     add_executable(styx-memory-no-descriptor memory_phy/main.c memory_phy/server.c ${memory_driver} ../tests/no_descriptor.c)
     target_link_libraries(styx-memory-no-descriptor PRIVATE Styx::client Styx::phy_server)
-    target_link_options(styx-memory-no-descriptor PRIVATE -Wl,--wrap=socket -Wl,--wrap=connect
+    target_link_libraries(styx-memory-no-descriptor PRIVATE -Wl,--wrap=socket -Wl,--wrap=connect
         -Wl,--wrap=pipe -Wl,--wrap=pipe2 -Wl,--wrap=eventfd -Wl,--wrap=poll
         -Wl,--wrap=read -Wl,--wrap=close -Wl,--wrap=open -Wl,--wrap=socketpair)
     set_target_properties(styx-memory-no-descriptor PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
@@ -62,9 +62,9 @@ set_target_properties(styx-live-registry PROPERTIES C_STANDARD 99 C_STANDARD_REQ
 target_compile_options(styx-live-registry PRIVATE -Wall -Wextra -Werror)
 add_test(NAME styx-live-registry COMMAND styx-live-registry)
 set_tests_properties(styx-live-registry PROPERTIES TIMEOUT 10)
-add_test(NAME styx-live-wire COMMAND "${Python3_EXECUTABLE}"
+add_test(NAME styx-live-wire COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/live_wire.py" "$<TARGET_FILE:styx-live>")
 set_tests_properties(styx-live-wire PROPERTIES TIMEOUT 30)
-add_test(NAME styx-http-contract COMMAND "${Python3_EXECUTABLE}"
+add_test(NAME styx-http-contract COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/http_contract.py" "$<TARGET_FILE:styx-http>")
 set_tests_properties(styx-http-contract PROPERTIES TIMEOUT 90)

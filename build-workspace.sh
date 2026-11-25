@@ -284,11 +284,6 @@ if [[ "$need_cmake" == 1 ]]; then
         command -v "$ctest" >/dev/null || fail 'CTest not found'
     fi
 fi
-# The paired desktop stages SDK projects whose own minimum is CMake 3.16.
-if has disvm-editor && [[ "$player" != OFF && $(uname -s) == Linux && $(getconf LONG_BIT) == 64 ]] &&
-    ! version_at_least "$cmake" cmake 3 16; then
-    fail 'Linux64 paired desktop (menu 8) needs CMake 3.16+. Set CMAKE to a newer executable or update CMake on PATH.'
-fi
 # Resolve the real desktop SDK automatically when a graphical VM is requested.
 # Console-only builds and all non-VM components keep their existing SDK independence.
 SDL2_SDK_DIR=""

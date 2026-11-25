@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Independent C RPC codec and callback endpoint over installed communication libraries.
 # RU: Независимый C-кодек RPC и колбэки поверх установленных библиотек связи.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(StyxRpc VERSION 0.1.0 LANGUAGES C)
 include(CTest)
 include(GNUInstallDirs)
@@ -65,9 +65,9 @@ if(STYXRPC_EXAMPLES)
     add_executable(styxrpc-client examples/client.c)
     target_link_libraries(styxrpc-client PRIVATE StyxRpc::launch)
     if(BUILD_TESTING)
-        find_package(Python3 QUIET COMPONENTS Interpreter)
-        if(Python3_Interpreter_FOUND)
-            add_test(NAME styxrpc-native-socket COMMAND "${Python3_EXECUTABLE}"
+        find_package(PythonInterp 3 QUIET)
+        if(PYTHONINTERP_FOUND)
+            add_test(NAME styxrpc-native-socket COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/examples/socketpair.py"
                 "$<TARGET_FILE:styxrpc-device>" "$<TARGET_FILE:styxrpc-client>")
         endif()
@@ -77,7 +77,7 @@ if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR S
     if(NOT BUILD_TESTING OR NOT STYXRPC_EXAMPLES OR NOT STYXRPC_DISVM_SOURCE OR NOT STYXRPC_DISVM_BUILD)
         message(FATAL_ERROR "DisVM tests require both DisVM paths, BUILD_TESTING and STYXRPC_EXAMPLES")
     endif()
-    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    find_package(PythonInterp 3 REQUIRED)
     include(cmake/DisvmTests.cmake)
 endif()
 if(BUILD_TESTING)
@@ -140,7 +140,12 @@ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT StyxRpcTargets NAMESPACE StyxRpc:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/StyxRpc)
 configure_package_config_file(cmake/StyxRpcConfig.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/StyxRpcConfig.cmake" INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/StyxRpc)
+# CMake 3.10 can validate the exact SDK release. Newer CMake knows the minor series.
+set(package_compatibility SameMinorVersion)
+if(CMAKE_VERSION VERSION_LESS 3.11)
+    set(package_compatibility ExactVersion)
+endif()
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/StyxRpcConfigVersion.cmake"
-    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
+    VERSION "${PROJECT_VERSION}" COMPATIBILITY ${package_compatibility})
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/StyxRpcConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/StyxRpcConfigVersion.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/StyxRpc)
