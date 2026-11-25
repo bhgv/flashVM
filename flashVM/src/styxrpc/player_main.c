@@ -5,6 +5,7 @@
 #include "playback_clock.h"
 #include "player_view.h"
 #include "player_terminal.h"
+#include "player_peer.h"
 #include "movie_load.h"
 #include "../../ports/monotonic_port.h"
 #include "flashvm/swf.h"
@@ -20,9 +21,6 @@
 
 #define PLAYER_MIN_FD 3         /* Standard streams remain available for diagnostics. */
 #define PLAYER_MUX_LIMIT 65536U /* Maximum frame on the bidirectional carrier. */
-#define PLAYER_MSIZE 4096U     /* Requested message size for the remote filesystem. */
-#define PLAYER_WAIT_MS 5000U   /* Per-operation mount and file timeout. */
-#define PLAYER_TAGS 8U         /* Pending reverse Styx tags. */
 #define PLAYER_TICK 1U         /* Timed operation advances one frame with no backlog burst. */
 #define PLAYER_FONT_LIMIT (4U * 1024U * 1024U) /* Maximum TTF bytes read from the attached VFS. */
 
@@ -34,6 +32,7 @@ typedef struct PlayerHost
     StyxRpcTerminal terminal;   /* Live reserved UniBus channel for this playback. */
     struct StyxClient *session; /* Borrowed reverse filesystem mount. */
     FVM_PairedView *view;        /* Borrowed player presentation for all movie generations. */
+    int flash_peer;              /* Peer serves a movie, so no Dis font VFS is expected. */
 } PlayerHost;
 
 
@@ -63,7 +62,7 @@ static FVM_Result setup(void *state, FVM_Context *context)
     PlayerHost *host = state;
     FVM_Result result = fvm_styxrpc_player_terminal(context, &host->terminal);
 #ifdef FVM_HAS_FONTS
-    if (result == FVM_OK)
+    if (result == FVM_OK && !host->flash_peer)
     {
         unsigned char *bytes;
         size_t size;
@@ -183,9 +182,12 @@ static int connected(const char *value)
 }
 
 
-/* EN: Attach the DisVM filesystem on lane 1 and serve playback control on lane 0.
- * RU: Подключить файловую систему DisVM на канале 1 и обслуживать управление на канале 0. */
-static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
+/* EN: Adopt fd, attach the complementary client lane and serve playback on
+ * serve_lane. Stage the optional local startup image on the same owner.
+ * RU: Принять fd, подключить встречный клиентский канал и обслуживать плеер
+ * на serve_lane. Подготовить необязательный стартовый SWF у того же владельца. */
+static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned serve_lane,
+    int flash_peer, const char *movie)
 {
     FVM_Config config;
     PlayerHost host = {0};
@@ -194,11 +196,17 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
     StyxRpcServer *server = NULL;
     int status = 1;
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), PLAYER_MUX_LIMIT);
-    StyxClient *root = mux ? styxclientmountphy(phybidirchannel(mux, 1), PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS,
-        PLAYER_TAGS) : NULL;
-    host.session = root;
+    unsigned client_lane = serve_lane == PLAYER_SERVE_FORWARD ? PLAYER_SERVE_REVERSE : PLAYER_SERVE_FORWARD;
+    StyxClient *root = NULL;
+    if (mux && !flash_peer)
+    {
+        root = styxclientmountphy(phybidirchannel(mux, client_lane), PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS,
+            PLAYER_TAGS);
+    }
     host.view = view;
-    if (root && fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK)
+    host.flash_peer = flash_peer;
+    if (mux && (root || flash_peer) && fvm_config_init(&config) == FVM_OK &&
+        fvm_runtime_create(&config, &runtime) == FVM_OK)
     {
         FVM_StyxRpcPlaybackSpec spec = {0};
         spec.runtime = runtime;
@@ -209,17 +217,36 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view)
         spec.host = &host;
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
         {
-            server = styxrpc_server_create(phybidirchannel(mux, 0), &styxrpc_module_slot_tree,
+            playback->awaiting_session = flash_peer;
+            server = styxrpc_server_create(phybidirchannel(mux, serve_lane), &styxrpc_module_slot_tree,
                 fvm_styxrpc_playback_slot(playback));
         }
     }
     if (server && fvm_styxrpc_player_publish_terminal(server, &host.terminal))
     {
-        status = replay(server, playback, &host);
-        if (!status && !fvm_paired_view_capture(view, playback))
+        if (flash_peer)
         {
-            fputs("flashvm_styx_player: could not capture the final movie frame\n", stderr);
-            status = 1;
+            root = fvm_styxrpc_player_peer_mount(server, phybidirchannel(mux, client_lane));
+            playback->spec.session = root;
+            playback->awaiting_session = 0;
+        }
+        host.session = root;
+        if (!root)
+        {
+            fputs("flashvm_styx_player: cannot mount the FlashVM peer\n", stderr);
+        }
+        else if (movie && !fvm_styxrpc_player_peer_movie(playback, movie))
+        {
+            fprintf(stderr, "flashvm_styx_player: cannot load startup SWF %s\n", movie);
+        }
+        else
+        {
+            status = replay(server, playback, &host);
+            if (!status && !fvm_paired_view_capture(view, playback))
+            {
+                fputs("flashvm_styx_player: could not capture the final movie frame\n", stderr);
+                status = 1;
+            }
         }
     }
     else
@@ -243,11 +270,15 @@ int main(int argc, char **argv)
     FVM_ExecutionMode mode = FVM_EXECUTION_INTERPRETER;
     FVM_PairedView *view = NULL;
     const char *capture = NULL;
+    const char *movie = NULL;
+    unsigned serve_lane = PLAYER_SERVE_FORWARD;
+    int flash_peer = 0;
     int windowed = 0, mode_seen = 0;
     int fd, i, result;
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
-        puts("usage: flashvm_styx_player --fd FD [--jit | --no-jit] [--window] [--capture PATH]");
+        puts("usage: flashvm_styx_player --fd FD [--peer forward|reverse [--movie FILE]]\n"
+             "                            [--jit | --no-jit] [--window] [--capture PATH]");
         return 0;
     }
     if (argc < 3 || strcmp(argv[1], "--fd"))
@@ -278,11 +309,26 @@ int main(int argc, char **argv)
         {
             capture = argv[++i];
         }
+        else if (!flash_peer && !strcmp(argv[i], "--peer") && i + 1 < argc &&
+            (!strcmp(argv[i + 1], "forward") || !strcmp(argv[i + 1], "reverse")))
+        {
+            flash_peer = 1;
+            serve_lane = !strcmp(argv[++i], "reverse") ? PLAYER_SERVE_REVERSE : PLAYER_SERVE_FORWARD;
+        }
+        else if (!movie && !strcmp(argv[i], "--movie") && i + 1 < argc && argv[i + 1][0])
+        {
+            movie = argv[++i];
+        }
         else
         {
             fputs("flashvm_styx_player: invalid option or missing option argument\n", stderr);
             return 2;
         }
+    }
+    if (movie && !flash_peer)
+    {
+        fputs("flashvm_styx_player: --movie requires --peer\n", stderr);
+        return 2;
     }
     fd = connected(argv[2]);
     if (fd < 0)
@@ -298,7 +344,7 @@ int main(int argc, char **argv)
             return 2;
         }
     }
-    result = run(fd, mode, view);
+    result = run(fd, mode, view, serve_lane, flash_peer, movie);
     fvm_paired_view_destroy(view);
     return result;
 }

@@ -129,27 +129,60 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
 }
 
 
-/* [ASINC] EN: Replace the movie only after validating a complete SWF.
- * RU: Заменить фильм только после проверки полного SWF. */
+/* [ASINC] EN: Consume the complete SWF and replace the current movie on success.
+ * RU: Принять полный SWF и заменить текущий фильм при успехе. */
+static int adopt_movie(FVM_StyxRpcPlayback *playback, unsigned char *bytes, size_t size)
+{
+    playback->last = prepare(playback, bytes, size);
+    if (playback->last != FVM_OK)
+    {
+        free(bytes);
+        return 0;
+    }
+    free(playback->swf);
+    playback->swf = bytes;
+    playback->size = size;
+    return 1;
+}
+
+
+/* [ASINC] EN: Copy the borrowed completed upload on the playback owner.
+ * RU: Скопировать заимствованную завершённую загрузку у владельца плеера. */
 static int upload(void *data, const void *bytes, size_t size)
 {
     FVM_StyxRpcPlayback *playback = data;
-    unsigned char *copy = malloc(size);
+    unsigned char *copy;
+    if (playback->awaiting_session)
+    {
+        return 0;
+    }
+    copy = malloc(size);
     if (!copy)
     {
         playback->last = FVM_OUT_OF_MEMORY;
         return 0;
     }
     memcpy(copy, bytes, size);
-    playback->last = prepare(playback, copy, size);
-    if (playback->last != FVM_OK)
+    return adopt_movie(playback, copy, size);
+}
+
+
+/* EN/RU: See playback_internal.h. / См. playback_internal.h. */
+int fvm_styxrpc_playback_start_local(FVM_StyxRpcPlayback *playback, unsigned char *bytes, size_t size)
+{
+    if (!bytes || !size || size > playback->spec.upload_limit || playback->awaiting_session)
     {
-        free(copy);
+        free(bytes);
         return 0;
     }
-    free(playback->swf);
-    playback->swf = copy;
-    playback->size = size;
+    if (!adopt_movie(playback, bytes, size))
+    {
+        return 0;
+    }
+    /* EN: The clock starts AS after ordinary wire dispatch is enabled.
+     * RU: Часы запускают AS после начала обычной обработки соединения. */
+    playback->state = PLAYBACK_RUNNING;
+    ++playback->schedule;
     return 1;
 }
 

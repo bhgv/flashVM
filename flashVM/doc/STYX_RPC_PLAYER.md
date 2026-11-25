@@ -2,7 +2,7 @@
 
 [Русский](STYX_RPC_PLAYER.ru.md) · [Playback protocol](STYX_RPC_MODULES.md) · [File and module APIs](STYX_RPC.md)
 
-The `flashvm_styx_player` executable runs a paired FlashVM owner with a monotonic frame clock. It accepts one already connected, full-duplex stream on an inherited descriptor at least 3. The two directions of the existing Styx connection carry FlashVM controls and the DisVM VFS. The executable logs ActionScript `trace` to standard output. Build it with the installed hosted Styx and libstyxrpc SDK.
+The `flashvm_styx_player` executable runs a paired FlashVM owner with a monotonic frame clock. It accepts one already connected, full-duplex stream on an inherited descriptor at least 3. A local socket or a TCP connection can carry the Styx session. The executable logs ActionScript `trace` to standard output. Build it with the installed hosted Styx and libstyxrpc SDK.
 
 ```sh
 cmake -S flashVM -B build/flash -DFVM_ENABLE_STYXRPC=ON -DCMAKE_PREFIX_PATH=/path/to/sdk
@@ -57,6 +57,31 @@ returns a status and a byte array. `styxChannel("(i)", 1)` creates a local
 typed queue. Each new movie owns its own session object and replacement
 closes the previous movie’s launch fids.
 
+## Connect two FlashVMs
+
+Pass one end of the same connected stream to each player. Choose complementary
+roles so each mounted client reaches the other player's server.
+
+```sh
+flashvm_styx_player --fd 3 --peer forward --movie view-a.swf --jit
+flashvm_styx_player --fd 4 --peer reverse --movie view-b.swf --jit
+```
+
+`forward` serves lane 0 and mounts lane 1. `reverse` serves lane 1 and mounts
+lane 0. Each role serves version and attach requests while its own mount
+negotiates. `--movie FILE` in peer mode loads a local startup SWF and starts
+it at the first clock turn after the connection is attached. Omit `--movie`
+to wait for upload through the peer connection. Each player retires its
+session when the connection closes. The launcher supplies a connected
+descriptor and controls which peer receives it. TCP uses the same wire format
+and requires transport protection at deployment when needed.
+
+Each movie can [publish an object](#publishing-a-movie-object) and use
+[`styxrpc.callInt`](STYX_RPC_SESSION_CALL_INT.md) to call a published Int32
+method on the other movie. The two films own separate heaps. The session
+mount in this mode contains the other FlashVM's playback and published image.
+Font lookup through the Dis VFS belongs to the DisVM launch mode.
+
 ## Unibus terminal
 
 In a bidirectional launch, the Limbo program registers its
@@ -108,5 +133,18 @@ and old positions of a shape moved by a DisVM call.
 The `styxrpc-native-terminal-*` tests run a `.dis` and `.swf` on the
 stock pair. A key frame reaches a Limbo channel and its Unicode reply
 updates the raster in the windowed run.
+
+Run the two-player acceptance test with the project AS2 compiler, FIR and
+SWL. It links the provider and caller SWFs, tests both lane assignments in
+JIT and interpreter, and checks peer retirement on disconnect. `--tcp` selects
+a direct TCP loopback connection. The default uses a local socket pair.
+
+```sh
+python3 ide/tests/check_flash_peers.py --tcp \
+  --player build/flash/flashvm_styx_player --as2 build/as2/view/as2_viewc \
+  --fir build/fir --swl build/linker/swl
+```
+
+The [paired IDE check](../../ide/DESKTOP-PAIRED.md) has the same `--tcp` switch.
 
 [Player implementation](../src/styxrpc/player_main.c) · [DisVM mount command](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

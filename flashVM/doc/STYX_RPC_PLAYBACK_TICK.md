@@ -24,6 +24,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_playback_tick` | function | [include/flashvm/styxrpc_playback.h:42](../include/flashvm/styxrpc_playback.h#L42) |
-| `FVM_StyxRpcPlayback` | struct | [src/styxrpc/playback.c:37](../src/styxrpc/playback.c#L37) |
+| `fvm_styxrpc_playback_tick` | function | [include/flashvm/styxrpc_playback.h:49](../include/flashvm/styxrpc_playback.h#L49) |
+| `FVM_StyxRpcPlayback` | struct | [src/styxrpc/playback_internal.h:22](../src/styxrpc/playback_internal.h#L22) |
 <!-- source-links:end -->

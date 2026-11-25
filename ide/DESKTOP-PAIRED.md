@@ -21,6 +21,7 @@ the existing libstyxrpc session.
 The launcher uses an already connected Styx stream. The acceptance test
 below supplies a local socket pair. Deployment can provide a connected
 network stream using the same entry points and application modules.
+Pass `--tcp` to the check below to exercise that route over TCP loopback.
 
 The AS acceptance movie reads the scene with two editors, a build console
 and Help. It requests a ticket-bound resize from 960 to 860 pixels, so

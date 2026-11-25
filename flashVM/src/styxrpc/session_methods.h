@@ -17,6 +17,11 @@ FVM_Result fvm_styxrpc_launch_members(FVM_Context *context, FVM_Object *object, 
 FVM_Result fvm_styxrpc_vfs_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
+/* EN: Install checked named calls on an unpublished rooted session object.
+ * RU: Добавить проверяемые именованные вызовы к удерживаемому объекту сессии. */
+FVM_Result fvm_styxrpc_call_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
+
+
 /* EN: Copy a nonempty counted string to a NUL-terminated native name.
  * RU: Скопировать непустую строку с длиной в нуль-терминированное имя. */
 int fvm_styxrpc_name(const FVM_Value *value, char *name, size_t capacity);

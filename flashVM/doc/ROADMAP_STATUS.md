@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1759 / Контрольная точка v0.1759. Stock FlashVM peers serve
+opposite lanes on one StyxRPC connection. AS can call a named Int32 export
+of the peer movie. TCP loopback проверяет оба направления и запуск парной IDE.
+[EN](STYX_RPC_PLAYER.md#connect-two-flashvms) / [RU](STYX_RPC_PLAYER.ru.md).
+
 Checkpoint v0.1758 / Контрольная точка v0.1758. The paired SVG brush uses
 the original pointer timestamps to condense motion in 40 ms windows.
 Сглаженный мазок сохраняет начало, конец и один шаг истории.

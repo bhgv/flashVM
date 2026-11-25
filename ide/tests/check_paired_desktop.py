@@ -114,7 +114,7 @@ def check(args, directory, movie, mode):
         provider_trace = ("PASS local ink drew and canceled while Dis was suspended",
                           "PASS 201 local ink motions before release")
     exchange(directory, player, desktop, "PASS MovieClip desktop: independent panes and acknowledged shutdown",
-             provider_trace=provider_trace, timeout=timeout)
+             provider_trace=provider_trace, timeout=timeout, tcp=args.tcp)
     for name, body in expected.items():
         if (directory / name).read_bytes() != body.encode("utf-8"):
             raise RuntimeError(f"{mode}: {name} did not contain the exact edited UTF-8 text")
@@ -376,6 +376,7 @@ def main():
     parser.add_argument("--capture", action="store_true", help="check pixel output with a raster-enabled player")
     parser.add_argument("--text", action="store_true", help="serve the project font through VFS and verify text pixels")
     parser.add_argument("--window", action="store_true", help="open the player window during the run")
+    parser.add_argument("--tcp", action="store_true", help="connect both VMs over direct TCP loopback")
     parser.add_argument("--native-events", type=lambda path: Path(path).resolve(),
                         help="load the Linux SDL2 event fixture and exercise the production SWF")
     scenarios = parser.add_mutually_exclusive_group()

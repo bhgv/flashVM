@@ -22,10 +22,28 @@ def compile_image(args, directory, source, image):
     return target
 
 
+# EN: Return ordered client/provider stream ends; TCP is direct, with no relay.
+# RU: Вернуть концы потоков клиента и провайдера; TCP без посредника.
+def stream_pair(tcp=False):
+    if not tcp:
+        return socket.socketpair()
+    with socket.create_server(("127.0.0.1", 0), backlog=1) as listener:
+        client = socket.create_connection(listener.getsockname(), timeout=5)
+        try:
+            server, _ = listener.accept()
+        except BaseException:
+            client.close()
+            raise
+    client.settimeout(None)
+    for endpoint in (client, server):
+        endpoint.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    return client, server
+
+
 # EN: Connect the argv builders; bound the client by timeout seconds and check both exit codes.
 # RU: Соединить команды, ограничить работу клиента по timeout и проверить коды завершения.
-def exchange(directory, server_command, client_command, expected, provider_trace=(), *, timeout=15):
-    client, server = socket.socketpair()
+def exchange(directory, server_command, client_command, expected, provider_trace=(), *, timeout=15, tcp=False):
+    client, server = stream_pair(tcp)
     with client, server:
         with subprocess.Popen(
             server_command(str(server.fileno())), cwd=directory,
@@ -72,6 +90,7 @@ def native_player(args, directory, tests, mode, windowed=False):
         "PASS native FlashVM and DisVM pair",
         ("styx-child", "styx-leaf", "styxrpc-read:0", "styxrpc-read:0",
          "styx-channel:object", "styx-channel:object"),
+        tcp=args.tcp,
     )
     if (root / "marker.txt").read_bytes() != b"Z":
         raise RuntimeError("native namespace write differs")
@@ -108,6 +127,7 @@ def native_terminal(args, directory, tests, mode, windowed=False):
         lambda fd: [args.runtime, "--styx-mount-fd", fd, "--at", "/rpc",
                     "--", "--native-spawn", mode, image.name],
         "PASS paired Unibus channels",
+        tcp=args.tcp,
     )
 
 
@@ -131,6 +151,7 @@ def main():
                             ("graph", "graph"), ("refs", "ref"), ("managed", "managed")):
         profiles.add_argument("--" + option, dest="profile", action="store_const", const=profile)
     parser.add_argument("--jit", action="store_true")
+    parser.add_argument("--tcp", action="store_true", help="use a direct TCP loopback connection")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
     mode = "--jit" if args.jit else "--no-jit"
@@ -175,6 +196,7 @@ def main():
                             "--", "--native-spawn", mode, dispatcher.name],
                 lambda fd: [args.flash_host, action + "call", fd],
                 "PASS FlashVM Styx RPC host",
+                tcp=args.tcp,
             )
         elif args.direction == "launch":
             image = compile_image(args, directory, tests / "context.b", "context.dis")
@@ -185,6 +207,7 @@ def main():
                             "--", "--native-spawn", mode, image.name],
                 lambda fd: [args.flash_host, "launch", fd],
                 "PASS FlashVM Styx RPC host",
+                tcp=args.tcp,
             )
         elif args.direction == "vfs":
             if not args.device:
@@ -194,6 +217,7 @@ def main():
                 lambda fd: [args.device, fd],
                 lambda fd: [args.flash_host, "vfs", fd],
                 "PASS FlashVM Styx RPC host",
+                tcp=args.tcp,
             )
         else:
             if args.profile == "playback-movies":
@@ -207,6 +231,7 @@ def main():
                 lambda fd: [args.runtime, "--styx-mount-fd", fd, *transport, "--at", "/rpc",
                             "--", "--native-spawn", mode, image.name],
                 f"PASS DisVM loaded FlashVM {result}",
+                tcp=args.tcp,
             )
 
 

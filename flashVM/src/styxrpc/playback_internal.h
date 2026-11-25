@@ -22,6 +22,7 @@ typedef enum PlaybackState
 struct FVM_StyxRpcPlayback
 {
     FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
+    int awaiting_session;        /* Reject movie staging until the peer mount is attached. */
     StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */
     FVM_Context *context;         /* Current movie context, NULL until a successful upload. */
     StyxRpcModuleSlot *slot;      /* Owned published tree while serving. */
@@ -39,4 +40,9 @@ struct FVM_StyxRpcPlayback
     double last_cpu;              /* Last available owner CPU sample in seconds. */
     FVM_StyxRpcProcessStats process; /* Previous kernel sample for matching CPU deltas by thread identity. */
 };
+
+
+/* EN: Consume the local startup image on the owner. Run at the first clock tick on success.
+ * RU: Принять стартовый образ у владельца. При успехе запустить на первом такте. */
+int fvm_styxrpc_playback_start_local(FVM_StyxRpcPlayback *playback, unsigned char *bytes, size_t size);
 #endif

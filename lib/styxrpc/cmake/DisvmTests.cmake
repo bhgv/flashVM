@@ -117,6 +117,13 @@ foreach(presentation IN ITEMS player window terminal terminal-window)
                 ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --flash-host "${paired_player}"
                 --direction "native-${presentation}" ${mode_args})
         set_tests_properties("${test_name}" PROPERTIES TIMEOUT 45)
+        if(presentation STREQUAL "player")
+            add_test(NAME "${test_name}-tcp"
+                COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
+                    ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --flash-host "${paired_player}"
+                    --direction native-player --tcp ${mode_args})
+            set_tests_properties("${test_name}-tcp" PROPERTIES TIMEOUT 45)
+        endif()
         if(presentation MATCHES "window$")
             set_tests_properties("${test_name}" PROPERTIES ENVIRONMENT "SDL_VIDEODRIVER=dummy")
         endif()

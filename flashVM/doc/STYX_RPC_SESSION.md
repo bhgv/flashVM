@@ -11,7 +11,7 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 
 On the context owner thread, supply a zero-initialized binding in stable host
 storage and an already mounted session. A null program enables file I/O
-only. For named launch, supply a program descriptor with a nonzero PID
+and named export calls. For named launch, supply a program descriptor with a nonzero PID
 in the session's reverse tree. Its optional parent PID and descriptor
 mask are copied. The host publishes `.var`, `.fd` and `.vfs` before
 serving the connection. Those callbacks can use host-owned data on a
@@ -31,6 +31,7 @@ and registration APIs. On failure the output is preserved.
 | `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Length consists of two unsigned 32-bit words. Metadata fields are zero/false on failure. |
 | `read(path, offset, count)` | `[status, bytes]`. Returns a dense Array containing the confirmed prefix, up to 2048 bytes. EOF is a successful short result. |
 | `write(path, offset, bytes)` | `[status, confirmedCount]`. Accepts at most 2048 own indexed byte values in 0–255. Property reads can invoke getters before sending. A successful result can describe a short prefix. |
+| [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.md) | Checked `fn(int): int` return value. |
 
 Up to eight tickets can be open at once. Tokens are exact positive AS
 integers and are never reused during the binding's lifetime. Unknown or
