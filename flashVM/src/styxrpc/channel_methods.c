@@ -20,6 +20,7 @@ typedef struct RemoteMethod
 static const RemoteMethod methods[] = {
     {"send", STYXRPC_CHANNEL_ONE, 1},
     {"receive", STYXRPC_CHANNEL_ONE, 0},
+    {"recv", STYXRPC_CHANNEL_ONE, 0},
     {"trySend", STYXRPC_CHANNEL_TRY, 1},
     {"tryReceive", STYXRPC_CHANNEL_TRY, 0}
 }; /* Shared immutable methods bound to the actual receiver. */

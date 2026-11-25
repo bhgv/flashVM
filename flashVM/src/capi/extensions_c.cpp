@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "variable_refs.hpp"
 #include "../core/filesystem_internal.h"
 #include "channel_method_constants.h"
 #include "flashvm/extensions.h"
@@ -475,6 +476,11 @@ create_channel(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
     FVM_Channel *ch = 0;
     FVM_Object *o = 0;
     FVM_Result r;
+    if (n == 2 && a[0].type == FVM_VALUE_STRING && a[0].string && fvm_value_string_size(a) == 3 &&
+        !std::memcmp(a[0].string, "ref", 3))
+    {
+        return fvm_create_ref_channel(c, a + 1, out);
+    }
     if (n >= 1 && a[0].type == FVM_VALUE_STRING && a[0].string &&
         fvm_value_string_size(a) == sizeof("file") - 1 && !std::memcmp(a[0].string, "file", sizeof("file") - 1))
     {
@@ -1074,6 +1080,7 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
         method(o, "send", ch_send, 0);
         method(o, "trySend", ch_try_send, 1);
         method(o, "receive", ch_receive, 2);
+        method(o, "recv", ch_receive, 2);
         method(o, "tryReceive", ch_try_receive, 3);
         method(o, "close", ch_close, 4);
         method(o, "ready", ch_ready, 5);
@@ -1439,6 +1446,7 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
         method(objects[1], "sleepus", sleepus, 6);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         method(objects[2], "create", create_channel, 0);
+        method(objects[2], "ref", fvm_capture_variable_ref, 0);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         method(objects[3], "attach", meta_attach, 0);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

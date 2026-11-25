@@ -1,0 +1,253 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Own same-context references and queue them without serialization.
+ * RU: Удерживать ссылки одного контекста и передавать их без сериализации.
+ */
+#include "variable_refs.hpp"
+#include "../core/runtime.hpp"
+#include "../core/object_root_scope.hpp"
+#include "../core/property_lookup.hpp"
+#include "../core/property_key.hpp"
+#include "../core/string_internal.hpp"
+#include <cstring>
+#include <new>
+
+namespace
+{
+struct RefQueue
+{
+    unsigned long capacity; /* Maximum queued elements. */
+    unsigned long head;     /* Index of next receive. */
+    unsigned long count;    /* Occupied consecutive ring slots. */
+    bool closed;            /* Prevents sends and receives after close. */
+};
+
+
+/* EN/RU: Release queue cursor state. / Освободить состояние курсоров. */
+void release_queue(void *state)
+{
+    delete static_cast<RefQueue *>(state);
+}
+
+
+/* EN: Forward one ordinary read to the captured owner and member.
+ * RU: Передать чтение захваченному владельцу и члену. */
+FVM_Result read_ref(FVM_Context *c, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *state)
+{
+    FVM_Object *ref = static_cast<FVM_Object *>(state);
+    if (ref->resource_origin)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    ref->resource_origin = 1;
+    FVM_Result status = fvm_object_get_bytes(c, ref->resource_result.object, ref->resource_path.data(),
+        ref->resource_path.size(), out);
+    ref->resource_origin = 0;
+    return status;
+}
+
+
+/* EN: Forward one ordinary write to the captured owner and member.
+ * RU: Передать запись захваченному владельцу и члену. */
+FVM_Result write_ref(FVM_Context *c, FVM_Object *, unsigned argc, const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_Object *ref = static_cast<FVM_Object *>(state);
+    if (argc != 1 || ref->resource_origin || fvm_is_variable_ref(args))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    ref->resource_origin = 1;
+    FVM_Result status = fvm_object_set_bytes(c, ref->resource_result.object, ref->resource_path.data(),
+        ref->resource_path.size(), args);
+    ref->resource_origin = 0;
+    fvm_value_undefined(out);
+    return status;
+}
+
+
+/* EN/RU: Set an object result. / Вернуть объект. */
+void object_value(FVM_Value *out, FVM_Object *object)
+{
+    fvm_value_undefined(out);
+    out->type = FVM_VALUE_OBJECT;
+    out->object = object;
+}
+
+
+/* EN: Queue one scalar or reference. False means the FIFO is full.
+ * RU: Поставить скаляр или ссылку в очередь. False означает заполнение. */
+FVM_Result send(FVM_Context *c, FVM_Object *self, unsigned argc, const FVM_Value *args, FVM_Value *out, void *)
+{
+    if (!self || self->resource_kind != FVM_RESOURCE_REF_QUEUE || argc != 1 ||
+        (args->type == FVM_VALUE_OBJECT && !fvm_is_variable_ref(args)))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    RefQueue *queue = static_cast<RefQueue *>(self->resource);
+    if (queue->closed)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    const bool admitted = queue->count < queue->capacity;
+    if (admitted)
+    {
+        FVM_Value value = *args;
+        FVM_Result status = fvm_native_result(c, FVM_OK, &value);
+        if (status != FVM_OK)
+        {
+            return status;
+        }
+        self->indexed[(queue->head + queue->count) % queue->capacity] = value;
+        ++queue->count;
+    }
+    fvm_value_boolean(out, admitted);
+    return FVM_OK;
+}
+
+
+/* EN: Return the oldest value or undefined on an empty queue.
+ * RU: Вернуть старейшее значение или undefined из пустой очереди. */
+FVM_Result recv(FVM_Context *, FVM_Object *self, unsigned argc, const FVM_Value *, FVM_Value *out, void *)
+{
+    if (!self || self->resource_kind != FVM_RESOURCE_REF_QUEUE || argc)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    RefQueue *queue = static_cast<RefQueue *>(self->resource);
+    if (queue->closed)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_value_undefined(out);
+    if (queue->count)
+    {
+        *out = self->indexed.find(queue->head)->second;
+        self->indexed.erase(queue->head);
+        queue->head = (queue->head + 1) % queue->capacity;
+        --queue->count;
+    }
+    return FVM_OK;
+}
+
+
+/* EN/RU: Close the queue and drop its roots. / Закрыть очередь и освободить корни. */
+FVM_Result close_queue(FVM_Context *, FVM_Object *self, unsigned argc, const FVM_Value *, FVM_Value *out, void *)
+{
+    if (!self || self->resource_kind != FVM_RESOURCE_REF_QUEUE || argc)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    RefQueue *queue = static_cast<RefQueue *>(self->resource);
+    queue->closed = true;
+    self->indexed.clear();
+    queue->count = 0;
+    fvm_value_undefined(out);
+    return FVM_OK;
+}
+} // namespace
+
+
+/* EN/RU: See variable_refs.hpp. / См. variable_refs.hpp. */
+bool fvm_is_variable_ref(const FVM_Value *value)
+{
+    return value && value->type == FVM_VALUE_OBJECT && value->object &&
+        value->object->resource_kind == FVM_RESOURCE_VARIABLE_REF;
+}
+
+
+/* EN/RU: See variable_refs.hpp. / См. variable_refs.hpp. */
+FVM_Result fvm_bind_variable_ref(FVM_Context *c, FVM_Object *owner, const char *key, size_t size, const FVM_Value *value)
+{
+    int own = 0;
+    FVM_Result status = fvm_object_has_own_bytes(c, owner, key, size, &own);
+    if (status != FVM_OK || own)
+    {
+        return status == FVM_OK ? FVM_INVALID_ARGUMENT : status;
+    }
+    FVM_Object *ref = value->object;
+    return fvm_object_define_accessor_rooted_bytes(c, owner, key, size, read_ref, write_ref, ref, ref);
+}
+
+
+/* EN/RU: See variable_refs.hpp. / См. variable_refs.hpp. */
+FVM_Result fvm_capture_variable_ref(FVM_Context *c, FVM_Object *, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *)
+{
+    if (argc != 2 || args[0].type != FVM_VALUE_OBJECT || args[1].type != FVM_VALUE_STRING)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    FVM_Object *owner = args[0].object;
+    fvm_detail::string key;
+    FVM_Result status = fvm_property_key(args[1].string, fvm_string_size(args[1]), key);
+    int own = 0;
+    if (status == FVM_OK)
+    {
+        status = fvm_object_has_own_bytes(c, owner, key.data(), key.size(), &own);
+    }
+    if (status != FVM_OK || !own)
+    {
+        return status == FVM_OK ? FVM_NOT_FOUND : status;
+    }
+    fvm_property_select_own_name(c, owner, key);
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::const_iterator found = owner->accessors.find(key);
+    if (found != owner->accessors.end() && found->second.getter == read_ref)
+    {
+        object_value(out, found->second.root);
+        return FVM_OK;
+    }
+    FVM_Object *ref = NULL;
+    status = fvm_object_create(c, &ref);
+    if (status == FVM_OK)
+    {
+        ref->resource_kind = FVM_RESOURCE_VARIABLE_REF;
+        ref->resource_path.swap(key);
+        ref->resource_origin = 0;
+        ref->resource_result = args[0];
+        ref->resource_result_valid = true;
+        object_value(out, ref);
+    }
+    return status;
+}
+
+
+/* EN/RU: See variable_refs.hpp. / См. variable_refs.hpp. */
+FVM_Result fvm_create_ref_channel(FVM_Context *c, const FVM_Value *capacity, FVM_Value *out)
+{
+    if (capacity->type != FVM_VALUE_NUMBER || !(capacity->number >= 1 && capacity->number <= 65536) ||
+        static_cast<unsigned long>(capacity->number) != capacity->number)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    FVM_Object *object = NULL;
+    FVM_Result status = fvm_object_create(c, &object);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    FVM_ObjectRootScope keep(c, object);
+    RefQueue *queue = new (std::nothrow) RefQueue;
+    if (!queue)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    queue->capacity = static_cast<unsigned long>(capacity->number);
+    queue->head = queue->count = 0;
+    queue->closed = false;
+    object->resource_kind = FVM_RESOURCE_REF_QUEUE;
+    object->resource = queue;
+    object->release_resource = release_queue;
+    status = fvm_object_define_method_rooted(c, object, "send", send, NULL, NULL);
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(c, object, "recv", recv, NULL, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(c, object, "close", close_queue, NULL, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        object_value(out, object);
+    }
+    return status;
+}

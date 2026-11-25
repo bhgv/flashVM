@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1764 / Контрольная точка v0.1764. AS2 view movies can
+capture variables and forward aliases through a same-context FIFO.
+Обычное чтение и запись обращаются к исходной ячейке.
+[EN](AS_VARIABLE_REFS.md) / [RU](AS_VARIABLE_REFS.ru.md).
+
 Checkpoint v0.1763 / Контрольная точка v0.1763. The stock player exposes
 os file and directory handles over libstyxrpc. Из живой VFS загружается
 дочерний SWF, а опубликованный образ Dis выдаёт прокси методов.

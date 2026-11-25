@@ -22,6 +22,10 @@ void emit_target(void);
 void emit_property(void);
 /* Emit a named global read and push its SSA identity on the bounded expression stack. */
 void emit_global(void);
+
+/* EN/RU: Emit a named reference operand. / Сформировать именованную ссылку. */
+void emit_ref(const char *binding, int member);
+int emit_ref_ahead(void);
 /* Emit a checked int32 constant from the current token, then push its SSA identity. */
 void emit_number(void);
 /* Emit the current bounded string token as a FIR literal. */

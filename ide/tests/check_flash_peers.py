@@ -30,7 +30,7 @@ def compile_unit(args, directory, name):
 def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
-    if role in ("caller", "dis-caller"):
+    if role in ("caller", "dis-caller", "ref"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
@@ -70,7 +70,7 @@ def start_pair(args, directory, caller_options, provider_options, caller_log, pr
 
 # EN: Await the exact result, then require the provider to retire after disconnect.
 # RU: Дождаться точного ответа и завершения провайдера после разрыва связи.
-def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
+def exchange(args, directory, caller_swf, provider_swf, mode, reverse, label="checked imports, variable, UniBus"):
     caller_lane, provider_lane = ("reverse", "forward") if reverse else ("forward", "reverse")
     caller_options = ("--peer", caller_lane, "--movie", caller_swf, mode)
     provider_options = ("--peer", provider_lane, "--movie", provider_swf, mode)
@@ -96,7 +96,7 @@ def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
                 if process.poll() is None:
                     process.kill()
                 process.communicate()
-    print(f"PASS {mode} {caller_lane} caller, checked imports, variable, UniBus and peer retirement")
+    print(f"PASS {mode} {caller_lane} caller, {label} and peer retirement")
 
 
 # EN: Use stock DisVM to load the AS movie and call its image through the mounted session.
@@ -179,6 +179,7 @@ def main():
     with TemporaryDirectory(prefix="flashvm-peer-") as scratch:
         directory = Path(scratch)
         caller = compile_role(args, directory, "caller")
+        reference = compile_role(args, directory, "ref")
         provider = compile_role(args, directory, "provider")
         if args.runtime:
             tests = ROOT / "lib/styxrpc/tests/flashvm"
@@ -187,6 +188,7 @@ def main():
             compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
             dis_caller = compile_role(args, directory, "dis-caller")
         for mode in ("--no-jit", "--jit"):
+            exchange(args, directory, reference, provider, mode, False, "transparent local refs")
             for reverse in (False, True):
                 exchange(args, directory, caller, provider, mode, reverse)
             if args.runtime:

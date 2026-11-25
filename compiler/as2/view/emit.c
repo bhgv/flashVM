@@ -230,6 +230,59 @@ void emit_global(void)
     }
 }
 
+/* EN: Recognize contextual ref before a profile variable name.
+ * RU: Распознать контекстное ref перед именем переменной профиля. */
+int emit_ref_ahead(void)
+{
+    long cursor = S_NextPos + S_NextLen;
+    int ch;
+    if (S_NextLen != 3 || S_CurrentCh(S_NextPos) != 'r' ||
+        S_CurrentCh(S_NextPos + 1) != 'e' || S_CurrentCh(S_NextPos + 2) != 'f')
+    {
+        return 0;
+    }
+    while ((ch = S_CurrentCh(cursor)) == ' ' || ch == '\t' || ch == '\r' || ch == '\n' ||
+        (ch == '/' && S_CurrentCh(cursor + 1) == '/'))
+    {
+        if (ch == '/')
+        {
+            do
+            {
+                ch = S_CurrentCh(++cursor);
+            } while (ch > 0 && ch != '\r' && ch != '\n');
+            if (ch <= 0)
+            {
+                return 0;
+            }
+        }
+        ++cursor;
+    }
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_';
+}
+
+
+/* EN: Capture a movie-global or a member of the evaluated owner without reading its value.
+ * RU: Захватить имя фильма или член вычисленного владельца без чтения значения. */
+void emit_ref(const char *binding, int member)
+{
+    char key[256];
+    int channel = values++;
+    int receiver = values++;
+    int literal = values++;
+    if (member && !name(key))
+    {
+        return;
+    }
+    append("    %%v%d: any = as.global_get \"channel\"\n", channel);
+    append("    %%v%d: any = as.global_get \"%s\"\n", receiver, member ? binding : "_root");
+    append("    %%v%d: string = const.string \"%s\"\n", literal, member ? key : binding);
+    push(channel);
+    push(receiver);
+    push(literal);
+    emit_method_call("ref", 2);
+}
+
+
 /* Lower a decimal literal after exact int32 range admission, independent of host long. */
 void emit_number(void)
 {

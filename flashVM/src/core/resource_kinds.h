@@ -113,4 +113,6 @@
 #define FVM_RESOURCE_CONVOLUTION_FILTER_CLASS 61
 /* Private lexical With node: resource_result retains its object, prototype its parent scope. */
 #define FVM_RESOURCE_WITH_SCOPE 38
+#define FVM_RESOURCE_VARIABLE_REF 62 /* Private operand retaining an AS storage owner. */
+#define FVM_RESOURCE_REF_QUEUE 63 /* Same-context reference FIFO. */
 #endif

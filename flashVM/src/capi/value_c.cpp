@@ -3,6 +3,7 @@
  */
 
 #include "../standard/function_state.hpp"
+#include "variable_refs.hpp"
 #include "flashvm/function.h"
 #include "../standard/base_state.hpp"
 #include "../standard/array_generic.hpp"
@@ -1226,7 +1227,11 @@ FVM_Result fvm_object_set_bytes(FVM_Context *c, FVM_Object *o, const char *name,
         if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
             fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
         {
-            return fvm_table_set_index(c, o, index, v);
+            return fvm_is_variable_ref(v) ? FVM_INVALID_ARGUMENT : fvm_table_set_index(c, o, index, v);
+        }
+        if (fvm_is_variable_ref(v))
+        {
+            return fvm_bind_variable_ref(c, o, name, size, v);
         }
         return fvm_object_set_no_index(c, o, key, v);
     }

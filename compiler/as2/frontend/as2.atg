@@ -368,6 +368,34 @@ void as2_syntax_leave(void);
 
 
 
+/* EN: Admit the contextual ref only before a candidate variable name.
+ * RU: Распознать контекстное ref только перед предполагаемым именем переменной. */
+static int RefAhead(int symbol)
+{
+    long start, end;
+    int ch;
+    if (symbol != identSym || S_NextLen != 3 || S_CurrentCh(S_NextPos) != 'r' ||
+        S_CurrentCh(S_NextPos + 1) != 'e' || S_CurrentCh(S_NextPos + 2) != 'f')
+    {
+        return 0;
+    }
+    start = EventTrivia(S_NextPos + S_NextLen);
+    ch = S_CurrentCh(start);
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+          ch == '_' || ch == '$' || ch == 92 || ch >= 128))
+    {
+        return 0;
+    }
+    end = start;
+    do
+    {
+        ch = S_CurrentCh(++end);
+    } while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+        (ch >= '0' && ch <= '9') || ch == '_' || ch == '$' || ch == 92 || ch >= 128);
+    return !IdentifierReserved(start, (int)(end - start));
+}
+
+
 /* Recognize only the contextual extension spelling followed by a block or
  * function. Returns1 for a block,2 for a function,0 for an ordinary identifier.
  * Scanner positions are borrowed and unchanged; comments/Unicode trivia use
@@ -987,6 +1015,7 @@ PRODUCTIONS
             | "new"
         )
         Unary
+        | IF(RefAhead(Sym)) Identifier Identifier [ "." Identifier ]
         | Postfix
     )
                                                                         (. as2_syntax_leave(); .)

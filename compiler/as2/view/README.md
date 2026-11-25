@@ -116,3 +116,5 @@ and OS ports provide primitives.
 Initializer and `onEnterFrame` units use `@ide_view`. Other root methods use
 `@ide_view_<name>` so their SWO objects can be linked together. Root method names
 are limited to 244 ASCII bytes to fit the generated module name.
+
+The view profile also supports [variable references](../../../flashVM/doc/AS_VARIABLE_REFS.md).

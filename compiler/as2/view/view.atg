@@ -77,7 +77,7 @@ PRODUCTIONS
 
     /* Capture the LHS object before the RHS; explicit semicolons define this profile. */
     Assignment =                                                        (. int member = 0; .)
-        ident                                                           (. emit_target(); .)
+        [ "var" ] ident                                                 (. emit_target(); .)
         [
             "." ident                                                 (.
                                                                             emit_property();
@@ -114,7 +114,11 @@ PRODUCTIONS
 
     /* Read a binding or call one of its methods; literals become typed SSA values. */
     Value =
-        ident                                                           (. emit_global(); .)
+        IF(emit_ref_ahead()) ident ident                                (. char binding[256]; int member = 0;
+                                                                           emit_method_name(binding); .)
+        [ "." ident                                                     (. emit_ref(binding, 1); member = 1; .) ]
+                                                                        (. if (!member) emit_ref(binding, 0); .)
+        | ident                                                         (. emit_global(); .)
         [ Method ]
         | number                                                        (. emit_number(); .)
         | string                                                        (. emit_string(); .)
