@@ -1,5 +1,8 @@
 # Рабочий стол из пункта 8 на двух VM
 
+
+Для сборки парной IDE на Linux64 нужен CMake 3.16 или новее. Переменная `CMAKE` позволяет выбрать другой исполняемый файл.
+
 [English](DESKTOP-PAIRED.md) · [Точки входа](https://github.com/bhgv/flashVM/blob/master/ide/ENTRYPOINTS.md)
 
 В парной IDE модули `.dis` на Limbo работают в DisVM, а `.swf` на ActionScript
