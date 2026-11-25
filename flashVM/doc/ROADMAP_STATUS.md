@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1768 / Контрольная точка v0.1768. DisVM's typed Limbo
+client and FlashVM's application listener share one UniBus port for mixed
+values. Штатная пара проверена на локальном сокете и TCP. Живая ссылка
+Int32 из libstyxrpc проверена в Limbo. [EN](STYX_RPC_LISTEN.md) / [RU](STYX_RPC_LISTEN.ru.md).
+
 Checkpoint v0.1767 / Контрольная точка v0.1767. The paired player opens
 one mixed UniBus exchange through `rpc.newchan`. Значения и ранее выданные
 ссылки Int32 идут через один fid. [EN](STYX_RPC_NEWCHAN.md) / [RU](STYX_RPC_NEWCHAN.ru.md).

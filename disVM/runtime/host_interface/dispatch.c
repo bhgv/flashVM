@@ -215,6 +215,50 @@ void Unibus_path(void *frame)
 }
 
 
+/* EN: Forward opening to the active mounted launch only.
+ * RU: Передать rpcopen только активному смонтированному запуску. */
+void Unibus_rpcopen(void *frame)
+{
+    if (!dispatched(UNIBUS_RPCOPEN, frame))
+    {
+        error("StyxRPC is not bound to this process");
+    }
+}
+
+
+/* EN: Forward sending to the active mounted launch only.
+ * RU: Передать rpcsend только активному смонтированному запуску. */
+void Unibus_rpcsend(void *frame)
+{
+    if (!dispatched(UNIBUS_RPCSEND, frame))
+    {
+        error("StyxRPC is not bound to this process");
+    }
+}
+
+
+/* EN: Forward receiving to the active mounted launch only.
+ * RU: Передать rpcrecv только активному смонтированному запуску. */
+void Unibus_rpcrecv(void *frame)
+{
+    if (!dispatched(UNIBUS_RPCRECV, frame))
+    {
+        error("StyxRPC is not bound to this process");
+    }
+}
+
+
+/* EN: Forward closing to the active mounted launch only.
+ * RU: Передать rpcclose только активному смонтированному запуску. */
+void Unibus_rpcclose(void *frame)
+{
+    if (!dispatched(UNIBUS_RPCCLOSE, frame))
+    {
+        error("StyxRPC is not bound to this process");
+    }
+}
+
+
 /* EN/RU: Register the shared interface once before any guest modules/threads are started.
  * Зарегистрировать общий интерфейс до запуска guest-модулей и потоков.
  */

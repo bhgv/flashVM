@@ -4,6 +4,7 @@
  */
 #include "mount_internal.h"
 #include "mount_cancel.h"
+#include "styxrpc/exchange_qid.h"
 #include <string.h>
 
 
@@ -20,7 +21,7 @@ StyxFid *styxmountwalk(struct Mount *mount, const char *relative)
 static DVM_Provider *create(StyxClient *client, StyxFid *root, unsigned access, int watch, StyxLaunchGrant *launch)
 {
     StyxMeta meta;
-    if (!root || !styxmountstat(client, root, &meta))
+    if (!root || !styxmountstat(client, root, &meta) || (!watch && STYXRPC_EXCHANGE_QID(meta.identity)))
     {
         styxmountclunk(client, root);
         styxclientfree(client);

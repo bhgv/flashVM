@@ -2,7 +2,7 @@
  * EN: Pass and forward a live Int32 reference on one connected UniBus session.
  * RU: Передать и переслать живую ссылку Int32 в одной подключённой сессии UniBus.
  */
-#include "styxrpc/messages.h"
+#include "styxrpc/exchange.h"
 #include "styxrpc/variable_ref.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
@@ -149,9 +149,33 @@ static int wire_contract(void)
 }
 
 
+/* EN: Offer one original reference on the portable mixed exchange schema.
+ * RU: Выдать исходную ссылку по переносимой схеме смешанного обмена. */
+static void offer_mixed(StyxRpcMessagePort *port, void *state)
+{
+    const Exchange *test = state;
+    unsigned char bytes[STYXRPC_INT_REF_SIZE];
+    if (styxrpc_int_ref_encode(&test->issued, bytes, sizeof(bytes)))
+    {
+        styxrpc_message_send(port, STYXRPC_CHANNEL_MESSAGE_REF, STYXRPC_CHANNEL_MESSAGE_VERSION,
+            bytes, sizeof(bytes));
+    }
+}
+
+
+/* EN: Echo the identical live lease only after validating its PID and mode.
+ * RU: Вернуть ту же живую ссылку после проверки её PID и режима. */
+static int echo_mixed(StyxRpcMessagePort *port, void *state, const void *bytes, size_t size)
+{
+    return forwarded(port, state, bytes, size) &&
+        styxrpc_message_send(port, STYXRPC_CHANNEL_MESSAGE_REF, STYXRPC_CHANNEL_MESSAGE_VERSION,
+            bytes, size) == STYXRPC_OK;
+}
+
+
 /* EN: Serve one leased cell to a real DisVM over one inherited paired carrier.
  * RU: Обслужить выданную ячейку для DisVM на унаследованном парном потоке. */
-static int dis_provider(int fd)
+static int dis_provider(int fd, int mixed)
 {
     StyxRpcRegistration nodes[6];
     StyxRpcPrograms programs;
@@ -168,16 +192,26 @@ static int dis_provider(int fd)
     {
         server = styxrpc_program_server_create(phybidirchannel(mux, 0), &programs);
     }
-    int ok = server && styxrpc_int_ref_grant(server, &variable, 1, &test.issued) &&
-        styxrpc_int_ref_encode(&test.issued, bytes, sizeof(bytes)) &&
-        fwrite(bytes, 1, sizeof(bytes), stdout) == sizeof(bytes) && !fflush(stdout);
+    int ok = server && styxrpc_int_ref_grant(server, &variable, 1, &test.issued);
+    if (ok && mixed)
+    {
+        StyxRpcMessageType type = {STYXRPC_CHANNEL_MESSAGE_REF, STYXRPC_CHANNEL_MESSAGE_VERSION,
+            19, echo_mixed, &test};
+        StyxRpcMessageSpec spec = {&type, 1, offer_mixed, NULL, &test};
+        ok = styxrpc_messages_publish(server, STYXRPC_EXCHANGE_DEFAULT, &spec) == STYXRPC_OK;
+    }
+    else if (ok)
+    {
+        ok = styxrpc_int_ref_encode(&test.issued, bytes, sizeof(bytes)) &&
+            fwrite(bytes, 1, sizeof(bytes), stdout) == sizeof(bytes) && !fflush(stdout);
+    }
     if (ok)
     {
         serve(server);
     }
     styxrpc_server_destroy(server);
     phybidirfree(mux);
-    return ok && test.value == -32 ? 0 : 1;
+    return ok && test.value == -32 && (!mixed || test.forwarded) ? 0 : 1;
 }
 
 
@@ -185,11 +219,11 @@ static int dis_provider(int fd)
  * RU: Проверить настоящее соединение с реестром на одну временную ячейку. */
 int main(int argc, char **argv)
 {
-    if (argc == 3 && !strcmp(argv[1], "--dis-fd"))
+    if (argc == 3 && (!strcmp(argv[1], "--dis-fd") || !strcmp(argv[1], "--dis-mixed-fd")))
     {
         char *end;
         long fd = strtol(argv[2], &end, 10);
-        return *argv[2] && !*end && fd >= 3 && fd <= INT_MAX ? dis_provider((int)fd) : 1;
+        return *argv[2] && !*end && fd >= 3 && fd <= INT_MAX ? dis_provider((int)fd, !strcmp(argv[1], "--dis-mixed-fd")) : 1;
     }
     if (argc != 1)
     {

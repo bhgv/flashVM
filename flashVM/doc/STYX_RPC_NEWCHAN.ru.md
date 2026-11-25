@@ -1,6 +1,6 @@
 # rpc.newchan
 
-[English](STYX_RPC_NEWCHAN.md) · [Сессия](STYX_RPC_SESSION.ru.md) · [Реализация](../src/styxrpc/session_channel.c)
+[English](STYX_RPC_NEWCHAN.md) · [Сессия](STYX_RPC_SESSION.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Обслужить обмен приложения](STYX_RPC_LISTEN.ru.md)
 
 Парный плеер FlashVM предоставляет подключённую сессию Styx как `rpc`.
 Откройте один обмен UniBus, чтобы передавать значения и живые ссылки через

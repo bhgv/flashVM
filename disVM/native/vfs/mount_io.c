@@ -3,6 +3,7 @@
  * RU: Remote opened-object I/O, directory batches и явное native cursor ownership.
  */
 #include "mount_internal.h"
+#include "styxrpc/exchange_qid.h"
 #include "mount_cancel.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -156,45 +157,56 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
         opened->failed = 1;
         return FVM_OUT_OF_MEMORY;
     }
-    if (opened->used == opened->size)
+    do
     {
-        StyxTransfer result;
-        StyxMountCancel cancel;
-        if (!styxmountcancel(opened->mount->client, &cancel))
+        if (opened->used == opened->size)
         {
-            free(batch);
-            return FVM_OUT_OF_MEMORY;
+            StyxTransfer result;
+            StyxMountCancel cancel;
+            if (!styxmountcancel(opened->mount->client, &cancel))
+            {
+                free(batch);
+                return FVM_OUT_OF_MEMORY;
+            }
+            if (cancel.token)
+            {
+                styxclientreadcancel(opened->fid, opened->position, opened->records, 65536, cancel.token, &result);
+            }
+            else
+            {
+                styxclientread(opened->fid, opened->position, opened->records, 65536, &result);
+            }
+            styxmountcancelend(&cancel);
+            if (!result.success || result.uncertain)
+            {
+                goto failed;
+            }
+            if (!result.count)
+            {
+                break;
+            }
+            opened->position += result.count;
+            opened->size = result.count;
+            opened->used = 0;
         }
-        if (cancel.token)
+        while (opened->used < opened->size && *count < FVM_FS_BATCH_MAX)
         {
-            styxclientreadcancel(opened->fid, opened->position, opened->records, 65536, cancel.token, &result);
+            StyxMeta meta;
+            size_t consumed;
+            if (!styxclientrecord(opened->records+opened->used, opened->size-opened->used, &meta, &consumed) ||
+                !*meta.name || strchr(meta.name, '/') || !strcmp(meta.name, ".") || !strcmp(meta.name, ".."))
+            {
+                goto failed;
+            }
+            opened->used += consumed;
+            if (!STYXRPC_EXCHANGE_QID(meta.identity))
+            {
+                styxmountmeta(opened->mount, &meta, &batch[*count]);
+                (*count)++;
+            }
         }
-        else
-        {
-            styxclientread(opened->fid, opened->position, opened->records, 65536, &result);
-        }
-        styxmountcancelend(&cancel);
-        if (!result.success || result.uncertain)
-        {
-            goto failed;
-        }
-        opened->position += result.count;
-        opened->size = result.count;
-        opened->used = 0;
     }
-    while (opened->used < opened->size && *count < FVM_FS_BATCH_MAX)
-    {
-        StyxMeta meta;
-        size_t consumed;
-        if (!styxclientrecord(opened->records+opened->used, opened->size-opened->used, &meta, &consumed) ||
-            !*meta.name || strchr(meta.name, '/') || !strcmp(meta.name, ".") || !strcmp(meta.name, ".."))
-        {
-            goto failed;
-        }
-        styxmountmeta(opened->mount, &meta, &batch[*count]);
-        (*count)++;
-        opened->used += consumed;
-    }
+    while (!*count);
     if (*count)
     {
         *entries = batch;

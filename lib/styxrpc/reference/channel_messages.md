@@ -24,3 +24,5 @@ them. Keep receive contexts alive through close and use the dispatcher owner
 thread. Forward an Int32 descriptor only within its issuer session. A server
 returning a descriptor can issue it with `styxrpc_int_ref_grant`. A
 client's [messages_flush](messages_flush.md) sends without receiving.
+
+[Reusable mailbox](exchange.md)

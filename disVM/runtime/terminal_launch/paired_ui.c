@@ -14,6 +14,7 @@
 #include "disvm/refcount.h"
 #include "disvm/ui_frame.h"
 #include "paired_ui.h"
+#include "paired_exchange.h"
 #include "styxrpc/unibus_terminal.h"
 #include "root_registry.h"
 #include "runtime_gc.h"
@@ -27,6 +28,7 @@ typedef struct PairedUi
     char *document;                           /* Owned startup path or NULL for a blank pane. */
     int fresh;                                /* Skip reading an existing file for --new. */
     pthread_mutex_t lock;                    /* Serializes builtin registration and controller I/O. */
+    DvmPairedExchange exchange;              /* Mixed-message leases of the guest root. */
     StyxRpcTerminal terminal;                /* Native mailbox; no managed addresses in the transport. */
     Channel *input;                          /* [GC:] Explicitly held and registered. */
     Channel *output;                         /* [GC:] Explicitly held and registered. */
@@ -229,7 +231,7 @@ static int invoke(void *state, int pid, unsigned method, void *frame)
         return 1;
     }
     default:
-        return 0;
+        return dvm_paired_exchange_invoke(&ui->exchange, ui->client, method, frame);
     }
 }
 
@@ -239,6 +241,7 @@ static int invoke(void *state, int pid, unsigned method, void *frame)
 static void dispose(void *state)
 {
     PairedUi *ui = state;
+    dvm_paired_exchange_finish(&ui->exchange);
     pthread_mutex_destroy(&ui->lock);
     free(ui->document);
     free(ui);

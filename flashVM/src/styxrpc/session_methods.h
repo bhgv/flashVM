@@ -6,6 +6,7 @@
 #define FLASHVM_STYXRPC_SESSION_METHODS_H
 #include "flashvm/styxrpc_session.h"
 #include "flashvm/gc_roots.h"
+#include "styxrpc/exchange.h"
 
 #define FVM_SESSION_CALL_WAIT_MS 1000U /* Reply polling budget after submission. */
 
@@ -38,6 +39,11 @@ FVM_Result fvm_styxrpc_message_members(FVM_Context *context, FVM_Object *object,
 /* [GC:] EN: Install newchan for the rooted session object, borrowing binding.
  * RU: Установить newchan для удерживаемого объекта сессии, заимствуя binding. */
 FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
+
+
+/* [GC:] EN: Bind the player-owned mailbox to rpc.listen on the new movie context.
+ * RU: Связать очередь плеера с rpc.listen в контексте нового фильма. */
+FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange);
 
 
 /* EN: Copy exact own byte properties into bytes up to capacity. Set size on success.

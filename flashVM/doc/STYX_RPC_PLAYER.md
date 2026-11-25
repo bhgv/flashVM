@@ -106,6 +106,8 @@ Font lookup through the Dis VFS belongs to the DisVM launch mode.
 
 ## Unibus terminal
 
+[Application exchange via rpc.listen](STYX_RPC_LISTEN.md) is available to [typed Limbo clients](../../disVM/runtime/STYX-CHANNEL.md).
+
 In a bidirectional launch, the Limbo program registers its
 `chan of array of byte` with `$Unibus.attach(input, output)` and disconnects
 them with `detach()`. The SWF receives `styxTerminal` with `bidir == true`.

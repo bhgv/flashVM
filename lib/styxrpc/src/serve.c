@@ -65,20 +65,6 @@ static int lookup(StyxRpcServer *server, uint64_t id, StyxRpcNode *node)
 }
 
 
-/* EN: Read an entry in a directory of server, including the optional root endpoint.
- * RU: Прочитать запись каталога server, включая необязательный узел в корне. */
-static StyxRpcStatus child_entry(StyxRpcServer *server, uint64_t directory, size_t index, StyxRpcEntry *entry)
-{
-    if (!directory && index < server->message_count)
-    {
-        *entry = (StyxRpcEntry){STYXRPC_MESSAGE_NODE - index, server->message_names[index], 0666, 0};
-        return STYXRPC_OK;
-    }
-    return styxrpc_dir_entry(&server->tree->files, server->context, directory,
-        directory ? index : index - server->message_count, entry);
-}
-
-
 /* EN: Convert a stable node to a wire identity and copy the declared access mode.
  * RU: Преобразовать устойчивый узел в сетевой идентификатор с его режимом доступа. */
 static Qid identity(const StyxRpcNode *node)
@@ -122,10 +108,21 @@ static char *walk_node(Qid *qid, char *name)
         *qid = identity(&child);
         return nil;
     }
+    if (!qid->path)
+    {
+        for (size_t slot = 0; slot < active->message_count; ++slot)
+        {
+            if (!strcmp(name, active->message_names[slot]))
+            {
+                *qid = (Qid){.path = STYXRPC_MESSAGE_NODE - slot};
+                return nil;
+            }
+        }
+    }
     for (size_t index = 0; index < STYXRPC_TREE_CHILDREN; ++index)
     {
         StyxRpcEntry entry;
-        StyxRpcStatus status = child_entry(active, qid->path, index, &entry);
+        StyxRpcStatus status = styxrpc_dir_entry(&active->tree->files, active->context, qid->path, index, &entry);
         if (status != STYXRPC_OK)
         {
             return status == STYXRPC_MORE ? Enonexist : Ebadarg;
@@ -215,7 +212,7 @@ static char *read_directory(Qid qid, TreeFid *fid, char *bytes, ulong *count, ui
     while (*count > written && index < STYXRPC_TREE_CHILDREN)
     {
         StyxRpcEntry entry;
-        StyxRpcStatus status = child_entry(active, qid.path, index, &entry);
+        StyxRpcStatus status = styxrpc_dir_entry(&active->tree->files, active->context, qid.path, index, &entry);
         if (status == STYXRPC_MORE)
         {
             break;
@@ -382,7 +379,7 @@ StyxRpcStatus styxrpc_messages_publish(StyxRpcServer *server, const char *name,
         }
     }
     StyxRpcNode node = {.entry = {STYXRPC_MESSAGE_NODE - slot, name, 0666, 0}};
-    MessageService *service = styxrpc_message_service(server->tree, server->context, &node, slot + 1, spec);
+    MessageService *service = styxrpc_message_service(server->tree, server->context, &node, spec);
     if (!service)
     {
         return STYXRPC_INVALID;

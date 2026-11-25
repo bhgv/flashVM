@@ -170,7 +170,8 @@ int unibusinvoke(UnibusBinding *binding, uintptr_t caller, int pid, unsigned met
         status = -2;
     }
     else if (!binding->owner || ((binding->flags & UNIBUS_OWNER_PORTS) &&
-        (method == UNIBUS_ATTACH || method == UNIBUS_DETACH) &&
+        (method == UNIBUS_ATTACH || method == UNIBUS_DETACH ||
+         (method >= UNIBUS_RPCOPEN && method <= UNIBUS_RPCCLOSE)) &&
         (!binding->owner_alive || caller != binding->owner)))
     {
         status = -1;

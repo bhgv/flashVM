@@ -16,6 +16,7 @@ add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_launch.c mount_ca
     "${ports}/file_port.c" "${ports}/linux/filesystem.c" "${ports}/linux/channel_sync.c")
 target_include_directories(styx_vfs PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${vfs}"
     "${ports}" "${INFERNO_VFS_SUPPORT}/flashVM/include" "${INFERNO_VFS_SUPPORT}/disVM/include")
+target_include_directories(styx_vfs PRIVATE "${INFERNO_VFS_SUPPORT}/lib/styxrpc/include")
 target_link_libraries(styx_vfs PUBLIC Threads::Threads styx_client vfs_walk)
 add_executable(vfs-file-wire-test ../tests/provider/backend.c ../tests/provider/wire.c)
 set_source_files_properties(../tests/provider/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")

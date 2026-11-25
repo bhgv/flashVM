@@ -1,6 +1,6 @@
 # ch.send
 
-[Русский](STYX_RPC_CHAN_SEND.ru.md) · [Open](STYX_RPC_NEWCHAN.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c)
+[Русский](STYX_RPC_CHAN_SEND.ru.md) · [Open](STYX_RPC_NEWCHAN.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c) · [Hosted exchange](STYX_RPC_LISTEN.md)
 
 `ch.send(value)` sends a snapshot of an AS Number, Boolean, counted string
 (up to 16,384 bytes), or `null`. `ch.send(ref counter)` forwards a live Int32

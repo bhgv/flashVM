@@ -29,6 +29,10 @@ enum
     UNIBUS_DETACH, /* Ordinary port detachment; OWNER_PORTS is optional policy. */
     UNIBUS_FRESH, /* Existing fresh() call. */
     UNIBUS_PATH, /* Existing path() call. */
+    UNIBUS_RPCOPEN, /* Open one addressed RPC exchange on this launch's session. */
+    UNIBUS_RPCSEND, /* Send one copied envelope. */
+    UNIBUS_RPCRECV, /* Poll and receive one copied envelope. */
+    UNIBUS_RPCCLOSE, /* Retire a launch-owned exchange. */
     UNIBUS_METHODS /* Bounds native selector validation. */
 };
 

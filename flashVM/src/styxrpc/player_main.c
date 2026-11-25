@@ -5,6 +5,7 @@
 #include "playback_clock.h"
 #include "player_view.h"
 #include "player_terminal.h"
+#include "session_methods.h"
 #include "player_peer.h"
 #include "movie_load.h"
 #include "../../ports/monotonic_port.h"
@@ -32,6 +33,7 @@
  * RU: Заимствовать встречное пространство имён и владеть терминалом в одной сессии. */
 typedef struct PlayerHost
 {
+    StyxRpcExchange *exchange;   /* Owned application mailbox for the session. */
     StyxRpcTerminal terminal;   /* Live reserved UniBus channel for this playback. */
     struct StyxClient *session; /* Borrowed reverse filesystem mount. */
     FVM_PairedView *view;        /* Borrowed player presentation for all movie generations. */
@@ -64,6 +66,10 @@ static FVM_Result setup(void *state, FVM_Context *context)
 {
     PlayerHost *host = state;
     FVM_Result result = fvm_styxrpc_player_terminal(context, &host->terminal);
+    if (result == FVM_OK)
+    {
+        result = fvm_styxrpc_host_exchange(context, host->exchange);
+    }
 #ifdef FVM_HAS_FONTS
     if (result == FVM_OK && !host->flash_peer)
     {
@@ -224,6 +230,8 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     int flash_peer, const char *movie)
 {
     FVM_Config config;
+    StyxRpcMessageType types[STYXRPC_EXCHANGE_END - 1];
+    StyxRpcMessageSpec exchange_spec;
     PlayerHost host = {0};
     FVM_Runtime *runtime = NULL;
     FVM_StyxRpcPlayback *playback = NULL;
@@ -256,7 +264,13 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
                 fvm_styxrpc_playback_slot(playback));
         }
     }
-    if (server && fvm_styxrpc_player_publish_terminal(server, &host.terminal))
+    host.exchange = styxrpc_exchange_create();
+    if (host.exchange)
+    {
+        styxrpc_exchange_spec(host.exchange, 1, types, &exchange_spec);
+    }
+    if (server && host.exchange && fvm_styxrpc_player_publish_terminal(server, &host.terminal) &&
+        styxrpc_messages_publish(server, STYXRPC_EXCHANGE_DEFAULT, &exchange_spec) == STYXRPC_OK)
     {
         if (flash_peer)
         {
@@ -289,6 +303,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     }
     styxrpc_server_destroy(server);
     fvm_styxrpc_playback_destroy(playback);
+    styxrpc_exchange_destroy(host.exchange);
     fvm_runtime_destroy(runtime);
     styxclientshutdown(root);
     styxclientfree(root);

@@ -14,7 +14,7 @@ set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal laun
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
-add_library(styxrpc STATIC src/rpc.c src/managed.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
+add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
     protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
@@ -103,6 +103,11 @@ if(BUILD_TESTING)
                     --runtime "${disvm_runtime}" --limbo "${disvm_limbo}"
                     --source "${STYXRPC_DISVM_SOURCE}" --provider "$<TARGET_FILE:styxrpc-variable-ref-test>" ${ref_mode})
                 set_tests_properties(styxrpc-variable-ref-disvm-${mode} PROPERTIES TIMEOUT 25)
+                add_test(NAME styxrpc-mixed-ref-disvm-${mode} COMMAND "${PYTHON_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/variable_ref_guest.py" --mixed
+                    --runtime "${disvm_runtime}" --limbo "${disvm_limbo}"
+                    --source "${STYXRPC_DISVM_SOURCE}" --provider "$<TARGET_FILE:styxrpc-variable-ref-test>" ${ref_mode})
+                set_tests_properties(styxrpc-mixed-ref-disvm-${mode} PROPERTIES TIMEOUT 25)
             endforeach()
         endif()
         add_executable(styxrpc-channel-test tests/channel_socket.c)

@@ -53,13 +53,16 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         "${root}/disVM/host/traversal" "${root}/remote_phy")
     set(styxrpc_terminal_sources
         terminal_launch/paired_ui.c
+        terminal_launch/paired_exchange.c
+        "${root}/lib/styxrpc/src/exchange.c"
+        "${root}/lib/styxrpc/src/value_codec.c"
         "${root}/lib/styxrpc/src/unibus_terminal.c"
         "${root}/lib/styxrpc/src/message_port.c"
         "${root}/lib/styxrpc/src/message_client.c"
         "${root}/lib/styxrpc/src/vfs_client.c")
     target_sources(disvm PRIVATE ${styxrpc_terminal_sources})
     set(styxrpc_terminal_includes
-        "${root}/lib/styxrpc/include"
+        "${root}/lib/styxrpc/include" "${root}/lib/styxrpc/protocol"
         "${root}/disVM/native/client" "${root}/disVM/native/vfs"
         "${root}/disVM/native/terminal" "${root}/remote_phy")
     if(CMAKE_VERSION VERSION_LESS 3.11)

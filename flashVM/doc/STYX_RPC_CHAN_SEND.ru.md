@@ -1,6 +1,6 @@
 # ch.send
 
-[English](STYX_RPC_CHAN_SEND.md) · [Открытие](STYX_RPC_NEWCHAN.ru.md) · [Приём](STYX_RPC_CHAN_RECV.ru.md) · [Реализация](../src/styxrpc/session_channel.c)
+[English](STYX_RPC_CHAN_SEND.md) · [Открытие](STYX_RPC_NEWCHAN.ru.md) · [Приём](STYX_RPC_CHAN_RECV.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Серверный обмен](STYX_RPC_LISTEN.ru.md)
 
 `ch.send(value)` отправляет снимок числа AS, логического значения,
 строки с длиной (до 16 384 байт) или `null`. `ch.send(ref counter)`

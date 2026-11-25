@@ -28,6 +28,8 @@ application to initialize its buffer without reading the file first.
 
 [Installed desktop example](../../ide/DESKTOP-PAIRED.md)
 
+[Typed mixed UniBus exchange](STYX-CHANNEL.md) uses the bidirectional mount session already established by the CLI.
+
 ## TCP endpoints
 
 The hosted Linux64 build can open its own carrier. Use

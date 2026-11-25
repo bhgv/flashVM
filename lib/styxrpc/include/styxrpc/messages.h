@@ -5,6 +5,7 @@
 #ifndef STYXRPC_MESSAGES_H
 #define STYXRPC_MESSAGES_H
 #include "styxrpc/serve.h"
+#include "styxrpc/exchange_qid.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +16,6 @@ extern "C" {
 #define STYXRPC_MESSAGE_TYPES_MAX 32U     /* Maximum declarations in either direction. */
 #define STYXRPC_MESSAGE_NAME_MAX 63U      /* Maximum identity bytes, excluding NUL. */
 #define STYXRPC_MESSAGE_PAYLOAD_MAX 16384U /* Maximum payload bytes in one record. */
-#define STYXRPC_MESSAGE_ROOTS_MAX 16U     /* Named exchange roots per hosted server. */
 #define STYXRPC_MESSAGES_PORTS_MAX 8U      /* Maximum simultaneous ports per exchange root. */
 
 struct StyxClient; /* An attached Styx session, owned by its caller. */

@@ -7,7 +7,6 @@
 #include "styxrpc/messages.h"
 #include "flashvm/sbindings.h"
 
-#define STYXRPC_MESSAGE_NODE (UINT64_MAX - 1) /* Reserved root child Qid while enabled. */
 #define MESSAGE_FRAME_MAX (STYXRPC_MESSAGE_PAYLOAD_MAX + 3U * FVM_SRECORD_INTEGER_MAX) /* Includes framing. */
 
 typedef struct MessageRegistration
@@ -61,9 +60,9 @@ int styxrpc_message_feed(StyxRpcMessagePort *port, const void *bytes, size_t siz
 void styxrpc_message_drain(StyxRpcMessagePort *port, size_t size);
 
 
-/* EN: Copy spec and verify available space and identity in tree/context. Return owned service.
- * RU: Скопировать spec и проверить свободное место и ID в tree/context. Вернуть свой сервис. */
+/* EN: Copy spec and verify no root name/identity collision in tree/context. Return owned service.
+ * RU: Скопировать spec и проверить имя и ID в tree/context. Вернуть свой сервис. */
 MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
-    const StyxRpcNode *node, size_t roots, const StyxRpcMessageSpec *spec);
+    const StyxRpcNode *node, const StyxRpcMessageSpec *spec);
 
 #endif

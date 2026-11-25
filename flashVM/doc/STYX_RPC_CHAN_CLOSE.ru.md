@@ -1,6 +1,6 @@
 # ch.close
 
-[English](STYX_RPC_CHAN_CLOSE.md) · [Открытие](STYX_RPC_NEWCHAN.ru.md) · [Реализация](../src/styxrpc/session_channel.c)
+[English](STYX_RPC_CHAN_CLOSE.md) · [Открытие](STYX_RPC_NEWCHAN.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Серверный обмен](STYX_RPC_LISTEN.ru.md)
 
 `ch.close()` освобождает fid канала, удаляет непрочитанные записи
 и возвращает `undefined`. Аргументов нет. Повторный вызов допустим.

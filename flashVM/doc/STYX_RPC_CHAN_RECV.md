@@ -1,6 +1,6 @@
 # ch.recv
 
-[Русский](STYX_RPC_CHAN_RECV.ru.md) · [Open](STYX_RPC_NEWCHAN.md) · [Send](STYX_RPC_CHAN_SEND.md) · [Implementation](../src/styxrpc/session_channel.c)
+[Русский](STYX_RPC_CHAN_RECV.ru.md) · [Open](STYX_RPC_NEWCHAN.md) · [Send](STYX_RPC_CHAN_SEND.md) · [Implementation](../src/styxrpc/session_channel.c) · [Hosted exchange](STYX_RPC_LISTEN.md)
 
 `ch.recv()` returns the next complete value in stream order and accepts
 no arguments. It uses one bounded transport poll when the local FIFO

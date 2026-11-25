@@ -41,7 +41,7 @@ static int service_name(const char *name, size_t size)
  * RU: Определить корни обмена с произвольными именами по диапазону Qid. */
 static int exchange_meta(const StyxMeta *meta)
 {
-    return STYXRPC_MESSAGE_NODE - meta->identity < STYXRPC_MESSAGE_ROOTS_MAX;
+    return STYXRPC_EXCHANGE_QID(meta->identity);
 }
 
 

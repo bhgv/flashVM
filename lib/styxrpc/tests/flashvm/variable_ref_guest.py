@@ -30,18 +30,24 @@ def main():
     for field in ("runtime", "limbo", "source", "provider"):
         parser.add_argument("--" + field, type=lambda path: Path(path).resolve(), required=True)
     parser.add_argument("--jit", action="store_true")
+    parser.add_argument("--mixed", action="store_true")
     args = parser.parse_args()
     with TemporaryDirectory(prefix="styxrpc-limbo-ref-") as scratch:
         root = Path(scratch)
         compile_image(args, root, args.source / "limbo/styxintref.b", "styxintref.dis")
-        compile_image(args, root, Path(__file__).with_suffix(".b"), "guest.dis")
+        guest = Path(__file__).with_suffix(".b")
+        if args.mixed:
+            compile_image(args, root, args.source / "limbo/styxchannel.b", "styxchannel.dis")
+            guest = guest.with_name("mixed_ref.b")
+        compile_image(args, root, guest, "guest.dis")
         client, server = socket.socketpair()
         with client, server, subprocess.Popen(
-                [args.provider, "--dis-fd", str(server.fileno())],
+                [args.provider, "--dis-mixed-fd" if args.mixed else "--dis-fd", str(server.fileno())],
                 pass_fds=(server.fileno(),), stdout=subprocess.PIPE) as provider:
             server.close()
             try:
-                (root / "reference.bin").write_bytes(descriptor(provider.stdout))
+                if not args.mixed:
+                    (root / "reference.bin").write_bytes(descriptor(provider.stdout))
                 command = [args.runtime, "--styx-mount-fd", str(client.fileno()), "--at", "/rpc",
                            "--", "--native-spawn", "--jit" if args.jit else "--no-jit", "guest.dis"]
                 result = subprocess.run(command, cwd=root, pass_fds=(client.fileno(),), text=True,

@@ -24,10 +24,10 @@ typedef struct ServerMessagePort
     uint64_t write_offset;     /* Next position for client-to-server bytes. */
 } ServerMessagePort;
 
-/* EN: Check root capacity and reject collisions before copying spec into owned storage.
- * RU: Проверить в дереве размер корня и коллизии до копирования spec в своё хранилище. */
+/* EN: Reject collisions in the ordinary root before copying spec into owned storage.
+ * RU: Отклонить коллизии с обычным корнем до копирования spec в своё хранилище. */
 MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
-    const StyxRpcNode *node, size_t roots, const StyxRpcMessageSpec *spec)
+    const StyxRpcNode *node, const StyxRpcMessageSpec *spec)
 {
     StyxRpcNode existing;
     if (tree->stat(context, node->entry.id, &existing))
@@ -35,7 +35,7 @@ MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
         return NULL;
     }
     size_t index;
-    for (index = 0; index < STYXRPC_TREE_CHILDREN - roots; ++index)
+    for (index = 0; index < STYXRPC_TREE_CHILDREN; ++index)
     {
         StyxRpcEntry entry;
         StyxRpcStatus status = styxrpc_dir_entry(&tree->files, context, 0, index, &entry);
@@ -48,10 +48,6 @@ MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
         {
             return NULL;
         }
-    }
-    if (index == STYXRPC_TREE_CHILDREN - roots)
-    {
-        return NULL;
     }
     MessageService *service = calloc(1, sizeof(*service));
     if (!service)
@@ -91,12 +87,17 @@ static int open_messages(void *context, uint64_t node, unsigned access, void **c
         return 0;
     }
     opened->service = service;
-    ++service->ports;
-    *cookie = opened;
     if (service->opened)
     {
         service->opened(&opened->port, service->context);
     }
+    if (opened->port.failed)
+    {
+        free(opened);
+        return 0;
+    }
+    ++service->ports;
+    *cookie = opened;
     return 1;
 }
 

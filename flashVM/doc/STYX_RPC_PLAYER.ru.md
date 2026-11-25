@@ -107,6 +107,8 @@ Int32-метод второго фильма через [`styxrpc.callInt`](STYX
 
 ## Терминал Unibus
 
+[Обмен приложения через rpc.listen](STYX_RPC_LISTEN.ru.md) доступен [типизированным клиентам Limbo](../../disVM/runtime/STYX-CHANNEL.ru.md).
+
 При двунаправленном запуске Limbo-программа подключает свои
 `chan of array of byte` через `$Unibus.attach(input, output)` и завершает
 обмен через `detach()`. SWF получает глобальный объект `styxTerminal` с

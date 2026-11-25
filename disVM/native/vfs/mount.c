@@ -7,6 +7,7 @@
 #include "provider_internal.h"
 #include "mount_cancel.h"
 #include "control/internal.h"
+#include "styxrpc/exchange_qid.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -59,6 +60,11 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
     StyxFid *fid = styxmountlookup(mount->client, mount->root, path, &missing);
     StyxMeta meta;
     int success = fid && styxmountstat(mount->client, fid, &meta) && (!mount->file_root || !meta.directory);
+    if (success && STYXRPC_EXCHANGE_QID(meta.identity))
+    {
+        missing = 1;
+        success = 0;
+    }
     styxmountclunk(mount->client, fid);
     if (success)
     {
@@ -103,6 +109,11 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
     StyxMeta meta;
     if (!opened->fid || !styxmountstat(mount->client, opened->fid, &meta) || (mount->file_root && meta.directory))
     {
+        goto failed;
+    }
+    if (STYXRPC_EXCHANGE_QID(meta.identity))
+    {
+        missing = 1;
         goto failed;
     }
     opened->directory = meta.directory;
@@ -166,7 +177,7 @@ static FVM_Result directory_access(void *state, const char *path, unsigned acces
     StyxFid *fid = styxmountwalk(mount, path);
     StyxMeta metadata;
     FVM_Result status = FVM_ERROR;
-    if (fid && styxmountstat(mount->client, fid, &metadata))
+    if (fid && styxmountstat(mount->client, fid, &metadata) && !STYXRPC_EXCHANGE_QID(metadata.identity))
     {
         if (!metadata.directory)
         {

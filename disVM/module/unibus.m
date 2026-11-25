@@ -79,4 +79,20 @@ Unibus: module
     # Return a copied configured document path. Empty means no file was selected.
     # This is configuration only; all document I/O and save policy remain in Limbo.
     path: fn(): string;
+
+    # EN: Address one mixed exchange on the paired session. Positive lease or -1.
+    # RU: Открыть адрес обмена в парной сессии. Положительный жетон или -1.
+    rpcopen: fn(address: string): int;
+
+    # EN: Send one locally encoded kind and payload. 0 sent, 1 retry, -1 rejected.
+    # RU: Отправить локально кодированный вид и данные. 0 отправлено, 1 повтор, -1 отказ.
+    rpcsend: fn(port: int, frame: array of byte): int;
+
+    # EN: Poll one record. Nil means pending. Errors raise in the caller.
+    # RU: Опросить одну запись. Nil при ожидании. Ошибка выдаёт исключение.
+    rpcrecv: fn(port: int): array of byte;
+
+    # EN: Retire an exact port. 0 closed, -1 invalid.
+    # RU: Закрыть конкретный порт. 0 закрыт, -1 неверный жетон.
+    rpcclose: fn(port: int): int;
 };

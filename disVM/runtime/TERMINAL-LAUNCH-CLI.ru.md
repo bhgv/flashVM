@@ -1,6 +1,5 @@
 
 ## Локальный встречный процесс
-
 `disvm --styx-local-pair PROGRAM [PEER OPTIONS] -- [MOUNT OPTIONS] -- [VM OPTIONS] BOOTSTRAP.dis`
 выполняет обычный двусторонний маунт `--styx-mount-fd` по частной паре Unix-сокетов.
 `PROGRAM` — явный путь к программе. Она получает `--fd FD`, затем `PEER OPTIONS`.
@@ -14,6 +13,8 @@ DisVM или код встречного процесса, если DisVM зав
 `--new` запрашивает пустой буфер без чтения файла на старте.
 
 [Пример установленной IDE](../../ide/DESKTOP-PAIRED.ru.md)
+
+[Типизированный обмен UniBus](STYX-CHANNEL.ru.md) работает в двунаправленной сессии, которую уже подключил CLI.
 
 ## Подключение по TCP
 
