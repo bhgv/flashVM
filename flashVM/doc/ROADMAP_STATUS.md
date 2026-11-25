@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1761 / Контрольная точка v0.1761. The installed Linux64
+menu 8 starts the paired Limbo/AS desktop over a private StyxRPC socket.
+Пакет и пользовательские файлы разделены в VFS. Выход IDE завершает обе VM.
+[EN](../../ide/DESKTOP-PAIRED.md) / [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 Checkpoint v0.1760 / Контрольная точка v0.1760. Hosted players and DisVM
 open TCP carriers at launch using the same StyxRPC session and live VFS.
 Штатные команды проверены на TCP loopback с IDE и двумя плеерами.

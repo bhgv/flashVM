@@ -9,6 +9,7 @@
 #include "launch_send.h"
 #include "mount.h"
 #include "paired_ui.h"
+#include "mount_assets.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
 #include "vfs/launch/runtime.h"
@@ -46,7 +47,7 @@ static DVM_Namespace *mounted_group(void)
 /* EN: Install the mount in group and run the guest. The caller retains group.
  * RU: Установить маунт в group и запустить гостя. Ссылка group остаётся у вызывающего. */
 static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path,
-    const int *descriptors, DVM_Namespace *group, StyxClient *client)
+    const int *descriptors, DVM_Namespace *group, StyxClient *client, const char *document, int fresh)
 {
     if (!group || !dvm_namespace_retain(group))
     {
@@ -72,7 +73,7 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *p
             dvm_namespace_mount_provider(handoff.group, &target, fds, "/launch-descriptors") == 1;
         dvm_provider_release(fds);
     }
-    UnibusBinding *binding = installed && client ? dvm_paired_ui_begin(client) : NULL;
+    UnibusBinding *binding = installed && client ? dvm_paired_ui_begin(client, document, fresh) : NULL;
     if (installed && client)
     {
         installed = binding && dvm_launch_handoff_unibus(&handoff, binding);
@@ -357,6 +358,8 @@ int dvm_styx_mount_cli(int argc, char **argv)
         separator++;
     }
     const char *path = "/peer";
+    const char *assets = NULL, *document = NULL;
+    int fresh = 0;
     if (argc > separator + 1 && !strcmp(argv[separator], "--at"))
     {
         path = argv[separator + 1];
@@ -366,6 +369,17 @@ int dvm_styx_mount_cli(int argc, char **argv)
             fprintf(stderr, "disvm: --at requires a canonical absolute Styx mount path\n");
             return 2;
         }
+    }
+    if (!raw && argc > separator + 1 && !strcmp(argv[separator], "--assets"))
+    {
+        assets = argv[separator + 1];
+        separator += 2;
+    }
+    if (!raw && argc > separator + 1 && (!strcmp(argv[separator], "--document") || !strcmp(argv[separator], "--new")))
+    {
+        fresh = !strcmp(argv[separator], "--new");
+        document = argv[separator + 1];
+        separator += 2;
     }
     int descriptors[DVM_LAUNCH_FD_COUNT] = {0};
     int granted = 0;
@@ -400,7 +414,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm (--styx-mount-fd FD | --styx-mount-tcp HOST PORT) [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm (--styx-mount-fd FD | --styx-mount-tcp HOST PORT) [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--assets DIR] [--document PATH | --new PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = tcp ? dvm_terminal_tcp(argv[2], argv[3], 0) : dvm_terminal_connected(argv[2]);
@@ -427,7 +441,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
         }
         DVM_Namespace *group = mounted_group();
         int result = run_mounted(argc - separator, argv + separator, mount, path,
-            granted ? descriptors : NULL, group, NULL);
+            granted ? descriptors : NULL, group, NULL, NULL, 0);
         dvm_namespace_release(group);
         dvm_provider_release(mount);
         return result;
@@ -440,6 +454,14 @@ int dvm_styx_mount_cli(int argc, char **argv)
         return 2;
     }
     DVM_Namespace *group = mounted_group();
+    if (assets && (!group || !dvm_terminal_mount_assets(group, assets)))
+    {
+        fprintf(stderr, "disvm: cannot mount application assets\n");
+        dvm_namespace_release(group);
+        close(breaker);
+        close(fd);
+        return 1;
+    }
     DVM_Provider *shared = live_namespace(group);
     if (!shared)
     {
@@ -458,7 +480,8 @@ int dvm_styx_mount_cli(int argc, char **argv)
     int result = 1;
     if (mount)
     {
-        result = run_mounted(argc - separator, argv + separator, mount, path, granted ? descriptors : NULL, group, client);
+        result = run_mounted(argc - separator, argv + separator, mount, path,
+            granted ? descriptors : NULL, group, client, document, fresh);
     }
     else
     {

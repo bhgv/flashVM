@@ -29,7 +29,7 @@ def product_entries(prefix):
         (
             "8",
             "desktop",
-            "IDE MovieClip: MDI-вкладки, полки/палитры File/Edit/Search, Draw/SVG, Debug, Limbo/AS, F7/F8",
+            "IDE MovieClip: парный запуск DisVM + FlashVM, MDI, Draw/SVG, Limbo/AS, F7/F8",
             (prefix / "disvm-editor/run-desktop-ide.sh",),
             True,
         ),
@@ -110,7 +110,7 @@ def launch_product(entry, args, bash, interactive):
     command = [bash, str(script)]
     if graphical:
         font = os.environ.get("FVM_EDITOR_FONT")
-        if font:
+        if font and script.name != "run-desktop-ide.sh":
             command += ["--font", font]
         document = getattr(args, "document", None)
         if interactive and document is None:

@@ -42,7 +42,7 @@ if(DVM_TERMINAL_LAUNCH_SDK)
             "${launch_listener_embed}" VERBATIM)
     target_sources(disvm PRIVATE "${launch_listener_header}")
     target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c)
+    target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c terminal_launch/local_pair.c terminal_launch/mount_assets.c)
     target_compile_definitions(disvm PRIVATE DVM_TERMINAL_LAUNCH=1)
     set_property(SOURCE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c APPEND PROPERTY INCLUDE_DIRECTORIES
         "${root}/disVM/native/client" "${root}/disVM/native/terminal"

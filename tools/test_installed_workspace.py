@@ -146,8 +146,8 @@ def compiler_service_packages(prefix, work, environment):
                 if "PASS desktop owners:" not in output:
                     raise RuntimeError("relocated independent desktop window owners failed")
         if name == "disvm-editor":
-            if not (package / "run-desktop-ide.sh").is_file():
-                raise RuntimeError("missing installed MovieClip desktop launcher")
+            if not (package / "run-desktop-local.sh").is_file():
+                raise RuntimeError("missing installed embedded-renderer replay launcher")
             # Exercise the application and the tutorial wrapper with the package's
             # own font and bytecode; input replay never loads repository paths.
             for entry, mode in (("desktop-ide.dis", "jit"), ("desktop-example.dis", "interpreter")):

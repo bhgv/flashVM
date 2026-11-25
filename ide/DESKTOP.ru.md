@@ -29,7 +29,7 @@ Python и CLI-компиляторы не входят в исполняемую
 
 ```sh
 cmake --build <runtime-build> --target disvm-editor --parallel 4
-python3 disVM/runtime/test_desktop_install.py <runtime-build> disVM/runtime/run-desktop-ide.sh
+python3 disVM/runtime/test_desktop_install.py <runtime-build> disVM/runtime/run-desktop-local.sh
 ```
 
 Вместо `<runtime-build>` укажите настроенный каталог сборки runtime, а не каталог

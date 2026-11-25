@@ -395,8 +395,10 @@ Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TAB
 
 ## IDE application entry
 
-The graphical package ships desktop-ide.dis/run-desktop-ide.sh for the actual
-multi-window MovieClip IDE (post-build menu 8). The separate ide.dis/run-ide.sh
+On Linux64 with SDL2 the graphical package ships `desktop-paired.dis`,
+`desktop-view.swf` and `run-desktop-ide.sh` for menu 8. The launcher connects
+the ordinary DisVM and FlashVM player over a private StyxRPC stream.
+The separate ide.dis/run-ide.sh
 single-editor application remains menu 9. [Entry points](../../ide/ENTRYPOINTS.md).
 Portable lifecycle/pointer clients are menu 10/11 in editor and runtime packages.
 Both graphical applications use Dis-owned state and FlashVM rendering. [Application guide](../../ide/dis/app/README.md) ·

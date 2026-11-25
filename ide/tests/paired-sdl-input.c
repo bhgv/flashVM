@@ -348,6 +348,19 @@ static void burst(void)
 }
 
 
+/* EN: Edit the pinned startup document, save in place and request orderly exit.
+ * RU: Отредактировать стартовый документ, сохранить на месте и штатно выйти. */
+static void startup_document_burst(void)
+{
+    SDL_Event event;
+    text("menu-");
+    shortcut(SDLK_s);
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_QUIT;
+    post(&event);
+}
+
+
 #include "paired-sdl-ink.inc"
 
 
@@ -375,7 +388,11 @@ int SDLCALL SDL_PollEvent(SDL_Event *event)
     if (!posted && SDL_GetTicks() + 1 - first_poll >= EVENT_DELAY_MS && SDL_IsTextInputActive())
     {
         posted = 1;
-        if (getenv("FVM_PAIRED_TEST_THUMBNAILS"))
+        if (getenv("FVM_PAIRED_TEST_DOCUMENT"))
+        {
+            startup_document_burst();
+        }
+        else if (getenv("FVM_PAIRED_TEST_THUMBNAILS"))
         {
             thumbnails_burst();
         }

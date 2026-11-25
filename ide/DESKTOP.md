@@ -12,16 +12,16 @@ running bytecode, not a screenshot overlay or an HTML mockup.
 
 ## Run
 
-Build the matching graphical runtime and execute `desktop-ide.dis` with
-`disvm-editor`, or use the installed `run-desktop-ide.sh`. For example:
+Build the graphical workspace package. On Linux64 with SDL2, use the installed
+paired launcher documented in [Paired desktop](DESKTOP-PAIRED.md).
 
 ```sh
 sh out/disvm-editor/run-desktop-ide.sh --document example.b
 ```
 
 A source-built SDL window backend is required for physical interactive windows.
-A headless build accepts counted `--events` plus `--capture` for actual FlashVM
-raster replay. The existing `ide.dis` application and full single-editor entry
+A headless build supplies `run-desktop-local.sh` with counted `--events` and
+`--capture` for embedded-renderer replay. The existing `ide.dis` single-editor entry
 remain available. No compiler CLI, Python, external Inferno emu or browser runs
 inside the deployed desktop.
 
@@ -36,7 +36,7 @@ mismatch.
 
 ```sh
 cmake --build <runtime-build> --target disvm-editor --parallel 4
-python3 disVM/runtime/test_desktop_install.py <runtime-build> disVM/runtime/run-desktop-ide.sh
+python3 disVM/runtime/test_desktop_install.py <runtime-build> disVM/runtime/run-desktop-local.sh
 ```
 
 Replace `<runtime-build>` with the configured runtime build directory, not the

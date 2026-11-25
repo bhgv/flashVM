@@ -23,6 +23,23 @@ if(DVM_TERMINAL_LAUNCH_SDK)
     add_dependencies(disvm_desktop_paired disvm_desktop_app)
 endif()
 
+set(DVM_PAIRED_PLAYER_BIN "" CACHE FILEPATH "Matched SDL FlashVM StyxRPC player for the installed paired desktop")
+if(DVM_PAIRED_PLAYER_BIN)
+    if(NOT DVM_TERMINAL_LAUNCH_SDK OR NOT EXISTS "${DVM_PAIRED_PLAYER_BIN}" OR
+        NOT DVM_AS_VIEW_COMPILER OR NOT DVM_FIR_COMPILER OR NOT DVM_SWF_LINKER)
+        message(FATAL_ERROR "The paired desktop needs a built FlashVM player, terminal SDK, AS2, FIR and SWL")
+    endif()
+    get_filename_component(paired_fir_directory "${DVM_FIR_COMPILER}" DIRECTORY)
+    file(GLOB paired_as_sources CONFIGURE_DEPENDS "${root}/ide/as/desktop-paired-*.as")
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-view.swf"
+        COMMAND "${PYTHON_EXECUTABLE}" "${root}/ide/build_paired_view.py" "${CMAKE_CURRENT_BINARY_DIR}/desktop-view.swf"
+            --as2 "${DVM_AS_VIEW_COMPILER}" --fir "${paired_fir_directory}" --swl "${DVM_SWF_LINKER}"
+        DEPENDS ${paired_as_sources} "${root}/ide/build_paired_view.py" "${DVM_AS_VIEW_COMPILER}"
+            "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}" "${DVM_SWF_LINKER}" VERBATIM)
+    add_custom_target(disvm_desktop_paired_movie ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-view.swf")
+    add_dependencies(disvm_desktop_paired disvm_desktop_paired_movie)
+endif()
+
 if(DVM_RUNTIME_EDITOR)
     add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis"
         "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.sbl"

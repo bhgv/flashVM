@@ -9,7 +9,7 @@ struct UnibusBinding;
 
 /* EN: Begin the single mounted runtime session and return its owned launch binding.
  * RU: Начать сессию смонтированного runtime и вернуть собственную привязку запуска. */
-struct UnibusBinding *dvm_paired_ui_begin(struct StyxClient *client);
+struct UnibusBinding *dvm_paired_ui_begin(struct StyxClient *client, const char *document, int fresh);
 
 /* EN: Unregister after the managed controller has finished. Consume the launch binding.
  * RU: Снять регистрацию после завершения контроллера. Освободить привязку запуска. */

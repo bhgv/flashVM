@@ -24,6 +24,8 @@
 typedef struct PairedUi
 {
     struct StyxClient *client;                /* Borrowed through mount teardown. */
+    char *document;                           /* Owned startup path or NULL for a blank pane. */
+    int fresh;                                /* Skip reading an existing file for --new. */
     pthread_mutex_t lock;                    /* Serializes builtin registration and controller I/O. */
     StyxRpcTerminal terminal;                /* Native mailbox; no managed addresses in the transport. */
     Channel *input;                          /* [GC:] Explicitly held and registered. */
@@ -207,13 +209,13 @@ static int invoke(void *state, int pid, unsigned method, void *frame)
     {
         F_Unibus_path call;
         dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Unibus_path, ret), sizeof(*call.ret));
-        retstr("", call.ret);
+        retstr(ui->document ? ui->document : "", call.ret);
         return 1;
     }
     case UNIBUS_FRESH:
     {
         F_Unibus_fresh call;
-        WORD value = 0;
+        WORD value = ui->fresh;
         dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Unibus_fresh, ret), sizeof(*call.ret));
         dvm_sys_scalar_result(&value, call.ret, sizeof(value));
         return 1;
@@ -238,12 +240,13 @@ static void dispose(void *state)
 {
     PairedUi *ui = state;
     pthread_mutex_destroy(&ui->lock);
+    free(ui->document);
     free(ui);
 }
 
 
 /* EN/RU: See paired_ui.h. / См. paired_ui.h. */
-UnibusBinding *dvm_paired_ui_begin(struct StyxClient *client)
+UnibusBinding *dvm_paired_ui_begin(struct StyxClient *client, const char *document, int fresh)
 {
     static const UnibusOps ops = {invoke, retire, dispose};
     PairedUi *ui = current_ui || !client ? NULL : calloc(1, sizeof(*ui));
@@ -257,6 +260,12 @@ UnibusBinding *dvm_paired_ui_begin(struct StyxClient *client)
         return NULL;
     }
     ui->client = client;
+    if (document && !(ui->document = strdup(document)))
+    {
+        dispose(ui);
+        return NULL;
+    }
+    ui->fresh = fresh;
     UnibusBinding *binding = unibusbinding(&ops, ui, UNIBUS_INHERIT | UNIBUS_OWNER_PORTS | UNIBUS_CLOSE_WITH_OWNER);
     if (!binding)
     {

@@ -244,7 +244,17 @@ install_runtime_package() {
             [[ -s "$base/$module.dis" ]] || fail "Missing desktop application: $base/$module.dis; build all editor targets before installation"
         done
         install_program "$base" disvm-editor "$destination"
-        copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
+        copy_file "$ROOT/disVM/runtime/run-desktop-local.sh" "$destination/run-desktop-local.sh" 755
+        local paired_player
+        paired_player=$(sed -n 's/^DVM_PAIRED_PLAYER_BIN:FILEPATH=//p' "$base/CMakeCache.txt")
+        if [[ -n "$paired_player" ]]; then
+            copy_file "$paired_player" "$destination/flashvm_styx_player" 755
+            copy_file "$base/desktop-view.swf" "$destination/desktop-view.swf"
+            copy_file "$base/desktop-paired.dis" "$destination/desktop-paired.dis"
+            copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
+        else
+            rm -f -- "$destination/run-desktop-ide.sh"
+        fi
         copy_tree "$ROOT/ide/dis/examples/desktop" "$destination/examples/desktop"
         copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/check.py"
         copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/test_desktop.py"

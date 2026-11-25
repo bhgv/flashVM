@@ -11,6 +11,23 @@ Styx. Вызывающий устанавливает соединение и п
 сокета. Оператор задаёт имя запуска, разрешённые пути кода и доверенный локальный
 bootstrap. Терминал передаёт стартовые байты через согласованный маршрут.
 
+## Local companion process
+
+`disvm --styx-local-pair PROGRAM [PEER OPTIONS] -- [MOUNT OPTIONS] -- [VM OPTIONS] BOOTSTRAP.dis`
+runs the same bidirectional mount as `--styx-mount-fd` over a private Unix
+socket pair. `PROGRAM` is an explicit executable path. It receives `--fd FD`
+followed by `PEER OPTIONS`. DisVM owns and reaps that process. Exit status
+comes from DisVM, or from its companion if DisVM completed successfully.
+
+An optional `--assets ABSOLUTE_DIRECTORY` after `--at` installs a read-only
+`/ide-assets` mount and selects that directory for initial relative module
+imports. The workspace remains the process's current directory. The paired
+`--document PATH` or `--new PATH` option passes a guest VFS path to the
+application through the existing Unibus launch binding. `--new` asks the
+application to initialize its buffer without reading the file first.
+
+[Installed desktop example](../../ide/DESKTOP-PAIRED.md)
+
 ## TCP endpoints
 
 The hosted Linux64 build can open its own carrier. Use

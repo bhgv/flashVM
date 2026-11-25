@@ -15,7 +15,10 @@ PairedDesktop: module {
 # RU: Передать SWF с длиной ограниченными порциями. По возврате дескрипторы освобождаются.
 uploadmovie(sys: Sys)
 {
-    source := sys->open("desktop-view.swf", Sys->OREAD);
+    source := sys->open("/ide-assets/desktop-view.swf", Sys->OREAD);
+    if (source == nil) {
+        source = sys->open("desktop-view.swf", Sys->OREAD);
+    }
     if (source == nil) {
         raise sys->sprint("open desktop-view.swf: %r");
     }

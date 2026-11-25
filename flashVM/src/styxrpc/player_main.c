@@ -69,8 +69,13 @@ static FVM_Result setup(void *state, FVM_Context *context)
     {
         unsigned char *bytes;
         size_t size;
-        result = fvm_styxrpc_read_asset(host->session, "fonts/NotoSansMono-Regular.ttf",
+        result = fvm_styxrpc_read_asset(host->session, "ide-assets/fonts/NotoSansMono-Regular.ttf",
             PLAYER_FONT_LIMIT, &bytes, &size);
+        if (result == FVM_NOT_FOUND)
+        {
+            result = fvm_styxrpc_read_asset(host->session, "fonts/NotoSansMono-Regular.ttf",
+                PLAYER_FONT_LIMIT, &bytes, &size);
+        }
         if (result == FVM_OK)
         {
             result = fvm_standard_text_register_font(context, "Noto Sans Mono", bytes, size, 0);

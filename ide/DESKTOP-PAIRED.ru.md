@@ -4,16 +4,29 @@
 
 В парной IDE модули `.dis` на Limbo работают в DisVM, а `.swf` на ActionScript
 исполняется во FlashVM. Машины обмениваются данными по штатному каналу
-Styx RPC. Текущий пункт 8 запускает установленное локальное представление
-через `run-desktop-ide.sh` и его хост `disvm-editor`. Парный запуск ниже
-использует `desktop-ide.dis` с представлением в SWF.
+Styx RPC. В графическом пакете `disvm-editor` для Linux64 выберите пункт 8
+или `--launch desktop`. Установленный `run-desktop-ide.sh` запускает штатные
+DisVM и плеер FlashVM. DisVM выдаёт плееру конец частной пары сокетов. При
+выходе из IDE обе машины завершаются.
+
+```sh
+python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop --document "example.b"
+sh out/disvm-editor/run-desktop-ide.sh --jit --new "drawing.svg"
+```
+
+Рабочей областью становится каталог выбранного файла. При запуске без файла
+используется текущий каталог. Установленные модули, шрифт и SWF доступны только
+для чтения через `/ide-assets`. FlashVM читает шрифт по тому же StyxRPC.
+По умолчанию обе машины используют `--no-jit`. Для локальной проверки можно
+передать `--headless --capture frame.ppm`. Прежний встроенный рендерер запускается
+через `run-desktop-local.sh`.
 
 ## Что проверено на паре VM
 
 При сборке с терминальным SDK DisVM также выпускает `desktop-paired.dis`.
 Его запускают из каталога с модулями и `desktop-view.swf`, смонтировав
 плеер в `/rpc`. Стартовый Limbo-модуль передаёт SWF через `/rpc/.upload`,
-пишет `start` в `/rpc/.state` и вызывает `DesktopIDE.init()` в том же
+пишет `start` в `/rpc/.state` и вызывает `DesktopIDE.initpaired()` в том же
 процессе. `$Unibus.attach` передаёт сцены и ввод через одну сессию libstyxrpc.
 
 Для прямого запуска по TCP выполните первую команду на машине с FlashVM.
@@ -213,7 +226,7 @@ Escape, смена фокуса или другой переход ввода м
 дуги и пустую середину замкнутого мазка, а также один Undo и Redo до записи SVG.
 
 Остаётся подключить жесты с несколькими касаниями и наложения векторного
-редактора. Пункт 8 пока запускает установленный графический runtime.
+редактора.
 
 [Стартовый модуль Limbo](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Контроллер](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

@@ -4,9 +4,22 @@
 
 The paired IDE runs Limbo `.dis` modules in DisVM and an ActionScript `.swf`
 in FlashVM. The machines exchange data through their standard Styx RPC
-channel. The current menu 8 entry starts the installed local display path
-through `run-desktop-ide.sh` and its `disvm-editor` host. The paired launcher
-below uses `desktop-ide.dis` with the SWF presentation instead.
+channel. On Linux64, build the graphical `disvm-editor` package and select
+menu 8 or `--launch desktop`. Its installed `run-desktop-ide.sh` runs the
+ordinary DisVM and FlashVM player processes. DisVM starts the companion and
+passes it one end of a private socket pair. Both retire when the IDE exits.
+
+```sh
+python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop --document "example.b"
+sh out/disvm-editor/run-desktop-ide.sh --jit --new "drawing.svg"
+```
+
+The launcher uses the selected file's directory as the live workspace. With
+no selected file it uses the current directory. The installed modules, font
+and SWF live in the read-only `/ide-assets` mount. FlashVM reads the font
+across the same StyxRPC connection. `--no-jit` is the launcher default.
+For deterministic local probes, use `--headless --capture frame.ppm`.
+The legacy embedded renderer remains available through `run-desktop-local.sh`.
 
 ## Verified paired path
 
@@ -14,7 +27,7 @@ With the terminal SDK, DisVM also builds `desktop-paired.dis`. Run it with the
 module directory as the working directory, a presentation `desktop-view.swf`
 in that directory, and the player's endpoint mounted at `/rpc`. The Limbo
 launcher uploads the movie through `/rpc/.upload`, writes `start` to
-`/rpc/.state` and enters `DesktopIDE.init()` on the same owner. The real
+`/rpc/.state` and enters `DesktopIDE.initpaired()` on the same owner. The real
 `$Unibus.attach` then carries scene and input frames in both directions on
 the existing libstyxrpc session.
 
@@ -218,8 +231,7 @@ handles, the untouched hole, and the visible gap.
 Use `--sweep` to check the 40 ms threshold, short jitter, a closed gesture's
 cubic corners and empty center, and one Undo and Redo before saving the SVG.
 
-Multiple touch contacts and vector editing overlays still need paired
-integration. Menu 8 currently starts the installed graphical runtime.
+Multiple touch contacts and vector editing overlays still need paired integration.
 
 [Limbo launcher](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop-paired.b) ·
 [Desktop controller](https://github.com/bhgv/flashVM/blob/master/ide/dis/app/desktop.b) ·

@@ -458,6 +458,14 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
             args+=("-DDVM_RUNTIME_TESTS=$tests" "-DDVM_LEGACY_IMAGE=")
             args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
             if [[ "$project" == disvm-editor ]]; then
+                if [[ "$player" == ON && $(uname -s) == Linux && $(getconf LONG_BIT) == 64 ]]; then
+                    source "$ROOT/tools/build-paired-sdk.sh"
+                    build_paired_sdk
+                    args+=("-DDVM_TERMINAL_LAUNCH_SDK=$build_root/paired-native"
+                        "-DDVM_PAIRED_PLAYER_BIN=$build_root/paired-flashvm/flashvm_styx_player")
+                else
+                    args+=("-DDVM_PAIRED_PLAYER_BIN=")
+                fi
                 # Reuse the AS2 compiler product; build it first when only the IDE was requested.
                 if has compilers; then
                     as_view_compiler="$build_root/compilers/as2/view/as2_viewc"

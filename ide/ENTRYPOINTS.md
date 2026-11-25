@@ -10,7 +10,7 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 
 | Пункт / Entry | Команда в установленном пакете / Installed command | Назначение / Purpose |
 | --- | --- | --- |
-| 8 / desktop | `sh run-desktop-ide.sh` | Несколько MovieClip-окон, миниатюры, перемещение, мышиная каретка/выделение, F7/F8, Help, ленивая подсветка Limbo/AS |
+| 8 / desktop | `sh run-desktop-ide.sh` | Парная IDE на Limbo и ActionScript. Два штатных процесса связаны локальным StyxRPC |
 | 9 / editor | `sh run-ide.sh` | Прежний одиночный графический редактор с его отдельными интеграциями |
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
@@ -21,8 +21,8 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 
 Пункты 10/11/12 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
 Dis-модули и завершаются после PASS; это не макеты GUI. Оконные launcher-скрипты
-имеются только в `disvm-editor`. Для физического окна требуется сборка с SDL2.
-Явный `--no-player` даёт headless-вариант для replay, а не окно рабочего стола.
+поставляются в пакете `disvm-editor`. Пункт 8 доступен в графической сборке Linux64
+с SDL2. Сборка `--no-player` оставляет `run-desktop-local.sh` для прежнего replay.
 
 Контроллер из пункта 8 также собирается для обычного DisVM. Статус
 двухпроцессного запуска и проверка правки с сохранением описаны отдельно.
@@ -44,8 +44,8 @@ python3 build-menu.py --projects disvm-runtime --backend cmake --launch pointer
 показывает установленные launcher-скрипты. Отсутствующий общий `run-checks.sh` больше
 не скрывает самостоятельные приложения.
 
-Шрифт Noto Sans Mono/OFL, размер 11, поставляется с пакетом. Искать его вручную не
-нужно; прежний явный `FVM_EDITOR_FONT` остаётся необязательным override. Нативные
+Шрифт Noto Sans Mono/OFL поставляется с пакетом. Парная IDE загружает его через VFS.
+Пункт 9 поддерживает необязательный `FVM_EDITOR_FONT`. Нативные
 скрипты запуска и приложения не требуют Python, внешнего emu или CLI-компилятора.
 Python/Bash/CMake — инструменты сборки из исходников.
 
@@ -54,14 +54,15 @@ Python/Bash/CMake — инструменты сборки из исходник�
 
 ## English
 
-Post-build menu **8** now launches the actual multi-window MovieClip desktop;
-**9** keeps the separate older single-editor application. The old menu routed 8 to
-`run-ide.sh` and never discovered `run-desktop-ide.sh`. The standalone desktop and
+Post-build menu **8** launches the paired Limbo and ActionScript desktop with
+the ordinary DisVM and FlashVM player executables on Linux64 with SDL2.
+**9** keeps the older single-editor application. The paired desktop and
 portable lifecycle/pointer/clipboard clients are now listed in CLI and interactive results.
 A missing general checker no longer suppresses installed application launches.
 Use `--launch desktop|editor|lifecycle|pointer|clipboard` after a successful source build;
 `--document` is a literal path for the two graphical entries. Source builds need
-CMake for these components. Physical windows need SDL2; `--no-player` is headless.
+CMake for these components. A `--no-player` build keeps `run-desktop-local.sh`
+for embedded-renderer replay.
 
 The desktop still has bounded visible text and drag selection within the body.
 System clipboard, off-body capture/autoscroll, session persistence and attached Run/Debug
