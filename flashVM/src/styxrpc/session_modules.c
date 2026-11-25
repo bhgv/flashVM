@@ -150,5 +150,9 @@ FVM_Result fvm_styxrpc_module_members(FVM_Context *context, FVM_Object *object, 
     {
         status = fvm_object_define_method_rooted(context, object, "intRefBytes", fvm_styxrpc_int_ref_bytes, binding, NULL);
     }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "intRefChannel", fvm_styxrpc_int_ref_channel, binding, NULL);
+    }
     return status;
 }

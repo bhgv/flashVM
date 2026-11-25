@@ -28,5 +28,14 @@ through a byte channel on the same session. Limbo's
 `write(value)` and `payload()`. Its adapter serializes cursor positioning
 and I/O on the held fid. Pass the issuer's mount as `root`.
 
-Ordinary `ch.send(ref alias)` transfers references in AS's local FIFO.
-Network channels use the explicit byte adapter at this stage.
+In AS, `var refs = styxrpc.intRefChannel(wire)` wraps a dedicated byte
+carrier with `send(bytes)` and `recv()`. Then `refs.send(ref alias)`
+encodes the issued reference and `var next = refs.recv()` binds the new
+name. If the carrier returns undefined, the wrapper preserves it. The
+caller selects the carrier for the same issuer session used to open cells.
+
+In Limbo, `refs->channel(root, wire)` returns a port with `send(cell)` and
+`recv()`. Send requires the same issuer mount name. Receive waits using the
+ordinary Limbo channel operation.
+
+Both wrappers forward references the issuer has already published.

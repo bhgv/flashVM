@@ -3,6 +3,7 @@
  * RU: Проверить сетевой дескриптор Int32 как обычную переменную ActionScript.
  */
 #include "flashvm/execution.h"
+#include "flashvm/extensions.h"
 #include "flashvm/gc.h"
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/variable_ref.h"
@@ -45,6 +46,7 @@ static void *serve(void *server)
 static int script(FVM_Context *context, StyxClient *client, StyxRpcIntRef *reference, FVM_StyxRpcSession *binding)
 {
     FVM_Value object, args, values[STYXRPC_INT_REF_SIZE], ref, result;
+    FVM_Value namespace_value, carrier, wrapper;
     unsigned char bytes[STYXRPC_INT_REF_SIZE];
     if (!styxrpc_int_ref_encode(reference, bytes, sizeof(bytes)) ||
         fvm_styxrpc_session_bind(context, binding, client, NULL, &object) != FVM_OK ||
@@ -56,12 +58,19 @@ static int script(FVM_Context *context, StyxClient *client, StyxRpcIntRef *refer
     {
         fvm_value_number(values + i, bytes[i]);
     }
-    int ok = fvm_exec_literal_array(context, sizeof(bytes), values, &args) == FVM_OK &&
+    fvm_value_number(&result, 1);
+    int ok = fvm_extensions_install(context) == FVM_OK &&
+        fvm_get_global(context, "channel", &namespace_value) == FVM_OK &&
+        fvm_object_call(context, namespace_value.object, "create", 1, &result, &carrier) == FVM_OK &&
+        fvm_object_call(context, object.object, "intRefChannel", 1, &carrier, &wrapper) == FVM_OK &&
+        fvm_set_global(context, "refChannel", &wrapper) == FVM_OK &&
+        fvm_exec_literal_array(context, sizeof(bytes), values, &args) == FVM_OK &&
         fvm_set_global(context, "wire", &args) == FVM_OK &&
         fvm_object_call(context, object.object, "acceptIntRef", 1, &args, &ref) == FVM_OK &&
         fvm_set_global(context, "first", &ref) == FVM_OK &&
-        fvm_object_call(context, object.object, "intRefBytes", 1, &ref, &args) == FVM_OK &&
-        fvm_object_call(context, object.object, "acceptIntRef", 1, &args, &ref) == FVM_OK &&
+        fvm_object_call(context, wrapper.object, "send", 1, &ref, &result) == FVM_OK &&
+        result.type == FVM_VALUE_BOOLEAN && result.boolean &&
+        fvm_object_call(context, wrapper.object, "recv", 0, NULL, &ref) == FVM_OK &&
         fvm_set_global(context, "second", &ref) == FVM_OK &&
         fvm_gc_collect(context, NULL) == FVM_OK &&
         fvm_get_global(context, "first", &result) == FVM_OK &&

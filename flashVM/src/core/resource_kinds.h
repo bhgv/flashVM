@@ -116,4 +116,5 @@
 #define FVM_RESOURCE_VARIABLE_REF 62 /* Private operand retaining an AS storage owner. */
 #define FVM_RESOURCE_REF_QUEUE 63 /* Same-context reference FIFO. */
 #define FVM_RESOURCE_STYXRPC_INT_REF 64 /* Private issuer identity of an imported Int32 cell. */
+#define FVM_RESOURCE_STYXRPC_REF_CHANNEL 65 /* Explicit reference carrier holding an AS byte channel. */
 #endif

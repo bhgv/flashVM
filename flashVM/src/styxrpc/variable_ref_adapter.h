@@ -25,4 +25,7 @@ FVM_Result fvm_styxrpc_remember_int_ref(FVM_Object *, struct StyxClient *, const
 
 /* [GC:] EN/RU: Encode a ref on its issuer session. / Закодировать ссылку в её сессии. */
 FVM_Result fvm_styxrpc_int_ref_bytes(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
+/* [GC:] EN: Wrap a byte carrier explicitly selected for this issuer session.
+ * RU: Обернуть байтовый канал, явно выбранный для сессии владельца. */
+FVM_Result fvm_styxrpc_int_ref_channel(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
 #endif

@@ -14,7 +14,7 @@ init()
 {
     sys := load Sys Sys->PATH;
     refs := load Styxintref Styxintref->PATH;
-    Cell: import refs;
+    Cell, Channel: import refs;
     refs->init();
     bytes := array[8] of byte;
     fd := sys->open("reference.bin", Sys->OREAD);
@@ -23,9 +23,10 @@ init()
     }
     messages := chan[2] of array of byte;
     messages <-= bytes;
-    first := refs->accept("/rpc", <-messages);
-    messages <-= first.payload();
-    second := refs->accept("/rpc", <-messages);
+    port := refs->channel("/rpc", messages);
+    first := port.recv();
+    port.send(first);
+    second := port.recv();
     if (first.read() != 41) {
         raise "initial reference value differs";
     }

@@ -46,7 +46,7 @@ accept(root: string, bytes: array of byte): ref Cell
     gate <-= 1;
     wire := array[len bytes] of byte;
     wire[0:] = bytes;
-    return ref Cell(fd, gate, wire, int bytes[3]);
+    return ref Cell(fd, gate, root, wire, int bytes[3]);
 }
 
 
@@ -102,4 +102,33 @@ Cell.write(cell: self ref Cell, value: int)
     if (count != len bytes) {
         raise sys->sprint("write StyxRPC Int32 reference: %r");
     }
+}
+
+
+# EN/RU: See styxintref.m. / См. styxintref.m.
+channel(root: string, wire: chan of array of byte): ref Channel
+{
+    if (root == nil || root[0] != '/' || wire == nil) {
+        raise "invalid StyxRPC reference channel";
+    }
+    return ref Channel(root, wire);
+}
+
+
+# EN: Send an existing reference on its declared issuer mount.
+# RU: Отправить выданную ссылку в объявленном подключении владельца.
+Channel.send(port: self ref Channel, cell: ref Cell)
+{
+    if (cell == nil || cell.root != port.root) {
+        raise "StyxRPC reference channel issuer mismatch";
+    }
+    port.wire <-= cell.payload();
+}
+
+
+# EN: Receive and immediately bind the next issued reference.
+# RU: Принять и сразу привязать следующую выданную ссылку.
+Channel.recv(port: self ref Channel): ref Cell
+{
+    return accept(port.root, <-port.wire);
 }
