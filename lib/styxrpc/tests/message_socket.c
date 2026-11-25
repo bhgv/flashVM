@@ -213,7 +213,7 @@ static int exchange(StyxClient *client)
         styxrpc_message_send(other, "app.sample", 2, NULL, 0) == STYXRPC_INVALID &&
         call_increment(client) && read_echo(port, &receiver);
     styxrpc_vfs_close(read_only, 0);
-    styxrpc_messages_close(other);
+    styxrpc_messages_abandon(other);
     styxrpc_messages_close(port);
     return good;
 }

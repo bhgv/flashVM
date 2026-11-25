@@ -14,6 +14,7 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/channel_local_state.c src/styxrpc/channel_publication.c src/styxrpc/channel_mailbox.c
         src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
         src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c src/styxrpc/session_calls.c
+        src/styxrpc/session_modules.c src/styxrpc/session_messages.c
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/object_image.c src/styxrpc/module_import.c
         src/styxrpc/playback.c src/styxrpc/player_services.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c ports/styxrpc_stats_port.c)
     target_link_libraries(flashvm_styxrpc PUBLIC flashvm StyxRpc::launch StyxRpc::serve)

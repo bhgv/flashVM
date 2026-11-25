@@ -4,6 +4,7 @@
  */
 #include "session_methods.h"
 #include "flashvm/gc_roots.h"
+#include <stdio.h>
 #include <string.h>
 
 
@@ -37,6 +38,42 @@ int fvm_styxrpc_number(const FVM_Value *value, uint64_t limit, uint64_t *result)
     }
     *result = (uint64_t)value->number;
     return (double)*result == value->number;
+}
+
+
+/* [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
+FVM_Result fvm_styxrpc_fields(FVM_Context *context, FVM_GCRootScope *roots, const FVM_Value *descriptor,
+    FVM_Value *fields, unsigned capacity, uint64_t *count)
+{
+    FVM_Value length;
+    FVM_Result status;
+    unsigned i;
+    if (descriptor->type != FVM_VALUE_OBJECT || !descriptor->object)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    status = fvm_object_get(context, descriptor->object, "length", &length);
+    if (status != FVM_OK || !fvm_styxrpc_number(&length, capacity, count))
+    {
+        return status != FVM_OK ? status : FVM_INVALID_ARGUMENT;
+    }
+    for (i = 0; i < *count && status == FVM_OK; ++i)
+    {
+        char index[11];
+        int own;
+        sprintf(index, "%u", i);
+        status = fvm_object_has_own(context, descriptor->object, index, &own);
+        if (status != FVM_OK || !own)
+        {
+            return status != FVM_OK ? status : FVM_INVALID_ARGUMENT;
+        }
+        status = fvm_object_get(context, descriptor->object, index, fields + i);
+        if (status == FVM_OK)
+        {
+            status = fvm_gc_roots_add(roots, fields + i);
+        }
+    }
+    return status;
 }
 
 
@@ -77,6 +114,14 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
     if (status == FVM_OK)
     {
         status = fvm_styxrpc_call_members(context, created, binding);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_styxrpc_module_members(context, created, binding);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_styxrpc_message_members(context, created, binding);
     }
     if (status == FVM_OK)
     {

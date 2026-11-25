@@ -98,7 +98,7 @@ to wait for upload through the peer connection. Each player retires its
 session when the connection closes. To use an externally supplied transport,
 substitute `--fd FD` for each TCP endpoint.
 
-Each movie can [publish an object](#publishing-a-movie-object) and use
+Each movie can [publish an object](#publishing-and-using-movie-modules) and use
 [`styxrpc.callInt`](STYX_RPC_SESSION_CALL_INT.md) to call a published Int32
 method on the other movie. The two films own separate heaps. The session
 mount in this mode contains the other FlashVM's playback and published image.
@@ -125,19 +125,15 @@ turn. The callback runs on the FlashVM owner alongside the movie clock.
 The [IDE terminal contract](../../ide/TERMINAL-BIDIR.md) shows how to pass
 this object to the existing ActionScript adapter.
 
-## Publishing a movie object
+## Publishing and using movie modules
 
-Call `styxrpc.publishObject("view.dis", receiver, ["key", "onKey"])`. DisVM
-loads the image with ordinary `load` at `/flash/mounted/view.dis`. In this
-example Limbo declares `key: fn(code: int): int` and AS implements
-`onKey`. Supply up to eight method descriptors. A managed method takes five
-fields, for example `["label", "describe", 0xac26a778, "(s)", "((fs))"]`
-for `fn(string): (real, string)`. Use the compiled Dis signature and
-the ordinary libstyxrpc codec for shaped values.
+A movie can expose several typed callbacks and live Int32 properties on a
+single Dis-shaped image. See [publishObject](STYX_RPC_PUBLISH_OBJECT.md).
+Use [loadModule](STYX_RPC_LOAD_MODULE.md) and
+[intVariable](STYX_RPC_INT_VARIABLE.md) on the attached session. For a custom
+UniBus exchange, use [openMessages](STYX_RPC_OPEN_MESSAGES.md).
 
-A movie can publish one object image. A replacement can publish a fresh image
-with its own fids. Fids of the withdrawn image return an error. Embedders pass
-`fvm_styxrpc_playback_slot(playback)` as the tree context for
+Embedders pass `fvm_styxrpc_playback_slot(playback)` as the tree context for
 `styxrpc_module_slot_tree`.
 
 ## Run acceptance

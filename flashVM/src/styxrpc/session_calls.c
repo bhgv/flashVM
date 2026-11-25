@@ -9,9 +9,6 @@
 #include "styxrpc/vfs_client.h"
 #include <string.h>
 
-#define FVM_SESSION_CALL_WAIT_MS 1000U /* Reply polling budget after submission. */
-
-
 /* [ASINC] EN: args are module path, export name and exact int32. Use one
  * synchronous request on the borrowed session and propagate its exception.
  * RU: args содержит путь модуля, имя экспорта и точный int32. Выполнить один

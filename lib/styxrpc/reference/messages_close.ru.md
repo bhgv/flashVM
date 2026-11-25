@@ -18,3 +18,5 @@ void styxrpc_messages_close(StyxRpcMessagePort *port);
 связи, вызывая `closed` по одному разу на порт, если задан хук.
 
 [Настройка обмена сообщениями](custom_messages.ru.md) · [Проверка на сокете](../tests/message_socket.c)
+
+Для закрытия с отложенным I/O используйте [styxrpc_messages_abandon](messages_abandon.ru.md).

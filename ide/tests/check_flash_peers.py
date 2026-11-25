@@ -10,26 +10,34 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]  # Repository root / Корень репозитория.
 sys.path.insert(0, str(ROOT / "lib/styxrpc/tests/flashvm"))
-from run import listener_port, stream_pair
+from run import compile_image, listener_port, paired_exchange, stream_pair
 
 
-# EN: Compile the role's AS source with project AS2, FIR and linker.
-# RU: Собрать исходник роли через AS2, FIR и линкер проекта.
-def compile_role(args, directory, role):
-    name = f"peer-{role}"
+# EN: Compile one named AS unit through the project AS2 and FIR compilers.
+# RU: Собрать именованный модуль AS компиляторами проекта AS2 и FIR.
+def compile_unit(args, directory, name):
     source = ROOT / "flashVM/tests/styxrpc" / f"{name}.as"
     fir = directory / f"{name}.fir"
     obj = directory / f"{name}.swo"
-    swf = directory / f"{name}.swf"
     for command in ((args.as2, source, fir), (args.fir / "fir1", "check", fir),
                     (args.fir / "fir1", "object", fir, obj)):
         subprocess.run(command, check=True, timeout=20)
-    objects = [obj]
-    if role == "caller":
+    return obj
+
+
+# EN: Link the role's entry and callback units into one stand-alone movie.
+# RU: Слинковать точку входа роли и колбэки в самостоятельный фильм.
+def compile_role(args, directory, role):
+    swf = directory / f"peer-{role}.swf"
+    objects = [compile_unit(args, directory, f"peer-{role}")]
+    if role in ("caller", "dis-caller"):
         report = directory / "peer-report.swo"
-        subprocess.run((args.fir / "fir1", "object", source.with_name("peer-report.fir"), report),
-                       check=True, timeout=20)
+        source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
+        subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
         objects.append(report)
+    if role == "caller":
+        objects.extend((compile_unit(args, directory, "peer-credit"),
+                        compile_unit(args, directory, "peer-frame")))
     subprocess.run((args.swl, "link", swf, *objects), check=True, timeout=20)
     return swf
 
@@ -73,7 +81,7 @@ def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
         try:
             caller, provider = start_pair(args, directory, caller_options, provider_options, c_log, p_log, processes)
             cutoff = time.monotonic() + 15
-            while "PASS FlashVM peer replied 12" not in caller_log.read_text():
+            while "PASS StyxRPC script contract" not in caller_log.read_text():
                 if caller.poll() is not None or provider.poll() is not None or time.monotonic() >= cutoff:
                     raise RuntimeError(f"{caller_lane} {mode}\ncaller: {caller_log.read_text()}\n"
                                        f"provider: {provider_log.read_text()}")
@@ -88,7 +96,51 @@ def exchange(args, directory, caller_swf, provider_swf, mode, reverse):
                 if process.poll() is None:
                     process.kill()
                 process.communicate()
-    print(f"PASS {mode} {caller_lane} caller, exact Int32 and peer retirement")
+    print(f"PASS {mode} {caller_lane} caller, checked imports, variable, UniBus and peer retirement")
+
+
+# EN: Use stock DisVM to load the AS movie and call its image through the mounted session.
+# RU: Загрузить фильм AS штатной DisVM и вызвать его образ через смонтированную сессию.
+def dis_calls_flash(args, directory, mode):
+    paired_exchange(directory, lambda connection: [args.player, *connection, mode],
+                    lambda connection: [args.runtime, *connection, "--at", "/rpc", "--", "--native-spawn",
+                                        mode, "peer-consumer.dis"],
+                    "PASS DisVM called the AS module and updated its live variable", tcp=args.tcp)
+
+
+# EN: Wait for the AVM1 assertion trace, then end the player and collect the DisVM log.
+# RU: Дождаться подтверждения AVM1, затем остановить плеер и собрать вывод DisVM.
+def flash_calls_dis(args, directory, movie, mode):
+    options = ("--export", "limbo.dis", "limbo.dis", "next", "--", "--native-spawn", mode, "dispatcher.dis")
+    # EN/RU: Exercise the stock listening CLI, including the reverse attach.
+    # Проверить штатный TCP-слушатель вместе с встречным подключением.
+    with subprocess.Popen((args.runtime, "--styx-library-serve-tcp", "127.0.0.1", "0", *options),
+                          cwd=directory, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as provider:
+        try:
+            port = listener_port(provider.stdout)
+            command = (args.player, "--connect", "127.0.0.1", port, "--peer", "reverse", "--movie", movie, mode)
+            with (directory / "dis-caller.log").open("w+") as log, subprocess.Popen(
+                    command, cwd=directory, stdout=log, stderr=subprocess.STDOUT) as caller:
+                try:
+                    cutoff = time.monotonic() + 10
+                    while True:
+                        log.seek(0)
+                        output = log.read()
+                        if "PASS StyxRPC script contract" in output:
+                            break
+                        if caller.poll() is not None or provider.poll() is not None or time.monotonic() >= cutoff:
+                            raise RuntimeError(f"FlashVM call to DisVM {mode}: {output}")
+                        time.sleep(0.02)
+                finally:
+                    if caller.poll() is None:
+                        caller.terminate()
+            output, _ = provider.communicate(timeout=5)
+            if provider.returncode:
+                raise RuntimeError(f"DisVM provider failed: {output}")
+        finally:
+            if provider.poll() is None:
+                provider.kill()
+    print(f"PASS {mode} FlashVM loaded and called a compiled Dis export")
 
 
 # EN: Exercise both service lane assignments in each execution mode.
@@ -97,18 +149,32 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("player", "as2", "fir", "swl"):
         parser.add_argument("--" + name, type=lambda path: Path(path).resolve(), required=True)
+    for name in ("runtime", "limbo"):
+        parser.add_argument("--" + name, type=lambda path: Path(path).resolve())
     parser.add_argument("--tcp", action="store_true", help="use a direct TCP loopback connection")
     parser.add_argument("--ipv6", action="store_true", help="use ::1 for the TCP loopback test")
     args = parser.parse_args()
     if args.ipv6 and not args.tcp:
         parser.error("--ipv6 requires --tcp")
+    if bool(args.runtime) != bool(args.limbo):
+        parser.error("--runtime and --limbo are required together")
+    args.source = ROOT / "disVM"
     with TemporaryDirectory(prefix="flashvm-peer-") as scratch:
         directory = Path(scratch)
         caller = compile_role(args, directory, "caller")
         provider = compile_role(args, directory, "provider")
+        if args.runtime:
+            tests = ROOT / "lib/styxrpc/tests/flashvm"
+            compile_image(args, directory, tests / "peer_consumer.b", "peer-consumer.dis")
+            compile_image(args, directory, tests / "limbo.b", "limbo.dis")
+            compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
+            dis_caller = compile_role(args, directory, "dis-caller")
         for mode in ("--no-jit", "--jit"):
             for reverse in (False, True):
                 exchange(args, directory, caller, provider, mode, reverse)
+            if args.runtime:
+                dis_calls_flash(args, directory, mode)
+                flash_calls_dis(args, directory, dis_caller, mode)
 
 
 if __name__ == "__main__":

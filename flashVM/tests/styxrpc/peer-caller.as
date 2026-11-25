@@ -1,20 +1,65 @@
 // Copyright (c) 2026 bhgv
-// EN: Wait for the movie image and call it from another FlashVM.
-// RU: Дождаться образа фильма и вызвать его из другой FlashVM.
+// EN: Import live module methods and exchange registered messages with a peer.
+// RU: Импортировать методы живого модуля и обменяться сообщениями с другой FlashVM.
 
 
-// EN: Check publication, then issue one exact signed application call.
-// RU: Проверить публикацию, затем сделать один вызов со знаковым аргументом.
+// EN: Verify connection, call exact exports and dispatch the registered UniBus reply.
+// RU: Проверить соединение, вызвать точные экспорты и доставить ответ UniBus.
 function onEnterFrame() {
-    if (!peerDone) {
+    if (!peerReady) {
         peerFile = styxrpc.stat("mounted/peer.dis");
         peerStatus = peerFile.join(",");
         if (!peerStatus.indexOf("0,")) {
-            peerDone = true;
-            peerResult = styxrpc.callInt("mounted/peer.dis", "magnitude", 0 - 12);
-            peerResultText = "[" + peerResult + "]";
-            if (!peerResultText.indexOf("[12]")) {
-                peerReported = _root.reportPeerResult();
+            peerIntImportText = "magnitude";
+            peerIntImport = peerIntImportText.split(",");
+            peerRealImportText = "realMagnitude,managed";
+            peerRealImport = peerRealImportText.split(",");
+            peerRealLength = peerRealImport.push(1147267322 + 2000000000, "(fs)", "(f)");
+            peerGraphImportText = "graphMagnitude,graph";
+            peerGraphImport = peerGraphImportText.split(",");
+            peerGraphLength = peerGraphImport.push(663077686, "(fr[r[i]])", "(f)");
+            peerModule = styxrpc.loadModule("/mounted/peer.dis", peerIntImport, peerRealImport, peerGraphImport);
+            peerResult = peerModule.magnitude(0 - 12);
+            peerReal = peerModule.realMagnitude(0 - 25 / 2, "signed");
+            peerEmptyText = "";
+            peerLeaf = peerEmptyText.split("");
+            peerBox = peerEmptyText.split("");
+            peerLeafLength = peerLeaf.push(43);
+            peerBoxLength = peerBox.push(peerLeaf);
+            peerGraph = peerModule.graphMagnitude(0 - 29 / 2, peerBox);
+            peerOldCall = styxrpc.callInt("mounted/peer.dis", "magnitude", 0 - 8);
+            peerVar = styxrpc.intVariable("/mounted/peer.dis/.var/count", true);
+            peerVar.value = 77;
+            peerHidden = styxrpc.stat("mounted/peer.dis/.var/count");
+            peerHiddenText = peerHidden.join(",");
+            peerCreditText = "_inferno.credit";
+            peerCredit = peerCreditText.split(",");
+            peerCreditLength = peerCredit.push(1, 47, "onPeerCredit");
+            peerFrameText = "_inferno.fvd1";
+            peerFrame = peerFrameText.split(",");
+            peerFrameLength = peerFrame.push(1, 0, "onPeerFrame");
+            peerMessages = styxrpc.openMessages(".unibus", peerCredit, peerFrame);
+            peerEmptyPayloadText = "";
+            peerEmptyPayload = peerEmptyPayloadText.split("");
+            peerQueued = peerMessages.send("_inferno.credit", 1, peerEmptyPayload);
+            peerReady = true;
+        }
+    }
+    if (peerReady) {
+        if (!peerDone) {
+            peerReceived = peerMessages.pump(_root);
+            if (peerReceivedFrame) {
+                if (peerReceivedCredit) {
+                    peerResultText = "[" + peerResult + "," + peerReal + "," + peerGraph + "," + peerOldCall + "," + peerQueued + "]";
+                    if (!peerHiddenText.indexOf("1,")) {
+                        if (!peerResultText.indexOf("[12,12.5,14.5,8,0]")) {
+                            peerClosed = peerMessages.close();
+                            peerClosedAgain = peerMessages.close();
+                            peerReported = _root.reportPeerResult();
+                            peerDone = true;
+                        }
+                    }
+                }
             }
         }
     }

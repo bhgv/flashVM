@@ -18,3 +18,5 @@ handles are borrowed from the dispatcher. The server consumes them on
 clunk or disconnect, with one `closed` hook per opened port if present.
 
 [Custom message setup](custom_messages.md) · [Worked socket example](../tests/message_socket.c)
+
+Use [styxrpc_messages_abandon](messages_abandon.md) when cleanup requires deferred I/O.

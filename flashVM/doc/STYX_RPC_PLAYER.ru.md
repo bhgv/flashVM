@@ -127,21 +127,16 @@ fvd1 и возвращает true, когда кадр поставлен в о�
 [Контракт терминала IDE](../../ide/TERMINAL-BIDIR.md) описывает, как
 передать этот объект существующему адаптеру ActionScript.
 
-## Публикация объекта фильма
+## Публикация и использование модулей фильма
 
-Вызовите `styxrpc.publishObject("view.dis", receiver, ["key", "onKey"])`.
-DisVM загружает образ обычным `load` по пути `/flash/mounted/view.dis`.
-В этом примере описание Limbo содержит `key: fn(code: int): int`, а
-метод AS называется `onKey`. Можно передать до восьми описателей. Для
-управляемого метода передайте пять полей, например
-`["label", "describe", 0xac26a778, "(s)", "((fs))"]` для
-`fn(string): (real, string)`. Сигнатура должна совпадать с собранным Dis,
-а структурированные значения передаются штатным кодеком libstyxrpc.
+Один фильм может выдать несколько типизированных колбэков и живых свойств
+Int32 через образ модуля Dis. См. [publishObject](STYX_RPC_PUBLISH_OBJECT.ru.md).
+Используйте [loadModule](STYX_RPC_LOAD_MODULE.ru.md) и
+[intVariable](STYX_RPC_INT_VARIABLE.ru.md) на подключённой сессии. Для
+пользовательского обмена UniBus есть [openMessages](STYX_RPC_OPEN_MESSAGES.ru.md).
 
-Фильм может опубликовать один образ объекта. Следующий фильм может
-опубликовать новый образ со своими fid. Старые fid отозванного образа возвращают ошибку. Для
-встраивания передайте `fvm_styxrpc_playback_slot(playback)` как context
-сервера `styxrpc_module_slot_tree`.
+Хост передаёт `fvm_styxrpc_playback_slot(playback)` как контекст
+`styxrpc_module_slot_tree`.
 
 ## Нативная проверка
 

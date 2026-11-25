@@ -63,14 +63,15 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
 
 /* EN: Snapshot exact own byte properties before any native write.
  * RU: Снять точные собственные байтовые свойства до нативной записи. */
-static FVM_Result byte_array(FVM_Context *context, const FVM_Value *value, unsigned char *bytes, size_t *size)
+FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsigned char *bytes,
+    size_t capacity, size_t *size)
 {
     FVM_Value property;
     uint64_t count, byte;
     unsigned i;
     FVM_Result result;
     int own;
-    if (value->type != FVM_VALUE_OBJECT)
+    if (value->type != FVM_VALUE_OBJECT || !value->object)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -79,7 +80,7 @@ static FVM_Result byte_array(FVM_Context *context, const FVM_Value *value, unsig
     {
         return result;
     }
-    if (!fvm_styxrpc_number(&property, FVM_STYXRPC_SCRIPT_BYTES, &count))
+    if (!fvm_styxrpc_number(&property, capacity, &count))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -127,7 +128,7 @@ static FVM_Result write_file(FVM_Context *context, FVM_Object *self, unsigned ar
     {
         return FVM_INVALID_ARGUMENT;
     }
-    status = byte_array(context, args + 2, bytes, &size);
+    status = fvm_styxrpc_bytes(context, args + 2, bytes, sizeof(bytes), &size);
     if (status != FVM_OK)
     {
         return status;

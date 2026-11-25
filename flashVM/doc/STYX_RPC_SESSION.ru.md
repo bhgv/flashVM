@@ -32,6 +32,9 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 | `read(path, offset, count)` | `[status, bytes]`. Плотный Array с подтверждённым префиксом до 2048 байтов. EOF даёт успешный короткий результат. |
 | `write(path, offset, bytes)` | `[status, confirmedCount]`. Принимает до 2048 собственных индексных свойств со значениями 0–255. Геттеры могут выполняться до отправки. Успешный результат может означать короткую запись. |
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.ru.md) | Проверенный результат `fn(int): int`. |
+| [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.ru.md) | Проверить и загрузить методы. |
+| [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.ru.md) | Открыть прокси живой переменной. |
+| [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.ru.md) | Открыть именованный порт UniBus. |
 
 Одновременно открываются до восьми запусков. Положительные целые токены
 точно представимы в AS и не переиспользуются в пределах привязки.

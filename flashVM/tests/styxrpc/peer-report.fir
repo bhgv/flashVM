@@ -10,7 +10,7 @@ source_entry avm1_method @reportPeerResult
 // EN: Emit the caller's checked result. / RU: Вывести проверенный результат.
 func @main() -> void {
 ^entry:
-    %message: string = const.string "PASS FlashVM peer replied 12"
+    %message: string = const.string "PASS StyxRPC script contract"
     trace %message
     return
 }

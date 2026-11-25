@@ -104,16 +104,31 @@ StyxRpcStatus styxrpc_messages_pump(StyxRpcMessagePort *port)
 }
 
 
-/* EN/RU: See messages.h. / См. messages.h. */
-void styxrpc_messages_close(StyxRpcMessagePort *port)
+/* EN: Release an idle client port and clunk its fid now or on the next session operation.
+ * RU: Освободить свободный клиентский порт и закрыть fid сразу или при следующей операции сессии. */
+static void close_port(StyxRpcMessagePort *port, int deferred)
 {
     if (port && port->client)
     {
         ClientMessagePort *opened = (ClientMessagePort *)port;
         if (!opened->pumping)
         {
-            styxrpc_vfs_close(opened->file, 0);
+            styxrpc_vfs_close(opened->file, deferred);
             free(opened);
         }
     }
+}
+
+
+/* EN/RU: See messages.h. / См. messages.h. */
+void styxrpc_messages_close(StyxRpcMessagePort *port)
+{
+    close_port(port, 0);
+}
+
+
+/* EN/RU: See messages.h. / См. messages.h. */
+void styxrpc_messages_abandon(StyxRpcMessagePort *port)
+{
+    close_port(port, 1);
 }

@@ -115,6 +115,13 @@ StyxRpcStatus styxrpc_messages_pump(StyxRpcMessagePort *port);
  * Вызывать в потоке владельца вне колбэков этого порта/сессии. */
 void styxrpc_messages_close(StyxRpcMessagePort *port);
 
+
+/* EN: Dispose of an idle client port without transport I/O. The session still
+ * owns the deferred clunk and must outlive this call. NULL is harmless.
+ * RU: Освободить свободный клиентский порт без транспортного I/O. Сессия
+ * владеет отложенным clunk и должна пережить вызов. NULL допустим. */
+void styxrpc_messages_abandon(StyxRpcMessagePort *port);
+
 #ifdef __cplusplus
 }
 #endif

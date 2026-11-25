@@ -20,72 +20,94 @@ struct FVM_StyxRpcPlayerServices
 };
 
 
-/* [GC:] EN: Parse one fixed-size scalar or managed method descriptor.
- * RU: Прочитать один описатель фиксированного размера для скалярного или управляемого метода. */
-static FVM_Result method_descriptor(FVM_Context *context, const FVM_Value *descriptor,
-    FVM_StyxRpcObjectMethod *method, char *name, char *member)
+typedef struct ObjectDescriptors
 {
-    static const char *const keys[] = {"0", "1", "2", "3", "4"};
-    FVM_Value fields[5];
-    FVM_Value length;
+    FVM_StyxRpcObjectMethod methods[STYXRPC_MAX_EXPORTS];      /* Copied method contracts. */
+    FVM_StyxRpcObjectVariable variables[STYXRPC_MAX_EXPORTS];  /* Copied variable contracts. */
+    char names[2 * STYXRPC_MAX_EXPORTS][STYXRPC_TREE_NAME + 1];   /* Wire names. */
+    char members[2 * STYXRPC_MAX_EXPORTS][STYXRPC_TREE_NAME + 1]; /* Receiver member names. */
+    size_t method_count;   /* Initialized method contracts. */
+    size_t variable_count; /* Initialized variable contracts. */
+} ObjectDescriptors;
+
+
+/* EN: Append one fully decoded variable, retaining names borrowed from descriptors.
+ * RU: Добавить одну декодированную переменную, заимствуя имена из descriptors. */
+static int append_variable(ObjectDescriptors *descriptors, const FVM_Value *fields,
+    const char *name, const char *member)
+{
+    FVM_StyxRpcObjectVariable *variable;
+    char marker[4], mode[3];
+    if (descriptors->variable_count == STYXRPC_MAX_EXPORTS ||
+        !fvm_styxrpc_name(fields + 2, marker, sizeof(marker)) || strcmp(marker, "var") ||
+        !fvm_styxrpc_name(fields + 3, mode, sizeof(mode)) || (strcmp(mode, "ro") && strcmp(mode, "rw")))
+    {
+        return 0;
+    }
+    variable = descriptors->variables + descriptors->variable_count++;
+    variable->name = name;
+    variable->property = member;
+    variable->writable = !strcmp(mode, "rw");
+    return 1;
+}
+
+
+/* EN: Append a scalar, managed or graph contract to descriptors.
+ * RU: Добавить в descriptors скалярный, управляемый или графовый контракт. */
+static int append_method(ObjectDescriptors *descriptors, uint64_t count, const FVM_Value *fields,
+    const char *name, const char *member)
+{
+    FVM_StyxRpcObjectMethod *method;
+    uint64_t signature = STYXRPC_INT_SIGNATURE;
+    char profile[6];
+    if (descriptors->method_count == STYXRPC_MAX_EXPORTS || (count != 2 && count != 5 && count != 6))
+    {
+        return 0;
+    }
+    method = descriptors->methods + descriptors->method_count;
+    if (count == 6 && (!fvm_styxrpc_name(fields + 5, profile, sizeof(profile)) || strcmp(profile, "graph")))
+    {
+        return 0;
+    }
+    if (count > 2 &&
+        (!fvm_styxrpc_number(fields + 2, UINT32_MAX, &signature) || !signature ||
+         !fvm_styxrpc_name(fields + 3, method->schema.arguments, sizeof(method->schema.arguments)) ||
+         !fvm_styxrpc_name(fields + 4, method->schema.result, sizeof(method->schema.result))))
+    {
+        return 0;
+    }
+    method->name = name;
+    method->method = member;
+    method->kind = count == 2 ? STYXRPC_MODULE_INT : count == 5 ? STYXRPC_MODULE_MANAGED : STYXRPC_MODULE_GRAPH;
+    method->signature = (uint32_t)signature;
+    ++descriptors->method_count;
+    return 1;
+}
+
+
+/* [GC:] EN: Decode a method or variable into its own slot, pinning AS field values while inspecting them.
+ * RU: Декодировать метод или переменную в её слот, удерживая поля AS на время проверки. */
+static FVM_Result object_descriptor(FVM_Context *context, const FVM_Value *descriptor,
+    ObjectDescriptors *descriptors, unsigned index)
+{
+    FVM_Value fields[6];
     FVM_GCRootScope *roots;
-    uint64_t count, signature = 0;
-    size_t i;
-    FVM_Result status;
-    if (descriptor->type != FVM_VALUE_OBJECT || !descriptor->object)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    status = fvm_object_get(context, descriptor->object, "length", &length);
+    uint64_t count;
+    char *name = descriptors->names[index];
+    char *member = descriptors->members[index];
+    FVM_Result status = fvm_gc_roots_begin(context, &roots);
     if (status != FVM_OK)
     {
         return status;
     }
-    if (!fvm_styxrpc_number(&length, 5, &count) || (count != 2 && count != 5))
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    status = fvm_gc_roots_begin(context, &roots);
-    if (status != FVM_OK)
-    {
-        return status;
-    }
-    for (i = 0; status == FVM_OK && i < count; ++i)
-    {
-        int own;
-        status = fvm_object_has_own(context, descriptor->object, keys[i], &own);
-        if (status != FVM_OK || !own)
-        {
-            status = status != FVM_OK ? status : FVM_INVALID_ARGUMENT;
-            break;
-        }
-        status = fvm_object_get(context, descriptor->object, keys[i], fields + i);
-        if (status == FVM_OK)
-        {
-            status = fvm_gc_roots_add(roots, fields + i);
-        }
-    }
+    status = fvm_styxrpc_fields(context, roots, descriptor, fields, 6, &count);
     if (status == FVM_OK &&
-        (!fvm_styxrpc_name(fields, name, STYXRPC_TREE_NAME + 1) ||
-         !fvm_styxrpc_name(fields + 1, member, STYXRPC_TREE_NAME + 1)))
+        (count < 2 || !fvm_styxrpc_name(fields, name, STYXRPC_TREE_NAME + 1) ||
+         !fvm_styxrpc_name(fields + 1, member, STYXRPC_TREE_NAME + 1) ||
+         !(count == 4 ? append_variable(descriptors, fields, name, member) :
+             append_method(descriptors, count, fields, name, member))))
     {
         status = FVM_INVALID_ARGUMENT;
-    }
-    if (status == FVM_OK && count == 5)
-    {
-        if (!fvm_styxrpc_number(fields + 2, UINT32_MAX, &signature) || !signature ||
-            !fvm_styxrpc_name(fields + 3, method->schema.arguments, sizeof(method->schema.arguments)) ||
-            !fvm_styxrpc_name(fields + 4, method->schema.result, sizeof(method->schema.result)))
-        {
-            status = FVM_INVALID_ARGUMENT;
-        }
-    }
-    if (status == FVM_OK)
-    {
-        method->name = name;
-        method->method = member;
-        method->kind = count == 2 ? STYXRPC_MODULE_INT : STYXRPC_MODULE_MANAGED;
-        method->signature = count == 2 ? STYXRPC_INT_SIGNATURE : (uint32_t)signature;
     }
     fvm_gc_roots_end(roots);
     return status;
@@ -98,9 +120,7 @@ static FVM_Result publish_object(FVM_Context *context, FVM_Object *self, unsigne
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcPlayerServices *services = state;
-    FVM_StyxRpcObjectMethod methods[STYXRPC_MAX_EXPORTS];
-    char names[STYXRPC_MAX_EXPORTS][STYXRPC_TREE_NAME + 1];
-    char members[STYXRPC_MAX_EXPORTS][STYXRPC_TREE_NAME + 1];
+    ObjectDescriptors descriptors = {0};
     char module[STYXRPC_TREE_NAME + 1];
     FVM_StyxRpcObjectSpec spec = {0};
     FVM_StyxRpcObjectImage *image = NULL;
@@ -108,15 +128,14 @@ static FVM_Result publish_object(FVM_Context *context, FVM_Object *self, unsigne
     unsigned i;
     (void)self;
     if (!services->session.client || services->image || argc < 3 ||
-        argc - 2 > STYXRPC_MAX_EXPORTS || args[1].type != FVM_VALUE_OBJECT ||
+        argc - 2 > 2 * STYXRPC_MAX_EXPORTS || args[1].type != FVM_VALUE_OBJECT ||
         !fvm_styxrpc_name(args, module, sizeof(module)) || module[0] == '.' || strchr(module, '/'))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    memset(methods, 0, sizeof(methods));
     for (i = 0; i < argc - 2; ++i)
     {
-        status = method_descriptor(context, args + i + 2, methods + i, names[i], members[i]);
+        status = object_descriptor(context, args + i + 2, &descriptors, i);
         if (status != FVM_OK)
         {
             return status;
@@ -128,8 +147,10 @@ static FVM_Result publish_object(FVM_Context *context, FVM_Object *self, unsigne
     }
     spec.name = module;
     spec.object = args[1].object;
-    spec.methods = methods;
-    spec.method_count = argc - 2;
+    spec.methods = descriptors.methods;
+    spec.method_count = descriptors.method_count;
+    spec.variables = descriptors.variables;
+    spec.variable_count = descriptors.variable_count;
     status = fvm_styxrpc_object_image_create(context, &spec, &image);
     if (status == FVM_OK && services->active &&
         styxrpc_module_slot_set(services->slot, fvm_styxrpc_object_image_module(image)) != STYXRPC_OK)

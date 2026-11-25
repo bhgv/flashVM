@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1762 / Контрольная точка v0.1762. Stock AS imports checked
+module methods and opens live Int32 properties and registered UniBus messages
+on the attached session. DisVM вызывает скалярные, managed и graph-входы
+образа AS. [EN](STYX_RPC_SESSION.md) / [RU](STYX_RPC_SESSION.ru.md).
+
 Checkpoint v0.1761 / Контрольная точка v0.1761. The installed Linux64
 menu 8 starts the paired Limbo/AS desktop over a private StyxRPC socket.
 Пакет и пользовательские файлы разделены в VFS. Выход IDE завершает обе VM.
