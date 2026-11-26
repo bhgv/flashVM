@@ -190,7 +190,7 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
     Bytes actions = {0};
     FirAvm1Fixup fixes[FIR_LIMIT * 2];
-    size_t labels[FIR_BLOCKS], end, frame = 0;
+    size_t labels[FIR_BLOCKS], end, frame = 0, frame_body = 0;
     int i, nf = 0, previous = -1, ok = 0;
     if (!fir_object_admit(m, error, cap))
     {
@@ -204,7 +204,7 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     if (m->avm1_frame)
     {
-        frame = frame_begin(&actions, m->avm1_method[0] ? m->avm1_method + 1 : "onEnterFrame");
+        frame = frame_begin(&actions, m, &frame_body);
     }
     for (i = 0; i < m->count; ++i)
     {
@@ -455,6 +455,12 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             break;
         case O_JUMP:
         case O_RETURN:
+            if (in->op == O_RETURN && in->a >= 0)
+            {
+                load(&actions, m, in->a);
+                byte(&actions, FIR_AVM1_RETURN);
+                break;
+            }
             fixes[nf].at = branch(&actions, 0);
             fixes[nf++].target = in->op == O_RETURN ? -1 : in->yes;
             break;
@@ -474,7 +480,7 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     end = actions.n;
     byte(&actions, 0); /* ActionEnd */
-    if (actions.failed || (m->avm1_frame && !frame_end(&actions, frame)))
+    if (actions.failed || (m->avm1_frame && !frame_end(&actions, frame, frame_body)))
     {
         snprintf(error, cap, "AVM1 action or frame body size limit exceeded");
         goto done;

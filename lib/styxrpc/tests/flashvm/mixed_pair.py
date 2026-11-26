@@ -11,15 +11,18 @@ from run import compile_image, paired_exchange
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
 # RU: Запустить фронтенд проекта, оптимизатор и эмиттер FIR и линкер SWF.
-def compile_movie(args, directory, source, name):
-    fir = directory / (name + ".fir")
-    optimized = directory / (name + ".opt.fir")
-    obj = directory / (name + ".swo")
+def compile_movie(args, directory, source, name, companions=()):
     movie = directory / (name + ".swf")
-    for command in ([args.as2, source, fir], [args.fir, "check", fir],
-                    [args.fir_opt, fir, optimized], [args.fir, "object", optimized, obj],
-                    [args.swl, "link", movie, obj]):
-        subprocess.run(command, check=True, timeout=15)
+    objects = []
+    for unit in (source, *companions):
+        fir = directory / (unit.stem + ".fir")
+        optimized = directory / (unit.stem + ".opt.fir")
+        obj = directory / (unit.stem + ".swo")
+        for command in ([args.as2, unit, fir], [args.fir, "check", fir],
+                        [args.fir_opt, fir, optimized], [args.fir, "object", optimized, obj]):
+            subprocess.run(command, check=True, timeout=15)
+        objects.append(obj)
+    subprocess.run([args.swl, "link", movie, *objects], check=True, timeout=15)
 
 
 # EN: Test the stock mounted exchange using only the compiled Limbo and AS applications.
@@ -33,9 +36,10 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     profiles.add_argument("--named", action="store_true")
     profiles.add_argument("--typed", action="store_true")
+    profiles.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
-    name = "typed" if args.typed else "named" if args.named else "mixed"
+    name = "execute" if args.execute else "typed" if args.typed else "named" if args.named else "mixed"
     mode = "--jit" if args.jit else "--no-jit"
     with TemporaryDirectory(prefix="styxrpc-mixed-pair-") as scratch:
         directory = Path(scratch)
@@ -43,13 +47,19 @@ def main():
         if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
-        modules = ("styxvalue", "styxnamed") if name != "mixed" else ("styxintref", "styxchannel")
+        modules = {
+            "execute": ("styxexec",),
+            "typed": ("styxvalue", "styxnamed"),
+            "named": ("styxvalue", "styxnamed"),
+            "mixed": ("styxintref", "styxchannel"),
+        }[name]
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
         if args.named:
             (directory / "named-area").mkdir()
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
-        compile_movie(args, directory, tests / (name + "_pair.as"), name)
+        companions = (tests / "execute_apply.as", tests / "execute_refuse.as") if args.execute else ()
+        compile_movie(args, directory, tests / (name + "_pair.as"), name, companions)
         paired_exchange(
             directory,
             lambda connection: [args.player, *connection, mode],

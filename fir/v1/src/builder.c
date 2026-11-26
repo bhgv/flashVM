@@ -273,6 +273,16 @@ void fir_build_token(int role, const char *text, int line)
         strcpy(m->avm1_method, text);
         return;
     }
+    if (role == B_AVM1_PARAMETER)
+    {
+        if (m->avm1_parameter_count == sizeof(m->avm1_parameters) / sizeof(*m->avm1_parameters))
+        {
+            fir_build_error("too many AVM1 method parameters", line);
+            return;
+        }
+        strcpy(m->avm1_parameters[m->avm1_parameter_count++], text);
+        return;
+    }
     if (role == B_LITERAL)
     {
         literal(text, line);

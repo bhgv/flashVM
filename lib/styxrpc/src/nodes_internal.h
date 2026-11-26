@@ -7,10 +7,18 @@
 #include "styxrpc/nodes.h"
 
 #define STYXRPC_NODE_ID_FIRST (UINT64_C(1) << 31) /* Generation zero, above all control IDs. */
+#define STYXRPC_NODE_EXEC_ID UINT64_C(3) /* Generation-zero module slot entry reached only by exact walk. */
 
 typedef struct StyxRpcNodes StyxRpcNodes; /* Owner-thread append-only registry for a movie. */
 
 extern const StyxRpcTree styxrpc_nodes_tree; /* Context is one live StyxRpcNodes. */
+extern const StyxRpcVfs styxrpc_node_exec_files; /* Context is a borrowed callback registry. */
+
+
+/* EN: Resolve a counted relative path and invoke a live executable node once.
+ * RU: Найти относительный путь с длиной и один раз вызвать исполняемый узел. */
+int styxrpc_nodes_exec(StyxRpcNodes *nodes, const char *path, size_t length,
+    void *bytes, size_t size, size_t *used);
 
 
 /* EN: Adjoin path atomically, allocating a registry only when needed and assigning new IDs.

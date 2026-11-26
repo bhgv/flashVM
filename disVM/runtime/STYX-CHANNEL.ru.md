@@ -3,6 +3,7 @@
 [English](STYX-CHANNEL.md) · [Интерфейс](../module/styxchannel.m) · [Реализация на Limbo](../limbo/styxchannel.b) · [Сервер FlashVM](../../flashVM/doc/STYX_RPC_DEFAULT.ru.md)
 
 Именованный блокирующий канал открывается через [Styxnamed](../../lib/styxrpc/reference/named_channel.ru.md).
+Исполняемые узлы вызываются через [Styxexec](STYX-EXEC.ru.md).
 
 
 Загрузите модуль `Styxchannel` из `styxchannel.dis` и вызовите `init()`

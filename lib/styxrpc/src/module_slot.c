@@ -178,6 +178,11 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
     uint64_t generation = id >> IMAGE_SHIFT;
     if (!generation)
     {
+        if (id == STYXRPC_NODE_EXEC_ID)
+        {
+            *node = (StyxRpcNode){.entry = {id, STYXRPC_NODE_EXEC_SERVICE, 0666, 0}};
+            return 1;
+        }
         if (id >= STYXRPC_NODE_ID_FIRST)
         {
             int present = styxrpc_nodes_tree.stat(slot->nodes, id, node);
@@ -226,11 +231,12 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     {
         return 0;
     }
-    int callback = !generation && id >= STYXRPC_NODE_ID_FIRST;
-    const StyxRpcTree *tree = callback ? &styxrpc_nodes_tree :
-        generation ? &styxrpc_module_tree : &styxrpc_control_tree;
+    int execute = id == STYXRPC_NODE_EXEC_ID;
+    int callback = !generation && (execute || id >= STYXRPC_NODE_ID_FIRST);
+    const StyxRpcVfs *files = execute ? &styxrpc_node_exec_files :
+        callback ? &styxrpc_nodes_tree.files : generation ? &styxrpc_module_tree.files : &styxrpc_control_tree.files;
     void *data = callback ? (void *)slot->nodes : generation ? (void *)slot->module : slot->control;
-    if (styxrpc_file_open(&opened->file, &tree->files, data, (uint32_t)id, access) != STYXRPC_OK)
+    if (styxrpc_file_open(&opened->file, files, data, (uint32_t)id, access) != STYXRPC_OK)
     {
         free(opened);
         return 0;

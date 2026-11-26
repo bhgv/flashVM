@@ -1,4 +1,7 @@
-/* SWO1 reader and SWF8 container writer. All decoding is explicitly bounded. */
+/* Copyright (c) 2026 bhgv
+ * EN: Read SWO1 and write SWF8 with bounded record validation.
+ * RU: Читать SWO1 и записывать SWF8 с проверкой границ записей.
+ */
 #include "internal.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +126,57 @@ static int push(const unsigned char *p, size_t n)
 }
 
 
+/* EN: Validate the anonymous function header and locate its exact nested body.
+ * RU: Проверить заголовок анонимного метода и найти точные границы тела. */
+static size_t function_body(const unsigned char *p, size_t length)
+{
+    if (length < 6 || p[0])
+    {
+        return 0;
+    }
+    size_t count = (size_t)p[1] | (size_t)p[2] << 8;
+    if (count > SWL_AVM1_PARAMETERS)
+    {
+        return 0;
+    }
+    const unsigned char *names[SWL_AVM1_PARAMETERS];
+    size_t at = 3;
+    for (size_t i = 0; i < count; ++i)
+    {
+        size_t start = at;
+        while (at < length && p[at])
+        {
+            unsigned c = p[at];
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' ||
+                (at > start && c >= '0' && c <= '9')))
+            {
+                return 0;
+            }
+            ++at;
+        }
+        if (at == start || at == length || at - start > SWL_AVM1_PARAMETER_LENGTH)
+        {
+            return 0;
+        }
+        names[i] = p + start;
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (!strcmp((const char *)names[i], (const char *)names[j]))
+            {
+                return 0;
+            }
+        }
+        ++at;
+    }
+    if (length - at < 3)
+    {
+        return 0;
+    }
+    size_t size = (size_t)p[at] | (size_t)p[at + 1] << 8;
+    return size == length - at - 2 ? at + 2 : 0;
+}
+
+
 /* EN: Check instruction boundaries in one action block and one permitted function level.
  * RU: Проверить границы инструкций в блоке и на одном допустимом уровне функции. */
 static int actions(const unsigned char *p, size_t n, int file_scope)
@@ -173,13 +227,8 @@ static int actions(const unsigned char *p, size_t n, int file_scope)
             }
             else if (op == 0x9b)
             {
-                size_t body;
-                if (!file_scope || length < 6 || p[i] || p[i + 1] || p[i + 2])
-                {
-                    goto done;
-                }
-                body = (size_t)p[i + 3] | (size_t)p[i + 4] << 8;
-                if (body != length - 5 || !actions(p + i + 5, body, 0))
+                size_t body = file_scope ? function_body(p + i, length) : 0;
+                if (!body || !actions(p + i + body, length - body, 0))
                 {
                     goto done;
                 }
@@ -194,6 +243,12 @@ static int actions(const unsigned char *p, size_t n, int file_scope)
         {
             switch (op)
             {
+            case SWL_AVM1_RETURN:
+                if (file_scope)
+                {
+                    goto done;
+                }
+                break;
             case 0x10: /* Boolean And combines ordered binary64 equality predicates. */
             case 0x12: /* Not emitted by verified normalized bool inversion. */
             case 0x1c:

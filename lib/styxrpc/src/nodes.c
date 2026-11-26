@@ -23,22 +23,12 @@ struct StyxRpcNodes
  * RU: Проверить компонент от корня attach и исключить служебные имена. */
 static int component(const char *name, size_t length, int root)
 {
-    static const char *const reserved[] = {".", "..", ".fd", ".prog", ".pid", ".var", ".vfs",
-        ".unibus", ".rpc", ".messages", ".interface", ".programs", ".sysevents", ".state",
-        ".upload", ".exit", ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop",
-        ".add", ".count"};
     if (!length || length > STYXRPC_TREE_NAME || (root && length == 7 && !memcmp(name, "mounted", 7)))
     {
         return 0;
     }
-    for (size_t i = 0; i < sizeof(reserved) / sizeof(*reserved); ++i)
-    {
-        if (strlen(reserved[i]) == length && !memcmp(name, reserved[i], length))
-        {
-            return 0;
-        }
-    }
-    return 1;
+    return !(length == 1 && name[0] == '.') &&
+        !(length == 2 && !memcmp(name, "..", 2)) && !styxrpc_vfs_service_name(name, length);
 }
 
 
@@ -56,6 +46,39 @@ static CallbackNode *child(StyxRpcNodes *nodes, uint64_t parent, const char *nam
         }
     }
     return NULL;
+}
+
+
+/* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
+int styxrpc_nodes_exec(StyxRpcNodes *nodes, const char *path, size_t length,
+    void *bytes, size_t size, size_t *used)
+{
+    if (!nodes || !length || path[length - 1] != '\0' || memchr(path, '\0', length - 1))
+    {
+        return 0;
+    }
+    uint64_t parent = 0;
+    for (;;)
+    {
+        size_t count = strcspn(path, "/");
+        CallbackNode *entry = child(nodes, parent, path, count);
+        if (!entry)
+        {
+            return 0;
+        }
+        if (!path[count])
+        {
+            return entry->callback.transfer && (entry->node.entry.mode & 1U) &&
+                entry->callback.transfer(entry->callback.context, STYXRPC_NODE_EXECUTE, bytes, size, used) == 1 &&
+                *used <= size;
+        }
+        if (!entry->node.entry.directory)
+        {
+            return 0;
+        }
+        parent = entry->node.entry.id;
+        path += count + 1;
+    }
 }
 
 

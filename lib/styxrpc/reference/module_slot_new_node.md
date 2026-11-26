@@ -22,6 +22,8 @@ The transfer callback runs synchronously on the slot owner with
 examining a write input and setting `used` to a count up to `size`.
 The borrowed bytes are valid for the callback only. Treat write input as
 read-only. Return 1 to acknowledge the prefix, or 0 to reject the operation.
-The execute bit is recorded in metadata. The present callbacks dispatch
-reads and writes. Use [clear_nodes](module_slot_clear_nodes.md) to retire
-the publication.
+With execute permission the selector is `STYXRPC_NODE_EXECUTE`. The borrowed
+buffer contains the request on entry. Fill its leading bytes with the reply
+and set `used` to its length, up to `size`. The complete operation has one
+callback through [node_exec](node_exec.md). Use [clear_nodes](module_slot_clear_nodes.md)
+to retire the publication.

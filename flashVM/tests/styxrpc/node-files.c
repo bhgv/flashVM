@@ -88,6 +88,19 @@ static FVM_Result callback(FVM_Context *context, FVM_Object *receiver, unsigned 
         }
         script->value = (unsigned char)value.number;
     }
+    else if (*args[0].string == 'x')
+    {
+        if (fvm_object_get(context, args[1].object, "0", &value) != FVM_OK ||
+            value.type != FVM_VALUE_NUMBER || value.number != 38)
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        fvm_value_number(&value, 42);
+        if (fvm_object_set(context, args[1].object, "0", &value) != FVM_OK)
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+    }
     else if (*args[0].string == 'r')
     {
         fvm_value_number(&value, script->value);
@@ -136,6 +149,12 @@ static int publish(FVM_Context *context, Script *script)
     {
         return 0;
     }
+    fvm_value_string(args, "/menu/invoke");
+    fvm_value_string(args + 1, "x");
+    if (fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_OK)
+    {
+        return 0;
+    }
     fvm_value_string(args, "tcp!1234");
     return fvm_object_call(context, vfs.object, "publishchan", 2, (FVM_Value[]){args[0], args[2]}, &out) == FVM_OK &&
         out.type == FVM_VALUE_UNDEFINED &&
@@ -150,7 +169,7 @@ static void *client(void *data)
 {
     Peer *peer = data;
     StyxClient *session = styxclientmountfd(peer->fd, 4096, "node-test", "", 1000, 8);
-    StyxRpcVfsFile *file = NULL, *control = NULL;
+    StyxRpcVfsFile *file = NULL, *control = NULL, *pending = NULL;
     StyxRpcFileInfo info;
     unsigned char byte = 42;
     size_t used;
@@ -162,14 +181,26 @@ static void *client(void *data)
         styxrpc_vfs_file_write(file, 0, &byte, 1, &used) == STYXRPC_IO_OK && used == 1;
     byte = 0;
     ok = ok && styxrpc_vfs_file_read(file, 0, &byte, 1, &used) == STYXRPC_IO_OK && used == 1 && byte == 42;
+    byte = 38;
+    ok = ok && styxrpc_vfs_stat(session, STYXRPC_NODE_EXEC_SERVICE, &info) == STYXRPC_IO_NOT_OPEN &&
+        styxrpc_node_exec(session, "menu/input", &byte, 1, &used) != STYXRPC_IO_OK && !used && byte == 38 &&
+        styxrpc_node_exec(session, "menu/invoke", &byte, 1, &used) == STYXRPC_IO_OK && used == 1 && byte == 42;
     if (ok)
     {
+        /* One counted path and byte, with execution still pending when the provider retires. */
+        static const unsigned char header[] = {0, 0, 0, sizeof("menu/invoke"), 0, 0, 0, 1};
+        pending = styxclientwalk(session, STYXRPC_NODE_EXEC_SERVICE);
         control = styxclientwalk(session, ".state");
-        ok = control && styxclientopen(control, STYXRPC_FILE_WRITE) &&
+        ok = pending && styxclientopen(pending, STYXRPC_FILE_RDWR) &&
+            styxrpc_vfs_file_write(pending, 0, header, sizeof(header), &used) == STYXRPC_IO_OK &&
+            used == sizeof(header) &&
+            control && styxclientopen(control, STYXRPC_FILE_WRITE) &&
             styxrpc_vfs_file_write(control, 0, "restart", 7, &used) == STYXRPC_IO_OK && used == 7 &&
             styxrpc_vfs_stat(session, "menu/data", &info) != STYXRPC_IO_OK &&
-            styxrpc_vfs_file_read(file, 0, &byte, 1, &used) != STYXRPC_IO_OK;
+            styxrpc_vfs_file_read(file, 0, &byte, 1, &used) != STYXRPC_IO_OK &&
+            styxrpc_vfs_file_write(pending, sizeof(header), "menu/invoke", sizeof("menu/invoke"), &used) != STYXRPC_IO_OK;
     }
+    styxrpc_vfs_close(pending, 0);
     styxrpc_vfs_close(control, 0);
     styxrpc_vfs_close(file, 0);
     styxclientshutdown(session);
@@ -212,7 +243,7 @@ int main(void)
             {
             }
             pthread_join(worker, NULL);
-            ok = peer.ok && script.calls == 2;
+            ok = peer.ok && script.calls == 3;
         }
         else
         {

@@ -17,7 +17,8 @@ int main(void)
                          "panel.x = (3;",
                          "response = bus.send(ref values[]);",
                          "values[] = 1;",
-                         "function onEnterFrame(arg) { ready = arg; }",
+                         "function onEnterFrame(arg, arg) { ready = arg; }",
+                         "function onEnterFrame(a,b,c,d,e,f,g,h,i) { return a; }",
                          "if (ready) ready = false;",
                          "panel.x = 3; // \xc0\xaf",
                          "panel.x = 3; // \xe2\x80\xa8" "panel.x = 4;",
@@ -44,6 +45,19 @@ int main(void)
         !strstr(key, "as.member_get ") || !strstr(key, "const.string \"count\""))
     {
         fprintf(stderr, "computed owner/key order or member bytecode lowering changed\n");
+        return 1;
+    }
+    const char *callback = "function invoke(op, buf, len) { buf[0] = len; return buf[0]; }";
+    if (!as2_view_compile(callback, strlen(callback), output, sizeof(output) - 1, &length, &diagnostic))
+    {
+        fprintf(stderr, "parameterized AS2 callback rejected\n");
+        return 1;
+    }
+    output[length] = 0;
+    if (!strstr((const char *)output, "source_entry avm1_method @invoke @op @buf @len\n") ||
+        !strstr((const char *)output, "return %v"))
+    {
+        fprintf(stderr, "callback parameters or result lost\n");
         return 1;
     }
     const char *method = "function drawItem() { value = target.draw(1, bus.receive(), 3); }";

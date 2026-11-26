@@ -7,6 +7,9 @@
 #define SWL_ITEMS 1024
 #define SWL_AVM1_GET_MEMBER 0x4eU /* Bounded, payload-free member read in a SWO action block. */
 #define SWL_AVM1_SET_MEMBER 0x4fU /* Bounded, payload-free member write in a SWO action block. */
+#define SWL_AVM1_RETURN 0x3eU /* Return one stack value from a nested action block. */
+#define SWL_AVM1_PARAMETERS 8U /* Maximum formal count in a SWO method. */
+#define SWL_AVM1_PARAMETER_LENGTH 253U /* Byte limit for one formal name. */
 
 
 /* Canonical owned object: name plus validated AVM1 ActionEnd-terminated bytes. */

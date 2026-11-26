@@ -24,9 +24,10 @@ SWA1: four bytes `SWA1`, u32 version=1, u32 count (1..1024), then count records
 initializers; function-call relocations are not defined yet. SWF8 contains one
 DoAction per object, then ShowFrame and End. Intra-object jumps need no changes.
 
-SWL 0.3.16 admits anonymous parameterless `DefineFunction` with one nested
-action block. The code size must match the enclosing record. Branch targets
-are validated within their own block, and each block ends with ActionEnd.
+An anonymous `DefineFunction` may declare up to eight distinct ASCII
+parameter names and contains one nested action block. The code size must
+match the enclosing record. `ActionReturn` is admitted inside the nested
+block. Branch targets stay in their own block, which ends with ActionEnd.
 
 SWL 0.3.2 also accepts AVM1 Divide (0x0d), used by FIR f64.div.
 

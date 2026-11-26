@@ -29,7 +29,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Threads REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
     add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_pid.c src/channel_client.c src/channel_arguments.c
-        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_create.c src/named_channel_client.c src/vfs_directory.c src/variable_ref_client.c src/graph_client.c src/message_client.c)
+        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_create.c src/named_channel_client.c src/node_exec_client.c src/vfs_directory.c src/variable_ref_client.c src/graph_client.c src/message_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)
@@ -37,7 +37,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     set_target_properties(styxrpc_launch PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME launch)
     add_library(StyxRpc::launch ALIAS styxrpc_launch)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
-        src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/nodes.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
+        src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/nodes.c src/node_exec.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
         src/channel_mailbox.c src/message_server.c src/named_channel.c src/named_cell_store.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)

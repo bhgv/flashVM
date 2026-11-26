@@ -13,6 +13,14 @@
 void emit_initializer(void);
 /* EN/RU: Validate the callback name and mark a frame handler / Начать обработчик кадра. */
 void emit_frame_handler(void);
+/* EN/RU: Capture one formal name. / Захватить имя формального параметра. */
+void emit_parameter(void);
+/* EN/RU: Emit method entry with its formal names. / Выдать вход метода с именами параметров. */
+void emit_frame_body(void);
+/* EN/RU: Consume the explicit return expression. / Снять итоговое выражение return. */
+void emit_value_return(void);
+/* EN/RU: Finish a path without a value. / Завершить путь без значения. */
+void emit_void_return(void);
 /* EN/RU: Emit a branch and return its label index / Выдать ветвление и вернуть номер метки. */
 int emit_if(void);
 /* EN/RU: Close the true arm and enter the false arm / Перейти с истинной ветви на ложную. */

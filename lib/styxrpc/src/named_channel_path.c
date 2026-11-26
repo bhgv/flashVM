@@ -3,6 +3,7 @@
  * RU: Проверять имена каналов в клиентах и провайдерах Styx.
  */
 #include "styxrpc/named_channel.h"
+#include "styxrpc/nodes.h"
 #include <string.h>
 
 
@@ -12,7 +13,7 @@ int styxrpc_vfs_service_name(const char *name, size_t size)
 {
     static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs",
         ".unibus", ".rpc", ".messages", STYXRPC_NAMED_SERVICE, ".interface", ".programs",
-        ".sysevents", ".state", ".upload", ".exit", ".idx", ".val", ".len", ".type",
+        ".sysevents", ".state", ".upload", STYXRPC_NODE_EXEC_SERVICE, ".exit", ".idx", ".val", ".len", ".type",
         ".ins", ".push", ".pop", ".add", ".count"};
     for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i)
     {

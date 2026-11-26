@@ -107,7 +107,7 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
     const unsigned char *source = static_cast<const unsigned char *>(bytes);
     for (size_t i = 0; i < size; ++i)
     {
-        fvm_value_number(&items[i], access == STYXRPC_WRITE ? source[i] : 0);
+        fvm_value_number(&items[i], access == STYXRPC_READ ? 0 : source[i]);
     }
     FVM_GCRootScope *roots = NULL;
     FVM_Value args[3], result;
@@ -123,7 +123,8 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
     }
     if (status == FVM_OK)
     {
-        fvm_value_string(args, access == STYXRPC_WRITE ? "w" : "r");
+        const char *operation = access == STYXRPC_NODE_EXECUTE ? "x" : access == STYXRPC_WRITE ? "w" : "r";
+        fvm_value_string(args, operation);
         fvm_value_number(args + 2, static_cast<double>(size));
         status = fvm_function_invoke(context, callback->function, NULL, 3, args, &result);
     }
@@ -132,7 +133,7 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
     {
         status = FVM_INVALID_ARGUMENT;
     }
-    if (status == FVM_OK && access == STYXRPC_READ)
+    if (status == FVM_OK && access != STYXRPC_WRITE)
     {
         status = read_reply(context, args[1].object, static_cast<unsigned char *>(bytes), static_cast<size_t>(count));
     }

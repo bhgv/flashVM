@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1779, paired `vfs.newnode` supports the executable permission.
+Limbo and the hosted C SDK invoke callback nodes over the existing mount.
+The AS2, FIR and SWL pipeline builds the callback with named parameters
+and a final return expression. The paired acceptance runs over local
+streams and TCP in interpreter and JIT modes. [EN](STYX_RPC_NEWNODE.md) · [RU](STYX_RPC_NEWNODE.ru.md).
+
 Checkpoint v0.1704: the workspace documentation viewer links independent Styx and libunibus source distributions, bilingual introductions, service tutorials and function dictionaries. Each library has a standard-library-only offline viewer. This changes documentation/export packaging; no Flash compatibility stage closes. [Libraries](../../lib/README.md).
 
 Checkpoint v0.1703: the shared player exposes an explicit managed acquisition bridge for startup/root/child movie code and variable data, with purpose-aware raw VFS names and no native file/HTTP fallback. Real nested SWFs run in interpreter/JIT; Styx/S-record binding, streaming/input policy and physical acceptance remain open. [EN](MANAGED_SOURCE.md) / [RU](MANAGED_SOURCE.ru.md). No complete Flash compatibility stage closes.

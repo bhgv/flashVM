@@ -84,47 +84,7 @@ static int pop(void)
 }
 
 
-/* EN: Write source provenance and one unique module name.
- * RU: Записать происхождение исходника и уникальное имя модуля. */
-static void header(const char *suffix)
-{
-    append("FIR 1.0\nmodule @ide_view%s\nsource_language as2\nsource_semantics avm1_numeric\n", suffix);
-}
-
-
-/* EN: Begin the FIR entry block for an initializer.
- * RU: Открыть входной блок FIR для инициализатора. */
-void emit_initializer(void)
-{
-    header("");
-    append("func @main() -> void {\n^entry:\n");
-}
-
-
-/* EN: Encode the root method's exact name separately from its unique module spelling.
- * RU: Записать точное имя метода корня отдельно от уникального имени модуля. */
-void emit_frame_handler(void)
-{
-    char key[256];
-    if (!name(key) || strlen(key) > 244)
-    {
-        failed = 1;
-        return;
-    }
-    if (!strcmp(key, "onEnterFrame"))
-    {
-        header("");
-        append("source_entry avm1_frame\n");
-    }
-    else
-    {
-        char suffix[256];
-        snprintf(suffix, sizeof(suffix), "_%s", key);
-        header(suffix);
-        append("source_entry avm1_method @%s\n", key);
-    }
-    append("func @main() -> void {\n^entry:\n");
-}
+#include "emit_entry.inc"
 
 
 /* EN: Consume an expression and return its boolean SSA identity.
@@ -424,7 +384,7 @@ int as2_view_compile(const void *bytes,
     }
     Custom_Error = NULL;
     active = NULL;
-    append("    return\n}\n");
+    append("}\n");
     if (failed || depth || !Successful() || used > capacity)
     {
         return 0;

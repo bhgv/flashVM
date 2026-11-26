@@ -3,6 +3,7 @@
 [Русский](STYX-CHANNEL.ru.md) · [Module interface](../module/styxchannel.m) · [Limbo implementation](../limbo/styxchannel.b) · [Flash provider](../../flashVM/doc/STYX_RPC_DEFAULT.md)
 
 Open a named rendezvous channel using [Styxnamed](../../lib/styxrpc/reference/named_channel.md).
+For executable callback files, use [Styxexec](STYX-EXEC.md).
 
 
 Load `Styxchannel` from `styxchannel.dis` and call `init()` before use.

@@ -1,6 +1,6 @@
 # vfs.newnode
 
-[Русский](STYX_RPC_NEWNODE.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_nodes.cpp)
+[Русский](STYX_RPC_NEWNODE.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_nodes.cpp#L158)
 
 `vfs.newnode(path, permissions, callback)` publishes a callback file in
 the active movie's VFS. The path is rooted at the paired session,
@@ -12,10 +12,17 @@ Success returns `true`.
 The movie owner calls `callback(op, buf, len)`. For `op == "r"` fill the
 prefix of the byte Array and return the number produced. For `op == "w"`
 the Array holds input bytes and the return value confirms the accepted
-prefix. `len` is the number of bytes. Zero on a read is EOF. An exception
-or count outside 0–len fails the request. The `x` bit is recorded in
-metadata. The wire format for passing arguments to an execute request is pending.
-The callback runs for each transport request. Its three arguments carry the request mode, copied bytes and count. Position belongs to the underlying fid.
+prefix. For `op == "x"`, the Array starts with the caller's bytes. Replace
+its leading bytes with the result and return the length of that prefix.
+The `x` permission works independently of `r` and `w`. Each invocation
+waits for the complete request before calling the function once. Invoke it
+from [Limbo](../../disVM/runtime/STYX-EXEC.md) or [C](../../lib/styxrpc/reference/node_exec.md)
+over the existing session.
+
+`len` is the input length and buffer capacity in bytes. Zero on a read is
+EOF. Zero for an execution confirms an empty result. An exception or a
+count outside 0–len fails the request. Ordinary reads and writes invoke
+the callback once per transport operation and track position on the fid.
 
 This AS2 example publishes a file that returns byte 42 in one read. The
 peer accesses it using ordinary filesystem operations.
@@ -32,6 +39,6 @@ vfs.newnode("/app/value", "r", readValue);
 The movie retains its callback until retirement or session shutdown. Open
 fids retire with their nodes. Callback execution is synchronous with the
 Styx request. The [native Styx test](../tests/styxrpc/node-files.c) verifies
-read and write buffers, mode checks and retirement of an already open fid.
+read, write and execute buffers, mode checks and retirement of open fids.
 
 [SDK callback node registration](../../lib/styxrpc/reference/module_slot_new_node.md).

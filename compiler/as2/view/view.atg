@@ -33,15 +33,24 @@ PRODUCTIONS
     /* EN: A complete initializer or one timeline callback.
      * RU: Полный инициализатор или обработчик шкалы времени. */
     View =
-        ( FrameHandler | (. emit_initializer(); .) Statements )
+        ( FrameHandler | (. emit_initializer(); .) Statements (. emit_void_return(); .) )
         EOF
     .
 
-    /* EN: Install one named root method with an empty parameter list.
-     * RU: Установить именованный метод корня с пустым списком параметров. */
+    /* EN: Install one root method with named parameters and an optional final result.
+     * RU: Установить метод корня с именованными параметрами и необязательным итогом. */
     FrameHandler =
         "function" ident                                                (. emit_frame_handler(); .)
-        "(" ")" "{" Statements "}"
+        "("
+        [ ident                                                         (. emit_parameter(); .)
+          { "," ident                                                   (. emit_parameter(); .) }
+        ]
+        ")" "{"                                                        (. emit_frame_body(); .)
+        [ Statements ]
+        ( "return" Expression ";"                                      (. emit_value_return(); .)
+          |                                                            (. emit_void_return(); .)
+        )
+        "}"
     .
 
     /* EN: Lower a nonempty sequence of statements, each with a balanced expression stack.

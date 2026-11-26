@@ -19,7 +19,8 @@ enum
     B_LITERAL,
     B_LANGUAGE,
     B_SEMANTICS,
-    B_AVM1_METHOD
+    B_AVM1_METHOD, /* Exact root method symbol. */
+    B_AVM1_PARAMETER /* Next formal name of the root method. */
 };
 
 

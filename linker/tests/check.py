@@ -31,10 +31,12 @@ def trace(text):
     return b"\x96" + struct.pack("<H", len(data)) + data + b"\x26\0"
 
 
-# EN: Build an anonymous parameterless action for independent framing checks.
-# RU: Собрать анонимную команду без параметров для проверки границ вложенного блока.
-def define_function(body):
-    return b"\x9b" + struct.pack("<H", len(body) + 5) + b"\0\0\0" + struct.pack("<H", len(body)) + body
+# EN: Build an anonymous method with independent names and action bytes.
+# RU: Собрать анонимный метод с независимыми именами и байтами действий.
+def define_function(body, parameters=()):
+    names = b"".join(name + b"\0" for name in parameters)
+    header = b"\0" + struct.pack("<H", len(parameters)) + names + struct.pack("<H", len(body))
+    return b"\x9b" + struct.pack("<H", len(header) + len(body)) + header + body
 
 
 def tags(data):
@@ -121,6 +123,12 @@ with tempfile.TemporaryDirectory() as tmp:
     call("link", out, a)
     if [body for tag, body in tags(out.read_bytes()) if tag == 12] != [frame]:
         raise AssertionError("frame action was changed during linking")
+    value_return = b"\x96\x05\0\x07\x2a\0\0\0\x3e\0"
+    method = define_function(value_return, (b"operation", b"buffer", b"length")) + b"\x17\0"
+    a.write_bytes(object("method", method))
+    call("link", out, a)
+    if [body for tag, body in tags(out.read_bytes()) if tag == 12] != [method]:
+        raise AssertionError("method signature or return was changed during linking")
     for broken in (
         b"\x99\x02\0\x08\0" + define_function(branch_to_end),
         define_function(b"\x99\x02\0\x01\0\0"),
@@ -128,6 +136,11 @@ with tempfile.TemporaryDirectory() as tmp:
         define_function(define_function(b"\0") + b"\0"),
         define_function(branch_to_end)[:6] + b"\0\0" + branch_to_end,
         define_function(branch_to_end)[:-1] + b"\x17",
+        define_function(value_return, (b"",)),
+        define_function(value_return, (b"a", b"a")),
+        define_function(value_return, (b"foo.bar",)),
+        define_function(value_return, (b"a", b"b", b"c", b"d", b"e", b"f", b"g", b"h", b"i")),
+        value_return[:-1],
     ):
         a.write_bytes(object("frame", broken + b"\x17\0"))
         out.write_bytes(b"preserve")

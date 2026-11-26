@@ -7,6 +7,7 @@
 #include <styxserver.h>
 #include "server.h"
 #include "message_internal.h"
+#include "nodes_internal.h"
 #include "variable_ref_internal.h"
 #include "styxrpc/program.h"
 #include <pthread.h>
@@ -110,6 +111,12 @@ static char *walk_node(Qid *qid, char *name)
     }
     if (!qid->path)
     {
+        if (active->tree == &styxrpc_module_slot_tree && !strcmp(name, STYXRPC_NODE_EXEC_SERVICE) &&
+            lookup(active, STYXRPC_NODE_EXEC_ID, &child))
+        {
+            *qid = identity(&child);
+            return nil;
+        }
         for (size_t slot = 0; slot < active->message_count; ++slot)
         {
             if (!strcmp(name, active->message_names[slot]))
@@ -366,7 +373,8 @@ StyxRpcStatus styxrpc_messages_publish(StyxRpcServer *server, const char *name,
     name = name ? name : STYXRPC_UNIBUS_FILE;
     if (!server || server->started || server->message_count == STYXRPC_MESSAGE_ROOTS_MAX ||
         !*name || strlen(name) > STYXRPC_TREE_NAME || strchr(name, '/') ||
-        !strcmp(name, ".") || !strcmp(name, "..") || !strcmp(name, ".prog"))
+        !strcmp(name, ".") || !strcmp(name, "..") || !strcmp(name, ".prog") ||
+        !strcmp(name, STYXRPC_NODE_EXEC_SERVICE))
     {
         return STYXRPC_INVALID;
     }

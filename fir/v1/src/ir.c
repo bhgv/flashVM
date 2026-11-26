@@ -512,6 +512,26 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "invalid AVM1 root method name");
     }
+    if (m->avm1_parameter_count > sizeof(m->avm1_parameters) / sizeof(*m->avm1_parameters) ||
+        (m->avm1_parameter_count && !m->avm1_method[0]))
+    {
+        return fail(error, cap, "invalid AVM1 method parameter count");
+    }
+    for (unsigned p = 0; p < m->avm1_parameter_count; ++p)
+    {
+        const char *name = m->avm1_parameters[p];
+        if (!symbol_name(name, '@') || strchr(name, '.'))
+        {
+            return fail(error, cap, "invalid AVM1 method parameter name");
+        }
+        for (unsigned q = 0; q < p; ++q)
+        {
+            if (!strcmp(name, m->avm1_parameters[q]))
+            {
+                return fail(error, cap, "duplicate AVM1 method parameter");
+            }
+        }
+    }
     if (!symbol_name(m->module, '@'))
     {
         return fail(error, cap, "invalid module spelling");
@@ -602,7 +622,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                  in->op == O_BIG_RANGE || in->op == O_TABLE_SLICE || in->op == O_TABLE_RANGE ||
                  in->op == O_TABLE_SPLICE || in->op == O_STRING_RANGE || in->op == O_STRING_SPLICE ||
                  in->op == O_STRING_CHAR_RANGE;
-        if ((in->a >= 0) != (unary || binary || in->op == O_AS_MEMBER_CALL || in->op == O_AS_ARG) ||
+        if ((in->op != O_RETURN && (in->a >= 0) != (unary || binary || in->op == O_AS_MEMBER_CALL || in->op == O_AS_ARG)) ||
             (in->op != O_AS_MEMBER_CALL && in->op != O_AS_ARG && (in->b >= 0) != binary) ||
             (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) || (in->no >= 0) != (in->op == O_IF) ||
             (in->result >= 0 && m->values[in->result].definition != i))
@@ -1230,6 +1250,12 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 goto bad_type;
             }
             break;
+        case O_RETURN:
+            if (a != T_VOID && (!m->avm1_frame || a > T_ANY))
+            {
+                goto bad_type;
+            }
+            break;
         default:
             break;
         }
@@ -1358,7 +1384,12 @@ int fir_print(FILE *out, const FirModule *m)
     }
     if (m->avm1_method[0])
     {
-        fprintf(out, "source_entry avm1_method %s\n", m->avm1_method);
+        fprintf(out, "source_entry avm1_method %s", m->avm1_method);
+        for (unsigned p = 0; p < m->avm1_parameter_count; ++p)
+        {
+            fprintf(out, " %s", m->avm1_parameters[p]);
+        }
+        fputc('\n', out);
     }
     else if (m->avm1_frame)
     {
