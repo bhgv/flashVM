@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1788, the two-player reference check binds aliases once and proves
+that remote publication can arrive on a later frame. It also reads the
+updated peer variable through a second proxy. The player reports frame
+errors while DisVM can still inspect the status and upload a replacement.
+[EN](STYX_RPC_PLAYER.md#run-acceptance) · [RU](STYX_RPC_PLAYER.ru.md#нативная-проверка).
+
 In v0.1787, the paired DisVM directory export takes the current namespace
 projection on the first zero-offset read. The paired check exercises
 append, prepend, replacement and unmount from another Limbo thread

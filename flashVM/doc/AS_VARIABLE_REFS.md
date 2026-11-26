@@ -25,6 +25,11 @@ rules. `ref alias` retrieves the captured reference, including after forwarding.
 `ch.send(alias)` reads the current value and queues that value as a separate
 message.
 
+The binding needs an unused name. Receiving another reference into an
+occupied slot fails with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). If a frame handler also
+waits for a peer, bind each alias once and repeat the readiness check
+on later frames. [Paired player acceptance](STYX_RPC_PLAYER.md#run-acceptance)
+
 `channel.create("ref", capacity)` creates a same-context FIFO of 1 through
 65536 elements. `send` accepts a scalar or reference and returns false when
 the FIFO is full. `recv()` returns the oldest message or undefined while the
@@ -57,3 +62,15 @@ arrays, and objects as well. Use `ref` to forward a live slot itself.
 [Paired AS](../../lib/styxrpc/tests/flashvm/named_pair.as) ·
 [Paired Limbo](../../lib/styxrpc/tests/flashvm/named_pair.b) ·
 [C table API](../include/flashvm/table.h).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+<!-- source-links:end -->

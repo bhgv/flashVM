@@ -39,6 +39,8 @@ def compile_role(args, directory, role):
     if role == "caller":
         objects.extend((compile_unit(args, directory, "peer-credit"),
                         compile_unit(args, directory, "peer-frame")))
+    if role == "ref-provider":
+        objects.append(compile_unit(args, directory, "peer-ref-release"))
     subprocess.run((args.swl, "link", swf, *objects), check=True, timeout=20)
     return swf
 
@@ -172,6 +174,16 @@ def os_files(args, directory, mode):
                     "PASS os VFS handles and attached SWF", tcp=args.tcp)
 
 
+# EN: Require frame diagnostics while DisVM reads .state and stages a replacement.
+# RU: Проверить диагностику кадра, пока DisVM читает .state и загружает замену.
+def failed_frame(args, directory, mode, client):
+    paired_exchange(directory, lambda connection: [args.player, *connection, mode],
+                    lambda connection: [args.runtime, *connection, "--at", "/peer", "--", "--native-spawn",
+                                        mode, client.name],
+                    "PASS DisVM inspected and replaced a failed FlashVM movie",
+                    ("flashvm_styx_player: movie tick failed with status -3",), tcp=args.tcp)
+
+
 # EN: Exercise both service lane assignments in each execution mode.
 # RU: Проверить оба назначения серверных каналов в каждом режиме.
 def main():
@@ -200,6 +212,7 @@ def main():
             return
         caller = compile_role(args, directory, "caller")
         reference = compile_role(args, directory, "ref")
+        reference_provider = compile_role(args, directory, "ref-provider")
         provider = compile_role(args, directory, "provider")
         if args.runtime:
             tests = ROOT / "lib/styxrpc/tests/flashvm"
@@ -207,14 +220,18 @@ def main():
             compile_image(args, directory, tests / "limbo.b", "limbo.dis")
             compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
             dis_caller = compile_role(args, directory, "dis-caller")
+            compile_role(args, directory, "ref-failure")
+            failure_client = compile_image(args, directory, tests / "peer_frame_failure.b", "frame-failure.dis")
         for mode in ("--no-jit", "--jit"):
-            exchange(args, directory, reference, provider, mode, False, "transparent local refs")
             for reverse in (False, True):
+                exchange(args, directory, reference, reference_provider, mode, reverse,
+                         "transparent local refs across delayed peer readiness")
                 exchange(args, directory, caller, provider, mode, reverse)
             if args.runtime:
                 dis_calls_flash(args, directory, mode)
                 flash_calls_dis(args, directory, dis_caller, mode)
                 os_files(args, directory / mode[2:], mode)
+                failed_frame(args, directory, mode, failure_client)
 
 
 if __name__ == "__main__":

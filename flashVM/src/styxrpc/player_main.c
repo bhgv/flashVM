@@ -139,7 +139,11 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, PlayerHo
             }
             if (now >= deadline)
             {
-                fvm_styxrpc_playback_tick(playback, PLAYER_TICK);
+                FVM_Result result = fvm_styxrpc_playback_tick(playback, PLAYER_TICK);
+                if (result != FVM_OK)
+                {
+                    fprintf(stderr, "flashvm_styx_player: movie tick failed with status %d\n", (int)result);
+                }
                 deadline += period;
                 if (!fvm_port_monotonic_ms(&now))
                 {

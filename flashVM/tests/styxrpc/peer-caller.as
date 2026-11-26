@@ -33,11 +33,14 @@ function onEnterFrame() {
             peerAutoGraph = peerAutoModule.graphMagnitude(0 - 31 / 2, peerBox);
             peerOldCall = styxrpc.callInt("mounted/peer.dis", "magnitude", 0 - 8);
             peerVar = styxrpc.intVariable("/mounted/peer.dis/.var/count", true);
+            peerBefore = peerVar.value;
             peerRefQueue = channel.create("ref", 1);
             peerRefSent = peerRefQueue.send(ref peerVar.value);
             peerAlias = peerRefQueue.recv();
             peerAlias = 77;
             peerReadBack = peerAlias;
+            peerObserver = styxrpc.intVariable("/mounted/peer.dis/.var/count", false);
+            peerRemoteAfter = peerObserver.value;
             peerHidden = styxrpc.stat("mounted/peer.dis/.var/count");
             peerHiddenText = peerHidden.join(",");
             peerCreditText = "_inferno.credit";
@@ -58,9 +61,9 @@ function onEnterFrame() {
             peerReceived = peerMessages.pump(_root);
             if (peerReceivedFrame) {
                 if (peerReceivedCredit) {
-                    peerResultText = "[" + peerResult + "," + peerReal + "," + peerGraph + "," + peerAutoGraph + "," + peerOldCall + "," + peerQueued + "," + peerReadBack + "]";
+                    peerResultText = "[" + peerResult + "," + peerReal + "," + peerGraph + "," + peerAutoGraph + "," + peerOldCall + "," + peerQueued + "," + peerBefore + "," + peerReadBack + "," + peerRemoteAfter + "]";
                     if (!peerHiddenText.indexOf("1,")) {
-                        if (!peerResultText.indexOf("[12,12.5,14.5,15.5,8,0,77]")) {
+                        if (!peerResultText.indexOf("[12,12.5,14.5,15.5,8,0,41,77,77]")) {
                             peerClosed = peerMessages.close();
                             peerClosedAgain = peerMessages.close();
                             peerReported = _root.reportPeerResult();

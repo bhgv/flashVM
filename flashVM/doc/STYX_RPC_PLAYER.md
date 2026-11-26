@@ -23,6 +23,11 @@ The Dis program `controller.dis` controls FlashVM through `/flash/.upload` and `
 
 The controller sends the startup SWF length as four big-endian bytes followed by the SWF. It writes `start` to `/flash/.state` once to begin. Frame scheduling uses the uploaded header rate, or 12 frames per second when the header rate is zero. The player waits for the next frame or incoming Styx work. `pause` stops frame advances while leaving control files reachable, and `restart` starts again from the uploaded bytes. In this executable `debug` pauses and selects the interpreter. The embeddable owner supports an application debugger hook. Either VM can select `--jit` if its host build supports it.
 
+If a frame fails, the player prints its numeric [`FVM_Result`](../include/flashvm/flashvm.h#L42) to stderr.
+The paired session still serves `.state`, which reports `state=failed`
+and `last_result`. The controller can upload and start another SWF on
+the same session. See [`fvm_styxrpc_playback_tick`](../include/flashvm/styxrpc_playback.h#L49) for the state transition.
+
 The player starts headless by default. Build the raster backend and the
 stock SDL2 frontend to use a window. For example, from the repository root:
 
@@ -169,8 +174,33 @@ python3 ide/tests/check_flash_peers.py --tcp \
   --fir build/fir --swl build/linker/swl
 ```
 
+The [AS reference check](../tests/styxrpc/peer-ref.as) binds local aliases
+once, then verifies that a readiness marker becomes visible after a
+[peer callback](../tests/styxrpc/peer-ref-release.as). It verifies forwarding,
+value snapshots and writes through aliases after the queues close. The
+[module caller](../tests/styxrpc/peer-caller.as) verifies an update through
+an independently opened proxy for the peer's Int32 variable.
+
+Add `--runtime /path/to/disvm --limbo /path/to/limbo-bootstrap` for the
+mixed pair checks. The [Limbo failure driver](../../lib/styxrpc/tests/flashvm/peer_frame_failure.b)
+reads the failed frame's status from `.state` and runs a replacement SWF
+through `.upload` on the same connection.
+
 See [exec](STYX_VFS_EXEC.md) for calls to executable VFS nodes.
 
 The [paired IDE check](../../ide/DESKTOP-PAIRED.md) has the same `--tcp` switch.
 
 [Player implementation](../src/styxrpc/player_main.c) · [DisVM mount command](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_styxrpc_playback_tick` | function | [include/flashvm/styxrpc_playback.h:49](../include/flashvm/styxrpc_playback.h#L49) |
+<!-- source-links:end -->

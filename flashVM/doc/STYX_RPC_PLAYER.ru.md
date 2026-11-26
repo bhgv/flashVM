@@ -23,6 +23,11 @@ disvm --styx-mount-fd 4 --at /flash -- \
 
 Программа управления записывает в `/flash/.upload` длину стартового SWF четырьмя байтами big-endian и сам SWF. Затем достаточно один раз записать `start` в `/flash/.state`. Плеер берёт частоту из заголовка SWF. При нулевой частоте используется 12 кадров в секунду. Плеер ждёт следующего кадра или запроса Styx. `pause` останавливает кадры и оставляет файлы управления доступными. `restart` запускает сохранённый стартовый SWF заново. В этой программе `debug` приостанавливает фильм и выбирает интерпретатор. Встраиваемый API также поддерживает подключаемый отладчик. Для каждой VM можно выбрать `--jit`, если он доступен в этой сборке.
 
+При ошибке кадра плеер выводит числовой код [`FVM_Result`](../include/flashvm/flashvm.h#L42) в stderr.
+В той же сессии `.state` показывает `state=failed` и код `last_result`.
+Через неё же программа управления может загрузить и запустить другой SWF.
+Переход состояния выполняет [`fvm_styxrpc_playback_tick`](../include/flashvm/styxrpc_playback.h#L49).
+
 По умолчанию плеер запускается без окна. Для окна соберите его с растером
 и штатным SDL2-фронтендом. Например, из корня репозитория:
 
@@ -171,8 +176,33 @@ python3 ide/tests/check_flash_peers.py --tcp \
   --fir build/fir --swl build/linker/swl
 ```
 
+[Проверка ссылок в AS](../tests/styxrpc/peer-ref.as) привязывает локальные
+имена один раз. Затем она проверяет, что признак готовности становится
+виден после [колбэка второй VM](../tests/styxrpc/peer-ref-release.as).
+Проверяются пересылка ссылки, снимок по значению и запись через привязки
+после закрытия очередей. [Проверка вызовов модуля](../tests/styxrpc/peer-caller.as)
+считывает обновлённую переменную Int32 партнёра через независимо открытый прокси.
+
+Для проверки с DisVM добавьте `--runtime /path/to/disvm --limbo /path/to/limbo-bootstrap`.
+[Программа на Limbo](../../lib/styxrpc/tests/flashvm/peer_frame_failure.b)
+читает состояние кадра после ошибки из `.state` и запускает заменяющий
+SWF через `.upload` на том же соединении.
+
 Вызовы исполняемых узлов описаны в [vfs.exec](STYX_VFS_EXEC.ru.md).
 
 [Проверка парной IDE](../../ide/DESKTOP-PAIRED.ru.md) тоже принимает `--tcp`.
 
 [Исходник плеера](../src/styxrpc/player_main.c) · [Команда монтирования DisVM](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_styxrpc_playback_tick` | function | [include/flashvm/styxrpc_playback.h:49](../include/flashvm/styxrpc_playback.h#L49) |
+<!-- source-links:end -->

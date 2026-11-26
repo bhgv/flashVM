@@ -25,6 +25,11 @@ var forwarded = ch.send(ref alias);
 из привязки, в том числе после пересылки. `ch.send(alias)` читает значение
 и передаёт его как самостоятельное сообщение.
 
+Для привязки нужно свободное имя. Приём другой ссылки в занятый слот
+завершается ошибкой [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Если обработчик кадра также
+ожидает партнёра, создайте каждую привязку один раз и повторяйте на
+следующих кадрах проверку готовности. [Парная проверка](STYX_RPC_PLAYER.ru.md#нативная-проверка)
+
 `channel.create("ref", capacity)` создаёт FIFO одного контекста с ёмкостью
 от 1 до 65536 сообщений. `send` принимает скаляр или ссылку и возвращает
 `false` при заполнении. `recv()` возвращает первое сообщение или
@@ -57,3 +62,15 @@ var forwarded = ch.send(ref alias);
 [Парный AS](../../lib/styxrpc/tests/flashvm/named_pair.as) ·
 [Парный Limbo](../../lib/styxrpc/tests/flashvm/named_pair.b) ·
 [C API таблиц](../include/flashvm/table.h).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+<!-- source-links:end -->
