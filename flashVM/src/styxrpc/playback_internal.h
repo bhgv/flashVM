@@ -23,6 +23,7 @@ struct FVM_StyxRpcPlayback
 {
     FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
     struct StyxClient *named;    /* Borrowed channel service for a FlashVM pair. */
+    const FVM_PeerRefs *refs;     /* Borrowed negotiated module-ref routing for this pair. */
     int awaiting_session;        /* Reject movie staging until the peer mount is attached. */
     int defer_command_tick;      /* Clocked player acknowledges start before executing the first frame. */
     StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */

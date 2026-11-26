@@ -8,6 +8,7 @@
 #include "flashvm/value.h"
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/vfs_client.h"
+#include "peer_refs.h"
 
 #define FVM_STYXRPC_MOVIE_QUEUE 16U /* Maximum outstanding requests per playback owner. */
 #define FVM_STYXRPC_MOVIE_PATH (STYXRPC_VFS_PATH_MAX + 2U) /* Absolute path, slash and NUL included. */
@@ -24,6 +25,7 @@ typedef struct FVM_StyxRpcMovies
     FVM_Object *root;                    /* [GC:] Borrowed playback root pin. */
     struct StyxClient *session;          /* Borrowed ordinary VFS root. */
     struct StyxClient *named;            /* Optional borrowed pair-wide channel service. */
+    const FVM_PeerRefs *refs;             /* Optional borrowed module-ref route for the pair. */
     FVM_StyxRpcSession *binding;         /* Borrowed AS binding for shared cwd. */
     size_t limit;                         /* Maximum wire bytes per child. */
     size_t pending;                       /* Number of queued requests. */

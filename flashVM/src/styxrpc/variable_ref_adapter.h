@@ -6,6 +6,7 @@
 #define FVM_STYXRPC_VARIABLE_REF_ADAPTER_H
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/variable_ref.h"
+#include "styxrpc/module_ref.h"
 
 
 /* [GC:] EN/RU: Capture a named variable operand. / Захватить ссылочный операнд. */
@@ -15,6 +16,20 @@ FVM_Result fvm_capture_variable_ref(FVM_Context *, FVM_Object *, unsigned, const
 /* EN: Return one only for the SDK's native Int32 file getter.
  * RU: Вернуть единицу только для нативного getter файла Int32 из SDK. */
 int fvm_styxrpc_int_variable_getter(FVM_NativeFunction getter);
+
+
+/* EN: Copy identity from a verified Int32 accessor's private state. Use lane
+ * to identify the local export and its opposite for opened remote exports.
+ * RU: Копировать идентичность из состояния проверенного аксессора Int32.
+ * lane обозначает местный экспорт, встречная роль — удалённый. */
+int fvm_styxrpc_module_ref_from_binding(const void *state, struct StyxClient *mount,
+    unsigned lane, StyxRpcModuleRef *out);
+
+
+/* [GC:] EN: Bind ref to value, choosing the local slot or the exact original mount.
+ * RU: Связать ref с value через локальный слот либо точное исходное подключение. */
+FVM_Result fvm_styxrpc_module_ref_bind(FVM_Context *context, FVM_Object *object,
+    struct StyxClient *mount, struct StyxRpcModuleSlot *local, const StyxRpcModuleRef *ref);
 
 
 /* [GC:] EN/RU: Attach the resolved fid to value. / Привязать разрешённый fid к value. */

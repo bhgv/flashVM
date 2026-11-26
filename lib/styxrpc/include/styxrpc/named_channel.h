@@ -22,6 +22,7 @@
 #define STYXRPC_NAMED_BOOLEAN 5U /* One byte, zero or one. */
 #define STYXRPC_NAMED_NULL 6U /* Empty null body. */
 #define STYXRPC_NAMED_UNDEFINED 7U /* Empty undefined body. */
+#define STYXRPC_NAMED_MODULE_REF 9U /* Scoped reference to a live hosted .var export. */
 #define STYXRPC_NAMED_NUMBER_BYTES 8U /* Fixed width of one IEEE-754 binary64. */
 
 #ifdef __cplusplus

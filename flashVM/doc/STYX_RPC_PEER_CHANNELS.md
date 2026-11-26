@@ -26,9 +26,44 @@ its own lease. Connection loss cancels pending exchanges.
 Numbers, strings, booleans, null, undefined and supported graphs pass
 by value. Capture a writable AS slot with `ref` to pass a live cell.
 Ordinary reads and assignments at either end use that cell. A second
-`send(ref alias)` forwards its identity. Int32 descriptors of module
-variables belong to their original VFS attachment. The common named
-service handles AS slots and its own shared cells.
+`send(ref alias)` forwards its identity.
+
+## Pass an exported variable
+
+On a pair of FlashVMs that support module references, open a published Int32
+such as `/mounted/ref-peer.dis/.var/counter` with `vfs.intVariable(path, true)`.
+The second argument requests write access. Omit it for a read-only view.
+Once the module is published and its owner is serving VFS, the importing
+movie can send the property reference and receive it back.
+
+```actionscript
+var proxy = vfs.intVariable("/mounted/ref-peer.dis/.var/counter", true);
+var pipe = vfs.chan("/module-ref-work");
+var sent = pipe.send(ref proxy.value);
+var returned = pipe.recv();
+var closed = pipe.delete();
+```
+
+The movie that published the counter joins the same named channel,
+receives the reference, updates its own export through it and sends it back.
+
+```actionscript
+var pipe = vfs.chan("/module-ref-work");
+var alias = pipe.recv();
+alias = -73;
+var sent = pipe.send(ref alias);
+var closed = pipe.delete();
+```
+
+After this exchange, `returned` and `proxy.value` both read `-73`.
+Assigning an exact signed Int32 to `returned` changes the original export.
+The alias can outlive the channel endpoint. Its rights follow the opening
+that produced it. The owner opens a local alias against its current slot
+on receipt. A remote alias opens and checks its original fid on first access.
+The owner must be available to serve that access. Withdrawing or replacing
+the module invalidates the old references, even if the same name is published
+again. The pair negotiates this feature on its named service stream.
+[C SDK and wire format](../../lib/styxrpc/reference/module_refs.md).
 
 ## Run acceptance
 
@@ -38,6 +73,12 @@ the [caller](../tests/styxrpc/peer-named-caller.as) and
 The movies exchange a graph with repeated references and a cycle, update
 shared slots from each side, then read them after closing the channel.
 The provider waits for another value when the test disconnects the caller.
+
+The same check builds the [module caller](../tests/styxrpc/peer-module-refs-caller.as),
+[provider](../tests/styxrpc/peer-module-refs-provider.as) and
+[readiness callback](../tests/styxrpc/peer-module-refs-start.as). They relay
+a writable and a read-only reference and verify that both reflect updates
+to the original export after the channel closes.
 
 The stock DisVM pair uses its named service on the existing mount.
 Applications embedding the C SDK can use the

@@ -305,6 +305,14 @@ StyxFid *styxrpc_vfs_open_directory_fid(StyxClient *session, const char *path)
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_int_open(StyxClient *session, const char *path, int writable, StyxRpcVfsFile **out)
 {
+    return styxrpc_vfs_int_open_identified(session, path, writable, out, NULL);
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_int_open_identified(StyxClient *session, const char *path,
+    int writable, StyxRpcVfsFile **out, uint64_t *identity)
+{
     if (!out || (writable != 0 && writable != 1) || !relative_path(path, 1))
     {
         return STYXRPC_IO_NOT_OPEN;
@@ -324,11 +332,15 @@ StyxRpcIoOutcome styxrpc_vfs_int_open(StyxClient *session, const char *path, int
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxRpcFileInfo info;
-    if (styxrpc_vfs_file_stat(fid, &info) != STYXRPC_IO_OK || info.length != STYX_VARIABLE_INT_SIZE)
+    StyxMeta info;
+    if (!styxclientstat(fid, &info) || info.length != STYX_VARIABLE_INT_SIZE)
     {
         styxclientclunk(fid);
         return STYXRPC_IO_FAILED;
+    }
+    if (identity)
+    {
+        *identity = info.identity;
     }
     *out = fid;
     return STYXRPC_IO_OK;

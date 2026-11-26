@@ -5,6 +5,7 @@
 #include "session_named_values.hpp"
 #include "session_named_refs.hpp"
 #include "session_named_snapshot.hpp"
+#include "session_module_refs.hpp"
 #include "flashvm/serialization.h"
 #include "../capi/variable_refs.hpp"
 #include "styxrpc/named_channel.h"
@@ -87,8 +88,15 @@ FVM_Result fvm_named_encode(FVM_Context *context, const FVM_NamedRoute &route,
             }
             return pack(STYXRPC_NAMED_INT_REF, descriptor, sizeof(descriptor), bytes, size);
         }
+        unsigned char module[STYXRPC_MODULE_REF_WIRE_MAX];
+        size_t length;
+        FVM_Result status = fvm_named_module_ref_encode(context, route, value, module, sizeof(module), &length);
+        if (status != FVM_OK || length)
+        {
+            return status == FVM_OK ? pack(STYXRPC_NAMED_MODULE_REF, module, length, bytes, size) : status;
+        }
         unsigned char token[STYXRPC_CELL_TOKEN];
-        FVM_Result status = fvm_named_ref_token(context, route, value, token);
+        status = fvm_named_ref_token(context, route, value, token);
         return status == FVM_OK ? pack(STYXRPC_NAMED_CELL_REF, token, sizeof(token), bytes, size) : status;
     }
     switch (value->type)
@@ -150,6 +158,8 @@ FVM_Result fvm_named_decode(FVM_Context *context, const FVM_NamedRoute &route,
     case STYXRPC_NAMED_INT_REF:
         return route.client == route.vfs->client ?
             fvm_styxrpc_decode_int_ref(context, route.vfs, payload, size, out) : FVM_INVALID_ARGUMENT;
+    case STYXRPC_NAMED_MODULE_REF:
+        return fvm_named_module_ref_decode(context, route, payload, size, out);
     case STYXRPC_NAMED_VALUE:
         return fvm_value_deserialize(context, payload, size, out);
     case STYXRPC_NAMED_TEXT:

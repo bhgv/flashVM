@@ -189,7 +189,7 @@ extern "C" FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *context, FVM_O
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcSession *session = static_cast<FVM_StyxRpcSession *>(state);
-    const FVM_NamedRoute route = {session, session->client};
+    const FVM_NamedRoute route = {session, session->client, NULL};
     return open_channel(context, route, argc, args, out);
 }
 
@@ -199,6 +199,6 @@ extern "C" FVM_Result fvm_styxrpc_open_peer_channel(FVM_Context *context, FVM_Ob
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcMovies *movies = static_cast<FVM_StyxRpcMovies *>(state);
-    const FVM_NamedRoute route = {movies->binding, movies->named};
+    const FVM_NamedRoute route = {movies->binding, movies->named, movies->refs};
     return open_channel(context, route, argc, args, out);
 }

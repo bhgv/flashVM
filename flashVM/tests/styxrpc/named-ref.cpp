@@ -13,7 +13,7 @@
  * RU: Проверить независимое поле Int32, пока исходное остаётся живой привязкой. */
 static int sampled_int(FVM_Context *context, FVM_StyxRpcSession *session, const FVM_Value *ref)
 {
-    const FVM_NamedRoute route = {session, session->client};
+    const FVM_NamedRoute route = {session, session->client, NULL};
     FVM_Value source, copy, value;
     fvm_value_undefined(&source);
     if (fvm_object_create(context, &source.object) != FVM_OK)
@@ -60,7 +60,7 @@ static FVM_Result custom_getter(FVM_Context *, FVM_Object *, unsigned, const FVM
  * RU: Если цель привязки стала геттером хоста, отклонить снимок без вызова. */
 static int refused_getter(FVM_Context *context, FVM_StyxRpcSession *session)
 {
-    const FVM_NamedRoute route = {session, session->client};
+    const FVM_NamedRoute route = {session, session->client, NULL};
     FVM_Value owner, container, args[2], value, ref;
     fvm_value_undefined(&owner);
     fvm_value_undefined(&container);
@@ -104,7 +104,7 @@ static int refused_getter(FVM_Context *context, FVM_StyxRpcSession *session)
 extern "C" int test_named_channel_ref(FVM_Context *context, FVM_StyxRpcSession *session,
     const FVM_Value *ref)
 {
-    const FVM_NamedRoute route = {session, session->client};
+    const FVM_NamedRoute route = {session, session->client, NULL};
     unsigned char *wire;
     size_t size;
     if (fvm_named_encode(context, route, ref, &wire, &size) != FVM_OK)

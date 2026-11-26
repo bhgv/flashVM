@@ -141,23 +141,33 @@ int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mu
     {
         return 0;
     }
+    channels->refs.slot = playback->slot;
+    channels->refs.lane = serve_lane == PLAYER_SERVE_FORWARD ?
+        STYXRPC_MODULE_REF_FORWARD : STYXRPC_MODULE_REF_REVERSE;
     if (serve_lane == PLAYER_SERVE_FORWARD)
     {
+        unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE];
+        const void *offer;
         channels->registry = styxrpc_module_slot_named_registry(playback->slot);
         if (!styxrpc_named_cells_enable(channels->registry, cell_entropy, NULL))
         {
             phyfree(lane);
             return 0;
         }
-        channels->host = styxrpc_named_peer_host(lane, channels->registry, PLAYER_MSIZE,
-            PLAYER_WAIT_MS, PLAYER_TAGS);
+        offer = fvm_port_secure_random(scope, sizeof(scope)) ? scope : NULL;
+        channels->host = styxrpc_named_peer_host_scoped(lane, channels->registry, PLAYER_MSIZE,
+            PLAYER_WAIT_MS, PLAYER_TAGS, offer);
         channels->client = styxrpc_named_peer_client(channels->host);
+        channels->refs.host = channels->host;
     }
     else
     {
-        channels->client = styxclientmountphy(lane, PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS, PLAYER_TAGS);
+        channels->client = styxclientmountphy(lane, PLAYER_MSIZE, "flash",
+            STYXRPC_MODULE_REF_ATTACH, PLAYER_WAIT_MS, PLAYER_TAGS);
+        channels->refs.enabled = styxrpc_named_peer_read_ref_scope(channels->client, channels->refs.scope);
     }
     playback->named = channels->client;
+    playback->refs = &channels->refs;
     return channels->client != NULL;
 }
 

@@ -1,5 +1,12 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1790, a FlashVM pair can pass a live Int32 reference to an exported
+module variable through an existing named channel. The receiver can forward
+it and continue using the same export. Replacement retires references to
+the previous generation, including when the new export has the same name.
+[EN](STYX_RPC_PEER_CHANNELS.md#pass-an-exported-variable) ·
+[RU](STYX_RPC_PEER_CHANNELS.ru.md#передача-переменной-модуля).
+
 In v0.1789, two FlashVMs share named channels and live AS cells over the
 already connected StyxRPC carrier. A native registry matches sends and
 receives while movie owners wait. Local sockets and TCP exercise graph

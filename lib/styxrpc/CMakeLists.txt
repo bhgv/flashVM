@@ -16,7 +16,7 @@ set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
 add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/named_channel_path.c src/named_cell_wire.c src/node_service.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
-    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/indexed_variable.c
+    protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/module_ref.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
 target_link_libraries(styxrpc PUBLIC Unibus::wire)
 target_include_directories(styxrpc PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -37,7 +37,8 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     set_target_properties(styxrpc_launch PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME launch)
     add_library(StyxRpc::launch ALIAS styxrpc_launch)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
-        src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/module_slot_named.c src/nodes.c src/node_exec.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
+        src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/module_slot_named.c src/module_ref_local.c
+        src/nodes.c src/node_exec.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
         src/channel_mailbox.c src/message_server.c src/named_channel.c src/named_cell_store.c src/named_peer.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)
@@ -99,6 +100,10 @@ if(BUILD_TESTING)
         target_link_libraries(styxrpc-variable-ref-test PRIVATE StyxRpc::serve StyxRpc::launch Styx::bidir)
         add_test(NAME styxrpc-variable-ref COMMAND styxrpc-variable-ref-test)
         set_tests_properties(styxrpc-variable-ref PROPERTIES TIMEOUT 10)
+        add_executable(styxrpc-module-ref-test tests/module_ref.c)
+        target_link_libraries(styxrpc-module-ref-test PRIVATE StyxRpc::serve StyxRpc::launch)
+        add_test(NAME styxrpc-module-ref COMMAND styxrpc-module-ref-test)
+        set_tests_properties(styxrpc-module-ref PROPERTIES TIMEOUT 10)
         if(STYXRPC_DISVM_BUILD AND STYXRPC_DISVM_SOURCE)
             foreach(mode interpreter jit)
                 set(ref_mode)

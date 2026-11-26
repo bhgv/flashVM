@@ -5,11 +5,13 @@
 #ifndef FVM_STYXRPC_NAMED_VALUES_HPP
 #define FVM_STYXRPC_NAMED_VALUES_HPP
 #include "flashvm/styxrpc_session.h"
+#include "peer_refs.h"
 
 struct FVM_NamedRoute
 {
     FVM_StyxRpcSession *vfs; /* Borrowed ordinary session for paths and module references. */
-    StyxClient *client;      /* Borrowed issuer used for the named channels and cells. */
+    StyxClient *client;     /* Borrowed issuer used for the named channels and cells. */
+    const FVM_PeerRefs *refs; /* Optional module-ref routes and connection scope. */
 };
 
 

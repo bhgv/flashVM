@@ -20,6 +20,7 @@ typedef struct PlayerPeerChannels
     StyxRpcNamedRegistry *registry; /* Owned only by the authoritative side. */
     StyxRpcNamedPeer *host;          /* Owns the authoritative native endpoints. */
     StyxClient *client;             /* Borrowed from host or owned on the reverse side. */
+    FVM_PeerRefs refs;               /* Borrowed by any active movie until peer close. */
 } PlayerPeerChannels;
 
 

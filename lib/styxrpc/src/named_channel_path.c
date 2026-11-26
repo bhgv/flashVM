@@ -2,7 +2,7 @@
  * EN: Validate channel names shared by Styx clients and providers.
  * RU: Проверять имена каналов в клиентах и провайдерах Styx.
  */
-#include "styxrpc/named_channel.h"
+#include "styxrpc/named_peer.h"
 #include "styxrpc/nodes.h"
 #include <string.h>
 
@@ -12,7 +12,8 @@
 int styxrpc_vfs_service_name(const char *name, size_t size)
 {
     static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs",
-        ".unibus", ".rpc", ".messages", STYXRPC_NAMED_SERVICE, ".interface", ".programs",
+        ".unibus", ".rpc", ".messages", STYXRPC_NAMED_SERVICE, STYXRPC_MODULE_REF_SCOPE_FILE,
+        ".interface", ".programs",
         ".sysevents", ".state", ".upload", STYXRPC_NODE_EXEC_SERVICE, STYXRPC_NODE_EXEC_OWNER,
         ".exit", ".idx", ".val", ".len", ".type",
         ".ins", ".push", ".pop", ".add", ".count"};
