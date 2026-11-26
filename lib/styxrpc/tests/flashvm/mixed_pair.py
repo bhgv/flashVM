@@ -30,22 +30,24 @@ def main():
         parser.add_argument("--" + field, type=lambda path: Path(path).resolve(), required=True)
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
-    parser.add_argument("--named", action="store_true")
+    profiles = parser.add_mutually_exclusive_group()
+    profiles.add_argument("--named", action="store_true")
+    profiles.add_argument("--typed", action="store_true")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
+    name = "typed" if args.typed else "named" if args.named else "mixed"
     mode = "--jit" if args.jit else "--no-jit"
     with TemporaryDirectory(prefix="styxrpc-mixed-pair-") as scratch:
         directory = Path(scratch)
         fixture_bytes = b"A\x00RPC"
-        if not args.named:
+        if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
-        modules = ("styxnamed",) if args.named else ("styxintref", "styxchannel")
+        modules = ("styxvalue", "styxnamed") if name != "mixed" else ("styxintref", "styxchannel")
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
         if args.named:
             (directory / "named-area").mkdir()
-        name = "named" if args.named else "mixed"
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
         compile_movie(args, directory, tests / (name + "_pair.as"), name)
         paired_exchange(
@@ -56,9 +58,9 @@ def main():
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp,
         )
-        if not args.named and (directory / "created/nested").exists():
+        if name == "mixed" and (directory / "created/nested").exists():
             raise RuntimeError("the movie did not remove its temporary directory")
-        for created in (() if args.named else ("created/rpc-file", "rpc-root-file")):
+        for created in (("created/rpc-file", "rpc-root-file") if name == "mixed" else ()):
             if (directory / created).read_bytes() != fixture_bytes:
                 raise RuntimeError("the movie did not create the expected VFS file")
 

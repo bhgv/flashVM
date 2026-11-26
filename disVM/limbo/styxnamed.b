@@ -6,18 +6,25 @@ include "sys.m";
 include "styxnamed.m";
 
 sys: Sys; # Owned module initialized before use.
+values: Styxvalue; # Typed codec, optional for callers of the raw interface.
+Value: import values;
 Open, Read, Write, Newcell, Attachcell, Getcell, Setcell: con iota+1; # Request opcodes.
 Header: con 5; # Request header, bytes.
 Reply: con 4; # Reply length prefix, bytes.
 Maxframe: con 65536; # Maximum payload in one request.
 Idlems: con 10; # Sleep between empty polls.
 Token: con 24; # Cell capability byte count.
+Intrefbytes: con 8; # Legacy Int32 descriptor byte count.
 
 
 # EN/RU: See styxnamed.m. / См. styxnamed.m.
 init()
 {
     sys = load Sys Sys->PATH;
+    values = load Styxvalue Styxvalue->PATH;
+    if (values != nil) {
+        values->init();
+    }
 }
 
 
@@ -220,4 +227,94 @@ Cell.close(cell: self ref Cell)
 {
     cell.fd = nil;
     cell.frame = nil;
+}
+
+
+# EN: Return the initialized codec required by typed operations.
+# RU: Выдать инициализированный кодек для типизированных операций.
+codec(): Styxvalue
+{
+    if (values == nil) {
+        raise "cannot load styxvalue.dis for typed named channels";
+    }
+    return values;
+}
+
+
+# EN: Recognize the existing version-one Int32 descriptor before forwarding.
+# RU: Распознать существующий дескриптор Int32 версии один перед пересылкой.
+intdescriptor(bytes: array of byte): int
+{
+    return len bytes == Intrefbytes && int bytes[0] == 'V' && int bytes[1] == 'R' &&
+        int bytes[2] == 1 && int bytes[3] <= 1 && int bytes[4] >= 128;
+}
+
+
+# EN/RU: See styxnamed.m. / См. styxnamed.m.
+Port.recvvalue(port: self ref Port): ref Message
+{
+    v := codec();
+    frame := port.recv();
+    case int frame[0] {
+    Cellref =>
+        return ref Message.Shared(adopt(frame));
+    Intref =>
+        if (!intdescriptor(frame[1:])) {
+            raise "invalid named Int32 descriptor";
+        }
+        return ref Message.Intrefdata(frame[1:]);
+    * =>
+        return ref Message.Data(v->decode(frame));
+    }
+}
+
+
+# EN/RU: See styxnamed.m. / См. styxnamed.m.
+Port.sendvalue(port: self ref Port, message: ref Message)
+{
+    v := codec();
+    if (message == nil) {
+        raise "missing named message";
+    }
+    pick item := message {
+    Data =>
+        port.send(v->encode(item.value));
+    Shared =>
+        if (item.cell == nil) {
+            raise "missing named cell lease";
+        }
+        port.send(item.cell.payload());
+    Intrefdata =>
+        if (!intdescriptor(item.descriptor)) {
+            raise "invalid named Int32 descriptor";
+        }
+        frame := array[Intrefbytes+1] of byte;
+        frame[0] = byte Intref;
+        frame[1:] = item.descriptor;
+        port.send(frame);
+    }
+}
+
+
+# EN/RU: See styxnamed.m. / См. styxnamed.m.
+Cell.getvalue(cell: self ref Cell): ref Value
+{
+    v := codec();
+    return v->decode(cell.get());
+}
+
+
+# EN/RU: See styxnamed.m. / См. styxnamed.m.
+Cell.setvalue(cell: self ref Cell, value: ref Value)
+{
+    v := codec();
+    cell.set(v->encode(value));
+}
+
+
+# EN/RU: See styxnamed.m. / См. styxnamed.m.
+sharevalue(value: ref Value): ref Cell
+{
+    v := codec();
+    return share(v->encode(value));
 }

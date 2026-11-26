@@ -11,51 +11,7 @@ named: Styxnamed; # Limbo binding to the common native registry.
 Port, Cell: import named;
 
 
-# EN: Upload the compiled SWF to the paired player's control endpoint and start it.
-# RU: Загрузить собранный SWF в точку управления плеера и запустить его.
-start()
-{
-    fd := sys->open("named.swf", Sys->OREAD);
-    (ok, info) := sys->stat("named.swf");
-    if (fd == nil || ok < 0 || info.length <= big 0 || info.length > big 65535) {
-        raise "cannot size named SWF";
-    }
-    n := int info.length;
-    bytes := array[n+4] of byte;
-    at := 4;
-    while (at < len bytes) {
-        got := sys->read(fd, bytes[at:], len bytes-at);
-        if (got <= 0) {
-            raise "short read of named SWF";
-        }
-        at += got;
-    }
-    bytes[2] = byte (n >> 8);
-    bytes[3] = byte n;
-    upload := sys->open("/peer/.upload", Sys->OWRITE);
-    if (upload == nil) {
-        raise sys->sprint("cannot open named SWF upload: %r");
-    }
-    offset := 0;
-    while (offset < n+4) {
-        count := n+4-offset;
-        if (count > 2048) {
-            count = 2048;
-        }
-        written := sys->write(upload, bytes[offset:], count);
-        if (written <= 0) {
-            raise sys->sprint("cannot upload named SWF at %d: %r", offset);
-        }
-        offset += written;
-    }
-    upload = nil;
-    state := sys->open("/peer/.state", Sys->OWRITE);
-    command := array of byte "start";
-    if (state == nil || sys->write(state, command, len command) != len command) {
-        raise sys->sprint("cannot start named SWF: %r");
-    }
-}
-
+include "named_movie_upload.b";
 
 
 # EN: Compare wire frames byte for byte, including embedded NUL values.
@@ -110,7 +66,7 @@ init()
     if (exists != 0 || meta.mode != 0 || sys->open("/jobs", Sys->OREAD) != nil) {
         raise "named channel failed to reserve its VFS name";
     }
-    start();
+    start("named.swf");
     value := array[] of {byte Styxnamed->Text, byte 'A', byte 0, byte 'B'};
     port.send(value);
     if (!equal(port.recv(), value)) {

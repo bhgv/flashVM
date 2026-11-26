@@ -38,6 +38,8 @@ DisVM поставляет модуль [Styxnamed](../../../disVM/module/styxna
 Загрузите `styxnamed.dis`, вызовите `init()` и `open("/jobs")` в парной VFS.
 Методы Limbo принимают и возвращают массивы байтов с тегами. Форматы скаляров
 и дескрипторов переносимы. Граф FlashVM можно переслать из Limbo целиком.
+[Типизированный Limbo API](../../../disVM/runtime/STYX-NAMED-VALUES.ru.md)
+добавляет обмен значениями, аренды ячеек и переносимое представление графа.
 См. собираемые проверки на [Limbo](../tests/flashvm/named_pair.b) и
 [ActionScript](../tests/flashvm/named_pair.as).
 

@@ -456,7 +456,8 @@ set(module_sources "${root}/ide/dis/bridge/ideatlas.b" "${root}/ide/dis/bridge/i
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
-list(APPEND module_headers "${root}/disVM/limbo/scalarowner_loaded.b")
+list(APPEND module_headers "${root}/disVM/limbo/scalarowner_loaded.b"
+  "${root}/disVM/limbo/styxvalue_graph_read.b" "${root}/disVM/limbo/styxvalue_graph_write.b")
 list(APPEND module_headers "${root}/disVM/limbo/scalarowner_pool.b")
 list(APPEND module_headers "${root}/ide/dis/bridge/idedeskpane-ink.b"
   "${root}/ide/dis/bridge/idevectorbrushgeometry.b"
@@ -492,7 +493,7 @@ list(APPEND module_names proxyowner)
 list(APPEND module_sources "${root}/disVM/limbo/proxyowner.b")
 # EN/RU: Ship the matched typed network libraries with the ordinary native build.
 # Поставлять matching typed network libraries в обычной native-сборке.
-foreach(network_module styxintref styxchannel styxnamed proxyref proxyframe proxystream proxynetio proxynet proxyroute proxyregistry proxyserver)
+foreach(network_module styxintref styxchannel styxvalue styxnamed proxyref proxyframe proxystream proxynetio proxynet proxyroute proxyregistry proxyserver)
  list(APPEND module_names ${network_module})
  list(APPEND module_sources "${root}/disVM/limbo/${network_module}.b")
 endforeach()

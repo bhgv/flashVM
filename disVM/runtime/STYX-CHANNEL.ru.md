@@ -60,3 +60,5 @@ python3 lib/styxrpc/tests/flashvm/mixed_pair.py --source disVM \
 `styxrpc-mixed-ref-disvm-jit` запускают
 [приёмник типизированной ссылки](../../lib/styxrpc/tests/flashvm/mixed_ref.b)
 и проверяют изменение значения у владельца.
+
+[Типизированные значения и живые ячейки именованного канала](STYX-NAMED-VALUES.ru.md) работают в том же парном пространстве имён.

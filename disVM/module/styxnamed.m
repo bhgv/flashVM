@@ -1,10 +1,24 @@
 # Copyright (c) 2026 bhgv
 # EN: Blocking named StyxRPC channels exposed by the paired DisVM namespace.
 # RU: Блокирующие именованные каналы StyxRPC в пространстве парной DisVM.
+include "styxvalue.m";
+
 Styxnamed: module
 {
     PATH: con "styxnamed.dis"; # Compiled portable Limbo implementation.
     Snapshot, Intref, Number, Text, Boolean, Null, Undefined, Cellref: con iota+1; # Wire type byte.
+
+    Message: adt
+    {
+        pick {
+        Data =>
+            value: ref Styxvalue->Value; # Scalar or graph by value.
+        Shared =>
+            cell: ref Cell; # Attached live lease.
+        Intrefdata =>
+            descriptor: array of byte; # Legacy descriptor for the issuer's Styxintref adapter.
+        }
+    };
 
     Port: adt
     {
@@ -17,6 +31,14 @@ Styxnamed: module
         # EN: Wait for a participant to accept this nonempty frame.
         # RU: Дождаться принятия непустого кадра участником.
         send: fn(port: self ref Port, frame: array of byte);
+
+        # EN: Wait for a typed value or attach a received cell before returning.
+        # RU: Дождаться значения или привязать принятую ячейку перед возвратом.
+        recvvalue: fn(port: self ref Port): ref Message;
+
+        # EN: Send a typed value or an existing cell and wait for reception.
+        # RU: Отправить значение или существующую ячейку и дождаться приёма.
+        sendvalue: fn(port: self ref Port, message: ref Message);
 
         # EN: Drop this participant. Repeated close is harmless.
         # RU: Освободить участника. Повторное закрытие безопасно.
@@ -36,6 +58,14 @@ Styxnamed: module
         # RU: Заменить значение полным кадром с тегом.
         set: fn(cell: self ref Cell, value: array of byte);
 
+        # EN: Read and decode the shared value, preserving counted text.
+        # RU: Прочитать и декодировать общее значение, сохраняя длину текста.
+        getvalue: fn(cell: self ref Cell): ref Styxvalue->Value;
+
+        # EN: Encode and atomically replace the cell value.
+        # RU: Закодировать и атомарно заменить значение ячейки.
+        setvalue: fn(cell: self ref Cell, value: ref Styxvalue->Value);
+
         # EN: Copy the descriptor for sending this same cell again.
         # RU: Скопировать дескриптор для повторной передачи той же ячейки.
         payload: fn(cell: self ref Cell): array of byte;
@@ -53,8 +83,12 @@ Styxnamed: module
     # RU: Создать общую ячейку значения. Возвращаемый Cell — её первая аренда.
     share: fn(value: array of byte): ref Cell;
 
-    # EN: Load Sys before opening channels.
-    # RU: Загрузить Sys перед открытием каналов.
+    # EN: Create a shared cell from a typed value and return its first lease.
+    # RU: Создать общую ячейку из типизированного значения и вернуть первую аренду.
+    sharevalue: fn(value: ref Styxvalue->Value): ref Cell;
+
+    # EN: Load Sys and initialize the typed codec if available.
+    # RU: Загрузить Sys и инициализировать типизированный кодек, если он доступен.
     init: fn();
 
     # EN: Open or create at a canonical absolute path on the current paired namespace.

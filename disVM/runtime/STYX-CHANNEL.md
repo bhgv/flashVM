@@ -59,3 +59,5 @@ loopback TCP pair and `--jit` to run both VMs with JIT. The independent SDK
 checks `styxrpc-mixed-ref-disvm-interpreter` and `styxrpc-mixed-ref-disvm-jit`
 use the [typed reference guest](../../lib/styxrpc/tests/flashvm/mixed_ref.b)
 and verify the value at the reference issuer.
+
+[Typed named-channel values and live cells](STYX-NAMED-VALUES.md) use the same paired namespace.

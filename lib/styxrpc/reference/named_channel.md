@@ -34,8 +34,8 @@ scalar, snapshot and issuer-descriptor tags.
 
 DisVM ships [Styxnamed](../../../disVM/module/styxnamed.m). Load
 `styxnamed.dis`, call `init()`, and `open("/jobs")` in the paired namespace.
-The Limbo methods operate on tagged byte arrays. Scalars and descriptors have
-portable formats. FlashVM graph payloads can be forwarded intact from Limbo.
+The raw methods accept tagged byte arrays. The [typed Limbo API](../../../disVM/runtime/STYX-NAMED-VALUES.md)
+adds direct value exchange, live cell leases and a portable graph view.
 See the compiled [Limbo](../tests/flashvm/named_pair.b) and
 [ActionScript](../tests/flashvm/named_pair.as) acceptance sources.
 
