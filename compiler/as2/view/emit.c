@@ -1,4 +1,7 @@
-/* AS2 display lowering to textual FIR. Target instruction encoding belongs to FIR backends. */
+/* Copyright (c) 2026 bhgv
+ * EN: Lower the bounded AS2 display profile to textual FIR in a private buffer.
+ * RU: Понижать ограниченный профиль AS2 в текст FIR в закрытом буфере.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +19,6 @@ static int values;                                /* Next unique SSA value ident
 static int labels;                                /* Next distinct control-flow label identity. */
 static int stack[4096];                           /* Expression values, never VM heap pointers. */
 static int depth;                                 /* Number of initialized expression-stack entries. */
-static char target[256];                          /* Copied current assignment name. */
-static char property[256];                        /* Copied member key, when present. */
-static int owner;                                 /* Captured LHS object SSA identity, or -1. */
 static As2ViewDiagnostic *active;                 /* Borrowed first-error sink for one serialized call. */
 extern int view_parser_run(unsigned char *, int); /* Recover generated scanner failures. */
 extern void view_parser_reset(void);              /* Reset generated parser diagnostics between calls. */
@@ -202,85 +202,22 @@ void emit_while_end(int label)
     append("    jump ^while%d\n^exit%d:\n", label, label);
 }
 
-/* Capture an assignment target; source comments preserve token line/column, not a debug ABI. */
-void emit_target(void)
+/* EN: Add one captured operand at the head of the FIR argument list, or start it.
+ * RU: Добавить захваченный операнд в начало списка аргументов FIR или начать список. */
+static int emit_arg(int previous, int operand)
 {
-    name(target);
-    owner = -1;
-    append("    // AS2 assignment line %d column %d byte %ld\n", S_Line, S_Col, S_Pos);
-}
-
-/* Capture the LHS owner before evaluating RHS, preserving ordinary AS evaluation order. */
-void emit_property(void)
-{
-    name(property);
-    owner = values++;
-    append("    %%v%d: any = as.global_get \"%s\"\n", owner, target);
-}
-
-/* Emit an observable global read; the FIR optimizer must retain accessor effects/order. */
-void emit_global(void)
-{
-    char key[256];
-    if (name(key))
+    int argument = values++;
+    append("    %%v%d: as.args = as.arg %%v%d", argument, operand);
+    if (previous >= 0)
     {
-        int value = values++;
-        append("    %%v%d: any = as.global_get \"%s\"\n", value, key);
-        push(value);
+        append(", %%v%d", previous);
     }
-}
-
-/* EN: Recognize contextual ref before a profile variable name.
- * RU: Распознать контекстное ref перед именем переменной профиля. */
-int emit_ref_ahead(void)
-{
-    long cursor = S_NextPos + S_NextLen;
-    int ch;
-    if (S_NextLen != 3 || S_CurrentCh(S_NextPos) != 'r' ||
-        S_CurrentCh(S_NextPos + 1) != 'e' || S_CurrentCh(S_NextPos + 2) != 'f')
-    {
-        return 0;
-    }
-    while ((ch = S_CurrentCh(cursor)) == ' ' || ch == '\t' || ch == '\r' || ch == '\n' ||
-        (ch == '/' && S_CurrentCh(cursor + 1) == '/'))
-    {
-        if (ch == '/')
-        {
-            do
-            {
-                ch = S_CurrentCh(++cursor);
-            } while (ch > 0 && ch != '\r' && ch != '\n');
-            if (ch <= 0)
-            {
-                return 0;
-            }
-        }
-        ++cursor;
-    }
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_';
+    append("\n");
+    return argument;
 }
 
 
-/* EN: Capture a movie-global or a member of the evaluated owner without reading its value.
- * RU: Захватить имя фильма или член вычисленного владельца без чтения значения. */
-void emit_ref(const char *binding, int member)
-{
-    char key[256];
-    int channel = values++;
-    int receiver = values++;
-    int literal = values++;
-    if (member && !name(key))
-    {
-        return;
-    }
-    append("    %%v%d: any = as.global_get \"channel\"\n", channel);
-    append("    %%v%d: any = as.global_get \"%s\"\n", receiver, member ? binding : "_root");
-    append("    %%v%d: string = const.string \"%s\"\n", literal, member ? key : binding);
-    push(channel);
-    push(receiver);
-    push(literal);
-    emit_method_call("ref", 2);
-}
+#include "emit_binding.inc"
 
 
 /* Lower a decimal literal after exact int32 range admission, independent of host long. */
@@ -354,14 +291,7 @@ void emit_method_call(const char *key, int argc)
     {
         for (i = 0; i < argc; ++i)
         {
-            int argument = values++;
-            append("    %%v%d: as.args = as.arg %%v%d", argument, arguments[i]);
-            if (list >= 0)
-            {
-                append(", %%v%d", list);
-            }
-            append("\n");
-            list = argument;
+            list = emit_arg(list, arguments[i]);
         }
     }
     value = values++;
@@ -415,24 +345,6 @@ void emit_binary(int operation)
            left,
            right);
     push(value);
-}
-
-/* Emit an effectful store after RHS evaluation; one statement must leave no expression values. */
-void emit_assign(int member)
-{
-    int value = pop();
-    if (member)
-    {
-        append("    as.member_set %%v%d, \"%s\", %%v%d\n", owner, property, value);
-    }
-    else
-    {
-        append("    as.global_set \"%s\", %%v%d\n", target, value);
-    }
-    if (depth)
-    {
-        failed = 1;
-    }
 }
 
 /* Record the first generated syntax/profile failure, copying only scalar source coordinates. */
@@ -502,7 +414,6 @@ int as2_view_compile(const void *bytes,
     values = 0;
     labels = 0;
     depth = 0;
-    owner = -1;
     failed = 0;
     active = diagnostic;
     Custom_Error = diagnostic_callback;

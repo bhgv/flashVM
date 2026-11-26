@@ -370,6 +370,8 @@ PRODUCTIONS
     | FloatingBinary A "," B
     | "as.global_get" (. fir_build_op(O_AS_GLOBAL_GET); .)
     textlit (. capture(B_LITERAL); .)
+    | "as.member_get" (. fir_build_op(O_AS_MEMBER_GET); .)
+    A "," B
     | "as.member_call" (. fir_build_op(O_AS_MEMBER_CALL); .)
     A "," textlit (. capture(B_LITERAL); .) [ "," B ]
     | "as.arg" (. fir_build_op(O_AS_ARG); .)
@@ -418,6 +420,8 @@ PRODUCTIONS
   Effect =
     "as.global_set" (. fir_build_op(O_AS_GLOBAL_SET); .)
     textlit (. capture(B_LITERAL); .) "," A
+    | "as.member_put" (. fir_build_op(O_AS_MEMBER_PUT); .)
+    A "," B
     | "as.member_set" (. fir_build_op(O_AS_MEMBER_SET); .)
     A "," textlit (. capture(B_LITERAL); .) "," B
     | "ref.store" (. fir_build_op(O_REF_STORE); .) A "," B

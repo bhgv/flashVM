@@ -5,6 +5,8 @@
 
 #define SWL_LIMIT (64u * 1024u * 1024u)
 #define SWL_ITEMS 1024
+#define SWL_AVM1_GET_MEMBER 0x4eU /* Bounded, payload-free member read in a SWO action block. */
+#define SWL_AVM1_SET_MEMBER 0x4fU /* Bounded, payload-free member write in a SWO action block. */
 
 
 /* Canonical owned object: name plus validated AVM1 ActionEnd-terminated bytes. */

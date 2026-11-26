@@ -7,6 +7,8 @@
 #include "fir.h"
 
 #define FIR_OBJECT_LIMIT (2u * 1024u * 1024u) /* Bound a complete binary SWO record. */
+#define FIR_AVM1_GET_MEMBER 0x4eU /* AVM1 reads object, key from the operand stack. */
+#define FIR_AVM1_SET_MEMBER 0x4fU /* AVM1 reads object, key, value from the stack. */
 
 
 /* EN: One unresolved AVM1 branch / RU: Незамкнутый переход AVM1. */

@@ -194,7 +194,9 @@ typedef enum
     O_AS_MEMBER_CALL,    /* Call a named method with zero or one argument. */
     O_AS_TO_BOOLEAN,     /* Convert a scalar to AVM1 truthiness. */
     O_AS_ARG,            /* Add a captured scalar at the head of an AVM1 argument list. */
-    O_AS_MEMBER_ARGS     /* Call a named method with a verified static list of arguments. */
+    O_AS_MEMBER_ARGS,    /* Call a named method with a verified static list of arguments. */
+    O_AS_MEMBER_GET,     /* Read a member using an evaluated AVM1 key. */
+    O_AS_MEMBER_PUT      /* Store a member using a two-item key/value list. */
 } FirOp;
 
 

@@ -233,11 +233,26 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             load(&actions, m, in->a);
             byte(&actions, 0x1d);
             break;
+        case O_AS_MEMBER_GET:
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, FIR_AVM1_GET_MEMBER);
+            break;
+        case O_AS_MEMBER_PUT:
+        {
+            const FirInstruction *item = &m->instructions[m->values[in->b].definition];
+            const FirInstruction *key = &m->instructions[m->values[item->b].definition];
+            load(&actions, m, in->a);
+            load(&actions, m, key->a);
+            load(&actions, m, item->a);
+            byte(&actions, FIR_AVM1_SET_MEMBER);
+            break;
+        }
         case O_AS_MEMBER_SET:
             load(&actions, m, in->a);
             text(&actions, in->text);
             load(&actions, m, in->b);
-            byte(&actions, 0x4f);
+            byte(&actions, FIR_AVM1_SET_MEMBER);
             break;
         case O_AS_MEMBER_CALL:
         case O_AS_MEMBER_ARGS:

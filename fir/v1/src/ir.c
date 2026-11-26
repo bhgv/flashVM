@@ -151,7 +151,9 @@ static const char *const ops[] = {"const.i32",
                                   "as.member_call",
                                   "as.to_boolean",
                                   "as.arg",
-                                  "as.member_call_args"};
+                                  "as.member_call_args",
+                                  "as.member_get",
+                                  "as.member_put"};
 
 
 /* Map a private retained-cell type to its exact source payload type.
@@ -549,7 +551,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_AS_MEMBER_ARGS || (unsigned)in->type > T_AS_ARGS || in->block < 0 ||
+        if ((unsigned)in->op > O_AS_MEMBER_PUT || (unsigned)in->type > T_AS_ARGS || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -587,7 +589,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN ||
                 in->op == O_VALUE_TYPE || in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT ||
                 in->op == O_BIG_NEG || in->op == O_BIG_NOT;
-        binary = in->op == O_AS_MEMBER_ARGS || in->op == O_I32_STORE || in->op == O_F64_STORE ||
+        binary = in->op == O_AS_MEMBER_GET || in->op == O_AS_MEMBER_PUT || in->op == O_AS_MEMBER_ARGS || in->op == O_I32_STORE || in->op == O_F64_STORE ||
                  in->op == O_F64_EQ || in->op == O_F64_LT ||
                  in->op == O_F64_LE || in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR ||
                  in->op == O_I32_XOR || in->op == O_AS_MEMBER_SET || in->op == O_REF_STORE || in->op == O_BIG_STORE ||
@@ -646,7 +648,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
               (in->op > O_RETURN && in->op != O_TABLE_STORE && in->op != O_BOOL_STORE && in->op != O_I32_STORE &&
                in->op != O_F64_STORE && in->op != O_BIG_STORE && in->op != O_REF_STORE && in->op != O_TABLE_SPLICE &&
                in->op != O_TABLE_LOCK && in->op != O_TABLE_UNLOCK && in->op != O_AS_GLOBAL_SET &&
-               in->op != O_AS_MEMBER_SET))) != (in->result >= 0))
+               in->op != O_AS_MEMBER_SET && in->op != O_AS_MEMBER_PUT))) != (in->result >= 0))
         {
             return fail(error, cap, "line %d: wrong result arity", in->line);
         }
@@ -1131,6 +1133,19 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             break;
         case O_AS_MEMBER_SET:
             if (a != T_ANY || !c || c > T_ANY)
+            {
+                goto bad_type;
+            }
+            break;
+        case O_AS_MEMBER_GET:
+            if (a != T_ANY || !c || c > T_ANY)
+            {
+                goto bad_type;
+            }
+            expected = T_ANY;
+            break;
+        case O_AS_MEMBER_PUT:
+            if (a != T_ANY || c != T_AS_ARGS || argument_count(m, in->b) != 2)
             {
                 goto bad_type;
             }

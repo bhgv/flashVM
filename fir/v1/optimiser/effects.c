@@ -105,6 +105,8 @@ unsigned fir_effects(FirOp op)
         return FIR_MAY_THROW;
     case O_AS_GLOBAL_GET:
     case O_AS_GLOBAL_SET:
+    case O_AS_MEMBER_GET:
+    case O_AS_MEMBER_PUT:
     case O_AS_MEMBER_SET:
     case O_AS_MEMBER_CALL:
     case O_AS_MEMBER_ARGS:

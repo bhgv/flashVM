@@ -6,6 +6,9 @@
 #include "session_named_values.hpp"
 #include "../core/runtime.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
+#include "../standard/base_state.hpp"
 #include "../capi/variable_refs.hpp"
 #include "flashvm/property.h"
 #include <cstdlib>
@@ -101,9 +104,27 @@ void adopt(FVM_Object *holder, CellProxy *proxy)
 }
 
 
+/* EN: Return a borrowed indexed value only where ordinary AVM1 member access uses it.
+ * RU: Вернуть заимствованный индексированный элемент там, где его читает AVM1. */
+const FVM_Value *indexed_value(FVM_Object *owner, const fvm_detail::string &key, unsigned long &index)
+{
+    if ((owner->resource_kind == FVM_RESOURCE_ARRAY || owner->resource_kind == FVM_RESOURCE_OBJECT) &&
+        fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
+    {
+        fvm_detail::map<unsigned long, FVM_Value>::const_iterator item = owner->indexed.find(index);
+        if (item != owner->indexed.end())
+        {
+            return &item->second;
+        }
+    }
+    return NULL;
+}
+
+
 /* [GC:] EN: Replace only a plain data slot. Commit after the traced accessor map can store the entry.
  * RU: Заменить только простой слот данных после записи аксессора с отслеживаемым корнем. */
-FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Object *holder, CellProxy *proxy)
+FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Object *holder,
+    CellProxy *proxy, const unsigned long *index)
 {
     FVM_AccessorEntry entry;
     entry.root = holder;
@@ -119,6 +140,10 @@ FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Objec
         return FVM_OUT_OF_MEMORY;
     }
     owner->properties.erase(key);
+    if (index)
+    {
+        owner->indexed.erase(*index);
+    }
     return FVM_OK;
 }
 
@@ -128,11 +153,20 @@ FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Objec
 FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object *owner,
     const fvm_detail::string &key, unsigned char *token)
 {
+    unsigned long index = 0;
+    const FVM_Value *indexed = indexed_value(owner, key, index);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator property = owner->properties.find(key);
+    const FVM_Value *value = indexed;
+    if (!value && property != owner->properties.end())
+    {
+        value = &property->second;
+    }
     unsigned flags = 0;
-    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator value = owner->properties.find(key);
-    if (value == owner->properties.end() || fvm_is_variable_ref(&value->second) ||
+    if (!value || fvm_is_variable_ref(value) ||
         fvm_object_property_flags_bytes(context, owner, key.data(), key.size(), &flags) != FVM_OK ||
-        (flags & FVM_PROPERTY_READ_ONLY) || owner->watchers.find(key) != owner->watchers.end())
+        (flags & FVM_PROPERTY_READ_ONLY) ||
+        fvm_property_find(context, owner->accessors, key) != owner->accessors.end() ||
+        fvm_property_find(context, owner->watchers, key) != owner->watchers.end())
     {
         return fvm_styxrpc_managed_fail(context, "ref needs a writable ordinary data slot");
     }
@@ -151,7 +185,7 @@ FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object
     }
     unsigned char *frame;
     size_t size;
-    status = fvm_named_encode(context, session, &value->second, &frame, &size);
+    status = fvm_named_encode(context, session, value, &frame, &size);
     if (status != FVM_OK)
     {
         delete proxy;
@@ -165,7 +199,7 @@ FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object
         delete proxy;
         return fvm_styxrpc_managed_fail(context, "cannot publish the shared cell");
     }
-    status = link_slot(owner, key, holder, proxy);
+    status = link_slot(owner, key, holder, proxy, indexed ? &index : NULL);
     if (status != FVM_OK)
     {
         release(proxy);

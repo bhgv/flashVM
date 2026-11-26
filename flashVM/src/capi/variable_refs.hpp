@@ -15,7 +15,10 @@ bool fvm_is_variable_ref(const FVM_Value *);
 FVM_Result fvm_bind_variable_ref(FVM_Context *, FVM_Object *, const char *, size_t, const FVM_Value *);
 
 
-/* EN/RU: Capture a named own variable. / Захватить именованную собственную переменную. */
+/* [GC:] EN: Capture an existing own slot of args[0], converting the key in args[1] once.
+ * Returns a reference in out. The separate raw numeric table namespace is excluded.
+ * RU: Захватить существующий собственный слот args[0], один раз преобразовав ключ args[1].
+ * Возвращает ссылку в out. Отдельное пространство нативных числовых индексов исключено. */
 extern "C" FVM_Result fvm_capture_variable_ref(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
 
 

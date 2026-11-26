@@ -4,7 +4,10 @@
 
 In the AS2 view profile, `ref counter` captures an existing root movie
 variable. `ref model.count` captures the evaluated owner and its own property
-name. Expressions such as `ref (counter + 1)` have no storage and are rejected.
+name. `ref rows[index]` also captures the evaluated owner and a computed key.
+The key is evaluated once at capture. The same captured slot is used if the
+variable holding the index later changes. Expressions such as `ref (counter + 1)`
+have no storage and are rejected.
 
 ```actionscript
 var counter = 41;
@@ -35,3 +38,7 @@ A read followed by a write uses two operations.
 [VFS named channels](STYX_RPC_NAMED_SEND.md) also publish fresh writable
 slots on the StyxRPC session. A slot may hold a scalar or a serializable
 graph. A graph read returns a snapshot and whole-slot assignment publishes it.
+Existing Array elements and Object properties are supported. A canonical
+Array index such as `1` or `"1"` identifies one element. `"01"` is a separate
+property. The separate raw numeric namespace of native plain tables is outside
+this reference profile. [Executable paired scenario](../../lib/styxrpc/tests/flashvm/named_pair.as).

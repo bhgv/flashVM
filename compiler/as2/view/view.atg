@@ -75,16 +75,16 @@ PRODUCTIONS
                                                                         (. emit_merge(label); .)
     .
 
-    /* Capture the LHS object before the RHS; explicit semicolons define this profile. */
-    Assignment =                                                        (. int member = 0; .)
+    /* EN: Capture the assignment owner and optional key before reading the RHS.
+     * RU: Захватить владельца и необязательный ключ до разбора правой части. */
+    Assignment =                                                        (. int kind = AS2_TARGET_GLOBAL; .)
         [ "var" ] ident                                                 (. emit_target(); .)
         [
-            "." ident                                                 (.
-                                                                            emit_property();
-                                                                            member = 1;
-                                                                        .)
+            "." ident                                                   (. emit_property(); kind = AS2_TARGET_NAMED; .)
+            | "["                                                       (. emit_owner(); kind = AS2_TARGET_KEY; .)
+                Expression "]"
         ]
-        "=" Expression ";"                                            (. emit_assign(member); .)
+        "=" Expression ";"                                              (. emit_assign(kind); .)
     .
 
     /* Standard left-associative addition/subtraction; AS Add2 remains dynamic. */
@@ -112,14 +112,12 @@ PRODUCTIONS
         | Value
     .
 
-    /* Read a binding or call one of its methods; literals become typed SSA values. */
+    /* EN: Read a binding, select one of its members, or push a literal.
+     * RU: Прочитать переменную, выбрать её член или поместить литерал. */
     Value =
-        IF(emit_ref_ahead()) ident ident                                (. char binding[256]; int member = 0;
-                                                                           emit_method_name(binding); .)
-        [ "." ident                                                     (. emit_ref(binding, 1); member = 1; .) ]
-                                                                        (. if (!member) emit_ref(binding, 0); .)
+        IF(emit_ref_ahead()) Reference
         | ident                                                         (. emit_global(); .)
-        [ Method ]
+        [ Member ]
         | number                                                        (. emit_number(); .)
         | string                                                        (. emit_string(); .)
         | "true"                                                       (. emit_boolean(1); .)
@@ -127,14 +125,32 @@ PRODUCTIONS
         | "(" Expression ")"
     .
 
-    /* The receiver is already on the expression stack when argument evaluation starts. */
-    Method =                                                            (. char key[256] = {0};
-                                                                          int argc = 0; .)
+    /* EN: Capture exactly one own slot. Evaluate the owner before any key expression.
+     * RU: Захватить один собственный слот. Вычислить владельца до выражения ключа. */
+    Reference =                                                         (. char binding[256]; .)
+        ident ident                                                     (. emit_method_name(binding); .)
+        (
+            "." ident                                                   (. emit_ref_named(binding, 1); .)
+            | "["                                                       (. emit_ref_owner(binding); .)
+                Expression "]"
+            |                                                           (. emit_ref_named(binding, 0); .)
+        )
+                                                                        (. emit_method_call("ref", 2); .)
+    .
+
+    /* EN: The owner is already on the stack. A dot may read a named member or invoke it.
+     * RU: Владелец уже на стеке. Точка может прочитать именованный член или вызвать его. */
+    Member =                                                            (. char key[256] = {0}; int argc = 0; .)
         "." ident                                                       (. emit_method_name(key); .)
-        "("
-        [ Expression                                                    (. argc = 1; .)
-          { "," Expression                                              (. ++argc; .) }
-        ]
-        ")"                                                             (. emit_method_call(key, argc); .)
+        (
+            "("
+            [ Expression                                                (. argc = 1; .)
+              { "," Expression                                          (. ++argc; .)
+              }
+            ]
+            ")"                                                         (. emit_method_call(key, argc); .)
+            |                                                           (. emit_named_read(key); .)
+        )
+        | "[" Expression "]"                                            (. emit_member_read(); .)
     .
 END View.

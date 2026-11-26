@@ -8,6 +8,8 @@
 #include "../core/property_lookup.hpp"
 #include "../core/property_key.hpp"
 #include "../core/string_internal.hpp"
+#include "../avm1/member_key.hpp"
+#include "flashvm/execution.h"
 #include <cstring>
 #include <new>
 
@@ -172,13 +174,24 @@ FVM_Result fvm_bind_variable_ref(FVM_Context *c, FVM_Object *owner, const char *
 FVM_Result fvm_capture_variable_ref(FVM_Context *c, FVM_Object *, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *)
 {
-    if (argc != 2 || args[0].type != FVM_VALUE_OBJECT || args[1].type != FVM_VALUE_STRING)
+    if (argc != 2 || args[0].type != FVM_VALUE_OBJECT ||
+        fvm_validate_value(c, args) != FVM_OK || fvm_avm1_raw_table_key(c, args[0], args[1]))
     {
         return FVM_INVALID_ARGUMENT;
     }
     FVM_Object *owner = args[0].object;
+    FVM_ObjectRootScope keep(c, owner);
+    FVM_Value text = args[1];
+    if (text.type != FVM_VALUE_STRING)
+    {
+        FVM_Result status = fvm_exec_to_string(c, args + 1, &text);
+        if (status != FVM_OK)
+        {
+            return status;
+        }
+    }
     fvm_detail::string key;
-    FVM_Result status = fvm_property_key(args[1].string, fvm_string_size(args[1]), key);
+    FVM_Result status = fvm_property_key(text.string, fvm_string_size(text), key);
     int own = 0;
     if (status == FVM_OK)
     {

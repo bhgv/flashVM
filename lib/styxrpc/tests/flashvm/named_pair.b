@@ -16,10 +16,19 @@ Port, Cell: import named;
 start()
 {
     fd := sys->open("named.swf", Sys->OREAD);
-    bytes := array[16384] of byte;
-    n := sys->read(fd, bytes[4:], len bytes - 4);
-    if (n <= 0 || n >= len bytes - 4) {
-        raise "cannot read named SWF";
+    (ok, info) := sys->stat("named.swf");
+    if (fd == nil || ok < 0 || info.length <= big 0 || info.length > big 65535) {
+        raise "cannot size named SWF";
+    }
+    n := int info.length;
+    bytes := array[n+4] of byte;
+    at := 4;
+    while (at < len bytes) {
+        got := sys->read(fd, bytes[at:], len bytes-at);
+        if (got <= 0) {
+            raise "short read of named SWF";
+        }
+        at += got;
     }
     bytes[2] = byte (n >> 8);
     bytes[3] = byte n;
@@ -117,6 +126,7 @@ init()
     }
     cell := refexchange(port, graph);
     graphexchange(port, graph);
+    indexexchange(port);
     port.close();
     for (i := 0; i < 100; ++i) {
         (exists, meta) = sys->stat("/jobs");
@@ -220,10 +230,53 @@ graphexchange(port: ref Port, replacement: array of byte)
     field := named->adopt(port.recv());
     field.set(count111());
     port.send(field.payload());
-    if (!equal(port.recv(), count111()) || !equal(port.recv(), field.payload())) {
+    if (!equal(port.recv(), count111()) || !equal(port.recv(), field.payload()) ||
+        !equal(port.recv(), count111())) {
         raise "capturing ref model.count again lost the updated field";
     }
     field.close();
+}
+
+
+# EN: Both runtimes read and write the same indexed slot. A noncanonical key stays separate.
+# RU: Обе VM читают и записывают один элемент. Неканоническое имя остаётся отдельным.
+indexexchange(port: ref Port)
+{
+    one := array[] of {byte Styxnamed->Number, byte 16r3f, byte 16rf0, byte 0,
+        byte 0, byte 0, byte 0, byte 0, byte 0};
+    port.send(one);
+    numeric := port.recv();
+    slot := named->adopt(numeric);
+    initial := array[] of {byte Styxnamed->Number, byte 16r40, byte 16r35, byte 0,
+        byte 0, byte 0, byte 0, byte 0, byte 0};
+    if (!equal(slot.get(), initial)) {
+        raise "capturing the AS array index did not expose the current element";
+    }
+    slot.set(count111());
+    port.send(slot.payload());
+    if (!equal(port.recv(), count111())) {
+        raise "reading the AS array index bypassed the shared cell";
+    }
+    local := array[] of {byte Styxnamed->Number, byte 16r40, byte 16r5e, byte 16r40,
+        byte 0, byte 0, byte 0, byte 0, byte 0};
+    if (!equal(port.recv(), local) || !equal(slot.get(), local)) {
+        raise "writing the AS array index bypassed the shared cell";
+    }
+    if (!equal(port.recv(), numeric)) {
+        raise "numeric and string subscripts did not capture the same array index";
+    }
+    namedframe := port.recv();
+    field := named->adopt(namedframe);
+    if (equal(namedframe, numeric) || !equal(field.get(), initial)) {
+        raise "the noncanonical string key collapsed onto the numeric index";
+    }
+    field.set(count111());
+    port.send(one);
+    if (!equal(port.recv(), count111()) || !equal(port.recv(), local)) {
+        raise "AS reads did not distinguish the computed key and index";
+    }
+    field.close();
+    slot.close();
 }
 
 

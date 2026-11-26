@@ -12,7 +12,7 @@ The AS2 project now has a bounded executable profile through the common pipeline
 `as2_check` validates the full input before the generated Coco/R profile parser
 lowers supported constructs to textual FIR. This frontend contains no AVM1 opcode
 emitter. Existing FIR operations handle constants, coercion and arithmetic.
-Dynamic AS operations handle globals, member stores and method calls. The FIR AVM1 backend emits
+Dynamic AS operations handle globals, member reads and stores, and method calls. The FIR AVM1 backend emits
 target instructions, and the existing SWL linker creates the SWF container.
 
 The IDE embeds the linked SWF and executes its actions in FlashVM for every
@@ -23,15 +23,19 @@ context; Dis passes checked values, never native heap addresses.
 ## Implemented source profile
 
 Nonempty sequences of explicit-semicolon assignments are supported:
-`object.property = expression;` and `global = expression;`. Expressions support
+`object.property = expression;`, `object[key] = expression;` and
+`global = expression;`. Member reads accept both `object.property` and
+`object[key]`. Expressions support
 global reads, nonnegative decimal int32 constants, booleans, double-quoted UTF-8
 strings, and named method calls with zero to eight arguments. The receiver is
 evaluated first, then arguments from left to right. The operators `+ - * /` use ordinary precedence.
 Unary `!` inverts AVM1 truthiness, and parentheses group expressions.
 `+` lowers to dynamic `as.add`; the other arithmetic operators explicitly
 convert operands with `as.to_number` before f64 arithmetic. Values retain AS
-semantics, including strings passed to a property. The LHS object is read before
-the RHS is evaluated. Identifiers and separators are ASCII. UTF-8 `//` comments
+semantics, including strings passed to a property. The LHS owner and computed key are evaluated before the RHS.
+`ref binding`, `ref object.property` and `ref object[key]` capture a slot for
+the [reference API](../../../flashVM/doc/AS_VARIABLE_REFS.md).
+Identifiers and separators are ASCII. UTF-8 `//` comments
 may end at EOF. The profile uses CR/LF line boundaries.
 
 Braced `if (expression) { ... }` supports an optional braced `else`. A braced
@@ -42,7 +46,7 @@ the root MovieClip. FlashVM calls `onEnterFrame` on timeline ticks, and a script
 can call another named method on `_root`. SSA temporaries are
 local to each invocation. Plain assignments follow normal AVM1 name resolution.
 
-Parameters in declarations, standalone call statements, member reads, other loop forms
+Parameters in declarations, standalone call statements, chained member expressions, other loop forms
 and classes remain outside the profile. The shared syntax frontend
 can recognize more than this profile; unsupported lowering fails explicitly.
 Bounds: source 16 KiB, names 253 bytes, spelled string contents 255 bytes,

@@ -15,6 +15,8 @@ int main(void)
                          "panel.x = bus.send(1, 2, 3, 4, 5, 6, 7, 8, 9);",
                          "panel.x = 3; @",
                          "panel.x = (3;",
+                         "response = bus.send(ref values[]);",
+                         "values[] = 1;",
                          "function onEnterFrame(arg) { ready = arg; }",
                          "if (ready) ready = false;",
                          "panel.x = 3; // \xc0\xaf",
@@ -28,6 +30,22 @@ int main(void)
     size_t index;
     int cycle;
     As2ViewDiagnostic diagnostic;
+    const char *indexed = "captured = bus.send(ref rows[bus.recv()]); rows[key] = bus.recv(); "
+                          "read = rows[key]; named = rows.count;";
+    if (!as2_view_compile(indexed, strlen(indexed), output, sizeof(output) - 1, &length, &diagnostic))
+    {
+        fprintf(stderr, "computed AS properties or ref target rejected\n");
+        return 1;
+    }
+    output[length] = 0;
+    const char *owner = strstr((const char *)output, "as.global_get \"rows\"");
+    const char *key = owner ? strstr(owner, ", \"recv\"\n") : NULL;
+    if (!key || !strstr(key, ", \"ref\",") || !strstr(key, "as.member_put ") ||
+        !strstr(key, "as.member_get ") || !strstr(key, "const.string \"count\""))
+    {
+        fprintf(stderr, "computed owner/key order or member bytecode lowering changed\n");
+        return 1;
+    }
     const char *method = "function drawItem() { value = target.draw(1, bus.receive(), 3); }";
     if (!as2_view_compile(method, strlen(method), output, sizeof(output) - 1, &length, &diagnostic))
     {

@@ -199,7 +199,8 @@ static int actions(const unsigned char *p, size_t n, int file_scope)
             case 0x1c:
             case 0x1d:
             case 0x3c: /* DefineLocal for callback-local FIR values. */
-            case 0x4f: /* SetMember emitted by verified FIR dynamic AS stores. */
+            case SWL_AVM1_GET_MEMBER:
+            case SWL_AVM1_SET_MEMBER:
             case 0x0c:
             case 0x0d:
             case 0x3f: /* Standard Modulo emitted by proven FIR int32 remainders. */

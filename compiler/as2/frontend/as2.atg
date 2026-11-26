@@ -1015,7 +1015,8 @@ PRODUCTIONS
             | "new"
         )
         Unary
-        | IF(RefAhead(Sym)) Identifier Identifier [ "." Identifier ]
+        | IF(RefAhead(Sym)) Identifier Identifier
+            [ IF(Sym == PointSym || Sym == LbrackSym) ( "." Identifier | Subscript ) ]
         | Postfix
     )
                                                                         (. as2_syntax_leave(); .)

@@ -29,6 +29,8 @@ def main():
                 '%first: as.args = as.arg %received\n'
                 '%last: as.args = as.arg %value, %first\n'
                 '%drawn: any = as.member_call_args %owner, "draw", %last\n'
+                '%member: any = as.member_get %owner, %received\n'
+                'as.member_put %owner, %last\n'
                 '%again: any = as.global_get "owner"\n'
                 'as.global_set "captured", %again\n')
         source.write_text('FIR 1.0\nmodule @view\nfunc @main() -> void {\n^entry:\n' + body + 'return\n}\n')
@@ -39,6 +41,8 @@ def main():
                     '%received: any = as.member_call %owner, "receive"',
                     '%sent: any = as.member_call %owner, "send", %received',
                     '%drawn: any = as.member_call_args %owner, "draw", %last',
+                    '%member: any = as.member_get %owner, %received',
+                    'as.member_put %owner, %last',
                     'as.global_get "owner"', 'as.global_set "captured"']
         offset = 0
         for operation in expected:
@@ -84,6 +88,12 @@ def main():
                             '%bad: i32 = as.member_call %owner, "method"',
                             '%bad: any = as.member_call %owner, "method", %channel',
                             '%bad: any = as.member_call_args %owner, "method", %value',
+                            '%bad: i32 = as.member_get %owner, %value',
+                            '%bad: any = as.member_get %owner, %channel',
+                            'as.member_put %owner, %value',
+                            '%one: as.args = as.arg %value\nas.member_put %owner, %one',
+                            '%one: as.args = as.arg %value\n%two: as.args = as.arg %value, %one\n'
+                            '%three: as.args = as.arg %value, %two\nas.member_put %owner, %three',
                             '%bad: as.args = as.arg %channel',
                             '%bad: as.args = as.arg %value, %value',
                             '%bad: bool = as.to_boolean %channel',

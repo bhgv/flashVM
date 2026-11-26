@@ -19,8 +19,10 @@ the value, including its type, and forward the same cell with `ref`.
 Cells hold the same scalars and serializable object graphs as value messages.
 A read of a graph slot materializes a local snapshot. To publish edits, assign
 the edited snapshot back to the shared slot. For direct updates to one field
-of a local object, share that field separately with `port.send(ref model.count)`.
-The field must already exist as a writable own data property. Custom accessors,
+of a local object, share it with `port.send(ref model.count)` or pass a computed
+key with `port.send(ref rows[index])`. The slot must already exist as a writable
+own data property or Array element. Direct reads and assignments such as
+`rows[index] = 42` then act on the shared cell through ordinary AS access. Custom accessors,
 watched properties and values the graph codec refuses cannot be published.
 Previously issued Int32 references still forward on their issuing session.
 

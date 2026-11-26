@@ -64,6 +64,27 @@ function onEnterFrame() {
         var modelCount = port.recv();
         var written = port.send(modelCount);
         var recaptured = port.send(ref model.count);
+        var namedRead = port.send(model.count);
+
+        // Capture one canonical index, then address the same slot by number and by string.
+        // Захватить один индекс и обратиться к нему числом и строкой.
+        var index = 1;
+        model[index] = 21;
+        var indexed = port.send(ref model[port.recv()]);
+        var entry = port.recv();
+        var readIndex = port.send(model[index]);
+        model[index] = 121;
+        var readAlias = port.send(entry);
+        var sameSlot = port.send(ref model["1"]);
+
+        // A computed noncanonical key must remain a distinct named member.
+        // Вычисляемый неканонический ключ остаётся отдельным именованным полем.
+        var key = "01";
+        model[key] = 21;
+        var keyed = port.send(ref model[key]);
+        var access = port.recv();
+        var readKey = port.send(model[key]);
+        var stillIndex = port.send(model[index]);
         var retired = port.delete();
         done = true;
     }

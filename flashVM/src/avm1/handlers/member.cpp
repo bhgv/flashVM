@@ -1,6 +1,7 @@
 /* FlashVM: member semantics for C callers and generated code. */
 #include "support.hpp"
 #include "member_constants.h"
+#include "../member_key.hpp"
 
 
 /* Execute value semantics with validation and allocation failure containment. */
@@ -31,9 +32,7 @@ extern "C" FVM_Result fvm_exec_member(FVM_Context *c,
         FVM_Value result;
         fvm_value_undefined(&result);
         FVM_Result status;
-        if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind == FVM_RESOURCE_PLAIN_OBJECT &&
-            owner.object != c->global && member.type == FVM_VALUE_NUMBER && member.number >= 0 &&
-            member.number <= FVM_UINT32_MAX_NUMBER && member.number == std::floor(member.number))
+        if (fvm_avm1_raw_table_key(c, owner, member))
         {
             if (write)
             {
