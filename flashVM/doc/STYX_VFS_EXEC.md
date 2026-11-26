@@ -27,10 +27,9 @@ can follow an execution. The SDK never replays a call automatically.
 The method blocks the movie's owner thread. A peer callback should reply
 before making a synchronous call back into the waiting movie.
 
-The paired FlashVM player and hosted libstyxrpc slot servers provide the
-executable service. In DisVM, the [Limbo client](../../disVM/runtime/STYX-EXEC.md)
-calls that service. A stock DisVM provider publishes ordinary files and
-[Dis module methods](STYX_RPC_LOAD_MODULE.md).
+Nodes can be published by FlashVM, a hosted SDK server and stock DisVM.
+[Publication from Limbo](../../disVM/runtime/STYX-EXEC-PUBLISH.md) uses
+the same bidirectional session.
 
 ```actionscript
 os.cd("/tools");

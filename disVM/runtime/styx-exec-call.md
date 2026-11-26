@@ -1,6 +1,6 @@
 # Styxexec.call
 
-[Русский](styx-exec-call.ru.md) · [Guide](STYX-EXEC.md) · [Interface](../module/styxexec.m#L19) · [Source](../limbo/styxexec.b#L48)
+[Русский](styx-exec-call.ru.md) · [Guide](STYX-EXEC.md) · [Interface](../module/styxexec.m#L58) · [Source](../limbo/styxexec.b#L48)
 
 ```limbo
 call: fn(mount, path: string, input: array of byte): array of byte;

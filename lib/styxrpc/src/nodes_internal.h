@@ -14,9 +14,9 @@ extern const StyxRpcTree styxrpc_nodes_tree; /* Context is one live StyxRpcNodes
 extern const StyxRpcVfs styxrpc_node_exec_files; /* Context is a borrowed callback registry. */
 
 
-/* EN: Resolve a counted relative path and invoke a live executable node once.
- * RU: Найти относительный путь с длиной и один раз вызвать исполняемый узел. */
-int styxrpc_nodes_exec(StyxRpcNodes *nodes, const char *path, size_t length,
+/* EN: Resolve a validated relative path and invoke a live executable node once.
+ * RU: Найти проверенный относительный путь и один раз вызвать исполняемый узел. */
+int styxrpc_nodes_exec(void *registry, const char *path,
     void *bytes, size_t size, size_t *used);
 
 

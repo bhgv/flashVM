@@ -11,6 +11,7 @@
 #include "paired_ui.h"
 #include "mount_assets.h"
 #include "named_channels.h"
+#include "executable_nodes.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
 #include "vfs/launch/runtime.h"
@@ -449,16 +450,22 @@ int dvm_styx_mount_cli(int argc, char **argv)
         return 1;
     }
     DVM_Provider *shared = live_namespace(group);
-    if (!shared)
+    DvmExecBroker *execute = shared ? dvm_exec_install(group) : NULL;
+    DVM_Provider *exec_service = dvm_exec_service(execute);
+    if (!exec_service)
     {
         fprintf(stderr, "disvm: cannot publish live VFS namespace\n");
+        dvm_exec_stop(execute);
+        dvm_provider_release(shared);
         dvm_namespace_release(group);
         close(breaker);
         close(fd);
         return 1;
     }
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
-    StyxCallerServer *reverse = mux ? styxcallerserver_view_create(phybidirchannel(mux, 1), shared, live_remove, group) : NULL;
+    StyxCallerServer *reverse = mux ? styxcallerserver_view_service(phybidirchannel(mux, 1), shared,
+        live_remove, group, STYXRPC_NODE_EXEC_SERVICE, STYXRPC_NODE_EXEC_QID, exec_service) : NULL;
+    dvm_provider_release(exec_service);
     dvm_provider_release(shared);
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
@@ -473,6 +480,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     {
         fprintf(stderr, "disvm: cannot initialize bidirectional Styx mount\n");
     }
+    dvm_exec_stop(execute);
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxcallerjoin(reverse);

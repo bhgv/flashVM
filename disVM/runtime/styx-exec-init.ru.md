@@ -1,6 +1,6 @@
 # Styxexec.init
 
-[English](styx-exec-init.md) · [Руководство](STYX-EXEC.ru.md) · [Интерфейс](../module/styxexec.m#L12) · [Исходник](../limbo/styxexec.b#L16)
+[English](styx-exec-init.md) · [Руководство](STYX-EXEC.ru.md) · [Интерфейс](../module/styxexec.m#L51) · [Исходник](../limbo/styxexec.b#L16)
 
 ```limbo
 init: fn();

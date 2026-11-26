@@ -17,7 +17,8 @@ static int visible_shared_path(const char *path)
         }
         size_t length = strcspn(path, "/");
         if ((length == sizeof(".prog") - 1 && !memcmp(path, ".prog", length)) ||
-            (length == sizeof(STYXRPC_NODE_EXEC_SERVICE) - 1 && !memcmp(path, STYXRPC_NODE_EXEC_SERVICE, length)))
+            (length == sizeof(STYXRPC_NODE_EXEC_SERVICE) - 1 && !memcmp(path, STYXRPC_NODE_EXEC_SERVICE, length)) ||
+            (length == sizeof(STYXRPC_NODE_EXEC_OWNER) - 1 && !memcmp(path, STYXRPC_NODE_EXEC_OWNER, length)))
         {
             return 0;
         }

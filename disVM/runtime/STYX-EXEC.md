@@ -1,5 +1,7 @@
 # Executable callback nodes from Limbo
 
+[Publish handlers from Limbo](STYX-EXEC-PUBLISH.md)
+
 [Русский](STYX-EXEC.ru.md) · [Provider](../../flashVM/doc/STYX_RPC_NEWNODE.md) · [C SDK and Styx exchange](../../lib/styxrpc/reference/node_exec.md)
 
 Use `Styxexec` when a peer exposes one or more executable entries under

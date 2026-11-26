@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1781, the stock DisVM pair publishes executable callbacks from Limbo.
+FlashVM calls a live VFS entry through the shared libstyxrpc execute codec.
+The paired checks build the Limbo callback and AS movie from source and
+verify both directions, including fragmented binary replies and owner withdrawal.
+[EN](../../disVM/runtime/STYX-EXEC-PUBLISH.md) · [RU](../../disVM/runtime/STYX-EXEC-PUBLISH.ru.md).
+
 In v0.1780, `vfs.exec` and `os.exec` call executable nodes from AS on the
 attached session. The stock two-player check builds both SWFs and tests
 both service lanes over local streams and TCP in interpreter and JIT modes.

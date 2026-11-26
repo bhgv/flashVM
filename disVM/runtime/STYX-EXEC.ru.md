@@ -1,5 +1,7 @@
 # Вызов исполняемых узлов VFS из Limbo
 
+[Публикация обработчиков из Limbo](STYX-EXEC-PUBLISH.ru.md)
+
 [English](STYX-EXEC.md) · [Публикация](../../flashVM/doc/STYX_RPC_NEWNODE.ru.md) · [SDK C и обмен по Styx](../../lib/styxrpc/reference/node_exec.ru.md)
 
 `Styxexec` вызывает функции, опубликованные в VFS другой программы.

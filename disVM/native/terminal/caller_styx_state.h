@@ -33,6 +33,8 @@ struct StyxCallerServer
     void *remove_state; /* Borrowed state for the remove callback. */
     DVM_Provider *shared; /* Retained optional view with its own access ceiling. */
     StyxBacking *shared_root; /* Identity-bound permanent root for ordinary walks. */
+    const char *service_name; /* Borrowed exact root protocol component, or NULL. */
+    size_t service_qid; /* Reserved permanent slot, valid with service_name. */
     CallerNodes permanent; /* Ordinary visited nodes in reserved generation zero. */
     StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
 };

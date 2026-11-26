@@ -34,12 +34,12 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    profiles.add_argument("--named", action="store_true")
-    profiles.add_argument("--typed", action="store_true")
-    profiles.add_argument("--execute", action="store_true")
+    for profile in ("named", "typed", "execute", "publish"):
+        profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
+    parser.set_defaults(profile="mixed")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
-    name = "execute" if args.execute else "typed" if args.typed else "named" if args.named else "mixed"
+    name = args.profile
     mode = "--jit" if args.jit else "--no-jit"
     with TemporaryDirectory(prefix="styxrpc-mixed-pair-") as scratch:
         directory = Path(scratch)
@@ -47,7 +47,10 @@ def main():
         if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
+        if name == "publish":
+            (directory / "tools").mkdir()
         modules = {
+            "publish": ("styxexec",),
             "execute": ("styxexec",),
             "typed": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -55,10 +58,12 @@ def main():
         }[name]
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
-        if args.named:
+        if name == "publish":
+            compile_image(args, directory, tests / "publish_handler.b", "publish-handler.dis")
+        if name == "named":
             (directory / "named-area").mkdir()
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
-        companions = (tests / "execute_apply.as", tests / "execute_refuse.as") if args.execute else ()
+        companions = (tests / "execute_apply.as", tests / "execute_refuse.as") if name == "execute" else ()
         compile_movie(args, directory, tests / (name + "_pair.as"), name, companions)
         paired_exchange(
             directory,

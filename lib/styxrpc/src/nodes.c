@@ -50,13 +50,10 @@ static CallbackNode *child(StyxRpcNodes *nodes, uint64_t parent, const char *nam
 
 
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
-int styxrpc_nodes_exec(StyxRpcNodes *nodes, const char *path, size_t length,
+int styxrpc_nodes_exec(void *registry, const char *path,
     void *bytes, size_t size, size_t *used)
 {
-    if (!nodes || !length || path[length - 1] != '\0' || memchr(path, '\0', length - 1))
-    {
-        return 0;
-    }
+    StyxRpcNodes *nodes = registry;
     uint64_t parent = 0;
     for (;;)
     {

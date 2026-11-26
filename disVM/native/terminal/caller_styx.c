@@ -142,6 +142,11 @@ static char *walk(Qid *qid, char *name)
             *qid = styxqid(PROG_QID, 1);
             return nil;
         }
+        if (owner->service_name && !strcmp(name, owner->service_name))
+        {
+            *qid = styxqid(owner->service_qid, 0);
+            return nil;
+        }
         StyxBacking *root = styxtree(owner->shared);
         styxbackingfree(owner->shared_root);
         owner->shared_root = root;
@@ -372,7 +377,8 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 static char *remove_node(Qid qid)
 {
     CallerNodes *cache = NULL;
-    StyxBacking *node = owner->remove && qid.path > PROG_QID ? find(qid.path, &cache) : NULL;
+    StyxBacking *node = owner->remove && qid.path > PROG_QID &&
+        (!owner->service_name || qid.path != owner->service_qid) ? find(qid.path, &cache) : NULL;
     return node && cache == &owner->permanent &&
         styxremovenode(node, owner->remove, owner->remove_state) ? nil : Eperm;
 }
@@ -416,76 +422,4 @@ static void *serve(void *state)
 }
 
 
-/* EN: Create one owner with an optional trusted write-create provider.
- * RU: Создать владельца с необязательным доверенным провайдером создания. */
-static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared,
-    StyxRemoveNode remove, void *state)
-{
-    StyxCallerServer *server = calloc(1, sizeof(*server));
-    if (!server || pthread_mutex_init(&server->scopes.lock, NULL))
-    {
-        free(server);
-        phyfree(reverse);
-        return NULL;
-    }
-    if (shared)
-    {
-        server->shared_root = styxtree(shared);
-        if (!server->shared_root || !dvm_provider_retain(shared))
-        {
-            styxbackingfree(server->shared_root);
-            pthread_mutex_destroy(&server->scopes.lock);
-            free(server);
-            phyfree(reverse);
-            return NULL;
-        }
-        server->shared = shared;
-        server->remove = remove;
-        server->remove_state = state;
-        server->permanent.count = PROG_QID + 1;
-    }
-    server->references = 1;
-    if (styxphyinit(&server->server, &operations, reverse, remove ? 0777 : 0555, 0, 8))
-    {
-        styxbackingfree(server->shared_root);
-        dvm_provider_release(server->shared);
-        pthread_mutex_destroy(&server->scopes.lock);
-        free(server);
-        return NULL;
-    }
-    server->wake = styxphywakepin(&server->server);
-    if (!server->wake || pthread_create(&server->worker, NULL, serve, server))
-    {
-        styxend(&server->server);
-        styxphywakefree(server->wake);
-        styxbackingfree(server->shared_root);
-        dvm_provider_release(server->shared);
-        pthread_mutex_destroy(&server->scopes.lock);
-        free(server);
-        return NULL;
-    }
-    return server;
-}
-
-
-
-/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
-StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared)
-{
-    return start_view(reverse, shared, NULL, NULL);
-}
-
-
-/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
-StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared,
-    StyxRemoveNode remove, void *state)
-{
-    return start_view(reverse, shared, remove, state);
-}
-
-
-/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
-StyxCallerServer *styxcallerserver(RemotePhy *reverse)
-{
-    return styxcallerserver_view(reverse, NULL);
-}
+#include "caller_start.inc"

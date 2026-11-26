@@ -28,6 +28,14 @@ StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider 
     StyxRemoveNode remove, void *state);
 
 
+/* EN: Start a mutable shared view with one exact root service at a reserved Qid.
+ * Borrow the name through join and retain the service's file provider.
+ * RU: Запустить изменяемое дерево с точной корневой службой на выделенном Qid.
+ * Имя заимствовать до join, файловый провайдер удержать. */
+StyxCallerServer *styxcallerserver_view_service(RemotePhy *reverse, DVM_Provider *shared,
+    StyxRemoveNode remove, void *state, const char *name, size_t qid, DVM_Provider *service);
+
+
 /* EN: Bind a fresh unpublished forward provider. The provider pins the server state.
  * RU: Привязать свежий неопубликованный провайдер. Провайдер удерживает состояние сервера. */
 int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward);

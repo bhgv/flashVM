@@ -56,6 +56,10 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         terminal_launch/paired_ui.c
         terminal_launch/paired_exchange.c
         terminal_launch/named_channels.c
+        terminal_launch/executable_nodes.c
+        terminal_launch/exec_mailbox.c
+        terminal_launch/exec_names.c
+        "${root}/lib/styxrpc/src/node_service.c"
         "${root}/lib/styxrpc/src/named_channel.c"
         "${root}/lib/styxrpc/src/named_cell_store.c"
         "${root}/lib/styxrpc/src/named_cell_wire.c"

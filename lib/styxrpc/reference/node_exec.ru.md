@@ -1,6 +1,6 @@
 # styxrpc_node_exec
 
-[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L57) · [Клиент](../src/node_exec_client.c#L47) · [Провайдер](../src/node_exec.c#L81)
+[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L58) · [Клиент](../src/node_exec_client.c#L47) · [Провайдер](../src/node_service.c#L76)
 
 ```c
 #include <styxrpc/nodes.h>
@@ -50,3 +50,5 @@ StyxRpcIoOutcome status = styxrpc_node_exec(session, "menu/invoke",
 колбэк и подтверждает запрос при успехе. Читайте сохранённый ответ с
 нулевого смещения. Его длина ограничена длиной аргумента. После
 чтения закройте fid. Каждый fid принимает один запрос.
+
+Адаптер собственного реестра использует кодек fid в `StyxRpc::rpc`. [open](node_service_open.ru.md), [write](node_service_write.ru.md), [read](node_service_read.ru.md), [close](node_service_close.ru.md).
