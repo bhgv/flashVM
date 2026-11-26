@@ -12,6 +12,11 @@
 FVM_Result fvm_capture_variable_ref(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
 
 
+/* EN: Return one only for the SDK's native Int32 file getter.
+ * RU: Вернуть единицу только для нативного getter файла Int32 из SDK. */
+int fvm_styxrpc_int_variable_getter(FVM_NativeFunction getter);
+
+
 /* [GC:] EN/RU: Attach the resolved fid to value. / Привязать разрешённый fid к value. */
 FVM_Result fvm_styxrpc_int_ref_bind(FVM_Context *, FVM_Object *, struct StyxClient *, const StyxRpcIntRef *);
 

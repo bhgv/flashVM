@@ -10,6 +10,20 @@ edges and cycles. One encoded frame may contain up to 65,536 bytes including
 its type byte. Values without a graph encoding and oversized frames raise an
 error before sending.
 
+A value snapshot samples supported live entries in the whole graph. These
+include named cell bindings, the Int32 variable adapter, and transparent AS
+aliases that terminate in own data or one of those cells. Other getters are
+never invoked during capture. A missing own target or an unreadable shared
+cell fails the send before it enters the rendezvous. The standalone
+[serialization API](../include/flashvm/serialization.h) keeps its original policy.
+
+The snapshot preserves cycles and shared object identities. Aliases to one
+named StyxRPC cell are sampled once per graph, including when they arrived
+on separate leases. Distinct cells are sampled separately. The received
+entries contain plain values, so writing one cannot update the original
+cell. A native table keeps its numeric indices and string names distinct.
+The same snapshot rule applies when a graph becomes the value of a cell.
+
 `port.send(ref counter)` shares a plain writable AS variable or own property
 through a [libstyxrpc cell](../../lib/styxrpc/reference/named_cell.md).
 On the first send the source slot attaches to the cell. Subsequent reads and

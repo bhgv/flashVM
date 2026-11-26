@@ -6,6 +6,8 @@
 #define FVM_VARIABLE_REFS_HPP
 #include "flashvm/value.h"
 
+struct FVM_AccessorEntry;
+
 
 /* EN/RU: Is this a private reference operand? / Это внутренний ссылочный операнд? */
 bool fvm_is_variable_ref(const FVM_Value *);
@@ -13,6 +15,11 @@ bool fvm_is_variable_ref(const FVM_Value *);
 
 /* EN/RU: Bind a new name to a reference operand. / Привязать новое имя к ссылке. */
 FVM_Result fvm_bind_variable_ref(FVM_Context *, FVM_Object *, const char *, size_t, const FVM_Value *);
+
+
+/* [GC:] EN: Borrow the captured operand of an actual transparent alias.
+ * RU: Заимствовать захваченный операнд настоящей прозрачной привязки. */
+FVM_Object *fvm_variable_ref_accessor(const FVM_AccessorEntry &entry);
 
 
 /* EN: If ref targets a raw numeric index, return a borrowed pointer to that index.

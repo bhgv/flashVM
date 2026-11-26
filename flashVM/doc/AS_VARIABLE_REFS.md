@@ -48,8 +48,11 @@ two independent slots. Capture an existing own numeric entry with
 index of a native table. Reads, writes and subsequent reference capture
 use the same cell. Removing a numeric entry with `delete table[index]` drops
 that binding. A peer with its own live cell lease can still access the cell.
-Choose the dereferenced entry to send its value. The graph codec rejects a
-table snapshot containing a live binding.
+
+An ordinary `port.send(table)` reads supported live slots into a detached
+graph. The receiver sees their values as ordinary stored entries. The
+[named-channel snapshot rules](STYX_RPC_NAMED_SEND.md) apply to nested tables,
+arrays, and objects as well. Use `ref` to forward a live slot itself.
 
 [Paired AS](../../lib/styxrpc/tests/flashvm/named_pair.as) ·
 [Paired Limbo](../../lib/styxrpc/tests/flashvm/named_pair.b) ·

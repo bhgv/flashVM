@@ -306,6 +306,19 @@ FVM_Result publish_index(FVM_Context *context, FVM_StyxRpcSession *session, FVM_
 
 
 /* [GC:] EN/RU: See session_named_refs.hpp. / См. session_named_refs.hpp. */
+const unsigned char *fvm_named_cell_identity(const FVM_AccessorEntry &entry, struct StyxClient **issuer)
+{
+    if (entry.getter != get)
+    {
+        return NULL;
+    }
+    const CellProxy *proxy = static_cast<const CellProxy *>(entry.userdata);
+    *issuer = proxy->session->client;
+    return proxy->token;
+}
+
+
+/* [GC:] EN/RU: See session_named_refs.hpp. / См. session_named_refs.hpp. */
 FVM_Result fvm_named_ref_token(FVM_Context *context, FVM_StyxRpcSession *session,
     const FVM_Value *ref, unsigned char *token)
 {

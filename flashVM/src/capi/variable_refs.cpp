@@ -94,11 +94,12 @@ void object_value(FVM_Value *out, FVM_Object *object)
 bool bound_ref(FVM_Object *owner, const fvm_detail::string &key, FVM_Value *out)
 {
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::const_iterator found = owner->accessors.find(key);
-    if (found == owner->accessors.end() || found->second.getter != read_ref)
+    FVM_Object *ref = found == owner->accessors.end() ? NULL : fvm_variable_ref_accessor(found->second);
+    if (!ref)
     {
         return false;
     }
-    object_value(out, found->second.root);
+    object_value(out, ref);
     return true;
 }
 
@@ -210,6 +211,13 @@ bool fvm_is_variable_ref(const FVM_Value *value)
 {
     return value && value->type == FVM_VALUE_OBJECT && value->object &&
         value->object->resource_kind == FVM_RESOURCE_VARIABLE_REF;
+}
+
+
+/* EN/RU: See variable_refs.hpp. / См. variable_refs.hpp. */
+FVM_Object *fvm_variable_ref_accessor(const FVM_AccessorEntry &entry)
+{
+    return entry.getter == read_ref && entry.root == entry.userdata ? entry.root : NULL;
 }
 
 

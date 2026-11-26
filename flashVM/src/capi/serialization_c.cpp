@@ -3,6 +3,8 @@
  */
 
 #include "graph_constants.h"
+#include "graph_slot_reader.hpp"
+#include "table_index_binding.hpp"
 #include "../core/property_version_constants.h"
 #include "../core/numeric_constants.h"
 #include "../core/string_internal.hpp"
@@ -383,8 +385,11 @@ capture_callback(FVM_Context *c,
 }
 
 
+#include "graph_slot_capture.inc"
+
+
 /* Capture the current value. */
-Graph capture(FVM_Context *c, const FVM_Value &value)
+Graph capture(FVM_Context *c, const FVM_Value &value, const FVM_GraphSlotReader *reader = NULL)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -606,7 +611,8 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         for (fvm_detail::map<unsigned long, FVM_Value>::iterator p = src->indexed.begin(); p != src->indexed.end(); ++p)
         {
             require(p->first <= 0xffffffffUL, FVM_UNSUPPORTED);
-            dst.indexed[p->first] = capture_value(c, p->second, seen, budget);
+            FVM_Value value = project_index(c, p->second, reader);
+            dst.indexed[p->first] = capture_value(c, value, seen, budget);
         }
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator p = src->methods.begin();
              p != src->methods.end();
@@ -663,6 +669,10 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
              ++p)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         { /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            if (project_property(c, src, dst, p->first, p->second, reader, seen, budget))
+            {
+                continue;
+            }
             Accessor a;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             a.getter =
@@ -1781,11 +1791,12 @@ Graph decode(const void *data, size_t size)
 
 
 /* Encode with the oldest compatible schema, retaining installed empty snapshot lists. */
-void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size)
+void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size,
+    const FVM_GraphSlotReader *reader = NULL)
 {
 
     /* Initialization / Инициализация локального состояния. */
-    Graph graph = capture(c, value);
+    Graph graph = capture(c, value, reader);
     Writer body;
 
     /* Computation / Вычисление и обновление состояния. */
@@ -2316,61 +2327,41 @@ extern "C" FVM_Result fvm_serialization_register_callback(
     }
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-/* Serialize value. */
-/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-extern "C" FVM_Result
-/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-fvm_value_serialize(FVM_Context *c,
-                    const FVM_Value *v,
-                    unsigned char **data,
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    size_t *size)
-/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-{ /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+/* [ASINC] [GC:] EN/RU: See graph_slot_reader.hpp. / См. graph_slot_reader.hpp. */
+FVM_Result fvm_serialize_graph_slots(FVM_Context *c, const FVM_Value *v, unsigned char **data, size_t *size,
+    const FVM_GraphSlotReader *reader)
+{
     if (!data || !size)
-    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return FVM_INVALID_ARGUMENT;
-    }
-
-    /* Computation / Вычисление и обновление состояния. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    *data = 0;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    *size = 0;
-    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
-    if (!c || !v || c->destroying || c->gc_releasing)
-    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return FVM_INVALID_ARGUMENT;
-    }
-    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
-    try
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
-
-
-        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
+        return FVM_INVALID_ARGUMENT;
+    }
+    *data = NULL;
+    *size = 0;
+    if (!c || !v || c->destroying || c->gc_releasing)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    try
+    {
         FVM_NativeCallGuard guard(c);
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        encode(c, *v, data, size);
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        encode(c, *v, data, size, reader);
         return FVM_OK;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const Failure &f)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    {
         return f.result;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    { /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    {
         return FVM_OUT_OF_MEMORY;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+
+/* [GC:] EN/RU: See flashvm/serialization.h. / См. flashvm/serialization.h. */
+extern "C" FVM_Result fvm_value_serialize(FVM_Context *c, const FVM_Value *v, unsigned char **data, size_t *size)
+{
+    return fvm_serialize_graph_slots(c, v, data, size, NULL);
 }
 /* Deserialize value. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

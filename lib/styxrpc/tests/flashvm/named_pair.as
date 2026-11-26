@@ -104,6 +104,30 @@ function onEnterFrame() {
         var changedString = port.recv();
         var finalString = port.send(nativeTable["1"]);
         var finalNumber = port.send(nativeTable[index]);
+
+        // A value send samples live slots in the entire graph, once per cell.
+        // При передаче по значению прочитать живые слоты графа по одному разу на ячейку.
+        var prepareSnapshot = port.recv();
+        nativeTable.self = nativeTable;
+        model[0] = nativeTable;
+        model.local = ref nativeTable;
+        var sentSnapshot = port.send(model);
+        var receivedSnapshot = port.recv();
+        var tableCopy = receivedSnapshot[0];
+        var sameTable = receivedSnapshot.local;
+        tableCopy.mark = 111;
+        var fromAlias = port.send(sameTable.mark);
+        var cycle = tableCopy.self;
+        var fromCycle = port.send(cycle.mark);
+        var first = tableCopy[index];
+        var second = tableCopy[aliasIndex];
+        first.mark = 111;
+        var fromSameCell = port.send(second.mark);
+        var preservedName = port.send(tableCopy["1"]);
+        tableCopy[index] = 21;
+        var detachedSlot = port.send(tableCopy[index]);
+        var stillOriginal = port.send(nativeTable[index]);
+        var publishedSnapshot = port.send(ref model);
         var retired = port.delete();
         done = true;
     }

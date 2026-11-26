@@ -44,6 +44,13 @@ static FVM_Result read_variable(FVM_Context *context, FVM_Object *self, unsigned
 }
 
 
+/* EN/RU: See variable_ref_adapter.h. / См. variable_ref_adapter.h. */
+int fvm_styxrpc_int_variable_getter(FVM_NativeFunction getter)
+{
+    return getter == read_variable;
+}
+
+
 /* EN: Validate an exact int and issue one replacement on the native variable file.
  * RU: Проверить точный int и выполнить одну запись значения в нативный файл переменной. */
 static FVM_Result write_variable(FVM_Context *context, FVM_Object *self, unsigned argc,

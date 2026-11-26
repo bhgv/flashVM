@@ -128,6 +128,7 @@ init()
     graphexchange(port, graph);
     indexexchange(port);
     raw := nativeindices(port);
+    snapshotexchange(port, raw, graph);
     port.close();
     for (i := 0; i < 100; ++i) {
         (exists, meta) = sys->stat("/jobs");
@@ -326,6 +327,37 @@ nativeindices(port: ref Port): ref Cell
     }
     word.close();
     return cell;
+}
+
+
+# EN: Sample a cyclic graph with an AS alias and two leases to the same value cell.
+# RU: Снять циклический граф с привязкой AS и двумя арендами одной ячейки.
+snapshotexchange(port: ref Port, source: ref Cell, graph: array of byte)
+{
+    before := source.get();
+    source.set(graph);
+    port.send(count111());
+    snapshot := port.recv();
+    if (len snapshot < 2 || int snapshot[0] != Styxnamed->Snapshot) {
+        raise "a table containing live bindings did not produce a detached graph";
+    }
+    port.send(snapshot);
+    for (i := 0; i < 4; ++i) {
+        if (!equal(port.recv(), count111())) {
+            raise "the sampled graph lost its cycle, shared identities, or distinct key";
+        }
+    }
+    number := array[] of {byte Styxnamed->Number, byte 16r40, byte 16r35, byte 0,
+        byte 0, byte 0, byte 0, byte 0, byte 0};
+    if (!equal(port.recv(), number) || !equal(port.recv(), graph) || !equal(source.get(), graph)) {
+        raise "editing the received snapshot changed the source cell";
+    }
+    captured := named->adopt(port.recv());
+    if (!equal(captured.get(), snapshot)) {
+        raise "creating a new cell did not capture the live slots of the assigned graph";
+    }
+    captured.close();
+    source.set(before);
 }
 
 

@@ -7,6 +7,13 @@
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/named_cell.h"
 
+struct FVM_AccessorEntry;
+
+/* [GC:] EN: Identify a named cell getter. Its token is borrowed through entry's root.
+ * RU: Распознать getter именованной ячейки. Жетон заимствован через корень entry. */
+const unsigned char *fvm_named_cell_identity(const FVM_AccessorEntry &entry, struct StyxClient **issuer);
+
+
 /* [GC:] EN: Resolve ref to a live cell on session, publishing a fresh slot if needed.
  * RU: Получить живую ячейку ref на session, при необходимости опубликовав новый слот. */
 FVM_Result fvm_named_ref_token(FVM_Context *, FVM_StyxRpcSession *, const FVM_Value *, unsigned char *token);

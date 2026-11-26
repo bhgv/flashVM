@@ -4,6 +4,7 @@
  */
 #include "session_named_values.hpp"
 #include "session_named_refs.hpp"
+#include "session_named_snapshot.hpp"
 #include "flashvm/serialization.h"
 #include "../capi/variable_refs.hpp"
 #include "styxrpc/named_channel.h"
@@ -118,7 +119,7 @@ FVM_Result fvm_named_encode(FVM_Context *context, FVM_StyxRpcSession *session,
     }
     unsigned char *snapshot;
     size_t length;
-    FVM_Result status = fvm_value_serialize(context, value, &snapshot, &length);
+    FVM_Result status = fvm_named_snapshot(context, value, &snapshot, &length);
     if (status == FVM_OK)
     {
         status = pack(STYXRPC_NAMED_VALUE, snapshot, length, bytes, size);
