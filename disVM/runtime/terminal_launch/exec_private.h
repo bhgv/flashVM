@@ -11,6 +11,8 @@
 #define DVM_EXEC_WORD 4U /* Local owner protocol field width, bytes. */
 #define DVM_EXEC_HEADER (2U * DVM_EXEC_WORD) /* Ticket plus byte length. */
 #define DVM_NODE_HEADER (3U * DVM_EXEC_WORD) /* Ticket, byte length and operation. */
+#define DVM_NODE_AT_HEADER (DVM_NODE_HEADER + 2U * DVM_EXEC_WORD) /* Adds the UInt64 offset. */
+#define DVM_NODE_AT_MODE 0x80U /* Positioned registration adds a UInt64 byte length. */
 #define DVM_EXEC_REFUSE UINT32_MAX /* Reply length signalling explicit refusal. */
 #define DVM_EXEC_DEADLINE_SECONDS 5 /* Maximum native dispatcher wait for the owner. */
 
@@ -41,6 +43,7 @@ typedef struct ExecJob
     ExecOwner *owner; /* Borrowed while still registered under the broker lock. */
     const void *input; /* Borrowed write/execute input, null for reads. */
     void *output; /* Borrowed read/execute output, null for writes. */
+    uint64_t offset; /* Absolute data offset, zero for execute. */
     NodeOperation operation; /* Requested callback operation. */
     size_t size; /* Input bytes and output capacity. */
     size_t used; /* Output prefix on successful completion. */
@@ -58,6 +61,8 @@ struct ExecOwner
     uint64_t layer; /* Exact VFS mount layer owned by this registration. */
     uint32_t marker; /* Exact session-local marker identity. */
     unsigned mode; /* FVM_ACCESS bits permitted by this publication. */
+    uint64_t length; /* Declared fixed byte length of a positioned node. */
+    int positioned; /* Exchange the extra 64-bit offset in each request. */
     int extended; /* Use the operation-bearing local mailbox format. */
     char path[STYXRPC_NODE_PATH_MAX + 2]; /* Canonical absolute publication path. */
 };
@@ -109,7 +114,7 @@ int dvm_exec_active(DvmExecBroker *broker, uint32_t marker);
 /* EN: Wait for the exact owner to process one borrowed buffer and acknowledge its prefix.
  * RU: Дождаться обработки одного заимствованного буфера и подтверждения префикса. */
 NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperation operation,
-    const void *input, void *output, size_t size, size_t *used);
+    uint64_t offset, const void *input, void *output, size_t size, size_t *used);
 
 
 /* EN: Receive or complete one local request via the owner fd.

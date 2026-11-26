@@ -4,6 +4,7 @@
  */
 #include "exec_private.h"
 #include "styxrpc/named_channel.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,9 +14,22 @@ typedef struct ExecMarker
 {
     DvmExecBroker *broker; /* Owned while the namespace, walk or open pins this marker. */
     unsigned mode; /* Immutable FVM_ACCESS bits permitted on this node. */
+    uint64_t length; /* Fixed byte extent in positioned mode. */
+    int positioned; /* Whether file handles accept random-access I/O. */
     uint32_t serial; /* Stable session-local Qid low word. */
     char name[]; /* Owned displayed basename. */
 } ExecMarker;
+
+
+/* EN: State of one ordinary open, serialized by its fid and retaining the provider.
+ * RU: Состояние одного открытия. Fid сериализует доступ и удерживает провайдера. */
+typedef struct NodeCursor
+{
+    ExecMarker *marker; /* Borrowed from the provider wrapper that owns this cursor. */
+    uint64_t offset; /* Next byte position in positioned mode. */
+    unsigned access; /* FVM_ACCESS mask fixed at open. */
+    int uncertain; /* An unacknowledged operation prevents further I/O on this cursor. */
+} NodeCursor;
 
 
 /* EN: Describe the node with its fixed publication permissions.
@@ -30,6 +44,8 @@ static FVM_Result marker_info(void *state, const char *path, FVM_FileInfo *out)
     memset(out, 0, sizeof(*out));
     strcpy(out->name, marker->name);
     out->mode = marker->mode * 0111U;
+    out->length.high = (uint32_t)(marker->length >> 32);
+    out->length.low = (uint32_t)marker->length;
     out->identity.high = EXEC_MARKER_NAMESPACE;
     out->identity.low = marker->serial;
     return FVM_OK;
@@ -53,41 +69,83 @@ static FVM_Result marker_access(void *state, const char *path, unsigned access)
  * RU: Описать открытый узел, удерживаемый провайдером. */
 static FVM_Result marker_open_info(void *state, FVM_FileInfo *out)
 {
-    return marker_info(state, ".", out);
+    NodeCursor *cursor = state;
+    return marker_info(cursor->marker, ".", out);
 }
 
 
-/* EN: The provider wrapper releases its pin after this borrowed cursor closes.
- * RU: Обёртка провайдера снимает ссылку после закрытия заимствованного курсора. */
+/* EN: Release this cursor. The provider wrapper retains the marker through close.
+ * RU: Освободить курсор. Обёртка провайдера удерживает метку до завершения close. */
 static void marker_close(void *state)
 {
-    (void)state;
+    free(state);
 }
 
 
-/* EN: Move one ordinary data chunk through the exact owner and report its confirmed prefix.
- * RU: Передать один чанк данных точному владельцу и вернуть подтверждённый префикс. */
-static void transfer(ExecMarker *marker, NodeOperation operation, const void *input, void *output,
-    size_t size, DVM_IoResult *result)
+/* EN: Return the bounded data window. Sequential nodes keep the full offered size.
+ * RU: Вернуть доступный интервал. Последовательный узел получает весь предложенный размер. */
+static size_t available(const NodeCursor *cursor, size_t size)
 {
-    size_t capacity = size > STYXRPC_NODE_BUFFER_MAX ? STYXRPC_NODE_BUFFER_MAX : size;
+    if (cursor->marker->positioned)
+    {
+        uint64_t length = cursor->marker->length;
+        if (cursor->offset >= length)
+        {
+            return 0;
+        }
+        uint64_t remaining = length - cursor->offset;
+        if (remaining < size)
+        {
+            return (size_t)remaining;
+        }
+    }
+    return size;
+}
+
+
+/* EN: Move one permitted data chunk and advance only by the confirmed prefix.
+ * RU: Передать разрешённый фрагмент и продвинуть курсор на подтверждённый префикс. */
+static void transfer(NodeCursor *cursor, NodeOperation operation, unsigned access, const void *input,
+    void *output, size_t size, DVM_IoResult *result)
+{
+    *result = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
+    if (!(cursor->access & access) || cursor->uncertain)
+    {
+        return;
+    }
+    ExecMarker *marker = cursor->marker;
+    size_t window = available(cursor, size);
+    if (operation == DVM_NODE_WRITE && window < size)
+    {
+        return;
+    }
+    size_t capacity = window > STYXRPC_NODE_BUFFER_MAX ? STYXRPC_NODE_BUFFER_MAX : window;
     size_t used = 0;
-    NodeOutcome outcome = dvm_exec_transfer(marker->broker, marker->serial, operation, input, output, capacity, &used);
-    *result = (DVM_IoResult){.status = FVM_OK, .count = used, .flags = DVM_IO_PREFIX};
+    NodeOutcome outcome;
+    if (marker->positioned && !capacity)
+    {
+        outcome = dvm_exec_active(marker->broker, marker->serial) ? DVM_NODE_ACCEPTED : DVM_NODE_REFUSED;
+    }
+    else
+    {
+        outcome = dvm_exec_transfer(marker->broker, marker->serial, operation, cursor->offset,
+            input, output, capacity, &used);
+    }
     if (outcome == DVM_NODE_UNCONFIRMED)
     {
-        result->status = FVM_ERROR;
+        cursor->uncertain = 1;
         result->stop = DVM_IO_FAILURE;
         result->flags |= DVM_IO_UNCERTAIN;
     }
-    else if (outcome == DVM_NODE_REFUSED)
+    else if (outcome == DVM_NODE_ACCEPTED)
     {
-        result->status = FVM_ERROR;
-        result->stop = DVM_IO_DENIED;
-    }
-    else if (operation == DVM_NODE_READ && !used)
-    {
-        result->stop = DVM_IO_EOF;
+        if (marker->positioned)
+        {
+            cursor->offset += used;
+        }
+        result->status = FVM_OK;
+        result->count = used;
+        result->stop = operation == DVM_NODE_READ && !used ? DVM_IO_EOF : DVM_IO_NONE;
     }
 }
 
@@ -96,7 +154,7 @@ static void transfer(ExecMarker *marker, NodeOperation operation, const void *in
  * RU: Заполнить буфер чтения вызывающей стороны. Колбэк сообщает префикс или EOF. */
 static void marker_read(void *state, void *bytes, size_t size, DVM_IoResult *result)
 {
-    transfer(state, DVM_NODE_READ, NULL, bytes, size, result);
+    transfer(state, DVM_NODE_READ, FVM_ACCESS_READ, NULL, bytes, size, result);
 }
 
 
@@ -104,35 +162,60 @@ static void marker_read(void *state, void *bytes, size_t size, DVM_IoResult *res
  * RU: Передать заимствованный вход владельцу и вернуть только подтверждённый префикс. */
 static void marker_write(void *state, const void *bytes, size_t size, DVM_IoResult *result)
 {
-    transfer(state, DVM_NODE_WRITE, bytes, NULL, size, result);
+    transfer(state, DVM_NODE_WRITE, FVM_ACCESS_WRITE, bytes, NULL, size, result);
 }
 
 
-/* EN: Return a sequential file handle with operations limited to the granted open mode.
- * RU: Вернуть последовательный файл, ограниченный операциями указанного режима открытия. */
+/* EN: Set this cursor relative to start, current offset or declared EOF, without calling Limbo.
+ * RU: Изменить смещение от начала, текущей позиции или объявленного EOF без вызова Limbo. */
+static FVM_Result marker_seek(void *state, long offset, int origin, long *position)
+{
+    NodeCursor *cursor = state;
+    if (origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END || cursor->uncertain ||
+        !dvm_exec_active(cursor->marker->broker, cursor->marker->serial))
+    {
+        return FVM_ERROR;
+    }
+    uint64_t base = 0;
+    if (origin == FVM_FILE_SEEK_CURRENT)
+    {
+        base = cursor->offset;
+    }
+    else if (origin == FVM_FILE_SEEK_END)
+    {
+        base = cursor->marker->length;
+    }
+    uint64_t magnitude = offset < 0 ? (uint64_t)(-(offset + 1)) + 1 : (uint64_t)offset;
+    uint64_t limit = (uint64_t)LONG_MAX < STYXRPC_NODE_OFFSET_MAX ? (uint64_t)LONG_MAX : STYXRPC_NODE_OFFSET_MAX;
+    if (base > limit || (offset < 0 ? magnitude > base : magnitude > limit - base))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    cursor->offset = offset < 0 ? base - magnitude : base + magnitude;
+    *position = (long)cursor->offset;
+    return FVM_OK;
+}
+
+
+/* EN: Open an independent cursor with operations limited to the granted mode.
+ * RU: Открыть независимый курсор с операциями в пределах разрешённого режима. */
 static FVM_Result marker_open(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    static const DVM_VfsOps read_ops = {.info = marker_open_info, .read_chunk = marker_read,
-        .close = marker_close};
-    static const DVM_VfsOps write_ops = {.info = marker_open_info, .write_chunk = marker_write,
-        .close = marker_close};
-    static const DVM_VfsOps both_ops = {.info = marker_open_info, .read_chunk = marker_read,
+    static const DVM_VfsOps stream = {.info = marker_open_info, .read_chunk = marker_read,
         .write_chunk = marker_write, .close = marker_close};
+    static const DVM_VfsOps positioned = {.info = marker_open_info, .read_chunk = marker_read,
+        .write_chunk = marker_write, .close = marker_close, .seek = marker_seek};
     unsigned access;
-    const DVM_VfsOps *ops;
     if (!strcmp(mode, "r"))
     {
-        ops = &read_ops;
         access = FVM_ACCESS_READ;
     }
     else if (!strcmp(mode, "wo"))
     {
-        ops = &write_ops;
         access = FVM_ACCESS_WRITE;
     }
     else if (!strcmp(mode, "rw") || !strcmp(mode, "rwo"))
     {
-        ops = &both_ops;
         access = FVM_ACCESS_READ | FVM_ACCESS_WRITE;
     }
     else
@@ -140,11 +223,19 @@ static FVM_Result marker_open(void *state, const char *path, const char *mode, D
         return FVM_UNSUPPORTED;
     }
     FVM_Result status = marker_access(state, path, access);
-    if (status == FVM_OK)
+    if (status != FVM_OK)
     {
-        *out = (DVM_VfsHandle){.ops = ops, .state = state};
+        return status;
     }
-    return status;
+    NodeCursor *cursor = calloc(1, sizeof(*cursor));
+    if (!cursor)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    cursor->marker = state;
+    cursor->access = access;
+    *out = (DVM_VfsHandle){.ops = cursor->marker->positioned ? &positioned : &stream, .state = cursor};
+    return FVM_OK;
 }
 
 
@@ -230,6 +321,8 @@ int dvm_exec_claim(ExecOwner *owner, const char *absolute)
     }
     entry->broker = owner->broker;
     entry->mode = owner->mode;
+    entry->positioned = owner->positioned;
+    entry->length = owner->length;
     strcpy(entry->name, basename);
     dvm_exec_retain(entry->broker);
     pthread_mutex_lock(&owner->broker->lock);

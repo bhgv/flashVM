@@ -9,6 +9,8 @@ sys: Sys; # Runtime system module loaded by init.
 Word: con 4; # Width of an owner mailbox word in bytes.
 Replyheader: con 2*Word; # Ticket and confirmed count.
 Requestheader: con 3*Word; # Ticket, capacity and operation.
+Positionheader: con Requestheader+2*Word; # Adds an unsigned 64-bit byte offset.
+Maxoffset: con big 9007199254740991; # Largest exact ActionScript byte offset.
 
 
 # EN/RU: See styxnodes.m. / См. styxnodes.m.
@@ -66,28 +68,54 @@ access(permissions: string): int
 }
 
 
-# EN/RU: See styxnodes.m. / См. styxnodes.m.
-publish(path, permissions: string): ref Node
+# EN: Write one complete registration with optional UInt64 length to the local owner fid.
+# RU: Записать полную регистрацию с необязательной длиной UInt64 в локальный fid владельца.
+publish_node(path: string, mode: int, length: big): ref Node
 {
-    mode := access(permissions);
     name := array of byte path;
     if (len name < 2 || len name > Maxpath || name[0] != byte '/') {
         raise "invalid Styx node publication path";
     }
-    wire := array[2+len name] of byte;
+    prefix := 2;
+    if (length >= big 0) {
+        mode |= 16r80;
+        prefix += 2*Word;
+    }
+    wire := array[prefix+len name] of byte;
     wire[0] = byte 0;
     wire[1] = byte mode;
-    wire[2:] = name;
+    if (prefix > 2) {
+        put(wire, 2, int (length >> 32));
+        put(wire, 2+Word, int length);
+    }
+    wire[prefix:] = name;
     fd := sys->open("/.execctl", Sys->ORDWR);
     if (fd == nil || sys->write(fd, wire, len wire) != len wire) {
         raise sys->sprint("cannot publish Styx node: %r");
     }
-    return ref Node(fd, array[Requestheader+Maxbytes] of byte, path);
+    return ref Node(fd, array[Positionheader+Maxbytes] of byte, path);
 }
 
 
 # EN/RU: See styxnodes.m. / См. styxnodes.m.
-Node.recv(node: self ref Node): ref Request
+publish(path, permissions: string): ref Node
+{
+    return publish_node(path, access(permissions), big -1);
+}
+
+
+# EN/RU: See styxnodes.m. / См. styxnodes.m.
+publishat(path, permissions: string, length: big): ref Node
+{
+    if (length < big 0 || length > Maxoffset) {
+        raise "invalid Styx node length";
+    }
+    return publish_node(path, access(permissions), length);
+}
+
+
+# EN/RU: See styxnodes.m. / См. styxnodes.m.
+recvat(node: ref Node): (ref Request, big)
 {
     fd := node.fd;
     if (fd == nil) {
@@ -98,17 +126,33 @@ Node.recv(node: self ref Node): ref Request
         sys->sleep(10);
         got = sys->read(fd, node.wire, len node.wire);
     }
-    if (got < Requestheader || big (got-Requestheader) != take(node.wire, Word)) {
+    if (got < Requestheader) {
         raise sys->sprint("cannot receive Styx node request: %r");
+    }
+    length := take(node.wire, Word);
+    header := big got-length;
+    offset := big 0;
+    if (header == big Positionheader) {
+        offset = (take(node.wire, Requestheader) << 32) | take(node.wire, Requestheader+Word);
+    } else if (header != big Requestheader) {
+        raise "invalid Styx node request length";
     }
     ticket := take(node.wire, 0);
     operation := int take(node.wire, Replyheader);
     if (operation != 'r' && operation != 'w' && operation != 'x') {
         raise "invalid Styx node operation";
     }
-    buffer := array[got-Requestheader] of byte;
-    buffer[0:] = node.wire[Requestheader:got];
-    return ref Request(ticket, sys->sprint("%c", operation), buffer);
+    buffer := array[int length] of byte;
+    buffer[0:] = node.wire[int header:got];
+    return (ref Request(ticket, sys->sprint("%c", operation), buffer), offset);
+}
+
+
+# EN/RU: See styxnodes.m. / См. styxnodes.m.
+Node.recv(node: self ref Node): ref Request
+{
+    (item, nil) := recvat(node);
+    return item;
 }
 
 
@@ -159,6 +203,27 @@ Node.dispatch(node: self ref Node, handler: StyxnodeHandler): int
     count: int;
     {
         count = handler->transfer(node.path, item.operation, item.buffer);
+    } exception e {
+    "*" =>
+        return node.refuse(item);
+    }
+    if (count < 0 || count > len item.buffer) {
+        return node.refuse(item);
+    }
+    return node.reply(item, count);
+}
+
+
+# EN/RU: See styxnodes.m. / См. styxnodes.m.
+dispatchat(node: ref Node, handler: StyxnodePositionedHandler): int
+{
+    if (handler == nil) {
+        raise "missing positioned Styx node handler";
+    }
+    (item, offset) := recvat(node);
+    count: int;
+    {
+        count = handler->transfer(node.path, item.operation, item.buffer, offset);
     } exception e {
     "*" =>
         return node.refuse(item);

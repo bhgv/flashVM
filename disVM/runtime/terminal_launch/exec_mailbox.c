@@ -76,7 +76,7 @@ int dvm_exec_active(DvmExecBroker *broker, uint32_t marker)
 
 /* EN/RU: See exec_private.h. / См. exec_private.h. */
 NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperation operation,
-    const void *input, void *output, size_t size, size_t *used)
+    uint64_t offset, const void *input, void *output, size_t size, size_t *used)
 {
     struct timespec deadline;
     if (!marker || size > STYXRPC_NODE_BUFFER_MAX || clock_gettime(CLOCK_MONOTONIC, &deadline))
@@ -101,7 +101,7 @@ NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperat
         return DVM_NODE_REFUSED;
     }
     ExecJob job = {.owner = owner, .input = input, .output = output, .operation = operation,
-        .size = size, .ticket = ++broker->ticket};
+        .offset = offset, .size = size, .ticket = ++broker->ticket};
     owner->job = &job;
     while (!job.answered && job.owner && !broker->stopped)
     {
@@ -149,7 +149,7 @@ int dvm_exec_invoke(void *context, const char *path, void *bytes, size_t size, s
     owner = find(broker, absolute, layer);
     uint32_t marker = owner ? owner->marker : 0;
     pthread_mutex_unlock(&broker->lock);
-    return dvm_exec_transfer(broker, marker, DVM_NODE_EXEC, bytes, bytes, size, used) == DVM_NODE_ACCEPTED;
+    return dvm_exec_transfer(broker, marker, DVM_NODE_EXEC, 0, bytes, bytes, size, used) == DVM_NODE_ACCEPTED;
 }
 
 
@@ -164,6 +164,10 @@ FVM_Result dvm_exec_receive(void *state, void *buffer, size_t size, size_t *used
     pthread_mutex_lock(&broker->lock);
     ExecJob *job = owner->job;
     size_t header = owner->extended ? DVM_NODE_HEADER : DVM_EXEC_HEADER;
+    if (owner->positioned)
+    {
+        header = DVM_NODE_AT_HEADER;
+    }
     if (!owner->layer || broker->stopped)
     {
         status = FVM_ERROR;
@@ -181,6 +185,11 @@ FVM_Result dvm_exec_receive(void *state, void *buffer, size_t size, size_t *used
             if (owner->extended)
             {
                 put(bytes + DVM_EXEC_HEADER, job->operation);
+            }
+            if (owner->positioned)
+            {
+                put(bytes + DVM_NODE_HEADER, (uint32_t)(job->offset >> 32));
+                put(bytes + DVM_NODE_HEADER + DVM_EXEC_WORD, (uint32_t)job->offset);
             }
             if (job->size)
             {
@@ -208,15 +217,33 @@ static FVM_Result register_owner(ExecOwner *owner, const unsigned char *bytes, s
 {
     owner->extended = size && bytes[0] == 0;
     owner->mode = FVM_ACCESS_EXEC;
+    owner->positioned = 0;
+    owner->length = 0;
     if (owner->extended)
     {
-        if (size < 3 || !bytes[1] || (bytes[1] & ~FVM_ACCESS_MASK))
+        if (size < 3 || !(bytes[1] & FVM_ACCESS_MASK) ||
+            (bytes[1] & ~(FVM_ACCESS_MASK | DVM_NODE_AT_MODE)))
         {
             return FVM_INVALID_ARGUMENT;
         }
-        owner->mode = bytes[1];
+        owner->mode = bytes[1] & FVM_ACCESS_MASK;
+        owner->positioned = (bytes[1] & DVM_NODE_AT_MODE) != 0;
         bytes += 2;
         size -= 2;
+        if (owner->positioned)
+        {
+            if (size <= 2 * DVM_EXEC_WORD)
+            {
+                return FVM_INVALID_ARGUMENT;
+            }
+            owner->length = ((uint64_t)get(bytes) << 32) | get(bytes + DVM_EXEC_WORD);
+            if (owner->length > STYXRPC_NODE_OFFSET_MAX)
+            {
+                return FVM_INVALID_ARGUMENT;
+            }
+            bytes += 2 * DVM_EXEC_WORD;
+            size -= 2 * DVM_EXEC_WORD;
+        }
     }
     char path[STYXRPC_NODE_PATH_MAX + 2];
     if (!size || size >= sizeof(path) || memchr(bytes, 0, size))

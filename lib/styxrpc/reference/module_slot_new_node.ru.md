@@ -25,3 +25,6 @@ StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot,
 байты. Запишите ответ в его начало и задайте `used` от 0 до `size`.
 [node_exec](node_exec.ru.md) вызывает один колбэк на полный запрос.
 Для отзыва используйте [clear_nodes](module_slot_clear_nodes.ru.md).
+
+Для фиксированной длины и смещений в байтах используйте
+[styxrpc_module_slot_new_node_at](module_slot_new_node_at.ru.md).

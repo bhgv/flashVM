@@ -1,6 +1,6 @@
 # styxrpc_node_exec
 
-[Русский](node_exec.ru.md) · [Declaration](../include/styxrpc/nodes.h#L58) · [Client](../src/node_exec_client.c#L47) · [Provider](../src/node_service.c#L76)
+[Русский](node_exec.ru.md) · [Declaration](../include/styxrpc/nodes.h#L87) · [Client](../src/node_exec_client.c#L47) · [Provider](../src/node_service.c#L76)
 
 ```c
 #include <styxrpc/nodes.h>

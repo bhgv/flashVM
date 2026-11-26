@@ -1,6 +1,6 @@
 # Styxnodes.init
 
-[Русский](styx-nodes-init.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L53) · [Implementation](../limbo/styxnodes.b#L15)
+[Русский](styx-nodes-init.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L60) · [Implementation](../limbo/styxnodes.b#L17)
 
 ```limbo
 include "sys.m";

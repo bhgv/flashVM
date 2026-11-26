@@ -1,8 +1,8 @@
 # vfs.newnode
 
-[Русский](STYX_RPC_NEWNODE.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_nodes.cpp#L158)
+[Русский](STYX_RPC_NEWNODE.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_nodes.cpp#L166)
 
-`vfs.newnode(path, permissions, callback)` publishes a callback file in
+`vfs.newnode(path, permissions, callback[, length])` publishes a callback file in
 the active movie's VFS. The path is rooted at the paired session,
 independent of cwd. Missing parent directories are created with the file.
 Permissions are distinct letters from `r`, `w` and `x`. Conflicting
@@ -23,6 +23,12 @@ over the existing session.
 EOF. Zero for an execution confirms an empty result. An exception or a
 count outside 0–len fails the request. Ordinary reads and writes invoke
 the callback once per transport operation and track position on the fid.
+
+With the optional `length` in bytes from zero through 2⁵³−1, the
+callback takes a fourth argument, the absolute byte offset.
+Read buffers end at EOF. A write fragment crossing EOF fails.
+Execution keeps the original payload and receives offset zero.
+See the [positioned file guide](../../disVM/runtime/STYX-NODE-OFFSETS.md).
 
 This AS2 example publishes a file that returns byte 42 in one read. The
 peer accesses it using ordinary filesystem operations.

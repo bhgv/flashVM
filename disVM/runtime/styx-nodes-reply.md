@@ -1,6 +1,6 @@
 # Styxnodes.Node.reply
 
-[Русский](styx-nodes-reply.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L36) · [Implementation](../limbo/styxnodes.b#L132)
+[Русский](styx-nodes-reply.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L43) · [Implementation](../limbo/styxnodes.b#L176)
 
 ```limbo
 include "sys.m";

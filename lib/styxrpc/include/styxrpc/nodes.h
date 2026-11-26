@@ -17,6 +17,7 @@ extern "C" {
 #define STYXRPC_NODE_EXEC_OWNER ".execctl" /* Local publication control; never export to a peer. */
 #define STYXRPC_NODE_EXEC_QID UINT64_C(3) /* Exact service identity on the callback tree. */
 #define STYXRPC_NODE_EXECUTE 4U /* Callback access selector for in-place invocation. */
+#define STYXRPC_NODE_OFFSET_MAX UINT64_C(9007199254740991) /* Exact positional byte range shared with ActionScript. */
 #define STYXRPC_NODE_BUFFER_MAX 65536U /* Maximum execute argument and result capacity in bytes. */
 
 typedef int (*StyxRpcNodeTransfer)(void *context, unsigned access, void *bytes,
@@ -30,6 +31,22 @@ typedef struct StyxRpcNodeCallbacks
 } StyxRpcNodeCallbacks;
 
 
+/* EN: Handle one positioned fragment. Offset is zero for execute.
+ * RU: Обработать один фрагмент со смещением. Для исполнения смещение равно нулю. */
+typedef int (*StyxRpcNodeTransferAt)(void *context, unsigned access, uint64_t offset,
+    void *bytes, size_t size, size_t *used);
+
+
+/* EN: Own a positioned callback and its state after successful publication.
+ * RU: Владеть колбэком со смещением и его состоянием после успешной публикации. */
+typedef struct StyxRpcPositionedNodeCallbacks
+{
+    StyxRpcNodeTransferAt transfer; /* Owner-thread callback for both data operations and execute. */
+    void (*release)(void *context); /* Optional context cleanup at withdrawal. */
+    void *context; /* Consumed on successful registration if release is provided. */
+} StyxRpcPositionedNodeCallbacks;
+
+
 /* EN: Publish a new file and missing parent directories atomically. mode is 1..7
  * (Unix r/w/x mask). Callbacks run on the slot owner. Invalid leaves context
  * owned by the caller. The x bit permits STYXRPC_NODE_EXECUTE on a mutable
@@ -40,6 +57,18 @@ typedef struct StyxRpcNodeCallbacks
  * с изменяемым буфером size байт; used выбирает возвращаемый префикс. */
 StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot, const char *path,
     unsigned mode, const StyxRpcNodeCallbacks *callbacks);
+
+
+/* EN: Publish a callback file with fixed byte length from zero to STYXRPC_NODE_OFFSET_MAX.
+ * Uses the same path, mode, thread and ownership rules as styxrpc_module_slot_new_node.
+ * Reads clip to EOF; writes extending past EOF are refused before dispatch.
+ * Execute uses the full request and offset zero.
+ * RU: Опубликовать файл фиксированной длины от нуля до STYXRPC_NODE_OFFSET_MAX.
+ * Правила пути, прав, потока и владения как у styxrpc_module_slot_new_node.
+ * Чтение ограничено EOF; запись за границу отклоняется до колбэка.
+ * Исполнение получает весь запрос и нулевое смещение. */
+StyxRpcStatus styxrpc_module_slot_new_node_at(StyxRpcModuleSlot *slot, const char *path,
+    unsigned mode, uint64_t length, const StyxRpcPositionedNodeCallbacks *callbacks);
 
 
 /* EN: Withdraw every callback node, invalidate opens and release callback contexts.

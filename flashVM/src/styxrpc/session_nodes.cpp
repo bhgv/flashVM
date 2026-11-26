@@ -25,6 +25,7 @@ namespace
 struct Callback
 {
     FVM_Context *context; /* Borrowed movie owner through withdrawal. */
+    bool positioned; /* Pass the fourth offset argument to this publication. */
     FVM_Object *function; /* [GC:] Pinned callable, released at withdrawal. */
 };
 
@@ -89,9 +90,9 @@ FVM_Result read_reply(FVM_Context *context, FVM_Object *buffer, unsigned char *b
 }
 
 
-/* [GC:] EN: Call the movie function with copied (mode, byte Array, length) arguments.
- * RU: Вызвать функцию фильма со скопированными параметрами (режим, массив байт, длина). */
-int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *used)
+/* [GC:] EN: Call the movie function with a copied byte array and the opt-in absolute offset.
+ * RU: Вызвать функцию фильма со скопированным массивом байтов и смещением, если оно запрошено. */
+int transfer_at(void *state, unsigned access, uint64_t offset, void *bytes, size_t size, size_t *used)
 {
     Callback *callback = static_cast<Callback *>(state);
     FVM_Context *context = callback->context;
@@ -110,7 +111,7 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
         fvm_value_number(&items[i], access == STYXRPC_READ ? 0 : source[i]);
     }
     FVM_GCRootScope *roots = NULL;
-    FVM_Value args[3], result;
+    FVM_Value args[4], result;
     FVM_Result status = fvm_gc_roots_begin(context, &roots);
     if (status == FVM_OK)
     {
@@ -126,7 +127,8 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
         const char *operation = access == STYXRPC_NODE_EXECUTE ? "x" : access == STYXRPC_WRITE ? "w" : "r";
         fvm_value_string(args, operation);
         fvm_value_number(args + 2, static_cast<double>(size));
-        status = fvm_function_invoke(context, callback->function, NULL, 3, args, &result);
+        fvm_value_number(args + 3, static_cast<double>(offset));
+        status = fvm_function_invoke(context, callback->function, NULL, callback->positioned ? 4 : 3, args, &result);
     }
     uint64_t count = 0;
     if (status == FVM_OK && !fvm_styxrpc_number(&result, size, &count))
@@ -151,6 +153,12 @@ int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *use
     }
     return status == FVM_OK;
 }
+/* EN: Keep the original three-argument callable for a sequential registration.
+ * RU: Сохранить исходный вызов с тремя аргументами для последовательной регистрации. */
+int transfer(void *state, unsigned access, void *bytes, size_t size, size_t *used)
+{
+    return transfer_at(state, access, 0, bytes, size, used);
+}
 } // namespace
 
 
@@ -159,7 +167,10 @@ extern "C" FVM_Result fvm_styxrpc_publish_node(FVM_Context *context, StyxRpcModu
     unsigned argc, const FVM_Value *args, FVM_Value *out)
 {
     char path[STYXRPC_NODE_PATH_MAX + 2];
-    if (argc != 3 || !fvm_styxrpc_name(args, path, sizeof(path)) || args[2].type != FVM_VALUE_OBJECT ||
+    uint64_t length = 0;
+    if ((argc != 3 && argc != 4) ||
+        (argc == 4 && !fvm_styxrpc_number(args + 3, STYXRPC_NODE_OFFSET_MAX, &length)) ||
+        !fvm_styxrpc_name(args, path, sizeof(path)) || args[2].type != FVM_VALUE_OBJECT ||
         !args[2].object || !args[2].object->invocable.callback)
     {
         return FVM_INVALID_ARGUMENT;
@@ -175,6 +186,7 @@ extern "C" FVM_Result fvm_styxrpc_publish_node(FVM_Context *context, StyxRpcModu
         return FVM_OUT_OF_MEMORY;
     }
     callback->context = context;
+    callback->positioned = argc == 4;
     callback->function = args[2].object;
     FVM_Result status = fvm_gc_pin(context, callback->function);
     if (status != FVM_OK)
@@ -182,8 +194,18 @@ extern "C" FVM_Result fvm_styxrpc_publish_node(FVM_Context *context, StyxRpcModu
         std::free(callback);
         return status;
     }
-    const StyxRpcNodeCallbacks config = {transfer, release, callback};
-    if (styxrpc_module_slot_new_node(slot, path, mode, &config) != STYXRPC_OK)
+    StyxRpcStatus published;
+    if (callback->positioned)
+    {
+        const StyxRpcPositionedNodeCallbacks config = {transfer_at, release, callback};
+        published = styxrpc_module_slot_new_node_at(slot, path, mode, length, &config);
+    }
+    else
+    {
+        const StyxRpcNodeCallbacks config = {transfer, release, callback};
+        published = styxrpc_module_slot_new_node(slot, path, mode, &config);
+    }
+    if (published != STYXRPC_OK)
     {
         release(callback);
         return FVM_INVALID_ARGUMENT;

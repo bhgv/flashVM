@@ -1,5 +1,10 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1783, FlashVM, Limbo and hosted C can publish fixed-length
+VFS callback files with byte offsets. The two-way compiled pair tests
+seek and binary I/O above 4 GiB over the existing libstyxrpc session.
+[EN](../../disVM/runtime/STYX-NODE-OFFSETS.md) · [RU](../../disVM/runtime/STYX-NODE-OFFSETS.ru.md).
+
 In v0.1782, Limbo publishes callback-backed files with any combination of
 read, write and execute permissions. FlashVM uses ordinary VFS methods and
 the existing execute service on its default libstyxrpc session. The paired

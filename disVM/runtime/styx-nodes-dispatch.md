@@ -1,6 +1,6 @@
 # Styxnodes.Node.dispatch
 
-[Русский](styx-nodes-dispatch.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L44) · [Implementation](../limbo/styxnodes.b#L153)
+[Русский](styx-nodes-dispatch.ru.md) · [Guide](STYX-NODES.md) · [Interface](../module/styxnodes.m#L51) · [Implementation](../limbo/styxnodes.b#L197)
 
 ```limbo
 include "sys.m";

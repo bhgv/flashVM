@@ -9,7 +9,7 @@
 typedef struct CallbackNode
 {
     StyxRpcNode node;              /* Copied stable identity and metadata. */
-    StyxRpcNodeCallbacks callback; /* Adopted file state, empty for directories. */
+    NodeRegistration callback; /* Adopted file state, empty for directories. */
     char name[STYXRPC_TREE_NAME + 1]; /* Component owned by this record. */
 } CallbackNode;
 
@@ -49,6 +49,41 @@ static CallbackNode *child(StyxRpcNodes *nodes, uint64_t parent, const char *nam
 }
 
 
+/* EN: Run one callback and confirm a bounded prefix. Only positioned file I/O clips to EOF.
+ * RU: Вызвать один колбэк и подтвердить префикс в границах буфера. Учитывать EOF у файлов со смещением. */
+static int transfer(CallbackNode *entry, unsigned access, uint64_t offset,
+    void *bytes, size_t size, size_t *used)
+{
+    NodeRegistration *callback = &entry->callback;
+    *used = 0;
+    if (callback->stream)
+    {
+        return callback->stream(callback->context, access, bytes, size, used) == 1 && *used <= size;
+    }
+    if (access != STYXRPC_NODE_EXECUTE)
+    {
+        if (!size)
+        {
+            return 1;
+        }
+        uint64_t remaining = offset < callback->length ? callback->length - offset : 0;
+        if (remaining < size)
+        {
+            if (access == STYXRPC_WRITE)
+            {
+                return 0;
+            }
+            if (!remaining)
+            {
+                return 1;
+            }
+            size = (size_t)remaining;
+        }
+    }
+    return callback->positioned(callback->context, access, offset, bytes, size, used) == 1 && *used <= size;
+}
+
+
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
 int styxrpc_nodes_exec(void *registry, const char *path,
     void *bytes, size_t size, size_t *used)
@@ -65,9 +100,8 @@ int styxrpc_nodes_exec(void *registry, const char *path,
         }
         if (!path[count])
         {
-            return entry->callback.transfer && (entry->node.entry.mode & 1U) &&
-                entry->callback.transfer(entry->callback.context, STYXRPC_NODE_EXECUTE, bytes, size, used) == 1 &&
-                *used <= size;
+            return !entry->node.entry.directory && (entry->node.entry.mode & 1U) &&
+                transfer(entry, STYXRPC_NODE_EXECUTE, 0, bytes, size, used);
         }
         if (!entry->node.entry.directory)
         {
@@ -82,7 +116,7 @@ int styxrpc_nodes_exec(void *registry, const char *path,
 /* EN: Stage one complete path into the unused prefix; never expose partial directories.
  * RU: Подготовить полный путь вне опубликованного префикса, без частичных каталогов. */
 static int stage(StyxRpcNodes *nodes, uint64_t *next, const char *path, unsigned mode,
-    const StyxRpcNodeCallbacks *callbacks)
+    const NodeRegistration *callbacks)
 {
     size_t count = nodes->count;
     uint64_t parent = 0;
@@ -118,6 +152,7 @@ static int stage(StyxRpcNodes *nodes, uint64_t *next, const char *path, unsigned
         if (!directory)
         {
             entry->callback = *callbacks;
+            entry->node.length = callbacks->length;
             nodes->count = count;
             *next = id;
             return 1;
@@ -130,9 +165,10 @@ static int stage(StyxRpcNodes *nodes, uint64_t *next, const char *path, unsigned
 
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
 StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const char *path,
-    unsigned mode, const StyxRpcNodeCallbacks *callbacks)
+    unsigned mode, const NodeRegistration *callbacks)
 {
-    if (!path || !mode || mode > 7U || !callbacks || !callbacks->transfer)
+    if (!path || !mode || mode > 7U || !callbacks || (!callbacks->stream && !callbacks->positioned) ||
+        callbacks->length > STYXRPC_NODE_OFFSET_MAX)
     {
         return STYXRPC_INVALID;
     }
@@ -162,7 +198,7 @@ void styxrpc_nodes_dispose(StyxRpcNodes *nodes)
     {
         for (size_t i = 0; i < nodes->count; ++i)
         {
-            StyxRpcNodeCallbacks *callback = &nodes->entries[i].callback;
+            NodeRegistration *callback = &nodes->entries[i].callback;
             if (callback->release)
             {
                 callback->release(callback->context);
@@ -226,7 +262,7 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t i
 static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
 {
     CallbackNode *entry = find(context, id);
-    if (!entry || !entry->callback.transfer || (access & ~(STYXRPC_READ | STYXRPC_WRITE)))
+    if (!entry || entry->node.entry.directory || (access & ~(STYXRPC_READ | STYXRPC_WRITE)))
     {
         return 0;
     }
@@ -239,9 +275,7 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
  * RU: Передать ровно один запрос чтения в буфер назначения. Состояние зависит от приложения. */
 static int read_file(void *cookie, uint64_t offset, void *bytes, size_t size, size_t *used)
 {
-    CallbackNode *entry = cookie;
-    (void)offset;
-    return entry->callback.transfer(entry->callback.context, STYXRPC_READ, bytes, size, used);
+    return transfer(cookie, STYXRPC_READ, offset, bytes, size, used);
 }
 
 
@@ -249,9 +283,7 @@ static int read_file(void *cookie, uint64_t offset, void *bytes, size_t size, si
  * RU: Передать одну запись с неизменяемым входом; transfer подтверждает префикс. */
 static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t size, size_t *used)
 {
-    CallbackNode *entry = cookie;
-    (void)offset;
-    return entry->callback.transfer(entry->callback.context, STYXRPC_WRITE, (void *)bytes, size, used);
+    return transfer(cookie, STYXRPC_WRITE, offset, (void *)bytes, size, used);
 }
 
 

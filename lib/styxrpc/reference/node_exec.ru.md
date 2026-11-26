@@ -1,6 +1,6 @@
 # styxrpc_node_exec
 
-[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L58) · [Клиент](../src/node_exec_client.c#L47) · [Провайдер](../src/node_service.c#L76)
+[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L87) · [Клиент](../src/node_exec_client.c#L47) · [Провайдер](../src/node_service.c#L76)
 
 ```c
 #include <styxrpc/nodes.h>

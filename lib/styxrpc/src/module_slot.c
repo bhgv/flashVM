@@ -86,20 +86,49 @@ void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
 }
 
 
-/* EN/RU: See nodes.h. / См. nodes.h. */
-StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot, const char *path,
-    unsigned mode, const StyxRpcNodeCallbacks *callbacks)
+/* EN: Publish through the live slot and advance its directory revision after success.
+ * RU: Опубликовать через живой слот и повысить ревизию каталога при успехе. */
+static StyxRpcStatus register_node(StyxRpcModuleSlot *slot, const char *path,
+    unsigned mode, const NodeRegistration *config)
 {
     if (!slot)
     {
         return STYXRPC_INVALID;
     }
-    StyxRpcStatus status = styxrpc_nodes_insert(&slot->nodes, &slot->next_node, path, mode, callbacks);
+    StyxRpcStatus status = styxrpc_nodes_insert(&slot->nodes, &slot->next_node, path, mode, config);
     if (status == STYXRPC_OK)
     {
         ++slot->revision;
     }
     return status;
+}
+
+
+/* EN/RU: See nodes.h. / См. nodes.h. */
+StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot, const char *path,
+    unsigned mode, const StyxRpcNodeCallbacks *callbacks)
+{
+    if (!callbacks)
+    {
+        return STYXRPC_INVALID;
+    }
+    const NodeRegistration config = {.stream = callbacks->transfer,
+        .release = callbacks->release, .context = callbacks->context};
+    return register_node(slot, path, mode, &config);
+}
+
+
+/* EN/RU: See nodes.h. / См. nodes.h. */
+StyxRpcStatus styxrpc_module_slot_new_node_at(StyxRpcModuleSlot *slot, const char *path,
+    unsigned mode, uint64_t length, const StyxRpcPositionedNodeCallbacks *callbacks)
+{
+    if (!callbacks)
+    {
+        return STYXRPC_INVALID;
+    }
+    const NodeRegistration config = {.positioned = callbacks->transfer,
+        .release = callbacks->release, .context = callbacks->context, .length = length};
+    return register_node(slot, path, mode, &config);
 }
 
 

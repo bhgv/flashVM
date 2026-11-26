@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "execute", "publish", "nodes"):
+    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -47,9 +47,10 @@ def main():
         if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
-        if name in ("publish", "nodes"):
+        if name in ("publish", "nodes", "positioned"):
             (directory / "tools").mkdir()
         modules = {
+            "positioned": ("styxnodes", "styxexec"),
             "nodes": ("styxnodes",),
             "publish": ("styxexec",),
             "execute": ("styxexec",),
@@ -59,13 +60,17 @@ def main():
         }[name]
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
-        if name in ("publish", "nodes"):
+        if name in ("publish", "nodes", "positioned"):
             compile_image(args, directory, tests / (name + "_handler.b"), name + "-handler.dis")
         if name == "named":
             (directory / "named-area").mkdir()
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
-        companions = (tests / "execute_apply.as", tests / "execute_refuse.as") if name == "execute" else ()
-        compile_movie(args, directory, tests / (name + "_pair.as"), name, companions)
+        companions = {
+            "execute": ("execute_apply.as", "execute_refuse.as"),
+            "positioned": ("positioned_transfer.as",),
+        }.get(name, ())
+        compile_movie(args, directory, tests / (name + "_pair.as"), name,
+                      tuple(tests / unit for unit in companions))
         paired_exchange(
             directory,
             lambda connection: [args.player, *connection, mode],

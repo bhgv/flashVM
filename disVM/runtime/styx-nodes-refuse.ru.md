@@ -1,6 +1,6 @@
 # Styxnodes.Node.refuse
 
-[English](styx-nodes-refuse.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L40) · [Реализация](../limbo/styxnodes.b#L146)
+[English](styx-nodes-refuse.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L47) · [Реализация](../limbo/styxnodes.b#L190)
 
 ```limbo
 include "sys.m";

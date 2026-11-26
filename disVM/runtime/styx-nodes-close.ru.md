@@ -1,6 +1,6 @@
 # Styxnodes.Node.close
 
-[English](styx-nodes-close.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L48) · [Реализация](../limbo/styxnodes.b#L174)
+[English](styx-nodes-close.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L55) · [Реализация](../limbo/styxnodes.b#L239)
 
 ```limbo
 include "sys.m";

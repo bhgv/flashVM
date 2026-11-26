@@ -1,6 +1,6 @@
 # Styxnodes.publish
 
-[English](styx-nodes-publish.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L57) · [Реализация](../limbo/styxnodes.b#L70)
+[English](styx-nodes-publish.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L64) · [Реализация](../limbo/styxnodes.b#L101)
 
 ```limbo
 include "sys.m";

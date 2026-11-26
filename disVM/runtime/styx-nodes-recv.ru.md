@@ -1,6 +1,6 @@
 # Styxnodes.Node.recv
 
-[English](styx-nodes-recv.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L32) · [Реализация](../limbo/styxnodes.b#L90)
+[English](styx-nodes-recv.md) · [Руководство](STYX-NODES.ru.md) · [Интерфейс](../module/styxnodes.m#L39) · [Реализация](../limbo/styxnodes.b#L152)
 
 ```limbo
 include "sys.m";

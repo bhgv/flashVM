@@ -20,10 +20,22 @@ int styxrpc_nodes_exec(void *registry, const char *path,
     void *bytes, size_t size, size_t *used);
 
 
+/* EN: Internal callback variant and ownership; exactly one transfer function must be supplied.
+ * RU: Внутренний вариант колбэка и владение. Указывается ровно одна функция обмена. */
+typedef struct NodeRegistration
+{
+    StyxRpcNodeTransfer stream; /* Original offset-free callback, or NULL. */
+    StyxRpcNodeTransferAt positioned; /* Fixed-length callback, or NULL. */
+    void (*release)(void *context); /* Optional release after withdrawal. */
+    void *context; /* Adopted state after successful registration. */
+    uint64_t length; /* Byte extent for positioned I/O. */
+} NodeRegistration;
+
+
 /* EN: Adjoin path atomically, allocating a registry only when needed and assigning new IDs.
  * RU: Атомарно добавить путь, выделяя реестр по необходимости и выдавая новые ID. */
 StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const char *path,
-    unsigned mode, const StyxRpcNodeCallbacks *callbacks);
+    unsigned mode, const NodeRegistration *callbacks);
 
 
 /* EN: Drop a detached registry after all opens have been closed. NULL is valid.

@@ -8,6 +8,13 @@ StyxnodeHandler: module
     transfer: fn(path, operation: string, buffer: array of byte): int;
 };
 
+# EN: Handler for fixed-length files. Offset is zero on execute.
+# RU: Обработчик файлов фиксированной длины. При исполнении смещение нулевое.
+StyxnodePositionedHandler: module
+{
+    transfer: fn(path, operation: string, buffer: array of byte, offset: big): int;
+};
+
 Styxnodes: module
 {
     PATH: con "styxnodes.dis"; # Installed Limbo implementation.
@@ -55,4 +62,16 @@ Styxnodes: module
     # EN: Reserve an absent absolute path with a nonempty subset of "rwx"; raises on failure.
     # RU: Занять свободный абсолютный путь с непустым подмножеством "rwx"; при ошибке исключение.
     publish: fn(path, permissions: string): ref Node;
+
+    # EN: Publish as an offset-aware file with a fixed byte extent.
+    # RU: Опубликовать файл фиксированной длины с поддержкой смещений.
+    publishat: fn(path, permissions: string, length: big): ref Node;
+
+    # EN: Receive an owned request and its absolute byte offset (zero for execute).
+    # RU: Принять собственный запрос и абсолютное смещение в байтах (ноль для исполнения).
+    recvat: fn(node: ref Node): (ref Request, big);
+
+    # EN: Serve a positioned request on the owner's thread using the borrowed module.
+    # RU: Обработать запрос со смещением в потоке владельца через заимствованный модуль.
+    dispatchat: fn(node: ref Node, handler: StyxnodePositionedHandler): int;
 };

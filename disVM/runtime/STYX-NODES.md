@@ -19,6 +19,9 @@ requests use the existing libstyxrpc execute service on the same session.
 | [`Node.recv`](styx-nodes-recv.md), [`Node.reply`](styx-nodes-reply.md), [`Node.refuse`](styx-nodes-refuse.md) | Receive or finish a request explicitly. |
 | [`Node.close`](styx-nodes-close.md) | Release the registration. |
 
+Use [positioned publication](STYX-NODE-OFFSETS.md) for a fixed length
+and offsets. The original `publish` creates a sequential stream.
+
 Read and write opens are sequential. The callback receives one
 transport fragment at a time and may return fewer bytes than offered.
 A zero count on read is EOF. The next read may ask for new data.

@@ -27,3 +27,6 @@ buffer contains the request on entry. Fill its leading bytes with the reply
 and set `used` to its length, up to `size`. The complete operation has one
 callback through [node_exec](node_exec.md). Use [clear_nodes](module_slot_clear_nodes.md)
 to retire the publication.
+
+For fixed length and byte offsets, use
+[styxrpc_module_slot_new_node_at](module_slot_new_node_at.md).
