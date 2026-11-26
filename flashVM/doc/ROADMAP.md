@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1784, FlashVM and the hosted SDK withdraw one published callback
+file at a time. Old fids expire, siblings keep working, and empty
+implicit directories disappear from the live view. The paired
+Limbo caller checks replacement and repeated publication.
+[EN](STYX_RPC_RMNODE.md) · [RU](STYX_RPC_RMNODE.ru.md).
+
 In v0.1783, FlashVM, Limbo and hosted C can publish fixed-length
 VFS callback files with byte offsets. The two-way compiled pair tests
 seek and binary I/O above 4 GiB over the existing libstyxrpc session.

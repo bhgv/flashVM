@@ -47,3 +47,5 @@ vfs.newnode("/app/value", "r", readValue);
 проверяет буферы чтения, записи и исполнения, права доступа и отзыв открытых fid.
 
 [Регистрация узла через SDK](../../lib/styxrpc/reference/module_slot_new_node.ru.md).
+
+Чтобы отозвать один файл, вызовите [vfs.rmnode](STYX_RPC_RMNODE.ru.md).

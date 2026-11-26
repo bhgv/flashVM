@@ -21,6 +21,7 @@ typedef struct Script
 {
     StyxRpcModuleSlot *slot; /* Owner slot retired via the control request. */
     unsigned char value;    /* Application state shared across separate requests. */
+    unsigned int releases;  /* Exact native release count at withdrawal. */
     unsigned int calls;     /* Exact handler invocation count on the VM owner. */
 } Script;
 
@@ -76,15 +77,49 @@ static int upload(void *state, const void *bytes, size_t size)
 }
 
 
-/* EN: Emulate a movie retirement when the peer sends restart.
- * RU: Смоделировать отзыв фильма по команде restart. */
+/* EN: Return one identifying byte for a native registration; deny any other transfer.
+ * RU: Вернуть отличительный байт нативной регистрации. Отклонить остальные операции. */
+static int native_read(void *state, unsigned access, void *bytes, size_t size, size_t *used)
+{
+    (void)state;
+    if (access != STYXRPC_READ || size != 1)
+    {
+        return 0;
+    }
+    *(unsigned char *)bytes = 91;
+    *used = 1;
+    return 1;
+}
+
+
+/* EN: Count one retirement of a native registration using the borrowed test state.
+ * RU: Учесть один отзыв нативной регистрации через заимствованное состояние проверки. */
+static void native_release(void *state)
+{
+    Script *script = state;
+    ++script->releases;
+}
+
+
+/* EN: Change nodes on the owner thread after receiving the fixture's control command.
+ * RU: Изменить узлы в потоке-владельце по управляющей команде проверки. */
 static int command(void *state, StyxRpcControlCommand mode)
 {
+    Script *script = state;
+    if (mode == STYXRPC_CONTROL_PAUSE)
+    {
+        const StyxRpcNodeCallbacks replacement = {native_read, native_release, script};
+        return styxrpc_module_slot_remove_node(script->slot, "menu/single") == STYXRPC_OK &&
+            script->releases == 1 &&
+            styxrpc_module_slot_remove_node(script->slot, "/menu/single") == STYXRPC_INVALID &&
+            styxrpc_module_slot_remove_node(script->slot, "menu/data") == STYXRPC_OK &&
+            styxrpc_module_slot_new_node(script->slot, "menu/data", 4, &replacement) == STYXRPC_OK;
+    }
     if (mode != STYXRPC_CONTROL_RESTART)
     {
         return 0;
     }
-    styxrpc_module_slot_clear_nodes(((Script *)state)->slot);
+    styxrpc_module_slot_clear_nodes(script->slot);
     return 1;
 }
 
@@ -174,7 +209,7 @@ static int publish(FVM_Context *context, Script *script)
     {
         return 0;
     }
-    fvm_value_string(args, "/menu/.prog/blocked");
+    fvm_value_string(args, "/rollback/deep/.prog/blocked");
     if (fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_INVALID_ARGUMENT)
     {
         return 0;
@@ -191,11 +226,38 @@ static int publish(FVM_Context *context, Script *script)
     {
         return 0;
     }
+    const StyxRpcNodeCallbacks native = {native_read, native_release, script};
+    if (styxrpc_module_slot_new_node(script->slot, "menu/single", 4, &native) != STYXRPC_OK)
+    {
+        return 0;
+    }
     fvm_value_string(args, "tcp!1234");
     return fvm_object_call(context, vfs.object, "publishchan", 2, (FVM_Value[]){args[0], args[2]}, &out) == FVM_OK &&
         out.type == FVM_VALUE_UNDEFINED &&
         fvm_object_call(context, vfs.object, "newchan", 1, args, &out) == FVM_OK &&
         out.type == FVM_VALUE_UNDEFINED && fvm_gc_collect(context, NULL) == FVM_OK;
+}
+
+
+/* EN: Keep walked and open fids across withdrawal of one exact registration.
+ * RU: Удержать пройденный и открытый fid во время отзыва точной регистрации. */
+static int check_withdrawal(StyxClient *session, StyxRpcVfsFile *opened, StyxRpcVfsFile *control)
+{
+    StyxRpcVfsFile *walked = styxclientwalk(session, "menu/data");
+    StyxRpcVfsFile *replacement = NULL;
+    StyxRpcFileInfo info;
+    size_t used;
+    unsigned char byte;
+    int ok = walked && styxrpc_vfs_file_write(control, 0, "pause", 5, &used) == STYXRPC_IO_OK &&
+        used == 5 && styxrpc_vfs_stat(session, "menu/single", &info) != STYXRPC_IO_OK &&
+        styxrpc_vfs_stat(session, "menu/input", &info) == STYXRPC_IO_OK &&
+        !styxclientopen(walked, STYXRPC_FILE_READ) &&
+        styxrpc_vfs_file_read(opened, 0, &byte, 1, &used) != STYXRPC_IO_OK &&
+        styxrpc_vfs_open(session, "menu/data", STYXRPC_FILE_READ, &replacement) == STYXRPC_IO_OK &&
+        styxrpc_vfs_file_read(replacement, 0, &byte, 1, &used) == STYXRPC_IO_OK && used == 1 && byte == 91;
+    styxrpc_vfs_close(walked, 0);
+    styxrpc_vfs_close(replacement, 0);
+    return ok;
 }
 
 
@@ -210,6 +272,7 @@ static void *client(void *data)
     unsigned char byte = 42;
     size_t used;
     int ok = session &&
+        styxrpc_vfs_stat(session, "rollback", &info) != STYXRPC_IO_OK &&
         styxrpc_vfs_stat(session, "menu", &info) == STYXRPC_IO_OK && info.directory &&
         styxrpc_vfs_stat(session, "menu/data", &info) == STYXRPC_IO_OK && info.mode == 0666 &&
         styxrpc_vfs_open(session, "menu/input", STYXRPC_FILE_WRITE, &file) != STYXRPC_IO_OK &&
@@ -221,6 +284,14 @@ static void *client(void *data)
     ok = ok && styxrpc_vfs_stat(session, STYXRPC_NODE_EXEC_SERVICE, &info) == STYXRPC_IO_NOT_OPEN &&
         styxrpc_node_exec(session, "menu/input", &byte, 1, &used) != STYXRPC_IO_OK && !used && byte == 38 &&
         styxrpc_node_exec(session, "menu/invoke", &byte, 1, &used) == STYXRPC_IO_OK && used == 1 && byte == 42;
+    if (ok)
+    {
+        control = styxclientwalk(session, ".state");
+        ok = control && styxclientopen(control, STYXRPC_FILE_WRITE) &&
+            check_withdrawal(session, file, control);
+        styxrpc_vfs_close(control, 0);
+        control = NULL;
+    }
     if (ok)
     {
         /* One counted path and byte, with execution still pending when the provider retires. */
@@ -280,7 +351,7 @@ int main(void)
             {
             }
             pthread_join(worker, NULL);
-            ok = peer.ok && script.calls == 3;
+            ok = peer.ok && script.calls == 3 && script.releases == 2;
         }
         else
         {

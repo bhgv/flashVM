@@ -13,6 +13,7 @@ typedef struct SlotFile SlotFile; /* One open on the current image or a control 
 struct SlotFile
 {
     StyxRpcFile file;          /* Owned nested fid state; cleared on image retirement. */
+    uint64_t id;              /* Exact opened identity for selective callback withdrawal. */
     SlotFile *next;            /* Next live image open; NULL for a control or retired file. */
     SlotFile **previous;      /* Owning link, or NULL for a control or retired file. */
 };
@@ -24,6 +25,7 @@ struct StyxRpcModuleSlot
     uint32_t generation;      /* Monotonic image identity and root revision. */
     StyxRpcNodes *nodes;   /* Owned active movie's callback nodes. */
     uint64_t next_node;    /* Monotonic generation-zero Qid within the session. */
+    int retiring;          /* Reject slot changes during synchronous context release. */
     uint32_t revision;     /* Root and callback directory membership revision. */
     SlotFile *node_files;  /* Opens protected until callback withdrawal. */
     SlotFile *opened;         /* Fids for the current image. */
@@ -44,17 +46,36 @@ StyxRpcModuleSlot *styxrpc_module_slot_create(StyxRpcControl *control)
 }
 
 
-/* EN: Close nested resources while leaving any client-owned outer fids inert.
- * RU: Закрыть вложенные ресурсы, сохранив неактивные внешние fid клиента. */
-static void retire_files(SlotFile **head)
+/* EN: Detach one tracked open while preserving every neighboring list link.
+ * RU: Отсоединить одно учтённое открытие, сохранив ссылки соседних записей. */
+static void unlink_file(SlotFile *file)
 {
-    while (*head)
+    if (file->previous)
     {
-        SlotFile *file = *head;
-        *head = file->next;
+        *file->previous = file->next;
+        if (file->next)
+        {
+            file->next->previous = file->previous;
+        }
         file->previous = NULL;
         file->next = NULL;
-        styxrpc_file_close(&file->file);
+    }
+}
+
+
+/* EN: Close all nested resources or only the target ID. Outer fids stay inert.
+ * RU: Закрыть все вложенные ресурсы или только целевой ID. Внешние fid неактивны. */
+static void retire_files(SlotFile *head, uint64_t id)
+{
+    for (SlotFile *file = head; file;)
+    {
+        SlotFile *next = file->next;
+        if (!id || file->id == id)
+        {
+            unlink_file(file);
+            styxrpc_file_close(&file->file);
+        }
+        file = next;
     }
 }
 
@@ -62,7 +83,7 @@ static void retire_files(SlotFile **head)
 /* EN/RU: See module_slot.h. / См. module_slot.h. */
 StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *module)
 {
-    if (!slot || (module && slot->generation >= UINT32_MAX - 1))
+    if (!slot || slot->retiring || (module && slot->generation >= UINT32_MAX - 1))
     {
         return STYXRPC_INVALID;
     }
@@ -70,7 +91,7 @@ StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *mo
     {
         return STYXRPC_OK;
     }
-    retire_files(&slot->opened);
+    retire_files(slot->opened, 0);
     ++slot->generation;
     ++slot->revision;
     slot->module = module;
@@ -81,8 +102,11 @@ StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *mo
 /* EN/RU: See module_slot.h. / См. module_slot.h. */
 void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
 {
-    styxrpc_module_slot_clear_nodes(slot);
-    free(slot);
+    if (slot && !slot->retiring && !styxrpc_nodes_busy(slot->nodes))
+    {
+        styxrpc_module_slot_clear_nodes(slot);
+        free(slot);
+    }
 }
 
 
@@ -91,7 +115,7 @@ void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
 static StyxRpcStatus register_node(StyxRpcModuleSlot *slot, const char *path,
     unsigned mode, const NodeRegistration *config)
 {
-    if (!slot)
+    if (!slot || slot->retiring)
     {
         return STYXRPC_INVALID;
     }
@@ -133,15 +157,34 @@ StyxRpcStatus styxrpc_module_slot_new_node_at(StyxRpcModuleSlot *slot, const cha
 
 
 /* EN/RU: See nodes.h. / См. nodes.h. */
+StyxRpcStatus styxrpc_module_slot_remove_node(StyxRpcModuleSlot *slot, const char *path)
+{
+    uint64_t id = slot && !slot->retiring ? styxrpc_nodes_removable(slot->nodes, path) : 0;
+    if (!id)
+    {
+        return STYXRPC_INVALID;
+    }
+    retire_files(slot->node_files, id);
+    ++slot->revision;
+    slot->retiring = 1;
+    styxrpc_nodes_remove(slot->nodes, id);
+    slot->retiring = 0;
+    return STYXRPC_OK;
+}
+
+
+/* EN/RU: See nodes.h. / См. nodes.h. */
 void styxrpc_module_slot_clear_nodes(StyxRpcModuleSlot *slot)
 {
-    if (slot && slot->nodes)
+    if (slot && slot->nodes && !slot->retiring && !styxrpc_nodes_busy(slot->nodes))
     {
         StyxRpcNodes *nodes = slot->nodes;
-        retire_files(&slot->node_files);
+        slot->retiring = 1;
+        retire_files(slot->node_files, 0);
         slot->nodes = NULL;
         ++slot->revision;
         styxrpc_nodes_dispose(nodes);
+        slot->retiring = 0;
     }
 }
 
@@ -273,6 +316,7 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     if (generation || callback)
     {
         SlotFile **head = callback ? &slot->node_files : &slot->opened;
+        opened->id = id;
         opened->next = *head;
         opened->previous = head;
         if (opened->next)
@@ -309,14 +353,7 @@ static int write_file(void *cookie, uint64_t offset, const void *bytes, size_t c
 static void close_file(void *cookie)
 {
     SlotFile *opened = cookie;
-    if (opened->previous)
-    {
-        *opened->previous = opened->next;
-        if (opened->next)
-        {
-            opened->next->previous = opened->previous;
-        }
-    }
+    unlink_file(opened);
     styxrpc_file_close(&opened->file);
     free(opened);
 }

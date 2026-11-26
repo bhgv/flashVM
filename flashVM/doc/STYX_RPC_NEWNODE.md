@@ -42,6 +42,8 @@ function readValue(op, buf, len) {
 vfs.newnode("/app/value", "r", readValue);
 ```
 
+Use [vfs.rmnode](STYX_RPC_RMNODE.md) to withdraw one publication.
+
 The movie retains its callback until retirement or session shutdown. Open
 fids retire with their nodes. Callback execution is synchronous with the
 Styx request. The [native Styx test](../tests/styxrpc/node-files.c) verifies

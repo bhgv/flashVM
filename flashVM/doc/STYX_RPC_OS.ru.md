@@ -17,6 +17,7 @@
 | `vfs.attr(path[, root])` | Текущие атрибуты записи. Если параметр `root` передан, `"/"` выбирает подключённую VFS. |
 | [`vfs.mkdir(path)`](STYX_VFS_MKDIR.ru.md) | Создать один каталог. |
 | [`vfs.rm(path)`](STYX_VFS_RM.ru.md) | Удалить файл либо пустой каталог. |
+| [`vfs.rmnode(path)`](STYX_RPC_RMNODE.ru.md) | Отозвать один файл, опубликованный фильмом. |
 | [`vfs.cd(path)`](STYX_VFS_CD.ru.md) | Сменить общий рабочий каталог. |
 | [`vfs.pwd()`](STYX_VFS_PWD.ru.md) | Получить канонический рабочий путь. |
 | [`vfs.exec(path[, bytes])`](STYX_VFS_EXEC.ru.md) | Вызвать исполняемый узел и вернуть байты ответа. |

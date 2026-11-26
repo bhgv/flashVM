@@ -30,3 +30,5 @@ to retire the publication.
 
 For fixed length and byte offsets, use
 [styxrpc_module_slot_new_node_at](module_slot_new_node_at.md).
+
+Use [remove_node](module_slot_remove_node.md) to withdraw one file.

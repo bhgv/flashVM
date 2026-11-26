@@ -16,6 +16,7 @@ are hidden.
 | `vfs.attr(path[, root])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
 | [`vfs.mkdir(path)`](STYX_VFS_MKDIR.md) | Create one directory. |
 | [`vfs.rm(path)`](STYX_VFS_RM.md) | Remove a file or empty directory. |
+| [`vfs.rmnode(path)`](STYX_RPC_RMNODE.md) | Withdraw one callback file published by the movie. |
 | [`vfs.cd(path)`](STYX_VFS_CD.md) | Change the shared working directory. |
 | [`vfs.pwd()`](STYX_VFS_PWD.md) | Read the canonical working path. |
 | [`vfs.exec(path[, bytes])`](STYX_VFS_EXEC.md) | Call an executable node and return its byte reply. |

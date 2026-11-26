@@ -184,6 +184,28 @@ static FVM_Result new_node(FVM_Context *context, FVM_Object *self, unsigned argc
 }
 
 
+/* [GC:] EN: Withdraw one local publication in the active movie's attached session.
+ * RU: Отозвать одну локальную публикацию в подключённой сессии текущего фильма. */
+static FVM_Result remove_node(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_StyxRpcPlayerServices *services = state;
+    char path[STYXRPC_NODE_PATH_MAX + 2];
+    (void)context;
+    (void)self;
+    if (!services->active || !services->slot || !services->session.client)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    if (argc != 1 || !fvm_styxrpc_name(args, path, sizeof(path)))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_value_boolean(out, styxrpc_module_slot_remove_node(services->slot, path) == STYXRPC_OK);
+    return FVM_OK;
+}
+
+
 /* [GC:] EN/RU: See player_services.h. / См. player_services.h. */
 FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *client,
     StyxRpcModuleSlot *slot, FVM_StyxRpcPlayerServices **out)
@@ -220,6 +242,10 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
     if (status == FVM_OK)
     {
         status = fvm_object_define_method_rooted(context, object.object, "newnode", new_node, services, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object.object, "rmnode", remove_node, services, NULL);
     }
     if (status == FVM_OK)
     {

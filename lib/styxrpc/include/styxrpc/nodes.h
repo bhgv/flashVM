@@ -71,6 +71,17 @@ StyxRpcStatus styxrpc_module_slot_new_node_at(StyxRpcModuleSlot *slot, const cha
     unsigned mode, uint64_t length, const StyxRpcPositionedNodeCallbacks *callbacks);
 
 
+/* EN: Withdraw the callback file at path and any now-empty implicit ancestors.
+ * Call on the slot owner outside a transfer. Same path syntax as new_node.
+ * On OK old opens are invalidated and the release callback runs once.
+ * INVALID leaves the tree untouched, including for absent paths or directories.
+ * RU: Отозвать файл path и опустевшие неявные родительские каталоги.
+ * Вызывать у владельца slot вне обмена. Синтаксис пути как у new_node.
+ * При OK старые открытия инвалидируются, функция release вызывается один раз.
+ * INVALID сохраняет дерево, в том числе для отсутствующего пути или каталога. */
+StyxRpcStatus styxrpc_module_slot_remove_node(StyxRpcModuleSlot *slot, const char *path);
+
+
 /* EN: Withdraw every callback node, invalidate opens and release callback contexts.
  * Call on the slot owner outside callbacks. NULL is harmless.
  * RU: Отозвать все узлы, инвалидировать открытые файлы и освободить контексты.

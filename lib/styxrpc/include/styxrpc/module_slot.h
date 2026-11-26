@@ -26,8 +26,8 @@ StyxRpcModuleSlot *styxrpc_module_slot_create(StyxRpcControl *control);
 StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *module);
 
 
-/* EN: Release slot after the server has closed its fids. NULL is allowed.
- * RU: Освободить слот после закрытия fid сервером. NULL допустим. */
+/* EN: Release slot after the server has closed its fids, outside node callbacks. NULL is allowed.
+ * RU: Освободить слот после закрытия fid сервером, вне колбэков узлов. NULL допустим. */
 void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot);
 
 extern const StyxRpcTree styxrpc_module_slot_tree; /* Tree context is a live StyxRpcModuleSlot. */

@@ -8,7 +8,7 @@
 
 #define STYXRPC_NODE_ID_FIRST (UINT64_C(1) << 31) /* Generation zero, above all control IDs. */
 
-typedef struct StyxRpcNodes StyxRpcNodes; /* Owner-thread append-only registry for a movie. */
+typedef struct StyxRpcNodes StyxRpcNodes; /* Owner-thread callback registry for a movie. */
 
 extern const StyxRpcTree styxrpc_nodes_tree; /* Context is one live StyxRpcNodes. */
 extern const StyxRpcVfs styxrpc_node_exec_files; /* Context is a borrowed callback registry. */
@@ -36,6 +36,21 @@ typedef struct NodeRegistration
  * RU: Атомарно добавить путь, выделяя реестр по необходимости и выдавая новые ID. */
 StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const char *path,
     unsigned mode, const NodeRegistration *callbacks);
+
+
+/* EN: Return whether a data callback is active on this registry.
+ * RU: Сообщить, работает ли колбэк передачи данных в этом реестре. */
+int styxrpc_nodes_busy(const StyxRpcNodes *nodes);
+
+
+/* EN: Find the exact removable file. Zero means unavailable or inside a callback.
+ * RU: Найти точный файл для отзыва. Ноль означает отказ или активный колбэк. */
+uint64_t styxrpc_nodes_removable(StyxRpcNodes *nodes, const char *path);
+
+
+/* EN: Remove this prevalidated ID after its opens retire, releasing its owned context.
+ * RU: Отозвать проверенный ID после закрытия его открытий и освободить контекст. */
+void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id);
 
 
 /* EN: Drop a detached registry after all opens have been closed. NULL is valid.

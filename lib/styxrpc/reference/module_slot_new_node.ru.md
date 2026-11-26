@@ -28,3 +28,5 @@ StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot,
 
 Для фиксированной длины и смещений в байтах используйте
 [styxrpc_module_slot_new_node_at](module_slot_new_node_at.ru.md).
+
+Для отзыва одного файла используйте [remove_node](module_slot_remove_node.ru.md).
