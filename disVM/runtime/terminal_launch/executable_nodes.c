@@ -155,7 +155,7 @@ static FVM_Result owner_open(void *state, const char *path, const char *mode, DV
 
 /* EN: Drop the exact launcher or provider reference. Destruction performs no group operation.
  * RU: Снять точную ссылку запуска или провайдера. Уничтожение не обращается к группе. */
-static void drop(void *state)
+void dvm_exec_release(void *state)
 {
     DvmExecBroker *broker = state;
     pthread_mutex_lock(&broker->lock);
@@ -170,17 +170,24 @@ static void drop(void *state)
 }
 
 
-/* EN: Return an owned provider pin with the given operations.
- * RU: Вернуть собственный провайдер с указанными операциями. */
-static DVM_Provider *provider(DvmExecBroker *broker, const DVM_ProviderOps *ops)
+/* EN/RU: See exec_private.h. / См. exec_private.h. */
+void dvm_exec_retain(DvmExecBroker *broker)
 {
     pthread_mutex_lock(&broker->lock);
     ++broker->references;
     pthread_mutex_unlock(&broker->lock);
+}
+
+
+/* EN: Return an owned provider pin with the given operations.
+ * RU: Вернуть собственный провайдер с указанными операциями. */
+static DVM_Provider *provider(DvmExecBroker *broker, const DVM_ProviderOps *ops)
+{
+    dvm_exec_retain(broker);
     DVM_Provider *result = dvm_provider_create(ops, broker);
     if (!result)
     {
-        drop(broker);
+        dvm_exec_release(broker);
     }
     return result;
 }
@@ -219,7 +226,7 @@ static DvmExecBroker *new_broker(DVM_Namespace *group)
 /* EN/RU: See executable_nodes.h. / См. executable_nodes.h. */
 DvmExecBroker *dvm_exec_install(DVM_Namespace *group)
 {
-    static const DVM_ProviderOps ops = {.info = owner_info, .open = owner_open, .destroy = drop};
+    static const DVM_ProviderOps ops = {.info = owner_info, .open = owner_open, .destroy = dvm_exec_release};
     DvmExecBroker *broker = new_broker(group);
     if (!broker)
     {
@@ -232,7 +239,7 @@ DvmExecBroker *dvm_exec_install(DVM_Namespace *group)
     dvm_provider_release(local);
     if (!ok)
     {
-        drop(broker);
+        dvm_exec_release(broker);
         return NULL;
     }
     return broker;
@@ -242,7 +249,7 @@ DvmExecBroker *dvm_exec_install(DVM_Namespace *group)
 /* EN/RU: See executable_nodes.h. / См. executable_nodes.h. */
 DVM_Provider *dvm_exec_service(DvmExecBroker *broker)
 {
-    static const DVM_ProviderOps ops = {.info = peer_info, .open = peer_open, .destroy = drop};
+    static const DVM_ProviderOps ops = {.info = peer_info, .open = peer_open, .destroy = dvm_exec_release};
     return broker ? provider(broker, &ops) : NULL;
 }
 
@@ -256,6 +263,6 @@ void dvm_exec_stop(DvmExecBroker *broker)
         broker->stopped = 1;
         pthread_cond_broadcast(&broker->changed);
         pthread_mutex_unlock(&broker->lock);
-        drop(broker);
+        dvm_exec_release(broker);
     }
 }

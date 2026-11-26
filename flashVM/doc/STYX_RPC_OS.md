@@ -7,6 +7,8 @@ A leading slash starts at the session root. Relative paths start at
 [`pwd()`](STYX_VFS_PWD.md). The initial working directory is `"/"`. Service paths including `.prog`, `.var` and UniBus roots
 are hidden.
 
+[Publish a callback-backed file from Limbo](../../disVM/runtime/STYX-NODES.md). It uses these same file methods.
+
 | Call | Result |
 | --- | --- |
 | `vfs.open(path[, mode])` | Open a file. Modes are `"r"` by default, `"w"` for write without truncation on open, `"rw"` for both directions, and `"wx"` to create a new write-only file. |

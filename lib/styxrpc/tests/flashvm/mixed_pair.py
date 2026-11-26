@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "execute", "publish"):
+    for profile in ("named", "typed", "execute", "publish", "nodes"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -47,9 +47,10 @@ def main():
         if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
-        if name == "publish":
+        if name in ("publish", "nodes"):
             (directory / "tools").mkdir()
         modules = {
+            "nodes": ("styxnodes",),
             "publish": ("styxexec",),
             "execute": ("styxexec",),
             "typed": ("styxvalue", "styxnamed"),
@@ -58,8 +59,8 @@ def main():
         }[name]
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
-        if name == "publish":
-            compile_image(args, directory, tests / "publish_handler.b", "publish-handler.dis")
+        if name in ("publish", "nodes"):
+            compile_image(args, directory, tests / (name + "_handler.b"), name + "-handler.dis")
         if name == "named":
             (directory / "named-area").mkdir()
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")

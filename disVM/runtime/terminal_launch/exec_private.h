@@ -10,19 +10,43 @@
 
 #define DVM_EXEC_WORD 4U /* Local owner protocol field width, bytes. */
 #define DVM_EXEC_HEADER (2U * DVM_EXEC_WORD) /* Ticket plus byte length. */
+#define DVM_NODE_HEADER (3U * DVM_EXEC_WORD) /* Ticket, byte length and operation. */
 #define DVM_EXEC_REFUSE UINT32_MAX /* Reply length signalling explicit refusal. */
 #define DVM_EXEC_DEADLINE_SECONDS 5 /* Maximum native dispatcher wait for the owner. */
 
 typedef struct ExecOwner ExecOwner; /* One open local control file and its registration. */
+
+/* EN: Mailbox operation carried to the owning Limbo thread.
+ * RU: Операция, передаваемая в очередь потока-владельца Limbo. */
+typedef enum NodeOperation
+{
+    DVM_NODE_READ = 'r',  /* The owner fills a zero-initialized buffer. */
+    DVM_NODE_WRITE = 'w', /* The owner acknowledges an input prefix. */
+    DVM_NODE_EXEC = 'x'   /* The owner processes input and fills a reply. */
+} NodeOperation;
+
+/* EN: Distinguish refusal from an unconfirmed operation already taken by the owner.
+ * RU: Отличить отказ от операции, которую владелец принял, но не подтвердил. */
+typedef enum NodeOutcome
+{
+    DVM_NODE_REFUSED,     /* No dispatch or an explicit refusal from the owner. */
+    DVM_NODE_ACCEPTED,    /* Owner confirmed the prefix length. */
+    DVM_NODE_UNCONFIRMED  /* Owner took the request, then disconnected or did not answer in time. */
+} NodeOutcome;
+
+/* EN: One waiting native operation, guarded by the broker mutex.
+ * RU: Одна ожидающая нативная операция под мьютексом брокера. */
 typedef struct ExecJob
 {
     ExecOwner *owner; /* Borrowed while still registered under the broker lock. */
-    void *bytes; /* Borrowed peer request buffer through invoke. */
+    const void *input; /* Borrowed write/execute input, null for reads. */
+    void *output; /* Borrowed read/execute output, null for writes. */
+    NodeOperation operation; /* Requested callback operation. */
     size_t size; /* Input bytes and output capacity. */
     size_t used; /* Output prefix on successful completion. */
     uint32_t ticket; /* Exact nonreused identity in this broker. */
     int taken; /* Read once by the owner. */
-    int finished; /* Reply, refusal or owner retirement. */
+    int answered; /* Reply or refusal from the owner. */
     int accepted; /* Successful reply. */
 } ExecJob;
 
@@ -32,6 +56,9 @@ struct ExecOwner
     ExecOwner *next; /* Intrusive registration list, guarded by the broker lock. */
     ExecJob *job; /* Borrowed native waiter through its invocation. */
     uint64_t layer; /* Exact VFS mount layer owned by this registration. */
+    uint32_t marker; /* Exact session-local marker identity. */
+    unsigned mode; /* FVM_ACCESS bits permitted by this publication. */
+    int extended; /* Use the operation-bearing local mailbox format. */
     char path[STYXRPC_NODE_PATH_MAX + 2]; /* Canonical absolute publication path. */
 };
 
@@ -48,8 +75,8 @@ struct DvmExecBroker
 };
 
 
-/* EN: Mount an execute-only marker for owner at an absent absolute path.
- * RU: Установить метку только для исполнения на свободном абсолютном пути. */
+/* EN: Mount the owner's node at an absent absolute path with its registered permissions.
+ * RU: Установить узел владельца на свободном абсолютном пути с заданными правами. */
 int dvm_exec_claim(ExecOwner *owner, const char *absolute);
 
 
@@ -66,6 +93,23 @@ void dvm_exec_unclaim(ExecOwner *owner);
 /* EN: Invoke one named owner with the shared wire codec's in-place request buffer.
  * RU: Вызвать одного владельца с изменяемым буфером запроса от общего кодека. */
 int dvm_exec_invoke(void *context, const char *path, void *bytes, size_t size, size_t *used);
+
+
+/* EN: Hold the broker independently of the owning fid while a provider is reachable.
+ * RU: Удерживать брокер независимо от fid владельца, пока доступен провайдер. */
+void dvm_exec_retain(DvmExecBroker *broker);
+void dvm_exec_release(void *state);
+
+
+/* EN: Check that the exact marker still belongs to an active owner.
+ * RU: Проверить, что точная метка по-прежнему принадлежит активному владельцу. */
+int dvm_exec_active(DvmExecBroker *broker, uint32_t marker);
+
+
+/* EN: Wait for the exact owner to process one borrowed buffer and acknowledge its prefix.
+ * RU: Дождаться обработки одного заимствованного буфера и подтверждения префикса. */
+NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperation operation,
+    const void *input, void *output, size_t size, size_t *used);
 
 
 /* EN: Receive or complete one local request via the owner fd.

@@ -2,6 +2,8 @@
 
 [Русский](STYX-EXEC-PUBLISH.ru.md) · [Call from Limbo](STYX-EXEC.md) · [Call from FlashVM](../../flashVM/doc/STYX_VFS_EXEC.md)
 
+[Read, write and execute with Styxnodes](STYX-NODES.md).
+
 The bidirectional DisVM launcher can publish a Limbo handler at a path in
 its live namespace. Load and initialize `styxexec.dis`, then use
 [`publish`](styx-exec-publish.md) to claim an absent path under an existing

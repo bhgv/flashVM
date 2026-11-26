@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1782, Limbo publishes callback-backed files with any combination of
+read, write and execute permissions. FlashVM uses ordinary VFS methods and
+the existing execute service on its default libstyxrpc session. The paired
+source check covers binary partial replies, access modes, refusal and withdrawal.
+[EN](../../disVM/runtime/STYX-NODES.md) · [RU](../../disVM/runtime/STYX-NODES.ru.md).
+
 In v0.1781, the stock DisVM pair publishes executable callbacks from Limbo.
 FlashVM calls a live VFS entry through the shared libstyxrpc execute codec.
 The paired checks build the Limbo callback and AS movie from source and

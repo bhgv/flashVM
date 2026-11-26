@@ -2,6 +2,8 @@
 
 [English](STYX-EXEC-PUBLISH.md) · [Вызов из Limbo](STYX-EXEC.ru.md) · [Вызов из FlashVM](../../flashVM/doc/STYX_VFS_EXEC.ru.md)
 
+[Чтение, запись и исполнение через Styxnodes](STYX-NODES.ru.md).
+
 Двунаправленный запуск DisVM позволяет опубликовать обработчик Limbo по
 пути в живом пространстве имён. Загрузите и инициализируйте
 `styxexec.dis`, затем вызовите [`publish`](styx-exec-publish.ru.md)
