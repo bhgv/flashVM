@@ -1,6 +1,6 @@
 # ch.recv
 
-[English](STYX_RPC_CHAN_RECV.md) · [Открытие](STYX_RPC_NEWCHAN.ru.md) · [Отправка](STYX_RPC_CHAN_SEND.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Серверный обмен](STYX_RPC_LISTEN.ru.md)
+[English](STYX_RPC_CHAN_RECV.md) · [Открытие](STYX_RPC_OPEN_EXCHANGE.ru.md) · [Отправка](STYX_RPC_CHAN_SEND.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Серверный обмен](STYX_RPC_DEFAULT.ru.md)
 
 `ch.recv()` возвращает следующее полное значение в порядке передачи
 и не принимает аргументов. При пустой локальной очереди выполняет

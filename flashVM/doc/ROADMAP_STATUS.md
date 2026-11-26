@@ -1,13 +1,18 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1769 / Контрольная точка v0.1769. The paired movie uses its
+attached `rpc` directly. Callback nodes expose read/write requests on the
+same VFS. Колбэки отзываются при смене фильма.
+[EN](STYX_RPC_NEWNODE.md) / [RU](STYX_RPC_NEWNODE.ru.md).
+
 Checkpoint v0.1768 / Контрольная точка v0.1768. DisVM's typed Limbo
 client and FlashVM's application listener share one UniBus port for mixed
 values. Штатная пара проверена на локальном сокете и TCP. Живая ссылка
-Int32 из libstyxrpc проверена в Limbo. [EN](STYX_RPC_LISTEN.md) / [RU](STYX_RPC_LISTEN.ru.md).
+Int32 из libstyxrpc проверена в Limbo. [EN](STYX_RPC_DEFAULT.md) / [RU](STYX_RPC_DEFAULT.ru.md).
 
 Checkpoint v0.1767 / Контрольная точка v0.1767. The paired player opens
 one mixed UniBus exchange through `rpc.newchan`. Значения и ранее выданные
-ссылки Int32 идут через один fid. [EN](STYX_RPC_NEWCHAN.md) / [RU](STYX_RPC_NEWCHAN.ru.md).
+ссылки Int32 идут через один fid. [EN](STYX_RPC_OPEN_EXCHANGE.md) / [RU](STYX_RPC_OPEN_EXCHANGE.ru.md).
 
 Checkpoint v0.1766 / Контрольная точка v0.1766. Explicit Int32 reference
 channels encode existing references on send and bind them on receive.

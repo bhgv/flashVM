@@ -528,9 +528,9 @@ void fvm_styxrpc_playback_destroy(FVM_StyxRpcPlayback *playback)
     if (playback)
     {
         fvm_styxrpc_player_activate(playback->slot, NULL);
+        dispose_movie(playback->context, playback->movies, playback->script);
         styxrpc_module_slot_destroy(playback->slot);
         styxrpc_control_destroy(playback->control);
-        dispose_movie(playback->context, playback->movies, playback->script);
         free(playback->swf);
         free(playback);
     }

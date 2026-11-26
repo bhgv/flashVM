@@ -41,8 +41,8 @@ FVM_Result fvm_styxrpc_message_members(FVM_Context *context, FVM_Object *object,
 FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
-/* [GC:] EN: Bind the player-owned mailbox to rpc.listen on the new movie context.
- * RU: Связать очередь плеера с rpc.listen в контексте нового фильма. */
+/* [GC:] EN: Bind the player-owned mailbox to the default rpc object in the new movie context.
+ * RU: Связать очередь плеера со штатным объектом rpc в контексте нового фильма. */
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange);
 
 

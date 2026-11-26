@@ -1,6 +1,6 @@
 # Mixed UniBus channels in Limbo
 
-[Русский](STYX-CHANNEL.ru.md) · [Module interface](../module/styxchannel.m) · [Limbo implementation](../limbo/styxchannel.b) · [Flash provider](../../flashVM/doc/STYX_RPC_LISTEN.md)
+[Русский](STYX-CHANNEL.ru.md) · [Module interface](../module/styxchannel.m) · [Limbo implementation](../limbo/styxchannel.b) · [Flash provider](../../flashVM/doc/STYX_RPC_DEFAULT.md)
 
 Load `Styxchannel` from `styxchannel.dis` and call `init()` before use.
 This fills in the mounted-session Unibus interface, the Math bit conversion

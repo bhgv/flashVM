@@ -34,7 +34,8 @@ and registration APIs. On failure the output is preserved.
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.md) | Checked `fn(int): int` return value. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.md) | Check and load named methods. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.md) | Open a live Int32 proxy. |
-| [`newchan(address)`](STYX_RPC_NEWCHAN.md) | Open one exchange for multiple value types and live refs. |
+| [`openExchange(name)`](STYX_RPC_OPEN_EXCHANGE.md) | Open one exchange for multiple value types and live refs. |
+| [`newnode(path, permissions, callback)`](STYX_RPC_NEWNODE.md) | Publish a callback file on the paired player. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.md) | Open a named UniBus port. |
 
 Up to eight tickets can be open at once. Tokens are exact positive AS

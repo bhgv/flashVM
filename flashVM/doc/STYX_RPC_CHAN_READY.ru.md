@@ -1,6 +1,6 @@
 # ch.ready
 
-[English](STYX_RPC_CHAN_READY.md) · [Открыть серверный порт](STYX_RPC_LISTEN.ru.md) · [Приём](STYX_RPC_CHAN_RECV.ru.md) · [Реализация](../src/styxrpc/session_channel.c)
+[English](STYX_RPC_CHAN_READY.md) · [Штатная сессия RPC](STYX_RPC_DEFAULT.ru.md) · [Приём](STYX_RPC_CHAN_RECV.ru.md) · [Реализация](../src/styxrpc/session_channel.c)
 
 `ch.ready()` без аргументов сообщает, есть ли полная запись в локальной
 очереди. Возвращает true для любой готовой записи, включая false и null.

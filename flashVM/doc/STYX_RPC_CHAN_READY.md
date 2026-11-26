@@ -1,6 +1,6 @@
 # ch.ready
 
-[Русский](STYX_RPC_CHAN_READY.ru.md) · [Open a hosted port](STYX_RPC_LISTEN.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c)
+[Русский](STYX_RPC_CHAN_READY.ru.md) · [Default RPC session](STYX_RPC_DEFAULT.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c)
 
 `ch.ready()` takes no arguments and reports whether a complete record
 is already buffered locally. It returns true for any ready payload,

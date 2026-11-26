@@ -187,7 +187,7 @@ static int mixed_script(FVM_Context *context, StyxClient *client, FVM_StyxRpcPla
         fvm_get_global(context, "rpc", &rpc) != FVM_OK || rpc.type != FVM_VALUE_OBJECT ||
         fvm_get_global(context, "styxrpc", &legacy) != FVM_OK || rpc.object != legacy.object ||
         fvm_value_string(&address, "/mixed") != FVM_OK ||
-        fvm_object_call(context, rpc.object, "newchan", 1, &address, &channel) != FVM_OK ||
+        fvm_object_call(context, rpc.object, "openExchange", 1, &address, &channel) != FVM_OK ||
         fvm_set_global(context, "mixed", &channel) != FVM_OK)
     {
         return 0;

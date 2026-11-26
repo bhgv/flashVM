@@ -383,7 +383,7 @@ static FVM_Result create_channel(FVM_Context *context, FVM_StyxRpcSession *bindi
 
 /* [ASINC] [GC:] EN: Open a named peer exchange on the existing session.
  * RU: Открыть именованный корень другой стороны в существующей сессии. */
-static FVM_Result new_channel(FVM_Context *context, FVM_Object *self, unsigned argc,
+static FVM_Result open_exchange(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcSession *binding = state;
@@ -403,19 +403,47 @@ static FVM_Result new_channel(FVM_Context *context, FVM_Object *self, unsigned a
 }
 
 
-/* [GC:] EN: Open the standard local application mailbox published by the player.
- * RU: Открыть локальную очередь приложения, опубликованную плеером. */
-static FVM_Result listen_channel(FVM_Context *context, FVM_Object *self, unsigned argc,
+/* EN: Accept a counted address spelling without interpreting the pending dial grammar.
+ * RU: Проверить строку адреса без разбора ещё не определённой грамматики. */
+static int valid_address(const FVM_Value *value)
+{
+    size_t size = value->type == FVM_VALUE_STRING ? fvm_value_string_size(value) : 0;
+    return size && !memchr(value->string, 0, size);
+}
+
+
+/* EN: Reserve the address-based constructor. Additional connections are pending.
+ * RU: Зарезервировать создание по адресу. Дополнительные соединения пока не открываются. */
+static FVM_Result new_channel(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
-    char address[sizeof(STYXRPC_EXCHANGE_DEFAULT) + 1];
+    (void)context;
     (void)self;
-    if (argc != 1 || !fvm_styxrpc_name(args, address, sizeof(address)) ||
-        strcmp(address + (address[0] == '/'), STYXRPC_EXCHANGE_DEFAULT))
+    (void)state;
+    if (argc != 1 || !valid_address(args))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return create_channel(context, NULL, NULL, state, out);
+    fvm_value_undefined(out);
+    return FVM_OK;
+}
+
+
+/* EN: Reserve publication syntax without making a listener or retaining the callback.
+ * RU: Зарезервировать синтаксис публикации без ожидания соединения и удержания колбэка. */
+static FVM_Result publish_channel(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    (void)context;
+    (void)self;
+    (void)state;
+    if (argc != 2 || !valid_address(args) ||
+        args[1].type != FVM_VALUE_OBJECT || !args[1].object)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_value_undefined(out);
+    return FVM_OK;
 }
 
 
@@ -423,17 +451,48 @@ static FVM_Result listen_channel(FVM_Context *context, FVM_Object *self, unsigne
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange)
 {
     FVM_Value rpc;
+    ScriptChannel *channel;
     FVM_Result status = fvm_get_global(context, "rpc", &rpc);
     if (status != FVM_OK || rpc.type != FVM_VALUE_OBJECT)
     {
         return status == FVM_OK ? FVM_NOT_FOUND : status;
     }
-    return fvm_object_define_method_rooted(context, rpc.object, "listen", listen_channel, exchange, NULL);
+    channel = calloc(1, sizeof(*channel));
+    if (!channel)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    channel->exchange = exchange;
+    status = fvm_userdata_attach(context, rpc.object, channel, release_channel);
+    if (status != FVM_OK)
+    {
+        free(channel);
+        return status;
+    }
+    status = fvm_object_define_method_rooted(context, rpc.object, "send", send_value, channel, rpc.object);
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, rpc.object, "recv", recv_value, channel, rpc.object);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, rpc.object, "ready", channel_ready, channel, rpc.object);
+    }
+    return status;
 }
 
 
 /* [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
 FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding)
 {
-    return fvm_object_define_method_rooted(context, object, "newchan", new_channel, binding, NULL);
+    FVM_Result status = fvm_object_define_method_rooted(context, object, "newchan", new_channel, binding, NULL);
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "publishchan", publish_channel, binding, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "openExchange", open_exchange, binding, NULL);
+    }
+    return status;
 }

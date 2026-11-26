@@ -1,6 +1,6 @@
 # Смешанные каналы UniBus в Limbo
 
-[English](STYX-CHANNEL.md) · [Интерфейс](../module/styxchannel.m) · [Реализация на Limbo](../limbo/styxchannel.b) · [Сервер FlashVM](../../flashVM/doc/STYX_RPC_LISTEN.ru.md)
+[English](STYX-CHANNEL.md) · [Интерфейс](../module/styxchannel.m) · [Реализация на Limbo](../limbo/styxchannel.b) · [Сервер FlashVM](../../flashVM/doc/STYX_RPC_DEFAULT.ru.md)
 
 Загрузите модуль `Styxchannel` из `styxchannel.dis` и вызовите `init()`
 до работы с ним. Инициализация подключает Unibus смонтированной сессии,

@@ -4,6 +4,8 @@
  */
 #include "player_services.h"
 #include "session_methods.h"
+#include "session_nodes.h"
+#include "styxrpc/nodes.h"
 #include "flashvm/styxrpc_module.h"
 #include "flashvm/styxrpc_channel.h"
 #include "flashvm/extensions.h"
@@ -167,6 +169,21 @@ static FVM_Result publish_object(FVM_Context *context, FVM_Object *self, unsigne
 }
 
 
+/* [GC:] EN: Publish an AS function on the active movie's already attached session.
+ * RU: Опубликовать функцию AS в уже подключённой сессии текущего фильма. */
+static FVM_Result new_node(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_StyxRpcPlayerServices *services = state;
+    (void)self;
+    if (!services->active || !services->slot || !services->session.client)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    return fvm_styxrpc_publish_node(context, services->slot, argc, args, out);
+}
+
+
 /* [GC:] EN/RU: See player_services.h. / См. player_services.h. */
 FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *client,
     StyxRpcModuleSlot *slot, FVM_StyxRpcPlayerServices **out)
@@ -199,6 +216,10 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
     if (status == FVM_OK)
     {
         status = fvm_object_define_method_rooted(context, object.object, "publishObject", publish_object, services, NULL);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object.object, "newnode", new_node, services, NULL);
     }
     if (status == FVM_OK)
     {
@@ -238,6 +259,10 @@ void fvm_styxrpc_player_disarm(FVM_StyxRpcPlayerServices *services)
 {
     if (services)
     {
+        if (services->active)
+        {
+            styxrpc_module_slot_clear_nodes(services->slot);
+        }
         services->active = 0;
         fvm_styxrpc_session_close(&services->session);
         fvm_styxrpc_object_image_destroy(services->image);

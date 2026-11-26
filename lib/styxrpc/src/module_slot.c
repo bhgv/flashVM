@@ -4,6 +4,7 @@
  */
 #include "styxrpc/module_slot.h"
 #include "control_internal.h"
+#include "nodes_internal.h"
 #include <stdlib.h>
 
 #define IMAGE_SHIFT 32U /* High Qid bits identify the image generation. */
@@ -21,6 +22,10 @@ struct StyxRpcModuleSlot
     StyxRpcControl *control; /* Borrowed stable control tree context. */
     StyxRpcModule *module;    /* Borrowed image through retirement. */
     uint32_t generation;      /* Monotonic image identity and root revision. */
+    StyxRpcNodes *nodes;   /* Owned active movie's callback nodes. */
+    uint64_t next_node;    /* Monotonic generation-zero Qid within the session. */
+    uint32_t revision;     /* Root and callback directory membership revision. */
+    SlotFile *node_files;  /* Opens protected until callback withdrawal. */
     SlotFile *opened;         /* Fids for the current image. */
     StyxRpcEntry entry;       /* Borrowed enumeration result storage. */
 };
@@ -33,8 +38,24 @@ StyxRpcModuleSlot *styxrpc_module_slot_create(StyxRpcControl *control)
     if (slot)
     {
         slot->control = control;
+        slot->next_node = STYXRPC_NODE_ID_FIRST;
     }
     return slot;
+}
+
+
+/* EN: Close nested resources while leaving any client-owned outer fids inert.
+ * RU: Закрыть вложенные ресурсы, сохранив неактивные внешние fid клиента. */
+static void retire_files(SlotFile **head)
+{
+    while (*head)
+    {
+        SlotFile *file = *head;
+        *head = file->next;
+        file->previous = NULL;
+        file->next = NULL;
+        styxrpc_file_close(&file->file);
+    }
 }
 
 
@@ -49,15 +70,9 @@ StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *mo
     {
         return STYXRPC_OK;
     }
-    while (slot->opened)
-    {
-        SlotFile *file = slot->opened;
-        slot->opened = file->next;
-        file->previous = NULL;
-        file->next = NULL;
-        styxrpc_file_close(&file->file);
-    }
+    retire_files(&slot->opened);
     ++slot->generation;
+    ++slot->revision;
     slot->module = module;
     return STYXRPC_OK;
 }
@@ -66,7 +81,39 @@ StyxRpcStatus styxrpc_module_slot_set(StyxRpcModuleSlot *slot, StyxRpcModule *mo
 /* EN/RU: See module_slot.h. / См. module_slot.h. */
 void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
 {
+    styxrpc_module_slot_clear_nodes(slot);
     free(slot);
+}
+
+
+/* EN/RU: See nodes.h. / См. nodes.h. */
+StyxRpcStatus styxrpc_module_slot_new_node(StyxRpcModuleSlot *slot, const char *path,
+    unsigned mode, const StyxRpcNodeCallbacks *callbacks)
+{
+    if (!slot)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxRpcStatus status = styxrpc_nodes_insert(&slot->nodes, &slot->next_node, path, mode, callbacks);
+    if (status == STYXRPC_OK)
+    {
+        ++slot->revision;
+    }
+    return status;
+}
+
+
+/* EN/RU: See nodes.h. / См. nodes.h. */
+void styxrpc_module_slot_clear_nodes(StyxRpcModuleSlot *slot)
+{
+    if (slot && slot->nodes)
+    {
+        StyxRpcNodes *nodes = slot->nodes;
+        retire_files(&slot->node_files);
+        slot->nodes = NULL;
+        ++slot->revision;
+        styxrpc_nodes_dispose(nodes);
+    }
 }
 
 
@@ -86,16 +133,27 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t i
     uint64_t generation = directory >> IMAGE_SHIFT;
     if (!generation)
     {
+        if (directory >= STYXRPC_NODE_ID_FIRST)
+        {
+            return styxrpc_nodes_tree.files.enumerate(slot->nodes, directory, index);
+        }
         const StyxRpcEntry *entry = styxrpc_control_tree.files.enumerate(slot->control, directory, index);
         if (entry || directory)
         {
             return entry;
         }
-        if (index != CONTROL_STATE)
+        index -= CONTROL_STATE;
+        if (slot->module && !index)
         {
-            return NULL;
+            entry = styxrpc_module_tree.files.enumerate(slot->module, 0, 0);
+            if (entry)
+            {
+                slot->entry = *entry;
+                slot->entry.id = image_id(slot, entry->id);
+                return &slot->entry;
+            }
         }
-        index = 0;
+        return styxrpc_nodes_tree.files.enumerate(slot->nodes, 0, index - (slot->module != NULL));
     }
     if (!slot->module || (generation && generation != slot->generation))
     {
@@ -120,13 +178,22 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
     uint64_t generation = id >> IMAGE_SHIFT;
     if (!generation)
     {
+        if (id >= STYXRPC_NODE_ID_FIRST)
+        {
+            int present = styxrpc_nodes_tree.stat(slot->nodes, id, node);
+            if (present && node->entry.directory)
+            {
+                node->revision = slot->revision;
+            }
+            return present;
+        }
         if (!styxrpc_control_tree.stat(slot->control, id, node))
         {
             return 0;
         }
         if (!id)
         {
-            node->revision = slot->generation;
+            node->revision = slot->revision;
         }
         return 1;
     }
@@ -159,22 +226,25 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     {
         return 0;
     }
-    const StyxRpcTree *tree = generation ? &styxrpc_module_tree : &styxrpc_control_tree;
-    void *data = generation ? (void *)slot->module : slot->control;
+    int callback = !generation && id >= STYXRPC_NODE_ID_FIRST;
+    const StyxRpcTree *tree = callback ? &styxrpc_nodes_tree :
+        generation ? &styxrpc_module_tree : &styxrpc_control_tree;
+    void *data = callback ? (void *)slot->nodes : generation ? (void *)slot->module : slot->control;
     if (styxrpc_file_open(&opened->file, &tree->files, data, (uint32_t)id, access) != STYXRPC_OK)
     {
         free(opened);
         return 0;
     }
-    if (generation)
+    if (generation || callback)
     {
-        opened->next = slot->opened;
-        opened->previous = &slot->opened;
+        SlotFile **head = callback ? &slot->node_files : &slot->opened;
+        opened->next = *head;
+        opened->previous = head;
         if (opened->next)
         {
             opened->next->previous = &opened->next;
         }
-        slot->opened = opened;
+        *head = opened;
     }
     *cookie = opened;
     return 1;

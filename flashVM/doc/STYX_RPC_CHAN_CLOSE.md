@@ -1,6 +1,6 @@
 # ch.close
 
-[Русский](STYX_RPC_CHAN_CLOSE.ru.md) · [Open](STYX_RPC_NEWCHAN.md) · [Implementation](../src/styxrpc/session_channel.c) · [Hosted exchange](STYX_RPC_LISTEN.md)
+[Русский](STYX_RPC_CHAN_CLOSE.ru.md) · [Open](STYX_RPC_OPEN_EXCHANGE.md) · [Implementation](../src/styxrpc/session_channel.c) · [Hosted exchange](STYX_RPC_DEFAULT.md)
 
 `ch.close()` releases the channel's exchange fid, drops unread records
 and returns `undefined`. It takes no arguments. Repeated calls succeed.

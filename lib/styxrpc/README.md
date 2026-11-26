@@ -34,6 +34,8 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 
+[Callback files](reference/module_slot_new_node.md) expose application nodes beside the hosted playback controls.
+
 [Replaceable module images](reference/module_slot.md) share a server tree
 with stable playback controls.
 

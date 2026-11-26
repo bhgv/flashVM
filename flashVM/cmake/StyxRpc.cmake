@@ -14,7 +14,7 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/channel_local_state.c src/styxrpc/channel_publication.c src/styxrpc/channel_mailbox.c
         src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
         src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c src/styxrpc/session_calls.c
-        src/styxrpc/session_modules.c src/styxrpc/session_messages.c src/styxrpc/session_channel.c
+        src/styxrpc/session_modules.c src/styxrpc/session_messages.c src/styxrpc/session_channel.c src/styxrpc/session_nodes.cpp
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/variable_ref_adapter.c src/styxrpc/variable_ref_identity.cpp src/styxrpc/variable_ref_channel.cpp src/styxrpc/object_image.c src/styxrpc/module_import.c
         src/styxrpc/playback.c src/styxrpc/player_services.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c
         src/styxrpc/os.c src/styxrpc/os_open.c ports/styxrpc_stats_port.c)
@@ -38,6 +38,11 @@ if(FVM_ENABLE_STYXRPC)
         target_link_libraries(flashvm_tests_styxrpc_host PRIVATE flashvm_styxrpc Styx::bidir)
         set_property(TARGET flashvm_tests_styxrpc_host PROPERTY C_STANDARD 99)
         if(UNIX AND NOT ANDROID AND TARGET Styx::bidir)
+            add_executable(flashvm_tests_styxrpc_node_files tests/styxrpc/node-files.c tests/styxrpc/movie-assets.c)
+            target_link_libraries(flashvm_tests_styxrpc_node_files PRIVATE flashvm_styxrpc Styx::bidir)
+            set_property(TARGET flashvm_tests_styxrpc_node_files PROPERTY C_STANDARD 99)
+            add_test(NAME flashvm_tests_styxrpc_node_files COMMAND flashvm_tests_styxrpc_node_files)
+            set_tests_properties(flashvm_tests_styxrpc_node_files PROPERTIES TIMEOUT 10)
             add_executable(flashvm_tests_styxrpc_variable_ref tests/styxrpc/variable-ref.c)
             target_link_libraries(flashvm_tests_styxrpc_variable_ref PRIVATE flashvm_styxrpc Styx::bidir)
             set_property(TARGET flashvm_tests_styxrpc_variable_ref PROPERTY C_STANDARD 99)

@@ -7,7 +7,7 @@
 // RU: Выполнить один раз с тестовым провайдером, который выдаёт ссылку до первого чтения.
 function onEnterFrame() {
     if (!mixedProofDone) {
-        var mixed = rpc.newchan("/mixed");
+        var mixed = rpc.openExchange("/mixed");
         var mixedCounter = mixed.recv();
         var sent = mixed.send(mixedCounter);
         var forwarded = mixed.send(ref mixedCounter);
