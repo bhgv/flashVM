@@ -47,8 +47,14 @@ static void chunk(StyxFid *fid,
     }
     memset(result, 0, sizeof(*result));
     result->confirmed = 1;
-    if (!fid || !fid->opened || fid->poisoned || offset > 0x7fffffffffffffffULL || (!bytes && size) ||
+    if (!fid || !fid->opened || offset > 0x7fffffffffffffffULL || (!bytes && size) ||
         (writing ? fid->mode == 0 : fid->mode == 1))
+    {
+        return;
+    }
+    /* EN: A directory Tread at zero starts a new enumeration on the same fid.
+     * RU: Tread каталога с нуля начинает новый обход того же fid. */
+    if (fid->poisoned && (writing || offset || fid->mode != 0 || !(fid->qid.type & QTDIR)))
     {
         return;
     }
@@ -76,6 +82,7 @@ static void chunk(StyxFid *fid,
     }
     if (status == 1)
     {
+        fid->poisoned = 0;
         result->count = reply.count;
         result->success = 1;
         if (!writing && reply.count)

@@ -26,7 +26,7 @@ struct StyxRpcModuleSlot
     StyxRpcNodes *nodes;   /* Owned active movie's callback nodes. */
     uint64_t next_node;    /* Monotonic generation-zero Qid within the session. */
     int retiring;          /* Reject slot changes during synchronous context release. */
-    uint32_t revision;     /* Root and callback directory membership revision. */
+    uint32_t revision;     /* Membership revision of the session root. */
     SlotFile *node_files;  /* Opens protected until callback withdrawal. */
     SlotFile *opened;         /* Fids for the current image. */
     StyxRpcEntry entry;       /* Borrowed enumeration result storage. */
@@ -110,8 +110,8 @@ void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
 }
 
 
-/* EN: Publish through the live slot and advance its directory revision after success.
- * RU: Опубликовать через живой слот и повысить ревизию каталога при успехе. */
+/* EN: Publish through the slot and update only the affected directories.
+ * RU: Опубликовать через слот и обновить только затронутые каталоги. */
 static StyxRpcStatus register_node(StyxRpcModuleSlot *slot, const char *path,
     unsigned mode, const NodeRegistration *config)
 {
@@ -119,12 +119,7 @@ static StyxRpcStatus register_node(StyxRpcModuleSlot *slot, const char *path,
     {
         return STYXRPC_INVALID;
     }
-    StyxRpcStatus status = styxrpc_nodes_insert(&slot->nodes, &slot->next_node, path, mode, config);
-    if (status == STYXRPC_OK)
-    {
-        ++slot->revision;
-    }
-    return status;
+    return styxrpc_nodes_insert(&slot->nodes, &slot->next_node, &slot->revision, path, mode, config);
 }
 
 
@@ -165,9 +160,8 @@ StyxRpcStatus styxrpc_module_slot_remove_node(StyxRpcModuleSlot *slot, const cha
         return STYXRPC_INVALID;
     }
     retire_files(slot->node_files, id);
-    ++slot->revision;
     slot->retiring = 1;
-    styxrpc_nodes_remove(slot->nodes, id);
+    styxrpc_nodes_remove(slot->nodes, id, &slot->revision);
     slot->retiring = 0;
     return STYXRPC_OK;
 }
@@ -182,7 +176,10 @@ void styxrpc_module_slot_clear_nodes(StyxRpcModuleSlot *slot)
         slot->retiring = 1;
         retire_files(slot->node_files, 0);
         slot->nodes = NULL;
-        ++slot->revision;
+        if (styxrpc_nodes_tree.files.enumerate(nodes, 0, 0))
+        {
+            ++slot->revision;
+        }
         styxrpc_nodes_dispose(nodes);
         slot->retiring = 0;
     }
@@ -257,12 +254,7 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
         }
         if (id >= STYXRPC_NODE_ID_FIRST)
         {
-            int present = styxrpc_nodes_tree.stat(slot->nodes, id, node);
-            if (present && node->entry.directory)
-            {
-                node->revision = slot->revision;
-            }
-            return present;
+            return styxrpc_nodes_tree.stat(slot->nodes, id, node);
         }
         if (!styxrpc_control_tree.stat(slot->control, id, node))
         {

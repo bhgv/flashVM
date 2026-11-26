@@ -130,6 +130,26 @@ static void *dispatch(void *context)
 }
 
 
+/* EN: Require the visitor to receive exactly the name expected by this call.
+ * RU: Требовать, чтобы посетитель получил именно ожидаемое имя. */
+static int named(void *state, const char *name, const StyxRpcFileInfo *info)
+{
+    (void)info;
+    return !strcmp(state, name);
+}
+
+
+/* EN: Read the control and visible sibling to EOF on the same SDK cursor.
+ * RU: Прочитать управление и видимого соседа до EOF на том же курсоре SDK. */
+static int iteration(StyxRpcVfsDir *dir, const char *sibling)
+{
+    int found = 0;
+    return styxrpc_vfs_dir_next(dir, named, "change", &found) == STYXRPC_IO_OK && found &&
+        styxrpc_vfs_dir_next(dir, named, (void *)sibling, &found) == STYXRPC_IO_OK && found &&
+        styxrpc_vfs_dir_next(dir, NULL, NULL, &found) == STYXRPC_IO_OK && !found;
+}
+
+
 /* EN: Inspect one session before and after an exact mutation.
  * RU: Проверить сессию до и после одного изменения дерева. */
 static int inspect(StyxClient *client)
@@ -137,25 +157,30 @@ static int inspect(StyxClient *client)
     StyxFid *dir = styxclientwalk(client, ".");
     StyxFid *old = styxclientwalk(client, "before");
     StyxFid *control = styxclientwalk(client, "change");
-    StyxTransfer sent, initial, stale, fresh, retained, latest;
+    StyxTransfer sent, initial, stale, fresh, reset, retained, latest;
+    StyxRpcVfsDir *sdk = NULL;
     unsigned char listing[64];
     char old_byte = 0, new_byte = 0;
     unsigned char input = 42;
     size_t used = 1;
     int good = styxrpc_node_exec(client, "before", &input, 1, &used) == STYXRPC_IO_NOT_OPEN &&
         !used && input == 42 && dir && old && control && styxclientopen(dir, 0) &&
-        styxclientopen(old, 0) && styxclientopen(control, 1);
+        styxclientopen(old, 0) && styxclientopen(control, 1) &&
+        styxrpc_vfs_dir_open(client, "", &sdk) == STYXRPC_IO_OK && iteration(sdk, "before");
     if (good)
     {
         styxclientread(dir, 0, listing, sizeof(listing), &initial);
         styxclientwrite(control, 0, "1", 1, &sent);
         styxclientread(dir, initial.count, listing, sizeof(listing), &stale);
+        styxclientread(dir, 0, listing, sizeof(listing), &reset);
         styxclientread(old, 0, &old_byte, 1, &retained);
         StyxFid *absent = styxclientwalk(client, "before");
         StyxFid *new_dir = styxclientwalk(client, ".");
         StyxFid *new_file = styxclientwalk(client, "after");
         good = initial.success && initial.count && sent.success && sent.count == 1 &&
-            !stale.success && retained.success && retained.count == 1 && old_byte == 'B' &&
+            !stale.success && reset.success && reset.count == initial.count &&
+            styxrpc_vfs_dir_rewind(sdk) == STYXRPC_IO_OK && iteration(sdk, "after") &&
+            retained.success && retained.count == 1 && old_byte == 'B' &&
             !absent && new_dir && new_file && styxclientopen(new_dir, 0) && styxclientopen(new_file, 0);
         if (good)
         {
@@ -167,6 +192,7 @@ static int inspect(StyxClient *client)
         styxclientclunk(new_dir);
         styxclientclunk(absent);
     }
+    styxrpc_vfs_dir_close(sdk, 0);
     styxclientclunk(control);
     styxclientclunk(old);
     styxclientclunk(dir);

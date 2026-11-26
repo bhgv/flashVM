@@ -34,7 +34,7 @@ typedef struct NodeRegistration
 
 /* EN: Adjoin path atomically, allocating a registry only when needed and assigning new IDs.
  * RU: Атомарно добавить путь, выделяя реестр по необходимости и выдавая новые ID. */
-StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const char *path,
+StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, uint32_t *root_revision, const char *path,
     unsigned mode, const NodeRegistration *callbacks);
 
 
@@ -50,7 +50,7 @@ uint64_t styxrpc_nodes_removable(StyxRpcNodes *nodes, const char *path);
 
 /* EN: Remove this prevalidated ID after its opens retire, releasing its owned context.
  * RU: Отозвать проверенный ID после закрытия его открытий и освободить контекст. */
-void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id);
+void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision);
 
 
 /* EN: Drop a detached registry after all opens have been closed. NULL is valid.

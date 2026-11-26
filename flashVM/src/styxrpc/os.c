@@ -380,13 +380,31 @@ static FVM_Result next_file(FVM_Context *context, FVM_Object *self, unsigned arg
 }
 
 
+/* EN: Discard buffered entries so the next read starts at zero on this fid.
+ * RU: Сбросить буфер записей. Следующее чтение начнётся с нуля на том же fid. */
+static FVM_Result rewind_directory(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    OsHandle *handle = state;
+    (void)context;
+    (void)self;
+    (void)args;
+    if (argc || styxrpc_vfs_dir_rewind(handle->directory) != STYXRPC_IO_OK)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_value_boolean(out, 1);
+    return FVM_OK;
+}
+
+
 /* [GC:] EN: Install the selected handle methods, retaining the object through extracted methods.
  * RU: Установить методы дескриптора с удержанием объекта извлечёнными методами. */
 FVM_Result fvm_os_wrap_handle(FVM_Context *context, OsHandle *handle, int directory, FVM_Value *out)
 {
-    static const char *const names[] = {"close", "read", "write", "flush", "seek", "len", "load", "next_file"};
+    static const char *const names[] = {"close", "read", "write", "flush", "seek", "len", "load", "next_file", "rewind"};
     static const FVM_NativeFunction calls[] =
-        {close_handle, read_file, write_file, flush_file, seek_file, len_file, load_file, next_file};
+        {close_handle, read_file, write_file, flush_file, seek_file, len_file, load_file, next_file, rewind_directory};
     FVM_GCRootScope *roots;
     FVM_Value value;
     FVM_Result status = fvm_gc_roots_begin(context, &roots);
@@ -410,9 +428,9 @@ FVM_Result fvm_os_wrap_handle(FVM_Context *context, OsHandle *handle, int direct
         status = fvm_userdata_attach(context, value.object, handle, release);
         owned = status == FVM_OK;
     }
-    for (i = 0; i < 8 && status == FVM_OK; ++i)
+    for (i = 0; i < sizeof(calls) / sizeof(calls[0]) && status == FVM_OK; ++i)
     {
-        if (!i || (directory ? i == 7 : i < 7))
+        if (!i || (directory ? i >= 7 : i < 7))
         {
             status = fvm_object_define_method_rooted(context, value.object, names[i], calls[i], handle, value.object);
         }

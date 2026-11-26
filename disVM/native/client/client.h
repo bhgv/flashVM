@@ -279,8 +279,10 @@ int styxclientstatcancel(StyxFid *fid, StyxMeta *output, StyxCancel *cancel, Sty
 
 
 /* EN/RU: One actual Tread/Twrite chunk, signed64 offset range; exact confirmed
- * prefix, no auto retry. Uncertain data effects poison further data calls on fid.
- * Один Tread/Twrite chunk; точный prefix, без retry; uncertain effects запрещают I/O. */
+ * prefix, no auto retry. Uncertain effects poison further data calls, except a
+ * new offset-zero read of an already-open read-only directory.
+ * Один Tread/Twrite chunk; точный prefix, без retry. При uncertain effects
+ * разрешён только новый Tread с нуля у каталога, открытого на чтение. */
 void styxclientread(StyxFid *fid, unsigned long long offset, void *bytes, size_t size, StyxTransfer *result);
 void styxclientwrite(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxTransfer *result);
 

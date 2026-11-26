@@ -33,8 +33,10 @@ styxclientread: нативные client-операции io и время жиз
 ### Сохранённый контракт implementation/header
 
 EN/RU: One actual Tread/Twrite chunk, signed64 offset range; exact confirmed
-prefix, no auto retry. Uncertain data effects poison further data calls on fid.
-Один Tread/Twrite chunk; точный prefix, без retry; uncertain effects запрещают I/O.
+prefix and no automatic retry. After a read failure, an open read-only
+directory can restart on the same fid with a new read at offset zero.
+У каталога, открытого на чтение, после ошибки допустимо начать с нулевого
+смещения на том же fid. Для обычных файлов повтор I/O не выполняется.
 
 ## Возвращаемое значение
 

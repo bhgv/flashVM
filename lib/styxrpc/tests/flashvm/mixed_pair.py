@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned", "withdraw"):
+    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -47,11 +47,14 @@ def main():
         if name == "mixed":
             (directory / "rpc-source").write_bytes(fixture_bytes)
             (directory / "created").mkdir()
-        if name in ("publish", "nodes", "positioned", "withdraw"):
+        if name in ("publish", "nodes", "positioned", "withdraw", "dirlive"):
             (directory / "tools").mkdir()
+        if name == "dirlive":
+            (directory / "tools/before").touch()
         modules = {
             "positioned": ("styxnodes", "styxexec"),
             "withdraw": ("styxexec",),
+            "dirlive": ("styxexec", "styxnodes"),
             "nodes": ("styxnodes",),
             "publish": ("styxexec",),
             "execute": ("styxexec",),
@@ -70,6 +73,7 @@ def main():
             "execute": ("execute_apply.as", "execute_refuse.as"),
             "positioned": ("positioned_transfer.as",),
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
+            "dirlive": ("dirlive_signal.as",),
         }.get(name, ())
         compile_movie(args, directory, tests / (name + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))

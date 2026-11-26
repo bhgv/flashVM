@@ -115,6 +115,20 @@ StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visi
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_dir_rewind(StyxRpcVfsDir *dir)
+{
+    if (!dir)
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    dir->offset = 0;
+    dir->start = dir->end = 0;
+    dir->ended = dir->failed = 0;
+    return STYXRPC_IO_OK;
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 void styxrpc_vfs_dir_close(StyxRpcVfsDir *dir, int deferred)
 {
     if (dir)

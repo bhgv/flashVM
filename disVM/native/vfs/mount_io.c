@@ -104,13 +104,25 @@ static void writechunk(void *state, const void *bytes, size_t size, DVM_IoResult
 }
 
 
-/* EN/RU: Seek changes only local positional protocol offset, with checked native-long bounds.
- * Seek меняет только local protocol offset с проверкой native-long bounds. */
+/* EN/RU: Seek changes the local protocol offset or restarts a directory at zero.
+ * Seek меняет смещение протокола или начинает обход каталога с нуля. */
 static FVM_Result seekfile(void *state, long offset, int origin, long *position)
 {
     struct Mounted *opened = state;
+    if (opened->directory)
+    {
+        if (offset || origin != FVM_FILE_SEEK_START)
+        {
+            return FVM_UNSUPPORTED;
+        }
+        opened->position = 0;
+        opened->size = opened->used = 0;
+        opened->failed = 0;
+        *position = 0;
+        return FVM_OK;
+    }
     unsigned long long base = origin == FVM_FILE_SEEK_START ? 0 : opened->position;
-    if (opened->directory || origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END)
+    if (origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END)
     {
         return FVM_ERROR;
     }

@@ -52,6 +52,39 @@ static CallbackNode *child(StyxRpcNodes *nodes, uint64_t parent, const char *nam
 }
 
 
+/* EN: Find an exact live node by ID, including while old bare walk fids exist.
+ * RU: Найти точный живой узел по ID, включая время жизни старых fid обхода. */
+static CallbackNode *find(StyxRpcNodes *nodes, uint64_t id)
+{
+    if (nodes)
+    {
+        for (size_t i = 0; i < nodes->count; ++i)
+        {
+            if (nodes->ordered[i]->node.entry.id == id)
+            {
+                return nodes->ordered[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+
+/* EN: Mark exactly the directory whose immediate entries changed.
+ * RU: Пометить только каталог, у которого изменились непосредственно вложенные записи. */
+static void touch(StyxRpcNodes *nodes, uint64_t directory, uint32_t *root_revision)
+{
+    if (!directory)
+    {
+        ++*root_revision;
+    }
+    else
+    {
+        ++find(nodes, directory)->node.revision;
+    }
+}
+
+
 /* EN: Resolve a validated relative spelling in the current callback tree.
  * RU: Найти проверенное относительное имя в текущем дереве колбэков. */
 static CallbackNode *resolve(StyxRpcNodes *nodes, const char *path)
@@ -185,7 +218,7 @@ static int stage(StyxRpcNodes *nodes, uint64_t *next, const char *path, unsigned
 
 
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
-StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const char *path,
+StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, uint32_t *root_revision, const char *path,
     unsigned mode, const NodeRegistration *callbacks)
 {
     if (!path || !mode || mode > 7U || !callbacks || (!callbacks->stream && !callbacks->positioned) ||
@@ -218,6 +251,10 @@ StyxRpcStatus styxrpc_nodes_insert(StyxRpcNodes **nodes, uint64_t *next, const c
         }
         return STYXRPC_INVALID;
     }
+    for (size_t i = before; i < candidate->count; ++i)
+    {
+        touch(candidate, candidate->ordered[i]->node.parent, root_revision);
+    }
     *nodes = candidate;
     return STYXRPC_OK;
 }
@@ -238,24 +275,6 @@ void styxrpc_nodes_dispose(StyxRpcNodes *nodes)
         }
         free(nodes);
     }
-}
-
-
-/* EN: Find an exact live node by ID, including while old bare walk fids exist.
- * RU: Найти точный живой узел по ID, включая время жизни старых fid обхода. */
-static CallbackNode *find(StyxRpcNodes *nodes, uint64_t id)
-{
-    if (nodes)
-    {
-        for (size_t i = 0; i < nodes->count; ++i)
-        {
-            if (nodes->ordered[i]->node.entry.id == id)
-            {
-                return nodes->ordered[i];
-            }
-        }
-    }
-    return NULL;
 }
 
 
@@ -316,7 +335,7 @@ static int has_children(StyxRpcNodes *nodes, uint64_t id)
 
 
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
-void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id)
+void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision)
 {
     CallbackNode *entry = find(nodes, id);
     if (!entry)
@@ -332,6 +351,7 @@ void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id)
         parent = entry->node.parent;
         erase(nodes, entry);
     }
+    touch(nodes, parent, root_revision);
     if (callback.release)
     {
         callback.release(callback.context);

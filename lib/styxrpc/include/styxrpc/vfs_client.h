@@ -113,6 +113,12 @@ StyxRpcIoOutcome styxrpc_vfs_dir_open(struct StyxClient *, const char *, StyxRpc
  * RU: Передать одну видимую запись. На EOF found равен нулю. Имя заимствуется на время visit. */
 StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *, StyxRpcVfsVisitor, void *, int *found);
 
+/* EN: Discard buffered entries and restart on the same fid on the next read.
+ * Caller serializes operations. NULL returns NOT_OPEN; otherwise OK without I/O.
+ * RU: Сбросить буфер и начать следующий обход того же fid с нуля.
+ * Вызывающий сериализует операции. NULL даёт NOT_OPEN, иначе OK без I/O. */
+StyxRpcIoOutcome styxrpc_vfs_dir_rewind(StyxRpcVfsDir *dir);
+
 /* EN/RU: Consume dir and optionally defer clunk. / Освободить dir и при необходимости отложить clunk. */
 void styxrpc_vfs_dir_close(StyxRpcVfsDir *, int deferred);
 

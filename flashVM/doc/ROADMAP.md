@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1785, directory changes in the hosted callback tree invalidate only
+the affected enumeration. FlashVM and Limbo can restart an existing
+directory fid from zero over StyxRPC. The paired check covers multi-frame
+directories, publication and withdrawal, and same-path replacement.
+[EN](STYX_VFS_DIR_REWIND.md) · [RU](STYX_VFS_DIR_REWIND.ru.md).
+
 In v0.1784, FlashVM and the hosted SDK withdraw one published callback
 file at a time. Old fids expire, siblings keep working, and empty
 implicit directories disappear from the live view. The paired

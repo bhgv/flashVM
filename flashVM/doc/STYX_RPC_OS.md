@@ -30,8 +30,8 @@ Styx request deadline.
 Attributes and `next_file()` results expose `name`, `directory`, `mode`,
 `lengthHigh` and `lengthLow`. The last two are the exact UInt32 limbs of the
 byte length. `length` is an AS Number up to 2⁵³−1 or `undefined`.
-`next_file()` returns `undefined` at EOF. Reopen for a fresh enumeration.
-Changes to a directory can interrupt an open enumeration.
+`next_file()` returns `undefined` at EOF. Use [`rewind()`](STYX_VFS_DIR_REWIND.md)
+to start another enumeration on the same open directory.
 
 | File method | Result |
 | --- | --- |

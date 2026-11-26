@@ -180,7 +180,7 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
 static FVM_Result seek(void *state, long offset, int origin, long *position)
 {
     Directory *cursor = state;
-    if (offset || origin != FVM_FILE_SEEK_START || !position || cursor->failed)
+    if (offset || origin != FVM_FILE_SEEK_START || !position)
     {
         return FVM_UNSUPPORTED;
     }
@@ -190,7 +190,7 @@ static FVM_Result seek(void *state, long offset, int origin, long *position)
         free(cursor->names);
         cursor->names = NULL;
         cursor->count = 0;
-        cursor->emitted = cursor->initialized = 0;
+        cursor->emitted = cursor->initialized = cursor->failed = 0;
     }
     return status;
 }
