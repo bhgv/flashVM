@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Install file methods on the attached rpc object and mirror it as os.
- * RU: Установить файловые методы в подключённый rpc и выставить зеркало os.
+ * EN: Install file methods on the attached vfs object and mirror it as os.
+ * RU: Установить файловые методы в подключённый vfs и выставить зеркало os.
  */
 #include "os_handles.h"
 #include "session_methods.h"
@@ -19,7 +19,7 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     int creating = 0;
     StyxRpcIoOutcome opened;
     OsHandle *handle;
-    if (!argc || argc > (directory ? 1U : 2U) || !fvm_os_path(args, path) ||
+    if (!argc || argc > (directory ? 1U : 2U) || !fvm_styxrpc_resolve_path(movies->binding, args, path) ||
         (argc == 2 && !fvm_styxrpc_name(args + 1, mode, sizeof(mode))))
     {
         return FVM_INVALID_ARGUMENT;
@@ -98,13 +98,13 @@ static FVM_Result attr(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcMovies *movies = state;
-    char path[FVM_STYXRPC_MOVIE_PATH], vfs[2];
+    char path[FVM_STYXRPC_MOVIE_PATH], root_selector[2];
     StyxRpcFileInfo info;
     const char *name;
     StyxRpcIoOutcome status;
     (void)self;
-    if (!argc || argc > 2 || !fvm_os_path(args, path) ||
-        (argc == 2 && (!fvm_styxrpc_name(args + 1, vfs, sizeof(vfs)) || strcmp(vfs, "/"))))
+    if (!argc || argc > 2 || !fvm_styxrpc_resolve_path(movies->binding, args, path) ||
+        (argc == 2 && (!fvm_styxrpc_name(args + 1, root_selector, sizeof(root_selector)) || strcmp(root_selector, "/"))))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -125,10 +125,10 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
     static const FVM_NativeFunction methods[] = {open_file, open_directory, attr};
     FVM_Context *context = movies->context;
     FVM_GCRootScope *roots;
-    FVM_Value rpc;
+    FVM_Value vfs;
     unsigned i;
-    FVM_Result status = fvm_get_global(context, "rpc", &rpc);
-    if (status != FVM_OK || rpc.type != FVM_VALUE_OBJECT)
+    FVM_Result status = fvm_get_global(context, "vfs", &vfs);
+    if (status != FVM_OK || vfs.type != FVM_VALUE_OBJECT)
     {
         return status == FVM_OK ? FVM_NOT_FOUND : status;
     }
@@ -137,14 +137,14 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
     {
         return status;
     }
-    status = fvm_gc_roots_add(roots, &rpc);
+    status = fvm_gc_roots_add(roots, &vfs);
     for (i = 0; i < 3 && status == FVM_OK; ++i)
     {
-        status = fvm_object_define_method_rooted(context, rpc.object, names[i], methods[i], movies, NULL);
+        status = fvm_object_define_method_rooted(context, vfs.object, names[i], methods[i], movies, NULL);
     }
     if (status == FVM_OK)
     {
-        status = fvm_set_global(context, "os", &rpc);
+        status = fvm_set_global(context, "os", &vfs);
     }
     fvm_gc_roots_end(roots);
     return status;

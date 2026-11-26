@@ -16,6 +16,16 @@
 FVM_Result fvm_styxrpc_launch_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
+/* EN: Resolve one ordinary AS path relative to the binding's cwd.
+ * RU: Разрешить обычный путь AS относительно cwd привязки. */
+int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value *arg, char *absolute);
+
+
+/* EN: Install directory mutation and navigation methods on the rooted binding.
+ * RU: Установить методы изменения каталогов и навигации на удержанной привязке. */
+FVM_Result fvm_styxrpc_path_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
+
+
 /* EN: Add file I/O methods to a rooted, unpublished object.
  * RU: Добавить методы файлов к удерживаемому неопубликованному объекту. */
 FVM_Result fvm_styxrpc_vfs_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
@@ -47,8 +57,8 @@ FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *, FVM_Object *, unsigned,
     const FVM_Value *, FVM_Value *, void *);
 
 
-/* [GC:] EN: Bind the player-owned mailbox to the default rpc object in the new movie context.
- * RU: Связать очередь плеера со штатным объектом rpc в контексте нового фильма. */
+/* [GC:] EN: Bind the player-owned mailbox to the default vfs object in the new movie context.
+ * RU: Связать очередь плеера со штатным объектом vfs в контексте нового фильма. */
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange);
 
 

@@ -1,8 +1,8 @@
-# rpc.send
+# vfs.send
 
 [English](STYX_RPC_CHAN_SEND.md) · [Приём](STYX_RPC_CHAN_RECV.ru.md) · [Реализация](../src/styxrpc/session_channel.c) · [Штатная сессия](STYX_RPC_DEFAULT.ru.md)
 
-`rpc.send(value)` ставит в штатную очередь плеера одно значение AS Number,
+`vfs.send(value)` ставит в штатную очередь плеера одно значение AS Number,
 Boolean, строку с длиной до 16 384 байтов либо `null`. Вызывайте в потоке
 владельца фильма. После копирования данных библиотекой возвращается
 `true`. Если порт другой стороны закрыт или очередь занята, возвращается

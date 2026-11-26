@@ -103,16 +103,16 @@ init()
     }
     start();
     value := array[] of {byte Styxnamed->Text, byte 'A', byte 0, byte 'B'};
-    port.write(value);
-    if (!equal(port.read(), value)) {
+    port.send(value);
+    if (!equal(port.recv(), value)) {
         raise "named channel scalar frame differs";
     }
-    graph := port.read();
+    graph := port.recv();
     if (len graph < 2 || int graph[0] != Styxnamed->Snapshot) {
         raise "named channel array is not a snapshot";
     }
-    port.write(graph);
-    if (!equal(port.read(), graph)) {
+    port.send(graph);
+    if (!equal(port.recv(), graph)) {
         raise "named channel array frame changed on decode and encode";
     }
     port.close();
@@ -132,7 +132,7 @@ init()
 # RU: Записать один кадр из отдельного потока Dis и сообщить о возврате.
 send(port: ref Port, sent: chan of int)
 {
-    port.write(array[] of {byte Styxnamed->Boolean, byte 1});
+    port.send(array[] of {byte Styxnamed->Boolean, byte 1});
     sent <-= 1;
 }
 
@@ -152,7 +152,7 @@ blocking()
     * =>
         ;
     }
-    frame := reader.read();
+    frame := reader.recv();
     if (len frame != 2 || int frame[0] != Styxnamed->Boolean || int frame[1] != 1 || <-sent != 1) {
         raise "named channel rendezvous changed the sent value";
     }

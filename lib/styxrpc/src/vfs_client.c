@@ -19,24 +19,6 @@ typedef enum VfsPathKind
 } VfsPathKind;
 
 
-/* EN: Classify one exact service component, without reserving arbitrary dotfiles.
- * RU: Определить точное служебное имя, сохраняя доступ к остальным скрытым файлам. */
-static int service_name(const char *name, size_t size)
-{
-    static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs", ".unibus",
-        ".messages", ".channels", ".rpc", ".interface", ".programs", ".sysevents", ".state", ".upload", ".exit",
-        ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop", ".add", ".count"};
-    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-    {
-        if (strlen(names[i]) == size && !memcmp(name, names[i], size))
-        {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-
 /* EN: Identify exchange roots with arbitrary names by their reserved Qid range.
  * RU: Определить корни обмена с произвольными именами по диапазону Qid. */
 static int exchange_meta(const StyxMeta *meta)
@@ -49,7 +31,7 @@ static int exchange_meta(const StyxMeta *meta)
  * RU: Отклонить stat служебного узла, в том числе при проходе по псевдониму. */
 int styxrpc_vfs_service_meta(const StyxMeta *meta)
 {
-    return exchange_meta(meta) || service_name(meta->name, strlen(meta->name));
+    return exchange_meta(meta) || styxrpc_vfs_service_name(meta->name, strlen(meta->name));
 }
 
 
@@ -69,7 +51,7 @@ static int relative_path(const char *path, int internal)
             size_t length = i - start;
             if (!length || (length == 1 && path[start] == '.') ||
                 (length == 2 && path[start] == '.' && path[start + 1] == '.') ||
-                (!internal && service_name(path + start, length)))
+                (!internal && styxrpc_vfs_service_name(path + start, length)))
             {
                 return 0;
             }

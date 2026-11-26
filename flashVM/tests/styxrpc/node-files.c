@@ -109,9 +109,9 @@ static FVM_Result callback(FVM_Context *context, FVM_Object *receiver, unsigned 
  * RU: Проверить публикацию, дубликат и служебный путь через API сессии. */
 static int publish(FVM_Context *context, Script *script)
 {
-    FVM_Value rpc, args[3], out;
+    FVM_Value vfs, args[3], out;
     fvm_value_undefined(args + 2);
-    if (fvm_get_global(context, "rpc", &rpc) != FVM_OK || rpc.type != FVM_VALUE_OBJECT ||
+    if (fvm_get_global(context, "vfs", &vfs) != FVM_OK || vfs.type != FVM_VALUE_OBJECT ||
         fvm_function_create_native(context, callback, script, NULL, &args[2].object) != FVM_OK)
     {
         return 0;
@@ -119,27 +119,27 @@ static int publish(FVM_Context *context, Script *script)
     args[2].type = FVM_VALUE_OBJECT;
     fvm_value_string(args, "/menu/data");
     fvm_value_string(args + 1, "rw");
-    if (fvm_object_call(context, rpc.object, "newnode", 3, args, &out) != FVM_OK ||
+    if (fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_OK ||
         out.type != FVM_VALUE_BOOLEAN || !out.boolean ||
-        fvm_object_call(context, rpc.object, "newnode", 3, args, &out) != FVM_INVALID_ARGUMENT)
+        fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_INVALID_ARGUMENT)
     {
         return 0;
     }
     fvm_value_string(args, "/menu/.prog/blocked");
-    if (fvm_object_call(context, rpc.object, "newnode", 3, args, &out) != FVM_INVALID_ARGUMENT)
+    if (fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_INVALID_ARGUMENT)
     {
         return 0;
     }
     fvm_value_string(args, "/menu/input");
     fvm_value_string(args + 1, "r");
-    if (fvm_object_call(context, rpc.object, "newnode", 3, args, &out) != FVM_OK)
+    if (fvm_object_call(context, vfs.object, "newnode", 3, args, &out) != FVM_OK)
     {
         return 0;
     }
     fvm_value_string(args, "tcp!1234");
-    return fvm_object_call(context, rpc.object, "publishchan", 2, (FVM_Value[]){args[0], args[2]}, &out) == FVM_OK &&
+    return fvm_object_call(context, vfs.object, "publishchan", 2, (FVM_Value[]){args[0], args[2]}, &out) == FVM_OK &&
         out.type == FVM_VALUE_UNDEFINED &&
-        fvm_object_call(context, rpc.object, "newchan", 1, args, &out) == FVM_OK &&
+        fvm_object_call(context, vfs.object, "newchan", 1, args, &out) == FVM_OK &&
         out.type == FVM_VALUE_UNDEFINED && fvm_gc_collect(context, NULL) == FVM_OK;
 }
 

@@ -106,7 +106,7 @@ Font lookup through the Dis VFS belongs to the DisVM launch mode.
 
 ## Unibus terminal
 
-[Application exchange through the default rpc object](STYX_RPC_DEFAULT.md) is available to [typed Limbo clients](../../disVM/runtime/STYX-CHANNEL.md).
+[Application exchange through the default vfs object](STYX_RPC_DEFAULT.md) is available to [typed Limbo clients](../../disVM/runtime/STYX-CHANNEL.md).
 
 In a bidirectional launch, the Limbo program registers its
 `chan of array of byte` with `$Unibus.attach(input, output)` and disconnects
@@ -129,7 +129,7 @@ this object to the existing ActionScript adapter.
 
 ## System file handles
 
-Movies with a mounted VFS can use the [rpc and os file methods](STYX_RPC_OS.md).
+Movies with a mounted VFS can use the [vfs and os file methods](STYX_RPC_OS.md).
 
 ## Publishing and using movie modules
 

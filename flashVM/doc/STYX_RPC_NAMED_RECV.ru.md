@@ -1,8 +1,8 @@
-# read() именованного канала
+# recv() именованного канала
 
-[English](STYX_RPC_NAMED_READ.md) · [rpc.chan](STYX_RPC_NAMED_CHANNEL.ru.md) · [Код](../src/styxrpc/session_named_channel.cpp)
+[English](STYX_RPC_NAMED_RECV.md) · [vfs.chan](STYX_RPC_NAMED_CHANNEL.ru.md) · [Код](../src/styxrpc/session_named_channel.cpp)
 
-`port.read()` вызывается без аргументов. Метод ждёт запись от другого
+`port.recv()` вызывается без аргументов. Метод ждёт запись от другого
 открытого участника того же канала и возвращает декодированное значение.
 Выбирается первый ожидающий отправитель. Ссылка, выданная на этой сессии,
 становится живой привязкой. Присваивание через неё записывает данные в ячейку

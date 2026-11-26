@@ -97,7 +97,7 @@ open(path: string): ref Port
 
 
 # EN/RU: See styxnamed.m. / См. styxnamed.m.
-Port.read(port: self ref Port): array of byte
+Port.recv(port: self ref Port): array of byte
 {
     submit(port.fd, Read, nil);
     size := response(port.fd);
@@ -118,7 +118,7 @@ Port.read(port: self ref Port): array of byte
 
 
 # EN/RU: See styxnamed.m. / См. styxnamed.m.
-Port.write(port: self ref Port, frame: array of byte)
+Port.send(port: self ref Port, frame: array of byte)
 {
     if (!len frame) {
         raise "named channel frame is empty";

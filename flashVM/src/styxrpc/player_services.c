@@ -227,7 +227,7 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
     }
     if (status == FVM_OK)
     {
-        status = fvm_set_global(context, "rpc", &object);
+        status = fvm_set_global(context, "vfs", &object);
     }
     fvm_gc_roots_end(roots);
     if (status == FVM_OK)
@@ -235,6 +235,13 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
         status = fvm_styxrpc_channel_factory(context, "styxChannel");
     }
     return status;
+}
+
+
+/* EN/RU: See player_services.h. / См. player_services.h. */
+FVM_StyxRpcSession *fvm_styxrpc_player_binding(FVM_StyxRpcPlayerServices *services)
+{
+    return &services->session;
 }
 
 

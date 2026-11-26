@@ -6,6 +6,7 @@
 #define FLASHVM_STYXRPC_SESSION_H
 #include "value.h"
 #include "styxrpc/launch.h"
+#include "styxrpc/vfs_client.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,7 @@ extern "C" {
 
 #define FVM_STYXRPC_LAUNCH_SLOTS 8U  /* Maximum live launch fids per binding. */
 #define FVM_STYXRPC_SCRIPT_BYTES 2048U /* Maximum bytes in one AS file transfer. */
+#define FVM_STYXRPC_ABSOLUTE_PATH (STYXRPC_VFS_PATH_MAX + 2U) /* Leading slash and NUL. */
 
 typedef struct FVM_StyxRpcTicket
 {
@@ -28,6 +30,7 @@ typedef struct FVM_StyxRpcSession
     uint32_t last_token;         /* Last allocated token, including closed tickets. */
     int bound;                  /* One-shot registration, even after close. */
     FVM_StyxRpcTicket tickets[FVM_STYXRPC_LAUNCH_SLOTS]; /* Owned named launch state. */
+    char cwd[FVM_STYXRPC_ABSOLUTE_PATH]; /* Canonical absolute working path for ordinary VFS calls. */
 } FVM_StyxRpcSession;
 
 

@@ -8,9 +8,9 @@
 
 /* EN: Recognize one reserved VFS component without matching a longer ordinary name.
  * RU: Распознать служебный компонент VFS, сохраняя обычные имена с тем же префиксом. */
-static int reserved(const char *name, size_t size)
+int styxrpc_vfs_service_name(const char *name, size_t size)
 {
-    static const char *const names[] = {".", "..", ".fd", ".prog", ".pid", ".var", ".vfs",
+    static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs",
         ".unibus", ".rpc", ".messages", STYXRPC_NAMED_SERVICE, ".interface", ".programs",
         ".sysevents", ".state", ".upload", ".exit", ".idx", ".val", ".len", ".type",
         ".ins", ".push", ".pop", ".add", ".count"};
@@ -35,7 +35,8 @@ int styxrpc_named_path(const char *path)
     for (const char *part = path + 1; ; )
     {
         size_t size = strcspn(part, "/");
-        if (!size || (*part == '.' && reserved(part, size)))
+        if (!size || (size == 1 && part[0] == '.') ||
+            (size == 2 && !memcmp(part, "..", 2)) || styxrpc_vfs_service_name(part, size))
         {
             return 0;
         }

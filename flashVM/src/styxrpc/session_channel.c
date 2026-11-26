@@ -250,20 +250,20 @@ static FVM_Result publish_channel(FVM_Context *context, FVM_Object *self, unsign
 /* [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange)
 {
-    FVM_Value rpc;
-    FVM_Result status = fvm_get_global(context, "rpc", &rpc);
-    if (status != FVM_OK || rpc.type != FVM_VALUE_OBJECT)
+    FVM_Value vfs;
+    FVM_Result status = fvm_get_global(context, "vfs", &vfs);
+    if (status != FVM_OK || vfs.type != FVM_VALUE_OBJECT)
     {
         return status == FVM_OK ? FVM_NOT_FOUND : status;
     }
-    status = fvm_object_define_method_rooted(context, rpc.object, "send", send_value, exchange, NULL);
+    status = fvm_object_define_method_rooted(context, vfs.object, "send", send_value, exchange, NULL);
     if (status == FVM_OK)
     {
-        status = fvm_object_define_method_rooted(context, rpc.object, "recv", recv_value, exchange, NULL);
+        status = fvm_object_define_method_rooted(context, vfs.object, "recv", recv_value, exchange, NULL);
     }
     if (status == FVM_OK)
     {
-        status = fvm_object_define_method_rooted(context, rpc.object, "ready", channel_ready, exchange, NULL);
+        status = fvm_object_define_method_rooted(context, vfs.object, "ready", channel_ready, exchange, NULL);
     }
     return status;
 }

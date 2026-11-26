@@ -43,6 +43,8 @@ def main():
         modules = ("styxnamed",) if args.named else ("styxintref", "styxchannel")
         for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
+        if args.named:
+            (directory / "named-area").mkdir()
         name = "named" if args.named else "mixed"
         client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
         compile_movie(args, directory, tests / (name + "_pair.as"), name)
@@ -54,6 +56,8 @@ def main():
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp,
         )
+        if not args.named and (directory / "created/nested").exists():
+            raise RuntimeError("the movie did not remove its temporary directory")
         for created in (() if args.named else ("created/rpc-file", "rpc-root-file")):
             if (directory / created).read_bytes() != fixture_bytes:
                 raise RuntimeError("the movie did not create the expected VFS file")

@@ -6,13 +6,13 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Development version: **0.1771** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1772** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 
 [Connect FlashVM and DisVM through libstyxrpc](doc/STYX_RPC.md). [Positional reference graphs](doc/STYX_RPC_GRAPH.md). [Hybrid tables](doc/STYX_RPC_HYBRID.md). [Live UniBus channels](doc/STYX_RPC_CHANNELS.md). [Channel arguments](doc/STYX_RPC_CHANNEL_ARGUMENTS.md). [Nested channels in messages](doc/STYX_RPC_NESTED_CHANNELS.md). [Separate PID and module routes](doc/STYX_RPC_CHANNEL_DELEGATION.md).
 
-[Default RPC and the os alias](doc/STYX_RPC_DEFAULT.md).
+[The vfs object and os alias](doc/STYX_RPC_DEFAULT.md).
 
 [Custom UniBus messages through libstyxrpc](../lib/styxrpc/reference/custom_messages.md).
 

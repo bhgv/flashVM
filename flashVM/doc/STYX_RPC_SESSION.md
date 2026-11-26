@@ -43,8 +43,8 @@ integers and are never reused during the binding's lifetime. Unknown or
 closed tokens and malformed AS arguments produce an argument error.
 The script cannot change the bound caller PID, parent or inherited FD policy.
 
-File paths are relative to the mount, with no empty components, `.` or
-`..`. AS offsets are exact integers from 0 to 2⁵³−1. For file operations,
+File paths use the [working directory](STYX_VFS_CD.md) or an absolute path
+within the attachment. AS offsets are exact integers from 0 to 2⁵³−1. For file operations,
 status 0 means confirmed transfer, 1 means no operation on a file was
 admitted, 2 means confirmed failure and 3 means uncertainty. Confirmed
 bytes remain meaningful on partial failure. VM allocation failure after
@@ -56,7 +56,7 @@ Keep the binding alive while methods can be called. Close it before releasing
 the session. See the [named launch test](../tests/styxrpc/launch.c) and
 [VFS test](../tests/styxrpc/vfs.c).
 
-For ordinary paths and long-lived file handles, see the [rpc and os file methods](STYX_RPC_OS.md).
+For ordinary paths and long-lived file handles, see the [vfs and os file methods](STYX_RPC_OS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -70,7 +70,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_session_bind` | function | [include/flashvm/styxrpc_session.h:36](../include/flashvm/styxrpc_session.h#L36) |
-| `FVM_StyxRpcSession` | struct | [include/flashvm/styxrpc_session.h:24](../include/flashvm/styxrpc_session.h#L24) |
+| `fvm_styxrpc_session_bind` | function | [include/flashvm/styxrpc_session.h:39](../include/flashvm/styxrpc_session.h#L39) |
+| `FVM_StyxRpcSession` | struct | [include/flashvm/styxrpc_session.h:26](../include/flashvm/styxrpc_session.h#L26) |
 | `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

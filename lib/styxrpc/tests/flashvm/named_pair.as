@@ -7,14 +7,15 @@
 // RU: Вернуть скалярное значение и отправить массив через тот же канал.
 function onEnterFrame() {
     if (!done) {
-        var port = rpc.chan("/jobs");
-        var input = port.read();
-        var sent = port.write(input);
+        var entered = os.cd("/named-area");
+        var port = vfs.chan("../jobs");
+        var input = port.recv();
+        var sent = port.send(input);
         var numbers = "3,7";
         var values = numbers.split(",");
-        var graphSent = port.write(values);
-        var copy = port.read();
-        var graphEcho = port.write(copy);
+        var graphSent = port.send(values);
+        var copy = port.recv();
+        var graphEcho = port.send(copy);
         var retired = port.delete();
         done = true;
     }

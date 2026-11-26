@@ -6,8 +6,8 @@ Link the hosted `StyxRpc::launch` target and use an already attached client.
 `styxrpc_named_open(session, path)` returns one owned, read/write fid or NULL.
 Pass a canonical absolute VFS path with fewer than 1024 bytes including the
 leading slash. Release the fid with `styxrpc_vfs_close`.
-`styxrpc_named_read` blocks until a match and transfers a malloc-owned frame.
-`styxrpc_named_write` borrows a nonempty frame until the other side accepts it.
+`styxrpc_named_recv` blocks until a match and transfers a malloc-owned frame.
+`styxrpc_named_send` borrows a nonempty frame until the other side accepts it.
 Both return a `StyxRpcIoOutcome`. Serialize operations on each individual fid.
 Different fids can operate in separate OS threads. Pending waits poll in bounded
 requests without holding the transport lock between polls. A broken session

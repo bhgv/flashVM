@@ -377,6 +377,35 @@ FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relativ
 }
 
 
+/* EN/RU: See anchor_port.h. / См. anchor_port.h. */
+FVM_Result fvm_port_anchor_mkdir_at(FVM_PortAnchor *parent, const char *relative)
+{
+    const char *name;
+    char leaf[FVM_ANCHOR_PATH_BYTES];
+    int directory, result;
+    if (!parent || !fs_relative(relative))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    name = fs_basename(relative);
+    if (!*name || !strcmp(name, ".") || !strcmp(name, ".."))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    directory = fs_operation_parent(parent, relative, leaf);
+    if (directory < 0)
+    {
+        return FVM_ERROR;
+    }
+    result = mkdirat(directory, parent->confined ? leaf : relative, 0777);
+    if (parent->confined)
+    {
+        close(directory);
+    }
+    return result ? FVM_ERROR : FVM_OK;
+}
+
+
 /* EN/RU: See anchor_port.h; native effective-ID check, not guessed mode bits.
  * См. anchor_port.h; native effective-ID check, не догадка по mode bits. */
 FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relative, unsigned access)

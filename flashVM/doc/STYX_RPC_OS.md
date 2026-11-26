@@ -1,18 +1,21 @@
-# File methods on rpc and os
+# File methods on vfs and os
 
 [Русский](STYX_RPC_OS.ru.md) · [Player](STYX_RPC_PLAYER.md) · [Open and attributes](../src/styxrpc/os_open.c) · [Handle methods](../src/styxrpc/os.c)
 
-In the stock player, `os` refers to the same object as `rpc`. Both names
-use the VFS of the already attached libstyxrpc session. Paths
-with and without a leading slash start at that session root. `"/"` names the
-root directory. Service paths including `.prog`, `.var` and UniBus roots
+In the stock player, `os` refers to the same object as `vfs`. Both names share the attached libstyxrpc session and its working directory.
+A leading slash starts at the session root. Relative paths start at
+[`pwd()`](STYX_VFS_PWD.md). The initial working directory is `"/"`. Service paths including `.prog`, `.var` and UniBus roots
 are hidden.
 
 | Call | Result |
 | --- | --- |
-| `rpc.open(path[, mode])` | Open a file. Modes are `"r"` by default, `"w"` for write without truncation on open, `"rw"` for both directions, and `"wx"` to create a new write-only file. |
-| `rpc.opendir(path)` | One open directory fid with a forward iterator. |
-| `rpc.attr(path[, vfs])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
+| `vfs.open(path[, mode])` | Open a file. Modes are `"r"` by default, `"w"` for write without truncation on open, `"rw"` for both directions, and `"wx"` to create a new write-only file. |
+| `vfs.opendir(path)` | One open directory fid with a forward iterator. |
+| `vfs.attr(path[, root])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
+| [`vfs.mkdir(path)`](STYX_VFS_MKDIR.md) | Create one directory. |
+| [`vfs.rm(path)`](STYX_VFS_RM.md) | Remove a file or empty directory. |
+| [`vfs.cd(path)`](STYX_VFS_CD.md) | Change the shared working directory. |
+| [`vfs.pwd()`](STYX_VFS_PWD.md) | Read the canonical working path. |
 
 `"wx"` requires an existing directory that permits file creation. An occupied
 name causes an error. In the stock pair, DisVM applies the current VFS
@@ -42,7 +45,7 @@ fresh open before further writes. When the handle and extracted methods
 become unreachable, collection queues the fid clunk outside GC.
 
 ```actionscript
-var file = rpc.open("/movies/intro.swf");
+var file = vfs.open("/movies/intro.swf");
 var clip = file.load();
 file.close();
 clip.play();

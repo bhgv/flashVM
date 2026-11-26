@@ -7,7 +7,7 @@
 // RU: Выполнить один раз с дескриптором владельца, выданным тестовым хостом.
 function onEnterFrame() {
     if (!importProofDone) {
-        var importedCounter = rpc.acceptIntRef(wireRef);
+        var importedCounter = vfs.acceptIntRef(wireRef);
         var refs = channel.create("ref", 2);
         var forwarded = refs.send(ref importedCounter);
         var snapshot = importedCounter;

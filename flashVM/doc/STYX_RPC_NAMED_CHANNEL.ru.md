@@ -1,10 +1,10 @@
-# rpc.chan(path)
+# vfs.chan(path)
 
 [English](STYX_RPC_NAMED_CHANNEL.md) · [Штатная сессия](STYX_RPC_DEFAULT.ru.md) · [Реализация FlashVM](../src/styxrpc/session_named_channel.cpp) · [Протокол и Limbo](../../lib/styxrpc/reference/named_channel.ru.md)
 
-`rpc.chan(path)` открывает именованный канал в пространстве имён парной
-DisVM. `os.chan(path)` использует ту же сессию. Путь отсчитывается от её корня
-с начальной косой чертой или без неё. Каждый вызов получает одного участника.
+`vfs.chan(path)` открывает именованный канал в пространстве имён парной
+DisVM. `os.chan(path)` использует ту же сессию. Абсолютный путь отсчитывается от её корня,
+относительный — от [`pwd()`](STYX_VFS_PWD.ru.md). Каждый вызов получает одного участника.
 Если имя свободно, текущее пространство имён получает привязку канала.
 Родительский каталог должен разрешать запись и проход. Существующий обычный
 файл, каталог или служебный путь даёт ошибку. Существующий канал принимает
@@ -12,8 +12,8 @@ DisVM. `os.chan(path)` использует ту же сессию. Путь о�
 
 | Метод | Действие |
 | --- | --- |
-| [`read()`](STYX_RPC_NAMED_READ.ru.md) | Ждёт отправителя и возвращает его значение. |
-| [`write(value)`](STYX_RPC_NAMED_WRITE.ru.md) | Ждёт, пока читатель примет значение. |
+| [`recv()`](STYX_RPC_NAMED_RECV.ru.md) | Ждёт отправителя и возвращает его значение. |
+| [`send(value)`](STYX_RPC_NAMED_SEND.ru.md) | Ждёт, пока читатель примет значение. |
 | [`delete()`](STYX_RPC_NAMED_DELETE.ru.md) | Закрывает участие этого объекта. |
 
 Последнее закрытие снимает точную привязку из VFS. Сборщик мусора ставит
@@ -23,9 +23,9 @@ DisVM. `os.chan(path)` использует ту же сессию. Путь о�
 к имени канала.
 
 ```actionscript
-var work = rpc.chan("/jobs");
-var job = work.read();
-var sent = work.write(job);
+var work = vfs.chan("/jobs");
+var job = work.recv();
+var sent = work.send(job);
 var released = work.delete();
 ```
 

@@ -22,30 +22,6 @@ typedef struct OsEntry
 } OsEntry;
 
 
-/* EN: Parse a bounded session-root path. The SDK validates visible components.
- * RU: Разобрать ограниченный путь от корня сессии. Компоненты проверяет SDK. */
-int fvm_os_path(const FVM_Value *arg, char *path)
-{
-    char name[FVM_STYXRPC_MOVIE_PATH];
-    const char *relative = name;
-    if (!fvm_styxrpc_name(arg, name, sizeof(name)))
-    {
-        return 0;
-    }
-    if (name[0] == '/')
-    {
-        ++relative;
-    }
-    if (strlen(relative) > STYXRPC_VFS_PATH_MAX)
-    {
-        return 0;
-    }
-    path[0] = '/';
-    strcpy(path + 1, relative);
-    return 1;
-}
-
-
 /* EN: Clunk all held fids now or defer the wire operations in GC.
  * RU: Закрыть все удерживаемые fid сразу либо отложить обмен при GC. */
 static void retire(OsHandle *handle, int deferred)

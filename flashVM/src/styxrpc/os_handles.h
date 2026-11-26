@@ -19,9 +19,6 @@ typedef struct OsHandle
 } OsHandle;
 
 
-/* EN/RU: Normalize a root path. / Привести путь от корня к общему виду. */
-int fvm_os_path(const FVM_Value *, char *);
-
 /* EN/RU: Check a four-byte suffix. / Проверить четырёхбайтовое расширение. */
 int fvm_os_extension(const char *, const char *);
 

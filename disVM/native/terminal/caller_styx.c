@@ -232,11 +232,12 @@ static char *open_node(Qid *qid, int mode)
 }
 
 
-/* EN: Create a regular file in the original shared view. PID grants remain separate.
- * RU: Создать обычный файл в исходном общем дереве. Разрешения PID независимы. */
+/* EN: Create a regular file or directory in the mutable shared view.
+ * RU: Создать обычный файл либо каталог в изменяемом общем дереве. */
 static char *create_node(Qid *qid, char *name, int permissions, int mode)
 {
-    if (!owner->creatable || mode != OWRITE || permissions != 0666 ||
+    int directory = (unsigned)permissions == ((unsigned)DMDIR | 0777U) && mode == OREAD;
+    if (!owner->remove || (!directory && (mode != OWRITE || permissions != 0666)) ||
         owner->permanent.count == STYX_CALLER_NODES || styxgetaux(&owner->server))
     {
         return Eperm;
@@ -250,7 +251,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
         opened = calloc(1, sizeof(*opened));
         if (opened)
         {
-            opened->file = styxcreatefile(parent, name, &child);
+            opened->file = styxcreatechild(parent, name, directory, &child);
         }
     }
     if (qid->path == Qroot)
@@ -267,7 +268,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
         close_node(opened);
         return Eperm;
     }
-    *qid = styxqid(owner->permanent.count, 0);
+    *qid = styxqid(owner->permanent.count, directory);
     owner->permanent.nodes[owner->permanent.count++] = child;
     return nil;
 }
@@ -366,9 +367,20 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
     return nil;
 }
 
+/* EN: Remove a walked ordinary node, exclusively in the mutable shared view.
+ * RU: Удалить пройденный обычный узел изменяемого общего дерева. */
+static char *remove_node(Qid qid)
+{
+    CallerNodes *cache = NULL;
+    StyxBacking *node = owner->remove && qid.path > PROG_QID ? find(qid.path, &cache) : NULL;
+    return node && cache == &owner->permanent &&
+        styxremovenode(node, owner->remove, owner->remove_state) ? nil : Eperm;
+}
+
+
 static Styxops operations = { /* Ordinary Styx operations, with fid-owned opened aliases. */
     .walk = walk, .open = open_node, .create = create_node, .stat = stat_node, .read = read_node, .write = write_node,
-    .freefid = close_node
+    .remove = remove_node, .freefid = close_node
 };
 
 
@@ -406,7 +418,8 @@ static void *serve(void *state)
 
 /* EN: Create one owner with an optional trusted write-create provider.
  * RU: Создать владельца с необязательным доверенным провайдером создания. */
-static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared, int creatable)
+static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared,
+    StyxRemoveNode remove, void *state)
 {
     StyxCallerServer *server = calloc(1, sizeof(*server));
     if (!server || pthread_mutex_init(&server->scopes.lock, NULL))
@@ -427,11 +440,12 @@ static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared, in
             return NULL;
         }
         server->shared = shared;
-        server->creatable = creatable;
+        server->remove = remove;
+        server->remove_state = state;
         server->permanent.count = PROG_QID + 1;
     }
     server->references = 1;
-    if (styxphyinit(&server->server, &operations, reverse, creatable ? 0777 : 0555, 0, 8))
+    if (styxphyinit(&server->server, &operations, reverse, remove ? 0777 : 0555, 0, 8))
     {
         styxbackingfree(server->shared_root);
         dvm_provider_release(server->shared);
@@ -458,14 +472,15 @@ static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared, in
 /* EN/RU: See caller_styx.h. / См. caller_styx.h. */
 StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared)
 {
-    return start_view(reverse, shared, 0);
+    return start_view(reverse, shared, NULL, NULL);
 }
 
 
 /* EN/RU: See caller_styx.h. / См. caller_styx.h. */
-StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared)
+StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared,
+    StyxRemoveNode remove, void *state)
 {
-    return start_view(reverse, shared, 1);
+    return start_view(reverse, shared, remove, state);
 }
 
 

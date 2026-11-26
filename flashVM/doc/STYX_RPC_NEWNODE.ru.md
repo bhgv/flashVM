@@ -1,8 +1,8 @@
-# rpc.newnode
+# vfs.newnode
 
 [English](STYX_RPC_NEWNODE.md) · [Штатная сессия](STYX_RPC_DEFAULT.ru.md) · [Реализация](../src/styxrpc/session_nodes.cpp)
 
-`rpc.newnode(path, permissions, callback)` публикует файл с колбэком в
+`vfs.newnode(path, permissions, callback)` публикует файл с колбэком в
 VFS действующего фильма. Путь разрешается от корня парной сессии,
 независимо от cwd. Отсутствующие родительские каталоги создаются
 вместе с файлом. Допустимы неповторяющиеся буквы `r`, `w`, `x`
@@ -27,7 +27,7 @@ function readValue(op, buf, len) {
     buf[0] = 42;
     return 1;
 }
-rpc.newnode("/app/value", "r", readValue);
+vfs.newnode("/app/value", "r", readValue);
 ```
 
 Колбэк остаётся в контексте фильма до его смены или закрытия сессии.

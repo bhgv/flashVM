@@ -79,6 +79,13 @@ FVM_Result fvm_port_directory_open_at(FVM_PortAnchor *parent, const char *relati
 FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relative);
 
 
+/* EN: Create a new directory relative to a borrowed anchor, with mode 0777
+ * restricted by the process umask. Existing names are refused.
+ * RU: Создать новый каталог от заимствованного anchor с правами 0777,
+ * ограниченными umask процесса. Занятое имя отклоняется. */
+FVM_Result fvm_port_anchor_mkdir_at(FVM_PortAnchor *parent, const char *relative);
+
+
 /* EN/RU: Clone a held directory into a no-symlink/no-dot-dot capability. All child
  * opens/metadata/access/removal use component-wise nofollow resolution; original
  * remains unchanged. Owned *out or NULL/error; Windows currently UNSUPPORTED.

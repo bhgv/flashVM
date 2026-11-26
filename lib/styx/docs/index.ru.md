@@ -154,6 +154,7 @@ Copyright (c) 2026 bhgv
 - [styxclientlookup](reference/styxclientlookup.ru.md) — `Styx::client; hosted native build`
 - [styxclientlookupfrom](reference/styxclientlookupfrom.ru.md) — `Styx::client; hosted native build`
 - [styxclientmount](reference/styxclientmount.ru.md) — `Styx::client; hosted native build`
+- [styxclientmkdir](reference/styxclientmkdir.ru.md) — `Styx::client; hosted native build`
 - [styxclientmountfd](reference/styxclientmountfd.ru.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.ru.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.ru.md) — `Styx::client; hosted native build`
@@ -164,6 +165,7 @@ Copyright (c) 2026 bhgv
 - [styxclientreadcancel](reference/styxclientreadcancel.ru.md) — `Styx::client; hosted native build`
 - [styxclientreadwatch](reference/styxclientreadwatch.ru.md) — `Styx::client; hosted native build`
 - [styxclientrecord](reference/styxclientrecord.ru.md) — `Styx::client; hosted native build`
+- [styxclientremove](reference/styxclientremove.ru.md) — `Styx::client; hosted native build`
 - [styxclientretain](reference/styxclientretain.ru.md) — `Styx::client; hosted native build`
 - [styxclientrootdirectory](reference/styxclientrootdirectory.ru.md) — `Styx::client; hosted native build`
 - [styxclientshutdown](reference/styxclientshutdown.ru.md) — `Styx::client; hosted native build`

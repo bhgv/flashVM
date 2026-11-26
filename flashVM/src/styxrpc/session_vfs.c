@@ -30,7 +30,7 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
     const FVM_Value *args, FVM_Value *result, void *state)
 {
     const FVM_StyxRpcSession *binding = state;
-    char path[STYXRPC_VFS_PATH_MAX + 1];
+    char path[FVM_STYXRPC_ABSOLUTE_PATH];
     unsigned char bytes[FVM_STYXRPC_SCRIPT_BYTES];
     uint64_t offset, requested;
     size_t used, i;
@@ -39,7 +39,7 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
     FVM_Result materialized;
     StyxRpcIoOutcome status;
     (void)self;
-    if (argc != 3 || !fvm_styxrpc_name(args, path, sizeof(path)) ||
+    if (argc != 3 || !fvm_styxrpc_resolve_path(binding, args, path) ||
         !fvm_styxrpc_number(args + 1, FVM_STYXRPC_EXACT_OFFSET, &offset) ||
         !fvm_styxrpc_number(args + 2, FVM_STYXRPC_SCRIPT_BYTES, &requested))
     {
@@ -50,7 +50,7 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
     {
         return FVM_OUT_OF_MEMORY;
     }
-    status = styxrpc_vfs_read_at(binding->client, path, offset, bytes, (size_t)requested, &used);
+    status = styxrpc_vfs_read_at(binding->client, path + 1, offset, bytes, (size_t)requested, &used);
     for (i = 0; i < used; ++i)
     {
         fvm_value_number(items + i, bytes[i]);
@@ -115,7 +115,7 @@ static FVM_Result write_file(FVM_Context *context, FVM_Object *self, unsigned ar
     const FVM_Value *args, FVM_Value *result, void *state)
 {
     const FVM_StyxRpcSession *binding = state;
-    char path[STYXRPC_VFS_PATH_MAX + 1];
+    char path[FVM_STYXRPC_ABSOLUTE_PATH];
     unsigned char bytes[FVM_STYXRPC_SCRIPT_BYTES];
     uint64_t offset;
     size_t size, used;
@@ -123,7 +123,7 @@ static FVM_Result write_file(FVM_Context *context, FVM_Object *self, unsigned ar
     FVM_Result status;
     StyxRpcIoOutcome written;
     (void)self;
-    if (argc != 3 || !fvm_styxrpc_name(args, path, sizeof(path)) ||
+    if (argc != 3 || !fvm_styxrpc_resolve_path(binding, args, path) ||
         !fvm_styxrpc_number(args + 1, FVM_STYXRPC_EXACT_OFFSET, &offset))
     {
         return FVM_INVALID_ARGUMENT;
@@ -133,7 +133,7 @@ static FVM_Result write_file(FVM_Context *context, FVM_Object *self, unsigned ar
     {
         return status;
     }
-    written = styxrpc_vfs_write_at(binding->client, path, offset, bytes, size, &used);
+    written = styxrpc_vfs_write_at(binding->client, path + 1, offset, bytes, size, &used);
     fvm_value_number(&data, (double)used);
     return pair(context, written, &data, result);
 }
@@ -145,16 +145,16 @@ static FVM_Result stat_file(FVM_Context *context, FVM_Object *self, unsigned arg
     const FVM_Value *args, FVM_Value *result, void *state)
 {
     const FVM_StyxRpcSession *binding = state;
-    char path[STYXRPC_VFS_PATH_MAX + 1];
+    char path[FVM_STYXRPC_ABSOLUTE_PATH];
     StyxRpcFileInfo info = {0, 0, 0};
     FVM_Value fields[5];
     StyxRpcIoOutcome status;
     (void)self;
-    if (argc != 1 || !fvm_styxrpc_name(args, path, sizeof(path)))
+    if (argc != 1 || !fvm_styxrpc_resolve_path(binding, args, path))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    status = styxrpc_vfs_stat(binding->client, path, &info);
+    status = styxrpc_vfs_stat(binding->client, path + 1, &info);
     fvm_value_number(fields, status);
     fvm_value_number(fields + 1, (double)(info.length >> FVM_STYXRPC_U32_BITS));
     fvm_value_number(fields + 2, (double)(uint32_t)info.length);

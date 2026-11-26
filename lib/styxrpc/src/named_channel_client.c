@@ -77,7 +77,7 @@ static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size)
 
 
 /* EN/RU: See named_channel.h. / См. named_channel.h. */
-StyxRpcIoOutcome styxrpc_named_read(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size)
+StyxRpcIoOutcome styxrpc_named_recv(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size)
 {
     if (!file || !bytes || !size)
     {
@@ -112,7 +112,7 @@ StyxRpcIoOutcome styxrpc_named_read(StyxRpcVfsFile *file, unsigned char **bytes,
 
 
 /* EN/RU: See named_channel.h. / См. named_channel.h. */
-StyxRpcIoOutcome styxrpc_named_write(StyxRpcVfsFile *file, const void *bytes, size_t size)
+StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, size_t size)
 {
     if (!file || !bytes || !size || size > STYXRPC_NAMED_MAX)
     {

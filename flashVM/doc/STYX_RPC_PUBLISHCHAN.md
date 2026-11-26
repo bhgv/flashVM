@@ -1,8 +1,8 @@
-# rpc.publishchan
+# vfs.publishchan
 
 [Русский](STYX_RPC_PUBLISHCHAN.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_channel.c)
 
-`rpc.publishchan(address, callback)` reserves the syntax for accepting a
+`vfs.publishchan(address, callback)` reserves the syntax for accepting a
 new connection. Supply a nonempty address string without
 NUL, for example `tcp!port`. The callback will prepare the accepted
 connection's VFS.

@@ -10,7 +10,6 @@
 extern "C"
 {
 #include "session_methods.h"
-#include "os_handles.h"
 #include "managed_values.h"
 }
 
@@ -59,7 +58,7 @@ FVM_Result delete_channel(FVM_Context *, FVM_Object *, unsigned argc,
 
 /* [ASINC] [GC:] EN: Wait for a read from another participant, sending a copy or live descriptor.
  * RU: Дождаться чтения другим участником, посылая копию либо живой дескриптор. */
-FVM_Result write_channel(FVM_Context *context, FVM_Object *, unsigned argc,
+FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     NamedHandle *handle = static_cast<NamedHandle *>(state);
@@ -74,12 +73,12 @@ FVM_Result write_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     {
         return encoded;
     }
-    StyxRpcIoOutcome outcome = styxrpc_named_write(handle->file, frame, size);
+    StyxRpcIoOutcome outcome = styxrpc_named_send(handle->file, frame, size);
     free(frame);
     if (outcome != STYXRPC_IO_OK)
     {
         close_handle(handle, 0);
-        return fvm_styxrpc_managed_fail(context, "named channel write failed");
+        return fvm_styxrpc_managed_fail(context, "named channel send failed");
     }
     fvm_value_undefined(out);
     return FVM_OK;
@@ -88,7 +87,7 @@ FVM_Result write_channel(FVM_Context *context, FVM_Object *, unsigned argc,
 
 /* [ASINC] [GC:] EN: Wait for a matching write and bind a descriptor or unpack its graph.
  * RU: Дождаться парной записи и связать дескриптор либо восстановить граф. */
-FVM_Result read_channel(FVM_Context *context, FVM_Object *, unsigned argc,
+FVM_Result recv_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     const FVM_Value *, FVM_Value *out, void *state)
 {
     NamedHandle *handle = static_cast<NamedHandle *>(state);
@@ -98,10 +97,10 @@ FVM_Result read_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     }
     unsigned char *frame;
     size_t size;
-    if (styxrpc_named_read(handle->file, &frame, &size) != STYXRPC_IO_OK)
+    if (styxrpc_named_recv(handle->file, &frame, &size) != STYXRPC_IO_OK)
     {
         close_handle(handle, 0);
-        return fvm_styxrpc_managed_fail(context, "named channel read failed");
+        return fvm_styxrpc_managed_fail(context, "named channel receive failed");
     }
     FVM_Result result = fvm_named_decode(context, handle->session, frame, size, out);
     free(frame);
@@ -113,8 +112,8 @@ FVM_Result read_channel(FVM_Context *context, FVM_Object *, unsigned argc,
  * RU: Передать открытый fid удерживаемой обёртке, доступной из извлечённых методов. */
 FVM_Result wrap(FVM_Context *context, NamedHandle *handle, FVM_Value *out)
 {
-    static const char *const names[] = {"read", "write", "delete"};
-    static const FVM_NativeFunction calls[] = {read_channel, write_channel, delete_channel};
+    static const char *const names[] = {"recv", "send", "delete"};
+    static const FVM_NativeFunction calls[] = {recv_channel, send_channel, delete_channel};
     FVM_GCRootScope *roots;
     FVM_Result status = fvm_gc_roots_begin(context, &roots);
     if (status != FVM_OK)
@@ -164,8 +163,8 @@ extern "C" FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *context, FVM_O
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     FVM_StyxRpcSession *session = static_cast<FVM_StyxRpcSession *>(state);
-    char path[FVM_STYXRPC_MOVIE_PATH];
-    if (!session->client || argc != 1 || !fvm_os_path(args, path) || !styxrpc_named_path(path))
+    char path[FVM_STYXRPC_ABSOLUTE_PATH];
+    if (!session->client || argc != 1 || !fvm_styxrpc_resolve_path(session, args, path) || !styxrpc_named_path(path))
     {
         return FVM_INVALID_ARGUMENT;
     }

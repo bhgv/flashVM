@@ -12,11 +12,11 @@ Styxnamed: module
 
         # EN: Wait for a write and return its tagged, counted frame.
         # RU: Дождаться записи и вернуть кадр с тегом и длиной.
-        read: fn(port: self ref Port): array of byte;
+        recv: fn(port: self ref Port): array of byte;
 
         # EN: Wait for a participant to accept this nonempty frame.
         # RU: Дождаться принятия непустого кадра участником.
-        write: fn(port: self ref Port, frame: array of byte);
+        send: fn(port: self ref Port, frame: array of byte);
 
         # EN: Drop this participant. Repeated close is harmless.
         # RU: Освободить участника. Повторное закрытие безопасно.

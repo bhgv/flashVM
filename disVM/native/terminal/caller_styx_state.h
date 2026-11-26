@@ -29,7 +29,8 @@ struct StyxCallerServer
     StyxCallerScopes scopes; /* Concurrent per-PID publications. */
     size_t references; /* Control and bound mount owners, under scopes.lock. */
     CallerNodes cache[STYX_CALLER_SLOTS]; /* Dispatcher-owned node caches. */
-    int creatable; /* Shared provider explicitly supports exclusive creation. */
+    StyxRemoveNode remove; /* Removes visible entries in the mutable shared view. */
+    void *remove_state; /* Borrowed state for the remove callback. */
     DVM_Provider *shared; /* Retained optional view with its own access ceiling. */
     StyxBacking *shared_root; /* Identity-bound permanent root for ordinary walks. */
     CallerNodes permanent; /* Ordinary visited nodes in reserved generation zero. */

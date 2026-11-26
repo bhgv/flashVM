@@ -81,12 +81,57 @@ static int live_create_path(const char *relative)
 }
 
 
+/* EN: Remove a node only if its live selection still agrees with the walked fid.
+ * RU: Удалить узел, только если выбранный живой узел совпадает с пройденным fid. */
+static int live_remove(void *group, const char *relative, const StyxMeta *expected)
+{
+    DVM_ResourcePlan plan;
+    if (!live_create_path(relative) || !live_plan(group, relative, &plan))
+    {
+        return 0;
+    }
+    FVM_FileInfo info;
+    int removed = dvm_resource_info(&plan, &info) == FVM_OK && !plan.provider && !plan.mount_root &&
+        info.directory == expected->directory &&
+        (((uint64_t)info.device.high << 32) | info.device.low) == expected->device &&
+        (((uint64_t)info.identity.high << 32) | info.identity.low) == expected->identity &&
+        dvm_resource_remove(&plan) == FVM_OK;
+    dvm_resource_close(&plan);
+    return removed;
+}
+
+
+/* EN: Make a native directory and open it using the same resolved parent anchor.
+ * RU: Создать нативный каталог и открыть его от того же выбранного anchor. */
+static FVM_Result live_mkdir(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
+{
+    if (!plan->anchor)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    FVM_PortAnchor *anchor = dvm_anchor_port(plan->anchor);
+    FVM_Result status = fvm_port_anchor_mkdir_at(anchor, plan->relative);
+    if (status == FVM_OK)
+    {
+        FVM_PortDirectory *directory = NULL;
+        status = fvm_port_directory_open_at(anchor, plan->relative, &directory);
+        if (status == FVM_OK && !dvm_vfs_adopt(output, NULL, directory))
+        {
+            fvm_port_directory_close(directory);
+            status = FVM_ERROR;
+        }
+    }
+    return status;
+}
+
+
 /* EN: Open the current resource, returning an independent file or directory cursor.
  * RU: Открыть текущий ресурс и вернуть независимый файл либо курсор каталога. */
 static FVM_Result live_open(void *group, const char *relative, const char *mode, DVM_VfsHandle *output)
 {
     DVM_ResourcePlan plan;
-    int creating = !strcmp(mode, "wx");
+    int directory = !strcmp(mode, "mkdir");
+    int creating = directory || !strcmp(mode, "wx");
     if ((creating && !live_create_path(relative)) || !live_plan(group, relative, &plan))
     {
         return FVM_NOT_FOUND;
@@ -101,7 +146,11 @@ static FVM_Result live_open(void *group, const char *relative, const char *mode,
     }
     if (status == FVM_OK)
     {
-        if (plan.directory && !strcmp(mode, "r"))
+        if (directory)
+        {
+            status = live_mkdir(&plan, output);
+        }
+        else if (plan.directory && !strcmp(mode, "r"))
         {
             status = dvm_namespace_directory(&plan, output);
         }

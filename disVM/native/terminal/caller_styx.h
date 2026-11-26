@@ -7,6 +7,7 @@
 #include "phy.h"
 #include "client.h"
 #include "provider.h"
+#include "tree.h"
 
 typedef struct StyxCallerServer StyxCallerServer; /* Owned server and binding state. */
 
@@ -21,9 +22,10 @@ StyxCallerServer *styxcallerserver(RemotePhy *reverse);
 StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared);
 
 
-/* EN: Start a reverse server whose trusted shared view supports wx creation.
- * RU: Запустить встречный сервер с доверенным общим деревом, поддерживающим wx. */
-StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared);
+/* EN: Start a mutable shared view. Borrow callback state until the server joins.
+ * RU: Запустить изменяемое общее дерево. Состояние колбэка живёт до join сервера. */
+StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared,
+    StyxRemoveNode remove, void *state);
 
 
 /* EN: Bind a fresh unpublished forward provider. The provider pins the server state.

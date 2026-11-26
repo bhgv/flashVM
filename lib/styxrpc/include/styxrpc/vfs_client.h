@@ -43,6 +43,11 @@ typedef enum StyxRpcFileMode
 } StyxRpcFileMode;
 
 
+/* EN: Identify one counted reserved component for ordinary path resolution.
+ * RU: Распознать один служебный компонент с длиной при разрешении обычного пути. */
+int styxrpc_vfs_service_name(const char *name, size_t size);
+
+
 /* EN: Borrow session and path, publish metadata only on success.
  * RU: Заимствовать session и path, выдать метаданные только при успехе. */
 StyxRpcIoOutcome styxrpc_vfs_stat(struct StyxClient *session, const char *path, StyxRpcFileInfo *info);
@@ -71,6 +76,16 @@ StyxRpcIoOutcome styxrpc_vfs_open(struct StyxClient *session, const char *path,
  * RU: Создать обычный файл через существующий видимый каталог. При успехе
  * открыть его для записи. При сбое результат может быть неопределённым. */
 StyxRpcIoOutcome styxrpc_vfs_create(struct StyxClient *session, const char *path, StyxRpcVfsFile **file);
+
+
+/* EN: Create one directory at a visible relative path using the peer's mode policy.
+ * RU: Создать один каталог по видимому относительному пути с правами провайдера. */
+StyxRpcIoOutcome styxrpc_vfs_mkdir(struct StyxClient *session, const char *path);
+
+
+/* EN: Remove one visible relative entry. Never retry an uncertain removal.
+ * RU: Удалить один видимый узел по относительному пути. Без повтора при неопределённости. */
+StyxRpcIoOutcome styxrpc_vfs_remove(struct StyxClient *session, const char *path);
 
 
 /* EN: Query one held file independent of path replacement.

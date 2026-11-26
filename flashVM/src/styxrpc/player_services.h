@@ -16,6 +16,11 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
     StyxRpcModuleSlot *slot, FVM_StyxRpcPlayerServices **out);
 
 
+/* EN: Borrow the binding while the movie services are alive.
+ * RU: Заимствовать привязку на время жизни служб фильма. */
+FVM_StyxRpcSession *fvm_styxrpc_player_binding(FVM_StyxRpcPlayerServices *services);
+
+
 /* EN: Make services current, retiring any old image fids. NULL clears slot.
  * RU: Сделать services текущими и отозвать старые fid. NULL очищает слот. */
 FVM_Result fvm_styxrpc_player_activate(StyxRpcModuleSlot *slot, FVM_StyxRpcPlayerServices *services);

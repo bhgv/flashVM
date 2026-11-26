@@ -83,6 +83,15 @@ FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relativ
 }
 
 
+/* EN/RU: No relative HANDLE mkdir backend. / Нет относительного mkdir для HANDLE. */
+FVM_Result fvm_port_anchor_mkdir_at(FVM_PortAnchor *parent, const char *relative)
+{
+    (void)parent;
+    (void)relative;
+    return FVM_UNSUPPORTED;
+}
+
+
 /* EN/RU: No effective relative HANDLE access backend; never guess ACL rights.
  * Нет effective relative HANDLE access backend; не угадывать ACL rights. */
 FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relative, unsigned access)

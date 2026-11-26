@@ -18,6 +18,17 @@
  * тот же fid открывает потомка. Неопределённый исход запрещает повтор на этом fid. */
 int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result);
 
+/* EN: Create one directory with the given 0777 permission mask. Success opens
+ * it for reading on the same fid. Serialize use and retirement of that fid.
+ * RU: Создать каталог с правами в пределах 0777 и открыть для чтения на том же fid.
+ * Сериализовать использование и закрытие fid. */
+int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, StyxTransfer *result);
+
+
+/* EN: Send one Tremove and always consume fid. result receives the acknowledgement.
+ * RU: Передать один Tremove и поглотить fid при любом исходе. Подтверждение в result. */
+int styxclientremove(StyxFid *fid, StyxTransfer *result);
+
 #ifdef __cplusplus
 }
 #endif

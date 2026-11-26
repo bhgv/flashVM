@@ -100,13 +100,34 @@ static int status(void *host, char *bytes, size_t capacity, size_t *used)
 }
 
 
+/* [GC:] EN: Both aliases share cwd. A returned path remains valid across later changes.
+ * RU: Обе привязки используют общий cwd. Выданный путь живёт после смены cwd. */
+static int check_cwd(FVM_Context *context, FVM_Object *vfs, FVM_Object *os)
+{
+    FVM_Value first, path, result;
+    return fvm_object_call(context, vfs, "pwd", 0, NULL, &first) == FVM_OK &&
+        first.type == FVM_VALUE_STRING && !strcmp(first.string, "/") &&
+        fvm_set_global(context, "firstDirectory", &first) == FVM_OK &&
+        fvm_value_string(&path, "/movies/chapter") == FVM_OK &&
+        fvm_object_call(context, os, "cd", 1, &path, &result) == FVM_OK &&
+        fvm_object_call(context, vfs, "pwd", 0, NULL, &result) == FVM_OK &&
+        result.type == FVM_VALUE_STRING && !strcmp(result.string, "/movies/chapter") &&
+        fvm_value_string(&path, "../.prog/..") == FVM_OK &&
+        fvm_object_call(context, vfs, "cd", 1, &path, &result) == FVM_INVALID_ARGUMENT &&
+        fvm_object_call(context, os, "pwd", 0, NULL, &result) == FVM_OK &&
+        result.type == FVM_VALUE_STRING && !strcmp(result.string, "/movies/chapter") &&
+        fvm_get_global(context, "firstDirectory", &first) == FVM_OK &&
+        first.type == FVM_VALUE_STRING && !strcmp(first.string, "/");
+}
+
+
 /* [GC:] EN: Drop an unrooted file and directory without explicit close, collect, and reuse the session.
  * RU: Потерять необерегаемые файл и каталог без close, собрать мусор и повторно использовать сессию. */
 static int collect_os_handles(FVM_Runtime *runtime, StyxClient *client)
 {
     FVM_Context *context = NULL;
     FVM_StyxRpcMovies movies = {0};
-    FVM_Value rpc, os, path, handle, rpc_state, connected, channel;
+    FVM_Value vfs, os, path, handle, rpc_state, connected, channel;
     FVM_StyxRpcSession binding = {0};
     unsigned long reclaimed = 0;
     if (fvm_context_create(runtime, &context) != FVM_OK)
@@ -115,23 +136,25 @@ static int collect_os_handles(FVM_Runtime *runtime, StyxClient *client)
     }
     movies.context = context;
     movies.session = client;
-    int ok = fvm_styxrpc_session_bind(context, &binding, client, NULL, &rpc) == FVM_OK &&
-        fvm_set_global(context, "rpc", &rpc) == FVM_OK && fvm_styxrpc_os_install(&movies) == FVM_OK &&
-        fvm_get_global(context, "os", &os) == FVM_OK && os.object == rpc.object &&
+    movies.binding = &binding;
+    int ok = fvm_styxrpc_session_bind(context, &binding, client, NULL, &vfs) == FVM_OK &&
+        fvm_set_global(context, "vfs", &vfs) == FVM_OK && fvm_styxrpc_os_install(&movies) == FVM_OK &&
+        fvm_get_global(context, "os", &os) == FVM_OK && os.object == vfs.object &&
+        check_cwd(context, vfs.object, os.object) &&
         fvm_object_call(context, os.object, "status", 0, NULL, &rpc_state) == FVM_OK &&
         rpc_state.type == FVM_VALUE_OBJECT &&
         fvm_object_get(context, rpc_state.object, "connected", &connected) == FVM_OK &&
         connected.type == FVM_VALUE_BOOLEAN && connected.boolean &&
         fvm_object_get(context, rpc_state.object, "channel", &channel) == FVM_OK &&
         channel.type == FVM_VALUE_STRING && !strcmp(channel.string, "open") &&
-        fvm_value_string(&path, "/movies/chapter/child.swf") == FVM_OK &&
-        fvm_object_call(context, rpc.object, "open", 1, &path, &handle) == FVM_OK &&
+        fvm_value_string(&path, "child.swf") == FVM_OK &&
+        fvm_object_call(context, vfs.object, "open", 1, &path, &handle) == FVM_OK &&
         fvm_value_string(&path, "/movies") == FVM_OK &&
         fvm_object_call(context, os.object, "opendir", 1, &path, &handle) == FVM_OK &&
         fvm_gc_collect(context, &reclaimed) == FVM_OK && reclaimed >= 2 &&
         fvm_object_call(context, os.object, "attr", 1, &path, &handle) == FVM_OK;
     fvm_styxrpc_session_close(&binding);
-    ok = ok && fvm_object_call(context, rpc.object, "status", 0, NULL, &rpc_state) == FVM_OK &&
+    ok = ok && fvm_object_call(context, vfs.object, "status", 0, NULL, &rpc_state) == FVM_OK &&
         rpc_state.type == FVM_VALUE_OBJECT &&
         fvm_object_get(context, rpc_state.object, "connected", &connected) == FVM_OK &&
         connected.type == FVM_VALUE_BOOLEAN && !connected.boolean &&

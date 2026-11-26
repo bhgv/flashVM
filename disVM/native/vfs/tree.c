@@ -131,7 +131,7 @@ static int fail(StyxOpen *opened)
 
 
 /* EN/RU: See tree.h. / См. tree.h. */
-StyxOpen *styxcreatefile(StyxBacking *parent, const char *name, StyxBacking **out)
+StyxOpen *styxcreatechild(StyxBacking *parent, const char *name, int directory, StyxBacking **out)
 {
     StyxMeta info;
     if (!parent || !name || !*name || strchr(name, '/') || !strcmp(name, ".") ||
@@ -160,17 +160,32 @@ StyxOpen *styxcreatefile(StyxBacking *parent, const char *name, StyxBacking **ou
         child->path[prefix - 1] = '/';
     }
     strcpy(child->path + prefix, name);
-    if (dvm_provider_open(child->provider, child->path, "wx", &file->handle) != FVM_OK ||
-        !styxfileinfo(file, &child->captured) || child->captured.directory)
+    if (dvm_provider_open(child->provider, child->path, directory ? "mkdir" : "wx", &file->handle) != FVM_OK ||
+        !styxfileinfo(file, &child->captured) || child->captured.directory != directory ||
+        (directory && !dvm_provider_retain(child->provider)))
     {
         styxfileclose(file);
         styxbackingfree(child);
         return NULL;
     }
     child->bound = 1;
-    file->access = FVM_ACCESS_WRITE;
+    file->access = directory ? FVM_ACCESS_READ : FVM_ACCESS_WRITE;
+    if (directory)
+    {
+        file->provider = child->provider;
+        file->directory = 1;
+        file->captured = child->captured;
+        strcpy(file->path, child->path);
+    }
     *out = child;
     return file;
+}
+
+
+/* EN/RU: See tree.h. / См. tree.h. */
+int styxremovenode(const StyxBacking *node, StyxRemoveNode remove, void *state)
+{
+    return node && node->bound && strcmp(node->path, ".") && remove(state, node->path, &node->captured);
 }
 
 

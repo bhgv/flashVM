@@ -6,6 +6,7 @@
 #define FVM_STYXRPC_MOVIE_LOAD_H
 #include "flashvm/flashvm.h"
 #include "flashvm/value.h"
+#include "flashvm/styxrpc_session.h"
 #include "styxrpc/vfs_client.h"
 
 #define FVM_STYXRPC_MOVIE_QUEUE 16U /* Maximum outstanding requests per playback owner. */
@@ -21,7 +22,8 @@ typedef struct FVM_StyxRpcMovies
 {
     FVM_Context *context;                /* Borrowed owner. */
     FVM_Object *root;                    /* [GC:] Borrowed playback root pin. */
-    struct StyxClient *session;         /* Borrowed attached Dis root. */
+    struct StyxClient *session;          /* Borrowed attached Dis root. */
+    FVM_StyxRpcSession *binding;         /* Borrowed AS binding for shared cwd. */
     size_t limit;                         /* Maximum wire bytes per child. */
     size_t pending;                       /* Number of queued requests. */
     unsigned long loaded;                /* Complete committed movie replacements since upload. */
@@ -61,8 +63,8 @@ FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, 
  * RU: Освободить либо применить запросы по порядку у владельца после выполнения кадра. */
 void fvm_styxrpc_movies_finish(FVM_StyxRpcMovies *movies, int apply);
 
-/* EN: Install file methods on attached rpc and expose os as the same object.
- * RU: Установить файловые методы в rpc и выставить тот же объект как os. */
+/* EN: Install file methods on attached vfs and expose os as the same object.
+ * RU: Установить файловые методы в vfs и выставить тот же объект как os. */
 FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *);
 
 #endif

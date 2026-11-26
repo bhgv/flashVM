@@ -103,8 +103,10 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
 }
 
 
-/* EN/RU: See client.h. / См. client.h. */
-int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result)
+/* EN: Create a regular file or directory on an unopened directory fid.
+ * RU: Создать файл либо каталог на fid ещё не открытого каталога. */
+static int create_child(StyxFid *directory, const char *name, unsigned permissions, unsigned kind,
+    int mode, StyxTransfer *result)
 {
     if (!result)
     {
@@ -117,5 +119,19 @@ int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions,
     {
         return 0;
     }
-    return openfid(directory, name, permissions, mode, NULL, result);
+    return openfid(directory, name, permissions | kind, mode, NULL, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, 0, mode, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, (unsigned)DMDIR, OREAD, result);
 }

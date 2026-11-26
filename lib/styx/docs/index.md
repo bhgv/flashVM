@@ -154,6 +154,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientlookup](reference/styxclientlookup.md) — `Styx::client; hosted native build`
 - [styxclientlookupfrom](reference/styxclientlookupfrom.md) — `Styx::client; hosted native build`
 - [styxclientmount](reference/styxclientmount.md) — `Styx::client; hosted native build`
+- [styxclientmkdir](reference/styxclientmkdir.md) — `Styx::client; hosted native build`
 - [styxclientmountfd](reference/styxclientmountfd.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.md) — `Styx::client; hosted native build`
@@ -164,6 +165,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientreadcancel](reference/styxclientreadcancel.md) — `Styx::client; hosted native build`
 - [styxclientreadwatch](reference/styxclientreadwatch.md) — `Styx::client; hosted native build`
 - [styxclientrecord](reference/styxclientrecord.md) — `Styx::client; hosted native build`
+- [styxclientremove](reference/styxclientremove.md) — `Styx::client; hosted native build`
 - [styxclientretain](reference/styxclientretain.md) — `Styx::client; hosted native build`
 - [styxclientrootdirectory](reference/styxclientrootdirectory.md) — `Styx::client; hosted native build`
 - [styxclientshutdown](reference/styxclientshutdown.md) — `Styx::client; hosted native build`

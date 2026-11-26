@@ -73,11 +73,11 @@ StyxRpcVfsFile *styxrpc_named_open(struct StyxClient *session, const char *path)
 
 /* EN: Wait on file for one consumed nonempty frame. Own the result via free.
  * RU: Дождаться одной принятой непустой записи. Результат освобождается через free. */
-StyxRpcIoOutcome styxrpc_named_read(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size);
+StyxRpcIoOutcome styxrpc_named_recv(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size);
 
 /* EN: Wait until a reader pairs with this write. Serialize operations on each fid.
  * RU: Дождаться пары для этой записи. Сериализовать операции на каждом fid. */
-StyxRpcIoOutcome styxrpc_named_write(StyxRpcVfsFile *file, const void *bytes, size_t size);
+StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, size_t size);
 
 #ifdef __cplusplus
 }

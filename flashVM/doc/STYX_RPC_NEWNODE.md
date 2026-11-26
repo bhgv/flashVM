@@ -1,8 +1,8 @@
-# rpc.newnode
+# vfs.newnode
 
 [Русский](STYX_RPC_NEWNODE.ru.md) · [Default session](STYX_RPC_DEFAULT.md) · [Implementation](../src/styxrpc/session_nodes.cpp)
 
-`rpc.newnode(path, permissions, callback)` publishes a callback file in
+`vfs.newnode(path, permissions, callback)` publishes a callback file in
 the active movie's VFS. The path is rooted at the paired session,
 independent of cwd. Missing parent directories are created with the file.
 Permissions are distinct letters from `r`, `w` and `x`. Conflicting
@@ -26,7 +26,7 @@ function readValue(op, buf, len) {
     buf[0] = 42;
     return 1;
 }
-rpc.newnode("/app/value", "r", readValue);
+vfs.newnode("/app/value", "r", readValue);
 ```
 
 The movie retains its callback until retirement or session shutdown. Open

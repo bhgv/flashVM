@@ -10,10 +10,19 @@
  * Пройти один компонент; dotdot ограничен prepared root. Свой node/NULL. */
 StyxBacking *styxwalknode(StyxBacking *node, const char *component);
 /* EN: Exclusively create one named child, adopting its open cursor and returning
- * its captured node via out. The trusted provider must check permissions in wx.
+ * its captured node via out. Select an ordinary file or directory with directory.
+ * The trusted provider checks permissions in wx or mkdir.
  * RU: Исключительно создать потомка, выдать его курсор и удержанный узел в out.
- * Доверенный провайдер обязан проверить права в режиме wx. */
-StyxOpen *styxcreatefile(StyxBacking *parent, const char *name, StyxBacking **out);
+ * Доверенный провайдер проверяет права в режиме wx либо mkdir. */
+StyxOpen *styxcreatechild(StyxBacking *parent, const char *name, int directory, StyxBacking **out);
+
+/* EN: The live view removes path only if it still resolves to the captured identity.
+ * RU: Живое представление удаляет path только для совпадающей identity. */
+typedef int (*StyxRemoveNode)(void *state, const char *path, const StyxMeta *expected);
+
+/* EN: Invoke remove on the ordinary bound node, borrowing all inputs.
+ * RU: Вызвать remove для привязанного обычного узла, заимствуя параметры. */
+int styxremovenode(const StyxBacking *node, StyxRemoveNode remove, void *state);
 
 /* EN: Compare the retained provider, path and captured object identity.
  * RU: Сравнить удерживаемый провайдер, путь и захваченную идентичность. */
