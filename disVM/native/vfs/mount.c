@@ -159,10 +159,10 @@ static void destroy(void *state)
     styxclientfree(mount->client);
     free(mount);
 }
-/* EN: Probe a readable remote directory on one fid without inferring access
- * from mode. Subsequent walks still go through the original server.
- * RU: Проверить читаемый удалённый каталог на одном fid. Последующий
- * обход по-прежнему выполняется исходным сервером. */
+/* EN: Admit a temporary read-only directory open under the same host ceiling as openfile.
+ * Borrow state/path, reject writes, and clunk the probe fid after the server decision.
+ * RU: Проверить временное открытие каталога на чтение с тем же пределом, что у openfile.
+ * Заимствовать state/path, отклонять запись и освобождать fid проверки после ответа. */
 static FVM_Result directory_access(void *state, const char *path, unsigned access)
 {
     struct Mount *mount = state;
@@ -170,7 +170,8 @@ static FVM_Result directory_access(void *state, const char *path, unsigned acces
     {
         return FVM_UNSUPPORTED;
     }
-    if ((access | FVM_ACCESS_READ) & ~mount->access)
+    unsigned required = access | FVM_ACCESS_READ | FVM_ACCESS_EXEC;
+    if (required & ~mount->access)
     {
         return FVM_ERROR;
     }

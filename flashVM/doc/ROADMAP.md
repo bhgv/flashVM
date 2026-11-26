@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1786, mounted directory probes use the same host read-and-search
+ceiling as directory open. The native suite verifies actual peer opens
+and server refusals on both transports. The previously failing mount
+scenarios run with their full protocol and retirement checks.
+[EN](../../disVM/native/vfs/MOUNT-ACCESS.md) · [RU](../../disVM/native/vfs/MOUNT-ACCESS.ru.md).
+
 In v0.1785, directory changes in the hosted callback tree invalidate only
 the affected enumeration. FlashVM and Limbo can restart an existing
 directory fid from zero over StyxRPC. The paired check covers multi-frame

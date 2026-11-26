@@ -108,7 +108,7 @@ def main():
     mode = sys.argv[4]
     # One extra basic fid is deliberately retained after namespace unbind.
     # Дополнительный basic fid удерживается после unbind namespace.
-    expected = {'basic': 7, 'loss': 4, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'slow': 3, 'badwalk': 2}
+    expected = {'basic': 7, 'loss': 4, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'access': 4, 'slow': 3, 'badwalk': 2}
     args = [sys.argv[2]] if mode in ('partial', 'deep') else [sys.argv[2], str(expected[mode]), '2']
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     errors, requests = [], []
@@ -161,6 +161,8 @@ def main():
             partial = requests.index((110, 3))
             if requests[partial+1][0] != 120:
                 raise RuntimeError('partial walk fid not clunked immediately')
+        if mode == 'access' and sum(kind == 112 for kind, _ in requests) != 2:
+            raise RuntimeError('directory probe or host ceiling issued an unexpected Topen')
         if mode == 'readonly' and any(kind == 118 for kind, _ in requests):
             raise RuntimeError('read-only ceiling sent Twrite')
         if mode == 'basic' and sum(kind == 124 for kind, _ in requests) >= 15:

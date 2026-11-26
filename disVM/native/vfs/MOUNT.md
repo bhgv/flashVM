@@ -44,12 +44,12 @@ Read/write are precise one-chunk callbacks with current explicit64-bit offset;
 there is no implicit Twalk/Tstat before every successful data operation. Handle
 info sends Tstat for the existing fid, never reopens its pathname.
 
-Standard9P2000 has no general side-effect-free effective-access RPC. Consequently
-this factory's `access` callback is unsupported; it does not substitute stat mode
-or a probe Topen with possible device effects for an access decision. Direct
-provider opens work through actual operations. MAUTORWX preselection and a
-re-export bridge requiring effective EXEC cannot yet use this factory as an
-access oracle. Directory relative-name stable-bind capability remains undeclared;
+[Directory access checks](MOUNT-ACCESS.md) use a temporary read-only open
+under the same host ceiling as an ordinary directory open. General file
+and write access probes remain unsupported.
+[По-русски](MOUNT-ACCESS.ru.md).
+
+Directory relative-name stable-bind capability remains undeclared;
 runtime0.155 provides [explicit retained-fid root capture](CAPTURE.md) for directory
 and file aliases instead. Runtime0.154 declares stable bind for a true single-file
 attach root, rejecting every descendant and anchoring dot to that root fid.
@@ -77,9 +77,11 @@ batch limit. Remaining records in the same read stay buffered; subsequent metada
 changes are visible on later reads/reopens, not an atomic directory transaction.
 Only an actual zero-byte successful read reports directory EOF.
 
-Directory abort permanently invalidates that opened cursor. Rewind uses a fresh
-provider open; data-file seek changes only its checked local protocol offset.
-SEEK_END explicitly stats the held remote fid. New directory/file paths remain
+Directory failure stops the current enumeration. A seek to zero from the
+start discards buffered entries and begins the next read on the same fid.
+[Directory rewind](../../../flashVM/doc/STYX_VFS_DIR_REWIND.md) describes
+the paired runtime. Data-file seek changes only its checked local protocol
+offset. SEEK_END explicitly stats the held remote fid. New directory/file paths remain
 live and server-defined. This first provider has no create/remove/wstat support.
 
 ## Loss notifications / Уведомления о потере соединения
@@ -107,7 +109,7 @@ Real original C libstyx servers and an independent byte relay exercise:
 - exact short Rwrite, post-failure Tstat and no replay after uncertain effects;
 - invalid negotiated msize, wrong response tags/counts and impossible Rwalk counts;
 - iounit limits and a slowly fragmented reply bounded by one total RPC deadline;
-- read-only host ceiling, unsafe directory records and permanent cursor abort;
+- read-only host ceiling, actual directory-open probes and unsafe records;
 - more than MAXWELEM components and immediate cleanup of a partial walk;
 - prepared per-connection publication via a dedicated reviewer and native wakeup.
 

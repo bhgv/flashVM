@@ -350,10 +350,42 @@ static void readonly(DVM_Provider *provider, Stream *stream)
 }
 
 
+/* EN: Compare the directory probe and normal open using two host ceilings on one connection.
+ * RU: Сопоставить пробу каталога и обычное открытие при двух пределах на одном соединении. */
+static void access_contract(DVM_Provider *provider, StyxClient *client)
+{
+    check(dvm_provider_access(provider, ".", FVM_ACCESS_READ) == FVM_OK &&
+        dvm_provider_access(provider, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC) == FVM_ERROR,
+        "read probe confused with advertised search permission");
+    check(dvm_provider_access(provider, ".", FVM_ACCESS_WRITE) == FVM_UNSUPPORTED &&
+        dvm_provider_access(provider, "first", FVM_ACCESS_READ) == FVM_UNSUPPORTED, "unsupported access probe");
+    check(styxclientretain(client), "reference for metadata-only directory ceiling");
+    DVM_Provider *restricted = styxmountprovider(client, FVM_ACCESS_READ);
+    FVM_FileInfo info;
+    check(restricted && dvm_provider_info(restricted, ".", &info) == FVM_OK && info.directory && !(info.mode & 0111),
+        "restricted directory metadata");
+    DVM_VfsHandle denied = {0};
+    check(dvm_provider_access(restricted, ".", FVM_ACCESS_READ) != FVM_OK &&
+        dvm_provider_access(restricted, ".", FVM_ACCESS_READ | FVM_ACCESS_EXEC) != FVM_OK &&
+        dvm_provider_open(restricted, ".", "r", &denied) != FVM_OK && !denied.state,
+        "directory probe exceeded the host search ceiling");
+    DVM_VfsHandle file = openfile(restricted, "first", "r");
+    contents(&file, "initial");
+    dvm_vfs_close(&file);
+    dvm_provider_release(restricted);
+    dvm_provider_release(provider);
+}
+
+
 /* EN/RU: Walk beyond MAXWELEM and reject a partial walk without leaking its new fid.
  * Пройти больше MAXWELEM и убрать partial walk без утечки нового fid. */
 static void deep(DVM_Provider *provider)
 {
+    FVM_FileInfo meta;
+    check(dvm_provider_info(provider, "d", &meta) == FVM_OK && meta.directory && (meta.mode & 0555) == 0555,
+        "advertised access on denied directory");
+    check(dvm_provider_access(provider, "d", FVM_ACCESS_READ | FVM_ACCESS_EXEC) == FVM_ERROR,
+        "directory metadata bypassed server open refusal");
     char path[128] = "";
     for (unsigned i = 0; i < 17; i++)
     {
@@ -362,7 +394,6 @@ static void deep(DVM_Provider *provider)
     strcat(path, "file");
     DVM_VfsHandle file = openfile(provider, path, "r");
     contents(&file, "depth");
-    FVM_FileInfo meta;
     check(dvm_provider_info(provider, "d/d/missing", &meta) != FVM_OK, "partial walk was accepted");
     DVM_VfsHandle control = openfile(provider, "ctl", "wo");
     DVM_IoResult result = dvm_vfs_write_chunk(&control, "stop", 4);
@@ -420,9 +451,7 @@ int main(int argc, char **argv)
         DVM_Provider *provider = styxmountprovider(client, !strcmp(argv[2], "readonly") ? FVM_ACCESS_READ|FVM_ACCESS_EXEC : FVM_ACCESS_MASK);
         check(provider != NULL, "ordinary mount provider");
         unsigned calls = stream.calls;
-        FVM_FileInfo meta;
-        check(dvm_provider_info(provider, "../escape", &meta) != FVM_OK && stream.calls == calls, "escaping path reached transport");
-        check(dvm_provider_access(provider, ".", FVM_ACCESS_READ) == FVM_UNSUPPORTED, "metadata fabricated effective access");
+        check(dvm_provider_info(provider, "../escape", &(FVM_FileInfo){0}) != FVM_OK && stream.calls == calls, "escaping path reached transport");
         if (!strcmp(argv[2], "basic"))
         {
             basic(provider);
@@ -440,6 +469,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[2], "readonly"))
         {
             readonly(provider, &stream);
+        }
+        else if (!strcmp(argv[2], "access"))
+        {
+            access_contract(provider, client);
         }
         else if (!strcmp(argv[2], "deep"))
         {
