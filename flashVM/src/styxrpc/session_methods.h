@@ -41,6 +41,12 @@ FVM_Result fvm_styxrpc_message_members(FVM_Context *context, FVM_Object *object,
 FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
+/* [ASINC] [GC:] EN: Join or create a named rendezvous on binding.
+ * RU: Присоединиться к именованному каналу или создать его в binding. */
+FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *, FVM_Object *, unsigned,
+    const FVM_Value *, FVM_Value *, void *);
+
+
 /* [GC:] EN: Bind the player-owned mailbox to the default rpc object in the new movie context.
  * RU: Связать очередь плеера со штатным объектом rpc в контексте нового фильма. */
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange);

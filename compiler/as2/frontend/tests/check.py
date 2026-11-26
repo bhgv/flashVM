@@ -34,6 +34,8 @@ CASES = [
     ("labels", "outer: while(true) { break outer; }", True),
     ("holes", "var x:Array=[,,1,]; var y:Number=.5;", True),
     ("delete-expression", "var x:Boolean=delete o.a;", True),
+    ("delete-method", 'var port = rpc.chan("/jobs"); port.delete();', True),
+    ("delete-reserved-binding", "var delete = 1;", False),
     ("regexp-pending", "var r=/abc/g;", False),
     ("asi", "var x=1\ntrace(x);", True),
     ("utf8-bom", '\ufeffvar x="中";', True),

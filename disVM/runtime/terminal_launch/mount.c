@@ -10,6 +10,7 @@
 #include "mount.h"
 #include "paired_ui.h"
 #include "mount_assets.h"
+#include "named_channels.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
 #include "vfs/launch/runtime.h"
@@ -457,6 +458,14 @@ int dvm_styx_mount_cli(int argc, char **argv)
     if (assets && (!group || !dvm_terminal_mount_assets(group, assets)))
     {
         fprintf(stderr, "disvm: cannot mount application assets\n");
+        dvm_namespace_release(group);
+        close(breaker);
+        close(fd);
+        return 1;
+    }
+    if (!group || !dvm_named_channels_install(group))
+    {
+        fprintf(stderr, "disvm: cannot publish named channel service\n");
         dvm_namespace_release(group);
         close(breaker);
         close(fd);

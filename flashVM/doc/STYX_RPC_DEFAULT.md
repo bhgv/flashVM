@@ -15,3 +15,6 @@ queue is full. The movie owner operates the local mailbox.
 The first SWF arrives at `.upload` over this session. The movie can use
 [`rpc.status()`](STYX_RPC_STATUS.md) and the [file methods](STYX_RPC_OS.md).
 The `os` global refers to the same object as `rpc`.
+
+[Blocking named channels](STYX_RPC_NAMED_CHANNEL.md) open by path in the
+attached session's live VFS.

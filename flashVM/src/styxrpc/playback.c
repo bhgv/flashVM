@@ -289,7 +289,7 @@ static int command(void *data, StyxRpcControlCommand what)
     }
     playback->state = PLAYBACK_RUNNING;
     ++playback->schedule;
-    return fvm_styxrpc_playback_tick(playback, PLAYBACK_FIRST_TICK) == FVM_OK;
+    return playback->defer_command_tick || fvm_styxrpc_playback_tick(playback, PLAYBACK_FIRST_TICK) == FVM_OK;
 }
 
 

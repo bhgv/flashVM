@@ -11,11 +11,11 @@ from run import compile_image, paired_exchange
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
 # RU: Запустить фронтенд проекта, оптимизатор и эмиттер FIR и линкер SWF.
-def compile_movie(args, directory, source):
-    fir = directory / "mixed.fir"
-    optimized = directory / "mixed.opt.fir"
-    obj = directory / "mixed.swo"
-    movie = directory / "mixed.swf"
+def compile_movie(args, directory, source, name):
+    fir = directory / (name + ".fir")
+    optimized = directory / (name + ".opt.fir")
+    obj = directory / (name + ".swo")
+    movie = directory / (name + ".swf")
     for command in ([args.as2, source, fir], [args.fir, "check", fir],
                     [args.fir_opt, fir, optimized], [args.fir, "object", optimized, obj],
                     [args.swl, "link", movie, obj]):
@@ -30,27 +30,31 @@ def main():
         parser.add_argument("--" + field, type=lambda path: Path(path).resolve(), required=True)
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
+    parser.add_argument("--named", action="store_true")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
     mode = "--jit" if args.jit else "--no-jit"
     with TemporaryDirectory(prefix="styxrpc-mixed-pair-") as scratch:
         directory = Path(scratch)
         fixture_bytes = b"A\x00RPC"
-        (directory / "rpc-source").write_bytes(fixture_bytes)
-        (directory / "created").mkdir()
-        for module in ("styxintref", "styxchannel"):
+        if not args.named:
+            (directory / "rpc-source").write_bytes(fixture_bytes)
+            (directory / "created").mkdir()
+        modules = ("styxnamed",) if args.named else ("styxintref", "styxchannel")
+        for module in modules:
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
-        client = compile_image(args, directory, tests / "mixed_pair.b", "mixed.dis")
-        compile_movie(args, directory, tests / "mixed_pair.as")
+        name = "named" if args.named else "mixed"
+        client = compile_image(args, directory, tests / (name + "_pair.b"), name + ".dis")
+        compile_movie(args, directory, tests / (name + "_pair.as"), name)
         paired_exchange(
             directory,
             lambda connection: [args.player, *connection, mode],
             lambda connection: [args.runtime, *connection, "--at", "/peer", "--",
                                 "--native-spawn", mode, client.name],
-            "PASS native mixed RPC paired VMs",
+            f"PASS native {name} RPC paired VMs",
             tcp=args.tcp,
         )
-        for created in ("created/rpc-file", "rpc-root-file"):
+        for created in (() if args.named else ("created/rpc-file", "rpc-root-file")):
             if (directory / created).read_bytes() != fixture_bytes:
                 raise RuntimeError("the movie did not create the expected VFS file")
 

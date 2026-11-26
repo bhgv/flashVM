@@ -14,7 +14,7 @@ set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal laun
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
-add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
+add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/named_channel_path.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
     protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
@@ -29,7 +29,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Threads REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
     add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_pid.c src/channel_client.c src/channel_arguments.c
-        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_create.c src/vfs_directory.c src/variable_ref_client.c src/graph_client.c src/message_client.c)
+        src/scalar_client.c src/managed_client.c src/client_exchange.c src/vfs_client.c src/vfs_create.c src/named_channel_client.c src/vfs_directory.c src/variable_ref_client.c src/graph_client.c src/message_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)
@@ -39,7 +39,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
         src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/nodes.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
-        src/channel_mailbox.c src/message_server.c)
+        src/channel_mailbox.c src/message_server.c src/named_channel.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)
     target_link_libraries(styxrpc_serve PUBLIC StyxRpc::rpc Styx::phy_server Threads::Threads)
     set_target_properties(styxrpc_serve PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME serve)

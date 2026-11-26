@@ -62,7 +62,7 @@ static FVM_Result live_access(void *group, const char *relative, unsigned access
 static int live_create_path(const char *relative)
 {
     static const char *const reserved[] = {".fd", ".prog", ".pid", ".var", ".vfs", ".unibus",
-        ".rpc", ".messages", ".interface", ".programs", ".sysevents", ".state", ".upload",
+        ".rpc", ".messages", ".channels", ".interface", ".programs", ".sysevents", ".state", ".upload",
         ".exit", ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop", ".add", ".count"};
     while (*relative)
     {

@@ -134,7 +134,7 @@ static int replay(StyxRpcServer *server, FVM_StyxRpcPlayback *playback, PlayerHo
             }
             if (!deadline || current != previous)
             {
-                deadline = now + period;
+                deadline = now;
                 previous = current;
             }
             if (now >= deadline)
@@ -260,6 +260,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
         {
             playback->awaiting_session = flash_peer;
+            playback->defer_command_tick = 1;
             server = styxrpc_server_create(phybidirchannel(mux, serve_lane), &styxrpc_module_slot_tree,
                 fvm_styxrpc_playback_slot(playback));
         }

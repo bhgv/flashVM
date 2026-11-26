@@ -1021,13 +1021,16 @@ PRODUCTIONS
                                                                         (. as2_syntax_leave(); .)
   .
 
-  /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
+  /* EN: Chain member access, indexes and calls. Reserve delete in binding
+   * positions while admitting the channel's .delete member after a dot.
+   * RU: Цепочка полей, индексов и вызовов. После точки допускается .delete
+   * канала, а в позиции имени переменной delete остаётся ключевым словом. */
   Postfix =
     Primary
     {
         IF(Sym == PointSym || Sym == LbrackSym || Sym == LparenSym)
         (
-            "." Identifier
+            "." ( Identifier | "delete" )
             | Subscript
             | Arguments
         )

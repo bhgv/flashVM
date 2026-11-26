@@ -153,6 +153,12 @@ DVM_Namespace *dvm_namespace_rebase(DVM_ResourcePlan *cwd);
 int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *target,
                                  DVM_Provider *provider, const char *label);
 
+/* EN: Same mount operation, optionally recording the exact installed layer in id.
+ * RU: Та же установка провайдера с необязательной выдачей точного слоя в id. */
+int dvm_namespace_mount_provider_id(DVM_Namespace *group, const DVM_NamespacePlan *target,
+    DVM_Provider *provider, const char *label, uint64_t *id);
+
+
 /* EN/RU: Bind retained provider-relative source at validated target/revision.
  * Caller checked resource kinds; source/target must share one group revision.
  * Retain factory on success; 1/0/-1 success/stale/invalid or OOM. No I/O.

@@ -19,6 +19,10 @@
 #include <unistd.h>
 
 
+/* EN/RU: Named value codec check. / Проверка кодека именованных значений. */
+int test_named_channel_ref(FVM_Context *context, FVM_StyxRpcSession *session, const FVM_Value *ref);
+
+
 /* EN/RU: Read one cell from its owner. / Прочитать ячейку владельца. */
 static int load(void *state, int32_t *out)
 {
@@ -79,8 +83,7 @@ static int script(FVM_Context *context, StyxClient *client, StyxRpcIntRef *refer
         fvm_gc_collect(context, NULL) == FVM_OK &&
         fvm_get_global(context, "first", &result) == FVM_OK &&
         result.type == FVM_VALUE_NUMBER && result.number == 41;
-    fvm_value_number(&result, -32);
-    ok = ok && fvm_set_global(context, "first", &result) == FVM_OK &&
+    ok = ok && test_named_channel_ref(context, binding, &ref) &&
         fvm_get_global(context, "second", &result) == FVM_OK &&
         result.type == FVM_VALUE_NUMBER && result.number == -32;
     return ok;
@@ -139,7 +142,7 @@ int main(int argc, char **argv)
 {
     if (argc > 2)
     {
-        fputs("usage: flashvm_tests_styxrpc_variable_ref [peer-newchan.swf]\n", stderr);
+        fputs("usage: flashvm_tests_styxrpc_variable_ref [peer-imported-ref.swf]\n", stderr);
         return 1;
     }
     StyxRpcRegistration nodes[6];

@@ -272,7 +272,12 @@ FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exch
 /* [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
 FVM_Result fvm_styxrpc_channel_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding)
 {
-    FVM_Result status = fvm_object_define_method_rooted(context, object, "newchan", new_channel, binding, NULL);
+    FVM_Result status = fvm_object_define_method_rooted(context, object, "chan",
+        fvm_styxrpc_open_named_channel, binding, NULL);
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(context, object, "newchan", new_channel, binding, NULL);
+    }
     if (status == FVM_OK)
     {
         status = fvm_object_define_method_rooted(context, object, "publishchan", publish_channel, binding, NULL);

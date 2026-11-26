@@ -23,6 +23,7 @@ struct FVM_StyxRpcPlayback
 {
     FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
     int awaiting_session;        /* Reject movie staging until the peer mount is attached. */
+    int defer_command_tick;      /* Clocked player acknowledges start before executing the first frame. */
     StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */
     FVM_Context *context;         /* Current movie context, NULL until a successful upload. */
     StyxRpcModuleSlot *slot;      /* Owned published tree while serving. */

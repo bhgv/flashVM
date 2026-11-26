@@ -2,6 +2,9 @@
 
 [Русский](STYX-CHANNEL.ru.md) · [Module interface](../module/styxchannel.m) · [Limbo implementation](../limbo/styxchannel.b) · [Flash provider](../../flashVM/doc/STYX_RPC_DEFAULT.md)
 
+Open a named rendezvous channel using [Styxnamed](../../lib/styxrpc/reference/named_channel.md).
+
+
 Load `Styxchannel` from `styxchannel.dis` and call `init()` before use.
 This fills in the mounted-session Unibus interface, the Math bit conversion
 functions and the typed Int32 reference adapter. The standard runtime build

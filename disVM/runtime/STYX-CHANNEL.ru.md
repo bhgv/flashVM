@@ -2,6 +2,9 @@
 
 [English](STYX-CHANNEL.md) · [Интерфейс](../module/styxchannel.m) · [Реализация на Limbo](../limbo/styxchannel.b) · [Сервер FlashVM](../../flashVM/doc/STYX_RPC_DEFAULT.ru.md)
 
+Именованный блокирующий канал открывается через [Styxnamed](../../lib/styxrpc/reference/named_channel.ru.md).
+
+
 Загрузите модуль `Styxchannel` из `styxchannel.dis` и вызовите `init()`
 до работы с ним. Инициализация подключает Unibus смонтированной сессии,
 побитовые преобразования Math и адаптер ссылок Int32. Сборка штатной

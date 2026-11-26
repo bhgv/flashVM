@@ -24,7 +24,7 @@ typedef enum VfsPathKind
 static int service_name(const char *name, size_t size)
 {
     static const char *const names[] = {".fd", ".prog", ".pid", ".var", ".vfs", ".unibus",
-        ".messages", ".rpc", ".interface", ".programs", ".sysevents", ".state", ".upload", ".exit",
+        ".messages", ".channels", ".rpc", ".interface", ".programs", ".sysevents", ".state", ".upload", ".exit",
         ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop", ".add", ".count"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
     {

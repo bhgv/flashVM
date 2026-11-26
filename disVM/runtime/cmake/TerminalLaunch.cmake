@@ -54,6 +54,9 @@ if(DVM_TERMINAL_LAUNCH_SDK)
     set(styxrpc_terminal_sources
         terminal_launch/paired_ui.c
         terminal_launch/paired_exchange.c
+        terminal_launch/named_channels.c
+        "${root}/lib/styxrpc/src/named_channel.c"
+        "${root}/lib/styxrpc/src/named_channel_path.c"
         "${root}/lib/styxrpc/src/exchange.c"
         "${root}/lib/styxrpc/src/value_codec.c"
         "${root}/lib/styxrpc/src/unibus_terminal.c"
