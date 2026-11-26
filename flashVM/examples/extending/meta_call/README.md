@@ -34,7 +34,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:22](../../../include/flashvm/meta_call.h#L22) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:22](../../../include/flashvm/metamethod.h#L22) |
 | `fvm_object_create` | function | [include/flashvm/value.h:84](../../../include/flashvm/value.h#L84) |
-| `fvm_table_get_index` | function | [include/flashvm/table.h:26](../../../include/flashvm/table.h#L26) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../../../include/flashvm/table.h#L30) |
+| `fvm_table_get_index` | function | [include/flashvm/table.h:30](../../../include/flashvm/table.h#L30) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:34](../../../include/flashvm/table.h#L34) |
 | `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 <!-- source-links:end -->

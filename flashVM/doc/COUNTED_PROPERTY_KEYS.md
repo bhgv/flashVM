@@ -69,7 +69,7 @@ remain enabled. No other-platform execution or full stack/leak proof is claimed.
 
 Добавлены counted [`fvm_object_call_bytes`](../include/flashvm/value.h#L189),
 [`fvm_object_define_method_rooted_bytes`](../include/flashvm/value.h#L194),
-[`fvm_object_define_accessor_rooted_bytes`](../include/flashvm/value.h#L199) и [`fvm_table_named_at_bytes`](../include/flashvm/table.h#L51).
+[`fvm_object_define_accessor_rooted_bytes`](../include/flashvm/value.h#L199) и [`fvm_table_named_at_bytes`](../include/flashvm/table.h#L55).
 Старые terminated registration/call API также канонизируют WTF-8. Чтение
 нативного метода возвращает стабильный cached Function для полного ключа.
 Prototype dispatch, accessor receiver и traced capture сохраняют прежние
@@ -192,7 +192,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_register_function_rooted_bytes` | function | [include/flashvm/value.h:141](../include/flashvm/value.h#L141) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_set_global_bytes` | function | [include/flashvm/value.h:137](../include/flashvm/value.h#L137) |
-| `fvm_table_named_at_bytes` | function | [include/flashvm/table.h:51](../include/flashvm/table.h#L51) |
+| `fvm_table_named_at_bytes` | function | [include/flashvm/table.h:55](../include/flashvm/table.h#L55) |
 | `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 | `fvm_value_get_property_bytes` | function | [include/flashvm/metamethod.h:69](../include/flashvm/metamethod.h#L69) |
 | `fvm_value_set_property_bytes` | function | [include/flashvm/metamethod.h:74](../include/flashvm/metamethod.h#L74) |

@@ -21,7 +21,7 @@ A read of a graph slot materializes a local snapshot. To publish edits, assign
 the edited snapshot back to the shared slot. For direct updates to one field
 of a local object, share it with `port.send(ref model.count)` or pass a computed
 key with `port.send(ref rows[index])`. The slot must already exist as a writable
-own data property or Array element. Direct reads and assignments such as
+own data property, Array element, or native numeric table entry. Direct reads and assignments such as
 `rows[index] = 42` then act on the shared cell through ordinary AS access. Custom accessors,
 watched properties and values the graph codec refuses cannot be published.
 Previously issued Int32 references still forward on their issuing session.

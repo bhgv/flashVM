@@ -127,6 +127,7 @@ init()
     cell := refexchange(port, graph);
     graphexchange(port, graph);
     indexexchange(port);
+    raw := nativeindices(port);
     port.close();
     for (i := 0; i < 100; ++i) {
         (exists, meta) = sys->stat("/jobs");
@@ -134,7 +135,12 @@ init()
             if (!equal(cell.get(), count111())) {
                 raise "closing the channel retired a live cell lease";
             }
+            value := raw.get();
+            if (len value != 7 || int value[0] != Styxnamed->Text || string value[1:] != "edited") {
+                raise "closing the channel retired a live numeric cell lease";
+            }
             cell.close();
+            raw.close();
             sys->print("PASS native named RPC paired VMs\n");
             return;
         }
@@ -277,6 +283,49 @@ indexexchange(port: ref Port)
     }
     field.close();
     slot.close();
+}
+
+
+# EN: Share one raw numeric slot, assign a received alias at UInt32 max and verify ownership.
+# RU: Разделить числовой слот, принять ссылку по максимальному UInt32 и проверить владение.
+nativeindices(port: ref Port): ref Cell
+{
+    descriptor := port.recv();
+    cell := named->adopt(descriptor);
+    initial := array[] of {byte Styxnamed->Number, byte 16r40, byte 16r35, byte 0,
+        byte 0, byte 0, byte 0, byte 0, byte 0};
+    if (!equal(cell.get(), initial)) {
+        raise "native table publication selected the wrong namespace";
+    }
+    cell.set(count111());
+    port.send(cell.payload());
+    if (!equal(port.recv(), count111())) {
+        raise "native numeric read did not observe the peer's write";
+    }
+    value := port.recv();
+    if (len value != 7 || int value[0] != Styxnamed->Text || string value[1:] != "edited" ||
+        !equal(cell.get(), value)) {
+        raise "assigning through the native numeric alias did not update the cell";
+    }
+    field := port.recv();
+    if (len field != 6 || int field[0] != Styxnamed->Text || string field[1:] != "named") {
+        raise "the numeric slot changed the string with the same spelling";
+    }
+    if (!equal(port.recv(), descriptor) || !equal(port.recv(), descriptor)) {
+        raise "forwarding the native slot or its numeric alias lost identity";
+    }
+    namedkey := port.recv();
+    word := named->adopt(namedkey);
+    if (equal(namedkey, descriptor) || !equal(word.get(), field)) {
+        raise "the named key and numeric index published the same cell";
+    }
+    word.set(count111());
+    port.send(count111());
+    if (!equal(port.recv(), count111()) || !equal(port.recv(), value)) {
+        raise "named cell write also affected the numeric cell";
+    }
+    word.close();
+    return cell;
 }
 
 

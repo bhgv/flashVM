@@ -38,7 +38,19 @@ A read followed by a write uses two operations.
 [VFS named channels](STYX_RPC_NAMED_SEND.md) also publish fresh writable
 slots on the StyxRPC session. A slot may hold a scalar or a serializable
 graph. A graph read returns a snapshot and whole-slot assignment publishes it.
-Existing Array elements and Object properties are supported. A canonical
-Array index such as `1` or `"1"` identifies one element. `"01"` is a separate
-property. The separate raw numeric namespace of native plain tables is outside
-this reference profile. [Executable paired scenario](../../lib/styxrpc/tests/flashvm/named_pair.as).
+Existing Array elements and Object properties are supported. In an Array,
+`1` and `"1"` identify the same element. In a native table, these are
+two independent slots. Capture an existing own numeric entry with
+`ref table[index]`. The supported AS numeric indices are integers from
+0 through 4,294,967,295. The C table API preserves its existing integer key type.
+
+`table[aliasIndex] = port.recv()` can bind a reference at an unused numeric
+index of a native table. Reads, writes and subsequent reference capture
+use the same cell. Removing a numeric entry with `delete table[index]` drops
+that binding. A peer with its own live cell lease can still access the cell.
+Choose the dereferenced entry to send its value. The graph codec rejects a
+table snapshot containing a live binding.
+
+[Paired AS](../../lib/styxrpc/tests/flashvm/named_pair.as) ·
+[Paired Limbo](../../lib/styxrpc/tests/flashvm/named_pair.b) ·
+[C table API](../include/flashvm/table.h).

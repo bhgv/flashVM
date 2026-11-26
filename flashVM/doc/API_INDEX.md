@@ -71,7 +71,7 @@ Check the current declarations in [value.h](../include/flashvm/value.h), and
 [AVM1 function contracts](AVM1_FUNCTIONS.md) for script invocation. Registration
 userdata belongs to the host; a callback must respect the owning VM thread.
 
-[`fvm_table_set_metatable`](../include/flashvm/table.h#L30) attaches a table; [`fvm_meta_register`](../include/flashvm/metamethod.h#L22) registers a
+[`fvm_table_set_metatable`](../include/flashvm/table.h#L34) attaches a table; [`fvm_meta_register`](../include/flashvm/metamethod.h#L22) registers a
 metamethod. The explicit [`fvm_meta_call`](../include/flashvm/meta_call.h#L22) API invokes native __call with owner,
 defining metatable and a fresh indexed argument table (user argument zero is at
 index zero). This operation has its own callback convention; it does not imply
@@ -335,7 +335,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWFSoundOutputInfo` | struct | [include/flashvm/swf_sound_output.h:38](../include/flashvm/swf_sound_output.h#L38) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:12](../src/swf/sound_voice.cpp#L12) |
 | `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:83](../include/flashvm/swf_sound.h#L83) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../include/flashvm/table.h#L30) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:22](../include/flashvm/timers.h#L22) |
 | `FVM_Value` | struct | [include/flashvm/value.h:26](../include/flashvm/value.h#L26) |
 <!-- source-links:end -->

@@ -1,8 +1,8 @@
 # Native metamethod callbacks (stage 23)
 
 `flashvm/metamethod.h` defines an additive C89 ABI for native callbacks stored on
-an ordinary shared metatable. Use [`fvm_table_set_metatable`](../include/flashvm/table.h#L30) to attach the table
-and [`fvm_table_get_metatable`](../include/flashvm/table.h#L34) to retrieve the **same pointer** (no copy).
+an ordinary shared metatable. Use [`fvm_table_set_metatable`](../include/flashvm/table.h#L34) to attach the table
+and [`fvm_table_get_metatable`](../include/flashvm/table.h#L38) to retrieve the **same pointer** (no copy).
 
 Supported registered names: `__index`, `__newindex`, `__iterate`, `__gc`.
 Callbacks receive `(context, self, argc, argv, result, userdata)`. In every
@@ -43,7 +43,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:82](../include/flashvm/metamethod.h#L82) |
-| `fvm_table_get_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../include/flashvm/table.h#L30) |
+| `fvm_table_get_metatable` | function | [include/flashvm/table.h:38](../include/flashvm/table.h#L38) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
 | `FVM_VALUE_UNDEFINED` | enum constant | [include/flashvm/value.h:16](../include/flashvm/value.h#L16) |
 <!-- source-links:end -->

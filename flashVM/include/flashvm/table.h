@@ -17,12 +17,16 @@ extern "C"
        slots retain direct table-metatable fallback. Primitive metadata uses value APIs. */
 
 
-/* Update table index. */
+/* EN: Store value at key on object. A private reference binds a free native slot,
+ * and later writes update its target. A live remote write can block or fail.
+ * RU: Записать значение по key в object. Внутренняя ссылка привязывает свободный
+ * числовой слот. Последующие записи идут в источник и могут ждать ответа или отказать. */
 FVM_API FVM_Result fvm_table_set_index(FVM_Context *, FVM_Object *, unsigned long,
                                        const FVM_Value *);
 
 
-/* Read table index. */
+/* EN: Return the current numeric entry at key. A live binding can wait for its peer.
+ * RU: Прочитать текущую числовую запись по key. Живая привязка может ждать ответа участника. */
 FVM_API FVM_Result fvm_table_get_index(FVM_Context *, FVM_Object *, unsigned long, FVM_Value *);
 
 
@@ -52,7 +56,10 @@ FVM_API FVM_Result fvm_table_named_at_bytes(FVM_Context *, FVM_Object *, size_t,
                                             const char **, size_t *, FVM_Value *);
 
 
-/* Implement table indexed at for this subsystem. */
+/* EN: Return the key and current value of an own numeric entry by ordinal position.
+ * A live value is resolved before returning the key.
+ * RU: Прочитать ключ и текущее значение числовой записи по порядковому номеру.
+ * Живая привязка разрешается до выдачи ключа. */
 FVM_API FVM_Result fvm_table_indexed_at(FVM_Context *, FVM_Object *, size_t, unsigned long *,
                                         FVM_Value *);
 #ifdef __cplusplus

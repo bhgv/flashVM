@@ -85,6 +85,25 @@ function onEnterFrame() {
         var access = port.recv();
         var readKey = port.send(model[key]);
         var stillIndex = port.send(model[index]);
+
+        // The VFS attribute record is a native table with separate numeric and named slots.
+        // Запись атрибутов VFS — нативная таблица с разными числовыми и именованными слотами.
+        var nativeTable = os.attr("/named-area");
+        nativeTable[index] = 21;
+        nativeTable["1"] = "named";
+        var rawRef = port.send(ref nativeTable[index]);
+        var aliasIndex = 2147483647 + 2147483647 + 1;
+        nativeTable[aliasIndex] = port.recv();
+        var remoteValue = port.send(nativeTable[index]);
+        nativeTable[aliasIndex] = "edited";
+        var localValue = port.send(nativeTable[index]);
+        var namedValue = port.send(nativeTable["1"]);
+        var forwardedRaw = port.send(ref nativeTable[index]);
+        var forwardedAlias = port.send(ref nativeTable[aliasIndex]);
+        var stringRef = port.send(ref nativeTable["1"]);
+        var changedString = port.recv();
+        var finalString = port.send(nativeTable["1"]);
+        var finalNumber = port.send(nativeTable[index]);
         var retired = port.delete();
         done = true;
     }

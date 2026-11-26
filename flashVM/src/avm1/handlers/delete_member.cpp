@@ -1,6 +1,7 @@
 /* FlashVM: value-based property deletion shared by interpreter and generated code. */
 #include "support.hpp"
 #include "value_operation_constants.h"
+#include "../member_key.hpp"
 
 
 /* Delete an own member after version-aware name conversion; absence reports false. */
@@ -18,13 +19,25 @@ fvm_exec_delete_member(FVM_Context *c, const FVM_Value *owner_value, const FVM_V
         FVM_ExecutionRoots roots(c, FVM_EXEC_VALUE_DELETE_ROOT_COUNT);
         roots.values[FVM_EXEC_VALUE_LEFT_ROOT] = *owner_value;
         roots.values[FVM_EXEC_VALUE_RIGHT_ROOT] = *name_value;
+        const FVM_Value &owner = roots.values[FVM_EXEC_VALUE_LEFT_ROOT];
+        const FVM_Value &name = roots.values[FVM_EXEC_VALUE_RIGHT_ROOT];
+        if (fvm_avm1_raw_table_key(c, owner, name))
+        {
+            unsigned long index = static_cast<unsigned long>(name.number);
+            bool own = owner.object->indexed.find(index) != owner.object->indexed.end();
+            if (own)
+            {
+                owner.object->indexed.erase(index);
+            }
+            fvm_value_boolean(out, own);
+            return FVM_OK;
+        }
         FVM_Value &key = roots.values[FVM_EXEC_VALUE_TEMP_ROOT];
         FVM_Result status = fvm_avm1_string(c, roots.values[FVM_EXEC_VALUE_RIGHT_ROOT], &key);
         if (status != FVM_OK)
         {
             return status;
         }
-        const FVM_Value &owner = roots.values[FVM_EXEC_VALUE_LEFT_ROOT];
         int own = 0, deleted = 0;
         if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind != FVM_RESOURCE_SUPER)
         {

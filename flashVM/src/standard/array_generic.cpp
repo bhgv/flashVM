@@ -2,6 +2,7 @@
  * File: src/standard/array_generic.cpp.
  */
 
+#include "../capi/table_index_binding.hpp"
 #include "array_generic.hpp"
 #include "array_work.hpp"
 #include "array_length.hpp"
@@ -77,8 +78,11 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
         if (slot != cursor->indexed.end())
         {
             present = true;
-            out = slot->second;
-            return FVM_OK;
+            if (observable && fvm_table_index_binding(slot->second))
+            {
+                *observable = true;
+            }
+            return fvm_table_read_entry(c, o, slot->second, &out);
         }
         if (cursor->properties.find(key) != cursor->properties.end())
         {
@@ -119,7 +123,7 @@ void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
         return;
     }
     fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
-    if (slot != o->indexed.end())
+    if (slot != o->indexed.end() && !fvm_table_index_binding(slot->second))
     {
         out = slot->second;
     }

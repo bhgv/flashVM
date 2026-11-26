@@ -2,7 +2,7 @@
 
 Заголовок `flashvm/metamethod.h` добавляет регистрацию нативных обработчиков
 `__index`, `__newindex`, `__iterate` и `__gc` в обычной общей метатаблице.
-[`fvm_table_set_metatable`](../include/flashvm/table.h#L30) присоединяет метатаблицу; [`fvm_table_get_metatable`](../include/flashvm/table.h#L34)
+[`fvm_table_set_metatable`](../include/flashvm/table.h#L34) присоединяет метатаблицу; [`fvm_table_get_metatable`](../include/flashvm/table.h#L38)
 возвращает ссылку на ту же таблицу, без копирования.
 
 Все обработчики получают контекст, объект `self`, массив аргументов, результат
@@ -35,6 +35,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_meta_finalize` | function | [include/flashvm/metamethod.h:82](../include/flashvm/metamethod.h#L82) |
-| `fvm_table_get_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
-| `fvm_table_set_metatable` | function | [include/flashvm/table.h:30](../include/flashvm/table.h#L30) |
+| `fvm_table_get_metatable` | function | [include/flashvm/table.h:38](../include/flashvm/table.h#L38) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:34](../include/flashvm/table.h#L34) |
 <!-- source-links:end -->

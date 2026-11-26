@@ -117,4 +117,5 @@
 #define FVM_RESOURCE_REF_QUEUE 63 /* Same-context reference FIFO. */
 #define FVM_RESOURCE_STYXRPC_INT_REF 64 /* Private issuer identity of an imported Int32 cell. */
 #define FVM_RESOURCE_STYXRPC_REF_CHANNEL 65 /* Explicit reference carrier holding an AS byte channel. */
+#define FVM_RESOURCE_TABLE_INDEX_BINDING 66 /* Private backing object of a live native numeric entry. */
 #endif
