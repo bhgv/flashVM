@@ -31,3 +31,6 @@ their source owners reachable through GC.
 The reference FIFO stays within one context. Live Int32 references from
 another process use [wire descriptors](../../lib/styxrpc/reference/int_variable_refs.md).
 A read followed by a write uses two operations.
+
+[VFS named channels](STYX_RPC_NAMED_SEND.md) also publish fresh scalar
+slots on the StyxRPC session.

@@ -3,6 +3,7 @@
  * RU: Кодировать значения с длиной либо передавать дескриптор живой ссылки.
  */
 #include "session_named_values.hpp"
+#include "session_named_refs.hpp"
 #include "flashvm/serialization.h"
 #include "../capi/variable_refs.hpp"
 #include "styxrpc/named_channel.h"
@@ -77,11 +78,13 @@ FVM_Result fvm_named_encode(FVM_Context *context, FVM_StyxRpcSession *session,
     if (fvm_is_variable_ref(value))
     {
         unsigned char descriptor[STYXRPC_INT_REF_SIZE];
-        if (!fvm_styxrpc_encode_int_ref(session, value, descriptor, sizeof(descriptor)))
+        if (fvm_styxrpc_encode_int_ref(session, value, descriptor, sizeof(descriptor)))
         {
-            return fvm_styxrpc_managed_fail(context, "channel reference has no descriptor on this session");
+            return pack(STYXRPC_NAMED_INT_REF, descriptor, sizeof(descriptor), bytes, size);
         }
-        return pack(STYXRPC_NAMED_INT_REF, descriptor, sizeof(descriptor), bytes, size);
+        unsigned char token[STYXRPC_CELL_TOKEN];
+        FVM_Result status = fvm_named_ref_token(context, session, value, token);
+        return status == FVM_OK ? pack(STYXRPC_NAMED_CELL_REF, token, sizeof(token), bytes, size) : status;
     }
     switch (value->type)
     {
@@ -137,6 +140,8 @@ FVM_Result fvm_named_decode(FVM_Context *context, FVM_StyxRpcSession *session,
     --size;
     switch (bytes[0])
     {
+    case STYXRPC_NAMED_CELL_REF:
+        return fvm_named_ref_bind(context, session, payload, size, out);
     case STYXRPC_NAMED_INT_REF:
         return fvm_styxrpc_decode_int_ref(context, session, payload, size, out);
     case STYXRPC_NAMED_VALUE:

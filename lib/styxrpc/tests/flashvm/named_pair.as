@@ -16,6 +16,18 @@ function onEnterFrame() {
         var graphSent = port.send(values);
         var copy = port.recv();
         var graphEcho = port.send(copy);
+        var counter = 21;
+        var exported = port.send(ref counter);
+        var changed = port.recv();
+        var snapshot = port.send(counter);
+        counter = true;
+        var forwarded = port.send(ref counter);
+        var alias = port.recv();
+        alias = 111;
+        var confirmed = port.send(counter);
+        var foreign = port.recv();
+        foreign = "edited";
+        var returned = port.send(foreign);
         var retired = port.delete();
         done = true;
     }

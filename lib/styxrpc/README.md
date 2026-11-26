@@ -138,6 +138,8 @@ Use [mkdir](reference/vfs_mkdir.md) to create a directory and [remove](reference
 
 [Named rendezvous channels](reference/named_channel.md) use an attached session
 and let providers claim and release exact names in the VFS.
+[Shared scalar cells](reference/named_cell.md) travel by reference.
+
 
 ## Name, Qid and fid
 

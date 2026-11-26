@@ -40,3 +40,5 @@ DisVM поставляет модуль [Styxnamed](../../../disVM/module/styxna
 и дескрипторов переносимы. Граф FlashVM можно переслать из Limbo целиком.
 См. собираемые проверки на [Limbo](../tests/flashvm/named_pair.b) и
 [ActionScript](../tests/flashvm/named_pair.as).
+
+[Общие ячейки](named_cell.ru.md) используют тот же служебный узел.

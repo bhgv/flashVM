@@ -14,7 +14,7 @@ set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal laun
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
-add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/named_channel_path.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
+add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/named_channel_path.c src/named_cell_wire.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
     protocol/scalar_verify.c protocol/tuple_record.c protocol/utf8.c protocol/variable_file.c protocol/variable_ref.c protocol/indexed_variable.c
     vendor/hybrid/table.c)
@@ -39,7 +39,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     add_library(styxrpc_serve STATIC src/serve.c src/program.c src/collection.c src/bigtable.c src/module_channels.c
         src/scalar_module.c src/managed_module.c src/module.c src/module_slot.c src/nodes.c src/control.c src/module_nodes.c src/graph_module.c src/channel_module.c
         src/channel_handlers.c src/channel_handlers_files.c src/channel_group.c src/channel_group_wire.c
-        src/channel_mailbox.c src/message_server.c src/named_channel.c)
+        src/channel_mailbox.c src/message_server.c src/named_channel.c src/named_cell_store.c)
     target_include_directories(styxrpc_serve PRIVATE protocol)
     target_link_libraries(styxrpc_serve PUBLIC StyxRpc::rpc Styx::phy_server Threads::Threads)
     set_target_properties(styxrpc_serve PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES EXPORT_NAME serve)
@@ -82,6 +82,9 @@ if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR S
 endif()
 if(BUILD_TESTING)
     if(TARGET styxrpc_serve)
+        add_executable(styxrpc-named-cell-test tests/named_cell.c)
+        target_link_libraries(styxrpc-named-cell-test PRIVATE StyxRpc::serve)
+        add_test(NAME styxrpc-named-cell COMMAND styxrpc-named-cell-test)
         add_executable(styxrpc-directory-test tests/directory.c)
         target_link_libraries(styxrpc-directory-test PRIVATE StyxRpc::serve Styx::client)
         add_test(NAME styxrpc-live-directory COMMAND styxrpc-directory-test)

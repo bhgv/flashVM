@@ -3,6 +3,7 @@
  * RU: Один запуск по заранее выданному соединению Styx.
  */
 #include "config.h"
+#include "entropy.h"
 #include "unibus_server.h"
 #include "vfs/launch/runtime.h"
 #include "vfs/export.h"
@@ -88,16 +89,13 @@ int dvm_terminal_connected(const char *value)
 }
 
 
-/* EN/RU: Generate an ephemeral canonical ID for this one-shot invocation.
- * Создать временный канонический ID для одного запуска. */
-static int launch_id(char id[DVM_ORIGIN_ID_BYTES])
+/* EN/RU: See entropy.h. / См. entropy.h. */
+int dvm_terminal_entropy(unsigned char *bytes, size_t size)
 {
-    static const char digits[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    unsigned char bytes[DVM_ORIGIN_ID_BYTES - 1];
     size_t used = 0;
-    while (used < sizeof(bytes))
+    while (used < size)
     {
-        ssize_t count = getrandom(bytes + used, sizeof(bytes) - used, 0);
+        ssize_t count = getrandom(bytes + used, size - used, 0);
         if (count < 0 && errno == EINTR)
         {
             continue;
@@ -107,6 +105,20 @@ static int launch_id(char id[DVM_ORIGIN_ID_BYTES])
             return 0;
         }
         used += (size_t)count;
+    }
+    return 1;
+}
+
+
+/* EN/RU: Generate an ephemeral canonical ID for this one-shot invocation.
+ * Создать временный канонический ID для одного запуска. */
+static int launch_id(char id[DVM_ORIGIN_ID_BYTES])
+{
+    static const char digits[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    unsigned char bytes[DVM_ORIGIN_ID_BYTES - 1];
+    if (!dvm_terminal_entropy(bytes, sizeof(bytes)))
+    {
+        return 0;
     }
     for (size_t i = 0; i < sizeof(bytes); i++)
     {

@@ -56,6 +56,8 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         terminal_launch/paired_exchange.c
         terminal_launch/named_channels.c
         "${root}/lib/styxrpc/src/named_channel.c"
+        "${root}/lib/styxrpc/src/named_cell_store.c"
+        "${root}/lib/styxrpc/src/named_cell_wire.c"
         "${root}/lib/styxrpc/src/named_channel_path.c"
         "${root}/lib/styxrpc/src/exchange.c"
         "${root}/lib/styxrpc/src/value_codec.c"

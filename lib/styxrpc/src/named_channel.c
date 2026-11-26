@@ -2,7 +2,7 @@
  * EN: Own named endpoints and pair pending sends and receives without a buffer.
  * RU: Владеть именованными участниками и сопоставлять запись и чтение без буфера.
  */
-#include "styxrpc/named_channel.h"
+#include "named_cell_store.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +22,9 @@ struct StyxRpcNamedRegistry
     pthread_mutex_t lock;      /* Serializes pending request/reply state. */
     pthread_mutex_t names_lock; /* Serializes new paths, visibility checks and final release. */
     NamedChannel *names;   /* Owned live names. */
+    NamedCells cells;      /* Live leases and transfer pins under lock. */
+    StyxRpcCellEntropy entropy; /* Issuer callback for unpredictable cell capabilities. */
+    void *entropy_state;   /* Borrowed by entropy for the lifetime of the registry. */
     StyxRpcNamedClaim claim; /* Reserves a new name in the ordinary namespace. */
     StyxRpcNamedVisible visible; /* Verifies the exact claim before another participant joins. */
     StyxRpcNamedDrop drop;   /* Removes the claim from the ordinary namespace. */
@@ -32,6 +35,8 @@ struct StyxRpcNamedEndpoint
 {
     StyxRpcNamedRegistry *registry;  /* Borrowed from the native provider. */
     NamedChannel *channel;           /* One owned enrollment, NULL until open. */
+    NamedCell *cell;                 /* Cell lease on a cell operation fid. */
+    NamedCell *transfer;             /* Pin for a pending send or most recent receive. */
     StyxRpcNamedEndpoint *next;      /* Pending FIFO only. */
     unsigned char *body;             /* Owned staging or reply payload. */
     unsigned char header[STYXRPC_NAMED_HEADER]; /* Partial request header. */
@@ -72,6 +77,19 @@ StyxRpcNamedRegistry *styxrpc_named_registry(StyxRpcNamedClaim claim,
         registry->state = state;
     }
     return registry;
+}
+
+
+/* EN/RU: See named_cell.h. / См. named_cell.h. */
+int styxrpc_named_cells_enable(StyxRpcNamedRegistry *registry, StyxRpcCellEntropy entropy, void *state)
+{
+    if (!registry || !entropy || registry->entropy)
+    {
+        return 0;
+    }
+    registry->entropy = entropy;
+    registry->entropy_state = state;
+    return 1;
 }
 
 
@@ -136,14 +154,16 @@ void styxrpc_named_retire(StyxRpcNamedEndpoint *endpoint)
     }
     StyxRpcNamedRegistry *registry = endpoint->registry;
     NamedChannel *channel = endpoint->channel;
+    pthread_mutex_lock(&registry->lock);
+    if (endpoint->pending)
+    {
+        unlink_waiter(channel, endpoint);
+    }
+    styxrpc_cells_release(&registry->cells, endpoint->cell);
+    styxrpc_cells_release(&registry->cells, endpoint->transfer);
+    pthread_mutex_unlock(&registry->lock);
     if (channel)
     {
-        pthread_mutex_lock(&registry->lock);
-        if (endpoint->pending)
-        {
-            unlink_waiter(channel, endpoint);
-        }
-        pthread_mutex_unlock(&registry->lock);
         pthread_mutex_lock(&registry->names_lock);
         if (!--channel->participants)
         {
@@ -228,10 +248,25 @@ static int enroll(StyxRpcNamedEndpoint *endpoint)
 
 /* EN: Move the staged frame to the oldest opposite operation, or enqueue it.
  * RU: Передать подготовленный кадр старейшей встречной операции либо поставить в очередь. */
-static void pair_or_wait(StyxRpcNamedEndpoint *endpoint, unsigned operation)
+static int pair_or_wait(StyxRpcNamedEndpoint *endpoint, unsigned operation)
 {
     StyxRpcNamedRegistry *registry = endpoint->registry;
     pthread_mutex_lock(&registry->lock);
+    NamedCell *transfer = NULL;
+    if (operation == STYXRPC_NAMED_WRITE && endpoint->body[0] == STYXRPC_NAMED_CELL_REF)
+    {
+        if (endpoint->length == 1 + STYXRPC_CELL_TOKEN)
+        {
+            transfer = styxrpc_cells_attach(&registry->cells, endpoint->body + 1);
+        }
+        if (!transfer)
+        {
+            pthread_mutex_unlock(&registry->lock);
+            return 0;
+        }
+    }
+    styxrpc_cells_release(&registry->cells, endpoint->transfer);
+    endpoint->transfer = transfer;
     NamedChannel *channel = endpoint->channel;
     StyxRpcNamedEndpoint *peer = channel->head;
     if (peer && peer->pending != operation)
@@ -241,6 +276,8 @@ static void pair_or_wait(StyxRpcNamedEndpoint *endpoint, unsigned operation)
         unlink_waiter(channel, peer);
         reader->body = writer->body;
         reader->length = writer->length;
+        reader->transfer = writer->transfer;
+        writer->transfer = NULL;
         writer->body = NULL;
         writer->length = 0;
         peer->pending = 0;
@@ -262,6 +299,87 @@ static void pair_or_wait(StyxRpcNamedEndpoint *endpoint, unsigned operation)
         channel->tail = endpoint;
     }
     pthread_mutex_unlock(&registry->lock);
+    return 1;
+}
+
+
+/* EN: Apply one complete cell command under the registry's operation lock.
+ * RU: Выполнить полную команду ячейки под блокировкой операций реестра. */
+static int cell_request(StyxRpcNamedEndpoint *endpoint)
+{
+    NamedCells *cells = &endpoint->registry->cells;
+    unsigned char *reply = NULL;
+    size_t reply_size = 0;
+    int accepted = 0;
+    pthread_mutex_lock(&endpoint->registry->lock);
+    switch (endpoint->header[0])
+    {
+    case STYXRPC_CELL_NEW:
+        if (styxrpc_cell_scalar(endpoint->body, endpoint->length))
+        {
+            unsigned char nonce[STYXRPC_CELL_NONCE];
+            StyxRpcNamedRegistry *registry = endpoint->registry;
+            if (registry->entropy && registry->entropy(registry->entropy_state, nonce, sizeof(nonce)))
+            {
+                reply = malloc(STYXRPC_CELL_TOKEN);
+                if (reply)
+                {
+                    endpoint->cell = styxrpc_cells_create(cells, nonce, endpoint->body, endpoint->length, reply);
+                    reply_size = STYXRPC_CELL_TOKEN;
+                    accepted = endpoint->cell != NULL;
+                }
+            }
+        }
+        break;
+    case STYXRPC_CELL_ATTACH:
+        endpoint->cell = styxrpc_cells_attach(cells, endpoint->body);
+        accepted = endpoint->cell != NULL;
+        break;
+    case STYXRPC_CELL_GET:
+        reply = styxrpc_cells_get(endpoint->cell, &reply_size);
+        accepted = reply != NULL;
+        break;
+    case STYXRPC_CELL_SET:
+        if (styxrpc_cell_scalar(endpoint->body, endpoint->length))
+        {
+            styxrpc_cells_set(endpoint->cell, endpoint->body, endpoint->length);
+            endpoint->body = NULL;
+            accepted = 1;
+        }
+        break;
+    }
+    free(endpoint->body);
+    if (!accepted)
+    {
+        free(reply);
+        reply = NULL;
+        reply_size = 0;
+    }
+    endpoint->body = reply;
+    endpoint->length = reply_size;
+    endpoint->ready = reply != NULL;
+    pthread_mutex_unlock(&endpoint->registry->lock);
+    return accepted;
+}
+
+
+/* EN: Check the requested operation and length against the bound fid role.
+ * RU: Проверить операцию и длину с учётом роли открытого fid. */
+static int valid_body(const StyxRpcNamedEndpoint *endpoint, unsigned operation, size_t length)
+{
+    if (endpoint->channel)
+    {
+        return (operation == STYXRPC_NAMED_READ && !length) ||
+            (operation == STYXRPC_NAMED_WRITE && length && length <= STYXRPC_NAMED_MAX);
+    }
+    if (endpoint->cell)
+    {
+        return (operation == STYXRPC_CELL_GET && !length) ||
+            (operation == STYXRPC_CELL_SET && length && length <= STYXRPC_NAMED_MAX);
+    }
+    return (operation == STYXRPC_NAMED_OPEN && length && length < STYXRPC_VFS_PATH_MAX) ||
+        (operation == STYXRPC_CELL_NEW && length && length <= STYXRPC_NAMED_MAX) ||
+        (operation == STYXRPC_CELL_ATTACH && length == STYXRPC_CELL_TOKEN);
 }
 
 
@@ -273,10 +391,7 @@ static int begin_body(StyxRpcNamedEndpoint *endpoint)
     unsigned operation = header[0];
     size_t length = ((uint32_t)header[1] << 24) | ((uint32_t)header[2] << 16) |
         ((uint32_t)header[3] << 8) | header[4];
-    if (endpoint->channel ?
-        !((operation == STYXRPC_NAMED_READ && !length) ||
-          (operation == STYXRPC_NAMED_WRITE && length && length <= STYXRPC_NAMED_MAX)) :
-        !(operation == STYXRPC_NAMED_OPEN && length && length < STYXRPC_VFS_PATH_MAX))
+    if (!valid_body(endpoint, operation, length))
     {
         return 0;
     }
@@ -335,7 +450,9 @@ int styxrpc_named_submit(StyxRpcNamedEndpoint *endpoint, uint64_t offset, const 
             endpoint->failed = !enroll(endpoint);
             return !endpoint->failed;
         }
-        pair_or_wait(endpoint, endpoint->header[0]);
+        endpoint->failed = endpoint->channel ? !pair_or_wait(endpoint, endpoint->header[0]) :
+            !cell_request(endpoint);
+        return !endpoint->failed;
     }
     return 1;
 }

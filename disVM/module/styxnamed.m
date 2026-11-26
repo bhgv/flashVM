@@ -4,7 +4,7 @@
 Styxnamed: module
 {
     PATH: con "styxnamed.dis"; # Compiled portable Limbo implementation.
-    Snapshot, Intref, Number, Text, Boolean, Null, Undefined: con iota+1; # Wire type byte.
+    Snapshot, Intref, Number, Text, Boolean, Null, Undefined, Cellref: con iota+1; # Wire type byte.
 
     Port: adt
     {
@@ -22,6 +22,36 @@ Styxnamed: module
         # RU: Освободить участника. Повторное закрытие безопасно.
         close: fn(port: self ref Port);
     };
+
+    Cell: adt
+    {
+        fd: ref Sys->FD; # Owned lease preserving the cell independently of the channel.
+        frame: array of byte; # Private descriptor copy for forwarding.
+
+        # EN: Read the current tagged scalar.
+        # RU: Прочитать текущий скаляр с тегом.
+        get: fn(cell: self ref Cell): array of byte;
+
+        # EN: Replace the scalar with a complete tagged frame.
+        # RU: Заменить скаляр полным кадром с тегом.
+        set: fn(cell: self ref Cell, value: array of byte);
+
+        # EN: Copy the descriptor for sending this same cell again.
+        # RU: Скопировать дескриптор для повторной передачи той же ячейки.
+        payload: fn(cell: self ref Cell): array of byte;
+
+        # EN: Release this lease while other leases remain valid.
+        # RU: Освободить эту аренду, сохраняя действительность остальных.
+        close: fn(cell: self ref Cell);
+    };
+
+    # EN: Attach a frame received from a channel before its next operation.
+    # RU: Принять полученный кадр ссылки до следующей операции на канале.
+    adopt: fn(frame: array of byte): ref Cell;
+
+    # EN: Create one shared scalar cell. The returned Cell is its first lease.
+    # RU: Создать общую скалярную ячейку. Возвращаемый Cell — её первая аренда.
+    share: fn(value: array of byte): ref Cell;
 
     # EN: Load Sys before opening channels.
     # RU: Загрузить Sys перед открытием каналов.

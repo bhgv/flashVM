@@ -38,3 +38,5 @@ The Limbo methods operate on tagged byte arrays. Scalars and descriptors have
 portable formats. FlashVM graph payloads can be forwarded intact from Limbo.
 See the compiled [Limbo](../tests/flashvm/named_pair.b) and
 [ActionScript](../tests/flashvm/named_pair.as) acceptance sources.
+
+[Shared cells](named_cell.md) use the same service.

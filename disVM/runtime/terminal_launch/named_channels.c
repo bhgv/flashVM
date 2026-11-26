@@ -3,7 +3,8 @@
  * RU: Обслуживать протокол имён каналов на закрытом узле VFS DisVM.
  */
 #include "named_channels.h"
-#include "styxrpc/named_channel.h"
+#include "styxrpc/named_cell.h"
+#include "entropy.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -251,12 +252,21 @@ static void destroy(void *state)
 }
 
 
+/* EN: Fill the issuing session's capability nonce using host entropy.
+ * RU: Заполнить nonce полномочия выдавшей сессии системной энтропией. */
+static int entropy(void *state, unsigned char *bytes, size_t size)
+{
+    (void)state;
+    return dvm_terminal_entropy(bytes, size);
+}
+
+
 /* EN/RU: See named_channels.h. / См. named_channels.h. */
 int dvm_named_channels_install(DVM_Namespace *group)
 {
     static const DVM_ProviderOps ops = {.info = info, .open = open_control, .destroy = destroy, .access = access};
     StyxRpcNamedRegistry *registry = styxrpc_named_registry(claim, visible, unclaim, group);
-    DVM_Provider *provider = registry ? dvm_provider_create(&ops, registry) : NULL;
+    DVM_Provider *provider = styxrpc_named_cells_enable(registry, entropy, NULL) ? dvm_provider_create(&ops, registry) : NULL;
     if (!provider)
     {
         styxrpc_named_destroy(registry);
