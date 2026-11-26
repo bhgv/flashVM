@@ -169,6 +169,8 @@ python3 ide/tests/check_flash_peers.py --tcp \
   --fir build/fir --swl build/linker/swl
 ```
 
+See [exec](STYX_VFS_EXEC.md) for calls to executable VFS nodes.
+
 The [paired IDE check](../../ide/DESKTOP-PAIRED.md) has the same `--tcp` switch.
 
 [Player implementation](../src/styxrpc/player_main.c) · [DisVM mount command](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

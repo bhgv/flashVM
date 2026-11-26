@@ -24,14 +24,15 @@ static size_t parent_path(const char *path, size_t length)
 
 
 /* EN/RU: See session_methods.h. / См. session_methods.h. */
-int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value *arg, char *absolute)
+FVM_StyxRpcPathResult fvm_styxrpc_path_result(const FVM_StyxRpcSession *binding,
+    const FVM_Value *arg, char *absolute)
 {
     char input[FVM_STYXRPC_ABSOLUTE_PATH];
     const char *start;
     size_t used;
     if (!fvm_styxrpc_name(arg, input, sizeof(input)))
     {
-        return 0;
+        return FVM_STYXRPC_PATH_INVALID;
     }
     strcpy(absolute, input[0] == '/' ? "/" : binding->cwd);
     used = strlen(absolute);
@@ -45,9 +46,13 @@ int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value 
         else if (count && !(count == 1 && *start == '.'))
         {
             size_t separator = used > 1;
-            if (styxrpc_vfs_service_name(start, count) || used + separator + count >= sizeof(input))
+            if (styxrpc_vfs_service_name(start, count))
             {
-                return 0;
+                return FVM_STYXRPC_PATH_HIDDEN;
+            }
+            if (used + separator + count >= sizeof(input))
+            {
+                return FVM_STYXRPC_PATH_INVALID;
             }
             if (separator)
             {
@@ -60,7 +65,14 @@ int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value 
         start += *start == '/';
     }
     absolute[used] = 0;
-    return 1;
+    return FVM_STYXRPC_PATH_VISIBLE;
+}
+
+
+/* EN/RU: See session_methods.h. / См. session_methods.h. */
+int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value *arg, char *absolute)
+{
+    return fvm_styxrpc_path_result(binding, arg, absolute) == FVM_STYXRPC_PATH_VISIBLE;
 }
 
 

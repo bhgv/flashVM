@@ -7,7 +7,6 @@
 #include "styxrpc/nodes.h"
 
 #define STYXRPC_NODE_ID_FIRST (UINT64_C(1) << 31) /* Generation zero, above all control IDs. */
-#define STYXRPC_NODE_EXEC_ID UINT64_C(3) /* Generation-zero module slot entry reached only by exact walk. */
 
 typedef struct StyxRpcNodes StyxRpcNodes; /* Owner-thread append-only registry for a movie. */
 

@@ -5,6 +5,7 @@
 #include "session_methods.h"
 #include "flashvm/execution.h"
 #include "styxrpc/vfs_client.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -61,16 +62,13 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
 }
 
 
-/* EN: Snapshot exact own byte properties before any native write.
- * RU: Снять точные собственные байтовые свойства до нативной записи. */
-FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsigned char *bytes,
-    size_t capacity, size_t *size)
+/* EN: Read length once and validate its exact byte extent before copying.
+ * RU: Один раз прочитать длину и проверить точный размер в байтах. */
+static FVM_Result byte_extent(FVM_Context *context, const FVM_Value *value, size_t capacity, size_t *size)
 {
     FVM_Value property;
-    uint64_t count, byte;
-    unsigned i;
+    uint64_t count;
     FVM_Result result;
-    int own;
     if (value->type != FVM_VALUE_OBJECT || !value->object)
     {
         return FVM_INVALID_ARGUMENT;
@@ -80,20 +78,34 @@ FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsig
     {
         return result;
     }
-    if (!fvm_styxrpc_number(&property, capacity, &count))
+    if (!fvm_styxrpc_number(&property, capacity < UINT_MAX ? capacity : UINT_MAX, &count))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    for (i = 0; i < (unsigned)count; ++i)
+    *size = (size_t)count;
+    return FVM_OK;
+}
+
+
+/* EN: Copy count exact own indexed bytes in order. Stop at the first invalid slot.
+ * RU: Скопировать count точных собственных байтов по порядку до первого неверного слота. */
+static FVM_Result copy_bytes(FVM_Context *context, FVM_Object *object, unsigned char *bytes, size_t count)
+{
+    unsigned i;
+    for (i = 0; i < count; ++i)
     {
         char name[FVM_STYXRPC_INDEX_BYTES];
+        FVM_Value property;
+        uint64_t byte;
+        int own;
+        FVM_Result result;
         sprintf(name, "%u", i);
-        result = fvm_object_has_own(context, value->object, name, &own);
+        result = fvm_object_has_own(context, object, name, &own);
         if (result != FVM_OK || !own)
         {
             return result != FVM_OK ? result : FVM_INVALID_ARGUMENT;
         }
-        result = fvm_object_get(context, value->object, name, &property);
+        result = fvm_object_get(context, object, name, &property);
         if (result != FVM_OK)
         {
             return result;
@@ -104,7 +116,52 @@ FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsig
         }
         bytes[i] = (unsigned char)byte;
     }
-    *size = (size_t)count;
+    return FVM_OK;
+}
+
+
+/* EN/RU: See session_methods.h. / См. session_methods.h. */
+FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsigned char *bytes,
+    size_t capacity, size_t *size)
+{
+    size_t count;
+    FVM_Result status = byte_extent(context, value, capacity, &count);
+    if (status == FVM_OK)
+    {
+        status = copy_bytes(context, value->object, bytes, count);
+    }
+    if (status == FVM_OK)
+    {
+        *size = count;
+    }
+    return status;
+}
+
+
+/* EN/RU: See session_methods.h. / См. session_methods.h. */
+FVM_Result fvm_styxrpc_alloc_bytes(FVM_Context *context, const FVM_Value *value,
+    size_t limit, unsigned char **bytes, size_t *size)
+{
+    size_t count;
+    unsigned char *snapshot;
+    FVM_Result status = byte_extent(context, value, limit, &count);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    snapshot = count ? malloc(count) : NULL;
+    if (count && !snapshot)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    status = copy_bytes(context, value->object, snapshot, count);
+    if (status != FVM_OK)
+    {
+        free(snapshot);
+        return status;
+    }
+    *bytes = snapshot;
+    *size = count;
     return FVM_OK;
 }
 
@@ -148,13 +205,18 @@ static FVM_Result stat_file(FVM_Context *context, FVM_Object *self, unsigned arg
     char path[FVM_STYXRPC_ABSOLUTE_PATH];
     StyxRpcFileInfo info = {0, 0, 0};
     FVM_Value fields[5];
-    StyxRpcIoOutcome status;
+    StyxRpcIoOutcome status = STYXRPC_IO_NOT_OPEN;
+    FVM_StyxRpcPathResult path_result = argc == 1 ? fvm_styxrpc_path_result(binding, args, path) :
+        FVM_STYXRPC_PATH_INVALID;
     (void)self;
-    if (argc != 1 || !fvm_styxrpc_resolve_path(binding, args, path))
+    if (path_result == FVM_STYXRPC_PATH_INVALID)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    status = styxrpc_vfs_stat(binding->client, path + 1, &info);
+    if (path_result == FVM_STYXRPC_PATH_VISIBLE)
+    {
+        status = styxrpc_vfs_stat(binding->client, path + 1, &info);
+    }
     fvm_value_number(fields, status);
     fvm_value_number(fields + 1, (double)(info.length >> FVM_STYXRPC_U32_BITS));
     fvm_value_number(fields + 2, (double)(uint32_t)info.length);

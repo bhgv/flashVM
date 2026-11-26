@@ -16,7 +16,7 @@ prefix. For `op == "x"`, the Array starts with the caller's bytes. Replace
 its leading bytes with the result and return the length of that prefix.
 The `x` permission works independently of `r` and `w`. Each invocation
 waits for the complete request before calling the function once. Invoke it
-from [Limbo](../../disVM/runtime/STYX-EXEC.md) or [C](../../lib/styxrpc/reference/node_exec.md)
+from [ActionScript](STYX_VFS_EXEC.md), [Limbo](../../disVM/runtime/STYX-EXEC.md) or [C](../../lib/styxrpc/reference/node_exec.md)
 over the existing session.
 
 `len` is the input length and buffer capacity in bytes. Zero on a read is

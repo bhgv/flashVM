@@ -4,6 +4,8 @@
  */
 #include "movie-assets.h"
 #include "../../src/styxrpc/player_services.h"
+#include "flashvm/exception.h"
+#include "flashvm/execution.h"
 #include "flashvm/function.h"
 #include "flashvm/gc.h"
 #include "styxrpc/nodes.h"
@@ -27,6 +29,40 @@ typedef struct Peer
     int fd; /* Owned peer socket, consumed when attaching. */
     int ok; /* Result transferred to main at join. */
 } Peer;
+
+
+/* [GC:] EN: Check local argument refusal and failure on an ordinary asset provider.
+ * RU: Проверить локальный отказ по аргументу и ошибку на обычном провайдере ресурсов. */
+static int reject_exec(FVM_Context *context)
+{
+    FVM_Value vfs, args[2], out, bad;
+    if (fvm_get_global(context, "vfs", &vfs) != FVM_OK || vfs.type != FVM_VALUE_OBJECT)
+    {
+        return 0;
+    }
+    if (fvm_object_call(context, vfs.object, "exec", 0, NULL, &out) != FVM_INVALID_ARGUMENT)
+    {
+        return 0;
+    }
+    fvm_value_string(args, "/nested/.exec/child");
+    if (fvm_object_call(context, vfs.object, "exec", 1, args, &out) != FVM_INVALID_ARGUMENT)
+    {
+        return 0;
+    }
+    fvm_value_string(args, "/tools/apply");
+    fvm_value_number(&bad, 256);
+    if (fvm_exec_literal_array(context, 1, &bad, args + 1) != FVM_OK ||
+        fvm_object_call(context, vfs.object, "exec", 2, args, &out) != FVM_INVALID_ARGUMENT)
+    {
+        return 0;
+    }
+    FVM_Result status = fvm_object_call(context, vfs.object, "exec", 1, args, &out);
+    if (status == FVM_EXCEPTION)
+    {
+        fvm_exception_clear(context);
+    }
+    return status == FVM_EXCEPTION;
+}
 
 
 /* EN: Reject uploads in this fixture.
@@ -229,7 +265,8 @@ int main(void)
         fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK &&
         fvm_context_create(runtime, &context) == FVM_OK &&
         fvm_styxrpc_player_services(context, assets.client, script.slot, &services) == FVM_OK &&
-        fvm_styxrpc_player_activate(script.slot, services) == FVM_OK && publish(context, &script) &&
+        fvm_styxrpc_player_activate(script.slot, services) == FVM_OK && reject_exec(context) &&
+        publish(context, &script) &&
         !socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
     if (ok)
     {

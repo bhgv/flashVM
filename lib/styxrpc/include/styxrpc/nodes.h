@@ -14,6 +14,7 @@ extern "C" {
 #define STYXRPC_NODE_PATH_MAX 1024U /* Path bytes, excluding the optional leading slash and NUL. */
 #define STYXRPC_NODE_LIMIT 128U /* File and implicit directory identities per active image. */
 #define STYXRPC_NODE_EXEC_SERVICE ".exec" /* Hidden attach-root endpoint for executable callbacks. */
+#define STYXRPC_NODE_EXEC_QID UINT64_C(3) /* Exact service identity on the callback tree. */
 #define STYXRPC_NODE_EXECUTE 4U /* Callback access selector for in-place invocation. */
 #define STYXRPC_NODE_BUFFER_MAX 65536U /* Maximum execute argument and result capacity in bytes. */
 

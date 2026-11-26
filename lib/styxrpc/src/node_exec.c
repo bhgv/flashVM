@@ -61,7 +61,7 @@ static int prepare(ExecFile *file)
  * RU: Открыть один fid чтения и записи для действующего реестра. */
 static int open_exec(void *nodes, uint64_t id, unsigned access, void **cookie)
 {
-    if (!nodes || id != STYXRPC_NODE_EXEC_ID || access != (STYXRPC_READ | STYXRPC_WRITE))
+    if (!nodes || id != STYXRPC_NODE_EXEC_QID || access != (STYXRPC_READ | STYXRPC_WRITE))
     {
         return 0;
     }

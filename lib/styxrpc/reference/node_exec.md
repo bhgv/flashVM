@@ -1,6 +1,6 @@
 # styxrpc_node_exec
 
-[Русский](node_exec.ru.md) · [Declaration](../include/styxrpc/nodes.h#L56) · [Client](../src/node_exec_client.c#L36) · [Provider](../src/node_exec.c#L81)
+[Русский](node_exec.ru.md) · [Declaration](../include/styxrpc/nodes.h#L57) · [Client](../src/node_exec_client.c#L47) · [Provider](../src/node_exec.c#L81)
 
 ```c
 #include <styxrpc/nodes.h>
@@ -42,7 +42,8 @@ the reply.
 
 ## Wire exchange
 
-Walk `/.exec` from the attach root and open it for reading and writing.
+Walk `/.exec` from the attach root. Its stat identifies a regular service
+node with `STYXRPC_NODE_EXEC_QID` (3). Open it for reading and writing.
 The directory enumerator omits this service. The request starts at offset
 zero with two unsigned 32-bit big-endian counts for the path field and
 argument. The path field includes one terminating zero. It precedes the

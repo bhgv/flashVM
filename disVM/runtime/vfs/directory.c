@@ -17,6 +17,7 @@ typedef struct Directory
     DVM_Namespace *group; /* Owned namespace reference through close. */
     char parent[DVM_NS_PATH_LIMIT]; /* Original virtual directory spelling, not a host path. */
     DirectoryName *names; /* Owned unique child binding spellings captured on first enumeration read. */
+    int (*visible)(const char *name); /* Optional pure basename predicate for the lifetime of the cursor. */
     size_t count; /* Captured immediate child names. */
     int initialized; /* Child names captured at first read, refreshed after successful rewind. */
     int emitted; /* Child bindings already emitted once for this enumeration. */
@@ -81,6 +82,11 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
             {
                 break;
             }
+            const char *name = strrchr(cursor->names[i].path, '/')+1;
+            if (cursor->visible && !cursor->visible(name))
+            {
+                continue;
+            }
             DVM_ResourcePlan child;
             if (dvm_resource_plan(cursor->group, cursor->names[i].path, 0, &child))
             {
@@ -93,7 +99,7 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
                 }
                 if (dvm_resource_info(&child, &out[used]) == FVM_OK)
                 {
-                    strcpy(out[used++].name, strrchr(cursor->names[i].path, '/')+1);
+                    strcpy(out[used++].name, name);
                 }
                 dvm_resource_close(&child);
             }
@@ -101,7 +107,7 @@ static FVM_Result batch(Directory *cursor, FVM_FileInfo **entries, size_t *count
     }
     for (size_t i = 0; i < base_count; i++)
     {
-        if (!shadow(cursor, base[i].name))
+        if ((!cursor->visible || cursor->visible(base[i].name)) && !shadow(cursor, base[i].name))
         {
             out[used++] = base[i];
         }
@@ -221,9 +227,9 @@ static int close_ready(void *state)
 static const DVM_VfsOps operations = {info, NULL, NULL, seek, list, close_directory, abort_list}; /* Ordinary directory projection preserves supported base rewind. */
 
 
-/* EN/RU: See resource.h; wrap the retained base cursor, without replacing its directory or siblings.
- * См. resource.h; обернуть retained base cursor без замены directory и соседних файлов. */
-FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
+/* EN/RU: See resource.h. / См. resource.h. */
+FVM_Result dvm_namespace_directory_filtered(DVM_ResourcePlan *plan,
+    int (*visible)(const char *name), DVM_VfsHandle *out)
 {
     if (!plan || !plan->group || dvm_union_select(plan, 0) != FVM_OK || !plan->directory)
     {
@@ -241,6 +247,7 @@ FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
         return status;
     }
     cursor->group = plan->group;
+    cursor->visible = visible;
     strcpy(cursor->parent, plan->names.path);
     if (plan->union_root)
     {
@@ -279,6 +286,14 @@ FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
     out->ops = &operations;
     out->state = cursor;
     return FVM_OK;
+}
+
+
+/* EN: Preserve the ordinary unfiltered directory on local Sys and existing routes.
+ * RU: Сохранить обычный список каталога для локального Sys и прежних маршрутов. */
+FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
+{
+    return dvm_namespace_directory_filtered(plan, NULL, out);
 }
 
 

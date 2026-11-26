@@ -3,6 +3,7 @@
  * RU: Проверка поиска и ревизий живых каталогов через Styx.
  */
 #define _POSIX_C_SOURCE 200809L
+#include "styxrpc/nodes.h"
 #include "styxrpc/serve.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
@@ -18,18 +19,21 @@ enum
     Root,    /* Attach root. */
     Control, /* Write to replace the other name. */
     Before,  /* Original file, retained by open fids through deletion. */
-    After    /* Newly enumerated file with a distinct ID. */
+    After,   /* Newly enumerated file with a distinct ID. */
+    Shadow   /* Ordinary file with the execute service's spelling. */
 };
 
 typedef struct Directory
 {
     StyxRpcServer *server; /* Owned by dispatcher thread after startup. */
     uint32_t revision;   /* Starts at zero; write changes membership to one. */
+    unsigned shadow_opens; /* Must stay zero while probing the service identity. */
 } Directory;
 
 static const StyxRpcEntry nodes[] = { /* All possible names at root. */
     {Root, "/", 0555, 1}, {Control, "change", 0222, 0},
-    {Before, "before", 0444, 0}, {After, "after", 0444, 0}
+    {Before, "before", 0444, 0}, {After, "after", 0444, 0},
+    {Shadow, STYXRPC_NODE_EXEC_SERVICE, 0666, 0}
 };
 static char before = 'B'; /* Stub content with lifetime independent of publication. */
 static char after = 'A';  /* Stub content of new file. */
@@ -40,11 +44,11 @@ static char after = 'A';  /* Stub content of new file. */
 static const StyxRpcEntry *child(void *context, uint64_t id, size_t index)
 {
     Directory *tree = context;
-    if (id != Root || index > 1)
+    if (id != Root || index > 2)
     {
         return NULL;
     }
-    return &nodes[index ? (tree->revision ? After : Before) : Control];
+    return &nodes[index == 2 ? Shadow : index ? (tree->revision ? After : Before) : Control];
 }
 
 
@@ -53,7 +57,7 @@ static const StyxRpcEntry *child(void *context, uint64_t id, size_t index)
 static int lookup(void *context, uint64_t id, StyxRpcNode *node)
 {
     Directory *tree = context;
-    if (id > After || (id == Before && tree->revision) || (id == After && !tree->revision))
+    if (id > Shadow || (id == Before && tree->revision) || (id == After && !tree->revision))
     {
         return 0;
     }
@@ -68,6 +72,11 @@ static int lookup(void *context, uint64_t id, StyxRpcNode *node)
 static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
 {
     (void)access;
+    if (id == Shadow)
+    {
+        Directory *tree = context;
+        ++tree->shadow_opens;
+    }
     *cookie = id == Before ? &before : id == After ? &after : context;
     return 1;
 }
@@ -131,7 +140,10 @@ static int inspect(StyxClient *client)
     StyxTransfer sent, initial, stale, fresh, retained, latest;
     unsigned char listing[64];
     char old_byte = 0, new_byte = 0;
-    int good = dir && old && control && styxclientopen(dir, 0) &&
+    unsigned char input = 42;
+    size_t used = 1;
+    int good = styxrpc_node_exec(client, "before", &input, 1, &used) == STYXRPC_IO_NOT_OPEN &&
+        !used && input == 42 && dir && old && control && styxclientopen(dir, 0) &&
         styxclientopen(old, 0) && styxclientopen(control, 1);
     if (good)
     {
@@ -185,6 +197,7 @@ int main(void)
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);
+    good = good && !tree.shadow_opens;
     if (!good)
     {
         fputs("live Styx directory or opened node mismatch\n", stderr);

@@ -11,6 +11,14 @@
 #define FVM_SESSION_CALL_WAIT_MS 1000U /* Reply polling budget after submission. */
 
 
+typedef enum FVM_StyxRpcPathResult
+{
+    FVM_STYXRPC_PATH_INVALID, /* Malformed AS argument or path limit exceeded. */
+    FVM_STYXRPC_PATH_VISIBLE, /* Resolved canonical path is available for lookup. */
+    FVM_STYXRPC_PATH_HIDDEN   /* Reserved service component hides the whole path. */
+} FVM_StyxRpcPathResult;
+
+
 /* EN: Add named launch methods to a rooted, unpublished object.
  * RU: Добавить методы запуска к удерживаемому неопубликованному объекту. */
 FVM_Result fvm_styxrpc_launch_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
@@ -21,6 +29,12 @@ FVM_Result fvm_styxrpc_launch_members(FVM_Context *context, FVM_Object *object, 
 int fvm_styxrpc_resolve_path(const FVM_StyxRpcSession *binding, const FVM_Value *arg, char *absolute);
 
 
+/* EN: Resolve into caller-owned absolute storage and distinguish a hidden path.
+ * RU: Разрешить путь в буфер вызывающего и отдельно сообщить о скрытом имени. */
+FVM_StyxRpcPathResult fvm_styxrpc_path_result(const FVM_StyxRpcSession *binding,
+    const FVM_Value *arg, char *absolute);
+
+
 /* EN: Install directory mutation and navigation methods on the rooted binding.
  * RU: Установить методы изменения каталогов и навигации на удержанной привязке. */
 FVM_Result fvm_styxrpc_path_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
@@ -29,6 +43,11 @@ FVM_Result fvm_styxrpc_path_members(FVM_Context *context, FVM_Object *object, FV
 /* EN: Add file I/O methods to a rooted, unpublished object.
  * RU: Добавить методы файлов к удерживаемому неопубликованному объекту. */
 FVM_Result fvm_styxrpc_vfs_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
+
+
+/* [ASINC] [GC:] EN: Define exec on the rooted session; borrow binding through teardown.
+ * RU: Установить exec на удержанную сессию; binding живёт до закрытия контекста. */
+FVM_Result fvm_styxrpc_exec_member(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
 /* EN: Install checked named calls on an unpublished rooted session object.
@@ -66,6 +85,12 @@ FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exch
  * RU: Скопировать точные собственные байты в bytes до capacity. При успехе задать size. */
 FVM_Result fvm_styxrpc_bytes(FVM_Context *context, const FVM_Value *value, unsigned char *bytes,
     size_t capacity, size_t *size);
+
+
+/* EN: Return an owned exact byte snapshot on success. Empty is NULL with size zero.
+ * RU: При успехе выдать собственный точный снимок байтов. Для длины ноль возвращается NULL. */
+FVM_Result fvm_styxrpc_alloc_bytes(FVM_Context *context, const FVM_Value *value, size_t limit,
+    unsigned char **bytes, size_t *size);
 
 
 /* EN: Read up to capacity own indexed fields into fields and pin them in roots until the caller finishes.

@@ -3,6 +3,38 @@
  * RU: Адаптер живого namespace той же группы для встречного Styx.
  */
 
+
+/* EN: Keep regular files out of the exact process and execute service routes.
+ * RU: Исключить обычные файлы из точных маршрутов портала и исполнения. */
+static int visible_shared_path(const char *path)
+{
+    while (*path)
+    {
+        if (*path == '/')
+        {
+            ++path;
+            continue;
+        }
+        size_t length = strcspn(path, "/");
+        if ((length == sizeof(".prog") - 1 && !memcmp(path, ".prog", length)) ||
+            (length == sizeof(STYXRPC_NODE_EXEC_SERVICE) - 1 && !memcmp(path, STYXRPC_NODE_EXEC_SERVICE, length)))
+        {
+            return 0;
+        }
+        path += length;
+    }
+    return 1;
+}
+
+
+/* EN: Omit reserved StyxRPC names from the shared ordinary directory listing.
+ * RU: Пропустить служебные имена StyxRPC в общем списке обычного каталога. */
+static int visible_shared_entry(const char *name)
+{
+    return !styxrpc_vfs_service_name(name, strlen(name));
+}
+
+
 /* EN: Capture one current absolute path without using the group's cwd.
  * RU: Захватить текущий абсолютный путь независимо от cwd группы. */
 static int live_plan(void *group, const char *relative, DVM_ResourcePlan *plan)
@@ -10,7 +42,7 @@ static int live_plan(void *group, const char *relative, DVM_ResourcePlan *plan)
     char absolute[DVM_NS_PATH_LIMIT];
     int size = snprintf(absolute, sizeof(absolute), "/%s", relative);
     return size > 0 && (size_t)size < sizeof(absolute) &&
-        visible_shared_path(NULL, absolute, 0) && dvm_resource_plan(group, absolute, 0, plan);
+        visible_shared_path(absolute) && dvm_resource_plan(group, absolute, 0, plan);
 }
 
 
@@ -61,18 +93,12 @@ static FVM_Result live_access(void *group, const char *relative, unsigned access
  * RU: Исключить создание служебных компонентов StyxRPC в этом дереве. */
 static int live_create_path(const char *relative)
 {
-    static const char *const reserved[] = {".fd", ".prog", ".pid", ".var", ".vfs", ".unibus",
-        ".rpc", ".messages", ".channels", ".interface", ".programs", ".sysevents", ".state", ".upload",
-        ".exit", ".idx", ".val", ".len", ".type", ".ins", ".push", ".pop", ".add", ".count"};
     while (*relative)
     {
         size_t length = strcspn(relative, "/");
-        for (size_t i = 0; i < sizeof(reserved) / sizeof(*reserved); ++i)
+        if (styxrpc_vfs_service_name(relative, length))
         {
-            if (strlen(reserved[i]) == length && !memcmp(relative, reserved[i], length))
-            {
-                return 0;
-            }
+            return 0;
         }
         relative += length;
         relative += *relative == '/';
@@ -152,7 +178,7 @@ static FVM_Result live_open(void *group, const char *relative, const char *mode,
         }
         else if (plan.directory && !strcmp(mode, "r"))
         {
-            status = dvm_namespace_directory(&plan, output);
+            status = dvm_namespace_directory_filtered(&plan, visible_shared_entry, output);
         }
         else if (plan.provider)
         {

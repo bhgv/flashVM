@@ -1,6 +1,6 @@
 # styxrpc_node_exec
 
-[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L56) · [Клиент](../src/node_exec_client.c#L36) · [Провайдер](../src/node_exec.c#L81)
+[English](node_exec.md) · [Объявление](../include/styxrpc/nodes.h#L57) · [Клиент](../src/node_exec_client.c#L47) · [Провайдер](../src/node_exec.c#L81)
 
 ```c
 #include <styxrpc/nodes.h>
@@ -41,7 +41,8 @@ StyxRpcIoOutcome status = styxrpc_node_exec(session, "menu/invoke",
 
 ## Обмен по Styx
 
-Пройдите от корня сессии к `/.exec` и откройте его на чтение и запись.
+Пройдите от корня сессии к `/.exec`. Stat сообщает имя службы и
+`STYXRPC_NODE_EXEC_QID` (3) файлового узла. Откройте его на чтение и запись.
 При перечислении корня эта служба пропускается. Запрос начинается со
 смещения ноль. Два беззнаковых счётчика по 32 бита в порядке от старшего
 байта задают длины поля пути и аргумента. Путь с завершающим нулём идёт

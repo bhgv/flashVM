@@ -47,6 +47,7 @@ if(DVM_TERMINAL_LAUNCH_SDK)
     set(launch_sources terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c
         terminal_launch/serve.c terminal_launch/library.c)
     set(launch_includes
+        "${root}/lib/styxrpc/include"
         "${root}/disVM/native/client" "${root}/disVM/native/terminal"
         "${root}/disVM/native/terminal/order" "${root}/disVM/native/vfs"
         "${root}/disVM/native/launch" "${CMAKE_CURRENT_SOURCE_DIR}/vfs"

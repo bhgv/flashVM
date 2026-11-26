@@ -15,8 +15,9 @@ from run import compile_image, listener_port, paired_exchange, stream_pair
 
 # EN: Compile one named AS unit through the project AS2 and FIR compilers.
 # RU: Собрать именованный модуль AS компиляторами проекта AS2 и FIR.
-def compile_unit(args, directory, name):
-    source = ROOT / "flashVM/tests/styxrpc" / f"{name}.as"
+def compile_unit(args, directory, name, source=None):
+    if source is None:
+        source = ROOT / "flashVM/tests/styxrpc" / f"{name}.as"
     fir = directory / f"{name}.fir"
     obj = directory / f"{name}.swo"
     for command in ((args.as2, source, fir), (args.fir / "fir1", "check", fir),
@@ -30,7 +31,7 @@ def compile_unit(args, directory, name):
 def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
-    if role in ("caller", "dis-caller", "ref"):
+    if role in ("caller", "dis-caller", "ref", "exec-caller"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
@@ -38,6 +39,17 @@ def compile_role(args, directory, role):
     if role == "caller":
         objects.extend((compile_unit(args, directory, "peer-credit"),
                         compile_unit(args, directory, "peer-frame")))
+    subprocess.run((args.swl, "link", swf, *objects), check=True, timeout=20)
+    return swf
+
+
+# EN: Build the same AS provider used by the Limbo-to-Flash executable-node test.
+# RU: Собрать тот же AS-провайдер, который используется в проверке Limbo → FlashVM.
+def compile_exec_provider(args, directory):
+    sources = ROOT / "lib/styxrpc/tests/flashvm"
+    units = ("execute_pair", "execute_apply", "execute_refuse")
+    objects = [compile_unit(args, directory, name, sources / f"{name}.as") for name in units]
+    swf = directory / "peer-exec-provider.swf"
     subprocess.run((args.swl, "link", swf, *objects), check=True, timeout=20)
     return swf
 
@@ -170,6 +182,7 @@ def main():
         parser.add_argument("--" + name, type=lambda path: Path(path).resolve())
     parser.add_argument("--tcp", action="store_true", help="use a direct TCP loopback connection")
     parser.add_argument("--ipv6", action="store_true", help="use ::1 for the TCP loopback test")
+    parser.add_argument("--exec-only", action="store_true", help="run only executable VFS callback scenarios")
     args = parser.parse_args()
     if args.ipv6 and not args.tcp:
         parser.error("--ipv6 requires --tcp")
@@ -178,6 +191,13 @@ def main():
     args.source = ROOT / "disVM"
     with TemporaryDirectory(prefix="flashvm-peer-") as scratch:
         directory = Path(scratch)
+        exec_caller = compile_role(args, directory, "exec-caller")
+        exec_provider = compile_exec_provider(args, directory)
+        for mode in ("--no-jit", "--jit"):
+            for reverse in (False, True):
+                exchange(args, directory, exec_caller, exec_provider, mode, reverse, "executable VFS callbacks")
+        if args.exec_only:
+            return
         caller = compile_role(args, directory, "caller")
         reference = compile_role(args, directory, "ref")
         provider = compile_role(args, directory, "provider")

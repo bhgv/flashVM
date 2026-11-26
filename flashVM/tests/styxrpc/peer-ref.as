@@ -26,8 +26,11 @@ function onEnterFrame() {
             if (!(alias - 45)) {
                 if (!(snapshot - 42)) {
                     if (!(propertyAlias - 17)) {
-                        reported = _root.reportPeerResult();
-                        refDone = true;
+                        var provider = vfs.stat("/mounted/peer.dis");
+                        if (!provider[0]) {
+                            reported = _root.reportPeerResult();
+                            refDone = true;
+                        }
                     }
                 }
             }

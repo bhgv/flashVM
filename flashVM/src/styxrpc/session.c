@@ -113,6 +113,10 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
     }
     if (status == FVM_OK)
     {
+        status = fvm_styxrpc_exec_member(context, created, binding);
+    }
+    if (status == FVM_OK)
+    {
         status = fvm_styxrpc_path_members(context, created, binding);
     }
     if (status == FVM_OK)

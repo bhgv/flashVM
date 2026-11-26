@@ -29,13 +29,14 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 | [`status()`](STYX_RPC_STATUS.ru.md) | Текущее состояние присоединённой сессии. |
 | `status(token)` | 1 — ожидание, 2 — успешное завершение, 3 — ошибка программы, 0 — неопределённость. Подтверждённый конечный результат хранится до закрытия. |
 | `close(token)` | True после отзыва точного токена и clunk. Для ожидающей задачи запрашивается отмена. |
-| `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Длина состоит из двух беззнаковых 32-битных частей. При ошибке метаданные равны нулю или false. |
+| `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Длина состоит из двух беззнаковых 32-битных частей. Для скрытых служебных путей статус равен 1. При ошибке метаданные равны нулю или false. |
 | `read(path, offset, count)` | `[status, bytes]`. Плотный Array с подтверждённым префиксом до 2048 байтов. EOF даёт успешный короткий результат. |
 | `write(path, offset, bytes)` | `[status, confirmedCount]`. Принимает до 2048 собственных индексных свойств со значениями 0–255. Геттеры могут выполняться до отправки. Успешный результат может означать короткую запись. |
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.ru.md) | Проверенный результат `fn(int): int`. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.ru.md) | Проверить и загрузить методы. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.ru.md) | Открыть прокси живой переменной. |
 | [`newnode(path, permissions, callback)`](STYX_RPC_NEWNODE.ru.md) | Опубликовать файл с колбэком в парном плеере. |
+| [`exec(path[, bytes])`](STYX_VFS_EXEC.ru.md) | Вызвать исполняемый узел и вернуть байты ответа. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.ru.md) | Открыть именованный порт UniBus. |
 
 Одновременно открываются до восьми запусков. Положительные целые токены

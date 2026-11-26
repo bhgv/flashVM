@@ -171,6 +171,8 @@ python3 ide/tests/check_flash_peers.py --tcp \
   --fir build/fir --swl build/linker/swl
 ```
 
+Вызовы исполняемых узлов описаны в [vfs.exec](STYX_VFS_EXEC.ru.md).
+
 [Проверка парной IDE](../../ide/DESKTOP-PAIRED.ru.md) тоже принимает `--tcp`.
 
 [Исходник плеера](../src/styxrpc/player_main.c) · [Команда монтирования DisVM](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/STYX-SERVING.md)

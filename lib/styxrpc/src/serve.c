@@ -112,7 +112,7 @@ static char *walk_node(Qid *qid, char *name)
     if (!qid->path)
     {
         if (active->tree == &styxrpc_module_slot_tree && !strcmp(name, STYXRPC_NODE_EXEC_SERVICE) &&
-            lookup(active, STYXRPC_NODE_EXEC_ID, &child))
+            lookup(active, STYXRPC_NODE_EXEC_QID, &child))
         {
             *qid = identity(&child);
             return nil;

@@ -178,7 +178,7 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
     uint64_t generation = id >> IMAGE_SHIFT;
     if (!generation)
     {
-        if (id == STYXRPC_NODE_EXEC_ID)
+        if (id == STYXRPC_NODE_EXEC_QID)
         {
             *node = (StyxRpcNode){.entry = {id, STYXRPC_NODE_EXEC_SERVICE, 0666, 0}};
             return 1;
@@ -231,7 +231,7 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     {
         return 0;
     }
-    int execute = id == STYXRPC_NODE_EXEC_ID;
+    int execute = id == STYXRPC_NODE_EXEC_QID;
     int callback = !generation && (execute || id >= STYXRPC_NODE_ID_FIRST);
     const StyxRpcVfs *files = execute ? &styxrpc_node_exec_files :
         callback ? &styxrpc_nodes_tree.files : generation ? &styxrpc_module_tree.files : &styxrpc_control_tree.files;

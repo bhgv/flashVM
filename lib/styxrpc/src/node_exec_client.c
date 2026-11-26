@@ -32,6 +32,17 @@ static StyxRpcIoOutcome write_span(StyxRpcVfsFile *file, size_t offset, const vo
 }
 
 
+/* EN: Require the slot service's exact metadata before opening a walked fid.
+ * RU: Перед открытием пройденного fid требовать точные метаданные службы слота. */
+static int open_service(StyxFid *file)
+{
+    StyxMeta info;
+    return file && styxclientstat(file, &info) && !info.directory &&
+        info.identity == STYXRPC_NODE_EXEC_QID && !strcmp(info.name, STYXRPC_NODE_EXEC_SERVICE) &&
+        styxclientopen(file, STYXRPC_FILE_RDWR);
+}
+
+
 /* EN/RU: See nodes.h. / См. nodes.h. */
 StyxRpcIoOutcome styxrpc_node_exec(StyxClient *session, const char *path,
     void *bytes, size_t size, size_t *used)
@@ -52,7 +63,7 @@ StyxRpcIoOutcome styxrpc_node_exec(StyxClient *session, const char *path,
     }
     StyxFid *file = styxclientwalk(session, STYXRPC_NODE_EXEC_SERVICE);
     StyxRpcIoOutcome outcome = STYXRPC_IO_NOT_OPEN;
-    if (file && styxclientopen(file, STYXRPC_FILE_RDWR))
+    if (open_service(file))
     {
         unsigned char header[NODE_EXEC_HEADER];
         size_t path_size = strlen(path) + 1;

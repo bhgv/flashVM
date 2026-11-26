@@ -29,13 +29,14 @@ and registration APIs. On failure the output is preserved.
 | [`status()`](STYX_RPC_STATUS.md) | Current state of the attached session. |
 | `status(token)` | 1 pending, 2 successful completion, 3 failed completion, 0 uncertain. A confirmed terminal status is retained until close. |
 | `close(token)` | True after retiring that exact token and sending clunk. A pending job receives a cancellation request. |
-| `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Length consists of two unsigned 32-bit words. Metadata fields are zero/false on failure. |
+| `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Length consists of two unsigned 32-bit words. Hidden service paths report status 1. Metadata fields are zero/false on failure. |
 | `read(path, offset, count)` | `[status, bytes]`. Returns a dense Array containing the confirmed prefix, up to 2048 bytes. EOF is a successful short result. |
 | `write(path, offset, bytes)` | `[status, confirmedCount]`. Accepts at most 2048 own indexed byte values in 0–255. Property reads can invoke getters before sending. A successful result can describe a short prefix. |
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.md) | Checked `fn(int): int` return value. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.md) | Check and load named methods. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.md) | Open a live Int32 proxy. |
 | [`newnode(path, permissions, callback)`](STYX_RPC_NEWNODE.md) | Publish a callback file on the paired player. |
+| [`exec(path[, bytes])`](STYX_VFS_EXEC.md) | Call an executable node and return its byte reply. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.md) | Open a named UniBus port. |
 
 Up to eight tickets can be open at once. Tokens are exact positive AS

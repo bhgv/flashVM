@@ -17,6 +17,7 @@
 #include "vfs/export.h"
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
+#include "styxrpc/nodes.h"
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -298,30 +299,6 @@ DVM_Provider *dvm_terminal_mount_peer(StyxCallerServer *reverse, StyxClient *cli
         return NULL;
     }
     return mount;
-}
-
-
-/* EN: Hide private process components anywhere in the shared ordinary files.
- * RU: Скрыть служебные компоненты процессов на любой глубине обычного дерева. */
-static int visible_shared_path(void *state, const char *path, unsigned access)
-{
-    (void)state;
-    (void)access;
-    while (*path)
-    {
-        if (*path == '/')
-        {
-            ++path;
-            continue;
-        }
-        size_t length = strcspn(path, "/");
-        if (length == sizeof(".prog") - 1 && !memcmp(path, ".prog", length))
-        {
-            return 0;
-        }
-        path += length;
-    }
-    return 1;
 }
 
 

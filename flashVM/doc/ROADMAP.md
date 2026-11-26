@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1780, `vfs.exec` and `os.exec` call executable nodes from AS on the
+attached session. The stock two-player check builds both SWFs and tests
+both service lanes over local streams and TCP in interpreter and JIT modes.
+The live DisVM export filters reserved names from ordinary directories.
+[EN](STYX_VFS_EXEC.md) · [RU](STYX_VFS_EXEC.ru.md).
+
 In v0.1779, paired `vfs.newnode` supports the executable permission.
 Limbo and the hosted C SDK invoke callback nodes over the existing mount.
 The AS2, FIR and SWL pipeline builds the callback with named parameters

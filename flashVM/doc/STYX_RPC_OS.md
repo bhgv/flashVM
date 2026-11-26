@@ -16,6 +16,7 @@ are hidden.
 | [`vfs.rm(path)`](STYX_VFS_RM.md) | Remove a file or empty directory. |
 | [`vfs.cd(path)`](STYX_VFS_CD.md) | Change the shared working directory. |
 | [`vfs.pwd()`](STYX_VFS_PWD.md) | Read the canonical working path. |
+| [`vfs.exec(path[, bytes])`](STYX_VFS_EXEC.md) | Call an executable node and return its byte reply. |
 
 `"wx"` requires an existing directory that permits file creation. An occupied
 name causes an error. In the stock pair, DisVM applies the current VFS

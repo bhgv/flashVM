@@ -214,4 +214,12 @@ FVM_Result dvm_resource_raw_info(DVM_ResourcePlan *plan, FVM_FileInfo *output);
  * Borrow plan/group through setup; native I/O, no guest execution. Original directory pins remain.
  * Открыть свой directory cursor с child bindings рядом с existing entries; plan borrowed, native I/O. */
 FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out);
+
+
+/* EN: Open the same namespace cursor with a borrowed, pure basename predicate.
+ * The predicate runs before inspecting child bindings. NULL shows every name.
+ * RU: Открыть тот же курсор с чистой проверкой имени до обхода дочерних
+ * привязок. При NULL видны все имена. */
+FVM_Result dvm_namespace_directory_filtered(DVM_ResourcePlan *plan,
+    int (*visible)(const char *name), DVM_VfsHandle *out);
 #endif

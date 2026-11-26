@@ -9,6 +9,7 @@ sys: Sys; # Borrowed runtime module after init.
 Word: con 4; # Big-endian field width in bytes.
 Header: con 2*Word; # One count for the pathname and one for the argument.
 Service: con ".exec"; # Hidden protocol endpoint, relative to the mount root.
+Serviceqid: con big 3; # Exact service identity in the callback tree.
 
 
 # EN/RU: See styxexec.m. / См. styxexec.m.
@@ -64,6 +65,10 @@ call(mount, path: string, input: array of byte): array of byte
     fd := sys->open(mount + Service, Sys->ORDWR);
     if (fd == nil) {
         raise sys->sprint("cannot open Styx node execute service: %r");
+    }
+    (ok, info) := sys->fstat(fd);
+    if (ok < 0 || info.name != Service || info.qid.qtype != Sys->QTFILE || info.qid.path != Serviceqid) {
+        raise "invalid Styx node execute service";
     }
     send(fd, header);
     send(fd, terminated);

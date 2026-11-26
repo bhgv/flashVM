@@ -20,12 +20,15 @@ A bidirectional `disvm --styx-mount-fd FD --at PATH -- …` always publishes
 the running program's live ordinary VFS in the reverse direction. Every
 new lookup or open selects a resource with the current namespace bindings.
 Existing opens keep their handles. The scoped process portal retains its
-own routing.
+own routing. Directory enumeration in this reverse view hides reserved
+StyxRPC names. Explicit protocol service paths keep their own admission.
 
 Двунаправленный `disvm --styx-mount-fd FD --at PATH -- …` всегда публикует
 живую обычную VFS запущенной программы во встречном направлении. Новый
 поиск или открытие выбирает ресурс с учётом текущих привязок. Открытые
-дескрипторы продолжают работать со своим ресурсом.
+дескрипторы продолжают работать со своим ресурсом. Перечисление каталогов
+во встречном дереве скрывает служебные имена StyxRPC. Явные пути протокола
+открываются по правилам соответствующей службы.
 
 [FlashVM startup / Запуск FlashVM](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC_PLAYER.ru.md)
 
