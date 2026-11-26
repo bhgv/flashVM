@@ -129,6 +129,51 @@ static int fail(StyxOpen *opened)
 	return -1;
 }
 
+
+/* EN/RU: See tree.h. / См. tree.h. */
+StyxOpen *styxcreatefile(StyxBacking *parent, const char *name, StyxBacking **out)
+{
+    StyxMeta info;
+    if (!parent || !name || !*name || strchr(name, '/') || !strcmp(name, ".") ||
+        !strcmp(name, "..") || strlen(name) >= STYX_NAME_MAX || !out ||
+        !styxbackinginfo(parent, &info) || !info.directory)
+    {
+        return NULL;
+    }
+    size_t prefix = !strcmp(parent->path, ".") ? 0 : strlen(parent->path) + 1;
+    if (prefix + strlen(name) >= DVM_NS_PATH_LIMIT)
+    {
+        return NULL;
+    }
+    StyxBacking *child = calloc(1, sizeof(*child));
+    StyxOpen *file = calloc(1, sizeof(*file));
+    if (!child || !file || !dvm_provider_retain(parent->provider))
+    {
+        free(child);
+        free(file);
+        return NULL;
+    }
+    child->provider = parent->provider;
+    if (prefix)
+    {
+        memcpy(child->path, parent->path, prefix - 1);
+        child->path[prefix - 1] = '/';
+    }
+    strcpy(child->path + prefix, name);
+    if (dvm_provider_open(child->provider, child->path, "wx", &file->handle) != FVM_OK ||
+        !styxfileinfo(file, &child->captured) || child->captured.directory)
+    {
+        styxfileclose(file);
+        styxbackingfree(child);
+        return NULL;
+    }
+    child->bound = 1;
+    file->access = FVM_ACCESS_WRITE;
+    *out = child;
+    return file;
+}
+
+
 /* EN/RU: See tree.h; retain at most the current provider batch, refresh each pending child.
  * См. tree.h; удержать только текущую batch provider и обновлять ожидающего ребёнка. */
 int styxdirpeek(StyxOpen *opened, StyxMeta *output)

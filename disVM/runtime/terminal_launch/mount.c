@@ -472,7 +472,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
         return 1;
     }
     PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), 65536);
-    StyxCallerServer *reverse = mux ? styxcallerserver_view(phybidirchannel(mux, 1), shared) : NULL;
+    StyxCallerServer *reverse = mux ? styxcallerserver_view_create(phybidirchannel(mux, 1), shared) : NULL;
     dvm_provider_release(shared);
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;

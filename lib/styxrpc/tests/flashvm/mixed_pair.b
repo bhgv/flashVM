@@ -25,8 +25,20 @@ start()
     bytes[2] = byte (n >> 8);
     bytes[3] = byte n;
     upload := sys->open("/peer/.upload", Sys->OWRITE);
-    if (upload == nil || sys->write(upload, bytes, n+4) != n+4) {
-        raise sys->sprint("cannot upload mixed SWF: %r");
+    if (upload == nil) {
+        raise sys->sprint("cannot open mixed SWF upload: %r");
+    }
+    offset := 0;
+    while (offset < n+4) {
+        count := n+4-offset;
+        if (count > 2048) {
+            count = 2048;
+        }
+        written := sys->write(upload, bytes[offset:], count);
+        if (written <= 0) {
+            raise sys->sprint("cannot upload mixed SWF at %d: %r", offset);
+        }
+        offset += written;
     }
     upload = nil;
     state := sys->open("/peer/.state", Sys->OWRITE);

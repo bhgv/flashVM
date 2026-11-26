@@ -9,6 +9,12 @@
  * Owned node/NULL; no raw host-path lookup; effective parent execute is required.
  * Пройти один компонент; dotdot ограничен prepared root. Свой node/NULL. */
 StyxBacking *styxwalknode(StyxBacking *node, const char *component);
+/* EN: Exclusively create one named child, adopting its open cursor and returning
+ * its captured node via out. The trusted provider must check permissions in wx.
+ * RU: Исключительно создать потомка, выдать его курсор и удержанный узел в out.
+ * Доверенный провайдер обязан проверить права в режиме wx. */
+StyxOpen *styxcreatefile(StyxBacking *parent, const char *name, StyxBacking **out);
+
 /* EN: Compare the retained provider, path and captured object identity.
  * RU: Сравнить удерживаемый провайдер, путь и захваченную идентичность. */
 int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right);

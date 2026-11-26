@@ -129,7 +129,7 @@ this object to the existing ActionScript adapter.
 
 ## System file handles
 
-Movies with a mounted VFS can use the [os system object](STYX_RPC_OS.md).
+Movies with a mounted VFS can use the [rpc and os file methods](STYX_RPC_OS.md).
 
 ## Publishing and using movie modules
 

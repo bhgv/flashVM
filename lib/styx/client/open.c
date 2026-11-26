@@ -1,30 +1,18 @@
 /* Copyright (c) 2026 bhgv
- * EN: Native Topen with acknowledgement-preserving cancellation and uncertain-fid fencing.
- * RU: Native Topen с acknowledgement-preserving cancellation и uncertain-fid fencing.
+ * EN: Native Topen and Tcreate with confirmed acknowledgements and uncertain-fid fencing.
+ * RU: Нативные Topen и Tcreate с подтверждениями и блокировкой fid при неопределённости.
  */
 #include "internal.h"
 
-/* EN/RU: See client.h; preserve open-mode ceiling and per-fid negotiated iounit.
- * См. client.h; сохранить mode ceiling и negotiated iounit для fid. */
 
-
-/* [standalone-contract:openfid]
- * EN: openfid: native client open operations and lifetime.
- * RU: openfid: нативные client-операции open и время жизни.
- * fid (StyxFid *fid): Pinned remote object/fid; serialize its open/clunk lifetime with callers using that fid.
- * RU: Удерживаемый удалённый fid; согласовать open/clunk с использующими его вызовами.
- * mode (int mode): Requested operation/permission mode; use the documented protocol constants, not a pathname suffix.
- * RU: Режим операции/доступа; использовать протокольные константы, не суффикс имени.
- * cancel (StyxCancel *cancel): Explicit sticky cancellation token; one admitted operation per token, with lifetime rules in the public contract.
- * RU: Явный sticky token отмены; один принятый operation на token, время жизни задано публичным контрактом.
- * result (StyxTransfer *result): Copied native acknowledgement: confirmed count, uncertainty and stop reason; not permission to replay an effect.
- * RU: Копия native-подтверждения: count, uncertainty и stop reason; не разрешает повторить эффект.
- * Return: int; direct result constants in this body: 0. Forwarded results preserve the called API's status.
- * Возврат: int; прямые константы результата тела: 0. Пересылаемый результат сохраняет статус вызываемого API.
- * Ownership/threading: retain the original contract immediately above and the public header's requirements.
- * Владение/потоки: действуют исходный контракт выше и требования публичного header.
- */
-static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *result)
+/* EN: Open fid or create name in that directory with the requested permission bits.
+ * mode is the open access. Optional cancel applies to the request. Fill result
+ * and return one on acknowledgement. Serialize use and clunk of the borrowed fid.
+ * RU: Открыть fid либо создать в каталоге name с переданными правами.
+ * mode задаёт доступ. Необязательный cancel отменяет запрос. Заполнить result
+ * и вернуть единицу при подтверждении. Сериализовать работу с fid и его clunk. */
+static int openfid(StyxFid *fid, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result)
 {
     styxopclear(result);
     if (!fid || mode < 0 || mode > 2 || fid->opened || fid->poisoned)
@@ -34,7 +22,9 @@ static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *res
     StyxClient *client = fid->client;
     Fcall request, reply;
     memset(&request, 0, sizeof(request));
-    request.type = Topen;
+    request.type = name ? Tcreate : Topen;
+    request.name = (char *)name;
+    request.perm = permissions;
     request.fid = fid->number;
     request.mode = mode;
     pthread_mutex_lock(&client->lock);
@@ -79,7 +69,7 @@ static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *res
 int styxclientopen(StyxFid *fid, int mode)
 {
     StyxTransfer result;
-    return openfid(fid, mode, NULL, &result);
+    return openfid(fid, NULL, 0, mode, NULL, &result);
 }
 
 /* EN/RU: See client.h; refuse legacy clients or missing result before transport effects.
@@ -109,5 +99,23 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
         return 0;
     }
     styxopclear(result);
-    return fid && fid->client->mux ? openfid(fid, mode, cancel, result) : 0;
+    return fid && fid->client->mux ? openfid(fid, NULL, 0, mode, cancel, result) : 0;
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result)
+{
+    if (!result)
+    {
+        return 0;
+    }
+    styxopclear(result);
+    if (!directory || !(directory->qid.type & QTDIR) || !name || !*name ||
+        strlen(name) >= STYX_NAME_MAX || strchr(name, '/') ||
+        !strcmp(name, ".") || !strcmp(name, "..") || (permissions & ~0777U))
+    {
+        return 0;
+    }
+    return openfid(directory, name, permissions, mode, NULL, result);
 }

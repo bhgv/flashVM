@@ -61,8 +61,8 @@ FVM_Result fvm_styxrpc_read_asset(struct StyxClient *session, const char *path, 
  * RU: Освободить либо применить запросы по порядку у владельца после выполнения кадра. */
 void fvm_styxrpc_movies_finish(FVM_StyxRpcMovies *movies, int apply);
 
-/* EN: Install the system os object on the movie's attached session.
- * RU: Установить системный объект os в подключённой сессии фильма. */
+/* EN: Install file methods on attached rpc and expose os as the same object.
+ * RU: Установить файловые методы в rpc и выставить тот же объект как os. */
 FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *);
 
 #endif

@@ -1,5 +1,10 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1770 / Контрольная точка v0.1770. The default RPC session
+exposes status and ordinary file operations. `os` и `rpc` ссылаются на один
+объект. Создание файла идёт через Styx и текущую VFS DisVM.
+[EN](STYX_RPC_DEFAULT.md) / [RU](STYX_RPC_DEFAULT.ru.md).
+
 Checkpoint v0.1769 / Контрольная точка v0.1769. The paired movie uses its
 attached `rpc` directly. Callback nodes expose read/write requests on the
 same VFS. Колбэки отзываются при смене фильма.
@@ -12,7 +17,7 @@ Int32 из libstyxrpc проверена в Limbo. [EN](STYX_RPC_DEFAULT.md) / [
 
 Checkpoint v0.1767 / Контрольная точка v0.1767. The paired player opens
 one mixed UniBus exchange through `rpc.newchan`. Значения и ранее выданные
-ссылки Int32 идут через один fid. [EN](STYX_RPC_OPEN_EXCHANGE.md) / [RU](STYX_RPC_OPEN_EXCHANGE.ru.md).
+ссылки Int32 идут через один fid. Текущий API описан в [EN](STYX_RPC_DEFAULT.md) / [RU](STYX_RPC_DEFAULT.ru.md).
 
 Checkpoint v0.1766 / Контрольная точка v0.1766. Explicit Int32 reference
 channels encode existing references on send and bind them on receive.

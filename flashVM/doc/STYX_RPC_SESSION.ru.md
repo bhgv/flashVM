@@ -26,6 +26,7 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 | Вызов AS | Результат и условия |
 | --- | --- |
 | `launch(name, startup)` | Положительный токен при подтверждённой доставке, −1 при отказе до отправки, 0 при неопределённом исходе. Байты строки `startup` передаются с длиной, включая NUL. Предел полного кадра именованного сервиса — 64 байта с контекстом и обрамлением. |
+| [`status()`](STYX_RPC_STATUS.ru.md) | Текущее состояние присоединённой сессии. |
 | `status(token)` | 1 — ожидание, 2 — успешное завершение, 3 — ошибка программы, 0 — неопределённость. Подтверждённый конечный результат хранится до закрытия. |
 | `close(token)` | True после отзыва точного токена и clunk. Для ожидающей задачи запрашивается отмена. |
 | `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Длина состоит из двух беззнаковых 32-битных частей. При ошибке метаданные равны нулю или false. |
@@ -34,7 +35,6 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.ru.md) | Проверенный результат `fn(int): int`. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.ru.md) | Проверить и загрузить методы. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.ru.md) | Открыть прокси живой переменной. |
-| [`openExchange(name)`](STYX_RPC_OPEN_EXCHANGE.ru.md) | Открыть обмен разными типами значений и живыми ссылками. |
 | [`newnode(path, permissions, callback)`](STYX_RPC_NEWNODE.ru.md) | Опубликовать файл с колбэком в парном плеере. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.ru.md) | Открыть именованный порт UniBus. |
 
@@ -55,7 +55,7 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
 сессии. См. [проверку запуска](../tests/styxrpc/launch.c) и
 [проверку VFS](../tests/styxrpc/vfs.c).
 
-Для обычных путей и открытых файлов используйте [монтирование файловой системы](STYX_RPC_FILESYSTEM.ru.md).
+Для обычных путей и удерживаемых дескрипторов см. [файловые методы rpc и os](STYX_RPC_OS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

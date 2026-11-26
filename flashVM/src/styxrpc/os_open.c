@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Install os and admit named paths against the one session rooted in the player.
- * RU: Установить os и открывать именованные пути в единственной сессии плеера.
+ * EN: Install file methods on the attached rpc object and mirror it as os.
+ * RU: Установить файловые методы в подключённый rpc и выставить зеркало os.
  */
 #include "os_handles.h"
 #include "session_methods.h"
@@ -9,13 +9,14 @@
 #include <string.h>
 
 
-/* [ASINC] [GC:] EN: Open an existing file, a callable Dis image or a directory cursor.
- * RU: Открыть существующий файл, вызываемый образ Dis или курсор каталога. */
+/* [ASINC] [GC:] EN: Open or create an ordinary file, or open a Dis image or directory.
+ * RU: Открыть или создать обычный файл либо открыть образ Dis или каталог. */
 static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, unsigned argc,
     const FVM_Value *args, int directory, FVM_Value *out)
 {
     char path[FVM_STYXRPC_MOVIE_PATH], mode[3] = "r";
     StyxRpcFileMode access = STYXRPC_FILE_READ;
+    int creating = 0;
     StyxRpcIoOutcome opened;
     OsHandle *handle;
     if (!argc || argc > (directory ? 1U : 2U) || !fvm_os_path(args, path) ||
@@ -30,6 +31,10 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     else if (!strcmp(mode, "w"))
     {
         access = STYXRPC_FILE_WRITE;
+    }
+    else if (!strcmp(mode, "wx"))
+    {
+        creating = 1;
     }
     else if (strcmp(mode, "r"))
     {
@@ -48,8 +53,9 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     }
     else
     {
-        opened = styxrpc_vfs_open(movies->session, path + 1, access, &handle->file);
-        if (opened == STYXRPC_IO_NOT_OPEN && access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
+        opened = creating ? styxrpc_vfs_create(movies->session, path + 1, &handle->file) :
+            styxrpc_vfs_open(movies->session, path + 1, access, &handle->file);
+        if (!creating && opened == STYXRPC_IO_NOT_OPEN && access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
         {
             StyxRpcModuleExports exports;
             if (styxrpc_module_exports(movies->session, path + 1, 0, &exports) == STYXRPC_OK)
@@ -119,27 +125,26 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
     static const FVM_NativeFunction methods[] = {open_file, open_directory, attr};
     FVM_Context *context = movies->context;
     FVM_GCRootScope *roots;
-    FVM_Value os;
+    FVM_Value rpc;
     unsigned i;
-    FVM_Result status = fvm_gc_roots_begin(context, &roots);
+    FVM_Result status = fvm_get_global(context, "rpc", &rpc);
+    if (status != FVM_OK || rpc.type != FVM_VALUE_OBJECT)
+    {
+        return status == FVM_OK ? FVM_NOT_FOUND : status;
+    }
+    status = fvm_gc_roots_begin(context, &roots);
     if (status != FVM_OK)
     {
         return status;
     }
-    fvm_value_undefined(&os);
-    status = fvm_object_create(context, &os.object);
-    if (status == FVM_OK)
-    {
-        os.type = FVM_VALUE_OBJECT;
-        status = fvm_gc_roots_add(roots, &os);
-    }
+    status = fvm_gc_roots_add(roots, &rpc);
     for (i = 0; i < 3 && status == FVM_OK; ++i)
     {
-        status = fvm_object_define_method_rooted(context, os.object, names[i], methods[i], movies, NULL);
+        status = fvm_object_define_method_rooted(context, rpc.object, names[i], methods[i], movies, NULL);
     }
     if (status == FVM_OK)
     {
-        status = fvm_set_global(context, "os", &os);
+        status = fvm_set_global(context, "os", &rpc);
     }
     fvm_gc_roots_end(roots);
     return status;

@@ -35,6 +35,9 @@ def main():
     mode = "--jit" if args.jit else "--no-jit"
     with TemporaryDirectory(prefix="styxrpc-mixed-pair-") as scratch:
         directory = Path(scratch)
+        fixture_bytes = b"A\x00RPC"
+        (directory / "rpc-source").write_bytes(fixture_bytes)
+        (directory / "created").mkdir()
         for module in ("styxintref", "styxchannel"):
             compile_image(args, directory, args.source / "limbo" / (module + ".b"), module + ".dis")
         client = compile_image(args, directory, tests / "mixed_pair.b", "mixed.dis")
@@ -47,6 +50,9 @@ def main():
             "PASS native mixed RPC paired VMs",
             tcp=args.tcp,
         )
+        for created in ("created/rpc-file", "rpc-root-file"):
+            if (directory / created).read_bytes() != fixture_bytes:
+                raise RuntimeError("the movie did not create the expected VFS file")
 
 
 if __name__ == "__main__":

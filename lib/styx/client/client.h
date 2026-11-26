@@ -10,6 +10,14 @@
 #include "readable_parts/client-h/part-001.inc"
 #include "readable_parts/client-h/part-002.inc"
 #include "readable_parts/client-h/part-003.inc"
+
+
+/* EN: Send one Tcreate on a caller-owned unopened directory fid. Acknowledged
+ * success opens the child on the same fid. Uncertainty fences the fid against retry.
+ * RU: Передать один Tcreate на неоткрытом fid каталога вызывающего. При успехе
+ * тот же fid открывает потомка. Неопределённый исход запрещает повтор на этом fid. */
+int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result);
+
 #ifdef __cplusplus
 }
 #endif

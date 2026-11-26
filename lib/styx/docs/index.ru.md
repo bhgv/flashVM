@@ -157,6 +157,7 @@ Copyright (c) 2026 bhgv
 - [styxclientmountfd](reference/styxclientmountfd.ru.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.ru.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.ru.md) — `Styx::client; hosted native build`
+- [styxclientcreate](reference/styxclientcreate.ru.md) — `Styx::client; hosted native build`
 - [styxclientopen](reference/styxclientopen.ru.md) — `Styx::client; hosted native build`
 - [styxclientopencancel](reference/styxclientopencancel.ru.md) — `Styx::client; hosted native build`
 - [styxclientread](reference/styxclientread.ru.md) — `Styx::client; hosted native build`

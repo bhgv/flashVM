@@ -135,7 +135,7 @@ Dis передаёт живые каналы C-экспорту. C выбира�
 
 Хостовый клиент также поддерживает [stat](reference/vfs_stat.ru.md), [позиционное чтение](reference/vfs_read_at.ru.md) и [позиционную запись](reference/vfs_write_at.ru.md). Эти операции используют уже смонтированную сессию, удерживают один fid и возвращают подтверждённый префикс передачи.
 
-Используйте [open](reference/vfs_open.ru.md) для удерживаемого дескриптора с [stat](reference/vfs_file_stat.ru.md), [чтением](reference/vfs_file_read.ru.md), [записью](reference/vfs_file_write.ru.md) и [закрытием](reference/vfs_close.ru.md). [List](reference/vfs_list.ru.md) читает каталог. Внешние переменные int используют [чтение целого значения](reference/vfs_int_read.ru.md) и [запись](reference/vfs_int_write.ru.md).
+Используйте [open](reference/vfs_open.ru.md) для удерживаемого дескриптора с [stat](reference/vfs_file_stat.ru.md), [чтением](reference/vfs_file_read.ru.md), [записью](reference/vfs_file_write.ru.md) и [закрытием](reference/vfs_close.ru.md). [List](reference/vfs_list.ru.md) читает каталог. Внешние переменные int используют [чтение целого значения](reference/vfs_int_read.ru.md) и [запись](reference/vfs_int_write.ru.md). Для исключительного создания файла на запись используйте [create](reference/vfs_create.ru.md).
 
 ## Имя, Qid и fid
 

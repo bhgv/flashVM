@@ -26,6 +26,7 @@ and registration APIs. On failure the output is preserved.
 | AS call | Result and contract |
 | --- | --- |
 | `launch(name, startup)` | Positive token on acknowledged delivery, −1 before sending, 0 if uncertain. `startup` is a counted string whose bytes, including NUL, are sent as-is. The named Styx service admits a complete frame of up to 64 bytes, including its context and framing. |
+| [`status()`](STYX_RPC_STATUS.md) | Current state of the attached session. |
 | `status(token)` | 1 pending, 2 successful completion, 3 failed completion, 0 uncertain. A confirmed terminal status is retained until close. |
 | `close(token)` | True after retiring that exact token and sending clunk. A pending job receives a cancellation request. |
 | `stat(path)` | `[status, lengthHigh, lengthLow, mode, directory]`. Length consists of two unsigned 32-bit words. Metadata fields are zero/false on failure. |
@@ -34,7 +35,6 @@ and registration APIs. On failure the output is preserved.
 | [`callInt(module, method, argument)`](STYX_RPC_SESSION_CALL_INT.md) | Checked `fn(int): int` return value. |
 | [`loadModule(path, ...methods)`](STYX_RPC_LOAD_MODULE.md) | Check and load named methods. |
 | [`intVariable(path, writable)`](STYX_RPC_INT_VARIABLE.md) | Open a live Int32 proxy. |
-| [`openExchange(name)`](STYX_RPC_OPEN_EXCHANGE.md) | Open one exchange for multiple value types and live refs. |
 | [`newnode(path, permissions, callback)`](STYX_RPC_NEWNODE.md) | Publish a callback file on the paired player. |
 | [`openMessages(root, ...types)`](STYX_RPC_OPEN_MESSAGES.md) | Open a named UniBus port. |
 
@@ -56,7 +56,7 @@ Keep the binding alive while methods can be called. Close it before releasing
 the session. See the [named launch test](../tests/styxrpc/launch.c) and
 [VFS test](../tests/styxrpc/vfs.c).
 
-For ordinary paths and long-lived file handles, use the [mounted filesystem](STYX_RPC_FILESYSTEM.md).
+For ordinary paths and long-lived file handles, see the [rpc and os file methods](STYX_RPC_OS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

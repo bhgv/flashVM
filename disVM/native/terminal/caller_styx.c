@@ -232,6 +232,47 @@ static char *open_node(Qid *qid, int mode)
 }
 
 
+/* EN: Create a regular file in the original shared view. PID grants remain separate.
+ * RU: Создать обычный файл в исходном общем дереве. Разрешения PID независимы. */
+static char *create_node(Qid *qid, char *name, int permissions, int mode)
+{
+    if (!owner->creatable || mode != OWRITE || permissions != 0666 ||
+        owner->permanent.count == STYX_CALLER_NODES || styxgetaux(&owner->server))
+    {
+        return Eperm;
+    }
+    CallerNodes *cache = NULL;
+    StyxBacking *parent = qid->path == Qroot ? styxtree(owner->shared) : find(qid->path, &cache);
+    CallerOpen *opened = NULL;
+    StyxBacking *child = NULL;
+    if (parent && (!cache || cache == &owner->permanent))
+    {
+        opened = calloc(1, sizeof(*opened));
+        if (opened)
+        {
+            opened->file = styxcreatefile(parent, name, &child);
+        }
+    }
+    if (qid->path == Qroot)
+    {
+        styxbackingfree(parent);
+    }
+    if (!opened)
+    {
+        return Eperm;
+    }
+    if (!opened->file || styxsetaux(&owner->server, opened) < 0)
+    {
+        styxbackingfree(child);
+        close_node(opened);
+        return Eperm;
+    }
+    *qid = styxqid(owner->permanent.count, 0);
+    owner->permanent.nodes[owner->permanent.count++] = child;
+    return nil;
+}
+
+
 /* EN: Borrow the fid's cursor only while the grant remains active.
  * RU: Заимствовать курсор fid пока разрешение активно. */
 static StyxOpen *active_open(void)
@@ -326,7 +367,7 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 }
 
 static Styxops operations = { /* Ordinary Styx operations, with fid-owned opened aliases. */
-    .walk = walk, .open = open_node, .stat = stat_node, .read = read_node, .write = write_node,
+    .walk = walk, .open = open_node, .create = create_node, .stat = stat_node, .read = read_node, .write = write_node,
     .freefid = close_node
 };
 
@@ -363,9 +404,9 @@ static void *serve(void *state)
 }
 
 
-/* EN/RU: See caller_styx.h. The binding is installed only on a fresh mount.
- * См. caller_styx.h. Связь устанавливается только на свежий маунт. */
-StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared)
+/* EN: Create one owner with an optional trusted write-create provider.
+ * RU: Создать владельца с необязательным доверенным провайдером создания. */
+static StyxCallerServer *start_view(RemotePhy *reverse, DVM_Provider *shared, int creatable)
 {
     StyxCallerServer *server = calloc(1, sizeof(*server));
     if (!server || pthread_mutex_init(&server->scopes.lock, NULL))
@@ -386,10 +427,11 @@ StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared
             return NULL;
         }
         server->shared = shared;
+        server->creatable = creatable;
         server->permanent.count = PROG_QID + 1;
     }
     server->references = 1;
-    if (styxphyinit(&server->server, &operations, reverse, 0555, 0, 8))
+    if (styxphyinit(&server->server, &operations, reverse, creatable ? 0777 : 0555, 0, 8))
     {
         styxbackingfree(server->shared_root);
         dvm_provider_release(server->shared);
@@ -411,6 +453,20 @@ StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared
     return server;
 }
 
+
+
+/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
+StyxCallerServer *styxcallerserver_view(RemotePhy *reverse, DVM_Provider *shared)
+{
+    return start_view(reverse, shared, 0);
+}
+
+
+/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
+StyxCallerServer *styxcallerserver_view_create(RemotePhy *reverse, DVM_Provider *shared)
+{
+    return start_view(reverse, shared, 1);
+}
 
 
 /* EN/RU: See caller_styx.h. / См. caller_styx.h. */

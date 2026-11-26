@@ -66,6 +66,13 @@ StyxRpcIoOutcome styxrpc_vfs_open(struct StyxClient *session, const char *path,
     StyxRpcFileMode mode, StyxRpcVfsFile **file);
 
 
+/* EN: Create a new regular file through its existing visible parent. Open it
+ * write-only on success. A failed request may report an uncertain outcome.
+ * RU: Создать обычный файл через существующий видимый каталог. При успехе
+ * открыть его для записи. При сбое результат может быть неопределённым. */
+StyxRpcIoOutcome styxrpc_vfs_create(struct StyxClient *session, const char *path, StyxRpcVfsFile **file);
+
+
 /* EN: Query one held file independent of path replacement.
  * RU: Получить метаданные открытого файла независимо от замены пути. */
 StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *info);

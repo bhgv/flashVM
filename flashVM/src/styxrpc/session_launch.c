@@ -3,6 +3,7 @@
  * RU: Именованный запуск разрешённого Dis, его квитанция и точная отмена.
  */
 #include "session_methods.h"
+#include "client.h"
 
 
 /* EN: Find the exact positive token on a still-owned launch fid.
@@ -68,6 +69,44 @@ static FVM_Result launch(FVM_Context *context, FVM_Object *self, unsigned argc,
 }
 
 
+/* [GC:] EN: Copy the local state of the current attachment without probing the peer.
+ * RU: Скопировать локальное состояние подключения без опроса другой стороны. */
+static FVM_Result session_status(FVM_Context *context, const FVM_StyxRpcSession *binding, FVM_Value *out)
+{
+    FVM_GCRootScope *roots;
+    FVM_Value object, value;
+    const int connected = binding->client && styxclientalive(binding->client);
+    FVM_Result result = fvm_gc_roots_begin(context, &roots);
+    if (result != FVM_OK)
+    {
+        return result;
+    }
+    fvm_value_undefined(&object);
+    result = fvm_object_create(context, &object.object);
+    if (result == FVM_OK)
+    {
+        object.type = FVM_VALUE_OBJECT;
+        result = fvm_gc_roots_add(roots, &object);
+    }
+    if (result == FVM_OK)
+    {
+        fvm_value_boolean(&value, connected);
+        result = fvm_object_set(context, object.object, "connected", &value);
+    }
+    if (result == FVM_OK)
+    {
+        fvm_value_string(&value, connected ? "open" : "closed");
+        result = fvm_object_set(context, object.object, "channel", &value);
+    }
+    if (result == FVM_OK)
+    {
+        *out = object;
+    }
+    fvm_gc_roots_end(roots);
+    return result;
+}
+
+
 /* EN: Read one completion receipt for an existing token; preserve terminal results.
  * RU: Прочитать квитанцию существующего токена; сохранить конечный результат. */
 static FVM_Result status(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -75,8 +114,11 @@ static FVM_Result status(FVM_Context *context, FVM_Object *self, unsigned argc,
 {
     FVM_StyxRpcTicket *ticket = argc == 1 ? find_ticket(state, args) : NULL;
     StyxRpcLaunchStatus current;
-    (void)context;
     (void)self;
+    if (!argc)
+    {
+        return session_status(context, state, result);
+    }
     if (!ticket)
     {
         return FVM_INVALID_ARGUMENT;

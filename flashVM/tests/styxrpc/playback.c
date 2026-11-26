@@ -3,6 +3,7 @@
  * RU: Нативный владелец плеера FlashVM для проверки управления из Limbo.
  */
 #include "flashvm/styxrpc_playback.h"
+#include "flashvm/styxrpc_session.h"
 #include "movie-assets.h"
 #include "../../src/styxrpc/movie_load.h"
 #include "flashvm/gc.h"
@@ -105,7 +106,8 @@ static int collect_os_handles(FVM_Runtime *runtime, StyxClient *client)
 {
     FVM_Context *context = NULL;
     FVM_StyxRpcMovies movies = {0};
-    FVM_Value os, path, handle;
+    FVM_Value rpc, os, path, handle, rpc_state, connected, channel;
+    FVM_StyxRpcSession binding = {0};
     unsigned long reclaimed = 0;
     if (fvm_context_create(runtime, &context) != FVM_OK)
     {
@@ -113,14 +115,28 @@ static int collect_os_handles(FVM_Runtime *runtime, StyxClient *client)
     }
     movies.context = context;
     movies.session = client;
-    int ok = fvm_styxrpc_os_install(&movies) == FVM_OK &&
-        fvm_get_global(context, "os", &os) == FVM_OK &&
+    int ok = fvm_styxrpc_session_bind(context, &binding, client, NULL, &rpc) == FVM_OK &&
+        fvm_set_global(context, "rpc", &rpc) == FVM_OK && fvm_styxrpc_os_install(&movies) == FVM_OK &&
+        fvm_get_global(context, "os", &os) == FVM_OK && os.object == rpc.object &&
+        fvm_object_call(context, os.object, "status", 0, NULL, &rpc_state) == FVM_OK &&
+        rpc_state.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, rpc_state.object, "connected", &connected) == FVM_OK &&
+        connected.type == FVM_VALUE_BOOLEAN && connected.boolean &&
+        fvm_object_get(context, rpc_state.object, "channel", &channel) == FVM_OK &&
+        channel.type == FVM_VALUE_STRING && !strcmp(channel.string, "open") &&
         fvm_value_string(&path, "/movies/chapter/child.swf") == FVM_OK &&
-        fvm_object_call(context, os.object, "open", 1, &path, &handle) == FVM_OK &&
+        fvm_object_call(context, rpc.object, "open", 1, &path, &handle) == FVM_OK &&
         fvm_value_string(&path, "/movies") == FVM_OK &&
         fvm_object_call(context, os.object, "opendir", 1, &path, &handle) == FVM_OK &&
         fvm_gc_collect(context, &reclaimed) == FVM_OK && reclaimed >= 2 &&
         fvm_object_call(context, os.object, "attr", 1, &path, &handle) == FVM_OK;
+    fvm_styxrpc_session_close(&binding);
+    ok = ok && fvm_object_call(context, rpc.object, "status", 0, NULL, &rpc_state) == FVM_OK &&
+        rpc_state.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, rpc_state.object, "connected", &connected) == FVM_OK &&
+        connected.type == FVM_VALUE_BOOLEAN && !connected.boolean &&
+        fvm_object_get(context, rpc_state.object, "channel", &channel) == FVM_OK &&
+        channel.type == FVM_VALUE_STRING && !strcmp(channel.string, "closed");
     fvm_context_destroy(context);
     return ok;
 }

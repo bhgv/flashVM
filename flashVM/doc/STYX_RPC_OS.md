@@ -1,17 +1,24 @@
-# The os system object
+# File methods on rpc and os
 
 [Русский](STYX_RPC_OS.ru.md) · [Player](STYX_RPC_PLAYER.md) · [Open and attributes](../src/styxrpc/os_open.c) · [Handle methods](../src/styxrpc/os.c)
 
-`os` is installed in the stock player when a libstyxrpc VFS is mounted. Paths
+In the stock player, `os` refers to the same object as `rpc`. Both names
+use the VFS of the already attached libstyxrpc session. Paths
 with and without a leading slash start at that session root. `"/"` names the
 root directory. Service paths including `.prog`, `.var` and UniBus roots
 are hidden.
 
 | Call | Result |
 | --- | --- |
-| `os.open(path[, mode])` | Open an existing file. Modes are `"r"` by default, `"w"` for write without truncation on open, and `"rw"` for both directions. |
-| `os.opendir(path)` | One open directory fid with a forward iterator. |
-| `os.attr(path[, vfs])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
+| `rpc.open(path[, mode])` | Open a file. Modes are `"r"` by default, `"w"` for write without truncation on open, `"rw"` for both directions, and `"wx"` to create a new write-only file. |
+| `rpc.opendir(path)` | One open directory fid with a forward iterator. |
+| `rpc.attr(path[, vfs])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
+
+`"wx"` requires an existing directory that permits file creation. An occupied
+name causes an error. In the stock pair, DisVM applies the current VFS
+rules and the host file creation policy. Providers without creation support
+return an error. Call on the movie owner thread. I/O can wait up to the
+Styx request deadline.
 
 Attributes and `next_file()` results expose `name`, `directory`, `mode`,
 `lengthHigh` and `lengthLow`. The last two are the exact UInt32 limbs of the
@@ -35,7 +42,7 @@ fresh open before further writes. When the handle and extracted methods
 become unreachable, collection queues the fid clunk outside GC.
 
 ```actionscript
-var file = os.open("/movies/intro.swf");
+var file = rpc.open("/movies/intro.swf");
 var clip = file.load();
 file.close();
 clip.play();

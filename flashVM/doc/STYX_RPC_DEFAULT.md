@@ -12,6 +12,6 @@ peer. One open fid owns that queue until clunk. Player-side `rpc.send`
 returns true once queued or false while the port is closed or its output
 queue is full. The movie owner operates the local mailbox.
 
-[`openExchange(name)`](STYX_RPC_OPEN_EXCHANGE.md) opens a named message port
-on the attached session. Separate connections use the names described in
-[newchan](STYX_RPC_NEWCHAN.md) and [publishchan](STYX_RPC_PUBLISHCHAN.md).
+The first SWF arrives at `.upload` over this session. The movie can use
+[`rpc.status()`](STYX_RPC_STATUS.md) and the [file methods](STYX_RPC_OS.md).
+The `os` global refers to the same object as `rpc`.

@@ -157,6 +157,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientmountfd](reference/styxclientmountfd.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.md) — `Styx::client; hosted native build`
+- [styxclientcreate](reference/styxclientcreate.md) — `Styx::client; hosted native build`
 - [styxclientopen](reference/styxclientopen.md) — `Styx::client; hosted native build`
 - [styxclientopencancel](reference/styxclientopencancel.md) — `Styx::client; hosted native build`
 - [styxclientread](reference/styxclientread.md) — `Styx::client; hosted native build`

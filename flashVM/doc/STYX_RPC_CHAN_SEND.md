@@ -1,22 +1,10 @@
-# ch.send
+# rpc.send
 
-[Русский](STYX_RPC_CHAN_SEND.ru.md) · [Open](STYX_RPC_OPEN_EXCHANGE.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c) · [Hosted exchange](STYX_RPC_DEFAULT.md)
+[Русский](STYX_RPC_CHAN_SEND.ru.md) · [Receive](STYX_RPC_CHAN_RECV.md) · [Implementation](../src/styxrpc/session_channel.c) · [Default session](STYX_RPC_DEFAULT.md)
 
-`ch.send(value)` sends a snapshot of an AS Number, Boolean, counted string
-(up to 16,384 bytes), or `null`. `ch.send(ref counter)` forwards a live Int32
-reference previously received from the same Styx session. The original
-identity and permissions are preserved. Local AS variables need an
-exported cell before they can be shared. This API currently issues no
-descriptors for local AS variables.
-
-The selected [wire schema](../../lib/styxrpc/reference/channel_messages.md)
-follows the value. Passing an alias as `ch.send(counter)` performs the
-ordinary AS read and sends its current value. Type negotiation and
-automatic conversion based on the receiver's preferred type are pending.
-
-Call from the movie owner. The method writes through Styx using the
-session deadline and returns `true` after acknowledgement. It performs
-no receive dispatch. Unsupported values and closed handles produce an
-argument error. Transport failure retires the handle and reports an
-error. The peer may already have seen a failed write, so repeating it
-can duplicate an effect.
+`rpc.send(value)` queues one AS Number, Boolean, counted string of up to
+16,384 bytes, or `null` on the player's default exchange. Use it on the
+movie owner thread. It returns `true` after the SDK copies the payload,
+or `false` when the peer's message port is closed or the queue is full.
+It does no synchronous wire I/O. An unsupported payload or argument
+count raises an argument error.

@@ -33,7 +33,18 @@ readstate(fd: ref Sys->FD, count: int): string
 # RU: Открыть независимый снимок для нового измерения.
 getstate(): string
 {
-    return readstate(sys->open(state, Sys->OREAD), 4096);
+    fd := sys->open(state, Sys->OREAD);
+    if (fd == nil) {
+        raise sys->sprint("cannot open playback state: %r");
+    }
+    snapshot := "";
+    for (;;) {
+        part := readstate(fd, 4096);
+        if (part == "") {
+            return snapshot;
+        }
+        snapshot += part;
+    }
 }
 
 # EN: Allow deferred Dis fid retirement before reopening the single upload slot.
@@ -90,8 +101,16 @@ paired(source: ref Sys->FD)
     wire[2] = byte (size >> 8);
     wire[3] = byte size;
     target := sys->open(upload, Sys->OWRITE);
-    if (target == nil || sys->write(target, wire, size + 4) != size + 4) {
-        raise sys->sprint("cannot upload fixture root: %r");
+    if (target == nil) {
+        raise sys->sprint("cannot open fixture root upload: %r");
+    }
+    offset := 0;
+    while (offset < size+4) {
+        written := sys->write(target, wire[offset:], size+4-offset);
+        if (written <= 0) {
+            raise sys->sprint("cannot upload fixture root at %d: %r", offset);
+        }
+        offset += written;
     }
     target = nil;
     send("start", 1);
