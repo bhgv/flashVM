@@ -15,8 +15,8 @@ typedef struct NamedCells
 } NamedCells;
 
 
-/* EN: Allocate one leased cell copied from nonce and a validated scalar frame.
- * RU: Выделить арендованную ячейку с копией nonce и проверенного скалярного кадра. */
+/* EN: Allocate one leased cell copied from nonce and a validated value frame.
+ * RU: Выделить арендованную ячейку с копией nonce и проверенного кадра значения. */
 NamedCell *styxrpc_cells_create(NamedCells *, const unsigned char *nonce, const void *frame,
     size_t size, unsigned char *token);
 
@@ -32,7 +32,7 @@ void styxrpc_cells_release(NamedCells *, NamedCell *);
  * RU: Скопировать текущий кадр в новый буфер. */
 unsigned char *styxrpc_cells_get(const NamedCell *, size_t *size);
 
-/* EN: Consume the validated scalar frame and replace the old value.
+/* EN: Consume the validated value frame and replace the old value.
  * RU: Принять проверенный кадр во владение и заменить старое значение. */
 void styxrpc_cells_set(NamedCell *, unsigned char *frame, size_t size);
 #endif

@@ -28,12 +28,12 @@ Styxnamed: module
         fd: ref Sys->FD; # Owned lease preserving the cell independently of the channel.
         frame: array of byte; # Private descriptor copy for forwarding.
 
-        # EN: Read the current tagged scalar.
-        # RU: Прочитать текущий скаляр с тегом.
+        # EN: Read the current tagged value frame.
+        # RU: Прочитать текущий кадр значения с тегом.
         get: fn(cell: self ref Cell): array of byte;
 
-        # EN: Replace the scalar with a complete tagged frame.
-        # RU: Заменить скаляр полным кадром с тегом.
+        # EN: Replace the value with a complete tagged frame.
+        # RU: Заменить значение полным кадром с тегом.
         set: fn(cell: self ref Cell, value: array of byte);
 
         # EN: Copy the descriptor for sending this same cell again.
@@ -49,8 +49,8 @@ Styxnamed: module
     # RU: Принять полученный кадр ссылки до следующей операции на канале.
     adopt: fn(frame: array of byte): ref Cell;
 
-    # EN: Create one shared scalar cell. The returned Cell is its first lease.
-    # RU: Создать общую скалярную ячейку. Возвращаемый Cell — её первая аренда.
+    # EN: Create one shared value cell. The returned Cell is its first lease.
+    # RU: Создать общую ячейку значения. Возвращаемый Cell — её первая аренда.
     share: fn(value: array of byte): ref Cell;
 
     # EN: Load Sys before opening channels.

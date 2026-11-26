@@ -315,7 +315,7 @@ static int cell_request(StyxRpcNamedEndpoint *endpoint)
     switch (endpoint->header[0])
     {
     case STYXRPC_CELL_NEW:
-        if (styxrpc_cell_scalar(endpoint->body, endpoint->length))
+        if (styxrpc_cell_value(endpoint->body, endpoint->length))
         {
             unsigned char nonce[STYXRPC_CELL_NONCE];
             StyxRpcNamedRegistry *registry = endpoint->registry;
@@ -340,7 +340,7 @@ static int cell_request(StyxRpcNamedEndpoint *endpoint)
         accepted = reply != NULL;
         break;
     case STYXRPC_CELL_SET:
-        if (styxrpc_cell_scalar(endpoint->body, endpoint->length))
+        if (styxrpc_cell_value(endpoint->body, endpoint->length))
         {
             styxrpc_cells_set(endpoint->cell, endpoint->body, endpoint->length);
             endpoint->body = NULL;

@@ -32,5 +32,6 @@ The reference FIFO stays within one context. Live Int32 references from
 another process use [wire descriptors](../../lib/styxrpc/reference/int_variable_refs.md).
 A read followed by a write uses two operations.
 
-[VFS named channels](STYX_RPC_NAMED_SEND.md) also publish fresh scalar
-slots on the StyxRPC session.
+[VFS named channels](STYX_RPC_NAMED_SEND.md) also publish fresh writable
+slots on the StyxRPC session. A slot may hold a scalar or a serializable
+graph. A graph read returns a snapshot and whole-slot assignment publishes it.

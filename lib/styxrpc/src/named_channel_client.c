@@ -165,7 +165,7 @@ StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, siz
 /* EN/RU: See named_cell.h. / См. named_cell.h. */
 StyxRpcVfsFile *styxrpc_cell_create(struct StyxClient *session, const void *frame, size_t size, void *token)
 {
-    if (!session || !token || !styxrpc_cell_scalar(frame, size))
+    if (!session || !token || !styxrpc_cell_value(frame, size))
     {
         return NULL;
     }
@@ -217,7 +217,7 @@ StyxRpcIoOutcome styxrpc_cell_get(StyxRpcVfsFile *file, unsigned char **bytes, s
     {
         return status;
     }
-    if (!styxrpc_cell_scalar(frame, length))
+    if (!styxrpc_cell_value(frame, length))
     {
         free(frame);
         return STYXRPC_IO_FAILED;
@@ -231,7 +231,7 @@ StyxRpcIoOutcome styxrpc_cell_get(StyxRpcVfsFile *file, unsigned char **bytes, s
 /* EN/RU: See named_cell.h. / См. named_cell.h. */
 StyxRpcIoOutcome styxrpc_cell_set(StyxRpcVfsFile *file, const void *bytes, size_t size)
 {
-    if (!file || !styxrpc_cell_scalar(bytes, size))
+    if (!file || !styxrpc_cell_value(bytes, size))
     {
         return STYXRPC_IO_NOT_OPEN;
     }

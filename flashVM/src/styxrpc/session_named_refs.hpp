@@ -1,13 +1,13 @@
 /* Copyright (c) 2026 bhgv
- * EN: Bind scalar AS variables to cells on the attached StyxRPC session.
- * RU: Привязывать скалярные переменные AS к ячейкам в подключённой сессии.
+ * EN: Bind writable AS slots to cells on the attached StyxRPC session.
+ * RU: Привязывать записываемые слоты AS к ячейкам в подключённой сессии.
  */
 #ifndef FVM_NAMED_REFS_HPP
 #define FVM_NAMED_REFS_HPP
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/named_cell.h"
 
-/* [GC:] EN: Resolve ref to a live scalar cell on session, publishing a fresh slot if needed.
+/* [GC:] EN: Resolve ref to a live cell on session, publishing a fresh slot if needed.
  * RU: Получить живую ячейку ref на session, при необходимости опубликовав новый слот. */
 FVM_Result fvm_named_ref_token(FVM_Context *, FVM_StyxRpcSession *, const FVM_Value *, unsigned char *token);
 

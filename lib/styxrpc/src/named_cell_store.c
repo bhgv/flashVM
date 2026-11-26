@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Hold scalar frames behind live, session-local cell capabilities.
- * RU: Хранить скалярные кадры за живыми полномочиями ячеек сессии.
+ * EN: Hold value frames behind live, session-local cell capabilities.
+ * RU: Хранить кадры значений за живыми полномочиями ячеек сессии.
  */
 #include "named_cell_store.h"
 #include <stdlib.h>
@@ -11,7 +11,7 @@ struct NamedCell
     NamedCell *next; /* Link in the registry of live cells. */
     size_t refs; /* Leases plus queued transfers. */
     size_t size; /* Count of bytes in the owned frame. */
-    unsigned char *frame; /* Current complete scalar value. */
+    unsigned char *frame; /* Current complete value frame. */
     unsigned char token[STYXRPC_CELL_TOKEN]; /* Exact identity until final release. */
 };
 

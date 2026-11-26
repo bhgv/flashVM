@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Share a plain scalar AS slot and reconstruct aliases without crossing VM heaps.
- * RU: Разделять простой скалярный слот AS и восстанавливать ссылки без доступа к чужой куче.
+ * EN: Share a plain AS slot and reconstruct aliases without crossing VM heaps.
+ * RU: Разделять простой слот AS и восстанавливать ссылки без доступа к чужой куче.
  */
 #include "session_named_refs.hpp"
 #include "session_named_values.hpp"
@@ -37,8 +37,8 @@ void release(void *state)
 }
 
 
-/* [ASINC] [GC:] EN: Read and decode a current scalar frame from the leased cell.
- * RU: Прочитать и декодировать текущий скалярный кадр арендованной ячейки. */
+/* [ASINC] [GC:] EN: Read and decode the current value frame from the leased cell.
+ * RU: Прочитать и декодировать текущий кадр значения арендованной ячейки. */
 FVM_Result get(FVM_Context *context, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *state)
 {
     CellProxy *proxy = static_cast<CellProxy *>(state);
@@ -54,12 +54,12 @@ FVM_Result get(FVM_Context *context, FVM_Object *, unsigned, const FVM_Value *, 
 }
 
 
-/* [ASINC] EN: Replace the leased scalar. Preserve the old value on argument failure.
- * RU: Заменить арендованный скаляр. При неверном аргументе сохранить значение. */
+/* [ASINC] EN: Replace the leased value. Preserve the old value on argument failure.
+ * RU: Заменить арендованное значение. При неверном аргументе сохранить значение. */
 FVM_Result set(FVM_Context *context, FVM_Object *, unsigned argc, const FVM_Value *args, FVM_Value *out, void *state)
 {
     CellProxy *proxy = static_cast<CellProxy *>(state);
-    if (argc != 1 || args->type == FVM_VALUE_OBJECT)
+    if (argc != 1 || fvm_is_variable_ref(args))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -123,18 +123,18 @@ FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Objec
 }
 
 
-/* [ASINC] [GC:] EN: Publish the current scalar and keep the source slot attached to it.
- * RU: Опубликовать текущий скаляр и удержать подключение исходного слота. */
+/* [ASINC] [GC:] EN: Publish the current value and keep the source slot attached to it.
+ * RU: Опубликовать текущее значение и удержать подключение исходного слота. */
 FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object *owner,
     const fvm_detail::string &key, unsigned char *token)
 {
     unsigned flags = 0;
     fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator value = owner->properties.find(key);
-    if (value == owner->properties.end() || value->second.type == FVM_VALUE_OBJECT ||
+    if (value == owner->properties.end() || fvm_is_variable_ref(&value->second) ||
         fvm_object_property_flags_bytes(context, owner, key.data(), key.size(), &flags) != FVM_OK ||
         (flags & FVM_PROPERTY_READ_ONLY) || owner->watchers.find(key) != owner->watchers.end())
     {
-        return fvm_styxrpc_managed_fail(context, "ref needs a writable ordinary scalar slot");
+        return fvm_styxrpc_managed_fail(context, "ref needs a writable ordinary data slot");
     }
     FVM_ObjectRootScope source(context, owner);
     FVM_Object *holder = NULL;
@@ -163,7 +163,7 @@ FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object
     if (!proxy->lease)
     {
         delete proxy;
-        return fvm_styxrpc_managed_fail(context, "cannot publish the scalar cell");
+        return fvm_styxrpc_managed_fail(context, "cannot publish the shared cell");
     }
     status = link_slot(owner, key, holder, proxy);
     if (status != FVM_OK)

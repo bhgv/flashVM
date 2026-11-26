@@ -115,7 +115,8 @@ init()
     if (!equal(port.recv(), graph)) {
         raise "named channel array frame changed on decode and encode";
     }
-    cell := refexchange(port);
+    cell := refexchange(port, graph);
+    graphexchange(port, graph);
     port.close();
     for (i := 0; i < 100; ++i) {
         (exists, meta) = sys->stat("/jobs");
@@ -144,7 +145,7 @@ count111(): array of byte
 
 # EN: Read, change type, forward, and observe changes to one cell in both VMs.
 # RU: Прочитать ячейку, сменить тип, передать её обратно и проверить изменения в обеих VM.
-refexchange(port: ref Port): ref Cell
+refexchange(port: ref Port, snapshot: array of byte): ref Cell
 {
     descriptor := port.recv();
     cell := named->adopt(descriptor);
@@ -168,8 +169,11 @@ refexchange(port: ref Port): ref Cell
     if (!equal(port.recv(), after) || !equal(cell.get(), after)) {
         raise "assignment through the returned AS alias did not reach the source";
     }
-    own := named->share(flag);
+    own := named->share(snapshot);
     port.send(own.payload());
+    if (!equal(port.recv(), snapshot)) {
+        raise "AS did not read the graph cell created by Limbo";
+    }
     result := port.recv();
     if (len result != 7 || int result[0] != Styxnamed->Text || string result[1:] != "edited" ||
         !equal(own.get(), result)) {
@@ -177,6 +181,49 @@ refexchange(port: ref Port): ref Cell
     }
     own.close();
     return cell;
+}
+
+
+# EN: Replace a live graph with an array, then restore it through the returned alias.
+# RU: Заменить живой граф массивом, затем восстановить граф через полученную ссылку.
+graphexchange(port: ref Port, replacement: array of byte)
+{
+    original := port.recv();
+    if (len original <= 16384 || int original[0] != Styxnamed->Snapshot) {
+        raise "the AS object did not produce a multi-fragment snapshot";
+    }
+    graph := named->adopt(port.recv());
+    if (!equal(graph.get(), original)) {
+        raise "the graph reference lost the original snapshot";
+    }
+    port.send(graph.payload());
+    ready := array[] of {byte Styxnamed->Boolean, byte 1};
+    if (!equal(port.recv(), original)) {
+        raise "the graph snapshot lost shared array edges or a self-cycle";
+    }
+    graph.set(replacement);
+    port.send(ready);
+    if (!equal(port.recv(), replacement)) {
+        raise "the original AS slot did not see the array replacement";
+    }
+    if (!equal(port.recv(), original) || !equal(graph.get(), original)) {
+        raise "assigning through the AS alias did not restore the graph";
+    }
+    if (!equal(port.recv(), original)) {
+        raise "an edit to a local snapshot reached the shared cell without assignment";
+    }
+    edited := port.recv();
+    if (equal(edited, original) || !equal(graph.get(), edited)) {
+        raise "an assigned snapshot edit did not reach the shared cell";
+    }
+    graph.close();
+    field := named->adopt(port.recv());
+    field.set(count111());
+    port.send(field.payload());
+    if (!equal(port.recv(), count111()) || !equal(port.recv(), field.payload())) {
+        raise "capturing ref model.count again lost the updated field";
+    }
+    field.close();
 }
 
 

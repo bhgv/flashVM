@@ -39,6 +39,33 @@ static int response(StyxRpcNamedEndpoint *endpoint, void *body, size_t size)
 }
 
 
+/* EN: Validate opaque snapshot framing independently of the FlashVM decoder. Invalid
+ * writes must preserve the prior graph. The body uses the standard CRC-32 test vector.
+ * RU: Проверить оболочку снимка независимо от декодера FlashVM. Неверные записи
+ * сохраняют предыдущий граф. Для тела используется стандартный вектор CRC-32. */
+static int check_graph(StyxRpcNamedRegistry *registry)
+{
+    const unsigned char graph[] = {STYXRPC_NAMED_VALUE, 'F', 'V', 'M', 'G', 0, 0, 0, 8,
+        0, 0, 0, 9, 0xcb, 0xf4, 0x39, 0x26, '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    unsigned char token[STYXRPC_CELL_TOKEN], corrupt[sizeof(graph)], actual[sizeof(graph)];
+    StyxRpcNamedEndpoint *owner = styxrpc_named_endpoint(registry);
+    StyxRpcNamedEndpoint *writer = styxrpc_named_endpoint(registry);
+    memcpy(corrupt, graph, sizeof(graph));
+    corrupt[sizeof(corrupt) - 1] = '0';
+    int ok = styxrpc_cell_value(graph, sizeof(graph)) && !styxrpc_cell_scalar(graph, sizeof(graph)) &&
+        !styxrpc_cell_value(graph, sizeof(graph) - 1) && !styxrpc_cell_value(corrupt, sizeof(corrupt)) &&
+        request(owner, STYXRPC_CELL_NEW, graph, sizeof(graph)) &&
+        response(owner, token, sizeof(token)) &&
+        request(writer, STYXRPC_CELL_ATTACH, token, sizeof(token)) &&
+        !request(writer, STYXRPC_CELL_SET, corrupt, sizeof(corrupt)) &&
+        request(owner, STYXRPC_CELL_GET, NULL, 0) &&
+        response(owner, actual, sizeof(actual)) && !memcmp(actual, graph, sizeof(graph));
+    styxrpc_named_retire(writer);
+    styxrpc_named_retire(owner);
+    return ok;
+}
+
+
 /* EN: Retire the sender before the receiver attaches, then prove final revocation.
  * RU: Закрыть отправителя до получения аренды и подтвердить окончательный отзыв. */
 static int check(StyxRpcNamedRegistry *registry)
@@ -94,7 +121,7 @@ static int check(StyxRpcNamedRegistry *registry)
 int main(void)
 {
     StyxRpcNamedRegistry *registry = styxrpc_named_registry(NULL, NULL, NULL, NULL);
-    int ok = styxrpc_named_cells_enable(registry, entropy, NULL) && check(registry);
+    int ok = styxrpc_named_cells_enable(registry, entropy, NULL) && check(registry) && check_graph(registry);
     styxrpc_named_destroy(registry);
     if (!ok)
     {

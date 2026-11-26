@@ -10,18 +10,19 @@ edges and cycles. One encoded frame may contain up to 65,536 bytes including
 its type byte. Values without a graph encoding and oversized frames raise an
 error before sending.
 
-`port.send(ref counter)` sends a reference to a writable AS scalar variable.
-On the first send, the source slot attaches to a
-[libstyxrpc cell](../../lib/styxrpc/reference/named_cell.md). Ordinary reads
-and assignments in AS then act on its current value. Further sends of
-`ref counter` preserve its identity. The receiver can bind a fresh name,
-assign a different scalar kind, and forward the same reference.
+`port.send(ref counter)` shares a plain writable AS variable or own property
+through a [libstyxrpc cell](../../lib/styxrpc/reference/named_cell.md).
+On the first send the source slot attaches to the cell. Subsequent reads and
+assignments access its current value. A new binding after `recv()` can change
+the value, including its type, and forward the same cell with `ref`.
 
-The supported live slots are plain writable variables and own properties
-holding a number, string, Boolean, null or undefined. Slots with custom
-accessors, watchers, or object values are outside this publication profile.
-Ordinary `send(value)` supports serialized object graphs. Previously issued
-Int32 references can still be forwarded on their issuing session.
+Cells hold the same scalars and serializable object graphs as value messages.
+A read of a graph slot materializes a local snapshot. To publish edits, assign
+the edited snapshot back to the shared slot. For direct updates to one field
+of a local object, share that field separately with `port.send(ref model.count)`.
+The field must already exist as a writable own data property. Custom accessors,
+watched properties and values the graph codec refuses cannot be published.
+Previously issued Int32 references still forward on their issuing session.
 
 ```actionscript
 var counter = 7;
