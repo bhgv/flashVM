@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive"):
+    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive", "rebind"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -51,10 +51,19 @@ def main():
             (directory / "tools").mkdir()
         if name == "dirlive":
             (directory / "tools/before").touch()
+        if name == "rebind":
+            for path, byte, unique in (("live", b"A", "base-only"), ("front", b"CCC", "front-only"),
+                                       ("tail", b"BB", "tail-only")):
+                branch = directory / path
+                branch.mkdir()
+                (branch / "value").write_bytes(byte)
+                (branch / unique).write_bytes(byte[:1])
+            (directory / "front/.prog").mkdir()
         modules = {
             "positioned": ("styxnodes", "styxexec"),
             "withdraw": ("styxexec",),
             "dirlive": ("styxexec", "styxnodes"),
+            "rebind": ("styxexec",),
             "nodes": ("styxnodes",),
             "publish": ("styxexec",),
             "execute": ("styxexec",),
@@ -74,6 +83,7 @@ def main():
             "positioned": ("positioned_transfer.as",),
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
             "dirlive": ("dirlive_signal.as",),
+            "rebind": ("rebind_signal.as",),
         }.get(name, ())
         compile_movie(args, directory, tests / (name + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))

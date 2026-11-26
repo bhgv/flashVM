@@ -29,6 +29,8 @@ entry = directory.next_file()
 Для каталога поддерживается только нулевое смещение от начала.
 Исходный fid сохраняется.
 
+См. [изменения bind и unmount](../../disVM/runtime/STYX-LIVE-REBIND.ru.md) в пространстве имён DisVM.
+
 Добавьте `--dirlive` к [парной проверке](../../disVM/runtime/STYX-CHANNEL.ru.md#проверка).
 [SWF на AS](../../lib/styxrpc/tests/flashvm/dirlive_pair.as) удерживает
 один каталог DisVM во время публикации и отзыва.

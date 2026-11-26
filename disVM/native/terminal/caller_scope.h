@@ -43,7 +43,11 @@ int styxcallerscopefind(StyxCallerScopes *scopes, uint32_t pid, uint64_t generat
 /* EN: Return a snapshot view for listing the portal directories.
  * RU: Вернуть снимок дерева для чтения общих каталогов. */
 DVM_Provider *styxcallerscopeview(StyxCallerScopes *scopes, DVM_Provider *shared);
-/* EN/RU: Encode metadata and complete directory records. / Кодировать метаданные и целые записи каталога. */
+/* EN/RU: Copy metadata into a wire record. / Скопировать метаданные в запись протокола. */
 void styxcallerattributes(const StyxMeta *meta, Qid qid, Dir *dir);
-char *styxcallerlist(StyxOpen *opened, char *bytes, ulong *count, vlong offset);
+
+
+/* EN: List the held directory, refreshing the zero-offset projection when live is set.
+ * RU: Читать удержанный каталог. При live обновлять представление с нулевого смещения. */
+char *styxcallerlist(StyxOpen *opened, char *bytes, ulong *count, vlong offset, int live);
 #endif

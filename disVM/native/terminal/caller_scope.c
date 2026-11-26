@@ -145,11 +145,18 @@ void styxcallerattributes(const StyxMeta *meta, Qid qid, Dir *dir)
 }
 
 
-/* EN: Encode complete directory entries, advancing only after copying each entry.
- * RU: Кодировать полные записи каталога, продвигая курсор после копирования записи. */
-char *styxcallerlist(StyxOpen *opened, char *bytes, ulong *count, vlong offset)
+/* EN: Encode whole directory entries from the held fid into bytes within count.
+ * For the live shared view take the current projection on every zero-offset read.
+ * RU: Кодировать целые записи удержанного каталога в bytes в пределах count.
+ * Для живой общей VFS с нулевого смещения брать текущее представление. */
+char *styxcallerlist(StyxOpen *opened, char *bytes, ulong *count, vlong offset, int live)
 {
-    if (offset < 0 || !styxdirbegin(opened, offset))
+    if (offset < 0)
+    {
+        return Eperm;
+    }
+    int ready = live ? styxdirbegin_live(opened, offset) : styxdirbegin(opened, offset);
+    if (!ready)
     {
         return Eperm;
     }

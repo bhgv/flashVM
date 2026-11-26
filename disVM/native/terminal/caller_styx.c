@@ -331,7 +331,8 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     }
     if (qid.type & QTDIR)
     {
-        return styxcallerlist(opened, bytes, count, offset);
+        int live = qid.path != PROG_QID && qid.path < STYX_CALLER_NODES;
+        return styxcallerlist(opened, bytes, count, offset, live);
     }
     StyxTransfer result;
     if (offset < 0)

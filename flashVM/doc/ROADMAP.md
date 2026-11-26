@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1787, the paired DisVM directory export takes the current namespace
+projection on the first zero-offset read. The paired check exercises
+append, prepend, replacement and unmount from another Limbo thread
+while FlashVM retains its original file descriptor.
+[EN](../../disVM/runtime/STYX-LIVE-REBIND.md) · [RU](../../disVM/runtime/STYX-LIVE-REBIND.ru.md).
+
 In v0.1786, mounted directory probes use the same host read-and-search
 ceiling as directory open. The native suite verifies actual peer opens
 and server refusals on both transports. The previously failing mount

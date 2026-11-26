@@ -29,6 +29,8 @@ Limbo can restart an open Styx directory in the paired mount by calling
 directory seek accepts only zero from the start. It also retains the
 original fid.
 
+See [live bind and unmount](../../disVM/runtime/STYX-LIVE-REBIND.md) for DisVM namespace changes.
+
 To run the [paired check](../../disVM/runtime/STYX-CHANNEL.md#acceptance),
 add `--dirlive`. The [AS movie](../../lib/styxrpc/tests/flashvm/dirlive_pair.as)
 keeps one DisVM directory across a publication and a withdrawal. The

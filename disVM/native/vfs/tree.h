@@ -32,6 +32,14 @@ int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right);
  * Rewind reopens only through the retained provider and must preserve object identity.
  * Начать чтение по точному offset или заново с нуля; identity при rewind сохраняется. */
 int styxdirbegin(StyxOpen *opened, unsigned long long offset);
+/* EN: Begin enumeration of the live projection from zero, including the first read.
+ * Borrow opened. At zero replace its cursor only if the retained identity still matches.
+ * At a nonzero offset use the ordinary continuation contract. Return one on success.
+ * RU: Начать обход текущего представления с нуля, включая первое чтение.
+ * Заимствовать opened. С нуля заменить курсор только при совпадении identity.
+ * При ненулевом offset действует обычное продолжение. Успех возвращает единицу. */
+int styxdirbegin_live(StyxOpen *opened, unsigned long long offset);
+
 /* EN/RU: Peek one current child:1 record,0 actual EOF,-1 error; output only on1.
  * Recheck current visibility/metadata without consuming a record or leaking hidden names.
  * Получить одну запись:1 запись,0 EOF,-1 ошибка; без продвижения и скрытых имён. */

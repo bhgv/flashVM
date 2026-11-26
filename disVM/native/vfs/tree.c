@@ -89,16 +89,16 @@ static int valid(StyxOpen *opened)
 		styxmeta(&info, &current) && styxsame(&opened->captured, &current);
 }
 
-/* EN/RU: See tree.h; failed rewind never replaces the held object with another node.
- * См. tree.h; неудачный rewind не подменяет удерживаемый объект другой нодой. */
-int styxdirbegin(StyxOpen *opened, unsigned long long offset)
+/* EN: Validate the held directory and restart from its current projection when required.
+ * RU: Проверить удерживаемый каталог и при необходимости начать с его текущего представления. */
+static int begin_directory(StyxOpen *opened, unsigned long long offset, int live)
 {
 	DVM_VfsHandle fresh = {0};
 	FVM_FileInfo info;
 	StyxMeta current;
 	if(!valid(opened)) return 0;
 	if(offset){ return !opened->failed && offset == opened->position; }
-	if(opened->started || opened->failed){
+	if(live || opened->started || opened->failed){
 		if(dvm_provider_open(opened->provider, opened->path, "r", &fresh) != FVM_OK)
 			return 0;
 		if(dvm_vfs_info(&fresh, &info) != FVM_OK || !styxmeta(&info, &current) || !styxsame(&current, &opened->captured)){
@@ -116,6 +116,20 @@ int styxdirbegin(StyxOpen *opened, unsigned long long offset)
 	opened->started = 1;
 	return 1;
 }
+
+/* EN/RU: See tree.h. / См. tree.h. */
+int styxdirbegin(StyxOpen *opened, unsigned long long offset)
+{
+    return begin_directory(opened, offset, 0);
+}
+
+
+/* EN/RU: See tree.h. / См. tree.h. */
+int styxdirbegin_live(StyxOpen *opened, unsigned long long offset)
+{
+    return begin_directory(opened, offset, 1);
+}
+
 
 /* EN/RU: Invalidate a failed cursor instead of silently skipping results or returning EOF.
  * Пометить отказавший курсор вместо молчаливого пропуска результатов/EOF. */
