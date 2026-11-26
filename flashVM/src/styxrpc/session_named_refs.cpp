@@ -25,7 +25,7 @@ namespace
 {
 struct CellProxy
 {
-    FVM_StyxRpcSession *session; /* Borrowed through the owning context. */
+    FVM_NamedRoute route;        /* Borrowed clients through the owning context. */
     StyxRpcVfsFile *lease;        /* Owned fid independently retaining its connection. */
     unsigned char token[STYXRPC_CELL_TOKEN]; /* Immutable capability for forwarding. */
 };
@@ -52,7 +52,7 @@ FVM_Result get(FVM_Context *context, FVM_Object *, unsigned, const FVM_Value *, 
     {
         return fvm_styxrpc_managed_fail(context, "cannot read the shared cell");
     }
-    FVM_Result result = fvm_named_decode(context, proxy->session, frame, size, out);
+    FVM_Result result = fvm_named_decode(context, proxy->route, frame, size, out);
     free(frame);
     return result;
 }
@@ -69,7 +69,7 @@ FVM_Result set(FVM_Context *context, FVM_Object *, unsigned argc, const FVM_Valu
     }
     unsigned char *frame;
     size_t size;
-    FVM_Result status = fvm_named_encode(context, proxy->session, args, &frame, &size);
+    FVM_Result status = fvm_named_encode(context, proxy->route, args, &frame, &size);
     if (status != FVM_OK)
     {
         return status;
@@ -107,7 +107,7 @@ void adopt(FVM_Object *holder, CellProxy *proxy)
 
 /* [ASINC] EN: Create a proxy for initial. On success out owns the new cell lease.
  * RU: Создать прокси для initial. При успехе out владеет новой арендой ячейки. */
-FVM_Result create_proxy(FVM_Context *context, FVM_StyxRpcSession *session, const FVM_Value *initial,
+FVM_Result create_proxy(FVM_Context *context, const FVM_NamedRoute &route, const FVM_Value *initial,
     CellProxy **out)
 {
     CellProxy *proxy = new (std::nothrow) CellProxy;
@@ -117,14 +117,14 @@ FVM_Result create_proxy(FVM_Context *context, FVM_StyxRpcSession *session, const
     }
     unsigned char *frame;
     size_t size;
-    FVM_Result status = fvm_named_encode(context, session, initial, &frame, &size);
+    FVM_Result status = fvm_named_encode(context, route, initial, &frame, &size);
     if (status != FVM_OK)
     {
         delete proxy;
         return status;
     }
-    proxy->session = session;
-    proxy->lease = styxrpc_cell_create(session->client, frame, size, proxy->token);
+    proxy->route = route;
+    proxy->lease = styxrpc_cell_create(route.client, frame, size, proxy->token);
     free(frame);
     if (!proxy->lease)
     {
@@ -157,10 +157,10 @@ FVM_Result install_proxy(FVM_Context *context, FVM_Object *holder, CellProxy *pr
 
 /* EN: Copy the token of a live proxy only on its issuing connection.
  * RU: Скопировать жетон живого прокси только в выдавшем его соединении. */
-FVM_Result forward_proxy(FVM_Context *context, FVM_StyxRpcSession *session, CellProxy *proxy,
+FVM_Result forward_proxy(FVM_Context *context, const FVM_NamedRoute &route, CellProxy *proxy,
     unsigned char *token)
 {
-    if (proxy->session->client != session->client)
+    if (proxy->route.client != route.client)
     {
         return fvm_styxrpc_managed_fail(context, "shared cell belongs to another session");
     }
@@ -215,7 +215,7 @@ FVM_Result link_slot(FVM_Object *owner, const fvm_detail::string &key, FVM_Objec
 
 /* [ASINC] [GC:] EN: Publish the current value and keep the source slot attached to it.
  * RU: Опубликовать текущее значение и удержать подключение исходного слота. */
-FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object *owner,
+FVM_Result publish(FVM_Context *context, const FVM_NamedRoute &route, FVM_Object *owner,
     const fvm_detail::string &key, unsigned char *token)
 {
     unsigned long index = 0;
@@ -244,7 +244,7 @@ FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object
     }
     FVM_ObjectRootScope keep(context, holder);
     CellProxy *proxy;
-    status = create_proxy(context, session, value, &proxy);
+    status = create_proxy(context, route, value, &proxy);
     if (status != FVM_OK)
     {
         return status;
@@ -263,7 +263,7 @@ FVM_Result publish(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object
 
 /* [ASINC] [GC:] EN: Publish a numeric entry in place without changing the string space.
  * RU: Опубликовать числовую запись на месте, сохранив пространство строковых имён. */
-FVM_Result publish_index(FVM_Context *context, FVM_StyxRpcSession *session, FVM_Object *owner,
+FVM_Result publish_index(FVM_Context *context, const FVM_NamedRoute &route, FVM_Object *owner,
     unsigned long index, unsigned char *token)
 {
     FVM_ObjectRootScope keep_owner(context, owner);
@@ -276,7 +276,7 @@ FVM_Result publish_index(FVM_Context *context, FVM_StyxRpcSession *session, FVM_
     if (holder)
     {
         CellProxy *proxy = existing(holder, FVM_TABLE_INDEX_VALUE);
-        return proxy ? forward_proxy(context, session, proxy, token) :
+        return proxy ? forward_proxy(context, route, proxy, token) :
             fvm_styxrpc_managed_fail(context, "numeric reference target changed");
     }
     FVM_Result status = fvm_object_create(context, &holder);
@@ -286,7 +286,7 @@ FVM_Result publish_index(FVM_Context *context, FVM_StyxRpcSession *session, FVM_
     }
     FVM_ObjectRootScope keep_holder(context, holder);
     CellProxy *proxy;
-    status = create_proxy(context, session, &slot->second, &proxy);
+    status = create_proxy(context, route, &slot->second, &proxy);
     if (status == FVM_OK)
     {
         status = install_proxy(context, holder, proxy);
@@ -313,16 +313,16 @@ const unsigned char *fvm_named_cell_identity(const FVM_AccessorEntry &entry, str
         return NULL;
     }
     const CellProxy *proxy = static_cast<const CellProxy *>(entry.userdata);
-    *issuer = proxy->session->client;
+    *issuer = proxy->route.client;
     return proxy->token;
 }
 
 
 /* [GC:] EN/RU: See session_named_refs.hpp. / См. session_named_refs.hpp. */
-FVM_Result fvm_named_ref_token(FVM_Context *context, FVM_StyxRpcSession *session,
+FVM_Result fvm_named_ref_token(FVM_Context *context, const FVM_NamedRoute &route,
     const FVM_Value *ref, unsigned char *token)
 {
-    if (!session->client || !fvm_is_variable_ref(ref))
+    if (!route.client || !fvm_is_variable_ref(ref))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -331,18 +331,18 @@ FVM_Result fvm_named_ref_token(FVM_Context *context, FVM_StyxRpcSession *session
     const unsigned long *index = fvm_variable_ref_index(ref->object);
     if (index)
     {
-        return publish_index(context, session, owner, *index, token);
+        return publish_index(context, route, owner, *index, token);
     }
     CellProxy *proxy = existing(owner, key);
-    return proxy ? forward_proxy(context, session, proxy, token) : publish(context, session, owner, key, token);
+    return proxy ? forward_proxy(context, route, proxy, token) : publish(context, route, owner, key, token);
 }
 
 
 /* [ASINC] [GC:] EN/RU: See session_named_refs.hpp. / См. session_named_refs.hpp. */
-FVM_Result fvm_named_ref_bind(FVM_Context *context, FVM_StyxRpcSession *session,
+FVM_Result fvm_named_ref_bind(FVM_Context *context, const FVM_NamedRoute &route,
     const void *token, size_t size, FVM_Value *out)
 {
-    if (!session->client || size != STYXRPC_CELL_TOKEN)
+    if (!route.client || size != STYXRPC_CELL_TOKEN)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -358,8 +358,8 @@ FVM_Result fvm_named_ref_bind(FVM_Context *context, FVM_StyxRpcSession *session,
     {
         return FVM_OUT_OF_MEMORY;
     }
-    proxy->session = session;
-    proxy->lease = styxrpc_cell_attach(session->client, token);
+    proxy->route = route;
+    proxy->lease = styxrpc_cell_attach(route.client, token);
     if (!proxy->lease)
     {
         delete proxy;

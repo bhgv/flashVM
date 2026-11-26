@@ -20,6 +20,8 @@ struct StyxRpcServer
     Styxserver wire;                /* Native single-owner transport dispatcher. */
     const StyxRpcTree *tree;        /* Borrowed callback table. */
     void *context;                  /* Borrowed application state. */
+    StyxRpcAttachNotice attach;      /* Optional owner callback for attachment metadata. */
+    void *attach_state;             /* Borrowed by attach until cleared. */
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
     MessageService *messages[STYXRPC_MESSAGE_ROOTS_MAX]; /* Owned exchange registries. */
     char message_names[STYXRPC_MESSAGE_ROOTS_MAX][STYXRPC_TREE_NAME + 1]; /* Owned names. */
@@ -307,11 +309,14 @@ static char *stat_node(Qid qid, Dir *dir)
 }
 
 
+#include "serve_attach.inc"
+
+
 /* EN/RU: See serve.h. / См. serve.h. */
 StyxRpcServer *styxrpc_server_create(RemotePhy *phy, const StyxRpcTree *tree, void *context)
 {
     static Styxops ops = {.walk = walk_node, .open = open_node, .read = read_node,
-        .write = write_node, .stat = stat_node};
+        .write = write_node, .stat = stat_node, .attach = attach_peer};
     if (!phy || !tree || !tree->stat || !tree->files.enumerate)
     {
         phyfree(phy);

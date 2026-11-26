@@ -40,3 +40,7 @@ See the compiled [Limbo](../tests/flashvm/named_pair.b) and
 [ActionScript](../tests/flashvm/named_pair.as) acceptance sources.
 
 [Shared cells](named_cell.md) use the same service.
+The [hosted peer service](named_peer_host.md) publishes this protocol on a
+delegated stream and a local client mount served by independent workers.
+The [module slot registry](module_slot_named_registry.md) reserves names
+against a live callback tree.

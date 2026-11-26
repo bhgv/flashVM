@@ -31,7 +31,7 @@ def compile_unit(args, directory, name, source=None):
 def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
-    if role in ("caller", "dis-caller", "ref", "exec-caller"):
+    if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
@@ -214,6 +214,8 @@ def main():
         reference = compile_role(args, directory, "ref")
         reference_provider = compile_role(args, directory, "ref-provider")
         provider = compile_role(args, directory, "provider")
+        named_caller = compile_role(args, directory, "named-caller")
+        named_provider = compile_role(args, directory, "named-provider")
         if args.runtime:
             tests = ROOT / "lib/styxrpc/tests/flashvm"
             compile_image(args, directory, tests / "peer_consumer.b", "peer-consumer.dis")
@@ -227,6 +229,8 @@ def main():
                 exchange(args, directory, reference, reference_provider, mode, reverse,
                          "transparent local refs across delayed peer readiness")
                 exchange(args, directory, caller, provider, mode, reverse)
+                exchange(args, directory, named_caller, named_provider, mode, reverse,
+                         "blocking named exchange, cyclic graph and live refs")
             if args.runtime:
                 dis_calls_flash(args, directory, mode)
                 flash_calls_dis(args, directory, dis_caller, mode)

@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1789, two FlashVMs share named channels and live AS cells over the
+already connected StyxRPC carrier. A native registry matches sends and
+receives while movie owners wait. Local sockets and TCP exercise graph
+transfer, reference forwarding and disconnect cleanup in both execution modes.
+[EN](STYX_RPC_PEER_CHANNELS.md) · [RU](STYX_RPC_PEER_CHANNELS.ru.md).
+
 In v0.1788, the two-player reference check binds aliases once and proves
 that remote publication can arrive on a later frame. It also reads the
 updated peer variable through a second proxy. The player reports frame

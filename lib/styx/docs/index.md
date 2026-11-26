@@ -6,6 +6,8 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 
 [Guide](../README.md) · [Introduction](introduction.md) · [Tutorial](tutorial.md) · [Examples](../examples/README.md) · [Protocol](protocol.md) · [Porting](porting.md)
 
+[Optional logical lanes on a delegated carrier](reference/phybidircreate_lanes.md) are available with `Styx::bidir`.
+
 - [_assert](reference/_assert.md) — `Styx::nine; hosted Linux64 support`
 - [_exits](reference/_exits.md) — `Styx::nine; hosted Linux64 support`
 - [_tas](reference/_tas.md) — `Styx::nine; hosted Linux64 support`

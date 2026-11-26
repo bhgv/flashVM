@@ -43,4 +43,9 @@ DisVM поставляет модуль [Styxnamed](../../../disVM/module/styxna
 См. собираемые проверки на [Limbo](../tests/flashvm/named_pair.b) и
 [ActionScript](../tests/flashvm/named_pair.as).
 
+[Парная хостовая служба](named_peer_host.ru.md) обслуживает тот же протокол
+на выданном потоке и локальном подключении в независимых потоках.
+[Реестр слота модуля](module_slot_named_registry.ru.md) сверяет имена
+с живым деревом колбэков.
+
 [Общие ячейки](named_cell.ru.md) используют тот же служебный узел.

@@ -12,6 +12,7 @@ extern "C" {
 
 struct RemotePhy; /* Owned delegated Styx stream consumed by create. */
 typedef struct StyxRpcServer StyxRpcServer; /* Owner-thread dispatcher. */
+typedef void (*StyxRpcAttachNotice)(void *state, const char *name); /* Borrowed Tattach name on the owner. */
 
 #define STYXRPC_TREE_NAME 255U       /* Maximum name in bytes, excluding NUL. */
 #define STYXRPC_TREE_CHILDREN 4096U  /* Maximum immediate children in this adapter. */
@@ -44,6 +45,13 @@ typedef struct StyxRpcTree
  * Корень имеет ID ноль. Для клиента действуют биты other режима Unix.
  * Использовать уже выданное соединение. При ошибке вернуть NULL. */
 StyxRpcServer *styxrpc_server_create(struct RemotePhy *phy, const StyxRpcTree *tree, void *context);
+
+
+/* EN: Set or clear an owner-only observer before or between steps. The attach
+ * name is borrowed for the call and conveys no permission. Pass NULL to clear.
+ * RU: Установить или снять наблюдатель до запуска либо между шагами у владельца.
+ * Имя attach заимствовано только на вызов и не даёт прав. NULL снимает наблюдатель. */
+void styxrpc_server_observe_attach(StyxRpcServer *server, StyxRpcAttachNotice notice, void *state);
 
 
 /* EN: Wait for and process one server cycle; return 1 to continue, 0 on disconnect or error.

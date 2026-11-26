@@ -2,14 +2,13 @@
  * EN: Route stable control nodes and generation-scoped module fids on one server.
  * RU: Маршрутизация постоянных узлов управления и fid образа по поколениям на одном сервере.
  */
-#include "styxrpc/module_slot.h"
+#include "module_slot_internal.h"
 #include "control_internal.h"
 #include "nodes_internal.h"
 #include <stdlib.h>
 
 #define IMAGE_SHIFT 32U /* High Qid bits identify the image generation. */
 
-typedef struct SlotFile SlotFile; /* One open on the current image or a control node. */
 struct SlotFile
 {
     StyxRpcFile file;          /* Owned nested fid state; cleared on image retirement. */
@@ -18,25 +17,15 @@ struct SlotFile
     SlotFile **previous;      /* Owning link, or NULL for a control or retired file. */
 };
 
-struct StyxRpcModuleSlot
-{
-    StyxRpcControl *control; /* Borrowed stable control tree context. */
-    StyxRpcModule *module;    /* Borrowed image through retirement. */
-    uint32_t generation;      /* Monotonic image identity and root revision. */
-    StyxRpcNodes *nodes;   /* Owned active movie's callback nodes. */
-    uint64_t next_node;    /* Monotonic generation-zero Qid within the session. */
-    int retiring;          /* Reject slot changes during synchronous context release. */
-    uint32_t revision;     /* Membership revision of the session root. */
-    SlotFile *node_files;  /* Opens protected until callback withdrawal. */
-    SlotFile *opened;         /* Fids for the current image. */
-    StyxRpcEntry entry;       /* Borrowed enumeration result storage. */
-};
-
-
 /* EN/RU: See module_slot.h. / См. module_slot.h. */
 StyxRpcModuleSlot *styxrpc_module_slot_create(StyxRpcControl *control)
 {
     StyxRpcModuleSlot *slot = control ? calloc(1, sizeof(*slot)) : NULL;
+    if (slot && pthread_mutex_init(&slot->names, NULL))
+    {
+        free(slot);
+        return NULL;
+    }
     if (slot)
     {
         slot->control = control;
@@ -105,6 +94,8 @@ void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot)
     if (slot && !slot->retiring && !styxrpc_nodes_busy(slot->nodes))
     {
         styxrpc_module_slot_clear_nodes(slot);
+        styxrpc_slot_claims_clear(slot);
+        pthread_mutex_destroy(&slot->names);
         free(slot);
     }
 }
@@ -119,7 +110,11 @@ static StyxRpcStatus register_node(StyxRpcModuleSlot *slot, const char *path,
     {
         return STYXRPC_INVALID;
     }
-    return styxrpc_nodes_insert(&slot->nodes, &slot->next_node, &slot->revision, path, mode, config);
+    pthread_mutex_lock(&slot->names);
+    StyxRpcStatus status = styxrpc_slot_claim_conflict(slot, path) ? STYXRPC_INVALID :
+        styxrpc_nodes_insert(&slot->nodes, &slot->next_node, &slot->revision, path, mode, config);
+    pthread_mutex_unlock(&slot->names);
+    return status;
 }
 
 
@@ -161,7 +156,14 @@ StyxRpcStatus styxrpc_module_slot_remove_node(StyxRpcModuleSlot *slot, const cha
     }
     retire_files(slot->node_files, id);
     slot->retiring = 1;
-    styxrpc_nodes_remove(slot->nodes, id, &slot->revision);
+    NodeRegistration retired = {0};
+    pthread_mutex_lock(&slot->names);
+    styxrpc_nodes_remove(slot->nodes, id, &slot->revision, &retired);
+    pthread_mutex_unlock(&slot->names);
+    if (retired.release)
+    {
+        retired.release(retired.context);
+    }
     slot->retiring = 0;
     return STYXRPC_OK;
 }
@@ -175,11 +177,13 @@ void styxrpc_module_slot_clear_nodes(StyxRpcModuleSlot *slot)
         StyxRpcNodes *nodes = slot->nodes;
         slot->retiring = 1;
         retire_files(slot->node_files, 0);
+        pthread_mutex_lock(&slot->names);
         slot->nodes = NULL;
         if (styxrpc_nodes_tree.files.enumerate(nodes, 0, 0))
         {
             ++slot->revision;
         }
+        pthread_mutex_unlock(&slot->names);
         styxrpc_nodes_dispose(nodes);
         slot->retiring = 0;
     }

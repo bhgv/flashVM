@@ -22,7 +22,8 @@ typedef struct FVM_StyxRpcMovies
 {
     FVM_Context *context;                /* Borrowed owner. */
     FVM_Object *root;                    /* [GC:] Borrowed playback root pin. */
-    struct StyxClient *session;          /* Borrowed attached Dis root. */
+    struct StyxClient *session;          /* Borrowed ordinary VFS root. */
+    struct StyxClient *named;            /* Optional borrowed pair-wide channel service. */
     FVM_StyxRpcSession *binding;         /* Borrowed AS binding for shared cwd. */
     size_t limit;                         /* Maximum wire bytes per child. */
     size_t pending;                       /* Number of queued requests. */

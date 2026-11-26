@@ -142,6 +142,11 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
     {
         status = fvm_object_define_method_rooted(context, vfs.object, names[i], methods[i], movies, NULL);
     }
+    if (status == FVM_OK && movies->named)
+    {
+        status = fvm_object_define_method_rooted(context, vfs.object, "chan",
+            fvm_styxrpc_open_peer_channel, movies, NULL);
+    }
     if (status == FVM_OK)
     {
         status = fvm_set_global(context, "os", &vfs);

@@ -14,6 +14,15 @@ Inferno peer uses its ordinary stream directly, without this adapter.
 The exact frame layout, credit invariants and failure rules are documented in
 [WIRE.md](WIRE.md).
 
+The optional `phybidircreate_lanes` form reserves one extra logical stream.
+Take it only after both applications have agreed to use it. Its queues and
+credit are independent, so a native service can run while either primary
+Styx owner is blocked. See [ownership](bidir.h).
+
+`phybidircreate_lanes` позволяет зарезервировать третий поток. Берите его
+после согласования с другой стороной. Благодаря отдельным очередям и кредитам
+независимая служба работает, пока владелец обычной сессии ждёт.
+
 The public API uses `bidir` to make this opt-in visible at the call site:
 `PhyBidir`, `phybidircreate`, `phybidirchannel`, `phybidirfree`, declared in
 [`bidir.h`](bidir.h). The `phy` prefix reflects that this adapter carries byte

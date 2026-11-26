@@ -53,7 +53,8 @@ struct PhyBidir
     int stop; /* Owner requests native pump retirement. */
     int failed; /* Sticky transport/protocol termination. */
     unsigned turn; /* Pump-only round-robin next output channel. */
-    MuxChannel channels[2]; /* Two prearranged independent streams. */
+    unsigned lanes; /* Immutable number of configured independent streams. */
+    MuxChannel channels[PHY_BIDIR_MAX_LANES]; /* Queue storage for every supported stream. */
 };
 
 
@@ -85,7 +86,7 @@ RemotePhy *muxendpoint(MuxChannel *channel);
 void muxsignalchannel(MuxChannel *channel);
 
 
-/* EN/RU: Publish native readiness for both channels under retained hub lifetime. / Readiness для обоих каналов. */
+/* EN/RU: Publish readiness for the configured channels. / Сообщить о готовности настроенных потоков. */
 void muxsignal(PhyBidir *hub);
 
 

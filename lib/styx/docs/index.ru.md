@@ -6,6 +6,8 @@ Copyright (c) 2026 bhgv
 
 [Guide](../README.ru.md) · [Introduction](introduction.ru.md) · [Tutorial](tutorial.ru.md) · [Examples](../examples/README.ru.md) · [Protocol](protocol.ru.md) · [Porting](porting.ru.md)
 
+[Дополнительный поток выданного носителя](reference/phybidircreate_lanes.ru.md) доступен в `Styx::bidir`.
+
 - [_assert](reference/_assert.ru.md) — `Styx::nine; hosted Linux64 support`
 - [_exits](reference/_exits.ru.md) — `Styx::nine; hosted Linux64 support`
 - [_tas](reference/_tas.ru.md) — `Styx::nine; hosted Linux64 support`

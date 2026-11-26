@@ -48,9 +48,18 @@ int styxrpc_nodes_busy(const StyxRpcNodes *nodes);
 uint64_t styxrpc_nodes_removable(StyxRpcNodes *nodes, const char *path);
 
 
-/* EN: Remove this prevalidated ID after its opens retire, releasing its owned context.
- * RU: Отозвать проверенный ID после закрытия его открытий и освободить контекст. */
-void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision);
+/* EN: Remove the checked ID after its opens retire. Give retired callback state
+ * to the caller so it can release it after unlocking namespace metadata.
+ * RU: Отозвать проверенный ID после закрытия открытий. Передать контекст отозванного
+ * колбэка вызывающему для освобождения после снятия блокировки метаданных. */
+void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision, NodeRegistration *retired);
+
+
+/* EN: Copy current metadata for a relative callback path. Borrow the entry name.
+ * Call on the owner or under the publication metadata lock.
+ * RU: Скопировать метаданные относительного пути. Имя записи заимствуется.
+ * Вызывать у владельца или под блокировкой метаданных публикации. */
+int styxrpc_nodes_lookup_path(StyxRpcNodes *nodes, const char *path, StyxRpcNode *out);
 
 
 /* EN: Drop a detached registry after all opens have been closed. NULL is valid.

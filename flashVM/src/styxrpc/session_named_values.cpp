@@ -72,19 +72,23 @@ FVM_Result unpack_text(FVM_Context *context, const unsigned char *payload, size_
 
 
 /* [GC:] EN/RU: See session_named_values.hpp. / См. session_named_values.hpp. */
-FVM_Result fvm_named_encode(FVM_Context *context, FVM_StyxRpcSession *session,
+FVM_Result fvm_named_encode(FVM_Context *context, const FVM_NamedRoute &route,
     const FVM_Value *value, unsigned char **bytes, size_t *size)
 {
     unsigned char wire[STYXRPC_NAMED_NUMBER_BYTES];
     if (fvm_is_variable_ref(value))
     {
         unsigned char descriptor[STYXRPC_INT_REF_SIZE];
-        if (fvm_styxrpc_encode_int_ref(session, value, descriptor, sizeof(descriptor)))
+        if (fvm_styxrpc_encode_int_ref(route.vfs, value, descriptor, sizeof(descriptor)))
         {
+            if (route.client != route.vfs->client)
+            {
+                return fvm_styxrpc_managed_fail(context, "module reference belongs to the ordinary mount");
+            }
             return pack(STYXRPC_NAMED_INT_REF, descriptor, sizeof(descriptor), bytes, size);
         }
         unsigned char token[STYXRPC_CELL_TOKEN];
-        FVM_Result status = fvm_named_ref_token(context, session, value, token);
+        FVM_Result status = fvm_named_ref_token(context, route, value, token);
         return status == FVM_OK ? pack(STYXRPC_NAMED_CELL_REF, token, sizeof(token), bytes, size) : status;
     }
     switch (value->type)
@@ -130,7 +134,7 @@ FVM_Result fvm_named_encode(FVM_Context *context, FVM_StyxRpcSession *session,
 
 
 /* [GC:] EN/RU: See session_named_values.hpp. / См. session_named_values.hpp. */
-FVM_Result fvm_named_decode(FVM_Context *context, FVM_StyxRpcSession *session,
+FVM_Result fvm_named_decode(FVM_Context *context, const FVM_NamedRoute &route,
     const unsigned char *bytes, size_t size, FVM_Value *out)
 {
     if (!size)
@@ -142,9 +146,10 @@ FVM_Result fvm_named_decode(FVM_Context *context, FVM_StyxRpcSession *session,
     switch (bytes[0])
     {
     case STYXRPC_NAMED_CELL_REF:
-        return fvm_named_ref_bind(context, session, payload, size, out);
+        return fvm_named_ref_bind(context, route, payload, size, out);
     case STYXRPC_NAMED_INT_REF:
-        return fvm_styxrpc_decode_int_ref(context, session, payload, size, out);
+        return route.client == route.vfs->client ?
+            fvm_styxrpc_decode_int_ref(context, route.vfs, payload, size, out) : FVM_INVALID_ARGUMENT;
     case STYXRPC_NAMED_VALUE:
         return fvm_value_deserialize(context, payload, size, out);
     case STYXRPC_NAMED_TEXT:

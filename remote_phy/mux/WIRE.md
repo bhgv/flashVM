@@ -18,7 +18,7 @@ There is no padding, checksum, pointer, credential or native descriptor field.
 | 0 | 4 | ASCII `P9MX` |
 | 4 | 1 | Version `1` |
 | 5 | 1 | Type: DATA=`0`, CLOSE=`1`, CREDIT=`2` |
-| 6 | 1 | Channel `0` or `1` |
+| 6 | 1 | Logical lane `0` or `1`. A mutually enabled service can use `2`. |
 | 7 | 1 | Reserved, must be zero |
 | 8 | 4 | Payload byte length |
 | 12 | length | Payload |
@@ -35,10 +35,16 @@ zero/excessive credit, data beyond allowance and any frame after that sender's
 CLOSE fail the entire mux. No scanning/resynchronization or fallback is attempted.
 The reliable carrier supplies integrity/order/loss handling; P9MX adds none.
 
+The hosting application can reserve lane `2` with `phybidircreate_lanes`.
+It grants that lane's receive credit only when the app takes the lane with
+`phybidirchannel`. Both ends must agree before activating it. FlashVM peers
+use the ordinary Styx attach name to exchange this capability. The optional
+lane carries its own Styx frames and follows the same credit and close rules.
+
 ## Credits and bounds / Кредиты и границы
 
-Each side initially sends one CREDIT per channel, equal to its own bounded RX
-capacity1024..1048576. DATA may be selected only after receiving allowance. The
+Each activated lane sends one initial CREDIT per side, equal to its own bounded
+RX capacity1024..1048576. DATA may be selected only after receiving allowance. The
 sender subtracts payload bytes when selecting a frame, not when it eventually
 finishes writing it. Confirmed partial physical writes retain their exact prefix.
 No selected frame is replayed following an uncertain or terminal transfer.

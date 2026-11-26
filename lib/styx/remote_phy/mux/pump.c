@@ -9,9 +9,9 @@
  * Выбрать bounded frame под lock; copy данных до unlock; 0 означает no pending output. */
 static size_t output(PhyBidir *hub, unsigned char *frame)
 {
-    for (unsigned step = 0; step < 2; step++)
+    for (unsigned step = 0; step < hub->lanes; step++)
     {
-        unsigned id = (hub->turn+step)%2;
+        unsigned id = (hub->turn + step) % hub->lanes;
         MuxChannel *channel = &hub->channels[id];
         int closing = channel->closed && !channel->sentclose;
         int granting = channel->grant && !channel->closed && !channel->remote;
@@ -43,7 +43,7 @@ static size_t output(PhyBidir *hub, unsigned char *frame)
                 channel->credit -= count;
             }
             channel->sentclose |= closing;
-            hub->turn = 1-id;
+            hub->turn = (id + 1) % hub->lanes;
             muxsignal(hub);
             return MUX_HEADER+count;
         }
@@ -54,14 +54,14 @@ static size_t output(PhyBidir *hub, unsigned char *frame)
 
 /* EN/RU: Validate complete header before reading its bounded payload; wanted output borrowed.
  * Проверить complete header до payload; wanted output borrowed, 1 valid/0 malformed. */
-static int header(const unsigned char *frame, size_t *wanted)
+static int header(const unsigned char *frame, unsigned lanes, size_t *wanted)
 {
     size_t count = 0;
     for (unsigned i = 0; i < 4; i++)
     {
         count |= (size_t)frame[8+i] << (i*8);
     }
-    if (memcmp(frame, "P9MX", 4) || frame[4] != 1 || frame[5] > 2 || frame[6] > 1 || frame[7] ||
+    if (memcmp(frame, "P9MX", 4) || frame[4] != 1 || frame[5] > 2 || frame[6] >= lanes || frame[7] ||
         count > MUX_PAYLOAD || (frame[5] == 0 && count == 0) || (frame[5] == 1 && count != 0) || (frame[5] == 2 && count != 4))
     {
         return 0;
@@ -174,7 +174,7 @@ void *muxpump(void *state)
             PhyTransfer out = phyread(hub->carrier, rx+used, wanted-used);
             used += out.count;
             progressed |= out.count != 0;
-            if (used == MUX_HEADER && wanted == MUX_HEADER && !header(rx, &wanted))
+            if (used == MUX_HEADER && wanted == MUX_HEADER && !header(rx, hub->lanes, &wanted))
             {
                 break;
             }

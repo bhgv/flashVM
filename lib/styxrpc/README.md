@@ -138,6 +138,8 @@ Use [mkdir](reference/vfs_mkdir.md) to create a directory and [remove](reference
 
 [Named rendezvous channels](reference/named_channel.md) use an attached session
 and let providers claim and release exact names in the VFS.
+The [hosted peer service](reference/named_peer_host.md) serves one registry
+for two native clients, including a local client in the provider process.
 Use [executable callback nodes](reference/node_exec.md) for a synchronous
 byte request and reply on a path published by the peer.
 [Shared value cells](reference/named_cell.md) travel by reference.

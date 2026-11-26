@@ -109,6 +109,9 @@ method on the other movie. The two films own separate heaps. The session
 mount in this mode contains the other FlashVM's playback and published image.
 Font lookup through the Dis VFS belongs to the DisVM launch mode.
 
+[Named channels and shared AS cells](STYX_RPC_PEER_CHANNELS.md) use the
+same carrier when both FlashVMs support the service.
+
 ## Unibus terminal
 
 [Application exchange through the default vfs object](STYX_RPC_DEFAULT.md) is available to [typed Limbo clients](../../disVM/runtime/STYX-CHANNEL.md).

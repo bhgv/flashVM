@@ -11,13 +11,14 @@ extern "C"
 {
 #include "session_methods.h"
 #include "managed_values.h"
+#include "movie_load.h"
 }
 
 namespace
 {
 struct NamedHandle
 {
-    FVM_StyxRpcSession *session; /* Borrowed binding until context destruction. */
+    FVM_NamedRoute route;       /* Borrowed path binding and issuer until context destruction. */
     StyxRpcVfsFile *file;        /* Owned channel enrollment, NULL after delete. */
 };
 
@@ -68,7 +69,7 @@ FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     }
     unsigned char *frame;
     size_t size;
-    FVM_Result encoded = fvm_named_encode(context, handle->session, args, &frame, &size);
+    FVM_Result encoded = fvm_named_encode(context, handle->route, args, &frame, &size);
     if (encoded != FVM_OK)
     {
         return encoded;
@@ -102,7 +103,7 @@ FVM_Result recv_channel(FVM_Context *context, FVM_Object *, unsigned argc,
         close_handle(handle, 0);
         return fvm_styxrpc_managed_fail(context, "named channel receive failed");
     }
-    FVM_Result result = fvm_named_decode(context, handle->session, frame, size, out);
+    FVM_Result result = fvm_named_decode(context, handle->route, frame, size, out);
     free(frame);
     return result;
 }
@@ -154,17 +155,15 @@ FVM_Result wrap(FVM_Context *context, NamedHandle *handle, FVM_Value *out)
     fvm_gc_roots_end(roots);
     return status;
 }
-}
 
 
-/* [ASINC] [GC:] EN: Join or create the channel at one root-relative path on this session.
- * RU: Присоединиться к каналу или создать его по пути от корня этой сессии. */
-extern "C" FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *context, FVM_Object *, unsigned argc,
-    const FVM_Value *args, FVM_Value *out, void *state)
+/* [ASINC] [GC:] EN: Resolve args using the current cwd, then enroll on route.client.
+ * RU: Разрешить args относительно текущего cwd и подключиться к каналу на route.client. */
+FVM_Result open_channel(FVM_Context *context, const FVM_NamedRoute &route, unsigned argc,
+    const FVM_Value *args, FVM_Value *out)
 {
-    FVM_StyxRpcSession *session = static_cast<FVM_StyxRpcSession *>(state);
     char path[FVM_STYXRPC_ABSOLUTE_PATH];
-    if (!session->client || argc != 1 || !fvm_styxrpc_resolve_path(session, args, path) || !styxrpc_named_path(path))
+    if (!route.client || argc != 1 || !fvm_styxrpc_resolve_path(route.vfs, args, path) || !styxrpc_named_path(path))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -173,12 +172,33 @@ extern "C" FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *context, FVM_O
     {
         return FVM_OUT_OF_MEMORY;
     }
-    handle->session = session;
-    handle->file = styxrpc_named_open(session->client, path);
+    handle->route = route;
+    handle->file = styxrpc_named_open(route.client, path);
     if (!handle->file)
     {
         free(handle);
         return fvm_styxrpc_managed_fail(context, "named channel could not be opened");
     }
     return wrap(context, handle, out);
+}
+}
+
+
+/* [ASINC] [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
+extern "C" FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *context, FVM_Object *, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_StyxRpcSession *session = static_cast<FVM_StyxRpcSession *>(state);
+    const FVM_NamedRoute route = {session, session->client};
+    return open_channel(context, route, argc, args, out);
+}
+
+
+/* [ASINC] [GC:] EN/RU: See session_methods.h. / См. session_methods.h. */
+extern "C" FVM_Result fvm_styxrpc_open_peer_channel(FVM_Context *context, FVM_Object *, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *state)
+{
+    FVM_StyxRpcMovies *movies = static_cast<FVM_StyxRpcMovies *>(state);
+    const FVM_NamedRoute route = {movies->binding, movies->named};
+    return open_channel(context, route, argc, args, out);
 }

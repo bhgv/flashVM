@@ -76,6 +76,12 @@ FVM_Result fvm_styxrpc_open_named_channel(FVM_Context *, FVM_Object *, unsigned,
     const FVM_Value *, FVM_Value *, void *);
 
 
+/* [ASINC] [GC:] EN: Normalize using the movie's shared cwd and open on the pair's channel service.
+ * RU: Нормализовать путь с общим cwd фильма и открыть в службе каналов пары. */
+FVM_Result fvm_styxrpc_open_peer_channel(FVM_Context *, FVM_Object *, unsigned,
+    const FVM_Value *, FVM_Value *, void *);
+
+
 /* [GC:] EN: Bind the player-owned mailbox to the default vfs object in the new movie context.
  * RU: Связать очередь плеера со штатным объектом vfs в контексте нового фильма. */
 FVM_Result fvm_styxrpc_host_exchange(FVM_Context *context, StyxRpcExchange *exchange);

@@ -10,6 +10,9 @@ extern "C" {
 #endif
 typedef struct PhyBidir PhyBidir; /* Owned native pump, never a VFS authority. */
 
+#define PHY_BIDIR_LANES 2U /* Number of lanes in the original profile. */
+#define PHY_BIDIR_MAX_LANES 3U /* Original lanes plus one negotiated service lane. */
+
 
 /* EN: Consume connected reliable ordered stream on every outcome; owned mux/NULL.
  * capacity1024..1048576 bounds EACH direction of EACH channel. Starts one native
@@ -22,10 +25,19 @@ typedef struct PhyBidir PhyBidir; /* Owned native pump, never a VFS authority. *
 PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity);
 
 
-/* EN: Owner-only take channel0 or1 once; owned RemotePhy/NULL, no extra wire open.
+/* EN: Consume carrier like phybidircreate. Reserve lanes between PHY_BIDIR_LANES
+ * and PHY_BIDIR_MAX_LANES. Extra lanes grant no credit until taken. Ensure both
+ * peers support an extra lane before taking it. NULL on failure.
+ * RU: Принять carrier как phybidircreate. Резервировать от PHY_BIDIR_LANES до
+ * PHY_BIDIR_MAX_LANES потоков. Дополнительный поток выдаёт кредит только при взятии.
+ * Перед взятием согласовать поддержку на обеих сторонах. NULL при отказе. */
+PhyBidir *phybidircreate_lanes(RemotePhy *carrier, size_t capacity, unsigned lanes);
+
+
+/* EN: Owner-only take a configured lane once; owned RemotePhy/NULL, no extra wire open.
  * Match channel IDs at both peers: e.g.0 A-client/B-server,1 B-client/A-server.
  * Each returned stream has its own I/O owner and thread-safe sticky wake.
- * RU: Owner получает канал0/1 один раз; свой RemotePhy/NULL. ID согласованы с peer;
+ * RU: Владелец получает настроенный поток один раз; свой RemotePhy/NULL. ID согласованы с peer;
  * у каждого потока свой I/O owner и thread-safe sticky wake. */
 RemotePhy *phybidirchannel(PhyBidir *mux, unsigned channel);
 

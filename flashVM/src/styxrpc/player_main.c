@@ -240,8 +240,11 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     FVM_Runtime *runtime = NULL;
     FVM_StyxRpcPlayback *playback = NULL;
     StyxRpcServer *server = NULL;
+    PlayerPeerChannels channels = {0};
     int status = 1;
-    PhyBidir *mux = phybidircreate(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE), PLAYER_MUX_LIMIT);
+    int named = 0;
+    PhyBidir *mux = phybidircreate_lanes(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE),
+        PLAYER_MUX_LIMIT, flash_peer ? PHY_BIDIR_MAX_LANES : PHY_BIDIR_LANES);
     unsigned client_lane = serve_lane == PLAYER_SERVE_FORWARD ? PLAYER_SERVE_REVERSE : PLAYER_SERVE_FORWARD;
     StyxClient *root = NULL;
     if (mux && !flash_peer)
@@ -279,7 +282,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     {
         if (flash_peer)
         {
-            root = fvm_styxrpc_player_peer_mount(server, phybidirchannel(mux, client_lane));
+            root = fvm_styxrpc_player_peer_mount(server, phybidirchannel(mux, client_lane), &named);
             playback->spec.session = root;
             playback->awaiting_session = 0;
         }
@@ -287,6 +290,10 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
         if (!root)
         {
             fputs("flashvm_styx_player: cannot mount the FlashVM peer\n", stderr);
+        }
+        else if (named && !fvm_styxrpc_player_peer_channels(playback, mux, serve_lane, &channels))
+        {
+            fputs("flashvm_styx_player: cannot attach the peer channel service\n", stderr);
         }
         else if (movie && !fvm_styxrpc_player_peer_movie(playback, movie))
         {
@@ -307,6 +314,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
         fputs("flashvm_styx_player: cannot attach the paired session\n", stderr);
     }
     styxrpc_server_destroy(server);
+    fvm_styxrpc_player_peer_close(&channels);
     fvm_styxrpc_playback_destroy(playback);
     styxrpc_exchange_destroy(host.exchange);
     fvm_runtime_destroy(runtime);

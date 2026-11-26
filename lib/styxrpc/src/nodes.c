@@ -108,6 +108,18 @@ static CallbackNode *resolve(StyxRpcNodes *nodes, const char *path)
 }
 
 
+/* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
+int styxrpc_nodes_lookup_path(StyxRpcNodes *nodes, const char *path, StyxRpcNode *out)
+{
+    CallbackNode *entry = resolve(nodes, path);
+    if (entry)
+    {
+        *out = entry->node;
+    }
+    return entry != NULL;
+}
+
+
 /* EN: Run one callback and confirm a bounded prefix. Only positioned file I/O clips to EOF.
  * RU: Вызвать один колбэк и подтвердить префикс в границах буфера. Учитывать EOF у файлов со смещением. */
 static int transfer(CallbackNode *entry, unsigned access, uint64_t offset,
@@ -335,14 +347,14 @@ static int has_children(StyxRpcNodes *nodes, uint64_t id)
 
 
 /* EN/RU: See nodes_internal.h. / См. nodes_internal.h. */
-void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision)
+void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revision, NodeRegistration *retired)
 {
     CallbackNode *entry = find(nodes, id);
     if (!entry)
     {
         return;
     }
-    NodeRegistration callback = entry->callback;
+    *retired = entry->callback;
     uint64_t parent = entry->node.parent;
     erase(nodes, entry);
     while (parent && !has_children(nodes, parent))
@@ -352,10 +364,6 @@ void styxrpc_nodes_remove(StyxRpcNodes *nodes, uint64_t id, uint32_t *root_revis
         erase(nodes, entry);
     }
     touch(nodes, parent, root_revision);
-    if (callback.release)
-    {
-        callback.release(callback.context);
-    }
 }
 
 

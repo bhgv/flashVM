@@ -14,7 +14,7 @@ void muxdrop(PhyBidir *hub)
     if (last)
     {
         phyfree(hub->carrier);
-        for (unsigned i = 0; i < 2; i++)
+        for (unsigned i = 0; i < hub->lanes; i++)
         {
             free(hub->channels[i].rx.bytes);
             free(hub->channels[i].tx.bytes);
@@ -25,11 +25,19 @@ void muxdrop(PhyBidir *hub)
 }
 
 
-/* EN/RU: See mux.h; all buffers/synchronizers exist before publishing native worker. / См. mux.h. */
+/* EN/RU: See bidir.h; select the original wire profile. / См. bidir.h, исходный профиль. */
 PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity)
 {
+    return phybidircreate_lanes(carrier, capacity, PHY_BIDIR_LANES);
+}
+
+
+/* EN/RU: See bidir.h; initialize queues before the worker. / См. bidir.h, очереди готовы до потока. */
+PhyBidir *phybidircreate_lanes(RemotePhy *carrier, size_t capacity, unsigned lanes)
+{
     PhyInfo info;
-    if (capacity < MUX_PAYLOAD || capacity > 1048576 || !phyinfo(carrier, &info) || !info.connected ||
+    if (lanes < PHY_BIDIR_LANES || lanes > PHY_BIDIR_MAX_LANES ||
+        capacity < MUX_PAYLOAD || capacity > 1048576 || !phyinfo(carrier, &info) || !info.connected ||
         (info.capabilities & (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE)) != (PHY_STREAM|PHY_ORDERED|PHY_RELIABLE))
     {
         phyfree(carrier);
@@ -43,6 +51,7 @@ PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity)
     }
     hub->carrier = carrier;
     hub->capacity = capacity;
+    hub->lanes = lanes;
     hub->refs = 1;
     if (pthread_mutex_init(&hub->lock, NULL))
     {
@@ -50,11 +59,11 @@ PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity)
         free(hub);
         return NULL;
     }
-    for (unsigned i = 0; i < 2; i++)
+    for (unsigned i = 0; i < lanes; i++)
     {
         hub->channels[i].hub = hub;
         hub->channels[i].id = i;
-        hub->channels[i].grant = capacity;
+        hub->channels[i].grant = i < PHY_BIDIR_LANES ? capacity : 0;
         hub->channels[i].rx.bytes = malloc(capacity);
         hub->channels[i].tx.bytes = malloc(capacity);
         if (!hub->channels[i].rx.bytes || !hub->channels[i].tx.bytes)
@@ -75,7 +84,7 @@ PhyBidir *phybidircreate(RemotePhy *carrier, size_t capacity)
 /* EN/RU: See mux.h; hub owner serializes channel acquisition/free; worker uses only locked fields. / См. mux.h. */
 RemotePhy *phybidirchannel(PhyBidir *hub, unsigned id)
 {
-    if (!hub || id > 1)
+    if (!hub || id >= hub->lanes)
     {
         return NULL;
     }
@@ -88,9 +97,17 @@ RemotePhy *phybidirchannel(PhyBidir *hub, unsigned id)
         {
             hub->channels[id].taken = 1;
             hub->refs++;
+            if (id >= PHY_BIDIR_LANES)
+            {
+                hub->channels[id].grant = hub->capacity;
+            }
         }
     }
     pthread_mutex_unlock(&hub->lock);
+    if (phy && id >= PHY_BIDIR_LANES)
+    {
+        phywake(hub->carrier);
+    }
     return phy;
 }
 

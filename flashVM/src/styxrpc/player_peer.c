@@ -3,10 +3,14 @@
  * RU: Монтирование peer без блокировки владельца встречного сервера Styx.
  */
 #include "player_peer.h"
+#include "../../ports/monotonic_port.h"
+#include "../../ports/network_port.h"
 #include "../../ports/thread_port.h"
+#include "styxrpc/named_cell.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define PLAYER_PEER_POLL_MS 20 /* Maximum owner wait between mount checks. */
 
@@ -19,6 +23,8 @@ typedef struct PeerMount
     pthread_mutex_t lock; /* Protects the completion notification. */
     int done;             /* Mount has completed, including possible failure. */
     StyxClient *result;   /* Owned client, transferred after worker termination. */
+    int attached;         /* Owner observed the first opposite attach. */
+    int named;            /* Owner observed the named service capability. */
 } PeerMount;
 
 
@@ -27,27 +33,43 @@ typedef struct PeerMount
 static void mount_lane(void *state)
 {
     PeerMount *mount = state;
-    mount->result = styxclientmountphy(mount->lane, PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS, PLAYER_TAGS);
+    StyxClient *result = styxclientmountphy(mount->lane, PLAYER_MSIZE, "flash",
+        STYXRPC_NAMED_PEER_ATTACH, PLAYER_WAIT_MS, PLAYER_TAGS);
     pthread_mutex_lock(&mount->lock);
+    mount->result = result;
     mount->done = 1;
     pthread_mutex_unlock(&mount->lock);
 }
 
 
-/* EN/RU: See player_peer.h. / См. player_peer.h. */
-StyxClient *fvm_styxrpc_player_peer_mount(StyxRpcServer *server, RemotePhy *lane)
+/* EN: Record capability on the first incoming attach without entering a movie.
+ * RU: Записать возможность первого входящего attach без входа в фильм. */
+static void peer_attach(void *state, const char *name)
 {
-    PeerMount mount;
+    PeerMount *mount = state;
+    if (!mount->attached)
+    {
+        mount->attached = 1;
+        mount->named = !strcmp(name, STYXRPC_NAMED_PEER_ATTACH);
+    }
+}
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
+StyxClient *fvm_styxrpc_player_peer_mount(StyxRpcServer *server, RemotePhy *lane, int *named)
+{
+    PeerMount mount = {0};
     FVM_PortThread *worker;
     int serving = 1;
+    double deadline = 0;
+    *named = 0;
     if (!lane || pthread_mutex_init(&mount.lock, NULL))
     {
         phyfree(lane);
         return NULL;
     }
     mount.lane = lane;
-    mount.done = 0;
-    mount.result = NULL;
+    styxrpc_server_observe_attach(server, peer_attach, &mount);
     worker = fvm_port_thread_start(mount_lane, &mount);
     if (!worker)
     {
@@ -55,20 +77,41 @@ StyxClient *fvm_styxrpc_player_peer_mount(StyxRpcServer *server, RemotePhy *lane
     }
     else
     {
-        for (;;)
+        while (serving)
         {
             int done;
+            int failed;
             pthread_mutex_lock(&mount.lock);
             done = mount.done;
+            failed = done && !mount.result;
             pthread_mutex_unlock(&mount.lock);
-            if (done || !serving)
+            if (failed)
             {
                 break;
+            }
+            if (done)
+            {
+                StyxRpcServerState state;
+                double now;
+                if (mount.attached && styxrpc_server_state(server, &state) && !state.reply_bytes)
+                {
+                    *named = mount.named;
+                    break;
+                }
+                if (!fvm_port_monotonic_ms(&now) || (deadline && now >= deadline))
+                {
+                    break;
+                }
+                if (!deadline)
+                {
+                    deadline = now + PLAYER_WAIT_MS;
+                }
             }
             serving = styxrpc_server_step_for(server, PLAYER_PEER_POLL_MS);
         }
         fvm_port_thread_join(worker);
     }
+    styxrpc_server_observe_attach(server, NULL, NULL);
     pthread_mutex_destroy(&mount.lock);
     if (!serving)
     {
@@ -77,6 +120,61 @@ StyxClient *fvm_styxrpc_player_peer_mount(StyxRpcServer *server, RemotePhy *lane
         return NULL;
     }
     return mount.result;
+}
+
+
+/* EN: Fill a capability token with OS entropy, without entering either VM.
+ * RU: Заполнить жетон случайными байтами ОС без входа в любую VM. */
+static int cell_entropy(void *state, unsigned char *bytes, size_t size)
+{
+    (void)state;
+    return fvm_port_secure_random(bytes, size);
+}
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
+int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mux,
+    unsigned serve_lane, PlayerPeerChannels *channels)
+{
+    RemotePhy *lane = phybidirchannel(mux, STYXRPC_NAMED_PEER_LANE);
+    if (!lane)
+    {
+        return 0;
+    }
+    if (serve_lane == PLAYER_SERVE_FORWARD)
+    {
+        channels->registry = styxrpc_module_slot_named_registry(playback->slot);
+        if (!styxrpc_named_cells_enable(channels->registry, cell_entropy, NULL))
+        {
+            phyfree(lane);
+            return 0;
+        }
+        channels->host = styxrpc_named_peer_host(lane, channels->registry, PLAYER_MSIZE,
+            PLAYER_WAIT_MS, PLAYER_TAGS);
+        channels->client = styxrpc_named_peer_client(channels->host);
+    }
+    else
+    {
+        channels->client = styxclientmountphy(lane, PLAYER_MSIZE, "flash", "", PLAYER_WAIT_MS, PLAYER_TAGS);
+    }
+    playback->named = channels->client;
+    return channels->client != NULL;
+}
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
+void fvm_styxrpc_player_peer_close(PlayerPeerChannels *channels)
+{
+    if (channels->host)
+    {
+        styxrpc_named_peer_destroy(channels->host);
+    }
+    else
+    {
+        styxclientshutdown(channels->client);
+        styxclientfree(channels->client);
+    }
+    styxrpc_named_destroy(channels->registry);
 }
 
 
