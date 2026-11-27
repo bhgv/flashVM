@@ -1,47 +1,66 @@
 # styxrpc_cell_read_until
 
-[Русский](cell_read_until.ru.md) · [Shared cells](named_cell.md) · [Declaration](../include/styxrpc/named_cell.h#L82) · [Implementation](../src/named_channel_client.c#L346)
+[Русский](cell_read_until.ru.md) · [Declaration](../include/styxrpc/named_cell.h#L82) · [Implementation](../src/named_channel_client.c#L346)
+
+Read a complete frame by token through a temporary fid.
+
+## Syntax
 
 ```c
 #include <styxrpc/named_cell.h>
 
-StyxRpcIoOutcome styxrpc_cell_read_until(
-    struct StyxClient *session, const void *token, unsigned char **bytes,
-    size_t *size, StyxRpcNamedStop stop, void *state);
+StyxRpcIoOutcome styxrpc_cell_read_until(struct StyxClient *session,
+    const void *token, unsigned char **bytes, size_t *size,
+    StyxRpcNamedStop stop, void *state);
 ```
 
-Read a current [value frame](cell_value.md) from a shared cell through its
-issuing `session`. Borrow a `STYXRPC_CELL_TOKEN`-byte `token` and keep
-an existing lease or lifetime pin active through the call. The SDK
-attaches and retires its own temporary fid on every outcome. The caller's
-lease remains usable. `STYXRPC_IO_OK` transfers the malloc-owned frame
-into `bytes`, with its length in `size`. Release the bytes with `free`.
-Failure preserves both slots.
+## Availability
 
-Link the hosted C target `StyxRpc::launch`. The optional `stop(state)`
-runs on the calling thread and should return nonzero to stop. Keep
-`state` alive through return and avoid reentering the session from the hook.
-NULL uses ordinary blocking waits. On multiplexed Styx, a pending
-request can be flushed by tag. Temporary fid cleanup can continue after
-return. A sequential session checks stop between exchanges.
+Hosted C SDK, linking `StyxRpc::launch`. Requires an attached Styx client and a provider that implements shared cells at `/.channels`. The tutorial is verified on Linux64 with DisVM.
 
-`STYXRPC_IO_NOT_OPEN` indicates invalid input or an unavailable service.
-`STYXRPC_IO_FAILED` reports a definite failure or invalid response.
-`STYXRPC_IO_CANCELLED` reports a caller stop. An exchange without
-reliable confirmation can report `STYXRPC_IO_UNCERTAIN`.
+## Parameters
+
+| Name | Description |
+| --- | --- |
+| `session` | Borrowed attached client that reaches the issuing `/.channels` service. Keep it alive through return. |
+| `token` | Borrowed readable token of `STYXRPC_CELL_TOKEN` bytes (24). Keep a lease or transfer pin alive through return. |
+| `bytes` | Writable output pointer. Receives a buffer allocated by `malloc` on success. Release it with `free`. |
+| `size` | Writable output for the exact frame length in bytes, including its tag. |
+| `stop` | Optional `StyxRpcNamedStop` callback, invoked on the calling thread. Return nonzero to request stop. NULL uses ordinary blocking waits. |
+| `state` | Borrowed context for `stop`. It may be NULL if the callback accepts it. Keep it valid through return. |
+
+## Return value
+
+| Outcome | Condition |
+| --- | --- |
+| `STYXRPC_IO_OK` | Transfers the complete owned frame and its byte length. |
+| `STYXRPC_IO_NOT_OPEN` | Invalid pointers or unavailable service. |
+| `STYXRPC_IO_FAILED` | Definite setup problem or an invalid, incomplete or empty confirmed reply. |
+| `STYXRPC_IO_CANCELLED` | Stop during attachment, submission of the read command or receipt of its reply. |
+| `STYXRPC_IO_UNCERTAIN` | An attempted command or read lacks a reliable positive acknowledgement. No output is published. |
+
+## Behavior and lifetime
+
+The SDK attaches and retires its own fid. Keep the original lease live throughout. Failure preserves both output slots. On success, the caller can decode the frame independently of later edits. Concurrent reads use separate output storage.
+
+The callback should return promptly and avoid reentering the same session. Multiplexed Styx can flush a pending request by tag. Sequential sessions sample stop between exchanges. Temporary fid cleanup can continue after return.
+
+## Example
+
+The original lease must remain live. This reads by its token while polling the tutorial deadline.
 
 ```c
 unsigned char *frame = NULL;
 size_t size = 0;
-StyxRpcIoOutcome result = styxrpc_cell_read_until(session, token, &frame,
-    &size, stop_requested, task);
-if (result == STYXRPC_IO_OK)
+if (styxrpc_cell_read_until(session, token, &frame, &size,
+        deadline_reached, &end) == STYXRPC_IO_OK)
 {
     free(frame);
 }
 ```
 
-The example uses `stop_requested(task)` to read the caller's stop flag.
-The token comes from a live shared cell on this session. Decode the frame
-before freeing it when using its value. Concurrent callers use separate
-output slots and keep their shared lifetime pin stable.
+Include `<stdlib.h>` for `free`. The complete example checks the two bytes of a Boolean before freeing the frame.
+
+## See also
+
+[Shared cells](named_cell.md) · [Value frames](cell_value.md) · [styxrpc_cell_get](cell_get.md) · [styxrpc_vfs_close](vfs_close.md) · [Runnable C and Limbo tutorial](../examples/shared-cell/README.md)

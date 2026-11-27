@@ -2,6 +2,12 @@
 
 [Русский](README.ru.md) · [libstyxrpc](../README.md)
 
+## Shared value cells in C and Limbo
+
+[Shared value cells in C and Limbo](shared-cell/README.md). Follow a real host and guest through reference transfer, cancelled assignment,
+confirmed readback and final token retirement.
+
+
 Build with `-DSTYXRPC_EXAMPLES=ON` and an installed hosted Styx library.
 From the `styxrpc` source directory, assuming the build directory is `build`:
 

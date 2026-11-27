@@ -1,6 +1,6 @@
 # Shared value cells on a named channel
 
-[Русский](named_cell.ru.md) · [Header](../include/styxrpc/named_cell.h) · [Channels](named_channel.md) · [FlashVM](../../../flashVM/doc/STYX_RPC_NAMED_SEND.md)
+[Русский](named_cell.ru.md) · [Header](../include/styxrpc/named_cell.h) · [Channels](named_channel.md) · [FlashVM](https://github.com/bhgv/flashVM/blob/master/flashVM/doc/STYX_RPC_NAMED_SEND.md)
 
 A cell belongs to one attached registry. The issuer uses host entropy and a
 serial to identify it. Each open cell fid holds a lease. A named channel also
@@ -13,6 +13,11 @@ frames, plus the FlashVM graph snapshot used by ordinary named messages.
 A write replaces the complete frame atomically. Successive reads and writes
 are separate operations. Serialize operations on each fid. The value may
 change type on any assignment. Graph reads return a snapshot.
+
+Use the [C and Limbo tutorial](../examples/shared-cell/README.md) to follow a live
+reference across two mounts, from creation through its last close. Calls using
+an existing fid suit a serialized owner. The token-based read and write forms
+use a separate operation fid for cancellation.
 
 | C client call | Contract |
 | --- | --- |
@@ -46,7 +51,7 @@ body and replies with the current value frame. Set takes a value frame and
 acknowledges the replacement. Each cell uses a separate read/write Styx fid.
 Send a reference as tag 8 followed by the 24-byte token.
 
-In [Limbo](../../../disVM/module/styxnamed.m), `share(frame)` allocates a cell and
+In [Limbo](https://github.com/bhgv/flashVM/blob/master/disVM/module/styxnamed.m), `share(frame)` allocates a cell and
 `adopt(frame)` attaches to a received descriptor. Use `cell.get()` and
 `cell.set(value)` for the shared value frame. `cell.payload()` returns the descriptor
 for forwarding and `cell.close()` releases the lease. The tagged frames can

@@ -44,7 +44,13 @@ AS или собственное свойство через ячейку
 пересылаться в выдавшей сессии.
 
 ```actionscript
+var port = vfs.chan("/jobs");
 var counter = 7;
-var sent = port.send(ref counter);
-var current = counter;
+var sent = port.send(ref counter); // Передаём ссылку.
+var current = counter; // Читаем значение на этот момент.
+var released = port.delete();
 ```
+
+[Пример получателя](STYX_RPC_NAMED_RECV.ru.md) читает и меняет переданное
+число. [Полный пример C и Limbo](../../lib/styxrpc/examples/shared-cell/README.ru.md)
+показывает то же время жизни аренды и явную отмену присваивания.

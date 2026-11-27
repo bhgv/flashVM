@@ -204,7 +204,8 @@ def navigation(root, component=""):
         groups.insert(0, ("Repository", ""))
         # Workspace-only navigation: detached VM browsing never inspects siblings.
         for title, folder in [("Compilers", "compiler"), ("Linker", "linker"), ("FIR", "fir"),
-                              ("Standalone Styx", "lib/styx"), ("Standalone libunibus", "lib/libunibus")]:
+                              ("Standalone Styx", "lib/styx"), ("Standalone libunibus", "lib/libunibus"),
+                              ("Standalone Styx RPC", "lib/styxrpc")]:
             if os.path.isdir(os.path.join(root, folder)):
                 groups.append((title, folder))
     blocks = []

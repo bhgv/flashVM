@@ -40,6 +40,13 @@ foreach(mode IN ITEMS interpreter jit)
         COMMAND "${disvm_command}" "${disvm_examples}/run.py" ${disvm_common}
             --module "${disvm_upstream_modules}" --device "$<TARGET_FILE:styxrpc-device>"
             ${mode_args})
+    add_test(NAME styxrpc-disvm-shared-cell-${mode}
+        COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/examples/shared-cell/run.py"
+            --host "$<TARGET_FILE:styxrpc-shared-cell>" --disvm "${disvm_runtime}"
+            --limbo "${disvm_limbo}" --system-modules "${disvm_upstream_modules}"
+            --native-modules "${disvm_native_modules}" --limbo-sources "${STYXRPC_DISVM_SOURCE}/limbo"
+            ${mode_args})
+    set_tests_properties(styxrpc-disvm-shared-cell-${mode} PROPERTIES TIMEOUT 45)
     add_test(NAME styxrpc-disvm-channels-${mode}
         COMMAND "${disvm_command}" "${disvm_examples}/run.py" ${disvm_common}
             --module "${disvm_upstream_modules}" --device "$<TARGET_FILE:styxrpc-channel-device>"

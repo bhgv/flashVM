@@ -1,46 +1,65 @@
 # styxrpc_cell_create_until
 
-[Русский](cell_create_until.ru.md) · [Shared cells](named_cell.md) · [Declaration](../include/styxrpc/named_cell.h#L66) · [Implementation](../src/named_channel_client.c#L240)
+[Русский](cell_create_until.ru.md) · [Declaration](../include/styxrpc/named_cell.h#L66) · [Implementation](../src/named_channel_client.c#L240)
+
+Create a cell with a cancellable setup, request and token read.
+
+## Syntax
 
 ```c
 #include <styxrpc/named_cell.h>
 
-StyxRpcIoOutcome styxrpc_cell_create_until(
-    struct StyxClient *session, const void *frame, size_t size,
-    void *token, StyxRpcVfsFile **out, StyxRpcNamedStop stop, void *state);
+StyxRpcIoOutcome styxrpc_cell_create_until(struct StyxClient *session,
+    const void *frame, size_t size, void *token, StyxRpcVfsFile **out,
+    StyxRpcNamedStop stop, void *state);
 ```
 
-Create a shared cell on attached `session`. The peer must serve the shared
-cell profile over `/.channels`. Borrow an accepted [value frame](cell_value.md)
-of `size` bytes. Supply writable storage for `STYXRPC_CELL_TOKEN` bytes
-at `token` and a distinct output pointer at `out`. `STYXRPC_IO_OK` publishes
-the complete token and an owned read/write fid simultaneously from the
-caller's perspective. Keep the fid open to retain the cell and close it with
-[styxrpc_vfs_close](vfs_close.md). Both outputs retain their prior contents
-on failure. If a cancelled creation reached the server, it remains leased
-only until the temporary fid is retired.
+## Availability
 
-Link the hosted C target `StyxRpc::launch`. The optional `stop(state)`
-runs on the calling thread and should return nonzero to stop. Keep
-`state` alive through return and avoid reentering the session from the hook.
-NULL uses ordinary blocking waits. On multiplexed Styx, a pending
-request can be flushed by tag. Temporary fid cleanup can continue after
-return. A sequential session checks stop between exchanges.
+Hosted C SDK, linking `StyxRpc::launch`. Requires an attached Styx client and a provider that implements shared cells at `/.channels`. The tutorial is verified on Linux64 with DisVM.
 
-`STYXRPC_IO_NOT_OPEN` indicates invalid input or an unavailable service.
-`STYXRPC_IO_FAILED` reports a definite failure or invalid response.
-`STYXRPC_IO_CANCELLED` reports a caller stop. An exchange without
-reliable confirmation can report `STYXRPC_IO_UNCERTAIN`.
+## Parameters
+
+| Name | Description |
+| --- | --- |
+| `session` | Borrowed attached client that reaches the issuing `/.channels` service. Keep it alive through return. |
+| `frame` | Borrowed tagged value frame. Readable through return. |
+| `size` | Frame length including its tag, 1 through `STYXRPC_NAMED_MAX` bytes. The tag determines further length constraints. |
+| `token` | Writable storage for `STYXRPC_CELL_TOKEN` bytes (24). Filled on success. |
+| `out` | Writable pointer slot. Receives an owned read/write fid only on success. |
+| `stop` | Optional `StyxRpcNamedStop` callback, invoked on the calling thread. Return nonzero to request stop. NULL uses ordinary blocking waits. |
+| `state` | Borrowed context for `stop`. It may be NULL if the callback accepts it. Keep it valid through return. |
+
+## Return value
+
+| Outcome | Condition |
+| --- | --- |
+| `STYXRPC_IO_OK` | Both outputs are published after the complete token arrives. The caller owns `*out`. |
+| `STYXRPC_IO_NOT_OPEN` | Invalid arguments, unaccepted local value frame, or unavailable service. |
+| `STYXRPC_IO_FAILED` | Definite admission failure, incomplete confirmed transfer or malformed token reply. |
+| `STYXRPC_IO_CANCELLED` | Stop during the service walk, open, create request or token read. |
+| `STYXRPC_IO_UNCERTAIN` | A command or reply has no reliable positive acknowledgement. |
+
+## Behavior and lifetime
+
+Use separate storage for `token` and `out`. Every failure preserves both outputs. A cancelled request may have created a cell. A temporary fid pins it until the server receives its cleanup. Close the returned fid only after intended users have acquired their own leases.
+
+The callback should return promptly and avoid reentering the same session. Multiplexed Styx can flush a pending request by tag. Sequential sessions sample stop between exchanges. Temporary fid cleanup can continue after return.
+
+## Example
+
+Pass an attached session. The complete tutorial defines the deadline callback and closes the returned lease after sharing its token.
 
 ```c
 unsigned char token[STYXRPC_CELL_TOKEN];
 const unsigned char initial[] = {STYXRPC_NAMED_BOOLEAN, 1};
 StyxRpcVfsFile *owner = NULL;
 StyxRpcIoOutcome result = styxrpc_cell_create_until(session, initial,
-    sizeof(initial), token, &owner, stop_requested, task);
+    sizeof(initial), token, &owner, deadline_reached, &end);
 ```
 
-The example uses `stop_requested(task)` to read the caller's stop flag.
-Only after success, forward the token through the named cell descriptor or
-use [read](cell_read_until.md) on the same session. Close the owned fid
-after the last use by this caller.
+After success, retain `owner` while sending the token. The example closes it explicitly after an alias is confirmed.
+
+## See also
+
+[Shared cells](named_cell.md) · [Value frames](cell_value.md) · [styxrpc_cell_create](cell_create.md) · [styxrpc_vfs_close](vfs_close.md) · [Runnable C and Limbo tutorial](../examples/shared-cell/README.md)

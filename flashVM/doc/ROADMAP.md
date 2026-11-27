@@ -1,5 +1,19 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1817 — document shared-cell APIs and demonstrate a real C/Limbo exchange
+
+The function references specify exact parameter units, output ownership,
+stop points and acknowledgement outcomes. A runnable example uses one
+hosted C provider and a native Limbo guest to demonstrate alias lifetime,
+a cancelled assignment, a confirmed replacement and token retirement.
+
+В справке каждой функции указаны единицы параметров, владение выходами,
+точки отмены и исходы подтверждений. Исполняемый пример запускает
+хостовый сервис C и нативного гостя Limbo и показывает время жизни
+ссылки, отмену записи, подтверждённую замену и отзыв жетона.
+[EN](../../lib/styxrpc/examples/shared-cell/README.md) ·
+[RU](../../lib/styxrpc/examples/shared-cell/README.ru.md).
+
 ## v0.1816 — cancel shared-cell requests without dropping the issuing lease
 
 The hosted C SDK can stop during cell creation, attachment, reading and

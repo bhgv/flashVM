@@ -173,6 +173,7 @@ for two native clients, including a local client in the provider process.
 Use [executable callback nodes](reference/node_exec.md) for a synchronous
 byte request and reply on a path published by the peer.
 [Shared value cells](reference/named_cell.md) travel by reference.
+[Runnable C and Limbo example](examples/shared-cell/README.md) demonstrates cell cancellation and lease lifetime.
 [Paired module references](reference/module_refs.md) carry the identity
 and access mode of a live mounted Int32 export through that service.
 

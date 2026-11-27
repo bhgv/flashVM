@@ -1,48 +1,61 @@
 # styxrpc_cell_write_until
 
-[Русский](cell_write_until.ru.md) · [Shared cells](named_cell.md) · [Declaration](../include/styxrpc/named_cell.h#L90) · [Implementation](../src/named_channel_client.c#L367)
+[Русский](cell_write_until.ru.md) · [Declaration](../include/styxrpc/named_cell.h#L90) · [Implementation](../src/named_channel_client.c#L367)
+
+Replace a cell frame by token through a cancellable temporary fid.
+
+## Syntax
 
 ```c
 #include <styxrpc/named_cell.h>
 
-StyxRpcIoOutcome styxrpc_cell_write_until(
-    struct StyxClient *session, const void *token, const void *frame,
-    size_t size, StyxRpcNamedStop stop, void *state);
+StyxRpcIoOutcome styxrpc_cell_write_until(struct StyxClient *session,
+    const void *token, const void *frame, size_t size, StyxRpcNamedStop stop, void *state);
 ```
 
-Replace the complete [value frame](cell_value.md) on the issuing `session`.
-Borrow a `STYXRPC_CELL_TOKEN`-byte `token` and `size` bytes at `frame`.
-Keep the original lease or a transfer pin live. The SDK uses a temporary
-fid and retires it on every outcome. Other holders keep their access.
+## Availability
 
-`STYXRPC_IO_OK` confirms the whole replacement. A cancellation during
-setup or header staging returns `STYXRPC_IO_CANCELLED`. If a submitted
-value fragment loses its acknowledgement, even during cancellation, the
-SDK reports `STYXRPC_IO_UNCERTAIN`. The server only replaces a cell
-after accepting a complete frame. A complete acknowledged write can
-succeed despite a racing stop. The SDK sends the assignment once.
-Releasing the operation fid preserves any replacement already applied.
+Hosted C SDK, linking `StyxRpc::launch`. Requires an attached Styx client and a provider that implements shared cells at `/.channels`. The tutorial is verified on Linux64 with DisVM.
 
-Link the hosted C target `StyxRpc::launch`. The optional `stop(state)`
-runs on the calling thread and should return nonzero to stop. Keep
-`state` alive through return and avoid reentering the session from the hook.
-NULL uses ordinary blocking waits. On multiplexed Styx, a pending
-request can be flushed by tag. Temporary fid cleanup can continue after
-return. A sequential session checks stop between exchanges.
+## Parameters
 
-`STYXRPC_IO_NOT_OPEN` indicates invalid input or an unavailable service.
-`STYXRPC_IO_FAILED` reports a definite failure or invalid response.
-`STYXRPC_IO_CANCELLED` reports a caller stop. An exchange without
-reliable confirmation can report `STYXRPC_IO_UNCERTAIN`.
+| Name | Description |
+| --- | --- |
+| `session` | Borrowed attached client that reaches the issuing `/.channels` service. Keep it alive through return. |
+| `token` | Borrowed readable token of `STYXRPC_CELL_TOKEN` bytes (24). Keep a lease or transfer pin alive through return. |
+| `frame` | Borrowed tagged value frame. Readable through return. |
+| `size` | Frame length including its tag, 1 through `STYXRPC_NAMED_MAX` bytes. The tag determines further length constraints. |
+| `stop` | Optional `StyxRpcNamedStop` callback, invoked on the calling thread. Return nonzero to request stop. NULL uses ordinary blocking waits. |
+| `state` | Borrowed context for `stop`. It may be NULL if the callback accepts it. Keep it valid through return. |
+
+## Return value
+
+| Outcome | Condition |
+| --- | --- |
+| `STYXRPC_IO_OK` | Confirms the complete replacement. An original positive reply can win the race with stop. |
+| `STYXRPC_IO_NOT_OPEN` | Invalid input, rejected local value frame or unavailable service. |
+| `STYXRPC_IO_FAILED` | Definite setup failure or short confirmed transfer. |
+| `STYXRPC_IO_CANCELLED` | Stop before a possibly effective value write. A header or a partial staging prefix can already have been accepted. |
+| `STYXRPC_IO_UNCERTAIN` | An attempted command or value fragment lacks positive acknowledgement. If the full body reached the issuer, the replacement may already be visible. |
+
+## Behavior and lifetime
+
+The SDK uses a separate operation fid and sends each confirmed offset once. An incomplete frame never replaces the cell. Clunk preserves a replacement already accepted. A recovery read sees the current frame and can race with another holder's write. Application-level read/modify/write requires coordination between writers.
+
+The callback should return promptly and avoid reentering the same session. Multiplexed Styx can flush a pending request by tag. Sequential sessions sample stop between exchanges. Temporary fid cleanup can continue after return.
+
+## Example
+
+Hold the issuing lease while assigning. The tutorial defines the deadline callback.
 
 ```c
-const unsigned char replacement[] = {STYXRPC_NAMED_BOOLEAN, 0};
+const unsigned char enabled[] = {STYXRPC_NAMED_BOOLEAN, 1};
 StyxRpcIoOutcome result = styxrpc_cell_write_until(session, token,
-    replacement, sizeof(replacement), stop_requested, task);
+    enabled, sizeof(enabled), deadline_reached, &end);
 ```
 
-The example uses `stop_requested(task)` to read the caller's stop flag.
-After an uncertain result, [read](cell_read_until.md) if the application
-needs the currently visible value. Other holders can write between
-these operations. Serialize higher-level read/modify/write sequences
-at the application level when necessary.
+Keep a separate lease through return. After `STYXRPC_IO_UNCERTAIN`, use `styxrpc_cell_read_until` with a new live stop state if the application needs the visible value.
+
+## See also
+
+[Shared cells](named_cell.md) · [Value frames](cell_value.md) · [styxrpc_cell_set](cell_set.md) · [styxrpc_vfs_close](vfs_close.md) · [Runnable C and Limbo tutorial](../examples/shared-cell/README.md)

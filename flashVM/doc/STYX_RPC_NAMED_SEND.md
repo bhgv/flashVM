@@ -41,7 +41,13 @@ watched properties and values the graph codec refuses cannot be published.
 Previously issued Int32 references still forward on their issuing session.
 
 ```actionscript
+var port = vfs.chan("/jobs");
 var counter = 7;
-var sent = port.send(ref counter);
-var current = counter;
+var sent = port.send(ref counter); // Transfer the reference.
+var current = counter; // Read the value as it stands at this point.
+var released = port.delete();
 ```
+
+The [receiver example](STYX_RPC_NAMED_RECV.md) reads and writes the
+forwarded number. The [complete C and Limbo example](../../lib/styxrpc/examples/shared-cell/README.md)
+shows the same lease lifetime and an explicitly cancelled assignment.
