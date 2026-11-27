@@ -39,3 +39,9 @@ Inside a paired [asinc task](ASINC_VFS.md), these calls wait on the worker.
 [`cancel()`](ASINC_CANCEL.md) flushes a pending data exchange by tag and
 closes the task's enrollment. A peer that has already matched may have
 received the value.
+
+
+A task can also cancel attachment or access to a shared cell received
+through a named channel. Cell access uses its own temporary fid and
+retains the original lease.
+[Detached task VFS](ASINC_VFS.md) · [SDK cell guide](../../lib/styxrpc/reference/named_cell.md).

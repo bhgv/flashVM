@@ -12,6 +12,7 @@
 #include "../capi/variable_refs.hpp"
 #include "../capi/table_index_binding.hpp"
 #include "flashvm/property.h"
+#include "flashvm/worker.h"
 #include <cstdlib>
 #include <cstring>
 #include <new>
@@ -19,6 +20,7 @@
 extern "C"
 {
 #include "managed_values.h"
+#include "wire_wait.h"
 }
 
 namespace
@@ -48,9 +50,15 @@ FVM_Result get(FVM_Context *context, FVM_Object *, unsigned, const FVM_Value *, 
     CellProxy *proxy = static_cast<CellProxy *>(state);
     unsigned char *frame;
     size_t size;
-    if (styxrpc_cell_get(proxy->lease, &frame, &size) != STYXRPC_IO_OK)
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = worker ?
+        styxrpc_cell_read_until(proxy->route.client, proxy->token, &frame, &size, fvm_styxrpc_worker_stopped, worker) :
+        styxrpc_cell_get(proxy->lease, &frame, &size);
+    if (outcome != STYXRPC_IO_OK)
     {
-        return fvm_styxrpc_managed_fail(context, "cannot read the shared cell");
+        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_CANCELLED ?
+            "shared cell read cancelled" : "cannot read the shared cell");
     }
     FVM_Result result = fvm_named_decode(context, proxy->route, frame, size, out);
     free(frame);
@@ -74,12 +82,17 @@ FVM_Result set(FVM_Context *context, FVM_Object *, unsigned argc, const FVM_Valu
     {
         return status;
     }
-    StyxRpcIoOutcome outcome = styxrpc_cell_set(proxy->lease, frame, size);
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = worker ?
+        styxrpc_cell_write_until(proxy->route.client, proxy->token, frame, size, fvm_styxrpc_worker_stopped, worker) :
+        styxrpc_cell_set(proxy->lease, frame, size);
     free(frame);
     if (outcome != STYXRPC_IO_OK)
     {
-        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_UNCERTAIN ?
-            "shared cell assignment is uncertain" : "cannot assign the shared cell");
+        const char *message = outcome == STYXRPC_IO_UNCERTAIN ? "shared cell assignment is uncertain" :
+            outcome == STYXRPC_IO_CANCELLED ? "shared cell assignment cancelled" : "cannot assign the shared cell";
+        return fvm_styxrpc_managed_fail(context, message);
     }
     fvm_value_undefined(out);
     return FVM_OK;
@@ -124,12 +137,16 @@ FVM_Result create_proxy(FVM_Context *context, const FVM_NamedRoute &route, const
         return status;
     }
     proxy->route = route;
-    proxy->lease = styxrpc_cell_create(route.client, frame, size, proxy->token);
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = styxrpc_cell_create_until(route.client, frame, size, proxy->token, &proxy->lease,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
     free(frame);
-    if (!proxy->lease)
+    if (outcome != STYXRPC_IO_OK)
     {
         delete proxy;
-        return fvm_styxrpc_managed_fail(context, "cannot publish the shared cell");
+        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_CANCELLED ?
+            "shared cell publication cancelled" : "cannot publish the shared cell");
     }
     *out = proxy;
     return FVM_OK;
@@ -359,11 +376,15 @@ FVM_Result fvm_named_ref_bind(FVM_Context *context, const FVM_NamedRoute &route,
         return FVM_OUT_OF_MEMORY;
     }
     proxy->route = route;
-    proxy->lease = styxrpc_cell_attach(route.client, token);
-    if (!proxy->lease)
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = styxrpc_cell_attach_until(route.client, token, &proxy->lease,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (outcome != STYXRPC_IO_OK)
     {
         delete proxy;
-        return fvm_styxrpc_managed_fail(context, "cannot attach to the shared cell");
+        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_CANCELLED ?
+            "shared cell attachment cancelled" : "cannot attach to the shared cell");
     }
     memcpy(proxy->token, token, size);
     status = install_proxy(context, holder, proxy);

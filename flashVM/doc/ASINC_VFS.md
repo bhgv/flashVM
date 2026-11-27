@@ -54,6 +54,17 @@ The task can exchange snapshots and named cell descriptors. References
 to module exports require owner processing.
 [SDK enrollment API](../../lib/styxrpc/reference/named_open_until.md).
 
+When `recv()` returns a shared cell, the task can cancel while attaching
+to its descriptor or while reading or assigning through the reference.
+Each access uses a temporary operation fid. Cancellation retires that
+fid, leaving the retained cell lease intact. An assignment already
+accepted by the peer can remain visible after cancellation.
+The `--cancel-cell-setup` [paired test](../../lib/styxrpc/tests/flashvm/mixed_pair.py)
+holds the attach, read length, read body, write header and write body
+acknowledgements in turn. Limbo keeps the original lease and observes
+the replacement made by the recovery task.
+[Cell protocol](../../lib/styxrpc/reference/named_cell.md).
+
 A worker can also open a published `.dis` image for reading and use
 `load()` to get a proxy in its own context. Closing the original handle
 leaves the proxy's own fid available for direct method calls. The proxy

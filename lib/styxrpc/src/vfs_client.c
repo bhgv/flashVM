@@ -266,12 +266,12 @@ static int valid_range(uint64_t offset, const void *bytes, size_t size)
 
 /* EN: Read or write consecutive confirmed fragments, stopping on EOF, short zero or error.
  * The caller passes one direction and may stop by returning nonzero from stop(state).
- * All storage is borrowed through return. Set used to the acknowledged byte count.
+ * With effect, a cancelled unconfirmed write retains uncertainty. Set used to the confirmed count.
  * RU: Читать либо писать подтверждённые фрагменты до EOF, короткого нуля или ошибки.
  * Вызывающий задаёт одно направление и может вернуть ненулевой stop(state).
- * Хранилище заимствуется до возврата. В used записывается подтверждённая длина. */
+ * При effect отменённая неподтверждённая запись сохраняет неопределённость. used — подтверждённая длина. */
 static StyxRpcIoOutcome transfer(StyxRpcVfsFile *file, uint64_t offset, void *read, const void *write,
-    size_t size, size_t *used, StyxClientStop stop, void *state)
+    size_t size, size_t *used, StyxClientStop stop, void *state, int effect)
 {
     if (!used)
     {
@@ -296,7 +296,7 @@ static StyxRpcIoOutcome transfer(StyxRpcVfsFile *file, uint64_t offset, void *re
         }
         if (stop && part.cancelled && !part.success)
         {
-            return STYXRPC_IO_CANCELLED;
+            return effect && part.uncertain ? STYXRPC_IO_UNCERTAIN : STYXRPC_IO_CANCELLED;
         }
         status = styxrpc_vfs_transfer_outcome(&part, size - *used);
         if (status != STYXRPC_IO_OK || !part.count)
@@ -327,7 +327,7 @@ StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset, c
 StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offset, void *bytes,
     size_t size, size_t *used, StyxRpcVfsStop stop, void *state)
 {
-    return transfer(file, offset, bytes, NULL, size, used, stop, state);
+    return transfer(file, offset, bytes, NULL, size, used, stop, state, 0);
 }
 
 
@@ -335,7 +335,15 @@ StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offs
 StyxRpcIoOutcome styxrpc_vfs_file_write_until(StyxRpcVfsFile *file, uint64_t offset, const void *bytes,
     size_t size, size_t *used, StyxRpcVfsStop stop, void *state)
 {
-    return transfer(file, offset, NULL, bytes, size, used, stop, state);
+    return transfer(file, offset, NULL, bytes, size, used, stop, state, 0);
+}
+
+
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxRpcIoOutcome styxrpc_vfs_effect_write(StyxRpcVfsFile *file, uint64_t offset, const void *bytes,
+    size_t size, size_t *used, StyxRpcVfsStop stop, void *state)
+{
+    return transfer(file, offset, NULL, bytes, size, used, stop, state, 1);
 }
 
 
@@ -355,7 +363,7 @@ static StyxRpcIoOutcome transfer_path(StyxClient *session, const char *path, uin
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxRpcIoOutcome status = transfer(file, offset, read, write, size, used, NULL, NULL);
+    StyxRpcIoOutcome status = transfer(file, offset, read, write, size, used, NULL, NULL, 0);
     styxclientclunk(file);
     return status;
 }

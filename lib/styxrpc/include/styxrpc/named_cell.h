@@ -58,6 +58,38 @@ StyxRpcIoOutcome styxrpc_cell_get(StyxRpcVfsFile *lease, unsigned char **frame, 
  * RU: Атомарно заменить значение заимствованным кадром значения. Без повтора при неопределённости. */
 StyxRpcIoOutcome styxrpc_cell_set(StyxRpcVfsFile *lease, const void *frame, size_t size);
 
+
+/* EN: Create from borrowed frame, polling stop(state) through the exchange.
+ * Publish the owned lease and STYXRPC_CELL_TOKEN bytes only on success.
+ * RU: Создать из заимствованного frame с проверкой stop(state).
+ * Выдать собственный fid и STYXRPC_CELL_TOKEN байт только при успехе. */
+StyxRpcIoOutcome styxrpc_cell_create_until(struct StyxClient *session, const void *frame, size_t size,
+    void *token, StyxRpcVfsFile **out, StyxRpcNamedStop stop, void *state);
+
+
+/* EN: Acquire a lease from the borrowed token with optional stop(state).
+ * Give out the owned fid only after the issuing session confirms attachment.
+ * RU: Получить аренду по заимствованному жетону с проверкой stop(state).
+ * Выдать собственный fid в out после подтверждения выдавшей сессии. */
+StyxRpcIoOutcome styxrpc_cell_attach_until(struct StyxClient *session, const void *token, StyxRpcVfsFile **out,
+    StyxRpcNamedStop stop, void *state);
+
+
+/* EN: Read a complete owned frame with optional stop(state) using a private fid.
+ * Borrow the token and keep its cell live on session. Release bytes with free.
+ * RU: Прочитать собственный кадр с проверкой stop(state) через временный fid.
+ * Удерживать ячейку в session и жетон до возврата. Освободить bytes через free. */
+StyxRpcIoOutcome styxrpc_cell_read_until(struct StyxClient *session, const void *token, unsigned char **bytes,
+    size_t *size, StyxRpcNamedStop stop, void *state);
+
+
+/* EN: Replace the value using a private fid. Borrow token and frame, and keep
+ * the cell live on session. A write interrupted after submission can be uncertain.
+ * RU: Заменить значение через временный fid. Удерживать жетон, кадр и ячейку в
+ * session. Прерванная после отправки запись может иметь неопределённый исход. */
+StyxRpcIoOutcome styxrpc_cell_write_until(struct StyxClient *session, const void *token, const void *frame,
+    size_t size, StyxRpcNamedStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

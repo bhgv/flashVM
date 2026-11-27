@@ -21,6 +21,19 @@ change type on any assignment. Graph reads return a snapshot.
 | [`styxrpc_cell_get`](cell_get.md) | Read a complete value frame. |
 | [`styxrpc_cell_set`](cell_set.md) | Replace the complete value frame. |
 
+| C call with cancellation | Contract |
+| --- | --- |
+| [Create with stop](cell_create_until.md) | Transfer the token and first lease only after a complete successful reply. |
+| [Attach with stop](cell_attach_until.md) | Attach a fresh fid to a borrowed live token. |
+| [Read with stop](cell_read_until.md) | Fetch the value on a separate temporary fid, leaving the original lease available. |
+| [Write with stop](cell_write_until.md) | Replace the frame once and preserve uncertainty if an in-flight value write loses acknowledgement. |
+
+Keep an existing lease or the received descriptor's transfer pin alive
+while attaching, reading or writing by token. A stopped operation can
+retire its temporary fid after returning. The server applies only
+complete replacement frames. Closing a writer does not roll back a
+replacement already accepted.
+
 Close leases with [`styxrpc_vfs_close`](vfs_close.md). Providers enable shared cells
 with [`styxrpc_named_cells_enable`](named_cells_enable.md) before opening endpoints.
 The [value frame validator](cell_value.md) checks the envelope and checksum of graph

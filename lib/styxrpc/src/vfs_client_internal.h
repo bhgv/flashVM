@@ -94,4 +94,12 @@ int styxrpc_vfs_service_meta(const StyxMeta *);
 StyxRpcIoOutcome styxrpc_vfs_transfer_outcome(const StyxTransfer *, size_t);
 
 
+/* EN: Write borrowed bytes with confirmed count in used. A cancelled in-flight
+ * write retains an uncertain outcome when the peer may have accepted it.
+ * RU: Записать заимствованные байты с подтверждённой длиной в used.
+ * При отмене отправленной записи сохранить неопределённость принятия. */
+StyxRpcIoOutcome styxrpc_vfs_effect_write(StyxRpcVfsFile *file, uint64_t offset, const void *bytes,
+    size_t size, size_t *used, StyxRpcVfsStop stop, void *state);
+
+
 #endif

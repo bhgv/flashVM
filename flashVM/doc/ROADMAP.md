@@ -1,5 +1,20 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1816 — cancel shared-cell requests without dropping the issuing lease
+
+The hosted C SDK can stop during cell creation, attachment, reading and
+replacement. FlashVM tasks use a private operation fid for reads and
+assignments to received cells. After a cancelled read or incomplete
+assignment, the original lease still selects the same cell. A submitted
+replacement with a lost acknowledgement can have taken effect.
+
+SDK C поддерживает отмену создания, присоединения, чтения и замены общей
+ячейки. Задачи FlashVM читают и записывают полученные ячейки через
+отдельный fid операции. Отмена чтения или незавершённого присваивания
+сохраняет исходную аренду той же ячейки. Отправленная замена может
+вступить в силу, даже если подтверждение потеряно.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1815 — cancel named channel enrollment and typed bus setup
 
 FlashVM tasks and the hosted SDK can cancel while walking and opening

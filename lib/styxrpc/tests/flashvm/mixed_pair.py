@@ -11,6 +11,7 @@ from run import compile_image, paired_exchange
 from vfs_control_gate import gated_exchange
 from module_setup_gate import ModuleSetupGate
 from channel_setup_gate import ChannelSetupGate
+from cell_setup_gate import CellSetupGate
 
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
@@ -41,7 +42,7 @@ def main():
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
                     "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
-                    "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup"):
+                    "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -85,7 +86,7 @@ def main():
             (directory / "neighbour").write_bytes(b"Z")
         if name == "cancel-dis-setup":
             compile_image(args, directory, tests / "live-dis_library.b", "setup.dis")
-        if name in ("cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup"):
+        if name in ("cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup"):
             (directory / "control-gate").write_bytes(b"0")
             (directory / "neighbour").write_bytes(b"Z")
         if name == "cancel-vfs-control":
@@ -125,6 +126,7 @@ def main():
             "cancel-vfs-control": (),
             "cancel-dis-setup": (),
             "cancel-channel-setup": (),
+            "cancel-cell-setup": ("styxvalue", "styxnamed"),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -152,16 +154,18 @@ def main():
             "cancel-vfs-control": ("cancel-vfs-control_worker.as",),
             "cancel-dis-setup": ("cancel-dis-setup_worker.as",),
             "cancel-channel-setup": ("cancel-channel-setup_worker.as",),
+            "cancel-cell-setup": ("cancel-cell-setup_worker.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
-        movie_source = "cancel-dis-setup" if name == "cancel-channel-setup" else name
+        movie_source = "cancel-dis-setup" if name in ("cancel-channel-setup", "cancel-cell-setup") else name
         compile_movie(args, directory, tests / (movie_source + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))
         exchange = {
             "cancel-vfs-control": gated_exchange,
             "cancel-dis-setup": partial(gated_exchange, gate_type=ModuleSetupGate),
             "cancel-channel-setup": partial(gated_exchange, gate_type=ChannelSetupGate),
+            "cancel-cell-setup": partial(gated_exchange, gate_type=CellSetupGate),
         }.get(name, paired_exchange)
         exchange(
             directory,
