@@ -5,6 +5,8 @@
 [Runnable FlashVM and DisVM example](disvm/INT32_REFERENCES.md). Cancel Int32 operations, check the Qid and recover after an unacknowledged write.
 [Runnable Limbo and FlashVM example](disvm/REF_PORT_CANCELLATION.md). Cancel a native DisVM child and recover on its original port.
 
+[Runnable typed value exchange](disvm/TYPED_VALUES.md). Copy strings and big arrays, update a ref and borrow a channel on one live loaded Dis module.
+
 ## Shared value cells in C and Limbo
 
 [Shared value cells in C and Limbo](shared-cell/README.md). Follow a real host and guest through reference transfer, cancelled assignment,

@@ -4,12 +4,13 @@
  */
 #include "managed_values.h"
 #include "flashvm/execution.h"
+#include "styxrpc/hybrid.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define FVM_STYXRPC_MAX_DEPTH 6U /* Bound schema recursion as in the Dis codec. */
-#define FVM_STYXRPC_SAFE_BIG 9007199254740991.0 /* Largest uniformly exact AS integer range. */
+#define FVM_STYXRPC_SAFE_BIG INT64_C(9007199254740991) /* Largest uniformly exact AS integer. */
 #define FVM_STYXRPC_INDEX_BYTES 11U /* Decimal index plus NUL on 32-bit unsigned. */
 
 
@@ -168,12 +169,49 @@ static unsigned long integer_tag(char type)
  * RU: Проверить точное числовое представление перед преобразованием в целое. */
 static int exact_integer(const FVM_Value *value, double low, double high, int64_t *result)
 {
+    int64_t integral;
     if (value->type != FVM_VALUE_NUMBER || !(value->number >= low && value->number <= high))
     {
         return 0;
     }
-    *result = (int64_t)value->number;
-    return (double)*result == value->number;
+    integral = (int64_t)value->number;
+    if ((double)integral != value->number)
+    {
+        return 0;
+    }
+    *result = integral;
+    return 1;
+}
+
+
+/* EN/RU: See managed_values.h. / См. managed_values.h. */
+int fvm_styxrpc_read_big(const FVM_Value *value, int64_t *out)
+{
+    if (value->type == FVM_VALUE_STRING)
+    {
+        return styxrpc_hybrid_big_parse(value->string, fvm_value_string_size(value), out);
+    }
+    return exact_integer(value, -(double)FVM_STYXRPC_SAFE_BIG, (double)FVM_STYXRPC_SAFE_BIG, out);
+}
+
+
+/* [GC:] EN/RU: See managed_values.h. / См. managed_values.h. */
+FVM_Result fvm_styxrpc_return_big(FVM_Context *context, int64_t number, FVM_Value *out)
+{
+    char bytes[STYXRPC_HYBRID_BIG_TEXT];
+    unsigned short units[STYXRPC_HYBRID_BIG_TEXT];
+    size_t size, i;
+    if (number >= -FVM_STYXRPC_SAFE_BIG && number <= FVM_STYXRPC_SAFE_BIG)
+    {
+        fvm_value_number(out, (double)number);
+        return FVM_OK;
+    }
+    size = styxrpc_hybrid_big_format(number, bytes, sizeof(bytes));
+    for (i = 0; i < size; ++i)
+    {
+        units[i] = (unsigned char)bytes[i];
+    }
+    return size ? fvm_value_string_utf16(context, units, size, out) : FVM_ERROR;
 }
 
 
@@ -265,7 +303,12 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     {
         return encode_compound(context, roots, refs, type, value, bytes, capacity, used);
     }
-    return exact_integer(value, -FVM_STYXRPC_SAFE_BIG, FVM_STYXRPC_SAFE_BIG, &number) &&
+    if (*type == 'b')
+    {
+        return fvm_styxrpc_read_big(value, &number) &&
+            styxrpc_value_integer(STYXRPC_VALUE_BIG, number, bytes, capacity, used) == STYXRPC_OK;
+    }
+    return exact_integer(value, INT32_MIN, INT32_MAX, &number) &&
         styxrpc_value_integer(integer_tag(*type), number, bytes, capacity, used) == STYXRPC_OK;
 }
 
@@ -408,10 +451,14 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
         fvm_value_number(value, number);
         return 1;
     }
-    if (styxrpc_value_get_integer(integer_tag(*type), bytes, used, &integer) != STYXRPC_OK ||
-        integer < -(int64_t)FVM_STYXRPC_SAFE_BIG || integer > (int64_t)FVM_STYXRPC_SAFE_BIG)
+    if (styxrpc_value_get_integer(integer_tag(*type), bytes, used, &integer) != STYXRPC_OK)
     {
         return 0;
+    }
+    if (*type == 'b')
+    {
+        return fvm_styxrpc_return_big(context, integer, value) == FVM_OK &&
+            (value->type != FVM_VALUE_STRING || fvm_gc_roots_add(roots, value) == FVM_OK);
     }
     fvm_value_number(value, (double)integer);
     return 1;

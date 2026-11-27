@@ -22,6 +22,8 @@ handle it. The compatibility tests pair the independently built C SDK
 with real DisVM and exercise the supported caller and provider roles.
 [DisVM integration tests](examples/README.md#disvm-integration-tests)
 
+[Runnable typed values example](examples/disvm/TYPED_VALUES.md). FlashVM sends full-width signed `big` values using the same SDK records as DisVM.
+
 ## Integration scenario
 
 An external application, such as a FlashVM host or a device controller,

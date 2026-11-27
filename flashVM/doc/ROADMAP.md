@@ -1,5 +1,22 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1821 — exact signed big throughout typed FlashVM RPC
+
+FlashVM translates signed 64-bit `big` in managed calls, reference graphs,
+hybrid bindings and typed channel elements. Safe integers use AS Number.
+Values outside that interval use canonical decimal text on the AS side
+and the existing signed `big` record on the wire. Paired native tests
+exercise strings and arrays by value, ref copy-back and leased channel
+exchange over Unix sockets and TCP in the interpreter and JIT.
+
+FlashVM преобразует знаковый 64-битный `big` в типизированных вызовах,
+графах ссылок, гибридных таблицах и сообщениях каналов. В точном диапазоне
+используется AS Number. За пределами диапазона AS получает десятичную
+строку, а в протоколе остаётся прежняя запись `big`. Парные тесты
+проверяют копирование строк и массивов, обратную запись ref и аренду
+канала через Unix-сокет и TCP в интерпретаторе и JIT.
+[EN](STYX_RPC_VALUE_TYPES.md) · [RU](STYX_RPC_VALUE_TYPES.ru.md).
+
 ## v0.1820 — cancel Limbo waits on a FlashVM Int32 export
 
 DisVM's writable `/.varref` port can stop during remote capture,

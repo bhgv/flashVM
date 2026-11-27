@@ -3,10 +3,9 @@
  * RU: Привязка точных значений big и типов ключей к методам владельца FlashVM.
  */
 #include "hybrid.h"
+#include "managed_values.h"
 #include "flashvm/gc_roots.h"
 #include "flashvm/userdata.h"
-
-#define HYBRID_SAFE_BIG INT64_C(9007199254740991) /* Uniformly exact AS Number bound. */
 
 typedef struct HybridMethod
 {
@@ -28,45 +27,6 @@ static const HybridMethod methods[] = {
 }; /* Immutable owner callbacks and their exact script arity. */
 
 
-/* EN: Accept only exact AS Numbers or counted signed decimal big strings.
- * RU: Принимать только точное число AS либо десятичную строку big с длиной. */
-static int read_big(const FVM_Value *value, int64_t *out)
-{
-    if (value->type == FVM_VALUE_STRING)
-    {
-        return styxrpc_hybrid_big_parse(value->string, fvm_value_string_size(value), out);
-    }
-    if (value->type != FVM_VALUE_NUMBER ||
-        !(value->number >= -(double)HYBRID_SAFE_BIG && value->number <= (double)HYBRID_SAFE_BIG))
-    {
-        return 0;
-    }
-    *out = (int64_t)value->number;
-    return (double)*out == value->number;
-}
-
-
-/* [GC:] EN: Return an exact AS Number or a context-owned decimal string.
- * RU: Вернуть точное число AS или десятичную строку во владении контекста. */
-static FVM_Result return_big(FVM_Context *context, int64_t number, FVM_Value *out)
-{
-    char bytes[STYXRPC_HYBRID_BIG_TEXT];
-    unsigned short units[STYXRPC_HYBRID_BIG_TEXT];
-    size_t size, i;
-    if (number >= -HYBRID_SAFE_BIG && number <= HYBRID_SAFE_BIG)
-    {
-        fvm_value_number(out, (double)number);
-        return FVM_OK;
-    }
-    size = styxrpc_hybrid_big_format(number, bytes, sizeof(bytes));
-    for (i = 0; i < size; ++i)
-    {
-        units[i] = (unsigned char)bytes[i];
-    }
-    return size ? fvm_value_string_utf16(context, units, size, out) : FVM_ERROR;
-}
-
-
 /* EN: Decode the key in the namespace explicitly selected by the bound method.
  * RU: Прочитать ключ в пространстве, явно выбранном привязанным методом. */
 static int read_key(const FVM_Value *value, int text, StyxRpcHybridKey *key)
@@ -74,7 +34,7 @@ static int read_key(const FVM_Value *value, int text, StyxRpcHybridKey *key)
     key->text = text;
     if (!text)
     {
-        return read_big(value, &key->index);
+        return fvm_styxrpc_read_big(value, &key->index);
     }
     if (value->type != FVM_VALUE_STRING)
     {
@@ -96,7 +56,7 @@ static FVM_Result apply(FVM_Context *context, FVM_Object *self, unsigned argc,
     StyxRpcHybridRequest request = {0};
     int ok;
     if (!table || argc != method->argc || (argc && !read_key(args, method->text, &request.key)) ||
-        (argc == 2 && !read_big(args + 1, &request.value)))
+        (argc == 2 && !fvm_styxrpc_read_big(args + 1, &request.value)))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -105,12 +65,12 @@ static FVM_Result apply(FVM_Context *context, FVM_Object *self, unsigned argc,
     if (request.operation == STYXRPC_HYBRID_GET)
     {
         fvm_value_undefined(out);
-        return ok ? return_big(context, request.value, out) : FVM_OK;
+        return ok ? fvm_styxrpc_return_big(context, request.value, out) : FVM_OK;
     }
     if (!argc)
     {
         return ok && request.count <= INT64_MAX ?
-            return_big(context, (int64_t)request.count, out) : FVM_ERROR;
+            fvm_styxrpc_return_big(context, (int64_t)request.count, out) : FVM_ERROR;
     }
     fvm_value_boolean(out, ok);
     return FVM_OK;

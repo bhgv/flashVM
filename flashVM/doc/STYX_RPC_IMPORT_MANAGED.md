@@ -16,9 +16,13 @@ publish `target->pid` in the reverse Styx tree through every call. See
 [managed invoke](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/reference/managed_invoke.md)
 for the transport fields and statuses.
 
-Supported AS mappings are counted Unicode strings, binary64 real, exact `int`, `byte`
-and `big` within ±(2⁵³−1), dense sequences, tuples as Arrays, `null` for nil
-strings/arrays and `undefined` for a void result. Sequences use a numeric
+Supported AS mappings are counted Unicode strings, binary64 real, exact `int`,
+`byte` and signed 64-bit `big`, dense sequences, tuples as Arrays, `null` for
+nil strings or arrays, and `undefined` for a void result. In a `big` position,
+supply a safe integer Number or a decimal String. The decoder returns a Number
+within ±(2⁵³−1) and canonical decimal text outside that interval. Consult the
+[value type reference](STYX_RPC_VALUE_TYPES.md#pass-a-signed-64-bit-integer)
+for the accepted grammar and range. Sequences use a numeric
 length and own indexed properties. Reading those properties can execute
 getters on the owner thread. A sequence has at most 2048 entries and the
 encoded frame has at most 64 KiB. Tuples must match in arity. Arguments and
@@ -44,7 +48,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:260](../src/core/runtime.hpp#L260) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

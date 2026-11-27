@@ -32,6 +32,8 @@ the route and family lease available to other holders.
 Releasing the last channel separately retires its issuing lease.
 [SDK contract](../../lib/styxrpc/reference/channel_lease_exchange_until.md).
 
+A queue payload uses the [typed value mapping](STYX_RPC_VALUE_TYPES.md). For example, a channel leased as `c[a[b]]` exchanges copied arrays of signed 64-bit integers. The leased route stays live across multiple messages.
+
 ## Use FlashVM channels from Limbo
 
 1. Define an AS initializer and [bind a channel export](STYX_RPC_CHANNEL_EXPORT.md) using the compiled Limbo offer. The initializer receives arguments by value. Its return value supplies one initial element to a FIFO. Returning `undefined` creates an empty channel. Use capacity zero for a rendezvous.

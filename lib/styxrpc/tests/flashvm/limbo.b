@@ -7,6 +7,7 @@ Limbo: module {
     next: fn(n: int): int;
     echo: fn(text: string, data: array of byte): (string, array of byte);
     number: fn(value: real, label: string): (real, string);
+    wide: fn(words: array of string, values: array of big): (array of string, array of big);
 };
 
 
@@ -41,4 +42,15 @@ echo(text: string, data: array of byte): (string, array of byte)
 number(value: real, label: string): (real, string)
 {
     return (value, label);
+}
+
+
+# EN: Echo the typed copies to the AS caller after checking the ASCII string stays textual.
+# RU: Вернуть типизированные копии вызывающему AS, проверив, что строка остаётся строкой.
+wide(words: array of string, values: array of big): (array of string, array of big)
+{
+    if (len words != 1 || words[0] != "+42" || len values != 1) {
+        raise "wide managed fixture refused the argument";
+    }
+    return (words, values);
 }

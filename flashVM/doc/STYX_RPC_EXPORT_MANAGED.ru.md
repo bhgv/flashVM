@@ -27,6 +27,8 @@ FVM_Result fvm_styxrpc_export_managed(FVM_StyxRpcManagedExport *binding, const c
 пересекаться с транспортными буферами. Описатель и данные привязки
 должны жить без изменений до уничтожения сервера.
 
+В позиции результата `big` принимается целый Number из точного диапазона или знаковый десятичный String. То же правило действует в массивах и кортежах. Вызывающая сторона Limbo получает знаковое 64-битное целое. [Справочник типов](STYX_RPC_VALUE_TYPES.ru.md)
+
 [Исполняемая проверка](../tests/styxrpc/managed.c) · [Импорт](STYX_RPC_IMPORT_MANAGED.ru.md)
 
 <!-- source-links:start -->

@@ -13,6 +13,8 @@ Use the graph binding for nested or returned Limbo refs. A module publishes its 
 
 The identity table is shared by arguments, result and updates for one call. Repeating a ref returns the same local Array. A new ref can be shared by the result and a changed field. An unchanged field keeps its local value, including an array's identity. The caller checks and stages the whole reply before updating writable native slots. A remote exception or local copy-back failure leaves the caller's ref slots intact. A local failure can occur after the remote function has run.
 
+A changed field of type `big` uses the [signed 64-bit mapping](STYX_RPC_VALUE_TYPES.md#pass-a-signed-64-bit-integer). The original ref Array receives a Number or decimal String with the same rules as an ordinary result.
+
 ## Call Dis from FlashVM
 
 1. Compile the Limbo module and use its export name, signature and complete argument/result shapes.

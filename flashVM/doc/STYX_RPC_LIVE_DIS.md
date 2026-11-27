@@ -34,6 +34,8 @@ is released or the session closes. Use [`os.unload(proxy)`](STYX_RPC_UNLOAD.md)
 to release that proxy explicitly. Channels already returned retain the
 generation until they close, including after the proxy is unloaded.
 
+The checked proxy uses the [value types and lifetime rules](STYX_RPC_VALUE_TYPES.md) of each discovered method. The [paired example](../../lib/styxrpc/examples/disvm/TYPED_VALUES.md) demonstrates copied arrays, a returned ref and a live channel from one loaded image.
+
 The stock playback owner and every `asinc` task have distinct reverse
 PIDs and argument buses. The main movie can invoke checked managed, graph
 and channel exports directly. A direct call suspends the movie. Its wire

@@ -10,6 +10,20 @@
 #define FVM_STYXRPC_ARRAY_ITEMS 2048U /* Local per-array conversion limit. */
 
 
+/* EN: Parse an exact Number or counted signed decimal string as a Limbo big.
+ * Preserve out on refusal. Both pointers are borrowed through return.
+ * RU: Прочитать точный Number или десятичную строку с длиной как Limbo big.
+ * При отказе сохранить out. Оба указателя заимствуются до возврата. */
+int fvm_styxrpc_read_big(const FVM_Value *value, int64_t *out);
+
+
+/* [GC:] EN: Set out to an exact Number or a canonical decimal string owned by context.
+ * Call on the owner and keep the result rooted if it must survive further allocations.
+ * RU: Записать точный Number или каноническую десятичную строку во владении context.
+ * Вызывать у владельца. Удерживать результат корнем при дальнейших выделениях. */
+FVM_Result fvm_styxrpc_return_big(FVM_Context *context, int64_t number, FVM_Value *out);
+
+
 /* EN: Raise a diagnostic, retaining any prior exception from the runtime.
  * RU: Выдать диагностику с сохранением существующего исключения среды. */
 FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message);

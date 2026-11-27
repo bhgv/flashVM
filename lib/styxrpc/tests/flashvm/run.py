@@ -259,7 +259,7 @@ def main():
             "graph": ("graph_owner.b", "graph_client.b", "graphs.dis",
                       ("nested", "replace", "make", "fail", "fan", "tupleedit"), "graph exports"),
             "ref": ("refs_owner.b", "refs_client.b", "refs.dis", ("change",), "ref exports"),
-            "managed": ("limbo.b", "values.b", "limbo.dis", ("echo", "number"),
+            "managed": ("limbo.b", "values.b", "limbo.dis", ("echo", "number", "wide"),
                         "managed values through Styx RPC"),
             None: ("limbo.b", "client.b", "limbo.dis", ("next",), "AVM1 through Styx RPC"),
         }[args.profile]

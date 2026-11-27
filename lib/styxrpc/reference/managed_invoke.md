@@ -29,3 +29,5 @@ hybrid tables and channels have their own APIs and framing. Host scheduling,
 context ownership and cancellation of the whole session belong to the caller.
 The function is synchronous and never replays a write. See the
 [standalone C client](../examples/client.c) and [module publisher](managed_module_init.md).
+
+A typed `b` argument, result or nested field carries a signed 64-bit child record. The FlashVM adapter accepts decimal text when the value exceeds the exact AS Number interval, then writes that same record. [Paired example](../examples/disvm/TYPED_VALUES.md)

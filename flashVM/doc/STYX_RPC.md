@@ -8,6 +8,8 @@ connected carrier to the Styx SDK. A module publishes its compiled interface as
 UniBus S-records. Values cross the connection. Each VM owns its own objects,
 garbage collector and execution threads.
 
+Use the [value and lifetime reference](STYX_RPC_VALUE_TYPES.md) to choose between copied data, ref copy-back, shared cells, exact Int32 exports and channel or module leases. It includes a [runnable example](../../lib/styxrpc/examples/disvm/TYPED_VALUES.md) that combines three profiles on a live loaded Dis image.
+
 The scalar adapter maps ActionScript numbers to exact signed
 `fn(int): int` imports and exports. An imported name is an ordinary callable AS
 global. DisVM uses a normal typed Limbo `load` to load FlashVM-backed exports.

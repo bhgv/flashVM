@@ -14,6 +14,7 @@
 
 #define REAL_SIGNATURE UINT32_C(0xdf75d234) /* Limbo fn(real, string): (real, string). */
 #define ECHO_SIGNATURE UINT32_C(0x8e406ff6) /* Limbo fn(string, array of byte): (string, array of byte). */
+#define WIDE_SIGNATURE UINT32_C(0xbda55a3a) /* Limbo fn(array of string, array of big): (array of string, array of big). */
 #define ECHO_COUNT 600U     /* Large enough to exceed the negotiated Styx write size. */
 #define ECHO_WAIT_MS 3000U  /* Bounded reply polling. */
 
@@ -29,6 +30,7 @@
 
 static const StyxRpcSchema real_shape = {"(fs)", "((fs))"}; /* Managed binary64 and text. */
 static const StyxRpcSchema shape = {"(sa[y])", "((sa[y]))"}; /* Same compiled shape on both endpoints. */
+static const StyxRpcSchema wide_shape = {"(a[s]a[b])", "((a[s]a[b]))"}; /* Exact decimal leaves only at big positions. */
 
 
 /* EN: Define a real two-argument AVM1 implementation that returns the two values.
@@ -60,12 +62,14 @@ int test_managed_serve(FVM_Context *context, int fd)
     unsigned char buffer[STYXRPC_MANAGED_LIMIT];
     FVM_StyxRpcManagedExport binding = {context, "echo", shape, buffer, sizeof(buffer)};
     FVM_StyxRpcManagedExport number = {context, "echo", real_shape, buffer, sizeof(buffer)};
-    StyxRpcManagedExport descriptors[2];
+    FVM_StyxRpcManagedExport wide = {context, "echo", wide_shape, buffer, sizeof(buffer)};
+    StyxRpcManagedExport descriptors[3];
     StyxRpcManagedModule module;
     if (!define_echo(context) ||
         fvm_styxrpc_export_managed(&binding, "echo", ECHO_SIGNATURE, descriptors) != FVM_OK ||
         fvm_styxrpc_export_managed(&number, "number", REAL_SIGNATURE, descriptors + 1) != FVM_OK ||
-        styxrpc_managed_module_init(&module, "flash-values.dis", descriptors, 2) != STYXRPC_OK)
+        fvm_styxrpc_export_managed(&wide, "wide", WIDE_SIGNATURE, descriptors + 2) != FVM_OK ||
+        styxrpc_managed_module_init(&module, "flash-values.dis", descriptors, 3) != STYXRPC_OK)
     {
         fputs("Managed FlashVM publication failed\n", stderr);
         return 0;
@@ -144,6 +148,67 @@ static int real_call(FVM_Context *context, StyxRpcManagedTarget *target)
 }
 
 
+/* EN: Encode a sequence with one leaf and verify its canonical AS result type.
+ * RU: Закодировать последовательность из одного элемента и проверить тип результата AS. */
+static int wide_call(FVM_Context *context, const FVM_Value *input, FVM_Value *item)
+{
+    FVM_Value args[2], word, result, values;
+    int ok = fvm_value_string(&word, "+42") == FVM_OK &&
+        fvm_exec_literal_array(context, 1, &word, args) == FVM_OK &&
+        fvm_set_global(context, "s", args) == FVM_OK &&
+        fvm_exec_literal_array(context, 1, input, args + 1) == FVM_OK &&
+        fvm_set_global(context, "b", args + 1) == FVM_OK;
+    return ok && fvm_call_bytes(context, "echo", 4, 2, args, &result) == FVM_OK &&
+        result.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, result.object, "0", &values) == FVM_OK && values.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, values.object, "0", &word) == FVM_OK &&
+        word.type == FVM_VALUE_STRING && fvm_value_string_size(&word) == 3 && !memcmp(word.string, "+42", 3) &&
+        fvm_object_get(context, result.object, "1", &values) == FVM_OK && values.type == FVM_VALUE_OBJECT &&
+        fvm_object_get(context, values.object, "0", item) == FVM_OK;
+}
+
+
+/* EN: Check exact type boundaries, decimal grammar and refusal before calling Dis.
+ * RU: Проверить точные границы типов, десятичный формат и отказ до вызова Dis. */
+static int wide_calls(FVM_Context *context, StyxRpcManagedTarget *target)
+{
+    static const char *const invalid[] = {"9223372036854775808", "-9223372036854775809", " 42", "4.2", "1e2", "+"};
+    FVM_Value input, item;
+    unsigned i;
+    target->name = "wide";
+    target->signature = WIDE_SIGNATURE;
+    target->schema = wide_shape;
+    if (fvm_value_string(&input, "+09223372036854775807") != FVM_OK ||
+        !wide_call(context, &input, &item) || item.type != FVM_VALUE_STRING ||
+        strcmp(item.string, "9223372036854775807") ||
+        fvm_value_string(&input, "-00042") != FVM_OK ||
+        !wide_call(context, &input, &item) || item.type != FVM_VALUE_NUMBER || item.number != -42 ||
+        fvm_value_string(&input, "-9223372036854775808") != FVM_OK ||
+        !wide_call(context, &input, &item) || item.type != FVM_VALUE_STRING ||
+        strcmp(item.string, "-9223372036854775808"))
+    {
+        return 0;
+    }
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
+    {
+        if (fvm_value_string(&input, invalid[i]) != FVM_OK ||
+            wide_call(context, &input, &item) || !check_error(context, "Styx RPC managed arguments do not fit the schema"))
+        {
+            return 0;
+        }
+    }
+    fvm_value_number(&input, 9007199254740991.0);
+    if (!wide_call(context, &input, &item) || item.type != FVM_VALUE_NUMBER || item.number != input.number)
+    {
+        return 0;
+    }
+    fvm_value_number(&input, 9007199254740992.0);
+    return !wide_call(context, &input, &item) && check_error(context, "Styx RPC managed arguments do not fit the schema") &&
+        fvm_value_string_bytes(&input, "1\0x", 3) == FVM_OK &&
+        !wide_call(context, &input, &item) && check_error(context, "Styx RPC managed arguments do not fit the schema");
+}
+
+
 /* EN/RU: See managed.h. / См. managed.h. */
 int test_managed_call(FVM_Context *context, StyxRpcManagedTarget *target)
 {
@@ -210,7 +275,7 @@ int test_managed_call(FVM_Context *context, StyxRpcManagedTarget *target)
     }
     if (ok)
     {
-        ok = real_call(context, target);
+        ok = real_call(context, target) && wide_calls(context, target);
     }
     if (!ok && fvm_exception_get(context, &item) == FVM_OK && item.type == FVM_VALUE_STRING)
     {

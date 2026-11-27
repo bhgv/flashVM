@@ -27,6 +27,8 @@ The staging buffer is borrowed through the synchronous encoding of the
 reply. Keep it separate from all transport buffers. Keep the descriptor
 and binding data alive and stable until server destruction.
 
+A result in a `big` position accepts a safe integer Number or a signed decimal String, with the same rules for fields of arrays and tuples. The Limbo caller receives a signed 64-bit integer. [Value type reference](STYX_RPC_VALUE_TYPES.md)
+
 [Executable fixture](../tests/styxrpc/managed.c) · [Import](STYX_RPC_IMPORT_MANAGED.md)
 
 <!-- source-links:start -->

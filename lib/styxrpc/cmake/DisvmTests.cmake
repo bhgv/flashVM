@@ -39,12 +39,13 @@ if(STYXRPC_FLASHVM_TOOLS)
             if(transport STREQUAL "tcp")
                 list(APPEND transport_args --tcp)
             endif()
-            foreach(profile IN ITEMS int-ref ref-port)
-                set(test_name "styxrpc-native-${profile}-${mode}-${transport}")
+            foreach(profile IN ITEMS cancel-int-ref cancel-ref-port live-values)
+                string(REGEX REPLACE "^cancel-" "" profile_name "${profile}")
+                set(test_name "styxrpc-native-${profile_name}-${mode}-${transport}")
                 add_test(NAME "${test_name}"
                     COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/mixed_pair.py"
                         ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --player "${STYXRPC_FLASHVM_PLAYER}"
-                        ${tool_args} ${mode_args} ${transport_args} "--cancel-${profile}")
+                        ${tool_args} ${mode_args} ${transport_args} "--${profile}")
                 set_tests_properties("${test_name}" PROPERTIES TIMEOUT 70)
             endforeach()
         endforeach()

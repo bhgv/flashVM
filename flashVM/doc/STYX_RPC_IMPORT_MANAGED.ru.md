@@ -16,9 +16,13 @@ FVM_Result fvm_styxrpc_import_managed(FVM_Context *context, const char *global,
 и удерживайте публикацию на время вызова. Поля и статусы транспорта
 описаны в [управляемом вызове](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/reference/managed_invoke.ru.md).
 
-Поддерживаются строки Unicode с длиной, binary64 real, точные `int`, `byte` и `big`
-в пределах ±(2⁵³−1), плотные последовательности и кортежи в виде Array,
+Поддерживаются строки Unicode с длиной, binary64 real, точные `int` и `byte`,
+знаковый 64-битный `big`, плотные последовательности и кортежи в виде Array,
 `null` для nil-строк и массивов и `undefined` для пустого результата.
+В позиции `big` передавайте целый Number из точного диапазона или десятичный
+String. Декодер возвращает Number в диапазоне ±(2⁵³−1) и каноническую строку
+за его пределами. Формат и границы приведены в
+[справочнике типов](STYX_RPC_VALUE_TYPES.ru.md#передача-знакового-64-битного-целого).
 У последовательности читаются числовая длина и собственные индексные
 свойства. При чтении свойств в потоке владельца могут исполняться геттеры.
 Лимит последовательности — 2048 элементов, кадра — 64 КиБ. Длина кортежа
@@ -45,7 +49,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:260](../src/core/runtime.hpp#L260) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
