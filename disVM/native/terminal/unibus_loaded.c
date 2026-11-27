@@ -12,8 +12,7 @@
 #include "load_profile.h"
 #include "file_provider.h"
 #include "unibus_server_state.h"
-#include "call_scope.h"
-#include "flashvm/srecord.h"
+#include "publish_profile.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -92,36 +91,17 @@ int styxunibusawaitload(StyxUnibusServer *server)
             return 0;
         }
         styxunibusmailboxseal(module->load_offer);
-        unsigned long tag = styxloadedacceptshape(module->load_name, offer, size, &module->owner.shape);
-        if (server->caller_root && (tag == STYX_DYNAMIC_REQUEST_TAG || tag == STYX_MANAGED_REQUEST_TAG ||
-            tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG) && module->owner.shape.arguments[0])
+        StyxPublishedExport entry;
+        size_t count;
+        int accepted = styxpublishprofile(offer, size, module->load_name, server->caller_root != NULL,
+            offer, sizeof(offer), &size, &entry, 1, &count);
+        if (accepted)
         {
-            FVM_SRecord profile;
-            size_t used;
-            uint32_t signature;
-            if (fvm_srecord_read(offer, size, sizeof(offer), &profile, &used) != FVM_S_OK ||
-                !styxshapedpayload(profile.payload, profile.size, NULL, &signature, NULL))
-            {
-                tag = 0;
-            }
-            else if (!styxloadedrequest(signature))
-            {
-                if (fvm_srecord_write(tag == STYX_MANAGED_REQUEST_TAG ? STYX_SCOPED_RECORD_OFFER_TAG :
-                    STYX_SCOPED_PATH_OFFER_TAG, profile.payload, profile.size,
-                    directory->interface + directory->interface_size, sizeof(directory->interface) -
-                        directory->interface_size, &used) != FVM_S_OK)
-                {
-                    tag = 0;
-                }
-                else
-                {
-                    memcpy(offer, directory->interface + directory->interface_size, used);
-                    size = used;
-                    module->function.program_root = server->caller_root;
-                }
-            }
+            module->owner.shape = entry.shape;
+            module->function.program_root = entry.scoped ? server->caller_root : NULL;
         }
-        if (size > sizeof(directory->interface) - directory->interface_size || !tag || !styxscalarownerbind(&module->owner, &module->function, tag))
+        if (!accepted || size > sizeof(directory->interface) - directory->interface_size ||
+            !styxscalarownerbind(&module->owner, &module->function, entry.request))
         {
             server->load_state = -1;
             for (size_t i = 0; i < server->count; i++)

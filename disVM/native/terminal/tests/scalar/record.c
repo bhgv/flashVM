@@ -22,6 +22,7 @@
 #include "table_records.inc"
 #include "channel_records.inc"
 #include "channel_export.inc"
+#include "published_profile.inc"
 
 
 /* EN/RU: Return the argument or a fixture error, recording each admitted call.
@@ -362,6 +363,11 @@ static int scoped_ref_profile(void)
  * Проверить всю знаковую ширину, теги, целостность и виды записи. */
 int main(void)
 {
+    if (!publish_profile())
+    {
+        fputs("compiled profile publication failed\n", stderr);
+        return 1;
+    }
     unsigned char bytes[64];
     const int64_t values[] = {INT64_MIN, -257, -1, 0, 256, INT64_MAX};
     for (int kind = STYX_SCALAR_CALL; kind <= STYX_SCALAR_ERROR; kind++)

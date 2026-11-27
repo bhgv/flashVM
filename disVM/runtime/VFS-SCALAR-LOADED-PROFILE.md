@@ -31,3 +31,8 @@ after a path replacement.
 A Styx owner can use these records when preparing a publication. The private
 offers describe the compiled methods. Session scope, dispatch routes and
 the public `.interface` belong to the publication step.
+
+The native [publication validator](../native/terminal/publish_profile.h)
+checks the full sequence and stages the public profile. It rejects malformed
+records, duplicate names and reserved children. When the session supplies
+a reverse root, shape-driven calls receive the corresponding scoped tags.

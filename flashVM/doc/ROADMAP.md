@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1801 — validate a complete Dis interface before publication
+
+The native Styx server can validate an owner's offer sequence in one pass.
+It preserves compiler order, checks names, rejects partial or duplicate
+offers and adds reverse-scope tags when the session supplies a reverse
+root. Configured library exports use the same validation. Ordinary-file
+load still needs the request endpoint, resident owner and route lifetime.
+[EN](../../disVM/runtime/VFS-SCALAR-LOADED-PROFILE.md) ·
+[RU](../../disVM/runtime/VFS-SCALAR-LOADED-PROFILE.ru.md).
+
 ## v0.1800 — private wire profile from a resident Dis instance
 
 The owner can copy a complete sequence of compiled offers from one loaded
