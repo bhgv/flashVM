@@ -19,10 +19,12 @@ tag 9 only after negotiating support. Ordinary VFS mounts continue to
 serve each peer's live tree.
 
 In a mounted DisVM and FlashVM pair, DisVM publishes the connection scope
-read-only on its ordinary reverse mount. The same scope reader is used.
-References in this pairing identify the forward FlashVM publication.
+read-only on its ordinary reverse mount. Its forward attach name
+`STYXRPC_MODULE_REF_BOTH_ATTACH` advertises both origin roles. The
+earlier scope-only profile supports references to the forward FlashVM.
 The Dis application uses an [SDK reference port](module_ref_port.md)
-through its Limbo adapter.
+through its Limbo adapter. For DisVM-owned exports that port resolves the
+path and Qid previously issued by the ordinary reverse server.
 
 ## Transfer and resolve
 

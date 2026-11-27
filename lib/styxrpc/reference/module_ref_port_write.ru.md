@@ -1,6 +1,6 @@
 # styxrpc_module_ref_port_write
 
-[English](module_ref_port_write.md) · [Объявление](../include/styxrpc/module_ref_port.h#L37) · [Реализация](../src/module_ref_port.c#L150) · [Руководство](module_ref_port.ru.md)
+[English](module_ref_port_write.md) · [Объявление](../include/styxrpc/module_ref_port.h#L52) · [Реализация](../src/module_ref_port.c#L178) · [Руководство](module_ref_port.ru.md)
 
 `StyxRpc::launch`
 

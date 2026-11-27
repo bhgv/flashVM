@@ -63,8 +63,8 @@ Styxnodes: module
     # RU: Занять свободный абсолютный путь с непустым подмножеством "rwx"; при ошибке исключение.
     publish: fn(path, permissions: string): ref Node;
 
-    # EN: Publish as an offset-aware file with a fixed byte extent.
-    # RU: Опубликовать файл фиксированной длины с поддержкой смещений.
+    # EN: Publish a positioned file. A module .var export must be four bytes with r or rw.
+    # RU: Опубликовать позиционный файл. Экспорту .var нужны четыре байта и права r или rw.
     publishat: fn(path, permissions: string, length: big): ref Node;
 
     # EN: Receive an owned request and its absolute byte offset (zero for execute).

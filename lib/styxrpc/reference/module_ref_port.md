@@ -17,9 +17,11 @@ its channel once it holds the port.
 | Set | Write at 0 on a writable bound port | Exactly 4 replacement bytes in big-endian order |
 | Forward | Read at 4 or greater on a bound port | Counted by read extent. The full descriptor starts at 4 and ends at EOF. |
 
-Capture opens the original fid and constructs a descriptor from its
-Qid. Adopt copies and verifies a descriptor without calling the issuer.
-The first Get or Set on an adopted port opens the original export and
+Capture opens the original remote fid and constructs a descriptor from
+its Qid. Adopt copies and verifies a descriptor without calling the
+issuer. Use [paired open](module_ref_port_open_paired.md) to also admit
+descriptors for an export owned by the local endpoint.
+The first Get or Set on an adopted port opens the exact export and
 checks its Qid. If that export has been withdrawn or replaced, the
 request fails. Forward reads only the cached frame.
 
@@ -28,4 +30,4 @@ as a read-only service. The DisVM guest adapter uses the port commands
 on its independent read/write service fd. An external C application
 can use the same port interface directly over an authorized mount.
 
-[Open](module_ref_port_open.md) · [Read](module_ref_port_read.md) · [Write](module_ref_port_write.md) · [Close](module_ref_port_close.md)
+[Open](module_ref_port_open.md) · [Paired open](module_ref_port_open_paired.md) · [Read](module_ref_port_read.md) · [Write](module_ref_port_write.md) · [Close](module_ref_port_close.md)

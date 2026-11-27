@@ -77,6 +77,24 @@ int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right)
         !strcmp(left->path, right->path) && styxsame(&left->captured, &right->captured);
 }
 
+
+/* EN/RU: See tree.h. / См. tree.h. */
+StyxBacking *styxbackingcopyat(const StyxBacking *node, const char *path)
+{
+    if (!node || !node->bound || !path || strcmp(node->path, path))
+    {
+        return NULL;
+    }
+    StyxBacking *copy = malloc(sizeof(*copy));
+    if (!copy || !dvm_provider_retain(node->provider))
+    {
+        free(copy);
+        return NULL;
+    }
+    *copy = *node;
+    return copy;
+}
+
 /* EN/RU: Refresh current directory authority and bound identity, never mode inference.
  * Перепроверить полномочия и identity каталога, не выводя доступ из mode. */
 static int valid(StyxOpen *opened)

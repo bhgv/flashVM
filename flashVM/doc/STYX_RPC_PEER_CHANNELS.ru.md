@@ -82,6 +82,5 @@ var closed = pipe.delete();
 видимость изменений исходного экспорта после закрытия канала.
 
 Штатная пара с DisVM использует службу имён своего подключения. Limbo
-может [захватить и вернуть экспорт FlashVM](../../disVM/runtime/STYX-MODULE-REFS.ru.md).
-Внешние
-C-программы могут использовать [хост общей службы](../../lib/styxrpc/reference/named_peer_host.ru.md).
+может [пересылать экспортированные Int32 обеих VM](../../disVM/runtime/STYX-MODULE-REFS.ru.md).
+Внешние C-программы могут использовать [хост общей службы](../../lib/styxrpc/reference/named_peer_host.ru.md).

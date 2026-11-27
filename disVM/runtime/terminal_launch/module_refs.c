@@ -6,6 +6,8 @@
 #include "entropy.h"
 #include "styxrpc/module_ref_port.h"
 #include "styxrpc/named_peer.h"
+#include "styxrpc/variable_file.h"
+#include "caller_styx.h"
 #include "client.h"
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +16,7 @@
 struct DvmModuleRefs
 {
     struct StyxClient *issuer;                       /* Set once before guest dispatch, owned by the provider. */
+    StyxCallerServer *local;                          /* Retained issuer of reverse Qids. */
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Immutable in both directions. */
 };
 
@@ -137,6 +140,46 @@ static void cursor_close(void *state)
 }
 
 
+/* EN: Pass one positioned read through the retained local cursor.
+ * RU: Передать одно позиционное чтение удерживаемому местному курсору. */
+static int local_read(void *file, uint64_t offset, void *bytes, size_t capacity, size_t *size)
+{
+    StyxTransfer result;
+    styxfileread(file, offset, bytes, capacity, &result);
+    *size = result.count;
+    return result.success && result.confirmed && !result.uncertain;
+}
+
+
+/* EN: Perform a single positioned write and confirm only a definitive reply.
+ * RU: Выполнить одну позиционную запись и подтвердить только определённый ответ. */
+static int local_write(void *file, uint64_t offset, const void *bytes, size_t count, size_t *size)
+{
+    StyxTransfer result;
+    styxfilewrite(file, offset, bytes, count, &result);
+    *size = result.count;
+    return result.success && result.confirmed && !result.uncertain;
+}
+
+
+/* EN: Resolve the issued Qid and make an SDK file holding that exact open.
+ * RU: Разрешить выданный Qid и передать точное открытие в файл SDK. */
+static StyxRpcIoOutcome resolve_local(void *state, const StyxRpcModuleRef *ref, StyxRpcFile *out)
+{
+    static const StyxRpcVfs ops = {.read = local_read, .write = local_write, .close = styxfileclose};
+    StyxOpen *file = styxcalleropen_shared(state, ref->path, ref->node, ref->writable ? 2 : 0);
+    StyxMeta info;
+    if (!file || !styxfileinfo(file, &info) || info.directory || info.length != STYX_VARIABLE_INT_SIZE)
+    {
+        styxfileclose(file);
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    *out = (StyxRpcFile){.ops = &ops, .cookie = file,
+        .access = STYXRPC_READ | (ref->writable ? STYXRPC_WRITE : 0)};
+    return STYXRPC_IO_OK;
+}
+
+
 /* EN: Open an independent scope cursor or the guest's framed SDK port at dot.
  * RU: Открыть независимый курсор области либо порт SDK гостя в точке. */
 static FVM_Result open_ref(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
@@ -159,7 +202,8 @@ static FVM_Result open_ref(void *state, const char *path, const char *mode, DVM_
     cursor->service = service;
     if (writable)
     {
-        cursor->port = styxrpc_module_ref_port_open(service->issuer, STYXRPC_MODULE_REF_FORWARD, service->scope);
+        cursor->port = styxrpc_module_ref_port_open_paired(service->issuer, STYXRPC_MODULE_REF_FORWARD,
+            service->scope, service->local ? resolve_local : NULL, service->local);
         if (!cursor->port)
         {
             free(cursor);
@@ -177,6 +221,7 @@ static void destroy(void *state)
 {
     DvmModuleRefs *service = state;
     styxclientfree(service->issuer);
+    styxcallerrelease(service->local);
     free(service);
 }
 
@@ -202,6 +247,18 @@ DvmModuleRefs *dvm_terminal_module_refs_install(DVM_Namespace *group)
         dvm_namespace_mount_provider(group, &target, provider, "/styx-module-refs") == 1;
     dvm_provider_release(provider);
     return mounted ? service : NULL;
+}
+
+
+/* EN/RU: See module_refs.h. / См. module_refs.h. */
+int dvm_terminal_module_refs_local(DvmModuleRefs *service, StyxCallerServer *local)
+{
+    if (!service || service->local || !styxcallerretain(local))
+    {
+        return 0;
+    }
+    service->local = local;
+    return 1;
 }
 
 

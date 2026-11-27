@@ -14,12 +14,27 @@ extern "C" {
 #define STYXRPC_REF_PORT_ADOPT 2U   /* First write: opcode, then the complete named frame. */
 #define STYXRPC_REF_PORT_FRAME 4U   /* Read offset of the complete tagged descriptor. */
 
-typedef struct StyxRpcModuleRefPort StyxRpcModuleRefPort; /* Owns one exact issuer mount and optional fid. */
+typedef struct StyxRpcModuleRefPort StyxRpcModuleRefPort; /* Retains the remote mount and owns any opened file. */
+
+/* EN: Open a local export with the descriptor's exact path, Qid and permissions.
+ * Write an owned file to the zeroed out on OK. Leave it empty on failure.
+ * RU: Открыть местный экспорт по точным пути, Qid и правам дескриптора.
+ * При OK передать свой файл в обнулённый out. При отказе оставить out пустым. */
+typedef StyxRpcIoOutcome (*StyxRpcModuleRefLocalOpen)(void *context, const StyxRpcModuleRef *ref,
+    StyxRpcFile *out);
 
 
 /* EN: Pin issuer and copy the connection scope for the selected owner. Return an unbound port.
  * RU: Удержать подключение issuer и скопировать область для выбранного владельца. Вернуть пустой порт. */
 StyxRpcModuleRefPort *styxrpc_module_ref_port_open(struct StyxClient *issuer, unsigned owner, const void *scope);
+
+
+/* EN: Also accept the opposite, local owner. Borrow resolver state through port close.
+ * A NULL local callback limits adoption to the ordinary issuer.
+ * RU: Принимать также встречного местного владельца. Заимствовать контекст до закрытия порта.
+ * Колбэк local, равный NULL, ограничивает приём обычным удалённым владельцем. */
+StyxRpcModuleRefPort *styxrpc_module_ref_port_open_paired(struct StyxClient *issuer, unsigned owner,
+    const void *scope, StyxRpcModuleRefLocalOpen local, void *context);
 
 
 /* EN: Read four value bytes at zero, or a descriptor fragment at FRAME and above.
@@ -38,8 +53,8 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
     const void *bytes, size_t size);
 
 
-/* EN: Consume port without waiting on the transport. NULL is allowed.
- * RU: Освободить порт без ожидания транспорта. NULL допустим. */
+/* EN: Consume port. Remote clunk is deferred, local close follows its VFS contract. NULL is allowed.
+ * RU: Освободить порт. Удалённый clunk отложен, местный close следует контракту VFS. NULL допустим. */
 void styxrpc_module_ref_port_close(StyxRpcModuleRefPort *port);
 
 #ifdef __cplusplus

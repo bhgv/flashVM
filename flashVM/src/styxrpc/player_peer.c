@@ -172,8 +172,20 @@ int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mu
 }
 
 
+/* EN: Record both owner roles on the same thread that serves frames and attach requests.
+ * RU: Принять обе роли у владельца, обслуживающего запросы attach и кадры. */
+static void dis_attach(void *state, const char *name)
+{
+    FVM_PeerRefs *refs = state;
+    if (!strcmp(name, STYXRPC_MODULE_REF_BOTH_ATTACH))
+    {
+        refs->local_exports_only = 0;
+    }
+}
+
+
 /* EN/RU: See player_peer.h. / См. player_peer.h. */
-void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxClient *root,
+void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxRpcServer *server, StyxClient *root,
     PlayerPeerChannels *channels)
 {
     if (styxrpc_named_peer_read_ref_scope(root, channels->refs.scope))
@@ -184,6 +196,7 @@ void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxClient *
         channels->refs.local_exports_only = 1;
         playback->named = root;
         playback->refs = &channels->refs;
+        styxrpc_server_observe_attach(server, dis_attach, &channels->refs);
     }
 }
 

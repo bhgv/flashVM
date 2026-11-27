@@ -43,9 +43,9 @@ int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mu
     unsigned serve_lane, PlayerPeerChannels *channels);
 
 
-/* EN: Probe the ordinary Dis mount for the shared scope and borrow it for named refs.
- * RU: Проверить область в обычном подключении Dis и заимствовать его для именованных ссылок. */
-void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxClient *root,
+/* EN: Probe the ordinary Dis mount for scope and observe its forward attach capability.
+ * RU: Проверить область в обычном маунте Dis и принять возможность из его прямого attach. */
+void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxRpcServer *server, StyxClient *root,
     PlayerPeerChannels *channels);
 
 

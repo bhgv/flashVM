@@ -1,6 +1,6 @@
 # Copyright (c) 2026 bhgv
-# EN: Typed Limbo handle to an Int32 export of the attached FlashVM.
-# RU: Типизированный дескриптор Limbo для экспорта Int32 подключённой FlashVM.
+# EN: Typed Limbo handle to an Int32 export of either VM in the pair.
+# RU: Типизированный дескриптор Limbo для экспорта Int32 любой VM в паре.
 
 Styxmodref: module
 {
@@ -35,7 +35,7 @@ Styxmodref: module
     # RU: Удержать mounted/<образ>/.var/<имя> на подключённой стороне. writable равен 0 или 1.
     capture: fn(path: string, writable: int): ref Cell;
 
-    # EN: Accept a complete named-channel frame. Open the export on first value I/O.
-    # RU: Принять полный кадр именованного канала. Открыть экспорт при первом обращении к значению.
+    # EN: Accept a complete named-channel frame for either owner. Open on first value I/O.
+    # RU: Принять полный кадр именованного канала от любого владельца. Открыть при первом I/O значения.
     adopt: fn(frame: array of byte): ref Cell;
 };

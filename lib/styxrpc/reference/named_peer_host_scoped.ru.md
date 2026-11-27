@@ -1,6 +1,6 @@
 # styxrpc_named_peer_host_scoped
 
-[English](named_peer_host_scoped.md) · [API](../include/styxrpc/named_peer.h#L37) · [Исходник](../src/named_peer.c#L238) · [Руководство](module_refs.ru.md)
+[English](named_peer_host_scoped.md) · [API](../include/styxrpc/named_peer.h#L38) · [Исходник](../src/named_peer.c#L238) · [Руководство](module_refs.ru.md)
 
 `StyxRpc::serve`
 

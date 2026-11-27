@@ -3,7 +3,9 @@
  * RU: Резервировать узлы VFS с колбэками без замены существующих записей.
  */
 #include "exec_private.h"
+#include "styxrpc/module_ref.h"
 #include "styxrpc/named_channel.h"
+#include "styxrpc/variable_file.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -283,12 +285,29 @@ static int parent_writable(DVM_Namespace *group, const char *path)
 }
 
 
+/* EN: Admit the reserved .var component only for a typed positioned export.
+ * RU: Допустить служебный компонент .var только для типизированного позиционного экспорта. */
+static int module_variable(const ExecOwner *owner, const char *absolute)
+{
+    if (absolute[0] != '/' || !owner->positioned || owner->length != STYX_VARIABLE_INT_SIZE ||
+        !(owner->mode & FVM_ACCESS_READ) || (owner->mode & FVM_ACCESS_EXEC) ||
+        !styxrpc_module_ref_path(absolute + 1))
+    {
+        return 0;
+    }
+    const char *image = absolute + sizeof("/mounted/") - 1;
+    const char *member = strrchr(absolute, '/') + 1;
+    return !styxrpc_vfs_service_name(image, strcspn(image, "/")) &&
+        !styxrpc_vfs_service_name(member, strlen(member));
+}
+
+
 /* EN/RU: See exec_private.h. / См. exec_private.h. */
 int dvm_exec_claim(ExecOwner *owner, const char *absolute)
 {
     static const DVM_ProviderOps ops = {.info = marker_info, .access = marker_access,
         .open = marker_open, .destroy = marker_destroy};
-    if (!styxrpc_named_path(absolute))
+    if (!styxrpc_named_path(absolute) && !module_variable(owner, absolute))
     {
         return 0;
     }

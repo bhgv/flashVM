@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Bind a named Int32 reference to one retained ordinary mount behind a byte handle.
- * RU: Привязка именованной ссылки Int32 к удерживаемому подключению через байтовый дескриптор.
+ * EN: Bind a named Int32 reference to an exact local or remote file behind a byte handle.
+ * RU: Привязка именованной ссылки Int32 к точному местному или удалённому файлу через дескриптор.
  */
 #include "styxrpc/module_ref_port.h"
 #include "styxrpc/named_channel.h"
@@ -14,9 +14,12 @@ struct StyxRpcModuleRefPort
 {
     struct StyxClient *issuer;                    /* Owned pin used for capture or the eventual open. */
     unsigned owner;                               /* Role of this session's remote publication. */
+    StyxRpcModuleRefLocalOpen open_local;           /* Optional opposite-role resolver. */
+    void *context;                                 /* Borrowed local resolver state. */
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Pair nonce, copied at open. */
     StyxRpcModuleRef ref;                          /* Valid after either bind command succeeds. */
     StyxRpcVfsFile *file;                          /* Owned exact fid once captured or resolved. */
+    StyxRpcFile local;                             /* Owned exact local file after resolving a local ref. */
     size_t size;                                   /* Tagged descriptor extent, zero before bind. */
     unsigned char frame[1U + STYXRPC_MODULE_REF_WIRE_MAX]; /* Cached byte-identical reference. */
 };
@@ -24,6 +27,14 @@ struct StyxRpcModuleRefPort
 
 /* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
 StyxRpcModuleRefPort *styxrpc_module_ref_port_open(struct StyxClient *issuer, unsigned owner, const void *scope)
+{
+    return styxrpc_module_ref_port_open_paired(issuer, owner, scope, NULL, NULL);
+}
+
+
+/* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
+StyxRpcModuleRefPort *styxrpc_module_ref_port_open_paired(struct StyxClient *issuer, unsigned owner,
+    const void *scope, StyxRpcModuleRefLocalOpen local, void *context)
 {
     if (!issuer || !scope || owner > STYXRPC_MODULE_REF_REVERSE)
     {
@@ -37,6 +48,8 @@ StyxRpcModuleRefPort *styxrpc_module_ref_port_open(struct StyxClient *issuer, un
     }
     port->issuer = issuer;
     port->owner = owner;
+    port->open_local = local;
+    port->context = context;
     memcpy(port->scope, scope, sizeof(port->scope));
     return port;
 }
@@ -80,13 +93,14 @@ static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char 
 }
 
 
-/* EN: Copy one frame belonging to the port's issuer without any ordinary VFS request.
- * RU: Скопировать кадр от владельца порта без обращения к обычной VFS. */
+/* EN: Copy one frame for an admitted owner, without any ordinary VFS request.
+ * RU: Скопировать кадр допустимого владельца без обращения к обычной VFS. */
 static StyxRpcIoOutcome adopt(StyxRpcModuleRefPort *port, const unsigned char *frame, size_t size)
 {
     StyxRpcModuleRef ref;
     if (!size || size > sizeof(port->frame) || frame[0] != STYXRPC_NAMED_MODULE_REF ||
-        !styxrpc_module_ref_decode(frame + 1, size - 1, port->scope, &ref) || ref.owner != port->owner)
+        !styxrpc_module_ref_decode(frame + 1, size - 1, port->scope, &ref) ||
+        (ref.owner != port->owner && !port->open_local))
     {
         return STYXRPC_IO_NOT_OPEN;
     }
@@ -101,7 +115,13 @@ static StyxRpcIoOutcome adopt(StyxRpcModuleRefPort *port, const unsigned char *f
  * RU: При первом обращении сверить постоянную идентичность и удержать открытый fid. */
 static StyxRpcIoOutcome ready(StyxRpcModuleRefPort *port)
 {
-    return port->file ? STYXRPC_IO_OK : styxrpc_module_ref_open_remote(port->issuer, &port->ref, &port->file);
+    if (port->file || port->local.ops)
+    {
+        return STYXRPC_IO_OK;
+    }
+    return port->ref.owner == port->owner ?
+        styxrpc_module_ref_open_remote(port->issuer, &port->ref, &port->file) :
+        port->open_local(port->context, &port->ref, &port->local);
 }
 
 
@@ -136,7 +156,15 @@ StyxRpcIoOutcome styxrpc_module_ref_port_read(StyxRpcModuleRefPort *port, uint64
     StyxRpcIoOutcome status = ready(port);
     if (status == STYXRPC_IO_OK)
     {
-        status = styxrpc_vfs_file_read(port->file, 0, bytes, size, used);
+        if (port->local.ops)
+        {
+            status = styxrpc_file_read(&port->local, 0, bytes, size, used) == STYXRPC_OK ?
+                STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+        }
+        else
+        {
+            status = styxrpc_vfs_file_read(port->file, 0, bytes, size, used);
+        }
         if (status == STYXRPC_IO_OK && *used != size)
         {
             status = STYXRPC_IO_FAILED;
@@ -175,7 +203,15 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
     if (status == STYXRPC_IO_OK)
     {
         size_t used;
-        status = styxrpc_vfs_file_write(port->file, 0, bytes, size, &used);
+        if (port->local.ops)
+        {
+            status = styxrpc_file_write(&port->local, 0, bytes, size, &used) == STYXRPC_OK ?
+                STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+        }
+        else
+        {
+            status = styxrpc_vfs_file_write(port->file, 0, bytes, size, &used);
+        }
         if (status == STYXRPC_IO_OK && used != size)
         {
             status = STYXRPC_IO_FAILED;
@@ -191,6 +227,7 @@ void styxrpc_module_ref_port_close(StyxRpcModuleRefPort *port)
     if (port)
     {
         styxrpc_vfs_close(port->file, 1);
+        styxrpc_file_close(&port->local);
         styxclientfree(port->issuer);
         free(port);
     }

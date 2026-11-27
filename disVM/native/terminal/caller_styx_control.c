@@ -26,11 +26,13 @@ static void end(void *state, void *lease)
 }
 
 
-/* EN: Release one control or provider reference without joining the worker.
- * RU: Снять ссылку управления или провайдера без ожидания потока. */
-static void drop(void *state)
+/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
+void styxcallerrelease(StyxCallerServer *server)
 {
-    StyxCallerServer *server = state;
+    if (!server)
+    {
+        return;
+    }
     pthread_mutex_lock(&server->scopes.lock);
     int last = --server->references == 0;
     pthread_mutex_unlock(&server->scopes.lock);
@@ -43,9 +45,16 @@ static void drop(void *state)
 }
 
 
-/* EN/RU: See caller_styx.h. On successful binding the provider owns a pin.
- * См. caller_styx.h. При успехе провайдер владеет ссылкой. */
-int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
+/* EN: Drop the control retained by a provider's close callback.
+ * RU: Снять удержание управления из колбэка закрытия провайдера. */
+static void drop(void *state)
+{
+    styxcallerrelease(state);
+}
+
+
+/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
+int styxcallerretain(StyxCallerServer *server)
 {
     if (!server)
     {
@@ -58,7 +67,15 @@ int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
         server->references++;
     }
     pthread_mutex_unlock(&server->scopes.lock);
-    if (!retained)
+    return retained;
+}
+
+
+/* EN/RU: See caller_styx.h. On successful binding the provider owns a pin.
+ * См. caller_styx.h. При успехе провайдер владеет ссылкой. */
+int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward)
+{
+    if (!styxcallerretain(server))
     {
         return 0;
     }
@@ -93,6 +110,6 @@ void styxcallerjoin(StyxCallerServer *server)
     if (server)
     {
         pthread_join(server->worker, NULL);
-        drop(server);
+        styxcallerrelease(server);
     }
 }

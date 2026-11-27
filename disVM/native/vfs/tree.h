@@ -28,6 +28,10 @@ int styxremovenode(const StyxBacking *node, StyxRemoveNode remove, void *state);
  * RU: Сравнить удерживаемый провайдер, путь и захваченную идентичность. */
 int styxbackingsamenode(const StyxBacking *left, const StyxBacking *right);
 
+/* EN: Copy a bound node only for its exact relative path, pinning its provider.
+ * RU: Скопировать удерживаемый узел только для его точного пути, закрепив провайдера. */
+StyxBacking *styxbackingcopyat(const StyxBacking *node, const char *path);
+
 /* EN/RU: Begin one directory read at exact continuation offset, or restart at zero.
  * Rewind reopens only through the retained provider and must preserve object identity.
  * Начать чтение по точному offset или заново с нуля; identity при rewind сохраняется. */

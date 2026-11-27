@@ -1,6 +1,6 @@
 # styxrpc_named_peer_client
 
-[English](named_peer_client.md) · [Заголовок](../include/styxrpc/named_peer.h#L32) · [Хост имён](named_peer_host.ru.md)
+[English](named_peer_client.md) · [Заголовок](../include/styxrpc/named_peer.h#L58) · [Хост имён](named_peer_host.ru.md)
 
 ```c
 #include <styxrpc/named_peer.h>

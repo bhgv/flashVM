@@ -70,6 +70,7 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         "${root}/lib/styxrpc/src/unibus_terminal.c"
         "${root}/lib/styxrpc/src/message_port.c"
         "${root}/lib/styxrpc/src/message_client.c"
+        "${root}/lib/styxrpc/src/vfs.c"
         "${root}/lib/styxrpc/src/vfs_client.c"
         "${root}/lib/styxrpc/protocol/module_ref.c"
         "${root}/lib/styxrpc/src/variable_ref_client.c"

@@ -34,7 +34,8 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "modref", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive", "rebind"):
+    for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
+                    "positioned", "withdraw", "dirlive", "rebind"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -51,6 +52,8 @@ def main():
             (directory / "tools").mkdir()
         if name == "dirlive":
             (directory / "tools/before").touch()
+        if name == "modref-reverse":
+            (directory / "mounted/counter.dis/.var").mkdir(parents=True)
         if name == "rebind":
             for path, byte, unique in (("live", b"A", "base-only"), ("front", b"CCC", "front-only"),
                                        ("tail", b"BB", "tail-only")):
@@ -69,6 +72,7 @@ def main():
             "execute": ("styxexec",),
             "typed": ("styxvalue", "styxnamed"),
             "modref": ("styxnamed", "styxmodref"),
+            "modref-reverse": ("styxnamed", "styxmodref", "styxnodes"),
             "named": ("styxvalue", "styxnamed"),
             "mixed": ("styxintref", "styxchannel"),
         }[name]

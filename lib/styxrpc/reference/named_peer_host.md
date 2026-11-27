@@ -1,6 +1,6 @@
 # styxrpc_named_peer_host
 
-[Русский](named_peer_host.ru.md) · [Header](../include/styxrpc/named_peer.h#L26) · [Source](../src/named_peer.c) · [Named protocol](named_channel.md)
+[Русский](named_peer_host.ru.md) · [Header](../include/styxrpc/named_peer.h#L30) · [Source](../src/named_peer.c#L230) · [Named protocol](named_channel.md)
 
 ```c
 #include <styxrpc/named_peer.h>

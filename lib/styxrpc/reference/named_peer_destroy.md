@@ -1,6 +1,6 @@
 # styxrpc_named_peer_destroy
 
-[Русский](named_peer_destroy.ru.md) · [Header](../include/styxrpc/named_peer.h#L39) · [Named host](named_peer_host.md)
+[Русский](named_peer_destroy.ru.md) · [Header](../include/styxrpc/named_peer.h#L65) · [Named host](named_peer_host.md)
 
 ```c
 #include <styxrpc/named_peer.h>

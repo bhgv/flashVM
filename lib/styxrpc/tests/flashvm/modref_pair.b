@@ -136,9 +136,9 @@ init()
         raise "mode or scope of the imported export differs";
     }
     foreign[0:] = wire;
-    foreign[4] ^= byte 2;
+    foreign[4] ^= byte 4;
     if (!refused(foreign)) {
-        raise "an unsupported owner role was accepted";
+        raise "an unsupported descriptor flag was accepted";
     }
     ready := sys->create(Marker, Sys->OWRITE, 8r666);
     if (ready == nil) {

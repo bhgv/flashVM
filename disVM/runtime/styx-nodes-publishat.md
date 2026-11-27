@@ -9,7 +9,11 @@ publishat: fn(path, permissions: string, length: big): ref Node;
 ```
 
 Publish an offset-aware node in the launcher’s live namespace.
-`path` and `permissions` follow [publish](styx-nodes-publish.md).
+`path` and `permissions` follow [publish](styx-nodes-publish.md) for
+ordinary nodes. A canonical `/mounted/<image>/.var/<member>` may also
+be published with `length` set to four and permissions `r` or `rw`.
+Its parent directories must exist. This exposes a signed Int32 export to
+[module references](STYX-MODULE-REFS.md#export-owned-by-disvm).
 `length` is a byte count from zero through 2⁵³−1. It is reported in
 VFS metadata and stays fixed until withdrawal. The node owns its
 registration fid. Invalid values, an occupied path or publication

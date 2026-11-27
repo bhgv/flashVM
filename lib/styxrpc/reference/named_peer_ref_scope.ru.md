@@ -1,6 +1,6 @@
 # styxrpc_named_peer_ref_scope
 
-[English](named_peer_ref_scope.md) · [API](../include/styxrpc/named_peer.h#L43) · [Исходник](../src/named_peer.c#L291) · [Руководство](module_refs.ru.md)
+[English](named_peer_ref_scope.md) · [API](../include/styxrpc/named_peer.h#L44) · [Исходник](../src/named_peer.c#L291) · [Руководство](module_refs.ru.md)
 
 `StyxRpc::serve`
 

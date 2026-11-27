@@ -470,8 +470,9 @@ int dvm_styx_mount_cli(int argc, char **argv)
         live_remove, group, STYXRPC_NODE_EXEC_SERVICE, STYXRPC_NODE_EXEC_QID, exec_service) : NULL;
     dvm_provider_release(exec_service);
     dvm_provider_release(shared);
+    const char *attach = dvm_terminal_module_refs_local(refs, reverse) ? STYXRPC_MODULE_REF_BOTH_ATTACH : "";
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
-        "caller", "", 5000, 8) : NULL;
+        "caller", attach, 5000, 8) : NULL;
     dvm_terminal_module_refs_attach(refs, client);
     DVM_Provider *mount = client ? dvm_terminal_mount_peer(reverse, client, entry, request, tag, scoped) : NULL;
     int result = 1;

@@ -81,6 +81,6 @@ a writable and a read-only reference and verify that both reflect updates
 to the original export after the channel closes.
 
 The stock DisVM pair uses its named service on the existing mount. Limbo
-can [capture and return a FlashVM export](../../disVM/runtime/STYX-MODULE-REFS.md).
+can [relay exported Int32 variables of either VM](../../disVM/runtime/STYX-MODULE-REFS.md).
 Applications embedding the C SDK can use the
 [hosted named peer](../../lib/styxrpc/reference/named_peer_host.md).

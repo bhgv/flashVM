@@ -36,6 +36,19 @@ StyxCallerServer *styxcallerserver_view_service(RemotePhy *reverse, DVM_Provider
     StyxRemoveNode remove, void *state, const char *name, size_t qid, DVM_Provider *service);
 
 
+/* EN: Pin live server state through local reference resolution. Release without joining.
+ * RU: Удержать живое состояние сервера для ссылок. Снять удержание без join. */
+int styxcallerretain(StyxCallerServer *server);
+void styxcallerrelease(StyxCallerServer *server);
+
+
+/* EN: Return an owned open for an ordinary Qid already issued at this exact path.
+ * Use a retained server. mode accepts 0 for read or 2 for read/write.
+ * RU: Вернуть собственное открытие обычного Qid, ранее выданного по точному пути.
+ * Сервер удержан вызывающим. mode равен 0 для чтения или 2 для чтения и записи. */
+StyxOpen *styxcalleropen_shared(StyxCallerServer *server, const char *path, uint64_t qid, int mode);
+
+
 /* EN: Bind a fresh unpublished forward provider. The provider pins the server state.
  * RU: Привязать свежий неопубликованный провайдер. Провайдер удерживает состояние сервера. */
 int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward);

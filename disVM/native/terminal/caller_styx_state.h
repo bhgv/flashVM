@@ -35,7 +35,7 @@ struct StyxCallerServer
     StyxBacking *shared_root; /* Identity-bound permanent root for ordinary walks. */
     const char *service_name; /* Borrowed exact root protocol component, or NULL. */
     size_t service_qid; /* Reserved permanent slot, valid with service_name. */
-    CallerNodes permanent; /* Ordinary visited nodes in reserved generation zero. */
+    CallerNodes permanent; /* Ordinary visited nodes, published to local readers under scopes.lock. */
     StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
 };
 

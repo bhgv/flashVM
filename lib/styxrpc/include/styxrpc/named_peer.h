@@ -15,6 +15,7 @@ extern "C" {
 #define STYXRPC_NAMED_PEER_LANE 2U /* Logical lane after agreeing on the attach capability. */
 #define STYXRPC_MODULE_REF_ATTACH "styxrpc-module-refs" /* Named-lane client capability. */
 #define STYXRPC_MODULE_REF_SCOPE_FILE ".varref" /* Private scope file on the named lane. */
+#define STYXRPC_MODULE_REF_BOTH_ATTACH "styxrpc-module-refs-both" /* Mixed forward attach admits both owner roles. */
 
 struct RemotePhy; /* Owned extra stream, provided by the caller. */
 typedef struct StyxRpcNamedPeer StyxRpcNamedPeer; /* Owns two native dispatchers and the local client. */

@@ -1,5 +1,12 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1792, the mounted pair also relays references to Int32 variables
+published by Limbo. FlashVM captures the reverse export through the usual
+`vfs.intVariable` and sends its reference over the named channel. DisVM
+checks the exact Qid and path issued by its reverse server before opening
+the local alias. Replacement at the same path invalidates the old aliases.
+[EN](../../disVM/runtime/STYX-MODULE-REFS.md#export-owned-by-disvm) · [RU](../../disVM/runtime/STYX-MODULE-REFS.ru.md#экспорт-владельца-disvm).
+
 In v0.1791, a mounted DisVM application captures an Int32 export on the
 attached FlashVM and sends it through the ordinary named channel. AS can
 update and return the same reference. Limbo opens returned references
