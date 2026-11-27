@@ -63,11 +63,21 @@ if(STYXRPC_EXAMPLES)
     target_link_libraries(styxrpc-channel-device PRIVATE StyxRpc::launch StyxRpc::serve Styx::bidir)
     add_executable(styxrpc-routed-client examples/disvm/routed_client.c)
     target_link_libraries(styxrpc-routed-client PRIVATE StyxRpc::launch StyxRpc::serve Styx::bidir)
+    add_executable(styxrpc-mutable-device examples/disvm/mutable_device.c)
+    target_link_libraries(styxrpc-mutable-device PRIVATE StyxRpc::serve)
+    set_target_properties(styxrpc-mutable-device PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+    add_executable(styxrpc-mutation-client examples/disvm/mutation_client.c)
+    target_link_libraries(styxrpc-mutation-client PRIVATE StyxRpc::launch)
+    set_target_properties(styxrpc-mutation-client PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
     add_executable(styxrpc-client examples/client.c)
     target_link_libraries(styxrpc-client PRIVATE StyxRpc::launch)
     if(BUILD_TESTING)
         find_package(PythonInterp 3 QUIET)
         if(PYTHONINTERP_FOUND)
+            add_test(NAME styxrpc-mutable-tree
+                COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/examples/disvm/mutations.py"
+                    --device "$<TARGET_FILE:styxrpc-mutable-device>" --client "$<TARGET_FILE:styxrpc-mutation-client>")
+            set_tests_properties(styxrpc-mutable-tree PROPERTIES TIMEOUT 35)
             add_test(NAME styxrpc-native-socket COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/examples/socketpair.py"
                 "$<TARGET_FILE:styxrpc-device>" "$<TARGET_FILE:styxrpc-client>")

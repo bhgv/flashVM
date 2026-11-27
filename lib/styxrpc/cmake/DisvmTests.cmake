@@ -20,6 +20,11 @@ foreach(mode IN ITEMS interpreter jit)
     if(mode STREQUAL "jit")
         list(APPEND mode_args --jit)
     endif()
+    add_test(NAME styxrpc-disvm-mutations-${mode}
+        COMMAND "${disvm_command}" "${disvm_examples}/mutations.py" ${disvm_common}
+            --module "${disvm_upstream_modules}" --device "$<TARGET_FILE:styxrpc-mutable-device>"
+            ${mode_args})
+    set_tests_properties(styxrpc-disvm-mutations-${mode} PROPERTIES TIMEOUT 50)
     add_test(NAME styxrpc-disvm-load-${mode}
         COMMAND "${disvm_command}" "${disvm_examples}/run.py" ${disvm_common}
             --module "${disvm_upstream_modules}" --device "$<TARGET_FILE:styxrpc-device>"

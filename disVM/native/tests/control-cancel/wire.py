@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120, 'capturewalk': 110, 'capturestat': 124, 'queueclose': 120}[operation]
+    kind = {'walk': 110, 'open': 112, 'create': 114, 'remove': 122, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120, 'capturewalk': 110, 'capturestat': 124, 'queueclose': 120}[operation]
     required = 2 if (operation == 'walk' and mode != 'first') or operation == 'listprefix' else 1
     shared = {}
     lock = threading.Lock()
@@ -174,6 +174,17 @@ def main():
                 raise RuntimeError(f'Topen replay/missing safe retry: {opens}')
         if mode not in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated') and not any(kind == 108 for kind, _ in active):
             raise RuntimeError('control cancellation did not use Tflush')
+        if operation in ('create', 'remove'):
+            mutation = 114 if operation == 'create' else 122
+            effects = [packet for kind, packet in active if kind == mutation]
+            if len(effects) != (0 if mode == 'precancel' else 1):
+                raise RuntimeError('mutation missing or replayed')
+            if operation == 'remove' and effects:
+                victim = struct.unpack_from('<I', effects[0], 7)[0]
+                clunks = sum(struct.unpack_from('<I', packet, 7)[0] == victim
+                             for kind, packet in active if kind == 120)
+                if clunks != (1 if mode == 'cancel' else 0):
+                    raise RuntimeError(f'wrong remove fid retirement: {clunks}')
         if operation in ('read', 'write'):
             data_kind = 116 if operation == 'read' else 118
             count = sum(kind == data_kind for kind, _ in active)

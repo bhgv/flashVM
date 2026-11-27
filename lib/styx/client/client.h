@@ -29,6 +29,20 @@ int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, 
  * RU: Передать один Tremove и поглотить fid при любом исходе. Подтверждение в result. */
 int styxclientremove(StyxFid *fid, StyxTransfer *result);
 
+/* EN: Like create, with one optional stop token on a multiplexed client.
+ * On success the caller still owns the same fid, now open on the new file.
+ * RU: Как create, с необязательным токеном остановки мультиплексного клиента.
+ * При успехе тот же fid принадлежит вызывающему и открыт на новом файле. */
+int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result);
+
+
+/* EN: Like remove, with one optional stop token. Always consumes fid, scheduling
+ * cleanup when the original request was not acknowledged.
+ * RU: Как remove, с необязательным токеном остановки. Всегда поглощает fid.
+ * Без ответа на исходный запрос планирует отдельное освобождение fid. */
+int styxclientremovecancel(StyxFid *fid, StyxCancel *cancel, StyxTransfer *result);
+
 #ifdef __cplusplus
 }
 #endif

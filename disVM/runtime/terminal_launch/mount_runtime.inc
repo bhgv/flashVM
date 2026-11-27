@@ -32,7 +32,7 @@ static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *p
     strcpy(handoff.description.module, "styx-mounted");
     DVM_NamespacePlan target;
     int installed = dvm_namespace_plan(handoff.group, path, &target) &&
-        dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
+        dvm_namespace_mount_provider_create(handoff.group, &target, mount, "/styx-peer") == 1;
     if (installed && descriptors)
     {
         for (unsigned number = 3; number < DVM_LAUNCH_FD_COUNT; number++)

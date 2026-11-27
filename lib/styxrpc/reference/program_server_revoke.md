@@ -1,6 +1,6 @@
 # styxrpc_program_server_revoke
 
-[Русский](program_server_revoke.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L141) · [Implementation](../src/serve.c#L340)
+[Русский](program_server_revoke.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L141) · [Implementation](../src/serve_grants.inc#L21)
 
 ## Syntax
 

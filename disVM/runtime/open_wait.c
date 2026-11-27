@@ -122,8 +122,16 @@ static FVM_Result open_result(const char *path,
     }
     else if (selected && selected->provider)
     {
-        status = provider_output && asynchronous ?
-            dvm_provider_open(selected->provider, selected->relative, !strcmp(mode, "rwo") ? "rw" : mode, provider_output) : FVM_UNSUPPORTED;
+        if (!strcmp(mode, "wx") && (selected->mount_root ||
+            (selected->layer_id && !(selected->mount_flags & DVM_NS_CREATE))))
+        {
+            status = FVM_UNSUPPORTED;
+        }
+        else
+        {
+            status = provider_output && asynchronous ?
+                dvm_provider_open(selected->provider, selected->relative, !strcmp(mode, "rwo") ? "rw" : mode, provider_output) : FVM_UNSUPPORTED;
+        }
     }
     else if (selected)
     {

@@ -14,3 +14,5 @@ Consume the delegated stream and borrow tree/context through destroy. Supply roo
 Hosted Linux64. `StyxRpc::serve`.
 
 [Example](../tests/directory.c) · [Source](../src/serve.c)
+
+[Optional create/remove callbacks](server_enable_mutations.md).

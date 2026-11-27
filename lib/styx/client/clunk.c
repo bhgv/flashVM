@@ -80,7 +80,7 @@ void styxclientclunkcancel(StyxFid *fid, StyxCancel *cancel)
 
 
 /* EN/RU: See client.h. / См. client.h. */
-int styxclientremove(StyxFid *fid, StyxTransfer *result)
+int styxclientremovecancel(StyxFid *fid, StyxCancel *cancel, StyxTransfer *result)
 {
     StyxTransfer discarded;
     if (!result)
@@ -93,12 +93,17 @@ int styxclientremove(StyxFid *fid, StyxTransfer *result)
         return 0;
     }
     StyxClient *client = fid->client;
+    if (cancel && !client->mux)
+    {
+        styxclientclunklater(fid);
+        return 0;
+    }
     Fcall request, reply;
     memset(&request, 0, sizeof(request));
     request.type = Tremove;
     request.fid = fid->number;
     pthread_mutex_lock(&client->lock);
-    int status = styxrpc(client, &request, &reply);
+    int status = styxrpccancel(client, &request, &reply, cancel);
     styxopresult(client, status, result);
     if (status < 0 && !client->failed)
     {
@@ -108,4 +113,11 @@ int styxclientremove(StyxFid *fid, StyxTransfer *result)
     free(fid);
     styxclientfree(client);
     return result->success;
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientremove(StyxFid *fid, StyxTransfer *result)
+{
+    return styxclientremovecancel(fid, NULL, result);
 }

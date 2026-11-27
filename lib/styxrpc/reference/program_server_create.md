@@ -1,6 +1,6 @@
 # styxrpc_program_server_create
 
-[Русский](program_server_create.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L127) · [Implementation](../src/serve.c#L304)
+[Русский](program_server_create.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L127) · [Implementation](../src/serve.c#L350)
 
 ## Syntax
 

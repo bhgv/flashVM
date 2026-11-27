@@ -28,6 +28,7 @@ struct DVM_Provider
     DVM_ProviderLaunch launch; /* Optional immutable per-node address discovery, never copied blindly to captured roots. */
     DVM_CallerBinding caller; /* Optional immutable reverse publication binding. */
     DVM_ProviderCapture capture; /* Optional immutable native node-capture callback. */
+    FVM_Result (*remove)(void *state, const char *relative); /* Optional immutable native delete callback. */
     unsigned native_flags; /* Immutable native control-operation cancellation promises. */
     int anchored; /* Dot names a fixed captured root; descendants still require capture. */
     DVM_Provider *origin; /* Owned source keeps its feed/policy alive, never a child backlink. */
@@ -38,4 +39,11 @@ struct DVM_Provider
 /* EN/RU: Detach capture-origin forwarding before factory retirement; no callback wait.
  * Отсоединить forwarding capture-origin до factory retirement; без callback wait. */
 void dvm_provider_capture_detach(DVM_Provider *provider);
+
+
+/* EN: Remove a single entry through a pinned provider, outside namespace locks.
+ * Borrow relative and provider. With no remove callback, return FVM_UNSUPPORTED.
+ * RU: Удалить один узел через удерживаемый provider вне блокировок пространства имён.
+ * Аргументы заимствованы. Без callback удаления вернуть FVM_UNSUPPORTED. */
+FVM_Result dvm_provider_remove(DVM_Provider *provider, const char *relative);
 #endif

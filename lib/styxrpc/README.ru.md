@@ -113,7 +113,7 @@ fid. Диспетчер сериализует операции одного fid
 
 Постоянный сервис DisVM запускает разные именованные образы по одному соединению Styx. Каждый запуск удерживает отдельный fid чтения и записи. C-клиент публикует встречный контекст `.prog/<pid>` через `StyxRpc::serve`. Сервер вызывает приложение при поиске и чтении каталогов. Смена ревизии останавливает чтение устаревшего каталога. Открытые файлы сохраняют свои состояния до закрытия.
 
-[`styxrpc_launch_named`](reference/launch_named.ru.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.ru.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.ru.md) · [`styxrpc_server_create`](reference/server_create.ru.md) · [`styxrpc_server_step`](reference/server_step.ru.md) · [`styxrpc_server_destroy`](reference/server_destroy.ru.md) · [`styxrpc_server_state`](reference/server_state.ru.md) · [`styxintvariableread`](reference/intvariableread.ru.md) · [`styxintvariablewrite`](reference/intvariablewrite.ru.md)
+[`styxrpc_launch_named`](reference/launch_named.ru.md) · [`styxrpc_launch_named_status`](reference/launch_named_status.ru.md) · [`styxrpc_launch_named_close`](reference/launch_named_close.ru.md) · [`styxrpc_server_create`](reference/server_create.ru.md) · [`styxrpc_server_enable_mutations`](reference/server_enable_mutations.ru.md) · [`styxrpc_server_step`](reference/server_step.ru.md) · [`styxrpc_server_destroy`](reference/server_destroy.ru.md) · [`styxrpc_server_state`](reference/server_state.ru.md) · [`styxintvariableread`](reference/intvariableread.ru.md) · [`styxintvariablewrite`](reference/intvariablewrite.ru.md)
 
 ## Регистрация процесса
 

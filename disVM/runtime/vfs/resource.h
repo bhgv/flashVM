@@ -159,6 +159,14 @@ int dvm_namespace_mount_provider_id(DVM_Namespace *group, const DVM_NamespacePla
     DVM_Provider *provider, const char *label, uint64_t *id);
 
 
+/* EN: Install a retained provider like mount_provider, allowing this branch
+ * to create missing entries. The provider still decides whether it can create.
+ * RU: Установить удерживаемый provider как в mount_provider и разрешить ветви
+ * создавать отсутствующие узлы. Операцию по-прежнему разрешает сам provider. */
+int dvm_namespace_mount_provider_create(DVM_Namespace *group, const DVM_NamespacePlan *target,
+    DVM_Provider *provider, const char *label);
+
+
 /* EN/RU: Bind retained provider-relative source at validated target/revision.
  * Caller checked resource kinds; source/target must share one group revision.
  * Retain factory on success; 1/0/-1 success/stale/invalid or OOM. No I/O.

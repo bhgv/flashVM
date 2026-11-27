@@ -3,6 +3,7 @@
  * RU: Owner-local resource cleanup и native operations по frozen selections.
  */
 #include "resource.h"
+#include "provider_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -109,7 +110,11 @@ dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file,
  * См. resource.h; production groups всегда имеют retained anchors. */
 FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan)
 {
-    return !plan->provider && plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
+    if (plan->provider)
+    {
+        return plan->mount_root ? FVM_UNSUPPORTED : dvm_provider_remove(plan->provider, plan->relative);
+    }
+    return plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
 }
 
 

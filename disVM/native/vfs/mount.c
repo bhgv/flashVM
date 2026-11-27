@@ -79,6 +79,10 @@ static FVM_Result info(void *state, const char *path, FVM_FileInfo *out)
 static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
     struct Mount *mount = state;
+    if (!strcmp(mode, "wx"))
+    {
+        return styxmountcreatefile(mount, path, out);
+    }
     unsigned long cycles = walk_cycles();
     if (mount->file_root && strcmp(path, "."))
     {
@@ -260,6 +264,7 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
         destroy(mount);
         return NULL;
     }
+    provider->remove = mount->file_root ? NULL : styxmountremovefile;
     DVM_Changes *changes = dvm_provider_changes(provider);
     mount->watch = ownwatch ? styxmountwatch(client, changes) : NULL;
     if (ownwatch && !mount->watch)

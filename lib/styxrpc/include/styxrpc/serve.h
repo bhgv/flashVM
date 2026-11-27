@@ -38,6 +38,30 @@ typedef struct StyxRpcTree
 } StyxRpcTree;
 
 
+/* EN: Optional ordinary tree mutations. Create publishes a fresh ID and
+ * revision and transfers the opened write cookie for a file. cookie is NULL
+ * for directory creation. Remove unlinks an ID without closing other cookies.
+ * Both callbacks return 1 on success or 0 with no change. Do not dispatch
+ * recursively. See the function reference for the common DisVM profile.
+ * RU: Необязательное изменение обычного дерева. Create публикует новый ID
+ * и ревизию, передаёт открытое состояние записи файла. Для каталога cookie
+ * равен NULL. Remove удаляет ID, сохраняя состояния других fid. Колбэки
+ * возвращают 1 при успехе или 0 без изменения. Рекурсивный dispatch запрещён. */
+typedef struct StyxRpcMutations
+{
+    int (*create)(void *context, uint64_t parent, const char *name, int directory,
+        uint64_t *id, uint32_t *revision, void **cookie); /* Borrowed name; outputs only on success. */
+    int (*remove)(void *context, uint64_t id);            /* Exact live ID; reject nonempty directories. */
+} StyxRpcMutations;
+
+
+/* EN: Enable mutations once before dispatch on an ordinary server. Return 1
+ * on success, 0 on refusal. Borrow mutations until server destruction.
+ * RU: Один раз включить изменение дерева до обслуживания обычного сервера.
+ * Вернуть 1 при успехе или 0 при отказе. Таблица заимствована до destroy. */
+int styxrpc_server_enable_mutations(StyxRpcServer *server, const StyxRpcMutations *mutations);
+
+
 /* EN: Take phy on every outcome. Borrow tree/context through destroy.
  * Root ID is zero. Access uses the other-class Unix mode bits for every peer.
  * Use an already authorized connection. Returns NULL if initialization fails.

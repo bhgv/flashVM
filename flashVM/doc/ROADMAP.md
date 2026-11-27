@@ -1,5 +1,19 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1811 — create and remove through mounted Styx trees
+
+DisVM supports exclusive file creation and removal on writable mounts.
+Standalone libstyxrpc serves the same ordinary `Tcreate` and `Tremove`
+profile through opt-in callbacks. The shared Styx client preserves reply
+and fid retirement semantics when a mutation is cancelled.
+
+DisVM поддерживает исключительное создание и удаление файлов через
+монтирование с правом записи. Libstyxrpc обслуживает тот же профиль
+`Tcreate` и `Tremove` через явно подключаемые колбэки. Общий клиент Styx
+сохраняет правила подтверждений и освобождения fid при отмене.
+[EN](../../lib/styxrpc/examples/disvm/MUTATIONS.md) ·
+[RU](../../lib/styxrpc/examples/disvm/MUTATIONS.ru.md).
+
 ## v0.1810 — cancel mounted writes and share the deferred Styx server
 
 Detached FlashVM tasks can flush a pending file write. The C SDK preserves

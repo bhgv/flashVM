@@ -59,7 +59,7 @@ int valid = fid && styxclientopen(fid, 0);
 
 ## См. также
 
-- [Implementation: client/open.c:79](../../client/open.c#L79)
+- [Implementation: client/open.c:68](../../client/open.c#L68)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

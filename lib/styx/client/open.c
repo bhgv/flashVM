@@ -50,10 +50,9 @@ static int openfid(StyxFid *fid, const char *name, unsigned permissions, int mod
     return success;
 }
 
+
 /* EN/RU: See client.h; legacy API now also fences an unacknowledged sent Topen.
  * См. client.h; legacy API тоже блокирует повтор после sent Topen без acknowledgement. */
-
-
 /* [standalone-contract:styxclientopen]
  * EN: styxclientopen: native client open operations and lifetime.
  * RU: styxclientopen: нативные client-операции open и время жизни.
@@ -72,10 +71,9 @@ int styxclientopen(StyxFid *fid, int mode)
     return openfid(fid, NULL, 0, mode, NULL, &result);
 }
 
+
 /* EN/RU: See client.h; refuse legacy clients or missing result before transport effects.
  * См. client.h; legacy clients/missing result отклонить до transport effects. */
-
-
 /* [standalone-contract:styxclientopencancel]
  * EN: styxclientopencancel: native client open operations and lifetime.
  * RU: styxclientopencancel: нативные client-операции open и время жизни.
@@ -103,35 +101,45 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
 }
 
 
-/* EN: Create a regular file or directory on an unopened directory fid.
- * RU: Создать файл либо каталог на fid ещё не открытого каталога. */
+/* EN: Validate the borrowed directory and name, then send one create. kind is
+ * zero or DMDIR. See openfid for permissions, mode, cancel and result.
+ * RU: Проверить каталог и имя, затем послать один create. kind — ноль или DMDIR.
+ * Права, mode, cancel и result описаны у openfid. */
 static int create_child(StyxFid *directory, const char *name, unsigned permissions, unsigned kind,
-    int mode, StyxTransfer *result)
+    int mode, StyxCancel *cancel, StyxTransfer *result)
 {
     if (!result)
     {
         return 0;
     }
     styxopclear(result);
-    if (!directory || !(directory->qid.type & QTDIR) || !name || !*name ||
+    if (!directory || (cancel && !directory->client->mux) || !(directory->qid.type & QTDIR) || !name || !*name ||
         strlen(name) >= STYX_NAME_MAX || strchr(name, '/') ||
         !strcmp(name, ".") || !strcmp(name, "..") || (permissions & ~0777U))
     {
         return 0;
     }
-    return openfid(directory, name, permissions | kind, mode, NULL, result);
+    return openfid(directory, name, permissions | kind, mode, cancel, result);
 }
 
 
 /* EN/RU: See client.h. / См. client.h. */
 int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result)
 {
-    return create_child(directory, name, permissions, 0, mode, result);
+    return create_child(directory, name, permissions, 0, mode, NULL, result);
 }
 
 
 /* EN/RU: See client.h. / См. client.h. */
 int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, StyxTransfer *result)
 {
-    return create_child(directory, name, permissions, (unsigned)DMDIR, OREAD, result);
+    return create_child(directory, name, permissions, (unsigned)DMDIR, OREAD, NULL, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, 0, mode, cancel, result);
 }

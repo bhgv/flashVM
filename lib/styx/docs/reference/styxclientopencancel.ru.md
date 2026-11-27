@@ -64,7 +64,7 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
 
 ## См. также
 
-- [Implementation: client/open.c:105](../../client/open.c#L105)
+- [Implementation: client/open.c:93](../../client/open.c#L93)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

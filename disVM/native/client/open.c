@@ -1,13 +1,18 @@
 /* Copyright (c) 2026 bhgv
- * EN: Native Topen with acknowledgement-preserving cancellation and uncertain-fid fencing.
- * RU: Native Topen с acknowledgement-preserving cancellation и uncertain-fid fencing.
+ * EN: Native Topen and Tcreate with confirmed acknowledgements and uncertain-fid fencing.
+ * RU: Нативные Topen и Tcreate с подтверждениями и блокировкой fid при неопределённости.
  */
 #include "internal.h"
 
 
-/* EN/RU: See client.h; preserve open-mode ceiling and per-fid negotiated iounit.
- * См. client.h; сохранить mode ceiling и negotiated iounit для fid. */
-static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *result)
+/* EN: Open fid or create name in that directory with the requested permission bits.
+ * mode is the open access. Optional cancel applies to the request. Fill result
+ * and return one on acknowledgement. Serialize use and clunk of the borrowed fid.
+ * RU: Открыть fid либо создать в каталоге name с переданными правами.
+ * mode задаёт доступ. Необязательный cancel отменяет запрос. Заполнить result
+ * и вернуть единицу при подтверждении. Сериализовать работу с fid и его clunk. */
+static int openfid(StyxFid *fid, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result)
 {
     styxopclear(result);
     if (!fid || mode < 0 || mode > 2 || fid->opened || fid->poisoned)
@@ -17,7 +22,9 @@ static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *res
     StyxClient *client = fid->client;
     Fcall request, reply;
     memset(&request, 0, sizeof(request));
-    request.type = Topen;
+    request.type = name ? Tcreate : Topen;
+    request.name = (char *)name;
+    request.perm = permissions;
     request.fid = fid->number;
     request.mode = mode;
     pthread_mutex_lock(&client->lock);
@@ -31,7 +38,7 @@ static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *res
     if (success)
     {
         fid->qid = reply.qid;
-        fid->unit = client->msize-IOHDRSZ;
+        fid->unit = client->msize - IOHDRSZ;
         if (reply.iounit && reply.iounit < fid->unit)
         {
             fid->unit = reply.iounit;
@@ -49,7 +56,7 @@ static int openfid(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *res
 int styxclientopen(StyxFid *fid, int mode)
 {
     StyxTransfer result;
-    return openfid(fid, mode, NULL, &result);
+    return openfid(fid, NULL, 0, mode, NULL, &result);
 }
 
 
@@ -62,5 +69,49 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
         return 0;
     }
     styxopclear(result);
-    return fid && fid->client->mux ? openfid(fid, mode, cancel, result) : 0;
+    return fid && fid->client->mux ? openfid(fid, NULL, 0, mode, cancel, result) : 0;
+}
+
+
+/* EN: Validate the borrowed directory and name, then send one create. kind is
+ * zero or DMDIR. See openfid for permissions, mode, cancel and result.
+ * RU: Проверить каталог и имя, затем послать один create. kind — ноль или DMDIR.
+ * Права, mode, cancel и result описаны у openfid. */
+static int create_child(StyxFid *directory, const char *name, unsigned permissions, unsigned kind,
+    int mode, StyxCancel *cancel, StyxTransfer *result)
+{
+    if (!result)
+    {
+        return 0;
+    }
+    styxopclear(result);
+    if (!directory || (cancel && !directory->client->mux) || !(directory->qid.type & QTDIR) || !name || !*name ||
+        strlen(name) >= STYX_NAME_MAX || strchr(name, '/') ||
+        !strcmp(name, ".") || !strcmp(name, "..") || (permissions & ~0777U))
+    {
+        return 0;
+    }
+    return openfid(directory, name, permissions | kind, mode, cancel, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, 0, mode, NULL, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, (unsigned)DMDIR, OREAD, NULL, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, 0, mode, cancel, result);
 }

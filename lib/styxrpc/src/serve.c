@@ -13,6 +13,8 @@
 #include "variable_ref_internal.h"
 #include "styxrpc/exchange.h"
 #include "styxrpc/program.h"
+#include "styxrpc/vfs_client.h"
+#include "styxrpc/exchange_qid.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +33,7 @@ struct StyxRpcServer
     Styxserver wire;                /* Native single-owner transport dispatcher. */
     const StyxRpcTree *tree;        /* Borrowed callback table. */
     void *context;                  /* Borrowed application state. */
+    const StyxRpcMutations *mutations; /* Optional borrowed mutation table. */
     StyxRpcAttachNotice attach;      /* Optional owner callback for attachment metadata. */
     void *attach_state;             /* Borrowed by attach until cleared. */
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
@@ -241,6 +244,7 @@ static char *open_node(Qid *qid, int mode)
 }
 
 
+#include "serve_mutations.inc"
 #include "serve_listing.inc"
 
 
@@ -311,7 +315,8 @@ static char *stat_node(Qid qid, Dir *dir)
 StyxRpcServer *styxrpc_server_create(RemotePhy *phy, const StyxRpcTree *tree, void *context)
 {
     static Styxops ops = {.walk = walk_node, .open = open_node, .read = read_node,
-        .write = write_node, .stat = stat_node, .attach = attach_peer};
+        .write = write_node, .stat = stat_node, .attach = attach_peer,
+        .create = create_node, .remove = remove_node};
     if (!phy || !tree || !tree->stat || !tree->files.enumerate)
     {
         phyfree(phy);

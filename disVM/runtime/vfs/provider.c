@@ -172,6 +172,25 @@ FVM_Result dvm_provider_info(DVM_Provider *provider, const char *relative, FVM_F
 }
 
 
+/* EN/RU: See provider_internal.h. Distinguish a remove from an ordinary open.
+ * См. provider_internal.h. Использовать отдельный признак операции для удаления. */
+FVM_Result dvm_provider_remove(DVM_Provider *provider, const char *relative)
+{
+    if (!provider->remove)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    WalkScope scope = {0};
+    FVM_Result status = dvm_provider_walk_enter(provider, relative, WALK_OPEN, "remove", &scope);
+    if (status == FVM_OK)
+    {
+        status = provider->remove(provider->state, relative);
+        dvm_provider_walk_leave(&scope);
+    }
+    return status;
+}
+
+
 /* EN/RU: Forward borrowed serialized wrapper/arguments to the owned inner handle.
  * Передать borrowed serialized wrapper/arguments во внутренний handle. */
 static FVM_Result wrapped_info(void *state, FVM_FileInfo *output)

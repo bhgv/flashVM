@@ -14,3 +14,5 @@ StyxRpcServer *styxrpc_server_create(struct RemotePhy *phy, const StyxRpcTree *t
 Hosted Linux64. `StyxRpc::serve`.
 
 [Пример](../tests/directory.c) · [Исходник](../src/serve.c)
+
+[Необязательные колбэки создания и удаления](server_enable_mutations.ru.md).

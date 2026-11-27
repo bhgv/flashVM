@@ -1,6 +1,6 @@
 # styxrpc_program_server_grant
 
-[Русский](program_server_grant.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L134) · [Implementation](../src/serve.c#L326)
+[Русский](program_server_grant.ru.md) · [libstyxrpc](../README.md) · [Declaration](../include/styxrpc/program.h#L134) · [Implementation](../src/serve_grants.inc#L7)
 
 ## Syntax
 

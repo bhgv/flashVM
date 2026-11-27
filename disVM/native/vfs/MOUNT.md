@@ -38,7 +38,7 @@ view policy and the selected remote server remain in charge of access.
 A fixed host access ceiling is checked before open and masks displayed rwx bits.
 Metadata never grants actual server permissions. The provider walks and stats an
 independent unopened fid, then Topen decides access for the actual retained fid.
-Open modes are r, wo, rw/rwo without creation/truncation. Directory open requires
+Ordinary open modes are r, wo and rw/rwo. Directory open requires
 host READ|EXEC and read mode. Each open has its own cursor and remote fid.
 Read/write are precise one-chunk callbacks with current explicit64-bit offset;
 there is no implicit Twalk/Tstat before every successful data operation. Handle
@@ -82,7 +82,41 @@ start discards buffered entries and begins the next read on the same fid.
 [Directory rewind](../../../flashVM/doc/STYX_VFS_DIR_REWIND.md) describes
 the paired runtime. Data-file seek changes only its checked local protocol
 offset. SEEK_END explicitly stats the held remote fid. New directory/file paths remain
-live and server-defined. This first provider has no create/remove/wstat support.
+live and server-defined.
+
+## Exclusive creation and removal / Исключительное создание и удаление
+
+A writable directory attachment used by `--styx-mount-fd` or
+`--styx-mount-tcp` accepts `Sys.create(path, Sys->OWRITE | Sys->OEXCL, 8r666)`
+and `Sys.remove(path)` for descendants. Creation uses a walked parent fid
+and one `Tcreate`. Removal walks and removes one exact fid with `Tremove`.
+Both require a host WRITE|EXEC ceiling and permission from the peer. The
+mount root and single-file attachments cannot be deleted through the mount.
+Provider-backed creation requires a branch with creation enabled. Truncating
+create, directory creation through `Sys.create` and `Twstat` are outside this
+mounted Sys profile.
+
+A failed guest call reports nil or -1. An interrupted request may have taken
+effect if its acknowledgement was lost. The bridge preserves a confirmed
+reply and does not replay an uncertain mutation. Existing open file fids
+remain tied to the generations assigned by the peer.
+
+Каталог с правом записи под `--styx-mount-fd` или `--styx-mount-tcp` принимает
+`Sys.create(path, Sys->OWRITE | Sys->OEXCL, 8r666)` и `Sys.remove(path)` для
+потомков. Создание посылает один `Tcreate` по fid родителя. Удаление посылает
+один `Tremove` по fid выбранного узла. Требуются предел WRITE|EXEC на хосте
+и разрешение сервера. Корень монтирования и отдельный подключённый файл
+удалять через монтирование нельзя. Ветвь должна разрешать создание.
+Создание с усечением, создание каталога через `Sys.create` и `Twstat`
+не входят в этот профиль смонтированного Sys.
+
+При ошибке гость получает nil или -1. Если прерванный запрос остался без
+ответа, изменение могло произойти на сервере. Мост сохраняет подтверждённый
+ответ и не повторяет запрос с неопределённым исходом. Уже открытые fid
+остаются привязаны к поколениям, выданным сервером.
+
+[Limbo and C example](../../../lib/styxrpc/examples/disvm/MUTATIONS.md) ·
+[Пример Limbo и C](../../../lib/styxrpc/examples/disvm/MUTATIONS.ru.md).
 
 ## Loss notifications / Уведомления о потере соединения
 

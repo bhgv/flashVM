@@ -56,6 +56,20 @@ void styxmountmeta(struct Mount *mount, const StyxMeta *meta, FVM_FileInfo *out)
 extern const DVM_VfsOps styxmountedops;
 
 
+/* EN: Create a new 0666 file using one parent fid. Borrow mount/path, transfer
+ * one opened cursor to empty out on acknowledgement, leave out empty otherwise.
+ * RU: Создать новый файл 0666 через fid каталога. При подтверждении передать
+ * открытый курсор в пустой out, иначе оставить out пустым. mount/path заимствованы. */
+FVM_Result styxmountcreatefile(struct Mount *mount, const char *path, DVM_VfsHandle *out);
+
+
+/* EN: Remove a descendant of the borrowed mount on one walked fid.
+ * Return FVM_OK only on acknowledgement. The remote fid is consumed.
+ * RU: Удалить потомка заимствованного mount через один fid. FVM_OK только
+ * при подтверждении. Удалённый fid поглощается. */
+FVM_Result styxmountremovefile(void *state, const char *path);
+
+
 /* EN/RU: Walk relative to this mount's captured root, never a retired original path.
  * Пройти относительно captured root этого mount, не по прежнему pathname. */
 StyxFid *styxmountwalk(struct Mount *mount, const char *relative);

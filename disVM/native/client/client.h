@@ -371,6 +371,37 @@ void styxclientclunklater(StyxFid *fid);
  * Заимствовать pinned fid; directory1/file0/invalid-1, без RPC. */
 int styxclientfiddirectory(StyxFid *fid);
 
+/* EN: Send one Tcreate on a caller-owned unopened directory fid. Acknowledged
+ * success opens the child on the same fid. Uncertainty fences the fid against retry.
+ * RU: Передать один Tcreate на неоткрытом fid каталога вызывающего. При успехе
+ * тот же fid открывает потомка. Неопределённый исход запрещает повтор на этом fid. */
+int styxclientcreate(StyxFid *directory, const char *name, unsigned permissions, int mode, StyxTransfer *result);
+
+/* EN: Create one directory with the given 0777 permission mask. Success opens
+ * it for reading on the same fid. Serialize use and retirement of that fid.
+ * RU: Создать каталог с правами в пределах 0777 и открыть для чтения на том же fid.
+ * Сериализовать использование и закрытие fid. */
+int styxclientmkdir(StyxFid *directory, const char *name, unsigned permissions, StyxTransfer *result);
+
+
+/* EN: Send one Tremove and always consume fid. result receives the acknowledgement.
+ * RU: Передать один Tremove и поглотить fid при любом исходе. Подтверждение в result. */
+int styxclientremove(StyxFid *fid, StyxTransfer *result);
+
+/* EN: Like create, with one optional stop token on a multiplexed client.
+ * On success the caller still owns the same fid, now open on the new file.
+ * RU: Как create, с необязательным токеном остановки мультиплексного клиента.
+ * При успехе тот же fid принадлежит вызывающему и открыт на новом файле. */
+int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permissions, int mode,
+    StyxCancel *cancel, StyxTransfer *result);
+
+
+/* EN: Like remove, with one optional stop token. Always consumes fid, scheduling
+ * cleanup when the original request was not acknowledged.
+ * RU: Как remove, с необязательным токеном остановки. Всегда поглощает fid.
+ * Без ответа на исходный запрос планирует отдельное освобождение fid. */
+int styxclientremovecancel(StyxFid *fid, StyxCancel *cancel, StyxTransfer *result);
+
 #ifdef __cplusplus
 }
 #endif

@@ -124,7 +124,7 @@ static int bind_selection(DVM_Namespace *group,
                                 const DVM_NamespacePlan *target,
                                 DVM_Provider *provider,
                                 DVM_Anchor *anchor,
-                                const char *component, const DVM_Origin *origin, uint64_t *id)
+                                const char *component, const DVM_Origin *origin, unsigned flags, uint64_t *id)
 {
     DVM_NamespaceBinding *entry = calloc(1, sizeof(*entry)), *old = NULL, **link;
     int result = 0;
@@ -147,6 +147,7 @@ static int bind_selection(DVM_Namespace *group,
     {
         entry->origin = *origin;
     }
+    entry->flags = flags;
     entry->provider = provider;
     entry->anchor = anchor;
     memcpy(entry->component, component, strlen(component) + 1);
@@ -232,14 +233,16 @@ int dvm_namespace_unmount(DVM_Namespace *group, const DVM_NamespacePlan *target,
 int dvm_namespace_bind_resource(DVM_Namespace *group, const DVM_NamespacePlan *source,
                                 const DVM_NamespacePlan *target, DVM_Anchor *anchor, const char *component)
 {
-    return bind_selection(group, source, target, NULL, anchor, component, NULL, NULL);
+    return bind_selection(group, source, target, NULL, anchor, component, NULL, 0, NULL);
 }
 
 
-/* EN/RU: See resource.h; validate label before allocating or acquiring references.
- * См. resource.h; проверить label до allocation или захвата references. */
-int dvm_namespace_mount_provider_id(DVM_Namespace *group, const DVM_NamespacePlan *target,
-    DVM_Provider *provider, const char *label, uint64_t *id)
+/* EN: Install a pinned provider at target with trusted creation flags and optional ID.
+ * See resource.h for borrowed arguments and result semantics.
+ * RU: Установить удерживаемый provider в target с правом создания и необязательным ID.
+ * Заимствование аргументов и результат описаны в resource.h. */
+static int mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *target,
+    DVM_Provider *provider, const char *label, unsigned flags, uint64_t *id)
 {
     DVM_NamespacePlan source;
     if (!group || !target || !provider || !label || *label != '/' || strlen(label) >= sizeof(source.native))
@@ -248,7 +251,23 @@ int dvm_namespace_mount_provider_id(DVM_Namespace *group, const DVM_NamespacePla
     }
     source = *target;
     memcpy(source.native, label, strlen(label) + 1);
-    return bind_selection(group, &source, target, provider, NULL, "", NULL, id);
+    return bind_selection(group, &source, target, provider, NULL, "", NULL, flags, id);
+}
+
+
+/* EN/RU: See resource.h. / См. resource.h. */
+int dvm_namespace_mount_provider_id(DVM_Namespace *group, const DVM_NamespacePlan *target,
+    DVM_Provider *provider, const char *label, uint64_t *id)
+{
+    return mount_provider(group, target, provider, label, 0, id);
+}
+
+
+/* EN/RU: See resource.h. / См. resource.h. */
+int dvm_namespace_mount_provider_create(DVM_Namespace *group, const DVM_NamespacePlan *target,
+    DVM_Provider *provider, const char *label)
+{
+    return mount_provider(group, target, provider, label, DVM_NS_CREATE, NULL);
 }
 
 
@@ -272,14 +291,14 @@ int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *so
     if (dvm_provider_bindable_at(source->provider, source->relative))
     {
         return bind_selection(group, &source->names, target, source->provider, NULL,
-                              !strcmp(source->relative, ".") ? "" : source->relative, &source->origin, NULL);
+                              !strcmp(source->relative, ".") ? "" : source->relative, &source->origin, 0, NULL);
     }
     DVM_Provider *root = dvm_provider_capture(source->provider, source->relative);
     if (!root)
     {
         return -1;
     }
-    int result = bind_selection(group, &source->names, target, root, NULL, "", &source->origin, NULL);
+    int result = bind_selection(group, &source->names, target, root, NULL, "", &source->origin, 0, NULL);
     dvm_provider_release(root);
     return result;
 }

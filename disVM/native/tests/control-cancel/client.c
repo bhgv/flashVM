@@ -17,7 +17,7 @@ typedef struct Work
 {
     StyxClient *client; /* Borrowed connection, pinned by main. */
     StyxFid *base; /* Borrowed unopened base, pinned until join. */
-    StyxFid *fid; /* Borrowed unopened target, owned by main. */
+    StyxFid *fid; /* Owned by main, or moved to the remove worker. */
     StyxFid *walked; /* Owned result, transferred to main after join. */
     StyxCancel *cancel; /* Caller pin can drop after wire admission; scope/flight retains it. */
     StyxTransfer result; /* Exact copied control acknowledgement, count always zero. */
@@ -77,6 +77,15 @@ static void *run(void *opaque)
         work->status = styxclientopencancel(work->fid, !strcmp(work->mode, "error") ? 1 : 0,
                                           work->cancel, &work->result);
     }
+    else if (!strcmp(work->operation, "create"))
+    {
+        work->status = styxclientcreatecancel(work->base, !strcmp(work->mode, "error") ? "reject" : "child",
+            0666, 1, work->cancel, &work->result);
+    }
+    else if (!strcmp(work->operation, "remove"))
+    {
+        work->status = styxclientremovecancel(work->fid, work->cancel, &work->result);
+    }
     else
     {
         work->status = styxclientstatcancel(work->fid, &work->meta, work->cancel, &work->result);
@@ -109,12 +118,16 @@ int main(int argc, char **argv)
     }
     strcat(path, "file");
     StyxFid *data = styxclientwalk(client, path);
-    StyxFid *target = styxclientwalk(client, path);
+    StyxFid *target = styxclientwalk(client, !strcmp(operation, "remove") && !strcmp(mode, "error") ? "ctl" : path);
     StyxFid *base = styxclientwalk(client, "d");
     check(data && target && base && styxclientopen(data, 0), "setup independent fids");
     Work work = {0};
     work.client = client;
     work.fid = target;
+    if (!strcmp(operation, "remove"))
+    {
+        target = NULL;
+    }
     work.base = base;
     work.operation = operation;
     work.mode = mode;
@@ -125,8 +138,8 @@ int main(int argc, char **argv)
     check(!styxclientwalkcancel(client, "../d", work.cancel, &invalid) && !invalid.success && !invalid.uncertain,
           "invalid path reached wire/consumed token");
     check(!styxclientwalkcancel(client, ".", work.cancel, NULL) &&
-          !styxclientopencancel(target, 0, work.cancel, NULL) &&
-          !styxclientstatcancel(target, &work.meta, work.cancel, NULL), "missing outcome admitted RPC");
+          !styxclientopencancel(work.fid, 0, work.cancel, NULL) &&
+          !styxclientstatcancel(work.fid, &work.meta, work.cancel, NULL), "missing outcome admitted RPC");
     memset(&work.meta, 0x5a, sizeof(work.meta));
     StyxMeta untouched = work.meta;
     puts("ready");
@@ -188,6 +201,12 @@ int main(int argc, char **argv)
         char byte;
         styxclientread(target, 0, &byte, 1, &rejected);
         check(!rejected.success && !rejected.uncertain && !rejected.count, "uncertain Topen allowed data");
+    }
+    if (!strcmp(operation, "create") && work.result.uncertain)
+    {
+        StyxTransfer rejected;
+        check(!styxclientcreate(base, "retry", 0666, 1, &rejected) && !rejected.uncertain,
+              "uncertain Tcreate replayed");
     }
     puts("returned");
     fflush(stdout);

@@ -50,6 +50,28 @@ static char *openfile(Qid *qid, int mode)
 }
 
 
+/* EN: Accept the fixture's directory Qid and one create name in write mode.
+ * Return a new regular Qid or leave the original parent unchanged on error.
+ * RU: Принять Qid каталога и одно имя для записи. При отказе сохранить Qid родителя. */
+static char *createfile(Qid *qid, char *name, int permissions, int mode)
+{
+    if (qid->path != 1 || strcmp(name, "child") || permissions != 0666 || mode != OWRITE)
+    {
+        return Eperm;
+    }
+    *qid = styxqid(101, 0);
+    return nil;
+}
+
+
+/* EN: Accept the fixture's exact file Qid; refuse the control fid.
+ * RU: Принять точный Qid файла теста. Для управляющего fid отказать. */
+static char *removefile(Qid qid)
+{
+    return qid.path == 18 ? nil : Eperm;
+}
+
+
 /* EN/RU: Return ordinary metadata with the requested remote identity.
  * Вернуть обычные metadata с запрошенной remote identity. */
 static char *statfile(Qid qid, Dir *out)
@@ -168,6 +190,8 @@ int main(void)
     memset(&ops, 0, sizeof(ops));
     ops.walk = walk;
     ops.open = openfile;
+    ops.create = createfile;
+    ops.remove = removefile;
     ops.stat = statfile;
     ops.read = readfile;
     ops.write = writefile;

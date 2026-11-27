@@ -13,6 +13,8 @@
 #include "sys_capture.h"
 #include "guest.h"
 #include "resource.h"
+#include "native_wait.h"
+#include "path_cancel.h"
 
 extern char *dvm_runtime_file_path(String *); /* Rooted guest input, validated before native selection. */
 
@@ -33,10 +35,12 @@ void Sys_remove(void *frame)
     path = dvm_runtime_file_path(call.s);
     if (path && dvm_resource_plan(dvm_namespace_current_group(), path, 0, &plan))
     {
-        int released = dvm_runtime_gc_native_try_leave();
+        DVM_VfsWait *wait = NULL;
+        int released = dvm_path_cancellable(&plan) ? dvm_vfs_path_enter(&wait) : dvm_runtime_gc_native_try_leave();
         if (released >= 0)
         {
             FVM_Result status = dvm_resource_remove(&plan);
+            int cancelled = dvm_vfs_wait_end(wait);
             dvm_runtime_gc_native_enter(released);
             if (status == FVM_OK)
             {
@@ -44,7 +48,7 @@ void Sys_remove(void *frame)
             }
             else
             {
-                kwerrstr("cannot remove namespace entry");
+                kwerrstr(cancelled ? "namespace remove cancelled" : "cannot remove namespace entry");
             }
         }
         else
