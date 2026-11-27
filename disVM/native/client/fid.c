@@ -43,3 +43,10 @@ int styxclientfiddirectory(StyxFid *fid)
 {
     return !fid || (fid->qid.type & QTAUTH) ? -1 : (fid->qid.type & QTDIR) != 0;
 }
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientfidcancellable(StyxFid *fid)
+{
+    return fid && styxclientcancellable(fid->client);
+}

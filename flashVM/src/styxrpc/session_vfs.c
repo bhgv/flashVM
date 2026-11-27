@@ -3,6 +3,7 @@
  * RU: Позиционные чтение, запись и stat смонтированной VFS Styx из AS.
  */
 #include "session_methods.h"
+#include "wire_wait.h"
 #include "flashvm/execution.h"
 #include "styxrpc/vfs_client.h"
 #include <limits.h>
@@ -206,6 +207,7 @@ static FVM_Result stat_file(FVM_Context *context, FVM_Object *self, unsigned arg
     StyxRpcFileInfo info = {0, 0, 0};
     FVM_Value fields[5];
     StyxRpcIoOutcome status = STYXRPC_IO_NOT_OPEN;
+    FVM_Worker *worker = NULL;
     FVM_StyxRpcPathResult path_result = argc == 1 ? fvm_styxrpc_path_result(binding, args, path) :
         FVM_STYXRPC_PATH_INVALID;
     (void)self;
@@ -215,7 +217,9 @@ static FVM_Result stat_file(FVM_Context *context, FVM_Object *self, unsigned arg
     }
     if (path_result == FVM_STYXRPC_PATH_VISIBLE)
     {
-        status = styxrpc_vfs_stat(binding->client, path + 1, &info);
+        fvm_worker_current(context, &worker);
+        status = styxrpc_vfs_stat_until(binding->client, path + 1, &info,
+            worker ? fvm_styxrpc_worker_stopped : NULL, worker);
     }
     fvm_value_number(fields, status);
     fvm_value_number(fields + 1, (double)(info.length >> FVM_STYXRPC_U32_BITS));

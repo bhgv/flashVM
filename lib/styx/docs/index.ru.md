@@ -139,12 +139,14 @@ Copyright (c) 2026 bhgv
 - [styxattachreply](reference/styxattachreply.ru.md) — `Styx::server; hosted native build`
 - [styxattachroot](reference/styxattachroot.ru.md) — `Styx::server; hosted native build`
 - [styxcancelcreate](reference/styxcancelcreate.ru.md) — `Styx::client; hosted native build`
+- [styxcancelcreatepoll](reference/styxcancelcreatepoll.ru.md) — `Styx::client; hosted native build`
 - [styxcancelfree](reference/styxcancelfree.ru.md) — `Styx::client; hosted native build`
 - [styxcancelrequest](reference/styxcancelrequest.ru.md) — `Styx::client; hosted native build`
 - [styxclient](reference/styxclient.ru.md) — `Styx::server; hosted native build`
 - [styxclientalive](reference/styxclientalive.ru.md) — `Styx::client; hosted native build`
 - [styxclientbidir](reference/styxclientbidir.ru.md) — `Styx::client; hosted native build`
 - [styxclientcancellable](reference/styxclientcancellable.ru.md) — `Styx::client; hosted native build`
+- [styxclientfidcancellable](reference/styxclientfidcancellable.ru.md) — `Styx::client; hosted native build`
 - [styxclientclunk](reference/styxclientclunk.ru.md) — `Styx::client; hosted native build`
 - [styxclientclunkcancel](reference/styxclientclunkcancel.ru.md) — `Styx::client; hosted native build`
 - [styxclientclunklater](reference/styxclientclunklater.ru.md) — `Styx::client; hosted native build`
@@ -157,6 +159,7 @@ Copyright (c) 2026 bhgv
 - [styxclientlookupfrom](reference/styxclientlookupfrom.ru.md) — `Styx::client; hosted native build`
 - [styxclientmount](reference/styxclientmount.ru.md) — `Styx::client; hosted native build`
 - [styxclientmkdir](reference/styxclientmkdir.ru.md) — `Styx::client; hosted native build`
+- [styxclientmkdircancel](reference/styxclientmkdircancel.ru.md) — `Styx::client; hosted native build`
 - [styxclientmountfd](reference/styxclientmountfd.ru.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.ru.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.ru.md) — `Styx::client; hosted native build`

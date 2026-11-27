@@ -58,7 +58,7 @@ StyxFid *styxclientlookupfrom(StyxFid *base, const char *path, StyxCancel *cance
 
 ## См. также
 
-- [Implementation: client/walk.c:398](../../client/walk.c#L398)
+- [Implementation: client/walk.c:404](../../client/walk.c#L404)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

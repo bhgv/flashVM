@@ -32,9 +32,16 @@ publishes failed completion. The paired DisVM server defers transfers
 on interruptible providers, including positioned
 Limbo callback files, so it can process the flush and unrelated fids
 while the callback waits. A confirmed write prefix remains in effect,
-and an outstanding fragment may already have changed the file. Metadata
-and directory reads use session deadlines. The player retains the
-connection through task teardown.
+and an outstanding fragment may already have changed the file. The player
+retains the connection through task teardown.
+
+The same stop flag reaches ordinary path walks, `open`, `opendir`, `cd`,
+`attr`, `stat`, `file.len()`, and end-relative seek. It also reaches
+`dir.next_file()`, exclusive creation with `open(path, "wx")`, `mkdir`
+and `rm`. An interrupted directory read closes that cursor. A stopped
+mutation that was already sent may have changed the peer's tree. Its
+outcome is reported as uncertain and the client does not replay it.
+See the [SDK VFS control contract](../../lib/styxrpc/VFS_CONTROL.md).
 
 When the pair has negotiated named channels, `vfs.chan(path)` and
 `os.chan(path)` open an independent enrollment for the task.
@@ -81,7 +88,16 @@ open can read the same file. The pair also shuts down with a read still
 pending. Use `--cancel-vfs-write` for a short acknowledged write followed
 by a cancelled suffix, an independent read, a new open and disconnect
 with a write pending. Run with `--jit` or `--tcp` to exercise those modes.
-[Write fixture](../../lib/styxrpc/tests/flashvm/cancel-vfs-write_pair.b)
+[Write fixture](../../lib/styxrpc/tests/flashvm/cancel-vfs-write_pair.b).
+
+Choose `--cancel-vfs-control` to hold original replies from the live DisVM
+tree for file creation, a directory read, removal, a metadata query and
+a file open. The movie checks an independent read before each cancel and
+reopens the directory afterward. Limbo confirms that the unacknowledged
+create and remove had already changed its tree.
+[AS2 fixture](../../lib/styxrpc/tests/flashvm/cancel-vfs-control_pair.as) ·
+[Limbo driver](../../lib/styxrpc/tests/flashvm/cancel-vfs-control_pair.b).
+
 The `--asinc-chan` profile checks echo, cancellation of unmatched send
 and receive, exact name removal and disconnect with a task still pending.
 Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs. Add

@@ -1,6 +1,6 @@
 # styxrpc_vfs_stat
 
-[English](vfs_stat.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_client.c)
+[English](vfs_stat.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_client.c) · [styxrpc_vfs_stat_until](vfs_stat_until.ru.md)
 
 Подключите `styxrpc/vfs_client.h` и цель `StyxRpc::launch`.
 

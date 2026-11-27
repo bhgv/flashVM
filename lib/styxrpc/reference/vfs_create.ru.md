@@ -1,6 +1,6 @@
 # styxrpc_vfs_create
 
-[English](vfs_create.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Исходник](../src/vfs_create.c) · [Открыть существующий файл](vfs_open.ru.md)
+[English](vfs_create.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Исходник](../src/vfs_create.c) · [Открыть существующий файл](vfs_open.ru.md) · [styxrpc_vfs_create_until](vfs_create_until.ru.md)
 
 ```c
 #include <styxrpc/vfs_client.h>

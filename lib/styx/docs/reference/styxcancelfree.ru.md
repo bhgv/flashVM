@@ -55,7 +55,7 @@ styxcancelfree(cancel);
 
 ## См. также
 
-- [Implementation: client/cancel.c:95](../../client/cancel.c#L95)
+- [Implementation: client/cancel.c:147](../../client/cancel.c#L147)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

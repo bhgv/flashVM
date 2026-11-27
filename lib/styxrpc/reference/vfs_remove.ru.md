@@ -1,6 +1,6 @@
 # styxrpc_vfs_remove
 
-[English](vfs_remove.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_RM.ru.md)
+[English](vfs_remove.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_RM.ru.md) · [styxrpc_vfs_remove_until](vfs_remove_until.ru.md)
 
 Подключите `StyxRpc::launch` и передайте подключённую сессию и непустой
 канонический обычный путь относительно корня. Библиотека проходит к узлу,

@@ -1,6 +1,6 @@
 # Итераторы каталогов VFS
 
-[English](vfs_directory.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_directory.c)
+[English](vfs_directory.md) · [Заголовок](../include/styxrpc/vfs_client.h) · [Реализация](../src/vfs_directory.c) · [styxrpc_vfs_dir_open_until](vfs_dir_open_until.ru.md) · [styxrpc_vfs_dir_next_until](vfs_dir_next_until.ru.md)
 
 `styxrpc_vfs_dir_open(session, path, &dir)` открывает видимый каталог по
 относительному пути. Пустой путь обозначает корень. При успехе вызывающая

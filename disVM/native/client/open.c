@@ -115,3 +115,11 @@ int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permis
 {
     return create_child(directory, name, permissions, 0, mode, cancel, result);
 }
+
+
+/* EN/RU: See client.h. / См. client.h. */
+int styxclientmkdircancel(StyxFid *directory, const char *name, unsigned permissions,
+    StyxCancel *cancel, StyxTransfer *result)
+{
+    return create_child(directory, name, permissions, (unsigned)DMDIR, OREAD, cancel, result);
+}

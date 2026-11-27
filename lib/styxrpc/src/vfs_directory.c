@@ -17,21 +17,24 @@ struct StyxRpcVfsDir
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_dir_open(StyxClient *session, const char *path, StyxRpcVfsDir **out)
+StyxRpcIoOutcome styxrpc_vfs_dir_open_until(StyxClient *session, const char *path, StyxRpcVfsDir **out,
+    StyxRpcVfsStop stop, void *state)
 {
     if (!out)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = styxrpc_vfs_open_directory_fid(session, path);
-    if (!fid)
+    StyxFid *fid = NULL;
+    StyxRpcVfsWait wait = {stop, state, 0};
+    StyxRpcIoOutcome status = styxrpc_vfs_open_directory_fid(session, path, &wait, &fid);
+    if (status != STYXRPC_IO_OK)
     {
-        return STYXRPC_IO_NOT_OPEN;
+        return status;
     }
     StyxRpcVfsDir *dir = calloc(1, sizeof(*dir));
     if (!dir)
     {
-        styxclientclunk(fid);
+        styxrpc_vfs_close(fid, stop != NULL);
         return STYXRPC_IO_FAILED;
     }
     dir->fid = fid;
@@ -40,9 +43,19 @@ StyxRpcIoOutcome styxrpc_vfs_dir_open(StyxClient *session, const char *path, Sty
 }
 
 
-/* EN: Advance to one visible stat entry or EOF on the same fid.
- * RU: Перейти к видимой записи stat или EOF на том же fid. */
-static StyxRpcIoOutcome next_entry(StyxRpcVfsDir *dir, StyxMeta *meta, int *found)
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_dir_open(StyxClient *session, const char *path, StyxRpcVfsDir **out)
+{
+    return styxrpc_vfs_dir_open_until(session, path, out, NULL, NULL);
+}
+
+
+/* EN: Advance the borrowed dir to one visible stat entry or EOF. Write meta
+ * only for a decoded record. Apply stop/stop_state to reads on that exact fid.
+ * RU: Продвинуть заимствованный dir до записи или EOF. Заполнить meta только
+ * декодированной записью. Применить stop/stop_state к чтениям точного fid. */
+static StyxRpcIoOutcome next_entry(StyxRpcVfsDir *dir, StyxMeta *meta, int *found,
+    StyxRpcVfsStop stop, void *stop_state)
 {
     *found = 0;
     while (!dir->ended)
@@ -74,7 +87,11 @@ static StyxRpcIoOutcome next_entry(StyxRpcVfsDir *dir, StyxMeta *meta, int *foun
         {
             return STYXRPC_IO_FAILED;
         }
-        styxclientread(dir->fid, dir->offset, dir->bytes + pending, capacity, &part);
+        styxclientreaduntil(dir->fid, dir->offset, dir->bytes + pending, capacity, stop, stop_state, &part);
+        if (stop && part.cancelled && !part.success)
+        {
+            return STYXRPC_IO_CANCELLED;
+        }
         StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, capacity);
         if (status != STYXRPC_IO_OK || (!part.count && pending))
         {
@@ -89,7 +106,8 @@ static StyxRpcIoOutcome next_entry(StyxRpcVfsDir *dir, StyxMeta *meta, int *foun
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visit, void *state, int *found)
+StyxRpcIoOutcome styxrpc_vfs_dir_next_until(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visit, void *state, int *found,
+    StyxRpcVfsStop stop, void *stop_state)
 {
     if (!dir || !found)
     {
@@ -100,7 +118,14 @@ StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visi
         return STYXRPC_IO_FAILED;
     }
     StyxMeta meta;
-    StyxRpcIoOutcome status = next_entry(dir, &meta, found);
+    *found = 0;
+    StyxRpcIoOutcome status = stop && stop(stop_state) ? STYXRPC_IO_CANCELLED :
+        next_entry(dir, &meta, found, stop, stop_state);
+    if (status == STYXRPC_IO_CANCELLED)
+    {
+        styxclientclunklater(dir->fid);
+        dir->fid = NULL;
+    }
     dir->failed = status != STYXRPC_IO_OK;
     if (status == STYXRPC_IO_OK && *found && visit)
     {
@@ -115,9 +140,16 @@ StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visi
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visit, void *state, int *found)
+{
+    return styxrpc_vfs_dir_next_until(dir, visit, state, found, NULL, NULL);
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_dir_rewind(StyxRpcVfsDir *dir)
 {
-    if (!dir)
+    if (!dir || !dir->fid)
     {
         return STYXRPC_IO_NOT_OPEN;
     }

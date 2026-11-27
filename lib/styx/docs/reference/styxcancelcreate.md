@@ -57,7 +57,7 @@ StyxCancel *child = styxcancelcreate();
 
 ## See also
 
-- [Implementation: client/cancel.c:34](../../client/cancel.c#L34)
+- [Implementation: client/cancel.c:37](../../client/cancel.c#L37)
 - [Public declaration](../../client/client.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

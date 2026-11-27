@@ -6,6 +6,8 @@
 #include "session_methods.h"
 #include "channel_local.h"
 #include "module_import.h"
+#include "managed_values.h"
+#include "wire_wait.h"
 #include "styxrpc/module_client.h"
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +23,8 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     int creating = 0;
     StyxRpcIoOutcome opened;
     OsHandle *handle;
+    FVM_Worker *worker = NULL;
+    StyxRpcVfsStop stop;
     if (!argc || argc > (directory ? 1U : 2U) || !fvm_styxrpc_resolve_path(movies->binding, args, path) ||
         (argc == 2 && !fvm_styxrpc_name(args + 1, mode, sizeof(mode))))
     {
@@ -49,15 +53,17 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     }
     handle->movies = movies;
     strcpy(handle->path, path);
+    fvm_worker_current(context, &worker);
+    stop = worker ? fvm_styxrpc_worker_stopped : NULL;
     if (directory)
     {
-        opened = styxrpc_vfs_dir_open(movies->session, path + 1, &handle->directory);
+        opened = styxrpc_vfs_dir_open_until(movies->session, path + 1, &handle->directory, stop, worker);
     }
     else
     {
-        opened = creating ? styxrpc_vfs_create(movies->session, path + 1, &handle->file) :
-            styxrpc_vfs_open(movies->session, path + 1, access, &handle->file);
-        if (!creating && opened == STYXRPC_IO_NOT_OPEN &&
+        opened = creating ? styxrpc_vfs_create_until(movies->session, path + 1, &handle->file, stop, worker) :
+            styxrpc_vfs_open_until(movies->session, path + 1, access, &handle->file, stop, worker);
+        if (!creating && opened == STYXRPC_IO_NOT_OPEN && (!worker || !stop(worker)) &&
             access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
         {
             StyxRpcModuleExports exports;
@@ -76,6 +82,14 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     if (opened != STYXRPC_IO_OK)
     {
         free(handle);
+        if (opened == STYXRPC_IO_CANCELLED)
+        {
+            return fvm_styxrpc_managed_fail(context, "os open cancelled");
+        }
+        if (opened == STYXRPC_IO_UNCERTAIN)
+        {
+            return fvm_styxrpc_managed_fail(context, "os create outcome is uncertain");
+        }
         return opened == STYXRPC_IO_NOT_OPEN ? FVM_NOT_FOUND : FVM_ERROR;
     }
     return fvm_os_wrap_handle(context, handle, directory, out);
@@ -110,13 +124,20 @@ static FVM_Result attr(FVM_Context *context, FVM_Object *self, unsigned argc,
     StyxRpcFileInfo info;
     const char *name;
     StyxRpcIoOutcome status;
+    FVM_Worker *worker = NULL;
     (void)self;
     if (!argc || argc > 2 || !fvm_styxrpc_resolve_path(movies->binding, args, path) ||
         (argc == 2 && (!fvm_styxrpc_name(args + 1, root_selector, sizeof(root_selector)) || strcmp(root_selector, "/"))))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    status = styxrpc_vfs_stat(movies->session, path + 1, &info);
+    fvm_worker_current(context, &worker);
+    status = styxrpc_vfs_stat_until(movies->session, path + 1, &info,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (status == STYXRPC_IO_CANCELLED)
+    {
+        return fvm_styxrpc_managed_fail(context, "os attribute query cancelled");
+    }
     if (status != STYXRPC_IO_OK)
     {
         return status == STYXRPC_IO_NOT_OPEN ? FVM_NOT_FOUND : FVM_ERROR;

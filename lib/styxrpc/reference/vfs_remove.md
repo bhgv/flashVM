@@ -1,6 +1,6 @@
 # styxrpc_vfs_remove
 
-[Русский](vfs_remove.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_RM.md)
+[Русский](vfs_remove.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_RM.md) · [styxrpc_vfs_remove_until](vfs_remove_until.md)
 
 Link `StyxRpc::launch` and pass an attached session and a canonical,
 nonempty ordinary path relative to its root. The library walks and checks

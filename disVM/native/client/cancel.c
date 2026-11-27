@@ -200,6 +200,18 @@ int styxcancelbegin(StyxCancel *cancel)
 }
 
 
+/* EN: Propagate a fragment's poll to its borrowed logical token. The walk
+ * scope pins that token until after the fragment's collector returns.
+ * RU: Передать опрос фрагмента заимствованному общему токену. Обход удерживает
+ * токен до завершения ожидания фрагмента. */
+static int poll_walk(void *state)
+{
+    StyxCancel *outer = state;
+    styxcancelpoll(outer);
+    return styxcancelled(outer);
+}
+
+
 /* EN/RU: See mux.h; caller completed the previous flight before replacing its token.
  * См. mux.h; caller завершил previous flight до замены его token. */
 StyxCancel *styxcancelstep(StyxCancel *cancel)
@@ -210,6 +222,11 @@ StyxCancel *styxcancelstep(StyxCancel *cancel)
         return NULL;
     }
     pthread_mutex_lock(&cancel->lock);
+    if (cancel->stop)
+    {
+        child->stop = poll_walk;
+        child->state = cancel;
+    }
     StyxCancel *previous = cancel->child;
     cancel->child = child;
     if (cancel->requested)

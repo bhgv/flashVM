@@ -58,7 +58,7 @@ StyxFid *fid = styxclientwalk(client, argv[2]);
 
 ## См. также
 
-- [Implementation: client/walk.c:226](../../client/walk.c#L226)
+- [Implementation: client/walk.c:232](../../client/walk.c#L232)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

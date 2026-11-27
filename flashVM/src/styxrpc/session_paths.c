@@ -4,6 +4,7 @@
  */
 #include "session_methods.h"
 #include "managed_values.h"
+#include "wire_wait.h"
 #include <string.h>
 
 
@@ -84,16 +85,22 @@ static FVM_Result cd(FVM_Context *context, FVM_Object *self, unsigned argc,
     FVM_StyxRpcSession *binding = state;
     char path[FVM_STYXRPC_ABSOLUTE_PATH];
     StyxRpcVfsDir *directory;
+    FVM_Worker *worker = NULL;
+    StyxRpcIoOutcome status;
     (void)self;
     if (argc != 1 || !fvm_styxrpc_resolve_path(binding, args, path))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (styxrpc_vfs_dir_open(binding->client, path + 1, &directory) != STYXRPC_IO_OK)
+    fvm_worker_current(context, &worker);
+    status = styxrpc_vfs_dir_open_until(binding->client, path + 1, &directory,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (status != STYXRPC_IO_OK)
     {
-        return fvm_styxrpc_managed_fail(context, "cannot change the working directory");
+        return fvm_styxrpc_managed_fail(context, status == STYXRPC_IO_CANCELLED ?
+            "VFS change directory cancelled" : "cannot change the working directory");
     }
-    styxrpc_vfs_dir_close(directory, 0);
+    styxrpc_vfs_dir_close(directory, worker != NULL);
     strcpy(binding->cwd, path);
     fvm_value_boolean(out, 1);
     return FVM_OK;
@@ -132,16 +139,21 @@ static FVM_Result mutate(FVM_Context *context, unsigned argc, const FVM_Value *a
 {
     char path[FVM_STYXRPC_ABSOLUTE_PATH];
     StyxRpcIoOutcome status;
+    FVM_Worker *worker = NULL;
+    StyxRpcVfsStop stop;
     if (argc != 1 || !fvm_styxrpc_resolve_path(binding, args, path) || !path[1])
     {
         return FVM_INVALID_ARGUMENT;
     }
-    status = create_directory ? styxrpc_vfs_mkdir(binding->client, path + 1) :
-        styxrpc_vfs_remove(binding->client, path + 1);
+    fvm_worker_current(context, &worker);
+    stop = worker ? fvm_styxrpc_worker_stopped : NULL;
+    status = create_directory ? styxrpc_vfs_mkdir_until(binding->client, path + 1, stop, worker) :
+        styxrpc_vfs_remove_until(binding->client, path + 1, stop, worker);
     if (status != STYXRPC_IO_OK)
     {
         return fvm_styxrpc_managed_fail(context, status == STYXRPC_IO_UNCERTAIN ?
-            "VFS mutation outcome is uncertain" : create_directory ?
+            "VFS mutation outcome is uncertain" : status == STYXRPC_IO_CANCELLED ?
+            "VFS mutation cancelled before submission" : create_directory ?
             "cannot create the directory" : "cannot remove the VFS entry");
     }
     fvm_value_boolean(out, 1);

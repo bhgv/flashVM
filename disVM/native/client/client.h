@@ -396,6 +396,30 @@ int styxclientcreatecancel(StyxFid *directory, const char *name, unsigned permis
     StyxCancel *cancel, StyxTransfer *result);
 
 
+/* EN: Own a single-use token borrowing stop/state through the synchronous
+ * operation. The caller samples the hook while it waits, outside client locks.
+ * Return NULL on allocation failure. Retire with styxcancelfree.
+ * RU: Создать одноразовый токен, заимствующий stop/state на время синхронной
+ * операции. Опрос идёт в вызывающем потоке вне замков клиента.
+ * При нехватке памяти вернуть NULL. Освобождать через styxcancelfree. */
+StyxCancel *styxcancelcreatepoll(StyxClientStop stop, void *state);
+
+
+/* EN: Like mkdir with an optional one-use token. Keep the owned directory
+ * fid until cleanup and read result to distinguish acknowledgement from uncertainty.
+ * RU: Как mkdir с необязательным одноразовым токеном. Удерживать собственный
+ * fid каталога до закрытия и проверять result на подтверждение или неопределённость. */
+int styxclientmkdircancel(StyxFid *directory, const char *name, unsigned permissions,
+    StyxCancel *cancel, StyxTransfer *result);
+
+
+/* EN: Report whether a borrowed, pinned fid uses multiplexed cancellation.
+ * Return zero for NULL or a serial transport. No I/O.
+ * RU: Проверить поддержку мультиплексной отмены у удерживаемого fid.
+ * Для NULL и последовательного транспорта вернуть ноль. Без ввода-вывода. */
+int styxclientfidcancellable(StyxFid *fid);
+
+
 /* EN: Like remove, with one optional stop token. Always consumes fid, scheduling
  * cleanup when the original request was not acknowledged.
  * RU: Как remove, с необязательным токеном остановки. Всегда поглощает fid.

@@ -86,7 +86,16 @@ static FVM_Result flush_file(FVM_Context *context, FVM_Object *self, unsigned ar
 static FVM_Result file_length(FVM_Context *context, OsHandle *handle, double *size)
 {
     StyxRpcFileInfo info;
-    if (styxrpc_vfs_file_stat(handle->file, &info) != STYXRPC_IO_OK || info.length > FVM_STYXRPC_FILE_OFFSET_MAX)
+    FVM_Worker *worker = NULL;
+    StyxRpcIoOutcome status;
+    fvm_worker_current(context, &worker);
+    status = styxrpc_vfs_file_stat_until(handle->file, &info,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (status == STYXRPC_IO_CANCELLED)
+    {
+        return fvm_styxrpc_managed_fail(context, "os file length cancelled");
+    }
+    if (status != STYXRPC_IO_OK || info.length > FVM_STYXRPC_FILE_OFFSET_MAX)
     {
         return fvm_styxrpc_managed_fail(context, "os file length unavailable or out of range");
     }
@@ -313,6 +322,8 @@ static FVM_Result next_file(FVM_Context *context, FVM_Object *self, unsigned arg
     OsHandle *handle = state;
     OsEntry item;
     int found;
+    FVM_Worker *worker = NULL;
+    StyxRpcIoOutcome result;
     (void)self;
     (void)args;
     if (!handle->directory || argc)
@@ -323,7 +334,16 @@ static FVM_Result next_file(FVM_Context *context, FVM_Object *self, unsigned arg
     item.out = out;
     item.status = FVM_OK;
     fvm_value_undefined(out);
-    if (styxrpc_vfs_dir_next(handle->directory, entry, &item, &found) != STYXRPC_IO_OK)
+    fvm_worker_current(context, &worker);
+    result = styxrpc_vfs_dir_next_until(handle->directory, entry, &item, &found,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (result == STYXRPC_IO_CANCELLED)
+    {
+        styxrpc_vfs_dir_close(handle->directory, 1);
+        handle->directory = NULL;
+        return fvm_styxrpc_managed_fail(context, "os directory read cancelled");
+    }
+    if (result != STYXRPC_IO_OK)
     {
         return item.status == FVM_OK ? fvm_styxrpc_managed_fail(context, "os directory read failed") : item.status;
     }

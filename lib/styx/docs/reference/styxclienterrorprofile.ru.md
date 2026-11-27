@@ -59,7 +59,7 @@ int styxclienterrorprofile(StyxClient *client, unsigned profile);
 
 ## См. также
 
-- [Implementation: client/walk.c:330](../../client/walk.c#L330)
+- [Implementation: client/walk.c:336](../../client/walk.c#L336)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

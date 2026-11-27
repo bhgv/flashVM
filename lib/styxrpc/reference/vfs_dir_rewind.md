@@ -22,3 +22,5 @@ session. For example, after a successful
 `styxrpc_vfs_dir_rewind(dir)`, call `styxrpc_vfs_dir_next` until EOF
 to read the current directory from the start. Use
 [close](vfs_directory.md) to consume the cursor.
+
+After a [cancelled step](vfs_dir_next_until.md), the fid has retired. Rewind returns `STYXRPC_IO_NOT_OPEN`.

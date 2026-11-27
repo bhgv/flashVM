@@ -1,6 +1,6 @@
 # styxrpc_vfs_open
 
-[English](vfs_open.md) · [Source](../src/vfs_client.c)
+[English](vfs_open.md) · [Source](../src/vfs_client.c) · [styxrpc_vfs_open_until](vfs_open_until.ru.md)
 
 ```c
 #include <styxrpc/vfs_client.h>

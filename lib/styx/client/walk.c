@@ -158,6 +158,12 @@ static StyxFid *walk(StyxClient *client,
         {
             goto abandoned;
         }
+        if (styxcancelpolling(step))
+        {
+            pthread_mutex_unlock(&client->lock);
+            styxcancelpoll(step);
+            pthread_mutex_lock(&client->lock);
+        }
         int status = styxrpccancel(client, &request, &reply, step);
         remote |= client->attempted;
         if (status == 1 && reply.nwqid > request.nwname)

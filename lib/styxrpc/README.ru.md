@@ -158,6 +158,9 @@ Dis передаёт живые каналы C-экспорту. C выбира�
 подтверждённый префикс при отмене следующего фрагмента. Парный сервер
 DisVM обрабатывает обе отложенные операции через штатный `Tflush` Styx.
 
+[Отмена операций VFS](VFS_CONTROL.ru.md) описывает остановку при обходе пути,
+открытии, чтении каталога и изменении пространства имён.
+
 Используйте [open](reference/vfs_open.ru.md) для удерживаемого дескриптора с [stat](reference/vfs_file_stat.ru.md), [чтением](reference/vfs_file_read.ru.md), [записью](reference/vfs_file_write.ru.md) и [закрытием](reference/vfs_close.ru.md). [List](reference/vfs_list.ru.md) читает каталог. Внешние переменные int используют [чтение целого значения](reference/vfs_int_read.ru.md) и [запись](reference/vfs_int_write.ru.md). Для исключительного создания файла на запись используйте [create](reference/vfs_create.ru.md).
 Создание каталогов и удаление выполняют [mkdir](reference/vfs_mkdir.ru.md) и [remove](reference/vfs_remove.ru.md).
 

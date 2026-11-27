@@ -58,7 +58,7 @@ StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative);
 
 ## См. также
 
-- [Implementation: client/walk.c:248](../../client/walk.c#L248)
+- [Implementation: client/walk.c:254](../../client/walk.c#L254)
 - [Public declaration](../../client/client.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

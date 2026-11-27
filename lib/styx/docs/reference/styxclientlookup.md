@@ -63,7 +63,7 @@ StyxFid *styxclientlookup(StyxClient *client, const char *path, StyxCancel *canc
 
 ## See also
 
-- [Implementation: client/walk.c:366](../../client/walk.c#L366)
+- [Implementation: client/walk.c:372](../../client/walk.c#L372)
 - [Public declaration](../../client/client.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

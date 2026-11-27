@@ -1,6 +1,6 @@
 # Open VFS directory cursors
 
-[Русский](vfs_directory.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_directory.c)
+[Русский](vfs_directory.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_directory.c) · [styxrpc_vfs_dir_open_until](vfs_dir_open_until.md) · [styxrpc_vfs_dir_next_until](vfs_dir_next_until.md)
 
 `styxrpc_vfs_dir_open(session, path, &dir)` opens a visible directory at the
 relative path, with an empty path for the attach root. On success the caller

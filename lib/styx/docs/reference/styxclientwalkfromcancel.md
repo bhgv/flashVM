@@ -63,7 +63,7 @@ StyxFid *styxclientwalkfromcancel(StyxFid *base, const char *relative, StyxCance
 
 ## See also
 
-- [Implementation: client/walk.c:304](../../client/walk.c#L304)
+- [Implementation: client/walk.c:310](../../client/walk.c#L310)
 - [Public declaration](../../client/client.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

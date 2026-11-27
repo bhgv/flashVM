@@ -55,7 +55,7 @@ styxcancelrequest(cancel->child);
 
 ## See also
 
-- [Implementation: client/cancel.c:63](../../client/cancel.c#L63)
+- [Implementation: client/cancel.c:89](../../client/cancel.c#L89)
 - [Public declaration](../../client/client.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

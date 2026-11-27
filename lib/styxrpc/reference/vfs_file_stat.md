@@ -1,6 +1,6 @@
 # styxrpc_vfs_file_stat
 
-[Русский](vfs_file_stat.ru.md) · [Source](../src/vfs_client.c)
+[Русский](vfs_file_stat.ru.md) · [Source](../src/vfs_client.c) · [styxrpc_vfs_file_stat_until](vfs_file_stat_until.md)
 
 ```c
 #include <styxrpc/vfs_client.h>

@@ -73,91 +73,151 @@ int styxrpc_vfs_visible_path(const char *path)
 }
 
 
-/* EN: Walk a checked relative path; empty represents the attach root for metadata.
- * RU: Пройти по проверенному относительному пути. Пустой путь для метаданных означает корень. */
-static StyxFid *walk_path(StyxClient *session, const char *path, int root, int internal)
+/* EN: Validate the borrowed path, using an empty string for the attached root
+ * only when root is permitted. Pass wait and the unopened fid to control_walk.
+ * RU: Проверить заимствованный путь. Пустая строка означает корень, когда
+ * root разрешён. Передать wait и выходной неоткрытый fid в control_walk. */
+static StyxRpcIoOutcome walk_path(StyxClient *session, const char *path, int root,
+    int internal, StyxRpcVfsWait *wait, StyxFid **out)
 {
-    return !session || !path ? NULL : root && !*path ? styxclientwalk(session, ".") :
-        relative_path(path, internal) ? styxclientwalk(session, path) : NULL;
+    if (!session || !path || (!(root && !*path) && !relative_path(path, internal)))
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    return styxrpc_vfs_control_walk(session, *path ? path : ".", wait, out);
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_file_stat_until(StyxRpcVfsFile *file, StyxRpcFileInfo *info,
+    StyxRpcVfsStop stop, void *state)
+{
+    if (!file || !info)
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    StyxRpcVfsWait wait = {stop, state, 0};
+    StyxMeta meta;
+    StyxRpcIoOutcome status = styxrpc_vfs_control_stat(file, &meta, &wait, STYXRPC_IO_FAILED);
+    if (status == STYXRPC_IO_OK)
+    {
+        *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
+    }
+    return status;
 }
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *info)
 {
-    if (!file || !info)
+    return styxrpc_vfs_file_stat_until(file, info, NULL, NULL);
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_stat_until(StyxClient *session, const char *path, StyxRpcFileInfo *info,
+    StyxRpcVfsStop stop, void *state)
+{
+    if (!info)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
+    StyxRpcVfsWait wait = {stop, state, 0};
+    StyxFid *fid = NULL;
     StyxMeta meta;
-    if (!styxclientstat(file, &meta))
+    StyxRpcIoOutcome status = walk_path(session, path, 1, 0, &wait, &fid);
+    if (status == STYXRPC_IO_OK)
     {
-        return STYXRPC_IO_FAILED;
+        status = styxrpc_vfs_control_stat(fid, &meta, &wait, STYXRPC_IO_FAILED);
+        if (status == STYXRPC_IO_OK)
+        {
+            if (styxrpc_vfs_service_meta(&meta))
+            {
+                status = STYXRPC_IO_NOT_OPEN;
+            }
+            else
+            {
+                *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
+            }
+        }
     }
-    *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
-    return STYXRPC_IO_OK;
+    styxrpc_vfs_close(fid, stop != NULL);
+    return status;
 }
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_stat(StyxClient *session, const char *path, StyxRpcFileInfo *info)
 {
-    StyxFid *fid = info ? walk_path(session, path, 1, 0) : NULL;
+    return styxrpc_vfs_stat_until(session, path, info, NULL, NULL);
+}
+
+
+/* EN: Validate kind/type and open one exact fid in mode under wait. Publish
+ * it in out on success, otherwise retire it. Session and path stay borrowed.
+ * RU: Проверить kind/тип и открыть точный fid в mode с wait. При успехе выдать
+ * его в out, при отказе закрыть. Session и path остаются заимствованными. */
+static StyxRpcIoOutcome open_entry(StyxClient *session, const char *path, StyxRpcFileMode mode,
+    int directory, VfsPathKind kind, StyxRpcVfsWait *wait, StyxFid **out)
+{
+    StyxFid *fid = NULL;
+    StyxRpcIoOutcome status = walk_path(session, path, directory, kind != VFS_FILE_PATH, wait, &fid);
+    if (status != STYXRPC_IO_OK)
+    {
+        return status;
+    }
     StyxMeta meta;
-    StyxRpcIoOutcome status = STYXRPC_IO_NOT_OPEN;
-    if (fid && !styxclientstat(fid, &meta))
+    status = styxrpc_vfs_control_stat(fid, &meta, wait, STYXRPC_IO_NOT_OPEN);
+    if (status == STYXRPC_IO_OK && (!!meta.directory != directory ||
+        (kind == VFS_FILE_PATH && styxrpc_vfs_service_meta(&meta)) ||
+        (kind == VFS_EXCHANGE_PATH && !exchange_meta(&meta))))
     {
-        status = STYXRPC_IO_FAILED;
+        status = STYXRPC_IO_NOT_OPEN;
     }
-    else if (fid && !styxrpc_vfs_service_meta(&meta))
+    if (status == STYXRPC_IO_OK)
     {
-        *info = (StyxRpcFileInfo){meta.length, (unsigned)meta.mode, meta.directory};
-        status = STYXRPC_IO_OK;
+        status = styxrpc_vfs_control_open(fid, mode, wait);
     }
-    styxclientclunk(fid);
+    if (status == STYXRPC_IO_OK)
+    {
+        *out = fid;
+    }
+    else
+    {
+        styxrpc_vfs_close(fid, wait->stop != NULL);
+    }
     return status;
 }
 
 
-/* EN: Keep one exact opened file or directory fid. Reject a type mismatch before Topen.
- * RU: Удерживать точный открытый fid файла или каталога. Отклонить неверный тип до Topen. */
-static StyxFid *open_entry(StyxClient *session, const char *path, StyxRpcFileMode mode, int directory, VfsPathKind kind)
-{
-    StyxFid *fid = walk_path(session, path, directory, kind != VFS_FILE_PATH);
-    StyxMeta meta;
-    if (fid && (!styxclientstat(fid, &meta) || !!meta.directory != directory ||
-        (kind == VFS_FILE_PATH && styxrpc_vfs_service_meta(&meta)) ||
-        (kind == VFS_EXCHANGE_PATH && !exchange_meta(&meta)) || !styxclientopen(fid, mode)))
-    {
-        styxclientclunk(fid);
-        return NULL;
-    }
-    return fid;
-}
-
-
-/* EN: Publish one opened regular file on success under the selected visibility rules.
- * RU: При успехе выдать открытый обычный файл по выбранным правилам видимости. */
-static StyxRpcIoOutcome open_file(StyxClient *session, const char *path, StyxRpcFileMode mode, StyxRpcVfsFile **file, VfsPathKind kind)
+/* EN: Publish one opened regular file on success under the selected visibility
+ * rules. The optional hook and state are borrowed through open_entry.
+ * RU: Выдать открытый обычный файл по выбранным правилам видимости.
+ * Необязательные stop/state заимствованы до завершения open_entry. */
+static StyxRpcIoOutcome open_file(StyxClient *session, const char *path, StyxRpcFileMode mode,
+    StyxRpcVfsFile **file, VfsPathKind kind, StyxRpcVfsStop stop, void *state)
 {
     if (!file || mode < STYXRPC_FILE_READ || mode > STYXRPC_FILE_RDWR)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = open_entry(session, path, mode, 0, kind);
-    if (!fid)
-    {
-        return STYXRPC_IO_NOT_OPEN;
-    }
-    *file = fid;
-    return STYXRPC_IO_OK;
+    StyxRpcVfsWait wait = {stop, state, 0};
+    return open_entry(session, path, mode, 0, kind, &wait, file);
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_open_until(StyxClient *session, const char *path, StyxRpcFileMode mode,
+    StyxRpcVfsFile **file, StyxRpcVfsStop stop, void *state)
+{
+    return open_file(session, path, mode, file, VFS_FILE_PATH, stop, state);
 }
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_open(StyxClient *session, const char *path, StyxRpcFileMode mode, StyxRpcVfsFile **file)
 {
-    return open_file(session, path, mode, file, VFS_FILE_PATH);
+    return styxrpc_vfs_open_until(session, path, mode, file, NULL, NULL);
 }
 
 
@@ -165,7 +225,7 @@ StyxRpcIoOutcome styxrpc_vfs_open(StyxClient *session, const char *path, StyxRpc
 StyxRpcIoOutcome styxrpc_vfs_exchange_open(StyxClient *session, const char *path,
     StyxRpcFileMode mode, StyxRpcVfsFile **file)
 {
-    return open_file(session, path, mode, file, VFS_EXCHANGE_PATH);
+    return open_file(session, path, mode, file, VFS_EXCHANGE_PATH, NULL, NULL);
 }
 
 
@@ -318,9 +378,10 @@ StyxRpcIoOutcome styxrpc_vfs_write_at(StyxClient *session, const char *path,
 
 
 /* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
-StyxFid *styxrpc_vfs_open_directory_fid(StyxClient *session, const char *path)
+StyxRpcIoOutcome styxrpc_vfs_open_directory_fid(StyxClient *session, const char *path,
+    StyxRpcVfsWait *wait, StyxFid **out)
 {
-    return open_entry(session, path, STYXRPC_FILE_READ, 1, VFS_FILE_PATH);
+    return open_entry(session, path, STYXRPC_FILE_READ, 1, VFS_FILE_PATH, wait, out);
 }
 
 
@@ -349,8 +410,10 @@ StyxRpcIoOutcome styxrpc_vfs_int_open_identified(StyxClient *session, const char
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ, 0, VFS_VARIABLE_PATH);
-    if (!fid)
+    StyxFid *fid = NULL;
+    StyxRpcVfsWait wait = {0};
+    if (open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ,
+        0, VFS_VARIABLE_PATH, &wait, &fid) != STYXRPC_IO_OK)
     {
         return STYXRPC_IO_NOT_OPEN;
     }

@@ -139,12 +139,14 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxattachreply](reference/styxattachreply.md) — `Styx::server; hosted native build`
 - [styxattachroot](reference/styxattachroot.md) — `Styx::server; hosted native build`
 - [styxcancelcreate](reference/styxcancelcreate.md) — `Styx::client; hosted native build`
+- [styxcancelcreatepoll](reference/styxcancelcreatepoll.md) — `Styx::client; hosted native build`
 - [styxcancelfree](reference/styxcancelfree.md) — `Styx::client; hosted native build`
 - [styxcancelrequest](reference/styxcancelrequest.md) — `Styx::client; hosted native build`
 - [styxclient](reference/styxclient.md) — `Styx::server; hosted native build`
 - [styxclientalive](reference/styxclientalive.md) — `Styx::client; hosted native build`
 - [styxclientbidir](reference/styxclientbidir.md) — `Styx::client; hosted native build`
 - [styxclientcancellable](reference/styxclientcancellable.md) — `Styx::client; hosted native build`
+- [styxclientfidcancellable](reference/styxclientfidcancellable.md) — `Styx::client; hosted native build`
 - [styxclientclunk](reference/styxclientclunk.md) — `Styx::client; hosted native build`
 - [styxclientclunkcancel](reference/styxclientclunkcancel.md) — `Styx::client; hosted native build`
 - [styxclientclunklater](reference/styxclientclunklater.md) — `Styx::client; hosted native build`
@@ -157,6 +159,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientlookupfrom](reference/styxclientlookupfrom.md) — `Styx::client; hosted native build`
 - [styxclientmount](reference/styxclientmount.md) — `Styx::client; hosted native build`
 - [styxclientmkdir](reference/styxclientmkdir.md) — `Styx::client; hosted native build`
+- [styxclientmkdircancel](reference/styxclientmkdircancel.md) — `Styx::client; hosted native build`
 - [styxclientmountfd](reference/styxclientmountfd.md) — `Styx::client; hosted native build`
 - [styxclientmountphy](reference/styxclientmountphy.md) — `Styx::client; hosted native build`
 - [styxclientobserve](reference/styxclientobserve.md) — `Styx::client; hosted native build`

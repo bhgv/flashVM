@@ -1,6 +1,6 @@
 # styxrpc_vfs_mkdir
 
-[Русский](vfs_mkdir.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_MKDIR.md)
+[Русский](vfs_mkdir.ru.md) · [Header](../include/styxrpc/vfs_client.h) · [Implementation](../src/vfs_create.c) · [FlashVM](../../../flashVM/doc/STYX_VFS_MKDIR.md) · [styxrpc_vfs_mkdir_until](vfs_mkdir_until.md)
 
 Link `StyxRpc::launch` and pass an attached session and a canonical,
 nonempty path relative to its root. The parent must be an ordinary directory.

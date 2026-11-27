@@ -95,6 +95,52 @@ StyxRpcIoOutcome styxrpc_vfs_remove(struct StyxClient *session, const char *path
 StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *info);
 
 
+/* EN: Like stat, polling optional stop(state) through Twalk and Tstat.
+ * Publish no metadata on failure. Empty path addresses the attach root.
+ * RU: Как stat, проверяя необязательный stop(state) во время Twalk и Tstat.
+ * При ошибке не выдавать метаданные. Пустой путь обозначает корень. */
+StyxRpcIoOutcome styxrpc_vfs_stat_until(struct StyxClient *session, const char *path, StyxRpcFileInfo *info,
+    StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like file_stat, polling optional stop(state) on the caller during Tstat.
+ * Borrow file, preserving it and info on cancellation.
+ * RU: Как file_stat, с опросом stop(state) в потоке вызова при Tstat.
+ * Заимствовать file, сохранять его и info при отмене. */
+StyxRpcIoOutcome styxrpc_vfs_file_stat_until(StyxRpcVfsFile *file, StyxRpcFileInfo *info,
+    StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like open, polling optional stop(state) through all admission stages.
+ * Transfer one owned exact fid only on acknowledgement and leave file unchanged on refusal.
+ * RU: Как open, с опросом stop(state) на всех этапах допуска.
+ * Выдать точный собственный fid при подтверждении, при отказе file не менять. */
+StyxRpcIoOutcome styxrpc_vfs_open_until(struct StyxClient *session, const char *path, StyxRpcFileMode mode,
+    StyxRpcVfsFile **file, StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like create, polling optional stop(state) through parent validation and
+ * Tcreate. A sent mutation without acknowledgement returns UNCERTAIN even on stop.
+ * RU: Как create, с опросом stop(state) при проверке родителя и Tcreate.
+ * Отправленное изменение без подтверждения возвращает UNCERTAIN даже при отмене. */
+StyxRpcIoOutcome styxrpc_vfs_create_until(struct StyxClient *session, const char *path, StyxRpcVfsFile **file,
+    StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like mkdir, with the cancellation and uncertainty rules of create_until.
+ * RU: Как mkdir, с правилами отмены и неопределённости из create_until. */
+StyxRpcIoOutcome styxrpc_vfs_mkdir_until(struct StyxClient *session, const char *path,
+    StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like remove, polling optional stop(state) through path validation and
+ * Tremove. Keep uncertainty if a sent remove lacks an acknowledgement.
+ * RU: Как remove, с опросом stop(state) на проверке пути и Tremove.
+ * Сохранять неопределённость отправленного удаления без подтверждения. */
+StyxRpcIoOutcome styxrpc_vfs_remove_until(struct StyxClient *session, const char *path,
+    StyxRpcVfsStop stop, void *state);
+
+
 /* EN: Transfer a confirmed prefix on file at offset. The caller owns both cursor and buffer.
  * RU: Передать подтверждённый префикс через file со смещения offset. Курсор и буфер у вызывающего. */
 StyxRpcIoOutcome styxrpc_vfs_file_read(StyxRpcVfsFile *file, uint64_t offset, void *bytes, size_t size, size_t *used);
@@ -137,10 +183,28 @@ StyxRpcIoOutcome styxrpc_vfs_dir_open(struct StyxClient *, const char *, StyxRpc
  * RU: Передать одну видимую запись. На EOF found равен нулю. Имя заимствуется на время visit. */
 StyxRpcIoOutcome styxrpc_vfs_dir_next(StyxRpcVfsDir *, StyxRpcVfsVisitor, void *, int *found);
 
+/* EN: Like dir_open, polling optional stop(state) across admission. Transfer
+ * one owned cursor into out on acknowledgement only.
+ * RU: Как dir_open, с опросом stop(state) при допуске. Выдать собственный
+ * курсор в out только при подтверждении. */
+StyxRpcIoOutcome styxrpc_vfs_dir_open_until(struct StyxClient *session, const char *path, StyxRpcVfsDir **out,
+    StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Like dir_next, polling stop(stop_state) before advancing and during
+ * directory reads. If stopped retire the exact fid and close the cursor
+ * allocation with dir_close. found is zero and no visitor runs on cancellation.
+ * RU: Как dir_next, с опросом stop(stop_state) до продвижения и при чтении.
+ * При отмене освобождается fid, память курсора нужно закрыть через dir_close.
+ * found равен нулю, обработчик при отмене не вызывается. */
+StyxRpcIoOutcome styxrpc_vfs_dir_next_until(StyxRpcVfsDir *dir, StyxRpcVfsVisitor visit, void *state, int *found,
+    StyxRpcVfsStop stop, void *stop_state);
+
+
 /* EN: Discard buffered entries and restart on the same fid on the next read.
- * Caller serializes operations. NULL returns NOT_OPEN; otherwise OK without I/O.
+ * Caller serializes operations. NULL or a cancelled cursor returns NOT_OPEN.
  * RU: Сбросить буфер и начать следующий обход того же fid с нуля.
- * Вызывающий сериализует операции. NULL даёт NOT_OPEN, иначе OK без I/O. */
+ * Вызывающий сериализует операции. NULL или отмена курсора дают NOT_OPEN. */
 StyxRpcIoOutcome styxrpc_vfs_dir_rewind(StyxRpcVfsDir *dir);
 
 /* EN/RU: Consume dir and optionally defer clunk. / Освободить dir и при необходимости отложить clunk. */

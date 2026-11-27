@@ -1,5 +1,19 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1812 — cancel mounted VFS control waits in FlashVM tasks
+
+The shared Styx client polls a stop flag across fragmented walks. The
+standalone SDK and FlashVM tasks use the same cancellation rules for
+metadata, open, directory steps and namespace mutations. A reply received
+before flush retirement wins. A mutation without an acknowledgement
+keeps its uncertain result.
+
+Общий клиент Styx проверяет остановку на фрагментах обхода. SDK и задачи
+FlashVM используют одни правила отмены для метаданных, открытия, чтения
+каталога и изменений дерева. Исходный ответ, пришедший до завершения flush,
+имеет приоритет. Изменение без ответа сохраняет неопределённый исход.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1811 — create and remove through mounted Styx trees
 
 DisVM supports exclusive file creation and removal on writable mounts.
