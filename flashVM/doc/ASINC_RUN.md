@@ -16,8 +16,7 @@ retains up to 16 tasks.
 
 The owner can read primitive results through [poll](ASINC_POLL.md) and
 request [cancellation](ASINC_CANCEL.md). If a worker returns an object,
-its completion fails. The task does not share the caller's VFS session
-or UI. Embed with [`fvm_async_install`](../include/flashvm/async.h#L15).
+its completion fails. The paired player provides [ordinary VFS](ASINC_VFS.md) with a private working directory. The worker has no movie timeline. Embed with [`fvm_async_install`](../include/flashvm/async.h#L15).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -148,6 +148,8 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context)
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     context->transfer_resources = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    context->async_setup.install = 0;
+    context->async_setup.state = 0;
     context->async_tasks = 0;
     context->worker = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

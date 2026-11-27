@@ -19,8 +19,7 @@ The new context runs the detached bytecode with its own standard library.
 The compiled profile can read its parameters, previously declared `var`
 bindings and the worker's `Math` namespace. Pass exactly the declared
 number of arguments, up to eight. The worker receives one graph snapshot.
-Outer bindings, `ref` and other `asinc` forms remain outside this profile. Shared capture publication and live VFS access from tasks
-remain separate work.
+Outer bindings, `ref` and other `asinc` forms remain outside this profile. [Ordinary mounted VFS](ASINC_VFS.md) is available in the paired player. Shared capture publication remains pending.
 
 ## Task operations
 

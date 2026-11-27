@@ -47,7 +47,7 @@ function, for example `asinc function compute(n) { return n + 2; }`.
 The SWF initializer installs `_root.compute`. Calling `_root.compute(40)`
 starts a native OS thread with an independent FlashVM context and returns a
 task handle. The declared parameters, body locals and the worker's own
-`Math` are available. Up to eight arguments are copied as one graph. Outer bindings, live `ref`, and the block and
+`Math` are available. Up to eight arguments are copied as one graph. The paired player also provides [ordinary mounted VFS](../flashVM/doc/ASINC_VFS.md). Outer bindings, live `ref`, and the block and
 expression forms are refused by this profile. The [task guide](../flashVM/doc/ASINC_TASK.md)
 describes polling, cancellation and the paired-player check.
 

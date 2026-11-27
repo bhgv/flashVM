@@ -434,7 +434,7 @@ FVM_Result fvm_os_wrap_handle(FVM_Context *context, OsHandle *handle, int direct
     }
     for (i = 0; i < sizeof(calls) / sizeof(calls[0]) && status == FVM_OK; ++i)
     {
-        if (!i || (directory ? i >= 7 : i < 7))
+        if ((!i || (directory ? i >= 7 : i < 7)) && (calls[i] != load_file || handle->movies->root))
         {
             status = fvm_object_define_method_rooted(context, value.object, names[i], calls[i], handle, value.object);
         }

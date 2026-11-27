@@ -18,6 +18,7 @@
  * RU: Нативная запись обёртки и очистки владельца, недоступная коду рабочего потока. */
 struct FVM_AsyncTask
 {
+    FVM_AsyncWorkerSetup setup; /* Immutable native setup, borrowed by the worker until join. */
     FVM_Worker *worker;   /* Owned join handle after launch. */
     FVM_AsyncTask *next;  /* Next record in the launching context. */
     bool released;      /* Wrapper was collected and no method can use this record. */
@@ -138,6 +139,13 @@ static FVM_Result cancel_task(FVM_Context *, FVM_Object *, unsigned count,
 }
 
 
+/* EN/RU: See async_worker.h. / См. async_worker.h. */
+extern "C" void fvm_async_worker_setup(FVM_Context *owner, const FVM_AsyncWorkerSetup *setup)
+{
+    owner->async_setup = *setup;
+}
+
+
 /* [GC:] EN: Start a detached entry with borrowed arguments and return the owner task handle.
  * RU: Запустить отделённую функцию с переданными аргументами и вернуть задачу владельца. */
 static FVM_Result start_task(FVM_Context *context, FVM_Object *function, unsigned count,
@@ -186,7 +194,8 @@ static FVM_Result start_task(FVM_Context *context, FVM_Object *function, unsigne
     {
         FVM_Config config = context->runtime->config;
         config.userdata = 0;
-        status = fvm_worker_run_function_args(context, &config, function, count, args, &task->worker);
+        task->setup = context->async_setup;
+        status = fvm_worker_run_prepared(context, &config, function, count, args, &task->setup, &task->worker);
     }
     if (status == FVM_OK)
     {

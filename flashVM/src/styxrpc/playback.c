@@ -10,6 +10,8 @@
 #include "flashvm/gc.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/async.h"
+#include "../standard/async_worker.h"
+#include "worker_vfs.h"
 #include "flashvm/standard.h"
 #include "flashvm/styxrpc_filesystem.h"
 #include "playback_internal.h"
@@ -62,6 +64,10 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     }
     if (status == FVM_OK && playback->spec.session)
     {
+        FVM_AsyncWorkerSetup setup;
+        setup.install = fvm_styxrpc_worker_vfs;
+        setup.state = playback->spec.session;
+        fvm_async_worker_setup(context, &setup);
         status = fvm_styxrpc_filesystem_mount(context, "/", playback->spec.session);
         if (status == FVM_OK)
         {

@@ -51,7 +51,8 @@ static void asinc_binding_error(void)
  * RU: Прочитать именованную переменную и вернуть её идентификатор SSA. */
 static int binding_read(const char *key)
 {
-    if (detached_method && !asinc_local(key) && strcmp(key, "Math"))
+    if (detached_method && !asinc_local(key) && strcmp(key, "Math") &&
+        strcmp(key, "vfs") && strcmp(key, "os"))
     {
         asinc_binding_error();
         return 0;

@@ -3,7 +3,7 @@
  * RU: Запуск отделённых функций AVM1 из снимков графов.
  */
 #include <stdlib.h>
-#include "flashvm/worker.h"
+#include "../standard/async_worker.h"
 #include "flashvm/execution.h"
 #include "flashvm/gc.h"
 #include "flashvm/table.h"
@@ -56,19 +56,23 @@ static FVM_Result invoke_arguments(FVM_Context *context, FVM_Object *packet, FVM
 
 /* Restore the copied closure or argument packet in the worker context.
  * RU: Восстановить замыкание либо пакет аргументов в контексте потока.
- * context/input/output are worker-owned; unused carries no host state. Return the
+ * context/input/output are worker-owned; state borrows immutable native setup. Return the
  * first restoration/execution failure. The worker layer copies primitive output
  * before destroying its context and rejects object results. No owner dispatch. */
 static FVM_Result invoke_snapshot(FVM_Context *context, const FVM_Value *input,
-                                  FVM_Value *output, void *unused)
+                                  FVM_Value *output, void *state)
 {
     FVM_Value function;
     FVM_Result result;
     size_t size = fvm_value_string_size(input) / FVM_WORKER_BYTE_LETTERS;
     unsigned char *bytes;
     size_t i;
-    (void)unused;
+    const FVM_AsyncWorkerSetup *setup = static_cast<const FVM_AsyncWorkerSetup *>(state);
     result = fvm_standard_install(context);
+    if (result == FVM_OK && setup && setup->install)
+    {
+        result = setup->install(context, setup->state);
+    }
     if (result != FVM_OK)
     {
         return result;
@@ -109,9 +113,10 @@ static FVM_Result invoke_snapshot(FVM_Context *context, const FVM_Value *input,
 }
 
 
-/* [GC:] EN/RU: See worker.h. / См. worker.h. */
-extern "C" FVM_Result fvm_worker_run_function_args(FVM_Context *owner, const FVM_Config *config,
-    FVM_Object *function, unsigned int count, const FVM_Value *args, FVM_Worker **out)
+/* [GC:] EN/RU: See async_worker.h. / См. async_worker.h. */
+extern "C" FVM_Result fvm_worker_run_prepared(FVM_Context *owner, const FVM_Config *config,
+    FVM_Object *function, unsigned int count, const FVM_Value *args, FVM_AsyncWorkerSetup *setup,
+    FVM_Worker **out)
 {
     unsigned char *bytes = 0;
     size_t size = 0;
@@ -185,13 +190,21 @@ extern "C" FVM_Result fvm_worker_run_function_args(FVM_Context *owner, const FVM
         result = fvm_value_string_bytes(&input, encoded, FVM_WORKER_BYTE_LETTERS * size);
         if (result == FVM_OK)
         {
-            result = fvm_worker_run(config, invoke_snapshot, &input, 0, out);
+            result = fvm_worker_run(config, invoke_snapshot, &input, setup, out);
         }
     }
     free(encoded);
     fvm_serialized_free(bytes);
     return result;
 }
+
+/* [GC:] EN/RU: See worker.h. / См. worker.h. */
+extern "C" FVM_Result fvm_worker_run_function_args(FVM_Context *owner, const FVM_Config *config,
+    FVM_Object *function, unsigned int count, const FVM_Value *args, FVM_Worker **out)
+{
+    return fvm_worker_run_prepared(owner, config, function, count, args, 0, out);
+}
+
 
 /* [GC:] EN/RU: See worker.h. / См. worker.h. */
 extern "C" FVM_Result fvm_worker_run_function(FVM_Context *owner, const FVM_Config *config,

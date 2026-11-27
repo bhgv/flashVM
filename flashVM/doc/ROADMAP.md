@@ -1,5 +1,13 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1795 — live mounted files in native AS tasks
+
+Paired playback installs ordinary `vfs` and `os` for detached workers.
+Each task has its own descriptors and current directory. The mixed
+Limbo/AS check holds a worker read while the movie advances, then checks
+the reply, writes through the live mount and verifies hidden names.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1794 — copied arguments for native AS tasks
 
 AS2 view carries the detached function's formals through FIR and SWL.

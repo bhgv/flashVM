@@ -16,6 +16,7 @@
 #include "flashvm/function.h"
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
+#include "../standard/async_worker.h"
 #include "flashvm/input.h"
 #include "flashvm/keyboard.h"
 #include "flashvm/movieclip.h"
@@ -286,6 +287,7 @@ struct FVM_Context
     fvm_detail::vector<FVM_SourceLocation>
         debug_locations;                 /* [GC:] Bytecode-to-source mappings registered by the host. */
     void *transfer_resources;            /* [GC:] Resource identity registry used by graph transfer. */
+    FVM_AsyncWorkerSetup async_setup;    /* Borrowed native capabilities for future script tasks. */
     FVM_AsyncTask *async_tasks;           /* Script tasks and released workers awaiting reaping. */
     FVM_Worker *worker;                  /* [GC:] Worker executing this context, when present. */
     FVM_Object *array_builtin_prototype; /* [GC:] Original Array prototype retained for native result builders. */

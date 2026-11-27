@@ -49,9 +49,10 @@ local to each invocation. Plain assignments follow normal AVM1 name resolution.
 
 A standalone `asinc function name() { ... }` uses the same method-body grammar
 and returns a task immediately when invoked. It runs in an independent OS
-thread. The body admits its own previously declared `var` names and its
-worker-local `Math`. Formal parameters, owner captures, `ref`, block and
-expression forms are rejected. See [the task contract](../../../flashVM/doc/ASINC_TASK.md).
+thread. The body admits its formals, previously declared `var` names,
+worker-local `Math` and the paired player's [`vfs` and `os`](../../../flashVM/doc/ASINC_VFS.md).
+Owner captures, `ref`, block and expression forms are rejected.
+See [the task contract](../../../flashVM/doc/ASINC_TASK.md).
 
 Early returns, standalone call statements, chained member expressions, other loop forms
 and classes remain outside the profile. The shared syntax frontend

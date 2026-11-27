@@ -35,7 +35,7 @@ def main():
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
-                    "positioned", "withdraw", "dirlive", "rebind", "module-channel"):
+                    "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -50,6 +50,11 @@ def main():
             (directory / "created").mkdir()
         if name in ("publish", "nodes", "positioned", "withdraw", "dirlive"):
             (directory / "tools").mkdir()
+        if name == "asinc-vfs":
+            (directory / "tools/.prog").mkdir(parents=True)
+            (directory / "tools/result").write_bytes(b"0")
+            (directory / "front").mkdir()
+            (directory / "front/result").write_bytes(b"1")
         if name == "dirlive":
             (directory / "tools/before").touch()
         if name == "modref-reverse":
@@ -74,6 +79,7 @@ def main():
             "modref": ("styxnamed", "styxmodref"),
             "modref-reverse": ("styxnamed", "styxmodref", "styxnodes"),
             "module-channel": (),
+            "asinc-vfs": ("styxnodes",),
             "named": ("styxvalue", "styxnamed"),
             "mixed": ("styxintref", "styxchannel"),
         }[name]
@@ -90,6 +96,7 @@ def main():
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
             "dirlive": ("dirlive_signal.as",),
             "rebind": ("rebind_signal.as",),
+            "asinc-vfs": ("asinc-vfs_worker.as",),
         }.get(name, ())
         compile_movie(args, directory, tests / (name + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))
@@ -101,6 +108,9 @@ def main():
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp,
         )
+        if name == "asinc-vfs" and ((directory / "tools/result").read_bytes() != b"0" or
+                                    (directory / "task-temp").exists()):
+            raise RuntimeError("worker write used the old branch or left a directory behind")
         if name == "mixed" and (directory / "created/nested").exists():
             raise RuntimeError("the movie did not remove its temporary directory")
         for created in (("created/rpc-file", "rpc-root-file") if name == "mixed" else ()):
