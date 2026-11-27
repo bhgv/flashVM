@@ -37,7 +37,8 @@ FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state)
     vfs->files.context = worker;
     vfs->files.session = routes->session;
     vfs->files.named = routes->named;
-    /* Module exports can execute owner VM callbacks. Workers borrow only native routes. */
+    /* EN: Leave the movie root and caller PID unset. Workers borrow only native routes.
+     * RU: Корень фильма и PID вызывающего не заданы. Поток использует только нативные маршруты. */
     vfs->files.binding = &vfs->binding;
 
     fvm_value_undefined(&value);

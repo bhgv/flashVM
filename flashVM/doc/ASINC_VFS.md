@@ -37,8 +37,16 @@ rendezvous raced cancellation, the peer may have consumed the value.
 The task can exchange snapshots and named cell descriptors. References
 to module exports require owner processing.
 
-File `load()`, node and module publication and playback control stay
-with the movie.
+A worker can also open a published `.dis` image for reading and use
+`load()` to get a proxy in its own context. Closing the original handle
+leaves the proxy's own fid available for direct method calls. The proxy
+stays bound to that publication. Withdrawal makes it fail even if the
+same VFS name is reused. The worker can use interfaces that require no
+reverse PID. Return an ordinary result from the task so the movie can
+receive it through `poll()`.
+
+Loading a child SWF, publishing nodes or modules and controlling playback
+use the movie's context.
 A standalone context using [`fvm_async_install`](../include/flashvm/async.h#L15) alone has no mounted
 worker VFS.
 
@@ -51,7 +59,13 @@ The test also checks hidden service names and independent cwd.
 [Limbo driver](../../lib/styxrpc/tests/flashvm/asinc-vfs_pair.b).
 The `--asinc-chan` profile checks echo, cancellation of unmatched send
 and receive, exact name removal and disconnect with a task still pending.
-Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs.
+Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs. Add
+`--runtime` and `--limbo` to compile the Dis provider and check the worker
+proxy in interpreter and JIT modes over TCP. The
+[AS worker](../tests/styxrpc/peer-asinc-load-worker.as) closes the source
+handle before calling `next`. The
+[film](../tests/styxrpc/peer-asinc-load-caller.as) checks a value of `42`
+and a remote rejection from another task.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

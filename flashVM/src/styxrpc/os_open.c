@@ -55,7 +55,7 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     {
         opened = creating ? styxrpc_vfs_create(movies->session, path + 1, &handle->file) :
             styxrpc_vfs_open(movies->session, path + 1, access, &handle->file);
-        if (movies->root && !creating && opened == STYXRPC_IO_NOT_OPEN &&
+        if (!creating && opened == STYXRPC_IO_NOT_OPEN &&
             access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
         {
             StyxRpcModuleExports exports;

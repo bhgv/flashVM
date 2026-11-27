@@ -32,11 +32,13 @@ def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
     if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller", "messages-caller",
-                "asinc", "asinc-chan-caller"):
+                "asinc", "asinc-chan-caller", "asinc-load-caller"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
         objects.append(report)
+    if role == "asinc-load-caller":
+        objects.append(compile_unit(args, directory, "peer-asinc-load-worker"))
     if role == "asinc":
         objects.append(compile_unit(args, directory, "peer-asinc-frame"))
     if role in ("asinc-chan-caller", "asinc-chan-provider"):
@@ -136,9 +138,9 @@ def dis_calls_flash(args, directory, mode):
                     "PASS DisVM called the AS module and updated its live variable", tcp=args.tcp)
 
 
-# EN: Wait for the AVM1 assertion trace, then end the player and collect the DisVM log.
-# RU: Дождаться подтверждения AVM1, затем остановить плеер и собрать вывод DisVM.
-def flash_calls_dis(args, directory, movie, mode):
+# EN: Run movie and mode against the Dis provider; use caller_label in diagnostics.
+# RU: Запустить movie в режиме mode с провайдером Dis; использовать caller_label в диагностике.
+def flash_calls_dis(args, directory, movie, mode, caller_label="movie"):
     options = ("--export", "limbo.dis", "limbo.dis", "next", "--", "--native-spawn", mode, "dispatcher.dis")
     # EN/RU: Exercise the stock listening CLI, including the reverse attach.
     # Проверить штатный TCP-слушатель вместе с встречным подключением.
@@ -157,7 +159,7 @@ def flash_calls_dis(args, directory, movie, mode):
                         if "PASS StyxRPC script contract" in output:
                             break
                         if caller.poll() is not None or provider.poll() is not None or time.monotonic() >= cutoff:
-                            raise RuntimeError(f"FlashVM call to DisVM {mode}: {output}")
+                            raise RuntimeError(f"FlashVM {caller_label} call to DisVM {mode}: {output}")
                         time.sleep(0.02)
                 finally:
                     if caller.poll() is None:
@@ -168,7 +170,14 @@ def flash_calls_dis(args, directory, movie, mode):
         finally:
             if provider.poll() is None:
                 provider.kill()
-    print(f"PASS {mode} FlashVM loaded and called a compiled Dis export")
+    print(f"PASS {mode} FlashVM {caller_label} loaded and called a compiled Dis export")
+
+
+# EN: Build the Dis export and its resident dispatcher in the test directory.
+# RU: Собрать экспорт Dis и его резидентный диспетчер в каталоге проверки.
+def compile_dis_provider(args, directory):
+    compile_image(args, directory, ROOT / "lib/styxrpc/tests/flashvm/limbo.b", "limbo.dis")
+    compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
 
 
 # EN: Compile OS fixtures and run both movies against stock DisVM and its live VFS.
@@ -211,7 +220,7 @@ def main():
     only = parser.add_mutually_exclusive_group()
     only.add_argument("--exec-only", action="store_true", help="run only executable VFS callback scenarios")
     only.add_argument("--messages-only", action="store_true", help="run only published UniBus root scenarios")
-    only.add_argument("--asinc-only", action="store_true", help="run only the compiled OS-thread task scenario")
+    only.add_argument("--asinc-only", action="store_true", help="run only the compiled OS-thread task scenarios")
     args = parser.parse_args()
     if args.ipv6 and not args.tcp:
         parser.error("--ipv6 requires --tcp")
@@ -231,6 +240,11 @@ def main():
             for mode in ("--no-jit", "--jit"):
                 for reverse in (False, True):
                     exchange(args, directory, caller, provider, mode, reverse, "named channel in asinc task")
+            if args.runtime:
+                compile_dis_provider(args, directory)
+                caller = compile_role(args, directory, "asinc-load-caller")
+                for mode in ("--no-jit", "--jit"):
+                    flash_calls_dis(args, directory, caller, mode, "asinc task")
             return
         if not args.exec_only:
             message_caller = compile_role(args, directory, "messages-caller")
@@ -259,9 +273,9 @@ def main():
         if args.runtime:
             tests = ROOT / "lib/styxrpc/tests/flashvm"
             compile_image(args, directory, tests / "peer_consumer.b", "peer-consumer.dis")
-            compile_image(args, directory, tests / "limbo.b", "limbo.dis")
-            compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
+            compile_dis_provider(args, directory)
             dis_caller = compile_role(args, directory, "dis-caller")
+            dis_asinc_caller = compile_role(args, directory, "asinc-load-caller")
             compile_role(args, directory, "ref-failure")
             failure_client = compile_image(args, directory, tests / "peer_frame_failure.b", "frame-failure.dis")
         for mode in ("--no-jit", "--jit"):
@@ -276,6 +290,7 @@ def main():
             if args.runtime:
                 dis_calls_flash(args, directory, mode)
                 flash_calls_dis(args, directory, dis_caller, mode)
+                flash_calls_dis(args, directory, dis_asinc_caller, mode, "asinc task")
                 os_files(args, directory / mode[2:], mode)
                 failed_frame(args, directory, mode, failure_client)
 

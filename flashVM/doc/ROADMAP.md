@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1797 — Dis module calls from native AS tasks
+
+A detached task can open a published `.dis` image over the pair's mounted
+VFS, load its checked proxy and call its methods after closing the open
+handle. The independent fids preserve publication identity. The stock
+DisVM/FlashVM check compiles both sides and covers a successful call and
+a remote exception while the film polls the tasks. The worker can use
+interfaces that require no reverse PID.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1796 — named rendezvous from native AS tasks
 
 A detached task in a paired player can open the negotiated named channel
