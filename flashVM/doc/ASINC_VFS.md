@@ -24,15 +24,17 @@ asinc function firstByte(path) {
 ```
 
 The task runs on a separate OS thread. The movie can advance and serve
-control requests while the task waits for a read. For `file.read(count)`,
+control requests while the task waits for file I/O. For `file.read(count)`
+and `file.write(bytes)`,
 [`cancel()`](ASINC_CANCEL.md) sends `Tflush` for an outstanding data
-request and closes the exact file fid if cancellation wins. The read ends
-with an error and the task publishes failed completion. The paired DisVM
-server defers reads from interruptible providers, including positioned
+request and closes the exact file fid if cancellation wins. The task
+publishes failed completion. The paired DisVM server defers transfers
+on interruptible providers, including positioned
 Limbo callback files, so it can process the flush and unrelated fids
-while the callback waits. File writes, metadata and directory reads
-use their ordinary deadlines. The player retains the connection through
-task teardown.
+while the callback waits. A confirmed write prefix remains in effect,
+and an outstanding fragment may already have changed the file. Metadata
+and directory reads use session deadlines. The player retains the
+connection through task teardown.
 
 When the pair has negotiated named channels, `vfs.chan(path)` and
 `os.chan(path)` open an independent enrollment for the task.
@@ -76,7 +78,10 @@ callback file while another read is pending. The
 [Limbo driver](../../lib/styxrpc/tests/flashvm/cancel-vfs-read_pair.b)
 checks that the cancelled ticket refuses a late reply and that a fresh
 open can read the same file. The pair also shuts down with a read still
-pending. Run with `--jit` and `--tcp` to exercise those modes.
+pending. Use `--cancel-vfs-write` for a short acknowledged write followed
+by a cancelled suffix, an independent read, a new open and disconnect
+with a write pending. Run with `--jit` or `--tcp` to exercise those modes.
+[Write fixture](../../lib/styxrpc/tests/flashvm/cancel-vfs-write_pair.b)
 The `--asinc-chan` profile checks echo, cancellation of unmatched send
 and receive, exact name removal and disconnect with a task still pending.
 Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs. Add

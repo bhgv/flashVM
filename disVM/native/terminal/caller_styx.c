@@ -285,7 +285,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
 static StyxOpen *active_open(void)
 {
     CallerOpen *opened = styxgetaux(&owner->server);
-    int valid = opened && !opened->read && (!opened->generation ||
+    int valid = opened && !opened->active && (!opened->generation ||
         styxcallerscopefind(&owner->scopes, 0, opened->generation, NULL) >= 0);
     return valid ? opened->file : NULL;
 }
@@ -321,6 +321,15 @@ static char *stat_node(Qid qid, Dir *dir)
 }
 
 
+/* EN: Identify ordinary shared file data, outside the program and control paths.
+ * RU: Определить обычный файл общего вида вне путей программ и управления. */
+static int shared_data(Qid qid)
+{
+    return qid.path > PROG_QID && qid.path < STYX_CALLER_NODES &&
+        qid.path != owner->service_qid && !(qid.type & QTDIR);
+}
+
+
 /* EN: Transfer one confirmed read or return a Styx error.
  * RU: Подтвердить единичное чтение либо вернуть ошибку Styx. */
 static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
@@ -340,10 +349,9 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
-    if (*count && qid.path > PROG_QID && qid.path < STYX_CALLER_NODES && qid.path != owner->service_qid &&
-        styxfilecancellableread(opened, offset))
+    if (*count && shared_data(qid) && styxfilecancellableread(opened, offset))
     {
-        return styxcaller_defer_read(owner, styxgetaux(&owner->server), count, offset);
+        return styxcaller_defer_io(owner, styxgetaux(&owner->server), NULL, count, offset);
     }
     styxfileread(opened, offset, bytes, *count, &result);
     if (!result.confirmed || result.uncertain || (!result.success && !result.count))
@@ -359,7 +367,6 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
  * RU: Подтвердить единичную запись в режиме, зафиксированном при открытии. */
 static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
-    (void)qid;
     StyxOpen *opened = active_open();
     if (!opened)
     {
@@ -369,6 +376,10 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
     if (offset < 0)
     {
         return Ebadarg;
+    }
+    if (*count && shared_data(qid) && styxfilecancellablewrite(opened, offset))
+    {
+        return styxcaller_defer_io(owner, styxgetaux(&owner->server), bytes, count, offset);
     }
     styxfilewrite(opened, offset, bytes, *count, &result);
     if (!result.confirmed || result.uncertain || (!result.success && !result.count))
@@ -404,7 +415,7 @@ static void *serve(void *state)
     owner = state;
     while (!styxwait(&owner->server) && !styxprocess(&owner->server))
     {
-        styxcaller_finish_reads(owner, 0);
+        styxcaller_finish_io(owner, 0);
         for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
         {
             CallerNodes *cache = &owner->cache[i];
@@ -418,7 +429,7 @@ static void *serve(void *state)
     owner->scopes.stopped = 1;
     pthread_mutex_unlock(&owner->scopes.lock);
     styxend(&owner->server);
-    styxcaller_finish_reads(owner, 1);
+    styxcaller_finish_io(owner, 1);
     clear(&owner->permanent);
     styxbackingfree(owner->shared_root);
     dvm_provider_release(owner->shared);

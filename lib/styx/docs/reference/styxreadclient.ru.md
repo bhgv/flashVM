@@ -57,7 +57,7 @@ Client *styxreadclient(StyxRead *);
 
 ## См. также
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:146](../../vendor/inferno/tools/libstyx/read.c#L146)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:117](../../vendor/inferno/tools/libstyx/read.c#L117)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

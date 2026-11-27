@@ -1,5 +1,14 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1810 — cancel mounted writes and share the deferred Styx server
+
+Detached FlashVM tasks can flush a pending file write. The C SDK preserves
+confirmed byte counts while DisVM retires the targeted callback ticket.
+The standalone Styx package and DisVM use the same original dispatcher
+for both data directions. The paired test cancels a write after a short
+acknowledgement, completes an independent read and reopens the file.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1809 — cancel mounted file reads in detached tasks
 
 FlashVM tasks flush a pending file read through the hosted SDK. The

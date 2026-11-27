@@ -61,7 +61,7 @@ char byte = 0;
 styxclientreaduntil(fid, 0, &byte, 1, stop, state, &result);
 ```
 
-[Проводной тест](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L200)
+[Проводной тест](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L212)
 
 ## См. также
 

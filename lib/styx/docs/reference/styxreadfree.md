@@ -56,7 +56,7 @@ void styxreadfree(StyxRead *);
 
 ## See also
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:38](../../vendor/inferno/tools/libstyx/read.c#L38)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:31](../../vendor/inferno/tools/libstyx/read.c#L31)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

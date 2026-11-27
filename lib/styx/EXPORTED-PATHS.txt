@@ -219,6 +219,7 @@ lib/styx/vendor/inferno/tools/libstyx/mkfile
 lib/styx/vendor/inferno/tools/libstyx/read.c
 lib/styx/vendor/inferno/tools/libstyx/styxaux.h
 lib/styx/vendor/inferno/tools/libstyx/styxserver.c
+lib/styx/vendor/inferno/tools/libstyx/tests/deferred-read.c
 lib/styx/vendor/inferno/tools/libstyx/tests/directories.c
 lib/styx/vendor/inferno/tools/libstyx/tests/fid-context.c
 lib/styx/vendor/inferno/tools/libstyx/tests/lifecycle.c

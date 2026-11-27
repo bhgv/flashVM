@@ -223,7 +223,7 @@
         }
         else if (ops->read != nil)
         {
-            if (callbackread(c, fp, &f, &count, isdir))
+            if (callbackdata(c, fp, &f, &count, isdir, Tread))
             {
                 break;
             }
@@ -267,7 +267,12 @@
         f.ename = Eperm;
         f.type = Rerror;
         count = f.count;
-        if (ops->write && (f.ename = ops->write(fp->qid, f.data, &count, f.offset)) == nil)
+        isdir = (fp->qid.type & QTDIR) || (file != nil && (file->d.qid.type & QTDIR));
+        if (ops->write && callbackdata(c, fp, &f, &count, isdir, Twrite))
+        {
+            break;
+        }
+        if (f.ename == nil)
         {
             if (count > f.count)
             {

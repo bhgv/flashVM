@@ -10,7 +10,7 @@
 {"path": "vendor/inferno/include/host64-fp.h", "sha256": "cc2f0f53206cd032a1eedd0719040fb98e206dc5a2815babaab903caa6497784", "source": "disVM/native/src/include/host64-fp.h", "transform": "identity"}
 {"path": "vendor/inferno/include/mathi.h", "sha256": "edb6274113645001a4ea3f68ecaf261b88f35169e440c715e23007a6b18dcce2", "source": "disVM/native/src/include/mathi.h", "transform": "identity"}
 {"path": "vendor/inferno/include/styx.h", "sha256": "3d3ee67a0c6beb7be8cbf9d25bbefb01f1fea51ef5470d7e6e410cad7da3057f", "source": "disVM/native/src/include/styx.h", "transform": "identity"}
-{"path": "vendor/inferno/include/styxserver.h", "sha256": "d583f70b51a34e4dace8582ea4d067e140f39f9eb4b64643925a38bdd8825934", "source": "disVM/native/src/include/styxserver.h", "transform": "identity"}
+{"path": "vendor/inferno/include/styxserver.h", "sha256": "fe207a38ae308b1adb19c5a0315280f75cdb4a42eb0762994c940bb73c5e82ab", "source": "disVM/native/src/include/styxserver.h", "transform": "identity"}
 {"path": "vendor/inferno/lib/legal/GPL", "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad", "source": "disVM/native/src/lib/legal/GPL", "transform": "identity"}
 {"path": "vendor/inferno/lib/legal/LGPL", "sha256": "04ff402deb2f11cffd906bf851ad8b2c7178eab005833f641a4b6127212f8b3d", "source": "disVM/native/src/lib/legal/LGPL", "transform": "identity"}
 {"path": "vendor/inferno/lib/legal/NOTICE.app", "sha256": "45f42468f03a634a5fb186302d6ec1ce77d83c65362d675dc2dafc88f1cc7048", "source": "disVM/native/src/lib/legal/NOTICE.app", "transform": "identity"}
@@ -157,9 +157,9 @@
 {"path": "vendor/inferno/tools/libstyx/Posix.c", "sha256": "04ee07e49fda2e29c5a53403b310909d36a7210d04d10c86a4636cc52edd55f0", "source": "disVM/native/src/tools/libstyx/Posix.c", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/attach.c", "sha256": "43c3f36fcde227efc9f614e3dd502c07a6611531d3202fb039c9b89847e52b28", "source": "disVM/native/src/tools/libstyx/attach.c", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/mkfile", "sha256": "a6b3f8987dbe0c1e5413112b2adf730315c4f81a9171992bf9dea12d635d0dcc", "source": "disVM/native/src/tools/libstyx/mkfile", "transform": "identity"}
-{"path": "vendor/inferno/tools/libstyx/read.c", "sha256": "1741e6a6f4901c09c289befe81ff0987b43c825d60a47826bf6ccbf533eaa4db", "source": "disVM/native/src/tools/libstyx/read.c", "transform": "identity"}
+{"path": "vendor/inferno/tools/libstyx/read.c", "sha256": "ee7c1a940bd92cb896eaa31eae2cf147ed32850caeac3ceb52e90b77fc0bdfd5", "source": "disVM/native/src/tools/libstyx/read.c", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/styxaux.h", "sha256": "8399450f79f462e9cbf1b0df97fae2c1454c1fecdff0537c63f840e2aba74ab1", "source": "disVM/native/src/tools/libstyx/styxaux.h", "transform": "identity"}
-{"path": "vendor/inferno/tools/libstyx/styxserver.c", "sha256": "225e6210cc98a3747ca406ec5c7cb8064efc038d72f9ef0de2199e9081e31f0a", "source": "disVM/native/src/tools/libstyx/styxserver.c", "transform": "identity"}
+{"path": "vendor/inferno/tools/libstyx/styxserver.c", "sha256": "6cc7bcc10e19966b7736be509710403ca8786e75f27c022696bd0f889bd2d004", "source": "disVM/native/src/tools/libstyx/styxserver.c", "transform": "identity"}
 {"path": "client/cancel.c", "sha256": "4db4332d84697d8a439eb175abdfd4603c23b7a80963131e484477ea2c35ad25", "source": "disVM/native/client/cancel.c", "transform": "identity"}
 {"path": "client/client.h", "sha256": "8726da9ef590f9a586902e284965a8600452ddbb468141d15d58151613eba39a", "source": "disVM/native/client/client.h", "transform": "identity"}
 {"path": "client/clunk.c", "sha256": "2764bb28af85978e92848e07dd2a9d4084f2519673a0f6855ecd18aba014cca0", "source": "disVM/native/client/clunk.c", "transform": "identity"}
@@ -222,10 +222,11 @@
 {"path": "vendor/inferno/tools/libstyx/tests/directories.c", "sha256": "88ae361f8bf020bc42daaa59fa905a0b4c1cc183789332e439e26818071acf4c", "source": "disVM/native/src/tools/libstyx/tests/directories.c", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/tests/lifecycle.c", "sha256": "aef705aa6b81387ddb7dc95b799bdde03189bd909a4e68faaa1660f007e4bcdc", "source": "disVM/native/src/tools/libstyx/tests/lifecycle.c", "transform": "identity"}
 {"path": "vendor/inferno/tools/libstyx/tests/fid-context.c", "sha256": "2a208710d11c3a48e4589ce8cfed9eec66494b10eb0f72ee7313a13aceed3623", "source": "disVM/native/src/tools/libstyx/tests/fid-context.c", "transform": "identity"}
+{"path": "vendor/inferno/tools/libstyx/tests/deferred-read.c", "sha256": "56c56015cfac1e83ee47e0aa20ba756e0c69a75b27e99ae187b42c45c791e8e4", "source": "disVM/native/src/tools/libstyx/tests/deferred-read.c", "transform": "identity"}
 {"path": "support/sources.py", "sha256": "e27ee3119d5c795b3aa1f650374dd4bb216c0eaf8a186ff2504e048e77050421", "source": "disVM/native/lib9/sources.py", "transform": "identity"}
 {"path": "client/file.h", "sha256": "e11cd6c1148c057d9e9e1b6fc62332d657a158d928814b1422fe22844222e976", "source": "disVM/native/vfs/file.h", "transform": "client-scalar-types-only"}
 {"path": "include/styx/fcall.h", "sha256": "c93678c4d641d8042726c13e4e3803aed87d5489a4e6027d5521003794bb2ee1", "source": "disVM/native/src/include/fcall.h", "transform": "portable-codec-declarations-no-formatter"}
-{"path": "vendor/UPSTREAM.json", "sha256": "7855c03a5d0bd233ceb223f089603baa2938eac63d8baae7870b9159683d71a5", "source": "disVM/native/UPSTREAM.json", "transform": "identity"}
+{"path": "vendor/UPSTREAM.json", "sha256": "99bb704282936b816db2305bc69df221139dabc4fdbf8928bce3402d520c130e", "source": "disVM/native/UPSTREAM.json", "transform": "identity"}
 {"path": "LICENSE.bhgv", "sha256": "043d042cde8799fca4afc8cc0c58b5c48e0092fc8944b9ba7d5fc5b58846b468", "source": "LICENSE", "transform": "identity"}
 {"path": "protocol/srecord.c", "sha256": "1749032351e19d8b402dd4b9a595e2d7582df7bbbf0627f0eae3e0872d31da8c", "source": "flashVM/src/protocol/srecord.c", "transform": "identity"}
 {"path": "include/flashvm/srecord.h", "sha256": "b6035651413c5bb5d2a43cc034391fa74ef70e6cf82550b1ebc1a1ed9cd39147", "source": "flashVM/include/flashvm/srecord.h", "transform": "standalone-export-header"}

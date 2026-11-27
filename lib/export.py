@@ -33,7 +33,7 @@ def files(root):
         yield root / "tools/limbo-bootstrap" / name, root / "lib/styx/support" / name
     for name in ("codec.c", "queues.c", "rollover.c", "fault.c", "check.h", "oracle.c", "oracle.py"):
         yield root / "disVM/native/terminal/order/tests" / name, root / "lib/libunibus/order/tests" / name
-    for name in ("native64.c", "stream.c", "session.c", "directories.c", "lifecycle.c", "fid-context.c"):
+    for name in ("native64.c", "stream.c", "session.c", "directories.c", "lifecycle.c", "fid-context.c", "deferred-read.c"):
         yield root / "disVM/native/src/tools/libstyx/tests" / name, root / "lib/styx/vendor/inferno/tools/libstyx/tests" / name
     yield root / "disVM/native/lib9/sources.py", root / "lib/styx/support/sources.py"
     yield root / "disVM/native/vfs/file.h", root / "lib/styx/client/file.h"

@@ -7,6 +7,8 @@
 #include "movie_load.h"
 #include "flashvm/value.h"
 
+#define FVM_STYXRPC_FILE_OFFSET_MAX UINT64_C(9007199254740991) /* Largest uniformly exact AS offset. */
+
 typedef struct OsHandle
 {
     FVM_StyxRpcMovies *movies; /* Borrowed playback owner through context teardown. */
@@ -27,4 +29,14 @@ FVM_Result fvm_os_attributes(FVM_Context *, const StyxRpcFileInfo *, const char 
 
 /* EN/RU: Consume handle and create its wrapper. / Принять handle и создать обёртку. */
 FVM_Result fvm_os_wrap_handle(FVM_Context *, OsHandle *, int, FVM_Value *);
+
+
+/* [ASINC] EN: Read the requested byte count at state handle's cursor.
+ * RU: Прочитать запрошенное число байтов с курсора дескриптора state. */
+FVM_Result fvm_os_read_file(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
+
+
+/* [ASINC] EN: Write the byte snapshot supplied to state handle's cursor.
+ * RU: Записать снимок переданных байтов с курсора дескриптора state. */
+FVM_Result fvm_os_write_file(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
 #endif

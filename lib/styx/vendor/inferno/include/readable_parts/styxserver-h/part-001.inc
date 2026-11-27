@@ -27,6 +27,7 @@ typedef struct Client Client;
 typedef struct Fid Fid;
 typedef struct StyxAttach StyxAttach;
 typedef struct StyxRead StyxRead; /* Owned owner-thread deferred byte read. */
+typedef struct StyxRead StyxWrite; /* Owned owner-thread deferred byte write. */
 
 struct Styxserver
 {
@@ -55,8 +56,8 @@ struct Client
     int versioned;      /* negative rejects unsupported sessions */
     Fid *fids;
     StyxAttach *attach; /* staged/pending attach, owned by dispatcher */
-    StyxRead *reads;    /* Owned pending byte reads, at most128 per client. */
-    StyxRead *reading;  /* Borrowed stack stage only during read callback. */
+    StyxRead *reads;    /* Owned pending byte I/O, at most128 per client. */
+    StyxRead *reading;  /* Borrowed stack stage during a byte I/O callback. */
     Fid *current;       /* borrowed only during one dispatch */
     char *uname;        /* uid */
     char *aname;        /* attach name */

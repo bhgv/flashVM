@@ -173,3 +173,27 @@ int styxreadreply(StyxRead *, void *bytes, ulong count, char *error);
  * Владение/потоки: действуют исходный контракт выше и требования публичного header.
  */
 void styxreadfree(StyxRead *);
+/* EN: Stage one deferred Twrite from the current write callback. On success
+ * set its count to zero and return nil. Copy input before returning. The
+ * request owns no payload. The shared byte I/O quota is 128 per client and
+ * one per fid. Release aux once on retirement, on the server owner. On failure
+ * return nil and leave aux with the caller.
+ * RU: Отложить текущий Twrite из колбэка записи. При успехе обнулить count и
+ * вернуть nil. Скопировать вход до возврата. Запрос не владеет данными.
+ * Общий предел I/O равен 128 на клиента и одному на fid. Освободить aux
+ * один раз у владельца при снятии. При отказе вернуть nil и сохранить aux. */
+StyxWrite *styxdeferwrite(Styxserver *, void *aux, void (*release)(void *));
+
+
+/* EN: Complete a waiting Twrite once on the dispatcher. With nil error,
+ * count is the acknowledged prefix. A non-nil error requires count zero.
+ * Return 1 when retired, 0 on invalid, staged or already retired requests.
+ * RU: Однократно завершить ожидающий Twrite у диспетчера. При nil error
+ * count задаёт подтверждённый префикс. При ошибке count равен нулю.
+ * Вернуть 1 после снятия, 0 для неверного, ещё не принятого или снятого запроса. */
+int styxwritereply(StyxWrite *, ulong count, char *error);
+
+
+/* EN: Consume the caller's owned reference on the dispatcher. NULL is harmless.
+ * RU: Освободить ссылку вызывающего у диспетчера. NULL допустим. */
+void styxwritefree(StyxWrite *);

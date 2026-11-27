@@ -190,6 +190,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxdebug](reference/styxdebug.md) — `Styx::server; hosted native build`
 - [styxdeferattach](reference/styxdeferattach.md) — `Styx::server; hosted native build`
 - [styxdeferread](reference/styxdeferread.md) — `Styx::server; hosted native build`
+- [styxdeferwrite](reference/styxdeferwrite.md) — `Styx::server; hosted native build`
 - [styxend](reference/styxend.md) — `Styx::phy_server; hosted native build`
 - [styxfindfile](reference/styxfindfile.md) — `Styx::server; hosted native build`
 - [styxfree](reference/styxfree.md) — `Styx::server; hosted native build`
@@ -220,6 +221,8 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxsetaux](reference/styxsetaux.md) — `Styx::server; hosted native build`
 - [styxsetowner](reference/styxsetowner.md) — `Styx::server; hosted native build`
 - [styxwait](reference/styxwait.md) — `Styx::server; hosted native build`
+- [styxwritefree](reference/styxwritefree.md) — `Styx::server; hosted native build`
+- [styxwritereply](reference/styxwritereply.md) — `Styx::server; hosted native build`
 - [sysfatal](reference/sysfatal.md) — `Styx::nine; hosted Linux64 support`
 - [tokenize](reference/tokenize.md) — `Styx::nine; hosted Linux64 support`
 - [tolowerrune](reference/tolowerrune.md) — `Styx::nine; hosted Linux64 support`

@@ -42,7 +42,7 @@ StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offs
 Проводной тест открывает файл, подтверждает первый байт и удерживает
 второй. При ожидании второго чтения колбэк видит флаг отмены.
 Ожидается `STYXRPC_IO_CANCELLED` с `used == 1`.
-[Вызов в тесте](../tests/channel_stop_wire.c#L200)
+[Вызов в тесте](../tests/channel_stop_wire.c#L212)
 
 [Объявление](../include/styxrpc/vfs_client.h#L112) ·
 [Реализация](../src/vfs_client.c#L267)

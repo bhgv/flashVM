@@ -10,7 +10,7 @@ keeps its prior result. Repeated requests are harmless. Read completion with
 [poll](ASINC_POLL.md). Cancellation does not force an OS thread to exit.
 
 The paired player checks stop while a task waits for data from a checked
-Dis method, a live load, a channel or a [mounted file read](ASINC_VFS.md).
+Dis method, a live load, a channel or a [mounted file transfer](ASINC_VFS.md).
 It sends a Styx `Tflush` for the pending read or write. If cancellation
 wins, the player closes the operation's fid. Metadata requests, flush
 acknowledgement and fid close use the session's deadlines.

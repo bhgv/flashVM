@@ -190,6 +190,7 @@ Copyright (c) 2026 bhgv
 - [styxdebug](reference/styxdebug.ru.md) — `Styx::server; hosted native build`
 - [styxdeferattach](reference/styxdeferattach.ru.md) — `Styx::server; hosted native build`
 - [styxdeferread](reference/styxdeferread.ru.md) — `Styx::server; hosted native build`
+- [styxdeferwrite](reference/styxdeferwrite.ru.md) — `Styx::server; hosted native build`
 - [styxend](reference/styxend.ru.md) — `Styx::phy_server; hosted native build`
 - [styxfindfile](reference/styxfindfile.ru.md) — `Styx::server; hosted native build`
 - [styxfree](reference/styxfree.ru.md) — `Styx::server; hosted native build`
@@ -220,6 +221,8 @@ Copyright (c) 2026 bhgv
 - [styxsetaux](reference/styxsetaux.ru.md) — `Styx::server; hosted native build`
 - [styxsetowner](reference/styxsetowner.ru.md) — `Styx::server; hosted native build`
 - [styxwait](reference/styxwait.ru.md) — `Styx::server; hosted native build`
+- [styxwritefree](reference/styxwritefree.ru.md) — `Styx::server; hosted native build`
+- [styxwritereply](reference/styxwritereply.ru.md) — `Styx::server; hosted native build`
 - [sysfatal](reference/sysfatal.ru.md) — `Styx::nine; hosted Linux64 support`
 - [tokenize](reference/tokenize.ru.md) — `Styx::nine; hosted Linux64 support`
 - [tolowerrune](reference/tolowerrune.ru.md) — `Styx::nine; hosted Linux64 support`

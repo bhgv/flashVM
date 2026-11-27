@@ -182,12 +182,27 @@ static void outcome(StyxOpen *opened, DVM_IoResult result, StyxTransfer *output)
 		opened->position += output->count;
 }
 
+/* EN: Verify access on the borrowed cursor and cancellation at offset, including seek.
+ * RU: Проверить право доступа на курсоре и отмену со смещения offset, включая seek. */
+static int cancellable(StyxOpen *opened, unsigned long long offset, unsigned access)
+{
+    return opened && !opened->directory && !opened->poisoned && (opened->access & access) &&
+        (opened->handle.native_flags & DVM_VFS_CANCEL_DATA) && offset <= LONG_MAX &&
+        (offset == opened->position || (opened->handle.native_flags & DVM_VFS_CANCEL_SEEK));
+}
+
+
 /* EN/RU: See file_provider.h. / См. file_provider.h. */
 int styxfilecancellableread(StyxOpen *opened, unsigned long long offset)
 {
-    return opened && !opened->directory && !opened->poisoned && (opened->access & FVM_ACCESS_READ) &&
-        (opened->handle.native_flags & DVM_VFS_CANCEL_DATA) && offset <= LONG_MAX &&
-        (offset == opened->position || (opened->handle.native_flags & DVM_VFS_CANCEL_SEEK));
+    return cancellable(opened, offset, FVM_ACCESS_READ);
+}
+
+
+/* EN/RU: See file_provider.h. / См. file_provider.h. */
+int styxfilecancellablewrite(StyxOpen *opened, unsigned long long offset)
+{
+    return cancellable(opened, offset, FVM_ACCESS_WRITE);
 }
 
 

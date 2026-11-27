@@ -34,7 +34,8 @@ styxdeferread: реализация libstyx/read и нативное состо�
 Native owner-thread byte-read extension, no new wire messages. Defer only during
 read callback, once per non-directory/nonzero read and at most one per fid.
 Set *n=0 and return nil on success. Returned request is caller-owned; NULL
-leaves aux caller-owned. At most128 pending reads per client. No buffers retained.
+leaves aux caller-owned. One client can have up to 128 deferred data
+requests across reads and writes. The request keeps no data buffers.
 Worker threads pass copied data through native mailboxes/fds, never request pointers.
 Native byte-read extension; только read callback, *n=0/nil при успехе, свой request.
 Worker передаёт copied data через mailbox/fd; request доступен только owner-thread.
@@ -63,7 +64,7 @@ StyxRead *styxdeferread(Styxserver *, void *aux, void (*release)(void *));
 
 ## См. также
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:100](../../vendor/inferno/tools/libstyx/read.c#L100)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:101](../../vendor/inferno/tools/libstyx/read.c#L101)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

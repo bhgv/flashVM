@@ -20,7 +20,8 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/variable_ref_adapter.c src/styxrpc/variable_ref_identity.cpp src/styxrpc/variable_ref_channel.cpp src/styxrpc/object_image.c src/styxrpc/module_import.c src/styxrpc/wire_wait.c
         src/styxrpc/playback.c src/styxrpc/playback_debug.c src/styxrpc/playback_snapshot.c
         src/styxrpc/player_services.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c
-        src/styxrpc/os.c src/styxrpc/os_open.c src/styxrpc/worker_vfs.c ports/styxrpc_stats_port.c)
+        src/styxrpc/os.c src/styxrpc/os_file_data.c src/styxrpc/os_open.c src/styxrpc/worker_vfs.c
+        ports/styxrpc_stats_port.c)
     target_link_libraries(flashvm_styxrpc PUBLIC flashvm StyxRpc::launch StyxRpc::serve)
     if(UNIX AND NOT ANDROID AND TARGET Styx::bidir)
         add_executable(flashvm_styx_player src/styxrpc/player_main.c src/styxrpc/player_view.c

@@ -57,7 +57,7 @@ void *styxreadaux(StyxRead *);
 
 ## См. также
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:165](../../vendor/inferno/tools/libstyx/read.c#L165)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:126](../../vendor/inferno/tools/libstyx/read.c#L126)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

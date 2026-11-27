@@ -10,4 +10,6 @@ StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset,
 
 `StyxRpc::launch`
 
+[Cancellable variant](vfs_file_write_until.md)
+
 Write up to `size` bytes on the already opened `file` at `offset`. The caller owns the source `bytes`, required count `used` and its cursor. Apply [VFS bounds and outcomes](vfs_write_at.md). The SDK advances only by confirmed bytes and stops on failure or zero progress. An uncertain fragment is never replayed. Serialize with other operations on this fid.

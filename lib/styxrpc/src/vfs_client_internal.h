@@ -23,10 +23,4 @@ int styxrpc_vfs_service_meta(const StyxMeta *);
 StyxRpcIoOutcome styxrpc_vfs_transfer_outcome(const StyxTransfer *, size_t);
 
 
-/* EN: Write size bytes at offset on file with the same stop contract and confirmed prefix.
- * The cancelled fragment may already have taken effect.
- * RU: Записать size байтов с offset на file с той же отменой и подтверждённой длиной.
- * Отменённый фрагмент мог уже изменить данные. */
-StyxRpcIoOutcome styxrpc_vfs_write_wait(StyxRpcVfsFile *file, uint64_t offset, const void *bytes,
-    size_t size, size_t *used, StyxClientStop stop, void *state);
 #endif

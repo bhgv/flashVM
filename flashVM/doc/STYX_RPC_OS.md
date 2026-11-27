@@ -1,6 +1,6 @@
 # File methods on vfs and os
 
-[Русский](STYX_RPC_OS.ru.md) · [Player](STYX_RPC_PLAYER.md) · [Open and attributes](../src/styxrpc/os_open.c) · [Handle methods](../src/styxrpc/os.c)
+[Русский](STYX_RPC_OS.ru.md) · [Player](STYX_RPC_PLAYER.md) · [Open and attributes](../src/styxrpc/os_open.c) · [Handle methods](../src/styxrpc/os.c) · [Data methods](../src/styxrpc/os_file_data.c)
 
 In the stock player, `os` refers to the same object as `vfs`. Both names share the attached libstyxrpc session and its working directory.
 A leading slash starts at the session root. Relative paths start at
@@ -49,10 +49,12 @@ cursor. Operation errors reach the script. An uncertain write requires a
 fresh open before further writes. When the handle and extracted methods
 become unreachable, collection queues the fid clunk outside GC.
 
-For a detached task, cancellation of a pending `read(count)` retires
-that file fid and ends the read with an error. The provider can retain
-effects of a read it already handled. See [mounted VFS in tasks](ASINC_VFS.md)
-and the [C SDK read contract](../../lib/styxrpc/reference/vfs_file_read_until.md).
+For a detached task, cancellation of a pending `read(count)` or
+`write(bytes)` retires that file fid and reports an error. Confirmed
+prefixes and other effects already applied by the provider can persist.
+[Mounted VFS in tasks](ASINC_VFS.md) ·
+[C SDK read](../../lib/styxrpc/reference/vfs_file_read_until.md) ·
+[C SDK write](../../lib/styxrpc/reference/vfs_file_write_until.md)
 
 ```actionscript
 var file = vfs.open("/movies/intro.swf");

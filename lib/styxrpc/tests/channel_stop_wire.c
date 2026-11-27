@@ -23,8 +23,8 @@ typedef struct Wire
 {
     int fd;              /* Server end of the socket pair, owned by peer. */
     int hold_type;       /* Tread or Twrite selected for suspension. */
-    int reply_wins;      /* Emit the original Rread before Rflush. */
-    int partial_read;    /* Acknowledge one prefix byte before suspending the suffix. */
+    int reply_wins;      /* Emit the original data reply before Rflush. */
+    int partial_file;    /* Acknowledge one prefix byte before suspending the suffix. */
     int held;            /* Atomic publication after saving the original tag. */
     int stopped;         /* Atomic stop flag set by the supervisory thread. */
     ushort tag;          /* Tag of the first suspended request. */
@@ -96,14 +96,23 @@ static int answer(Wire *wire, const Fcall *request)
             reply.count = 1;
             reply.data = "x";
         }
-        else if (wire->partial_read && request->type == Tread && !request->offset && request->count == 2)
+        else if (wire->partial_file && request->type == wire->hold_type && !request->offset && request->count == 2)
         {
+            if (request->type == Twrite && memcmp(request->data, "wz", 2))
+            {
+                return 0;
+            }
             reply.count = 1;
             reply.data = "r";
         }
         else if (request->type == wire->hold_type && !__atomic_load_n(&wire->held, __ATOMIC_RELAXED) &&
-            (!wire->partial_read || (request->offset == 1 && request->count == 1)))
+            (!wire->partial_file || (request->offset == 1 && request->count == 1)))
         {
+            if (request->type == Twrite && (wire->partial_file || wire->reply_wins) &&
+                (request->count != 1 || request->data[0] != (wire->partial_file ? 'z' : 'w')))
+            {
+                return 0;
+            }
             wire->tag = request->tag;
             wire->fid = request->fid;
             __atomic_store_n(&wire->held, 1, __ATOMIC_RELEASE);
@@ -127,7 +136,7 @@ static int answer(Wire *wire, const Fcall *request)
         ++wire->flushes;
         if (wire->reply_wins)
         {
-            Fcall original = {.type = Rread, .tag = wire->tag, .count = 1, .data = "r"};
+            Fcall original = {.type = wire->hold_type + 1, .tag = wire->tag, .count = 1, .data = "r"};
             if (!send_reply(wire->fd, &original))
             {
                 return 0;
@@ -194,13 +203,15 @@ static void *call(void *state)
     operation->correct_thread = 1;
     if (operation->file)
     {
-        char bytes[2] = {0, 'z'};
+        char bytes[2] = {'w', 'z'};
         size_t used;
-        int partial = operation->wire->partial_read;
-        StyxRpcIoOutcome result = styxrpc_vfs_file_read_until(operation->file, 0, bytes, partial ? 2 : 1,
-            &used, stop, operation);
+        int partial = operation->wire->partial_file;
+        int writing = operation->wire->hold_type == Twrite;
+        StyxRpcIoOutcome result = writing ?
+            styxrpc_vfs_file_write_until(operation->file, 0, bytes, partial ? 2 : 1, &used, stop, operation) :
+            styxrpc_vfs_file_read_until(operation->file, 0, bytes, partial ? 2 : 1, &used, stop, operation);
         operation->success = result == (partial ? STYXRPC_IO_CANCELLED : STYXRPC_IO_OK) &&
-            used == 1 && bytes[0] == 'r' && bytes[1] == 'z';
+            used == 1 && bytes[0] == (writing ? 'w' : 'r') && bytes[1] == 'z';
         return NULL;
     }
     StyxRpcChannelCall channel = {.pid = 42, .count = 1, .grants = {{1, "(i)"}}};
@@ -241,19 +252,19 @@ static int control(StyxFid *fid)
 
 
 /* EN: Hold a frame of type with explicit request_stop or normal transport timeout.
- * reply_wins replies to a held VFS read, partial_read confirms a byte of a VFS read.
+ * reply_wins answers a held VFS request, partial_file confirms its first byte.
  * Keep one independent fid responsive before and after the exact flush.
  * RU: Удержать кадр type до request_stop или обычного таймаута транспорта.
- * reply_wins отвечает на удержанное чтение, partial_read подтверждает префикс.
+ * reply_wins отвечает на удержанный запрос VFS, partial_file подтверждает префикс.
  * Независимый fid должен отвечать до и после точного flush. */
-static int exercise(int type, int reply_wins, int request_stop, int partial_read)
+static int exercise(int type, int reply_wins, int request_stop, int partial_file)
 {
     int sockets[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
     {
         return 0;
     }
-    Wire wire = {.fd = sockets[1], .hold_type = type, .reply_wins = reply_wins, .partial_read = partial_read};
+    Wire wire = {.fd = sockets[1], .hold_type = type, .reply_wins = reply_wins, .partial_file = partial_file};
     pthread_t server, worker;
     if (pthread_create(&server, NULL, peer, &wire))
     {
@@ -263,10 +274,10 @@ static int exercise(int type, int reply_wins, int request_stop, int partial_read
     }
     StyxClient *client = styxclientmountfd(sockets[0], FRAME_SIZE, "test", "", request_stop ? 4000 : 500, 4);
     StyxFid *survivor = client ? opened(client, "survivor") : NULL;
-    int file_read = reply_wins || partial_read;
-    StyxRpcVfsFile *file = client && file_read ? opened(client, "data") : NULL;
+    int file_transfer = reply_wins || partial_file;
+    StyxRpcVfsFile *file = client && file_transfer ? opened(client, "data") : NULL;
     Operation operation = {.wire = &wire, .client = client, .file = file};
-    int passed = survivor && (!file_read || file) && !pthread_create(&worker, NULL, call, &operation);
+    int passed = survivor && (!file_transfer || file) && !pthread_create(&worker, NULL, call, &operation);
     if (passed)
     {
         const struct timespec pause = {0, 1000000};
@@ -292,7 +303,8 @@ static int exercise(int type, int reply_wins, int request_stop, int partial_read
 int main(void)
 {
     if (!exercise(Tread, 0, 1, 0) || !exercise(Twrite, 0, 1, 0) ||
-        !exercise(Tread, 1, 1, 0) || !exercise(Tread, 0, 0, 0) || !exercise(Tread, 0, 1, 1))
+        !exercise(Tread, 1, 1, 0) || !exercise(Tread, 0, 0, 0) || !exercise(Tread, 0, 1, 1) ||
+        !exercise(Twrite, 1, 1, 0) || !exercise(Twrite, 0, 1, 1))
     {
         fprintf(stderr, "channel stop wire: held RPC, flush or neighboring RPC failed\n");
         return 1;

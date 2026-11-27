@@ -65,7 +65,7 @@ int styxreadreply(StyxRead *, void *bytes, ulong count, char *error);
 
 ## См. также
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:228](../../vendor/inferno/tools/libstyx/read.c#L228)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:175](../../vendor/inferno/tools/libstyx/read.c#L175)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

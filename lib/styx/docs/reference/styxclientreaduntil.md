@@ -60,7 +60,7 @@ char byte = 0;
 styxclientreaduntil(fid, 0, &byte, 1, stop, state, &result);
 ```
 
-[Wire test](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L200)
+[Wire test](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L212)
 
 ## See also
 

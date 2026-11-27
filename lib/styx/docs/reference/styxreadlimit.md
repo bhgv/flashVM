@@ -57,7 +57,7 @@ ulong styxreadlimit(StyxRead *);
 
 ## See also
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:184](../../vendor/inferno/tools/libstyx/read.c#L184)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:135](../../vendor/inferno/tools/libstyx/read.c#L135)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.md)
 - [Protocol and lifetime](../protocol.md)

@@ -61,7 +61,8 @@ checks `styxrpc-mixed-ref-disvm-interpreter` and `styxrpc-mixed-ref-disvm-jit`
 use the [typed reference guest](../../lib/styxrpc/tests/flashvm/mixed_ref.b)
 and verify the value at the reference issuer.
 
-Add `--cancel-vfs-read` to verify cancellation on ordinary callback
-files with two reads pending on one session. [VFS in tasks](../../flashVM/doc/ASINC_VFS.md)
+Add `--cancel-vfs-read` or `--cancel-vfs-write` to verify cancellation
+on ordinary callback files while separate requests are pending on
+one session. [VFS in tasks](../../flashVM/doc/ASINC_VFS.md)
 
 [Typed named-channel values and live cells](STYX-NAMED-VALUES.md) use the same paired namespace.

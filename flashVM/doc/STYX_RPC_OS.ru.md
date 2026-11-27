@@ -1,6 +1,6 @@
 # Файловые методы vfs и os
 
-[English](STYX_RPC_OS.md) · [Плеер](STYX_RPC_PLAYER.ru.md) · [Открытие и атрибуты](../src/styxrpc/os_open.c) · [Методы дескрипторов](../src/styxrpc/os.c)
+[English](STYX_RPC_OS.md) · [Плеер](STYX_RPC_PLAYER.ru.md) · [Открытие и атрибуты](../src/styxrpc/os_open.c) · [Методы дескрипторов](../src/styxrpc/os.c) · [Методы данных](../src/styxrpc/os_file_data.c)
 
 В штатном плеере `os` ссылается на тот же объект, что и `vfs`.
 У обоих имён общая подключённая сессия libstyxrpc и общий рабочий каталог.
@@ -51,10 +51,12 @@
 Когда ни объект, ни извлечённые из него методы больше недостижимы,
 сборщик ставит закрытие fid в очередь сессии без сетевого I/O из сборщика.
 
-В отделённой задаче отмена ожидающего `read(count)` закрывает fid
-этого файла и завершает чтение с ошибкой. Эффекты уже обработанного
-чтения могут сохраниться у провайдера. См. [VFS в задачах](ASINC_VFS.ru.md)
-и [контракт чтения C SDK](../../lib/styxrpc/reference/vfs_file_read_until.ru.md).
+В отделённой задаче отмена ожидающего `read(count)` или `write(bytes)`
+закрывает fid этого файла и сообщает ошибку. Подтверждённые префиксы
+и другие уже применённые эффекты могут сохраниться у провайдера.
+[VFS в задачах](ASINC_VFS.ru.md) ·
+[Чтение C SDK](../../lib/styxrpc/reference/vfs_file_read_until.ru.md) ·
+[Запись C SDK](../../lib/styxrpc/reference/vfs_file_write_until.ru.md)
 
 ```actionscript
 var file = vfs.open("/movies/intro.swf");

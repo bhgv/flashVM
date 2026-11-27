@@ -113,6 +113,16 @@ StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offs
     size_t size, size_t *used, StyxRpcVfsStop stop, void *state);
 
 
+/* EN: Write up to size bytes at offset on file using read_until's stop contract.
+ * Return the confirmed prefix in used. On cancellation the pending write may
+ * have taken effect. Close the cancelled fid and avoid automatic replay.
+ * RU: Записать до size байтов на file со смещения offset с отменой как у read_until.
+ * Вернуть подтверждённую длину в used. Отменённая запись могла изменить данные.
+ * Закрыть отменённый fid и избегать автоматического повтора. */
+StyxRpcIoOutcome styxrpc_vfs_file_write_until(StyxRpcVfsFile *file, uint64_t offset, const void *bytes,
+    size_t size, size_t *used, StyxRpcVfsStop stop, void *state);
+
+
 /* EN: Consume file, optionally queue the clunk for safe owner cleanup.
  * RU: Освободить file, при необходимости отложив clunk до безопасной очистки владельца. */
 void styxrpc_vfs_close(StyxRpcVfsFile *file, int deferred);

@@ -14,16 +14,16 @@
 
 #define PROG_QID 1U /* Permanent virtual directory for active process IDs. */
 
-typedef struct CallerRead CallerRead; /* Dispatcher-owned deferred byte read. */
+typedef struct CallerIo CallerIo; /* Dispatcher-owned deferred byte transfer. */
 
 
-/* EN: Keep an exclusive file open until both the fid and any native read retire.
- * RU: Удерживать открытый файл до завершения fid и возможного нативного чтения. */
+/* EN: Keep the exclusive file open until the fid and its transfer retire.
+ * RU: Удерживать открытый файл до завершения fid и его передачи данных. */
 typedef struct CallerOpen
 {
     StyxOpen *file;       /* Exclusive opened VFS cursor. */
     uint64_t generation;  /* Publication granting the open, zero for the ordinary view. */
-    CallerRead *read;     /* Active provider read using the cursor, on the dispatcher. */
+    CallerIo *active;    /* Active transfer using this cursor, on the dispatcher. */
     int retired;         /* The dispatcher has released the original fid. */
 } CallerOpen;
 
@@ -52,29 +52,30 @@ struct StyxCallerServer
     CallerNodes permanent; /* Ordinary visited nodes, interned under scopes.lock. */
     int reserving_create; /* Dispatcher holds one permanent slot through provider create. */
     StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
-    CallerRead *reads; /* Owned deferred reads, retired only on this dispatcher. */
-    unsigned read_count; /* Bounded count including cancelled reads still unwinding. */
+    CallerIo *pending; /* Owned deferred transfers, retired only on this dispatcher. */
+    unsigned io_count; /* Bounded count including cancelling transfers. */
 };
 
 
-/* EN: Release an owned open on the dispatcher. Its active read may delay freeing it.
- * RU: Освободить открытие у диспетчера. Активное чтение может отложить очистку. */
+/* EN: Release an owned open on the dispatcher. Its active transfer can delay cleanup.
+ * RU: Освободить открытие у диспетчера. Активная передача может отложить очистку. */
 void styxcaller_close_open(void *state);
 
 
-/* EN: Hold an eligible file read on server using the original deferred Tread support.
- * Take the capacity from count and set it to zero on success. Borrow opened through
- * completion. Return a static Styx error if admission fails.
- * RU: Отложить чтение открытого файла на server штатным механизмом Tread.
- * При успехе взять ёмкость из count и обнулить его. Удерживать opened до
- * завершения. При отказе вернуть статическую ошибку Styx. */
-char *styxcaller_defer_read(StyxCallerServer *server, CallerOpen *opened, ulong *count, vlong offset);
+/* EN: Defer file I/O on server at offset. Copy count input bytes for writes,
+ * or pass NULL input for reads. Borrow opened through completion. Set count
+ * to zero and return nil on admission, otherwise return a static Styx error.
+ * RU: Отложить I/O на server со смещения offset. Скопировать count входных
+ * байтов для записи или передать NULL input для чтения. Удерживать opened
+ * до завершения. При успехе обнулить count и вернуть nil, иначе ошибку Styx. */
+char *styxcaller_defer_io(StyxCallerServer *server, CallerOpen *opened, const void *input,
+    ulong *count, vlong offset);
 
 
-/* EN: Publish finished reads on the dispatcher. When closing, join all reads after
- * styxend has removed the wire requests. Other calls reap only completed jobs.
- * RU: Выдать завершённые чтения у диспетчера. При закрытии дождаться всех чтений
+/* EN: Publish finished transfers. When closing, join all after styxend removes
+ * the wire requests. Other calls collect only completed transfers.
+ * RU: Выдать завершённые передачи у диспетчера. При закрытии дождаться всех
  * после снятия запросов через styxend. Иначе собрать лишь завершённые операции. */
-void styxcaller_finish_reads(StyxCallerServer *server, int closing);
+void styxcaller_finish_io(StyxCallerServer *server, int closing);
 
 #endif

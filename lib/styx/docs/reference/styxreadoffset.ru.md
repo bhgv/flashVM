@@ -57,7 +57,7 @@ vlong styxreadoffset(StyxRead *);
 
 ## См. также
 
-- [Implementation: vendor/inferno/tools/libstyx/read.c:203](../../vendor/inferno/tools/libstyx/read.c#L203)
+- [Implementation: vendor/inferno/tools/libstyx/read.c:144](../../vendor/inferno/tools/libstyx/read.c#L144)
 - [Public declaration](../../vendor/inferno/include/styxserver.h)
 - [API index](../index.ru.md)
 - [Protocol and lifetime](../protocol.ru.md)

@@ -19,4 +19,9 @@ StyxBacking *styxtree(DVM_Provider *provider);
  * RU: Проверить, допускает ли заимствованный курсор отмену чтения байтов и нужного seek. */
 int styxfilecancellableread(StyxOpen *opened, unsigned long long offset);
 
+
+/* EN: Check whether the borrowed cursor can cancel a byte write and any required seek.
+ * RU: Проверить, допускает ли заимствованный курсор отмену записи и нужного seek. */
+int styxfilecancellablewrite(StyxOpen *opened, unsigned long long offset);
+
 #endif

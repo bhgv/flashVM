@@ -42,7 +42,7 @@ the flush. Other fids on a healthy multiplexed session can proceed.
 The wire test opens a file, acknowledges its first byte and withholds the
 second. The callback observes a stop flag while the second read is pending.
 The expected result is `STYXRPC_IO_CANCELLED` with `used == 1`.
-[Test call](../tests/channel_stop_wire.c#L200)
+[Test call](../tests/channel_stop_wire.c#L212)
 
 [Declaration](../include/styxrpc/vfs_client.h#L112) ·
 [Implementation](../src/vfs_client.c#L267)

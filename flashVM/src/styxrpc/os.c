@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define EXACT_OFFSET UINT64_C(9007199254740991) /* Largest uniformly exact AS offset. */
-
 typedef struct OsEntry
 {
     FVM_Context *context; /* Owner creating the result. */
@@ -65,93 +63,6 @@ static FVM_Result close_handle(FVM_Context *context, FVM_Object *self, unsigned 
 }
 
 
-/* [ASINC] [GC:] EN: Read at the held cursor and build an AS Array. On worker
- * cancellation retire this exact file before throwing into the worker context.
- * RU: Прочитать с удерживаемого курсора и создать массив AS. При отмене
- * задачи закрыть этот файл перед исключением в контексте задачи. */
-static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned argc,
-    const FVM_Value *args, FVM_Value *out, void *state)
-{
-    OsHandle *handle = state;
-    unsigned char bytes[FVM_STYXRPC_SCRIPT_BYTES];
-    FVM_Value *values;
-    uint64_t count;
-    size_t used, i;
-    FVM_Result status;
-    FVM_Worker *worker = NULL;
-    StyxRpcIoOutcome outcome;
-    (void)self;
-    if (!handle->file || argc != 1 || !fvm_styxrpc_number(args, sizeof(bytes), &count) ||
-        count > EXACT_OFFSET - handle->offset)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    values = count ? malloc((size_t)count * sizeof(*values)) : NULL;
-    if (count && !values)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
-    fvm_worker_current(context, &worker);
-    outcome = styxrpc_vfs_file_read_until(handle->file, handle->offset, bytes, (size_t)count, &used,
-        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
-    handle->offset += used;
-    if (outcome != STYXRPC_IO_OK)
-    {
-        free(values);
-        if (outcome == STYXRPC_IO_CANCELLED)
-        {
-            retire(handle, 0);
-            return fvm_styxrpc_managed_fail(context, "os file read cancelled");
-        }
-        return fvm_styxrpc_managed_fail(context, "os file read failed");
-    }
-    for (i = 0; i < used; ++i)
-    {
-        fvm_value_number(values + i, bytes[i]);
-    }
-    status = fvm_exec_literal_array(context, (unsigned)used, values, out);
-    free(values);
-    return status;
-}
-
-
-/* [ASINC] EN: Write a byte-array snapshot and return the confirmed count.
- * RU: Записать снимок массива байтов и вернуть подтверждённое число. */
-static FVM_Result write_file(FVM_Context *context, FVM_Object *self, unsigned argc,
-    const FVM_Value *args, FVM_Value *out, void *state)
-{
-    OsHandle *handle = state;
-    unsigned char bytes[FVM_STYXRPC_SCRIPT_BYTES];
-    size_t size, used;
-    FVM_Result checked;
-    StyxRpcIoOutcome status;
-    (void)self;
-    if (!handle->file || handle->uncertain || argc != 1)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    checked = fvm_styxrpc_bytes(context, args, bytes, sizeof(bytes), &size);
-    if (checked != FVM_OK)
-    {
-        return checked;
-    }
-    if (!handle->file || handle->uncertain || size > EXACT_OFFSET - handle->offset)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    status = styxrpc_vfs_file_write(handle->file, handle->offset, bytes, size, &used);
-    handle->offset += used;
-    if (status != STYXRPC_IO_OK)
-    {
-        handle->uncertain = status == STYXRPC_IO_UNCERTAIN;
-        return fvm_styxrpc_managed_fail(context, handle->uncertain ?
-            "os file write outcome is uncertain" : "os file write failed");
-    }
-    fvm_value_number(out, (double)used);
-    return FVM_OK;
-}
-
-
 /* EN: Report client write acknowledgement state. This client buffers no writes.
  * RU: Вернуть состояние подтверждения записи. Клиент не буферизует записи. */
 static FVM_Result flush_file(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -175,7 +86,7 @@ static FVM_Result flush_file(FVM_Context *context, FVM_Object *self, unsigned ar
 static FVM_Result file_length(FVM_Context *context, OsHandle *handle, double *size)
 {
     StyxRpcFileInfo info;
-    if (styxrpc_vfs_file_stat(handle->file, &info) != STYXRPC_IO_OK || info.length > EXACT_OFFSET)
+    if (styxrpc_vfs_file_stat(handle->file, &info) != STYXRPC_IO_OK || info.length > FVM_STYXRPC_FILE_OFFSET_MAX)
     {
         return fvm_styxrpc_managed_fail(context, "os file length unavailable or out of range");
     }
@@ -238,13 +149,13 @@ static FVM_Result seek_file(FVM_Context *context, FVM_Object *self, unsigned arg
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (!(args[0].number >= -(double)EXACT_OFFSET && args[0].number <= (double)EXACT_OFFSET) ||
+    if (!(args[0].number >= -(double)FVM_STYXRPC_FILE_OFFSET_MAX && args[0].number <= (double)FVM_STYXRPC_FILE_OFFSET_MAX) ||
         (double)(int64_t)args[0].number != args[0].number)
     {
         return FVM_INVALID_ARGUMENT;
     }
     fvm_value_number(&position, base + args[0].number);
-    if (!fvm_styxrpc_number(&position, EXACT_OFFSET, &offset))
+    if (!fvm_styxrpc_number(&position, FVM_STYXRPC_FILE_OFFSET_MAX, &offset))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -359,7 +270,7 @@ FVM_Result fvm_os_attributes(FVM_Context *context, const StyxRpcFileInfo *info, 
         status = fvm_gc_roots_add(roots, &object);
     }
     fvm_value_undefined(values);
-    if (info->length <= EXACT_OFFSET)
+    if (info->length <= FVM_STYXRPC_FILE_OFFSET_MAX)
     {
         fvm_value_number(values, (double)info->length);
     }
@@ -444,7 +355,7 @@ FVM_Result fvm_os_wrap_handle(FVM_Context *context, OsHandle *handle, int direct
 {
     static const char *const names[] = {"close", "read", "write", "flush", "seek", "len", "load", "next_file", "rewind"};
     static const FVM_NativeFunction calls[] =
-        {close_handle, read_file, write_file, flush_file, seek_file, len_file, load_file, next_file, rewind_directory};
+        {close_handle, fvm_os_read_file, fvm_os_write_file, flush_file, seek_file, len_file, load_file, next_file, rewind_directory};
     FVM_GCRootScope *roots;
     FVM_Value value;
     FVM_Result status = fvm_gc_roots_begin(context, &roots);

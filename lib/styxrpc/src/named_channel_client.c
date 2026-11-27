@@ -33,7 +33,7 @@ static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const v
     size_t used;
     StyxRpcNamedStop stop = wait ? wait->stop : NULL;
     void *state = wait ? wait->state : NULL;
-    StyxRpcIoOutcome status = styxrpc_vfs_write_wait(file, 0, header, sizeof(header), &used, stop, state);
+    StyxRpcIoOutcome status = styxrpc_vfs_file_write_until(file, 0, header, sizeof(header), &used, stop, state);
     if (status != STYXRPC_IO_OK || used != sizeof(header))
     {
         return status == STYXRPC_IO_OK ? STYXRPC_IO_FAILED : status;
@@ -42,7 +42,7 @@ static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const v
     {
         return STYXRPC_IO_OK;
     }
-    status = styxrpc_vfs_write_wait(file, sizeof(header), bytes, size, &used, stop, state);
+    status = styxrpc_vfs_file_write_until(file, sizeof(header), bytes, size, &used, stop, state);
     return status == STYXRPC_IO_OK && used != size ? STYXRPC_IO_FAILED : status;
 }
 
