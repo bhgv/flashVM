@@ -1,5 +1,14 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1809 — cancel mounted file reads in detached tasks
+
+FlashVM tasks flush a pending file read through the hosted SDK. The
+DisVM reverse dispatcher defers ordinary reads from interruptible providers
+and retires the exact callback ticket on flush. A confirmed prefix remains
+available to C callers. Paired tests hold two callback reads while the
+movie reads an ordinary file, then cancel one and reopen its path.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1808 — maintain one Styx RPC wire contract
 
 Coordinate protocol changes across native DisVM Styx RPC and standalone

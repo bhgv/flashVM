@@ -116,7 +116,8 @@ StyxOpen *styxfileopen(StyxBacking *backing, int mode)
 		opened->captured = current;
 		opened->directory = 1;
 	}
-	opened->access = mode == 0 ? 1U : mode == 1 ? 2U : 3U;
+	opened->access = mode == 0 ? FVM_ACCESS_READ : mode == 1 ? FVM_ACCESS_WRITE :
+		FVM_ACCESS_READ | FVM_ACCESS_WRITE;
 	return opened;
 }
 
@@ -181,6 +182,15 @@ static void outcome(StyxOpen *opened, DVM_IoResult result, StyxTransfer *output)
 		opened->position += output->count;
 }
 
+/* EN/RU: See file_provider.h. / См. file_provider.h. */
+int styxfilecancellableread(StyxOpen *opened, unsigned long long offset)
+{
+    return opened && !opened->directory && !opened->poisoned && (opened->access & FVM_ACCESS_READ) &&
+        (opened->handle.native_flags & DVM_VFS_CANCEL_DATA) && offset <= LONG_MAX &&
+        (offset == opened->position || (opened->handle.native_flags & DVM_VFS_CANCEL_SEEK));
+}
+
+
 /* EN/RU: See file.h; only the actual operation's result determines success.
  * См. file.h; успех определяет результат самой операции. */
 void styxfileread(StyxOpen *opened, unsigned long long offset, void *bytes, size_t size, StyxTransfer *output)
@@ -189,7 +199,7 @@ void styxfileread(StyxOpen *opened, unsigned long long offset, void *bytes, size
 		return;
 	memset(output, 0, sizeof(*output));
 	output->stop = DVM_IO_INVALID;
-	if(opened && (opened->directory || !(opened->access&1U))){
+	if(opened && (opened->directory || !(opened->access & FVM_ACCESS_READ))){
 		output->confirmed = 1;
 		output->stop = DVM_IO_DENIED;
 		return;
@@ -206,7 +216,7 @@ void styxfilewrite(StyxOpen *opened, unsigned long long offset, const void *byte
 		return;
 	memset(output, 0, sizeof(*output));
 	output->stop = DVM_IO_INVALID;
-	if(opened && (opened->directory || !(opened->access&2U))){
+	if(opened && (opened->directory || !(opened->access & FVM_ACCESS_WRITE))){
 		output->confirmed = 1;
 		output->stop = DVM_IO_DENIED;
 		return;

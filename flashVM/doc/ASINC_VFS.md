@@ -24,10 +24,15 @@ asinc function firstByte(path) {
 ```
 
 The task runs on a separate OS thread. The movie can advance and serve
-control requests while the task waits for a read. Concurrent RPC calls
-can still wait on the shared Styx client. A task's `cancel()` is
-cooperative and can wait for a pending request to return or time out.
-The paired player retains the connection through task teardown.
+control requests while the task waits for a read. For `file.read(count)`,
+[`cancel()`](ASINC_CANCEL.md) sends `Tflush` for an outstanding data
+request and closes the exact file fid if cancellation wins. The read ends
+with an error and the task publishes failed completion. The paired DisVM
+server defers reads from interruptible providers, including positioned
+Limbo callback files, so it can process the flush and unrelated fids
+while the callback waits. File writes, metadata and directory reads
+use their ordinary deadlines. The player retains the connection through
+task teardown.
 
 When the pair has negotiated named channels, `vfs.chan(path)` and
 `os.chan(path)` open an independent enrollment for the task.
@@ -66,6 +71,12 @@ then prepends a union branch before replying. The write reaches that branch.
 The test also checks hidden service names and independent cwd.
 [Worker fixture](../../lib/styxrpc/tests/flashvm/asinc-vfs_worker.as) ·
 [Limbo driver](../../lib/styxrpc/tests/flashvm/asinc-vfs_pair.b).
+Use `--cancel-vfs-read` to verify confirmed-prefix cancellation on one
+callback file while another read is pending. The
+[Limbo driver](../../lib/styxrpc/tests/flashvm/cancel-vfs-read_pair.b)
+checks that the cancelled ticket refuses a late reply and that a fresh
+open can read the same file. The pair also shuts down with a read still
+pending. Run with `--jit` and `--tcp` to exercise those modes.
 The `--asinc-chan` profile checks echo, cancellation of unmatched send
 and receive, exact name removal and disconnect with a task still pending.
 Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs. Add

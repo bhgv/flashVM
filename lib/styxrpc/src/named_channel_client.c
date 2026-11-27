@@ -87,7 +87,7 @@ static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, const Nam
     for (;;)
     {
         size_t used;
-        StyxRpcIoOutcome status = styxrpc_vfs_read_wait(file, 0, header, sizeof(header), &used,
+        StyxRpcIoOutcome status = styxrpc_vfs_file_read_until(file, 0, header, sizeof(header), &used,
             wait ? wait->stop : NULL, wait ? wait->state : NULL);
         if (status != STYXRPC_IO_OK || (used && used != sizeof(header)))
         {
@@ -126,7 +126,7 @@ static StyxRpcIoOutcome read_frame(StyxRpcVfsFile *file, const NamedWait *wait, 
         return STYXRPC_IO_FAILED;
     }
     size_t used;
-    status = styxrpc_vfs_read_wait(file, STYXRPC_NAMED_REPLY, frame, length, &used,
+    status = styxrpc_vfs_file_read_until(file, STYXRPC_NAMED_REPLY, frame, length, &used,
         wait ? wait->stop : NULL, wait ? wait->state : NULL);
     if (status != STYXRPC_IO_OK || used != length)
     {

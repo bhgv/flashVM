@@ -9,12 +9,6 @@
 #include <errno.h>
 
 
-typedef struct CallerOpen
-{
-    StyxOpen *file; /* Exclusive opened VFS cursor. */
-    uint64_t generation; /* Publication which granted this open, zero for a portal snapshot. */
-} CallerOpen;
-
 static __thread StyxCallerServer *owner; /* Current dispatcher on its native thread. */
 
 
@@ -205,16 +199,6 @@ static StyxBacking *portal(Path path)
 }
 
 
-/* EN: Consume the native cursor and its fid-owned generation token.
- * RU: Освободить курсор и поколение, закреплённое за fid. */
-static void close_node(void *state)
-{
-    CallerOpen *opened = state;
-    styxfileclose(opened->file);
-    free(opened);
-}
-
-
 /* EN: Open one node and pin the cursor and its generation on the fid.
  * RU: Открыть узел и удержать курсор и поколение в fid. */
 static char *open_node(Qid *qid, int mode)
@@ -246,7 +230,7 @@ static char *open_node(Qid *qid, int mode)
     }
     if (!opened->file || styxsetaux(&owner->server, opened) < 0)
     {
-        close_node(opened);
+        styxcaller_close_open(opened);
         return Eperm;
     }
     return nil;
@@ -287,7 +271,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
     if (!opened->file || styxsetaux(&owner->server, opened) < 0)
     {
         styxbackingfree(child);
-        close_node(opened);
+        styxcaller_close_open(opened);
         remember_shared(owner, NULL, 1);
         return Eperm;
     }
@@ -301,7 +285,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
 static StyxOpen *active_open(void)
 {
     CallerOpen *opened = styxgetaux(&owner->server);
-    int valid = opened && (!opened->generation ||
+    int valid = opened && !opened->read && (!opened->generation ||
         styxcallerscopefind(&owner->scopes, 0, opened->generation, NULL) >= 0);
     return valid ? opened->file : NULL;
 }
@@ -356,6 +340,11 @@ static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
     {
         return Ebadarg;
     }
+    if (*count && qid.path > PROG_QID && qid.path < STYX_CALLER_NODES && qid.path != owner->service_qid &&
+        styxfilecancellableread(opened, offset))
+    {
+        return styxcaller_defer_read(owner, styxgetaux(&owner->server), count, offset);
+    }
     styxfileread(opened, offset, bytes, *count, &result);
     if (!result.confirmed || result.uncertain || (!result.success && !result.count))
     {
@@ -404,7 +393,7 @@ static char *remove_node(Qid qid)
 
 static Styxops operations = { /* Ordinary Styx operations, with fid-owned opened aliases. */
     .walk = walk, .open = open_node, .create = create_node, .stat = stat_node, .read = read_node, .write = write_node,
-    .remove = remove_node, .freefid = close_node
+    .remove = remove_node, .freefid = styxcaller_close_open
 };
 
 
@@ -415,6 +404,7 @@ static void *serve(void *state)
     owner = state;
     while (!styxwait(&owner->server) && !styxprocess(&owner->server))
     {
+        styxcaller_finish_reads(owner, 0);
         for (size_t i = 0; i < STYX_CALLER_SLOTS; i++)
         {
             CallerNodes *cache = &owner->cache[i];
@@ -428,6 +418,7 @@ static void *serve(void *state)
     owner->scopes.stopped = 1;
     pthread_mutex_unlock(&owner->scopes.lock);
     styxend(&owner->server);
+    styxcaller_finish_reads(owner, 1);
     clear(&owner->permanent);
     styxbackingfree(owner->shared_root);
     dvm_provider_release(owner->shared);

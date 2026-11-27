@@ -49,17 +49,18 @@ owns the fid. Waiting for `Rflush` uses the session deadline.
 
 ## Example
 
-In the wire test, `stop` reads a flag in `operation` on the thread
-that issued the read. The peer sends a one-byte reply before `Rflush`,
-so the example returns a confirmed `'r'`.
+The SDK wire test exercises this native operation through its VFS reader.
+Its stop callback samples a flag on the calling thread. When the peer
+sends a one-byte reply before `Rflush`, the caller gets a confirmed `'r'`.
+With a directly opened native `fid`, the call takes this form.
 
 ```c
 StyxTransfer result;
 char byte = 0;
-styxclientreaduntil(operation->raw, 0, &byte, 1, stop, operation, &result);
+styxclientreaduntil(fid, 0, &byte, 1, stop, state, &result);
 ```
 
-[Wire test](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L191)
+[Wire test](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L200)
 
 ## See also
 

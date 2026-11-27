@@ -65,8 +65,10 @@ static FVM_Result close_handle(FVM_Context *context, FVM_Object *self, unsigned 
 }
 
 
-/* [ASINC] [GC:] EN: Return the confirmed bytes at the current cursor as an AS Array.
- * RU: Вернуть подтверждённые байты с курсора в виде массива AS. */
+/* [ASINC] [GC:] EN: Read at the held cursor and build an AS Array. On worker
+ * cancellation retire this exact file before throwing into the worker context.
+ * RU: Прочитать с удерживаемого курсора и создать массив AS. При отмене
+ * задачи закрыть этот файл перед исключением в контексте задачи. */
 static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
@@ -76,6 +78,8 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
     uint64_t count;
     size_t used, i;
     FVM_Result status;
+    FVM_Worker *worker = NULL;
+    StyxRpcIoOutcome outcome;
     (void)self;
     if (!handle->file || argc != 1 || !fvm_styxrpc_number(args, sizeof(bytes), &count) ||
         count > EXACT_OFFSET - handle->offset)
@@ -87,13 +91,20 @@ static FVM_Result read_file(FVM_Context *context, FVM_Object *self, unsigned arg
     {
         return FVM_OUT_OF_MEMORY;
     }
-    if (styxrpc_vfs_file_read(handle->file, handle->offset, bytes, (size_t)count, &used) != STYXRPC_IO_OK)
+    fvm_worker_current(context, &worker);
+    outcome = styxrpc_vfs_file_read_until(handle->file, handle->offset, bytes, (size_t)count, &used,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    handle->offset += used;
+    if (outcome != STYXRPC_IO_OK)
     {
-        handle->offset += used;
         free(values);
+        if (outcome == STYXRPC_IO_CANCELLED)
+        {
+            retire(handle, 0);
+            return fvm_styxrpc_managed_fail(context, "os file read cancelled");
+        }
         return fvm_styxrpc_managed_fail(context, "os file read failed");
     }
-    handle->offset += used;
     for (i = 0; i < used; ++i)
     {
         fvm_value_number(values + i, bytes[i]);

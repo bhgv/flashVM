@@ -14,4 +14,9 @@ StyxBacking *styxbacking(DVM_Provider *provider);
  * Удержать prepared-каталог с привязкой дочерних node к identity; свой wrapper/NULL. */
 StyxBacking *styxtree(DVM_Provider *provider);
 
+
+/* EN: Inspect a borrowed exclusive cursor for cancellable byte read and any required seek.
+ * RU: Проверить, допускает ли заимствованный курсор отмену чтения байтов и нужного seek. */
+int styxfilecancellableread(StyxOpen *opened, unsigned long long offset);
+
 #endif

@@ -44,6 +44,7 @@ typedef enum NodeOutcome
 typedef struct ExecJob
 {
     ExecOwner *owner; /* Borrowed while still registered under the broker lock. */
+    struct DVM_Cancel *cancel; /* Borrowed native scope until the job is unlinked. */
     const void *input; /* Borrowed write/execute input, null for reads. */
     void *output; /* Borrowed read/execute output, null for writes. */
     uint64_t offset; /* Absolute data offset, zero for execute. */

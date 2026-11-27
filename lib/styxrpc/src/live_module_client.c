@@ -26,7 +26,7 @@ static StyxRpcIoOutcome receive_generation(StyxFid *request, char *id, StyxRpcMo
     do
     {
         size_t received;
-        StyxRpcIoOutcome outcome = styxrpc_vfs_read_wait(request, count, id + count,
+        StyxRpcIoOutcome outcome = styxrpc_vfs_file_read_until(request, count, id + count,
             STYXRPC_LIVE_MODULE_ID_BYTES - count, &received, stop, state);
         if (outcome != STYXRPC_IO_OK)
         {

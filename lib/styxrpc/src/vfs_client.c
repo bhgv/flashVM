@@ -252,7 +252,7 @@ static StyxRpcIoOutcome transfer(StyxRpcVfsFile *file, uint64_t offset, void *re
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
 StyxRpcIoOutcome styxrpc_vfs_file_read(StyxRpcVfsFile *file, uint64_t offset, void *bytes, size_t size, size_t *used)
 {
-    return styxrpc_vfs_read_wait(file, offset, bytes, size, used, NULL, NULL);
+    return styxrpc_vfs_file_read_until(file, offset, bytes, size, used, NULL, NULL);
 }
 
 
@@ -263,9 +263,9 @@ StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset, c
 }
 
 
-/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
-StyxRpcIoOutcome styxrpc_vfs_read_wait(StyxRpcVfsFile *file, uint64_t offset, void *bytes,
-    size_t size, size_t *used, StyxClientStop stop, void *state)
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offset, void *bytes,
+    size_t size, size_t *used, StyxRpcVfsStop stop, void *state)
 {
     return transfer(file, offset, bytes, NULL, size, used, stop, state);
 }

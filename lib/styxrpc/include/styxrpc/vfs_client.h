@@ -35,6 +35,7 @@ typedef struct StyxRpcFileInfo
 
 typedef struct StyxFid StyxRpcVfsFile; /* Owns one opened fid and retains its attached client. */
 typedef int (*StyxRpcVfsVisitor)(void *state, const char *name, const StyxRpcFileInfo *info); /* Borrowed entry, 1 to proceed. */
+typedef int (*StyxRpcVfsStop)(void *state); /* On the calling thread, return nonzero to stop. */
 
 typedef enum StyxRpcFileMode
 {
@@ -98,6 +99,18 @@ StyxRpcIoOutcome styxrpc_vfs_file_stat(StyxRpcVfsFile *file, StyxRpcFileInfo *in
  * RU: Передать подтверждённый префикс через file со смещения offset. Курсор и буфер у вызывающего. */
 StyxRpcIoOutcome styxrpc_vfs_file_read(StyxRpcVfsFile *file, uint64_t offset, void *bytes, size_t size, size_t *used);
 StyxRpcIoOutcome styxrpc_vfs_file_write(StyxRpcVfsFile *file, uint64_t offset, const void *bytes, size_t size, size_t *used);
+
+
+/* EN: Read up to size bytes at offset on borrowed file. Sample optional
+ * stop(state) before each chunk and while awaiting a multiplexed reply.
+ * Always return the confirmed prefix length in used, including on cancellation.
+ * Serialize I/O on file and close it after STYXRPC_IO_CANCELLED.
+ * RU: Прочитать до size байтов со смещения offset на заимствованном file.
+ * Проверять необязательный stop(state) перед фрагментами и при ожидании ответа
+ * на мультиплексоре. Возвращать в used подтверждённую длину, в том числе при
+ * отмене. Сериализовать I/O на file и закрыть его после STYXRPC_IO_CANCELLED. */
+StyxRpcIoOutcome styxrpc_vfs_file_read_until(StyxRpcVfsFile *file, uint64_t offset, void *bytes,
+    size_t size, size_t *used, StyxRpcVfsStop stop, void *state);
 
 
 /* EN: Consume file, optionally queue the clunk for safe owner cleanup.

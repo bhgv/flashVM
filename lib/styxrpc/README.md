@@ -150,6 +150,10 @@ A persistent DisVM provider can launch several named images on one Styx connecti
 
 The hosted client also supports [stat](reference/vfs_stat.md), [positional read](reference/vfs_read_at.md) and [positional write](reference/vfs_write_at.md). These operations use an already mounted session, hold one fid, and report the confirmed transfer prefix.
 
+[Cancellable file read](reference/vfs_file_read_until.md) keeps the
+confirmed prefix if a later chunk is stopped. It interoperates with the
+paired DisVM server's deferred reads via standard Styx `Tflush`.
+
 Use [open](reference/vfs_open.md) for a persistent descriptor with [stat](reference/vfs_file_stat.md), [read](reference/vfs_file_read.md), [write](reference/vfs_file_write.md) and [close](reference/vfs_close.md). [List](reference/vfs_list.md) reads a mounted directory. Native external int variables use [one-value reads](reference/vfs_int_read.md) and [writes](reference/vfs_int_write.md). Use [create](reference/vfs_create.md) for an exclusive write-only create.
 Use [mkdir](reference/vfs_mkdir.md) to create a directory and [remove](reference/vfs_remove.md) to remove an ordinary entry.
 

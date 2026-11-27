@@ -50,17 +50,18 @@ void styxclientreaduntil(StyxFid *fid, unsigned long long offset, void *bytes,
 
 ## Пример
 
-В проводном тесте `stop` проверяет флаг в `operation` в том же
-потоке, который вызвал чтение. Сервер посылает однобайтовый ответ
-перед `Rflush`, поэтому вызов получает подтверждённый байт `'r'`.
+Проводной тест SDK вызывает эту нативную операцию через чтение VFS.
+Колбэк проверяет флаг отмены в вызывающем потоке. Когда сервер посылает
+однобайтовый ответ перед `Rflush`, вызов получает подтверждённый байт
+`'r'`. С напрямую открытым нативным `fid` вызов выглядит так.
 
 ```c
 StyxTransfer result;
 char byte = 0;
-styxclientreaduntil(operation->raw, 0, &byte, 1, stop, operation, &result);
+styxclientreaduntil(fid, 0, &byte, 1, stop, state, &result);
 ```
 
-[Проводной тест](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L191)
+[Проводной тест](https://github.com/bhgv/flashVM/blob/master/lib/styxrpc/tests/channel_stop_wire.c#L200)
 
 ## См. также
 

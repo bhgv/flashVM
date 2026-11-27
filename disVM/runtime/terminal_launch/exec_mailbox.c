@@ -130,7 +130,7 @@ NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperat
         pthread_mutex_unlock(&broker->lock);
         return cancelled ? DVM_NODE_CANCELLED : DVM_NODE_REFUSED;
     }
-    ExecJob job = {.owner = owner, .input = input, .output = output, .operation = operation,
+    ExecJob job = {.owner = owner, .cancel = cancel, .input = input, .output = output, .operation = operation,
         .offset = offset, .size = size, .ticket = ++broker->ticket};
     owner->job = &job;
     while (!job.answered && job.owner && !broker->stopped)
@@ -206,7 +206,7 @@ FVM_Result dvm_exec_receive(void *state, void *buffer, size_t size, size_t *used
     {
         status = FVM_ERROR;
     }
-    else if (job && !job->taken)
+    else if (job && !job->taken && !dvm_cancel_requested(job->cancel))
     {
         if (size < header + job->size)
         {
@@ -323,7 +323,8 @@ FVM_Result dvm_exec_answer(void *state, const void *buffer, size_t size)
     DvmExecBroker *broker = owner->broker;
     pthread_mutex_lock(&broker->lock);
     ExecJob *job = owner->job;
-    if (!job || !job->taken || job->answered || job->ticket != ticket || broker->stopped)
+    if (!job || !job->taken || job->answered || job->ticket != ticket ||
+        dvm_cancel_requested(job->cancel) || broker->stopped)
     {
         pthread_mutex_unlock(&broker->lock);
         return FVM_NOT_FOUND;

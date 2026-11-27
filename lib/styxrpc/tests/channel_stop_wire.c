@@ -1,11 +1,12 @@
 /* Copyright (c) 2026 bhgv
- * EN: Check one suspended Styx request, its exact flush, and neighboring RPC traffic.
- * RU: Проверить приостановленный запрос Styx, его точный flush и соседний обмен.
+ * EN: Check exact flush and neighboring RPC traffic for suspended channel and VFS requests.
+ * RU: Проверить точный flush и соседний обмен для ожидающих запросов канала и VFS.
  */
 #include <lib9.h>
 #include <styx.h>
 #include "client.h"
 #include "styxrpc/channel_call.h"
+#include "styxrpc/vfs_client.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
@@ -23,6 +24,7 @@ typedef struct Wire
     int fd;              /* Server end of the socket pair, owned by peer. */
     int hold_type;       /* Tread or Twrite selected for suspension. */
     int reply_wins;      /* Emit the original Rread before Rflush. */
+    int partial_read;    /* Acknowledge one prefix byte before suspending the suffix. */
     int held;            /* Atomic publication after saving the original tag. */
     int stopped;         /* Atomic stop flag set by the supervisory thread. */
     ushort tag;          /* Tag of the first suspended request. */
@@ -41,7 +43,7 @@ typedef struct Operation
 {
     Wire *wire;           /* Shared protocol fixture. */
     StyxClient *client;   /* Borrowed channel session. */
-    StyxFid *raw;         /* Optional native read fid for original-reply precedence. */
+    StyxRpcVfsFile *file; /* Optional open VFS file for bytes rather than a channel selection. */
     pthread_t caller;    /* Expected thread for every stop check. */
     int correct_thread;  /* All stop checks have run on caller. */
     int success;         /* Expected outcome was delivered without changing invalid outputs. */
@@ -94,7 +96,13 @@ static int answer(Wire *wire, const Fcall *request)
             reply.count = 1;
             reply.data = "x";
         }
-        else if (request->type == wire->hold_type && !__atomic_load_n(&wire->held, __ATOMIC_RELAXED))
+        else if (wire->partial_read && request->type == Tread && !request->offset && request->count == 2)
+        {
+            reply.count = 1;
+            reply.data = "r";
+        }
+        else if (request->type == wire->hold_type && !__atomic_load_n(&wire->held, __ATOMIC_RELAXED) &&
+            (!wire->partial_read || (request->offset == 1 && request->count == 1)))
         {
             wire->tag = request->tag;
             wire->fid = request->fid;
@@ -184,13 +192,15 @@ static void *call(void *state)
     Operation *operation = state;
     operation->caller = pthread_self();
     operation->correct_thread = 1;
-    if (operation->raw)
+    if (operation->file)
     {
-        char byte = 0;
-        StyxTransfer result;
-        styxclientreaduntil(operation->raw, 0, &byte, 1, stop, operation, &result);
-        operation->success = result.success && result.confirmed && !result.uncertain && !result.cancelled &&
-            result.count == 1 && byte == 'r';
+        char bytes[2] = {0, 'z'};
+        size_t used;
+        int partial = operation->wire->partial_read;
+        StyxRpcIoOutcome result = styxrpc_vfs_file_read_until(operation->file, 0, bytes, partial ? 2 : 1,
+            &used, stop, operation);
+        operation->success = result == (partial ? STYXRPC_IO_CANCELLED : STYXRPC_IO_OK) &&
+            used == 1 && bytes[0] == 'r' && bytes[1] == 'z';
         return NULL;
     }
     StyxRpcChannelCall channel = {.pid = 42, .count = 1, .grants = {{1, "(i)"}}};
@@ -230,18 +240,20 @@ static int control(StyxFid *fid)
 }
 
 
-/* EN: Exercise a held data frame with explicit stop or normal transport timeout.
+/* EN: Hold a frame of type with explicit request_stop or normal transport timeout.
+ * reply_wins replies to a held VFS read, partial_read confirms a byte of a VFS read.
  * Keep one independent fid responsive before and after the exact flush.
- * RU: Проверить удержанный кадр при отмене или обычном таймауте транспорта.
+ * RU: Удержать кадр type до request_stop или обычного таймаута транспорта.
+ * reply_wins отвечает на удержанное чтение, partial_read подтверждает префикс.
  * Независимый fid должен отвечать до и после точного flush. */
-static int exercise(int type, int reply_wins, int request_stop)
+static int exercise(int type, int reply_wins, int request_stop, int partial_read)
 {
     int sockets[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
     {
         return 0;
     }
-    Wire wire = {.fd = sockets[1], .hold_type = type, .reply_wins = reply_wins};
+    Wire wire = {.fd = sockets[1], .hold_type = type, .reply_wins = reply_wins, .partial_read = partial_read};
     pthread_t server, worker;
     if (pthread_create(&server, NULL, peer, &wire))
     {
@@ -251,9 +263,10 @@ static int exercise(int type, int reply_wins, int request_stop)
     }
     StyxClient *client = styxclientmountfd(sockets[0], FRAME_SIZE, "test", "", request_stop ? 4000 : 500, 4);
     StyxFid *survivor = client ? opened(client, "survivor") : NULL;
-    StyxFid *raw = client && reply_wins ? opened(client, ".prog/42/.unibus") : NULL;
-    Operation operation = {.wire = &wire, .client = client, .raw = raw};
-    int passed = survivor && (!reply_wins || raw) && !pthread_create(&worker, NULL, call, &operation);
+    int file_read = reply_wins || partial_read;
+    StyxRpcVfsFile *file = client && file_read ? opened(client, "data") : NULL;
+    Operation operation = {.wire = &wire, .client = client, .file = file};
+    int passed = survivor && (!file_read || file) && !pthread_create(&worker, NULL, call, &operation);
     if (passed)
     {
         const struct timespec pause = {0, 1000000};
@@ -266,7 +279,7 @@ static int exercise(int type, int reply_wins, int request_stop)
         pthread_join(worker, NULL);
         passed = passed && operation.correct_thread && operation.success && styxclientalive(client) && control(survivor);
     }
-    styxclientclunk(raw);
+    styxrpc_vfs_close(file, 0);
     styxclientclunk(survivor);
     styxclientfree(client);
     pthread_join(server, NULL);
@@ -274,12 +287,12 @@ static int exercise(int type, int reply_wins, int request_stop)
 }
 
 
-/* EN: Test stalled channel reads and writes, original acknowledgement and ordinary timeout.
- * RU: Проверить ожидающие чтение и запись канала, исходный ответ и обычный таймаут. */
+/* EN: Check stalled channel frames, VFS reply precedence and confirmed prefix, and transport timeout.
+ * RU: Проверить ожидание кадров канала, приоритет ответа и префикс VFS, таймаут транспорта. */
 int main(void)
 {
-    if (!exercise(Tread, 0, 1) || !exercise(Twrite, 0, 1) ||
-        !exercise(Tread, 1, 1) || !exercise(Tread, 0, 0))
+    if (!exercise(Tread, 0, 1, 0) || !exercise(Twrite, 0, 1, 0) ||
+        !exercise(Tread, 1, 1, 0) || !exercise(Tread, 0, 0, 0) || !exercise(Tread, 0, 1, 1))
     {
         fprintf(stderr, "channel stop wire: held RPC, flush or neighboring RPC failed\n");
         return 1;

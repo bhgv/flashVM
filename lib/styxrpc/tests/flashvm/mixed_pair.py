@@ -36,7 +36,7 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
-                    "live-dis", "cancel-dis-call", "cancel-dis-channel"):
+                    "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -73,6 +73,9 @@ def main():
         if name == "cancel-dis-channel":
             compile_image(args, directory, tests / "cancel-dis-channel_library.b", "queues.dis")
             (directory / "channel-gate").write_bytes(b"0")
+        if name == "cancel-vfs-read":
+            (directory / "read-gate").write_bytes(b"0")
+            (directory / "neighbour").write_bytes(b"Z")
         if name == "dirlive":
             (directory / "tools/before").touch()
         if name == "modref-reverse":
@@ -100,6 +103,7 @@ def main():
             "live-dis": ("styxnodes",),
             "cancel-dis-call": (),
             "cancel-dis-channel": (),
+            "cancel-vfs-read": ("styxnodes",),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -122,6 +126,7 @@ def main():
                          "live-dis_reuse.as", "live-dis_closed.as", "live-dis_cancel.as"),
             "cancel-dis-call": ("cancel-dis-call_worker.as",),
             "cancel-dis-channel": ("cancel-dis-channel_worker.as",),
+            "cancel-vfs-read": ("cancel-vfs-read_worker.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())

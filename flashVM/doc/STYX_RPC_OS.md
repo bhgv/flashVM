@@ -49,6 +49,11 @@ cursor. Operation errors reach the script. An uncertain write requires a
 fresh open before further writes. When the handle and extracted methods
 become unreachable, collection queues the fid clunk outside GC.
 
+For a detached task, cancellation of a pending `read(count)` retires
+that file fid and ends the read with an error. The provider can retain
+effects of a read it already handled. See [mounted VFS in tasks](ASINC_VFS.md)
+and the [C SDK read contract](../../lib/styxrpc/reference/vfs_file_read_until.md).
+
 ```actionscript
 var file = vfs.open("/movies/intro.swf");
 var clip = file.load();

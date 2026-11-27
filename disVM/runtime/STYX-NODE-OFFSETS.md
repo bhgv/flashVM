@@ -35,6 +35,15 @@ the operation, its application effects may have happened and the open
 cursor rejects subsequent data operations. A separate open has its own
 cursor. See [live Dis loading](../../flashVM/doc/STYX_RPC_LIVE_DIS.md).
 
+The paired reverse Styx server also defers ordinary byte reads on these
+files. A native worker owns the active cursor while the dispatcher handles
+other fids. A `Tflush` for the read cancels its pending Limbo ticket, and
+`Node.reply` rejects a late response to that ticket. A separately opened
+fid can keep reading the publication. The server bounds the number of
+outstanding deferred reads and serializes access to each in-use cursor.
+See [the dispatcher implementation](../native/terminal/caller_read.c)
+and [cancellation in FlashVM tasks](../../flashVM/doc/ASINC_VFS.md).
+
 The ordinary Styx messages carry all data and positions in the existing
 libstyxrpc session. The callback runs in the owner’s VM. Use the
 [stream publication](STYX-NODES.md) for content driven by arrival order.
