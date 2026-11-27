@@ -11,6 +11,17 @@ Styx connection.
 
 [Mixed module images, typed imports and owner control files](MODULES.md).
 
+## Protocol compatibility with DisVM
+
+Native DisVM Styx RPC and the standalone C SDK share one wire contract.
+For a given profile they agree on service paths, signatures, request and
+reply framing, offsets, error handling, cancellation and fid lifetimes.
+Protocol changes are coordinated across both implementations. A new
+capability is advertised through its agreed profile once both ends can
+handle it. The compatibility tests pair the independently built C SDK
+with real DisVM and exercise the supported caller and provider roles.
+[DisVM integration tests](examples/README.md#disvm-integration-tests)
+
 ## Integration scenario
 
 An external application, such as a FlashVM host or a device controller,

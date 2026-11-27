@@ -142,3 +142,19 @@ retained historical code is not authorization to reactivate those profiles.
 - Keep standalone library projects configured with `LANGUAGES C`; check exported
   implementation targets with their C-only build guard. Do not add a C++ compiler
   requirement to build the C libraries.
+
+# DisVM and libstyxrpc protocol compatibility (2026-11-27)
+
+- Work out each proposed protocol change against both native DisVM Styx RPC and
+  [standalone libstyxrpc](lib/styxrpc/README.md) before changing either one.
+  Maintain full wire compatibility between the two implementations. A common
+  profile has one contract for service paths, type signatures, request and
+  reply bytes, offsets, failure results, cancellation and fid lifetimes.
+- Synchronize any changes to that contract across both implementations and
+  reusable codecs. Preserve existing profiles. Advertise a new capability only
+  when both ends implement its negotiated behavior.
+- Validate changed behavior with real DisVM and the independently built C SDK
+  over Styx. Exercise both caller/provider directions where the operation
+  supports them, including replies, failures and cleanup. Run the DisVM cases
+  in the interpreter and JIT. The existing
+  [integration tests](lib/styxrpc/cmake/DisvmTests.cmake) are the starting point.

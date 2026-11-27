@@ -16,6 +16,9 @@
   begin [GC:]. Keep public bridge formats scalar/value/capability based.
 - Build/test independently from this directory using explicit host inputs.
   Do not create implicit dependencies on sibling source trees or external SDK binaries.
+- For native Styx RPC, apply the
+  [shared protocol compatibility rules](../AGENTS.md#disvm-and-libstyxrpc-protocol-compatibility-2026-11-27)
+  with libstyxrpc before changing the wire contract.
 - Prepare/test local work branches and retain format-patches. The user has
   authorized direct GitHub publication to bhgv/flashVM. Check the expected
   master head and resulting tree; never force-push. Upstream fixes remain

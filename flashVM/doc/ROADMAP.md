@@ -1,5 +1,17 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1808 — maintain one Styx RPC wire contract
+
+Coordinate protocol changes across native DisVM Styx RPC and standalone
+libstyxrpc. Validate shared profiles over Styx with real DisVM and the C
+SDK in both supported roles.
+
+Изменения протокола согласуются между нативным Styx RPC в DisVM и
+самостоятельной libstyxrpc. Общие профили проверяются по Styx на DisVM
+и C SDK в обеих поддерживаемых ролях.
+[EN](../../lib/styxrpc/README.md#protocol-compatibility-with-disvm) ·
+[RU](../../lib/styxrpc/README.ru.md#совместимость-протокола-с-disvm).
+
 ## v0.1807 — cancel in-flight Styx data exchanges
 
 The native Styx client checks the caller's stop flag while waiting for a
