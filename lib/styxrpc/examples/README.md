@@ -174,3 +174,7 @@ The recursive FlashVM integration sends two reverse PIDs and admits a separate m
 ## Writable 9P tree
 
 [The C and Limbo example](disvm/MUTATIONS.md) shows creation, removal and retained fids.
+
+## Deferred file transfers
+
+[The C and Limbo walkthrough](disvm/DEFERRED_IO.md) tests cancellable file callbacks on a shared connection.

@@ -178,3 +178,7 @@ ctest --test-dir build -R '^styxrpc-disvm-' --output-on-failure
 ## Изменяемое дерево 9P
 
 [Пример C и Limbo](disvm/MUTATIONS.ru.md) показывает создание, удаление и работу с удерживаемыми fid.
+
+## Отложенные файловые передачи
+
+[Сценарий C и Limbo](disvm/DEFERRED_IO.ru.md) проверяет отмену файловых колбэков на том же соединении.

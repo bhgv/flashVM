@@ -1,5 +1,19 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1813 — cancel deferred transfers in the standalone C provider
+
+Ordinary libstyxrpc servers can opt individual file reads and writes into
+native workers. The same Styx dispatcher handles exact-tag flush and keeps
+other fids responsive. The C SDK and real Limbo clients verify short write
+acknowledgements, cancellation, reopening and file-cookie retirement.
+
+Обычные серверы libstyxrpc могут передавать выбранные чтения и записи в
+нативные потоки. Тот же диспетчер Styx обрабатывает flush по точному тегу
+и продолжает работу с соседними fid. SDK C и клиент Limbo проверяют
+короткие подтверждения записи, отмену, новое открытие и освобождение
+файловых состояний.
+[EN](../../lib/styxrpc/DEFERRED_IO.md) · [RU](../../lib/styxrpc/DEFERRED_IO.ru.md).
+
 ## v0.1812 — cancel mounted VFS control waits in FlashVM tasks
 
 The shared Styx client polls a stop flag across fragmented walks. The

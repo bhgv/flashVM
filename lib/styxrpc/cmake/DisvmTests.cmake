@@ -20,6 +20,17 @@ foreach(mode IN ITEMS interpreter jit)
     if(mode STREQUAL "jit")
         list(APPEND mode_args --jit)
     endif()
+    foreach(transport IN ITEMS unix tcp)
+        set(transport_args)
+        if(transport STREQUAL "tcp")
+            list(APPEND transport_args --tcp)
+        endif()
+        add_test(NAME "styxrpc-disvm-deferred-${mode}-${transport}"
+            COMMAND "${disvm_command}" "${disvm_examples}/deferred.py" ${disvm_common}
+                --device "$<TARGET_FILE:styxrpc-deferred-device>" --module "${disvm_upstream_modules}"
+                --native-module "${disvm_native_modules}" ${mode_args} ${transport_args})
+        set_tests_properties("styxrpc-disvm-deferred-${mode}-${transport}" PROPERTIES TIMEOUT 45)
+    endforeach()
     add_test(NAME styxrpc-disvm-mutations-${mode}
         COMMAND "${disvm_command}" "${disvm_examples}/mutations.py" ${disvm_common}
             --module "${disvm_upstream_modules}" --device "$<TARGET_FILE:styxrpc-mutable-device>"

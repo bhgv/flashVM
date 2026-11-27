@@ -80,6 +80,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
         release_fid(fid);
         return Ebadarg;
     }
+    select_deferred(server, fid, id);
     *qid = (Qid){.path = id, .vers = revision, .type = directory ? QTDIR : 0};
     return nil;
 }
@@ -108,8 +109,7 @@ static char *remove_node(Qid qid)
 int styxrpc_server_enable_mutations(StyxRpcServer *server, const StyxRpcMutations *mutations)
 {
     if (!server || !mutations || (!mutations->create && !mutations->remove) ||
-        server->started || server->mutations || server->tree == &styxrpc_control_tree ||
-        server->tree == &styxrpc_module_slot_tree || server->tree == &styxrpc_program_tree)
+        server->started || server->mutations || !ordinary_tree(server))
     {
         return 0;
     }

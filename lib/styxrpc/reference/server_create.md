@@ -16,3 +16,5 @@ Hosted Linux64. `StyxRpc::serve`.
 [Example](../tests/directory.c) · [Source](../src/serve.c)
 
 [Optional create/remove callbacks](server_enable_mutations.md).
+
+[Optional deferred reads and writes](server_enable_deferred_io.md).

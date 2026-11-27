@@ -155,6 +155,9 @@ The hosted client also supports [stat](reference/vfs_stat.md), [positional read]
 prefix if a later chunk is stopped. The paired DisVM server handles
 both as deferred transfers using standard Styx `Tflush`.
 
+[Deferred file transfers](DEFERRED_IO.md) let ordinary C providers select read and
+write callbacks that can run on native workers.
+
 [VFS control cancellation](VFS_CONTROL.md) covers path lookup, open, directory
 iteration and namespace mutations.
 

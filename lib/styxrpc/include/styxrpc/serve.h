@@ -62,6 +62,29 @@ typedef struct StyxRpcMutations
 int styxrpc_server_enable_mutations(StyxRpcServer *server, const StyxRpcMutations *mutations);
 
 
+/* EN: On the owner, select STYXRPC_READ and/or STYXRPC_WRITE for one file ID.
+ * The installed tree context is borrowed. Zero keeps all transfers synchronous.
+ * RU: Выбрать у владельца STYXRPC_READ и/или STYXRPC_WRITE для ID файла.
+ * Контекст дерева заимствован. Ноль сохраняет синхронные передачи. */
+typedef unsigned (*StyxRpcDeferFile)(void *context, uint64_t id);
+
+
+/* EN: Opt an ordinary callback tree into deferred byte transfers. Borrow
+ * select through destroy. Call once on the owner before dispatch, returning
+ * one on success and zero on refusal. Selected callbacks run on native threads.
+ * RU: Включить отложенные передачи обычного дерева колбэков. Заимствовать
+ * select до destroy. Вызвать один раз у владельца до обслуживания. Вернуть
+ * единицу при успехе, ноль при отказе. Колбэки выполняются в нативных потоках. */
+int styxrpc_server_enable_deferred_io(StyxRpcServer *server, StyxRpcDeferFile select);
+
+
+/* EN: Report whether the current deferred callback's exact request has retired.
+ * Return zero outside that callback. Safe to poll while waiting for provider I/O.
+ * RU: Проверить, завершён ли точный запрос текущего отложенного колбэка.
+ * Вне колбэка вернуть ноль. Можно проверять при ожидании ввода-вывода. */
+int styxrpc_server_io_cancelled(void);
+
+
 /* EN: Take phy on every outcome. Borrow tree/context through destroy.
  * Root ID is zero. Access uses the other-class Unix mode bits for every peer.
  * Use an already authorized connection. Returns NULL if initialization fails.
@@ -103,8 +126,10 @@ int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms);
 int styxrpc_server_program_step_for(StyxRpcServer *server, int timeout_ms);
 
 
-/* EN: Consume the server, closing all owned fid cookies including on link loss.
- * RU: Освободить сервер и закрыть все состояния fid, в том числе после обрыва. */
+/* EN: Consume the server on its owner, including after link loss. Signal
+ * deferred callbacks, join them, then retire their remaining fid cookies.
+ * RU: Освободить сервер у владельца, в том числе после обрыва. Подать отмену
+ * отложенным колбэкам, дождаться их и освободить оставшиеся состояния fid. */
 void styxrpc_server_destroy(StyxRpcServer *server);
 
 /* EN: On-demand, owner-thread snapshot. No new wire requests or per-call counters.

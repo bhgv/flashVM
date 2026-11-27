@@ -63,6 +63,12 @@ if(STYXRPC_EXAMPLES)
     target_link_libraries(styxrpc-channel-device PRIVATE StyxRpc::launch StyxRpc::serve Styx::bidir)
     add_executable(styxrpc-routed-client examples/disvm/routed_client.c)
     target_link_libraries(styxrpc-routed-client PRIVATE StyxRpc::launch StyxRpc::serve Styx::bidir)
+    add_executable(styxrpc-deferred-device examples/disvm/deferred_device.c)
+    target_link_libraries(styxrpc-deferred-device PRIVATE StyxRpc::serve)
+    set_target_properties(styxrpc-deferred-device PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+    add_executable(styxrpc-deferred-client examples/disvm/deferred_client.c)
+    target_link_libraries(styxrpc-deferred-client PRIVATE StyxRpc::launch)
+    set_target_properties(styxrpc-deferred-client PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
     add_executable(styxrpc-mutable-device examples/disvm/mutable_device.c)
     target_link_libraries(styxrpc-mutable-device PRIVATE StyxRpc::serve)
     set_target_properties(styxrpc-mutable-device PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
@@ -74,6 +80,14 @@ if(STYXRPC_EXAMPLES)
     if(BUILD_TESTING)
         find_package(PythonInterp 3 QUIET)
         if(PYTHONINTERP_FOUND)
+            add_test(NAME styxrpc-deferred-files
+                COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/examples/disvm/deferred.py"
+                    --device "$<TARGET_FILE:styxrpc-deferred-device>" --client "$<TARGET_FILE:styxrpc-deferred-client>")
+            add_test(NAME styxrpc-deferred-pressure
+                COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/examples/disvm/deferred.py"
+                    --device "$<TARGET_FILE:styxrpc-deferred-device>" --client "$<TARGET_FILE:styxrpc-deferred-client>"
+                    --pressure --tcp)
+            set_tests_properties(styxrpc-deferred-files styxrpc-deferred-pressure PROPERTIES TIMEOUT 35)
             add_test(NAME styxrpc-mutable-tree
                 COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/examples/disvm/mutations.py"
                     --device "$<TARGET_FILE:styxrpc-mutable-device>" --client "$<TARGET_FILE:styxrpc-mutation-client>")

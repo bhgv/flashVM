@@ -38,6 +38,10 @@ struct StyxRpcServer
     void *attach_state;             /* Borrowed by attach until cleared. */
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
     MessageRoot messages[STYXRPC_MESSAGE_ROOTS_MAX]; /* Live exchange roots and retired generations. */
+    StyxRpcDeferFile defer_file;    /* Optional native transfer selector. */
+    StyxPhyWake *io_wake;            /* Owned wake capability through all worker joins. */
+    struct TreeIo *pending_io;      /* Owner list of deferred byte operations. */
+    size_t io_count;                 /* Bounded number of active and retiring callbacks. */
     int started;                    /* Legacy message enable is only allowed before dispatch. */
     int program_only;                /* Serve only the native reverse program tree during a synchronous call. */
     struct TreeFid *deferred;        /* Unrelated clunks whose callbacks must wait for ordinary dispatch. */
@@ -46,11 +50,16 @@ struct StyxRpcServer
     pthread_mutex_t program_lock;   /* Serializes requests and changes to that registry. */
 };
 
+/* EN: Fid-owned file cookie or directory cursor, held through any deferred transfer.
+ * RU: Состояние файла или курсор каталога, удерживаемые до завершения передачи. */
 typedef struct TreeFid
 {
     struct TreeFid *next; /* Deferred clunk linkage, used at most once. */
     int program;      /* Open belongs to the native reverse program tree. */
     StyxRpcFile file; /* Owned state of an opened byte file, empty on directories. */
+    struct TreeIo *io; /* Current deferred operation, including worker retirement. */
+    unsigned deferred_access; /* Read and write modes explicitly chosen by the provider. */
+    int retired;      /* Clunk arrived while a worker still owns the cookie. */
     uint64_t offset;  /* Expected next directory byte position. */
     size_t index;     /* Next directory entry index. */
     uint32_t revision; /* Revision captured when at offset zero. */
@@ -60,6 +69,18 @@ static __thread StyxRpcServer *active; /* Current host dispatcher on this native
 
 
 #include "serve_program_wait.inc"
+
+
+/* EN: Test whether an ordinary tree permits owner-installed file policies.
+ * RU: Проверить, допускает ли обычное дерево настройки файлов владельцем. */
+static int ordinary_tree(const StyxRpcServer *server)
+{
+    return server->tree != &styxrpc_control_tree && server->tree != &styxrpc_module_slot_tree &&
+        server->tree != &styxrpc_program_tree;
+}
+
+
+#include "serve_deferred_io.inc"
 
 
 /* EN: Map id to an exchange slot, or return an out-of-range index.
@@ -189,7 +210,11 @@ static char *walk_node(Qid *qid, char *name)
 static void release_fid(void *state)
 {
     TreeFid *fid = state;
-    if (active->program_only && !fid->program)
+    if (fid->io)
+    {
+        fid->retired = 1;
+    }
+    else if (active->program_only && !fid->program)
     {
         fid->next = active->deferred;
         active->deferred = fid;
@@ -239,6 +264,7 @@ static char *open_node(Qid *qid, int mode)
         release_fid(fid);
         return Eperm;
     }
+    select_deferred(active, fid, qid->path);
     *qid = identity(&node);
     return nil;
 }
@@ -248,46 +274,7 @@ static char *open_node(Qid *qid, int mode)
 #include "serve_listing.inc"
 
 
-/* EN: Dispatch a positional read on this exact opened fid or its directory cursor.
- * RU: Передать позиционное чтение открытого fid или его курсора каталога. */
-static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
-{
-    TreeFid *fid = styxgetaux(&active->wire);
-    if (!fid || offset < 0 || (active->control_only && qid.path != CONTROL_STATE) ||
-        (active->program_only && !fid->program))
-    {
-        return Ebadarg;
-    }
-    if (qid.type & QTDIR)
-    {
-        return read_directory(qid, fid, bytes, count, (uint64_t)offset);
-    }
-    size_t size;
-    if (styxrpc_file_read(&fid->file, (uint64_t)offset, bytes, *count, &size) != STYXRPC_OK)
-    {
-        return Ebadarg;
-    }
-    *count = size;
-    return nil;
-}
-
-
-/* EN: Forward one positional write through the exact opened fid.
- * RU: Передать одну позиционную запись через точный открытый fid. */
-static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
-{
-    TreeFid *fid = styxgetaux(&active->wire);
-    size_t size;
-    if (!fid || offset < 0 || (qid.type & QTDIR) ||
-        (active->control_only && qid.path != CONTROL_STATE) ||
-        (active->program_only && !fid->program) ||
-        styxrpc_file_write(&fid->file, (uint64_t)offset, bytes, *count, &size) != STYXRPC_OK)
-    {
-        return Ebadarg;
-    }
-    *count = size;
-    return nil;
-}
+#include "serve_transfer.inc"
 
 
 /* EN: Resolve stat by ID, independent of the lookup path.
@@ -401,6 +388,10 @@ int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms)
             pthread_mutex_unlock(&server->program_lock);
         }
     }
+    if (ready)
+    {
+        finish_io(server, 0);
+    }
     active = previous;
     return ready;
 }
@@ -422,6 +413,8 @@ void styxrpc_server_destroy(StyxRpcServer *server)
         StyxRpcServer *previous = active;
         active = server;
         styxend(&server->wire);
+        finish_io(server, 1);
+        styxphywakefree(server->io_wake);
         drain_clunks(server);
         active = previous;
         if (server->programs)

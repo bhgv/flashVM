@@ -12,6 +12,14 @@ read/write провайдера, который явно поддерживае�
 доходит до native fd-owner и Tflush. Нет guest callback, кооперативного опроса,
 debug pause, глобальной остановки или смены владельца Prog/REG.
 
+The [hosted C provider walkthrough](../../../lib/styxrpc/examples/disvm/DEFERRED_IO.md)
+exercises this route over Styx in both DisVM execution modes. A direct Limbo
+parent cancels a mounted file wait and the separate C server retires only
+that callback while another fid stays available.
+[Пример Limbo и C](../../../lib/styxrpc/examples/disvm/DEFERRED_IO.ru.md)
+проверяет этот путь в интерпретаторе и JIT. Отмена прямого потомка снимает
+именно его колбэк у автономного C-провайдера, сохраняя другой fid.
+
 ## Capability and scope / Capability и область операции
 
 `DVM_VfsHandle.native_flags` appends a native handle capability field.

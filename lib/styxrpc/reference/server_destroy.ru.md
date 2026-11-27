@@ -14,3 +14,7 @@ void styxrpc_server_destroy(StyxRpcServer *server);
 Hosted Linux64. `StyxRpc::serve`.
 
 [Пример](../tests/directory.c) · [Исходник](../src/serve.c)
+
+При включённом [отложенном вводе-выводе](server_enable_deferred_io.ru.md) сервер
+подаёт отмену колбэкам и ждёт их выхода. Удержанные файловые состояния
+закрываются у владельца после завершения соответствующих потоков.
