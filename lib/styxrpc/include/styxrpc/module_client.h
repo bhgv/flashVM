@@ -49,6 +49,17 @@ StyxRpcStatus styxrpc_module_check(struct StyxClient *session, const char *modul
  * Закрыть через styxclientclunk либо styxrpc_vfs_close. Без повторного поиска пути. */
 struct StyxFid *styxrpc_module_open(struct StyxClient *session, const char *path);
 
+/* EN: Ask the attached Dis owner to load a visible relative .dis file.
+ * Return an owned exact directory fid or NULL. On success lease receives the
+ * owned request fid. Keep it open for all calls and returned channel use.
+ * Close both via styxclientclunk. The operation may wait for owner readiness.
+ * RU: Запросить загрузку видимого относительного .dis у владельца Dis.
+ * Вернуть свой точный fid каталога либо NULL. При успехе lease получает fid
+ * запроса. Удерживать его на время вызовов и использования возвращённых каналов.
+ * Закрыть оба через styxclientclunk. Операция может ждать готовности владельца. */
+struct StyxFid *styxrpc_module_live_open(struct StyxClient *session, const char *path,
+    struct StyxFid **lease);
+
 /* EN: Discover checked exports relative to the borrowed, unopened module fid.
  * RU: Найти проверенные экспорты от заимствованного неоткрытого fid модуля. */
 StyxRpcStatus styxrpc_module_exports_at(struct StyxFid *directory, uint32_t pid, StyxRpcModuleExports *out);

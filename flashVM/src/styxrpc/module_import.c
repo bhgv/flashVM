@@ -21,16 +21,45 @@ typedef struct LoadedMethod
     } target;                        /* Selected callable profile. */
     FVM_StyxRpcChannelArguments channels; /* Bridges the managed target to the reverse bus. */
     struct StyxFid *directory; /* Borrowed exact module fid from the parent proxy. */
+    FVM_StyxModuleLease *lease; /* Borrowed from the native module while invoking. */
     StyxRpcModuleKind kind; /* Existing codec chosen from the compiled export. */
     char name[STYXRPC_TREE_NAME + 1]; /* Owned verified export name. */
 } LoadedMethod;
 
+struct FVM_StyxModuleLease
+{
+    struct StyxFid *request; /* Owned control fid through the last module or channel. */
+    size_t references;      /* Context-local owner count. */
+};
+
 typedef struct LoadedModule
 {
+    FVM_StyxModuleLease *lease; /* Owned when loaded from an ordinary file. */
     struct StyxFid *directory; /* Owned unopened directory for all method walks. */
     char path[STYXRPC_VFS_PATH_MAX + 1]; /* Owned relative module path. */
     LoadedMethod methods[STYXRPC_MAX_EXPORTS]; /* Stable callback state for native methods. */
 } LoadedModule;
+
+
+/* EN/RU: See module_import.h. / См. module_import.h. */
+void fvm_styxrpc_live_lease_retain(FVM_StyxModuleLease *lease)
+{
+    if (lease)
+    {
+        ++lease->references;
+    }
+}
+
+
+/* [GC:] EN/RU: See module_import.h. / См. module_import.h. */
+void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease)
+{
+    if (lease && !--lease->references)
+    {
+        styxrpc_vfs_close(lease->request, 1);
+        free(lease);
+    }
+}
 
 
 /* EN: Check whether the AS adapters can represent the borrowed import contract.
@@ -104,7 +133,7 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
     case STYXRPC_MODULE_GRAPH:
         return fvm_styxrpc_graph_at(context, method->directory, &method->target.managed, argc, argv, out);
     case STYXRPC_MODULE_CHANNEL:
-        return fvm_styxrpc_channels_at(context, method->directory, &method->channels, argc, argv, out);
+        return fvm_styxrpc_channels_at(context, method->directory, &method->channels, argc, argv, out, method->lease);
     }
     return FVM_UNSUPPORTED;
 }
@@ -116,6 +145,7 @@ static void release(void *state)
 {
     LoadedModule *module = state;
     styxrpc_vfs_close(module->directory, 1);
+    fvm_styxrpc_live_lease_release(module->lease);
     free(module);
 }
 
@@ -153,12 +183,12 @@ static int checked(const FVM_StyxRpcLoadSpec *spec)
 
 /* [GC:] EN/RU: See module_import.h. / См. module_import.h. */
 FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base,
-    const FVM_StyxRpcLoadSpec *spec, FVM_Value *out)
+    const FVM_StyxRpcLoadSpec *spec, struct StyxFid **lease, FVM_Value *out)
 {
     FVM_GCRootScope *roots;
     FVM_Value value;
     FVM_Result status;
-    LoadedModule *module;
+    LoadedModule *module = NULL;
     struct StyxFid *directory;
     size_t i;
     if (!context || !out || !checked(spec))
@@ -205,6 +235,24 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
             free(module);
         }
     }
+    if (status == FVM_OK && lease && *lease)
+    {
+        module->lease = calloc(1, sizeof(*module->lease));
+        if (!module->lease)
+        {
+            status = FVM_OUT_OF_MEMORY;
+        }
+        else
+        {
+            module->lease->request = *lease;
+            module->lease->references = 1;
+            *lease = NULL;
+            for (i = 0; i < spec->count; ++i)
+            {
+                module->methods[i].lease = module->lease;
+            }
+        }
+    }
     if (status == FVM_OK)
     {
         *out = value;
@@ -218,7 +266,7 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
 /* [GC:] EN/RU: See flashvm/styxrpc_module.h. / См. flashvm/styxrpc_module.h. */
 FVM_Result fvm_styxrpc_module_load(FVM_Context *context, const FVM_StyxRpcLoadSpec *spec, FVM_Value *out)
 {
-    return fvm_styxrpc_module_load_at(context, NULL, spec, out);
+    return fvm_styxrpc_module_load_at(context, NULL, spec, NULL, out);
 }
 
 

@@ -40,12 +40,26 @@ if(DVM_TERMINAL_LAUNCH_SDK)
             -P "${launch_listener_embed}"
         DEPENDS limbo-bootstrap "${launch_listener_source}" "${root}/disVM/module/vfsnative.m"
             "${launch_listener_embed}" VERBATIM)
+    set(live_owner_dis "${CMAKE_CURRENT_BINARY_DIR}/live-module-owner.dis")
+    set(live_owner_header "${CMAKE_CURRENT_BINARY_DIR}/live_module_owner_image.h")
+    file(GLOB live_owner_sources "${root}/disVM/limbo/scalarowner*.b")
+    add_custom_command(OUTPUT "${live_owner_header}" BYPRODUCTS "${live_owner_dis}"
+        COMMAND "$<TARGET_FILE:limbo-bootstrap>" -D RG -I "${root}/disVM/module"
+            -I "${root}/disVM/upstream/module" -o "${live_owner_dis}" "${root}/disVM/limbo/scalarowner.b"
+        COMMAND "${CMAKE_COMMAND}" "-DINPUT=${live_owner_dis}" "-DOUTPUT=${live_owner_header}"
+            "-DSYMBOL=live_module_owner_image" -P "${launch_listener_embed}"
+        DEPENDS limbo-bootstrap ${live_owner_sources} "${root}/disVM/module/vfsnative.m"
+            "${launch_listener_embed}" VERBATIM)
+    set(live_module_sources terminal_launch/live_modules.c terminal_launch/live_module_control.c
+        terminal_launch/live_module_routes.c terminal_launch/live_module_guest.c vfs/live_module_owner.c)
+    target_sources(disvm PRIVATE "${live_owner_header}" terminal_launch/live_modules.c
+        terminal_launch/live_module_control.c terminal_launch/live_module_routes.c terminal_launch/live_module_guest.c)
     target_sources(disvm PRIVATE "${launch_listener_header}")
     target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
     target_sources(disvm PRIVATE terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c terminal_launch/serve.c terminal_launch/library.c terminal_launch/local_pair.c terminal_launch/mount_assets.c)
     target_compile_definitions(disvm PRIVATE DVM_TERMINAL_LAUNCH=1)
     set(launch_sources terminal_launch/cli.c terminal_launch/config.c terminal_launch/mount.c
-        terminal_launch/serve.c terminal_launch/library.c)
+        terminal_launch/serve.c terminal_launch/library.c ${live_module_sources})
     set(launch_includes
         "${root}/lib/styxrpc/include"
         "${root}/disVM/native/client" "${root}/disVM/native/terminal"

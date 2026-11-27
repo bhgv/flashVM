@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1802 — load an ordinary Dis library over the paired session
+
+With `--live-dis-load`, ActionScript can open an ordinary file and call
+`load()`. DisVM resolves the live path, stages the checked exports and
+publishes an exact directory on the existing connection. The proxy and
+returned channels retain that generation. Local socket and TCP tests in
+the interpreter and JIT verify replacement with a live old proxy, scalar
+and string calls, and lent and returned channels.
+[EN](STYX_RPC_LIVE_DIS.md) · [RU](STYX_RPC_LIVE_DIS.ru.md).
+
 ## v0.1801 — validate a complete Dis interface before publication
 
 The native Styx server can validate an owner's offer sequence in one pass.

@@ -27,6 +27,18 @@ init()
         raise "invalid scalar owner startup configuration";
     }
     (count, fields) := sys->tokenize(string startup, "\t");
+    if (count == 1 && hd fields == "live-listen") {
+        routes->scalarlivelisten();
+        return;
+    }
+    if (count == 2 && hd fields == "live-load") {
+        {
+            serve_live_loaded(sys, routes, hd tl fields);
+        } exception {
+            "*" => return;
+        }
+        return;
+    }
     if (count > 0 && hd fields == "loaded-set") {
         serve_loaded_set(routes, count-1, tl fields, 0);
         return;

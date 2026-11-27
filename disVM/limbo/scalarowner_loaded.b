@@ -123,16 +123,52 @@ serve_loaded_set(routes: Vfsnative, count: int, fields: list of string, table: i
         }
         planned = (view, request, reply) :: planned;
     }
+    serve_live_views(routes, planned, count/stride, table == 2);
+}
+
+
+# EN: Publish and serve every verified export of one live load.
+# RU: Опубликовать и обслуживать все проверенные экспорты одной живой загрузки.
+serve_live_loaded(sys: Sys, routes: Vfsnative, path: string)
+{
+    anchor := routes->scalarloadanchor(path);
+    profile := routes->scalarloadedprofile(anchor);
+    if (profile == nil || !routes->scalarliveprepare(profile)) {
+        return;
+    }
+    (count, names) := sys->tokenize(routes->scalarloadedexports(anchor), "\t");
+    planned: list of (Scalarloadedview, string, string);
+    for (i := 0; names != nil; i++) {
+        suffix := string i;
+        view := routes->scalarloadedslot(anchor, hd names, "/.dis-owner/offer" + suffix);
+        (tag, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil) := view;
+        if (!tag) {
+            return;
+        }
+        planned = (view, "/.dis-owner/request" + suffix, "/.dis-owner/reply" + suffix) :: planned;
+        names = tl names;
+    }
+    if (!routes->scalarliveprepare(nil)) {
+        return;
+    }
+    serve_live_views(routes, planned, count, 0);
+}
+
+
+# EN: Dispatch the prepared views and wait for every exact inbox to retire.
+# RU: Запустить подготовленные представления и дождаться закрытия каждой очереди.
+serve_live_views(routes: Vfsnative, planned: list of (Scalarloadedview, string, string), count, listen: int)
+{
     done := chan of int;
     pool := new_call_pool();
     for (pending := planned; pending != nil; pending = tl pending) {
         (view, request, reply) := hd pending;
         spawn serve_loaded_view(routes, view, request, reply, pool, done);
     }
-    if (table == 2) {
+    if (listen) {
         spawn accept_shared_launch(routes);
     }
-    for (i = 0; i < count; i += stride) {
+    for (i := 0; i < count; i++) {
         <-done;
     }
     close_call_pool(pool);

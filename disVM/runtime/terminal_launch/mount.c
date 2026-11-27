@@ -13,6 +13,7 @@
 #include "named_channels.h"
 #include "module_refs.h"
 #include "executable_nodes.h"
+#include "live_modules.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
 #include "vfs/launch/runtime.h"
@@ -34,65 +35,7 @@
 #include <unistd.h>
 
 
-/* EN: Create and pin the same live group used by the mounted guest and the reverse server.
- * RU: Создать и закрепить общую живую группу гостя и встречного сервера. */
-static DVM_Namespace *mounted_group(void)
-{
-    char cwd[DVM_NS_PATH_LIMIT];
-    DVM_Namespace *group = getcwd(cwd, sizeof(cwd)) ? dvm_namespace_create(cwd, "/", NULL) : NULL;
-    if (group && !dvm_namespace_pin(group))
-    {
-        dvm_namespace_release(group);
-        group = NULL;
-    }
-    return group;
-}
-
-
-/* EN: Install the mount in group and run the guest. The caller retains group.
- * RU: Установить маунт в group и запустить гостя. Ссылка group остаётся у вызывающего. */
-static int run_mounted(int argc, char **argv, DVM_Provider *mount, const char *path,
-    const int *descriptors, DVM_Namespace *group, StyxClient *client, const char *document, int fresh)
-{
-    if (!group || !dvm_namespace_retain(group))
-    {
-        return 1;
-    }
-    DVM_LaunchHandoff handoff = {.local_role = DVM_ORIGIN_TERMINAL, .group = group};
-    strcpy(handoff.description.module, "styx-mounted");
-    DVM_NamespacePlan target;
-    int installed = dvm_namespace_plan(handoff.group, path, &target) &&
-        dvm_namespace_mount_provider(handoff.group, &target, mount, "/styx-peer") == 1;
-    if (installed && descriptors)
-    {
-        for (unsigned number = 3; number < DVM_LAUNCH_FD_COUNT; number++)
-        {
-            if (descriptors[number] >= 3)
-            {
-                handoff.reserved_fds |= UINT32_C(1) << number;
-            }
-        }
-        int captured;
-        DVM_Provider *fds = dvm_launch_host_fd_view(descriptors, &captured);
-        installed = captured && fds && dvm_namespace_plan(handoff.group, "/.fd", &target) &&
-            dvm_namespace_mount_provider(handoff.group, &target, fds, "/launch-descriptors") == 1;
-        dvm_provider_release(fds);
-    }
-    UnibusBinding *binding = installed && client ? dvm_paired_ui_begin(client, document, fresh) : NULL;
-    if (installed && client)
-    {
-        installed = binding && dvm_launch_handoff_unibus(&handoff, binding);
-    }
-    int result = installed ? dvm_runtime_main_with_handoff(argc, argv, &handoff) : 1;
-    if (!installed)
-    {
-        fprintf(stderr, "disvm: cannot mount Styx at %s\n", path);
-    }
-    unibusrelease(handoff.unibus);
-    dvm_paired_ui_end(binding);
-    dvm_namespace_release(handoff.group);
-    return result;
-}
+#include "mount_runtime.inc"
 
 
 typedef struct MountedLaunch
@@ -340,7 +283,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     const char *path = "/peer";
     const char *assets = NULL, *document = NULL;
-    int fresh = 0;
+    int fresh = 0, live_load = 0;
     if (argc > separator + 1 && !strcmp(argv[separator], "--at"))
     {
         path = argv[separator + 1];
@@ -355,6 +298,11 @@ int dvm_styx_mount_cli(int argc, char **argv)
     {
         assets = argv[separator + 1];
         separator += 2;
+    }
+    if (!raw && argc > separator && !strcmp(argv[separator], "--live-dis-load"))
+    {
+        live_load = 1;
+        separator++;
     }
     if (!raw && argc > separator + 1 && (!strcmp(argv[separator], "--document") || !strcmp(argv[separator], "--new")))
     {
@@ -395,7 +343,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     }
     if (argc <= separator + 1 || strcmp(argv[separator], "--"))
     {
-        fprintf(stderr, "usage: disvm (--styx-mount-fd FD | --styx-mount-tcp HOST PORT) [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--assets DIR] [--document PATH | --new PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
+        fprintf(stderr, "usage: disvm (--styx-mount-fd FD | --styx-mount-tcp HOST PORT) [--raw | --launch|--launch-context ENTRY REQUEST TAG] [--at PATH] [--assets DIR] [--live-dis-load] [--document PATH | --new PATH] [--fd3 FD] [--fd N FD]... -- [VM OPTIONS] BOOTSTRAP.dis\n");
         return 2;
     }
     int fd = tcp ? dvm_terminal_tcp(argv[2], argv[3], 0) : dvm_terminal_connected(argv[2]);
@@ -476,7 +424,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     dvm_terminal_module_refs_attach(refs, client);
     DVM_Provider *mount = client ? dvm_terminal_mount_peer(reverse, client, entry, request, tag, scoped) : NULL;
     int result = 1;
-    if (mount)
+    if (mount && (!live_load || dvm_live_modules_start(group, client, mount)))
     {
         result = run_mounted(argc - separator, argv + separator, mount, path,
             granted ? descriptors : NULL, group, client, document, fresh);
@@ -485,10 +433,12 @@ int dvm_styx_mount_cli(int argc, char **argv)
     {
         fprintf(stderr, "disvm: cannot initialize bidirectional Styx mount\n");
     }
+    dvm_live_modules_stop();
     dvm_exec_stop(execute);
     shutdown(breaker, SHUT_RDWR);
     close(breaker);
     styxcallerjoin(reverse);
+    dvm_live_modules_finish();
     dvm_namespace_release(group);
     dvm_provider_release(mount);
     phybidirfree(mux);

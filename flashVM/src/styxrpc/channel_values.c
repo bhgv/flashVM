@@ -2,6 +2,7 @@
  * EN: Map exact UniBus grants to owner-local script identities and back to the current bus.
  * RU: Привязка точных полномочий UniBus к объектам владельца и кодирование текущей шины.
  */
+#include "module_import.h"
 #include "channel_private.h"
 #include "managed_values.h"
 #include <stdlib.h>
@@ -37,6 +38,7 @@ void fvm_styxrpc_channel_set_release(FVM_StyxChannelSet *set, int deferred)
         fvm_styxrpc_channel_retire_loans(set);
         styxrpc_channel_lease_release(set->lease, deferred);
         styxrpc_channel_mailbox_owner_release(set->pid_mailbox);
+        fvm_styxrpc_live_lease_release(set->module);
         free(set);
     }
 }

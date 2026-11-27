@@ -35,7 +35,7 @@ def main():
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
-                    "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan"):
+                    "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan", "live-dis"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -55,6 +55,16 @@ def main():
             (directory / "tools/result").write_bytes(b"0")
             (directory / "front").mkdir()
             (directory / "front/result").write_bytes(b"1")
+        if name == "live-dis":
+            for folder, source in (
+                ("library", tests / "live-dis_library.b"),
+                ("replacement", args.source / "runtime/tests/loaded_exports/replacement.b"),
+            ):
+                (directory / folder).mkdir()
+                compile_image(args, directory, source, folder + "/target.dis")
+            (directory / "scalar.dis").write_bytes((directory / "replacement/target.dis").read_bytes())
+            (directory / "gate").write_bytes(b"0")
+            (directory / "malformed.dis").write_bytes(b"not a Dis image\n")
         if name == "dirlive":
             (directory / "tools/before").touch()
         if name == "modref-reverse":
@@ -79,6 +89,7 @@ def main():
             "modref": ("styxnamed", "styxmodref"),
             "modref-reverse": ("styxnamed", "styxmodref", "styxnodes"),
             "module-channel": (),
+            "live-dis": (),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -97,6 +108,7 @@ def main():
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
             "dirlive": ("dirlive_signal.as",),
             "rebind": ("rebind_signal.as",),
+            "live-dis": ("live-dis_worker.as", "live-dis_refusal.as"),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
@@ -105,10 +117,11 @@ def main():
         paired_exchange(
             directory,
             lambda connection: [args.player, *connection, mode],
-            lambda connection: [args.runtime, *connection, "--at", "/peer", "--",
+            lambda connection: [args.runtime, *connection, "--at", "/peer",
+                                *(("--live-dis-load",) if name == "live-dis" else ()), "--",
                                 "--native-spawn", mode, client.name],
             f"PASS native {name} RPC paired VMs",
-            tcp=args.tcp,
+            tcp=args.tcp, timeout=30 if name == "live-dis" else 15,
         )
         if name == "asinc-vfs" and ((directory / "tools/result").read_bytes() != b"0" or
                                     (directory / "task-temp").exists()):

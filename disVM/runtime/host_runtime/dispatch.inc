@@ -203,6 +203,9 @@ static int runtime_dispatch_turn(void)
             {
                 dvm_managed_workers_guest_retired(child_pid);
             }
+#ifdef DVM_TERMINAL_LAUNCH
+            dvm_live_modules_primary_exit(child_pid);
+#endif
             if (retired->report_launch_exit)
             {
                 retired->report_launch_exit(retired->report_launch_state, failed_launch);

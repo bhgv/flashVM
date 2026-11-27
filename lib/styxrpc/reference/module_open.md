@@ -9,3 +9,5 @@ Walk a visible relative module directory on the already attached session. The se
 Resolve a directory once for subsequent interface inspection and method calls.
 
 Return an owned unopened module fid on success or NULL on lookup, permission or metadata failure. The fid pins the connection. Release it with styxclientclunk, or use styxrpc_vfs_close to defer wire cleanup when required. Serialize open or release against all borrowers. The call can wait for Styx I/O.
+
+For a regular Dis file on the paired VFS, see [styxrpc_module_live_open](module_live_open.md).

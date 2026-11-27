@@ -200,6 +200,9 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
     poperror();
     unload(module);
     initial_guest = process;
+#ifdef DVM_TERMINAL_LAUNCH
+    dvm_live_modules_primary(process->pid);
+#endif
     if (argument->startup_hex || argument->startup_fd >= 0)
     {
         DVM_LaunchContext *launch = local_startup_context(argument);
@@ -225,6 +228,12 @@ static int runtime_execute_inner(const RuntimeEntry *argument)
     {
         error("cannot start resident thread registry");
     }
+#ifdef DVM_TERMINAL_LAUNCH
+    if (!dvm_live_modules_boot())
+    {
+        error("cannot start live Dis module listener");
+    }
+#endif
 #ifdef DVM_RUNTIME_EDITOR
     dvm_editor_controller_ready();
 #endif
@@ -346,6 +355,9 @@ static int runtime_execute(void *argument)
     /* EN/RU: Disable UI wake callbacks before the scheduler service is destroyed.
      * Запретить UI-пробуждения до удаления сервиса планировщика. */
     dvm_editor_thread_stopping();
+#endif
+#ifdef DVM_TERMINAL_LAUNCH
+    dvm_live_modules_stop();
 #endif
     dvm_debug_quiesce();
     dvm_runtime_cancel_native_waits();

@@ -3,4 +3,7 @@
 # RU: Встроить образ приёмника запуска, собранный компилятором этой сборки.
 file(READ "${INPUT}" image HEX)
 string(REGEX REPLACE "(..)" "0x\\1," bytes "${image}")
-file(WRITE "${OUTPUT}" "static const unsigned char launch_listener_image[] = { ${bytes} };\n")
+if(NOT DEFINED SYMBOL)
+    set(SYMBOL launch_listener_image)
+endif()
+file(WRITE "${OUTPUT}" "static const unsigned char ${SYMBOL}[] = { ${bytes} };\n")

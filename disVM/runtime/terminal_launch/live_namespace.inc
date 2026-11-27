@@ -51,6 +51,15 @@ static int live_plan(void *group, const char *relative, DVM_ResourcePlan *plan)
  * RU: Разрешить relative и прочитать метаданные текущего ресурса. */
 static FVM_Result live_info(void *group, const char *relative, FVM_FileInfo *output)
 {
+    int reserved;
+    const char *route = relative;
+    DVM_Provider *provider = dvm_live_modules_route(group, &route, &reserved);
+    if (reserved)
+    {
+        FVM_Result status = provider ? dvm_provider_info(provider, route, output) : FVM_NOT_FOUND;
+        dvm_provider_release(provider);
+        return status;
+    }
     DVM_ResourcePlan plan;
     if (!live_plan(group, relative, &plan))
     {
@@ -70,6 +79,16 @@ static FVM_Result live_info(void *group, const char *relative, FVM_FileInfo *out
  * RU: Проверить фактические права на выбранный ресурс без открытия файла. */
 static FVM_Result live_access(void *group, const char *relative, unsigned access)
 {
+    int reserved;
+    const char *route = relative;
+    DVM_Provider *provider = dvm_live_modules_route(group, &route, &reserved);
+    if (reserved)
+    {
+        FVM_FileInfo info;
+        FVM_Result result = provider ? dvm_provider_info(provider, route, &info) : FVM_NOT_FOUND;
+        dvm_provider_release(provider);
+        return result == FVM_OK && ((info.mode >> 6) & access) != access ? FVM_UNSUPPORTED : result;
+    }
     DVM_ResourcePlan plan;
     if (((access & ~FVM_ACCESS_READ) && !strcmp(relative, STYXRPC_MODULE_REF_SCOPE_FILE)) ||
         !live_plan(group, relative, &plan))
@@ -164,6 +183,16 @@ static FVM_Result live_open(void *group, const char *relative, const char *mode,
     DVM_ResourcePlan plan;
     int directory = !strcmp(mode, "mkdir");
     int creating = directory || !strcmp(mode, "wx");
+    int reserved;
+    const char *route = relative;
+    DVM_Provider *provider = dvm_live_modules_route(group, &route, &reserved);
+    if (reserved)
+    {
+        FVM_Result status = !creating && provider ?
+            dvm_provider_open(provider, route, mode, output) : FVM_NOT_FOUND;
+        dvm_provider_release(provider);
+        return status;
+    }
     if ((!strcmp(relative, STYXRPC_MODULE_REF_SCOPE_FILE) && strcmp(mode, "r")) ||
         (creating && !live_create_path(relative)) || !live_plan(group, relative, &plan))
     {

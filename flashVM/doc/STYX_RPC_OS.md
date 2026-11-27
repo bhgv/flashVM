@@ -67,8 +67,9 @@ subsequent relative loads.
 
 A `.dis` load uses a published StyxRPC interface. It discovers names,
 signatures and schemas for direct calls. The stock pair supports Int32 and
-unscoped managed/graph profiles. Scoped calls require a reverse PID. Ordinary
-`.dis` files in the VFS need an interface published by DisVM. A module
+unscoped managed/graph profiles. Scoped calls require a reverse PID. In a
+[session with live Dis loading](STYX_RPC_LIVE_DIS.md), ordinary `.dis` files
+can be loaded directly. A published module
 descriptor captures its exact publication when opened. `load()` checks that
 publication and the proxy holds its own fid, so closing the source descriptor
 leaves the loaded clip or proxy usable. If the owner withdraws an image, held

@@ -68,6 +68,7 @@
 #include "formatted_sys.h"
 #ifdef DVM_TERMINAL_LAUNCH
 #include "terminal_launch/paired_ui.h"
+#include "terminal_launch/live_modules.h"
 #include "thread_port.h"
 #endif
 #include <stdio.h>

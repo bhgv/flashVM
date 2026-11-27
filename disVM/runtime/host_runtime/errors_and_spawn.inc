@@ -292,7 +292,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         resident->report_launch_exit = completion->report;
         resident->report_launch_state = completion->state;
     }
-    if (native_spawn && parent)
+    if (native_spawn && (parent || completion))
     {
         __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
         dvm_runqueue_set_state(process, Pready);

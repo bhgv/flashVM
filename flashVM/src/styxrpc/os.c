@@ -257,28 +257,41 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     OsHandle *handle = state;
+    struct StyxFid *live = NULL, *lease = NULL, *module;
     (void)self;
     (void)args;
     if (argc)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (handle->module)
+    if (!handle->module && handle->file && fvm_os_extension(handle->path, ".dis"))
+    {
+        live = styxrpc_module_live_open(handle->movies->session, handle->path + 1, &lease);
+        if (!live)
+        {
+            return FVM_NOT_FOUND;
+        }
+    }
+    module = live ? live : handle->module;
+    if (module)
     {
         StyxRpcModuleExports exports;
         FVM_StyxRpcLoadSpec spec = {0};
+        FVM_Result status = FVM_NOT_FOUND;
         spec.session = handle->movies->session;
         spec.path = handle->path + 1;
         spec.pid = handle->movies->binding->program.pid;
         spec.bus = handle->movies->argument_bus;
-        if (styxrpc_module_exports_at(handle->module, spec.pid, &exports) != STYXRPC_OK)
+        if (styxrpc_module_exports_at(module, spec.pid, &exports) == STYXRPC_OK)
         {
-            return FVM_NOT_FOUND;
+            spec.methods = exports.methods;
+            spec.count = exports.count;
+            spec.wait_ms = FVM_SESSION_CALL_WAIT_MS;
+            status = fvm_styxrpc_module_load_at(context, module, &spec, &lease, out);
         }
-        spec.methods = exports.methods;
-        spec.count = exports.count;
-        spec.wait_ms = FVM_SESSION_CALL_WAIT_MS;
-        return fvm_styxrpc_module_load_at(context, handle->module, &spec, out);
+        styxrpc_vfs_close(live, 0);
+        styxrpc_vfs_close(lease, 0);
+        return status;
     }
     if (handle->movies->root && handle->file && fvm_os_extension(handle->path, ".swf"))
     {
@@ -436,7 +449,8 @@ FVM_Result fvm_os_wrap_handle(FVM_Context *context, OsHandle *handle, int direct
     for (i = 0; i < sizeof(calls) / sizeof(calls[0]) && status == FVM_OK; ++i)
     {
         if ((!i || (directory ? i >= 7 : i < 7)) &&
-            (calls[i] != load_file || handle->module || handle->movies->root))
+            (calls[i] != load_file || handle->module || handle->movies->root ||
+                (handle->file && fvm_os_extension(handle->path, ".dis"))))
         {
             status = fvm_object_define_method_rooted(context, value.object, names[i], calls[i], handle, value.object);
         }

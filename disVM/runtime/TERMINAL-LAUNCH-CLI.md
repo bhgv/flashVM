@@ -236,7 +236,9 @@ verifies exact binary arguments through a bind alias and rejection of an
 unadvertised neighbour. It runs in the same `terminal-caller-mount-cli`
 test.
 
-### Run both sides
+#Pass `--live-dis-load` after the mount-point and asset options to expose [ordinary Dis library loading](../../flashVM/doc/STYX_RPC_LIVE_DIS.md) to the trusted peer.
+
+## Run both sides
 
 Give the owner and caller opposite ends of a connected stream. On the
 owner, launch the one-shot service with the local Dis image it will run:

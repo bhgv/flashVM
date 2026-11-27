@@ -12,8 +12,11 @@
 extern "C" {
 #endif
 
+struct FVM_StyxModuleLease; /* Context-owned module request. */
+
 typedef struct FVM_StyxChannelSet
 {
+    struct FVM_StyxModuleLease *module; /* Optional retained live module generation. */
     StyxRpcChannelLease *lease;        /* One retained result lease, if any. */
     struct FVM_StyxLocalLoan *loans;   /* Reverse publications owned by this family. */
     struct StyxClient *reverse;        /* Borrowed reverse mount during a callback. */

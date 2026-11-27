@@ -12,7 +12,7 @@
 /* [GC:] EN: Materialize the successful result under one shared owner-local lease.
  * RU: Создать успешный результат под общей арендой владельца. */
 static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const StyxRpcManagedTarget *target,
-    const StyxRpcLeasedReply *reply, FVM_Value *out)
+    const StyxRpcLeasedReply *reply, FVM_Value *out, FVM_StyxModuleLease *lease)
 {
     FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
@@ -31,6 +31,8 @@ static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const Sty
         {
             return 0;
         }
+        fvm_styxrpc_live_lease_retain(lease);
+        decode.set->module = lease;
     }
     decode.exported = 1;
     refs.graph = 1;
@@ -55,7 +57,7 @@ static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const Sty
 /* [GC:] EN: Invoke one verified function and preserve the exact fid in its channel objects.
  * RU: Выполнить проверенную функцию и удержать точный fid в объектах её каналов. */
 static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *descriptor,
-    StyxRpcArgumentBus *bus, unsigned argc, const FVM_Value *argv, FVM_Value *out)
+    StyxRpcArgumentBus *bus, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease)
 {
     const StyxRpcManagedTarget target = *descriptor;
     FVM_GCRootScope *roots;
@@ -123,7 +125,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
         switch (outcome)
         {
         case STYXRPC_CALL_OK:
-            if (!decode_result(context, roots, &target, &reply, out))
+            if (!decode_result(context, roots, &target, &reply, out, lease))
             {
                 error = "Styx RPC channel result could not be decoded";
             }
@@ -154,7 +156,7 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *out, void *state)
 {
     (void)self;
-    return invoke_scoped(context, NULL, state, NULL, argc, argv, out);
+    return invoke_scoped(context, NULL, state, NULL, argc, argv, out, NULL);
 }
 
 
@@ -165,15 +167,15 @@ FVM_Result fvm_styxrpc_invoke_channels(FVM_Context *context, FVM_Object *self, u
 {
     const FVM_StyxRpcChannelArguments *binding = state;
     (void)self;
-    return fvm_styxrpc_channels_at(context, NULL, binding, argc, argv, out);
+    return fvm_styxrpc_channels_at(context, NULL, binding, argc, argv, out, NULL);
 }
 
 
 /* EN/RU: See module_import.h. / См. module_import.h. */
 FVM_Result fvm_styxrpc_channels_at(FVM_Context *context, struct StyxFid *directory,
-    const FVM_StyxRpcChannelArguments *binding, unsigned argc, const FVM_Value *argv, FVM_Value *out)
+    const FVM_StyxRpcChannelArguments *binding, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease)
 {
-    return invoke_scoped(context, directory, binding->target, binding->bus, argc, argv, out);
+    return invoke_scoped(context, directory, binding->target, binding->bus, argc, argv, out, lease);
 }
 
 

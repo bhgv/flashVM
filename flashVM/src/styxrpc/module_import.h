@@ -8,6 +8,14 @@
 #include "flashvm/styxrpc.h"
 #include "flashvm/styxrpc_channel.h"
 
+typedef struct FVM_StyxModuleLease FVM_StyxModuleLease; /* Context-owned request fid reference. */
+
+/* EN: Retain or release a context-local module lease. NULL is accepted.
+ * RU: Удержать либо освободить локальную аренду модуля. NULL допустим. */
+void fvm_styxrpc_live_lease_retain(FVM_StyxModuleLease *lease);
+void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease);
+
+
 /* EN: Invoke a scalar target from state. / RU: Вызвать скалярную цель из state. */
 FVM_Result fvm_styxrpc_invoke_int(FVM_Context *, FVM_Object *, unsigned,
     const FVM_Value *, FVM_Value *, void *);
@@ -34,9 +42,12 @@ FVM_Result fvm_styxrpc_managed_at(FVM_Context *, struct StyxFid *, const StyxRpc
 FVM_Result fvm_styxrpc_graph_at(FVM_Context *, struct StyxFid *, const StyxRpcManagedTarget *,
     unsigned, const FVM_Value *, FVM_Value *);
 FVM_Result fvm_styxrpc_channels_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcChannelArguments *,
-    unsigned, const FVM_Value *, FVM_Value *);
+unsigned, const FVM_Value *, FVM_Value *, FVM_StyxModuleLease *);
 
-/* [GC:] EN: Validate and load on a clone of the held unopened module directory.
- * RU: Проверить и загрузить на клоне удерживаемого неоткрытого каталога модуля. */
-FVM_Result fvm_styxrpc_module_load_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcLoadSpec *, FVM_Value *);
+ /* [GC:] EN: Validate and load on a clone of the held unopened module directory.
+ * Consume the optional request fid only on success and clear its caller slot.
+ * RU: Проверить и загрузить на клоне удерживаемого неоткрытого каталога.
+ * Принять необязательный fid запроса только при успехе и очистить слот вызывающего. */
+FVM_Result fvm_styxrpc_module_load_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcLoadSpec *,
+    struct StyxFid **lease, FVM_Value *);
 #endif
