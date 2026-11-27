@@ -61,7 +61,7 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
         {
             StyxRpcModuleExports exports;
             struct StyxFid *module = styxrpc_module_open(movies->session, path + 1);
-            if (styxrpc_module_exports_at(module, movies->binding->program.pid, &exports) == STYXRPC_OK)
+            if (styxrpc_module_exports_at(module, movies->caller_pid ? movies->caller_pid : movies->binding->program.pid, &exports) == STYXRPC_OK)
             {
                 handle->module = module;
                 opened = STYXRPC_IO_OK;

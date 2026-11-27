@@ -3,6 +3,7 @@
  * RU: Связь управляемых значений AS с вызовами Dis в потоке владельца контекста.
  */
 #include "module_import.h"
+#include "wire_wait.h"
 #include "object_handlers.h"
 #include "flashvm/styxrpc_managed.h"
 #include "flashvm/avm1.h"
@@ -31,7 +32,7 @@ FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message)
 /* [GC:] EN: Encode checked arguments, perform exactly one call and root its decoded result.
  * RU: Закодировать аргументы, выполнить один вызов и удержать декодированный результат. */
 FVM_Result fvm_styxrpc_managed_at(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *target,
-    unsigned argc, const FVM_Value *argv, FVM_Value *value)
+    unsigned argc, const FVM_Value *argv, FVM_Value *value, StyxRpcServer *reverse)
 {
     FVM_GCRootScope *roots;
     unsigned char *buffers;
@@ -67,7 +68,16 @@ FVM_Result fvm_styxrpc_managed_at(FVM_Context *context, struct StyxFid *director
         }
         else
         {
-            switch (styxrpc_managed_invoke_at(directory, target, buffers, size, reply, STYXRPC_MANAGED_LIMIT, &result))
+            FVM_StyxWireCall call = {0};
+            call.kind = FVM_STYX_WIRE_MANAGED;
+            call.directory = directory;
+            call.target = target;
+            call.arguments = buffers;
+            call.size = size;
+            call.reply = reply;
+            call.capacity = STYXRPC_MANAGED_LIMIT;
+            call.result = &result;
+            switch (fvm_styxrpc_wire_call(reverse, &call))
             {
             case STYXRPC_CALL_OK:
                 if (result.void_result)
@@ -113,7 +123,7 @@ FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, un
     const FVM_Value *argv, FVM_Value *value, void *state)
 {
     (void)self;
-    return fvm_styxrpc_managed_at(context, NULL, state, argc, argv, value);
+    return fvm_styxrpc_managed_at(context, NULL, state, argc, argv, value, NULL);
 }
 
 

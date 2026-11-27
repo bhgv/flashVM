@@ -36,6 +36,8 @@ struct StyxRpcServer
     char name[STYXRPC_TREE_NAME + 1]; /* Own stat name through its response encoding. */
     MessageRoot messages[STYXRPC_MESSAGE_ROOTS_MAX]; /* Live exchange roots and retired generations. */
     int started;                    /* Legacy message enable is only allowed before dispatch. */
+    int program_only;                /* Serve only the native reverse program tree during a synchronous call. */
+    struct TreeFid *deferred;        /* Unrelated clunks whose callbacks must wait for ordinary dispatch. */
     int control_only;               /* Serve .state while a host activation is stopped. */
     StyxRpcPrograms *programs;       /* Exclusive borrowed registry for a program server. */
     pthread_mutex_t program_lock;   /* Serializes requests and changes to that registry. */
@@ -43,6 +45,8 @@ struct StyxRpcServer
 
 typedef struct TreeFid
 {
+    struct TreeFid *next; /* Deferred clunk linkage, used at most once. */
+    int program;      /* Open belongs to the native reverse program tree. */
     StyxRpcFile file; /* Owned state of an opened byte file, empty on directories. */
     uint64_t offset;  /* Expected next directory byte position. */
     size_t index;     /* Next directory entry index. */
@@ -50,6 +54,9 @@ typedef struct TreeFid
 } TreeFid;
 
 static __thread StyxRpcServer *active; /* Current host dispatcher on this native thread. */
+
+
+#include "serve_program_wait.inc"
 
 
 /* EN: Map id to an exchange slot, or return an out-of-range index.
@@ -110,6 +117,11 @@ static void describe(StyxRpcServer *server, const StyxRpcNode *node, Dir *out)
 static char *walk_node(Qid *qid, char *name)
 {
     StyxRpcNode parent, child;
+    if (active->program_only &&
+        (qid->path ? !native_program(qid->path) : strcmp(name, ".prog")))
+    {
+        return Eperm;
+    }
     if (!lookup(active, qid->path, &parent) || !parent.entry.directory)
     {
         return Enonexist;
@@ -174,8 +186,15 @@ static char *walk_node(Qid *qid, char *name)
 static void release_fid(void *state)
 {
     TreeFid *fid = state;
-    styxrpc_file_close(&fid->file);
-    free(fid);
+    if (active->program_only && !fid->program)
+    {
+        fid->next = active->deferred;
+        active->deferred = fid;
+    }
+    else
+    {
+        close_tree_fid(fid);
+    }
 }
 
 
@@ -184,7 +203,8 @@ static void release_fid(void *state)
 static char *open_node(Qid *qid, int mode)
 {
     StyxRpcNode node;
-    if (active->control_only && qid->path != CONTROL_STATE)
+    if ((active->control_only && qid->path != CONTROL_STATE) ||
+        (active->program_only && !native_program(qid->path)))
     {
         return Eperm;
     }
@@ -207,6 +227,7 @@ static char *open_node(Qid *qid, int mode)
     {
         return Enomem;
     }
+    fid->program = native_program(qid->path);
     const StyxRpcVfs *files = messages ? &styxrpc_message_files : &active->tree->files;
     void *context = messages ? active->messages[slot].service : active->context;
     if ((!node.entry.directory && styxrpc_file_open(&fid->file, files, context,
@@ -220,62 +241,7 @@ static char *open_node(Qid *qid, int mode)
 }
 
 
-/* EN: Generate complete directory records from the opened fid's byte cursor.
- * RU: Сформировать целые записи каталога с байтового курсора открытого fid. */
-static char *read_directory(Qid qid, TreeFid *fid, char *bytes, ulong *count, uint64_t offset)
-{
-    StyxRpcNode directory;
-    if (!lookup(active, qid.path, &directory) || !directory.entry.directory)
-    {
-        return Enonexist;
-    }
-    if (!offset)
-    {
-        fid->offset = 0;
-        fid->index = 0;
-        fid->revision = directory.revision;
-    }
-    if (offset != fid->offset || fid->revision != directory.revision)
-    {
-        return Ebadarg;
-    }
-    size_t written = 0, index = fid->index;
-    while (*count > written && index < STYXRPC_TREE_CHILDREN)
-    {
-        StyxRpcEntry entry;
-        StyxRpcStatus status = styxrpc_dir_entry(&active->tree->files, active->context, qid.path, index, &entry);
-        if (status == STYXRPC_MORE)
-        {
-            break;
-        }
-        StyxRpcNode child;
-        if (status != STYXRPC_OK || !entry.id || !lookup(active, entry.id, &child) || child.parent != qid.path)
-        {
-            return Ebadarg;
-        }
-        Dir info;
-        describe(active, &child, &info);
-        uint extent = sizeD2M(&info);
-        if (extent > *count - written)
-        {
-            if (!written)
-            {
-                return "directory entry exceeds read capacity";
-            }
-            break;
-        }
-        if (convD2M(&info, (uchar *)bytes + written, extent) != extent)
-        {
-            return Ebadarg;
-        }
-        written += extent;
-        ++index;
-    }
-    fid->index = index;
-    fid->offset += written;
-    *count = written;
-    return nil;
-}
+#include "serve_listing.inc"
 
 
 /* EN: Dispatch a positional read on this exact opened fid or its directory cursor.
@@ -283,7 +249,8 @@ static char *read_directory(Qid qid, TreeFid *fid, char *bytes, ulong *count, ui
 static char *read_node(Qid qid, char *bytes, ulong *count, vlong offset)
 {
     TreeFid *fid = styxgetaux(&active->wire);
-    if (!fid || offset < 0 || (active->control_only && qid.path != CONTROL_STATE))
+    if (!fid || offset < 0 || (active->control_only && qid.path != CONTROL_STATE) ||
+        (active->program_only && !fid->program))
     {
         return Ebadarg;
     }
@@ -309,6 +276,7 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
     size_t size;
     if (!fid || offset < 0 || (qid.type & QTDIR) ||
         (active->control_only && qid.path != CONTROL_STATE) ||
+        (active->program_only && !fid->program) ||
         styxrpc_file_write(&fid->file, (uint64_t)offset, bytes, *count, &size) != STYXRPC_OK)
     {
         return Ebadarg;
@@ -323,6 +291,10 @@ static char *write_node(Qid qid, char *bytes, ulong *count, vlong offset)
 static char *stat_node(Qid qid, Dir *dir)
 {
     StyxRpcNode node;
+    if (active->program_only && qid.path && !native_program(qid.path))
+    {
+        return Eperm;
+    }
     if (!lookup(active, qid.path, &node) || (STYXRPC_EXCHANGE_QID(qid.path) && qid.vers != node.revision))
     {
         return Enonexist;
@@ -407,6 +379,10 @@ int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms)
     server->started = 1;
     StyxRpcServer *previous = active;
     active = server;
+    if (!server->program_only)
+    {
+        drain_clunks(server);
+    }
     int ready = !styxphywait(&server->wire, timeout_ms);
     if (ready)
     {
@@ -441,6 +417,7 @@ void styxrpc_server_destroy(StyxRpcServer *server)
         StyxRpcServer *previous = active;
         active = server;
         styxend(&server->wire);
+        drain_clunks(server);
         active = previous;
         if (server->programs)
         {

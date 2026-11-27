@@ -17,7 +17,7 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/session_modules.c src/styxrpc/session_messages.c src/styxrpc/session_channel.c src/styxrpc/session_named_channel.cpp src/styxrpc/session_named_values.cpp src/styxrpc/session_named_refs.cpp
         src/styxrpc/session_message_types.c src/styxrpc/session_publish_messages.c
         src/styxrpc/session_named_snapshot.cpp src/styxrpc/session_module_refs.cpp src/styxrpc/session_nodes.cpp
-        src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/variable_ref_adapter.c src/styxrpc/variable_ref_identity.cpp src/styxrpc/variable_ref_channel.cpp src/styxrpc/object_image.c src/styxrpc/module_import.c
+        src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/variable_ref_adapter.c src/styxrpc/variable_ref_identity.cpp src/styxrpc/variable_ref_channel.cpp src/styxrpc/object_image.c src/styxrpc/module_import.c src/styxrpc/wire_wait.c
         src/styxrpc/playback.c src/styxrpc/playback_debug.c src/styxrpc/playback_snapshot.c
         src/styxrpc/player_services.c src/styxrpc/movie_load.c src/styxrpc/movie_requests.c
         src/styxrpc/os.c src/styxrpc/os_open.c src/styxrpc/worker_vfs.c ports/styxrpc_stats_port.c)

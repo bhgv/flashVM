@@ -278,16 +278,18 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
         StyxRpcModuleExports exports;
         FVM_StyxRpcLoadSpec spec = {0};
         FVM_Result status = FVM_NOT_FOUND;
+        uint32_t scoped;
         spec.session = handle->movies->session;
         spec.path = handle->path + 1;
-        spec.pid = handle->movies->binding->program.pid;
+        spec.pid = handle->movies->caller_pid ? handle->movies->caller_pid :
+            handle->movies->binding->program.pid;
         spec.bus = handle->movies->argument_bus;
-        if (styxrpc_module_exports_at(module, spec.pid, &exports) == STYXRPC_OK)
+        if (styxrpc_module_exports_scoped_at(module, spec.pid, &exports, &scoped) == STYXRPC_OK)
         {
             spec.methods = exports.methods;
             spec.count = exports.count;
             spec.wait_ms = FVM_SESSION_CALL_WAIT_MS;
-            status = fvm_styxrpc_module_load_at(context, module, &spec, &lease, out);
+            status = fvm_styxrpc_module_load_at(context, module, &spec, &lease, out, handle->movies->reverse, scoped);
         }
         styxrpc_vfs_close(live, 0);
         styxrpc_vfs_close(lease, 0);

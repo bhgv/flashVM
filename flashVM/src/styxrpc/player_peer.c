@@ -16,8 +16,25 @@
 #define PLAYER_FIRST_WORKER_PID 1U  /* First logical caller ID in this connection's reverse tree. */
 
 
+/* EN: Install the exact PID and native argument bus in the shared program registry.
+ * RU: Установить точный PID и нативную шину аргументов в общий реестр программ. */
+static int add_program(PlayerPrograms *programs, FVM_StyxRpcWorkerScope *scope, uint32_t pid)
+{
+    StyxRpcResource resource;
+    scope->pid = pid;
+    scope->bus = styxrpc_argument_bus_create(pid);
+    if (!scope->bus)
+    {
+        return 0;
+    }
+    resource = styxrpc_argument_bus_resource(scope->bus);
+    return styxrpc_program_add(&programs->registry, pid) &&
+        styxrpc_program_unibus(&programs->registry, pid, &resource);
+}
+
+
 /* EN/RU: See player_peer.h. / См. player_peer.h. */
-int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs)
+int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs, int dis_peer)
 {
     size_t i;
     if (!styxrpc_programs_init(&programs->registry, programs->nodes, PLAYER_PROGRAM_SLOTS))
@@ -26,25 +43,17 @@ int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *p
     }
     for (i = 0; i < FVM_ASYNC_MAX_TASKS; ++i)
     {
-        FVM_StyxRpcWorkerScope *scope = &programs->scopes.entries[i];
-        StyxRpcResource resource;
-        scope->pid = PLAYER_FIRST_WORKER_PID + (uint32_t)i;
-        scope->bus = styxrpc_argument_bus_create(scope->pid);
-        if (!scope->bus)
-        {
-            return 0;
-        }
-        resource = styxrpc_argument_bus_resource(scope->bus);
-        if (!styxrpc_program_add(&programs->registry, scope->pid) ||
-            !styxrpc_program_unibus(&programs->registry, scope->pid, &resource))
+        if (!add_program(programs, &programs->scopes.entries[i], PLAYER_FIRST_WORKER_PID + (uint32_t)i))
         {
             return 0;
         }
     }
-    if (!styxrpc_module_slot_programs(playback->slot, &programs->registry))
+    if ((dis_peer && !add_program(programs, &programs->movie, PLAYER_FIRST_WORKER_PID + FVM_ASYNC_MAX_TASKS)) ||
+        !styxrpc_module_slot_programs(playback->slot, &programs->registry))
     {
         return 0;
     }
+    playback->movie_scope = dis_peer ? &programs->movie : NULL;
     playback->worker_scopes = &programs->scopes;
     return 1;
 }
@@ -54,6 +63,7 @@ int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *p
 void fvm_styxrpc_player_programs_close(PlayerPrograms *programs)
 {
     size_t i;
+    styxrpc_argument_bus_destroy(programs->movie.bus);
     for (i = 0; i < FVM_ASYNC_MAX_TASKS; ++i)
     {
         styxrpc_argument_bus_destroy(programs->scopes.entries[i].bus);

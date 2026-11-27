@@ -32,6 +32,7 @@ init()
     sys = load Sys Sys->PATH;
     start("live-dis.swf");
     wait_for("/loaded");
+    wait_for("/direct");
     if (sys->bind("/replacement", "/library", Sys->MBEFORE) < 0) {
         raise sys->sprint("cannot replace live library directory: %r");
     }

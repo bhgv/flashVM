@@ -266,7 +266,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
         spec.setup = setup;
         spec.host = &host;
         if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK &&
-            fvm_styxrpc_player_programs(playback, &programs))
+            fvm_styxrpc_player_programs(playback, &programs, !flash_peer))
         {
             playback->awaiting_session = flash_peer;
             playback->defer_command_tick = 1;

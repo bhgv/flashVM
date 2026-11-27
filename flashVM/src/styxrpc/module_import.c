@@ -21,6 +21,7 @@ typedef struct LoadedMethod
     } target;                        /* Selected callable profile. */
     FVM_StyxRpcChannelArguments channels; /* Bridges the managed target to the reverse bus. */
     struct StyxFid *directory; /* Borrowed exact module fid from the parent proxy. */
+    StyxRpcServer *reverse; /* Borrowed owner dispatcher for direct scoped calls. */
     FVM_StyxModuleLease *lease; /* Borrowed from the native module while invoking. */
     StyxRpcModuleKind kind; /* Existing codec chosen from the compiled export. */
     char name[STYXRPC_TREE_NAME + 1]; /* Owned verified export name. */
@@ -129,11 +130,11 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
     case STYXRPC_MODULE_INT:
         return fvm_styxrpc_int_at(context, method->directory, &method->target.integer, argc, argv, out);
     case STYXRPC_MODULE_MANAGED:
-        return fvm_styxrpc_managed_at(context, method->directory, &method->target.managed, argc, argv, out);
+        return fvm_styxrpc_managed_at(context, method->directory, &method->target.managed, argc, argv, out, method->reverse);
     case STYXRPC_MODULE_GRAPH:
-        return fvm_styxrpc_graph_at(context, method->directory, &method->target.managed, argc, argv, out);
+        return fvm_styxrpc_graph_at(context, method->directory, &method->target.managed, argc, argv, out, method->reverse);
     case STYXRPC_MODULE_CHANNEL:
-        return fvm_styxrpc_channels_at(context, method->directory, &method->channels, argc, argv, out, method->lease);
+        return fvm_styxrpc_channels_at(context, method->directory, &method->channels, argc, argv, out, method->lease, method->reverse);
     }
     return FVM_UNSUPPORTED;
 }
@@ -183,7 +184,7 @@ static int checked(const FVM_StyxRpcLoadSpec *spec)
 
 /* [GC:] EN/RU: See module_import.h. / См. module_import.h. */
 FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base,
-    const FVM_StyxRpcLoadSpec *spec, struct StyxFid **lease, FVM_Value *out)
+    const FVM_StyxRpcLoadSpec *spec, struct StyxFid **lease, FVM_Value *out, StyxRpcServer *reverse, uint32_t scoped)
 {
     FVM_GCRootScope *roots;
     FVM_Value value;
@@ -226,6 +227,7 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
             for (i = 0; status == FVM_OK && i < spec->count; ++i)
             {
                 LoadedMethod *state = prepare(module, i, spec);
+                state->reverse = scoped & (UINT32_C(1) << i) ? reverse : NULL;
                 status = fvm_object_define_method_rooted(context, value.object, module->methods[i].name,
                     invoke, state, value.object);
             }
@@ -266,7 +268,7 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
 /* [GC:] EN/RU: See flashvm/styxrpc_module.h. / См. flashvm/styxrpc_module.h. */
 FVM_Result fvm_styxrpc_module_load(FVM_Context *context, const FVM_StyxRpcLoadSpec *spec, FVM_Value *out)
 {
-    return fvm_styxrpc_module_load_at(context, NULL, spec, NULL, out);
+    return fvm_styxrpc_module_load_at(context, NULL, spec, NULL, out, NULL, 0);
 }
 
 

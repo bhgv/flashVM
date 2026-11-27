@@ -3,6 +3,7 @@
  * RU: Декодирование результата с каналами в локальные объекты FlashVM с алиасами.
  */
 #include "module_import.h"
+#include "wire_wait.h"
 #include "channel_lend.h"
 #include "managed_values.h"
 #include "styxrpc/managed_module.h"
@@ -57,7 +58,7 @@ static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const Sty
 /* [GC:] EN: Invoke one verified function and preserve the exact fid in its channel objects.
  * RU: Выполнить проверенную функцию и удержать точный fid в объектах её каналов. */
 static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *descriptor,
-    StyxRpcArgumentBus *bus, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease)
+    StyxRpcArgumentBus *bus, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease, StyxRpcServer *reverse)
 {
     const StyxRpcManagedTarget target = *descriptor;
     FVM_GCRootScope *roots;
@@ -111,11 +112,18 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
     }
     else
     {
-        StyxRpcOutcome outcome = channels.scope ?
-            styxrpc_argument_scope_invoke_at(directory, channels.scope, &target, buffer, size,
-                buffer + STYXRPC_MANAGED_LIMIT, STYXRPC_MANAGED_LIMIT, &reply) :
-            styxrpc_channel_invoke_at(directory, &target, buffer, size, buffer + STYXRPC_MANAGED_LIMIT,
-                STYXRPC_MANAGED_LIMIT, &reply);
+        FVM_StyxWireCall call = {0};
+        StyxRpcOutcome outcome;
+        call.kind = FVM_STYX_WIRE_CHANNEL;
+        call.directory = directory;
+        call.target = &target;
+        call.arguments = buffer;
+        call.size = size;
+        call.reply = buffer + STYXRPC_MANAGED_LIMIT;
+        call.capacity = STYXRPC_MANAGED_LIMIT;
+        call.result = &reply;
+        call.scope = channels.scope;
+        outcome = fvm_styxrpc_wire_call(reverse, &call);
         channels.scope = NULL;
         if (arguments && outcome != STYXRPC_CALL_NOT_SENT && !fvm_styxrpc_lend_restore(context, &channels))
         {
@@ -156,7 +164,7 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *out, void *state)
 {
     (void)self;
-    return invoke_scoped(context, NULL, state, NULL, argc, argv, out, NULL);
+    return invoke_scoped(context, NULL, state, NULL, argc, argv, out, NULL, NULL);
 }
 
 
@@ -167,15 +175,15 @@ FVM_Result fvm_styxrpc_invoke_channels(FVM_Context *context, FVM_Object *self, u
 {
     const FVM_StyxRpcChannelArguments *binding = state;
     (void)self;
-    return fvm_styxrpc_channels_at(context, NULL, binding, argc, argv, out, NULL);
+    return fvm_styxrpc_channels_at(context, NULL, binding, argc, argv, out, NULL, NULL);
 }
 
 
 /* EN/RU: See module_import.h. / См. module_import.h. */
 FVM_Result fvm_styxrpc_channels_at(FVM_Context *context, struct StyxFid *directory,
-    const FVM_StyxRpcChannelArguments *binding, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease)
+    const FVM_StyxRpcChannelArguments *binding, unsigned argc, const FVM_Value *argv, FVM_Value *out, FVM_StyxModuleLease *lease, StyxRpcServer *reverse)
 {
-    return invoke_scoped(context, directory, binding->target, binding->bus, argc, argv, out, lease);
+    return invoke_scoped(context, directory, binding->target, binding->bus, argc, argv, out, lease, reverse);
 }
 
 

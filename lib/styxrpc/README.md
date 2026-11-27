@@ -33,6 +33,7 @@ and cancels pending operations.
 For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init](reference/scalar_module_init.md) and call verified exports with [styxrpc_scalar_invoke](reference/scalar_invoke.md). The standalone C client and the FlashVM bridge use the same client API. FlashVM links to the installed SDK. The SDK has no dependency on either VM.
 
 [Captured module directories](reference/module_open.md) keep discovered exports and calls bound to the selected image. See [export discovery](reference/module_exports_at.md) and [the exact scalar call](reference/scalar_invoke_at.md).
+[Scoped discovery](reference/module_exports_scoped_at.md) reports which exact methods need a caller PID. During a synchronous call, the owner can [serve the native program tree](reference/server_program_step_for.md) while its application callbacks wait.
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 

@@ -25,6 +25,7 @@ struct FVM_StyxRpcPlayback
 {
     FVM_StyxRpcPlaybackSpec spec; /* Copied settings and borrowed host services. */
     struct StyxClient *named;    /* Borrowed channel service for a FlashVM pair. */
+    FVM_StyxRpcWorkerScope *movie_scope;  /* Borrowed direct-call PID and bus for the owner. */
     FVM_StyxRpcWorkerScopes *worker_scopes; /* Borrowed reverse identities until worker teardown. */
     const FVM_PeerRefs *refs;     /* Borrowed negotiated module-ref routing for this pair. */
     int awaiting_session;        /* Reject movie staging until the peer mount is attached. */

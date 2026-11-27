@@ -7,6 +7,7 @@
 #include "flashvm/styxrpc_module.h"
 #include "flashvm/styxrpc.h"
 #include "flashvm/styxrpc_channel.h"
+#include "styxrpc/serve.h"
 
 typedef struct FVM_StyxModuleLease FVM_StyxModuleLease; /* Context-owned request fid reference. */
 
@@ -38,16 +39,18 @@ FVM_Result fvm_styxrpc_invoke_channels(FVM_Context *, FVM_Object *, unsigned,
 FVM_Result fvm_styxrpc_int_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcImport *,
     unsigned, const FVM_Value *, FVM_Value *);
 FVM_Result fvm_styxrpc_managed_at(FVM_Context *, struct StyxFid *, const StyxRpcManagedTarget *,
-    unsigned, const FVM_Value *, FVM_Value *);
+    unsigned, const FVM_Value *, FVM_Value *, StyxRpcServer *);
 FVM_Result fvm_styxrpc_graph_at(FVM_Context *, struct StyxFid *, const StyxRpcManagedTarget *,
-    unsigned, const FVM_Value *, FVM_Value *);
+    unsigned, const FVM_Value *, FVM_Value *, StyxRpcServer *);
 FVM_Result fvm_styxrpc_channels_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcChannelArguments *,
-unsigned, const FVM_Value *, FVM_Value *, FVM_StyxModuleLease *);
+unsigned, const FVM_Value *, FVM_Value *, FVM_StyxModuleLease *, StyxRpcServer *);
 
  /* [GC:] EN: Validate and load on a clone of the held unopened module directory.
  * Consume the optional request fid only on success and clear its caller slot.
+ * Borrow reverse for native progress on methods selected by scoped bit positions.
  * RU: Проверить и загрузить на клоне удерживаемого неоткрытого каталога.
- * Принять необязательный fid запроса только при успехе и очистить слот вызывающего. */
+ * Принять необязательный fid запроса только при успехе и очистить слот вызывающего.
+ * Заимствовать reverse для нативного обслуживания методов, отмеченных в scoped. */
 FVM_Result fvm_styxrpc_module_load_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcLoadSpec *,
-    struct StyxFid **lease, FVM_Value *);
+    struct StyxFid **lease, FVM_Value *, StyxRpcServer *reverse, uint32_t scoped);
 #endif

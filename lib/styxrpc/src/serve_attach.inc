@@ -9,6 +9,10 @@
 static char *attach_peer(char *user, char *name)
 {
     (void)user;
+    if (active->program_only)
+    {
+        return Eperm;
+    }
     if (active->attach)
     {
         active->attach(active->attach_state, name);

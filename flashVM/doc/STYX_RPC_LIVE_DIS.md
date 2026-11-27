@@ -31,9 +31,15 @@ mutable state. Closing the source file leaves the proxy usable. The proxy
 and any returned channels keep its owner alive until their last reference
 is released or the session closes.
 
-The playback owner can call a library with an unscoped Int32 interface.
-Run calls that need a reverse PID in an `asinc` task, which can lend a local
-queue and use a returned channel while the player serves the reverse lane.
+The stock playback owner and every `asinc` task have distinct reverse
+PIDs and argument buses. The main movie can invoke checked managed, graph
+and channel exports directly. A direct call suspends the movie. Its wire
+exchange runs on a native thread while the movie owner handles only
+native `.prog` requests. Unrelated reverse requests receive a refusal
+during the wait, and calls from inside a Styx application callback
+cannot start a nested scoped exchange. Use an `asinc` task when the movie
+must keep advancing or the Dis function depends on an application callback.
+
 The existing proxy checks the entire advertised interface. An unsupported
 contract, a refused image, a missing service or an expired load request
 fails the call. The session supports up to 32 concurrent loading or

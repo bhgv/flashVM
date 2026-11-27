@@ -108,7 +108,7 @@ def main():
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
             "dirlive": ("dirlive_signal.as",),
             "rebind": ("rebind_signal.as",),
-            "live-dis": ("live-dis_worker.as", "live-dis_refusal.as"),
+            "live-dis": ("live-dis_worker.as", "live-dis_refusal.as", "live-dis_direct.as"),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())

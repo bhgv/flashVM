@@ -109,6 +109,12 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
             movies->named = playback->named;
             movies->refs = playback->refs;
             movies->binding = fvm_styxrpc_player_binding(script);
+            if (playback->movie_scope && playback->message_server)
+            {
+                movies->caller_pid = playback->movie_scope->pid;
+                movies->argument_bus = playback->movie_scope->bus;
+                movies->reverse = playback->message_server;
+            }
             movies->limit = playback->spec.upload_limit;
             if (movies->limit > FVM_SWF_DEFAULT_LIMIT)
             {

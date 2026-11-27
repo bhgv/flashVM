@@ -113,6 +113,9 @@ static int exercise(StyxRpcServer *server, StyxClient *client, Probe *first, Pro
 }
 
 
+#include "program_wait.inc"
+
+
 /* EN: Serve a five-slot registry, enough for the root and just one grant at a time.
  * RU: Обслужить реестр из пяти слотов, достаточный для корня и одной выдачи PID. */
 int main(void)
@@ -144,6 +147,11 @@ int main(void)
     if (!good)
     {
         fputs("program server did not isolate a revoked PID and its replacement\n", stderr);
+    }
+    if (!check_program_wait())
+    {
+        fputs("program-only reverse progress bypassed a fence or failed to resume\n", stderr);
+        return 1;
     }
     return good ? 0 : 1;
 }

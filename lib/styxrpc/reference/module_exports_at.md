@@ -9,3 +9,5 @@ Read the compiled contracts and discover callable methods relative to the borrow
 Discover exports of an image already selected by an earlier open.
 
 STYXRPC_OK publishes the checked exports in out. Keep out at its original address because method names point inside it. STYXRPC_INVALID leaves it unchanged. The caller serializes open and release of directory. The operation can block on Styx.
+
+To also identify methods that require a reverse scope, use [styxrpc_module_exports_scoped_at](module_exports_scoped_at.md).

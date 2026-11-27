@@ -7,6 +7,13 @@ Library: module {
     increment: fn(value: int): int;
     current: fn(value: int): int;
     label: fn(value: string): string;
+    Cell: adt {
+        value: int; # Number shared through a nested reference.
+    };
+    Box: adt {
+        cell: ref Cell; # Referenced field whose identity must survive the call.
+    };
+    measure: fn(box: ref Box): int;
     bounce: fn(source: chan of int): chan of int;
 };
 
@@ -43,4 +50,13 @@ bounce(source: chan of int): chan of int
     result := chan[1] of int;
     result <-= value + 1;
     return result;
+}
+
+
+# EN: Mutate the nested caller cell and return its updated value.
+# RU: Изменить вложенную ячейку вызывающего и вернуть обновлённое значение.
+measure(box: ref Box): int
+{
+    box.cell.value++;
+    return box.cell.value;
 }

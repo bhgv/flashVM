@@ -9,6 +9,7 @@
 #include "flashvm/styxrpc_session.h"
 #include "styxrpc/vfs_client.h"
 #include "styxrpc/channel_arguments.h"
+#include "styxrpc/serve.h"
 #include "peer_refs.h"
 
 #define FVM_STYXRPC_MOVIE_QUEUE 16U /* Maximum outstanding requests per playback owner. */
@@ -27,7 +28,9 @@ typedef struct FVM_StyxRpcMovies
     struct StyxClient *session;          /* Borrowed ordinary VFS root. */
     struct StyxClient *named;            /* Optional borrowed pair-wide channel service. */
     const FVM_PeerRefs *refs;             /* Optional borrowed module-ref route for the pair. */
-    StyxRpcArgumentBus *argument_bus;   /* Borrowed reverse bus for detached task calls. */
+    StyxRpcArgumentBus *argument_bus;   /* Borrowed reverse bus for scoped calls. */
+    StyxRpcServer *reverse;              /* Same-thread native progress for direct movie calls. */
+    uint32_t caller_pid;                 /* Dedicated main movie PID, zero on detached tasks. */
     FVM_StyxRpcSession *binding;         /* Borrowed AS binding for shared cwd. */
     size_t limit;                         /* Maximum wire bytes per child. */
     size_t pending;                       /* Number of queued requests. */

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 bhgv
-// EN: Exercise a synchronous scalar load and a scoped load on a native task.
-// RU: Проверить синхронную скалярную загрузку и контекстную загрузку в нативной задаче.
+// EN: Overlap a direct movie call with a detached task on independent scopes.
+// RU: Совместить прямой вызов фильма с отделённой задачей в независимых контекстах.
 
 
 // EN: Keep the player available while the task makes its scoped calls.
@@ -24,6 +24,12 @@ function onEnterFrame() {
         }
     }
     if (liveTask) {
+        if (!directDone) {
+            var direct = _root.directDisProof();
+            if (!direct.indexOf("movie!|41|41|42|")) {
+                directDone = vfs.mkdir("/direct");
+            }
+        }
         var result = liveTask.poll();
         if (result.done) {
             if (!result.status) {

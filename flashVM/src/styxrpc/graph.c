@@ -3,6 +3,7 @@
  * RU: Синхронный адаптер графов FlashVM поверх независимого позиционного RPC.
  */
 #include "module_import.h"
+#include "wire_wait.h"
 #include "object_handlers.h"
 #include "flashvm/styxrpc_graph.h"
 #include "flashvm/avm1.h"
@@ -68,7 +69,7 @@ static int read_graph(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs
 /* [GC:] EN: Encode once, exchange one graph, then validate and commit under roots.
  * RU: Однократно кодировать и обменять граф, затем проверить и применить под GC-корнями. */
 FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *target,
-    unsigned argc, const FVM_Value *argv, FVM_Value *out)
+    unsigned argc, const FVM_Value *argv, FVM_Value *out, StyxRpcServer *reverse)
 {
     FVM_StyxRefs refs = {0};
     FVM_GCRootScope *roots;
@@ -100,8 +101,16 @@ FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory,
         }
         else
         {
-            switch (styxrpc_graph_invoke_at(directory, target, buffer, arguments.size, buffer + STYXRPC_MANAGED_LIMIT,
-                STYXRPC_MANAGED_LIMIT, &reply))
+            FVM_StyxWireCall call = {0};
+            call.kind = FVM_STYX_WIRE_GRAPH;
+            call.directory = directory;
+            call.target = target;
+            call.arguments = buffer;
+            call.size = arguments.size;
+            call.reply = buffer + STYXRPC_MANAGED_LIMIT;
+            call.capacity = STYXRPC_MANAGED_LIMIT;
+            call.result = &reply;
+            switch (fvm_styxrpc_wire_call(reverse, &call))
             {
             case STYXRPC_CALL_OK:
                 if (!read_graph(context, roots, &refs, &target->schema, &arguments, &reply, out))
@@ -134,7 +143,7 @@ FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsi
     const FVM_Value *argv, FVM_Value *out, void *userdata)
 {
     (void)self;
-    return fvm_styxrpc_graph_at(context, NULL, userdata, argc, argv, out);
+    return fvm_styxrpc_graph_at(context, NULL, userdata, argc, argv, out, NULL);
 }
 
 

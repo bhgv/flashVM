@@ -64,6 +64,15 @@ struct StyxFid *styxrpc_module_live_open(struct StyxClient *session, const char 
  * RU: Найти проверенные экспорты от заимствованного неоткрытого fid модуля. */
 StyxRpcStatus styxrpc_module_exports_at(struct StyxFid *directory, uint32_t pid, StyxRpcModuleExports *out);
 
+/* EN: Discover checked exports and optionally report required caller scopes.
+ * Bit i of scoped corresponds to methods[i]. Leave both outputs unchanged on
+ * failure. Like exports_at, keep out at its original address on success.
+ * RU: Найти проверенные экспорты и при необходимости выдать области вызовов.
+ * Бит i в scoped соответствует methods[i]. При отказе сохранить оба выхода.
+ * Как и в exports_at, держать out по прежнему адресу при успехе. */
+StyxRpcStatus styxrpc_module_exports_scoped_at(struct StyxFid *directory, uint32_t pid,
+    StyxRpcModuleExports *out, uint32_t *scoped);
+
 /* EN: Check exact imports relative to the borrowed, unopened module fid.
  * RU: Проверить точные импорты от заимствованного неоткрытого fid модуля. */
 StyxRpcStatus styxrpc_module_check_at(struct StyxFid *directory,

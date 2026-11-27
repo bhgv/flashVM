@@ -1,5 +1,14 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1803 — scoped Dis calls from the playback owner
+
+The stock FlashVM/DisVM pair gives the main movie its own reverse PID
+and channel argument bus. A checked scoped method runs its wire exchange
+away from the movie and serves only native program routes while waiting.
+Paired interpreter and JIT tests over a local socket and TCP check direct
+managed values, nested reference updates and live channels alongside a task.
+[EN](STYX_RPC_LIVE_DIS.md) · [RU](STYX_RPC_LIVE_DIS.ru.md).
+
 ## v0.1802 — load an ordinary Dis library over the paired session
 
 With `--live-dis-load`, ActionScript can open an ordinary file and call

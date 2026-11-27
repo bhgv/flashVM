@@ -68,6 +68,17 @@ int styxrpc_server_step(StyxRpcServer *server);
 int styxrpc_server_step_for(StyxRpcServer *server, int timeout_ms);
 
 
+/* EN: Serve one bounded turn restricted to a module slot's native program tree.
+ * Call on the owner outside another server callback. Program resources must be
+ * native and safe while the application is suspended. Return zero on refusal or
+ * link failure. Defer unrelated clunk callbacks to the next ordinary turn.
+ * RU: Выполнить один ограниченный такт только нативного дерева программ слота.
+ * Вызывать у владельца вне колбэка сервера. Ресурсы программ должны быть
+ * нативными и безопасными при паузе приложения. Ноль при отказе либо обрыве.
+ * Колбэки закрытия других fid откладываются до обычного такта. */
+int styxrpc_server_program_step_for(StyxRpcServer *server, int timeout_ms);
+
+
 /* EN: Consume the server, closing all owned fid cookies including on link loss.
  * RU: Освободить сервер и закрыть все состояния fid, в том числе после обрыва. */
 void styxrpc_server_destroy(StyxRpcServer *server);

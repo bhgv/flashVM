@@ -11,7 +11,7 @@
 
 #define PLAYER_PROGRAM_ROOT_SLOTS 2U /* Shared root and hidden .prog. */
 #define PLAYER_PROGRAM_TASK_SLOTS 6U /* One process directory, standard children, and .unibus. */
-#define PLAYER_PROGRAM_SLOTS (PLAYER_PROGRAM_ROOT_SLOTS + FVM_ASYNC_MAX_TASKS * PLAYER_PROGRAM_TASK_SLOTS)
+#define PLAYER_PROGRAM_SLOTS (PLAYER_PROGRAM_ROOT_SLOTS + (FVM_ASYNC_MAX_TASKS + 1U) * PLAYER_PROGRAM_TASK_SLOTS)
 
 
 /* EN: Own reverse program resources for one native connection.
@@ -20,6 +20,7 @@ typedef struct PlayerPrograms
 {
     StyxRpcPrograms registry;                     /* Dispatcher-owned reverse tree. */
     StyxRpcRegistration nodes[PLAYER_PROGRAM_SLOTS]; /* Fixed storage valid through server destroy. */
+    FVM_StyxRpcWorkerScope movie;                   /* Main movie's exclusive reverse identity. */
     FVM_StyxRpcWorkerScopes scopes;                 /* Owned worker buses until workers and fids retire. */
 } PlayerPrograms;
 
@@ -38,11 +39,11 @@ typedef struct PlayerPeerChannels
 } PlayerPeerChannels;
 
 
-/* EN: Publish the connection's worker identities and argument buses before dispatch.
+/* EN: Publish worker identities and argument buses. dis_peer also enables the movie's own PID.
  * Keep programs at its original address until all workers and server fids retire.
- * RU: Выдать встречный PID задач и шину аргументов до запуска диспетчера.
+ * RU: Выдать PID и шины задач. Для dis_peer добавить собственный PID основного фильма.
  * Хранить programs по исходному адресу до завершения задач и закрытия fid. */
-int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs);
+int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs, int dis_peer);
 
 
 /* EN: Free initialized worker buses after closing all workers and server fids.
