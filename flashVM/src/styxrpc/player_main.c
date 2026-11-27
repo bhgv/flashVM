@@ -319,10 +319,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     {
         fputs("flashvm_styx_player: cannot attach the paired session\n", stderr);
     }
-    if (playback)
-    {
-        fvm_styxrpc_player_clear_messages(playback->script);
-    }
+    fvm_styxrpc_playback_retire_movie(playback);
     styxrpc_server_destroy(server);
     fvm_styxrpc_player_peer_close(&channels);
     fvm_styxrpc_playback_destroy(playback);

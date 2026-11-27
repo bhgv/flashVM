@@ -64,10 +64,6 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
     }
     if (status == FVM_OK && playback->spec.session)
     {
-        FVM_AsyncWorkerSetup setup;
-        setup.install = fvm_styxrpc_worker_vfs;
-        setup.state = playback->spec.session;
-        fvm_async_worker_setup(context, &setup);
         status = fvm_styxrpc_filesystem_mount(context, "/", playback->spec.session);
         if (status == FVM_OK)
         {
@@ -122,6 +118,13 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
             if (status == FVM_OK)
             {
                 status = fvm_styxrpc_os_install(movies);
+            }
+            if (status == FVM_OK)
+            {
+                FVM_AsyncWorkerSetup setup;
+                setup.install = fvm_styxrpc_worker_vfs;
+                setup.state = movies;
+                fvm_async_worker_setup(context, &setup);
             }
         }
     }
@@ -395,13 +398,27 @@ int fvm_styxrpc_playback_scene(FVM_StyxRpcPlayback *playback, FVM_Context **cont
 }
 
 
+/* EN/RU: See playback_internal.h. / См. playback_internal.h. */
+void fvm_styxrpc_playback_retire_movie(FVM_StyxRpcPlayback *playback)
+{
+    if (playback && playback->context)
+    {
+        fvm_styxrpc_player_activate(playback->slot, NULL);
+        dispose_movie(playback->context, playback->movies, playback->script);
+        playback->context = NULL;
+        playback->root = NULL;
+        playback->movies = NULL;
+        playback->script = NULL;
+    }
+}
+
+
 /* EN/RU: See flashvm/styxrpc_playback.h. / См. flashvm/styxrpc_playback.h. */
 void fvm_styxrpc_playback_destroy(FVM_StyxRpcPlayback *playback)
 {
     if (playback)
     {
-        fvm_styxrpc_player_activate(playback->slot, NULL);
-        dispose_movie(playback->context, playback->movies, playback->script);
+        fvm_styxrpc_playback_retire_movie(playback);
         styxrpc_module_slot_destroy(playback->slot);
         styxrpc_control_destroy(playback->control);
         free(playback->swf);

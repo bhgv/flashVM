@@ -80,6 +80,28 @@ StyxRpcIoOutcome styxrpc_named_recv(StyxRpcVfsFile *file, unsigned char **bytes,
  * RU: Дождаться пары для этой записи. Сериализовать операции на каждом fid. */
 StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, size_t size);
 
+
+/* EN: Return nonzero to stop waiting on the calling thread. Do not use file in this hook.
+ * RU: Вернуть ненулевое значение для остановки ожидания в вызывающем потоке.
+ * Не обращаться к file из этого колбэка. */
+typedef int (*StyxRpcNamedStop)(void *state);
+
+
+/* EN: Receive like styxrpc_named_recv, checking optional stop before submission
+ * and between reply polls. On CANCELLED close file without reusing it.
+ * RU: Принять как styxrpc_named_recv, проверяя stop до отправки и между
+ * опросами ответа. При CANCELLED закрыть file без повторного использования. */
+StyxRpcIoOutcome styxrpc_named_recv_until(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size,
+    StyxRpcNamedStop stop, void *state);
+
+
+/* EN: Send like styxrpc_named_send with the same cancellation protocol as recv_until.
+ * A cancelled submitted send may have matched. Close file and never retry blindly.
+ * RU: Послать как styxrpc_named_send с отменой по правилам recv_until.
+ * Пара могла принять посылку. Закрыть file и не повторять отправку вслепую. */
+StyxRpcIoOutcome styxrpc_named_send_until(StyxRpcVfsFile *file, const void *bytes, size_t size,
+    StyxRpcNamedStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

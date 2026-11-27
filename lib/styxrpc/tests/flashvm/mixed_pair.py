@@ -35,7 +35,7 @@ def main():
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
-                    "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs"):
+                    "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -80,6 +80,7 @@ def main():
             "modref-reverse": ("styxnamed", "styxmodref", "styxnodes"),
             "module-channel": (),
             "asinc-vfs": ("styxnodes",),
+            "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
             "mixed": ("styxintref", "styxchannel"),
         }[name]
@@ -97,6 +98,7 @@ def main():
             "dirlive": ("dirlive_signal.as",),
             "rebind": ("rebind_signal.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
+            "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
         compile_movie(args, directory, tests / (name + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))

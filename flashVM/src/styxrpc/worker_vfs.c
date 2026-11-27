@@ -16,13 +16,14 @@
 typedef struct WorkerVfs
 {
     FVM_StyxRpcSession binding; /* Worker-owned path state; no launch fids. */
-    FVM_StyxRpcMovies files;    /* File adapter without a display root or peer channels. */
+    FVM_StyxRpcMovies files;    /* File and named-channel adapter without a display root. */
 } WorkerVfs;
 
 
 /* [GC:] EN/RU: See worker_vfs.h. / См. worker_vfs.h. */
 FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state)
 {
+    const FVM_StyxRpcMovies *routes = state;
     WorkerVfs *vfs = calloc(1, sizeof(*vfs));
     FVM_Value value;
     FVM_Result status;
@@ -31,10 +32,12 @@ FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state)
     {
         return FVM_OUT_OF_MEMORY;
     }
-    vfs->binding.client = state;
+    vfs->binding.client = routes->session;
     strcpy(vfs->binding.cwd, "/");
     vfs->files.context = worker;
-    vfs->files.session = state;
+    vfs->files.session = routes->session;
+    vfs->files.named = routes->named;
+    /* Module exports can execute owner VM callbacks. Workers borrow only native routes. */
     vfs->files.binding = &vfs->binding;
 
     fvm_value_undefined(&value);

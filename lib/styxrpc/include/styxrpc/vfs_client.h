@@ -22,7 +22,8 @@ typedef enum StyxRpcIoOutcome
     STYXRPC_IO_OK = 0,        /* Confirmed bytes, possibly short or EOF. */
     STYXRPC_IO_NOT_OPEN = 1,  /* Admission failed; no data operation attempted. */
     STYXRPC_IO_FAILED = 2,    /* Confirmed failure without uncertain bytes. */
-    STYXRPC_IO_UNCERTAIN = 3  /* A data operation lacked a reliable acknowledgement. */
+    STYXRPC_IO_UNCERTAIN = 3, /* A data operation lacked a reliable acknowledgement. */
+    STYXRPC_IO_CANCELLED = 4  /* Local wait cancelled; a submitted peer effect may have occurred. */
 } StyxRpcIoOutcome;
 
 typedef struct StyxRpcFileInfo

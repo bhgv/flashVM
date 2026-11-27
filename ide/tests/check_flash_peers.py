@@ -31,13 +31,17 @@ def compile_unit(args, directory, name, source=None):
 def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
-    if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller", "messages-caller", "asinc"):
+    if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller", "messages-caller",
+                "asinc", "asinc-chan-caller"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
         objects.append(report)
     if role == "asinc":
         objects.append(compile_unit(args, directory, "peer-asinc-frame"))
+    if role in ("asinc-chan-caller", "asinc-chan-provider"):
+        source = ROOT / "lib/styxrpc/tests/flashvm/asinc-chan_worker.as"
+        objects.append(compile_unit(args, directory, "asinc-chan-worker", source))
     if role == "caller":
         objects.extend((compile_unit(args, directory, "peer-credit"),
                         compile_unit(args, directory, "peer-frame")))
@@ -222,6 +226,11 @@ def main():
             for mode in ("--no-jit", "--jit"):
                 for reverse in (False, True):
                     exchange(args, directory, movie, provider, mode, reverse, "compiled detached asinc task")
+            caller = compile_role(args, directory, "asinc-chan-caller")
+            provider = compile_role(args, directory, "asinc-chan-provider")
+            for mode in ("--no-jit", "--jit"):
+                for reverse in (False, True):
+                    exchange(args, directory, caller, provider, mode, reverse, "named channel in asinc task")
             return
         if not args.exec_only:
             message_caller = compile_role(args, directory, "messages-caller")

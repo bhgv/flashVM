@@ -64,17 +64,36 @@ StyxRpcVfsFile *styxrpc_named_open(struct StyxClient *session, const char *path)
 }
 
 
-/* EN: Read the reply length on file into size. Only channel rendezvous permits pending replies
- * when poll is set. Waiting releases the Styx request lock between reads.
- * RU: Прочитать длину ответа file в size. При poll ответ канала может быть отложен.
- * Между запросами чтения блокировка Styx отпущена. */
-static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, int poll)
+/* EN: Optional stop hook on one polling rendezvous. A NULL wait means one probe.
+ * RU: Колбэк отмены одного ожидания пары. Пустой wait означает один опрос. */
+typedef struct NamedWait
+{
+    StyxRpcNamedStop stop; /* Borrowed until this synchronous operation returns. */
+    void *state;         /* Borrowed stop-hook data. */
+} NamedWait;
+
+
+/* EN: Ask the optional stop hook when no transmitted request owns the caller.
+ * RU: Проверить отмену между протокольными запросами. */
+static int cancelled(const NamedWait *wait)
+{
+    return wait && wait->stop && wait->stop(wait->state);
+}
+
+
+/* EN: Read the reply length. A non-NULL wait permits pending replies and cancellation.
+ * RU: Прочитать длину ответа. Непустой wait допускает ожидание и отмену. */
+static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, const NamedWait *wait)
 {
     unsigned char header[STYXRPC_NAMED_REPLY];
     const struct timespec pause = {0, STYXRPC_NAMED_POLL_NS};
     for (;;)
     {
         size_t used;
+        if (cancelled(wait))
+        {
+            return STYXRPC_IO_CANCELLED;
+        }
         StyxRpcIoOutcome status = styxrpc_vfs_file_read(file, 0, header, sizeof(header), &used);
         if (status != STYXRPC_IO_OK || (used && used != sizeof(header)))
         {
@@ -86,7 +105,7 @@ static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, int poll)
                 ((uint32_t)header[2] << 8) | header[3];
             return STYXRPC_IO_OK;
         }
-        if (!poll)
+        if (!wait)
         {
             return STYXRPC_IO_FAILED;
         }
@@ -95,14 +114,14 @@ static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, int poll)
 }
 
 
-/* EN: Read one nonempty, bounded reply body on file. With poll set, await a channel peer.
+/* EN: Read one nonempty, bounded reply body on file. With wait set, await a channel peer.
  * On success, give ownership of the buffer in bytes and its length in size to the caller.
- * RU: Прочитать непустое ограниченное тело ответа file. При poll дождаться участника канала.
+ * RU: Прочитать непустое ограниченное тело ответа file. При wait дождаться участника канала.
  * При успехе передать буфер bytes во владение и вернуть его размер в size. */
-static StyxRpcIoOutcome read_frame(StyxRpcVfsFile *file, int poll, unsigned char **bytes, size_t *size)
+static StyxRpcIoOutcome read_frame(StyxRpcVfsFile *file, const NamedWait *wait, unsigned char **bytes, size_t *size)
 {
     size_t length;
-    StyxRpcIoOutcome status = wait_reply(file, &length, poll);
+    StyxRpcIoOutcome status = wait_reply(file, &length, wait);
     if (status != STYXRPC_IO_OK || !length || length > STYXRPC_NAMED_MAX)
     {
         return status == STYXRPC_IO_OK ? STYXRPC_IO_FAILED : status;
@@ -127,36 +146,63 @@ static StyxRpcIoOutcome read_frame(StyxRpcVfsFile *file, int poll, unsigned char
 
 /* EN: Submit a zero-body receive or get request and fetch its reply.
  * RU: Отправить пустой запрос приёма или чтения ячейки и получить ответ. */
-static StyxRpcIoOutcome receive(StyxRpcVfsFile *file, unsigned operation, unsigned char **bytes, size_t *size)
+static StyxRpcIoOutcome receive(StyxRpcVfsFile *file, unsigned operation, unsigned char **bytes, size_t *size,
+    const NamedWait *wait)
 {
     if (!file || !bytes || !size)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
+    if (cancelled(wait))
+    {
+        return STYXRPC_IO_CANCELLED;
+    }
     StyxRpcIoOutcome status = submit(file, operation, NULL, 0);
-    return status == STYXRPC_IO_OK ? read_frame(file, operation == STYXRPC_NAMED_READ, bytes, size) : status;
+    return status == STYXRPC_IO_OK ? read_frame(file, wait, bytes, size) : status;
 }
 
 
 /* EN/RU: See named_channel.h. / См. named_channel.h. */
 StyxRpcIoOutcome styxrpc_named_recv(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size)
 {
-    return receive(file, STYXRPC_NAMED_READ, bytes, size);
+    return styxrpc_named_recv_until(file, bytes, size, NULL, NULL);
 }
 
 
 /* EN/RU: See named_channel.h. / См. named_channel.h. */
 StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, size_t size)
 {
+    return styxrpc_named_send_until(file, bytes, size, NULL, NULL);
+}
+
+
+/* EN/RU: See named_channel.h. / См. named_channel.h. */
+StyxRpcIoOutcome styxrpc_named_recv_until(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size,
+    StyxRpcNamedStop stop, void *state)
+{
+    const NamedWait wait = {stop, state};
+    return receive(file, STYXRPC_NAMED_READ, bytes, size, &wait);
+}
+
+
+/* EN/RU: See named_channel.h. / См. named_channel.h. */
+StyxRpcIoOutcome styxrpc_named_send_until(StyxRpcVfsFile *file, const void *bytes, size_t size,
+    StyxRpcNamedStop stop, void *state)
+{
+    const NamedWait wait = {stop, state};
     if (!file || !bytes || !size || size > STYXRPC_NAMED_MAX)
     {
         return STYXRPC_IO_NOT_OPEN;
+    }
+    if (cancelled(&wait))
+    {
+        return STYXRPC_IO_CANCELLED;
     }
     StyxRpcIoOutcome status = submit(file, STYXRPC_NAMED_WRITE, bytes, size);
     size_t length;
     if (status == STYXRPC_IO_OK)
     {
-        status = wait_reply(file, &length, 1);
+        status = wait_reply(file, &length, &wait);
     }
     return status == STYXRPC_IO_OK && length ? STYXRPC_IO_FAILED : status;
 }
@@ -173,7 +219,7 @@ StyxRpcVfsFile *styxrpc_cell_create(struct StyxClient *session, const void *fram
     StyxRpcIoOutcome status = file ? submit(file, STYXRPC_CELL_NEW, frame, size) : STYXRPC_IO_NOT_OPEN;
     unsigned char *reply = NULL;
     size_t returned;
-    if (status == STYXRPC_IO_OK && read_frame(file, 0, &reply, &returned) == STYXRPC_IO_OK &&
+    if (status == STYXRPC_IO_OK && read_frame(file, NULL, &reply, &returned) == STYXRPC_IO_OK &&
         returned == STYXRPC_CELL_TOKEN)
     {
         memcpy(token, reply, STYXRPC_CELL_TOKEN);
@@ -212,7 +258,7 @@ StyxRpcIoOutcome styxrpc_cell_get(StyxRpcVfsFile *file, unsigned char **bytes, s
     }
     unsigned char *frame;
     size_t length;
-    StyxRpcIoOutcome status = receive(file, STYXRPC_CELL_GET, &frame, &length);
+    StyxRpcIoOutcome status = receive(file, STYXRPC_CELL_GET, &frame, &length, NULL);
     if (status != STYXRPC_IO_OK)
     {
         return status;

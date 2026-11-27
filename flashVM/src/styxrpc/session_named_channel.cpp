@@ -4,6 +4,7 @@
  */
 #include "session_named_values.hpp"
 #include "flashvm/userdata.h"
+#include "flashvm/worker.h"
 #include "styxrpc/named_channel.h"
 #include <stdlib.h>
 
@@ -57,6 +58,16 @@ FVM_Result delete_channel(FVM_Context *, FVM_Object *, unsigned argc,
 }
 
 
+/* EN: Observe the current task stop flag between wire polls.
+ * RU: Проверить остановку текущей задачи между протокольными опросами. */
+int stop_waiting(void *state)
+{
+    FVM_Worker *worker = static_cast<FVM_Worker *>(state);
+    int requested = 0;
+    return worker && fvm_worker_stop_requested(worker, &requested) == FVM_OK && requested;
+}
+
+
 /* [ASINC] [GC:] EN: Wait for a read from another participant, sending a copy or live descriptor.
  * RU: Дождаться чтения другим участником, посылая копию либо живой дескриптор. */
 FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
@@ -74,12 +85,15 @@ FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     {
         return encoded;
     }
-    StyxRpcIoOutcome outcome = styxrpc_named_send(handle->file, frame, size);
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = styxrpc_named_send_until(handle->file, frame, size, stop_waiting, worker);
     free(frame);
     if (outcome != STYXRPC_IO_OK)
     {
         close_handle(handle, 0);
-        return fvm_styxrpc_managed_fail(context, "named channel send failed");
+        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_CANCELLED ?
+            "named channel send cancelled" : "named channel send failed");
     }
     fvm_value_undefined(out);
     return FVM_OK;
@@ -98,10 +112,14 @@ FVM_Result recv_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     }
     unsigned char *frame;
     size_t size;
-    if (styxrpc_named_recv(handle->file, &frame, &size) != STYXRPC_IO_OK)
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome outcome = styxrpc_named_recv_until(handle->file, &frame, &size, stop_waiting, worker);
+    if (outcome != STYXRPC_IO_OK)
     {
         close_handle(handle, 0);
-        return fvm_styxrpc_managed_fail(context, "named channel receive failed");
+        return fvm_styxrpc_managed_fail(context, outcome == STYXRPC_IO_CANCELLED ?
+            "named channel receive cancelled" : "named channel receive failed");
     }
     FVM_Result result = fvm_named_decode(context, handle->route, frame, size, out);
     free(frame);

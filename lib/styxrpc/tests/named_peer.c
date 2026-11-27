@@ -139,6 +139,38 @@ static int replaced_parent(StyxRpcModuleSlot *slot, StyxClient *local, StyxClien
 }
 
 
+/* EN: Stop only after the first reply poll has had a chance to observe pending.
+ * RU: Отменить ожидание после первого опроса, вернувшего состояние ожидания. */
+static int stop_after_poll(void *state)
+{
+    unsigned int *checks = state;
+    return ++*checks == 3U;
+}
+
+
+/* EN: Cancel both operation directions and verify enrollment retirement.
+ * RU: Отменить обе операции и проверить снятие участия в канале. */
+static int stop_waits(StyxRpcModuleSlot *slot, StyxClient *local, StyxClient *remote)
+{
+    const StyxRpcNodeCallbacks node = {.transfer = transfer};
+    StyxRpcVfsFile *reader = styxrpc_named_open(local, "/stop-read");
+    StyxRpcVfsFile *writer = styxrpc_named_open(remote, "/stop-write");
+    unsigned int reads = 0, writes = 0;
+    const unsigned char value[] = {STYXRPC_NAMED_BOOLEAN, 1};
+    unsigned char *frame = NULL;
+    size_t size = sizeof(value);
+    int ok = reader && writer &&
+        styxrpc_named_recv_until(reader, &frame, &size, stop_after_poll, &reads) == STYXRPC_IO_CANCELLED &&
+        !frame && size == sizeof(value) &&
+        styxrpc_named_send_until(writer, value, sizeof(value), stop_after_poll, &writes) == STYXRPC_IO_CANCELLED;
+    free(frame);
+    styxrpc_vfs_close(reader, 0);
+    styxrpc_vfs_close(writer, 0);
+    return ok && styxrpc_module_slot_new_node(slot, "/stop-read", TEST_NODE_READ, &node) == STYXRPC_OK &&
+        styxrpc_module_slot_new_node(slot, "/stop-write", TEST_NODE_READ, &node) == STYXRPC_OK;
+}
+
+
 /* EN: Disconnect the shared peer and require a local unanswered read to return.
  * RU: Разорвать связь и проверить возврат локального чтения без пары. */
 static int cancellation(StyxClient *local, StyxClient *remote)
@@ -173,7 +205,8 @@ static int check(StyxRpcModuleSlot *slot, StyxRpcNamedRegistry *registry)
         TEST_MSIZE, "test", "", TEST_WAIT_MS, TEST_TAGS);
     StyxClient *local = styxrpc_named_peer_client(peer);
     int ok = local && remote && lifetime(slot, local, remote) &&
-        replaced_parent(slot, local, remote) && cancellation(local, remote);
+        replaced_parent(slot, local, remote) && stop_waits(slot, local, remote) &&
+        cancellation(local, remote);
     styxclientshutdown(remote);
     styxclientfree(remote);
     styxrpc_named_peer_destroy(peer);

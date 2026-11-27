@@ -1,5 +1,13 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1796 — named rendezvous from native AS tasks
+
+A detached task in a paired player can open the negotiated named channel
+route through `vfs.chan` or `os.chan`. It waits on its own worker and closes
+its enrollment on cancellation. The C SDK checks a stop hook between
+reply polls. The player joins tasks before dropping their transport.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1795 — live mounted files in native AS tasks
 
 Paired playback installs ordinary `vfs` and `os` for detached workers.

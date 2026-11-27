@@ -46,3 +46,5 @@ The [hosted peer service](named_peer_host.md) publishes this protocol on a
 delegated stream and a local client mount served by independent workers.
 The [module slot registry](module_slot_named_registry.md) reserves names
 against a live callback tree.
+
+Use [cancellable receive](named_recv_until.md) and [cancellable send](named_send_until.md) for a local stop hook.

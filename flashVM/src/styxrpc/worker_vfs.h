@@ -8,9 +8,9 @@
 
 
 /* [GC:] EN: Install vfs and its os alias in worker. state is the borrowed
- * live Styx client which the host keeps until after the worker teardown.
- * RU: Установить vfs и зеркало os в worker. state — заимствованный
- * клиент Styx, который хост удерживает до закрытия задачи. */
+ * movie routing record. Read only its immutable attached native clients.
+ * RU: Установить vfs и зеркало os в worker. state — заимствованная запись
+ * маршрутов фильма. Читать только неизменяемые нативные клиенты подключения. */
 FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state);
 
 #endif

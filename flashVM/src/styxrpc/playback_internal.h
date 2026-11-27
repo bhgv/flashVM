@@ -56,4 +56,8 @@ int fvm_styxrpc_playback_start_local(FVM_StyxRpcPlayback *playback, unsigned cha
 /* EN: Copy a bounded owner and VM snapshot for the current .state fid.
  * RU: Скопировать ограниченный снимок владельца и VM для текущего fid .state. */
 int fvm_styxrpc_playback_snapshot(void *data, char *bytes, size_t capacity, size_t *used);
+/* EN: Join the movie's workers and retire its members before detaching transport.
+ * RU: Дождаться потоков фильма и снять публикации перед отключением транспорта. */
+void fvm_styxrpc_playback_retire_movie(FVM_StyxRpcPlayback *playback);
+
 #endif

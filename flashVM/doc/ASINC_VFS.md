@@ -29,8 +29,16 @@ can still wait on the shared Styx client. A task's `cancel()` is
 cooperative and can wait for a pending request to return or time out.
 The paired player retains the connection through task teardown.
 
-This interface covers ordinary files. File `load()`, named channels,
-node and module publication and playback control stay with the movie.
+When the pair has negotiated named channels, `vfs.chan(path)` and
+`os.chan(path)` open an independent enrollment for the task.
+`send(value)` and `recv()` can wait while the movie advances. `cancel()`
+stops the wait between reply polls and closes the enrollment. If a
+rendezvous raced cancellation, the peer may have consumed the value.
+The task can exchange snapshots and named cell descriptors. References
+to module exports require owner processing.
+
+File `load()`, node and module publication and playback control stay
+with the movie.
 A standalone context using [`fvm_async_install`](../include/flashvm/async.h#L15) alone has no mounted
 worker VFS.
 
@@ -41,6 +49,9 @@ then prepends a union branch before replying. The write reaches that branch.
 The test also checks hidden service names and independent cwd.
 [Worker fixture](../../lib/styxrpc/tests/flashvm/asinc-vfs_worker.as) ·
 [Limbo driver](../../lib/styxrpc/tests/flashvm/asinc-vfs_pair.b).
+The `--asinc-chan` profile checks echo, cancellation of unmatched send
+and receive, exact name removal and disconnect with a task still pending.
+Use `ide/tests/check_flash_peers.py --asinc-only` for two FlashVMs.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

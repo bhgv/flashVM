@@ -51,3 +51,5 @@ DisVM поставляет модуль [Styxnamed](../../../disVM/module/styxna
 с живым деревом колбэков.
 
 [Общие ячейки](named_cell.ru.md) используют тот же служебный узел.
+
+Отменяемое ожидание доступно в [приёме](named_recv_until.ru.md) и [отправке](named_send_until.ru.md).
