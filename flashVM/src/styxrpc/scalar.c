@@ -3,6 +3,7 @@
  * RU: Передача точных знаковых Int32 между владельцем FlashVM и libstyxrpc.
  */
 #include "module_import.h"
+#include "wire_wait.h"
 #include "object_handlers.h"
 #include "flashvm/styxrpc.h"
 #include "flashvm/avm1.h"
@@ -41,24 +42,21 @@ FVM_Result fvm_styxrpc_int_at(FVM_Context *context, struct StyxFid *directory, c
     int64_t argument;
     int64_t answer;
     StyxRpcOutcome outcome;
+    FVM_Worker *worker = NULL;
     if (argc != 1 || !scalar_int(argv, &argument))
     {
         return raise_status(context, "Styx RPC requires one exact int32 argument");
     }
-    outcome = styxrpc_scalar_invoke_at(directory, binding->session, binding->module, binding->name,
-        STYXRPC_INT_SIGNATURE, argument, binding->wait_ms, &answer);
-    switch (outcome)
+    fvm_worker_current(context, &worker);
+    outcome = styxrpc_scalar_invoke_at_until(directory, binding->session, binding->module, binding->name,
+        STYXRPC_INT_SIGNATURE, argument, binding->wait_ms, &answer,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (outcome == STYXRPC_CALL_OK)
     {
-    case STYXRPC_CALL_OK:
         fvm_value_number(result, (double)answer);
         return FVM_OK;
-    case STYXRPC_CALL_NOT_SENT:
-        return raise_status(context, "Styx RPC call was not sent");
-    case STYXRPC_CALL_REMOTE_ERROR:
-        return raise_status(context, "Styx RPC remote function failed");
-    default:
-        return raise_status(context, "Styx RPC outcome is uncertain");
     }
+    return raise_status(context, fvm_styxrpc_call_error(outcome));
 }
 
 

@@ -12,3 +12,5 @@ A captured image withdrawn before function open returns
 `STYXRPC_CALL_NOT_SENT` without invoking a replacement at the same path.
 Serialize opening and releasing the directory against this call. The
 call waits for Styx I/O and respects the supplied reply polling budget.
+
+[Cancellable variant](managed_invoke_at_until.md).

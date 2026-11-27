@@ -19,25 +19,53 @@ typedef struct WireWait
 } WireWait;
 
 
+/* EN/RU: See wire_wait.h. / См. wire_wait.h. */
+int fvm_styxrpc_worker_stopped(void *worker)
+{
+    int requested = 0;
+    return worker && fvm_worker_stop_requested(worker, &requested) == FVM_OK && requested;
+}
+
+
+/* EN/RU: See wire_wait.h. / См. wire_wait.h. */
+const char *fvm_styxrpc_call_error(StyxRpcOutcome outcome)
+{
+    switch (outcome)
+    {
+    case STYXRPC_CALL_OK:
+        return NULL;
+    case STYXRPC_CALL_NOT_SENT:
+        return "Styx RPC call was not sent";
+    case STYXRPC_CALL_REMOTE_ERROR:
+        return "Styx RPC remote function failed";
+    case STYXRPC_CALL_CANCELLED:
+        return "Styx RPC call cancelled before submission";
+    case STYXRPC_CALL_CANCELLED_UNCERTAIN:
+        return "Styx RPC call cancelled; remote outcome is uncertain";
+    default:
+        return "Styx RPC outcome is uncertain";
+    }
+}
+
+
 /* EN: Dispatch exact native codecs without accessing the VM or invoking script.
  * RU: Вызвать точные нативные кодеки без доступа к VM и запусков скрипта. */
-static StyxRpcOutcome exchange(FVM_StyxWireCall *call)
+static StyxRpcOutcome exchange(FVM_StyxWireCall *call, FVM_Worker *worker)
 {
     StyxRpcArgumentScope *scope = call->scope;
+    StyxRpcCallStop stop = worker ? fvm_styxrpc_worker_stopped : NULL;
     call->scope = NULL;
     switch (call->kind)
     {
     case FVM_STYX_WIRE_MANAGED:
-        return styxrpc_managed_invoke_at(call->directory, call->target, call->arguments, call->size,
-            call->reply, call->capacity, call->result);
+        return styxrpc_managed_invoke_at_until(call->directory, call->target, call->arguments, call->size,
+            call->reply, call->capacity, call->result, stop, worker);
     case FVM_STYX_WIRE_GRAPH:
-        return styxrpc_graph_invoke_at(call->directory, call->target, call->arguments, call->size,
-            call->reply, call->capacity, call->result);
+        return styxrpc_graph_invoke_at_until(call->directory, call->target, call->arguments, call->size,
+            call->reply, call->capacity, call->result, stop, worker);
     case FVM_STYX_WIRE_CHANNEL:
-        return scope ? styxrpc_argument_scope_invoke_at(call->directory, scope, call->target, call->arguments,
-            call->size, call->reply, call->capacity, call->result) :
-            styxrpc_channel_invoke_at(call->directory, call->target, call->arguments, call->size,
-                call->reply, call->capacity, call->result);
+        return styxrpc_argument_scope_invoke_at_until(call->directory, scope, call->target, call->arguments,
+            call->size, call->reply, call->capacity, call->result, stop, worker);
     }
     styxrpc_argument_scope_close(scope);
     return STYXRPC_CALL_NOT_SENT;
@@ -49,7 +77,7 @@ static StyxRpcOutcome exchange(FVM_StyxWireCall *call)
 static void run_wire(void *state)
 {
     WireWait *wait = state;
-    wait->result = exchange(wait->call);
+    wait->result = exchange(wait->call, NULL);
     fvm_port_sync_lock(wait->lock);
     wait->done = 1;
     fvm_port_sync_unlock(wait->lock);
@@ -69,13 +97,15 @@ static int completed(WireWait *wait)
 
 
 /* EN/RU: See wire_wait.h. / См. wire_wait.h. */
-StyxRpcOutcome fvm_styxrpc_wire_call(StyxRpcServer *reverse, FVM_StyxWireCall *call)
+StyxRpcOutcome fvm_styxrpc_wire_call(FVM_Context *context, StyxRpcServer *reverse, FVM_StyxWireCall *call)
 {
     WireWait wait = {0};
     FVM_PortThread *thread = NULL;
     if (!reverse)
     {
-        return exchange(call);
+        FVM_Worker *worker = NULL;
+        fvm_worker_current(context, &worker);
+        return exchange(call, worker);
     }
     wait.call = call;
     if (styxrpc_server_program_step_for(reverse, 0))

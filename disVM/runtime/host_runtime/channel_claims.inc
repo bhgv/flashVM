@@ -222,6 +222,23 @@ static int cancel_parked_guest(Prog *peer)
 }
 
 
+/* EN: Retire a local channel wait for this thread's scoped call after its fid
+ * is revoked. Use the ordinary queue claim against concurrent completion.
+ * RU: Снять локальное ожидание канала у контекстного вызова этого потока после
+ * отзыва fid. Обычный захват очереди защищает от параллельного завершения. */
+static int cancel_remote_channel_wait(Prog *guest)
+{
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)guest;
+    if (!owner || owner->remote_call_cancel_delivered || !dvm_cancel_requested(owner->remote_call_cancel) ||
+        !cancel_parked_guest(guest))
+    {
+        return 0;
+    }
+    owner->remote_call_cancel_delivered = 1;
+    return 1;
+}
+
+
 static int cancel_child_exit_wait(Prog *process);
 
 

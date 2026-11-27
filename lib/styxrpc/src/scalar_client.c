@@ -6,8 +6,8 @@
 #include "client_exchange.h"
 
 /* EN/RU: See scalar_client.h. / См. scalar_client.h. */
-StyxRpcOutcome styxrpc_scalar_invoke_at(StyxFid *directory, StyxClient *session, const char *module, const char *name,
-    uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result)
+StyxRpcOutcome styxrpc_scalar_invoke_at_until(StyxFid *directory, StyxClient *session, const char *module, const char *name,
+    uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result, StyxRpcCallStop stop, void *state)
 {
     unsigned char request[STYXRPC_FRAME_SIZE];
     size_t size;
@@ -15,6 +15,10 @@ StyxRpcOutcome styxrpc_scalar_invoke_at(StyxFid *directory, StyxClient *session,
         styxrpc_request(signature, argument, request, sizeof(request), &size) != STYXRPC_OK)
     {
         return STYXRPC_CALL_NOT_SENT;
+    }
+    if (stop && stop(state))
+    {
+        return STYXRPC_CALL_CANCELLED;
     }
     int scoped;
     StyxFid *fid = styxrpc_client_function(directory, session, module, name, signature, NULL, NULL, &scoped);
@@ -24,11 +28,25 @@ StyxRpcOutcome styxrpc_scalar_invoke_at(StyxFid *directory, StyxClient *session,
     }
     unsigned char reply[STYXRPC_FRAME_SIZE];
     size_t received;
-    int transferred = styxrpc_client_exchange(fid, request, size, wait_ms, reply, sizeof(reply), &received);
+    StyxRpcOutcome outcome = styxrpc_client_exchange(fid, request, size, wait_ms,
+        reply, sizeof(reply), &received, stop, state);
     styxclientclunk(fid);
-    StyxRpcStatus status = transferred ? styxrpc_reply(signature, reply, received, result) : STYXRPC_INVALID;
+    if (outcome != STYXRPC_CALL_OK)
+    {
+        return outcome;
+    }
+    StyxRpcStatus status = styxrpc_reply(signature, reply, received, result);
     return status == STYXRPC_OK ? STYXRPC_CALL_OK :
         status == STYXRPC_REMOTE_ERROR ? STYXRPC_CALL_REMOTE_ERROR : STYXRPC_CALL_UNCERTAIN;
+}
+
+
+/* EN/RU: See scalar_client.h. / См. scalar_client.h. */
+StyxRpcOutcome styxrpc_scalar_invoke_at(StyxFid *directory, StyxClient *session, const char *module, const char *name,
+    uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result)
+{
+    return styxrpc_scalar_invoke_at_until(directory, session, module, name, signature, argument, wait_ms, result,
+        NULL, NULL);
 }
 
 

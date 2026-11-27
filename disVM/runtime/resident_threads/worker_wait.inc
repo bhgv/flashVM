@@ -126,6 +126,16 @@ static void wait_dedicated_work(ManagedWorker *worker)
             fvm_port_sync_wait_ms(worker->wake, DVM_MIXED_ALT_WAIT_MS);
             break;
         }
+        DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
+        if (resident->remote_call_cancel && !resident->remote_call_cancel_delivered)
+        {
+            int state = dvm_runqueue_observed_state(worker->guest);
+            if (state == Psend || state == Precv || state == Palt)
+            {
+                fvm_port_sync_wait_ms(worker->wake, DVM_REMOTE_CALL_WAIT_MS);
+                break;
+            }
+        }
         fvm_port_sync_wait(worker->wake);
     }
     fvm_port_sync_unlock(worker->wake);

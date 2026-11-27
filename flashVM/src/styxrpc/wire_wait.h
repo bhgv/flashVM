@@ -4,6 +4,7 @@
  */
 #ifndef FVM_STYXRPC_WIRE_WAIT_H
 #define FVM_STYXRPC_WIRE_WAIT_H
+#include "flashvm/worker.h"
 #include "styxrpc/channel_arguments.h"
 #include "styxrpc/serve.h"
 
@@ -31,9 +32,21 @@ typedef struct FVM_StyxWireCall
 /* EN: Run a native exchange once. With reverse, keep only native program requests
  * moving on the caller thread and join the wire worker before returning. Consumes
  * call->scope on every outcome. Borrow all native buffers through return.
+ * Poll the stop flag of context's detached task, if present.
  * RU: Однократно выполнить нативный обмен. При reverse обслуживать только запросы
  * нативного дерева программ у вызывающего. Дождаться потока обмена. Всегда
- * поглотить call->scope, нативные буферы заимствовать до возврата. */
-StyxRpcOutcome fvm_styxrpc_wire_call(StyxRpcServer *reverse, FVM_StyxWireCall *call);
+ * поглотить call->scope, нативные буферы заимствовать до возврата.
+ * Проверять флаг остановки отделённой задачи, если context ей принадлежит. */
+StyxRpcOutcome fvm_styxrpc_wire_call(FVM_Context *context, StyxRpcServer *reverse, FVM_StyxWireCall *call);
+
+
+/* EN: Borrow an optional worker and report its stop flag to the SDK.
+ * RU: Заимствовать необязательную задачу и сообщить SDK её флаг остановки. */
+int fvm_styxrpc_worker_stopped(void *worker);
+
+
+/* EN: Return a static exception message for the wire outcome, NULL on success.
+ * RU: Вернуть статическое сообщение об исходе вызова либо NULL при успехе. */
+const char *fvm_styxrpc_call_error(StyxRpcOutcome outcome);
 
 #endif

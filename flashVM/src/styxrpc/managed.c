@@ -77,9 +77,9 @@ FVM_Result fvm_styxrpc_managed_at(FVM_Context *context, struct StyxFid *director
             call.reply = reply;
             call.capacity = STYXRPC_MANAGED_LIMIT;
             call.result = &result;
-            switch (fvm_styxrpc_wire_call(reverse, &call))
+            error = fvm_styxrpc_call_error(fvm_styxrpc_wire_call(context, reverse, &call));
+            if (!error)
             {
-            case STYXRPC_CALL_OK:
                 if (result.void_result)
                 {
                     fvm_value_undefined(&decoded);
@@ -98,16 +98,6 @@ FVM_Result fvm_styxrpc_managed_at(FVM_Context *context, struct StyxFid *director
                 {
                     *value = decoded;
                 }
-                break;
-            case STYXRPC_CALL_NOT_SENT:
-                error = "Styx RPC call was not sent";
-                break;
-            case STYXRPC_CALL_REMOTE_ERROR:
-                error = "Styx RPC remote function failed";
-                break;
-            default:
-                error = "Styx RPC outcome is uncertain";
-                break;
             }
         }
         fvm_gc_roots_end(roots);

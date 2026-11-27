@@ -70,6 +70,16 @@ StyxRpcOutcome styxrpc_argument_scope_invoke_at(struct StyxFid *directory, StyxR
     const StyxRpcManagedTarget *target, const void *arguments, size_t size, void *reply, size_t capacity,
     StyxRpcLeasedReply *result);
 
+
+/* EN: Invoke a scoped channel contract with an optional stop hook. A non-NULL
+ * argument scope is consumed on every outcome; NULL uses the raw channel contract.
+ * RU: Вызвать канальный контракт с необязательной проверкой остановки. Переданная
+ * область аргументов поглощается при любом исходе. При NULL действует обычный
+ * канальный контракт без автоматической выдачи ключей. */
+StyxRpcOutcome styxrpc_argument_scope_invoke_at_until(struct StyxFid *directory, StyxRpcArgumentScope *scope,
+    const StyxRpcManagedTarget *target, const void *arguments, size_t size, void *reply, size_t capacity,
+    StyxRpcLeasedReply *result, StyxRpcCallStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

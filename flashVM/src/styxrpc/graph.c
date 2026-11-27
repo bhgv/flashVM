@@ -110,23 +110,10 @@ FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory,
             call.reply = buffer + STYXRPC_MANAGED_LIMIT;
             call.capacity = STYXRPC_MANAGED_LIMIT;
             call.result = &reply;
-            switch (fvm_styxrpc_wire_call(reverse, &call))
+            error = fvm_styxrpc_call_error(fvm_styxrpc_wire_call(context, reverse, &call));
+            if (!error && !read_graph(context, roots, &refs, &target->schema, &arguments, &reply, out))
             {
-            case STYXRPC_CALL_OK:
-                if (!read_graph(context, roots, &refs, &target->schema, &arguments, &reply, out))
-                {
-                    error = "Styx RPC graph result could not be committed";
-                }
-                break;
-            case STYXRPC_CALL_NOT_SENT:
-                error = "Styx RPC call was not sent";
-                break;
-            case STYXRPC_CALL_REMOTE_ERROR:
-                error = "Styx RPC remote function failed";
-                break;
-            default:
-                error = "Styx RPC outcome is uncertain";
-                break;
+                error = "Styx RPC graph result could not be committed";
             }
         }
         fvm_gc_roots_end(roots);

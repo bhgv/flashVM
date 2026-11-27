@@ -28,6 +28,7 @@ static int runtime_dispatch_turn(void)
         cancelled |= consume_child_reply(guest);
         dvm_managed_workers_finish_reply(guest);
         cancelled |= consume_process_wait_requests(guest);
+        cancelled |= cancel_remote_channel_wait(guest);
         cancelled |= poll_mixed_alt(guest);
         fvm_port_sync_lock(channel_queue_mutex);
         process = dvm_runqueue_select_guest(guest);

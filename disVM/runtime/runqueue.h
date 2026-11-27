@@ -28,6 +28,7 @@ enum
 
 #define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Child retirement/cancellation reply state. */
 #define DVM_MIXED_ALT_WAIT_MS 10UL /* Local rendezvous interval before the owner probes UniBus again. */
+#define DVM_REMOTE_CALL_WAIT_MS 20UL /* Recheck scoped call cancellation during a channel wait or sleep. */
 
 
 /* Native allocation preserves the complete retained Prog prefix. Every Prog

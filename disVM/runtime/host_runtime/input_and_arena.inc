@@ -290,9 +290,9 @@ int dvm_runtime_guest_sleep(unsigned long milliseconds)
                 }
                 unsigned long delay = milliseconds - elapsed + 1;
                 /* EN/RU: Bound remote cancellation latency. / Ограничить задержку отмены. */
-                if (cancel && delay > 20)
+                if (cancel && delay > DVM_REMOTE_CALL_WAIT_MS)
                 {
-                    delay = 20;
+                    delay = DVM_REMOTE_CALL_WAIT_MS;
                 }
                 if (!fvm_port_sync_wait_ms(channel_queue_mutex, delay) || !dvm_host_clock_ms(&now))
                 {

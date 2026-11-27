@@ -21,6 +21,11 @@
 #define SCOPE_PID 123U /* Stable process in the paired control tree. */
 #define SCOPE_IDENTITY ".prog/123/.pid" /* Direct RPC-only path. */
 #define COUNTER_QID UINT64_C(0x101) /* Local fixture identity, independent of remote Qids. */
+#define BEFORE_OPEN 1U /* Stop before doing any metadata I/O. */
+#define BEFORE_WRITE 2U /* Stop with a fresh function fid and zero writes. */
+#define AFTER_WRITE 3U /* Stop after acknowledgement and before polling the reply. */
+
+static unsigned echo_calls; /* The server owns this count until its thread joins. */
 
 typedef struct Fixture
 {
@@ -164,8 +169,40 @@ static int set(void *state, int32_t value)
 static int echo(void *state, int64_t argument, int64_t *result)
 {
     (void)state;
+    ++echo_calls;
     *result = argument;
     return 1;
+}
+
+
+typedef struct StopPlan
+{
+    unsigned checks; /* Number of stop checks on the calling thread. */
+    unsigned limit;  /* First check that reports cancellation. */
+} StopPlan;
+
+
+/* EN: Trigger the pinned worker test's cancellation at its designated phase.
+ * RU: Запросить отмену тестового вызова на назначенной фазе. */
+static int stop_at(void *state)
+{
+    StopPlan *plan = state;
+    return ++plan->checks >= plan->limit;
+}
+
+
+/* EN: Distinguish cancellation before and after writing; retain the original image.
+ * RU: Различить отмену до и после записи; сохранить исходный образ. */
+static int cancel_calls(StyxFid *image)
+{
+    StopPlan early = {0, BEFORE_OPEN}, before = {0, BEFORE_WRITE}, after = {0, AFTER_WRITE};
+    int64_t value = -73;
+    return styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 81,
+            1000, &value, stop_at, &early) == STYXRPC_CALL_CANCELLED && value == -73 &&
+        styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 82,
+            1000, &value, stop_at, &before) == STYXRPC_CALL_CANCELLED && value == -73 &&
+        styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 83,
+            1000, &value, stop_at, &after) == STYXRPC_CALL_CANCELLED_UNCERTAIN && value == -73;
 }
 
 
@@ -288,6 +325,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
         owned_reference(client) &&
         styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_OK &&
         styxrpc_module_check_at(image, exports.methods, exports.count, 0) == STYXRPC_OK &&
+        cancel_calls(image) &&
         styxrpc_scalar_invoke_at(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 12, 1000, &echoed) ==
             STYXRPC_CALL_OK && echoed == 12 &&
         styxrpc_vfs_int_open_identified(client, old.path, 1, &view, &old.node) == STYXRPC_IO_OK &&
@@ -318,7 +356,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     styxclientfree(client);
     pthread_join(worker, NULL);
     StyxRpcFile stale = {0};
-    good = good && styxrpc_module_ref_read_local(local, &value) != STYXRPC_OK &&
+    good = good && echo_calls == 3 && styxrpc_module_ref_read_local(local, &value) != STYXRPC_OK &&
         styxrpc_module_ref_write_local(local, 0) != STYXRPC_OK &&
         styxrpc_module_ref_open_local(slot, &old, &stale) == STYXRPC_INVALID;
     styxrpc_file_close(&stale);

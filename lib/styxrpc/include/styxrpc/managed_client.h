@@ -38,6 +38,13 @@ StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
 StyxRpcOutcome styxrpc_managed_invoke_at(struct StyxFid *directory, const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result);
 
+
+/* EN: Like invoke_at, with the scalar client's optional stop hook and outcomes.
+ * RU: Как invoke_at с необязательной проверкой остановки и исходами скалярного клиента. */
+StyxRpcOutcome styxrpc_managed_invoke_at_until(struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result,
+    StyxRpcCallStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

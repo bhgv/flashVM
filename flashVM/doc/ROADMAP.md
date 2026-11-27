@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1805 — cooperative cancellation of pending Dis calls
+
+Detached ActionScript tasks stop waiting on scalar, managed, graph and
+channel method calls. The SDK distinguishes a stop before the first write
+from cancellation after submission, clunks the exact call fid and revokes
+the loan of argument channels. Native Dis owners observe scoped call
+cancellation while parked on a local send, receive or alternation. The
+paired test cancels all three waits while a separate proxy remains usable.
+[EN](STYX_RPC_LIVE_DIS.md) · [RU](STYX_RPC_LIVE_DIS.ru.md).
+
 ## v0.1804 — explicit lifetime and cancellation for live Dis loads
 
 The film and detached tasks can unload checked Dis proxies, retaining

@@ -8,13 +8,18 @@
 
 
 /* EN/RU: See graph_client.h. / См. graph_client.h. */
-StyxRpcOutcome styxrpc_graph_invoke_at(StyxFid *directory, const StyxRpcManagedTarget *target,
-    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcGraphReply *result)
+StyxRpcOutcome styxrpc_graph_invoke_at_until(StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcGraphReply *result,
+    StyxRpcCallStop stop, void *state)
 {
     if (!target || !target->wait_ms || target->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS || !reply ||
         !capacity || capacity > STYXRPC_MANAGED_LIMIT || !result || size > STYXRPC_MANAGED_LIMIT)
     {
         return STYXRPC_CALL_NOT_SENT;
+    }
+    if (stop && stop(state))
+    {
+        return STYXRPC_CALL_CANCELLED;
     }
     unsigned char *request = malloc(STYXRPC_MANAGED_LIMIT);
     size_t request_size;
@@ -26,7 +31,7 @@ StyxRpcOutcome styxrpc_graph_invoke_at(StyxFid *directory, const StyxRpcManagedT
     }
     size_t received;
     StyxRpcOutcome outcome = styxrpc_client_managed_exchange(directory, target, STYXRPC_POSITIONAL_GRAPH,
-        request, request_size, reply, capacity, &received);
+        request, request_size, reply, capacity, &received, stop, state);
     if (outcome == STYXRPC_CALL_OK)
     {
         StyxRpcStatus status = styxrpc_graph_read(&target->schema, request, request_size, reply, received, result);
@@ -35,6 +40,14 @@ StyxRpcOutcome styxrpc_graph_invoke_at(StyxFid *directory, const StyxRpcManagedT
     }
     free(request);
     return outcome;
+}
+
+
+/* EN/RU: See graph_client.h. / См. graph_client.h. */
+StyxRpcOutcome styxrpc_graph_invoke_at(StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcGraphReply *result)
+{
+    return styxrpc_graph_invoke_at_until(directory, target, arguments, size, reply, capacity, result, NULL, NULL);
 }
 
 

@@ -48,6 +48,15 @@ readiness polls. The client closes the request fid, and DisVM retires the
 exact request and interrupts any cancellable source read of that resident.
 An I/O round trip already underway uses the session's deadline.
 
+For a method invocation in a detached task, `cancel()` also stops
+waiting for the result. The client closes that call's fid and releases
+its argument channel scope. A scoped Dis call can unwind from a local
+channel send, receive or `alt` when the fid is closed. Cancellation that
+follows a request write leaves the peer's effects uncertain. An earlier
+queue transfer may already have happened, and unscoped Dis code can
+continue after the client stops waiting. In libstyxrpc, a complete
+reply read before the stop check keeps its normal outcome.
+
 A [positioned Limbo file](../../disVM/runtime/STYX-NODE-OFFSETS.md) can
 serve an image if it has the true byte length and read and execute
 permissions. Publish it from an owner that can respond while the caller
@@ -64,3 +73,6 @@ Add `--jit` or `--tcp` for those variants. The test rebinds the VFS while
 holding an old proxy and checks scalar, string and channel calls. It
 checks reuse beyond the slot limit, explicit unload with a live channel
 and cancellation while the image owner is still holding a read.
+Use `--cancel-dis-call` to check cancellation of three concurrent
+typed calls parked on local Dis channels. The same test calls an
+independent proxy before and after the cancellation.

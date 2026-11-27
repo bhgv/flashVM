@@ -123,31 +123,22 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
         call.capacity = STYXRPC_MANAGED_LIMIT;
         call.result = &reply;
         call.scope = channels.scope;
-        outcome = fvm_styxrpc_wire_call(reverse, &call);
+        outcome = fvm_styxrpc_wire_call(context, reverse, &call);
         channels.scope = NULL;
-        if (arguments && outcome != STYXRPC_CALL_NOT_SENT && !fvm_styxrpc_lend_restore(context, &channels))
+        if (arguments && outcome != STYXRPC_CALL_NOT_SENT && outcome != STYXRPC_CALL_CANCELLED &&
+            !fvm_styxrpc_lend_restore(context, &channels))
         {
             styxrpc_channel_lease_release(outcome == STYXRPC_CALL_OK ? reply.lease : NULL, 0);
             outcome = STYXRPC_CALL_UNCERTAIN;
         }
-        switch (outcome)
+        error = fvm_styxrpc_call_error(outcome);
+        if (outcome == STYXRPC_CALL_OK)
         {
-        case STYXRPC_CALL_OK:
             if (!decode_result(context, roots, &target, &reply, out, lease))
             {
                 error = "Styx RPC channel result could not be decoded";
             }
             styxrpc_channel_lease_release(reply.lease, 0);
-            break;
-        case STYXRPC_CALL_NOT_SENT:
-            error = "Styx RPC call was not sent";
-            break;
-        case STYXRPC_CALL_REMOTE_ERROR:
-            error = "Styx RPC remote function failed";
-            break;
-        default:
-            error = "Styx RPC outcome is uncertain";
-            break;
         }
     }
     styxrpc_argument_scope_close(channels.scope);

@@ -63,21 +63,26 @@ static int verify(StyxFid *module, const char *name, uint32_t signature,
 
 /* EN: Write consecutive confirmed suffixes of one request on the borrowed fid.
  * RU: Записать последовательные подтверждённые остатки одного запроса на fid. */
-static int send_request(StyxFid *fid, const unsigned char *request, size_t size)
+static StyxRpcOutcome send_request(StyxFid *fid, const unsigned char *request, size_t size,
+    StyxRpcCallStop stop, void *state)
 {
     size_t offset = 0;
     while (offset < size)
     {
+        if (stop && stop(state))
+        {
+            return offset ? STYXRPC_CALL_CANCELLED_UNCERTAIN : STYXRPC_CALL_CANCELLED;
+        }
         StyxTransfer part;
         styxclientwrite(fid, offset, request + offset, size - offset, &part);
         if (!part.success || !part.confirmed || part.uncertain ||
             !part.count || part.count > size - offset)
         {
-            return 0;
+            return STYXRPC_CALL_UNCERTAIN;
         }
         offset += part.count;
     }
-    return 1;
+    return STYXRPC_CALL_OK;
 }
 
 
@@ -93,8 +98,8 @@ static uint64_t monotonic_ms(void)
 
 /* EN: Poll for the first response bytes, then consume exactly one framed reply.
  * RU: Дождаться первых байтов ответа и прочитать ровно одну запись. */
-static int receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
-    size_t capacity, size_t *received)
+static StyxRpcOutcome receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
+    size_t capacity, size_t *received, StyxRpcCallStop stop, void *state)
 {
     const struct timespec pause = {0, 1000000}; /* Yield one millisecond between empty reads. */
     uint64_t began = monotonic_ms();
@@ -102,6 +107,10 @@ static int receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
     uint64_t now = began;
     while (now && now - began < wait_ms && used < capacity)
     {
+        if (stop && stop(state))
+        {
+            return STYXRPC_CALL_CANCELLED_UNCERTAIN;
+        }
         StyxTransfer part;
         styxclientread(fid, used, reply + used, capacity - used, &part);
         if (!part.success || !part.confirmed || part.uncertain || part.count > capacity - used)
@@ -117,7 +126,7 @@ static int receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
             if (parsed == FVM_S_OK && extent == used)
             {
                 *received = used;
-                return 1;
+                return STYXRPC_CALL_OK;
             }
             if (parsed != FVM_S_MORE)
             {
@@ -134,7 +143,7 @@ static int receive_reply(StyxFid *fid, unsigned wait_ms, unsigned char *reply,
         }
         now = monotonic_ms();
     }
-    return 0;
+    return STYXRPC_CALL_UNCERTAIN;
 }
 
 
@@ -335,10 +344,12 @@ StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarg
 
 /* EN: Exchange one complete frame without replay on the borrowed open fid.
  * RU: Обменять один полный кадр через заимствованный fid без повтора. */
-int styxrpc_client_exchange(StyxFid *fid, const void *request, size_t size, unsigned wait_ms,
-    void *reply, size_t capacity, size_t *received)
+StyxRpcOutcome styxrpc_client_exchange(StyxFid *fid, const void *request, size_t size, unsigned wait_ms,
+    void *reply, size_t capacity, size_t *received, StyxRpcCallStop stop, void *state)
 {
-    return send_request(fid, request, size) && receive_reply(fid, wait_ms, reply, capacity, received);
+    StyxRpcOutcome sent = send_request(fid, request, size, stop, state);
+    return sent == STYXRPC_CALL_OK ?
+        receive_reply(fid, wait_ms, reply, capacity, received, stop, state) : sent;
 }
 
 
@@ -368,7 +379,7 @@ static unsigned char *scope_request(uint32_t pid, const void *request, size_t si
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
 StyxRpcOutcome styxrpc_client_managed_exchange(StyxFid *base, const StyxRpcManagedTarget *target,
     const char *graph_marker, const void *request, size_t request_size, void *reply,
-    size_t capacity, size_t *received)
+    size_t capacity, size_t *received, StyxRpcCallStop stop, void *state)
 {
     int scoped;
     StyxFid *fid = styxrpc_client_function(base, target->session, target->module, target->name,
@@ -379,7 +390,7 @@ StyxRpcOutcome styxrpc_client_managed_exchange(StyxFid *base, const StyxRpcManag
     if (fid && (!scoped || (wrapped = scope_request(target->pid, request, request_size, &wire_size))))
     {
         outcome = styxrpc_client_exchange(fid, wrapped ? wrapped : request, wire_size,
-            target->wait_ms, reply, capacity, received) ? STYXRPC_CALL_OK : STYXRPC_CALL_UNCERTAIN;
+            target->wait_ms, reply, capacity, received, stop, state);
     }
     styxclientclunk(fid);
     free(wrapped);

@@ -56,8 +56,9 @@ static StyxRpcStatus read_reply(const StyxRpcSchema *schema, const StyxRpcChanne
 
 /* EN: Send only after the matching module and optional reverse publication are available.
  * RU: Отправить после проверки модуля и готовности дополнительной встречной публикации. */
-static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target, const void *arguments,
-    size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
+static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result,
+    StyxRpcCallStop stop, void *state)
 {
     if (!target || !target->pid || !target->wait_ms || target->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS ||
         (!arguments && size) || size > STYXRPC_MANAGED_LIMIT || !reply || !capacity ||
@@ -67,6 +68,10 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
         strpbrk(target->schema.arguments, "rh") || strpbrk(target->schema.result, "rh"))
     {
         return STYXRPC_CALL_NOT_SENT;
+    }
+    if (stop && stop(state))
+    {
+        return STYXRPC_CALL_CANCELLED;
     }
     unsigned char pid[STYXRPC_FRAME_SIZE];
     unsigned char *request = malloc(STYXRPC_MANAGED_LIMIT);
@@ -83,11 +88,14 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
         (lease->function = styxrpc_client_channel_function(directory, target, &lease->module)) &&
         (!scope || styxrpc_argument_scope_match(scope, &call)))
     {
-        StyxRpcStatus status = styxrpc_client_exchange(lease->function, request, request_size,
-            target->wait_ms, reply, capacity, &received) ?
-            read_reply(&target->schema, &call, reply, received, &decoded) : STYXRPC_INVALID;
-        outcome = status == STYXRPC_OK ? STYXRPC_CALL_OK :
-            status == STYXRPC_REMOTE_ERROR ? STYXRPC_CALL_REMOTE_ERROR : STYXRPC_CALL_UNCERTAIN;
+        outcome = styxrpc_client_exchange(lease->function, request, request_size,
+            target->wait_ms, reply, capacity, &received, stop, state);
+        if (outcome == STYXRPC_CALL_OK)
+        {
+            StyxRpcStatus status = read_reply(&target->schema, &call, reply, received, &decoded);
+            outcome = status == STYXRPC_OK ? STYXRPC_CALL_OK :
+                status == STYXRPC_REMOTE_ERROR ? STYXRPC_CALL_REMOTE_ERROR : STYXRPC_CALL_UNCERTAIN;
+        }
         if (outcome == STYXRPC_CALL_OK)
         {
             if (decoded.routes.count)
@@ -115,7 +123,7 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
 StyxRpcOutcome styxrpc_channel_invoke_at(StyxFid *directory, const StyxRpcManagedTarget *target, const void *arguments,
     size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
 {
-    return invoke(directory, NULL, target, arguments, size, reply, capacity, result);
+    return invoke(directory, NULL, target, arguments, size, reply, capacity, result, NULL, NULL);
 }
 
 
@@ -132,8 +140,17 @@ StyxRpcOutcome styxrpc_argument_scope_invoke_at(StyxFid *directory, StyxRpcArgum
     const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
 {
-    StyxRpcOutcome outcome = scope ? invoke(directory, scope, target, arguments, size, reply, capacity, result) :
-        STYXRPC_CALL_NOT_SENT;
+    return scope ? styxrpc_argument_scope_invoke_at_until(directory, scope, target, arguments, size,
+        reply, capacity, result, NULL, NULL) : STYXRPC_CALL_NOT_SENT;
+}
+
+
+/* EN/RU: See styxrpc/channel_arguments.h. / См. styxrpc/channel_arguments.h. */
+StyxRpcOutcome styxrpc_argument_scope_invoke_at_until(StyxFid *directory, StyxRpcArgumentScope *scope,
+    const StyxRpcManagedTarget *target, const void *arguments, size_t size, void *reply, size_t capacity,
+    StyxRpcLeasedReply *result, StyxRpcCallStop stop, void *state)
+{
+    StyxRpcOutcome outcome = invoke(directory, scope, target, arguments, size, reply, capacity, result, stop, state);
     styxrpc_argument_scope_close(scope);
     return outcome;
 }

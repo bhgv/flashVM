@@ -9,6 +9,10 @@ execution checkpoint finishes with [`FVM_ERROR`](../include/flashvm/flashvm.h#L4
 keeps its prior result. Repeated requests are harmless. Read completion with
 [poll](ASINC_POLL.md). Cancellation does not force an OS thread to exit.
 
+In the paired player, a task waiting for a checked Dis method observes
+stop between Styx round trips. See [live Dis calls](STYX_RPC_LIVE_DIS.md)
+for what happens to the call fid, lent channels and peer effects.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
