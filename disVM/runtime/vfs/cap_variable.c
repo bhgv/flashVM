@@ -9,6 +9,7 @@
 
 typedef struct VariableCell
 {
+    WalkEntity identity; /* Native identity for exact captures and replacement. */
     int32_t value; /* Atomic signed value. */
     DVM_Changes *journal; /* Borrowed from the owning provider. */
 } VariableCell;
@@ -25,7 +26,7 @@ typedef struct VariableCursor
  * Описать корневой файл фиксированного размера. */
 static FVM_Result metadata(void *state, const char *path, FVM_FileInfo *out)
 {
-    (void)state;
+    const VariableCell *cell = state;
     if (strcmp(path, "."))
     {
         return FVM_NOT_FOUND;
@@ -36,6 +37,8 @@ static FVM_Result metadata(void *state, const char *path, FVM_FileInfo *out)
     }
     memset(out, 0, sizeof(*out));
     strcpy(out->name, "int");
+    out->identity.high = cell->identity.object[2];
+    out->identity.low = cell->identity.object[3];
     out->mode = 0666;
     out->length.low = STYX_VARIABLE_INT_SIZE;
     return FVM_OK;
@@ -46,7 +49,7 @@ static FVM_Result metadata(void *state, const char *path, FVM_FileInfo *out)
  * Вернуть метаданные открытого корня. */
 static FVM_Result stat_open(void *state, FVM_FileInfo *out)
 {
-    return metadata(state, ".", out);
+    return metadata(((VariableCursor *)state)->io.state, ".", out);
 }
 
 
@@ -188,21 +191,18 @@ void Vfsexport_intvar(void *frame)
     if (state)
     {
         VariableCell *cell = calloc(1, sizeof(*cell));
-        if (cell)
+        if (cell && walk_entity(&cell->identity))
         {
             cell->value = call.initial;
             state->root = dvm_provider_create_native(&factory, cell, NULL, 1, DVM_PROVIDER_CANCEL_PATH);
-            if (!state->root)
-            {
-                free(cell);
-            }
-            else
+            if (state->root)
             {
                 cell->journal = dvm_provider_changes(state->root);
             }
         }
         if (!state->root)
         {
+            free(cell);
             dvm_cap_abandon(value);
             value = H;
         }

@@ -90,8 +90,9 @@ static int render_type(Output *out, const char **cursor)
         add(out, "string");
         return 1;
     case 'a':
+    case 'l':
     case 'c':
-        add(out, *start == 'a' ? "array of " : "chan of ");
+        add(out, *start == 'a' ? "array of " : *start == 'l' ? "list of " : "chan of ");
         start += 2;
         return render_type(out, &start);
     case '(':

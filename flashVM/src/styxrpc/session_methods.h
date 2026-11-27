@@ -60,6 +60,20 @@ FVM_Result fvm_styxrpc_call_members(FVM_Context *context, FVM_Object *object, FV
 FVM_Result fvm_styxrpc_module_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
 
 
+/* [ASINC] [GC:] EN: Capture a typed live variable from the bound session.
+ * RU: Захватить типизированную живую переменную в привязанной сессии. */
+FVM_Result fvm_styxrpc_open_live_variable(FVM_Context *, FVM_Object *, unsigned,
+    const FVM_Value *, FVM_Value *, void *);
+
+
+/* EN: Register the typed sparse tuple adapters on the rooted session object.
+ * RU: Зарегистрировать адаптеры типизированного разреженного кортежа у сессии. */
+#ifdef __cplusplus
+extern "C"
+#endif
+FVM_Result fvm_styxrpc_sparse_members(FVM_Context *context, FVM_Object *object);
+
+
 /* EN: Install the named UniBus client port constructor on the rooted session object.
  * RU: Добавить конструктор именованного клиентского порта UniBus к удерживаемому объекту. */
 FVM_Result fvm_styxrpc_message_members(FVM_Context *context, FVM_Object *object, FVM_StyxRpcSession *binding);
@@ -112,5 +126,8 @@ int fvm_styxrpc_name(const FVM_Value *value, char *name, size_t capacity);
 
 /* EN: Admit an exact nonnegative AS integer within the supplied range.
  * RU: Принять точное неотрицательное целое AS в заданном диапазоне. */
+#ifdef __cplusplus
+extern "C"
+#endif
 int fvm_styxrpc_number(const FVM_Value *value, uint64_t limit, uint64_t *result);
 #endif

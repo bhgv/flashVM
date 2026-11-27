@@ -28,6 +28,7 @@ typedef struct DVM_ViewRule
  * Builder становится immutable factory state; policy синхронизирует mutable decisions сама. */
 struct DVM_View
 {
+    WalkEntity identity; /* Unique native identity of this immutable projection. */
     FVM_PortSync *lock; /* Protects refs, closed flag and output-journal lifetime. */
     size_t references; /* Factory/builder plus each admitted source subscription context. */
     int closed; /* Prevents late admitted source callbacks from accessing retired journal. */

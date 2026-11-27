@@ -10,6 +10,7 @@ Flash: module {
     echo: fn(text: string, data: array of byte): (string, array of byte);
     number: fn(value: real, label: string): (real, string);
     wide: fn(words: array of string, values: array of big): (array of string, array of big);
+    listcopy: fn(items: list of (string, big)): list of (string, big);
 };
 
 
@@ -59,6 +60,17 @@ init()
         if (strings[i] != words[i]) {
             raise "ordinary string changed across the wide call";
         }
+    }
+    before := ("Привет", big "-9223372036854775808") :: ("end", big "9223372036854775807") :: nil;
+    after := flash->listcopy(before);
+    if (len after != 2 || before == after || flash->listcopy(nil) != nil) {
+        raise "wrong FlashVM copied list";
+    }
+    (name, minimum) := hd after;
+    (last, maximum) := hd tl after;
+    if (name != "Привет" || last != "end" || minimum != big "-9223372036854775808" ||
+        maximum != big "9223372036854775807") {
+        raise "wrong FlashVM copied list heads";
     }
     sys->print("PASS DisVM loaded FlashVM managed values through Styx RPC\n");
 }

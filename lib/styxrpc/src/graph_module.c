@@ -297,10 +297,7 @@ static void close_file(void *cookie)
     {
         styxrpc_module_channels_revoke(file->registry, file->token);
     }
-    if (file->active.release)
-    {
-        file->active.release(file->active.resource.context);
-    }
+    styxrpc_channel_output_dispose(&file->active);
     free(file);
 }
 

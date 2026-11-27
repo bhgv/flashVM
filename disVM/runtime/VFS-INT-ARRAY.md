@@ -33,3 +33,5 @@ Arrays can be fields of a [VFS record](VFS-VARIABLE-RECORD.md).
 See also [live hybrid tables in VFS](VFS-HYBRID-TABLE.md).
 
 For variable length, see [Vfsexport.bigvector](VFS-BIG-VECTOR.md).
+
+FlashVM and the hosted C SDK share an [exact live array client](../../lib/styxrpc/LIVE_VALUES.md). It retains the original node and checks its identity before indexed I/O.

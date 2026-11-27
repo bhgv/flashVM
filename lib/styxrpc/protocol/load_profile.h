@@ -120,6 +120,11 @@ unsigned long styxmanaged_capability(unsigned long high, unsigned long low);
 int styxmanaged_graph_required(const char *arguments);
 
 /* EN/RU: Recognize a graph request profile. / Распознать профиль запроса с графом. */
+/* EN: Validate schema and allow refs beside channels, with independent payload types.
+ * RU: Проверить схему и допустить ссылки рядом с каналами при отдельных типах данных. */
+int styxmanaged_channel_compatible(const StyxCallShape *shape);
+
+
 int styxmanaged_graph_tag(unsigned long tag);
 /* EN: Recognize the two sparse graph reply dialects.
  * RU: Распознать два варианта ответа с разреженным графом. */

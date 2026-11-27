@@ -4,6 +4,7 @@
  */
 #include "channel_private.h"
 #include "managed_values.h"
+#include "graph_refs.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
 #include <string.h>
@@ -54,12 +55,16 @@ static StyxRpcStatus invoke(const FVM_StyxRpcChannelHandler *binding, const Styx
     refs.graph = 1;
     refs.decode_channel = fvm_styxrpc_channel_decode;
     refs.channel_context = &decode;
-    ok = decode.set && fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, &call->arguments,
-            args, FVM_STYXRPC_LIST_ITEMS, &count) &&
-        fvm_avm1_call(context, binding->function, NULL, count, args, &value) == FVM_OK &&
+    ok = decode.set && (!strpbrk(binding->schema.arguments, "rh") || fvm_styxrpc_graph_init(&refs)) &&
+        fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, &call->arguments,
+            args, FVM_STYXRPC_LIST_ITEMS, &count);
+    refs.originals = refs.count;
+    ok = ok && fvm_avm1_call(context, binding->function, NULL, count, args, &value) == FVM_OK &&
         (binding->schema.result[1] == ')' ||
             (fvm_gc_roots_add(roots, &value) == FVM_OK &&
-             write_result(binding, roots, &value, result)));
+             write_result(binding, roots, &value, result))) &&
+        (!result->channel || fvm_styxrpc_channel_updates(context, roots, &refs, &binding->schema,
+            &call->arguments, result->channel));
     if (decode.set)
     {
         fvm_styxrpc_channel_set_disarm(context, decode.set);
@@ -69,6 +74,7 @@ static StyxRpcStatus invoke(const FVM_StyxRpcChannelHandler *binding, const Styx
     {
         fvm_exception_clear(context);
     }
+    fvm_styxrpc_graph_clear(&refs);
     fvm_gc_roots_end(roots);
     return ok ? STYXRPC_OK : STYXRPC_REMOTE_ERROR;
 }
@@ -117,7 +123,8 @@ static int checked_binding(const FVM_StyxRpcChannelHandler *binding, const char 
 FVM_Result fvm_styxrpc_channel_handler(FVM_StyxRpcChannelHandler *binding,
     const char *name, uint32_t signature, StyxRpcChannelFunction *function)
 {
-    if (!function || !checked_binding(binding, name, signature) || strchr(binding->schema.result, 'c'))
+    if (!function || !checked_binding(binding, name, signature) ||
+        strpbrk(binding->schema.arguments, "rh") || strpbrk(binding->schema.result, "rhc"))
     {
         return FVM_INVALID_ARGUMENT;
     }

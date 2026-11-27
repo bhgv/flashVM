@@ -1,6 +1,6 @@
 # fvm_styxrpc_export_managed
 
-[English](STYX_RPC_EXPORT_MANAGED.md) · [Заголовок](../include/flashvm/styxrpc_managed.h) · [Реализация](../src/styxrpc/managed.c) · [Мост](STYX_RPC.ru.md)
+[English](STYX_RPC_EXPORT_MANAGED.md) · [Заголовок](../include/flashvm/styxrpc_managed.h) · [Реализация](../src/styxrpc/managed.c) · [Мост](STYX_RPC.ru.md) · [Типы обмена](STYX_RPC_VALUE_TYPES.ru.md)
 
 Подключите `flashvm/styxrpc_managed.h` и цель `flashvm_styxrpc`.
 
@@ -27,7 +27,7 @@ FVM_Result fvm_styxrpc_export_managed(FVM_StyxRpcManagedExport *binding, const c
 пересекаться с транспортными буферами. Описатель и данные привязки
 должны жить без изменений до уничтожения сервера.
 
-В позиции результата `big` принимается целый Number из точного диапазона или знаковый десятичный String. То же правило действует в массивах и кортежах. Вызывающая сторона Limbo получает знаковое 64-битное целое. [Справочник типов](STYX_RPC_VALUE_TYPES.ru.md)
+В позиции результата `big` принимается целый Number из точного диапазона или знаковый десятичный String. То же правило действует в массивах, списках и кортежах. Вызывающая сторона Limbo получает знаковое 64-битное целое. [Справочник типов](STYX_RPC_VALUE_TYPES.ru.md)
 
 [Исполняемая проверка](../tests/styxrpc/managed.c) · [Импорт](STYX_RPC_IMPORT_MANAGED.ru.md)
 

@@ -1,6 +1,6 @@
 # fvm_styxrpc_import_managed
 
-[Русский](STYX_RPC_IMPORT_MANAGED.ru.md) · [Header](../include/flashvm/styxrpc_managed.h) · [Implementation](../src/styxrpc/managed.c) · [Bridge](STYX_RPC.md)
+[Русский](STYX_RPC_IMPORT_MANAGED.ru.md) · [Header](../include/flashvm/styxrpc_managed.h) · [Implementation](../src/styxrpc/managed.c) · [Bridge](STYX_RPC.md) · [Value mappings](STYX_RPC_VALUE_TYPES.md)
 
 Include `flashvm/styxrpc_managed.h` and link `flashvm_styxrpc`.
 
@@ -18,7 +18,7 @@ for the transport fields and statuses.
 
 Supported AS mappings are counted Unicode strings, binary64 real, exact `int`,
 `byte` and signed 64-bit `big`, dense sequences, tuples as Arrays, `null` for
-nil strings or arrays, and `undefined` for a void result. In a `big` position,
+nil strings, arrays or lists, and `undefined` for a void result. In a `big` position,
 supply a safe integer Number or a decimal String. The decoder returns a Number
 within ±(2⁵³−1) and canonical decimal text outside that interval. Consult the
 [value type reference](STYX_RPC_VALUE_TYPES.md#pass-a-signed-64-bit-integer)

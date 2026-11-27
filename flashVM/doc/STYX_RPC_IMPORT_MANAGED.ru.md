@@ -1,6 +1,6 @@
 # fvm_styxrpc_import_managed
 
-[English](STYX_RPC_IMPORT_MANAGED.md) · [Заголовок](../include/flashvm/styxrpc_managed.h) · [Реализация](../src/styxrpc/managed.c) · [Мост](STYX_RPC.ru.md)
+[English](STYX_RPC_IMPORT_MANAGED.md) · [Заголовок](../include/flashvm/styxrpc_managed.h) · [Реализация](../src/styxrpc/managed.c) · [Мост](STYX_RPC.ru.md) · [Типы обмена](STYX_RPC_VALUE_TYPES.ru.md)
 
 Подключите `flashvm/styxrpc_managed.h` и цель `flashvm_styxrpc`.
 
@@ -18,7 +18,7 @@ FVM_Result fvm_styxrpc_import_managed(FVM_Context *context, const char *global,
 
 Поддерживаются строки Unicode с длиной, binary64 real, точные `int` и `byte`,
 знаковый 64-битный `big`, плотные последовательности и кортежи в виде Array,
-`null` для nil-строк и массивов и `undefined` для пустого результата.
+`null` для nil-строк, массивов и списков и `undefined` для пустого результата.
 В позиции `big` передавайте целый Number из точного диапазона или десятичный
 String. Декодер возвращает Number в диапазоне ±(2⁵³−1) и каноническую строку
 за его пределами. Формат и границы приведены в

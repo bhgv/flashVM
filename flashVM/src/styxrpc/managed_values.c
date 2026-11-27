@@ -9,152 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FVM_STYXRPC_MAX_DEPTH 6U /* Bound schema recursion as in the Dis codec. */
 #define FVM_STYXRPC_SAFE_BIG INT64_C(9007199254740991) /* Largest uniformly exact AS integer. */
 #define FVM_STYXRPC_INDEX_BYTES 11U /* Decimal index plus NUL on 32-bit unsigned. */
-
-
-/* EN: Return the end of one supported type or NULL, within the terminated schema.
- * RU: Вернуть конец одного допустимого типа или NULL в ограниченной схеме. */
-static const char *type_end(const char *type, unsigned depth)
-{
-    const char *next;
-    if (depth >= FVM_STYXRPC_MAX_DEPTH || !*type)
-    {
-        return NULL;
-    }
-    switch (*type)
-    {
-    case 'i': case 'b': case 'y': case 's': case 'f': case 'h':
-        return type + 1;
-    case 'a': case 'c':
-        next = type[1] == '[' ? type_end(type + 2, depth + 1) : NULL;
-        return next && *next == ']' ? next + 1 : NULL;
-    case 'r':
-        if (type[1] != '[')
-        {
-            return NULL;
-        }
-        next = type + 2;
-        if (*next == ']')
-        {
-            return NULL;
-        }
-        while (next && *next && *next != ']')
-        {
-            next = type_end(next, depth + 1);
-        }
-        return next && *next == ']' ? next + 1 : NULL;
-    case '(':
-        next = type + 1;
-        while (next && *next && *next != ')')
-        {
-            next = type_end(next, depth + 1);
-        }
-        return next && *next == ')' ? next + 1 : NULL;
-    default:
-        return NULL;
-    }
-}
-
-
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-const char *fvm_styxrpc_type_end(const char *type)
-{
-    return type_end(type, 0);
-}
-
-
-/* EN: Match the ordinary managed ref rules across the checked argument list.
- * RU: Проверить условия обычного профиля ref для списка аргументов. */
-static int ref_slots(const char *type, unsigned *slots)
-{
-    const char *end = fvm_styxrpc_type_end(type);
-    const char *child;
-    if (*type == 'r')
-    {
-        unsigned fields = 0;
-        for (child = type + 2; *child != ']'; child = fvm_styxrpc_type_end(child))
-        {
-            if (++fields > FVM_STYXRPC_REF_FIELDS)
-            {
-                return 0;
-            }
-        }
-        return ++*slots <= FVM_STYXRPC_REF_SLOTS && !memchr(type + 1, 'r', (size_t)(end - type - 1));
-    }
-    if (*type == 'a')
-    {
-        return !memchr(type, 'r', (size_t)(end - type));
-    }
-    if (*type == '(')
-    {
-        for (child = type + 1; *child != ')'; child = fvm_styxrpc_type_end(child))
-        {
-            if (!ref_slots(child, slots))
-            {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-
-/* EN: Verify two complete type lists and zero or one result.
- * RU: Проверить два полных списка типов и пустой либо одиночный результат. */
-static int schema_supported(const StyxRpcSchema *schema)
-{
-    const char *args;
-    const char *result;
-    if (!schema || !memchr(schema->arguments, 0, sizeof(schema->arguments)) ||
-        !memchr(schema->result, 0, sizeof(schema->result)) ||
-        schema->arguments[0] != '(' || schema->result[0] != '(')
-    {
-        return 0;
-    }
-    /* EN: The native codec starts the depth of each item at zero, outside the list.
-     * RU: Нативный кодек начинает глубину элемента с нуля, вне списка. */
-    args = schema->arguments + 1;
-    while (args && *args != ')')
-    {
-        args = type_end(args, 0);
-    }
-    result = schema->result[1] == ')' ? schema->result + 1 : type_end(schema->result + 1, 0);
-    return args && !args[1] && result && *result == ')' && !result[1];
-}
-
-
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_values_supported(const StyxRpcSchema *schema)
-{
-    unsigned slots = 0;
-    return schema_supported(schema) && !strpbrk(schema->result, "rhc") && !strpbrk(schema->arguments, "hc") &&
-        ref_slots(schema->arguments, &slots);
-}
-
-
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_graph_supported(const StyxRpcSchema *schema)
-{
-    return schema_supported(schema) && !strchr(schema->arguments, 'c') && !strchr(schema->result, 'c') &&
-        (strpbrk(schema->arguments, "rh") || strpbrk(schema->result, "rh"));
-}
-
-
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_channel_signature(const StyxRpcSchema *schema)
-{
-    return schema_supported(schema) && !strpbrk(schema->arguments, "rh") &&
-        !strpbrk(schema->result, "rh") && (strchr(schema->arguments, 'c') || strchr(schema->result, 'c'));
-}
-
-
-/* EN/RU: See managed_values.h. / См. managed_values.h. */
-int fvm_styxrpc_channel_supported(const StyxRpcSchema *schema)
-{
-    return fvm_styxrpc_channel_signature(schema) && !strchr(schema->arguments, 'c');
-}
 
 
 /* EN: Map a scalar schema token to its established record tag.
@@ -228,7 +84,7 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
 {
     FVM_Value length, element;
     int64_t count;
-    const char *child = type + (*type == 'a' ? 2 : 1);
+    const char *child = type + ((*type == 'a' || *type == 'l') ? 2 : 1);
     unsigned char *body;
     size_t size = 0, placed;
     unsigned i;
@@ -238,6 +94,10 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         !exact_integer(&length, 0, FVM_STYXRPC_ARRAY_ITEMS, &count))
     {
         return 0;
+    }
+    if (*type == 'l' && !count)
+    {
+        return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
     body = malloc(capacity ? capacity : 1);
     if (!body)
@@ -251,18 +111,18 @@ static int encode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
         if (*child == ')' || fvm_object_has_own(context, value->object, index, &present) != FVM_OK ||
             !present || fvm_object_get(context, value->object, index, &element) != FVM_OK ||
             fvm_gc_roots_add(roots, &element) != FVM_OK ||
-            !encode_value(context, roots, *type == 'a' && (!refs || !refs->graph) ? NULL : refs, child, &element, body + size, capacity - size, &placed))
+            !encode_value(context, roots, (*type == 'a' || *type == 'l') && (!refs || !refs->graph) ? NULL : refs, child, &element, body + size, capacity - size, &placed))
         {
             break;
         }
         size += placed;
         if (*type == '(')
         {
-            child = type_end(child, 0);
+            child = fvm_styxrpc_type_end(child);
         }
     }
-    encoded = i == (unsigned)count && (*type == 'a' || *child == ')') &&
-        fvm_srecord_write(*type == 'a' ? STYXRPC_VALUE_ARRAY : STYXRPC_VALUE_TUPLE,
+    encoded = i == (unsigned)count && ((*type == 'a' || *type == 'l') || *child == ')') &&
+        fvm_srecord_write((*type == 'a' || *type == 'l') ? STYXRPC_VALUE_ARRAY : STYXRPC_VALUE_TUPLE,
             body, size, bytes, capacity, used) == FVM_S_OK;
     free(body);
     return encoded;
@@ -284,7 +144,7 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
         return refs && (*type == 'r' || refs->graph) &&
             fvm_styxrpc_ref_encode(context, roots, refs, type, value, bytes, capacity, used);
     }
-    if ((*type == 's' || *type == 'a') && value->type == FVM_VALUE_NULL)
+    if ((*type == 's' || *type == 'a' || *type == 'l') && value->type == FVM_VALUE_NULL)
     {
         return fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
     }
@@ -299,7 +159,7 @@ static int encode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
         return value->type == FVM_VALUE_NUMBER &&
             styxrpc_value_real(value->number, bytes, capacity, used) == STYXRPC_OK;
     }
-    if (*type == '(' || *type == 'a')
+    if (*type == '(' || *type == 'a' || *type == 'l')
     {
         return encode_compound(context, roots, refs, type, value, bytes, capacity, used);
     }
@@ -328,25 +188,35 @@ int fvm_styxrpc_values_encode(FVM_Context *context, FVM_GCRootScope *roots, FVM_
             return 0;
         }
         size += placed;
-        type = type_end(type, 0);
+        type = fvm_styxrpc_type_end(type);
     }
     *used = size;
     return *type == ')';
 }
 
 
-/* [GC:] EN: Turn a counted UTF-8 record into a context-owned AS string.
- * RU: Преобразовать UTF-8 запись с длиной в строку AS во владении контекста. */
-static int decode_string(FVM_Context *context, const FVM_SRecord *record, FVM_Value *value)
+/* [GC:] EN/RU: See managed_values.h. / См. managed_values.h. */
+FVM_Result fvm_styxrpc_return_text(FVM_Context *context, const char *bytes, size_t size, FVM_Value *value)
 {
     FVM_Value borrowed;
     size_t count;
-    unsigned short *units = malloc((record->size ? record->size : 1) * sizeof(*units));
-    int ok = units && fvm_value_string_bytes(&borrowed, (const char *)record->payload, record->size) == FVM_OK &&
-        fvm_value_get_utf16(&borrowed, units, record->size, &count) == FVM_OK &&
-        fvm_value_string_utf16(context, units, count, value) == FVM_OK;
+    unsigned short *units = malloc((size ? size : 1) * sizeof(*units));
+    FVM_Result status;
+    if (!units)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    status = fvm_value_string_bytes(&borrowed, bytes, size);
+    if (status == FVM_OK)
+    {
+        status = fvm_value_get_utf16(&borrowed, units, size, &count);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_value_string_utf16(context, units, count, value);
+    }
     free(units);
-    return ok;
+    return status;
 }
 
 
@@ -364,7 +234,7 @@ static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     FVM_SRecord scan = record, child;
     size_t used;
     unsigned count = 0, i;
-    const char *shape = type + (*type == 'a' ? 2 : 1);
+    const char *shape = type + ((*type == 'a' || *type == 'l') ? 2 : 1);
     FVM_Value *items;
     int ok;
     while (scan.size)
@@ -385,16 +255,16 @@ static int decode_compound(FVM_Context *context, FVM_GCRootScope *roots, FVM_Sty
     }
     for (i = 0; i < count; ++i)
     {
-        if (*shape == ')' || !decode_value(context, roots, *type == 'a' && (!refs || !refs->graph) ? NULL : refs, shape, &record, items + i))
+        if (*shape == ')' || !decode_value(context, roots, (*type == 'a' || *type == 'l') && (!refs || !refs->graph) ? NULL : refs, shape, &record, items + i))
         {
             break;
         }
         if (*type == '(')
         {
-            shape = type_end(shape, 0);
+            shape = fvm_styxrpc_type_end(shape);
         }
     }
-    ok = i == count && (*type == 'a' || *shape == ')') &&
+    ok = i == count && ((*type == 'a' || *type == 'l') || *shape == ')') &&
         fvm_exec_literal_array(context, count, items, value) == FVM_OK;
     free(items);
     return ok;
@@ -425,7 +295,7 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
         return refs && (*type == 'r' || refs->graph) &&
             fvm_styxrpc_ref_decode(context, roots, refs, type, &node, value);
     }
-    if (node.tag == STYXRPC_VALUE_NIL && !node.size && (*type == 's' || *type == 'a'))
+    if (node.tag == STYXRPC_VALUE_NIL && !node.size && (*type == 's' || (*type == 'a' || *type == 'l')))
     {
         fvm_value_undefined(value);
         value->type = FVM_VALUE_NULL;
@@ -433,12 +303,14 @@ static int decode_value(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRe
     }
     if (*type == 's')
     {
-        return node.tag == STYXRPC_VALUE_STRING && decode_string(context, &node, value) &&
+        return node.tag == STYXRPC_VALUE_STRING &&
+            fvm_styxrpc_return_text(context, (const char *)node.payload, node.size, value) == FVM_OK &&
             fvm_gc_roots_add(roots, value) == FVM_OK;
     }
-    if (*type == '(' || *type == 'a')
+    if (*type == '(' || *type == 'a' || *type == 'l')
     {
-        return node.tag == (*type == 'a' ? STYXRPC_VALUE_ARRAY : STYXRPC_VALUE_TUPLE) &&
+        return (*type != 'l' || node.size) &&
+            node.tag == (*type == '(' ? STYXRPC_VALUE_TUPLE : STYXRPC_VALUE_ARRAY) &&
             decode_compound(context, roots, refs, type, node, value) && fvm_gc_roots_add(roots, value) == FVM_OK;
     }
     if (*type == 'f')
@@ -479,7 +351,7 @@ int fvm_styxrpc_values_decode(FVM_Context *context, FVM_GCRootScope *roots, FVM_
             return 0;
         }
         ++i;
-        type = type_end(type, 0);
+        type = fvm_styxrpc_type_end(type);
     }
     *count = i;
     return cursor.size == 0;

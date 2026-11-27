@@ -105,7 +105,7 @@ static int shape_type(const char **cursor, unsigned depth)
     {
         return 1;
     }
-    if ((type == 'r' || type == 'a' || type == 'c') && **cursor == '[')
+    if ((type == 'r' || type == 'a' || type == 'l' || type == 'c') && **cursor == '[')
     {
         ++*cursor;
         if (type != 'r' && !shape_type(cursor, depth + 1))

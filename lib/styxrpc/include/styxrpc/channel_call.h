@@ -26,6 +26,13 @@ typedef struct StyxRpcChannelCall
 } StyxRpcChannelCall;
 
 
+/* EN: Return 1 for a bounded result/argument schema containing a channel.
+ * Channel payloads and ref fields use separate positions.
+ * RU: Вернуть 1 для ограниченной схемы аргументов и результата, содержащей канал.
+ * Сообщения канала и поля ref занимают отдельные позиции. */
+int styxrpc_channel_schema_valid(const StyxRpcSchema *schema);
+
+
 /* EN: Encode a scoped channel export, using its exact Limbo-compiled signature.
  * RU: Закодировать контекстный экспорт с каналами и точной сигнатурой Limbo. */
 StyxRpcStatus styxrpc_channel_profile(const char *name, uint32_t signature, const StyxRpcSchema *schema,

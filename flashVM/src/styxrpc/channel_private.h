@@ -302,6 +302,12 @@ StyxRpcChannelQueue *fvm_styxrpc_local_channel_borrow(FVM_Context *context, cons
  * возвращённые вложенные слоты при следующем доступе через трассируемый граф. */
 void fvm_styxrpc_local_channel_return(void *owner, int issued);
 
+/* [GC:] EN: Stage positional ref updates for the single leased result.
+ * RU: Подготовить позиционные обновления ref для единственного результата с арендой. */
+int fvm_styxrpc_channel_updates(FVM_Context *context, FVM_GCRootScope *roots, struct FVM_StyxRefs *refs,
+    const StyxRpcSchema *schema, const FVM_SRecord *arguments, StyxRpcChannelOutput *output);
+
+
 #ifdef __cplusplus
 }
 #endif

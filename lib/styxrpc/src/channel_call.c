@@ -20,7 +20,17 @@ static int checked(const StyxRpcSchema *schema, StyxCallShape *shape)
     }
     memcpy(shape->arguments, schema->arguments, sizeof(shape->arguments));
     memcpy(shape->result, schema->result, sizeof(shape->result));
-    return styxshapevalid(shape) && (strchr(shape->arguments, 'c') || strchr(shape->result, 'c'));
+    return styxmanaged_channel_compatible(shape) &&
+        styxmanaged_arrays(shape->arguments, 1) && styxmanaged_arrays(shape->result, 1) &&
+        (strchr(shape->arguments, 'c') || strchr(shape->result, 'c'));
+}
+
+
+/* EN/RU: See channel_call.h. / См. channel_call.h. */
+int styxrpc_channel_schema_valid(const StyxRpcSchema *schema)
+{
+    StyxCallShape shape;
+    return checked(schema, &shape);
 }
 
 

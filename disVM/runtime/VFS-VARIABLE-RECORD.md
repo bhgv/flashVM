@@ -21,3 +21,5 @@ refer to the same root. The record membership is fixed at creation.
 Publish the directory beneath `.var` to make it available to a scoped
 remote call. The [Styx example](../examples/remote-scalar/styx-scoped-calls.b)
 shows a record containing another record and an aliased array.
+
+Additional fields can hold a [string cell](VFS-STRING-VARIABLE.md), [scalar big](VFS-BIG-VARIABLE.md), or [big vector](VFS-BIG-VECTOR.md).

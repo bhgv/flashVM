@@ -1,6 +1,6 @@
 # Дерево Styx как файловая система FlashVM
 
-[English](STYX_RPC_FILESYSTEM.md) · [Связь FlashVM и DisVM](STYX_RPC.ru.md) · [C SDK](../../lib/styxrpc/reference/vfs_open.ru.md)
+[English](STYX_RPC_FILESYSTEM.md) · [Связь FlashVM и DisVM](STYX_RPC.ru.md) · [C SDK](../../lib/styxrpc/reference/vfs_open.ru.md) · [Живые переменные VFS](STYX_RPC_LIVE_VARIABLES.ru.md)
 
 Хост выбирает уже смонтированное подключение Styx. Подключите `flashvm_styxrpc` и передайте его в [fvm_styxrpc_filesystem_mount](STYX_RPC_FILESYSTEM_MOUNT.ru.md), например с точкой `/dis`. В том же контексте установите [файловые операции](FILESYSTEM_INSTALL.ru.md) под именем `fs`. Сценарий пользуется теми же операциями для локального файла и файла на Styx.
 

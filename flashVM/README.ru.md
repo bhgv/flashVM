@@ -6,11 +6,11 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1821** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1822** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 
-[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Типы, копии и живые дескрипторы](doc/STYX_RPC_VALUE_TYPES.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md). [Гибридные таблицы](doc/STYX_RPC_HYBRID.ru.md). [Живые каналы UniBus](doc/STYX_RPC_CHANNELS.ru.md). [Каналы как аргументы](doc/STYX_RPC_CHANNEL_ARGUMENTS.ru.md). [Каналы внутри сообщений](doc/STYX_RPC_NESTED_CHANNELS.ru.md). [Отдельные маршруты PID и модуля](doc/STYX_RPC_CHANNEL_DELEGATION.ru.md).
+[Связь FlashVM и DisVM через libstyxrpc](doc/STYX_RPC.ru.md). [Типы, копии и живые дескрипторы](doc/STYX_RPC_VALUE_TYPES.ru.md). [Живые переменные VFS](doc/STYX_RPC_LIVE_VARIABLES.ru.md). [Позиционные графы ссылок](doc/STYX_RPC_GRAPH.ru.md). [Гибридные таблицы](doc/STYX_RPC_HYBRID.ru.md). [Живые каналы UniBus](doc/STYX_RPC_CHANNELS.ru.md). [Каналы как аргументы](doc/STYX_RPC_CHANNEL_ARGUMENTS.ru.md). [Каналы внутри сообщений](doc/STYX_RPC_NESTED_CHANNELS.ru.md). [Отдельные маршруты PID и модуля](doc/STYX_RPC_CHANNEL_DELEGATION.ru.md).
 
 [Объект vfs и его зеркало os](doc/STYX_RPC_DEFAULT.ru.md).
 

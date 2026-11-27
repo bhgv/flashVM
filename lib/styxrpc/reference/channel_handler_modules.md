@@ -11,10 +11,12 @@ A hosted C application can receive channel arguments using the native scoped Dis
 
 An incomplete call never runs. Closing a queued function FID removes its job. Closing an active FID detaches the reply and lets the callback finish. A completed reverse operation may already have changed the caller's queue. Choose a finite reverse wait budget. An application callback may be able to do other work after its caller has disconnected.
 
-The module accepts up to eight distinct channel keys per call. Aliases share a key and nil consumes none. The handler can [admit keys from received elements](channel_import_element.md) on the same reverse bus. Copied results use value types. The module exposes `.interface`, `.ref-fields`, and `.unibus-version`. A module can also [issue separate result channels](channel_handlers_create_with_results.md). The callback fills `StyxRpcChannelOutput`, and the dispatcher issues a token on reply and revokes it on function clunk. Copied-result and channel-result descriptors can coexist in one module. The simpler [synchronous result module](channel_module_init.md) serves callbacks with by-value inputs.
+The module accepts up to eight distinct channel keys per call. Aliases share a key and nil consumes none. The handler can [admit keys from received elements](channel_import_element.md) on the same reverse bus. Copied results use value types. The module exposes `.interface`, `.ref-fields`, and `.unibus-version`. A module can also [issue separate result channels](channel_handlers_create_with_results.md). The callback fills `StyxRpcChannelOutput`, and the dispatcher issues a token on reply and revokes it on function clunk. Copied-result and channel-result descriptors can coexist in one module. The simpler [synchronous result module](channel_module_init.md) serves callbacks with copied or graph inputs.
 
 The [standalone C check](../tests/channel_handlers.c) constructs a fragmented request and verifies concurrent dispatcher/owner lifetimes, cancellation before execution, and a valid copied reply. After [building the hosted SDK](../README.md), run:
 
 ```sh
 ctest --test-dir build -R '^styxrpc-channel-handlers$' --output-on-failure
 ```
+
+A descriptor with a leased channel result can accept copied graph arguments and borrowed channels in the same call. The `StyxRpcChannelOutput` update fields follow the [channel output ownership contract](channel_module_init.md). A copied-result descriptor uses its ordinary value result API.

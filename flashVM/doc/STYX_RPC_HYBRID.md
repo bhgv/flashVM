@@ -1,6 +1,6 @@
 # Hybrid tables over Styx RPC
 
-[Русский](STYX_RPC_HYBRID.ru.md) · [Positional graphs](STYX_RPC_GRAPH.md) · [Independent C SDK](../../lib/styxrpc/reference/hybrid_tables.md)
+[Русский](STYX_RPC_HYBRID.ru.md) · [Positional graphs](STYX_RPC_GRAPH.md) · [Independent C SDK](../../lib/styxrpc/reference/hybrid_tables.md) · [Live VFS variables](STYX_RPC_LIVE_VARIABLES.md)
 
 A native Limbo `ref Bigtable->Handle` is the `h` token in the Dis graph profile. It can appear in an argument, result, array or ADT. The first reference carries an ordered snapshot and subsequent references carry its graph ID. When one table is sent several times or returned to its caller, the receiving owner uses the same local object for each alias. A table newly created by an export becomes a new local object at the caller.
 

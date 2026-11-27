@@ -42,7 +42,7 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
-                    "live-dis", "live-values", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
+                    "live-dis", "live-values", "live-stage", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
                     "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup",
                     "cancel-int-ref", "cancel-ref-port"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
@@ -77,6 +77,10 @@ def main():
             (directory / "malformed.dis").write_bytes(b"not a Dis image\n")
         if name == "live-values":
             compile_image(args, directory, tests / "live-values_library.b", "wide.dis")
+        if name == "live-stage":
+            (directory / "live/.var").mkdir(parents=True)
+            (directory / "live-stage-gate").write_bytes(b"0")
+            compile_image(args, directory, tests / "live-stage_library.b", "stage-library.dis")
         if name == "cancel-dis-call":
             compile_image(args, directory, tests / "cancel-dis-call_library.b", "cancel-target.dis")
             (directory / "call-gate").write_bytes(b"0")
@@ -126,6 +130,7 @@ def main():
             "module-channel": (),
             "live-dis": ("styxnodes",),
             "live-values": (),
+            "live-stage": (),
             "cancel-dis-call": (),
             "cancel-dis-channel": (),
             "cancel-vfs-read": ("styxnodes",),
@@ -157,6 +162,7 @@ def main():
             "live-dis": ("live-dis_worker.as", "live-dis_refusal.as", "live-dis_direct.as",
                          "live-dis_reuse.as", "live-dis_closed.as", "live-dis_cancel.as"),
             "live-values": ("live-values_calls.as",),
+            "live-stage": ("live-stage_calls.as", "live-stage_mixed.as", "live-stage_values.as", "live-stage_stale.as"),
             "cancel-dis-call": ("cancel-dis-call_worker.as",),
             "cancel-dis-channel": ("cancel-dis-channel_worker.as",),
             "cancel-vfs-read": ("cancel-vfs-read_worker.as",),
@@ -184,7 +190,7 @@ def main():
             directory,
             lambda connection: [args.player, *connection, mode],
             lambda connection: [args.runtime, *connection, "--at", "/peer",
-                                *(("--live-dis-load",) if name in ("live-dis", "live-values", "cancel-dis-call",
+                                *(("--live-dis-load",) if name in ("live-dis", "live-values", "live-stage", "cancel-dis-call",
                                                                   "cancel-dis-channel", "cancel-dis-setup",
                                                                   "cancel-channel-setup") else ()), "--",
                                 "--native-spawn", mode, client.name],

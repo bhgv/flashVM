@@ -108,6 +108,15 @@ FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state)
     }
     if (status == FVM_OK)
     {
+        status = fvm_object_define_method_rooted(worker, value.object, "liveVariable",
+            fvm_styxrpc_open_live_variable, &vfs->binding, value.object);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_styxrpc_sparse_members(worker, value.object);
+    }
+    if (status == FVM_OK)
+    {
         status = fvm_set_global(worker, "vfs", &value);
     }
     if (status == FVM_OK)

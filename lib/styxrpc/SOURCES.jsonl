@@ -1,9 +1,9 @@
-{"path": "protocol/call_record.c", "sha256": "6597f183a77310da0b8f172641d38fa081890db2ed024ee307427d141b1cca43", "source": "disVM/native/terminal/call_record.c", "transform": "identity"}
-{"path": "protocol/call_record.h", "sha256": "7205424f05fe67af3033fc5b95c6d67ff5fb0221875b167503164aa928d41d9a", "source": "disVM/native/terminal/call_record.h", "transform": "identity"}
+{"path": "protocol/call_record.c", "sha256": "74bf0cf8a9e0b6f4bce4310f8eee200f25a6b64b98ea760f2970dc9f3f93f703", "source": "disVM/native/terminal/call_record.c", "transform": "identity"}
+{"path": "protocol/call_record.h", "sha256": "2d341917ab90705f479faf4166b97ece88d9850feb0f8a9db3ac8f96b4a87e8a", "source": "disVM/native/terminal/call_record.h", "transform": "identity"}
 {"path": "protocol/call_scope.c", "sha256": "718d6d12ed2c5f8b2a5099fb9cc19010af9687097cd4f0be91cedfb5034186ee", "source": "disVM/native/terminal/call_scope.c", "transform": "identity"}
 {"path": "protocol/call_scope.h", "sha256": "9aeaccd9ad4bd30274d2d4eaa88ae32c263facaa2d135845276cece396846041", "source": "disVM/native/terminal/call_scope.h", "transform": "identity"}
-{"path": "protocol/load_profile.c", "sha256": "a8424b148f0339e9a40b8958d96044d719fcfa838e21b16080d49659f2e485c6", "source": "disVM/native/terminal/load_profile.c", "transform": "identity"}
-{"path": "protocol/load_profile.h", "sha256": "abcf2e6b7f8282bf986c46f25582f4eeed2bb4766f86b670855a9e3b6f3f1250", "source": "disVM/native/terminal/load_profile.h", "transform": "identity"}
+{"path": "protocol/load_profile.c", "sha256": "8f3a06b1492c60a893ca49ac44f6b509cf6fd961f9f27e63232ba4b0d75cc122", "source": "disVM/native/terminal/load_profile.c", "transform": "identity"}
+{"path": "protocol/load_profile.h", "sha256": "7a04014f58bd150a598b7442f6f052e0ef877f893797d48b5dab3a38e665a844", "source": "disVM/native/terminal/load_profile.h", "transform": "identity"}
 {"path": "protocol/ref_pair_record.c", "sha256": "3407584f1e68d2128399ddce9ba0848982dd35050296edf9571613282db08b71", "source": "disVM/native/terminal/ref_pair_record.c", "transform": "identity"}
 {"path": "protocol/ref_pair_record.h", "sha256": "f2352d971e3131234a7c85a975835a6a7b4cb5d43f2ef63584c91f115aaac2c6", "source": "disVM/native/terminal/ref_pair_record.h", "transform": "identity"}
 {"path": "protocol/scalar_record.c", "sha256": "6bd82f39796554f389b29ac93bb441b2eeeec3a35d7b17174b54044b85a656ea", "source": "disVM/native/terminal/scalar_record.c", "transform": "identity"}
@@ -13,9 +13,10 @@
 {"path": "protocol/tuple_record.c", "sha256": "c2dbefb87337ba78f92e3a0e74a3cec75acbc6ddbeb100b0bfaefd79fc7e6868", "source": "disVM/native/terminal/tuple_record.c", "transform": "identity"}
 {"path": "protocol/tuple_record.h", "sha256": "927a42806411b12e7b7608b67b2f6ffc629286d5c1a7588c04a743d31e6f55a9", "source": "disVM/native/terminal/tuple_record.h", "transform": "identity"}
 {"path": "protocol/managed_array_span.inc", "sha256": "cac4ba124179672ddac666c5e682736bb2c33a65695e13f86d73023bc4d44210", "source": "disVM/native/terminal/managed_array_span.inc", "transform": "identity"}
-{"path": "protocol/managed_graph_validation.inc", "sha256": "88046fe077c07a3ca69bd12c304b163b3b2bf6f82ef933d0034d4c8d12b9cf96", "source": "disVM/native/terminal/managed_graph_validation.inc", "transform": "identity"}
-{"path": "protocol/managed_record_validation.inc", "sha256": "9a43a1e6ff0c5a6d33f6f29fc196c54756802cfc2c9cb12dd921a008b208df60", "source": "disVM/native/terminal/managed_record_validation.inc", "transform": "identity"}
-{"path": "protocol/managed_ref_validation.inc", "sha256": "f14708d1c0a96cc574f09f59dc9f7b8ca0cf047d45ce757644e82cc743bf907e", "source": "disVM/native/terminal/managed_ref_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_flat_delta.inc", "sha256": "714bfeda93fa856e7e76c256878c6fa8b8e1dcd0839fb5f98d53157da1db1acf", "source": "disVM/native/terminal/managed_flat_delta.inc", "transform": "identity"}
+{"path": "protocol/managed_graph_validation.inc", "sha256": "ffdd4401c7dd0c1a9a811c0b5e3902f1ac5f57a61196de4effe5c8804376b7eb", "source": "disVM/native/terminal/managed_graph_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_record_validation.inc", "sha256": "2968b04e7d12ecfde66f2041f4e247e767f43d2aebea69ae98be0c91f279e669", "source": "disVM/native/terminal/managed_record_validation.inc", "transform": "identity"}
+{"path": "protocol/managed_ref_validation.inc", "sha256": "96a2d001c1a21a9155b39fd7b85f3af6d21acd402a5a600d40e34cb5245171e0", "source": "disVM/native/terminal/managed_ref_validation.inc", "transform": "identity"}
 {"path": "protocol/managed_result_validation.inc", "sha256": "f2977989a29137d560397260b1abec4397abf1fa92f8d4e4b605ef7a43a4ff2e", "source": "disVM/native/terminal/managed_result_validation.inc", "transform": "identity"}
 {"path": "protocol/managed_sequence_edits.inc", "sha256": "eb02e897e14f2083e5eff4bd5088507b00203d75faa6497416adc2dafe82ec06", "source": "disVM/native/terminal/managed_sequence_edits.inc", "transform": "identity"}
 {"path": "protocol/managed_table_wire.inc", "sha256": "c29284bfb4f9987afc46384ca5a3b5c05433e9a88d7f589f33d3b4157c591323", "source": "disVM/native/terminal/managed_table_wire.inc", "transform": "identity"}
@@ -23,6 +24,7 @@
 {"path": "vendor/hybrid/table.c", "sha256": "35cbde961109abff3810e13ed173b39d009939ffc05fee2d3494525519abb3e9", "source": "common/table/table.c", "transform": "identity"}
 {"path": "vendor/hybrid/table.h", "sha256": "1e5eccd9e1db7d7f288da7b14c3acec7ed29d4d7adda67fefc8463dc18399372", "source": "common/table/table.h", "transform": "identity"}
 {"path": "vendor/hybrid/relative.h", "sha256": "a5b57230fdeac06722e95508981e2e557297fe18e2d98c80503702999a8e6fad", "source": "common/table/relative.h", "transform": "identity"}
+{"path": "include/styxrpc/live_variable.h", "sha256": "a9e3fdaf8e4dc7ac97ac8685117f8c2b64fb68beebcfd54aa18bf4c198c12529", "source": "disVM/native/terminal/live_variable.h", "transform": "identity"}
 {"path": "protocol/variable_file.c", "sha256": "81d8aab20e5a42ca6bbca5503cd5b0f991fa8b346250b6fd6986dfebcaf01661", "source": "disVM/native/terminal/variable_file.c", "transform": "identity"}
 {"path": "include/styxrpc/variable_file.h", "sha256": "0911face361138911e92ed61696d1c407075424c8143e671656f877ae344edb0", "source": "disVM/native/terminal/variable_file.h", "transform": "identity"}
 {"path": "protocol/indexed_variable.c", "sha256": "a74c0623aad7671d6f91daccd9f28b998e3f9f958506aa5f940f7247f5ed0e1a", "source": "disVM/native/terminal/indexed_variable.c", "transform": "identity"}

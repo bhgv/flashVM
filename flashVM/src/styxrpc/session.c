@@ -129,6 +129,10 @@ FVM_Result fvm_styxrpc_session_bind(FVM_Context *context, FVM_StyxRpcSession *bi
     }
     if (status == FVM_OK)
     {
+        status = fvm_styxrpc_sparse_members(context, created);
+    }
+    if (status == FVM_OK)
+    {
         status = fvm_styxrpc_message_members(context, created, binding);
     }
     if (status == FVM_OK)

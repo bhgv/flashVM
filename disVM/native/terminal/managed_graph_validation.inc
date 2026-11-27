@@ -127,8 +127,8 @@ int styxmanaged_channel_routes(const char *shape, const FVM_SRecord *list,
 
 
 /* EN/RU: See call_record.h. / См. call_record.h. */
-int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,
-    const StyxReplyField fields[2])
+int styxmanaged_graph_reply_routes(const StyxCallShape *shape, const FVM_SRecord *arguments,
+    const StyxReplyField fields[2], int (*route)(void *, const char *, const FVM_SRecord *), void *context)
 {
     RefKeys keys = {.nested = 1, .limit = STYX_CALL_REF_KEYS};
     FVM_SRecord result, updates;
@@ -148,6 +148,8 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
         return 0;
     }
     keys.exported_channels = 1;
+    keys.route = route;
+    keys.route_context = context;
     if ((!strcmp(shape->result, "()") ? result.tag != STYX_MANAGED_NIL_TAG || result.size :
             result.tag != STYX_DYNAMIC_REPLY_TAG ||
             !managed_payload(shape->result, result.payload, result.size, &keys)) ||
@@ -157,6 +159,7 @@ int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *argum
         return 0;
     }
     keys.exported_channels = 0;
+    keys.route = NULL;
     size_t next = 0;
     for (size_t offset = 0; offset < updates.size; offset += used)
     {
@@ -318,4 +321,12 @@ int styxmanaged_graph_fields(const char *type, const FVM_SRecord *update, StyxFi
     change->fields.payload += 2;
     change->fields.size -= 2;
     return 1;
+}
+
+
+/* EN/RU: See call_record.h. / См. call_record.h. */
+int styxmanaged_graph_reply(const StyxCallShape *shape, const FVM_SRecord *arguments,
+    const StyxReplyField fields[2])
+{
+    return styxmanaged_graph_reply_routes(shape, arguments, fields, NULL, NULL);
 }

@@ -11,6 +11,7 @@
 #include "runt.h"
 #include "managed_value.h"
 #include "managed_array.h"
+#include "managed_list.h"
 #include "managed_ref.h"
 #include "disvm/refcount.h"
 #include "shared_bytes.h"
@@ -33,8 +34,8 @@ static int managed_new(const char *type, const FVM_SRecord *record, DVM_StyxRefT
     }
     int string = !strcmp(type, "s");
     const char *end = styxshape_end(type);
-    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type, refs && refs->result);
-    if (!string && !array)
+    int sequence = (type[0] == 'a' || type[0] == 'l') && end && !*end && styxmanaged_arrays(type, refs && refs->result);
+    if (!string && !sequence)
     {
         return 0;
     }
@@ -43,7 +44,11 @@ static int managed_new(const char *type, const FVM_SRecord *record, DVM_StyxRefT
         *result = H;
         return 1;
     }
-    if (array)
+    if (*type == 'l')
+    {
+        return dvm_styx_list_new(type, record, result);
+    }
+    if (sequence)
     {
         return type[3] == ']' && dvm_styx_primitive_array_supported(type[2]) ?
             dvm_styx_primitive_array_new(type[2], record, result) :
@@ -118,8 +123,8 @@ static int managed_write(const char *type, void *value, DVM_StyxRefTable *refs,
     }
     int string = !strcmp(type, "s");
     const char *end = styxshape_end(type);
-    int array = type[0] == 'a' && end && !*end && styxmanaged_arrays(type, refs && refs->result);
-    if (!string && !array)
+    int sequence = (type[0] == 'a' || type[0] == 'l') && end && !*end && styxmanaged_arrays(type, refs && refs->result);
+    if (!string && !sequence)
     {
         return 0;
     }
@@ -130,6 +135,10 @@ static int managed_write(const char *type, void *value, DVM_StyxRefTable *refs,
     if (value == H)
     {
         return fvm_srecord_write(STYX_MANAGED_NIL_TAG, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+    }
+    if (*type == 'l')
+    {
+        return dvm_styx_list_write(type, value, bytes, capacity, used);
     }
     if (D2H(value)->t != (string ? &Tstring : &Tarray))
     {

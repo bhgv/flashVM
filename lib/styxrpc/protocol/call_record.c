@@ -201,7 +201,7 @@ static int scalar_field(const char **cursor, unsigned depth, int managed, StyxSc
         layout->size = align_field(size, *alignment);
         return 1;
     }
-    int pointer = managed && (type == 's' || type == 'a' || type == 'r' || type == 'h' || type == 'c');
+    int pointer = managed && (type == 's' || type == 'a' || type == 'l' || type == 'r' || type == 'h' || type == 'c');
     if ((!pointer && type != 'i' && type != 'b' && type != 'f' && type != 'y') ||
         layout->count == STYX_CALL_VALUES)
     {
@@ -272,7 +272,7 @@ int styxmanaged_layout(const char *shape, StyxScalarLayout *layout)
 int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1],
     StyxScalarLayout *layout)
 {
-    const char *end = array && *array == 'a' ? styxshape_end(array) : NULL;
+    const char *end = array && (*array == 'a' || *array == 'l') ? styxshape_end(array) : NULL;
     if (!end || (size_t)(end - array) > STYX_SHAPE_MAX)
     {
         return 0;
@@ -289,11 +289,12 @@ int styxmanaged_array_layout(const char *array, char element[STYX_SHAPE_MAX + 1]
 /* EN/RU: See call_record.h. / См. call_record.h. */
 int styxmanaged_arrays(const char *shape, int result)
 {
-    for (const char *array = strchr(shape, 'a'); array; array = strchr(array + 1, 'a'))
+    for (const char *array = strpbrk(shape, "al"); array; array = strpbrk(array + 1, "al"))
     {
         char element[STYX_SHAPE_MAX + 1];
         StyxScalarLayout layout;
-        if (!styxmanaged_array_layout(array, element, &layout) || (!result && strpbrk(element, "rh")))
+        if (!styxmanaged_array_layout(array, element, &layout) || (!result && strpbrk(element, "rh")) ||
+            (*array == 'l' && strpbrk(element, "rhc")))
         {
             return 0;
         }
@@ -339,6 +340,36 @@ void styxscalar_pack(const StyxScalarLayout *layout, const StyxCallValues *value
             memcpy(field, &values->cells[i], sizeof(values->cells[i]));
         }
     }
+}
+
+
+/* EN: Check that channel elements and ref fields stay in separate positions.
+ * RU: Проверить, что сообщения каналов и поля ref находятся в разных позициях. */
+static int channel_positions(const char *shape)
+{
+    for (const char *type = strpbrk(shape, "rc"); type; type = strpbrk(type + 1, "rc"))
+    {
+        const char *end = styxshape_end(type);
+        if (!end)
+        {
+            return 0;
+        }
+        for (const char *field = type + 2; field < end; ++field)
+        {
+            if ((*type == 'r' && *field == 'c') || (*type == 'c' && (*field == 'r' || *field == 'h')))
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
+/* EN/RU: See load_profile.h. / См. load_profile.h. */
+int styxmanaged_channel_compatible(const StyxCallShape *shape)
+{
+    return styxshapevalid(shape) && channel_positions(shape->arguments) && channel_positions(shape->result);
 }
 
 

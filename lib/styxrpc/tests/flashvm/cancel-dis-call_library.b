@@ -5,7 +5,7 @@ implement Library;
 include "sys.m";
 
 Library: module {
-    park: fn(source: chan of int): chan of int;
+    park: fn(box: ref Cell, source: chan of int): chan of int;
     parkText: fn(value: string): string;
     Cell: adt {
         value: int; # Leaf reached through the graph codec.
@@ -66,11 +66,12 @@ wait_local(name: string, mode: int)
 
 # EN: Confirm receipt on the reverse bus, then wait on a fresh Limbo channel.
 # RU: Подтвердить приём со встречной шины, затем ждать на новом канале Limbo.
-park(source: chan of int): chan of int
+park(box: ref Cell, source: chan of int): chan of int
 {
-    if (<-source != 41) {
+    if (box == nil || box.value != 40 || <-source != 41) {
         raise "incorrect lent value";
     }
+    box.value = 99;
     wait_local("channel", Receive);
     return nil;
 }

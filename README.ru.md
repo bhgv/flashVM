@@ -12,9 +12,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1821**. [English](README.md).
+Версия разработки: **0.1822**. [English](README.md).
 
-Текущая серия [v0.1821](docs/releases/v0.1821.md) добавляет защищённое создание каналов.
+[v0.1822](flashVM/doc/ROADMAP.md#v01822--live-variables-and-typed-scoped-calls) завершает этап живых переменных VFS и типизированного обмена RPC.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

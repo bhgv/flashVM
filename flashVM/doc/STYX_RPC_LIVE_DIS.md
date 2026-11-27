@@ -91,3 +91,7 @@ Use `--cancel-channel-setup` for the channel admission test. It holds
 replies to named service open and enrollment, typed bus walk and open,
 and module token authentication. It checks that no cancelled guard was
 written, the named enrollment is retired, and fresh operations succeed.
+
+Discovery also accepts compiled value lists and scoped schemas that combine graph values with a channel. A live-loaded method uses the same codecs as the standalone SDK. For access to a published backing variable, open the [live VFS binding](STYX_RPC_LIVE_VARIABLES.md) through the session.
+
+[Paired example](../../lib/styxrpc/examples/disvm/LIVE_STAGE.md)

@@ -8,6 +8,7 @@
 #include "load_profile.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
+#include <stdlib.h>
 #include <string.h>
 
 #define MODULE_CHANNEL_FRAME 64U /* One exported leaf and its wrapper. */
@@ -17,7 +18,7 @@
 int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels)
 {
     return memchr(schema->arguments, 0, sizeof(schema->arguments)) &&
-        !strpbrk(schema->arguments, channels ? "rh" : "rhc");
+        (channels || !strchr(schema->arguments, 'c'));
 }
 
 
@@ -89,41 +90,63 @@ StyxRpcStatus styxrpc_channel_module_init(StyxRpcChannelModule *module, const ch
 }
 
 
-/* EN: Encode exactly one live channel or nil, followed by the empty positional changes.
- * RU: Закодировать один живой канал или nil, затем пустые позиционные изменения. */
+/* EN: Encode one live channel or nil alongside the checked positional updates.
+ * RU: Закодировать один живой канал или nil вместе с проверенными изменениями. */
 static int write_reply(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
     const StyxRpcChannelOutput *channel, const unsigned char *token,
     void *reply, size_t capacity, size_t *ready)
 {
-    unsigned char leaf[MODULE_CHANNEL_FRAME], result[MODULE_CHANNEL_FRAME], updates[MODULE_CHANNEL_FRAME];
+    unsigned char leaf[MODULE_CHANNEL_FRAME], result[MODULE_CHANNEL_FRAME], empty[MODULE_CHANNEL_FRAME];
     size_t length, result_size, update_size;
+    if (channel->update_size > capacity || (channel->update_size && !channel->updates))
+    {
+        return 0;
+    }
+    unsigned char *updates = channel->update_size ? malloc(capacity) : empty;
     int valid = channel->key ? styxrpc_channel_export_value(token, channel->key, channel->unbuffered,
         leaf, sizeof(leaf), &length) == STYXRPC_OK :
         fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, leaf, sizeof(leaf), &length) == FVM_S_OK;
-    /* EN: A nil channel is a child of the typed result, distinct from a void reply.
-     * RU: nil канала — дочернее значение результата, отличное от пустого ответа. */
-    return valid && fvm_srecord_write(STYXRPC_GRAPH_RESULT_TAG, leaf, length, result, sizeof(result), &result_size) == FVM_S_OK &&
-        fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, NULL, 0, updates, sizeof(updates), &update_size) == FVM_S_OK &&
+    valid = valid && updates &&
+        fvm_srecord_write(STYXRPC_GRAPH_RESULT_TAG, leaf, length, result, sizeof(result), &result_size) == FVM_S_OK &&
+        fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, channel->updates, channel->update_size, updates,
+            channel->update_size ? capacity : sizeof(empty), &update_size) == FVM_S_OK &&
         styxrpc_channel_call_reply(schema, call, result, result_size, updates, update_size,
             reply, capacity, ready) == STYXRPC_OK;
+    if (updates != empty)
+    {
+        free(updates);
+    }
+    return valid;
 }
 
 
 /* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
 int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
-    StyxRpcModuleChannels *registry, const StyxRpcChannelOutput *output,
+    StyxRpcModuleChannels *registry, StyxRpcChannelOutput *output,
     unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE], void *reply, size_t capacity, size_t *ready)
 {
     int published = output->key && styxrpc_module_channels_publish(registry, &output->resource, token);
-    if ((!output->key || published) && write_reply(schema, call, output, token, reply, capacity, ready))
-    {
-        return 1;
-    }
-    if (published)
+    int valid = (!output->key || published) && write_reply(schema, call, output, token, reply, capacity, ready);
+    free(output->updates);
+    output->updates = NULL;
+    output->update_size = 0;
+    if (!valid && published)
     {
         styxrpc_module_channels_revoke(registry, token);
     }
-    return 0;
+    return valid;
+}
+
+
+/* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
+void styxrpc_channel_output_dispose(StyxRpcChannelOutput *output)
+{
+    free(output->updates);
+    if (output->release)
+    {
+        output->release(output->resource.context);
+    }
+    *output = (StyxRpcChannelOutput){0};
 }
 
 
@@ -145,9 +168,6 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
         *active = output;
         return 1;
     }
-    if (output.release)
-    {
-        output.release(output.resource.context);
-    }
+    styxrpc_channel_output_dispose(&output);
     return styxscalarwrite(STYX_FUNCTION_REPLY_TAG, STYX_SCALAR_ERROR, 0, reply, capacity, ready);
 }

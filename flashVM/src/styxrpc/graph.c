@@ -16,7 +16,7 @@
 
 /* EN: Allocate the bounded shared identity table independently for one invocation.
  * RU: Выделить ограниченную общую таблицу идентификаторов на один вызов. */
-static int graph_init(FVM_StyxRefs *refs)
+int fvm_styxrpc_graph_init(FVM_StyxRefs *refs)
 {
     refs->definitions = calloc(STYXRPC_GRAPH_KEY_LIMIT, sizeof(*refs->definitions));
     refs->capacity = STYXRPC_GRAPH_KEY_LIMIT;
@@ -27,7 +27,7 @@ static int graph_init(FVM_StyxRefs *refs)
 
 /* EN: Release uncommitted staged tables or retired contents after the commit.
  * RU: Освободить подготовленные таблицы при отказе или старые данные после записи. */
-static void graph_clear(FVM_StyxRefs *refs)
+void fvm_styxrpc_graph_clear(FVM_StyxRefs *refs)
 {
     unsigned i;
     for (i = 0; i < refs->count; ++i)
@@ -40,7 +40,7 @@ static void graph_clear(FVM_StyxRefs *refs)
 
 /* [GC:] EN: Decode result identities before applying any checked sparse updates.
  * RU: Декодировать идентификаторы результата перед применением разреженных изменений. */
-static int read_graph(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
+int fvm_styxrpc_graph_result(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
     const StyxRpcSchema *schema, const FVM_SRecord *arguments, const StyxRpcGraphReply *reply,
     FVM_Value *out)
 {
@@ -83,7 +83,7 @@ FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory,
         return fvm_styxrpc_managed_fail(context, "Styx RPC graph schema is unsupported");
     }
     buffer = malloc(2U * STYXRPC_MANAGED_LIMIT);
-    if (!buffer || !graph_init(&refs))
+    if (!buffer || !fvm_styxrpc_graph_init(&refs))
     {
         free(buffer);
         return FVM_OUT_OF_MEMORY;
@@ -111,14 +111,14 @@ FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory,
             call.capacity = STYXRPC_MANAGED_LIMIT;
             call.result = &reply;
             error = fvm_styxrpc_call_error(fvm_styxrpc_wire_call(context, reverse, &call));
-            if (!error && !read_graph(context, roots, &refs, &target->schema, &arguments, &reply, out))
+            if (!error && !fvm_styxrpc_graph_result(context, roots, &refs, &target->schema, &arguments, &reply, out))
             {
                 error = "Styx RPC graph result could not be committed";
             }
         }
         fvm_gc_roots_end(roots);
     }
-    graph_clear(&refs);
+    fvm_styxrpc_graph_clear(&refs);
     free(buffer);
     return error ? fvm_styxrpc_managed_fail(context, error) : status;
 }
@@ -168,7 +168,7 @@ StyxRpcStatus fvm_styxrpc_run_graph(FVM_StyxRpcManagedExport *binding, FVM_Objec
     {
         return STYXRPC_REMOTE_ERROR;
     }
-    ok = graph_init(&refs) && fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments,
+    ok = fvm_styxrpc_graph_init(&refs) && fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments,
         arguments, values, FVM_STYXRPC_LIST_ITEMS, &count);
     originals = refs.count;
     ok = ok && (receiver ? fvm_object_call(context, receiver, binding->function, count, values, &result) :
@@ -186,7 +186,7 @@ StyxRpcStatus fvm_styxrpc_run_graph(FVM_StyxRpcManagedExport *binding, FVM_Objec
             &output->update_size);
     }
     fvm_gc_roots_end(roots);
-    graph_clear(&refs);
+    fvm_styxrpc_graph_clear(&refs);
     if (!ok)
     {
         fvm_exception_clear(context);

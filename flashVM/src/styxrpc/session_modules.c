@@ -144,6 +144,11 @@ FVM_Result fvm_styxrpc_module_members(FVM_Context *context, FVM_Object *object, 
     }
     if (status == FVM_OK)
     {
+        status = fvm_object_define_method_rooted(context, object, "liveVariable",
+            fvm_styxrpc_open_live_variable, binding, NULL);
+    }
+    if (status == FVM_OK)
+    {
         status = fvm_object_define_method_rooted(context, object, "acceptIntRef", fvm_styxrpc_accept_int_ref, binding, NULL);
     }
     if (status == FVM_OK)

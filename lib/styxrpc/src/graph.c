@@ -10,9 +10,9 @@
 #include <string.h>
 
 
-/* EN: Copy the bounded schema and keep channel grants outside this pure codec.
- * RU: Скопировать схему, оставив полномочия каналов за границей чистого кодека. */
-static int checked_shape(const StyxRpcSchema *schema, StyxCallShape *shape)
+/* EN: Copy a bounded schema into the shared codec representation.
+ * RU: Скопировать ограниченную схему в представление общего кодека. */
+static int copy_shape(const StyxRpcSchema *schema, StyxCallShape *shape)
 {
     if (!schema)
     {
@@ -20,7 +20,15 @@ static int checked_shape(const StyxRpcSchema *schema, StyxCallShape *shape)
     }
     memcpy(shape->arguments, schema->arguments, sizeof(shape->arguments));
     memcpy(shape->result, schema->result, sizeof(shape->result));
-    return styxshapevalid(shape) && !strchr(shape->arguments, 'c') && !strchr(shape->result, 'c');
+    return styxshapevalid(shape);
+}
+
+
+/* EN: Match the ordinary graph profile without a caller channel scope.
+ * RU: Проверить обычный графовый профиль без контекста вызывающего для каналов. */
+static int checked_shape(const StyxRpcSchema *schema, StyxCallShape *shape)
+{
+    return copy_shape(schema, shape) && !strchr(shape->arguments, 'c') && !strchr(shape->result, 'c');
 }
 
 
@@ -137,7 +145,7 @@ int styxrpc_graph_update_index(const StyxRpcSchema *schema, const FVM_SRecord *a
     StyxGraphPositions positions;
     return arguments && arguments->tag == STYXRPC_GRAPH_REQUEST_TAG &&
         (arguments->payload || !arguments->size) && update && update->payload && index &&
-        originals <= STYXRPC_GRAPH_KEY_LIMIT && checked_shape(schema, &shape) &&
+        originals <= STYXRPC_GRAPH_KEY_LIMIT && copy_shape(schema, &shape) &&
         styxmanaged_graph_positions(shape.arguments, arguments, &positions) &&
         styxmanaged_graph_update_index(&positions, update, originals, index);
 }
@@ -185,7 +193,7 @@ int styxrpc_graph_diff(const StyxRpcSchema *schema, const FVM_SRecord *arguments
         !before->payload || !after->payload || !before->size || !after->size ||
         !scratch || !scratch_size || !bytes || index >= STYXRPC_GRAPH_KEY_LIMIT ||
         before->payload[0] != index || after->payload[0] != index ||
-        !checked_shape(schema, &shape) ||
+        !copy_shape(schema, &shape) ||
         !styxmanaged_graph_positions(shape.arguments, arguments, &positions) ||
         !(*type == 'h' ? type[1] == '\0' && table_change(before, after, scratch, scratch_size, &changed) :
             styxmanaged_graph_diff(type, before, after, scratch, scratch_size, &changed)))

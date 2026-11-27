@@ -18,6 +18,8 @@ typedef struct StyxRpcChannelOutput
     uint32_t key;              /* Exact positive key, zero for nil. */
     int unbuffered;            /* Capacity marker for the issued channel. */
     void (*release)(void *);   /* Optional owner cleanup for resource.context. */
+    void *updates;            /* Optional malloc-owned positional update children transferred to SDK. */
+    size_t update_size;       /* Bytes of updates, excluding the outer update-list record. */
 } StyxRpcChannelOutput;
 
 

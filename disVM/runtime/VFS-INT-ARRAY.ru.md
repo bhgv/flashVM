@@ -33,3 +33,5 @@ intarray: fn(cells: list of ref Root): ref Root;
 См. также [живые гибридные таблицы в VFS](VFS-HYBRID-TABLE.ru.md).
 
 Массив с изменяемой длиной описан в [Vfsexport.bigvector](VFS-BIG-VECTOR.ru.md).
+
+FlashVM и SDK C используют один [клиент живого массива](../../lib/styxrpc/LIVE_VALUES.ru.md). Он удерживает исходный узел и сверяет его идентичность перед индексным обращением.

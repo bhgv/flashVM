@@ -1,5 +1,28 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1822 — live variables and typed scoped calls
+
+FlashVM and the independent C SDK read and change Dis-owned Int32 arrays,
+string and big cells, big vectors and published record fields by exact fid.
+A replaced publication requires a new binding. Typed RPC copies Limbo
+lists and preserves sparse AS arrays with an explicit length and index
+tuple. A single scoped call can preserve ref identities and carry hybrid
+edits alongside a channel lease, using the shared DisVM codec. The paired
+tests exercise real values and cancellation in the interpreter and JIT,
+over Unix sockets and TCP.
+
+FlashVM и независимый SDK C читают и меняют массивы Int32, строки и
+скаляры big, векторы big и опубликованные поля записей DisVM по точному
+fid. Замена публикации требует новой привязки. Типизированный RPC
+копирует списки Limbo и сохраняет пропуски AS через явный кортеж с
+длиной и индексами. Один контекстный вызов сохраняет идентичность ref,
+может менять гибридную таблицу и выдавать аренду канала в том же ответе.
+Парные тесты проверяют данные и отмену в интерпретаторе и JIT через
+Unix-сокеты и TCP.
+[EN](STYX_RPC_LIVE_VARIABLES.md) · [RU](STYX_RPC_LIVE_VARIABLES.ru.md) ·
+[Runnable examples](../../lib/styxrpc/examples/disvm/LIVE_STAGE.md) ·
+[Запускаемые примеры](../../lib/styxrpc/examples/disvm/LIVE_STAGE.ru.md).
+
 ## v0.1821 — exact signed big throughout typed FlashVM RPC
 
 FlashVM translates signed 64-bit `big` in managed calls, reference graphs,

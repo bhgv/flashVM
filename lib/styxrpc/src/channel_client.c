@@ -41,13 +41,9 @@ static StyxRpcStatus read_reply(const StyxRpcSchema *schema, const StyxRpcChanne
     StyxReplyField fields[2];
     size_t used;
     if (!styxcall_reply_read(STYX_MANAGED_REPLY_TAG, bytes, size, fields) ||
-        !styxmanaged_graph_reply(&shape, &call->arguments, fields) ||
-        fvm_srecord_read(fields[0].bytes, fields[0].size, STYXRPC_MANAGED_LIMIT, &reply->result, &used) != FVM_S_OK)
-    {
-        return STYXRPC_INVALID;
-    }
-    if (strchr(shape.result, 'c') && styxrpc_channel_export_routes(shape.result, fields[0].bytes,
-        fields[0].size, &reply->routes) != STYXRPC_OK)
+        !styxrpc_channel_reply_routes(&shape, &call->arguments, fields, &reply->routes) ||
+        fvm_srecord_read(fields[0].bytes, fields[0].size, STYXRPC_MANAGED_LIMIT, &reply->result, &used) != FVM_S_OK ||
+        fvm_srecord_read(fields[1].bytes, fields[1].size, STYXRPC_MANAGED_LIMIT, &reply->updates, &used) != FVM_S_OK)
     {
         return STYXRPC_INVALID;
     }
@@ -64,9 +60,7 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
     if (!target || !target->pid || !target->wait_ms || target->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS ||
         (!arguments && size) || size > STYXRPC_MANAGED_LIMIT || !reply || !capacity ||
         capacity > STYXRPC_MANAGED_LIMIT || !result ||
-        !memchr(target->schema.arguments, 0, sizeof(target->schema.arguments)) ||
-        !memchr(target->schema.result, 0, sizeof(target->schema.result)) ||
-        strpbrk(target->schema.arguments, "rh") || strpbrk(target->schema.result, "rh"))
+        !styxrpc_channel_schema_valid(&target->schema))
     {
         return STYXRPC_CALL_NOT_SENT;
     }

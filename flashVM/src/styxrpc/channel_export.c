@@ -5,8 +5,10 @@
 #include "object_handlers.h"
 #include "channel_private.h"
 #include "managed_values.h"
+#include "graph_refs.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -19,6 +21,29 @@ int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema)
 }
 
 
+/* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
+int fvm_styxrpc_channel_updates(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
+    const StyxRpcSchema *schema, const FVM_SRecord *arguments, StyxRpcChannelOutput *output)
+{
+    unsigned char *bytes;
+    size_t used;
+    if (!refs->originals)
+    {
+        return 1;
+    }
+    bytes = malloc(STYXRPC_MANAGED_LIMIT);
+    if (!bytes || !fvm_styxrpc_graph_updates(context, roots, refs, schema, arguments, refs->originals,
+        bytes, STYXRPC_MANAGED_LIMIT, &used))
+    {
+        free(bytes);
+        return 0;
+    }
+    output->updates = bytes;
+    output->update_size = used;
+    return 1;
+}
+
+
 /* [GC:] [ASINC] EN: Run the initializer under GC roots and transfer the exact resource on success.
  * RU: Выполнить инициализатор под корнями GC и передать ресурс при успехе. */
 StyxRpcStatus fvm_styxrpc_run_channel(const FVM_StyxRpcChannelExport *binding, FVM_Object *receiver,
@@ -26,6 +51,7 @@ StyxRpcStatus fvm_styxrpc_run_channel(const FVM_StyxRpcChannelExport *binding, F
 {
     FVM_Context *context = binding->context;
     FVM_GCRootScope *roots;
+    FVM_StyxRefs refs = {0};
     FVM_Value args[FVM_STYXRPC_LIST_ITEMS], seed;
     unsigned count;
     int ok;
@@ -34,12 +60,17 @@ StyxRpcStatus fvm_styxrpc_run_channel(const FVM_StyxRpcChannelExport *binding, F
     {
         return STYXRPC_REMOTE_ERROR;
     }
-    ok = fvm_styxrpc_values_decode(context, roots, NULL, binding->schema.arguments, &call->arguments,
-            args, FVM_STYXRPC_LIST_ITEMS, &count) &&
-        (receiver ? fvm_object_call(context, receiver, binding->initializer, count, args, &seed) :
+    refs.graph = 1;
+    ok = (!strpbrk(binding->schema.arguments, "rh") || fvm_styxrpc_graph_init(&refs)) &&
+        fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, &call->arguments,
+            args, FVM_STYXRPC_LIST_ITEMS, &count);
+    refs.originals = refs.count;
+    ok = ok && (receiver ? fvm_object_call(context, receiver, binding->initializer, count, args, &seed) :
             fvm_avm1_call(context, binding->initializer, NULL, count, args, &seed)) == FVM_OK &&
         fvm_gc_roots_add(roots, &seed) == FVM_OK &&
-        fvm_styxrpc_channel_output(context, roots, &binding->schema, binding->capacity, &seed, output);
+        fvm_styxrpc_channel_output(context, roots, &binding->schema, binding->capacity, &seed, output) &&
+        fvm_styxrpc_channel_updates(context, roots, &refs, &binding->schema, &call->arguments, output);
+    fvm_styxrpc_graph_clear(&refs);
     fvm_gc_roots_end(roots);
     if (!ok)
     {

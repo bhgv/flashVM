@@ -80,6 +80,9 @@ static int shape_type(Shape *shape, const Type *type, unsigned depth)
     case Tarray:
         return debug['G'] && token(shape, 'a') && token(shape, '[') &&
             shape_type(shape, type->tof, depth + 1) && token(shape, ']');
+    case Tlist:
+        return debug['G'] && token(shape, 'l') && token(shape, '[') &&
+            shape_type(shape, type->tof, depth + 1) && token(shape, ']');
     case Tchan:
         return debug['G'] && token(shape, 'c') && token(shape, '[') &&
             shape_type(shape, type->tof, depth + 1) && token(shape, ']');

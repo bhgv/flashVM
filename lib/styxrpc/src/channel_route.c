@@ -153,6 +153,20 @@ static int collect(void *context, const char *type, const FVM_SRecord *leaf)
 }
 
 
+/* EN/RU: See channel_route_internal.h. / См. channel_route_internal.h. */
+int styxrpc_channel_reply_routes(const StyxCallShape *shape, const FVM_SRecord *arguments,
+    const StyxReplyField fields[2], StyxRpcChannelRoutes *out)
+{
+    RouteList staged = {.exported = 1};
+    if (!styxmanaged_graph_reply_routes(shape, arguments, fields, collect, &staged))
+    {
+        return 0;
+    }
+    *out = staged.routes;
+    return 1;
+}
+
+
 /* EN: Validate one complete typed wrapper and publish a copied route table on success.
  * RU: Проверить полную типизированную запись и при успехе выдать копию таблицы адресов. */
 static StyxRpcStatus read_routes(const char *shape, const void *bytes, size_t size,

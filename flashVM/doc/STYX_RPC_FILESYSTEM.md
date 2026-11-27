@@ -1,6 +1,6 @@
 # A mounted Styx tree as a FlashVM filesystem
 
-[Русский](STYX_RPC_FILESYSTEM.ru.md) · [FlashVM and DisVM](STYX_RPC.md) · [C SDK](../../lib/styxrpc/reference/vfs_open.md)
+[Русский](STYX_RPC_FILESYSTEM.ru.md) · [FlashVM and DisVM](STYX_RPC.md) · [C SDK](../../lib/styxrpc/reference/vfs_open.md) · [Live VFS variables](STYX_RPC_LIVE_VARIABLES.md)
 
 The host selects an attached Styx client. Link `flashvm_styxrpc` and pass the client to [fvm_styxrpc_filesystem_mount](STYX_RPC_FILESYSTEM_MOUNT.md) at a path such as `/dis`. Install the [file operations](FILESYSTEM_INSTALL.md) as `fs` in the same context. Script uses the same operations for local files and Styx files.
 

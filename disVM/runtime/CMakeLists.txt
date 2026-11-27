@@ -228,6 +228,7 @@ add_executable(disvm
     vfs/layer_bind.c
     vfs/managed_publish.c
     vfs/managed_array.c
+    vfs/managed_list.c
     vfs/managed_call.c
     vfs/managed_ref.c
     vfs/managed_gateway.c

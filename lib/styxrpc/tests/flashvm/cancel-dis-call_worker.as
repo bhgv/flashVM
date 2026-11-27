@@ -23,7 +23,10 @@ asinc function parkDisCall(mode) {
     } else {
         var queue = vfs.localChannel("i", 1);
         var sent = queue.trySend(41);
-        var channel = remote.park(queue);
+        var blank = "";
+        var pending = blank.split("");
+        var fields = pending.push(40);
+        var channel = remote.park(pending, queue);
     }
     return 1;
 }

@@ -2,6 +2,8 @@
 
 [English](README.md) · [libstyxrpc](../README.ru.md)
 
+[Живые поля, списки, пропуски и ref с каналами](disvm/LIVE_STAGE.ru.md). Один запускаемый пример FlashVM–DisVM и отдельный клиент C.
+
 [Парный пример FlashVM и DisVM](disvm/INT32_REFERENCES.ru.md). Отмена операций с Int32, проверка Qid и восстановление после неподтверждённой записи.
 [Исполняемый пример Limbo и FlashVM](disvm/REF_PORT_CANCELLATION.ru.md). Отмена в прямом потомке DisVM и восстановление исходного порта.
 

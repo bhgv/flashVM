@@ -2,6 +2,8 @@
 
 [Русский](README.ru.md) · [libstyxrpc](../README.md)
 
+[Live fields, lists, sparse values and refs with channels](disvm/LIVE_STAGE.md). Run the paired FlashVM–DisVM example and the independent C client.
+
 [Runnable FlashVM and DisVM example](disvm/INT32_REFERENCES.md). Cancel Int32 operations, check the Qid and recover after an unacknowledged write.
 [Runnable Limbo and FlashVM example](disvm/REF_PORT_CANCELLATION.md). Cancel a native DisVM child and recover on its original port.
 

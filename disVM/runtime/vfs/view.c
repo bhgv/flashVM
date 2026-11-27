@@ -56,6 +56,11 @@ static int covers(const char *prefix, const char *path)
 DVM_View *dvm_view_create(DVM_ViewPolicy policy, void *context, void (*release)(void *))
 {
     DVM_View *view = calloc(1, sizeof(*view));
+    if (view && !walk_entity(&view->identity))
+    {
+        free(view);
+        return NULL;
+    }
     if (view)
     {
         view->lock = fvm_port_sync_create();
@@ -204,29 +209,22 @@ FVM_Result dvm_view_info(DVM_View *view, const char *path, FVM_FileInfo *output)
     {
         return FVM_NOT_FOUND;
     }
-    if (route == 2)
+    FVM_Result status = route == 1 ? dvm_provider_info(rule->source, relative, output) : FVM_NOT_FOUND;
+    if (route == 2 || ((status == FVM_OK || !dvm_cancel_requested(dvm_cancel_current())) &&
+        (status != FVM_OK || !output->directory) && strcmp(path, rule->path) && dvm_view_children(view, path)))
     {
-        memset(output, 0, sizeof(*output));
+        *output = (FVM_FileInfo){0};
         output->directory = 1;
         output->mode = 0555;
     }
-    else
+    else if (status != FVM_OK)
     {
-        FVM_Result status = dvm_provider_info(rule->source, relative, output);
-        if (status != FVM_OK && dvm_cancel_requested(dvm_cancel_current()))
-        {
-            return status;
-        }
-        if ((status != FVM_OK || !output->directory) && strcmp(path, rule->path) && dvm_view_children(view, path))
-        {
-            memset(output, 0, sizeof(*output));
-            output->directory = 1;
-            output->mode = 0555;
-        }
-        else if (status != FVM_OK)
-        {
-            return status;
-        }
+        return status;
+    }
+    if (output->directory && !output->identity.high && !output->identity.low)
+    {
+        output->identity.high = view->identity.object[2];
+        output->identity.low = view->identity.object[3];
     }
     return viewmask(view, path, output) ? FVM_OK : FVM_NOT_FOUND;
 }

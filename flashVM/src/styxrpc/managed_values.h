@@ -24,6 +24,11 @@ int fvm_styxrpc_read_big(const FVM_Value *value, int64_t *out);
 FVM_Result fvm_styxrpc_return_big(FVM_Context *context, int64_t number, FVM_Value *out);
 
 
+/* [GC:] EN: Copy counted UTF-8 bytes into a string owned by the current context.
+ * RU: Скопировать UTF-8 с длиной в строку во владении текущего контекста. */
+FVM_Result fvm_styxrpc_return_text(FVM_Context *context, const char *bytes, size_t size, FVM_Value *value);
+
+
 /* EN: Raise a diagnostic, retaining any prior exception from the runtime.
  * RU: Выдать диагностику с сохранением существующего исключения среды. */
 FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message);

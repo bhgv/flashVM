@@ -20,3 +20,5 @@ record: fn(fields: list of (string, ref Root)): ref Root;
 Опубликуйте каталог под `.var` для доступа из контекстного вызова.
 [Пример Styx](../examples/remote-scalar/styx-scoped-calls.b) публикует
 вложенную запись и массив с общими ячейками.
+
+Другие поля могут хранить [строковую ячейку](VFS-STRING-VARIABLE.ru.md), [скаляр big](VFS-BIG-VARIABLE.ru.md) или [вектор big](VFS-BIG-VECTOR.ru.md).

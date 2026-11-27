@@ -1,5 +1,6 @@
 lib/styxrpc/LICENSE.bhgv
 lib/styxrpc/include/styxrpc/indexed_variable.h
+lib/styxrpc/include/styxrpc/live_variable.h
 lib/styxrpc/include/styxrpc/variable_file.h
 lib/styxrpc/protocol/call_record.c
 lib/styxrpc/protocol/call_record.h
@@ -10,6 +11,7 @@ lib/styxrpc/protocol/indexed_variable.c
 lib/styxrpc/protocol/load_profile.c
 lib/styxrpc/protocol/load_profile.h
 lib/styxrpc/protocol/managed_array_span.inc
+lib/styxrpc/protocol/managed_flat_delta.inc
 lib/styxrpc/protocol/managed_graph_validation.inc
 lib/styxrpc/protocol/managed_record_validation.inc
 lib/styxrpc/protocol/managed_ref_validation.inc

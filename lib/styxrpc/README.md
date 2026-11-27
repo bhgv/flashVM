@@ -24,6 +24,8 @@ with real DisVM and exercise the supported caller and provider roles.
 
 [Runnable typed values example](examples/disvm/TYPED_VALUES.md). FlashVM sends full-width signed `big` values using the same SDK records as DisVM.
 
+[Live VFS variables](LIVE_VALUES.md). Read and update Int32, big, strings and named fields on a mounted session. [Complete DisVM example](examples/disvm/LIVE_STAGE.md).
+
 ## Integration scenario
 
 An external application, such as a FlashVM host or a device controller,

@@ -57,6 +57,7 @@ int dvm_channel_value_mover(const Channel *channel, const char *shape)
     case 'y': return channel->mover == movb;
     case 's':
     case 'a':
+    case 'l':
     case 'c':
     case 'r':
     case 'h':
@@ -237,6 +238,7 @@ static int channel_positions_supported(const char *type, const char *limit)
 /* EN/RU: See managed_value.h. / См. managed_value.h. */
 int dvm_styx_channel_shape_supported(const StyxCallShape *shape)
 {
-    return channel_positions_supported(shape->arguments, shape->arguments + strlen(shape->arguments)) &&
+    return styxmanaged_channel_compatible(shape) &&
+        channel_positions_supported(shape->arguments, shape->arguments + strlen(shape->arguments)) &&
         channel_positions_supported(shape->result, shape->result + strlen(shape->result));
 }

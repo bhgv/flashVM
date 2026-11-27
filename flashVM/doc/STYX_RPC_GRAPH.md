@@ -30,6 +30,9 @@ A changed field of type `big` uses the [signed 64-bit mapping](STYX_RPC_VALUE_TY
 The bridge supports frames up to 64 KiB, up to 256 ref identities per call and up to eight flattened fields in a sparse update. There are also at most eight direct fields per AS ref Array. As in the Dis codec, an alias to an incomplete definition is rejected. The same graph also supports [hybrid table identities and key patches](STYX_RPC_HYBRID.md). Use the [scoped channel binding](STYX_RPC_CHANNELS.md) for live channel results.
 
 [Limbo interface](../../lib/styxrpc/tests/flashvm/graph.m) · [Dis owner](../../lib/styxrpc/tests/flashvm/graph_owner.b) · [Dis caller](../../lib/styxrpc/tests/flashvm/graph_client.b) · [FlashVM fixture](../tests/styxrpc/graph.c) · [Independent C client](../../lib/styxrpc/examples/client.c)
+For a call with live channels and a copied graph, use the [scoped channel profile](STYX_RPC_CHANNELS.md#combine-a-graph-with-a-channel). The caller stages the whole update list before applying it and the channel retains its own lease.
+
+[Paired example](../../lib/styxrpc/examples/disvm/LIVE_STAGE.md)
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

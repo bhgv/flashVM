@@ -31,3 +31,5 @@ The function is synchronous and never replays a write. See the
 [standalone C client](../examples/client.c) and [module publisher](managed_module_init.md).
 
 A typed `b` argument, result or nested field carries a signed 64-bit child record. The FlashVM adapter accepts decimal text when the value exceeds the exact AS Number interval, then writes that same record. [Paired example](../examples/disvm/TYPED_VALUES.md)
+
+The `l[T]` mapping admits a nonempty sequence of typed children as tag 8 or an empty Limbo list as nil (tag 9). To carry a sparse application array, agree on the explicit `(ia[(iT)])` tuple and validate the logical extent and ordered indices. See the [paired examples](../examples/disvm/LIVE_STAGE.md).

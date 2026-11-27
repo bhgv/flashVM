@@ -24,3 +24,5 @@ Serve `styxrpc_channel_handlers_tree` from a single dispatcher on the forward se
 The dispatcher registers a token on the first nonempty read from offset zero after callback completion. It exposes the token only in the verified reply and accepts it on `.unibus`. Clunk of the issuing fid revokes its operations before releasing the resource. A call abandoned before publication consumes no token. If publication fails, the dispatcher releases the resource and produces a remote error. The caller can still observe completed operations on its argument channels.
 
 [Standalone C scenario](../tests/module_channels.c) · [Stop](channel_handlers_stop.md) · [Destroy](channel_handlers_destroy.md)
+
+A descriptor with a leased channel result can accept copied graph arguments and borrowed channels in the same call. The `StyxRpcChannelOutput` update fields follow the [channel output ownership contract](channel_module_init.md). A copied-result descriptor uses its ordinary value result API.

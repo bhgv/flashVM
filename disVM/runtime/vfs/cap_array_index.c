@@ -52,7 +52,7 @@ typedef struct IndexCursor
 DVM_ProviderOpenScope dvm_collection_open_scope(void)
 {
     DVM_ProviderOpenScope scope = dvm_provider_current_open_scope();
-    if (!scope.generation)
+    if (!scope.domain)
     {
         Prog *process = dvm_native_context_process(dvm_native_context_current());
         scope = (DVM_ProviderOpenScope){process, process ? UINT64_C(1) << 63 | (uint32_t)process->pid : 0};

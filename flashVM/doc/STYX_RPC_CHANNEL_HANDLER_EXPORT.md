@@ -21,6 +21,7 @@ Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor
 Execute the callback on the FlashVM owner. Run the forward Styx server separately. Keep the binding, names, context and same-session reverse client alive through both threads' shutdown. Each argument object closes at callback exit. The result has its own resource and lease, which the dispatcher publishes on the forward module's `.unibus` and retires when the issuing function fid is clunked.
 
 [Executable FlashVM host](../tests/styxrpc/channel-incoming.c) · [Limbo caller](../../lib/styxrpc/tests/flashvm/channel_incoming.b) · [Copied-result callback](STYX_RPC_CHANNEL_HANDLER.md)
+The handler schema can include `r[…]` or `h` arguments beside borrowed channels. If the callback succeeds, FlashVM stages the graph edits together with the channel result. A refused call publishes neither.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

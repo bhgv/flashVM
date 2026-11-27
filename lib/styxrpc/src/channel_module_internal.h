@@ -15,7 +15,7 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
     StyxRpcChannelOutput *active, unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE]);
 
 
-/* EN: Check the terminated schema's copied argument types and optional channel leaves.
+/* EN: Check argument termination and whether a reverse argument channel may be used.
  * RU: Проверить аргументы по значению и допустимые каналы внутри завершённой схемы. */
 int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels);
 
@@ -30,7 +30,12 @@ int styxrpc_channel_output_schema(const StyxRpcSchema *schema);
  * RU: Опубликовать проверенный результат у диспетчера. При ошибке отозвать выданный
  * токен. Ресурс во всех случаях принадлежит вызывающему. */
 int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
-    StyxRpcModuleChannels *registry, const StyxRpcChannelOutput *output,
+    StyxRpcModuleChannels *registry, StyxRpcChannelOutput *output,
     unsigned char token[STYXRPC_CHANNEL_TOKEN_SIZE], void *reply, size_t capacity, size_t *ready);
 
+
+
+/* EN: Free transferred changes and release a possibly staged channel resource.
+ * RU: Освободить переданные изменения и подготовленный ресурс канала при наличии. */
+void styxrpc_channel_output_dispose(StyxRpcChannelOutput *output);
 #endif

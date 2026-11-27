@@ -15,6 +15,7 @@
 #define REAL_SIGNATURE UINT32_C(0xdf75d234) /* Limbo fn(real, string): (real, string). */
 #define ECHO_SIGNATURE UINT32_C(0x8e406ff6) /* Limbo fn(string, array of byte): (string, array of byte). */
 #define WIDE_SIGNATURE UINT32_C(0xbda55a3a) /* Limbo fn(array of string, array of big): (array of string, array of big). */
+#define LIST_SIGNATURE UINT32_C(0x4da5dc47) /* Limbo fn(list of (string, big)): list of (string, big). */
 #define ECHO_COUNT 600U     /* Large enough to exceed the negotiated Styx write size. */
 #define ECHO_WAIT_MS 3000U  /* Bounded reply polling. */
 
@@ -56,6 +57,25 @@ static int define_echo(FVM_Context *context)
 }
 
 
+/* EN: Register an AVM1 identity function for the nonempty and nil list result.
+ * RU: Зарегистрировать тождественную функцию AVM1 для непустого и nil списка. */
+static int define_list_echo(FVM_Context *context)
+{
+    static const unsigned char code[] = {
+        ACTION_PUSH, 3, 0, PUSH_STRING, 's', 0, ACTION_GET_VARIABLE, ACTION_RETURN, ACTION_END
+    };
+    const char *parameters[] = {"s"};
+    FVM_Value function;
+    fvm_value_undefined(&function);
+    if (fvm_function_create_avm1(context, code, sizeof(code), 1, parameters, NULL, &function.object) != FVM_OK)
+    {
+        return 0;
+    }
+    function.type = FVM_VALUE_OBJECT;
+    return fvm_set_global(context, "listEcho", &function) == FVM_OK;
+}
+
+
 /* EN/RU: See managed.h. / См. managed.h. */
 int test_managed_serve(FVM_Context *context, int fd)
 {
@@ -63,13 +83,15 @@ int test_managed_serve(FVM_Context *context, int fd)
     FVM_StyxRpcManagedExport binding = {context, "echo", shape, buffer, sizeof(buffer)};
     FVM_StyxRpcManagedExport number = {context, "echo", real_shape, buffer, sizeof(buffer)};
     FVM_StyxRpcManagedExport wide = {context, "echo", wide_shape, buffer, sizeof(buffer)};
-    StyxRpcManagedExport descriptors[3];
+    FVM_StyxRpcManagedExport sequence = {context, "listEcho", {"(l[(sb)])", "(l[(sb)])"}, buffer, sizeof(buffer)};
+    StyxRpcManagedExport descriptors[4];
     StyxRpcManagedModule module;
-    if (!define_echo(context) ||
+    if (!define_echo(context) || !define_list_echo(context) ||
         fvm_styxrpc_export_managed(&binding, "echo", ECHO_SIGNATURE, descriptors) != FVM_OK ||
         fvm_styxrpc_export_managed(&number, "number", REAL_SIGNATURE, descriptors + 1) != FVM_OK ||
         fvm_styxrpc_export_managed(&wide, "wide", WIDE_SIGNATURE, descriptors + 2) != FVM_OK ||
-        styxrpc_managed_module_init(&module, "flash-values.dis", descriptors, 3) != STYXRPC_OK)
+        fvm_styxrpc_export_managed(&sequence, "listcopy", LIST_SIGNATURE, descriptors + 3) != FVM_OK ||
+        styxrpc_managed_module_init(&module, "flash-values.dis", descriptors, 4) != STYXRPC_OK)
     {
         fputs("Managed FlashVM publication failed\n", stderr);
         return 0;

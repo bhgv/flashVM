@@ -35,3 +35,5 @@ starts with an empty array. The [provider](../examples/remote-scalar/scoped-call
 appends 10, inserts 20, changes the last value to 21 and pops it. The caller
 then reads length 1 in its own namespace. See also [fixed live cells](VFS-INT-ARRAY.md)
 and [hybrid tables](VFS-HYBRID-TABLE.md).
+
+Use [Vfsexport.bigvar](VFS-BIG-VARIABLE.md) for a standalone scalar and the [hosted live variable API](../../lib/styxrpc/LIVE_VALUES.md) for access through Styx.

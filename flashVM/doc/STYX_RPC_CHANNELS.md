@@ -36,10 +36,18 @@ A queue payload uses the [typed value mapping](STYX_RPC_VALUE_TYPES.md). For exa
 
 ## Use FlashVM channels from Limbo
 
-1. Define an AS initializer and [bind a channel export](STYX_RPC_CHANNEL_EXPORT.md) using the compiled Limbo offer. The initializer receives arguments by value. Its return value supplies one initial element to a FIFO. Returning `undefined` creates an empty channel. Use capacity zero for a rendezvous.
+1. Define an AS initializer and [bind a channel export](STYX_RPC_CHANNEL_EXPORT.md) using the compiled Limbo offer. The initializer receives copied values and admitted graph arguments. Its graph changes go into the checked reply. Its return value supplies one initial element to a FIFO. Returning `undefined` creates an empty channel. Use capacity zero for a rendezvous.
 2. Publish the descriptors with [the C channel module](../../lib/styxrpc/reference/channel_module_init.md). The host supplies an entropy callback and serves it on the FlashVM context owner.
 3. Mount the provider in DisVM and `load` the compiled interface. Send, receive and `alt` use ordinary Limbo syntax. Each call gets a separate queue or rendezvous and its own token.
 
-The AS bindings support by-value inputs and channel elements, including `int`, counted strings, arrays and tuples. The exporter returns one channel per function call. The import also supports multiple channels in one result. FlashVM can [lend local channels as arguments to DisVM](STYX_RPC_CHANNEL_ARGUMENTS.md). DisVM also lends arguments to [FlashVM channel handlers](STYX_RPC_CHANNEL_ARGUMENTS.md). Those handlers can issue a separate live result channel in the same call. ActionScript can [receive and echo nested Dis-owned channels](STYX_RPC_NESTED_CHANNELS.md) on the same bus. FlashVM can [issue a group of nested result channels](STYX_RPC_NESTED_CHANNELS.md#issue-nested-channels-owned-by-flashvm) under one token. A local ActionScript endpoint for exported result queues remains open. The native C channel APIs continue to expose the full routed protocol.
+The AS bindings support copied inputs and channel elements, including `int`, counted strings, arrays and tuples. The exporter returns one channel per function call. The import also supports multiple channels in one result. FlashVM can [lend local channels as arguments to DisVM](STYX_RPC_CHANNEL_ARGUMENTS.md). DisVM also lends arguments to [FlashVM channel handlers](STYX_RPC_CHANNEL_ARGUMENTS.md). Those handlers can issue a separate live result channel in the same call. ActionScript can [receive and echo nested Dis-owned channels](STYX_RPC_NESTED_CHANNELS.md) on the same bus. FlashVM can [issue a group of nested result channels](STYX_RPC_NESTED_CHANNELS.md#issue-nested-channels-owned-by-flashvm) under one token. A local ActionScript endpoint for exported result queues remains open. The native C channel APIs continue to expose the full routed protocol.
 
 [DisVM provider fixture](../../lib/styxrpc/tests/flashvm/channel_owner.b) · [Limbo caller fixture](../../lib/styxrpc/tests/flashvm/channel_client.b) · [FlashVM initializer fixture](../tests/styxrpc/channel-service.c)
+
+## Combine a graph with a channel
+
+A compiled schema can carry a `ref ADT` or hybrid table and a channel in separate argument and result positions. For example, the Limbo method `combine: fn(box: ref Box, input: chan of int): (ref Box, chan of big);` uses arguments `(r[b]c[i])` and result `((r[b]c[b]))`. One function fid carries the request with the caller PID and the reply with the result and ref changes. FlashVM applies copy-back after validation and preserves the returned `box` alias.
+
+Copied ref fields and channel messages follow the same [scoped schema check](../../lib/styxrpc/reference/channel_schema_valid.md). The hosted exporters that issue one channel accept graph arguments with copy-back. Use [the handler](STYX_RPC_CHANNEL_HANDLER_EXPORT.md) for borrowed input channels. The result lease keeps its issuing fid live after the module binding is released.
+
+[Paired example](../../lib/styxrpc/examples/disvm/LIVE_STAGE.md)

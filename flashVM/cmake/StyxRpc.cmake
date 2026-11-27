@@ -7,14 +7,14 @@ if(FVM_ENABLE_STYXRPC)
     if(NOT TARGET StyxRpc::launch OR NOT TARGET StyxRpc::serve)
         message(FATAL_ERROR "The FlashVM bridge requires a hosted StyxRpc SDK")
     endif()
-    add_library(flashvm_styxrpc STATIC src/styxrpc/scalar.c src/styxrpc/managed.c src/styxrpc/managed_values.c src/styxrpc/managed_refs.c src/styxrpc/ref_slots.cpp
+    add_library(flashvm_styxrpc STATIC src/styxrpc/scalar.c src/styxrpc/managed.c src/styxrpc/managed_values.c src/styxrpc/managed_schema.c src/styxrpc/managed_refs.c src/styxrpc/ref_slots.cpp
         src/styxrpc/graph.c src/styxrpc/graph_refs.c src/styxrpc/hybrid.c src/styxrpc/hybrid_handle.cpp
         src/styxrpc/channel_import.c src/styxrpc/channel_methods.c src/styxrpc/channel_values.c src/styxrpc/channel_delegate.c src/styxrpc/channel_handle.cpp
         src/styxrpc/channel_export.c src/styxrpc/channel_output.c src/styxrpc/channel_local.c src/styxrpc/channel_lend.c src/styxrpc/channel_handler.c
         src/styxrpc/channel_local_state.c src/styxrpc/channel_publication.c src/styxrpc/channel_mailbox.c
         src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
         src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c src/styxrpc/session_paths.c src/styxrpc/session_calls.c src/styxrpc/session_exec.c
-        src/styxrpc/session_modules.c src/styxrpc/session_messages.c src/styxrpc/session_channel.c src/styxrpc/session_named_channel.cpp src/styxrpc/session_named_values.cpp src/styxrpc/session_named_refs.cpp
+        src/styxrpc/session_modules.c src/styxrpc/session_live_values.c src/styxrpc/session_sparse.cpp src/styxrpc/session_messages.c src/styxrpc/session_channel.c src/styxrpc/session_named_channel.cpp src/styxrpc/session_named_values.cpp src/styxrpc/session_named_refs.cpp
         src/styxrpc/session_message_types.c src/styxrpc/session_publish_messages.c
         src/styxrpc/session_named_snapshot.cpp src/styxrpc/session_module_refs.cpp src/styxrpc/session_nodes.cpp
         src/styxrpc/filesystem.c src/styxrpc/variable.c src/styxrpc/variable_ref_adapter.c src/styxrpc/variable_ref_identity.cpp src/styxrpc/variable_ref_channel.cpp src/styxrpc/object_image.c src/styxrpc/module_import.c src/styxrpc/wire_wait.c

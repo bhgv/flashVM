@@ -6,6 +6,7 @@
 #include "wire_wait.h"
 #include "channel_lend.h"
 #include "managed_values.h"
+#include "graph_refs.h"
 #include "styxrpc/managed_module.h"
 #include <stdlib.h>
 #include <string.h>
@@ -13,18 +14,12 @@
 /* [GC:] EN: Materialize the successful result under one shared owner-local lease.
  * RU: Создать успешный результат под общей арендой владельца. */
 static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const StyxRpcManagedTarget *target,
-    const StyxRpcLeasedReply *reply, FVM_Value *out, FVM_StyxModuleLease *lease)
+    FVM_StyxRefs *refs, const FVM_SRecord *arguments, const StyxRpcLeasedReply *reply, FVM_Value *out,
+    FVM_StyxModuleLease *lease)
 {
     FVM_StyxChannelDecode decode = {0};
-    FVM_StyxRefs refs = {0};
-    unsigned count;
-    FVM_Value value;
+    StyxRpcGraphReply graph;
     int ok;
-    if (target->schema.result[1] == ')' && reply->result.tag == STYXRPC_VALUE_NIL && !reply->result.size)
-    {
-        fvm_value_undefined(out);
-        return 1;
-    }
     if (reply->lease)
     {
         decode.set = fvm_styxrpc_channel_set_create(reply->lease, NULL, NULL, target->wait_ms);
@@ -36,17 +31,12 @@ static int decode_result(FVM_Context *context, FVM_GCRootScope *roots, const Sty
         decode.set->module = lease;
     }
     decode.exported = 1;
-    refs.graph = 1;
-    refs.decode_channel = fvm_styxrpc_channel_decode;
-    refs.channel_context = &decode;
-    ok = reply->result.tag == STYXRPC_GRAPH_RESULT_TAG &&
-        fvm_styxrpc_values_decode(context, roots, &refs, target->schema.result, &reply->result,
-            &value, 1, &count) && count == 1;
-    if (ok)
-    {
-        *out = value;
-    }
-    else if (decode.set)
+    refs->decode_channel = fvm_styxrpc_channel_decode;
+    refs->channel_context = &decode;
+    graph.result = reply->result;
+    graph.updates = reply->updates;
+    ok = fvm_styxrpc_graph_result(context, roots, refs, &target->schema, arguments, &graph, out);
+    if (!ok && decode.set)
     {
         fvm_styxrpc_channel_set_disarm(context, decode.set);
     }
@@ -66,6 +56,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
     FVM_StyxRefs refs = {0};
     unsigned char *buffer;
     StyxRpcLeasedReply reply;
+    FVM_SRecord arguments_record = {0};
     size_t size;
     const char *error = NULL;
     FVM_Result status;
@@ -90,10 +81,17 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
         free(buffer);
         return status;
     }
+    refs.graph = 1;
+    if ((strpbrk(target.schema.arguments, "rh") || strpbrk(target.schema.result, "rh")) &&
+        !fvm_styxrpc_graph_init(&refs))
+    {
+        fvm_gc_roots_end(roots);
+        free(buffer);
+        return FVM_OUT_OF_MEMORY;
+    }
     if (arguments)
     {
         channels.scope = styxrpc_argument_scope_open(bus, target.pid);
-        refs.graph = 1;
         refs.encode_channel = fvm_styxrpc_lend_argument;
         refs.channel_context = &channels;
     }
@@ -134,7 +132,10 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
         error = fvm_styxrpc_call_error(outcome);
         if (outcome == STYXRPC_CALL_OK)
         {
-            if (!decode_result(context, roots, &target, &reply, out, lease))
+            arguments_record.tag = STYXRPC_GRAPH_REQUEST_TAG;
+            arguments_record.payload = buffer;
+            arguments_record.size = size;
+            if (!decode_result(context, roots, &target, &refs, &arguments_record, &reply, out, lease))
             {
                 error = "Styx RPC channel result could not be decoded";
             }
@@ -143,6 +144,7 @@ static FVM_Result invoke_scoped(FVM_Context *context, struct StyxFid *directory,
     }
     styxrpc_argument_scope_close(channels.scope);
     fvm_styxrpc_lend_clear(&channels);
+    fvm_styxrpc_graph_clear(&refs);
     fvm_gc_roots_end(roots);
     free(buffer);
     return error ? fvm_styxrpc_managed_fail(context, error) : FVM_OK;

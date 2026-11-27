@@ -21,9 +21,10 @@ offer(port: chan of int)
 check_results(api: Incoming, port: chan of int)
 {
     port <-= 107;
-    one := api->make(port);
+    box := ref Incoming->Box(big "-9223372036854775808");
+    one := api->make(box, port);
     port <-= -4;
-    two := api->make(port);
+    two := api->make(box, port);
     if (one == nil || two == nil || one == two || <-one != 107 || <-two != -4) {
         raise "result channels lost independent seeds";
     }
@@ -63,6 +64,33 @@ check_results(api: Incoming, port: chan of int)
     two <-= 34;
     if (<-two != 34) {
         raise "retiring a result affected another issuance";
+    }
+}
+
+
+# EN: Apply one ref update and obtain a separate lease, then decline a second update.
+# RU: Применить изменение ref и получить отдельную аренду, затем отклонить второе изменение.
+check_mixed(api: Incoming, port: chan of int)
+{
+    box := ref Incoming->Box(big "-9223372036854775808");
+    port <-= 17;
+    result := api->make(box, port);
+    if (box.value != big "9223372036854775807" || result == nil || <-result != 17) {
+        raise "mixed reply lost its copy-back or issued channel";
+    }
+    rejected := 0;
+    port <-= 0;
+    {
+        api->make(box, port);
+    } exception {
+        "*" => rejected = 1;
+    }
+    if (!rejected || box.value != big "9223372036854775807") {
+        raise "failed mixed reply changed the existing box";
+    }
+    result <-= 81;
+    if (<-result != 81) {
+        raise "refusal retired an independent result channel";
     }
 }
 
@@ -129,6 +157,7 @@ init()
         raise "empty blocking receive returned before timing out";
     }
     check_results(api, ints);
+    check_mixed(api, ints);
     check_nested(api);
     api->finish(ints);
     ints <-= 11;

@@ -22,7 +22,7 @@ typedef struct RefKeys
 
 /* EN: Validate one tuple's exact arity or one array's homogeneous record sequence.
  * RU: Проверить точное число полей кортежа или однородную последовательность массива. */
-static int managed_children(const char *shape, const unsigned char *bytes, size_t size, int array,
+static int managed_children(const char *shape, const unsigned char *bytes, size_t size, unsigned array,
     unsigned depth, RefKeys *keys);
 
 

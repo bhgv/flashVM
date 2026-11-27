@@ -18,6 +18,7 @@ typedef struct StyxRpcLeasedReply
     FVM_SRecord result;           /* Validated result record borrowing the reply buffer. */
     StyxRpcChannelRoutes routes;  /* Distinct result routes in first-occurrence order. */
     StyxRpcChannelLease *lease;   /* One owned reference, or NULL when no channel was returned. */
+    FVM_SRecord updates;         /* Validated positional graph changes borrowing the reply buffer. */
 } StyxRpcLeasedReply;
 
 

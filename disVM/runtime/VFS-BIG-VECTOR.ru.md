@@ -36,3 +36,5 @@ bigvector: fn(): ref Root;
 добавляет 10, вставляет 20, заменяет последнее значение на 21 и извлекает его.
 Клиент видит длину 1 в своём VFS. См. также [фиксированные живые ячейки](VFS-INT-ARRAY.ru.md)
 и [гибридные таблицы](VFS-HYBRID-TABLE.ru.md).
+
+Отдельный скаляр создаётся через [Vfsexport.bigvar](VFS-BIG-VARIABLE.ru.md). Для доступа по Styx используйте [API живых переменных](../../lib/styxrpc/LIVE_VALUES.ru.md).

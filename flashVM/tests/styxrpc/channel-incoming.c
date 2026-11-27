@@ -18,6 +18,7 @@
 #define NESTED_SIGNATURE UINT32_C(0x93a913ec) /* Compiled nested argument. */
 #define LEASE_SIGNATURE UINT32_C(0x9c30df25) /* Compiled int port and int channel result. */
 #define NESTED_RESULT_SIGNATURE UINT32_C(0x968341b1) /* Int argument channel, nested int result. */
+#define COMBINE_SIGNATURE UINT32_C(0xf1d67083) /* Ref box with borrowed and returned int channels. */
 #define RESULT_LEASES 4U  /* Independent result leases for the native test client. */
 #define STYX_WAIT 3000U     /* Client mount/operation polling budget, in ms. */
 #define RECEIVE_WAIT 450U  /* Bound relay waits, including the controlled empty receive. */
@@ -168,6 +169,32 @@ static FVM_Result result_seed(FVM_Context *context, FVM_Object *self, unsigned a
 }
 
 
+/* EN: Change the borrowed ref before receiving a seed; zero refuses the entire reply.
+ * RU: Изменить заимствованный ref перед чтением значения; ноль отклоняет весь ответ. */
+static FVM_Result result_combine(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *args, FVM_Value *out, void *unused)
+{
+    FVM_Value before, next;
+    const char *replacement;
+    (void)self;
+    (void)unused;
+    if (argc != 2 || args[0].type != FVM_VALUE_OBJECT || args[1].type != FVM_VALUE_OBJECT ||
+        fvm_object_get(context, args[0].object, "0", &before) != FVM_OK || before.type != FVM_VALUE_STRING ||
+        result_seed(context, self, 1, args + 1, out, unused) != FVM_OK ||
+        out->type != FVM_VALUE_NUMBER)
+    {
+        return failure("mixed channel arguments");
+    }
+    replacement = out->number ? "9223372036854775807" : "-9223372036854775807";
+    if (fvm_value_string(&next, replacement) != FVM_OK ||
+        fvm_object_set(context, args[0].object, "0", &next) != FVM_OK || !out->number)
+    {
+        return failure("mixed reply refused");
+    }
+    return FVM_OK;
+}
+
+
 /* EN: Check the borrowed port, then seed the result with an empty rendezvous descriptor.
  * RU: Проверить заимствованный канал, затем заполнить результат описателем пустого rendezvous. */
 static FVM_Result result_empty(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -270,12 +297,12 @@ int test_channel_incoming(FVM_Context *context, int fd)
         {context, "nestedDis", reverse, {"(c[a[c[i]]])", "(i)"}, STYX_WAIT}
     };
     FVM_StyxRpcChannelHandlerExport result_bindings[] = {
-        {{context, "resultSeed", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 1},
+        {{context, "combineDis", reverse, {"(r[b]c[i])", "(c[i])"}, STYX_WAIT}, 1},
         {{context, "resultEmpty", reverse, {"(c[i])", "(c[c[i]])"}, STYX_WAIT}, 1},
         {{context, "receiveDis", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0}
     };
     const char *result_names[] = {"make", "sync", "badseed"};
-    const uint32_t result_signatures[] = {LEASE_SIGNATURE, NESTED_RESULT_SIGNATURE, LEASE_SIGNATURE};
+    const uint32_t result_signatures[] = {COMBINE_SIGNATURE, NESTED_RESULT_SIGNATURE, LEASE_SIGNATURE};
     StyxRpcChannelExport results[sizeof(result_bindings) / sizeof(*result_bindings)];
     size_t result_count = sizeof(results) / sizeof(*results);
     StyxRpcModuleChannel leases[RESULT_LEASES];
@@ -290,8 +317,8 @@ int test_channel_incoming(FVM_Context *context, int fd)
         fvm_register_function(context, "exchangeDis", exchange, NULL) == FVM_OK &&
         fvm_register_function(context, "rejectDis", reject, NULL) == FVM_OK &&
         fvm_register_function(context, "finishDis", finish, NULL) == FVM_OK &&
-        fvm_register_function(context, "resultSeed", result_seed, NULL) == FVM_OK &&
         fvm_register_function(context, "resultEmpty", result_empty, NULL) == FVM_OK &&
+        fvm_register_function(context, "combineDis", result_combine, NULL) == FVM_OK &&
         fvm_register_function(context, "nestedDis", nested, NULL) == FVM_OK &&
         styxrpc_module_channels_init(&registry, leases, RESULT_LEASES, test_channel_entropy, NULL);
     for (size_t i = 0; ok && i < count; ++i)

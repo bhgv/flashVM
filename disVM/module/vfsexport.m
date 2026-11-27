@@ -36,6 +36,12 @@ Vfsexport: module
     # EN: Allocate an empty growable vector of big values shared through VFS.
     # RU: Создать пустой растущий массив значений big с общим доступом через VFS.
     bigvector: fn(): ref Root;
+    # EN: Publish a replaceable counted string (or nil) as .type and .val.
+    # RU: Опубликовать заменяемую строку с длиной (или nil) в виде .type и .val.
+    stringvar: fn(initial: string): ref Root;
+    # EN: Publish a signed 64-bit integer with one managed S-record per access.
+    # RU: Опубликовать знаковое 64-битное целое с одной S-записью на операцию.
+    bigvar: fn(initial: big): ref Root;
     intget: fn(root: ref Root): (int,int);
     intset: fn(root: ref Root, value: int): int;
 

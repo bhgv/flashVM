@@ -8,9 +8,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1821**. [Русская версия](README.ru.md).
+Development version: **0.1822**. [Русская версия](README.ru.md).
 
-Current series [v0.1821](docs/releases/v0.1821.md) adds guarded channel allocation.
+[v0.1822](flashVM/doc/ROADMAP.md#v01822--live-variables-and-typed-scoped-calls) completes the live VFS and typed RPC value stage.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

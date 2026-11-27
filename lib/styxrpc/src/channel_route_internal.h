@@ -5,6 +5,13 @@
 #ifndef STYXRPC_CHANNEL_ROUTE_INTERNAL_H
 #define STYXRPC_CHANNEL_ROUTE_INTERNAL_H
 #include "styxrpc/channel_route.h"
+#include "call_record.h"
+
+
+/* EN: Verify a complete graph reply and collect its exported routes with request identities.
+ * RU: Проверить полный ответ графа и собрать выданные маршруты с идентичностями запроса. */
+int styxrpc_channel_reply_routes(const StyxCallShape *shape, const FVM_SRecord *arguments,
+    const StyxReplyField fields[2], StyxRpcChannelRoutes *out);
 
 
 /* EN: Check the address and element schema in route. Return 1 for a canonical route.

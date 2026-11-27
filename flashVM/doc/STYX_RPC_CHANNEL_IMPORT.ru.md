@@ -1,6 +1,6 @@
 # fvm_styxrpc_channel_import
 
-[English](STYX_RPC_CHANNEL_IMPORT.md) · [Объявление](../include/flashvm/styxrpc_channel.h) · [Реализация](../src/styxrpc/channel_import.c) · [Методы каналов](STYX_RPC_CHANNELS.ru.md)
+[English](STYX_RPC_CHANNEL_IMPORT.md) · [Объявление](../include/flashvm/styxrpc_channel.h) · [Реализация](../src/styxrpc/channel_import.c) · [Методы каналов](STYX_RPC_CHANNELS.ru.md) · [Парный пример](../../lib/styxrpc/examples/disvm/LIVE_STAGE.ru.md)
 
 Подключите `flashvm/styxrpc_channel.h` и цель `flashvm_styxrpc`.
 
@@ -24,7 +24,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:257](../src/core/runtime.hpp#L257) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:260](../src/core/runtime.hpp#L260) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

@@ -50,7 +50,8 @@ static int populate(StyxRpcChannelHandlers *module, const char *name,
     {
         const StyxRpcChannelFunction *f = functions + i;
         if (!f->handler || !add_offer(module, i, f->name, f->signature, &f->schema) ||
-            !strchr(f->schema.arguments, 'c') || strpbrk(f->schema.result, "rhc"))
+            !strchr(f->schema.arguments, 'c') || strpbrk(f->schema.arguments, "rh") ||
+            strpbrk(f->schema.result, "rhc"))
         {
             return 0;
         }
@@ -322,11 +323,7 @@ int styxrpc_handlers_detach(HandlerFile *file)
 /* EN/RU: See channel_handlers_internal.h. / См. channel_handlers_internal.h. */
 void styxrpc_handlers_release_output(HandlerFile *file)
 {
-    if (file->output.release)
-    {
-        file->output.release(file->output.resource.context);
-        file->output.release = NULL;
-    }
+    styxrpc_channel_output_dispose(&file->output);
 }
 
 
