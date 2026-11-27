@@ -17,18 +17,23 @@
 #define PROFILE_CAPACITY (STYX_MOUNTED_EXPORT_LIMIT * STYX_SHAPED_OFFER_MAX) /* Whole interface bound. */
 
 
-/* EN: Read a complete, bounded interface on one held directory.
- * RU: Прочитать полный ограниченный интерфейс удерживаемого каталога. */
-static size_t read_interface(StyxFid *module, unsigned char *bytes, size_t capacity)
+/* EN: Read a complete bounded protocol file below borrowed directory using
+ * wait for walk, open, data and cleanup. Return zero on failure or overflow.
+ * RU: Прочитать ограниченный служебный файл заимствованного directory.
+ * Проверять wait при обходе, открытии, чтении и закрытии. Ноль при отказе. */
+static size_t read_control(StyxFid *directory, const char *name, void *bytes,
+    size_t capacity, StyxRpcVfsWait *wait)
 {
-    StyxFid *profile = styxclientwalkfrom(module, ".interface");
+    StyxFid *fid = NULL;
     size_t size = 0, complete = 0;
-    if (profile && styxclientopen(profile, 0))
+    if (styxrpc_vfs_control_walk_from(directory, name, wait, &fid) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_open(fid, STYXRPC_FILE_READ, wait) == STYXRPC_IO_OK)
     {
         while (size < capacity)
         {
             StyxTransfer part;
-            styxclientread(profile, size, bytes + size, capacity - size, &part);
+            styxclientreaduntil(fid, size, (unsigned char *)bytes + size, capacity - size,
+                wait->stop ? styxrpc_vfs_control_poll : NULL, wait, &part);
             if (!part.success || !part.confirmed || part.uncertain || part.again || part.count > capacity - size)
             {
                 break;
@@ -41,7 +46,7 @@ static size_t read_interface(StyxFid *module, unsigned char *bytes, size_t capac
             size += part.count;
         }
     }
-    styxclientclunk(profile);
+    styxrpc_vfs_control_close(fid, wait);
     return complete;
 }
 
@@ -49,10 +54,10 @@ static size_t read_interface(StyxFid *module, unsigned char *bytes, size_t capac
 /* EN: Match one ordinary client offer on the same held module used for the call.
  * RU: Сопоставить одно предложение клиента на том же удерживаемом модуле. */
 static int verify(StyxFid *module, const char *name, uint32_t signature,
-    const StyxRpcSchema *schema, int *scoped)
+    const StyxRpcSchema *schema, int *scoped, StyxRpcVfsWait *wait)
 {
     unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = read_interface(module, bytes, sizeof(bytes));
+    size_t size = read_control(module, ".interface", bytes, sizeof(bytes), wait);
     StyxCallShape shape;
     int framing;
     return styxscalar_profile_match_protocol(bytes, size, name, signature, scoped, &shape, &framing) &&
@@ -149,49 +154,23 @@ static StyxRpcOutcome receive_reply(StyxFid *fid, unsigned wait_ms, unsigned cha
 
 /* EN: Confirm the exact marker on the same captured module directory.
  * RU: Подтвердить точный маркер на том же удерживаемом каталоге модуля. */
-static int verify_marker(StyxFid *module, const char *name, const char *marker)
+static int verify_marker(StyxFid *module, const char *name, const char *marker, StyxRpcVfsWait *wait)
 {
     if (!marker)
     {
         return 1;
     }
     char bytes[sizeof(STYX_MANAGED_POSITION_GRAPH_MARKER) + sizeof(STYX_CHANNEL_PROFILE)];
-    const size_t limit = strlen(marker) + 1;
-    if (limit > sizeof(bytes))
-    {
-        return 0;
-    }
-    StyxFid *field = styxclientwalkfrom(module, name);
-    size_t size = 0;
-    int matched = 0;
-    if (field && styxclientopen(field, 0))
-    {
-        while (size < limit)
-        {
-            StyxTransfer part;
-            styxclientread(field, size, bytes + size, limit - size, &part);
-            if (!part.success || !part.confirmed || part.uncertain || part.again ||
-                part.count > limit - size)
-            {
-                break;
-            }
-            if (!part.count)
-            {
-                matched = size == strlen(marker) && !memcmp(bytes, marker, size);
-                break;
-            }
-            size += part.count;
-        }
-    }
-    styxclientclunk(field);
-    return matched;
+    const size_t expected = strlen(marker);
+    return expected < sizeof(bytes) && read_control(module, name, bytes, expected + 1, wait) == expected &&
+        !memcmp(bytes, marker, expected);
 }
 
 
 /* EN: Match a requested codec and verify a callable file without opening a call fid.
  * RU: Проверить запрошенный кодек и файл вызова без открытия fid функции. */
 static int check_import(StyxFid *directory, const void *bytes, size_t size, const StyxRpcModuleImport *required,
-    uint32_t pid, int *caller)
+    uint32_t pid, int *caller, StyxRpcVfsWait *wait)
 {
     const char *name = required->name;
     int scoped, framing;
@@ -217,18 +196,19 @@ static int check_import(StyxFid *directory, const void *bytes, size_t size, cons
             strcmp(schema->arguments, shape.arguments) || strcmp(schema->result, shape.result) ||
             framing != STYX_CALL_RECORD_FRAMING || (scoped && !pid) ||
             (required->kind != STYXRPC_MODULE_MANAGED &&
-                !verify_marker(directory, STYX_MANAGED_DELTA_FILE, STYX_MANAGED_POSITION_GRAPH_MARKER)) ||
+                !verify_marker(directory, STYX_MANAGED_DELTA_FILE, STYX_MANAGED_POSITION_GRAPH_MARKER, wait)) ||
             (required->kind == STYXRPC_MODULE_CHANNEL &&
-                (!scoped || !verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE))))
+                (!scoped || !verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE, wait))))
         {
             return 0;
         }
     }
     StyxMeta metadata;
-    StyxFid *function = styxclientwalkfrom(directory, name);
-    int valid = function && styxclientstat(function, &metadata) && !metadata.directory &&
-        (metadata.mode & 0444U) && (metadata.mode & 0222U) && (metadata.mode & 0111U);
-    styxclientclunk(function);
+    StyxFid *function = NULL;
+    int valid = styxrpc_vfs_control_walk_from(directory, name, wait, &function) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_stat(function, &metadata, wait, STYXRPC_IO_NOT_OPEN) == STYXRPC_IO_OK &&
+        !metadata.directory && (metadata.mode & 0444U) && (metadata.mode & 0222U) && (metadata.mode & 0111U);
+    styxrpc_vfs_control_close(function, wait);
     if (valid && caller)
     {
         *caller = scoped;
@@ -238,17 +218,65 @@ static int check_import(StyxFid *directory, const void *bytes, size_t size, cons
 
 
 /* EN/RU: See styxrpc/module_client.h. / См. styxrpc/module_client.h. */
+StyxRpcIoOutcome styxrpc_module_capture_until(StyxClient *session, const char *module, StyxFid *base,
+    StyxFid **out, StyxRpcModuleStop stop, void *state)
+{
+    if (!out || (!base && (!session || !styxrpc_vfs_visible_path(module))))
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    StyxRpcVfsWait wait = {stop, state, 0};
+    StyxFid *directory = NULL;
+    StyxRpcIoOutcome status = base ? styxrpc_vfs_control_walk_from(base, ".", &wait, &directory) :
+        styxrpc_vfs_control_walk(session, module, &wait, &directory);
+    if (status == STYXRPC_IO_OK && !base)
+    {
+        StyxMeta meta;
+        status = styxrpc_vfs_control_stat(directory, &meta, &wait, STYXRPC_IO_NOT_OPEN);
+        if (status == STYXRPC_IO_OK && (!meta.directory || !(meta.mode & 0444U) ||
+            !(meta.mode & 0111U) || styxrpc_vfs_service_meta(&meta)))
+        {
+            status = STYXRPC_IO_NOT_OPEN;
+        }
+    }
+    if (status == STYXRPC_IO_OK)
+    {
+        *out = directory;
+    }
+    else
+    {
+        styxrpc_vfs_control_close(directory, &wait);
+    }
+    return status;
+}
+
+
+/* EN/RU: See styxrpc/module_client.h. / См. styxrpc/module_client.h. */
 StyxFid *styxrpc_module_open(StyxClient *session, const char *module)
 {
-    StyxFid *dir = session && styxrpc_vfs_visible_path(module) ? styxclientwalk(session, module) : NULL;
-    StyxMeta meta;
-    if (dir && styxclientstat(dir, &meta) && meta.directory && (meta.mode & 0444U) &&
-        (meta.mode & 0111U) && !styxrpc_vfs_service_meta(&meta))
+    StyxFid *directory = NULL;
+    return styxrpc_module_capture_until(session, module, NULL, &directory, NULL, NULL) ==
+        STYXRPC_IO_OK ? directory : NULL;
+}
+
+
+/* EN/RU: See module_client.h. / См. module_client.h. */
+StyxRpcStatus styxrpc_module_check_at_until(StyxFid *directory,
+    const StyxRpcModuleImport *imports, size_t count, uint32_t pid, StyxRpcModuleStop stop, void *state)
+{
+    if (!directory || !imports || !count || count > STYXRPC_MAX_EXPORTS)
     {
-        return dir;
+        return STYXRPC_INVALID;
     }
-    styxclientclunk(dir);
-    return NULL;
+    StyxRpcVfsWait wait = {stop, state, 0};
+    unsigned char bytes[PROFILE_CAPACITY + 1];
+    size_t size = read_control(directory, ".interface", bytes, sizeof(bytes), &wait);
+    int valid = size != 0;
+    for (size_t i = 0; valid && !wait.stopped && i < count; ++i)
+    {
+        valid = check_import(directory, bytes, size, imports + i, pid, NULL, &wait);
+    }
+    return wait.stopped ? STYXRPC_CANCELLED : valid ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
 
@@ -256,18 +284,7 @@ StyxFid *styxrpc_module_open(StyxClient *session, const char *module)
 StyxRpcStatus styxrpc_module_check_at(StyxFid *directory,
     const StyxRpcModuleImport *imports, size_t count, uint32_t pid)
 {
-    if (!directory || !imports || !count || count > STYXRPC_MAX_EXPORTS)
-    {
-        return STYXRPC_INVALID;
-    }
-    unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = read_interface(directory, bytes, sizeof(bytes));
-    int valid = size != 0;
-    for (size_t i = 0; valid && i < count; ++i)
-    {
-        valid = check_import(directory, bytes, size, imports + i, pid, NULL);
-    }
-    return valid ? STYXRPC_OK : STYXRPC_INVALID;
+    return styxrpc_module_check_at_until(directory, imports, count, pid, NULL, NULL);
 }
 
 
@@ -293,52 +310,59 @@ StyxRpcStatus styxrpc_module_check(StyxClient *session, const char *module,
  * RU: Удерживать модуль до проверки профиля и поиска точной функции. */
 static StyxFid *open_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
     uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker,
-    int *scoped, StyxFid **held)
+    int *scoped, StyxFid **held, StyxRpcVfsWait *wait)
 {
     if ((!base && (!session || !module || !*module)) || !styxscalar_name_length(name) ||
         strchr(name, '/') || name[0] == '.')
     {
         return NULL;
     }
-    StyxFid *directory = base ? styxclientwalkfrom(base, ".") : styxclientwalk(session, module);
+    StyxFid *directory = NULL, *fid = NULL;
+    StyxRpcIoOutcome walked = base ? styxrpc_vfs_control_walk_from(base, ".", wait, &directory) :
+        styxrpc_vfs_control_walk(session, module, wait, &directory);
     StyxMeta metadata;
-    StyxFid *fid = directory && styxclientstat(directory, &metadata) && metadata.directory &&
-        (metadata.mode & 0444U) && (metadata.mode & 0111U) && verify(directory, name, signature, schema, scoped) &&
-        verify_marker(directory, STYX_MANAGED_DELTA_FILE, graph_marker) &&
-        (!held || (*scoped && verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE))) ?
-        styxclientwalkfrom(directory, name) : NULL;
-    if (fid && (!styxclientstat(fid, &metadata) || metadata.directory || !(metadata.mode & 0444U) ||
-        !(metadata.mode & 0222U) || !(metadata.mode & 0111U) || !styxclientopen(fid, 2)))
+    if (walked == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_stat(directory, &metadata, wait, STYXRPC_IO_NOT_OPEN) == STYXRPC_IO_OK &&
+        metadata.directory && (metadata.mode & 0444U) && (metadata.mode & 0111U) &&
+        verify(directory, name, signature, schema, scoped, wait) &&
+        verify_marker(directory, STYX_MANAGED_DELTA_FILE, graph_marker, wait) &&
+        (!held || (*scoped && verify_marker(directory, STYX_CHANNEL_PROFILE_FILE, STYX_CHANNEL_PROFILE, wait))) &&
+        styxrpc_vfs_control_walk_from(directory, name, wait, &fid) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_stat(fid, &metadata, wait, STYXRPC_IO_NOT_OPEN) == STYXRPC_IO_OK &&
+        !metadata.directory && (metadata.mode & 0444U) && (metadata.mode & 0222U) && (metadata.mode & 0111U) &&
+        styxrpc_vfs_control_open(fid, STYXRPC_FILE_RDWR, wait) == STYXRPC_IO_OK)
     {
-        styxclientclunk(fid);
-        fid = NULL;
+        if (held)
+        {
+            *held = directory;
+        }
+        else
+        {
+            styxrpc_vfs_control_close(directory, wait);
+        }
+        return fid;
     }
-    if (fid && held)
-    {
-        *held = directory;
-    }
-    else
-    {
-        styxclientclunk(directory);
-    }
-    return fid;
+    styxrpc_vfs_control_close(fid, wait);
+    styxrpc_vfs_control_close(directory, wait);
+    return NULL;
 }
 
 
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
 StyxFid *styxrpc_client_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
-    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped)
+    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped, StyxRpcVfsWait *wait)
 {
-    return open_function(base, session, module, name, signature, schema, graph_marker, scoped, NULL);
+    return open_function(base, session, module, name, signature, schema, graph_marker, scoped, NULL, wait);
 }
 
 
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
-StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target, StyxFid **module)
+StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target,
+    StyxFid **module, StyxRpcVfsWait *wait)
 {
     int scoped;
     return open_function(base, target->session, target->module, target->name, target->signature,
-        &target->schema, STYX_MANAGED_POSITION_GRAPH_MARKER, &scoped, module);
+        &target->schema, STYX_MANAGED_POSITION_GRAPH_MARKER, &scoped, module, wait);
 }
 
 
@@ -382,17 +406,18 @@ StyxRpcOutcome styxrpc_client_managed_exchange(StyxFid *base, const StyxRpcManag
     size_t capacity, size_t *received, StyxRpcCallStop stop, void *state)
 {
     int scoped;
+    StyxRpcVfsWait wait = {stop, state, 0};
     StyxFid *fid = styxrpc_client_function(base, target->session, target->module, target->name,
-        target->signature, &target->schema, graph_marker, &scoped);
+        target->signature, &target->schema, graph_marker, &scoped, &wait);
     unsigned char *wrapped = NULL;
     size_t wire_size = request_size;
-    StyxRpcOutcome outcome = STYXRPC_CALL_NOT_SENT;
+    StyxRpcOutcome outcome = wait.stopped ? STYXRPC_CALL_CANCELLED : STYXRPC_CALL_NOT_SENT;
     if (fid && (!scoped || (wrapped = scope_request(target->pid, request, request_size, &wire_size))))
     {
         outcome = styxrpc_client_exchange(fid, wrapped ? wrapped : request, wire_size,
-            target->wait_ms, reply, capacity, received, stop, state);
+            target->wait_ms, reply, capacity, received, stop ? styxrpc_vfs_control_poll : NULL, &wait);
     }
-    styxclientclunk(fid);
+    styxrpc_vfs_control_close(fid, &wait);
     free(wrapped);
     return outcome;
 }

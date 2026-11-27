@@ -5,18 +5,19 @@
 #ifndef STYXRPC_CLIENT_EXCHANGE_H
 #define STYXRPC_CLIENT_EXCHANGE_H
 #include "styxrpc/managed_client.h"
-#include "client.h"
+#include "vfs_client_internal.h"
 
 
 /* EN: Return an owned ORDWR function fid after matching profile and optional schema.
  * RU: Вернуть собственный ORDWR fid после проверки профиля и необязательной схемы. */
 StyxFid *styxrpc_client_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
-    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped);
+    uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped, StyxRpcVfsWait *wait);
 
 
 /* EN: Open a verified scoped channel function and retain its exact module directory.
  * RU: Открыть проверенную функцию с каналами и удержать точный каталог модуля. */
-StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target, StyxFid **module);
+StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target,
+    StyxFid **module, StyxRpcVfsWait *wait);
 
 
 /* EN: Borrow the open fid and buffers; publish received only on a complete reply.

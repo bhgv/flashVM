@@ -61,19 +61,20 @@ static int name_available(const StyxRpcModuleExports *exports, const char *name)
 
 
 /* EN/RU: See module_client.h. / См. module_client.h. */
-StyxRpcStatus styxrpc_module_exports_scoped_at(StyxFid *dir, uint32_t pid,
-    StyxRpcModuleExports *out, uint32_t *scoped)
+StyxRpcStatus styxrpc_module_exports_scoped_at_until(StyxFid *dir, uint32_t pid,
+    StyxRpcModuleExports *out, uint32_t *scoped, StyxRpcModuleStop stop, void *state)
 {
     if (!dir || !out)
     {
         return STYXRPC_INVALID;
     }
     unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = read_interface(dir, bytes, sizeof(bytes));
+    StyxRpcVfsWait wait = {stop, state, 0};
+    size_t size = read_control(dir, ".interface", bytes, sizeof(bytes), &wait);
     StyxRpcModuleExports exports = {0};
     uint32_t mask = 0;
     const unsigned char *cursor = bytes;
-    while (size && exports.count < STYXRPC_MAX_EXPORTS)
+    while (size && !wait.stopped && exports.count < STYXRPC_MAX_EXPORTS)
     {
         FVM_SRecord record;
         size_t used;
@@ -86,7 +87,7 @@ StyxRpcStatus styxrpc_module_exports_scoped_at(StyxFid *dir, uint32_t pid,
         method->name = exports.names[exports.count];
         size_t total = (size_t)(cursor - bytes) + size;
         int caller;
-        if (!name_available(&exports, method->name) || !check_import(dir, bytes, total, method, pid, &caller))
+        if (!name_available(&exports, method->name) || !check_import(dir, bytes, total, method, pid, &caller, &wait))
         {
             break;
         }
@@ -97,6 +98,10 @@ StyxRpcStatus styxrpc_module_exports_scoped_at(StyxFid *dir, uint32_t pid,
         ++exports.count;
         cursor += used;
         size -= used;
+    }
+    if (wait.stopped)
+    {
+        return STYXRPC_CANCELLED;
     }
     if (size || !exports.count)
     {
@@ -112,6 +117,14 @@ StyxRpcStatus styxrpc_module_exports_scoped_at(StyxFid *dir, uint32_t pid,
         *scoped = mask;
     }
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See module_client.h. / См. module_client.h. */
+StyxRpcStatus styxrpc_module_exports_scoped_at(StyxFid *dir, uint32_t pid,
+    StyxRpcModuleExports *out, uint32_t *scoped)
+{
+    return styxrpc_module_exports_scoped_at_until(dir, pid, out, scoped, NULL, NULL);
 }
 
 

@@ -69,7 +69,8 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
     {
         return STYXRPC_CALL_NOT_SENT;
     }
-    if (stop && stop(state))
+    StyxRpcVfsWait wait = {stop, state, 0};
+    if (styxrpc_vfs_control_poll(&wait))
     {
         return STYXRPC_CALL_CANCELLED;
     }
@@ -85,11 +86,11 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
         fvm_srecord_write_pair(STYXRPC_GRAPH_REQUEST_TAG, pid, prefix, arguments, size,
             request, STYXRPC_MANAGED_LIMIT, &request_size) == FVM_S_OK &&
         styxrpc_channel_call(&target->schema, request, request_size, &call) == STYXRPC_OK &&
-        (lease->function = styxrpc_client_channel_function(directory, target, &lease->module)) &&
+        (lease->function = styxrpc_client_channel_function(directory, target, &lease->module, &wait)) &&
         (!scope || styxrpc_argument_scope_match(scope, &call)))
     {
         outcome = styxrpc_client_exchange(lease->function, request, request_size,
-            target->wait_ms, reply, capacity, &received, stop, state);
+            target->wait_ms, reply, capacity, &received, stop ? styxrpc_vfs_control_poll : NULL, &wait);
         if (outcome == STYXRPC_CALL_OK)
         {
             StyxRpcStatus status = read_reply(&target->schema, &call, reply, received, &decoded);
@@ -108,10 +109,24 @@ static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, co
             *result = decoded;
         }
     }
+    if (outcome == STYXRPC_CALL_NOT_SENT && wait.stopped)
+    {
+        outcome = STYXRPC_CALL_CANCELLED;
+    }
     if (lease)
     {
-        styxclientclunk(lease->function);
-        styxclientclunk(lease->module);
+        if (outcome == STYXRPC_CALL_NOT_SENT || outcome == STYXRPC_CALL_CANCELLED)
+        {
+            styxrpc_vfs_control_close(lease->function, &wait);
+            styxrpc_vfs_control_close(lease->module, &wait);
+        }
+        else
+        {
+            /* EN: Drain the function clunk before revoking borrowed argument channels.
+             * RU: Дождаться закрытия функции перед отзывом переданных каналов. */
+            styxclientclunk(lease->function);
+            styxclientclunk(lease->module);
+        }
         free(lease);
     }
     free(request);

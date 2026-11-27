@@ -16,7 +16,6 @@
 #define STREAM (PHY_STREAM | PHY_ORDERED | PHY_RELIABLE) /* Reliable local test link. */
 #define FILE_NAME "image.dis" /* The request must carry exactly this relative path. */
 #define GENERATION "00000002" /* ID of the second request after the first was cancelled. */
-#define STOP_AFTER_POLL 4U /* Before walk, write, first read, then cancel before second read. */
 
 enum
 {
@@ -33,13 +32,8 @@ typedef struct Fixture
     unsigned reads;       /* Status reads across all requests. */
     unsigned closes;     /* Control fid clunks. */
     int leased;           /* The current request pins its publication. */
+    int first_pending;    /* Published after the server handles the first status read. */
 } Fixture;
-
-typedef struct Stop
-{
-    unsigned calls; /* Polls sampled by the client thread. */
-    unsigned limit; /* First call that requests cancellation. */
-} Stop;
 
 static const StyxRpcEntry entries[] = { /* Complete static set of test paths. */
     {Root, "/", 0555, 1}, {Service, STYXRPC_LIVE_MODULE_ROOT, 0555, 1},
@@ -116,6 +110,10 @@ static int read_request(void *cookie, uint64_t offset, void *bytes, size_t capac
     Fixture *fixture = cookie;
     ++fixture->reads;
     *size = 0;
+    if (fixture->writes == 1)
+    {
+        __atomic_store_n(&fixture->first_pending, 1, __ATOMIC_RELEASE);
+    }
     if (fixture->writes == 2 && offset < STYXRPC_LIVE_MODULE_ID_BYTES)
     {
         const size_t fragment = STYXRPC_LIVE_MODULE_ID_BYTES / 2;
@@ -149,26 +147,25 @@ static void *dispatch(void *context)
 }
 
 
-/* EN: Request cancellation at the caller-selected check.
- * RU: Запросить отмену при выбранной вызывающим проверке. */
+/* EN: With no fixture, stop before I/O. Otherwise stop after the first poll reaches the provider.
+ * RU: Без тестового состояния остановиться до I/O, иначе дождаться первого опроса у провайдера. */
 static int stopped(void *state)
 {
-    Stop *stop = state;
-    return ++stop->calls >= stop->limit;
+    Fixture *fixture = state;
+    return !fixture || __atomic_load_n(&fixture->first_pending, __ATOMIC_ACQUIRE);
 }
 
 
 /* EN: Check preflight and post-write cancellation, then open the next generation.
  * RU: Проверить отмену до I/O и после записи, затем открыть следующее поколение. */
-static int run(StyxClient *client)
+static int run(StyxClient *client, Fixture *fixture)
 {
     StyxFid *root = styxclientwalk(client, ".");
     StyxFid *directory = root, *lease = root;
-    Stop early = {0, 1}, pending = {0, STOP_AFTER_POLL};
     int ok = root &&
-        styxrpc_module_live_open_until(client, FILE_NAME, &directory, &lease, stopped, &early) == STYXRPC_IO_CANCELLED &&
+        styxrpc_module_live_open_until(client, FILE_NAME, &directory, &lease, stopped, NULL) == STYXRPC_IO_CANCELLED &&
         directory == root && lease == root &&
-        styxrpc_module_live_open_until(client, FILE_NAME, &directory, &lease, stopped, &pending) == STYXRPC_IO_CANCELLED &&
+        styxrpc_module_live_open_until(client, FILE_NAME, &directory, &lease, stopped, fixture) == STYXRPC_IO_CANCELLED &&
         directory == root && lease == root;
     if (ok)
     {
@@ -202,7 +199,7 @@ int main(void)
         return 1;
     }
     StyxClient *client = styxclientmountphy(phyposixfd(descriptors[1], STREAM), 4096, "test", "", 1000, 8);
-    int ok = client && run(client);
+    int ok = client && run(client, &fixture);
     styxclientfree(client);
     pthread_join(thread, NULL);
     if (!ok || fixture.writes != 2 || fixture.reads != 3 || fixture.closes != 2 || fixture.leased)

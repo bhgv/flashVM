@@ -1,5 +1,21 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1814 — cancel live Dis module and call setup
+
+A FlashVM task can stop while opening the live load service, capturing
+its exact generation, reading the interface or opening a checked
+method. The hosted C SDK uses the same Styx controls. The paired test
+holds real DisVM replies and checks that cancelling method setup sends
+no request bytes. After submission the SDK preserves call uncertainty.
+
+Задача FlashVM может остановиться при открытии службы загрузки,
+получении её точного поколения, чтении интерфейса и открытии
+проверенного метода. SDK C использует те же операции Styx.
+Парный тест удерживает настоящие ответы DisVM и проверяет отсутствие
+записи запроса отменённого метода. После отправки действуют прежние
+правила неопределённого исхода.
+[EN](STYX_RPC_LIVE_DIS.md) · [RU](STYX_RPC_LIVE_DIS.ru.md).
+
 ## v0.1813 — cancel deferred transfers in the standalone C provider
 
 Ordinary libstyxrpc servers can opt individual file reads and writes into

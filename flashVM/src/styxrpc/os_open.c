@@ -63,19 +63,26 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
     {
         opened = creating ? styxrpc_vfs_create_until(movies->session, path + 1, &handle->file, stop, worker) :
             styxrpc_vfs_open_until(movies->session, path + 1, access, &handle->file, stop, worker);
-        if (!creating && opened == STYXRPC_IO_NOT_OPEN && (!worker || !stop(worker)) &&
+        if (!creating && opened == STYXRPC_IO_NOT_OPEN &&
             access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
         {
             StyxRpcModuleExports exports;
-            struct StyxFid *module = styxrpc_module_open(movies->session, path + 1);
-            if (styxrpc_module_exports_at(module, movies->caller_pid ? movies->caller_pid : movies->binding->program.pid, &exports) == STYXRPC_OK)
+            struct StyxFid *module = NULL;
+            uint32_t pid = movies->caller_pid ? movies->caller_pid : movies->binding->program.pid;
+            opened = styxrpc_module_capture_until(movies->session, path + 1, NULL, &module, stop, worker);
+            if (opened == STYXRPC_IO_OK)
             {
-                handle->module = module;
-                opened = STYXRPC_IO_OK;
-            }
-            else
-            {
-                styxrpc_vfs_close(module, 0);
+                StyxRpcStatus checked = styxrpc_module_exports_scoped_at_until(module, pid,
+                    &exports, NULL, stop, worker);
+                if (checked == STYXRPC_OK)
+                {
+                    handle->module = module;
+                }
+                else
+                {
+                    styxrpc_vfs_close(module, checked == STYXRPC_CANCELLED);
+                    opened = checked == STYXRPC_CANCELLED ? STYXRPC_IO_CANCELLED : STYXRPC_IO_NOT_OPEN;
+                }
             }
         }
     }

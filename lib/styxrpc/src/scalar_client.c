@@ -16,21 +16,23 @@ StyxRpcOutcome styxrpc_scalar_invoke_at_until(StyxFid *directory, StyxClient *se
     {
         return STYXRPC_CALL_NOT_SENT;
     }
-    if (stop && stop(state))
+    StyxRpcVfsWait wait = {stop, state, 0};
+    if (styxrpc_vfs_control_poll(&wait))
     {
         return STYXRPC_CALL_CANCELLED;
     }
     int scoped;
-    StyxFid *fid = styxrpc_client_function(directory, session, module, name, signature, NULL, NULL, &scoped);
+    StyxFid *fid = styxrpc_client_function(directory, session, module, name, signature, NULL, NULL,
+        &scoped, &wait);
     if (!fid)
     {
-        return STYXRPC_CALL_NOT_SENT;
+        return wait.stopped ? STYXRPC_CALL_CANCELLED : STYXRPC_CALL_NOT_SENT;
     }
     unsigned char reply[STYXRPC_FRAME_SIZE];
     size_t received;
     StyxRpcOutcome outcome = styxrpc_client_exchange(fid, request, size, wait_ms,
-        reply, sizeof(reply), &received, stop, state);
-    styxclientclunk(fid);
+        reply, sizeof(reply), &received, stop ? styxrpc_vfs_control_poll : NULL, &wait);
+    styxrpc_vfs_control_close(fid, &wait);
     if (outcome != STYXRPC_CALL_OK)
     {
         return outcome;

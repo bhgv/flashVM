@@ -6,6 +6,8 @@
 #include <styx.h>
 #include "client.h"
 #include "styxrpc/vfs_client.h"
+#include "styxrpc/module_client.h"
+#include "styxrpc/scalar_client.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,7 +27,11 @@ typedef enum Operation
     DirectoryNext, /* Read one directory record. */
     Create,        /* Exclusive creation of an ordinary file. */
     MakeDirectory, /* Creation with DMDIR and read mode. */
-    Remove         /* Remove and consume a walked fid. */
+    Remove,        /* Remove and consume a walked fid. */
+    ModuleCapture, /* Clone a borrowed module directory. */
+    ModuleExports, /* Read a catalog on that directory. */
+    ModuleCheck,   /* Read the catalog for one declared import. */
+    ScalarCall     /* Verify a scalar profile before writing any request bytes. */
 } Operation;
 
 typedef struct Scenario
@@ -63,6 +69,7 @@ typedef struct Call
     StyxClient *session;    /* Borrowed caller session. */
     StyxRpcVfsFile *file;   /* Owned input for FileStat or output for FileOpen/Create. */
     StyxRpcVfsDir *dir;     /* Owned input for DirectoryNext or output for DirectoryOpen. */
+    StyxFid *module;        /* Owned fixture directory borrowed by the operation. */
     pthread_t owner;       /* Expected thread for the hook. */
     StyxRpcIoOutcome result; /* API outcome from the worker. */
     int valid;              /* Output and owner-thread verification. */
@@ -304,6 +311,43 @@ static void *run(void *state)
     case Remove:
         call->result = styxrpc_vfs_remove_until(call->session, "file", stopped, call);
         break;
+    case ModuleCapture:
+    {
+        StyxFid *captured = call->module;
+        call->result = styxrpc_module_capture_until(NULL, NULL, call->module, &captured, stopped, call);
+        call->valid &= captured == call->module;
+        if (captured != call->module)
+        {
+            styxclientclunk(captured);
+        }
+        break;
+    }
+    case ModuleExports:
+    {
+        StyxRpcModuleExports exports = {.count = 99};
+        uint32_t scopes = 17;
+        StyxRpcStatus status = styxrpc_module_exports_scoped_at_until(call->module, 0,
+            &exports, &scopes, stopped, call);
+        call->result = status == STYXRPC_CANCELLED ? STYXRPC_IO_CANCELLED : STYXRPC_IO_FAILED;
+        call->valid &= exports.count == 99 && scopes == 17;
+        break;
+    }
+    case ModuleCheck:
+    {
+        const StyxRpcModuleImport import = {"echo", STYXRPC_MODULE_INT, STYXRPC_INT_SIGNATURE, {0}};
+        StyxRpcStatus status = styxrpc_module_check_at_until(call->module, &import, 1, 0, stopped, call);
+        call->result = status == STYXRPC_CANCELLED ? STYXRPC_IO_CANCELLED : STYXRPC_IO_FAILED;
+        break;
+    }
+    case ScalarCall:
+    {
+        int64_t result = 73;
+        StyxRpcOutcome status = styxrpc_scalar_invoke_at_until(call->module, NULL, NULL,
+            "echo", STYXRPC_INT_SIGNATURE, -4, 1000, &result, stopped, call);
+        call->result = status == STYXRPC_CALL_CANCELLED ? STYXRPC_IO_CANCELLED : STYXRPC_IO_FAILED;
+        call->valid &= result == 73;
+        break;
+    }
     }
     if ((test->call == FileStat || test->call == PathStat) && test->expected != STYXRPC_IO_OK)
     {
@@ -345,7 +389,8 @@ static int exercise(const Scenario *test)
     Call call = {.peer = &peer, .session = session};
     int setup = session && styxrpc_vfs_open(session, "survivor", STYXRPC_FILE_READ, &survivor) == STYXRPC_IO_OK &&
         (test->call != FileStat || styxrpc_vfs_open(session, "file", STYXRPC_FILE_READ, &call.file) == STYXRPC_IO_OK) &&
-        (test->call != DirectoryNext || styxrpc_vfs_dir_open(session, "dir", &call.dir) == STYXRPC_IO_OK);
+        (test->call != DirectoryNext || styxrpc_vfs_dir_open(session, "dir", &call.dir) == STYXRPC_IO_OK) &&
+        (test->call < ModuleCapture || (call.module = styxrpc_module_open(session, "dir")) != NULL);
     __atomic_store_n(&peer.armed, 1, __ATOMIC_RELEASE);
     if (setup && !pthread_create(&caller, NULL, run, &call))
     {
@@ -371,6 +416,7 @@ static int exercise(const Scenario *test)
     {
         setup = read_control(call.file);
     }
+    styxclientclunk(call.module);
     styxrpc_vfs_dir_close(call.dir, 0);
     styxrpc_vfs_close(call.file, 0);
     styxrpc_vfs_close(survivor, 0);
@@ -410,7 +456,11 @@ int main(void)
         {"mkdir", MakeDirectory, Tcreate, 1, 0, STYXRPC_IO_UNCERTAIN},
         {"remove-check", Remove, Twalk, 1, 0, STYXRPC_IO_CANCELLED},
         {"remove", Remove, Tremove, 1, 0, STYXRPC_IO_UNCERTAIN},
-        {"remove-acknowledged", Remove, Tremove, 1, 1, STYXRPC_IO_OK}
+        {"remove-acknowledged", Remove, Tremove, 1, 1, STYXRPC_IO_OK},
+        {"module-capture", ModuleCapture, Twalk, 1, 0, STYXRPC_IO_CANCELLED},
+        {"module-exports", ModuleExports, Tread, 1, 0, STYXRPC_IO_CANCELLED},
+        {"module-check", ModuleCheck, Tread, 1, 0, STYXRPC_IO_CANCELLED},
+        {"scalar-admission", ScalarCall, Tread, 1, 0, STYXRPC_IO_CANCELLED}
     }; /* Exact real-codec cases, independent sessions. */
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i)
     {

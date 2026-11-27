@@ -23,7 +23,7 @@ typedef enum StyxRpcStatus
     STYXRPC_REMOTE_ERROR = 2, /* The provider acknowledged a failed call. */
     STYXRPC_MORE = 1,     /* Request incomplete or a reply is pending. */
     STYXRPC_INVALID = -1, /* Refused descriptor, malformed frame or offset. */
-    STYXRPC_CANCELLED = -2, /* Channel stop observed before any operation write. */
+    STYXRPC_CANCELLED = -2, /* Stop during discovery or before sending an operation. */
     STYXRPC_CANCELLED_UNCERTAIN = -3 /* Channel stop after a write; peer effects may exist. */
 } StyxRpcStatus;
 

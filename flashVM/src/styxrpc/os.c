@@ -190,19 +190,20 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
 {
     OsHandle *handle = state;
     struct StyxFid *live = NULL, *lease = NULL, *module;
+    FVM_Worker *worker = NULL;
+    StyxRpcModuleStop stop;
     (void)self;
     (void)args;
     if (argc)
     {
         return FVM_INVALID_ARGUMENT;
     }
+    fvm_worker_current(context, &worker);
+    stop = worker ? fvm_styxrpc_worker_stopped : NULL;
     if (!handle->module && handle->file && fvm_os_extension(handle->path, ".dis"))
     {
-        FVM_Worker *worker = NULL;
-        StyxRpcIoOutcome opened;
-        fvm_worker_current(context, &worker);
-        opened = styxrpc_module_live_open_until(handle->movies->session, handle->path + 1,
-            &live, &lease, worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+        StyxRpcIoOutcome opened = styxrpc_module_live_open_until(handle->movies->session, handle->path + 1,
+            &live, &lease, stop, worker);
         if (opened == STYXRPC_IO_CANCELLED)
         {
             return fvm_styxrpc_managed_fail(context, "Styx RPC module load cancelled");
@@ -219,20 +220,26 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
         FVM_StyxRpcLoadSpec spec = {0};
         FVM_Result status = FVM_NOT_FOUND;
         uint32_t scoped;
+        StyxRpcStatus checked;
         spec.session = handle->movies->session;
         spec.path = handle->path + 1;
         spec.pid = handle->movies->caller_pid ? handle->movies->caller_pid :
             handle->movies->binding->program.pid;
         spec.bus = handle->movies->argument_bus;
-        if (styxrpc_module_exports_scoped_at(module, spec.pid, &exports, &scoped) == STYXRPC_OK)
+        checked = styxrpc_module_exports_scoped_at_until(module, spec.pid, &exports, &scoped, stop, worker);
+        if (checked == STYXRPC_OK)
         {
             spec.methods = exports.methods;
             spec.count = exports.count;
             spec.wait_ms = FVM_SESSION_CALL_WAIT_MS;
             status = fvm_styxrpc_module_load_at(context, module, &spec, &lease, out, handle->movies->reverse, scoped);
         }
-        styxrpc_vfs_close(live, 0);
-        styxrpc_vfs_close(lease, 0);
+        else if (checked == STYXRPC_CANCELLED)
+        {
+            status = fvm_styxrpc_managed_fail(context, "Styx RPC module load cancelled");
+        }
+        styxrpc_vfs_close(live, worker && stop(worker));
+        styxrpc_vfs_close(lease, worker && stop(worker));
         return status;
     }
     if (handle->movies->root && handle->file && fvm_os_extension(handle->path, ".swf"))

@@ -10,6 +10,7 @@
 #include "flashvm/userdata.h"
 #include "styxrpc/vfs_client.h"
 #include "client.h"
+#include "wire_wait.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -259,17 +260,30 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
     FVM_Value value;
     FVM_Result status;
     LoadedModule *module = NULL;
-    struct StyxFid *directory;
+    struct StyxFid *directory = NULL;
+    FVM_Worker *worker = NULL;
+    StyxRpcModuleStop stop;
+    StyxRpcIoOutcome opened;
+    StyxRpcStatus verified;
     size_t i;
     if (!context || !out || !checked(spec))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    directory = base ? styxclientwalkfrom(base, ".") : styxrpc_module_open(spec->session, spec->path);
-    if (styxrpc_module_check_at(directory, spec->methods, spec->count, spec->pid) != STYXRPC_OK)
+    fvm_worker_current(context, &worker);
+    stop = worker ? fvm_styxrpc_worker_stopped : NULL;
+    opened = styxrpc_module_capture_until(spec->session, spec->path, base, &directory, stop, worker);
+    if (opened != STYXRPC_IO_OK)
     {
-        styxrpc_vfs_close(directory, 0);
-        return FVM_NOT_FOUND;
+        return opened == STYXRPC_IO_CANCELLED ?
+            fvm_styxrpc_managed_fail(context, "Styx RPC module binding cancelled") : FVM_NOT_FOUND;
+    }
+    verified = styxrpc_module_check_at_until(directory, spec->methods, spec->count, spec->pid, stop, worker);
+    if (verified != STYXRPC_OK)
+    {
+        styxrpc_vfs_close(directory, verified == STYXRPC_CANCELLED);
+        return verified == STYXRPC_CANCELLED ?
+            fvm_styxrpc_managed_fail(context, "Styx RPC module binding cancelled") : FVM_NOT_FOUND;
     }
     status = fvm_gc_roots_begin(context, &roots);
     if (status != FVM_OK)

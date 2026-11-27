@@ -61,14 +61,38 @@ struct StyxFid *styxrpc_module_open(struct StyxClient *session, const char *path
 struct StyxFid *styxrpc_module_live_open(struct StyxClient *session, const char *path,
     struct StyxFid **lease);
 
-/* EN: Return nonzero to cancel load request data I/O on the calling thread.
- * RU: Вернуть ненулевое значение для отмены передачи данных запроса загрузки. */
+/* EN: Return nonzero to stop a module operation on the calling thread.
+ * RU: Вернуть ненулевое значение для остановки операции с модулем в потоке вызова. */
 typedef int (*StyxRpcModuleStop)(void *state);
 
+/* EN: Capture a visible module directory or clone a borrowed unopened base
+ * when supplied. Poll stop through walk/stat and transfer out only on success.
+ * RU: Захватить видимый каталог модуля или клонировать неоткрытый base.
+ * Проверять stop при обходе и stat. Передать out только при успехе. */
+StyxRpcIoOutcome styxrpc_module_capture_until(struct StyxClient *session, const char *path,
+    struct StyxFid *base, struct StyxFid **out, StyxRpcModuleStop stop, void *state);
+
+
+/* EN: Check count imports for pid on the borrowed unopened directory.
+ * Poll stop(state) during verification and return STYXRPC_CANCELLED if stopped.
+ * RU: Проверить count импортов для pid на заимствованном неоткрытом directory.
+ * Вызывать stop(state) при проверке, вернуть STYXRPC_CANCELLED при остановке. */
+StyxRpcStatus styxrpc_module_check_at_until(struct StyxFid *directory,
+    const StyxRpcModuleImport *imports, size_t count, uint32_t pid, StyxRpcModuleStop stop, void *state);
+
+
+/* EN: Discover checked exports for pid on the borrowed unopened directory.
+ * Publish out and optional scope bits only on success. Poll stop(state) during verification.
+ * RU: Найти экспорты для pid на заимствованном неоткрытом directory.
+ * Выдать out и необязательные биты областей только при успехе. Проверять stop(state). */
+StyxRpcStatus styxrpc_module_exports_scoped_at_until(struct StyxFid *directory, uint32_t pid,
+    StyxRpcModuleExports *out, uint32_t *scoped, StyxRpcModuleStop stop, void *state);
+
+
 /* EN: Load with an optional stop hook. On success transfer both fids; otherwise
- * leave both output slots unchanged and clunk any submitted request.
+ * leave both output slots unchanged and retire any temporary request fid.
  * RU: Загрузить с необязательной проверкой остановки. При успехе выдать оба fid;
- * при отказе сохранить выходы и закрыть fid отправленного запроса. */
+ * при отказе сохранить выходы и освободить временный fid запроса. */
 StyxRpcIoOutcome styxrpc_module_live_open_until(struct StyxClient *session, const char *path,
     struct StyxFid **directory, struct StyxFid **lease, StyxRpcModuleStop stop, void *state);
 

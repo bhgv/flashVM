@@ -18,6 +18,11 @@ typedef struct StyxRpcVfsWait
 } StyxRpcVfsWait;
 
 
+/* EN: Sample the borrowed wait on the owner. Return one once stop is observed.
+ * RU: Проверить заимствованный wait у владельца. Вернуть единицу после остановки. */
+int styxrpc_vfs_control_poll(void *state);
+
+
 /* EN: Before a wire stage, sample wait and optionally return an owned polling
  * token in token. Serial transport only samples before submission.
  * RU: Перед обменом проверить wait и выдать в token собственный токен опроса,
@@ -39,6 +44,19 @@ StyxRpcIoOutcome styxrpc_vfs_control_end(StyxRpcVfsWait *wait, StyxCancel *token
  * в out собственный неоткрытый fid, который закрывает вызывающий. */
 StyxRpcIoOutcome styxrpc_vfs_control_walk(StyxClient *session, const char *path,
     StyxRpcVfsWait *wait, StyxFid **out);
+
+
+/* EN: Like control_walk, confined to the borrowed unopened base fid.
+ * RU: Как control_walk, относительно заимствованного неоткрытого fid base. */
+StyxRpcIoOutcome styxrpc_vfs_control_walk_from(StyxFid *base, const char *path,
+    StyxRpcVfsWait *wait, StyxFid **out);
+
+
+/* EN: Consume a temporary fid. Wait for clunk while the caller is live and
+ * switch to independent retirement if its wait is cancelled. NULL is harmless.
+ * RU: Поглотить временный fid. Ждать clunk до отмены вызывающего, затем
+ * освободить fid независимо. NULL допустим. */
+void styxrpc_vfs_control_close(StyxFid *fid, StyxRpcVfsWait *wait);
 
 
 /* EN: Read metadata from the borrowed fid under wait. Publish meta on success

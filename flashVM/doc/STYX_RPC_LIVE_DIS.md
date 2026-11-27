@@ -43,21 +43,22 @@ during the wait, and calls from inside a Styx application callback
 cannot start a nested scoped exchange. Use an `asinc` task when the movie
 must keep advancing or the Dis function depends on an application callback.
 
-A task's [`cancel()`](ASINC_CANCEL.md) stops a pending `.dis` load, including
-while submitting the path or waiting for a readiness reply. On the paired
-connection, the client flushes a pending data request by tag and closes
-the request fid. DisVM retires that request and interrupts any cancellable
-source read of that resident. Metadata, flush acknowledgement and clunk
-use the session's deadlines.
+A task's [`cancel()`](ASINC_CANCEL.md) stops a pending `.dis` load.
+This covers opening the load service, submitting the path, waiting for
+readiness, capturing the generated directory and checking its exports.
+The paired client sends `Tflush` for the pending Styx request and retires
+its temporary fids. Once DisVM receives the request's clunk, it retires
+the request and interrupts a cancellable source read. Flush acknowledgement
+and deferred cleanup use the session's deadlines.
 
-For a method invocation in a detached task, `cancel()` also stops
-waiting for the result. The client closes that call's fid and releases
-its argument channel scope. A scoped Dis call can unwind from a local
-channel send, receive or `alt` when the fid is closed. Cancellation that
-follows a request write leaves the peer's effects uncertain. An earlier
-queue transfer may already have happened, and unscoped Dis code can
-continue after the client stops waiting. A complete reply received before
-the flush acknowledgement keeps its normal outcome.
+For a checked method, cancellation also covers the module walk, profile
+and marker reads, and function open. A call stopped at these stages
+submits no method request. After a request write the peer's effects
+remain uncertain. The client closes a submitted call fid before revoking
+its borrowed channel arguments. A scoped Dis method can unwind from a
+local send, receive or `alt` on close. Earlier queue transfers may have
+happened already, and unscoped Dis code can continue. A complete reply
+received before the flush acknowledgement keeps its normal outcome.
 
 A [positioned Limbo file](../../disVM/runtime/STYX-NODE-OFFSETS.md) can
 serve an image if it has the true byte length and read and execute
@@ -80,3 +81,7 @@ typed calls parked on local Dis channels. The same test calls an
 independent proxy before and after the cancellation.
 Use `--cancel-dis-channel` to check pending sends, receives and selections
 on result channels that outlive their unloaded proxies.
+Use `--cancel-dis-setup` to hold the load control open,
+generation stat, interface read, scalar open and typed method open. Each stop follows a read on a
+neighboring fid. The test checks the exact flush tags, absence of early
+method writes and successful new calls on the same connection.

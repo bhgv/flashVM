@@ -21,11 +21,8 @@
 #define SCOPE_PID 123U /* Stable process in the paired control tree. */
 #define SCOPE_IDENTITY ".prog/123/.pid" /* Direct RPC-only path. */
 #define COUNTER_QID UINT64_C(0x101) /* Local fixture identity, independent of remote Qids. */
-#define BEFORE_OPEN 1U /* Stop before doing any metadata I/O. */
-#define BEFORE_WRITE 2U /* Stop with a fresh function fid and zero writes. */
-#define AFTER_WRITE 3U /* Stop after acknowledgement and before polling the reply. */
 
-static unsigned echo_calls; /* The server owns this count until its thread joins. */
+static unsigned echo_calls; /* Calls published by the server for cancellation checks. */
 
 typedef struct Fixture
 {
@@ -169,25 +166,18 @@ static int set(void *state, int32_t value)
 static int echo(void *state, int64_t argument, int64_t *result)
 {
     (void)state;
-    ++echo_calls;
+    __atomic_add_fetch(&echo_calls, 1, __ATOMIC_RELEASE);
     *result = argument;
     return 1;
 }
 
 
-typedef struct StopPlan
-{
-    unsigned checks; /* Number of stop checks on the calling thread. */
-    unsigned limit;  /* First check that reports cancellation. */
-} StopPlan;
-
-
-/* EN: Trigger the pinned worker test's cancellation at its designated phase.
- * RU: Запросить отмену тестового вызова на назначенной фазе. */
+/* EN: Cancel early with NULL state, or after the server receives the tested call.
+ * RU: Отменить до начала при NULL либо после получения проверяемого вызова сервером. */
 static int stop_at(void *state)
 {
-    StopPlan *plan = state;
-    return ++plan->checks >= plan->limit;
+    const unsigned *sent = state;
+    return !sent || __atomic_load_n(&echo_calls, __ATOMIC_ACQUIRE) >= *sent;
 }
 
 
@@ -195,14 +185,12 @@ static int stop_at(void *state)
  * RU: Различить отмену до и после записи; сохранить исходный образ. */
 static int cancel_calls(StyxFid *image)
 {
-    StopPlan early = {0, BEFORE_OPEN}, before = {0, BEFORE_WRITE}, after = {0, AFTER_WRITE};
+    unsigned sent = 1;
     int64_t value = -73;
     return styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 81,
-            1000, &value, stop_at, &early) == STYXRPC_CALL_CANCELLED && value == -73 &&
-        styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 82,
-            1000, &value, stop_at, &before) == STYXRPC_CALL_CANCELLED && value == -73 &&
+            1000, &value, stop_at, NULL) == STYXRPC_CALL_CANCELLED && value == -73 &&
         styxrpc_scalar_invoke_at_until(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 83,
-            1000, &value, stop_at, &after) == STYXRPC_CALL_CANCELLED_UNCERTAIN && value == -73;
+            1000, &value, stop_at, &sent) == STYXRPC_CALL_CANCELLED_UNCERTAIN && value == -73;
 }
 
 

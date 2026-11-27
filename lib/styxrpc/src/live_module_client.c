@@ -59,45 +59,49 @@ StyxRpcIoOutcome styxrpc_module_live_open_until(StyxClient *session, const char 
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    if (stop && stop(state))
+    StyxRpcVfsWait wait = {stop, state, 0};
+    if (styxrpc_vfs_control_poll(&wait))
     {
         return STYXRPC_IO_CANCELLED;
     }
     StyxRpcIoOutcome outcome = STYXRPC_IO_NOT_OPEN;
-    StyxFid *request = styxclientwalk(session, STYXRPC_LIVE_MODULE_PATH);
-    StyxFid *module = NULL;
+    StyxFid *request = NULL, *module = NULL;
     StyxMeta info;
-    if (request && styxclientstat(request, &info) && !info.directory &&
-        !strcmp(info.name, STYXRPC_LIVE_MODULE_REQUEST) && styxclientopen(request, STYXRPC_FILE_RDWR))
+    StyxRpcModuleStop poll = stop ? styxrpc_vfs_control_poll : NULL;
+    if (styxrpc_vfs_control_walk(session, STYXRPC_LIVE_MODULE_PATH, &wait, &request) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_stat(request, &info, &wait, STYXRPC_IO_NOT_OPEN) == STYXRPC_IO_OK &&
+        !info.directory && !strcmp(info.name, STYXRPC_LIVE_MODULE_REQUEST) &&
+        styxrpc_vfs_control_open(request, STYXRPC_FILE_RDWR, &wait) == STYXRPC_IO_OK)
     {
         StyxTransfer sent;
-        styxclientwriteuntil(request, 0, path, length, stop, state, &sent);
+        styxclientwriteuntil(request, 0, path, length, poll, &wait, &sent);
         outcome = stop && sent.cancelled && !sent.success ? STYXRPC_IO_CANCELLED :
             styxrpc_vfs_transfer_outcome(&sent, length);
         char address[] = STYXRPC_LIVE_MODULE_ROOT "/00000000";
         if (outcome == STYXRPC_IO_OK)
         {
             outcome = sent.count == length ? receive_generation(request,
-                address + sizeof(STYXRPC_LIVE_MODULE_ROOT), stop, state) : STYXRPC_IO_FAILED;
+                address + sizeof(STYXRPC_LIVE_MODULE_ROOT), poll, &wait) : STYXRPC_IO_FAILED;
         }
         if (outcome == STYXRPC_IO_OK)
         {
-            module = styxclientwalk(session, address);
-            if (!module || !styxclientstat(module, &info) || !info.directory ||
+            if (styxrpc_vfs_control_walk(session, address, &wait, &module) != STYXRPC_IO_OK ||
+                styxrpc_vfs_control_stat(module, &info, &wait, STYXRPC_IO_FAILED) != STYXRPC_IO_OK ||
+                !info.directory ||
                 !(info.mode & 0444U) || !(info.mode & 0111U))
             {
                 outcome = STYXRPC_IO_FAILED;
             }
         }
     }
-    if (outcome == STYXRPC_IO_OK && stop && stop(state))
+    if (wait.stopped || (outcome == STYXRPC_IO_OK && styxrpc_vfs_control_poll(&wait)))
     {
         outcome = STYXRPC_IO_CANCELLED;
     }
     if (outcome != STYXRPC_IO_OK)
     {
-        styxclientclunk(module);
-        styxclientclunk(request);
+        styxrpc_vfs_control_close(module, &wait);
+        styxrpc_vfs_control_close(request, &wait);
         return outcome;
     }
     *directory = module;

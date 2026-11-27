@@ -2,12 +2,14 @@
 # EN: Compile both applications and run the ordinary paired executables over Styx.
 # RU: Собрать оба приложения и запустить штатную пару через Styx.
 import argparse
+from functools import partial
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
 
 from run import compile_image, paired_exchange
 from vfs_control_gate import gated_exchange
+from module_setup_gate import ModuleSetupGate
 
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
@@ -37,7 +39,8 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
-                    "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write", "cancel-vfs-control"):
+                    "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
+                    "cancel-vfs-control", "cancel-dis-setup"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -78,13 +81,16 @@ def main():
             gate = "read-gate" if name == "cancel-vfs-read" else "write-gate"
             (directory / gate).write_bytes(b"0")
             (directory / "neighbour").write_bytes(b"Z")
-        if name == "cancel-vfs-control":
+        if name == "cancel-dis-setup":
+            compile_image(args, directory, tests / "live-dis_library.b", "setup.dis")
+        if name in ("cancel-vfs-control", "cancel-dis-setup"):
             (directory / "control-gate").write_bytes(b"0")
+            (directory / "neighbour").write_bytes(b"Z")
+        if name == "cancel-vfs-control":
             (directory / "hold-dir").mkdir()
             (directory / "hold-dir/child").touch()
             for path in ("remove-by-cancel", "attr-cancel", "open-cancel"):
                 (directory / path).touch()
-            (directory / "neighbour").write_bytes(b"Z")
         if name == "dirlive":
             (directory / "tools/before").touch()
         if name == "modref-reverse":
@@ -115,6 +121,7 @@ def main():
             "cancel-vfs-read": ("styxnodes",),
             "cancel-vfs-write": ("styxnodes",),
             "cancel-vfs-control": (),
+            "cancel-dis-setup": (),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -140,18 +147,22 @@ def main():
             "cancel-vfs-read": ("cancel-vfs-read_worker.as",),
             "cancel-vfs-write": ("cancel-vfs-write_worker.as", "cancel-vfs-read_worker.as"),
             "cancel-vfs-control": ("cancel-vfs-control_worker.as",),
+            "cancel-dis-setup": ("cancel-dis-setup_worker.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
         compile_movie(args, directory, tests / (name + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))
-        exchange = gated_exchange if name == "cancel-vfs-control" else paired_exchange
+        exchange = {
+            "cancel-vfs-control": gated_exchange,
+            "cancel-dis-setup": partial(gated_exchange, gate_type=ModuleSetupGate),
+        }.get(name, paired_exchange)
         exchange(
             directory,
             lambda connection: [args.player, *connection, mode],
             lambda connection: [args.runtime, *connection, "--at", "/peer",
                                 *(("--live-dis-load",) if name in ("live-dis", "cancel-dis-call",
-                                                                  "cancel-dis-channel") else ()), "--",
+                                                                  "cancel-dis-channel", "cancel-dis-setup") else ()), "--",
                                 "--native-spawn", mode, client.name],
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp, timeout=30 if name == "live-dis" else 15,

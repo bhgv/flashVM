@@ -48,6 +48,7 @@ Copyright (c) 2026 bhgv
 [Захваченные каталоги модулей](reference/module_open.ru.md) закрепляют экспорт и вызовы за выбранным образом. См. [обнаружение экспортов](reference/module_exports_at.ru.md) и [точный скалярный вызов](reference/scalar_invoke_at.ru.md).
 [Контекстное обнаружение](reference/module_exports_scoped_at.ru.md) показывает, каким методам нужен PID вызывающей стороны. Во время синхронного вызова владелец может [обслуживать нативное дерево программ](reference/server_program_step_for.ru.md), отложив колбэки приложения.
 [Живая загрузка с отменой](reference/module_live_open_until.ru.md) закрывает точный fid запроса при остановке ожидания образа Dis.
+[Захват модуля](reference/module_capture_until.ru.md), [проверка импортов](reference/module_check_at_until.ru.md) и [обнаружение экспортов](reference/module_exports_scoped_at_until.ru.md) поддерживают отмену и проверяют точный каталог.
 [Вызовы методов с отменой](reference/scalar_invoke_at_until.ru.md) различают остановку до первой записи и неопределённый исход после отправки. Это правило действует для управляемого, графового и канального кодеков.
 [Канальные операции с отменой](reference/channel_lease_exchange_until.ru.md) закрывают временный fid операции и сохраняют исходный маршрут.
 

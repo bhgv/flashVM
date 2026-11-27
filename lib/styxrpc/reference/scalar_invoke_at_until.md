@@ -23,12 +23,13 @@ to `STYXRPC_SCALAR_WAIT_MAX_MS`. On success `result` receives the scalar.
 
 The optional hook `stop(state)` runs synchronously on the calling
 thread. It should sample a stop flag and return nonzero to stop.
-The function checks before opening the call and when sending or awaiting
-data. On a multiplexed session, a transmitted request gets one `Tflush`
-by tag. Metadata, flush acknowledgement and clunk use the session's
-deadlines. A complete reply received before flush acknowledgement keeps
-its ordinary outcome. A NULL hook gives ordinary blocking behavior.
-Keep the state alive through return. The SDK owns the operation fid.
+The function checks while walking the module, reading profile records and
+opening the function, and while sending or awaiting data. On multiplexed
+Styx a pending exchange gets a `Tflush` by tag. A complete reply received
+before flush acknowledgement keeps its ordinary outcome. Flush
+acknowledgement and fid retirement use the session's deadlines.
+A NULL hook uses ordinary waits. Keep the state alive through return.
+The SDK owns the temporary fids.
 
 | Outcome | Meaning |
 | --- | --- |

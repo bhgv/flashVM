@@ -20,24 +20,23 @@ slots for the exact unopened directory and the request lease. On
 through every call and any live result channels. Close both with
 `styxclientclunk` once their owners finish.
 
-An optional `stop` hook receives the borrowed `state` synchronously on
-the calling thread. Return nonzero to stop before submission, while
-sending the path, while waiting for readiness, or before transferring the fids. The hook should sample
-a stop flag and return promptly. Keep its state alive until the call
-returns. A NULL hook uses ordinary readiness polling.
+The optional `stop(state)` runs on the calling thread. It returns nonzero
+to stop while opening the service, writing the path, waiting for
+readiness or capturing the generation. Keep `state` alive through return.
+A NULL hook uses ordinary blocking exchanges and readiness polling.
 
-Cancellation returns `STYXRPC_IO_CANCELLED`. An invalid request or an
-unavailable control file returns `STYXRPC_IO_NOT_OPEN`. A refused image,
-invalid publication or expired readiness wait returns `STYXRPC_IO_FAILED`.
-An unacknowledged request write can return `STYXRPC_IO_UNCERTAIN`.
-Every unsuccessful return preserves both output slots and closes all
-temporary fids. A request already acknowledged by the peer is retired
-when its clunk arrives. The SDK never replays its write.
+`STYXRPC_IO_CANCELLED` reports a stop. An invalid request or unavailable
+control file returns `STYXRPC_IO_NOT_OPEN`. A refused image, invalid
+publication or expired readiness wait returns `STYXRPC_IO_FAILED`.
+An unacknowledged path write can return `STYXRPC_IO_UNCERTAIN`. Failure
+preserves both outputs. A temporary request is retired when its clunk
+reaches the provider. It may do so after return. The SDK never replays
+the write.
 
-Readiness polling has a four-second budget. The multiplexed client
-flushes a pending path write or readiness read by tag. Metadata, flush
-acknowledgement and clunk use the mounted session's deadlines.
-Call on a thread allowed to wait for I/O. Separate calls use separate fids.
+Readiness polling has a four-second budget. A multiplexed session flushes
+a pending walk, stat, open, read or write by tag. Flush acknowledgement and
+cleanup use the session's deadlines. Call on a thread allowed to wait
+for I/O. Separate calls use separate fids.
 
 ```c
 struct StyxFid *directory = NULL;

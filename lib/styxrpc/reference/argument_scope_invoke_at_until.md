@@ -1,7 +1,7 @@
 # styxrpc_argument_scope_invoke_at_until
 
 [Русский](argument_scope_invoke_at_until.ru.md) · [Declaration](../include/styxrpc/channel_arguments.h#L79) ·
-[Implementation](../src/channel_client.c#L149)
+[Implementation](../src/channel_client.c#L164)
 
 ```c
 #include <styxrpc/channel_arguments.h>
@@ -28,17 +28,21 @@ On success, `result` borrows the reply buffer and may own a
 
 The optional hook `stop(state)` runs synchronously on the calling
 thread. It should sample a stop flag and return nonzero to stop.
-The function checks before opening the call and when sending or awaiting
-data. On a multiplexed session, a transmitted request gets one `Tflush`
-by tag. Metadata, flush acknowledgement and clunk use the session's
-deadlines. A complete reply received before flush acknowledgement keeps
-its ordinary outcome. A NULL hook gives ordinary blocking behavior.
-Keep the state alive through return. The SDK owns the operation fid.
+The function checks while walking the module, reading profile records and
+opening the function, and while sending or awaiting data. On multiplexed
+Styx a pending exchange gets a `Tflush` by tag. A complete reply received
+before flush acknowledgement keeps its ordinary outcome. Flush
+acknowledgement and fid retirement use the session's deadlines.
+A NULL hook uses ordinary waits. Keep the state alive through return.
+The SDK owns the temporary fids.
 
 | Outcome | Meaning |
 | --- | --- |
 | `STYXRPC_CALL_CANCELLED` | The hook stopped the call before a request write. |
 | `STYXRPC_CALL_CANCELLED_UNCERTAIN` | The hook stopped the call during or after a write. Peer effects may have occurred. |
+
+A submitted call drains the function close before the temporary
+argument scope is revoked.
 
 The SDK closes the per-call fid on cancellation and does not replay
 a request. It preserves the typed output on cancellation. The ordinary

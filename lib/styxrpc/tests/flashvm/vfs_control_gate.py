@@ -58,6 +58,11 @@ class Gate:
                 self.paths[newfid] = frame[at + 2 : at + 2 + size].decode("utf-8")
                 at += 2 + size
             return frame
+        return self.select_request(kind, tag, frame)
+
+    # EN: Record the selected mutation or read and recognize recovery on a new fid.
+    # RU: Учесть выбранное изменение или чтение и распознать восстановление на новом fid.
+    def select_request(self, kind, tag, frame):
         if kind not in (112, 114, 116, 122, 124):
             return frame
         fid, = struct.unpack_from("<I", frame, 7)
@@ -163,13 +168,13 @@ def relay(source, destination, gate, request):
 
 
 # EN: Connect two unmodified VM processes to the deterministic gate and check
-# their real application results plus one exact original tag per stage.
+# their real application results plus one exact original tag per stage from gate_type.
 # RU: Подключить штатные процессы VM к барьеру и проверить результаты приложений
-# и ровно один исходный тег на этап.
-def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=16):
+# и ровно один исходный тег на этап, выбранный gate_type.
+def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=16, gate_type=Gate):
     player_fd, back = stream_pair(tcp)
     desktop_fd, front = stream_pair(tcp)
-    gate = Gate(directory)
+    gate = gate_type(directory)
     with player_fd, back, desktop_fd, front:
         workers = [threading.Thread(target=relay, args=(back, front, gate, True)),
                    threading.Thread(target=relay, args=(front, back, gate, False))]
@@ -195,5 +200,5 @@ def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=1
                         pass
                 for worker in workers:
                     worker.join(5)
-            if any(worker.is_alive() for worker in workers) or gate.errors or tuple(gate.flushed) != Gate.stages or not gate.recovered:
+            if any(worker.is_alive() for worker in workers) or gate.errors or tuple(gate.flushed) != gate.stages or not gate.recovered:
                 raise RuntimeError(f"reverse 9P cancellation gate: {gate.errors}, flushed={gate.flushed}")
