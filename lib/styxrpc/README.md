@@ -218,6 +218,9 @@ The application owns the positional and keyed parts of the table. One C callback
 
 [Hosted channel leases](reference/channel_leases.md) provide verified scoped invocations, pinned result-channel operations and callback-backed channel publication. C programs and the FlashVM bridge share these adapters.
 
+An import can now stop while confirming a [module token](reference/channel_lease_import_message_until.md) or [reverse PID](reference/channel_pid_import_until.md). All routes from a message are published together.
+[Runnable C and DisVM example](examples/disvm/CHANNEL_ADMISSION.md).
+
 ## Delegated channels
 
 A nested channel can use a key on the current bus, a distinct reverse PID or

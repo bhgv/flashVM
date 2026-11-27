@@ -150,6 +150,8 @@ tokens when the function fid is clunked. Failure reports the stage number.
 Success prints `PASS delegated PID and module channels between C and DisVM`
 for both VM modes. The launcher closes the socket and waits for the provider.
 
+[Runnable C and DisVM example](disvm/CHANNEL_ADMISSION.md) shows cancellation of a route batch and recovery on the original lease.
+
 [C client](disvm/routed_client.c) · [Address decoding](../reference/channel_element_routes.md) · [Routed operations](../reference/channel_route_exchange.md)
 
 [Two channels over one socket](module_channels.md)

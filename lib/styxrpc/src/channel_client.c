@@ -11,6 +11,7 @@
 #include "load_profile.h"
 #include "scalar_record.h"
 #include "scalar_verify.h"
+#include "vfs_client_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -341,8 +342,8 @@ static int seen_token(const StyxRpcChannelRoutes *received, size_t index)
 
 
 /* EN/RU: See channel_client.h. / См. channel_client.h. */
-StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
-    const char *shape, const void *bytes, size_t size)
+StyxRpcStatus styxrpc_channel_lease_import_message_until(StyxRpcChannelLease *lease,
+    const char *shape, const void *bytes, size_t size, StyxRpcCallStop stop, void *state)
 {
     StyxRpcChannelRoutes received;
     const char *end = shape && *shape == '(' ? styxshape_end(shape + 1) : NULL;
@@ -361,13 +362,30 @@ StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
             return STYXRPC_INVALID;
         }
     }
+    StyxRpcVfsWait wait = {stop, state, 0};
     for (size_t i = 0; i < received.count; ++i)
     {
-        if (!seen_token(&received, i) && !styxrpc_channel_authenticate_bound(lease->module, received.entries[i].token))
+        if (!seen_token(&received, i))
         {
-            return STYXRPC_INVALID;
+            StyxRpcStatus status = styxrpc_channel_authenticate_bound(lease->module, received.entries[i].token, &wait);
+            if (status != STYXRPC_OK)
+            {
+                return status;
+            }
         }
+    }
+    if (styxrpc_vfs_control_poll(&wait))
+    {
+        return STYXRPC_CANCELLED;
     }
     lease->routes = staged;
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
+    const char *shape, const void *bytes, size_t size)
+{
+    return styxrpc_channel_lease_import_message_until(lease, shape, bytes, size, NULL, NULL);
 }

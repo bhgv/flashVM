@@ -4,45 +4,62 @@
  */
 #include "channel_route_internal.h"
 #include "load_profile.h"
-#include "client.h"
+#include "vfs_client_internal.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
 
-/* EN: Confirm the exact decimal identity and bus of pid on reverse.
- * RU: Подтвердить точный десятичный идентификатор и шину pid на reverse. */
-static int check_pid(StyxClient *reverse, uint32_t pid)
+/* EN: Read identity through its EOF and compare only the exact decimal line.
+ * Return 1 on a match. Borrow the opened fid and the caller's stop state.
+ * RU: Прочитать identity до конца и сравнить точную десятичную строку.
+ * Вернуть 1 при совпадении. Заимствовать открытый fid и состояние остановки. */
+static int matches_pid(StyxFid *identity, uint32_t pid, StyxRpcVfsWait *wait)
 {
-    char path[sizeof(".prog/4294967295")];
     char expected[sizeof("4294967295\n")], bytes[sizeof(expected)];
-    snprintf(path, sizeof(path), ".prog/%" PRIu32, pid);
     size_t length = (size_t)snprintf(expected, sizeof(expected), "%" PRIu32 "\n", pid);
-    StyxFid *dir = styxclientwalk(reverse, path);
-    StyxFid *identity = dir ? styxclientwalkfrom(dir, ".pid") : NULL;
-    StyxFid *bus = NULL;
     size_t seen = 0;
-    int ok = identity && styxclientopen(identity, 0);
-    while (ok && seen < sizeof(bytes))
+    while (seen < sizeof(bytes))
     {
         StyxTransfer read;
-        styxclientread(identity, seen, bytes + seen, sizeof(bytes) - seen, &read);
-        ok = read.success && read.confirmed && !read.uncertain && read.count <= sizeof(bytes) - seen;
-        if (!ok || !read.count)
+        styxclientreaduntil(identity, seen, bytes + seen, sizeof(bytes) - seen,
+            wait->stop ? styxrpc_vfs_control_poll : NULL, wait, &read);
+        if (!read.success || !read.confirmed || read.uncertain || read.count > sizeof(bytes) - seen)
         {
-            break;
+            return 0;
+        }
+        if (!read.count)
+        {
+            return seen == length && !memcmp(bytes, expected, length);
         }
         seen += read.count;
     }
-    if (ok && seen == length && !memcmp(bytes, expected, length))
+    return 0;
+}
+
+
+/* EN: Confirm pid and its bus on the borrowed reverse mount. Retire all
+ * temporary fids before returning, deferring cleanup if wait stops.
+ * RU: Подтвердить pid и его шину на заимствованном встречном подключении.
+ * Освободить временные fid до возврата или отложить очистку при остановке wait. */
+static StyxRpcStatus check_pid(StyxClient *reverse, uint32_t pid, StyxRpcVfsWait *wait)
+{
+    char path[sizeof(".prog/4294967295")];
+    StyxFid *dir = NULL, *identity = NULL, *bus = NULL;
+    snprintf(path, sizeof(path), ".prog/%" PRIu32, pid);
+    int accepted = styxrpc_vfs_control_walk(reverse, path, wait, &dir) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_walk_from(dir, ".pid", wait, &identity) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_open(identity, STYXRPC_FILE_READ, wait) == STYXRPC_IO_OK &&
+        matches_pid(identity, pid, wait) &&
+        styxrpc_vfs_control_walk_from(dir, ".unibus", wait, &bus) == STYXRPC_IO_OK;
+    styxrpc_vfs_control_close(bus, wait);
+    styxrpc_vfs_control_close(identity, wait);
+    styxrpc_vfs_control_close(dir, wait);
+    if (styxrpc_vfs_control_poll(wait))
     {
-        bus = styxclientwalkfrom(dir, ".unibus");
+        return STYXRPC_CANCELLED;
     }
-    ok = bus != NULL;
-    styxclientclunk(bus);
-    styxclientclunk(identity);
-    styxclientclunk(dir);
-    return ok;
+    return accepted ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
 
@@ -69,8 +86,8 @@ static int append(StyxRpcChannelRoutes *staged, const StyxRpcChannelRoute *route
 
 
 /* EN/RU: See styxrpc/channel_route.h. / См. styxrpc/channel_route.h. */
-StyxRpcStatus styxrpc_channel_pid_import(StyxClient *reverse, const char *shape,
-    const void *bytes, size_t size, StyxRpcChannelRoutes *routes)
+StyxRpcStatus styxrpc_channel_pid_import_until(StyxClient *reverse, const char *shape,
+    const void *bytes, size_t size, StyxRpcChannelRoutes *routes, StyxRpcCallStop stop, void *state)
 {
     StyxRpcChannelRoutes received;
     const char *end = shape && *shape == '(' ? styxshape_end(shape + 1) : NULL;
@@ -89,15 +106,29 @@ StyxRpcStatus styxrpc_channel_pid_import(StyxClient *reverse, const char *shape,
             return STYXRPC_INVALID;
         }
     }
+    StyxRpcVfsWait wait = {stop, state, 0};
     for (size_t i = 0; i < received.count; ++i)
     {
-        if (!check_pid(reverse, received.entries[i].pid))
+        StyxRpcStatus status = check_pid(reverse, received.entries[i].pid, &wait);
+        if (status != STYXRPC_OK)
         {
-            return STYXRPC_INVALID;
+            return status;
         }
+    }
+    if (styxrpc_vfs_control_poll(&wait))
+    {
+        return STYXRPC_CANCELLED;
     }
     *routes = staged;
     return STYXRPC_OK;
+}
+
+
+/* EN/RU: See styxrpc/channel_route.h. / См. styxrpc/channel_route.h. */
+StyxRpcStatus styxrpc_channel_pid_import(StyxClient *reverse, const char *shape,
+    const void *bytes, size_t size, StyxRpcChannelRoutes *routes)
+{
+    return styxrpc_channel_pid_import_until(reverse, shape, bytes, size, routes, NULL, NULL);
 }
 
 

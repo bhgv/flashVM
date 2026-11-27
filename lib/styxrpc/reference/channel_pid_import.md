@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_import
 
-[Русский](channel_pid_import.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L112) · [Implementation](../src/channel_pid.c#L72)
+[Русский](channel_pid_import.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L112) · [Implementation](../src/channel_pid.c#L128)
 
 ```c
 #include <styxrpc/channel_route.h>
@@ -15,3 +15,5 @@ On the owner, import a complete typed element accepted for a hosted result. `rev
 The SDK records one root per PID at a stable index. It preserves exact aliases and rejects conflicting root keys, schemas or capacity flags. Previously admitted child indices remain valid. For each received PID it reads the exact decimal identity and checks `.unibus` under the same PID directory. These checks use the mounted client's timeout for each Styx operation. The caller provides the association between the message and the result. The PID is scoped to a native attachment whose grant IDs stay unique.
 
 `STYXRPC_OK` commits the table. `STYXRPC_INVALID` preserves it on invalid input, missing resources, transport failure, or exhausted slots. Use [PID exchange](channel_pid_exchange.md) to operate on an admitted PID and discover child keys on that bus. The peer can revoke it after admission. [Socket test](../tests/channel_socket.c)
+
+[Cancellable form](channel_pid_import_until.md).

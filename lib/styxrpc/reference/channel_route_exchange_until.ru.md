@@ -1,6 +1,6 @@
 # styxrpc_channel_route_exchange_until
 
-[English](channel_route_exchange_until.md) · [Объявление](../include/styxrpc/channel_route.h#L102) · [Реализация](../src/channel_exchange.c#L230)
+[English](channel_route_exchange_until.md) · [Объявление](../include/styxrpc/channel_route.h#L102) · [Реализация](../src/channel_exchange.c#L236)
 
 ```c
 #include <styxrpc/channel_route.h>

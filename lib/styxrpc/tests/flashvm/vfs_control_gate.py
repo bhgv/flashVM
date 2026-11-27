@@ -127,7 +127,7 @@ def read_exact(stream, size):
 # credits and closes unchanged. Segmentation into P9MX payloads may differ.
 # RU: Разобрать исходные кадры только проверяемого канала. Передать другие
 # каналы, кредиты и закрытия без изменений. Разбиение на кадры P9MX может меняться.
-def relay(source, destination, gate, request):
+def relay(source, destination, gate, request, selected_lane):
     pending = bytearray()
     try:
         while header := read_exact(source, 12):
@@ -137,7 +137,7 @@ def relay(source, destination, gate, request):
             payload = read_exact(source, size)
             if payload is None:
                 raise RuntimeError("truncated P9MX payload")
-            if lane != LANE or kind != DATA:
+            if lane != selected_lane or kind != DATA:
                 destination.sendall(header + payload)
                 continue
             pending.extend(payload)
@@ -170,13 +170,14 @@ def relay(source, destination, gate, request):
 # their real application results plus one exact original tag per stage from gate_type.
 # RU: Подключить штатные процессы VM к барьеру и проверить результаты приложений
 # и ровно один исходный тег на этап, выбранный gate_type.
-def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=16, gate_type=Gate):
+def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=16, gate_type=Gate,
+                   lane=LANE, initiator_trace=()):
     player_fd, back = stream_pair(tcp)
     desktop_fd, front = stream_pair(tcp)
     gate = gate_type(directory)
     with player_fd, back, desktop_fd, front:
-        workers = [threading.Thread(target=relay, args=(back, front, gate, True)),
-                   threading.Thread(target=relay, args=(front, back, gate, False))]
+        workers = [threading.Thread(target=relay, args=(back, front, gate, True, lane)),
+                   threading.Thread(target=relay, args=(front, back, gate, False, lane))]
         with subprocess.Popen(player(["--fd", str(player_fd.fileno())]), cwd=directory,
                               pass_fds=(player_fd.fileno(),), stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True) as provider:
@@ -188,7 +189,7 @@ def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=1
                                         pass_fds=(desktop_fd.fileno(),), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         text=True, timeout=timeout)
                 desktop_fd.close()
-                verify_exchange(provider, result, expected, ())
+                verify_exchange(provider, result, expected, initiator_trace)
             finally:
                 if provider.poll() is None:
                     provider.kill()

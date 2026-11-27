@@ -5,6 +5,7 @@
 #include "channel_private.h"
 #include "managed_refs.h"
 #include "managed_values.h"
+#include "wire_wait.h"
 #include "flashvm/userdata.h"
 #include <stdlib.h>
 
@@ -173,8 +174,10 @@ FVM_Result fvm_styxrpc_channel_decode_message(FVM_Context *context, FVM_GCRootSc
 {
     FVM_StyxChannelDecode decode = {0};
     FVM_StyxRefs refs = {0};
+    FVM_Worker *worker = NULL;
     FVM_Value value;
     FVM_Result status;
+    StyxRpcStatus admitted;
     FVM_SRecord element;
     unsigned count;
     size_t used;
@@ -189,9 +192,13 @@ FVM_Result fvm_styxrpc_channel_decode_message(FVM_Context *context, FVM_GCRootSc
     {
         return FVM_OUT_OF_MEMORY;
     }
-    if (styxrpc_channel_lease_import_message(set->lease, shape, bytes, size) != STYXRPC_OK)
+    fvm_worker_current(context, &worker);
+    admitted = styxrpc_channel_lease_import_message_until(set->lease, shape, bytes, size,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (admitted != STYXRPC_OK)
     {
-        return FVM_INVALID_ARGUMENT;
+        return admitted == STYXRPC_CANCELLED ?
+            fvm_styxrpc_managed_fail(context, "Styx RPC mailbox message admission cancelled") : FVM_INVALID_ARGUMENT;
     }
     ++set->references;
     decode.set = set;

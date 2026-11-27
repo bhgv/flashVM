@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_import_message
 
-[English](channel_lease_import_message.md) · [Сценарий аренд](channel_leases.ru.md) · [Объявление](../include/styxrpc/channel_client.h#L84) · [Реализация](../src/channel_client.c#L329)
+[English](channel_lease_import_message.md) · [Сценарий аренд](channel_leases.ru.md) · [Объявление](../include/styxrpc/channel_client.h#L84) · [Реализация](../src/channel_client.c#L387)
 
 ```c
 #include <styxrpc/channel_client.h>
@@ -15,3 +15,5 @@ SDK проверяет целый кадр и резервирует индек�
 `STYXRPC_OK` устанавливает подготовленную таблицу. Найдите индексы через [маршрут аренды](channel_lease_route.ru.md) и используйте [обмен по аренде](channel_lease_exchange.ru.md). `STYXRPC_INVALID` сохраняет прежнюю таблицу при неверном кадре, несовместимых полномочиях, исчерпании слотов или отказе проверки на транспорте. Каждая операция Styx использует таймаут монтирования клиента. Вызывайте вне колбэков встречного диспетчера и удерживайте исходную аренду до возврата. Партнёр может впоследствии отозвать токен, поэтому операции повторно подтверждают его на своих fid.
 
 [Интеграционная проверка](../tests/flashvm/run.py) · [Импорт ключей текущей шины](channel_lease_import_element.ru.md)
+
+[Вариант с отменой](channel_lease_import_message_until.ru.md).

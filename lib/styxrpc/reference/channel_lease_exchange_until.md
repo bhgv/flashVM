@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_exchange_until
 
-[Русский](channel_lease_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L55) · [Implementation](../src/channel_client.c#L216)
+[Русский](channel_lease_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L55) · [Implementation](../src/channel_client.c#L217)
 
 ```c
 #include <styxrpc/channel_client.h>

@@ -4,6 +4,7 @@
  */
 #include "channel_private.h"
 #include "managed_values.h"
+#include "wire_wait.h"
 #include "flashvm/avm1.h"
 #include "flashvm/exception.h"
 #include "flashvm/userdata.h"
@@ -32,6 +33,7 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
     StyxRpcChannelResult result = {0};
     FVM_Result status;
     StyxRpcStatus received;
+    FVM_Worker *worker = NULL;
     unsigned char *bytes;
     (void)args;
     (void)unused;
@@ -43,6 +45,11 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC mailbox is closed");
     }
+    fvm_worker_current(context, &worker);
+    if (fvm_styxrpc_worker_stopped(worker))
+    {
+        return fvm_styxrpc_managed_fail(context, "Styx RPC mailbox receive cancelled");
+    }
     bytes = malloc(FRAME);
     if (!bytes)
     {
@@ -52,13 +59,20 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
     if (status == FVM_OK)
     {
         received = styxrpc_channel_mailbox_receive(set->pid_mailbox, bytes, FRAME, &result.size);
+        if (received == STYXRPC_OK)
+        {
+            received = styxrpc_channel_pid_import_until(set->reverse, set->pid_shape, bytes, result.size,
+                &set->pid_routes, worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+        }
         if (received == STYXRPC_MORE)
         {
             fvm_value_undefined(out);
         }
-        else if (received != STYXRPC_OK ||
-            styxrpc_channel_pid_import(set->reverse, set->pid_shape, bytes, result.size, &set->pid_routes) != STYXRPC_OK ||
-            !styxrpc_channel_mailbox_active(set->pid_mailbox))
+        else if (received == STYXRPC_CANCELLED)
+        {
+            status = fvm_styxrpc_managed_fail(context, "Styx RPC mailbox message admission cancelled");
+        }
+        else if (received != STYXRPC_OK || !styxrpc_channel_mailbox_active(set->pid_mailbox))
         {
             status = fvm_styxrpc_managed_fail(context, "Styx RPC mailbox message was refused");
         }

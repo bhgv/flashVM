@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_import
 
-[English](channel_pid_import.md) · [Объявление](../include/styxrpc/channel_route.h#L112) · [Реализация](../src/channel_pid.c#L72)
+[English](channel_pid_import.md) · [Объявление](../include/styxrpc/channel_route.h#L112) · [Реализация](../src/channel_pid.c#L128)
 
 ```c
 #include <styxrpc/channel_route.h>
@@ -15,3 +15,5 @@ StyxRpcStatus styxrpc_channel_pid_import(struct StyxClient *reverse, const char 
 SDK сохраняет один корневой канал на PID со стабильным индексом. Точные алиасы сохраняются. Несовпадающие ключи корня, типы и признаки ёмкости отклоняются. Индексы ранее допущенных дочерних каналов сохраняются. Для каждого PID он читает точный десятичный идентификатор и проверяет наличие `.unibus` в том же каталоге. Каждая операция Styx использует таймаут монтирования клиента. Связь сообщения с выданным результатом задаёт вызывающий. PID действует в нативном подключении с уникальными номерами выдачи.
 
 `STYXRPC_OK` устанавливает таблицу. `STYXRPC_INVALID` сохраняет её при ошибках аргументов, отсутствии ресурса, сбое транспорта или заполнении таблицы. Используйте [обмен на PID](channel_pid_exchange.ru.md) для операций на допущенном PID и получения дочерних ключей его шины. Партнёр может отозвать PID после допуска. [Проверка на сокете](../tests/channel_socket.c)
+
+[Вариант с отменой](channel_pid_import_until.ru.md).

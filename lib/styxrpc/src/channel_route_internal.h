@@ -12,11 +12,15 @@
 int styxrpc_route_valid(const StyxRpcChannelRoute *route);
 
 struct StyxFid; /* Exact unopened module held by a function lease. */
+struct StyxRpcVfsWait; /* Borrowed stop state of the full route import. */
 
 
-/* EN: Present token on a temporary bus fid under module, without sending a guard.
- * RU: Предъявить token на временном fid шины модуля, не отправляя ветку. */
-int styxrpc_channel_authenticate_bound(struct StyxFid *module, const unsigned char *token);
+/* EN: Present token on a temporary bus fid under module using wait. Close
+ * that fid before returning or defer its close on cancellation. Send no guard.
+ * RU: Предъявить token на временном fid шины модуля с wait.
+ * Закрыть fid перед возвратом или отложить закрытие при отмене. Ветвь не отправлять. */
+StyxRpcStatus styxrpc_channel_authenticate_bound(struct StyxFid *module,
+    const unsigned char *token, struct StyxRpcVfsWait *wait);
 
 
 /* EN: Exchange using grants from one already admitted PID on reverse.

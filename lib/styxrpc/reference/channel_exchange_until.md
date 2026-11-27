@@ -1,6 +1,6 @@
 # styxrpc_channel_exchange_until
 
-[Русский](channel_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_call.h#L83) · [Implementation](../src/channel_exchange.c#L208)
+[Русский](channel_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_call.h#L83) · [Implementation](../src/channel_exchange.c#L214)
 
 ```c
 #include <styxrpc/channel_call.h>

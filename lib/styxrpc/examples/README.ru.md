@@ -154,6 +154,8 @@ DisVM на том же соединении. Функция возвращает
 оба режима исполнения выводят `PASS delegated PID and module channels between
 C and DisVM`. Сценарий закрывает сокет и дожидается завершения провайдера.
 
+[Пример с C и DisVM](disvm/CHANNEL_ADMISSION.ru.md) показывает отмену импорта пакета и повтор на исходной аренде.
+
 [Клиент C](disvm/routed_client.c) · [Разбор адресов](../reference/channel_element_routes.ru.md) · [Операции по маршруту](../reference/channel_route_exchange.ru.md)
 
 [Два канала через один сокет](module_channels.ru.md)

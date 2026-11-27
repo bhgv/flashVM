@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_import_message
 
-[Русский](channel_lease_import_message.ru.md) · [Lease guide](channel_leases.md) · [Declaration](../include/styxrpc/channel_client.h#L84) · [Implementation](../src/channel_client.c#L329)
+[Русский](channel_lease_import_message.ru.md) · [Lease guide](channel_leases.md) · [Declaration](../include/styxrpc/channel_client.h#L84) · [Implementation](../src/channel_client.c#L387)
 
 ```c
 #include <styxrpc/channel_client.h>
@@ -15,3 +15,5 @@ The SDK validates the entire frame and reserves route indices in a temporary tab
 `STYXRPC_OK` commits the staged table. Find its indices with [lease route](channel_lease_route.md) and use [leased exchange](channel_lease_exchange.md). `STYXRPC_INVALID` leaves the table unchanged on malformed input, conflicting or unsupported grants, exhausted slots, or authentication and transport failure. Each Styx operation uses the mounted client's timeout. Call outside reverse dispatcher callbacks and keep the issuing lease alive through the call. The peer may later revoke a token, so subsequent operations still authenticate it on their own fids.
 
 [Native integration fixture](../tests/flashvm/run.py) · [Import same-bus keys](channel_lease_import_element.md)
+
+[Cancellable form](channel_lease_import_message_until.md).

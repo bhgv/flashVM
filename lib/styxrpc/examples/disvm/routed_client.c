@@ -250,9 +250,75 @@ static StyxRpcStatus receive_one(StyxClient *client, const char *bus, const Styx
 }
 
 
+/* EN: Poll the borrowed relay marker on the calling thread. With NULL, stop
+ * immediately. The relay writes '1' only after DisVM acknowledged the token.
+ * RU: Проверить заимствованный маркер в вызывающем потоке. При NULL отменить
+ * сразу. Ретранслятор пишет '1' после подтверждения токена от DisVM. */
+static int stop_import(void *state)
+{
+    const char *marker = state;
+    if (!marker)
+    {
+        return 1;
+    }
+    FILE *file = fopen(marker, "rb");
+    if (!file)
+    {
+        return 0;
+    }
+    int first = fgetc(file);
+    fclose(file);
+    return first == '1';
+}
+
+
+/* EN: Import a batch of two different tokens after proving cancellation leaves
+ * the two original indices and no index for child. The fixture owns marker.
+ * RU: Принять два разных токена после проверки, что отмена сохраняет два
+ * исходных индекса без добавления child. Маркер принадлежит тесту. */
+static int admit_delegated(StyxRpcChannelLease *lease, const StyxRpcChannelRoute *child,
+    const StyxRpcChannelRoute *base, char *marker)
+{
+    static const char shape[] = "((c[c[i]]c[i]))"; /* Tuple with new channel and existing integer alias. */
+    unsigned char leaves[96], tuple[112], frame[128];
+    size_t first, second, extent, size;
+    if (!memcmp(child->token, base->token, STYXRPC_CHANNEL_TOKEN_SIZE) ||
+        styxrpc_channel_route_value(child, leaves, sizeof(leaves), &first) != STYXRPC_OK ||
+        styxrpc_channel_route_value(base, leaves + first, sizeof(leaves) - first, &second) != STYXRPC_OK ||
+        fvm_srecord_write(STYXRPC_VALUE_TUPLE, leaves, first + second, tuple, sizeof(tuple), &extent) != FVM_S_OK ||
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, tuple, extent, frame, sizeof(frame), &size) != FVM_S_OK)
+    {
+        return 0;
+    }
+    if (marker)
+    {
+        FILE *arm = fopen("arm-import", "wb");
+        if (!arm || fclose(arm) != 0)
+        {
+            return 0;
+        }
+    }
+    if (styxrpc_channel_lease_import_message_until(lease, shape, frame, size, stop_import, marker) != STYXRPC_CANCELLED ||
+        styxrpc_channel_lease_route(lease, 2))
+    {
+        return 0;
+    }
+    const StyxRpcChannelRoute *existing = styxrpc_channel_lease_route(lease, 1);
+    if (!existing || memcmp(existing->token, base->token, STYXRPC_CHANNEL_TOKEN_SIZE) ||
+        existing->channel.key != base->channel.key || strcmp(existing->channel.shape, base->channel.shape) ||
+        styxrpc_channel_lease_import_message_until(lease, shape, frame, size, NULL, NULL) != STYXRPC_OK)
+    {
+        return 0;
+    }
+    const StyxRpcChannelRoute *imported = styxrpc_channel_lease_route(lease, 2);
+    return imported && !memcmp(imported->token, child->token, STYXRPC_CHANNEL_TOKEN_SIZE) &&
+        imported->channel.key == child->channel.key && !strcmp(imported->channel.shape, child->channel.shape);
+}
+
+
 /* EN: Exchange a reverse grant, echo the stable module alias, use it, and check clunk revocation.
  * RU: Передать встречное полномочие, вернуть алиас модуля, использовать и проверить отзыв по clunk. */
-static int exercise(StyxClient *client, Device *device)
+static int exercise(StyxClient *client, Device *device, char *marker)
 {
     char bus[sizeof(module) + sizeof("/.unibus")];
     snprintf(bus, sizeof(bus), "%s/.unibus", module);
@@ -282,7 +348,8 @@ static int exercise(StyxClient *client, Device *device)
         }
         valid = __atomic_load_n(&device->seen, __ATOMIC_ACQUIRE) == 2 &&
             styxrpc_channel_element_routes(hub.shape, device->received, device->size, &delegated) == STYXRPC_OK &&
-            delegated.count == 1 && send_grant(client, bus, &delegated.entries[0], &inner);
+            delegated.count == 1 && admit_delegated(accepted.lease, &delegated.entries[0], &accepted.routes.entries[1], marker) &&
+            send_grant(client, bus, styxrpc_channel_lease_route(accepted.lease, 2), &inner);
     }
     StyxRpcChannelResult result;
     if (valid)
@@ -326,7 +393,8 @@ static int exercise(StyxClient *client, Device *device)
 int main(int argc, char **argv)
 {
     char *end;
-    long fd = argc == 2 ? strtol(argv[1], &end, 10) : -1;
+    long fd = argc == 2 || argc == 3 ? strtol(argv[1], &end, 10) : -1;
+    char *marker = argc == 3 ? argv[2] : NULL;
     Device device = {0};
     if (fd < 3 || fd > INT_MAX || *end || !register_reverse(&device))
     {
@@ -346,7 +414,7 @@ int main(int argc, char **argv)
         return 1;
     }
     StyxClient *client = styxclientmountphy(phybidirchannel(mux, 0), 4096, "caller", "", 1000, 8);
-    int valid = client && exercise(client, &device);
+    int valid = client && exercise(client, &device, marker);
     styxclientshutdown(client);
     styxclientfree(client);
     phybidirfree(mux);

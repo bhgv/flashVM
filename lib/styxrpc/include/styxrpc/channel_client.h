@@ -84,6 +84,14 @@ StyxRpcStatus styxrpc_channel_lease_admit_module(StyxRpcChannelLease *lease,
 StyxRpcStatus styxrpc_channel_lease_import_message(StyxRpcChannelLease *lease,
     const char *shape, const void *bytes, size_t size);
 
+
+/* EN: Authenticate distinct tokens with optional stop(state) on the caller.
+ * Publish all routes together on success. Cancellation preserves the lease.
+ * RU: Проверить отдельные токены с опросом stop(state) в вызывающем потоке.
+ * При успехе добавить все маршруты вместе. При отмене сохранить аренду. */
+StyxRpcStatus styxrpc_channel_lease_import_message_until(StyxRpcChannelLease *lease,
+    const char *shape, const void *bytes, size_t size, StyxRpcCallStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

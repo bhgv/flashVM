@@ -55,4 +55,7 @@ Use a [hosted mailbox export](STYX_RPC_PID_MAILBOX_EXPORT.md) to return a live c
 
 When ActionScript calls `tryReceive()`, [libstyxrpc](../../lib/styxrpc/reference/channel_pid_import.md) checks the PID and its bus on that attachment. Repeated addresses reuse the same object. The object uses `.prog/<pid>/.unibus` for channel operations. Receiving a typed element on that bus can [admit nested channels](../../lib/styxrpc/reference/channel_pid_exchange.md) with the same PID. FlashVM preserves aliases, nil slots and the rendezvous flag. You can send children back in compatible elements on their bus. An element containing a proxy from another PID is rejected. Pass an original PID grant to `trySend()` on the mailbox to return the original channel to Dis. A received child keeps working after its parent proxy is closed. Once Dis clunks the result fid, the mailbox and its retained proxies refuse future operations. [Native fixture](../../lib/styxrpc/tests/flashvm/channel_pid_result.b)
 
+In a cancellable context, `tryReceive()` can stop while confirming either tokens or PIDs. It retires temporary fids and preserves the admitted indices and the live lease. If the mailbox already dequeued a frame, the next call reads the next frame.
+[Runnable C and DisVM example](../../lib/styxrpc/examples/disvm/CHANNEL_ADMISSION.md).
+
 After [building the integrations](../../lib/styxrpc/examples/README.md), run `ctest --test-dir build -R 'channel-(delegated|pid-graph|pid-result)' --output-on-failure`. The scenarios run on the native interpreter and JIT.

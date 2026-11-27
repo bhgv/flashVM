@@ -113,6 +113,14 @@ StyxRpcStatus styxrpc_channel_pid_import(struct StyxClient *reverse, const char 
     const void *bytes, size_t size, StyxRpcChannelRoutes *routes);
 
 
+/* EN: Import PID roots while polling optional stop(state) on the calling thread.
+ * Preserve routes on cancellation or refusal. Use the issuing reverse mount.
+ * RU: Принять корни PID с опросом stop(state) в вызывающем потоке.
+ * При отмене или отказе сохранить routes. Использовать выдавшее подключение. */
+StyxRpcStatus styxrpc_channel_pid_import_until(struct StyxClient *reverse, const char *shape,
+    const void *bytes, size_t size, StyxRpcChannelRoutes *routes, StyxRpcCallStop stop, void *state);
+
+
 /* EN: Exchange on the PID at anchor. Allow only known keys on that bus.
  * Commit newly received current-bus keys before exposing the result.
  * RU: Выполнить обмен на PID по anchor. Допустить только известные ключи шины.

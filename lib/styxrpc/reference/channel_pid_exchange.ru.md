@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_exchange
 
-[English](channel_pid_exchange.md) · [Объявление](../include/styxrpc/channel_route.h#L120) · [Реализация](../src/channel_pid.c#L186)
+[English](channel_pid_exchange.md) · [Объявление](../include/styxrpc/channel_route.h#L128) · [Реализация](../src/channel_pid.c#L217)
 
 ```c
 #include <styxrpc/channel_route.h>

@@ -1,5 +1,23 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1819 — cancel admission of delegated channel routes
+
+The hosted SDK can interrupt reverse PID verification and module-token
+authentication. FlashVM mailbox operations in a cancellable context
+use the same waits. Every import publishes a complete route table after
+confirmation. A stopped import preserves the issuing lease, admitted
+indices and independent traffic. The C/DisVM acceptance withholds a
+real token acknowledgement, then confirms recovery on the same result.
+
+Хостовый SDK прерывает проверку встречного PID и подтверждение токена
+модуля. Очереди FlashVM передают флаг отмены тем же операциям ожидания.
+Импорт публикует полную таблицу маршрутов после подтверждения.
+При отмене сохраняются выдавшая аренда, допущенные индексы и соседний
+обмен. Сценарий C и DisVM удерживает реальное подтверждение токена
+и проверяет восстановление на исходном результате.
+[EN](../../lib/styxrpc/examples/disvm/CHANNEL_ADMISSION.md) ·
+[RU](../../lib/styxrpc/examples/disvm/CHANNEL_ADMISSION.ru.md).
+
 ## v0.1818 — cancel exact Int32 reference resolution and access
 
 FlashVM tasks can receive a DisVM-owned module variable and cancel

@@ -1,6 +1,6 @@
 # fvm_styxrpc_pid_mailbox_export
 
-[Русский](STYX_RPC_PID_MAILBOX_EXPORT.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L159) · [Implementation](../src/styxrpc/channel_pid_mailbox.c#L203)
+[Русский](STYX_RPC_PID_MAILBOX_EXPORT.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L159) · [Implementation](../src/styxrpc/channel_pid_mailbox.c#L217)
 
 ```c
 #include <flashvm/styxrpc_channel.h>

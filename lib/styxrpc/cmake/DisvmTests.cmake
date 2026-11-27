@@ -64,6 +64,12 @@ foreach(mode IN ITEMS interpreter jit)
                 --device "$<TARGET_FILE:styxrpc-deferred-device>" --module "${disvm_upstream_modules}"
                 --native-module "${disvm_native_modules}" ${mode_args} ${transport_args})
         set_tests_properties("styxrpc-disvm-deferred-${mode}-${transport}" PROPERTIES TIMEOUT 45)
+        set(test_name "styxrpc-disvm-channel-admission-${mode}-${transport}")
+        add_test(NAME "${test_name}"
+            COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/channel_admission.py" ${disvm_common}
+                --source "${STYXRPC_DISVM_SOURCE}" --driver "$<TARGET_FILE:styxrpc-routed-client>"
+                ${mode_args} ${transport_args})
+        set_tests_properties("${test_name}" PROPERTIES TIMEOUT 65)
     endforeach()
     add_test(NAME styxrpc-disvm-mutations-${mode}
         COMMAND "${disvm_command}" "${disvm_examples}/mutations.py" ${disvm_common}

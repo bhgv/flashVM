@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_exchange_until
 
-[Русский](channel_pid_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L127) · [Implementation](../src/channel_pid.c#L148)
+[Русский](channel_pid_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L135) · [Implementation](../src/channel_pid.c#L179)
 
 ```c
 #include <styxrpc/channel_route.h>

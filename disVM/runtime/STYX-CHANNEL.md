@@ -69,3 +69,6 @@ one session. [VFS in tasks](../../flashVM/doc/ASINC_VFS.md)
 [Int32 export example](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.md) shows a Limbo owner,
 a cancellable FlashVM task and recovery using the original Qid.
 [Русский](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.ru.md).
+[Delegated channel example](../../lib/styxrpc/examples/disvm/CHANNEL_ADMISSION.md) checks
+token confirmation and recovery against the native DisVM provider.
+[Русский](../../lib/styxrpc/examples/disvm/CHANNEL_ADMISSION.ru.md).

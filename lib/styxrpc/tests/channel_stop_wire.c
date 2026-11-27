@@ -17,8 +17,10 @@
 #include <unistd.h>
 
 #define FRAME_SIZE 512U /* Negotiated maximum 9P frame size in this fixture. */
+#define PID_SAMPLE UINT32_C(2147483690) /* Delegated PID in the temporary namespace. */
 
 static char int_bytes[] = "\xff\xff\xff\xb7"; /* Signed big-endian -73. */
+static char pid_bytes[] = "2147483690\n"; /* Complete decimal PID_SAMPLE identity. */
 
 typedef enum Endpoint
 {
@@ -26,7 +28,8 @@ typedef enum Endpoint
     ModuleBus,    /* Token-based module bus. */
     NamedChannel, /* Private enrollment file. */
     PlainFile,    /* Open ordinary file for a positioned transfer. */
-    Int32File     /* The whole signed four-byte .var value. */
+    Int32File,    /* The whole signed four-byte .var value. */
+    PidIdentity   /* Private .pid probe during atomic reverse import. */
 } Endpoint;
 
 
@@ -112,11 +115,16 @@ static int answer(Wire *wire, const Fcall *request)
         {
             reply.wqid[i] = (Qid){.type = i + 1 < request->nwname ? QTDIR : QTFILE, .path = i + 1};
         }
+        if (wire->endpoint == PidIdentity && request->nwname == 2 && !strcmp(request->wname[0], ".prog"))
+        {
+            reply.wqid[1].type = QTDIR;
+        }
         if (request->nwname == 1 && !strcmp(request->wname[0], "survivor"))
         {
             wire->survivor = request->newfid;
         }
         if (request->nwname && (!strcmp(request->wname[request->nwname - 1], ".unibus") ||
+            (wire->endpoint == PidIdentity && !strcmp(request->wname[request->nwname - 1], ".pid")) ||
             !strcmp(request->wname[request->nwname - 1], STYXRPC_NAMED_SERVICE)))
         {
             wire->target = request->newfid;
@@ -168,6 +176,11 @@ static int answer(Wire *wire, const Fcall *request)
                 (request->type == Tread || !memcmp(request->data, int_bytes, 4)) &&
                 hold(wire, request, request->fid);
         }
+        else if (wire->endpoint == PidIdentity)
+        {
+            return request->type == Tread && request->fid == wire->target && request->offset == 0 &&
+                hold(wire, request, request->fid);
+        }
         else if (wire->partial_file && request->type == wire->hold_type && !request->offset && request->count == 2)
         {
             if (request->type == Twrite && memcmp(request->data, "wz", 2))
@@ -207,6 +220,11 @@ static int answer(Wire *wire, const Fcall *request)
         {
             Fcall original = {.type = wire->hold_type + 1, .tag = wire->tag,
                 .count = wire->held_count, .data = wire->endpoint == Int32File ? int_bytes : "r"};
+            if (wire->endpoint == PidIdentity)
+            {
+                original.count = sizeof(pid_bytes) - 1;
+                original.data = pid_bytes;
+            }
             if (!send_reply(wire->fd, &original))
             {
                 return 0;
@@ -280,6 +298,23 @@ static int int_result(Operation *operation)
 }
 
 
+/* EN: Verify cancellation preserves the original PID table even when Rread arrives before Rflush.
+ * RU: Проверить сохранение таблицы PID при отмене, даже когда Rread пришёл перед Rflush. */
+static int import_pid(Operation *operation)
+{
+    const StyxRpcChannelRoute route = {.kind = STYXRPC_ROUTE_PID, .pid = PID_SAMPLE, .channel = {1, "(i)"}};
+    StyxRpcChannelRoutes routes = {.count = 1, .entries = {
+        {.kind = STYXRPC_ROUTE_PID, .pid = PID_SAMPLE - 1, .channel = {2, "(s)"}}}};
+    unsigned char child[96], frame[96];
+    size_t leaf, extent;
+    return styxrpc_channel_route_value(&route, child, sizeof(child), &leaf) == STYXRPC_OK &&
+        fvm_srecord_write(STYXRPC_CHANNEL_ELEMENT_TAG, child, leaf, frame, sizeof(frame), &extent) == FVM_S_OK &&
+        styxrpc_channel_pid_import_until(operation->client, "(c[i])", frame, extent, &routes, stop, operation) ==
+            STYXRPC_CANCELLED && routes.count == 1 && routes.entries[0].pid == PID_SAMPLE - 1 &&
+        routes.entries[0].channel.key == 2 && !strcmp(routes.entries[0].channel.shape, "(s)");
+}
+
+
 /* EN: Wait on a data frame. The peer leaves it pending until the stop hook requests Tflush.
  * RU: Ждать кадр данных, который сервер удерживает до Tflush по колбэку. */
 static void *call(void *state)
@@ -287,6 +322,11 @@ static void *call(void *state)
     Operation *operation = state;
     operation->caller = pthread_self();
     operation->correct_thread = 1;
+    if (operation->wire->endpoint == PidIdentity)
+    {
+        operation->success = import_pid(operation);
+        return NULL;
+    }
     if (operation->wire->endpoint == Int32File)
     {
         operation->success = int_result(operation);
@@ -429,7 +469,9 @@ int main(void)
         !exercise(PlainFile, Tread, 0, 1, 1) || !exercise(PlainFile, Twrite, 1, 1, 0) ||
         !exercise(PlainFile, Twrite, 0, 1, 1) ||
         !exercise(Int32File, Tread, 0, 1, 0) || !exercise(Int32File, Tread, 1, 1, 0) ||
-        !exercise(Int32File, Twrite, 0, 1, 0) || !exercise(Int32File, Twrite, 1, 1, 0))
+        !exercise(Int32File, Twrite, 0, 1, 0) || !exercise(Int32File, Twrite, 1, 1, 0) ||
+        !exercise(PidIdentity, Twalk, 0, 1, 0) || !exercise(PidIdentity, Topen, 0, 1, 0) ||
+        !exercise(PidIdentity, Tread, 0, 1, 0) || !exercise(PidIdentity, Tread, 1, 1, 0))
     {
         fprintf(stderr, "channel stop wire: held RPC, flush or neighboring RPC failed\n");
         return 1;

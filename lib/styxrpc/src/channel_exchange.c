@@ -42,12 +42,18 @@ static StyxRpcStatus authenticate(StyxFid *fid, const unsigned char *token, Styx
 
 
 /* EN/RU: See channel_route_internal.h. / См. channel_route_internal.h. */
-int styxrpc_channel_authenticate_bound(StyxFid *module, const unsigned char *token)
+StyxRpcStatus styxrpc_channel_authenticate_bound(StyxFid *module, const unsigned char *token, StyxRpcVfsWait *wait)
 {
-    StyxFid *fid = styxclientwalkfrom(module, ".unibus");
-    int accepted = fid && styxclientopen(fid, 2) && authenticate(fid, token, NULL, NULL) == STYXRPC_OK;
-    styxclientclunk(fid);
-    return accepted;
+    StyxFid *fid = NULL;
+    int accepted = styxrpc_vfs_control_walk_from(module, ".unibus", wait, &fid) == STYXRPC_IO_OK &&
+        styxrpc_vfs_control_open(fid, STYXRPC_FILE_RDWR, wait) == STYXRPC_IO_OK &&
+        authenticate(fid, token, wait->stop ? styxrpc_vfs_control_poll : NULL, wait) == STYXRPC_OK;
+    styxrpc_vfs_control_close(fid, wait);
+    if (styxrpc_vfs_control_poll(wait))
+    {
+        return STYXRPC_CANCELLED;
+    }
+    return accepted ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
 

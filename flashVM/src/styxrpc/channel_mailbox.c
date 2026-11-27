@@ -4,6 +4,7 @@
  */
 #include "channel_private.h"
 #include "managed_values.h"
+#include "wire_wait.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -55,6 +56,7 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
     FVM_StyxPidGrant *grant = fvm_styxrpc_pid_lookup(context, self);
     FVM_GCRootScope *roots;
     FVM_Result status;
+    FVM_Worker *worker = NULL;
     unsigned char *bytes;
     size_t size;
     StyxRpcStatus received;
@@ -67,6 +69,11 @@ static FVM_Result receive(FVM_Context *context, FVM_Object *self, unsigned argc,
     if (!grant->mailbox)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC mailbox is closed");
+    }
+    fvm_worker_current(context, &worker);
+    if (fvm_styxrpc_worker_stopped(worker))
+    {
+        return fvm_styxrpc_managed_fail(context, "Styx RPC mailbox receive cancelled");
     }
     bytes = malloc(FRAME);
     if (!bytes)
