@@ -5,7 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "styxrpc/channel_call.h"
 #include "channel_route_internal.h"
-#include "client.h"
+#include "vfs_client_internal.h"
 #include <stdio.h>
 #include <inttypes.h>
 #include <time.h>
@@ -70,6 +70,10 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
         if (status != STYXRPC_OK)
         {
             return status;
+        }
+        if (stop && stop(state))
+        {
+            return STYXRPC_CANCELLED;
         }
     }
     size_t offset = 0;
@@ -152,15 +156,31 @@ static StyxRpcStatus exchange_on(StyxClient *session, const char *path, StyxFid 
     {
         return STYXRPC_INVALID;
     }
-    if (stop && stop(state))
+    StyxRpcVfsWait wait = {stop, state, 0};
+    StyxFid *fid = NULL;
+    StyxRpcIoOutcome walked = module ? styxrpc_vfs_control_walk_from(module, ".unibus", &wait, &fid) :
+        styxrpc_vfs_control_walk(session, path, &wait, &fid);
+    StyxRpcStatus status;
+    if (walked == STYXRPC_IO_OK && styxrpc_vfs_control_open(fid, STYXRPC_FILE_RDWR, &wait) == STYXRPC_IO_OK)
     {
-        return STYXRPC_CANCELLED;
+        status = styxrpc_vfs_control_poll(&wait) ? STYXRPC_CANCELLED :
+            exchange(fid, token, request, size, reply, reply_capacity, began + timeout_ms, &received,
+                stop ? styxrpc_vfs_control_poll : NULL, &wait);
     }
-    StyxFid *fid = module ? styxclientwalkfrom(module, ".unibus") : styxclientwalk(session, path);
-    StyxRpcStatus status = fid && styxclientopen(fid, 2) ?
-        exchange(fid, token, request, size, reply, reply_capacity, began + timeout_ms, &received,
-            stop, state) : STYXRPC_INVALID;
-    styxclientclunk(fid);
+    else
+    {
+        status = wait.stopped ? STYXRPC_CANCELLED : STYXRPC_INVALID;
+    }
+    if (status == STYXRPC_CANCELLED)
+    {
+        /* EN: Before a guard write, cleanup can retire only the temporary bus fid.
+         * RU: До записи ветви очистке подлежит только временный fid шины. */
+        styxrpc_vfs_control_close(fid, &wait);
+    }
+    else
+    {
+        styxclientclunk(fid);
+    }
     return status == STYXRPC_OK ? styxrpc_channel_result(grants, grant_count,
         selection, reply, received, result) : status;
 }

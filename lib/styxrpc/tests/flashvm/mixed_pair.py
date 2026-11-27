@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from run import compile_image, paired_exchange
 from vfs_control_gate import gated_exchange
 from module_setup_gate import ModuleSetupGate
+from channel_setup_gate import ChannelSetupGate
 
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
@@ -40,7 +41,7 @@ def main():
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
                     "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
-                    "cancel-vfs-control", "cancel-dis-setup"):
+                    "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -74,8 +75,9 @@ def main():
         if name == "cancel-dis-call":
             compile_image(args, directory, tests / "cancel-dis-call_library.b", "cancel-target.dis")
             (directory / "call-gate").write_bytes(b"0")
-        if name == "cancel-dis-channel":
+        if name in ("cancel-dis-channel", "cancel-channel-setup"):
             compile_image(args, directory, tests / "cancel-dis-channel_library.b", "queues.dis")
+        if name == "cancel-dis-channel":
             (directory / "channel-gate").write_bytes(b"0")
         if name in ("cancel-vfs-read", "cancel-vfs-write"):
             gate = "read-gate" if name == "cancel-vfs-read" else "write-gate"
@@ -83,7 +85,7 @@ def main():
             (directory / "neighbour").write_bytes(b"Z")
         if name == "cancel-dis-setup":
             compile_image(args, directory, tests / "live-dis_library.b", "setup.dis")
-        if name in ("cancel-vfs-control", "cancel-dis-setup"):
+        if name in ("cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup"):
             (directory / "control-gate").write_bytes(b"0")
             (directory / "neighbour").write_bytes(b"Z")
         if name == "cancel-vfs-control":
@@ -122,6 +124,7 @@ def main():
             "cancel-vfs-write": ("styxnodes",),
             "cancel-vfs-control": (),
             "cancel-dis-setup": (),
+            "cancel-channel-setup": (),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -148,21 +151,25 @@ def main():
             "cancel-vfs-write": ("cancel-vfs-write_worker.as", "cancel-vfs-read_worker.as"),
             "cancel-vfs-control": ("cancel-vfs-control_worker.as",),
             "cancel-dis-setup": ("cancel-dis-setup_worker.as",),
+            "cancel-channel-setup": ("cancel-channel-setup_worker.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
-        compile_movie(args, directory, tests / (name + "_pair.as"), name,
+        movie_source = "cancel-dis-setup" if name == "cancel-channel-setup" else name
+        compile_movie(args, directory, tests / (movie_source + "_pair.as"), name,
                       tuple(tests / unit for unit in companions))
         exchange = {
             "cancel-vfs-control": gated_exchange,
             "cancel-dis-setup": partial(gated_exchange, gate_type=ModuleSetupGate),
+            "cancel-channel-setup": partial(gated_exchange, gate_type=ChannelSetupGate),
         }.get(name, paired_exchange)
         exchange(
             directory,
             lambda connection: [args.player, *connection, mode],
             lambda connection: [args.runtime, *connection, "--at", "/peer",
                                 *(("--live-dis-load",) if name in ("live-dis", "cancel-dis-call",
-                                                                  "cancel-dis-channel", "cancel-dis-setup") else ()), "--",
+                                                                  "cancel-dis-channel", "cancel-dis-setup",
+                                                                  "cancel-channel-setup") else ()), "--",
                                 "--native-spawn", mode, client.name],
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp, timeout=30 if name == "live-dis" else 15,

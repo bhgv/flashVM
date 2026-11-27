@@ -43,13 +43,16 @@ mutation that was already sent may have changed the peer's tree. Its
 outcome is reported as uncertain and the client does not replay it.
 See the [SDK VFS control contract](../../lib/styxrpc/VFS_CONTROL.md).
 
-When the pair has negotiated named channels, `vfs.chan(path)` and
-`os.chan(path)` open an independent enrollment for the task.
-`send(value)` and `recv()` can wait while the movie advances. `cancel()`
-flushes a pending data round trip and closes the enrollment. If a
-rendezvous raced cancellation, the peer may have consumed the value.
+When the pair negotiates named channels, `vfs.chan(path)` and
+`os.chan(path)` open independent enrollments. `cancel()` can flush the
+service walk, open or enrollment write. A failed enrollment retires its
+fid. If the provider accepted the write, the name can remain visible until
+that fid closes or while other participants still hold it.
+`send(value)` and `recv()` can wait while the movie advances. When a
+rendezvous races cancellation the peer may already have accepted the value.
 The task can exchange snapshots and named cell descriptors. References
 to module exports require owner processing.
+[SDK enrollment API](../../lib/styxrpc/reference/named_open_until.md).
 
 A worker can also open a published `.dis` image for reading and use
 `load()` to get a proxy in its own context. Closing the original handle
@@ -63,7 +66,7 @@ use the paired Styx session. The movie receives a primitive result through
 `poll()`.
 
 In a [live Dis session](STYX_RPC_LIVE_DIS.md), `cancel()` stops pending
-image loads and method calls during data round trips. The task closes the exact function fid,
+image loads and method calls during setup and exchange. The task closes the exact function fid,
 and checked scoped Dis code can unwind from a local channel wait.
 Use [`os.unload(proxy)`](STYX_RPC_UNLOAD.md) to release a checked proxy
 inside its task.

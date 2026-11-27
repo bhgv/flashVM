@@ -85,3 +85,7 @@ Use `--cancel-dis-setup` to hold the load control open,
 generation stat, interface read, scalar open and typed method open. Each stop follows a read on a
 neighboring fid. The test checks the exact flush tags, absence of early
 method writes and successful new calls on the same connection.
+Use `--cancel-channel-setup` for the channel admission test. It holds
+replies to named service open and enrollment, typed bus walk and open,
+and module token authentication. It checks that no cancelled guard was
+written, the named enrollment is retired, and fresh operations succeed.

@@ -51,6 +51,7 @@ Copyright (c) 2026 bhgv
 [Захват модуля](reference/module_capture_until.ru.md), [проверка импортов](reference/module_check_at_until.ru.md) и [обнаружение экспортов](reference/module_exports_scoped_at_until.ru.md) поддерживают отмену и проверяют точный каталог.
 [Вызовы методов с отменой](reference/scalar_invoke_at_until.ru.md) различают остановку до первой записи и неопределённый исход после отправки. Это правило действует для управляемого, графового и канального кодеков.
 [Канальные операции с отменой](reference/channel_lease_exchange_until.ru.md) закрывают временный fid операции и сохраняют исходный маршрут.
+[Вход в именованный канал](reference/named_open_until.ru.md) допускает отмену при подготовке в мультиплексированной сессии и освобождает fid при отказе.
 
 [Пользовательские сообщения UniBus](reference/custom_messages.ru.md) дают регистрацию своих типов и обработчиков в существующей сессии Styx.
 

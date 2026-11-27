@@ -75,9 +75,11 @@ StyxRpcStatus styxrpc_channel_exchange(struct StyxClient *reverse, const StyxRpc
 
 
 /* EN: Like channel_exchange, with optional stop(state) on the caller's thread.
- * Cancellation closes only the operation fid and preserves result.
+ * Poll during bus walk, open and exchange. Cancellation preserves result and
+ * retires only the temporary fid, possibly after return before guard submission.
  * RU: Как channel_exchange с необязательным stop(state) в вызывающем потоке.
- * Отмена закрывает только fid операции и сохраняет result. */
+ * Проверять при обходе шины, открытии и обмене. При отмене сохранить result
+ * и освободить временный fid, возможно после возврата, если ветвь не отправлена. */
 StyxRpcStatus styxrpc_channel_exchange_until(struct StyxClient *reverse, const StyxRpcChannelCall *call,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,

@@ -13,6 +13,7 @@ extern "C"
 #include "session_methods.h"
 #include "managed_values.h"
 #include "movie_load.h"
+#include "wire_wait.h"
 }
 
 namespace
@@ -58,16 +59,6 @@ FVM_Result delete_channel(FVM_Context *, FVM_Object *, unsigned argc,
 }
 
 
-/* EN: Observe the current task stop flag between wire polls.
- * RU: Проверить остановку текущей задачи между протокольными опросами. */
-int stop_waiting(void *state)
-{
-    FVM_Worker *worker = static_cast<FVM_Worker *>(state);
-    int requested = 0;
-    return worker && fvm_worker_stop_requested(worker, &requested) == FVM_OK && requested;
-}
-
-
 /* [ASINC] [GC:] EN: Wait for a read from another participant, sending a copy or live descriptor.
  * RU: Дождаться чтения другим участником, посылая копию либо живой дескриптор. */
 FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
@@ -87,7 +78,8 @@ FVM_Result send_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     }
     FVM_Worker *worker = NULL;
     fvm_worker_current(context, &worker);
-    StyxRpcIoOutcome outcome = styxrpc_named_send_until(handle->file, frame, size, stop_waiting, worker);
+    StyxRpcIoOutcome outcome = styxrpc_named_send_until(handle->file, frame, size,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
     free(frame);
     if (outcome != STYXRPC_IO_OK)
     {
@@ -114,7 +106,8 @@ FVM_Result recv_channel(FVM_Context *context, FVM_Object *, unsigned argc,
     size_t size;
     FVM_Worker *worker = NULL;
     fvm_worker_current(context, &worker);
-    StyxRpcIoOutcome outcome = styxrpc_named_recv_until(handle->file, &frame, &size, stop_waiting, worker);
+    StyxRpcIoOutcome outcome = styxrpc_named_recv_until(handle->file, &frame, &size,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
     if (outcome != STYXRPC_IO_OK)
     {
         close_handle(handle, 0);
@@ -191,11 +184,15 @@ FVM_Result open_channel(FVM_Context *context, const FVM_NamedRoute &route, unsig
         return FVM_OUT_OF_MEMORY;
     }
     handle->route = route;
-    handle->file = styxrpc_named_open(route.client, path);
-    if (!handle->file)
+    FVM_Worker *worker = NULL;
+    fvm_worker_current(context, &worker);
+    StyxRpcIoOutcome opened = styxrpc_named_open_until(route.client, path, &handle->file,
+        worker ? fvm_styxrpc_worker_stopped : NULL, worker);
+    if (opened != STYXRPC_IO_OK)
     {
         free(handle);
-        return fvm_styxrpc_managed_fail(context, "named channel could not be opened");
+        return fvm_styxrpc_managed_fail(context, opened == STYXRPC_IO_CANCELLED ?
+            "named channel open cancelled" : "named channel could not be opened");
     }
     return wrap(context, handle, out);
 }

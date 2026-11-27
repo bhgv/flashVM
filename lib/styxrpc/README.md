@@ -49,6 +49,7 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 [Cancellable module capture](reference/module_capture_until.md), [import verification](reference/module_check_at_until.md) and [export discovery](reference/module_exports_scoped_at_until.md) keep checks relative to the exact mounted directory.
 [Cancellable method calls](reference/scalar_invoke_at_until.md) distinguish a stop before the first write from an uncertain outcome after submission. The same contract applies to the managed, graph and channel codecs.
 [Cancellable channel operations](reference/channel_lease_exchange_until.md) close the temporary operation fid while retaining the original route.
+[Named channel enrollment](reference/named_open_until.md) can flush setup on a multiplexed session and retires the fid on cancellation.
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 

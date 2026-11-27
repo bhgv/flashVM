@@ -50,8 +50,8 @@ StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t 
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
 
-/* EN: Like lease_exchange, with optional stop(state). Keep the lease alive on cancellation.
- * RU: Как lease_exchange с необязательным stop(state). Отмена сохраняет аренду. */
+/* EN: Like lease_exchange, with optional stop(state) during bus setup and exchange. The lease remains valid.
+ * RU: Как lease_exchange с необязательным stop(state) при подготовке шины и обмене. Отмена сохраняет аренду. */
 StyxRpcStatus styxrpc_channel_lease_exchange_until(StyxRpcChannelLease *lease, size_t route_index,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,

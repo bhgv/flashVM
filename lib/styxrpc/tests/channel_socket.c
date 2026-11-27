@@ -17,9 +17,7 @@
 #include <unistd.h>
 
 #define REVOKE_ROUNDS 132U /* Reuse the same three slots across one live session. */
-#define STOP_BEFORE_OPEN 1U /* No operation fid has been walked. */
-#define STOP_BEFORE_WRITE 2U /* The PID operation fid is open but no guard was written. */
-#define STOP_AFTER_POLL 4U /* One guard was written and one pending reply was read. */
+
 
 static const StyxRpcChannelGrant grants[] = {{1, "(i)"}, {2, "(s)"}}; /* Explicit local capabilities. */
 
@@ -31,6 +29,8 @@ typedef struct Endpoint
     const StyxRpcResource *stream; /* Borrowed callbacks for each issued route. */
     uint32_t pid;                 /* Current grant, mutated on the dispatcher. */
     unsigned cancelled;    /* Checked only after joining dispatcher. */
+    unsigned opened;       /* Published after the provider prepared a fresh operation fid. */
+    unsigned pending_reads; /* Published after a read observed a submitted guard still waiting. */
 } Endpoint;
 
 typedef struct Open
@@ -112,6 +112,8 @@ static int open_bus(void *context, unsigned access, void **cookie)
         .reply = opened->reply, .reply_capacity = sizeof(opened->reply),
         .admit = schedule, .cancel = cancel, .context = context};
     *cookie = opened;
+    Endpoint *endpoint = context;
+    __atomic_add_fetch(&endpoint->opened, 1, __ATOMIC_RELEASE);
     return 1;
 }
 
@@ -136,8 +138,17 @@ static int read_bus(void *cookie, uint64_t offset, void *bytes, size_t capacity,
 {
     Open *opened = cookie;
     uint64_t base = opened->stream ? opened->fid.staged : 0;
-    return offset >= base && offset - base <= SIZE_MAX && styxrpc_channel_fid_read(&opened->fid,
-        (size_t)(offset - base), bytes, capacity, size) != STYXRPC_INVALID;
+    if (offset < base || offset - base > SIZE_MAX || styxrpc_channel_fid_read(&opened->fid,
+        (size_t)(offset - base), bytes, capacity, size) == STYXRPC_INVALID)
+    {
+        return 0;
+    }
+    if (opened->fid.selection.count && !*size)
+    {
+        Endpoint *endpoint = opened->fid.context;
+        __atomic_add_fetch(&endpoint->pending_reads, 1, __ATOMIC_RELEASE);
+    }
+    return 1;
 }
 
 
@@ -270,25 +281,27 @@ static int exchange_imported(StyxClient *client, StyxRpcChannelRoutes *routes)
 }
 
 
+/* EN: Select the next provider observation on a shared counter.
+ * RU: Выбрать следующее наблюдаемое событие по счётчику провайдера. */
 typedef struct StopPlan
 {
-    unsigned checks; /* Samples counted on the caller thread. */
-    unsigned limit;  /* First sample that requests cancellation. */
+    const unsigned *counter; /* Borrowed atomic count published by the dispatcher. */
+    unsigned limit;          /* Observation that requests stop. */
 } StopPlan;
 
 
-/* EN: Report the scheduled stop for the client exercising this exact operation.
- * RU: Сообщить запланированную остановку для проверяемой операции клиента. */
+/* EN: Cancel immediately with NULL, or once the provider reaches plan's observation.
+ * RU: Отменить сразу при NULL либо после указанного в плане события провайдера. */
 static int stop_at(void *state)
 {
-    StopPlan *plan = state;
-    return ++plan->checks >= plan->limit;
+    const StopPlan *plan = state;
+    return !plan || __atomic_load_n(plan->counter, __ATOMIC_ACQUIRE) >= plan->limit;
 }
 
 
 /* EN: Clunk one cancelled selection without touching a second pending fid or the PID grant.
  * RU: Закрыть отменённый выбор, сохранив второй ожидающий fid и полномочие PID. */
-static int cancel_operation(StyxClient *client, uint32_t pid)
+static int cancel_operation(StyxClient *client, uint32_t pid, Endpoint *endpoint)
 {
     const StyxRpcSelection park = {.count = 1, .guards = {{1, 1, NULL, 0}}};
     const StyxRpcSelection ready = {.count = 1, .guards = {{2, 1, NULL, 0}}};
@@ -298,8 +311,6 @@ static int cancel_operation(StyxClient *client, uint32_t pid)
     unsigned char request[96], reply[96];
     size_t length;
     StyxRpcChannelResult result = {.selected = 99};
-    StopPlan early = {0, STOP_BEFORE_OPEN}, before = {0, STOP_BEFORE_WRITE}, pending = {0, STOP_AFTER_POLL};
-    StopPlan raw = {0, STOP_AFTER_POLL};
     StyxRpcChannelCall call = {.pid = pid, .count = 2};
     memcpy(call.grants, grants, sizeof(grants));
     char path[sizeof(".prog/4294967295/.unibus")];
@@ -312,9 +323,12 @@ static int cancel_operation(StyxClient *client, uint32_t pid)
     {
         StyxTransfer sent;
         styxclientwrite(other, 0, request, length, &sent);
+        StopPlan before = {&endpoint->opened, __atomic_load_n(&endpoint->opened, __ATOMIC_ACQUIRE) + 1};
+        StopPlan pending = {&endpoint->pending_reads, __atomic_load_n(&endpoint->pending_reads, __ATOMIC_ACQUIRE) + 1};
+        StopPlan raw = {pending.counter, pending.limit + 1};
         good = sent.success && sent.confirmed && !sent.uncertain && sent.count == length &&
             styxrpc_channel_route_exchange_until(client, NULL, &routes.entries[0], &park, 500,
-                NULL, 0, request, sizeof(request), reply, sizeof(reply), &result, stop_at, &early) ==
+                NULL, 0, request, sizeof(request), reply, sizeof(reply), &result, stop_at, NULL) ==
                 STYXRPC_CANCELLED && result.selected == 99 &&
             styxrpc_channel_pid_exchange_until(client, &routes, 0, &park, 500, NULL, 0,
                 request, sizeof(request), reply, sizeof(reply), &result, stop_at, &before) ==
@@ -422,7 +436,7 @@ int main(void)
     StyxRpcChannelRoutes imported = {0};
     int good = client && exchange(client) && import_pid(client, pid, STYXRPC_OK, &imported) &&
         import_pid(client, pid + 1, STYXRPC_INVALID, &imported) && imported.count == 1 &&
-        imported.entries[0].pid == pid && exchange_imported(client, &imported) && cancel_operation(client, pid);
+        imported.entries[0].pid == pid && exchange_imported(client, &imported) && cancel_operation(client, pid, &endpoint);
     for (unsigned i = 0; good && i < REVOKE_ROUNDS; ++i)
     {
         good = exchange_routed(client, pid + i) && revoke_routed(client, pid + i);

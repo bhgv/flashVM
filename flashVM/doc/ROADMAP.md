@@ -1,5 +1,20 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1815 — cancel named channel enrollment and typed bus setup
+
+FlashVM tasks and the hosted SDK can cancel while walking and opening
+the named channel service, writing an enrollment or preparing a typed
+selection on a Dis bus. Before the first guard write, cancellation
+preserves the route and sends no selection. A stopped enrollment retires
+its temporary fid, releasing its name when the last peer leaves.
+
+Задачи FlashVM и SDK отменяют обход и открытие службы именованных
+каналов, запись запроса на вход и подготовку выбора на типизированной
+шине Dis. Если ветвь ещё не записана, отмена сохраняет маршрут
+и не отправляет выбор. Временный fid отменённого входа освобождается.
+Имя снимается после выхода последнего участника.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1814 — cancel live Dis module and call setup
 
 A FlashVM task can stop while opening the live load service, capturing

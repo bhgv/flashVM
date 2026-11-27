@@ -87,6 +87,16 @@ StyxRpcIoOutcome styxrpc_named_send(StyxRpcVfsFile *file, const void *bytes, siz
 typedef int (*StyxRpcNamedStop)(void *state);
 
 
+/* EN: Enroll path on session while polling optional stop(state) during walk,
+ * open and the enrollment write. Transfer a new fid in out only on success.
+ * Temporary fids are retired on failure, possibly after return.
+ * RU: Подключить path в session, проверяя stop(state) при обходе, открытии
+ * и записи запроса. Выдать новый fid в out только при успехе.
+ * При отказе временные fid освобождаются, возможно после возврата. */
+StyxRpcIoOutcome styxrpc_named_open_until(struct StyxClient *session, const char *path, StyxRpcVfsFile **out,
+    StyxRpcNamedStop stop, void *state);
+
+
 /* EN: Receive like styxrpc_named_recv, checking optional stop before submission
  * and while multiplexed data frames are pending. On CANCELLED close file.
  * RU: Принять как styxrpc_named_recv, проверяя stop до отправки и во время

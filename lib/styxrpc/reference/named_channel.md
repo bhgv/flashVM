@@ -48,3 +48,5 @@ The [module slot registry](module_slot_named_registry.md) reserves names
 against a live callback tree.
 
 Use [cancellable receive](named_recv_until.md) and [cancellable send](named_send_until.md) for a local stop hook.
+
+Use [cancellable enrollment](named_open_until.md) to stop during service setup or the registration write.

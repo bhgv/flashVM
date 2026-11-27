@@ -47,34 +47,61 @@ static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const v
 }
 
 
-/* EN: Open a blank control fid for a named endpoint or a separate cell lease.
- * RU: Открыть пустой управляющий fid для канала либо отдельной аренды ячейки. */
-static StyxRpcVfsFile *open_service(struct StyxClient *session)
+/* EN: Open a blank control fid on session under wait. Transfer it to out on
+ * success, or retire it independently if the caller stops during admission.
+ * RU: Открыть пустой управляющий fid в session с wait. Выдать его в out
+ * при успехе либо освободить независимо при остановке подготовки. */
+static StyxRpcIoOutcome open_service(StyxClient *session, StyxRpcVfsWait *wait, StyxFid **out)
 {
-    StyxRpcVfsFile *file = session ? styxclientwalk(session, STYXRPC_NAMED_SERVICE) : NULL;
-    if (file && styxclientopen(file, STYXRPC_FILE_RDWR))
+    StyxFid *fid = NULL;
+    StyxRpcIoOutcome status = styxrpc_vfs_control_walk(session, STYXRPC_NAMED_SERVICE, wait, &fid);
+    if (status == STYXRPC_IO_OK)
     {
-        return file;
+        status = styxrpc_vfs_control_open(fid, STYXRPC_FILE_RDWR, wait);
     }
-    styxrpc_vfs_close(file, 0);
-    return NULL;
+    if (status == STYXRPC_IO_OK && !wait->stopped)
+    {
+        *out = fid;
+        return STYXRPC_IO_OK;
+    }
+    styxrpc_vfs_control_close(fid, wait);
+    return wait->stopped ? STYXRPC_IO_CANCELLED : status;
 }
 
 
 /* EN/RU: See named_channel.h. / См. named_channel.h. */
-StyxRpcVfsFile *styxrpc_named_open(struct StyxClient *session, const char *path)
+StyxRpcIoOutcome styxrpc_named_open_until(StyxClient *session, const char *path, StyxRpcVfsFile **out,
+    StyxRpcNamedStop stop, void *state)
 {
-    if (!session || !styxrpc_named_path(path))
+    if (!out || !session || !styxrpc_named_path(path))
     {
-        return NULL;
+        return STYXRPC_IO_NOT_OPEN;
     }
-    StyxRpcVfsFile *file = open_service(session);
-    if (file && submit(file, STYXRPC_NAMED_OPEN, path, strlen(path), NULL) == STYXRPC_IO_OK)
+    StyxRpcVfsWait control = {stop, state, 0};
+    StyxRpcVfsFile *file = NULL;
+    StyxRpcIoOutcome status = open_service(session, &control, &file);
+    if (status == STYXRPC_IO_OK)
     {
-        return file;
+        const NamedWait wait = {stop ? styxrpc_vfs_control_poll : NULL, &control};
+        status = submit(file, STYXRPC_NAMED_OPEN, path, strlen(path), &wait);
     }
-    styxrpc_vfs_close(file, 0);
-    return NULL;
+    if (status == STYXRPC_IO_OK)
+    {
+        *out = file;
+    }
+    else
+    {
+        styxrpc_vfs_control_close(file, &control);
+    }
+    return status;
+}
+
+
+/* EN/RU: See named_channel.h. / См. named_channel.h. */
+StyxRpcVfsFile *styxrpc_named_open(StyxClient *session, const char *path)
+{
+    StyxRpcVfsFile *file = NULL;
+    return styxrpc_named_open_until(session, path, &file, NULL, NULL) == STYXRPC_IO_OK ? file : NULL;
 }
 
 
@@ -202,8 +229,13 @@ StyxRpcVfsFile *styxrpc_cell_create(struct StyxClient *session, const void *fram
     {
         return NULL;
     }
-    StyxRpcVfsFile *file = open_service(session);
-    StyxRpcIoOutcome status = file ? submit(file, STYXRPC_CELL_NEW, frame, size, NULL) : STYXRPC_IO_NOT_OPEN;
+    StyxRpcVfsWait wait = {0};
+    StyxRpcVfsFile *file = NULL;
+    StyxRpcIoOutcome status = open_service(session, &wait, &file);
+    if (status == STYXRPC_IO_OK)
+    {
+        status = submit(file, STYXRPC_CELL_NEW, frame, size, NULL);
+    }
     unsigned char *reply = NULL;
     size_t returned;
     if (status == STYXRPC_IO_OK && read_frame(file, NULL, &reply, &returned) == STYXRPC_IO_OK &&
@@ -226,8 +258,10 @@ StyxRpcVfsFile *styxrpc_cell_attach(struct StyxClient *session, const void *toke
     {
         return NULL;
     }
-    StyxRpcVfsFile *file = open_service(session);
-    if (file && submit(file, STYXRPC_CELL_ATTACH, token, STYXRPC_CELL_TOKEN, NULL) == STYXRPC_IO_OK)
+    StyxRpcVfsWait wait = {0};
+    StyxRpcVfsFile *file = NULL;
+    if (open_service(session, &wait, &file) == STYXRPC_IO_OK &&
+        submit(file, STYXRPC_CELL_ATTACH, token, STYXRPC_CELL_TOKEN, NULL) == STYXRPC_IO_OK)
     {
         return file;
     }

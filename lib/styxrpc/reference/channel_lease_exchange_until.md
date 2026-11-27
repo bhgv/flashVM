@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_exchange_until
 
-[Русский](channel_lease_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L55) · [Implementation](../src/channel_client.c#L201)
+[Русский](channel_lease_exchange_until.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L55) · [Implementation](../src/channel_client.c#L216)
 
 ```c
 #include <styxrpc/channel_client.h>
@@ -27,19 +27,19 @@ contains the selected ordinal and can borrow typed bytes from `reply`.
 
 The optional [`StyxRpcCallStop`](../include/styxrpc/rpc.h) callback
 receives borrowed `state` on the calling thread. Return a nonzero value
-to stop. The SDK samples it before opening and while waiting on a
-data request. On a multiplexed session, a transmitted request gets one
-`Tflush` by tag. Metadata, the flush acknowledgement and clunk use
-the session's deadlines. A NULL callback gives the ordinary behavior.
+to stop. The SDK checks during the bus walk, open, any required token
+authentication and the data exchange. A multiplexed session flushes a
+pending request by tag. Flush acknowledgement and cleanup use the
+session's deadlines. A NULL callback gives the ordinary behavior.
 
 | Outcome | Meaning |
 | --- | --- |
 | `STYXRPC_CANCELLED` | The stop was observed before a guard write. Token authentication alone is allowed. |
 | `STYXRPC_CANCELLED_UNCERTAIN` | The stop was observed during or after a guard write, and an admitted branch may have taken effect. |
 
-Both cancellation outcomes close the exact temporary operation fid and
-preserve `result`. A complete reply read before the stop keeps its ordinary
-outcome. No request is replayed. The original route remains borrowed.
+Both cancellation outcomes retire the exact operation fid and preserve
+`result`. If no guard was sent, cleanup can continue after return.
+A complete reply read before the stop keeps its ordinary outcome. No request is replayed. The original route remains borrowed.
 Timeout, explicit refusal and malformed exchange retain the ordinary API
 statuses. Use distinct buffers for concurrent operations and serialize
 updates of any shared route table.

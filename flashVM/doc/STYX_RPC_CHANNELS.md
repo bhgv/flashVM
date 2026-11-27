@@ -23,12 +23,14 @@ A typed Limbo function can return channels that remain live after the function r
 Methods run synchronously on the FlashVM owner. A timeout, refusal or uncertain transport outcome raises an exception. A timeout can occur after an operation has taken effect. Release discarded objects normally through GC or call `close()` for explicit release.
 
 In a detached task, [`cancel()`](ASINC_CANCEL.md) stops a pending
-`send()`, `receive()` (`recv()`) or `select()`. On the paired connection,
-the client flushes a pending Styx data request by tag and closes the
-operation fid. The route and family
-lease remain valid for their other holders. If a request write preceded
-cancellation, a matching peer may already have consumed or sent a value.
+`send()`, `receive()` (`recv()`) or `select()`. The paired client can
+flush the bus walk, open, token authentication or guard exchange by tag.
+Before a guard is written, the selection has not been submitted.
+After submission a matching peer may already have consumed or sent a
+value. Cancellation retires the temporary operation fid and keeps
+the route and family lease available to other holders.
 Releasing the last channel separately retires its issuing lease.
+[SDK contract](../../lib/styxrpc/reference/channel_lease_exchange_until.md).
 
 ## Use FlashVM channels from Limbo
 

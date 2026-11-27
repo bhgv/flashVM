@@ -1,6 +1,6 @@
 // Copyright (c) 2026 bhgv
-// EN: Stop five module operations while ordinary traffic continues on the same session.
-// RU: Отменить пять операций с модулем, не прерывая обычный обмен в той же сессии.
+// EN: Stop five setup operations while ordinary traffic continues on the same session.
+// RU: Отменить пять этапов подготовки, не прерывая обычный обмен в той же сессии.
 
 
 // EN: Wait across frames for the relay's readiness byte before cancelling each worker.
@@ -12,7 +12,7 @@ function onEnterFrame() {
     }
     if (!setupDone) {
         if (!setupTask) {
-            setupTask = _root.moduleSetup(setupStage);
+            setupTask = _root.setupOperation(setupStage);
         }
         if (setupStage - 5) {
             if (!setupRequested) {

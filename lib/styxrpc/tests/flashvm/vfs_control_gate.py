@@ -57,7 +57,6 @@ class Gate:
                 size, = struct.unpack_from("<H", frame, at)
                 self.paths[newfid] = frame[at + 2 : at + 2 + size].decode("utf-8")
                 at += 2 + size
-            return frame
         return self.select_request(kind, tag, frame)
 
     # EN: Record the selected mutation or read and recognize recovery on a new fid.

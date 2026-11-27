@@ -8,6 +8,7 @@
 #include "flashvm/execution.h"
 #include "flashvm/gc.h"
 #include "flashvm/gc_roots.h"
+#include "../../ports/monotonic_port.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -15,8 +16,7 @@
 #define EMPTY_SIGNATURE UINT32_C(0x421b2140) /* Compiled empty interface. */
 #define NESTED_SIGNATURE UINT32_C(0xe74e6a20) /* Compiled nested result. */
 #define CHANNEL_TEST_WAIT_MS 1500U /* Reply/operation polling budget. */
-#define STOP_AFTER_AUTH 3U /* First operation-write check after token authentication. */
-#define STOP_AFTER_PENDING_READ 5U /* Second reply poll with one submitted operation. */
+#define CHANNEL_TEST_STOP_MS 100U /* Let the peer park a full or empty queue before requesting stop. */
 
 
 /* EN: Cut through the exact import selected by the fixture's compiled schema.
@@ -295,12 +295,13 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManagedTa
 }
 
 
-/* EN: Request a stop at the designated transport check in this test.
- * RU: Запросить остановку на выбранной проверке транспорта в этом тесте. */
+/* EN: Request immediate stop with NULL or stop when the caller's deadline arrives.
+ * RU: Отменить немедленно при NULL либо по истечении срока вызывающего. */
 static int stop_operation(void *state)
 {
-    unsigned *remaining = state;
-    return !--*remaining;
+    const double *deadline = state;
+    double now;
+    return !deadline || !fvm_port_monotonic_ms(&now) || now >= *deadline;
 }
 
 
@@ -322,7 +323,7 @@ static int retained_lease(const StyxRpcManagedTarget *target)
     StyxRpcSelection receive = {.count = 1, .guards = {{0, 1, NULL, 0}}};
     StyxRpcSelection send = {.count = 1, .guards = {{0, 0, encoded, 0}}};
     StyxRpcChannelResult result = {0};
-    unsigned before = STOP_AFTER_AUTH, full = STOP_AFTER_PENDING_READ, empty = STOP_AFTER_PENDING_READ;
+    double deadline;
     if (route)
     {
         receive.guards[0].key = route->channel.key;
@@ -330,24 +331,30 @@ static int retained_lease(const StyxRpcManagedTarget *target)
     }
     int ok = route && !strcmp(route->channel.shape, "(i)") &&
         styxrpc_channel_lease_exchange_until(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
-            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &before) ==
+            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, NULL) ==
             STYXRPC_CANCELLED && !result.selected &&
         styxrpc_value_integer(STYXRPC_VALUE_INT, 17, encoded, sizeof(encoded), &encoded_size) == STYXRPC_OK;
+    ok = ok && fvm_port_monotonic_ms(&deadline);
     if (ok)
     {
+        deadline += CHANNEL_TEST_STOP_MS;
         send.guards[0].size = encoded_size;
         ok = styxrpc_channel_lease_exchange_until(opened.lease, 0, &send, CHANNEL_TEST_WAIT_MS, NULL, 0,
-                request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &full) ==
+                request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &deadline) ==
                 STYXRPC_CANCELLED_UNCERTAIN && !result.selected &&
             styxrpc_channel_lease_exchange(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
                 request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_OK && result.integer == 83;
     }
     result.selected = 0;
-    ok = ok &&
-        styxrpc_channel_lease_exchange_until(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
-            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &empty) ==
+    ok = ok && fvm_port_monotonic_ms(&deadline);
+    if (ok)
+    {
+        deadline += CHANNEL_TEST_STOP_MS;
+        ok = styxrpc_channel_lease_exchange_until(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &deadline) ==
             STYXRPC_CANCELLED_UNCERTAIN && !result.selected &&
-        styxrpc_value_integer(STYXRPC_VALUE_INT, 29, encoded, sizeof(encoded), &encoded_size) == STYXRPC_OK;
+            styxrpc_value_integer(STYXRPC_VALUE_INT, 29, encoded, sizeof(encoded), &encoded_size) == STYXRPC_OK;
+    }
     if (ok)
     {
         send.guards[0].size = encoded_size;

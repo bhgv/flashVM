@@ -7,7 +7,7 @@
 // At recovery, require fresh instance state and a verified string reply.
 // RU: Принять номер этапа. Вызвать скалярный или типизированный метод по этапу.
 // При восстановлении проверить исходное состояние и строковый ответ.
-asinc function moduleSetup(stage) {
+asinc function setupOperation(stage) {
     var source = os.open("/setup.dis");
     var module = source.load();
     var closed = source.close();
