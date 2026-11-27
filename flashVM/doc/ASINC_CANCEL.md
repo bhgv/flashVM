@@ -12,6 +12,8 @@ keeps its prior result. Repeated requests are harmless. Read completion with
 In the paired player, a task waiting for a checked Dis method observes
 stop between Styx round trips. See [live Dis calls](STYX_RPC_LIVE_DIS.md)
 for what happens to the call fid, lent channels and peer effects.
+Cancellation also interrupts waits on
+[returned typed channels](STYX_RPC_CHANNELS.md#use-disvm-channels-from-actionscript).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

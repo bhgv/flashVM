@@ -97,6 +97,14 @@ StyxRpcStatus styxrpc_channel_route_exchange(struct StyxClient *session, const c
     void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
 
+/* EN: Like route_exchange, with optional stop(state) between Styx operations.
+ * RU: Как route_exchange с необязательным stop(state) между операциями Styx. */
+StyxRpcStatus styxrpc_channel_route_exchange_until(struct StyxClient *session, const char *module_bus,
+    const StyxRpcChannelRoute *route, const StyxRpcSelection *selection, unsigned timeout_ms,
+    void *scratch, size_t scratch_size, void *request, size_t request_capacity,
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state);
+
+
 /* EN: Admit all PID roots in an element on the exact reverse mount.
  * Confirm each PID identity and bus. A failed import preserves routes and indices.
  * RU: Принять корневые каналы PID из элемента на точном встречном монтировании.
@@ -112,6 +120,14 @@ StyxRpcStatus styxrpc_channel_pid_import(struct StyxClient *reverse, const char 
 StyxRpcStatus styxrpc_channel_pid_exchange(struct StyxClient *reverse, StyxRpcChannelRoutes *routes, size_t anchor,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
+
+
+/* EN: Like pid_exchange, with optional stop(state). Cancellation preserves routes and result.
+ * RU: Как pid_exchange с необязательным stop(state). Отмена сохраняет routes и result. */
+StyxRpcStatus styxrpc_channel_pid_exchange_until(struct StyxClient *reverse, StyxRpcChannelRoutes *routes, size_t anchor,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state);
 
 #ifdef __cplusplus
 }

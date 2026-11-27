@@ -10,6 +10,9 @@
 #include <inttypes.h>
 #include <time.h>
 
+#define CHANNEL_REPLY_POLL_NS 1000000L /* Pause between empty reads. */
+#define CHANNEL_TIMEOUT_MAX_MS 60000U /* Maximum caller-specified exchange budget. */
+
 
 /* EN: Monotonic elapsed-time source in milliseconds, zero on failure.
  * RU: Монотонное время в миллисекундах, ноль при ошибке. */
@@ -46,11 +49,15 @@ int styxrpc_channel_authenticate_bound(StyxFid *module, const unsigned char *tok
  * RU: Послать кадр через fid и собрать ответ до deadline.
  * Токен модуля записывается отдельно. Ответ модуля начинается со смещения ноль. */
 static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const void *request, size_t size,
-    void *reply, size_t capacity, uint64_t deadline, size_t *received)
+    void *reply, size_t capacity, uint64_t deadline, size_t *received, StyxRpcCallStop stop, void *state)
 {
     size_t prefix = token ? STYXRPC_CHANNEL_TOKEN_SIZE : 0;
     if (token)
     {
+        if (stop && stop(state))
+        {
+            return STYXRPC_CANCELLED;
+        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
@@ -64,6 +71,10 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
     size_t offset = 0;
     while (offset < size)
     {
+        if (stop && stop(state))
+        {
+            return offset ? STYXRPC_CANCELLED_UNCERTAIN : STYXRPC_CANCELLED;
+        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
@@ -77,10 +88,14 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
         }
         offset += wrote.count;
     }
-    const struct timespec pause = {0, 1000000};
+    const struct timespec pause = {0, CHANNEL_REPLY_POLL_NS};
     size_t total = 0;
     while (total < capacity)
     {
+        if (stop && stop(state))
+        {
+            return STYXRPC_CANCELLED_UNCERTAIN;
+        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
@@ -120,20 +135,25 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
 static StyxRpcStatus exchange_on(StyxClient *session, const char *path, StyxFid *module, const unsigned char *token,
     const StyxRpcChannelGrant *grants, size_t grant_count, const StyxRpcSelection *selection,
     unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
-    void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state)
 {
     size_t size, received;
     uint64_t began = now_ms();
     if ((!module && (!session || !path)) || !reply || !reply_capacity || reply_capacity > STYXRPC_MANAGED_LIMIT ||
-        !result || !began || !timeout_ms || timeout_ms > 60000 ||
+        !result || !began || !timeout_ms || timeout_ms > CHANNEL_TIMEOUT_MAX_MS ||
         styxrpc_channel_request(grants, grant_count, selection, scratch, scratch_size,
             request, request_capacity, &size) != STYXRPC_OK)
     {
         return STYXRPC_INVALID;
     }
+    if (stop && stop(state))
+    {
+        return STYXRPC_CANCELLED;
+    }
     StyxFid *fid = module ? styxclientwalkfrom(module, ".unibus") : styxclientwalk(session, path);
     StyxRpcStatus status = fid && styxclientopen(fid, 2) ?
-        exchange(fid, token, request, size, reply, reply_capacity, began + timeout_ms, &received) : STYXRPC_INVALID;
+        exchange(fid, token, request, size, reply, reply_capacity, began + timeout_ms, &received,
+            stop, state) : STYXRPC_INVALID;
     styxclientclunk(fid);
     return status == STYXRPC_OK ? styxrpc_channel_result(grants, grant_count,
         selection, reply, received, result) : status;
@@ -144,7 +164,8 @@ static StyxRpcStatus exchange_on(StyxClient *session, const char *path, StyxFid 
 StyxRpcStatus styxrpc_channel_exchange_pid_bound(StyxClient *reverse, uint32_t pid,
     const StyxRpcChannelGrant *grants, size_t count,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
-    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state)
 {
     if (!pid)
     {
@@ -153,7 +174,19 @@ StyxRpcStatus styxrpc_channel_exchange_pid_bound(StyxClient *reverse, uint32_t p
     char path[sizeof(".prog/4294967295/.unibus")];
     snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", pid);
     return exchange_on(reverse, path, NULL, NULL, grants, count, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result, stop, state);
+}
+
+
+/* EN/RU: See channel_call.h. / См. channel_call.h. */
+StyxRpcStatus styxrpc_channel_exchange_until(StyxClient *reverse, const StyxRpcChannelCall *call,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state)
+{
+    return call ? styxrpc_channel_exchange_pid_bound(reverse, call->pid, call->grants, call->count, selection,
+        timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity,
+        result, stop, state) : STYXRPC_INVALID;
 }
 
 
@@ -162,8 +195,33 @@ StyxRpcStatus styxrpc_channel_exchange(StyxClient *reverse, const StyxRpcChannel
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
 {
-    return call ? styxrpc_channel_exchange_pid_bound(reverse, call->pid, call->grants, call->count, selection,
-        timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity, result) : STYXRPC_INVALID;
+    return styxrpc_channel_exchange_until(reverse, call, selection, timeout_ms, scratch, scratch_size,
+        request, request_capacity, reply, reply_capacity, result, NULL, NULL);
+}
+
+
+/* EN/RU: See channel_route.h. / См. channel_route.h. */
+StyxRpcStatus styxrpc_channel_route_exchange_until(StyxClient *session, const char *module_bus,
+    const StyxRpcChannelRoute *route, const StyxRpcSelection *selection, unsigned timeout_ms,
+    void *scratch, size_t scratch_size, void *request, size_t request_capacity,
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state)
+{
+    if (!styxrpc_route_valid(route) || route->kind == STYXRPC_ROUTE_CURRENT)
+    {
+        return STYXRPC_INVALID;
+    }
+    if (route->kind == STYXRPC_ROUTE_PID)
+    {
+        return module_bus ? STYXRPC_INVALID : styxrpc_channel_exchange_pid_bound(session, route->pid, &route->channel,
+            1, selection, timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity,
+            result, stop, state);
+    }
+    if (!module_bus || !*module_bus)
+    {
+        return STYXRPC_INVALID;
+    }
+    return exchange_on(session, module_bus, NULL, route->token, &route->channel, 1, selection, timeout_ms,
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result, stop, state);
 }
 
 
@@ -173,21 +231,8 @@ StyxRpcStatus styxrpc_channel_route_exchange(StyxClient *session, const char *mo
     void *scratch, size_t scratch_size, void *request, size_t request_capacity,
     void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
 {
-    if (!styxrpc_route_valid(route) || route->kind == STYXRPC_ROUTE_CURRENT)
-    {
-        return STYXRPC_INVALID;
-    }
-    if (route->kind == STYXRPC_ROUTE_PID)
-    {
-        return module_bus ? STYXRPC_INVALID : styxrpc_channel_exchange_pid_bound(session, route->pid, &route->channel,
-            1, selection, timeout_ms, scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
-    }
-    if (!module_bus || !*module_bus)
-    {
-        return STYXRPC_INVALID;
-    }
-    return exchange_on(session, module_bus, NULL, route->token, &route->channel, 1, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+    return styxrpc_channel_route_exchange_until(session, module_bus, route, selection, timeout_ms,
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result, NULL, NULL);
 }
 
 
@@ -195,8 +240,8 @@ StyxRpcStatus styxrpc_channel_route_exchange(StyxClient *session, const char *mo
 StyxRpcStatus styxrpc_channel_exchange_bound(StyxFid *module, const unsigned char *token,
     const StyxRpcChannelGrant *grants, size_t count, const StyxRpcSelection *selection,
     unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
-    void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state)
 {
     return exchange_on(NULL, NULL, module, token, grants, count, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result, stop, state);
 }

@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_exchange
 
-[English](channel_pid_exchange.md) · [Объявление](../include/styxrpc/channel_route.h#L112) · [Реализация](../src/channel_pid.c#L148)
+[English](channel_pid_exchange.md) · [Объявление](../include/styxrpc/channel_route.h#L120) · [Реализация](../src/channel_pid.c#L186)
 
 ```c
 #include <styxrpc/channel_route.h>
@@ -28,3 +28,5 @@ StyxRpcStatus styxrpc_channel_pid_exchange(struct StyxClient *reverse,
 Временный fid операции закрывается через clunk до возврата. `STYXRPC_MORE` сообщает об исчерпании бюджета, `STYXRPC_REMOTE_ERROR` — о подтверждённой ошибке канала. `STYXRPC_INVALID` охватывает неверные аргументы, ключ за пределами выбранного PID, сбой транспорта, отозванный PID и неверный ответ. При ошибке `routes` и `result` сохраняют прежние значения. Удалённая операция может завершиться до таймаута или локального отказа. Автоматический повтор может выполнить её второй раз.
 
 [Самостоятельная проверка на сокете](../tests/channel_socket.c) импортирует PID канала строк и принимает значение по допущенному ключу. Затем она пробует второй ключ, который обслуживается той же шиной. Адаптер отклоняет запрос, пока ключ не допущен. [Руководство по арендам](channel_leases.ru.md) описывает, как владелец получает кадр с PID.
+
+[Операция с отменой](channel_pid_exchange_until.ru.md).

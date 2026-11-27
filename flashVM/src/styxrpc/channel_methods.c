@@ -4,6 +4,7 @@
  */
 #include "channel_private.h"
 #include "managed_values.h"
+#include "wire_wait.h"
 #include "flashvm/userdata.h"
 #include <stdlib.h>
 #include <string.h>
@@ -154,34 +155,38 @@ int fvm_styxrpc_channel_unpack_remote(FVM_Context *context, FVM_GCRootScope *roo
 
 
 /* EN/RU: See channel_private.h. / См. channel_private.h. */
-const char *fvm_styxrpc_channel_run(const FVM_StyxRemoteChannel *anchor, const StyxRpcSelection *selection,
-    unsigned char *buffers, StyxRpcChannelResult *result)
+const char *fvm_styxrpc_channel_run(FVM_Context *context, const FVM_StyxRemoteChannel *anchor,
+    const StyxRpcSelection *selection, unsigned char *buffers, StyxRpcChannelResult *result)
 {
     FVM_StyxChannelSet *set = anchor->set;
     unsigned char *request = buffers + STYXRPC_MANAGED_LIMIT;
     unsigned char *reply = request + STYXRPC_MANAGED_LIMIT;
     StyxRpcStatus status;
+    FVM_Worker *worker = NULL;
+    StyxRpcCallStop stop;
     if (!set || (set->pid_mailbox && !styxrpc_channel_mailbox_active(set->pid_mailbox)))
     {
         return "Styx RPC channel is closed";
     }
+    fvm_worker_current(context, &worker);
+    stop = worker ? fvm_styxrpc_worker_stopped : NULL;
     if (set->pid_mailbox)
     {
-        status = styxrpc_channel_pid_exchange(set->reverse, &set->pid_routes, anchor->index, selection,
+        status = styxrpc_channel_pid_exchange_until(set->reverse, &set->pid_routes, anchor->index, selection,
             set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-            reply, STYXRPC_MANAGED_LIMIT, result);
+            reply, STYXRPC_MANAGED_LIMIT, result, stop, worker);
     }
     else if (set->lease)
     {
-        status = styxrpc_channel_lease_exchange(set->lease, anchor->index, selection,
+        status = styxrpc_channel_lease_exchange_until(set->lease, anchor->index, selection,
             set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-            reply, STYXRPC_MANAGED_LIMIT, result);
+            reply, STYXRPC_MANAGED_LIMIT, result, stop, worker);
     }
     else
     {
-        status = styxrpc_channel_exchange(set->reverse, set->call, selection,
+        status = styxrpc_channel_exchange_until(set->reverse, set->call, selection,
             set->wait_ms, buffers, STYXRPC_MANAGED_LIMIT, request, STYXRPC_MANAGED_LIMIT,
-            reply, STYXRPC_MANAGED_LIMIT, result);
+            reply, STYXRPC_MANAGED_LIMIT, result, stop, worker);
     }
     switch (status)
     {
@@ -191,6 +196,10 @@ const char *fvm_styxrpc_channel_run(const FVM_StyxRemoteChannel *anchor, const S
         return "Styx RPC channel operation timed out";
     case STYXRPC_REMOTE_ERROR:
         return "Styx RPC channel operation was refused";
+    case STYXRPC_CANCELLED:
+        return "Styx RPC channel operation cancelled before submission";
+    case STYXRPC_CANCELLED_UNCERTAIN:
+        return "Styx RPC channel operation cancelled; remote outcome is uncertain";
     default:
         return "Styx RPC channel outcome is uncertain";
     }
@@ -247,7 +256,8 @@ static FVM_Result operate(FVM_Context *context, FVM_Object *self, unsigned argc,
         else
         {
             selection.policy = send.delegated.count ? &policy : NULL;
-            error = fvm_styxrpc_channel_run(channel, &selection, buffers + 2U * STYXRPC_MANAGED_LIMIT, &result);
+            error = fvm_styxrpc_channel_run(context, channel, &selection,
+                buffers + 2U * STYXRPC_MANAGED_LIMIT, &result);
             if (!error && argc)
             {
                 fvm_value_boolean(out, result.selected != 0);

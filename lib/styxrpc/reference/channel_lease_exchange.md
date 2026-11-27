@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_exchange
 
-[Русский](channel_lease_exchange.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L42) · [Implementation](../src/channel_client.c) · [Lease guide](channel_leases.md)
+[Русский](channel_lease_exchange.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L48) · [Implementation](../src/channel_client.c) · [Lease guide](channel_leases.md)
 
 Link `StyxRpc::launch`.
 
@@ -16,3 +16,5 @@ Use the original mounted module in `lease`, with the token of zero-based `route_
 `STYXRPC_OK` writes a validated `result`, borrowing the reply's typed bytes when present. `STYXRPC_MORE` signals an expired polling budget, `STYXRPC_REMOTE_ERROR` an explicit refusal, and `STYXRPC_INVALID` an invalid request, unavailable route, transport or framing failure. The operation opens and clunks a fresh fid. Timing is checked between synchronous transactions. Report an uncertain operation without automatically replaying it.
 
 [Executable fixture](../examples/disvm/routed_client.c)
+
+[Cancellable operation](channel_lease_exchange_until.md).

@@ -73,6 +73,16 @@ StyxRpcStatus styxrpc_channel_exchange(struct StyxClient *reverse, const StyxRpc
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
     void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
+
+/* EN: Like channel_exchange, with optional stop(state) on the caller's thread.
+ * Cancellation closes only the operation fid and preserves result.
+ * RU: Как channel_exchange с необязательным stop(state) в вызывающем потоке.
+ * Отмена закрывает только fid операции и сохраняет result. */
+StyxRpcStatus styxrpc_channel_exchange_until(struct StyxClient *reverse, const StyxRpcChannelCall *call,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

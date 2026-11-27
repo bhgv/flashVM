@@ -1,6 +1,6 @@
 # styxrpc_scalar_invoke_at_until
 
-[English](scalar_invoke_at_until.md) · [Объявление](../include/styxrpc/scalar_client.h#L51) ·
+[English](scalar_invoke_at_until.md) · [Объявление](../include/styxrpc/scalar_client.h#L47) ·
 [Реализация](../src/scalar_client.c#L9)
 
 ```c

@@ -198,9 +198,10 @@ void styxrpc_channel_lease_release(StyxRpcChannelLease *lease, int deferred)
 
 
 /* EN/RU: See styxrpc/channel_client.h. / См. styxrpc/channel_client.h. */
-StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t route_index,
+StyxRpcStatus styxrpc_channel_lease_exchange_until(StyxRpcChannelLease *lease, size_t route_index,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
-    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state)
 {
     if (!lease || route_index >= lease->routes.count)
     {
@@ -218,7 +219,17 @@ StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t 
         }
     }
     return styxrpc_channel_exchange_bound(lease->module, token, grants, count, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result);
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, result, stop, state);
+}
+
+
+/* EN/RU: See channel_client.h. / См. channel_client.h. */
+StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t route_index,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+{
+    return styxrpc_channel_lease_exchange_until(lease, route_index, selection, timeout_ms, scratch, scratch_size,
+        request, request_capacity, reply, reply_capacity, result, NULL, NULL);
 }
 
 

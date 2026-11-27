@@ -3,6 +3,7 @@
  * RU: Обмен типизированным выбором UniBus через fid процесса в Styx.
  */
 #include "styxrpc/channel_fid.h"
+#include "styxrpc/channel_call.h"
 #include "styxrpc/channel_route.h"
 #include "styxrpc/program.h"
 #include "client.h"
@@ -11,10 +12,14 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #define REVOKE_ROUNDS 132U /* Reuse the same three slots across one live session. */
+#define STOP_BEFORE_OPEN 1U /* No operation fid has been walked. */
+#define STOP_BEFORE_WRITE 2U /* The PID operation fid is open but no guard was written. */
+#define STOP_AFTER_POLL 4U /* One guard was written and one pending reply was read. */
 
 static const StyxRpcChannelGrant grants[] = {{1, "(i)"}, {2, "(s)"}}; /* Explicit local capabilities. */
 
@@ -265,6 +270,76 @@ static int exchange_imported(StyxClient *client, StyxRpcChannelRoutes *routes)
 }
 
 
+typedef struct StopPlan
+{
+    unsigned checks; /* Samples counted on the caller thread. */
+    unsigned limit;  /* First sample that requests cancellation. */
+} StopPlan;
+
+
+/* EN: Report the scheduled stop for the client exercising this exact operation.
+ * RU: Сообщить запланированную остановку для проверяемой операции клиента. */
+static int stop_at(void *state)
+{
+    StopPlan *plan = state;
+    return ++plan->checks >= plan->limit;
+}
+
+
+/* EN: Clunk one cancelled selection without touching a second pending fid or the PID grant.
+ * RU: Закрыть отменённый выбор, сохранив второй ожидающий fid и полномочие PID. */
+static int cancel_operation(StyxClient *client, uint32_t pid)
+{
+    const StyxRpcSelection park = {.count = 1, .guards = {{1, 1, NULL, 0}}};
+    const StyxRpcSelection ready = {.count = 1, .guards = {{2, 1, NULL, 0}}};
+    StyxRpcChannelRoutes routes = {.count = 2, .entries = {
+        {.kind = STYXRPC_ROUTE_PID, .pid = pid, .channel = grants[0]},
+        {.kind = STYXRPC_ROUTE_PID, .pid = pid, .channel = grants[1]}}};
+    unsigned char request[96], reply[96];
+    size_t length;
+    StyxRpcChannelResult result = {.selected = 99};
+    StopPlan early = {0, STOP_BEFORE_OPEN}, before = {0, STOP_BEFORE_WRITE}, pending = {0, STOP_AFTER_POLL};
+    StopPlan raw = {0, STOP_AFTER_POLL};
+    StyxRpcChannelCall call = {.pid = pid, .count = 2};
+    memcpy(call.grants, grants, sizeof(grants));
+    char path[sizeof(".prog/4294967295/.unibus")];
+    snprintf(path, sizeof(path), ".prog/%" PRIu32 "/.unibus", pid);
+    StyxFid *other = styxclientwalk(client, path);
+    int good = other && styxclientopen(other, 2) &&
+        styxrpc_channel_request(grants, 2, &park, NULL, 0,
+            request, sizeof(request), &length) == STYXRPC_OK;
+    if (good)
+    {
+        StyxTransfer sent;
+        styxclientwrite(other, 0, request, length, &sent);
+        good = sent.success && sent.confirmed && !sent.uncertain && sent.count == length &&
+            styxrpc_channel_route_exchange_until(client, NULL, &routes.entries[0], &park, 500,
+                NULL, 0, request, sizeof(request), reply, sizeof(reply), &result, stop_at, &early) ==
+                STYXRPC_CANCELLED && result.selected == 99 &&
+            styxrpc_channel_pid_exchange_until(client, &routes, 0, &park, 500, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result, stop_at, &before) ==
+                STYXRPC_CANCELLED && result.selected == 99 &&
+            styxrpc_channel_pid_exchange_until(client, &routes, 0, &park, 500, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result, stop_at, &pending) ==
+                STYXRPC_CANCELLED_UNCERTAIN && result.selected == 99 && routes.count == 2 &&
+            styxrpc_channel_exchange_until(client, &call, &park, 500, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result, stop_at, &raw) ==
+                STYXRPC_CANCELLED_UNCERTAIN && result.selected == 99;
+    }
+    if (good)
+    {
+        StyxTransfer read;
+        styxclientread(other, length, reply, sizeof(reply), &read);
+        good = read.success && read.confirmed && !read.count &&
+            styxrpc_channel_pid_exchange_until(client, &routes, 0, &ready, 500, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result, NULL, NULL) ==
+                STYXRPC_OK && result.selected == 1 && result.size;
+    }
+    styxclientclunk(other);
+    return good;
+}
+
+
 /* EN: Park two operations, revoke through the owner and reject old and fresh access.
  * RU: Поставить две операции в ожидание, отозвать через владельца и проверить отказ доступа. */
 static int revoke_routed(StyxClient *client, uint32_t pid)
@@ -347,7 +422,7 @@ int main(void)
     StyxRpcChannelRoutes imported = {0};
     int good = client && exchange(client) && import_pid(client, pid, STYXRPC_OK, &imported) &&
         import_pid(client, pid + 1, STYXRPC_INVALID, &imported) && imported.count == 1 &&
-        imported.entries[0].pid == pid && exchange_imported(client, &imported);
+        imported.entries[0].pid == pid && exchange_imported(client, &imported) && cancel_operation(client, pid);
     for (unsigned i = 0; good && i < REVOKE_ROUNDS; ++i)
     {
         good = exchange_routed(client, pid + i) && revoke_routed(client, pid + i);
@@ -357,7 +432,7 @@ int main(void)
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);
-    if (!good || endpoint.cancelled != 2 + 2 * REVOKE_ROUNDS)
+    if (!good || endpoint.cancelled != 5 + 2 * REVOKE_ROUNDS)
     {
         fputs("UniBus selection or pending fid retirement failed\n", stderr);
         return 1;

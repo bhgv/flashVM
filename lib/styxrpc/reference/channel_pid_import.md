@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_import
 
-[Русский](channel_pid_import.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L104) · [Implementation](../src/channel_pid.c#L72)
+[Русский](channel_pid_import.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L112) · [Implementation](../src/channel_pid.c#L72)
 
 ```c
 #include <styxrpc/channel_route.h>

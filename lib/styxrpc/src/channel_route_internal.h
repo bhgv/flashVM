@@ -24,7 +24,7 @@ int styxrpc_channel_authenticate_bound(struct StyxFid *module, const unsigned ch
 StyxRpcStatus styxrpc_channel_exchange_pid_bound(struct StyxClient *reverse, uint32_t pid,
     const StyxRpcChannelGrant *grants, size_t count, const StyxRpcSelection *selection,
     unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
-    void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state);
 
 
 /* EN: Exchange through the module held at admission, without a fresh module-name lookup.
@@ -32,5 +32,5 @@ StyxRpcStatus styxrpc_channel_exchange_pid_bound(struct StyxClient *reverse, uin
 StyxRpcStatus styxrpc_channel_exchange_bound(struct StyxFid *module, const unsigned char *token,
     const StyxRpcChannelGrant *grants, size_t count, const StyxRpcSelection *selection,
     unsigned timeout_ms, void *scratch, size_t scratch_size, void *request, size_t request_capacity,
-    void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
+    void *reply, size_t reply_capacity, StyxRpcChannelResult *result, StyxRpcCallStop stop, void *state);
 #endif

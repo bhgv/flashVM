@@ -16,3 +16,5 @@ Execute a selection on the checked caller’s reverse .unibus using its admitted
 `StyxRpc::launch`.
 
 [Example](../examples/disvm/channel_device.c) · [Source](../src/channel_exchange.c)
+
+[Cancellable operation](channel_exchange_until.md).

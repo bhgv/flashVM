@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_import_message
 
-[English](channel_lease_import_message.md) · [Сценарий аренд](channel_leases.ru.md) · [Объявление](../include/styxrpc/channel_client.h#L70) · [Реализация](../src/channel_client.c#L284)
+[English](channel_lease_import_message.md) · [Сценарий аренд](channel_leases.ru.md) · [Объявление](../include/styxrpc/channel_client.h#L84) · [Реализация](../src/channel_client.c#L329)
 
 ```c
 #include <styxrpc/channel_client.h>

@@ -36,3 +36,5 @@ StyxRpcStatus styxrpc_channel_route_exchange(struct StyxClient *session, const c
 запрещён. Подключите `StyxRpc::launch`.
 
 [styxrpc_channel_exchange](channel_exchange.ru.md) · [Пример](../examples/disvm/routed_client.c) · [Исходник](../src/channel_exchange.c)
+
+[Операция с отменой](channel_route_exchange_until.ru.md).

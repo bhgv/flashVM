@@ -36,6 +36,7 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 [Scoped discovery](reference/module_exports_scoped_at.md) reports which exact methods need a caller PID. During a synchronous call, the owner can [serve the native program tree](reference/server_program_step_for.md) while its application callbacks wait.
 [Cancellable live loading](reference/module_live_open_until.md) releases the exact request fid when the caller stops waiting for a Dis image.
 [Cancellable method calls](reference/scalar_invoke_at_until.md) distinguish a stop before the first write from an uncertain outcome after submission. The same contract applies to the managed, graph and channel codecs.
+[Cancellable channel operations](reference/channel_lease_exchange_until.md) close the temporary operation fid while retaining the original route.
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 

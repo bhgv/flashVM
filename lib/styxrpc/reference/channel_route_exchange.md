@@ -36,3 +36,5 @@ failure, revoked routes and invalid frames. A timed-out operation may already
 have committed. Never replay it automatically. Link `StyxRpc::launch`.
 
 [styxrpc_channel_exchange](channel_exchange.md) · [Example](../examples/disvm/routed_client.c) · [Source](../src/channel_exchange.c)
+
+[Cancellable operation](channel_route_exchange_until.md).

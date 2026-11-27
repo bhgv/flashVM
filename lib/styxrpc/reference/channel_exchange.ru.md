@@ -16,3 +16,5 @@ StyxRpcStatus styxrpc_channel_exchange(struct StyxClient *reverse, const StyxRpc
 `StyxRpc::launch`.
 
 [Пример](../examples/disvm/channel_device.c) · [Исходник](../src/channel_exchange.c)
+
+[Операция с отменой](channel_exchange_until.ru.md).

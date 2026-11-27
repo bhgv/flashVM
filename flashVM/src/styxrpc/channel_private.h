@@ -190,8 +190,8 @@ int fvm_styxrpc_channels_share_bus(const FVM_StyxRemoteChannel *left, const FVM_
  * frames for scratch, request and reply. Return NULL on success, or a static error string.
  * RU: Послать selection на шину anchor. Buffers содержит три кадра максимального размера
  * для промежуточных данных, запроса и ответа. Вернуть NULL либо статический текст ошибки. */
-const char *fvm_styxrpc_channel_run(const FVM_StyxRemoteChannel *anchor, const StyxRpcSelection *selection,
-    unsigned char *buffers, StyxRpcChannelResult *result);
+const char *fvm_styxrpc_channel_run(FVM_Context *context, const FVM_StyxRemoteChannel *anchor,
+    const StyxRpcSelection *selection, unsigned char *buffers, StyxRpcChannelResult *result);
 
 
 /* [GC:] EN: Decode the selected receive on channel, admitting nested keys under roots.

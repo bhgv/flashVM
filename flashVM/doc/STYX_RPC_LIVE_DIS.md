@@ -76,3 +76,5 @@ and cancellation while the image owner is still holding a read.
 Use `--cancel-dis-call` to check cancellation of three concurrent
 typed calls parked on local Dis channels. The same test calls an
 independent proxy before and after the cancellation.
+Use `--cancel-dis-channel` to check pending sends, receives and selections
+on result channels that outlive their unloaded proxies.

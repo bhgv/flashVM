@@ -22,8 +22,15 @@ typedef enum StyxRpcStatus
     STYXRPC_OK = 0,       /* Complete or acknowledged progress. */
     STYXRPC_REMOTE_ERROR = 2, /* The provider acknowledged a failed call. */
     STYXRPC_MORE = 1,     /* Request incomplete or a reply is pending. */
-    STYXRPC_INVALID = -1 /* Refused descriptor, malformed frame or offset. */
+    STYXRPC_INVALID = -1, /* Refused descriptor, malformed frame or offset. */
+    STYXRPC_CANCELLED = -2, /* Channel stop observed before any operation write. */
+    STYXRPC_CANCELLED_UNCERTAIN = -3 /* Channel stop after a write; peer effects may exist. */
 } StyxRpcStatus;
+
+
+/* EN: Return nonzero to stop an exchange on the calling thread.
+ * RU: Вернуть ненулевое значение для остановки обмена в вызывающем потоке. */
+typedef int (*StyxRpcCallStop)(void *state);
 
 
 /* EN: Return 1 on success and set result. Return zero for a remote application error.

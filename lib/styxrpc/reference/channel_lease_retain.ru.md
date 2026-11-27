@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_retain
 
-[English](channel_lease_retain.md) · [Объявление](../include/styxrpc/channel_client.h#L32) · [Реализация](../src/channel_client.c) · [Описание аренды](channel_leases.ru.md)
+[English](channel_lease_retain.md) · [Объявление](../include/styxrpc/channel_client.h#L38) · [Реализация](../src/channel_client.c) · [Описание аренды](channel_leases.ru.md)
 
 Подключите `StyxRpc::launch`.
 

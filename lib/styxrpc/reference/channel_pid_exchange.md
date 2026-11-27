@@ -1,6 +1,6 @@
 # styxrpc_channel_pid_exchange
 
-[Русский](channel_pid_exchange.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L112) · [Implementation](../src/channel_pid.c#L148)
+[Русский](channel_pid_exchange.ru.md) · [Declaration](../include/styxrpc/channel_route.h#L120) · [Implementation](../src/channel_pid.c#L186)
 
 ```c
 #include <styxrpc/channel_route.h>
@@ -28,3 +28,5 @@ On `STYXRPC_OK`, each CURRENT child from a received element is recorded under it
 The temporary operation fid is clunked before the call returns. `STYXRPC_MORE` reports an elapsed budget, and `STYXRPC_REMOTE_ERROR` reports an acknowledged channel error. `STYXRPC_INVALID` covers invalid arguments, a key outside the selected PID, transport failure, a revoked PID or an invalid result. On failure `routes` and `result` retain their previous values. A remote operation can complete before a timeout or local rejection. Automatic retries can duplicate the operation.
 
 The [independent socket test](../tests/channel_socket.c) imports a string-channel PID and receives with its admitted key. It then tries a second key that the peer serves on that bus. The adapter rejects the second request because that key has yet to be admitted. The [lease guide](channel_leases.md) describes how the owner obtains the PID frame in the first place.
+
+[Cancellable operation](channel_pid_exchange_until.md).

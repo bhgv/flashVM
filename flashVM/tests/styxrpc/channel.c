@@ -15,6 +15,8 @@
 #define EMPTY_SIGNATURE UINT32_C(0x421b2140) /* Compiled empty interface. */
 #define NESTED_SIGNATURE UINT32_C(0xe74e6a20) /* Compiled nested result. */
 #define CHANNEL_TEST_WAIT_MS 1500U /* Reply/operation polling budget. */
+#define STOP_AFTER_AUTH 3U /* First operation-write check after token authentication. */
+#define STOP_AFTER_PENDING_READ 5U /* Second reply poll with one submitted operation. */
 
 
 /* EN: Cut through the exact import selected by the fixture's compiled schema.
@@ -293,6 +295,72 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, StyxRpcManagedTa
 }
 
 
+/* EN: Request a stop at the designated transport check in this test.
+ * RU: Запросить остановку на выбранной проверке транспорта в этом тесте. */
+static int stop_operation(void *state)
+{
+    unsigned *remaining = state;
+    return !--*remaining;
+}
+
+
+/* EN: Cancel waits on a full and empty queue, then prove the original lease
+ * delivers only the newly submitted value to a fresh receive.
+ * RU: Отменить ожидания на полной и пустой очереди и проверить, что исходная
+ * аренда передаёт новому приёму только вновь отправленное значение. */
+static int retained_lease(const StyxRpcManagedTarget *target)
+{
+    unsigned char argument[STYXRPC_FRAME_SIZE], encoded[STYXRPC_FRAME_SIZE], request[128], reply[512];
+    size_t argument_size, encoded_size;
+    StyxRpcLeasedReply opened = {0};
+    if (styxrpc_value_integer(STYXRPC_VALUE_INT, 83, argument, sizeof(argument), &argument_size) != STYXRPC_OK ||
+        styxrpc_channel_invoke(target, argument, argument_size, reply, sizeof(reply), &opened) != STYXRPC_CALL_OK)
+    {
+        return 0;
+    }
+    const StyxRpcChannelRoute *route = styxrpc_channel_lease_route(opened.lease, 0);
+    StyxRpcSelection receive = {.count = 1, .guards = {{0, 1, NULL, 0}}};
+    StyxRpcSelection send = {.count = 1, .guards = {{0, 0, encoded, 0}}};
+    StyxRpcChannelResult result = {0};
+    unsigned before = STOP_AFTER_AUTH, full = STOP_AFTER_PENDING_READ, empty = STOP_AFTER_PENDING_READ;
+    if (route)
+    {
+        receive.guards[0].key = route->channel.key;
+        send.guards[0].key = route->channel.key;
+    }
+    int ok = route && !strcmp(route->channel.shape, "(i)") &&
+        styxrpc_channel_lease_exchange_until(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &before) ==
+            STYXRPC_CANCELLED && !result.selected &&
+        styxrpc_value_integer(STYXRPC_VALUE_INT, 17, encoded, sizeof(encoded), &encoded_size) == STYXRPC_OK;
+    if (ok)
+    {
+        send.guards[0].size = encoded_size;
+        ok = styxrpc_channel_lease_exchange_until(opened.lease, 0, &send, CHANNEL_TEST_WAIT_MS, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &full) ==
+                STYXRPC_CANCELLED_UNCERTAIN && !result.selected &&
+            styxrpc_channel_lease_exchange(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_OK && result.integer == 83;
+    }
+    result.selected = 0;
+    ok = ok &&
+        styxrpc_channel_lease_exchange_until(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
+            request, sizeof(request), reply, sizeof(reply), &result, stop_operation, &empty) ==
+            STYXRPC_CANCELLED_UNCERTAIN && !result.selected &&
+        styxrpc_value_integer(STYXRPC_VALUE_INT, 29, encoded, sizeof(encoded), &encoded_size) == STYXRPC_OK;
+    if (ok)
+    {
+        send.guards[0].size = encoded_size;
+        ok = styxrpc_channel_lease_exchange(opened.lease, 0, &send, CHANNEL_TEST_WAIT_MS, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_OK &&
+            styxrpc_channel_lease_exchange(opened.lease, 0, &receive, CHANNEL_TEST_WAIT_MS, NULL, 0,
+                request, sizeof(request), reply, sizeof(reply), &result) == STYXRPC_OK && result.integer == 29;
+    }
+    styxrpc_channel_lease_release(opened.lease, 0);
+    return ok;
+}
+
+
 /* EN/RU: See channel-test.h. / См. channel-test.h. */
 int test_channel_call(FVM_Context *context, StyxRpcManagedTarget *target)
 {
@@ -307,7 +375,7 @@ int test_channel_call(FVM_Context *context, StyxRpcManagedTarget *target)
     target->pid = TEST_MANAGED_PID;
     target->wait_ms = CHANNEL_TEST_WAIT_MS;
     fvm_value_number(&args, 41);
-    int ok = fvm_gc_roots_begin(context, &roots) == FVM_OK &&
+    int ok = retained_lease(target) && fvm_gc_roots_begin(context, &roots) == FVM_OK &&
         fvm_styxrpc_channel_import(context, "portsRPC", target) == FVM_OK &&
         call(context, 1, &args, &group) == FVM_OK && fvm_gc_roots_add(roots, &group) == FVM_OK;
     if (ok)

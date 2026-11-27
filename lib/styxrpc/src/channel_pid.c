@@ -145,9 +145,10 @@ static int import_current(StyxRpcChannelRoutes *routes, uint32_t pid,
 
 
 /* EN/RU: See styxrpc/channel_route.h. / См. styxrpc/channel_route.h. */
-StyxRpcStatus styxrpc_channel_pid_exchange(StyxClient *reverse, StyxRpcChannelRoutes *routes, size_t anchor,
+StyxRpcStatus styxrpc_channel_pid_exchange_until(StyxClient *reverse, StyxRpcChannelRoutes *routes, size_t anchor,
     const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
-    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result,
+    StyxRpcCallStop stop, void *state)
 {
     if (!routes || routes->count > STYXRPC_CHANNEL_SLOTS || anchor >= routes->count ||
         !selection || selection->policy || !result || routes->entries[anchor].kind != STYXRPC_ROUTE_PID)
@@ -167,7 +168,7 @@ StyxRpcStatus styxrpc_channel_pid_exchange(StyxClient *reverse, StyxRpcChannelRo
     }
     StyxRpcChannelResult decoded;
     StyxRpcStatus status = styxrpc_channel_exchange_pid_bound(reverse, pid, grants, count, selection, timeout_ms,
-        scratch, scratch_size, request, request_capacity, reply, reply_capacity, &decoded);
+        scratch, scratch_size, request, request_capacity, reply, reply_capacity, &decoded, stop, state);
     if (status == STYXRPC_OK)
     {
         const StyxRpcGuard *guard = decoded.selected ? selection->guards + decoded.selected - 1 : NULL;
@@ -178,4 +179,14 @@ StyxRpcStatus styxrpc_channel_pid_exchange(StyxClient *reverse, StyxRpcChannelRo
         *result = decoded;
     }
     return status;
+}
+
+
+/* EN/RU: See styxrpc/channel_route.h. / См. styxrpc/channel_route.h. */
+StyxRpcStatus styxrpc_channel_pid_exchange(StyxClient *reverse, StyxRpcChannelRoutes *routes, size_t anchor,
+    const StyxRpcSelection *selection, unsigned timeout_ms, void *scratch, size_t scratch_size,
+    void *request, size_t request_capacity, void *reply, size_t reply_capacity, StyxRpcChannelResult *result)
+{
+    return styxrpc_channel_pid_exchange_until(reverse, routes, anchor, selection, timeout_ms, scratch, scratch_size,
+        request, request_capacity, reply, reply_capacity, result, NULL, NULL);
 }

@@ -36,7 +36,7 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
-                    "live-dis", "cancel-dis-call"):
+                    "live-dis", "cancel-dis-call", "cancel-dis-channel"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -70,6 +70,9 @@ def main():
         if name == "cancel-dis-call":
             compile_image(args, directory, tests / "cancel-dis-call_library.b", "cancel-target.dis")
             (directory / "call-gate").write_bytes(b"0")
+        if name == "cancel-dis-channel":
+            compile_image(args, directory, tests / "cancel-dis-channel_library.b", "queues.dis")
+            (directory / "channel-gate").write_bytes(b"0")
         if name == "dirlive":
             (directory / "tools/before").touch()
         if name == "modref-reverse":
@@ -96,6 +99,7 @@ def main():
             "module-channel": (),
             "live-dis": ("styxnodes",),
             "cancel-dis-call": (),
+            "cancel-dis-channel": (),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -117,6 +121,7 @@ def main():
             "live-dis": ("live-dis_worker.as", "live-dis_refusal.as", "live-dis_direct.as",
                          "live-dis_reuse.as", "live-dis_closed.as", "live-dis_cancel.as"),
             "cancel-dis-call": ("cancel-dis-call_worker.as",),
+            "cancel-dis-channel": ("cancel-dis-channel_worker.as",),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
@@ -126,7 +131,8 @@ def main():
             directory,
             lambda connection: [args.player, *connection, mode],
             lambda connection: [args.runtime, *connection, "--at", "/peer",
-                                *(("--live-dis-load",) if name in ("live-dis", "cancel-dis-call") else ()), "--",
+                                *(("--live-dis-load",) if name in ("live-dis", "cancel-dis-call",
+                                                                  "cancel-dis-channel") else ()), "--",
                                 "--native-spawn", mode, client.name],
             f"PASS native {name} RPC paired VMs",
             tcp=args.tcp, timeout=30 if name == "live-dis" else 15,

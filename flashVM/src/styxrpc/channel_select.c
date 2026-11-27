@@ -184,7 +184,7 @@ static FVM_Result choose(FVM_Context *context, FVM_Object *self, unsigned argc,
             if (!error)
             {
                 selection.policy = send.delegated.count ? &policy : NULL;
-                error = fvm_styxrpc_channel_run(anchor, &selection, buffers + 3U * FRAME, &result);
+                error = fvm_styxrpc_channel_run(context, anchor, &selection, buffers + 3U * FRAME, &result);
             }
             status = error ? fvm_styxrpc_managed_fail(context, error) :
                 publish(context, roots, &selection, channels, &result, out);

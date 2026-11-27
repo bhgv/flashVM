@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_release
 
-[Русский](channel_lease_release.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L37) · [Implementation](../src/channel_client.c) · [Lease guide](channel_leases.md)
+[Русский](channel_lease_release.ru.md) · [Declaration](../include/styxrpc/channel_client.h#L43) · [Implementation](../src/channel_client.c) · [Lease guide](channel_leases.md)
 
 Link `StyxRpc::launch`.
 

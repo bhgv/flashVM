@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1806 — cancel pending operations on live UniBus channels
+
+Detached ActionScript tasks observe cancellation while sending, receiving
+or selecting on a remote typed channel. The SDK clunks the operation fid
+while retaining its issuing route and distinguishes cancellation before
+an operation write from an uncertain outcome after writing. The paired
+tests retain channels after module unload and reuse the same lease after
+cancelling pending sends and receives.
+[EN](STYX_RPC_CHANNELS.md) · [RU](STYX_RPC_CHANNELS.ru.md).
+
 ## v0.1805 — cooperative cancellation of pending Dis calls
 
 Detached ActionScript tasks stop waiting on scalar, managed, graph and

@@ -25,10 +25,6 @@ typedef enum StyxRpcOutcome
     STYXRPC_CALL_CANCELLED_UNCERTAIN = 5 /* The hook fired after a write; peer effects may exist. */
 } StyxRpcOutcome;
 
-/* EN: Return nonzero to stop a call on the calling thread.
- * RU: Вернуть ненулевое значение для остановки вызова в вызывающем потоке. */
-typedef int (*StyxRpcCallStop)(void *state);
-
 
 /* EN: Verify the named compiled signature in the module's .interface, then call
  * once on a fresh fid. Borrow all inputs; result changes only on success.

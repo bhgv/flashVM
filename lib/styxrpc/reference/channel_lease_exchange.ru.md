@@ -1,6 +1,6 @@
 # styxrpc_channel_lease_exchange
 
-[English](channel_lease_exchange.md) · [Объявление](../include/styxrpc/channel_client.h#L42) · [Реализация](../src/channel_client.c) · [Описание аренды](channel_leases.ru.md)
+[English](channel_lease_exchange.md) · [Объявление](../include/styxrpc/channel_client.h#L48) · [Реализация](../src/channel_client.c) · [Описание аренды](channel_leases.ru.md)
 
 Подключите `StyxRpc::launch`.
 
@@ -16,3 +16,5 @@ StyxRpcStatus styxrpc_channel_lease_exchange(StyxRpcChannelLease *lease, size_t 
 `STYXRPC_OK` записывает проверенный `result`, при типизированном элементе заимствуя байты ответа. `STYXRPC_MORE` означает истечение срока, `STYXRPC_REMOTE_ERROR` — явный отказ, `STYXRPC_INVALID` — неверный запрос, недоступный маршрут, ошибку транспорта или кадра. Для операции открывается и закрывается новый fid. Время проверяется между синхронными транзакциями. Неопределённый исход передаётся вызывающему без автоматического повтора.
 
 [Исполняемая проверка](../examples/disvm/routed_client.c)
+
+[Операция с отменой](channel_lease_exchange_until.ru.md).
