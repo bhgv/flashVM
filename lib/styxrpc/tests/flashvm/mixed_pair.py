@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--jit", action="store_true")
     parser.add_argument("--tcp", action="store_true")
     profiles = parser.add_mutually_exclusive_group()
-    for profile in ("named", "typed", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive", "rebind"):
+    for profile in ("named", "typed", "modref", "execute", "publish", "nodes", "positioned", "withdraw", "dirlive", "rebind"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -68,6 +68,7 @@ def main():
             "publish": ("styxexec",),
             "execute": ("styxexec",),
             "typed": ("styxvalue", "styxnamed"),
+            "modref": ("styxnamed", "styxmodref"),
             "named": ("styxvalue", "styxnamed"),
             "mixed": ("styxintref", "styxchannel"),
         }[name]

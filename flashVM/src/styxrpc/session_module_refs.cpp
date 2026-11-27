@@ -59,6 +59,10 @@ FVM_Result fvm_named_module_ref_encode(FVM_Context *context, const FVM_NamedRout
     {
         return FVM_OK;
     }
+    if (route.refs->local_exports_only && descriptor.owner != route.refs->lane)
+    {
+        return fvm_styxrpc_managed_fail(context, "peer cannot receive references to its own module exports");
+    }
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE];
     if (!copy_scope(route.refs, scope))
     {
@@ -76,6 +80,10 @@ FVM_Result fvm_named_module_ref_decode(FVM_Context *context, const FVM_NamedRout
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE];
     StyxRpcModuleRef descriptor;
     if (!copy_scope(route.refs, scope) || !styxrpc_module_ref_decode(wire, size, scope, &descriptor))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (route.refs->local_exports_only && descriptor.owner != route.refs->lane)
     {
         return FVM_INVALID_ARGUMENT;
     }

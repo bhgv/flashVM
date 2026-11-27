@@ -44,9 +44,11 @@ int styxrpc_named_peer_ref_scope(StyxRpcNamedPeer *peer, void *scope);
 
 
 /* EN: Read the optional scope into an STYXRPC_MODULE_REF_SCOPE_SIZE-byte buffer.
- * The remote client uses STYXRPC_MODULE_REF_ATTACH as its named attach name.
+ * Use the named lane with STYXRPC_MODULE_REF_ATTACH for a FlashVM pair,
+ * or the ordinary reverse mount for a mixed DisVM pair.
  * RU: Прочитать необязательную область в STYXRPC_MODULE_REF_SCOPE_SIZE байтов.
- * Удалённый клиент использует STYXRPC_MODULE_REF_ATTACH в attach службы имён. */
+ * Для пары FlashVM использовать поток имён с STYXRPC_MODULE_REF_ATTACH,
+ * для смешанной пары DisVM — обычное встречное подключение. */
 int styxrpc_named_peer_read_ref_scope(struct StyxClient *client, void *scope);
 
 

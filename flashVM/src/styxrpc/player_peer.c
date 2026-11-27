@@ -173,6 +173,22 @@ int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mu
 
 
 /* EN/RU: See player_peer.h. / См. player_peer.h. */
+void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxClient *root,
+    PlayerPeerChannels *channels)
+{
+    if (styxrpc_named_peer_read_ref_scope(root, channels->refs.scope))
+    {
+        channels->refs.slot = playback->slot;
+        channels->refs.lane = STYXRPC_MODULE_REF_FORWARD;
+        channels->refs.enabled = 1;
+        channels->refs.local_exports_only = 1;
+        playback->named = root;
+        playback->refs = &channels->refs;
+    }
+}
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
 void fvm_styxrpc_player_peer_close(PlayerPeerChannels *channels)
 {
     if (channels->host)

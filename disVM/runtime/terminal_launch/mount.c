@@ -11,6 +11,7 @@
 #include "paired_ui.h"
 #include "mount_assets.h"
 #include "named_channels.h"
+#include "module_refs.h"
 #include "executable_nodes.h"
 #include "disvm/unibus_binding.h"
 #include "vfs/cancel.h"
@@ -19,6 +20,7 @@
 #include "drivers/posix/fd.h"
 #include "mux/bidir.h"
 #include "styxrpc/nodes.h"
+#include "styxrpc/named_peer.h"
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -449,6 +451,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
         close(fd);
         return 1;
     }
+    DvmModuleRefs *refs = dvm_terminal_module_refs_install(group);
     DVM_Provider *shared = live_namespace(group);
     DvmExecBroker *execute = shared ? dvm_exec_install(group) : NULL;
     DVM_Provider *exec_service = dvm_exec_service(execute);
@@ -469,6 +472,7 @@ int dvm_styx_mount_cli(int argc, char **argv)
     dvm_provider_release(shared);
     StyxClient *client = reverse ? styxclientmountphy(phybidirchannel(mux, 0), 4096,
         "caller", "", 5000, 8) : NULL;
+    dvm_terminal_module_refs_attach(refs, client);
     DVM_Provider *mount = client ? dvm_terminal_mount_peer(reverse, client, entry, request, tag, scoped) : NULL;
     int result = 1;
     if (mount)

@@ -10,13 +10,19 @@ permissions. Replacement or withdrawal retires the old variable's fids.
 
 ## Negotiate support
 
-The forward owner creates the [scoped named service](named_peer_host_scoped.md)
+In a FlashVM pair, the forward owner creates the [scoped named service](named_peer_host_scoped.md)
 with 16 fresh random bytes for this connection. The reverse owner uses
 `STYXRPC_MODULE_REF_ATTACH` in the Tattach on the separate named-service
 stream and [reads the scope](named_peer_read_ref_scope.md). The forward
 application checks [the remote attach](named_peer_ref_scope.md). Send
 tag 9 only after negotiating support. Ordinary VFS mounts continue to
 serve each peer's live tree.
+
+In a mounted DisVM and FlashVM pair, DisVM publishes the connection scope
+read-only on its ordinary reverse mount. The same scope reader is used.
+References in this pairing identify the forward FlashVM publication.
+The Dis application uses an [SDK reference port](module_ref_port.md)
+through its Limbo adapter.
 
 ## Transfer and resolve
 

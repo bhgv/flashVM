@@ -23,6 +23,9 @@ current value regardless of its type. Close an owned lease with `cell.close()`.
 Keep operations on one port or cell fid serialized. A rendezvous is blocking.
 The old byte-oriented `send`, `recv`, `get`, and `set` remain available.
 
+[Styxmodref](STYX-MODULE-REFS.md) captures and relays exact Int32 exports
+of the attached FlashVM on the same named channel.
+
 ## Graph contents
 
 `Value.Graph` carries a checked FVMG envelope. Forward it unchanged to

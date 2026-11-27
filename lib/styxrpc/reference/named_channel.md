@@ -31,8 +31,8 @@ four-byte big-endian payload size. A size of zero acknowledges a matched write.
 A read reply carries the writer's frame. Fragments are transferred at consecutive
 offsets. Each value carries a mandatory type byte. The header defines the
 scalar, snapshot and issuer-descriptor tags.
-[Paired module references](module_refs.md) use tag 9 when both peers
-advertise the corresponding capability on the named-service stream.
+[Paired module references](module_refs.md) use tag 9 with the scope
+advertised by the pair on its named-service stream or reverse DisVM mount.
 
 DisVM ships [Styxnamed](../../../disVM/module/styxnamed.m). Load
 `styxnamed.dis`, call `init()`, and `open("/jobs")` in the paired namespace.

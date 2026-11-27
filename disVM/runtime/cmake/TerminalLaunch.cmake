@@ -56,6 +56,7 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         terminal_launch/paired_ui.c
         terminal_launch/paired_exchange.c
         terminal_launch/named_channels.c
+        terminal_launch/module_refs.c
         terminal_launch/executable_nodes.c
         terminal_launch/exec_mailbox.c
         terminal_launch/exec_names.c
@@ -69,7 +70,10 @@ if(DVM_TERMINAL_LAUNCH_SDK)
         "${root}/lib/styxrpc/src/unibus_terminal.c"
         "${root}/lib/styxrpc/src/message_port.c"
         "${root}/lib/styxrpc/src/message_client.c"
-        "${root}/lib/styxrpc/src/vfs_client.c")
+        "${root}/lib/styxrpc/src/vfs_client.c"
+        "${root}/lib/styxrpc/protocol/module_ref.c"
+        "${root}/lib/styxrpc/src/variable_ref_client.c"
+        "${root}/lib/styxrpc/src/module_ref_port.c")
     target_sources(disvm PRIVATE ${styxrpc_terminal_sources})
     set(styxrpc_terminal_includes
         "${root}/lib/styxrpc/include" "${root}/lib/styxrpc/protocol"

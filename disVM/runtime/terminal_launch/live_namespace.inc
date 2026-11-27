@@ -57,6 +57,10 @@ static FVM_Result live_info(void *group, const char *relative, FVM_FileInfo *out
         return FVM_NOT_FOUND;
     }
     FVM_Result status = dvm_resource_info(&plan, output);
+    if (status == FVM_OK && !strcmp(relative, STYXRPC_MODULE_REF_SCOPE_FILE))
+    {
+        output->mode &= 0444;
+    }
     dvm_resource_close(&plan);
     return status;
 }
@@ -67,7 +71,8 @@ static FVM_Result live_info(void *group, const char *relative, FVM_FileInfo *out
 static FVM_Result live_access(void *group, const char *relative, unsigned access)
 {
     DVM_ResourcePlan plan;
-    if (!live_plan(group, relative, &plan))
+    if (((access & ~FVM_ACCESS_READ) && !strcmp(relative, STYXRPC_MODULE_REF_SCOPE_FILE)) ||
+        !live_plan(group, relative, &plan))
     {
         return FVM_NOT_FOUND;
     }
@@ -159,7 +164,8 @@ static FVM_Result live_open(void *group, const char *relative, const char *mode,
     DVM_ResourcePlan plan;
     int directory = !strcmp(mode, "mkdir");
     int creating = directory || !strcmp(mode, "wx");
-    if ((creating && !live_create_path(relative)) || !live_plan(group, relative, &plan))
+    if ((!strcmp(relative, STYXRPC_MODULE_REF_SCOPE_FILE) && strcmp(mode, "r")) ||
+        (creating && !live_create_path(relative)) || !live_plan(group, relative, &plan))
     {
         return FVM_NOT_FOUND;
     }

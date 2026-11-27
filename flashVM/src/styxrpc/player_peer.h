@@ -43,6 +43,12 @@ int fvm_styxrpc_player_peer_channels(FVM_StyxRpcPlayback *playback, PhyBidir *mu
     unsigned serve_lane, PlayerPeerChannels *channels);
 
 
+/* EN: Probe the ordinary Dis mount for the shared scope and borrow it for named refs.
+ * RU: Проверить область в обычном подключении Dis и заимствовать его для именованных ссылок. */
+void fvm_styxrpc_player_dis_channels(FVM_StyxRpcPlayback *playback, StyxClient *root,
+    PlayerPeerChannels *channels);
+
+
 /* EN: Stop the channel service and close its fids before the playback slot.
  * RU: Остановить службу каналов и закрыть её fid до освобождения слота плеера. */
 void fvm_styxrpc_player_peer_close(PlayerPeerChannels *channels);

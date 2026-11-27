@@ -286,6 +286,10 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
             playback->spec.session = root;
             playback->awaiting_session = 0;
         }
+        else
+        {
+            fvm_styxrpc_player_dis_channels(playback, root, &channels);
+        }
         host.session = root;
         if (!root)
         {

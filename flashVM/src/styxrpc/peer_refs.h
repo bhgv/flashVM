@@ -11,7 +11,8 @@ typedef struct FVM_PeerRefs
     struct StyxRpcModuleSlot *slot; /* Borrowed local publication through movie teardown. */
     StyxRpcNamedPeer *host;         /* Forward on-demand capability, or NULL on reverse. */
     unsigned lane;                 /* Local publication's ordinary service lane. */
-    int enabled;                   /* Reverse verified a valid scope file. */
-    unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Reverse copy of the shared scope. */
+    int enabled;                   /* Attached client verified a valid scope file. */
+    int local_exports_only;        /* Mixed pair serves references to Flash-owned exports. */
+    unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Client copy of the shared scope. */
 } FVM_PeerRefs;
 #endif

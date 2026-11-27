@@ -1,5 +1,11 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+In v0.1791, a mounted DisVM application captures an Int32 export on the
+attached FlashVM and sends it through the ordinary named channel. AS can
+update and return the same reference. Limbo opens returned references
+through the original attachment, and restart retires the old generation.
+[EN](../../disVM/runtime/STYX-MODULE-REFS.md) · [RU](../../disVM/runtime/STYX-MODULE-REFS.ru.md).
+
 In v0.1790, a FlashVM pair can pass a live Int32 reference to an exported
 module variable through an existing named channel. The receiver can forward
 it and continue using the same export. Replacement retires references to
