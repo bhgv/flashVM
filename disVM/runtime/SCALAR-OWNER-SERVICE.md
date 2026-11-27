@@ -114,6 +114,12 @@ named function. `request` grants read access to the local request inbox.
 `reply` grants write access to the local response inbox. `offer` grants
 write access to the [private profile mailbox](../native/terminal/UNIBUS-SERVER-LOAD-PROFILE.md).
 
+An owner that starts from an ordinary image can
+[discover the callable names on its loaded instance](VFS-SCALAR-LOADED-EXPORTS.md).
+The catalogue gives it the exact candidates for constructing a publication
+without a caller-supplied name list. The existing library server still accepts
+its configured list of exports.
+
 The normal Dis loader reads the local image and the linker creates a
 module instance for the selected export. The shared service reuses that
 instance and sends the compiled export name and signature to the C

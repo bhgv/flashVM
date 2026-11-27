@@ -279,18 +279,25 @@ static int build_gateway(void *opaque)
 }
 
 
+/* EN/RU: See managed_value.h. / См. managed_value.h. */
+int dvm_styx_managed_export_supported(Type *frame, const StyxCallShape *shape)
+{
+    size_t words;
+    unsigned char references;
+    return dvm_styx_value_shape_supported(shape->arguments) &&
+        dvm_styx_value_shape_supported(shape->result) &&
+        dvm_styx_channel_shape_supported(shape) &&
+        dvm_styx_frame_layout(shape->arguments, &words, &references) &&
+        dvm_styx_export_frame(frame, words, references);
+}
+
+
 /* [GC:] EN: Bind to slot zero of a rooted original link. Return an owned bridge or H.
  * RU: Связать со слотом ноль удерживаемого исходного модуля. Вернуть шлюз либо H. */
 Modlink *dvm_styx_managed_gateway(Modlink *target, const StyxCallShape *shape)
 {
-    size_t words;
-    unsigned char references;
     if (!target || target == H || !target->prog || target->nlinks != 1 ||
-        !dvm_styx_value_shape_supported(shape->arguments) ||
-        !dvm_styx_value_shape_supported(shape->result) ||
-        !dvm_styx_channel_shape_supported(shape) ||
-        !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
-        !dvm_styx_export_frame(target->links[0].frame, words, references))
+        !dvm_styx_managed_export_supported(target->links[0].frame, shape))
     {
         return H;
     }

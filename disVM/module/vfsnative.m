@@ -162,11 +162,16 @@ Vfsnative: module
     # EN: Create one data instance and bind single-slot views to it.
     # RU: Создать один экземпляр данных и связать с ним однослотовые представления.
     scalarloadanchor: fn(path: string): Scalarloadedanchor;
+    # EN: Return the callable names of this exact instance, in compiled order.
+    # RU: Вернуть вызываемые имена этого экземпляра в порядке компиляции.
+    scalarloadedexports: fn(anchor: Scalarloadedanchor): string;
+    # EN: A nil offer binds the typed view privately, without profile I/O.
+    # RU: При offer == nil связать приватное представление без ввода-вывода профиля.
     scalarloadedview: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
               Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation);
-    # EN: Bind a named export to the typed or shape-driven shared owner.
-    # RU: Связать именованный экспорт с типизированным или общим шлюзом владельца.
+    # EN: Bind an export to its owner gateway. A nil offer keeps it private.
+    # RU: Связать экспорт со шлюзом владельца. При offer == nil связь остаётся приватной.
     scalarloadedslot: fn(anchor: Scalarloadedanchor, exportname, offer: string):
         (int, Scalarimplementation, Scalarbigimplementation, Scalartupleimplementation,
             Scalarrefimplementation, Scalarlistimplementation, Scalarrefpairimplementation, Scalarrawinvoke, int, int, Scalarmanagedinvoke);

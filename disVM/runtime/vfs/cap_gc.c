@@ -179,6 +179,25 @@ void dvm_cap_publish(void *value, void *destination)
 }
 
 
+/* [GC:] EN/RU: See cap_internal.h. / См. cap_internal.h. */
+void dvm_cap_publish_string(char *text, size_t length, void *destination)
+{
+    String *value = c2string(text, length);
+    if (value != H)
+    {
+        if (waserror())
+        {
+            destroy(value);
+            nexterror();
+        }
+        ptradd(D2H(value));
+        poperror();
+        Setmark(D2H(value));
+    }
+    dvm_cap_publish(value, destination);
+}
+
+
 /* [GC:] EN/RU: See internal header; used only while caller still owns the private root.
  * См. internal header; caller ещё владеет private root. */
 void dvm_cap_abandon(void *value)

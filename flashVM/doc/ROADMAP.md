@@ -1,5 +1,18 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1799 — compiled export discovery on a resident Dis instance
+
+The Dis owner can list callable names on an existing loaded anchor and
+bind local typed views without writing a profile file. Discovery and
+linking use the same shape and frame checks. The native interpreter and
+JIT tests retain two methods on the old instance while replacing their
+source path with a different library. The old methods share data and a
+fresh load sees the replacement. Remote loading of ordinary files still
+needs a session request that starts the resident owner and publishes its
+checked interface.
+[EN](../../disVM/runtime/VFS-SCALAR-LOADED-EXPORTS.md) ·
+[RU](../../disVM/runtime/VFS-SCALAR-LOADED-EXPORTS.ru.md).
+
 ## v0.1798 — scoped Dis calls and live channels in AS tasks
 
 The stock paired player publishes a hidden reverse program tree on

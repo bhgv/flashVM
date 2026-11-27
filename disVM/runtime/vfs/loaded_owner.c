@@ -2,27 +2,19 @@
  * EN: Export the result of one ordinary Dis load to the local Styx dispatcher.
  * RU: Передача результата обычной загрузки Dis локальному диспетчеру Styx.
  */
-#include "lib9.h"
-#include "dat.h"
-#include "fns.h"
-#include "isa.h"
-#include "interp.h"
-#include "runt.h"
+#include "cap_internal.h"
 #include "loader.h"
 #include "module_shapes.h"
 #include "module_counts.h"
 #include "disvm/refcount.h"
 #include "namespace.h"
-#include "sys_capture.h"
 #include "scalar_owner_internal.h"
 #include "scalar_direct.h"
 #include "managed_value.h"
 #include "vfsnative_decl.h"
-#include "raise.h"
 #include "../../native/terminal/load_profile.h"
 #include "../../native/terminal/scalar_record.h"
 #include "../../native/terminal/scalar_verify.h"
-#include <string.h>
 
 _Static_assert(sizeof(WORD) == sizeof(Modlink *), "NC64 typed load result cell");
 
@@ -92,6 +84,58 @@ static Module *read_original(char *path)
 }
 
 
+/* EN: Check one compiled export against the owner gateway; update the
+ * borrowed gateway selection only for an admitted shape.
+ * RU: Проверить скомпилированный экспорт для шлюза владельца. Менять
+ * заимствованное состояние шлюза только после допуска схемы. */
+static unsigned long export_profile(Module *module, const Link *export, StyxCallShape *shape, GatewayOwner *gateway)
+{
+    if (!export->frame || !export->u.pc)
+    {
+        return 0;
+    }
+    uint32_t signature = (uint32_t)export->sig;
+    dvm_module_export_shape(module, (size_t)(export - module->ext), shape);
+    unsigned long tag = shape->arguments[0] ? styxshaperequest(signature, shape) : styxloadedrequest(signature);
+    size_t words;
+    unsigned char references;
+    if (tag == STYX_DYNAMIC_REQUEST_TAG)
+    {
+        size_t leaves, result;
+        if (!gateway || !styxshapecells(shape, &leaves, &result) ||
+            !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
+            references || !dvm_styx_export_frame(export->frame, words, references))
+        {
+            return 0;
+        }
+        gateway->arguments = words;
+        gateway->results = result;
+    }
+    else if (tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG)
+    {
+        size_t count = tag == STYX_REF_REQUEST_TAG ? 1 : 2;
+        if (!styxloadedrequest(signature) && (!gateway ||
+            !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
+            words != count || !dvm_styx_export_frame(export->frame, words, references)))
+        {
+            return 0;
+        }
+        if (gateway)
+        {
+            size_t results = 2;
+            styxshaperef(shape, &results);
+            gateway->results = results;
+        }
+    }
+    else if (tag == STYX_MANAGED_REQUEST_TAG &&
+        (!gateway || !dvm_styx_managed_export_supported(export->frame, shape)))
+    {
+        return 0;
+    }
+    return tag;
+}
+
+
 /* EN: Bind a one-slot typed view, consuming module. When anchor is supplied,
  * the new view retains the same MP after normal linking and does no cloning.
  * RU: Связать однослотовое представление, поглотив module. При заданном anchor
@@ -104,47 +148,15 @@ static Modlink *link_export(Module *module, Modlink *anchor, char *name, uint32_
     }
     for (Link *export = module->ext; export && export->name; export++)
     {
-        if (!strcmp(export->name, name) && export->frame && export->u.pc)
+        if (!strcmp(export->name, name))
         {
-            size_t slot = 0;
-            *signature = (uint32_t)export->sig;
-            dvm_module_export_shape(module, (size_t)(export - module->ext), shape);
-            unsigned long tag = shape->arguments[0] ? styxshaperequest(*signature, shape) : styxloadedrequest(*signature);
+            unsigned long tag = export_profile(module, export, shape, gateway);
             if (!tag)
             {
                 break;
             }
-            if (tag == STYX_DYNAMIC_REQUEST_TAG)
-            {
-                size_t leaves, result;
-                unsigned char references;
-                if (!gateway || !styxshapecells(shape, &leaves, &result) ||
-                    !dvm_styx_frame_layout(shape->arguments, &slot, &references) ||
-                    references || !dvm_styx_export_frame(export->frame, slot, references))
-                {
-                    break;
-                }
-                gateway->arguments = slot;
-                gateway->results = result;
-            }
-            else if (tag == STYX_REF_REQUEST_TAG || tag == STYX_REF_PAIR_REQUEST_TAG)
-            {
-                size_t refs = tag == STYX_REF_REQUEST_TAG ? 1 : 2;
-                size_t words;
-                unsigned char references;
-                if (!styxloadedrequest(*signature) && (!gateway ||
-                    !dvm_styx_frame_layout(shape->arguments, &words, &references) ||
-                    words != refs || !dvm_styx_export_frame(export->frame, words, references)))
-                {
-                    break;
-                }
-                if (gateway)
-                {
-                    size_t results = 2;
-                    styxshaperef(shape, &results);
-                    gateway->results = results;
-                }
-            }
+            *signature = (uint32_t)export->sig;
+            size_t slot = tag == STYX_DYNAMIC_REQUEST_TAG ? (size_t)gateway->arguments : 0;
             Import imports[STYX_DYNAMIC_CELLS + 2] = {{0, NULL}};
             for (size_t i = 0; i <= slot; i++)
             {
@@ -204,10 +216,14 @@ static int encode_offer(const char *name, uint32_t signature, const StyxCallShap
 }
 
 
-/* EN: Send the staged profile or a refusal through the captured private route.
- * RU: Отправить профиль либо отказ через захваченный служебный маршрут. */
+/* EN: Send the staged profile or refusal to the private route, if supplied.
+ * RU: Отправить профиль либо отказ в служебный маршрут, если он задан. */
 static void send_offer(String *offer, unsigned char *bytes, size_t capacity, size_t size)
 {
+    if (offer == H)
+    {
+        return;
+    }
     if (!size && !styxscalarwrite(STYX_FUNCTION_PROFILE_TAG, STYX_SCALAR_ERROR, 0, bytes, capacity, &size))
     {
         error("cannot encode loaded owner refusal");
@@ -291,20 +307,76 @@ void Vfsnative_scalarloadanchor(void *frame)
 }
 
 
-/* EN: Retain the original Module belonging to a rooted data anchor.
- * RU: Удержать исходный Module укоренённого экземпляра данных. */
-static Module *retain_anchor(Modlink *anchor)
+/* EN: Borrow the original Module on a rooted data anchor, excluding adapters.
+ * RU: Заимствовать исходный Module укоренённого экземпляра без адаптеров. */
+static Module *anchor_module(Modlink *anchor)
 {
     Module *module = anchor != H && !anchor->nlinks ? anchor->m : NULL;
-    if (module && (!module->prog || module->qid.type == DVM_MODULE_ADAPTER_QID))
-    {
-        return NULL;
-    }
+    return module && module->prog && module->qid.type != DVM_MODULE_ADAPTER_QID ? module : NULL;
+}
+
+
+/* EN: Retain the original Module belonging to the rooted anchor, for linking.
+ * RU: Удержать исходный Module укоренённого экземпляра для связывания. */
+static Module *retain_anchor(Modlink *anchor)
+{
+    Module *module = anchor_module(anchor);
     if (module)
     {
         dvm_runtime_module_retain(&module->ref);
     }
     return module;
+}
+
+
+/* [GC:] EN: Discover callable names on the exact rooted anchor captured from
+ * frame. Publish a tab-separated string without invoking or reopening the image.
+ * RU: Найти вызываемые имена точного укоренённого экземпляра из frame.
+ * Выдать строку с разделителями-табуляциями, без вызова или повторного открытия. */
+void Vfsnative_scalarloadedexports(void *frame)
+{
+    F_Vfsnative_scalarloadedexports call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarloadedexports, ret), sizeof(*call.ret));
+    Modlink *anchor = dvm_sys_owner(&call.anchor);
+    Module *module = anchor_module(anchor);
+    if (!module)
+    {
+        dvm_cap_publish(H, call.ret);
+        return;
+    }
+    char names[(INTERFACE_NAME_LIMIT + 1) * STYX_MOUNTED_EXPORT_LIMIT];
+    size_t size = 0;
+    size_t count = 0;
+    for (const Link *export = module->ext; export && export->name; ++export)
+    {
+        StyxCallShape shape = {{0}, {0}};
+        GatewayOwner gateway = {0};
+        size_t length = styxscalar_name_length(export->name);
+        if (!length || strchr(export->name, '/') || strchr(export->name, '\t') ||
+            !export_profile(module, export, &shape, &gateway))
+        {
+            continue;
+        }
+        if (count == STYX_MOUNTED_EXPORT_LIMIT)
+        {
+            dvm_cap_publish(H, call.ret);
+            return;
+        }
+        if (count++)
+        {
+            names[size++] = '\t';
+        }
+        memcpy(names + size, export->name, length);
+        size += length;
+    }
+    if (size)
+    {
+        dvm_cap_publish_string(names, size, call.ret);
+    }
+    else
+    {
+        dvm_cap_publish(H, call.ret);
+    }
 }
 
 

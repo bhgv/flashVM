@@ -66,6 +66,13 @@ void *dvm_cap_new(unsigned kind, DVM_CapState **state);
 void dvm_cap_publish(void *value, void *destination);
 
 
+/* [GC:] EN: Copy length bytes of text to a new string and publish it in a
+ * captured result slot on the current owner. Root through publication.
+ * RU: Скопировать length байт текста в новую строку и записать в захваченный
+ * слот результата у текущего владельца. Удерживать корень до публикации. */
+void dvm_cap_publish_string(char *text, size_t length, void *destination);
+
+
 /* [GC:] EN/RU: Drop staged rooted shell on refusal/error; no inline native destruction.
  * Снять staged rooted shell при отказе/error; без inline native destruction. */
 void dvm_cap_abandon(void *value);

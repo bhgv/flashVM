@@ -85,20 +85,5 @@ void Vfsexport_terminalpath(void *frame)
         return;
     }
     char *name = call.direction ? source->send : source->receive;
-    String *value = c2string(name, strlen(name));
-    volatile int rooted = 0;
-    if (waserror())
-    {
-        if (rooted)
-        {
-            ptrdel(D2H(value));
-        }
-        destroy(value);
-        nexterror();
-    }
-    ptradd(D2H(value));
-    rooted = 1;
-    Setmark(D2H(value));
-    poperror();
-    dvm_cap_publish(value, call.ret);
+    dvm_cap_publish_string(name, strlen(name), call.ret);
 }

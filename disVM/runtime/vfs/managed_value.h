@@ -109,6 +109,11 @@ int dvm_styx_owner_frame_init(DVM_StyxValueFrame *arguments, struct Modlink *tar
     void *frame, size_t extent);
 
 
+/* EN: Verify a borrowed compiled export frame and full managed schema.
+ * RU: Проверить заимствованный кадр экспорта и полную управляемую схему. */
+int dvm_styx_managed_export_supported(struct Type *frame, const StyxCallShape *shape);
+
+
 /* [GC:] EN: Bind a generated bridge to an original rooted export and return an owned link or H.
  * RU: Связать шлюз с удерживаемым исходным экспортом и вернуть собственную ссылку либо H. */
 struct Modlink *dvm_styx_managed_gateway(struct Modlink *target, const StyxCallShape *shape);
