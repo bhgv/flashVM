@@ -165,6 +165,7 @@ Copyright (c) 2026 bhgv
 - [styxclientopencancel](reference/styxclientopencancel.ru.md) — `Styx::client; hosted native build`
 - [styxclientread](reference/styxclientread.ru.md) — `Styx::client; hosted native build`
 - [styxclientreadcancel](reference/styxclientreadcancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientreaduntil](reference/styxclientreaduntil.ru.md) — `Styx::client; hosted native build`
 - [styxclientreadwatch](reference/styxclientreadwatch.ru.md) — `Styx::client; hosted native build`
 - [styxclientrecord](reference/styxclientrecord.ru.md) — `Styx::client; hosted native build`
 - [styxclientremove](reference/styxclientremove.ru.md) — `Styx::client; hosted native build`
@@ -185,6 +186,7 @@ Copyright (c) 2026 bhgv
 - [styxclientwatchable](reference/styxclientwatchable.ru.md) — `Styx::client; hosted native build`
 - [styxclientwrite](reference/styxclientwrite.ru.md) — `Styx::client; hosted native build`
 - [styxclientwritecancel](reference/styxclientwritecancel.ru.md) — `Styx::client; hosted native build`
+- [styxclientwriteuntil](reference/styxclientwriteuntil.ru.md) — `Styx::client; hosted native build`
 - [styxdebug](reference/styxdebug.ru.md) — `Styx::server; hosted native build`
 - [styxdeferattach](reference/styxdeferattach.ru.md) — `Styx::server; hosted native build`
 - [styxdeferread](reference/styxdeferread.ru.md) — `Styx::server; hosted native build`

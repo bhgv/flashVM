@@ -24,17 +24,17 @@ the reply buffer. Only a complete checked reply supplies updates.
 
 The optional hook `stop(state)` runs synchronously on the calling
 thread. It should sample a stop flag and return nonzero to stop.
-The function checks before opening the call, before writing and
-between request fragments and reply polls. A NULL hook gives ordinary
-blocking behavior. Keep its state alive through return and leave the
-owned per-call wire fid to the SDK. In-flight I/O and clunk obey the
-mounted session's deadlines. An already received complete reply keeps
-its ordinary outcome.
+The function checks before opening the call and when sending or awaiting
+data. On a multiplexed session, a transmitted request gets one `Tflush`
+by tag. Metadata, flush acknowledgement and clunk use the session's
+deadlines. A complete reply received before flush acknowledgement keeps
+its ordinary outcome. A NULL hook gives ordinary blocking behavior.
+Keep the state alive through return. The SDK owns the operation fid.
 
 | Outcome | Meaning |
 | --- | --- |
 | `STYXRPC_CALL_CANCELLED` | The hook stopped the call before a request write. |
-| `STYXRPC_CALL_CANCELLED_UNCERTAIN` | The hook stopped the call after a write. Peer effects may have occurred. |
+| `STYXRPC_CALL_CANCELLED_UNCERTAIN` | The hook stopped the call during or after a write. Peer effects may have occurred. |
 
 The SDK closes the per-call fid on cancellation and does not replay
 a request. It preserves the typed output on cancellation. The ordinary

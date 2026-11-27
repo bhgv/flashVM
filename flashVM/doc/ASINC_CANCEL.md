@@ -9,11 +9,13 @@ execution checkpoint finishes with [`FVM_ERROR`](../include/flashvm/flashvm.h#L4
 keeps its prior result. Repeated requests are harmless. Read completion with
 [poll](ASINC_POLL.md). Cancellation does not force an OS thread to exit.
 
-In the paired player, a task waiting for a checked Dis method observes
-stop between Styx round trips. See [live Dis calls](STYX_RPC_LIVE_DIS.md)
-for what happens to the call fid, lent channels and peer effects.
-Cancellation also interrupts waits on
-[returned typed channels](STYX_RPC_CHANNELS.md#use-disvm-channels-from-actionscript).
+The paired player checks stop while a task waits for data from a checked
+Dis method, a live load or a channel. It sends a Styx `Tflush` for the
+pending read or write and closes the operation's fid. The peer must
+acknowledge the flush. Metadata requests, flush acknowledgement and
+fid close use the session's deadlines.
+[Live Dis calls](STYX_RPC_LIVE_DIS.md) ·
+[Returned typed channels](STYX_RPC_CHANNELS.md#use-disvm-channels-from-actionscript)
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

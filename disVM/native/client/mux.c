@@ -3,6 +3,7 @@
  * RU: Bounded multiplex admission, native wakeup и nonwaiting owner retirement.
  */
 #include "mux_internal.h"
+#include <errno.h>
 #include <time.h>
 
 
@@ -234,6 +235,37 @@ StyxFlight *styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsi
 }
 
 
+#define STYX_STOP_POLL_NS 10000000L /* Maximum nominal interval between caller stop checks. */
+
+
+/* EN: Wait once on flight with its mux locked. Release that lock during the
+ * optional stop hook and regain it before returning to collection.
+ * RU: Один раз ждать flight под замком мультиплексора. Освободить замок
+ * на время проверки отмены и восстановить его перед возвратом к ожиданию. */
+static void wait_for_reply(StyxFlight *flight)
+{
+    StyxMux *mux = flight->mux;
+    struct timespec check;
+    if (!styxcancelpolling(flight->cancel) || clock_gettime(CLOCK_REALTIME, &check))
+    {
+        pthread_cond_wait(&flight->condition, &mux->lock);
+        return;
+    }
+    check.tv_nsec += STYX_STOP_POLL_NS;
+    if (check.tv_nsec >= 1000000000L)
+    {
+        check.tv_nsec -= 1000000000L;
+        ++check.tv_sec;
+    }
+    if (pthread_cond_timedwait(&flight->condition, &mux->lock, &check) == ETIMEDOUT && !flight->done)
+    {
+        pthread_mutex_unlock(&mux->lock);
+        styxcancelpoll(flight->cancel);
+        pthread_mutex_lock(&mux->lock);
+    }
+}
+
+
 /* EN/RU: Wait/collect only on native caller; detach token before engine owner can retire.
  * Wait/collect только native caller; detach token до engine owner retirement. */
 StyxAnswer styxmuxcollect(StyxFlight *flight)
@@ -242,7 +274,7 @@ StyxAnswer styxmuxcollect(StyxFlight *flight)
     pthread_mutex_lock(&mux->lock);
     while (!flight->done)
     {
-        pthread_cond_wait(&flight->condition, &mux->lock);
+        wait_for_reply(flight);
     }
     StyxAnswer answer = flight->answer;
     pthread_mutex_unlock(&mux->lock);

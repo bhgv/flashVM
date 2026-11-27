@@ -32,7 +32,7 @@ The paired player retains the connection through task teardown.
 When the pair has negotiated named channels, `vfs.chan(path)` and
 `os.chan(path)` open an independent enrollment for the task.
 `send(value)` and `recv()` can wait while the movie advances. `cancel()`
-stops the wait between reply polls and closes the enrollment. If a
+flushes a pending data round trip and closes the enrollment. If a
 rendezvous raced cancellation, the peer may have consumed the value.
 The task can exchange snapshots and named cell descriptors. References
 to module exports require owner processing.
@@ -48,9 +48,8 @@ use a channel returned by DisVM through that task's proxy. Both directions
 use the paired Styx session. The movie receives a primitive result through
 `poll()`.
 
-In a [live Dis session](STYX_RPC_LIVE_DIS.md), `cancel()` stops ordinary
-image loading between readiness polls. It also stops pending method calls
-between protocol round trips. The task closes the exact function fid,
+In a [live Dis session](STYX_RPC_LIVE_DIS.md), `cancel()` stops pending
+image loads and method calls during data round trips. The task closes the exact function fid,
 and checked scoped Dis code can unwind from a local channel wait.
 Use [`os.unload(proxy)`](STYX_RPC_UNLOAD.md) to release a checked proxy
 inside its task.

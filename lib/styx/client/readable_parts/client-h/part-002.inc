@@ -328,6 +328,37 @@ int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfe
 int styxclientstatcancel(StyxFid *fid, StyxMeta *output, StyxCancel *cancel, StyxTransfer *result);
 
 
+/* EN: Return nonzero to stop the caller's pending data transfer.
+ * state is borrowed opaque data; keep the hook brief and keep it valid until return.
+ * RU: Вернуть ненулевое значение для остановки ожидающей передачи. Колбэк
+ * должен быстро завершаться, непрозрачное state сохраняется до возврата. */
+typedef int (*StyxClientStop)(void *state);
+
+
+/* EN: Read one native chunk. Sample optional stop(state) on the calling
+ * thread before sending and during multiplexed reply waits. Keep fid and the
+ * buffer valid through return. offset and size are bytes. Set result to the
+ * acknowledged count or termination flags. When stop is set, cancelled reports
+ * a hook-requested stop. Serial clients sample before sending only.
+ * RU: Прочитать нативный фрагмент. Проверять необязательный stop(state) у
+ * вызывающего до отправки и во время ожидания на мультиплексоре. Удерживать
+ * fid и буфер до возврата. offset и size заданы в байтах. В result записать
+ * подтверждённую длину или флаги завершения. Если задан stop, cancelled отмечает
+ * остановку по колбэку. Последовательный клиент проверяет до отправки. */
+void styxclientreaduntil(StyxFid *fid, unsigned long long offset, void *bytes, size_t size,
+    StyxClientStop stop, void *state, StyxTransfer *result);
+
+
+/* EN: Write one native chunk with the same stop protocol as readuntil.
+ * Read size bytes from bytes at offset with the same result and ownership rules.
+ * On cancellation after a write attempt, effects may be uncertain.
+ * RU: Записать нативный фрагмент с отменой как у readuntil. После попытки
+ * записи её эффекты при отмене могут остаться неизвестными. Прочитать size байтов
+ * из bytes для записи со смещения offset по тем же правилам result и владения. */
+void styxclientwriteuntil(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size,
+    StyxClientStop stop, void *state, StyxTransfer *result);
+
+
 /* EN/RU: One actual Tread/Twrite chunk, signed64 offset range; exact confirmed
  * prefix, no auto retry. Uncertain effects poison further data calls, except a
  * new offset-zero read of an already-open read-only directory.

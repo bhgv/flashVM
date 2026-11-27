@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1807 — cancel in-flight Styx data exchanges
+
+The native Styx client checks the caller's stop flag while waiting for a
+data reply. A transmitted request is flushed by tag. The SDK uses this
+for Dis method calls, live image loads, typed channels and named
+channels. A wire test holds each kind of data request and verifies that
+another fid keeps working on the same session. Metadata and fid
+retirement use the session's regular deadlines.
+[EN](ASINC_CANCEL.md) · [RU](ASINC_CANCEL.ru.md).
+
 ## v0.1806 — cancel pending operations on live UniBus channels
 
 Detached ActionScript tasks observe cancellation while sending, receiving

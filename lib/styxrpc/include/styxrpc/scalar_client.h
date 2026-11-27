@@ -40,10 +40,10 @@ StyxRpcOutcome styxrpc_scalar_invoke_at(struct StyxFid *directory, struct StyxCl
     const char *module, const char *name, uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result);
 
 
-/* EN: Like invoke_at, checking optional stop(state) before I/O and between frame
- * transfers. The per-call fid closes on cancellation. Result changes only on success.
- * RU: Как invoke_at с необязательным stop(state) перед I/O и между фрагментами
- * кадра. При отмене закрывается fid вызова. Результат меняется только при успехе. */
+/* EN: Like invoke_at, checking optional stop(state) before I/O and while
+ * waiting for multiplexed data replies. Cancellation closes the per-call fid.
+ * RU: Как invoke_at с необязательной проверкой stop(state) перед I/O и при ожидании
+ * ответов на передачу данных через мультиплексор. Отмена закрывает fid вызова. */
 StyxRpcOutcome styxrpc_scalar_invoke_at_until(struct StyxFid *directory, struct StyxClient *session,
     const char *module, const char *name, uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result,
     StyxRpcCallStop stop, void *state);

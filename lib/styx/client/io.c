@@ -98,6 +98,59 @@ static void chunk(StyxFid *fid,
     pthread_mutex_unlock(&client->lock);
 }
 
+
+/* EN: Transfer size bytes at offset on borrowed fid using bytes as input if
+ * writing and as output otherwise. Report progress or stop in result. Borrow
+ * stop(state) on this thread, using one token for a multiplexed reply wait.
+ * RU: Передать до size байтов со смещения offset на заимствованном fid.
+ * При writing читать bytes, иначе записывать в bytes. Вернуть исход в result.
+ * Вызывать stop(state) в этом потоке, удерживая один токен до ответа мультиплексора. */
+static void chunk_until(StyxFid *fid, unsigned long long offset, void *bytes, size_t size,
+    int writing, StyxClientStop stop, void *state, StyxTransfer *result)
+{
+    if (!result)
+    {
+        return;
+    }
+    StyxCancel *cancel = NULL;
+    if (stop && stop(state))
+    {
+        *result = (StyxTransfer){.confirmed = 1, .cancelled = 1};
+        return;
+    }
+    if (stop && fid && fid->client->mux)
+    {
+        cancel = styxcancelcreatepoll(stop, state);
+        if (!cancel)
+        {
+            styxopclear(result);
+            return;
+        }
+    }
+    chunk(fid, offset, bytes, size, writing, cancel, 0, result);
+    if (stop && !styxcancelled(cancel))
+    {
+        result->cancelled = 0;
+    }
+    styxcancelfree(cancel);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+void styxclientreaduntil(StyxFid *fid, unsigned long long offset, void *bytes, size_t size,
+    StyxClientStop stop, void *state, StyxTransfer *result)
+{
+    chunk_until(fid, offset, bytes, size, 0, stop, state, result);
+}
+
+
+/* EN/RU: See client.h. / См. client.h. */
+void styxclientwriteuntil(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size,
+    StyxClientStop stop, void *state, StyxTransfer *result)
+{
+    chunk_until(fid, offset, (void *)bytes, size, 1, stop, state, result);
+}
+
 /* EN/RU: See client.h; no metadata preflight or read replay.
  * См. client.h; без metadata preflight и read replay. */
 

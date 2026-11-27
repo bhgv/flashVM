@@ -4,7 +4,7 @@
  */
 #define _POSIX_C_SOURCE 200809L /* nanosleep on hosted Unix builds. */
 #include "styxrpc/named_cell.h"
-#include "client.h"
+#include "vfs_client_internal.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -12,14 +12,28 @@
 #define STYXRPC_NAMED_POLL_NS 10000000L /* Idle polling interval, ten milliseconds. */
 
 
-/* EN: Write a header then its body, accepting only wholly confirmed transfers.
- * RU: Записать заголовок и тело с подтверждением всех переданных байтов. */
-static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const void *bytes, size_t size)
+/* EN: Optional stop hook on one polling rendezvous. A NULL wait means one probe.
+ * RU: Колбэк отмены одного ожидания пары. Пустой wait означает один опрос. */
+typedef struct NamedWait
+{
+    StyxRpcNamedStop stop; /* Borrowed until this synchronous operation returns. */
+    void *state;          /* Borrowed stop-hook data. */
+} NamedWait;
+
+
+/* EN: Submit operation and its optional size-byte body on file. Apply wait's
+ * stop hook to each chunk, and accept only a wholly confirmed frame.
+ * RU: Отправить operation и необязательное тело из size байтов на file.
+ * Проверять отмену из wait для каждого фрагмента и требовать подтверждения кадра. */
+static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const void *bytes, size_t size,
+    const NamedWait *wait)
 {
     unsigned char header[STYXRPC_NAMED_HEADER] = {(unsigned char)operation, (unsigned char)(size >> 24),
         (unsigned char)(size >> 16), (unsigned char)(size >> 8), (unsigned char)size};
     size_t used;
-    StyxRpcIoOutcome status = styxrpc_vfs_file_write(file, 0, header, sizeof(header), &used);
+    StyxRpcNamedStop stop = wait ? wait->stop : NULL;
+    void *state = wait ? wait->state : NULL;
+    StyxRpcIoOutcome status = styxrpc_vfs_write_wait(file, 0, header, sizeof(header), &used, stop, state);
     if (status != STYXRPC_IO_OK || used != sizeof(header))
     {
         return status == STYXRPC_IO_OK ? STYXRPC_IO_FAILED : status;
@@ -28,7 +42,7 @@ static StyxRpcIoOutcome submit(StyxRpcVfsFile *file, unsigned operation, const v
     {
         return STYXRPC_IO_OK;
     }
-    status = styxrpc_vfs_file_write(file, sizeof(header), bytes, size, &used);
+    status = styxrpc_vfs_write_wait(file, sizeof(header), bytes, size, &used, stop, state);
     return status == STYXRPC_IO_OK && used != size ? STYXRPC_IO_FAILED : status;
 }
 
@@ -55,29 +69,12 @@ StyxRpcVfsFile *styxrpc_named_open(struct StyxClient *session, const char *path)
         return NULL;
     }
     StyxRpcVfsFile *file = open_service(session);
-    if (file && submit(file, STYXRPC_NAMED_OPEN, path, strlen(path)) == STYXRPC_IO_OK)
+    if (file && submit(file, STYXRPC_NAMED_OPEN, path, strlen(path), NULL) == STYXRPC_IO_OK)
     {
         return file;
     }
     styxrpc_vfs_close(file, 0);
     return NULL;
-}
-
-
-/* EN: Optional stop hook on one polling rendezvous. A NULL wait means one probe.
- * RU: Колбэк отмены одного ожидания пары. Пустой wait означает один опрос. */
-typedef struct NamedWait
-{
-    StyxRpcNamedStop stop; /* Borrowed until this synchronous operation returns. */
-    void *state;         /* Borrowed stop-hook data. */
-} NamedWait;
-
-
-/* EN: Ask the optional stop hook when no transmitted request owns the caller.
- * RU: Проверить отмену между протокольными запросами. */
-static int cancelled(const NamedWait *wait)
-{
-    return wait && wait->stop && wait->stop(wait->state);
 }
 
 
@@ -90,11 +87,8 @@ static StyxRpcIoOutcome wait_reply(StyxRpcVfsFile *file, size_t *size, const Nam
     for (;;)
     {
         size_t used;
-        if (cancelled(wait))
-        {
-            return STYXRPC_IO_CANCELLED;
-        }
-        StyxRpcIoOutcome status = styxrpc_vfs_file_read(file, 0, header, sizeof(header), &used);
+        StyxRpcIoOutcome status = styxrpc_vfs_read_wait(file, 0, header, sizeof(header), &used,
+            wait ? wait->stop : NULL, wait ? wait->state : NULL);
         if (status != STYXRPC_IO_OK || (used && used != sizeof(header)))
         {
             return status == STYXRPC_IO_OK ? STYXRPC_IO_FAILED : status;
@@ -132,7 +126,8 @@ static StyxRpcIoOutcome read_frame(StyxRpcVfsFile *file, const NamedWait *wait, 
         return STYXRPC_IO_FAILED;
     }
     size_t used;
-    status = styxrpc_vfs_file_read(file, STYXRPC_NAMED_REPLY, frame, length, &used);
+    status = styxrpc_vfs_read_wait(file, STYXRPC_NAMED_REPLY, frame, length, &used,
+        wait ? wait->stop : NULL, wait ? wait->state : NULL);
     if (status != STYXRPC_IO_OK || used != length)
     {
         free(frame);
@@ -153,11 +148,7 @@ static StyxRpcIoOutcome receive(StyxRpcVfsFile *file, unsigned operation, unsign
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    if (cancelled(wait))
-    {
-        return STYXRPC_IO_CANCELLED;
-    }
-    StyxRpcIoOutcome status = submit(file, operation, NULL, 0);
+    StyxRpcIoOutcome status = submit(file, operation, NULL, 0, wait);
     return status == STYXRPC_IO_OK ? read_frame(file, wait, bytes, size) : status;
 }
 
@@ -194,11 +185,7 @@ StyxRpcIoOutcome styxrpc_named_send_until(StyxRpcVfsFile *file, const void *byte
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    if (cancelled(&wait))
-    {
-        return STYXRPC_IO_CANCELLED;
-    }
-    StyxRpcIoOutcome status = submit(file, STYXRPC_NAMED_WRITE, bytes, size);
+    StyxRpcIoOutcome status = submit(file, STYXRPC_NAMED_WRITE, bytes, size, &wait);
     size_t length;
     if (status == STYXRPC_IO_OK)
     {
@@ -216,7 +203,7 @@ StyxRpcVfsFile *styxrpc_cell_create(struct StyxClient *session, const void *fram
         return NULL;
     }
     StyxRpcVfsFile *file = open_service(session);
-    StyxRpcIoOutcome status = file ? submit(file, STYXRPC_CELL_NEW, frame, size) : STYXRPC_IO_NOT_OPEN;
+    StyxRpcIoOutcome status = file ? submit(file, STYXRPC_CELL_NEW, frame, size, NULL) : STYXRPC_IO_NOT_OPEN;
     unsigned char *reply = NULL;
     size_t returned;
     if (status == STYXRPC_IO_OK && read_frame(file, NULL, &reply, &returned) == STYXRPC_IO_OK &&
@@ -240,7 +227,7 @@ StyxRpcVfsFile *styxrpc_cell_attach(struct StyxClient *session, const void *toke
         return NULL;
     }
     StyxRpcVfsFile *file = open_service(session);
-    if (file && submit(file, STYXRPC_CELL_ATTACH, token, STYXRPC_CELL_TOKEN) == STYXRPC_IO_OK)
+    if (file && submit(file, STYXRPC_CELL_ATTACH, token, STYXRPC_CELL_TOKEN, NULL) == STYXRPC_IO_OK)
     {
         return file;
     }
@@ -281,5 +268,5 @@ StyxRpcIoOutcome styxrpc_cell_set(StyxRpcVfsFile *file, const void *bytes, size_
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    return submit(file, STYXRPC_CELL_SET, bytes, size);
+    return submit(file, STYXRPC_CELL_SET, bytes, size, NULL);
 }

@@ -35,4 +35,7 @@ the peer VM. In the stock paired player, a call on the movie owner suspends
 frame advancement until it returns. DisVM can continue while the movie waits.
 The player acknowledges `.state start` before executing the first frame.
 
-Inside a paired [asinc task](ASINC_VFS.md), these calls wait on the worker and can be cancelled between reply polls.
+Inside a paired [asinc task](ASINC_VFS.md), these calls wait on the worker.
+[`cancel()`](ASINC_CANCEL.md) flushes a pending data exchange by tag and
+closes the task's enrollment. A peer that has already matched may have
+received the value.

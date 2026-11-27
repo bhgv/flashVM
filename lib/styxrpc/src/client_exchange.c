@@ -69,12 +69,12 @@ static StyxRpcOutcome send_request(StyxFid *fid, const unsigned char *request, s
     size_t offset = 0;
     while (offset < size)
     {
-        if (stop && stop(state))
-        {
-            return offset ? STYXRPC_CALL_CANCELLED_UNCERTAIN : STYXRPC_CALL_CANCELLED;
-        }
         StyxTransfer part;
-        styxclientwrite(fid, offset, request + offset, size - offset, &part);
+        styxclientwriteuntil(fid, offset, request + offset, size - offset, stop, state, &part);
+        if (stop && part.cancelled && !part.success)
+        {
+            return offset || part.uncertain ? STYXRPC_CALL_CANCELLED_UNCERTAIN : STYXRPC_CALL_CANCELLED;
+        }
         if (!part.success || !part.confirmed || part.uncertain ||
             !part.count || part.count > size - offset)
         {
@@ -107,12 +107,12 @@ static StyxRpcOutcome receive_reply(StyxFid *fid, unsigned wait_ms, unsigned cha
     uint64_t now = began;
     while (now && now - began < wait_ms && used < capacity)
     {
-        if (stop && stop(state))
+        StyxTransfer part;
+        styxclientreaduntil(fid, used, reply + used, capacity - used, stop, state, &part);
+        if (stop && part.cancelled && !part.success)
         {
             return STYXRPC_CALL_CANCELLED_UNCERTAIN;
         }
-        StyxTransfer part;
-        styxclientread(fid, used, reply + used, capacity - used, &part);
         if (!part.success || !part.confirmed || part.uncertain || part.count > capacity - used)
         {
             break;

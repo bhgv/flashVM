@@ -21,8 +21,8 @@ through every call and any live result channels. Close both with
 `styxclientclunk` once their owners finish.
 
 An optional `stop` hook receives the borrowed `state` synchronously on
-the calling thread. Return nonzero to stop before submission, between
-readiness polls, or before transferring the fids. The hook should sample
+the calling thread. Return nonzero to stop before submission, while
+sending the path, while waiting for readiness, or before transferring the fids. The hook should sample
 a stop flag and return promptly. Keep its state alive until the call
 returns. A NULL hook uses ordinary readiness polling.
 
@@ -34,8 +34,9 @@ Every unsuccessful return preserves both output slots and closes all
 temporary fids. A request already acknowledged by the peer is retired
 when its clunk arrives. The SDK never replays its write.
 
-Readiness polling has a four-second budget. Cancellation is cooperative
-and an in-flight wire operation uses the mounted session's own deadlines.
+Readiness polling has a four-second budget. The multiplexed client
+flushes a pending path write or readiness read by tag. Metadata, flush
+acknowledgement and clunk use the mounted session's deadlines.
 Call on a thread allowed to wait for I/O. Separate calls use separate fids.
 
 ```c

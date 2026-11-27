@@ -165,6 +165,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientopencancel](reference/styxclientopencancel.md) — `Styx::client; hosted native build`
 - [styxclientread](reference/styxclientread.md) — `Styx::client; hosted native build`
 - [styxclientreadcancel](reference/styxclientreadcancel.md) — `Styx::client; hosted native build`
+- [styxclientreaduntil](reference/styxclientreaduntil.md) — `Styx::client; hosted native build`
 - [styxclientreadwatch](reference/styxclientreadwatch.md) — `Styx::client; hosted native build`
 - [styxclientrecord](reference/styxclientrecord.md) — `Styx::client; hosted native build`
 - [styxclientremove](reference/styxclientremove.md) — `Styx::client; hosted native build`
@@ -185,6 +186,7 @@ Separate pages cover actual public definitions. Syntax and source anchors come f
 - [styxclientwatchable](reference/styxclientwatchable.md) — `Styx::client; hosted native build`
 - [styxclientwrite](reference/styxclientwrite.md) — `Styx::client; hosted native build`
 - [styxclientwritecancel](reference/styxclientwritecancel.md) — `Styx::client; hosted native build`
+- [styxclientwriteuntil](reference/styxclientwriteuntil.md) — `Styx::client; hosted native build`
 - [styxdebug](reference/styxdebug.md) — `Styx::server; hosted native build`
 - [styxdeferattach](reference/styxdeferattach.md) — `Styx::server; hosted native build`
 - [styxdeferread](reference/styxdeferread.md) — `Styx::server; hosted native build`

@@ -88,9 +88,9 @@ typedef int (*StyxRpcNamedStop)(void *state);
 
 
 /* EN: Receive like styxrpc_named_recv, checking optional stop before submission
- * and between reply polls. On CANCELLED close file without reusing it.
- * RU: Принять как styxrpc_named_recv, проверяя stop до отправки и между
- * опросами ответа. При CANCELLED закрыть file без повторного использования. */
+ * and while multiplexed data frames are pending. On CANCELLED close file.
+ * RU: Принять как styxrpc_named_recv, проверяя stop до отправки и во время
+ * ожидания кадров данных на мультиплексоре. При CANCELLED закрыть file. */
 StyxRpcIoOutcome styxrpc_named_recv_until(StyxRpcVfsFile *file, unsigned char **bytes, size_t *size,
     StyxRpcNamedStop stop, void *state);
 

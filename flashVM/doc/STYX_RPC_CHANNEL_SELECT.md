@@ -15,8 +15,8 @@ One request goes through libstyxrpc to the bus owner. The owner chooses at most 
 
 A malformed guard list reports an argument error. A closed channel, a guard on another bus or an incompatible send value is refused before submission. After submitting, a timeout or transport error can race with a committed branch. Both methods run synchronously on the owner context and use one temporary fid. The route retains the lifetime of the original call or result. A lost confirmation can leave the outcome uncertain, so callers should avoid automatic retries.
 
-In a detached task, [`cancel()`](ASINC_CANCEL.md) closes the selection's
-operation fid between Styx round trips. A branch already committed by
+In a detached task, [`cancel()`](ASINC_CANCEL.md) flushes a pending
+Styx data request by tag and closes the selection's operation fid. A branch already committed by
 the bus owner can have an effect even when the task receives no result.
 
 ## Receive or send on the same result bus

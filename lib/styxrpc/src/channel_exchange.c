@@ -24,13 +24,20 @@ static uint64_t now_ms(void)
 }
 
 
-/* EN: Require a confirmed complete token write at offset zero on fid.
- * RU: Потребовать подтверждённую запись полного токена на fid со смещения ноль. */
-static int authenticate(StyxFid *fid, const unsigned char *token)
+/* EN: Require a confirmed complete token write on fid; sample optional stop(state).
+ * Cancellation here precedes submission of any channel guard.
+ * RU: Требовать подтверждённой записи токена на fid; проверять необязательный
+ * stop(state). При отмене ни одно условие выбора канала ещё не отправлено. */
+static StyxRpcStatus authenticate(StyxFid *fid, const unsigned char *token, StyxRpcCallStop stop, void *state)
 {
     StyxTransfer auth;
-    styxclientwrite(fid, 0, token, STYXRPC_CHANNEL_TOKEN_SIZE, &auth);
-    return auth.success && auth.confirmed && !auth.uncertain && auth.count == STYXRPC_CHANNEL_TOKEN_SIZE;
+    styxclientwriteuntil(fid, 0, token, STYXRPC_CHANNEL_TOKEN_SIZE, stop, state, &auth);
+    if (stop && auth.cancelled && !auth.success)
+    {
+        return STYXRPC_CANCELLED;
+    }
+    return auth.success && auth.confirmed && !auth.uncertain &&
+        auth.count == STYXRPC_CHANNEL_TOKEN_SIZE ? STYXRPC_OK : STYXRPC_INVALID;
 }
 
 
@@ -38,7 +45,7 @@ static int authenticate(StyxFid *fid, const unsigned char *token)
 int styxrpc_channel_authenticate_bound(StyxFid *module, const unsigned char *token)
 {
     StyxFid *fid = styxclientwalkfrom(module, ".unibus");
-    int accepted = fid && styxclientopen(fid, 2) && authenticate(fid, token);
+    int accepted = fid && styxclientopen(fid, 2) && authenticate(fid, token, NULL, NULL) == STYXRPC_OK;
     styxclientclunk(fid);
     return accepted;
 }
@@ -54,34 +61,32 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
     size_t prefix = token ? STYXRPC_CHANNEL_TOKEN_SIZE : 0;
     if (token)
     {
-        if (stop && stop(state))
-        {
-            return STYXRPC_CANCELLED;
-        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
             return STYXRPC_MORE;
         }
-        if (!authenticate(fid, token))
+        StyxRpcStatus status = authenticate(fid, token, stop, state);
+        if (status != STYXRPC_OK)
         {
-            return STYXRPC_INVALID;
+            return status;
         }
     }
     size_t offset = 0;
     while (offset < size)
     {
-        if (stop && stop(state))
-        {
-            return offset ? STYXRPC_CANCELLED_UNCERTAIN : STYXRPC_CANCELLED;
-        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
             return STYXRPC_MORE;
         }
         StyxTransfer wrote;
-        styxclientwrite(fid, prefix + offset, (const unsigned char *)request + offset, size - offset, &wrote);
+        styxclientwriteuntil(fid, prefix + offset, (const unsigned char *)request + offset, size - offset,
+            stop, state, &wrote);
+        if (stop && wrote.cancelled && !wrote.success)
+        {
+            return offset || wrote.uncertain ? STYXRPC_CANCELLED_UNCERTAIN : STYXRPC_CANCELLED;
+        }
         if (!wrote.success || !wrote.confirmed || wrote.uncertain || !wrote.count || wrote.count > size - offset)
         {
             return STYXRPC_INVALID;
@@ -92,17 +97,18 @@ static StyxRpcStatus exchange(StyxFid *fid, const unsigned char *token, const vo
     size_t total = 0;
     while (total < capacity)
     {
-        if (stop && stop(state))
-        {
-            return STYXRPC_CANCELLED_UNCERTAIN;
-        }
         uint64_t now = now_ms();
         if (!now || now >= deadline)
         {
             return STYXRPC_MORE;
         }
         StyxTransfer read;
-        styxclientread(fid, (token ? 0 : offset) + total, (unsigned char *)reply + total, capacity - total, &read);
+        styxclientreaduntil(fid, (token ? 0 : offset) + total, (unsigned char *)reply + total, capacity - total,
+            stop, state, &read);
+        if (stop && read.cancelled && !read.success)
+        {
+            return STYXRPC_CANCELLED_UNCERTAIN;
+        }
         if (!read.success || !read.confirmed || read.uncertain || read.count > capacity - total)
         {
             return STYXRPC_INVALID;

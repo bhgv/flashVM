@@ -17,6 +17,8 @@ struct StyxCancel
     int requested;        /* Sticky cancellation request. */
     StyxCancel *child;    /* Owned current fragment token for one logical walk scope. */
     int used;             /* One admitted operation only; late control cannot target a later operation. */
+    StyxClientStop stop;  /* Immutable optional hook used only on the collecting caller. */
+    void *state;          /* Borrowed hook data through synchronous collection. */
 };
 
 /* EN/RU: See client.h; no connection or managed state is captured.
@@ -56,6 +58,36 @@ StyxCancel *styxcancelcreatewait(void)
         cancel->wait_admission = 1;
     }
     return cancel;
+}
+
+
+/* EN/RU: See mux.h. / См. mux.h. */
+StyxCancel *styxcancelcreatepoll(StyxClientStop stop, void *state)
+{
+    StyxCancel *cancel = styxcancelcreate();
+    if (cancel)
+    {
+        cancel->stop = stop;
+        cancel->state = state;
+    }
+    return cancel;
+}
+
+
+/* EN/RU: See mux.h. / См. mux.h. */
+int styxcancelpolling(StyxCancel *cancel)
+{
+    return cancel && cancel->stop && !styxcancelled(cancel);
+}
+
+
+/* EN/RU: See mux.h. / См. mux.h. */
+void styxcancelpoll(StyxCancel *cancel)
+{
+    if (styxcancelpolling(cancel) && cancel->stop(cancel->state))
+    {
+        styxcancelrequest(cancel);
+    }
 }
 
 

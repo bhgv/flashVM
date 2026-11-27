@@ -61,8 +61,8 @@ struct StyxFid *styxrpc_module_open(struct StyxClient *session, const char *path
 struct StyxFid *styxrpc_module_live_open(struct StyxClient *session, const char *path,
     struct StyxFid **lease);
 
-/* EN: Return nonzero to cancel readiness polling on the calling thread.
- * RU: Вернуть ненулевое значение для отмены ожидания в вызывающем потоке. */
+/* EN: Return nonzero to cancel load request data I/O on the calling thread.
+ * RU: Вернуть ненулевое значение для отмены передачи данных запроса загрузки. */
 typedef int (*StyxRpcModuleStop)(void *state);
 
 /* EN: Load with an optional stop hook. On success transfer both fids; otherwise

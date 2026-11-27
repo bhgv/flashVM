@@ -43,10 +43,12 @@ during the wait, and calls from inside a Styx application callback
 cannot start a nested scoped exchange. Use an `asinc` task when the movie
 must keep advancing or the Dis function depends on an application callback.
 
-A task's [`cancel()`](ASINC_CANCEL.md) stops a pending `.dis` load between
-readiness polls. The client closes the request fid, and DisVM retires the
-exact request and interrupts any cancellable source read of that resident.
-An I/O round trip already underway uses the session's deadline.
+A task's [`cancel()`](ASINC_CANCEL.md) stops a pending `.dis` load, including
+while submitting the path or waiting for a readiness reply. On the paired
+connection, the client flushes a pending data request by tag and closes
+the request fid. DisVM retires that request and interrupts any cancellable
+source read of that resident. Metadata, flush acknowledgement and clunk
+use the session's deadlines.
 
 For a method invocation in a detached task, `cancel()` also stops
 waiting for the result. The client closes that call's fid and releases
@@ -54,8 +56,8 @@ its argument channel scope. A scoped Dis call can unwind from a local
 channel send, receive or `alt` when the fid is closed. Cancellation that
 follows a request write leaves the peer's effects uncertain. An earlier
 queue transfer may already have happened, and unscoped Dis code can
-continue after the client stops waiting. In libstyxrpc, a complete
-reply read before the stop check keeps its normal outcome.
+continue after the client stops waiting. A complete reply received before
+the flush acknowledgement keeps its normal outcome.
 
 A [positioned Limbo file](../../disVM/runtime/STYX-NODE-OFFSETS.md) can
 serve an image if it has the true byte length and read and execute

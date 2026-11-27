@@ -97,8 +97,8 @@ StyxRpcStatus styxrpc_channel_route_exchange(struct StyxClient *session, const c
     void *reply, size_t reply_capacity, StyxRpcChannelResult *result);
 
 
-/* EN: Like route_exchange, with optional stop(state) between Styx operations.
- * RU: Как route_exchange с необязательным stop(state) между операциями Styx. */
+/* EN: Like route_exchange, with optional stop(state) when sending or awaiting data frames.
+ * RU: Как route_exchange с необязательным stop(state) при отправке и ожидании кадров данных. */
 StyxRpcStatus styxrpc_channel_route_exchange_until(struct StyxClient *session, const char *module_bus,
     const StyxRpcChannelRoute *route, const StyxRpcSelection *selection, unsigned timeout_ms,
     void *scratch, size_t scratch_size, void *request, size_t request_capacity,

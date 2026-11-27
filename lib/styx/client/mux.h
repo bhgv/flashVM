@@ -239,6 +239,21 @@ int styxcancelled(StyxCancel *);
 StyxCancel *styxcancelcreatewait(void);
 
 
+/* EN: Own a native token borrowing stop/state exclusively through one caller wait.
+ * RU: Создать токен, заимствующий stop/state на время одного ожидания вызывающего. */
+StyxCancel *styxcancelcreatepoll(StyxClientStop stop, void *state);
+
+
+/* EN: Check whether cancel still needs polling, without entering its hook.
+ * RU: Проверить, нужен ли ещё опрос cancel, без вызова колбэка. */
+int styxcancelpolling(StyxCancel *cancel);
+
+
+/* EN: On the collector thread outside the mux lock, ask the hook to stop cancel.
+ * RU: В потоке ожидания вне замка мультиплексора проверить флаг через колбэк. */
+void styxcancelpoll(StyxCancel *cancel);
+
+
 /* EN: Read the borrowed token's immutable admission policy.
  * RU: Прочитать неизменяемое правило допуска заимствованного токена. */
 int styxcancelwaits(const StyxCancel *cancel);

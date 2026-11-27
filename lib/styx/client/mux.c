@@ -3,6 +3,7 @@
  * RU: Bounded multiplex admission, native wakeup и nonwaiting owner retirement.
  */
 #include "mux_internal.h"
+#include <errno.h>
 #include <time.h>
 
 /* EN/RU: See mux_internal.h; cleanup owns descriptors, buffers and native locks.
@@ -270,6 +271,9 @@ styxmuxsubmit(StyxMux *mux, const void *bytes, unsigned length, unsigned bound, 
     return flight;
 }
 
+#include "readable_parts/mux-c/collection_wait.inc"
+
+
 /* EN/RU: Wait/collect only on native caller; detach token before engine owner can retire.
  * Wait/collect только native caller; detach token до engine owner retirement. */
 
@@ -290,7 +294,7 @@ StyxAnswer styxmuxcollect(StyxFlight *flight)
     pthread_mutex_lock(&mux->lock);
     while (!flight->done)
     {
-        pthread_cond_wait(&flight->condition, &mux->lock);
+        wait_for_reply(flight);
     }
     StyxAnswer answer = flight->answer;
     pthread_mutex_unlock(&mux->lock);

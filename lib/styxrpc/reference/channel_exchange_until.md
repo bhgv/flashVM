@@ -24,14 +24,15 @@ contains the selected ordinal and can borrow typed bytes from `reply`.
 
 The optional [`StyxRpcCallStop`](../include/styxrpc/rpc.h) callback
 receives borrowed `state` on the calling thread. Return a nonzero value
-to stop. The SDK samples it before opening the operation and between
-Styx round trips. A NULL callback leaves the usual deadline in effect.
-An in-flight round trip and clunk use the mounted session's deadlines.
+to stop. The SDK samples it before opening and while waiting on a
+data request. On a multiplexed session, a transmitted request gets one
+`Tflush` by tag. Metadata, the flush acknowledgement and clunk use
+the session's deadlines. A NULL callback gives the ordinary behavior.
 
 | Outcome | Meaning |
 | --- | --- |
 | `STYXRPC_CANCELLED` | The stop was observed before a guard write. Token authentication alone is allowed. |
-| `STYXRPC_CANCELLED_UNCERTAIN` | The stop was observed after a guard write, and an admitted branch may have taken effect. |
+| `STYXRPC_CANCELLED_UNCERTAIN` | The stop was observed during or after a guard write, and an admitted branch may have taken effect. |
 
 Both cancellation outcomes close the exact temporary operation fid and
 preserve `result`. A complete reply read before the stop keeps its ordinary

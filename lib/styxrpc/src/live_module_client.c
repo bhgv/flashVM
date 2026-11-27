@@ -25,15 +25,12 @@ static StyxRpcIoOutcome receive_generation(StyxFid *request, char *id, StyxRpcMo
     size_t count = 0;
     do
     {
-        if (stop && stop(state))
-        {
-            return STYXRPC_IO_CANCELLED;
-        }
         size_t received;
-        if (styxrpc_vfs_file_read(request, count, id + count,
-            STYXRPC_LIVE_MODULE_ID_BYTES - count, &received) != STYXRPC_IO_OK)
+        StyxRpcIoOutcome outcome = styxrpc_vfs_read_wait(request, count, id + count,
+            STYXRPC_LIVE_MODULE_ID_BYTES - count, &received, stop, state);
+        if (outcome != STYXRPC_IO_OK)
         {
-            return STYXRPC_IO_FAILED;
+            return outcome == STYXRPC_IO_CANCELLED ? outcome : STYXRPC_IO_FAILED;
         }
         count += received;
         if (count == STYXRPC_LIVE_MODULE_ID_BYTES)
@@ -73,29 +70,23 @@ StyxRpcIoOutcome styxrpc_module_live_open_until(StyxClient *session, const char 
     if (request && styxclientstat(request, &info) && !info.directory &&
         !strcmp(info.name, STYXRPC_LIVE_MODULE_REQUEST) && styxclientopen(request, STYXRPC_FILE_RDWR))
     {
-        if (stop && stop(state))
+        StyxTransfer sent;
+        styxclientwriteuntil(request, 0, path, length, stop, state, &sent);
+        outcome = stop && sent.cancelled && !sent.success ? STYXRPC_IO_CANCELLED :
+            styxrpc_vfs_transfer_outcome(&sent, length);
+        char address[] = STYXRPC_LIVE_MODULE_ROOT "/00000000";
+        if (outcome == STYXRPC_IO_OK)
         {
-            outcome = STYXRPC_IO_CANCELLED;
+            outcome = sent.count == length ? receive_generation(request,
+                address + sizeof(STYXRPC_LIVE_MODULE_ROOT), stop, state) : STYXRPC_IO_FAILED;
         }
-        else
+        if (outcome == STYXRPC_IO_OK)
         {
-            StyxTransfer sent;
-            styxclientwrite(request, 0, path, length, &sent);
-            outcome = styxrpc_vfs_transfer_outcome(&sent, length);
-            char address[] = STYXRPC_LIVE_MODULE_ROOT "/00000000";
-            if (outcome == STYXRPC_IO_OK)
+            module = styxclientwalk(session, address);
+            if (!module || !styxclientstat(module, &info) || !info.directory ||
+                !(info.mode & 0444U) || !(info.mode & 0111U))
             {
-                outcome = sent.count == length ? receive_generation(request,
-                    address + sizeof(STYXRPC_LIVE_MODULE_ROOT), stop, state) : STYXRPC_IO_FAILED;
-            }
-            if (outcome == STYXRPC_IO_OK)
-            {
-                module = styxclientwalk(session, address);
-                if (!module || !styxclientstat(module, &info) || !info.directory ||
-                    !(info.mode & 0444U) || !(info.mode & 0111U))
-                {
-                    outcome = STYXRPC_IO_FAILED;
-                }
+                outcome = STYXRPC_IO_FAILED;
             }
         }
     }
