@@ -144,6 +144,15 @@ SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
   --native-events build/paired-sdl-input.so
 ```
 
+To exercise the installed SWF, font and executables, run the same SDL2 fixture
+against the package. This check runs both JIT and interpreter. Add `--tcp` to
+use the two stock TCP entry points on loopback.
+
+```sh
+SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
+  --installed --disvm out/disvm-editor --native-events build/paired-sdl-input.so
+```
+
 Add `--mdi` to that command to resize the SDL window from 960 × 640 to 860 × 620,
 edit two documents by switching tabs, detach and rejoin one editor, and verify
 both saved byte sequences plus the final active tab and editor raster.

@@ -1,6 +1,6 @@
 # styxrpc_module_ref_port_open_paired
 
-[Русский](module_ref_port_open_paired.ru.md) · [Declaration](../include/styxrpc/module_ref_port.h#L36) · [Implementation](../src/module_ref_port.c#L36) · [Guide](module_ref_port.md)
+[Русский](module_ref_port_open_paired.ru.md) · [Declaration](../include/styxrpc/module_ref_port.h) · [Implementation](../src/module_ref_port.c) · [Guide](module_ref_port.md)
 
 `StyxRpc::launch`
 
@@ -16,6 +16,7 @@ client. It borrows the optional resolver `local` and `context` until
 close. With `local` set, Adopt accepts the opposite role, then calls
 that resolver on the first value access. Capture still uses the ordinary
 issuer mount. Pass NULL as `local` for the behavior of [open](module_ref_port_open.md).
+Use [owned open](module_ref_port_open_owned.md) to capture a local export.
 
 The resolver receives `context`, the validated descriptor, and a zeroed
 `StyxRpcFile` for the result. Check the exact path, Qid and requested mode.

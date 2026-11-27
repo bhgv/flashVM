@@ -138,6 +138,15 @@ SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
   --native-events build/paired-sdl-input.so
 ```
 
+Чтобы проверить установленные SWF, шрифт и исполняемые файлы, запустите тот же
+SDL2-адаптер с путём к пакету. Тест проходит в режимах JIT и интерпретатора.
+Ключ `--tcp` включает штатные команды TCP на loopback.
+
+```sh
+SDL_VIDEODRIVER=dummy python3 ide/tests/check_paired_desktop.py \
+  --installed --disvm out/disvm-editor --native-events build/paired-sdl-input.so
+```
+
 Параметр `--mdi` в этой же команде меняет размер окна SDL с 960×640 на 860×620,
 переключает вкладки при редактировании двух документов, отсоединяет и снова
 присоединяет один редактор. Проверка сверяет байты обоих файлов и растр активной

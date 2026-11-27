@@ -2,6 +2,8 @@
 
 [Русский](STYX_RPC_OPEN_MESSAGES.ru.md) · [Session](STYX_RPC_SESSION.md) · [Implementation](../src/styxrpc/session_messages.c)
 
+To publish a root on the paired FlashVM side, use [publishMessages](STYX_RPC_PUBLISH_MESSAGES.md).
+
 ```actionscript
 var port = styxrpc.openMessages("events", ["app.sample", 1, 47, "onSample"]);
 ```

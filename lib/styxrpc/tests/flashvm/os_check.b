@@ -19,6 +19,8 @@ start()
     if (size <= 0 || size >= len bytes - 4 || fd == nil) {
         raise sys->sprint("cannot stage os movie: %r");
     }
+    bytes[0] = byte (size >> 24);
+    bytes[1] = byte (size >> 16);
     bytes[2] = byte (size >> 8);
     bytes[3] = byte size;
     for (offset := 0; offset < size + 4;) {

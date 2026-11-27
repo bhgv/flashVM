@@ -1,6 +1,6 @@
 # styxrpc_module_ref_port_open_paired
 
-[English](module_ref_port_open_paired.md) · [Объявление](../include/styxrpc/module_ref_port.h#L36) · [Реализация](../src/module_ref_port.c#L36) · [Руководство](module_ref_port.ru.md)
+[English](module_ref_port_open_paired.md) · [Объявление](../include/styxrpc/module_ref_port.h) · [Реализация](../src/module_ref_port.c) · [Руководство](module_ref_port.ru.md)
 
 `StyxRpc::launch`
 
@@ -16,6 +16,7 @@ StyxRpcModuleRefPort *styxrpc_module_ref_port_open_paired(struct StyxClient *iss
 закрытия. Если `local` задан, приём допускает встречную роль и при первом
 обращении к значению вызывает этот колбэк. Захват использует обычное
 подключение к владельцу. NULL в `local` даёт поведение [open](module_ref_port_open.ru.md).
+Для захвата местного экспорта используйте [открытие с захватом](module_ref_port_open_owned.ru.md).
 
 Колбэк получает `context`, проверенный дескриптор и обнулённый
 `StyxRpcFile` для результата. Сверьте точный путь, Qid и запрошенный

@@ -63,6 +63,13 @@ void styxrpc_argument_scope_close(StyxRpcArgumentScope *scope);
 StyxRpcOutcome styxrpc_argument_scope_invoke(StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result);
 
+
+/* EN: Consume scope as usual, using the borrowed unopened module directory if supplied.
+ * RU: Поглотить scope как обычно, используя переданный неоткрытый каталог модуля. */
+StyxRpcOutcome styxrpc_argument_scope_invoke_at(struct StyxFid *directory, StyxRpcArgumentScope *scope,
+    const StyxRpcManagedTarget *target, const void *arguments, size_t size, void *reply, size_t capacity,
+    StyxRpcLeasedReply *result);
+
 #ifdef __cplusplus
 }
 #endif

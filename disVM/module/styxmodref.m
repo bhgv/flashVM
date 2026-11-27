@@ -35,6 +35,10 @@ Styxmodref: module
     # RU: Удержать mounted/<образ>/.var/<имя> на подключённой стороне. writable равен 0 или 1.
     capture: fn(path: string, writable: int): ref Cell;
 
+    # EN: Pin the local publication at a root-relative export path. writable is 0 or 1.
+    # RU: Удержать местную публикацию по пути от корня пары. writable равен 0 или 1.
+    capturelocal: fn(path: string, writable: int): ref Cell;
+
     # EN: Accept a complete named-channel frame for either owner. Open on first value I/O.
     # RU: Принять полный кадр именованного канала от любого владельца. Открыть при первом I/O значения.
     adopt: fn(frame: array of byte): ref Cell;

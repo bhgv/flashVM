@@ -16,6 +16,12 @@ extern "C" {
 StyxRpcOutcome styxrpc_graph_invoke(const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcGraphReply *result);
 
+
+/* EN: Use a borrowed unopened module directory instead of target's path when supplied.
+ * RU: Использовать переданный неоткрытый каталог вместо пути target. */
+StyxRpcOutcome styxrpc_graph_invoke_at(struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcGraphReply *result);
+
 #ifdef __cplusplus
 }
 #endif

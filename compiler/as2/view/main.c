@@ -39,6 +39,12 @@ int main(int argc, char **argv)
     }
     if (!as2_view_compile(source, size, fir_text, sizeof(fir_text), &used, &diagnostic))
     {
+        if (diagnostic.code == AS2_VIEW_ASINC_BINDING)
+        {
+            fprintf(stderr, "AS2 view %d:%d: detached asinc requires local declarations and cannot capture an owner binding or ref\n",
+                    diagnostic.line, diagnostic.column);
+            return 1;
+        }
         fprintf(stderr,
                 "AS2 view %d:%d: unsupported profile or error %d at %ld\n",
                 diagnostic.line,

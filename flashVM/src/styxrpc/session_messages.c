@@ -4,6 +4,7 @@
  */
 #include "session_methods.h"
 #include "managed_values.h"
+#include "session_message_types.h"
 #include "flashvm/execution.h"
 #include "flashvm/userdata.h"
 #include "styxrpc/messages.h"
@@ -15,8 +16,7 @@ typedef struct ScriptMessagePort ScriptMessagePort; /* Managed handle and dispat
 typedef struct ScriptMessageType
 {
     ScriptMessagePort *owner;            /* Borrowed until the SDK port is closed. */
-    char name[STYXRPC_MESSAGE_NAME_MAX + 1]; /* Wire type identity. */
-    char handler[STYXRPC_TREE_NAME + 1];     /* Script method name, empty for send-only. */
+    ScriptMessageNames names;             /* Copied schema and handler names. */
 } ScriptMessageType;
 
 typedef struct ReceivedMessage
@@ -49,7 +49,7 @@ static int receive_message(StyxRpcMessagePort *port, void *state, const void *pa
         return 0;
     }
     received->next = NULL;
-    received->handler = type->handler;
+    received->handler = type->names.method;
     received->size = size;
     if (size)
     {
@@ -86,98 +86,15 @@ static void release_messages(void *state)
 }
 
 
-/* [GC:] EN: Copy one AS descriptor and set the SDK's receive state to its retained type.
- * RU: Скопировать описатель AS, привязав приём SDK к удерживаемому типу. */
-static FVM_Result message_descriptor(FVM_Context *context, const FVM_Value *descriptor,
-    ScriptMessageType *type, StyxRpcMessageType *registration)
-{
-    FVM_Value fields[4];
-    FVM_GCRootScope *roots;
-    uint64_t count, version, tag;
-    FVM_Result status = fvm_gc_roots_begin(context, &roots);
-    if (status != FVM_OK)
-    {
-        return status;
-    }
-    status = fvm_styxrpc_fields(context, roots, descriptor, fields, 4, &count);
-    if (status == FVM_OK &&
-        ((count != 3 && count != 4) || !fvm_styxrpc_name(fields, type->name, sizeof(type->name)) ||
-         !fvm_styxrpc_number(fields + 1, UINT32_MAX, &version) || !version ||
-         !fvm_styxrpc_number(fields + 2, UINT32_MAX, &tag) ||
-         (count == 4 && !fvm_styxrpc_name(fields + 3, type->handler, sizeof(type->handler))) ||
-         (count == 3 && !tag)))
-    {
-        status = FVM_INVALID_ARGUMENT;
-    }
-    if (status == FVM_OK)
-    {
-        registration->name = type->name;
-        registration->version = (uint32_t)version;
-        registration->send_tag = (uint32_t)tag;
-        registration->receive = count == 4 ? receive_message : NULL;
-        registration->context = type;
-    }
-    fvm_gc_roots_end(roots);
-    return status;
-}
-
-
 /* EN: Snapshot an exact byte array, then queue it by name and version. Return the SDK status.
  * RU: Снять точный массив байтов и поставить его в очередь по имени и версии. Вернуть статус SDK. */
 static FVM_Result send_message(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     ScriptMessagePort *messages = state;
-    char name[STYXRPC_MESSAGE_NAME_MAX + 1];
-    unsigned char bytes[STYXRPC_MESSAGE_PAYLOAD_MAX];
-    uint64_t version;
-    size_t size;
-    FVM_Result status;
     (void)self;
-    if (!messages->session->client || !messages->port || argc != 3 ||
-        !fvm_styxrpc_name(args, name, sizeof(name)) ||
-        !fvm_styxrpc_number(args + 1, UINT32_MAX, &version) || !version)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    status = fvm_styxrpc_bytes(context, args + 2, bytes, sizeof(bytes), &size);
-    if (status == FVM_OK)
-    {
-        if (!messages->session->client || !messages->port)
-        {
-            return FVM_INVALID_ARGUMENT;
-        }
-        fvm_value_number(out, styxrpc_message_send(messages->port, name, (uint32_t)version, bytes, size));
-    }
-    return status;
-}
-
-
-/* [GC:] EN: Materialize one private byte Array and call its registered method on receiver.
- * RU: Создать отдельный массив байтов и вызвать зарегистрированный метод receiver. */
-static FVM_Result dispatch_message(FVM_Context *context, const FVM_Value *receiver, const ReceivedMessage *message)
-{
-    FVM_Value payload, name, result;
-    const unsigned char *bytes = (const unsigned char *)(message + 1);
-    FVM_Value *values = message->size ? malloc(message->size * sizeof(*values)) : NULL;
-    FVM_Result status;
-    size_t i;
-    if (message->size && !values)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
-    for (i = 0; i < message->size; ++i)
-    {
-        fvm_value_number(values + i, bytes[i]);
-    }
-    status = fvm_exec_literal_array(context, (unsigned)message->size, values, &payload);
-    free(values);
-    if (status == FVM_OK)
-    {
-        fvm_value_string(&name, message->handler);
-        status = fvm_exec_call_method(context, 0, receiver, &name, NULL, 1, &payload, &result);
-    }
-    return status;
+    return messages->session->client ? fvm_styxrpc_message_queue(context, &messages->port, argc, args, out) :
+        FVM_INVALID_ARGUMENT;
 }
 
 
@@ -204,7 +121,8 @@ static FVM_Result pump_messages(FVM_Context *context, FVM_Object *self, unsigned
     {
         for (message = messages->received; message && status == FVM_OK; message = message->next)
         {
-            status = dispatch_message(context, args, message);
+            status = fvm_styxrpc_message_dispatch(context, args, message->handler,
+                (const unsigned char *)(message + 1), message->size, NULL);
             ++delivered;
         }
     }
@@ -308,8 +226,9 @@ static FVM_Result open_messages(FVM_Context *context, FVM_Object *self, unsigned
     }
     for (i = 0; status == FVM_OK && i < argc - 1; ++i)
     {
-        messages->types[i].owner = messages;
-        status = message_descriptor(context, args + i + 1, messages->types + i, types + i);
+        ScriptMessageType *type = messages->types + i;
+        type->owner = messages;
+        status = fvm_styxrpc_message_descriptor(context, args + i + 1, &type->names, receive_message, type, types + i);
     }
     if (status == FVM_OK)
     {

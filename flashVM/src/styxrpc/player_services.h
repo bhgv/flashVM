@@ -21,6 +21,17 @@ FVM_Result fvm_styxrpc_player_services(FVM_Context *context, struct StyxClient *
 FVM_StyxRpcSession *fvm_styxrpc_player_binding(FVM_StyxRpcPlayerServices *services);
 
 
+/* EN: Bind hosted message publication to the owner server, borrowing it until clear.
+ * RU: Привязать публикацию сообщений к серверу владельца, заимствуя до отзыва. */
+FVM_Result fvm_styxrpc_player_enable_messages(FVM_Context *context,
+    FVM_StyxRpcPlayerServices *services, StyxRpcServer *server);
+
+
+/* EN: Detach the movie's message roots before the owner destroys its server.
+ * RU: Отозвать корни сообщений фильма перед уничтожением сервера владельцем. */
+void fvm_styxrpc_player_clear_messages(FVM_StyxRpcPlayerServices *services);
+
+
 /* EN: Make services current, retiring any old image fids. NULL clears slot.
  * RU: Сделать services текущими и отозвать старые fid. NULL очищает слот. */
 FVM_Result fvm_styxrpc_player_activate(StyxRpcModuleSlot *slot, FVM_StyxRpcPlayerServices *services);

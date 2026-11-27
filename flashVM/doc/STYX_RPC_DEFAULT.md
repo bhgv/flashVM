@@ -18,3 +18,6 @@ The `os` global refers to the same object as `vfs`.
 
 [Blocking named channels](STYX_RPC_NAMED_CHANNEL.md) open by path in the
 attached session's live VFS.
+
+Use [publishMessages](STYX_RPC_PUBLISH_MESSAGES.md) to register a service-only
+exchange root and typed UniBus callbacks in the movie's local server.

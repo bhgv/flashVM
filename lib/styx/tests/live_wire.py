@@ -25,6 +25,20 @@ def write(client, fid, payload, expected):
         require(expected and response == struct.pack('<I', len(payload)), 'unexpected Rwrite')
 
 
+# EN: Alternate stat and open on real fids. No file mode or previous response
+# metadata may become an unintended I/O limit in Ropen.
+# RU: Чередовать stat и open на реальных fid. Режим файла и метаданные предыдущих
+# ответов не должны попадать в Ropen как предел ввода-вывода.
+def open_limit(client, path):
+    for _ in range(3):
+        fid = client.walk(path)
+        client.rpc(124, struct.pack('<I', fid))
+        reply = client.rpc(112, struct.pack('<IB', fid, 0))
+        require(len(reply) == 17 and struct.unpack_from('<I', reply, 13)[0] == 0,
+                'Ropen must keep the negotiated I/O limit')
+        client.clunk(fid)
+
+
 # EN: Own a server and two independent sessions with colliding local fid/tag IDs.
 # Show that one client's ctl mutation affects fresh names, not another client's
 # already opened object. Always close both connections and reap the server.
@@ -38,6 +52,7 @@ def main():
     try:
         reader = Client(port)
         writer = Client(port)
+        open_limit(reader, '/window-100/title')
         held = reader.open('/window-100/title')
         ctl = writer.open('/ctl', 1)
         initial = set(reader.directory('/'))

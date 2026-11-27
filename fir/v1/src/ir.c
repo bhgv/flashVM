@@ -512,6 +512,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         return fail(error, cap, "invalid AVM1 root method name");
     }
+    if (m->avm1_asinc && (m->avm1_asinc != 1 || !m->avm1_method[0] || m->avm1_parameter_count))
+    {
+        return fail(error, cap, "avm1_asinc requires a named root method without parameters");
+    }
     if (m->avm1_parameter_count > sizeof(m->avm1_parameters) / sizeof(*m->avm1_parameters) ||
         (m->avm1_parameter_count && !m->avm1_method[0]))
     {
@@ -1384,7 +1388,7 @@ int fir_print(FILE *out, const FirModule *m)
     }
     if (m->avm1_method[0])
     {
-        fprintf(out, "source_entry avm1_method %s", m->avm1_method);
+        fprintf(out, "source_entry %s %s", m->avm1_asinc ? "avm1_asinc" : "avm1_method", m->avm1_method);
         for (unsigned p = 0; p < m->avm1_parameter_count; ++p)
         {
             fprintf(out, " %s", m->avm1_parameters[p]);

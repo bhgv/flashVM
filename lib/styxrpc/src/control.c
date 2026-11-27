@@ -10,6 +10,7 @@
 struct StyxRpcControl
 {
     StyxRpcControlSpec spec; /* Copied owner callbacks. */
+    int (*extra)(void *, const char *, size_t); /* Optional counted command on the same owner. */
     int upload_open;        /* An upload fid owns the one staging slot. */
 };
 
@@ -54,6 +55,16 @@ StyxRpcStatus styxrpc_control_create(const StyxRpcControlSpec *spec, StyxRpcCont
 void styxrpc_control_destroy(StyxRpcControl *control)
 {
     free(control);
+}
+
+
+/* EN/RU: See styxrpc/control.h. / См. styxrpc/control.h. */
+void styxrpc_control_set_extension(StyxRpcControl *control, int (*command)(void *, const char *, size_t))
+{
+    if (control)
+    {
+        control->extra = command;
+    }
 }
 
 
@@ -203,7 +214,7 @@ static int command(StyxRpcControl *control, const char *bytes, size_t size)
             return control->spec.command(control->spec.context, (StyxRpcControlCommand)i) == 1;
         }
     }
-    return 0;
+    return control->extra && control->extra(control->spec.context, bytes, size) == 1;
 }
 
 

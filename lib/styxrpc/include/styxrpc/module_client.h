@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+struct StyxFid; /* Unopened retained directory issued by the mounted peer. */
+
 typedef struct StyxRpcModuleImport
 {
     const char *name;        /* Required literal export name. */
@@ -38,6 +40,22 @@ StyxRpcStatus styxrpc_module_exports(struct StyxClient *, const char *, uint32_t
  * RU: Проверить все требования на одном удерживаемом каталоге смонтированной сессии.
  * Путь относительный. Для контекстной функции требуется ненулевой PID. */
 StyxRpcStatus styxrpc_module_check(struct StyxClient *session, const char *module,
+    const StyxRpcModuleImport *imports, size_t count, uint32_t pid);
+
+
+/* EN: Walk an ordinary module directory; return an owned, unopened fid or NULL.
+ * Release with styxclientclunk or styxrpc_vfs_close. No path fallback after capture.
+ * RU: Пройти каталог модуля и вернуть свой неоткрытый fid либо NULL.
+ * Закрыть через styxclientclunk либо styxrpc_vfs_close. Без повторного поиска пути. */
+struct StyxFid *styxrpc_module_open(struct StyxClient *session, const char *path);
+
+/* EN: Discover checked exports relative to the borrowed, unopened module fid.
+ * RU: Найти проверенные экспорты от заимствованного неоткрытого fid модуля. */
+StyxRpcStatus styxrpc_module_exports_at(struct StyxFid *directory, uint32_t pid, StyxRpcModuleExports *out);
+
+/* EN: Check exact imports relative to the borrowed, unopened module fid.
+ * RU: Проверить точные импорты от заимствованного неоткрытого fid модуля. */
+StyxRpcStatus styxrpc_module_check_at(struct StyxFid *directory,
     const StyxRpcModuleImport *imports, size_t count, uint32_t pid);
 
 #ifdef __cplusplus

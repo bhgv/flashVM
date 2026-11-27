@@ -11,9 +11,9 @@ typedef struct OsHandle
 {
     FVM_StyxRpcMovies *movies; /* Borrowed playback owner through context teardown. */
     StyxRpcVfsFile *file;      /* Owned regular file or NULL. */
-    StyxRpcVfsDir *directory;  /* Owned directory or module fid. */
+    StyxRpcVfsDir *directory;  /* Owned ordinary directory iterator. */
+    struct StyxFid *module;   /* Owned unopened directory of the checked image. */
     uint64_t offset;           /* Confirmed byte cursor. */
-    int module;                /* Directory has a verified runnable interface. */
     int uncertain;             /* Last failed write may have modified remote bytes. */
     char path[FVM_STYXRPC_MOVIE_PATH]; /* Canonical path including leading slash. */
 } OsHandle;

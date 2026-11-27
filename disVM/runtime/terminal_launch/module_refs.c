@@ -162,12 +162,11 @@ static int local_write(void *file, uint64_t offset, const void *bytes, size_t co
 }
 
 
-/* EN: Resolve the issued Qid and make an SDK file holding that exact open.
- * RU: Разрешить выданный Qid и передать точное открытие в файл SDK. */
-static StyxRpcIoOutcome resolve_local(void *state, const StyxRpcModuleRef *ref, StyxRpcFile *out)
+/* EN: Check the Int32 contract on an owned open and transfer it to out on success.
+ * RU: Проверить контракт Int32 для своего открытия и передать его в out при успехе. */
+static StyxRpcIoOutcome local_file(StyxOpen *file, int writable, StyxRpcFile *out)
 {
     static const StyxRpcVfs ops = {.read = local_read, .write = local_write, .close = styxfileclose};
-    StyxOpen *file = styxcalleropen_shared(state, ref->path, ref->node, ref->writable ? 2 : 0);
     StyxMeta info;
     if (!file || !styxfileinfo(file, &info) || info.directory || info.length != STYX_VARIABLE_INT_SIZE)
     {
@@ -175,8 +174,27 @@ static StyxRpcIoOutcome resolve_local(void *state, const StyxRpcModuleRef *ref, 
         return STYXRPC_IO_NOT_OPEN;
     }
     *out = (StyxRpcFile){.ops = &ops, .cookie = file,
-        .access = STYXRPC_READ | (ref->writable ? STYXRPC_WRITE : 0)};
+        .access = STYXRPC_READ | (writable ? STYXRPC_WRITE : 0)};
     return STYXRPC_IO_OK;
+}
+
+
+/* EN: Resolve the already issued Qid on this server and retain its exact open.
+ * RU: Разрешить уже выданный Qid этого сервера и удержать его точное открытие. */
+static StyxRpcIoOutcome resolve_local(void *state, const StyxRpcModuleRef *ref, StyxRpcFile *out)
+{
+    StyxOpen *file = styxcalleropen_shared(state, ref->path, ref->node, ref->writable ? 2 : 0);
+    return local_file(file, ref->writable, out);
+}
+
+
+/* EN: Capture a current local Int32 export in the reverse Qid registry.
+ * RU: Захватить текущий местный экспорт Int32 во встречном реестре Qid. */
+static StyxRpcIoOutcome capture_local(void *state, StyxRpcModuleRef *ref, StyxRpcFile *out)
+{
+    StyxOpen *file = styxcallercapture_shared(state, ref->path, STYX_VARIABLE_INT_SIZE,
+        ref->writable ? 2 : 0, &ref->node);
+    return local_file(file, ref->writable, out);
 }
 
 
@@ -202,8 +220,9 @@ static FVM_Result open_ref(void *state, const char *path, const char *mode, DVM_
     cursor->service = service;
     if (writable)
     {
-        cursor->port = styxrpc_module_ref_port_open_paired(service->issuer, STYXRPC_MODULE_REF_FORWARD,
-            service->scope, service->local ? resolve_local : NULL, service->local);
+        cursor->port = styxrpc_module_ref_port_open_owned(service->issuer, STYXRPC_MODULE_REF_FORWARD,
+            service->scope, service->local ? resolve_local : NULL, service->local ? capture_local : NULL,
+            service->local);
         if (!cursor->port)
         {
             free(cursor);

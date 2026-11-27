@@ -1,6 +1,7 @@
 /* FlashVM: C embedding API: flashvm.
  * File: src/capi/flashvm_c.cpp.
  */
+#include "../standard/async_tasks.hpp" /* Reap detached script workers at teardown. */
 #include "../standard/timers.hpp" /* Context-owned timer initialization and teardown. */
 
 
@@ -147,6 +148,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context)
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     context->transfer_resources = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    context->async_tasks = 0;
     context->worker = 0;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     context->array_builtin_prototype = 0;
@@ -311,6 +313,7 @@ void fvm_context_destroy(FVM_Context *context)
     { /* [GC:] Освобождаем ресурс объекта до удаления его записи из кучи. */
         fvm_release_object_resource(context, context->objects[i]);
     }
+    fvm_async_tasks_reap(context, true);
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < context->objects.size(); ++i)
     { /* [GC:] Удаляем запись или область корней после завершения работы с ней. */

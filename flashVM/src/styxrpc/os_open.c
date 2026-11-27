@@ -58,10 +58,15 @@ static FVM_Result open_path(FVM_Context *context, FVM_StyxRpcMovies *movies, uns
         if (!creating && opened == STYXRPC_IO_NOT_OPEN && access == STYXRPC_FILE_READ && fvm_os_extension(path, ".dis"))
         {
             StyxRpcModuleExports exports;
-            if (styxrpc_module_exports(movies->session, path + 1, 0, &exports) == STYXRPC_OK)
+            struct StyxFid *module = styxrpc_module_open(movies->session, path + 1);
+            if (styxrpc_module_exports_at(module, movies->binding->program.pid, &exports) == STYXRPC_OK)
             {
-                opened = styxrpc_vfs_dir_open(movies->session, path + 1, &handle->directory);
-                handle->module = 1;
+                handle->module = module;
+                opened = STYXRPC_IO_OK;
+            }
+            else
+            {
+                styxrpc_vfs_close(module, 0);
             }
         }
     }

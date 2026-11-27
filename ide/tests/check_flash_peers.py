@@ -31,11 +31,13 @@ def compile_unit(args, directory, name, source=None):
 def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
-    if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller"):
+    if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller", "messages-caller", "asinc"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
         objects.append(report)
+    if role == "asinc":
+        objects.append(compile_unit(args, directory, "peer-asinc-frame"))
     if role == "caller":
         objects.extend((compile_unit(args, directory, "peer-credit"),
                         compile_unit(args, directory, "peer-frame")))
@@ -43,6 +45,12 @@ def compile_role(args, directory, role):
         objects.append(compile_unit(args, directory, "peer-ref-release"))
     if role == "module-refs-provider":
         objects.append(compile_unit(args, directory, "peer-module-refs-start"))
+    if role == "messages-provider":
+        objects.extend(compile_unit(args, directory, "peer-messages-" + name)
+                       for name in ("handlers", "second", "ready"))
+    if role == "messages-caller":
+        objects.extend(compile_unit(args, directory, "peer-messages-" + name)
+                       for name in ("first-reply", "second-reply"))
     subprocess.run((args.swl, "link", swf, *objects), check=True, timeout=20)
     return swf
 
@@ -196,7 +204,10 @@ def main():
         parser.add_argument("--" + name, type=lambda path: Path(path).resolve())
     parser.add_argument("--tcp", action="store_true", help="use a direct TCP loopback connection")
     parser.add_argument("--ipv6", action="store_true", help="use ::1 for the TCP loopback test")
-    parser.add_argument("--exec-only", action="store_true", help="run only executable VFS callback scenarios")
+    only = parser.add_mutually_exclusive_group()
+    only.add_argument("--exec-only", action="store_true", help="run only executable VFS callback scenarios")
+    only.add_argument("--messages-only", action="store_true", help="run only published UniBus root scenarios")
+    only.add_argument("--asinc-only", action="store_true", help="run only the compiled OS-thread task scenario")
     args = parser.parse_args()
     if args.ipv6 and not args.tcp:
         parser.error("--ipv6 requires --tcp")
@@ -205,6 +216,22 @@ def main():
     args.source = ROOT / "disVM"
     with TemporaryDirectory(prefix="flashvm-peer-") as scratch:
         directory = Path(scratch)
+        if args.asinc_only:
+            movie = compile_role(args, directory, "asinc")
+            provider = compile_exec_provider(args, directory)
+            for mode in ("--no-jit", "--jit"):
+                for reverse in (False, True):
+                    exchange(args, directory, movie, provider, mode, reverse, "compiled detached asinc task")
+            return
+        if not args.exec_only:
+            message_caller = compile_role(args, directory, "messages-caller")
+            message_provider = compile_role(args, directory, "messages-provider")
+            for mode in ("--no-jit", "--jit"):
+                for reverse in (False, True):
+                    exchange(args, directory, message_caller, message_provider, mode, reverse,
+                             "script-published UniBus roots and hidden VFS paths")
+        if args.messages_only:
+            return
         exec_caller = compile_role(args, directory, "exec-caller")
         exec_provider = compile_exec_provider(args, directory)
         for mode in ("--no-jit", "--jit"):

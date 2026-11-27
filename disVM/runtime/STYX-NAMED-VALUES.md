@@ -4,7 +4,7 @@
 
 A channel in the paired namespace carries different types in successive
 messages. In an application, include `sys.m` and `styxnamed.m`. The latter
-includes the value definitions. Load `styxnamed.dis`, call its `init()`, then
+includes the value and module-reference definitions. Load `styxnamed.dis`, call its `init()`, then
 open a name such as `/jobs` with `open()`. The typed methods use the installed
 `styxvalue.dis` and DisVM's Math module. A program using the codec directly
 loads `Styxvalue` and calls its own `init()`.
@@ -23,8 +23,13 @@ current value regardless of its type. Close an owned lease with `cell.close()`.
 Keep operations on one port or cell fid serialized. A rendezvous is blocking.
 The old byte-oriented `send`, `recv`, `get`, and `set` remain available.
 
-[Styxmodref](STYX-MODULE-REFS.md) handles exact Int32 exports of either
-VM on the same named channel.
+`Message.Modref` carries a [Styxmodref](STYX-MODULE-REFS.md) handle to an
+exact Int32 export owned by either VM. Send `ref Message.Modref(cell)` and
+read the returned `reference` field after matching that variant.
+The adapter loads `styxmodref.dis` only when handling this variant.
+Rebuild compiled Limbo callers of `sendvalue` or `recvvalue` with the
+updated `styxnamed.m` so their `Message` type signatures match. The
+raw channel methods and wire tags keep their existing contracts.
 
 ## Graph contents
 

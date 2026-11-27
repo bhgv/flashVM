@@ -6,7 +6,7 @@ include "sys.m";
 include "styxmodref.m";
 
 sys: Sys; # System operations loaded once before concurrent use.
-Capture, Adopt: con iota+1; # First-write commands from styxrpc/module_ref_port.h.
+Capture, Adopt, Capturelocal: con iota+1; # First-write commands from styxrpc/module_ref_port.h.
 Frameshift: con 4; # Frame reads start after the four-byte signed scalar.
 Maxpath: con 1024; # Maximum counted path bytes.
 Maxframe: con 1+28+Maxpath; # Named tag and SDK module reference wire capacity.
@@ -34,8 +34,9 @@ bindref(command: array of byte): ref Cell
 }
 
 
-# EN/RU: See styxmodref.m. / См. styxmodref.m.
-capture(path: string, writable: int): ref Cell
+# EN: Bind the exact path with the selected owner's capture command.
+# RU: Привязать точный путь командой захвата выбранного владельца.
+captureat(path: string, writable, operation: int): ref Cell
 {
     if (path == nil || writable < 0 || writable > 1) {
         raise "invalid module export path or mode";
@@ -45,10 +46,24 @@ capture(path: string, writable: int): ref Cell
         raise "module export path is too long";
     }
     command := array[2+len bytes] of byte;
-    command[0] = byte Capture;
+    command[0] = byte operation;
     command[1] = byte writable;
     command[2:] = bytes;
     return bindref(command);
+}
+
+
+# EN/RU: See styxmodref.m. / См. styxmodref.m.
+capture(path: string, writable: int): ref Cell
+{
+    return captureat(path, writable, Capture);
+}
+
+
+# EN/RU: See styxmodref.m. / См. styxmodref.m.
+capturelocal(path: string, writable: int): ref Cell
+{
+    return captureat(path, writable, Capturelocal);
 }
 
 

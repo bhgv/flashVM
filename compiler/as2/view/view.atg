@@ -33,7 +33,10 @@ PRODUCTIONS
     /* EN: A complete initializer or one timeline callback.
      * RU: Полный инициализатор или обработчик шкалы времени. */
     View =
-        ( FrameHandler | (. emit_initializer(); .) Statements (. emit_void_return(); .) )
+        ( IF(emit_asinc_ahead()) AsincHandler
+          | FrameHandler
+          | (. emit_initializer(); .) Statements (. emit_void_return(); .)
+        )
         EOF
     .
 
@@ -45,7 +48,20 @@ PRODUCTIONS
         [ ident                                                         (. emit_parameter(); .)
           { "," ident                                                   (. emit_parameter(); .) }
         ]
-        ")" "{"                                                        (. emit_frame_body(); .)
+        ")" MethodBody
+    .
+
+    /* EN: Compile a detached zero-argument method. Invocation returns a worker task.
+     * RU: Собрать отделённый метод без аргументов. Его вызов возвращает задачу. */
+    AsincHandler =
+        ident "function" ident                                         (. emit_asinc_handler(); .)
+        "(" ")" MethodBody
+    .
+
+    /* EN: Emit a root method body with an optional result.
+     * RU: Записать тело метода корня с необязательным результатом. */
+    MethodBody =
+        "{"                                                            (. emit_frame_body(); .)
         [ Statements ]
         ( "return" Expression ";"                                      (. emit_value_return(); .)
           |                                                            (. emit_void_return(); .)
@@ -86,8 +102,9 @@ PRODUCTIONS
 
     /* EN: Capture the assignment owner and optional key before reading the RHS.
      * RU: Захватить владельца и необязательный ключ до разбора правой части. */
-    Assignment =                                                        (. int kind = AS2_TARGET_GLOBAL; .)
-        [ "var" ] ident                                                 (. emit_target(); .)
+    Assignment =                                                        (. int kind = AS2_TARGET_GLOBAL; int local = 0; .)
+        [ "var"                                                         (. local = 1; .)
+        ] ident                                                         (. emit_target(local); .)
         [
             "." ident                                                   (. emit_property(); kind = AS2_TARGET_NAMED; .)
             | "["                                                       (. emit_owner(); kind = AS2_TARGET_KEY; .)

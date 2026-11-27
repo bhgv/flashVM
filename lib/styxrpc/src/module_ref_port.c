@@ -15,6 +15,7 @@ struct StyxRpcModuleRefPort
     struct StyxClient *issuer;                    /* Owned pin used for capture or the eventual open. */
     unsigned owner;                               /* Role of this session's remote publication. */
     StyxRpcModuleRefLocalOpen open_local;           /* Optional opposite-role resolver. */
+    StyxRpcModuleRefLocalCapture capture_local;     /* Optional opposite-role capture and Qid issuer. */
     void *context;                                 /* Borrowed local resolver state. */
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Pair nonce, copied at open. */
     StyxRpcModuleRef ref;                          /* Valid after either bind command succeeds. */
@@ -36,7 +37,15 @@ StyxRpcModuleRefPort *styxrpc_module_ref_port_open(struct StyxClient *issuer, un
 StyxRpcModuleRefPort *styxrpc_module_ref_port_open_paired(struct StyxClient *issuer, unsigned owner,
     const void *scope, StyxRpcModuleRefLocalOpen local, void *context)
 {
-    if (!issuer || !scope || owner > STYXRPC_MODULE_REF_REVERSE)
+    return styxrpc_module_ref_port_open_owned(issuer, owner, scope, local, NULL, context);
+}
+
+
+/* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
+StyxRpcModuleRefPort *styxrpc_module_ref_port_open_owned(struct StyxClient *issuer, unsigned owner,
+    const void *scope, StyxRpcModuleRefLocalOpen local, StyxRpcModuleRefLocalCapture capture, void *context)
+{
+    if (!issuer || !scope || owner > STYXRPC_MODULE_REF_REVERSE || (capture && !local))
     {
         return NULL;
     }
@@ -49,14 +58,15 @@ StyxRpcModuleRefPort *styxrpc_module_ref_port_open_paired(struct StyxClient *iss
     port->issuer = issuer;
     port->owner = owner;
     port->open_local = local;
+    port->capture_local = capture;
     port->context = context;
     memcpy(port->scope, scope, sizeof(port->scope));
     return port;
 }
 
 
-/* EN: Capture the original open and publish its identity only after encoding succeeds.
- * RU: Удержать исходное открытие и выдать его идентичность после успешного кодирования. */
+/* EN: Open the owner selected by command[0], publishing identity only after encoding.
+ * RU: Открыть владельца, выбранного command[0], и выдать идентичность после кодирования. */
 static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char *command, size_t size)
 {
     StyxRpcModuleRef ref = {0};
@@ -71,24 +81,33 @@ static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char 
         return STYXRPC_IO_NOT_OPEN;
     }
     ref.writable = command[1];
-    ref.owner = port->owner;
+    int local = command[0] == STYXRPC_REF_PORT_CAPTURE_LOCAL;
+    if (local && !port->capture_local)
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    ref.owner = local ? 1U - port->owner : port->owner;
     StyxRpcVfsFile *file = NULL;
-    StyxRpcIoOutcome status = styxrpc_vfs_int_open_identified(port->issuer, ref.path,
-        ref.writable, &file, &ref.node);
+    StyxRpcFile local_file = {0};
+    StyxRpcIoOutcome status = local ? port->capture_local(port->context, &ref, &local_file) :
+        styxrpc_vfs_int_open_identified(port->issuer, ref.path, ref.writable, &file, &ref.node);
     if (status != STYXRPC_IO_OK)
     {
+        styxrpc_file_close(&local_file);
         return status;
     }
     size_t length = styxrpc_module_ref_encode(&ref, port->scope, port->frame + 1, sizeof(port->frame) - 1);
     if (!length)
     {
         styxrpc_vfs_close(file, 1);
+        styxrpc_file_close(&local_file);
         return STYXRPC_IO_FAILED;
     }
     port->frame[0] = STYXRPC_NAMED_MODULE_REF;
     port->size = length + 1;
     port->ref = ref;
     port->file = file;
+    port->local = local_file;
     return STYXRPC_IO_OK;
 }
 
@@ -188,6 +207,7 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
         switch (command[0])
         {
         case STYXRPC_REF_PORT_CAPTURE:
+        case STYXRPC_REF_PORT_CAPTURE_LOCAL:
             return capture(port, command, size);
         case STYXRPC_REF_PORT_ADOPT:
             return adopt(port, command + 1, size - 1);

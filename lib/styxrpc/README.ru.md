@@ -33,6 +33,8 @@ Copyright (c) 2026 bhgv
 
 Для хостовых скалярных модулей публикуйте описатели через [styxrpc_scalar_module_init](reference/scalar_module_init.ru.md), а проверенные экспорты вызывайте через [styxrpc_scalar_invoke](reference/scalar_invoke.ru.md). Самостоятельный C-клиент и мост FlashVM используют один API вызова. FlashVM линкуется с установленным SDK. Сам SDK не зависит от VM.
 
+[Захваченные каталоги модулей](reference/module_open.ru.md) закрепляют экспорт и вызовы за выбранным образом. См. [обнаружение экспортов](reference/module_exports_at.ru.md) и [точный скалярный вызов](reference/scalar_invoke_at.ru.md).
+
 [Пользовательские сообщения UniBus](reference/custom_messages.ru.md) дают регистрацию своих типов и обработчиков в существующей сессии Styx.
 
 [Файлы с колбэками](reference/module_slot_new_node.ru.md) публикуют узлы рядом с управлением воспроизведением.

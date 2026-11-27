@@ -5,6 +5,8 @@
 #ifndef FVM_STYXRPC_MODULE_IMPORT_H
 #define FVM_STYXRPC_MODULE_IMPORT_H
 #include "flashvm/styxrpc_module.h"
+#include "flashvm/styxrpc.h"
+#include "flashvm/styxrpc_channel.h"
 
 /* EN: Invoke a scalar target from state. / RU: Вызвать скалярную цель из state. */
 FVM_Result fvm_styxrpc_invoke_int(FVM_Context *, FVM_Object *, unsigned,
@@ -22,4 +24,19 @@ FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *, FVM_Object *, unsigned,
  * RU: Вызвать привязку каналов из state, при необходимости передать аргументы. */
 FVM_Result fvm_styxrpc_invoke_channels(FVM_Context *, FVM_Object *, unsigned,
     const FVM_Value *, FVM_Value *, void *);
+
+/* EN/RU: Borrow an exact module fid, or use the ordinary path when NULL.
+ * Заимствовать точный fid модуля. При NULL использовать обычный путь. */
+FVM_Result fvm_styxrpc_int_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcImport *,
+    unsigned, const FVM_Value *, FVM_Value *);
+FVM_Result fvm_styxrpc_managed_at(FVM_Context *, struct StyxFid *, const StyxRpcManagedTarget *,
+    unsigned, const FVM_Value *, FVM_Value *);
+FVM_Result fvm_styxrpc_graph_at(FVM_Context *, struct StyxFid *, const StyxRpcManagedTarget *,
+    unsigned, const FVM_Value *, FVM_Value *);
+FVM_Result fvm_styxrpc_channels_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcChannelArguments *,
+    unsigned, const FVM_Value *, FVM_Value *);
+
+/* [GC:] EN: Validate and load on a clone of the held unopened module directory.
+ * RU: Проверить и загрузить на клоне удерживаемого неоткрытого каталога модуля. */
+FVM_Result fvm_styxrpc_module_load_at(FVM_Context *, struct StyxFid *, const FVM_StyxRpcLoadSpec *, FVM_Value *);
 #endif

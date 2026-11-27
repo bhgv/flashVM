@@ -13,6 +13,7 @@ extern "C" {
 #define STYXRPC_SCALAR_WAIT_MAX_MS 60000U /* Maximum pending reply polling budget. */
 
 struct StyxClient; /* Borrowed mounted Styx session. */
+struct StyxFid;    /* Borrowed exact module directory for a pinned call. */
 
 typedef enum StyxRpcOutcome
 {
@@ -29,6 +30,12 @@ typedef enum StyxRpcOutcome
  * fid. Аргументы заимствуются; result меняется только при успехе. */
 StyxRpcOutcome styxrpc_scalar_invoke(struct StyxClient *session, const char *module,
     const char *name, uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result);
+
+
+/* EN: Use the borrowed unopened directory when supplied, ignoring session/module.
+ * RU: Использовать переданный неоткрытый каталог, игнорируя session/module. */
+StyxRpcOutcome styxrpc_scalar_invoke_at(struct StyxFid *directory, struct StyxClient *session,
+    const char *module, const char *name, uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result);
 
 #ifdef __cplusplus
 }

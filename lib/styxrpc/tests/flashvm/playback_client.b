@@ -98,6 +98,8 @@ paired(source: ref Sys->FD)
     if (size <= 0 || size >= len wire - 4) {
         raise "could not read paired root fixture";
     }
+    wire[0] = byte (size >> 24);
+    wire[1] = byte (size >> 16);
     wire[2] = byte (size >> 8);
     wire[3] = byte size;
     target := sys->open(upload, Sys->OWRITE);

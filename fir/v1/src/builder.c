@@ -138,6 +138,14 @@ void fir_build_avm1_frame(void)
 }
 
 
+/* EN: Select the detached dispatch mode for the previously parsed AVM1 method.
+ * RU: Выбрать отделённый вызов для уже разобранного метода AVM1. */
+void fir_build_avm1_asinc(void)
+{
+    active->module->avm1_asinc = 1;
+}
+
+
 /* Decimal parsing is independent of host long width. String escapes are
  * decoded after Coco/R has recognised a complete, bounded quoted token. */
 static void literal(const char *text, int line)

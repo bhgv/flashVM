@@ -1,4 +1,5 @@
 /* FlashVM: bounded, explicitly polled AS1/AS2 timers with strong pending and active roots. */
+#include "async_tasks.hpp"
 #include "timers.hpp"
 #include "timer_constants.h"
 #include "stage_update.hpp"
@@ -392,6 +393,7 @@ extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
         return FVM_INVALID_ARGUMENT;
     }
     *delivered = 0;
+    fvm_async_tasks_reap(c, false);
     try
     {
 
@@ -602,6 +604,14 @@ extern "C" FVM_Result fvm_async_install(FVM_Context *c)
     if (status == FVM_OK)
     {
         status = fvm_object_define_method_rooted(c, space, "cancel", fvm_builtin_async_cancel, 0, 0);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(c, space, "run", fvm_builtin_async_run, 0, 0);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(c, space, "wrap", fvm_builtin_async_wrap, 0, 0);
     }
     if (status == FVM_OK)
     {

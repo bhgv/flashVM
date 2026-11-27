@@ -18,40 +18,7 @@ typedef struct CallerOpen
 static __thread StyxCallerServer *owner; /* Current dispatcher on its native thread. */
 
 
-/* EN: Publish a previously reserved free slot to local readers. Only the dispatcher adds.
- * RU: Опубликовать свободную запись для локальных читателей. Добавляет только диспетчер. */
-static void remember(CallerNodes *cache, StyxBacking *node)
-{
-    if (cache == &owner->permanent)
-    {
-        pthread_mutex_lock(&owner->scopes.lock);
-        cache->nodes[cache->count++] = node;
-        pthread_mutex_unlock(&owner->scopes.lock);
-    }
-    else
-    {
-        cache->nodes[cache->count++] = node;
-    }
-}
-
-
-/* EN/RU: See caller_styx.h. / См. caller_styx.h. */
-StyxOpen *styxcalleropen_shared(StyxCallerServer *server, const char *path, uint64_t qid, int mode)
-{
-    if (!server || qid <= PROG_QID || qid >= STYX_CALLER_NODES || (mode != 0 && mode != 2))
-    {
-        return NULL;
-    }
-    /* EN: No provider I/O under the registry lock. Pin the walked identity first.
-     * RU: I/O провайдера выполняется без блокировки реестра. Сначала удержать identity. */
-    pthread_mutex_lock(&server->scopes.lock);
-    StyxBacking *node = !server->scopes.stopped && qid < server->permanent.count ?
-        styxbackingcopyat(server->permanent.nodes[qid], path) : NULL;
-    pthread_mutex_unlock(&server->scopes.lock);
-    StyxOpen *opened = node ? styxfileopen(node, mode) : NULL;
-    styxbackingfree(node);
-    return opened;
-}
+#include "caller_shared.inc"
 
 
 /* EN: Release visited nodes from one dispatcher cache.
@@ -75,7 +42,10 @@ static StyxBacking *find(Path path, CallerNodes **cache)
     if (!generation && path > PROG_QID)
     {
         *cache = &owner->permanent;
-        return offset < (*cache)->count ? (*cache)->nodes[offset] : NULL;
+        pthread_mutex_lock(&owner->scopes.lock);
+        StyxBacking *node = offset < (*cache)->count ? (*cache)->nodes[offset] : NULL;
+        pthread_mutex_unlock(&owner->scopes.lock);
+        return node;
     }
     int index = generation ? styxcallerscopefind(&owner->scopes, 0, generation, NULL) : -1;
     if (index < 0)
@@ -102,10 +72,20 @@ static char *walk_child(Qid *qid, const char *name, StyxBacking *parent, CallerN
         styxbackingfree(node);
         return Enonexist;
     }
-    if (cache == &owner->permanent && styxbackingsamenode(owner->shared_root, node))
+    if (cache == &owner->permanent)
     {
-        styxbackingfree(node);
-        *qid = styxqid(Qroot, 1);
+        if (styxbackingsamenode(owner->shared_root, node))
+        {
+            styxbackingfree(node);
+            *qid = styxqid(Qroot, 1);
+            return nil;
+        }
+        uint64_t issued = remember_shared(owner, node, 0);
+        if (!issued)
+        {
+            return Enonexist;
+        }
+        *qid = styxqid(issued, meta.directory);
         return nil;
     }
     for (size_t i = 0; i < cache->count; i++)
@@ -123,7 +103,7 @@ static char *walk_child(Qid *qid, const char *name, StyxBacking *parent, CallerN
         return Enonexist;
     }
     *qid = styxqid(cache->generation * STYX_CALLER_NODES + cache->count, meta.directory);
-    remember(cache, node);
+    cache->nodes[cache->count++] = node;
     return nil;
 }
 
@@ -279,7 +259,7 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
 {
     int directory = (unsigned)permissions == ((unsigned)DMDIR | 0777U) && mode == OREAD;
     if (!owner->remove || (!directory && (mode != OWRITE || permissions != 0666)) ||
-        owner->permanent.count == STYX_CALLER_NODES || styxgetaux(&owner->server))
+        styxgetaux(&owner->server) || !reserve_create(owner))
     {
         return Eperm;
     }
@@ -301,16 +281,17 @@ static char *create_node(Qid *qid, char *name, int permissions, int mode)
     }
     if (!opened)
     {
+        remember_shared(owner, NULL, 1);
         return Eperm;
     }
     if (!opened->file || styxsetaux(&owner->server, opened) < 0)
     {
         styxbackingfree(child);
         close_node(opened);
+        remember_shared(owner, NULL, 1);
         return Eperm;
     }
-    *qid = styxqid(owner->permanent.count, directory);
-    remember(&owner->permanent, child);
+    *qid = styxqid(remember_shared(owner, child, 1), directory);
     return nil;
 }
 

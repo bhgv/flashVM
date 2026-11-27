@@ -44,3 +44,16 @@ reads verify selected contents and live stat, a file from the fallback
 branch, and the unchanged contents of the original file descriptor.
 The driver prints `PASS native rebind RPC paired VMs` at completion.
 Use `--tcp` and `--jit` to select the other supported modes.
+
+## Transport loss in a mounted branch
+
+A confirmed transport failure makes new file lookups select the next live
+branch of a union. A new directory open or a rewind enumerates the surviving
+branches. An open file from the failed provider keeps its original identity
+and reports an I/O error.
+
+The native `vfs-mount-union-loss` and `vfs-mux-provider-union-loss` tests
+mount a TCP Styx provider ahead of a local directory. They disconnect the
+provider, open the same file name from the lower branch, and check the held
+file and both directory cursors. The tests exercise the DisVM namespace layer
+used by the paired export.

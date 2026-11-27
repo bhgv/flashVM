@@ -1,6 +1,6 @@
 # styxrpc_module_ref_port_close
 
-[English](module_ref_port_close.md) · [Объявление](../include/styxrpc/module_ref_port.h#L58) · [Реализация](../src/module_ref_port.c#L225) · [Руководство](module_ref_port.ru.md)
+[English](module_ref_port_close.md) · [Объявление](../include/styxrpc/module_ref_port.h) · [Реализация](../src/module_ref_port.c) · [Руководство](module_ref_port.ru.md)
 
 `StyxRpc::launch`
 

@@ -42,6 +42,22 @@ StyxRpcStatus styxrpc_control_create(const StyxRpcControlSpec *spec, StyxRpcCont
  * RU: Освободить после закрытия fid во всех зависимых серверах. Допускается NULL. */
 void styxrpc_control_destroy(StyxRpcControl *control);
 
+/* EN: Handle an additional counted .state command after the four standard words.
+ * Set on the server owner. The callback borrows the original spec context and
+ * the bytes until it returns. Return 1 to accept, otherwise reject. NULL clears.
+ * RU: Обработать дополнительную команду .state после четырёх стандартных слов.
+ * Установить в потоке владельца. Колбэк заимствует context и байты до возврата.
+ * Возвратить 1 при принятии команды. NULL отключает обработчик. */
+void styxrpc_control_set_extension(StyxRpcControl *control, int (*command)(void *, const char *, size_t));
+
+/* EN: Wait for one owner server cycle with only .state file I/O enabled.
+ * Use between ordinary steps on a control or module-slot tree. Return 0 on
+ * disconnect, error or recursive use of the same server. Fid cleanup still runs.
+ * RU: Дождаться цикла владельца с файловым вводом-выводом только для .state.
+ * Вызов между обычными шагами дерева управления или модуля. При обрыве,
+ * ошибке или рекурсии вернуть 0. Очистка fid по-прежнему выполняется. */
+int styxrpc_server_step_control(StyxRpcServer *server);
+
 extern const StyxRpcTree styxrpc_control_tree; /* Publish .upload and .state directly at the root. */
 
 #ifdef __cplusplus

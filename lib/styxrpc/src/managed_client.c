@@ -8,7 +8,7 @@
 
 
 /* EN/RU: See managed_client.h. / См. managed_client.h. */
-StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
+StyxRpcOutcome styxrpc_managed_invoke_at(StyxFid *directory, const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result)
 {
     if (!target || !target->wait_ms || target->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS ||
@@ -25,7 +25,7 @@ StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
         return STYXRPC_CALL_NOT_SENT;
     }
     size_t received;
-    StyxRpcOutcome outcome = styxrpc_client_managed_exchange(target, NULL, request, request_size,
+    StyxRpcOutcome outcome = styxrpc_client_managed_exchange(directory, target, NULL, request, request_size,
         reply, capacity, &received);
     if (outcome == STYXRPC_CALL_OK)
     {
@@ -36,4 +36,12 @@ StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
     }
     free(request);
     return outcome;
+}
+
+
+/* EN/RU: See managed_client.h. / См. managed_client.h. */
+StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result)
+{
+    return styxrpc_managed_invoke_at(NULL, target, arguments, size, reply, capacity, result);
 }

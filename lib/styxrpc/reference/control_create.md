@@ -11,3 +11,7 @@ StyxRpcStatus styxrpc_control_create(const StyxRpcControlSpec *spec, StyxRpcCont
 ## Contract
 
 Provide a positive byte limit and three callbacks. The upload callback borrows a complete payload. The command callback receives one parsed command. The status callback copies at most 4096 bytes into the supplied buffer and sets the byte count. Each callback returns 1 on success. The SDK copies the spec and borrows its context. It returns `STYXRPC_OK` and an owned descriptor on success, or `STYXRPC_INVALID` without changing `out`. The owner must serialize callbacks and keep their context alive through server shutdown.
+
+Use [styxrpc_control_set_extension](control_set_extension.md) for additional
+application commands. Hosts that inspect a suspended activation can run a
+[control-only server step](server_step_control.md).

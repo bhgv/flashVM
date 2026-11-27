@@ -2,11 +2,12 @@
 # EN: Blocking named StyxRPC channels exposed by the paired DisVM namespace.
 # RU: Блокирующие именованные каналы StyxRPC в пространстве парной DisVM.
 include "styxvalue.m";
+include "styxmodref.m";
 
 Styxnamed: module
 {
     PATH: con "styxnamed.dis"; # Compiled portable Limbo implementation.
-    Snapshot, Intref, Number, Text, Boolean, Null, Undefined, Cellref: con iota+1; # Wire type byte.
+    Snapshot, Intref, Number, Text, Boolean, Null, Undefined, Cellref, Moduleref: con iota+1; # Wire type byte.
 
     Message: adt
     {
@@ -17,6 +18,8 @@ Styxnamed: module
             cell: ref Cell; # Attached live lease.
         Intrefdata =>
             descriptor: array of byte; # Legacy descriptor for the issuer's Styxintref adapter.
+        Modref =>
+            reference: ref Styxmodref->Cell; # Exact live reference to a publication on this pair.
         }
     };
 

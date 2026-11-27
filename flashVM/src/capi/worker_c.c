@@ -44,9 +44,9 @@ static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src)
     {
         return FVM_UNSUPPORTED;
     }
-    *dst = *src;
     if (src->type != FVM_VALUE_STRING)
     {
+        *dst = *src;
         return FVM_OK;
     }
     if (!src->string)
@@ -65,6 +65,7 @@ static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src)
     /* Computation / Вычисление и обновление состояния. */
     memcpy(s, src->string, len);
     s[len] = 0;
+    *dst = *src;
     dst->string = s;
     return FVM_OK;
 }

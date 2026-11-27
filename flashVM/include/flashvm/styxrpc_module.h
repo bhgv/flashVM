@@ -71,8 +71,10 @@ typedef struct FVM_StyxRpcLoadSpec
 } FVM_StyxRpcLoadSpec;
 
 
-/* [GC:] EN: Check a mounted Dis interface and return an AS object of callable methods.
- * RU: Проверить смонтированный интерфейс Dis и вернуть объект AS с вызываемыми методами. */
+/* [GC:] EN: Check the mounted interface and return callable methods that retain
+ * the selected module directory. A replacement does not rebind those methods.
+ * RU: Проверить смонтированный интерфейс и вернуть методы, удерживающие
+ * выбранный каталог модуля. Замена не перепривязывает методы. */
 FVM_Result fvm_styxrpc_module_load(FVM_Context *context, const FVM_StyxRpcLoadSpec *spec, FVM_Value *out);
 
 typedef struct FVM_StyxRpcModuleCatalog

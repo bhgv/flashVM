@@ -10,13 +10,13 @@
 
 /* EN: Return an owned ORDWR function fid after matching profile and optional schema.
  * RU: Вернуть собственный ORDWR fid после проверки профиля и необязательной схемы. */
-StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const char *name,
+StyxFid *styxrpc_client_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
     uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped);
 
 
 /* EN: Open a verified scoped channel function and retain its exact module directory.
  * RU: Открыть проверенную функцию с каналами и удержать точный каталог модуля. */
-StyxFid *styxrpc_client_channel_function(const StyxRpcManagedTarget *target, StyxFid **module);
+StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target, StyxFid **module);
 
 
 /* EN: Borrow the open fid and buffers; publish received only on a complete reply.
@@ -27,7 +27,7 @@ int styxrpc_client_exchange(StyxFid *fid, const void *request, size_t size, unsi
 
 /* EN: Match a managed offer, scope its request when required and exchange once.
  * RU: Сопоставить управляемое предложение, добавить контекст и выполнить один обмен. */
-StyxRpcOutcome styxrpc_client_managed_exchange(const StyxRpcManagedTarget *target,
+StyxRpcOutcome styxrpc_client_managed_exchange(StyxFid *base, const StyxRpcManagedTarget *target,
     const char *graph_marker, const void *request, size_t request_size, void *reply,
     size_t capacity, size_t *received);
 #endif

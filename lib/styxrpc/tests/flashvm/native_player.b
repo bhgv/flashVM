@@ -64,11 +64,17 @@ upload()
     if (size <= 0 || size >= len bytes - 4) {
         raise "cannot read startup fixture";
     }
+    bytes[0] = byte (size >> 24);
+    bytes[1] = byte (size >> 16);
     bytes[2] = byte (size >> 8);
     bytes[3] = byte size;
     fd := sys->open("/rpc/.upload", Sys->OWRITE);
-    if (fd == nil || sys->write(fd, bytes, size + 4) != size + 4) {
-        raise sys->sprint("upload: %r");
+    if (fd == nil) {
+        raise sys->sprint("open upload: %r");
+    }
+    written := sys->write(fd, bytes, size + 4);
+    if (written != size + 4) {
+        raise sys->sprint("write upload %d of %d: %r; last_result=", written, size + 4) + field(state(), "last_result=");
     }
 }
 

@@ -27,6 +27,12 @@ StyxRpcOutcome styxrpc_channel_invoke(const StyxRpcManagedTarget *target, const 
     size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result);
 
 
+/* EN: Use the exact borrowed, unopened module fid instead of target's path when supplied.
+ * RU: Использовать переданный точный неоткрытый fid модуля вместо пути target. */
+StyxRpcOutcome styxrpc_channel_invoke_at(struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result);
+
+
 /* EN: Retain one additional serialized reference. Return 1 on success, 0 on overflow or NULL.
  * RU: Удержать дополнительную ссылку на одном владельце. Вернуть 1 или 0 при переполнении/NULL. */
 int styxrpc_channel_lease_retain(StyxRpcChannelLease *lease);

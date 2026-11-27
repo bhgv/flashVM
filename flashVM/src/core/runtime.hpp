@@ -254,6 +254,8 @@ struct FVM_ThisCell
 /* Define FVM_Context struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
 struct FVM_AudioChannel; /* Host-owned callback state has no managed GC edges. */
+struct FVM_AsyncTask; /* Private owner-side record for a detached ActionScript task. */
+
 struct FVM_Context
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 { /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
@@ -284,6 +286,7 @@ struct FVM_Context
     fvm_detail::vector<FVM_SourceLocation>
         debug_locations;                 /* [GC:] Bytecode-to-source mappings registered by the host. */
     void *transfer_resources;            /* [GC:] Resource identity registry used by graph transfer. */
+    FVM_AsyncTask *async_tasks;           /* Script tasks and released workers awaiting reaping. */
     FVM_Worker *worker;                  /* [GC:] Worker executing this context, when present. */
     FVM_Object *array_builtin_prototype; /* [GC:] Original Array prototype retained for native result builders. */
     FVM_Object

@@ -241,6 +241,19 @@ codec(): Styxvalue
 }
 
 
+# EN: Load the exact reference adapter only for Modref traffic.
+# RU: Загружать адаптер точных ссылок только при обмене Modref.
+refcodec(): Styxmodref
+{
+    refs := load Styxmodref Styxmodref->PATH;
+    if (refs == nil) {
+        raise "cannot load styxmodref.dis for named module references";
+    }
+    refs->init();
+    return refs;
+}
+
+
 # EN: Recognize the existing version-one Int32 descriptor before forwarding.
 # RU: Распознать существующий дескриптор Int32 версии один перед пересылкой.
 intdescriptor(bytes: array of byte): int
@@ -253,7 +266,6 @@ intdescriptor(bytes: array of byte): int
 # EN/RU: See styxnamed.m. / См. styxnamed.m.
 Port.recvvalue(port: self ref Port): ref Message
 {
-    v := codec();
     frame := port.recv();
     case int frame[0] {
     Cellref =>
@@ -263,7 +275,11 @@ Port.recvvalue(port: self ref Port): ref Message
             raise "invalid named Int32 descriptor";
         }
         return ref Message.Intrefdata(frame[1:]);
+    Moduleref =>
+        refs := refcodec();
+        return ref Message.Modref(refs->adopt(frame));
     * =>
+        v := codec();
         return ref Message.Data(v->decode(frame));
     }
 }
@@ -272,12 +288,12 @@ Port.recvvalue(port: self ref Port): ref Message
 # EN/RU: See styxnamed.m. / См. styxnamed.m.
 Port.sendvalue(port: self ref Port, message: ref Message)
 {
-    v := codec();
     if (message == nil) {
         raise "missing named message";
     }
     pick item := message {
     Data =>
+        v := codec();
         port.send(v->encode(item.value));
     Shared =>
         if (item.cell == nil) {
@@ -292,6 +308,13 @@ Port.sendvalue(port: self ref Port, message: ref Message)
         frame[0] = byte Intref;
         frame[1:] = item.descriptor;
         port.send(frame);
+    Modref =>
+        if (item.reference == nil) {
+            raise "missing named module reference";
+        }
+        refs := refcodec();
+        Cell: import refs;
+        port.send(item.reference.payload());
     }
 }
 

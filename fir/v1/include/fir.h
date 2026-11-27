@@ -261,6 +261,7 @@ typedef struct
     FirLanguage source_language;
     FirSemantics source_semantics;
     int avm1_frame; /* Install @main as a root method, otherwise run it at load. */
+    int avm1_asinc; /* Wrap the root method for detached OS-thread dispatch. */
     char avm1_method[FIR_TEXT]; /* Optional @name for a different root callback. */
     unsigned avm1_parameter_count; /* Count of ordered AVM1 root method formals. */
     char avm1_parameters[8][FIR_TEXT]; /* @-prefixed root method formal symbols. */

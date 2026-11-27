@@ -2,16 +2,17 @@
 
 `Async.post(callback, ...args)` queues work for a later owner-loop poll;
 `Async.cancel(id)` cancels it. Hosts opt in with
-[fvm_async_install](../include/flashvm/async.h#L14). C89 callers can use
-[`fvm_async_post`](../include/flashvm/async.h#L23) and [`fvm_async_cancel`](../include/flashvm/async.h#L30) directly.
+[fvm_async_install](../include/flashvm/async.h#L15). C89 callers can use
+[`fvm_async_post`](../include/flashvm/async.h#L24) and [`fvm_async_cancel`](../include/flashvm/async.h#L31) directly.
 
 Delivery uses [fvm_timers_poll](../include/flashvm/timers.h#L22), independently of
 SWF frame advancement. A posted callback is eligible on the next poll even if
 the sampled clock has not advanced. A queue containing only posts can be
 queried and polled even when the platform clock is unavailable. Posts inside callbacks wait for another
 poll; nested polls reject. The host must pump while the movie is paused too.
-[`fvm_timers_next_delay`](../include/flashvm/timers.h#L34) returns zero for eligible work. There is no worker-thread
-execution of ActionScript or concurrent mutation of its heap.
+[`fvm_timers_next_delay`](../include/flashvm/timers.h#L34) returns zero for eligible work. Posted callbacks stay on the owner thread. Use the separate
+[detached OS-thread tasks](ASINC_TASK.md) for independent computation with a
+private ActionScript heap.
 
 Pending callbacks and copied arguments are GC roots. Cancellation and context
 teardown release them. IDs share the existing timer namespace; queue, argument,
@@ -53,9 +54,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_async_cancel` | function | [include/flashvm/async.h:30](../include/flashvm/async.h#L30) |
-| `fvm_async_install` | function | [include/flashvm/async.h:14](../include/flashvm/async.h#L14) |
-| `fvm_async_post` | function | [include/flashvm/async.h:23](../include/flashvm/async.h#L23) |
+| `fvm_async_cancel` | function | [include/flashvm/async.h:31](../include/flashvm/async.h#L31) |
+| `fvm_async_install` | function | [include/flashvm/async.h:15](../include/flashvm/async.h#L15) |
+| `fvm_async_post` | function | [include/flashvm/async.h:24](../include/flashvm/async.h#L24) |
 | `fvm_timers_next_delay` | function | [include/flashvm/timers.h:34](../include/flashvm/timers.h#L34) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:22](../include/flashvm/timers.h#L22) |
 <!-- source-links:end -->

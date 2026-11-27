@@ -270,6 +270,8 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
             playback->defer_command_tick = 1;
             server = styxrpc_server_create(phybidirchannel(mux, serve_lane), &styxrpc_module_slot_tree,
                 fvm_styxrpc_playback_slot(playback));
+            playback->message_server = server;
+            fvm_styxrpc_debug_init(playback, server);
         }
     }
     host.exchange = styxrpc_exchange_create();
@@ -316,6 +318,10 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     else
     {
         fputs("flashvm_styx_player: cannot attach the paired session\n", stderr);
+    }
+    if (playback)
+    {
+        fvm_styxrpc_player_clear_messages(playback->script);
     }
     styxrpc_server_destroy(server);
     fvm_styxrpc_player_peer_close(&channels);

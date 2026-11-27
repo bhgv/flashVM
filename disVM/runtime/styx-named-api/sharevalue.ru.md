@@ -1,6 +1,6 @@
 # sharevalue
 
-[English](sharevalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m#L88) · [Реализация](../../limbo/styxnamed.b#L316)
+[English](sharevalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m) · [Реализация](../../limbo/styxnamed.b)
 
 ```limbo
 sharevalue(value: ref Styxvalue->Value): ref Cell

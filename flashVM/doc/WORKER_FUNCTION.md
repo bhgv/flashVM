@@ -29,8 +29,8 @@ Strings remain worker-owned until destruction. Interactive owners should poll
 result and keep serving input, then join and destroy when complete. Instruction
 budgets and cooperative worker cancellation use the existing execution machinery.
 
-This is a foundation for executable `asinc`, not its language implementation.
-The Coco/R/FIR closure lowering, dirty-only frame-boundary capture synchronization,
+The [detached AS2 profile](ASINC_TASK.md) uses this worker for a narrow
+executable `asinc function`. General closure lowering, dirty-only frame-boundary capture synchronization,
 COW storage, variable-change listeners and complete IDE actor migration remain
 open. `Async.post` continues to mean owner-loop delivery, not another OS thread.
 No SWF or Dis64 file format changes are introduced.

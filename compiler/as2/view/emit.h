@@ -13,6 +13,10 @@
 void emit_initializer(void);
 /* EN/RU: Validate the callback name and mark a frame handler / Начать обработчик кадра. */
 void emit_frame_handler(void);
+/* EN/RU: Check the contextual prefix / Проверить контекстный префикс. */
+int emit_asinc_ahead(void);
+/* EN/RU: Mark deferred native dispatch / Пометить отложенный запуск потока. */
+void emit_asinc_handler(void);
 /* EN/RU: Capture one formal name. / Захватить имя формального параметра. */
 void emit_parameter(void);
 /* EN/RU: Emit method entry with its formal names. / Выдать вход метода с именами параметров. */
@@ -34,7 +38,7 @@ void emit_while_test(int label);
 /* EN/RU: Return to the condition and open the exit / Вернуться к условию и открыть выход. */
 void emit_while_end(int label);
 /* Capture current ASCII target token; no runtime global is read for a simple assignment. */
-void emit_target(void);
+void emit_target(int local);
 /* Capture member name and emit a FIR read of the LHS owner before its RHS. */
 void emit_property(void);
 /* EN: Capture the LHS owner before parsing a computed key.

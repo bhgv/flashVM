@@ -74,6 +74,19 @@ fvm_debug_set_breakpoint_handler(FVM_Context *c, FVM_DebugBreakpointHandler call
     }
     c->execution_mode.breakpoint_handler = callback;
     c->execution_mode.breakpoint_data = userdata;
+    c->execution_mode.breakpoint_step = false;
+    return FVM_OK;
+}
+
+
+/* EN/RU: See flashvm/debug.h. / См. flashvm/debug.h. */
+extern "C" FVM_Result fvm_debug_step_action(FVM_Context *context)
+{
+    if (!context || !context->execution_mode.breakpoint_handler || !context->execution_mode.breakpoint_busy)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    context->execution_mode.breakpoint_step = true;
     return FVM_OK;
 }
 
@@ -86,25 +99,25 @@ FVM_Result fvm_debug_breakpoint_poll(FVM_Context *c)
     {
         return FVM_OK;
     }
-    fvm_detail::map<fvm_detail::string, fvm_detail::vector<unsigned long> >::iterator found =
-        state.breakpoints.find(c->debug_function);
-    if (found == state.breakpoints.end())
+    if (!state.breakpoint_step)
     {
-        return FVM_OK;
-    }
-    bool hit = false;
-    for (size_t i = 0; i < found->second.size(); ++i)
-    {
-        if (found->second[i] == c->debug_offset)
+        fvm_detail::map<fvm_detail::string, fvm_detail::vector<unsigned long> >::iterator found =
+            state.breakpoints.find(c->debug_function);
+        if (found == state.breakpoints.end())
         {
-            hit = true;
-            break;
+            return FVM_OK;
+        }
+        size_t index = 0;
+        while (index < found->second.size() && found->second[index] != c->debug_offset)
+        {
+            ++index;
+        }
+        if (index == found->second.size())
+        {
+            return FVM_OK;
         }
     }
-    if (!hit)
-    {
-        return FVM_OK;
-    }
+    state.breakpoint_step = false;
     FVM_DebugBreakpoint location;
     location.function = c->debug_function.c_str();
     location.source = c->debug_source.c_str();
@@ -132,5 +145,9 @@ FVM_Result fvm_debug_breakpoint_poll(FVM_Context *c)
         result = FVM_ERROR;
     }
     state.breakpoint_busy = false;
+    if (result != FVM_OK)
+    {
+        state.breakpoint_step = false;
+    }
     return result;
 }

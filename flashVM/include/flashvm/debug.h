@@ -65,6 +65,14 @@ FVM_API FVM_Result fvm_debug_set_breakpoint(FVM_Context *, const char *function,
 /* Install a synchronous debugger host callback, or null to clear it; userdata is borrowed. */
 FVM_API FVM_Result fvm_debug_set_breakpoint_handler(FVM_Context *, FVM_DebugBreakpointHandler,
                                                     void *);
+
+
+/* EN: During an active breakpoint callback, request another stop at the next interpreted
+ * action in context. Return INVALID_ARGUMENT outside that callback.
+ * RU: Из активного колбэка остановки запросить остановку перед следующим действием
+ * интерпретатора в context. Вне колбэка вернуть INVALID_ARGUMENT. */
+FVM_API FVM_Result fvm_debug_step_action(FVM_Context *context);
+
 /* Source mapping supplied by the embedding application; AVM1 updates offset.
        Unknown source/line is empty/zero. Copied snapshots contain no VM pointers. */
 

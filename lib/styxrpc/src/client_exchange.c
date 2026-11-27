@@ -225,25 +225,51 @@ static int check_import(StyxFid *directory, const void *bytes, size_t size, cons
 
 
 /* EN/RU: See styxrpc/module_client.h. / См. styxrpc/module_client.h. */
-StyxRpcStatus styxrpc_module_check(StyxClient *session, const char *module,
+StyxFid *styxrpc_module_open(StyxClient *session, const char *module)
+{
+    StyxFid *dir = session && styxrpc_vfs_visible_path(module) ? styxclientwalk(session, module) : NULL;
+    StyxMeta meta;
+    if (dir && styxclientstat(dir, &meta) && meta.directory && (meta.mode & 0444U) &&
+        (meta.mode & 0111U) && !styxrpc_vfs_service_meta(&meta))
+    {
+        return dir;
+    }
+    styxclientclunk(dir);
+    return NULL;
+}
+
+
+/* EN/RU: See module_client.h. / См. module_client.h. */
+StyxRpcStatus styxrpc_module_check_at(StyxFid *directory,
     const StyxRpcModuleImport *imports, size_t count, uint32_t pid)
 {
-    if (!session || !styxrpc_vfs_visible_path(module) || !imports || !count || count > STYXRPC_MAX_EXPORTS)
+    if (!directory || !imports || !count || count > STYXRPC_MAX_EXPORTS)
     {
         return STYXRPC_INVALID;
     }
-    StyxFid *directory = styxclientwalk(session, module);
-    StyxMeta metadata;
     unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = directory && styxclientstat(directory, &metadata) && metadata.directory &&
-        (metadata.mode & 0444U) && (metadata.mode & 0111U) ? read_interface(directory, bytes, sizeof(bytes)) : 0;
+    size_t size = read_interface(directory, bytes, sizeof(bytes));
     int valid = size != 0;
     for (size_t i = 0; valid && i < count; ++i)
     {
         valid = check_import(directory, bytes, size, imports + i, pid);
     }
-    styxclientclunk(directory);
     return valid ? STYXRPC_OK : STYXRPC_INVALID;
+}
+
+
+/* EN/RU: See module_client.h. / См. module_client.h. */
+StyxRpcStatus styxrpc_module_check(StyxClient *session, const char *module,
+    const StyxRpcModuleImport *imports, size_t count, uint32_t pid)
+{
+    if (!imports || !count || count > STYXRPC_MAX_EXPORTS)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxFid *directory = styxrpc_module_open(session, module);
+    StyxRpcStatus status = styxrpc_module_check_at(directory, imports, count, pid);
+    styxclientclunk(directory);
+    return status;
 }
 
 
@@ -304,17 +330,14 @@ static int name_available(const StyxRpcModuleExports *exports, const char *name)
 
 
 /* EN/RU: See module_client.h. / См. module_client.h. */
-StyxRpcStatus styxrpc_module_exports(StyxClient *session, const char *path, uint32_t pid, StyxRpcModuleExports *out)
+StyxRpcStatus styxrpc_module_exports_at(StyxFid *dir, uint32_t pid, StyxRpcModuleExports *out)
 {
-    if (!session || !out || !styxrpc_vfs_visible_path(path))
+    if (!dir || !out)
     {
         return STYXRPC_INVALID;
     }
-    StyxFid *dir = styxclientwalk(session, path);
-    StyxMeta meta;
     unsigned char bytes[PROFILE_CAPACITY + 1];
-    size_t size = dir && styxclientstat(dir, &meta) && meta.directory && (meta.mode & 0444U) &&
-        (meta.mode & 0111U) && !styxrpc_vfs_service_meta(&meta) ? read_interface(dir, bytes, sizeof(bytes)) : 0;
+    size_t size = read_interface(dir, bytes, sizeof(bytes));
     StyxRpcModuleExports exports = {0};
     const unsigned char *cursor = bytes;
     while (size && exports.count < STYXRPC_MAX_EXPORTS)
@@ -337,7 +360,6 @@ StyxRpcStatus styxrpc_module_exports(StyxClient *session, const char *path, uint
         cursor += used;
         size -= used;
     }
-    styxclientclunk(dir);
     if (size || !exports.count)
     {
         return STYXRPC_INVALID;
@@ -351,18 +373,32 @@ StyxRpcStatus styxrpc_module_exports(StyxClient *session, const char *path, uint
 }
 
 
+/* EN/RU: See module_client.h. / См. module_client.h. */
+StyxRpcStatus styxrpc_module_exports(StyxClient *session, const char *path, uint32_t pid, StyxRpcModuleExports *out)
+{
+    if (!out)
+    {
+        return STYXRPC_INVALID;
+    }
+    StyxFid *dir = styxrpc_module_open(session, path);
+    StyxRpcStatus status = styxrpc_module_exports_at(dir, pid, out);
+    styxclientclunk(dir);
+    return status;
+}
+
+
 /* EN: Hold the module through profile validation and the exact function walk.
  * RU: Удерживать модуль до проверки профиля и поиска точной функции. */
-static StyxFid *open_function(StyxClient *session, const char *module, const char *name,
+static StyxFid *open_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
     uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker,
     int *scoped, StyxFid **held)
 {
-    if (!session || !module || !*module || !styxscalar_name_length(name) ||
+    if ((!base && (!session || !module || !*module)) || !styxscalar_name_length(name) ||
         strchr(name, '/') || name[0] == '.')
     {
         return NULL;
     }
-    StyxFid *directory = styxclientwalk(session, module);
+    StyxFid *directory = base ? styxclientwalkfrom(base, ".") : styxclientwalk(session, module);
     StyxMeta metadata;
     StyxFid *fid = directory && styxclientstat(directory, &metadata) && metadata.directory &&
         (metadata.mode & 0444U) && (metadata.mode & 0111U) && verify(directory, name, signature, schema, scoped) &&
@@ -388,18 +424,18 @@ static StyxFid *open_function(StyxClient *session, const char *module, const cha
 
 
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
-StyxFid *styxrpc_client_function(StyxClient *session, const char *module, const char *name,
+StyxFid *styxrpc_client_function(StyxFid *base, StyxClient *session, const char *module, const char *name,
     uint32_t signature, const StyxRpcSchema *schema, const char *graph_marker, int *scoped)
 {
-    return open_function(session, module, name, signature, schema, graph_marker, scoped, NULL);
+    return open_function(base, session, module, name, signature, schema, graph_marker, scoped, NULL);
 }
 
 
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
-StyxFid *styxrpc_client_channel_function(const StyxRpcManagedTarget *target, StyxFid **module)
+StyxFid *styxrpc_client_channel_function(StyxFid *base, const StyxRpcManagedTarget *target, StyxFid **module)
 {
     int scoped;
-    return open_function(target->session, target->module, target->name, target->signature,
+    return open_function(base, target->session, target->module, target->name, target->signature,
         &target->schema, STYX_MANAGED_POSITION_GRAPH_MARKER, &scoped, module);
 }
 
@@ -437,12 +473,12 @@ static unsigned char *scope_request(uint32_t pid, const void *request, size_t si
 
 
 /* EN/RU: See client_exchange.h. / См. client_exchange.h. */
-StyxRpcOutcome styxrpc_client_managed_exchange(const StyxRpcManagedTarget *target,
+StyxRpcOutcome styxrpc_client_managed_exchange(StyxFid *base, const StyxRpcManagedTarget *target,
     const char *graph_marker, const void *request, size_t request_size, void *reply,
     size_t capacity, size_t *received)
 {
     int scoped;
-    StyxFid *fid = styxrpc_client_function(target->session, target->module, target->name,
+    StyxFid *fid = styxrpc_client_function(base, target->session, target->module, target->name,
         target->signature, &target->schema, graph_marker, &scoped);
     unsigned char *wrapped = NULL;
     size_t wire_size = request_size;

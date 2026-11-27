@@ -22,6 +22,8 @@ start()
     if (n <= 0 || n >= len bytes - 4) {
         raise "cannot read mixed SWF";
     }
+    bytes[0] = byte (n >> 24);
+    bytes[1] = byte (n >> 16);
     bytes[2] = byte (n >> 8);
     bytes[3] = byte n;
     upload := sys->open("/peer/.upload", Sys->OWRITE);

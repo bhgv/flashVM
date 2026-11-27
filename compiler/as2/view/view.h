@@ -1,6 +1,7 @@
 #ifndef AS2_VIEW_H
 #define AS2_VIEW_H
 #include <stddef.h>
+#define AS2_VIEW_ASINC_BINDING (-1) /* A detached binding requires a prior var declaration. */
 #ifdef __cplusplus
 extern "C"
 {

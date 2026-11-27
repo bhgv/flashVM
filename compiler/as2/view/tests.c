@@ -133,6 +133,41 @@ int main(void)
         fprintf(stderr, "capacity failure was not atomic\n");
         return 1;
     }
+    const char *detached = "asinc // worker entry\nfunction compute() { var checksum=40; return checksum+2; }";
+    if (!as2_view_compile(detached, strlen(detached), output, sizeof(output) - 1, &length, &diagnostic))
+    {
+        fprintf(stderr, "detached asinc rejected\n");
+        return 1;
+    }
+    output[length] = 0;
+    if (!strstr((const char *)output, "source_entry avm1_asinc @compute\n"))
+    {
+        fprintf(stderr, "asinc dispatch metadata lost\n");
+        return 1;
+    }
+    const char *unsupported[] = {
+        "asinc function work(value) { return value; }",
+        "asinc function work() { return outer; }",
+        "asinc function work() { counter=42; }",
+        "asinc function work() { var alias=ref outer; return alias; }",
+        "asinc { var x=41; }",
+    };
+    for (size_t i = 0; i < sizeof(unsupported) / sizeof(*unsupported); ++i)
+    {
+        output[0] = 0xa5;
+        if (as2_view_compile(unsupported[i], strlen(unsupported[i]), output, sizeof(output), &length, &diagnostic) ||
+            length || output[0] != 0xa5)
+        {
+            fprintf(stderr, "unsupported asinc replaced the artifact\n");
+            return 1;
+        }
+    }
+    const char *ordinary = "var asinc = 42;";
+    if (!as2_view_compile(ordinary, strlen(ordinary), output, sizeof(output), &length, &diagnostic))
+    {
+        fprintf(stderr, "ordinary asinc binding rejected\n");
+        return 1;
+    }
     puts("PASS AS2 display library: methods, literals, failure recovery and atomic output");
     return 0;
 }

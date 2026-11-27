@@ -1,6 +1,9 @@
 # Copyright (c) 2026 bhgv
 # EN: Original C Styx server, native mount provider and independent stream fault relay.
 # RU: Исходный C Styx server, native mount provider и независимый fault relay.
+from contextlib import nullcontext
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import selectors
 import socket
 import struct
@@ -66,7 +69,7 @@ def relay(listener, port, mode, requests, errors):
                     if data is None:
                         break
                     kind = data[4]
-                    if mode == 'loss' and kind == 119:
+                    if mode in ('loss', 'union-loss') and kind == 119:
                         client.shutdown(socket.SHUT_RDWR)
                         break  # Server completed effect; client loses its acknowledgement.
                     if mode == 'badwalk' and kind == 111:
@@ -108,7 +111,7 @@ def main():
     mode = sys.argv[4]
     # One extra basic fid is deliberately retained after namespace unbind.
     # Дополнительный basic fid удерживается после unbind namespace.
-    expected = {'basic': 7, 'loss': 4, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'access': 4, 'slow': 3, 'badwalk': 2}
+    expected = {'basic': 7, 'loss': 4, 'union-loss': 6, 'badtag': 2, 'badcount': 3, 'msize': 2, 'iounit': 3, 'dirbad': 3, 'readonly': 3, 'access': 4, 'slow': 3, 'badwalk': 2}
     args = [sys.argv[2]] if mode in ('partial', 'deep') else [sys.argv[2], str(expected[mode]), '2']
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     errors, requests = [], []
@@ -132,7 +135,15 @@ def main():
                 target = listener.getsockname()[1]
             else:
                 target = port
-            result = subprocess.run([sys.argv[1], str(target), mode], capture_output=True, text=True, timeout=15)
+            fixture = TemporaryDirectory(prefix="styx-union-") if mode == "union-loss" else nullcontext()
+            with fixture as directory:
+                if directory is not None:
+                    lower = Path(directory) / "union"
+                    lower.mkdir()
+                    (lower / "first").write_bytes(b"fallback")
+                    (lower / "local-only").touch()
+                result = subprocess.run([sys.argv[1], str(target), mode], cwd=directory,
+                                        capture_output=True, text=True, timeout=15)
             if result.returncode or 'one transport close' not in result.stdout:
                 raise RuntimeError(f'client {result.returncode}: {result.stdout} {result.stderr}')
             if worker:
@@ -147,7 +158,7 @@ def main():
         output, errors = child.communicate(timeout=5)
         if child.returncode or ('one factory destroyed' if mode == 'partial' else 'released 1 client' if mode == 'deep' else 'released 2 clients') not in output:
             raise RuntimeError(f'server {child.returncode}: {output} {errors}')
-        if mode == 'loss' and sum(kind == 118 for kind, _ in requests) != 1:
+        if mode in ('loss', 'union-loss') and sum(kind == 118 for kind, _ in requests) != 1:
             raise RuntimeError('uncertain write replayed')
         if mode == 'msize' and [kind for kind, _ in requests] != [100]:
             raise RuntimeError('attach followed refused version')

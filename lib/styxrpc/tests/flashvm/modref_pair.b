@@ -4,7 +4,6 @@
 implement Client;
 include "sys.m";
 include "styxnamed.m";
-include "styxmodref.m";
 
 Client: module { init: fn(); };
 sys: Sys; # Paired runtime operations.

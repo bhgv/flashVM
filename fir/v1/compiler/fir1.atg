@@ -210,6 +210,7 @@ PRODUCTIONS
             "avm1_frame"                                                (. fir_build_avm1_frame(); .)
             | "avm1_method" global                                      (. capture(B_AVM1_METHOD); .)
                 { global                                                (. capture(B_AVM1_PARAMETER); .) }
+            | "avm1_asinc" global                                       (. capture(B_AVM1_METHOD); fir_build_avm1_asinc(); .)
         )
     ]
     [

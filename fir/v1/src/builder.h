@@ -41,5 +41,8 @@ void fir_build_channels(void);
 /* EN/RU: Mark the frame entry / Пометить обработчик кадра. */
 void fir_build_avm1_frame(void);
 
+/* EN/RU: Mark the detached worker entry / Пометить вход рабочего потока. */
+void fir_build_avm1_asinc(void);
+
 void fir_build_error(const char *message, int line);
 #endif

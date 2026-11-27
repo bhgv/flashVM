@@ -1,5 +1,40 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1793 — paired runtime and installed IDE
+
+Limbo can issue a live Int32 reference to its own exported variable with
+`Styxmodref.capturelocal`. The `Styxnamed.Message.Modref` variant carries
+the descriptor in typed channel operations. Rebuild older Limbo typed
+callers against the updated interface. The descriptor's on-wire format
+is unchanged. [EN](../../disVM/runtime/STYX-MODULE-REFS.md) ·
+[RU](../../disVM/runtime/STYX-MODULE-REFS.ru.md).
+
+FlashVM can publish named UniBus exchange roots from the running script.
+The C SDK owns each publication's generation and retires its fids on
+withdrawal. Ordinary file operations hide these roots. The DisVM
+namespace tests also verify new lookup and directory rewind on loss of
+a higher-priority TCP Styx provider.
+[EN](STYX_RPC_PUBLISH_MESSAGES.md) · [RU](STYX_RPC_PUBLISH_MESSAGES.ru.md) ·
+[VFS](../../disVM/runtime/STYX-LIVE-REBIND.md).
+
+The stock player can publish a typed channel factory with an ActionScript
+object. Its Dis proxies keep the exact published image and reject calls
+after withdrawal, even when a replacement uses the same name. The player
+can enter the AVM1 debugger via `.state`, stop at an action offset, report
+the stack, step and continue. The hosted Styx server initializes reply
+fields deterministically, including the I/O unit used by repeat uploads.
+[Modules](STYX_RPC_PUBLISH_OBJECT.md) · [Debugger](STYX_RPC_DEBUG.md).
+
+AS2's closed, parameterless named `asinc` function profile runs on a
+native worker. General closures and live VFS access from the workers
+are separate from this profile. Loading an arbitrary unpublished Dis
+file still requires a resident module owner.
+[EN](../../compiler/ASINC.md) · [RU](../../compiler/ASINC.ru.md).
+
+The installed menu 8 path has repeatable text, MDI, and SVG checks for
+application files built with the project tools on CMake 3.10.2.
+[EN](../../ide/DESKTOP-PAIRED.md) · [RU](../../ide/DESKTOP-PAIRED.ru.md).
+
 In v0.1792, the mounted pair also relays references to Int32 variables
 published by Limbo. FlashVM captures the reverse export through the usual
 `vfs.intVariable` and sends its reference over the named channel. DisVM

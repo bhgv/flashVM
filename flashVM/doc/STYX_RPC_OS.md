@@ -68,8 +68,11 @@ subsequent relative loads.
 A `.dis` load uses a published StyxRPC interface. It discovers names,
 signatures and schemas for direct calls. The stock pair supports Int32 and
 unscoped managed/graph profiles. Scoped calls require a reverse PID. Ordinary
-`.dis` files in the VFS need an interface published by DisVM. Closing the
-handle leaves the loaded clip or proxy usable.
+`.dis` files in the VFS need an interface published by DisVM. A module
+descriptor captures its exact publication when opened. `load()` checks that
+publication and the proxy holds its own fid, so closing the source descriptor
+leaves the loaded clip or proxy usable. If the owner withdraws an image, held
+descriptors and proxy methods fail even when another image uses the same name.
 
 Acceptance sources are [AS](../tests/styxrpc/os-client.as) and
 [Limbo](../../lib/styxrpc/tests/flashvm/os_check.b). For explicitly selected

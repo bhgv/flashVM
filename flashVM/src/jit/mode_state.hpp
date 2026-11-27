@@ -17,6 +17,7 @@ struct FVM_ExecutionModeState
     FVM_DebugBreakpointHandler breakpoint_handler; /* Borrowed synchronous host debugger. */
     void *breakpoint_data;                         /* Borrowed debugger state on the owning VM thread. */
     bool breakpoint_busy;                          /* Prevent recursive callback dispatch. */
+    bool breakpoint_step;                          /* Stop once at the next interpreted action. */
     FVM_ExecutionMode mode;     /* Requested mode; diagnostics can temporarily force interpretation. */
     unsigned int flags;         /* Opt-in replay policy. */
     unsigned int replay_depth;  /* Suppresses recursive retries and native reentry during replay. */
@@ -29,7 +30,7 @@ struct FVM_ExecutionModeState
     /* Borrowed prepared constant-pool snapshot during a native body; no GC edges. */
     /* The build profile seeds each context; explicit entry/runtime options still take priority. */
     FVM_ExecutionModeState()
-        : breakpoint_handler(0), breakpoint_data(0), breakpoint_busy(false), mode(
+        : breakpoint_handler(0), breakpoint_data(0), breakpoint_busy(false), breakpoint_step(false), mode(
 #if defined(JIT) && JIT
                                                                                  FVM_EXECUTION_JIT
 #else

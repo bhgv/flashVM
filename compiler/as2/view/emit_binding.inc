@@ -3,15 +3,55 @@
  * RU: Понижать чтение, присваивание и захват ссылок на переменные в FIR.
  */
 
+#define VIEW_ASINC_LOCALS 64U /* Declared worker-local names in a detached unit. */
+
+static char asinc_locals[VIEW_ASINC_LOCALS][256]; /* Name table for the currently parsed detached body. */
+static unsigned asinc_locals_count; /* Number of initialized detached names. */
+
 static char target[256];   /* Current assignment binding copied from the source token. */
 static char property[256]; /* Literal member name when the assignment uses dot syntax. */
 static int owner;          /* LHS owner SSA identity set before the key or RHS is parsed. */
+
+
+/* EN: Recognize a previously declared detached-body binding.
+ * RU: Найти ранее объявленное имя отделённого тела. */
+static int asinc_local(const char *key)
+{
+    for (unsigned i = 0; i < asinc_locals_count; ++i)
+    {
+        if (!strcmp(asinc_locals[i], key))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/* EN: Reject an ambient capture or an out-of-range local declaration.
+ * RU: Отклонить захват внешнего имени или слишком много локальных переменных. */
+static void asinc_binding_error(void)
+{
+    failed = 1;
+    if (active && !active->code)
+    {
+        active->code = AS2_VIEW_ASINC_BINDING;
+        active->line = S_Line;
+        active->column = S_Col;
+        active->offset = S_Pos;
+    }
+}
 
 
 /* EN: Read one named binding and return its SSA identity.
  * RU: Прочитать именованную переменную и вернуть её идентификатор SSA. */
 static int binding_read(const char *key)
 {
+    if (detached_method && !asinc_local(key) && strcmp(key, "Math"))
+    {
+        asinc_binding_error();
+        return 0;
+    }
     int value = values++;
     append("    %%v%d: any = as.global_get \"%s\"\n", value, key);
     return value;
@@ -30,9 +70,21 @@ static void key_literal(const char *key)
 
 /* EN: Capture LHS spelling and source position without evaluating a binding.
  * RU: Сохранить имя и позицию левой части без вычисления переменной. */
-void emit_target(void)
+void emit_target(int local)
 {
-    name(target);
+    if (!name(target))
+    {
+        return;
+    }
+    if (detached_method && !asinc_local(target))
+    {
+        if (!local || asinc_locals_count == VIEW_ASINC_LOCALS)
+        {
+            asinc_binding_error();
+            return;
+        }
+        strcpy(asinc_locals[asinc_locals_count++], target);
+    }
     append("    // AS2 assignment line %d column %d byte %ld\n", S_Line, S_Col, S_Pos);
 }
 
@@ -101,6 +153,11 @@ int emit_ref_ahead(void)
  * RU: Поместить на стек пространство каналов и владельца до вычисления ключа. */
 void emit_ref_owner(const char *binding)
 {
+    if (detached_method)
+    {
+        asinc_binding_error();
+        return;
+    }
     push(binding_read("channel"));
     push(binding_read(binding));
 }

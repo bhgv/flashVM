@@ -65,4 +65,10 @@ void styxrpc_message_drain(StyxRpcMessagePort *port, size_t size);
 MessageService *styxrpc_message_service(const StyxRpcTree *tree, void *context,
     const StyxRpcNode *node, const StyxRpcMessageSpec *spec);
 
+/* EN: Invalidate all attached streams, invoke their close hooks and release service.
+ * Existing outer fids can still clunk. Call outside an exchange stream callback.
+ * RU: Отозвать потоки, вызвать их хуки закрытия и освободить service.
+ * Внешние fid по-прежнему можно закрыть. Вызывать вне колбэка потока обмена. */
+void styxrpc_message_service_destroy(MessageService *service);
+
 #endif

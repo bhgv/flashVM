@@ -8,7 +8,7 @@ import selectors
 import socket
 import subprocess
 import tempfile
-from movie_assets import prepare as prepare_movies, terminal_movie
+from movie_assets import movie, prepare as prepare_movies, push, terminal_movie
 
 
 # EN: Compile a source with resolved imports/exports and return the image path.
@@ -201,13 +201,31 @@ def native_terminal(args, directory, tests, mode, windowed=False):
         check_frame(capture)
 
 
-# EN: Select provider and caller, using only the real VM entry points.
-# RU: Выбрать провайдера и клиента с использованием штатных точек входа VM.
+# EN: Verify a real VM stop over .state on the existing paired connection.
+# RU: Проверить реальную остановку VM через .state в существующем соединении.
+def native_debug(args, directory, tests, mode):
+    (directory / "debug.swf").write_bytes(movie(push("debug trace") + b"\x26"))
+    image = compile_image(args, directory, tests / "native_debug.b", "native-debug.dis")
+    paired_exchange(
+        directory,
+        lambda connection: [args.flash_host, *connection, mode],
+        lambda connection: [args.runtime, *connection, "--at", "/rpc",
+                            "--", "--native-spawn", mode, image.name],
+        "PASS native FlashVM debugger",
+        ("debug trace",),
+        tcp=args.tcp,
+    )
+
+
+# EN: Parse build products and select the requested matched pair scenario.
+# RU: Разобрать пути сборки и выбрать сценарий работы пары.
 def main():
     parser = argparse.ArgumentParser(description="Check the production FlashVM/DisVM Styx RPC bridge")
     for name in ("runtime", "limbo", "source", "flash-host"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs", "native-player", "native-window", "native-terminal", "native-terminal-window"), required=True)
+    parser.add_argument("--direction", choices=("flash-to-dis", "dis-to-flash", "launch", "vfs",
+                        "native-player", "native-window", "native-terminal", "native-terminal-window",
+                        "native-debug"), required=True)
     parser.add_argument("--device", type=lambda value: Path(value).resolve())
     profiles = parser.add_mutually_exclusive_group()
     for option, profile in (("playback", "playback"), ("playback-movies", "playback-movies"), ("object-image", "object-image"), ("module-load", "module-load"),
@@ -248,6 +266,8 @@ def main():
         action = f"{args.profile}-" if args.profile else ""
         if args.direction in ("native-player", "native-window"):
             native_player(args, directory / "live", tests, mode, args.direction == "native-window")
+        elif args.direction == "native-debug":
+            native_debug(args, directory, tests, mode)
         elif args.direction in ("native-terminal", "native-terminal-window"):
             native_terminal(args, directory, tests, mode, args.direction == "native-terminal-window")
         elif args.direction == "flash-to-dis":

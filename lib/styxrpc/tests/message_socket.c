@@ -19,6 +19,7 @@
 typedef struct MessageTest
 {
     StyxRpcServer *server; /* Moved to the dispatcher thread before the mount. */
+    const StyxRpcMessageSpec *replacement; /* Copied on a live hosted replacement. */
     size_t opened;         /* Dispatcher opens, read by main after join. */
     size_t closed;         /* Dispatcher closes, read by main after join. */
     size_t received;       /* Accepted sample records, read by main after join. */
@@ -119,6 +120,17 @@ static int increment(void *context, int64_t argument, int64_t *result)
     (void)context;
     *result = argument + 1;
     return 1;
+}
+
+
+/* EN: Replace events on the dispatcher, independently of exchange callbacks.
+ * RU: Заменить events у диспетчера вне колбэков сообщений. */
+static int replace_events(void *context, int64_t argument, int64_t *result)
+{
+    MessageTest *test = context;
+    *result = argument;
+    return styxrpc_messages_withdraw(test->server, "events") == STYXRPC_OK &&
+        styxrpc_messages_publish(test->server, "events", test->replacement) == STYXRPC_OK;
 }
 
 
@@ -239,18 +251,47 @@ static int reject_corrupt(StyxRpcVfsFile *file)
 }
 
 
+/* EN: Replace one hosted root, invalidating both unopened and opened old fids.
+ * RU: Заменить корень, отозвав старые fid и до открытия, и после. */
+static int replace_and_check(StyxClient *client)
+{
+    StyxFid *walked = styxclientwalk(client, "events");
+    StyxRpcVfsFile *opened = NULL, *replacement = NULL;
+    int64_t result;
+    unsigned char bytes[256];
+    size_t read;
+    int good = walked &&
+        styxrpc_vfs_exchange_open(client, "events", STYXRPC_FILE_RDWR, &opened) == STYXRPC_IO_OK &&
+        styxrpc_vfs_file_read(opened, 0, bytes, sizeof(bytes), &read) == STYXRPC_IO_OK && read > 0 &&
+        styxrpc_scalar_invoke(client, "mounted/messages.dis", "replace", STYXRPC_INT_SIGNATURE,
+            41, 1000, &result) == STYXRPC_CALL_OK && result == 41 &&
+        !styxclientopen(walked, STYXRPC_FILE_RDWR) &&
+        styxrpc_vfs_file_read(opened, read, bytes, sizeof(bytes), &read) != STYXRPC_IO_OK &&
+        styxrpc_vfs_exchange_open(client, "events", STYXRPC_FILE_RDWR, &replacement) == STYXRPC_IO_OK &&
+        styxrpc_vfs_file_read(replacement, 0, bytes, sizeof(bytes), &read) == STYXRPC_IO_OK && read > 0;
+    if (walked)
+    {
+        styxclientclunk(walked);
+    }
+    styxrpc_vfs_close(opened, 0);
+    styxrpc_vfs_close(replacement, 0);
+    return good;
+}
+
+
 /* EN: Mount the real socket, verify framing, failure isolation, and dispose all owners.
  * RU: Смонтировать настоящий сокет, проверить framing и изоляцию ошибок, освободить ресурсы. */
 int main(void)
 {
     StyxRpcScalarModule module;
-    static const StyxRpcExport exports[] = {{"increment", STYXRPC_INT_SIGNATURE, increment, NULL}};
     MessageTest test = {0};
+    const StyxRpcExport exports[] = {{"increment", STYXRPC_INT_SIGNATURE, increment, NULL},
+        {"replace", STYXRPC_INT_SIGNATURE, replace_events, &test}};
     StyxRpcMessageType types[] = {{"app.sample", 1, 51, server_sample, &test},
         {"app.hello", 1, 51, NULL, NULL}};
     StyxRpcMessageSpec spec = {types, 2, opened_port, closed_port, &test};
     int sockets[2];
-    if (styxrpc_scalar_module_init(&module, "messages.dis", exports, 1) != STYXRPC_OK ||
+    if (styxrpc_scalar_module_init(&module, "messages.dis", exports, sizeof(exports) / sizeof(*exports)) != STYXRPC_OK ||
         socketpair(AF_UNIX, SOCK_STREAM, 0, sockets))
     {
         return 1;
@@ -260,6 +301,7 @@ int main(void)
     int rejected = test.server && styxrpc_messages_enable(test.server, &spec) == STYXRPC_INVALID;
     types[1].send_tag = 55;
     StyxRpcMessageSpec isolated = {types + 1, 1, opened_port, closed_port, &test};
+    test.replacement = &isolated;
     pthread_t owner;
     if (!rejected || styxrpc_messages_enable(test.server, &spec) != STYXRPC_OK ||
         styxrpc_messages_enable(test.server, &spec) != STYXRPC_INVALID ||
@@ -278,12 +320,12 @@ int main(void)
     StyxRpcVfsFile *raw = NULL;
     int good = client && exchange(client) &&
         styxrpc_vfs_exchange_open(client, "events", STYXRPC_FILE_RDWR, &raw) == STYXRPC_IO_OK &&
-        reject_corrupt(raw) && call_increment(client);
+        reject_corrupt(raw) && replace_and_check(client) && call_increment(client);
     styxrpc_vfs_close(raw, 0);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(owner, NULL);
-    if (!good || test.error || test.opened != 3 || test.closed != 3 || test.received != 2)
+    if (!good || test.error || test.opened != 5 || test.closed != 5 || test.received != 2)
     {
         fprintf(stderr, "message socket failed (I/O=%d, hook error=%d, opens=%zu, closes=%zu, samples=%zu)\n",
             good, test.error, test.opened, test.closed, test.received);

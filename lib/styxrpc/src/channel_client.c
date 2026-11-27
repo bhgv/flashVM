@@ -56,7 +56,7 @@ static StyxRpcStatus read_reply(const StyxRpcSchema *schema, const StyxRpcChanne
 
 /* EN: Send only after the matching module and optional reverse publication are available.
  * RU: Отправить после проверки модуля и готовности дополнительной встречной публикации. */
-static StyxRpcOutcome invoke(StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target, const void *arguments,
+static StyxRpcOutcome invoke(StyxFid *directory, StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target, const void *arguments,
     size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
 {
     if (!target || !target->pid || !target->wait_ms || target->wait_ms > STYXRPC_SCALAR_WAIT_MAX_MS ||
@@ -80,7 +80,7 @@ static StyxRpcOutcome invoke(StyxRpcArgumentScope *scope, const StyxRpcManagedTa
         fvm_srecord_write_pair(STYXRPC_GRAPH_REQUEST_TAG, pid, prefix, arguments, size,
             request, STYXRPC_MANAGED_LIMIT, &request_size) == FVM_S_OK &&
         styxrpc_channel_call(&target->schema, request, request_size, &call) == STYXRPC_OK &&
-        (lease->function = styxrpc_client_channel_function(target, &lease->module)) &&
+        (lease->function = styxrpc_client_channel_function(directory, target, &lease->module)) &&
         (!scope || styxrpc_argument_scope_match(scope, &call)))
     {
         StyxRpcStatus status = styxrpc_client_exchange(lease->function, request, request_size,
@@ -112,10 +112,30 @@ static StyxRpcOutcome invoke(StyxRpcArgumentScope *scope, const StyxRpcManagedTa
 
 
 /* EN/RU: See styxrpc/channel_client.h. / См. styxrpc/channel_client.h. */
+StyxRpcOutcome styxrpc_channel_invoke_at(StyxFid *directory, const StyxRpcManagedTarget *target, const void *arguments,
+    size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
+{
+    return invoke(directory, NULL, target, arguments, size, reply, capacity, result);
+}
+
+
+/* EN/RU: See styxrpc/channel_client.h. / См. styxrpc/channel_client.h. */
 StyxRpcOutcome styxrpc_channel_invoke(const StyxRpcManagedTarget *target, const void *arguments,
     size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
 {
-    return invoke(NULL, target, arguments, size, reply, capacity, result);
+    return styxrpc_channel_invoke_at(NULL, target, arguments, size, reply, capacity, result);
+}
+
+
+/* EN/RU: See styxrpc/channel_arguments.h. / См. styxrpc/channel_arguments.h. */
+StyxRpcOutcome styxrpc_argument_scope_invoke_at(StyxFid *directory, StyxRpcArgumentScope *scope,
+    const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
+{
+    StyxRpcOutcome outcome = scope ? invoke(directory, scope, target, arguments, size, reply, capacity, result) :
+        STYXRPC_CALL_NOT_SENT;
+    styxrpc_argument_scope_close(scope);
+    return outcome;
 }
 
 
@@ -123,10 +143,7 @@ StyxRpcOutcome styxrpc_channel_invoke(const StyxRpcManagedTarget *target, const 
 StyxRpcOutcome styxrpc_argument_scope_invoke(StyxRpcArgumentScope *scope, const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcLeasedReply *result)
 {
-    StyxRpcOutcome outcome = scope ? invoke(scope, target, arguments, size, reply, capacity, result) :
-        STYXRPC_CALL_NOT_SENT;
-    styxrpc_argument_scope_close(scope);
-    return outcome;
+    return styxrpc_argument_scope_invoke_at(NULL, scope, target, arguments, size, reply, capacity, result);
 }
 
 

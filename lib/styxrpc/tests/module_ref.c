@@ -3,7 +3,10 @@
  * RU: Проверка сетевого формата ссылки на модуль и обоих способов открытия точного fid.
  */
 #include "styxrpc/module_ref.h"
+#include "styxrpc/module_client.h"
+#include "styxrpc/module_ref_port.h"
 #include "styxrpc/module_slot.h"
+#include "styxrpc/named_channel.h"
 #include "client.h"
 #include "drivers/posix/fd.h"
 #include <pthread.h>
@@ -13,13 +16,102 @@
 #include <unistd.h>
 
 #define STREAM (PHY_STREAM | PHY_ORDERED | PHY_RELIABLE) /* Ordered local socket transport. */
+#define MODULE_PATH "mounted/ref.dis" /* Name reused for two compatible images. */
 #define COUNTER_PATH "mounted/ref.dis/.var/counter" /* Name reused after publication changes. */
+#define COUNTER_QID UINT64_C(0x101) /* Local fixture identity, independent of remote Qids. */
 
 typedef struct Fixture
 {
     StyxRpcModuleSlot *slot;    /* Borrowed by the server until it joins. */
     StyxRpcModule *replacement; /* Image installed by the server owner's restart callback. */
 } Fixture;
+
+
+/* EN: Read the exact four stored bytes at zero into bytes and report their size.
+ * RU: Прочитать четыре байта с нуля в bytes и сообщить их длину. */
+static int local_get(void *state, uint64_t offset, void *bytes, size_t capacity, size_t *size)
+{
+    if (offset || capacity != 4)
+    {
+        return 0;
+    }
+    memcpy(bytes, state, capacity);
+    *size = capacity;
+    return 1;
+}
+
+
+/* EN: Confirm replacement of the exact four stored bytes at zero.
+ * RU: Подтвердить замену четырёх сохранённых байтов с нуля. */
+static int local_set(void *state, uint64_t offset, const void *bytes, size_t count, size_t *size)
+{
+    if (offset || count != 4)
+    {
+        return 0;
+    }
+    memcpy(state, bytes, count);
+    *size = count;
+    return 1;
+}
+
+
+/* EN: Bind out to the fixture's live buffer when path, role and exact Qid match.
+ * RU: Привязать out к живому буферу теста при совпадении пути, роли и точного Qid. */
+static StyxRpcIoOutcome local_open(void *state, const StyxRpcModuleRef *ref, StyxRpcFile *out)
+{
+    static const StyxRpcVfs ops = {.read = local_get, .write = local_set};
+    if (ref->node != COUNTER_QID || ref->owner != STYXRPC_MODULE_REF_REVERSE ||
+        strcmp(ref->path, COUNTER_PATH))
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    *out = (StyxRpcFile){.ops = &ops, .cookie = state,
+        .access = STYXRPC_READ | (ref->writable ? STYXRPC_WRITE : 0)};
+    return STYXRPC_IO_OK;
+}
+
+
+/* EN: Issue the current fixture Qid and open the requested exact publication.
+ * RU: Выдать текущий Qid теста и открыть указанную точную публикацию. */
+static StyxRpcIoOutcome local_capture(void *state, StyxRpcModuleRef *ref, StyxRpcFile *out)
+{
+    ref->node = COUNTER_QID;
+    return local_open(state, ref, out);
+}
+
+
+/* EN: Check first-write owner capture, its forwarded descriptor and write-through after adopt.
+ * RU: Проверить захват владельца первой записью, пересылку дескриптора и запись после приёма. */
+static int owned_reference(StyxClient *client)
+{
+    unsigned char value[] = {0, 0, 0, 17};
+    const unsigned char changed[] = {0xff, 0xff, 0xff, 0xfe};
+    const unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE] = {0xb4};
+    const unsigned char path[] = COUNTER_PATH;
+    unsigned char command[sizeof(path) + 1] = {STYXRPC_REF_PORT_CAPTURE_LOCAL, 1};
+    memcpy(command + 2, path, sizeof(path) - 1);
+    StyxRpcModuleRefPort *issuer = styxrpc_module_ref_port_open_owned(client, STYXRPC_MODULE_REF_FORWARD,
+        scope, local_open, local_capture, value);
+    StyxRpcModuleRefPort *receiver = styxrpc_module_ref_port_open_paired(client, STYXRPC_MODULE_REF_FORWARD,
+        scope, local_open, value);
+    unsigned char frame[2 + STYXRPC_MODULE_REF_WIRE_MAX] = {STYXRPC_REF_PORT_ADOPT};
+    size_t size = 0;
+    StyxRpcModuleRef decoded;
+    int good = issuer && receiver &&
+        styxrpc_module_ref_port_write(receiver, 0, command, sizeof(command)) == STYXRPC_IO_NOT_OPEN &&
+        styxrpc_module_ref_port_write(issuer, 0, command, sizeof(command)) == STYXRPC_IO_OK &&
+        styxrpc_module_ref_port_read(issuer, STYXRPC_REF_PORT_FRAME, frame + 1,
+            sizeof(frame) - 1, &size) == STYXRPC_IO_OK &&
+        size > 1 && frame[1] == STYXRPC_NAMED_MODULE_REF &&
+        styxrpc_module_ref_decode(frame + 2, size - 1, scope, &decoded) &&
+        decoded.node == COUNTER_QID && decoded.owner == STYXRPC_MODULE_REF_REVERSE && decoded.writable &&
+        styxrpc_module_ref_port_write(receiver, 0, frame, size + 1) == STYXRPC_IO_OK &&
+        styxrpc_module_ref_port_write(receiver, 0, changed, sizeof(changed)) == STYXRPC_IO_OK &&
+        !memcmp(value, changed, sizeof(value));
+    styxrpc_module_ref_port_close(receiver);
+    styxrpc_module_ref_port_close(issuer);
+    return good;
+}
 
 
 /* EN: Decode a fixed high-bit Qid, then reject wrong scope and malformed frames.
@@ -170,8 +262,15 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     StyxRpcModuleRef old = {0, STYXRPC_MODULE_REF_FORWARD, 1, COUNTER_PATH};
     StyxRpcModuleRef fresh = {0, STYXRPC_MODULE_REF_FORWARD, 0, COUNTER_PATH};
     StyxRpcVfsFile *view = NULL, *alias = NULL, *denied = NULL, *current = NULL;
+    StyxFid *image = styxrpc_module_open(client, MODULE_PATH);
+    StyxRpcModuleExports exports;
+    int64_t echoed = 0;
     int32_t value = 0;
-    int good = client &&
+    int good = client && owned_reference(client) &&
+        styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_OK &&
+        styxrpc_module_check_at(image, exports.methods, exports.count, 0) == STYXRPC_OK &&
+        styxrpc_scalar_invoke_at(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 12, 1000, &echoed) ==
+            STYXRPC_CALL_OK && echoed == 12 &&
         styxrpc_vfs_int_open_identified(client, old.path, 1, &view, &old.node) == STYXRPC_IO_OK &&
         styxrpc_module_ref_open_remote(client, &old, &alias) == STYXRPC_IO_OK &&
         styxrpc_vfs_int_read(alias, &value) == STYXRPC_IO_OK && value == -73 &&
@@ -181,6 +280,11 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
         styxrpc_vfs_int_read(alias, &value) != STYXRPC_IO_OK;
     old.writable = 0;
     good = good && styxrpc_module_ref_open_remote(client, &old, &denied) == STYXRPC_IO_NOT_OPEN && !denied &&
+        styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_INVALID &&
+        styxrpc_scalar_invoke_at(image, client, MODULE_PATH, "echo", STYXRPC_INT_SIGNATURE, 15, 1000, &echoed) ==
+            STYXRPC_CALL_NOT_SENT && echoed == 12 &&
+        styxrpc_scalar_invoke(client, MODULE_PATH, "echo", STYXRPC_INT_SIGNATURE, 15, 1000, &echoed) ==
+            STYXRPC_CALL_OK && echoed == 15 &&
         styxrpc_vfs_int_open_identified(client, fresh.path, 0, &current, &fresh.node) == STYXRPC_IO_OK &&
         old.node != fresh.node && styxrpc_vfs_int_read(current, &value) == STYXRPC_IO_OK && value == 92;
     fresh.writable = 1;
@@ -189,6 +293,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     styxrpc_vfs_close(alias, 0);
     styxrpc_vfs_close(denied, 0);
     styxrpc_vfs_close(current, 0);
+    styxrpc_vfs_close(image, 0);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(worker, NULL);

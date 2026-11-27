@@ -49,6 +49,14 @@ void styxcallerrelease(StyxCallerServer *server);
 StyxOpen *styxcalleropen_shared(StyxCallerServer *server, const char *path, uint64_t qid, int mode);
 
 
+/* EN: Open a regular file of exactly length bytes and issue its normal reverse Qid.
+ * Use a retained server, canonical root-relative path and mode 0 or 2. Return an owned file.
+ * RU: Открыть обычный файл длиной ровно length байтов и выдать его обычный встречный Qid.
+ * Использовать удержанный сервер, канонический относительный путь и режим 0 или 2. */
+StyxOpen *styxcallercapture_shared(StyxCallerServer *server, const char *path, uint64_t length,
+    int mode, uint64_t *qid);
+
+
 /* EN: Bind a fresh unpublished forward provider. The provider pins the server state.
  * RU: Привязать свежий неопубликованный провайдер. Провайдер удерживает состояние сервера. */
 int styxcallerbind(StyxCallerServer *server, DVM_Provider *forward);

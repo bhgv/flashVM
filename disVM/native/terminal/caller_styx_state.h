@@ -25,7 +25,7 @@ struct StyxCallerServer
 {
     Styxserver server; /* Owned original Styx dispatcher. */
     StyxPhyWake *wake; /* Owned dispatcher wake pin through mount retirement. */
-    pthread_t worker; /* Owns dispatcher, nodes and stat scratch. */
+    pthread_t worker; /* Owns dispatcher, per-PID nodes and stat scratch. */
     StyxCallerScopes scopes; /* Concurrent per-PID publications. */
     size_t references; /* Control and bound mount owners, under scopes.lock. */
     CallerNodes cache[STYX_CALLER_SLOTS]; /* Dispatcher-owned node caches. */
@@ -35,7 +35,8 @@ struct StyxCallerServer
     StyxBacking *shared_root; /* Identity-bound permanent root for ordinary walks. */
     const char *service_name; /* Borrowed exact root protocol component, or NULL. */
     size_t service_qid; /* Reserved permanent slot, valid with service_name. */
-    CallerNodes permanent; /* Ordinary visited nodes, published to local readers under scopes.lock. */
+    CallerNodes permanent; /* Ordinary visited nodes, interned under scopes.lock. */
+    int reserving_create; /* Dispatcher holds one permanent slot through provider create. */
     StyxMeta stat; /* Borrowed by Rstat encoding until callback completes. */
 };
 

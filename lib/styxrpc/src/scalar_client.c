@@ -6,7 +6,7 @@
 #include "client_exchange.h"
 
 /* EN/RU: See scalar_client.h. / См. scalar_client.h. */
-StyxRpcOutcome styxrpc_scalar_invoke(StyxClient *session, const char *module, const char *name,
+StyxRpcOutcome styxrpc_scalar_invoke_at(StyxFid *directory, StyxClient *session, const char *module, const char *name,
     uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result)
 {
     unsigned char request[STYXRPC_FRAME_SIZE];
@@ -17,7 +17,7 @@ StyxRpcOutcome styxrpc_scalar_invoke(StyxClient *session, const char *module, co
         return STYXRPC_CALL_NOT_SENT;
     }
     int scoped;
-    StyxFid *fid = styxrpc_client_function(session, module, name, signature, NULL, NULL, &scoped);
+    StyxFid *fid = styxrpc_client_function(directory, session, module, name, signature, NULL, NULL, &scoped);
     if (!fid)
     {
         return STYXRPC_CALL_NOT_SENT;
@@ -29,4 +29,12 @@ StyxRpcOutcome styxrpc_scalar_invoke(StyxClient *session, const char *module, co
     StyxRpcStatus status = transferred ? styxrpc_reply(signature, reply, received, result) : STYXRPC_INVALID;
     return status == STYXRPC_OK ? STYXRPC_CALL_OK :
         status == STYXRPC_REMOTE_ERROR ? STYXRPC_CALL_REMOTE_ERROR : STYXRPC_CALL_UNCERTAIN;
+}
+
+
+/* EN/RU: See scalar_client.h. / См. scalar_client.h. */
+StyxRpcOutcome styxrpc_scalar_invoke(StyxClient *session, const char *module, const char *name,
+    uint32_t signature, int64_t argument, unsigned wait_ms, int64_t *result)
+{
+    return styxrpc_scalar_invoke_at(NULL, session, module, name, signature, argument, wait_ms, result);
 }

@@ -5,6 +5,7 @@
 #ifndef FLASHVM_STYXRPC_PLAYBACK_INTERNAL_H
 #define FLASHVM_STYXRPC_PLAYBACK_INTERNAL_H
 #include "flashvm/styxrpc_playback.h"
+#include "playback_debug.h"
 #include "movie_load.h"
 #include "player_services.h"
 #include "../../ports/styxrpc_stats_port.h"
@@ -29,6 +30,7 @@ struct FVM_StyxRpcPlayback
     StyxRpcControl *control;     /* Owns .upload and .state node callbacks. */
     FVM_Context *context;         /* Current movie context, NULL until a successful upload. */
     StyxRpcModuleSlot *slot;      /* Owned published tree while serving. */
+    StyxRpcServer *message_server; /* Borrowed stock server for script exchange roots. */
     FVM_StyxRpcPlayerServices *script;  /* Owned per-movie AS session and launch tickets. */
     FVM_StyxRpcMovies *movies;   /* Owned deferred SWF loader for the current paired context. */
     FVM_Object *root;             /* [GC:] Root clip pinned in the current context. */
@@ -36,6 +38,7 @@ struct FVM_StyxRpcPlayback
     size_t size;                  /* Length of the retained SWF, in bytes. */
     PlaybackState state;         /* State reported to the controller. */
     FVM_Result last;              /* Last timeline or control operation status. */
+    PlaybackDebug debug;          /* Stop bookkeeping for the paired owner. */
     double period;                /* Milliseconds per frame from the uploaded SWF. */
     unsigned long schedule;        /* Changes when start establishes a new frame deadline. */
     unsigned long ticks;          /* Successfully advanced ticks for the current movie. */
@@ -48,4 +51,9 @@ struct FVM_StyxRpcPlayback
 /* EN: Consume the local startup image on the owner. Run at the first clock tick on success.
  * RU: Принять стартовый образ у владельца. При успехе запустить на первом такте. */
 int fvm_styxrpc_playback_start_local(FVM_StyxRpcPlayback *playback, unsigned char *bytes, size_t size);
+
+
+/* EN: Copy a bounded owner and VM snapshot for the current .state fid.
+ * RU: Скопировать ограниченный снимок владельца и VM для текущего fid .state. */
+int fvm_styxrpc_playback_snapshot(void *data, char *bytes, size_t capacity, size_t *used);
 #endif

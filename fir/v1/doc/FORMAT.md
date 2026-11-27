@@ -156,6 +156,12 @@ initializer uses operandless `return`. The method name and formals retain
 their `@` prefix in `FirModule.avm1_method` and `avm1_parameters`.
 Rebuild both clients and libraries after C structure changes.
 
+`source_entry avm1_asinc @name` installs a named zero-argument root method.
+The backend wraps its body at load through `Async.wrap`. Calls start an
+independent AVM1 worker and return a task handle. The AS2 view frontend
+enforces the isolated body profile. Dis and table execution reject the entry.
+See the [runtime contract](../../../flashVM/doc/ASINC_TASK.md).
+
 Numeric literals admit explicit +, .5/2. for f64 and 0x/0X. i32 is still signed:
 +0x7fffffff and -0x80000000 work, 0x80000000 fails. Decimal leading zeroes are not
 octal. f64.div uses IEEE binary64 without compiler constant folding; ±0, Infinity

@@ -1,6 +1,6 @@
 # Cell.setvalue
 
-[English](setvalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m#L67) · [Реализация](../../limbo/styxnamed.b#L308)
+[English](setvalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m) · [Реализация](../../limbo/styxnamed.b)
 
 ```limbo
 Cell.setvalue(value: ref Styxvalue->Value)

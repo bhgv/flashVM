@@ -52,8 +52,9 @@ def check(args, directory, movie, mode):
         copy2(module, directory / module.name)
     copy2(movie, directory / "desktop-view.swf")
     if args.text:
+        font_root = args.disvm if getattr(args, "installed", False) else ROOT / "ide/assets"
         (directory / "fonts").mkdir()
-        copy2(ROOT / "ide/assets/fonts/NotoSansMono-Regular.ttf", directory / "fonts")
+        copy2(font_root / "fonts/NotoSansMono-Regular.ttf", directory / "fonts")
     capture = directory / "scene.ppm"
     drawing = directory / "paired-drawing.svg"
     if args.sweep:
@@ -367,12 +368,14 @@ def verify_mdi(path):
     return data
 
 
-# EN: Accept explicit in-tree tool outputs and check both supported dispatch modes.
-# RU: Принять пути к инструментам проекта и проверить оба режима выполнения.
+# EN: Verify both dispatch modes using installed artifacts or explicit build tools.
+# RU: Проверить оба режима исполнения с установленными продуктами или указанными компиляторами.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("disvm", "player", "as2", "fir", "swl"):
-        parser.add_argument("--" + name, type=lambda path: Path(path).resolve(), required=True)
+    parser.add_argument("--disvm", type=lambda path: Path(path).resolve(), required=True)
+    parser.add_argument("--installed", action="store_true", help="use the movie, font and player installed in --disvm")
+    for name in ("player", "as2", "fir", "swl"):
+        parser.add_argument("--" + name, type=lambda path: Path(path).resolve())
     parser.add_argument("--capture", action="store_true", help="check pixel output with a raster-enabled player")
     parser.add_argument("--text", action="store_true", help="serve the project font through VFS and verify text pixels")
     parser.add_argument("--window", action="store_true", help="open the player window during the run")
@@ -388,6 +391,15 @@ def main():
     scenarios.add_argument("--merge", action="store_true", help="cut a fill with the brush and move the resulting stroke")
     scenarios.add_argument("--sweep", action="store_true", help="draw one closed vector brush loop with SDL input")
     args = parser.parse_args()
+    tools = (args.player, args.as2, args.fir, args.swl)
+    if args.installed:
+        if not args.native_events:
+            parser.error("--installed requires --native-events to exercise the production SWF")
+        if any(tools):
+            parser.error("--installed reads artifacts from --disvm without build tool paths")
+        args.player = args.disvm / "flashvm_styx_player"
+    elif not all(tools):
+        parser.error("building a test movie requires --player, --as2, --fir and --swl")
     if (args.mdi or args.thumbnails or args.vector or args.camera or args.ink or args.merge or args.sweep) and not args.native_events:
         parser.error("the selected desktop scenario requires --native-events")
     if args.native_events:
@@ -395,7 +407,7 @@ def main():
     args.capture = args.capture or args.text
     with TemporaryDirectory(prefix="paired-desktop-") as temporary:
         directory = Path(temporary)
-        movie = compile_movie(args, directory)
+        movie = args.disvm / "desktop-view.swf" if args.installed else compile_movie(args, directory)
         interpreted = check(args, directory / "interpreter", movie, "--no-jit")
         compiled = check(args, directory / "jit", movie, "--jit")
         if interpreted != compiled:

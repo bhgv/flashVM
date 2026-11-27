@@ -13,6 +13,12 @@ FVM_Result fvm_styxrpc_module_load(FVM_Context *context,
 
 Supply the owner context, attached session, relative module path, compiled imports, scoped PID when required, call wait budget in milliseconds and optional channel argument bus. The call blocks for interface verification and copies the accepted contract to an ordinary AS object. It returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with the object in `out`, [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) for a failed remote verification, or a local validation or allocation status. Root the object normally. Keep the session and argument bus alive during use.
 
+The proxy owns an unopened directory fid from
+[module capture](../../lib/styxrpc/reference/module_open.md). Each method
+walks from that fid. Withdrawal makes old methods fail before sending a
+call, even if the owner republishes the same names and signatures. The
+last reference to the proxy or its extracted methods retires the directory.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

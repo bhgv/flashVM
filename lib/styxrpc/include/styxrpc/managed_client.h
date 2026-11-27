@@ -32,6 +32,12 @@ typedef struct StyxRpcManagedTarget
 StyxRpcOutcome styxrpc_managed_invoke(const StyxRpcManagedTarget *target,
     const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result);
 
+
+/* EN: Use a borrowed unopened module directory instead of target's path when supplied.
+ * RU: Использовать переданный неоткрытый каталог вместо пути target. */
+StyxRpcOutcome styxrpc_managed_invoke_at(struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    const void *arguments, size_t size, void *reply, size_t capacity, StyxRpcManagedReply *result);
+
 #ifdef __cplusplus
 }
 #endif

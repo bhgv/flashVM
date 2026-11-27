@@ -6,6 +6,7 @@
 
 static char method[256];                          /* Root callback name for this unit. */
 static char parameters[VIEW_PARAMETERS][256];     /* Bounded formal names in call order. */
+static int detached_method;                      /* Install a deferred OS-thread dispatch wrapper. */
 static unsigned parameter_count;                  /* Initialized prefix of parameters. */
 
 
@@ -30,6 +31,7 @@ void emit_initializer(void)
  * RU: Записать точное имя метода корня отдельно от уникального имени модуля. */
 void emit_frame_handler(void)
 {
+    detached_method = 0;
     parameter_count = 0;
     if (!name(method) || strlen(method) > 244)
     {
@@ -70,7 +72,11 @@ void emit_frame_body(void)
         snprintf(suffix, sizeof(suffix), "_%s", method);
     }
     header(suffix);
-    if (!*suffix && !parameter_count)
+    if (detached_method)
+    {
+        append("source_entry avm1_asinc @%s\n", method);
+    }
+    else if (!*suffix && !parameter_count)
     {
         append("source_entry avm1_frame\n");
     }
@@ -100,4 +106,61 @@ void emit_value_return(void)
 void emit_void_return(void)
 {
     append("    return\n");
+}
+
+
+/* EN: Recognize the prefix only before the complete function token, allowing line comments.
+ * RU: Распознать префикс только перед полным токеном function с учётом комментариев. */
+int emit_asinc_ahead(void)
+{
+    const char prefix[] = "asinc";
+    const char keyword[] = "function";
+    if (S_NextLen != sizeof(prefix) - 1)
+    {
+        return 0;
+    }
+    for (unsigned i = 0; i < sizeof(prefix) - 1; ++i)
+    {
+        if (S_CurrentCh(S_NextPos + i) != prefix[i])
+        {
+            return 0;
+        }
+    }
+    long cursor = S_NextPos + S_NextLen;
+    int ch;
+    while ((ch = S_CurrentCh(cursor)) == ' ' || ch == '\t' || ch == '\r' || ch == '\n' ||
+           (ch == '/' && S_CurrentCh(cursor + 1) == '/'))
+    {
+        if (ch == '/')
+        {
+            do
+            {
+                ch = S_CurrentCh(++cursor);
+            } while (ch != EOF_CHAR && ch != '\r' && ch != '\n');
+            if (ch == EOF_CHAR)
+            {
+                return 0;
+            }
+        }
+        ++cursor;
+    }
+    for (unsigned i = 0; i < sizeof(keyword) - 1; ++i)
+    {
+        if (S_CurrentCh(cursor + i) != keyword[i])
+        {
+            return 0;
+        }
+    }
+    ch = S_CurrentCh(cursor + sizeof(keyword) - 1);
+    return !(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z') &&
+           !(ch >= '0' && ch <= '9') && ch != '_';
+}
+
+
+/* EN: Reuse root method naming and mark the accepted detached function profile.
+ * RU: Применить правила имён методов корня и выбрать отделённое исполнение. */
+void emit_asinc_handler(void)
+{
+    emit_frame_handler();
+    detached_method = 1;
 }

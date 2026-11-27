@@ -44,7 +44,10 @@ target_include_directories(styx_nine PUBLIC
     PRIVATE "${src}/lib9")
 target_compile_options(styx_nine PRIVATE -fno-strict-aliasing)
 target_link_libraries(styx_nine PUBLIC Threads::Threads m)
-add_library(styx_server STATIC "${src}/tools/libstyx/styxserver.c" "${src}/tools/libstyx/Posix.c")
+add_library(styx_server STATIC "${src}/tools/libstyx/styxserver.c" "${src}/tools/libstyx/Posix.c"
+    server/hosted_decode.c)
+set_property(SOURCE "${src}/tools/libstyx/styxserver.c" APPEND PROPERTY
+    COMPILE_DEFINITIONS convM2S=styx_hosted_request_decode)
 target_include_directories(styx_server PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_server PUBLIC styx_nine)
 add_library(styx_carrier STATIC remote_phy/phy.c remote_phy/select.c
@@ -62,7 +65,9 @@ add_library(styx_client STATIC client/session.c client/traversal.c client/fid.c 
 target_include_directories(styx_client PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/client>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/client>")
 target_link_libraries(styx_client PUBLIC styx_nine styx_carrier styx_walk Threads::Threads)
 add_library(styx_phy_server STATIC server/phy/core.c server/phy/backend.c server/phy/io.c server/phy/lifetime.c
-    server/phy/traversal.c server/phy/traversal_fids.c)
+    server/phy/traversal.c server/phy/traversal_fids.c server/hosted_decode.c)
+set_property(SOURCE server/phy/core.c APPEND PROPERTY
+    COMPILE_DEFINITIONS convM2S=styx_hosted_request_decode)
 target_include_directories(styx_phy_server PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/server/phy>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/styx/server>" PRIVATE "${src}/tools/libstyx")
 target_link_libraries(styx_phy_server PUBLIC styx_nine styx_carrier styx_walk Threads::Threads)

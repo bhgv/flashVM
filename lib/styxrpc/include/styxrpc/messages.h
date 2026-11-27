@@ -55,12 +55,21 @@ typedef struct StyxRpcMessageSpec
 } StyxRpcMessageSpec;
 
 
-/* EN: Publish a named exchange root before the first server step. Copy name and spec.
+/* EN: Publish a named exchange root on the owner thread, outside exchange callbacks. Copy name and spec.
  * Name is one root child component, or NULL for .unibus. Return INVALID for a collision or invalid arguments.
- * RU: Опубликовать именованный корень обмена до первого шага. Скопировать name и spec.
+ * RU: Опубликовать именованный корень в потоке владельца вне колбэков обмена. Скопировать name и spec.
  * Имя — один компонент в корне или NULL для .unibus. Коллизия или неверные аргументы дают INVALID. */
 StyxRpcStatus styxrpc_messages_publish(StyxRpcServer *server, const char *name,
     const StyxRpcMessageSpec *spec);
+
+
+/* EN: Remove name (NULL for .unibus) and retire its ports and close hooks before return.
+ * Return INVALID if absent. Old fids cannot access a subsequent publication.
+ * Call on the owner thread outside exchange callbacks.
+ * RU: Снять name (NULL для .unibus), отозвать порты и вызвать хуки закрытия.
+ * При отсутствии вернуть INVALID. Старые fid не открывают новую публикацию.
+ * Вызывать в потоке владельца вне колбэков обмена. */
+StyxRpcStatus styxrpc_messages_withdraw(StyxRpcServer *server, const char *name);
 
 
 /* EN: Open a named message root on session (NULL name selects .unibus). Ownership and results match messages_open.
@@ -69,11 +78,11 @@ StyxRpcStatus styxrpc_messages_open_at(struct StyxClient *session, const char *n
     const StyxRpcMessageSpec *spec, StyxRpcMessagePort **out);
 
 
-/* EN: Copy spec and publish the message endpoint before the server's first step.
+/* EN: Copy spec and publish the compatibility message endpoint before the first server step.
  * Return OK or INVALID. The callbacks and their contexts must remain valid through
- * destruction. Use the server owner thread for hooks, sends and receives.
- * RU: Скопировать spec и опубликовать узел сообщений до первого шага сервера.
- * Результат OK либо INVALID. Колбэки и их контексты действуют до уничтожения.
+ * withdrawal or destruction. Use the server owner thread for hooks, sends and receives.
+ * RU: Скопировать spec и опубликовать совместимый узел сообщений до первого шага.
+ * Результат OK либо INVALID. Колбэки и их контексты действуют до отзыва или уничтожения.
  * Хуки, отправка и приём выполняются в потоке владельца сервера. */
 StyxRpcStatus styxrpc_messages_enable(StyxRpcServer *server, const StyxRpcMessageSpec *spec);
 

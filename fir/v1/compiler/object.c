@@ -480,7 +480,7 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     end = actions.n;
     byte(&actions, 0); /* ActionEnd */
-    if (actions.failed || (m->avm1_frame && !frame_end(&actions, frame, frame_body)))
+    if (actions.failed || (m->avm1_frame && !frame_end(&actions, m, frame, frame_body)))
     {
         snprintf(error, cap, "AVM1 action or frame body size limit exceeded");
         goto done;

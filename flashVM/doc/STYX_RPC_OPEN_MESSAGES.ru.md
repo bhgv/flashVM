@@ -2,6 +2,8 @@
 
 [English](STYX_RPC_OPEN_MESSAGES.md) · [Сессия](STYX_RPC_SESSION.ru.md) · [Реализация](../src/styxrpc/session_messages.c)
 
+Публикация корня со стороны FlashVM описана в [publishMessages](STYX_RPC_PUBLISH_MESSAGES.ru.md).
+
 ```actionscript
 var port = styxrpc.openMessages("events", ["app.sample", 1, 47, "onSample"]);
 ```

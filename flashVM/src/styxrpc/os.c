@@ -5,6 +5,7 @@
 #include "os_handles.h"
 #include "session_methods.h"
 #include "managed_values.h"
+#include "module_import.h"
 #include "flashvm/execution.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/styxrpc_module.h"
@@ -28,8 +29,10 @@ static void retire(OsHandle *handle, int deferred)
 {
     styxrpc_vfs_close(handle->file, deferred);
     styxrpc_vfs_dir_close(handle->directory, deferred);
+    styxrpc_vfs_close(handle->module, deferred);
     handle->file = NULL;
     handle->directory = NULL;
+    handle->module = NULL;
 }
 
 
@@ -260,20 +263,21 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
     {
         return FVM_INVALID_ARGUMENT;
     }
-    if (handle->module && handle->directory)
+    if (handle->module)
     {
         StyxRpcModuleExports exports;
         FVM_StyxRpcLoadSpec spec = {0};
         spec.session = handle->movies->session;
         spec.path = handle->path + 1;
-        if (styxrpc_module_exports(spec.session, spec.path, 0, &exports) != STYXRPC_OK)
+        spec.pid = handle->movies->binding->program.pid;
+        if (styxrpc_module_exports_at(handle->module, spec.pid, &exports) != STYXRPC_OK)
         {
             return FVM_NOT_FOUND;
         }
         spec.methods = exports.methods;
         spec.count = exports.count;
         spec.wait_ms = FVM_SESSION_CALL_WAIT_MS;
-        return fvm_styxrpc_module_load(context, &spec, out);
+        return fvm_styxrpc_module_load_at(context, handle->module, &spec, out);
     }
     if (handle->file && fvm_os_extension(handle->path, ".swf"))
     {

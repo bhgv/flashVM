@@ -34,21 +34,18 @@ static FVM_Result raise_status(FVM_Context *context, const char *message)
 }
 
 
-/* EN: Borrow binding from userdata and call once on the context owner thread.
- * RU: Заимствовать binding из userdata и вызвать один раз в потоке владельца. */
-FVM_Result fvm_styxrpc_invoke_int(FVM_Context *context, FVM_Object *self, unsigned int argc,
-    const FVM_Value *argv, FVM_Value *result, void *userdata)
+/* EN/RU: See module_import.h. / См. module_import.h. */
+FVM_Result fvm_styxrpc_int_at(FVM_Context *context, struct StyxFid *directory, const FVM_StyxRpcImport *binding,
+    unsigned argc, const FVM_Value *argv, FVM_Value *result)
 {
-    FVM_StyxRpcImport *binding = userdata;
     int64_t argument;
     int64_t answer;
     StyxRpcOutcome outcome;
-    (void)self;
     if (argc != 1 || !scalar_int(argv, &argument))
     {
         return raise_status(context, "Styx RPC requires one exact int32 argument");
     }
-    outcome = styxrpc_scalar_invoke(binding->session, binding->module, binding->name,
+    outcome = styxrpc_scalar_invoke_at(directory, binding->session, binding->module, binding->name,
         STYXRPC_INT_SIGNATURE, argument, binding->wait_ms, &answer);
     switch (outcome)
     {
@@ -62,6 +59,16 @@ FVM_Result fvm_styxrpc_invoke_int(FVM_Context *context, FVM_Object *self, unsign
     default:
         return raise_status(context, "Styx RPC outcome is uncertain");
     }
+}
+
+
+/* EN: Borrow the registered global binding and resolve its path for this call.
+ * RU: Заимствовать глобальную привязку и разрешить путь для данного вызова. */
+FVM_Result fvm_styxrpc_invoke_int(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *argv, FVM_Value *result, void *userdata)
+{
+    (void)self;
+    return fvm_styxrpc_int_at(context, NULL, userdata, argc, argv, result);
 }
 
 

@@ -9,7 +9,8 @@ The reference retains the original export identity and access mode.
 
 ## Export owned by FlashVM
 
-Include `sys.m`, `styxnamed.m` and `styxmodref.m` in the Limbo application.
+Include `sys.m` and `styxnamed.m` in the Limbo application.
+`styxnamed.m` includes the module reference declarations.
 Load the matching `styxnamed.dis` and `styxmodref.dis` and initialize
 them before opening a channel. The regular DisVM build provides both
 modules. The ordinary `--styx-mount-fd`, `--styx-mount-tcp` and
@@ -65,27 +66,37 @@ bytes at offset zero, in signed big-endian order. Serve those requests
 in a separate Limbo thread when the main program also reads or writes
 through a returned alias.
 
+Capture the local export from Limbo as soon as its publication is ready.
+The path starts at the original exported root. A typed receive returns
+`Message.Modref` with the adopted cell, whose first value operation checks
+that the same path and Qid still identify the export.
+
+```limbo
+pipe := named->open("/dis-module-refs");
+cell := refs->capturelocal("mounted/counter.dis/.var/value", 1);
+pipe.sendvalue(ref Message.Modref(cell));
+pick returned := pipe.recvvalue() {
+Modref =>
+    updated := returned.reference.read();
+    returned.reference.close();
+}
+cell.close();
+pipe.close();
+```
+
 ```actionscript
-var proxy = vfs.intVariable("/mounted/counter.dis/.var/value", true);
 var pipe = vfs.chan("/dis-module-refs");
-var sent = pipe.send(ref proxy.value);
-var returned = pipe.recv();
-returned = 42;
+var alias = pipe.recv();
+alias = 42;
+var sent = pipe.send(ref alias);
 var closed = pipe.delete();
 ```
 
-In the Limbo receiver, call `cell := refs->adopt(pipe.recv())`. The
-first `cell.read()` or `cell.write(value)` matches both the path and
-the Qid your reverse Styx server issued to FlashVM. It opens that
-exact local publication. Return the reference with
-`pipe.send(cell.payload())`. A same-name replacement has a different
-Qid. A held file or a reference that has yet to open can no longer
-access the withdrawn publication. The owner's fd close can complete
-asynchronously. Check that its old entry is gone before reusing its name.
-
-Limbo's `capture` opens the attached FlashVM export. In this direction,
-FlashVM captures the DisVM export with `vfs.intVariable` and Limbo
-receives it with `adopt`.
+A same-name replacement has a different Qid. Withdrawal prevents access
+through both held and deferred references. The owner's fd close can
+complete asynchronously. Check that its old entry is gone before reusing
+its name. A FlashVM receiver can also originate a reference by opening a
+remote DisVM export with `vfs.intVariable()` and sending `ref proxy.value`.
 
 ## Acceptance
 
@@ -105,5 +116,5 @@ the new Qid after withdrawal. Expect `PASS native modref-reverse RPC paired VMs`
 
 ## Reference
 
-- [init](styx-modref-api/init.md), [capture](styx-modref-api/capture.md), [adopt](styx-modref-api/adopt.md).
+- [init](styx-modref-api/init.md), [capture](styx-modref-api/capture.md), [capturelocal](styx-modref-api/capturelocal.md), [adopt](styx-modref-api/adopt.md).
 - [Cell.read](styx-modref-api/read.md), [Cell.write](styx-modref-api/write.md), [Cell.payload](styx-modref-api/payload.md), [Cell.close](styx-modref-api/close.md).

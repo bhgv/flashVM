@@ -33,6 +33,14 @@ struct StyxRpcModuleSlot
  * RU: Под блокировкой имён проверить, пересекается ли путь колбэка с резервом. */
 int styxrpc_slot_claim_conflict(const StyxRpcModuleSlot *slot, const char *path);
 
+/* EN: Reserve absolute path against files and channels in the slot, returning its exact claim.
+ * RU: Зарезервировать абсолютный path для слота, вернув идентификатор резерва. */
+uint64_t styxrpc_slot_claim(void *context, const char *path);
+
+/* EN: Release the reservation identified by context, path and id.
+ * RU: Освободить резерв точных context, path и id. */
+void styxrpc_slot_drop(void *context, const char *path, uint64_t id);
+
 
 /* EN: Release remaining reserved paths after the named dispatchers are gone.
  * RU: Освободить оставшиеся резервы после завершения именованных диспетчеров. */

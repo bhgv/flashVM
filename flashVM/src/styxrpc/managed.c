@@ -30,10 +30,9 @@ FVM_Result fvm_styxrpc_managed_fail(FVM_Context *context, const char *message)
 
 /* [GC:] EN: Encode checked arguments, perform exactly one call and root its decoded result.
  * RU: Закодировать аргументы, выполнить один вызов и удержать декодированный результат. */
-FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, unsigned argc,
-    const FVM_Value *argv, FVM_Value *value, void *state)
+FVM_Result fvm_styxrpc_managed_at(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    unsigned argc, const FVM_Value *argv, FVM_Value *value)
 {
-    const StyxRpcManagedTarget *target = state;
     FVM_GCRootScope *roots;
     unsigned char *buffers;
     unsigned char *reply;
@@ -45,7 +44,6 @@ FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, un
     StyxRpcManagedReply result;
     const char *error = NULL;
     FVM_Result status;
-    (void)self;
     if (!fvm_styxrpc_values_supported(&target->schema))
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC managed schema is unsupported");
@@ -69,7 +67,7 @@ FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, un
         }
         else
         {
-            switch (styxrpc_managed_invoke(target, buffers, size, reply, STYXRPC_MANAGED_LIMIT, &result))
+            switch (styxrpc_managed_invoke_at(directory, target, buffers, size, reply, STYXRPC_MANAGED_LIMIT, &result))
             {
             case STYXRPC_CALL_OK:
                 if (result.void_result)
@@ -106,6 +104,16 @@ FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, un
     }
     free(buffers);
     return error ? fvm_styxrpc_managed_fail(context, error) : status;
+}
+
+
+/* [GC:] EN: Invoke a registered global using its literal mounted target path.
+ * RU: Вызвать зарегистрированную глобальную функцию по её смонтированному пути. */
+FVM_Result fvm_styxrpc_invoke_managed(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *argv, FVM_Value *value, void *state)
+{
+    (void)self;
+    return fvm_styxrpc_managed_at(context, NULL, state, argc, argv, value);
 }
 
 

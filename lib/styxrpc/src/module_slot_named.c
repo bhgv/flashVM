@@ -71,7 +71,7 @@ int styxrpc_slot_claim_conflict(const StyxRpcModuleSlot *slot, const char *path)
  * rendezvous name outside the ordinary file permissions and directory listing.
  * RU: Зарезервировать свободное имя в живом каталоге. Резерв канала действует
  * отдельно от прав записи файлов и перечисления каталога. */
-static uint64_t claim_path(void *context, const char *path)
+uint64_t styxrpc_slot_claim(void *context, const char *path)
 {
     StyxRpcModuleSlot *slot = context;
     uint64_t id = 0, parent;
@@ -116,7 +116,7 @@ static int visible_path(void *context, const char *path, uint64_t id)
 
 /* EN: Drop exactly the last participant's reservation for path and id.
  * RU: Освободить точный резерв последнего участника по path и id. */
-static void drop_path(void *context, const char *path, uint64_t id)
+void styxrpc_slot_drop(void *context, const char *path, uint64_t id)
 {
     StyxRpcModuleSlot *slot = context;
     pthread_mutex_lock(&slot->names);
@@ -150,5 +150,5 @@ void styxrpc_slot_claims_clear(StyxRpcModuleSlot *slot)
 /* EN/RU: See module_slot.h. / См. module_slot.h. */
 StyxRpcNamedRegistry *styxrpc_module_slot_named_registry(StyxRpcModuleSlot *slot)
 {
-    return slot ? styxrpc_named_registry(claim_path, visible_path, drop_path, slot) : NULL;
+    return slot ? styxrpc_named_registry(styxrpc_slot_claim, visible_path, styxrpc_slot_drop, slot) : NULL;
 }

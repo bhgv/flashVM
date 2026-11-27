@@ -375,6 +375,8 @@ int as2_view_compile(const void *bytes,
     labels = 0;
     depth = 0;
     failed = 0;
+    detached_method = 0;
+    asinc_locals_count = 0;
     active = diagnostic;
     Custom_Error = diagnostic_callback;
     view_parser_reset();

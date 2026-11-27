@@ -3,7 +3,7 @@
  * RU: Настоящий mount-provider acceptance через clipped POSIX stream callbacks.
  */
 #define _POSIX_C_SOURCE 200809L
-#include "mount.h"
+#include "detached.h"
 #include "notice.h"
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -27,10 +27,6 @@ typedef struct Stream
     unsigned budget; /* Explicit native test deadline in milliseconds. */
     unsigned calls; /* Send callback count, serialized by native client. */
 } Stream;
-/* EN/RU: Return an owned open fid after discarding its namespace; caller closes it.
- * Вернуть открытый fid после удаления namespace; закрывает вызывающий. */
-DVM_VfsHandle styxtest_detached_open(DVM_Provider *provider);
-
 static unsigned lost; /* Protected native terminal count, published by either transport. */
 static pthread_mutex_t notices = PTHREAD_MUTEX_INITIALIZER; /* Test event lock. */
 static pthread_cond_t arrived = PTHREAD_COND_INITIALIZER; /* Independent native delivery gate. */
@@ -428,11 +424,9 @@ int main(int argc, char **argv)
     StyxClient *client = multiplex ? styxclientmountfd(stream.fd, 1024, "alice",
         !strcmp(argv[2], "prepared") ? "service" : "", stream.budget, 8) :
         styxclientmount(&transport, 1024, "alice", !strcmp(argv[2], "prepared") ? "service" : "");
-    if (!multiplex && client)
-    {
-        check(!styxclientkeepalive(client, 10, 10, 2), "legacy heartbeat falsely accepted");
-    }
-    if (multiplex && client)
+    check(multiplex || !client || !styxclientkeepalive(client, 10, 10, 2), "legacy heartbeat falsely accepted");
+    int union_loss = !strcmp(argv[2], "union-loss");
+    if ((multiplex || union_loss) && client)
     {
         check(styxclientretain(client), "native monitor pin");
     }
@@ -478,6 +472,10 @@ int main(int argc, char **argv)
         {
             deep(provider);
         }
+        else if (union_loss)
+        {
+            styxtest_union_loss(provider);
+        }
         else if (!strcmp(argv[2], "partial"))
         {
             partial(provider);
@@ -486,7 +484,7 @@ int main(int argc, char **argv)
         {
             exceptional(provider, argv[2]);
         }
-        if (multiplex)
+        if (multiplex || union_loss)
         {
             styxclientshutdown(client);
             check(fcntl(stream.fd, F_GETFD) < 0 && errno == EBADF, "fd owner not retired");

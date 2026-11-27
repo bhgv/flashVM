@@ -22,6 +22,8 @@ init()
     if (size <= 0 || size >= len staging - 4) {
         raise "could not read terminal movie";
     }
+    staging[0] = byte (size >> 24);
+    staging[1] = byte (size >> 16);
     staging[2] = byte (size >> 8);
     staging[3] = byte size;
     upload := sys->open("/rpc/.upload", Sys->OWRITE);

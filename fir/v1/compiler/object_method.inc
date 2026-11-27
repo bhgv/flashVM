@@ -33,7 +33,7 @@ static size_t frame_begin(Bytes *b, const FirModule *module, size_t *body)
 
 /* EN: Complete the nested action length and install the handler on the root.
  * RU: Записать длину вложенного блока и установить обработчик на корневом клипе. */
-static int frame_end(Bytes *b, size_t offset, size_t body_begin)
+static int frame_end(Bytes *b, const FirModule *module, size_t offset, size_t body_begin)
 {
     size_t length = b->n - offset - 3;
     size_t body = b->n - body_begin;
@@ -45,6 +45,14 @@ static int frame_end(Bytes *b, size_t offset, size_t body_begin)
     b->data[offset + 2] = (unsigned char)(length >> 8);
     b->data[body_begin - 2] = (unsigned char)body;
     b->data[body_begin - 1] = (unsigned char)(body >> 8);
+    if (module->avm1_asinc)
+    {
+        integer(b, 1); /* Async.wrap takes the anonymous function from the stack. */
+        text(b, "Async");
+        byte(b, 0x1c); /* GetVariable */
+        text(b, "wrap");
+        byte(b, 0x52); /* CallMethod */
+    }
     byte(b, 0x4f); /* SetMember */
     byte(b, 0); /* End initializer, after the frame body already ended. */
     return !b->failed;

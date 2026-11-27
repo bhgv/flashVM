@@ -9,7 +9,8 @@
 
 ## Экспорт владельца FlashVM
 
-Подключите в программе Limbo `sys.m`, `styxnamed.m` и `styxmodref.m`.
+Подключите в программе Limbo `sys.m` и `styxnamed.m`.
+`styxnamed.m` включает объявления ссылок на переменные модулей.
 Загрузите соответствующие `styxnamed.dis` и `styxmodref.dis` и
 инициализируйте их перед открытием канала. Штатная сборка DisVM
 включает оба модуля. Соединение предоставляет обычный запуск через
@@ -64,27 +65,37 @@ var closed = pipe.delete();
 программа читает или пишет через возвращённую ссылку, обслуживайте запросы
 в отдельном потоке Limbo.
 
+После публикации захватите местный экспорт из Limbo. Путь отсчитывается
+от исходного экспортированного корня. Типизированный приём возвращает
+`Message.Modref` с принятой ячейкой. При первом обращении к её значению
+проверяются путь и Qid экспорта.
+
+```limbo
+pipe := named->open("/dis-module-refs");
+cell := refs->capturelocal("mounted/counter.dis/.var/value", 1);
+pipe.sendvalue(ref Message.Modref(cell));
+pick returned := pipe.recvvalue() {
+Modref =>
+    updated := returned.reference.read();
+    returned.reference.close();
+}
+cell.close();
+pipe.close();
+```
+
 ```actionscript
-var proxy = vfs.intVariable("/mounted/counter.dis/.var/value", true);
 var pipe = vfs.chan("/dis-module-refs");
-var sent = pipe.send(ref proxy.value);
-var returned = pipe.recv();
-returned = 42;
+var alias = pipe.recv();
+alias = 42;
+var sent = pipe.send(ref alias);
 var closed = pipe.delete();
 ```
 
-На принимающей стороне Limbo вызовите `cell := refs->adopt(pipe.recv())`.
-Первый вызов `cell.read()` или `cell.write(value)` сверяет путь и Qid,
-которые встречный сервер Styx выдал FlashVM, и открывает точную местную
-публикацию. Верните ссылку вызовом `pipe.send(cell.payload())`.
-У замены под тем же именем другой Qid. Удерживаемый файл и ещё не открытая
-ссылка теряют доступ к отозванной публикации. Закрытие fid владельца может
-завершаться асинхронно. Перед повторной публикацией дождитесь исчезновения
-старой записи.
-
-`capture` в Limbo открывает экспорт подключённой FlashVM. В этом
-направлении FlashVM захватывает экспорт DisVM через `vfs.intVariable`,
-а Limbo принимает его через `adopt`.
+У замены под тем же именем другой Qid. Отзыв закрывает доступ к
+публикации через открытые и ещё не открытые ссылки. Закрытие fid владельца
+может завершаться асинхронно. Перед повторной публикацией дождитесь
+исчезновения старой записи. FlashVM также может открыть удалённый экспорт
+DisVM через `vfs.intVariable()` и передать `ref proxy.value`.
 
 ## Проверка
 
@@ -104,5 +115,5 @@ var closed = pipe.delete();
 
 ## Справка
 
-- [init](styx-modref-api/init.ru.md), [capture](styx-modref-api/capture.ru.md), [adopt](styx-modref-api/adopt.ru.md).
+- [init](styx-modref-api/init.ru.md), [capture](styx-modref-api/capture.ru.md), [capturelocal](styx-modref-api/capturelocal.ru.md), [adopt](styx-modref-api/adopt.ru.md).
 - [Cell.read](styx-modref-api/read.ru.md), [Cell.write](styx-modref-api/write.ru.md), [Cell.payload](styx-modref-api/payload.ru.md), [Cell.close](styx-modref-api/close.ru.md).

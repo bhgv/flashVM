@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct ServerMessagePort ServerMessagePort; /* Owned by an open fid. */
+
 struct MessageService
 {
     MessageConfig config;      /* Fixed server registrations through destroy. */
@@ -14,15 +16,17 @@ struct MessageService
     void (*closed)(StyxRpcMessagePort *, void *); /* Optional owner callback. */
     void *context;             /* Borrowed state shared by the hooks. */
     size_t ports;              /* Live fid count on the dispatcher. */
+    ServerMessagePort *opened_ports; /* Streams to retire during withdrawal. */
 };
 
-typedef struct ServerMessagePort
+struct ServerMessagePort
 {
     StyxRpcMessagePort port;   /* Common stream parser and queue. */
-    MessageService *service;   /* Borrowed through fid release. */
+    MessageService *service;   /* NULL once withdrawn. */
+    ServerMessagePort *next;   /* Next linked open of the same root. */
     uint64_t read_offset;      /* Next position for server-to-client bytes. */
     uint64_t write_offset;     /* Next position for client-to-server bytes. */
-} ServerMessagePort;
+};
 
 /* EN: Reject collisions in the ordinary root before copying spec into owned storage.
  * RU: Отклонить коллизии с обычным корнем до копирования spec в своё хранилище. */
@@ -97,6 +101,8 @@ static int open_messages(void *context, uint64_t node, unsigned access, void **c
         return 0;
     }
     ++service->ports;
+    opened->next = service->opened_ports;
+    service->opened_ports = opened;
     *cookie = opened;
     return 1;
 }
@@ -145,18 +151,52 @@ static int write_messages(void *cookie, uint64_t offset, const void *bytes, size
 }
 
 
-/* EN: Retire cookie, deliver the close hook, and release the fid's storage.
- * RU: Вывести cookie из работы, вызвать хук закрытия и освободить память fid. */
-static void close_messages(void *cookie)
+/* EN: Unlink opened, invalidate its borrowed state, then notify its owner. Retain the fid.
+ * RU: Удалить opened из списка, отозвать заимствованное состояние и известить владельца. */
+static void retire_port(ServerMessagePort *opened)
 {
-    ServerMessagePort *opened = cookie;
     MessageService *service = opened->service;
+    ServerMessagePort **link = &service->opened_ports;
+    while (*link != opened)
+    {
+        link = &(*link)->next;
+    }
+    *link = opened->next;
+    --service->ports;
+    opened->service = NULL;
+    opened->next = NULL;
     opened->port.failed = 1;
+    opened->port.config = NULL;
     if (service->closed)
     {
         service->closed(&opened->port, service->context);
     }
-    --service->ports;
+}
+
+
+/* EN/RU: See message_internal.h. / См. message_internal.h. */
+void styxrpc_message_service_destroy(MessageService *service)
+{
+    if (service)
+    {
+        while (service->opened_ports)
+        {
+            retire_port(service->opened_ports);
+        }
+        free(service);
+    }
+}
+
+
+/* EN: Release the fid's storage, notifying the service only on its first retirement.
+ * RU: Освободить память fid, известив сервис при первом отзыве. */
+static void close_messages(void *cookie)
+{
+    ServerMessagePort *opened = cookie;
+    if (opened->service)
+    {
+        retire_port(opened);
+    }
     free(opened);
 }
 

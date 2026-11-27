@@ -104,7 +104,7 @@ if(STYXRPC_FLASHVM_TEST_HOST)
 endif()
 
 
-foreach(presentation IN ITEMS player window terminal terminal-window)
+foreach(presentation IN ITEMS player window terminal terminal-window debug)
     if(presentation MATCHES "window$")
         set(paired_player "${STYXRPC_FLASHVM_WINDOW_PLAYER}")
     else()
@@ -127,11 +127,11 @@ foreach(presentation IN ITEMS player window terminal terminal-window)
                 ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --flash-host "${paired_player}"
                 --direction "native-${presentation}" ${mode_args})
         set_tests_properties("${test_name}" PROPERTIES TIMEOUT 45)
-        if(presentation STREQUAL "player")
+        if(presentation STREQUAL "player" OR presentation STREQUAL "debug")
             add_test(NAME "${test_name}-tcp"
                 COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/run.py"
                     ${disvm_common} --source "${STYXRPC_DISVM_SOURCE}" --flash-host "${paired_player}"
-                    --direction native-player --tcp ${mode_args})
+                    --direction "native-${presentation}" --tcp ${mode_args})
             set_tests_properties("${test_name}-tcp" PROPERTIES TIMEOUT 45)
         endif()
         if(presentation MATCHES "window$")

@@ -23,6 +23,7 @@ Breakpoint-callback дополнительно допускает изменен
 
 - [fvm_debug_set_breakpoint](#fvm_debug_set_breakpoint) — Устанавливает или снимает breakpoint по имени функции и смещению AVM1.
 - [fvm_debug_set_breakpoint_handler](#fvm_debug_set_breakpoint_handler) — Регистрирует синхронный callback остановки интерпретатора.
+- [fvm_debug_step_action](DEBUG_STEP_ACTION.ru.md) — Запросить остановку перед следующим действием интерпретатора.
 - [fvm_debug_set_location](#fvm_debug_set_location) — Задаёт имя исходника и строку для последующих диагностик ресурсов.
 - [fvm_debug_map_action](#fvm_debug_map_action) — Копирует ручное соответствие функция/AVM1-смещение → исходник/строка.
 - [fvm_debug_mutex_snapshot](#fvm_debug_mutex_snapshot) — Копирует согласованный снимок владельцев/ожидающих мьютексов.
@@ -116,7 +117,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 **Lifetime / время жизни.** The source label is copied. This creates no file loader or source-content ownership.
 
-**Behavior / поведение.** This changes current host location metadata; it does not add an action map or a breakpoint. Use [fvm_debug_map_action](../include/flashvm/debug.h#L79) for persistent body-offset mappings and load_swd for actual source contents.
+**Behavior / поведение.** This changes current host location metadata; it does not add an action map or a breakpoint. Use [fvm_debug_map_action](../include/flashvm/debug.h#L87) for persistent body-offset mappings and load_swd for actual source contents.
 
 
 ## fvm_debug_map_action
@@ -140,7 +141,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutex](../include/flashvm/debug.h#L85) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutex](../include/flashvm/debug.h#L93) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count is still set, rows unchanged); `INVALID_ARGUMENT` for missing count or null array with nonzero capacity.
 
@@ -155,7 +156,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutexDetail](../include/flashvm/debug.h#L113) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutexDetail](../include/flashvm/debug.h#L121) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count is still set, rows unchanged); `INVALID_ARGUMENT` for missing count or null array with nonzero capacity.
 
@@ -185,7 +186,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `channel`: retained endpoint. `out`: required [FVM_DebugChannel](../include/flashvm/debug.h#L127) output struct (identity, pending, capacity, closed, frozen).
+**Parameters / параметры.** `channel`: retained endpoint. `out`: required [FVM_DebugChannel](../include/flashvm/debug.h#L135) output struct (identity, pending, capacity, closed, frozen).
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null inputs; transport, malformed framing, scan-budget or file-position errors otherwise. Failed scans leave output unchanged.
 
@@ -215,7 +216,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned [FVM_DebugChannelWait](../include/flashvm/debug.h#L163) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugChannelWait](../include/flashvm/debug.h#L171) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count updated, rows and queue unchanged); `INVALID_ARGUMENT` for invalid array/count arguments.
 
@@ -230,7 +231,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned [FVM_DebugResourceError](../include/flashvm/debug.h#L184) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugResourceError](../include/flashvm/debug.h#L192) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count updated, rows and queue unchanged); `INVALID_ARGUMENT` for invalid array/count arguments.
 
@@ -876,41 +877,42 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_crash_source_line` | function | [include/flashvm/crash.h:94](../include/flashvm/crash.h#L94) |
 | `FVM_CrashEngine` | enum | [include/flashvm/crash.h:29](../include/flashvm/crash.h#L29) |
 | `FVM_CrashFrame` | struct | [include/flashvm/crash.h:38](../include/flashvm/crash.h#L38) |
-| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:144](../include/flashvm/debug.h#L144) |
-| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:159](../include/flashvm/debug.h#L159) |
-| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:150](../include/flashvm/debug.h#L150) |
-| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:178](../include/flashvm/debug.h#L178) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:152](../include/flashvm/debug.h#L152) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:167](../include/flashvm/debug.h#L167) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:158](../include/flashvm/debug.h#L158) |
+| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:186](../include/flashvm/debug.h#L186) |
 | `fvm_debug_clear_symbols` | function | [include/flashvm/source_debug.h:29](../include/flashvm/source_debug.h#L29) |
 | `fvm_debug_current_source` | function | [include/flashvm/source_debug.h:51](../include/flashvm/source_debug.h#L51) |
 | `fvm_debug_exception_events` | function | [include/flashvm/exception.h:83](../include/flashvm/exception.h#L83) |
 | `fvm_debug_frame_at` | function | [include/flashvm/debug.h:38](../include/flashvm/debug.h#L38) |
 | `fvm_debug_frame_count` | function | [include/flashvm/debug.h:34](../include/flashvm/debug.h#L34) |
 | `fvm_debug_load_swd` | function | [include/flashvm/source_debug.h:24](../include/flashvm/source_debug.h#L24) |
-| `fvm_debug_map_action` | function | [include/flashvm/debug.h:79](../include/flashvm/debug.h#L79) |
-| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:123](../include/flashvm/debug.h#L123) |
-| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:108](../include/flashvm/debug.h#L108) |
-| `fvm_debug_native_function_at` | function | [include/flashvm/debug.h:217](../include/flashvm/debug.h#L217) |
-| `fvm_debug_native_function_at_bytes` | function | [include/flashvm/debug.h:229](../include/flashvm/debug.h#L229) |
-| `fvm_debug_native_function_count` | function | [include/flashvm/debug.h:213](../include/flashvm/debug.h#L213) |
-| `fvm_debug_object_at` | function | [include/flashvm/debug.h:209](../include/flashvm/debug.h#L209) |
-| `fvm_debug_object_count` | function | [include/flashvm/debug.h:205](../include/flashvm/debug.h#L205) |
+| `fvm_debug_map_action` | function | [include/flashvm/debug.h:87](../include/flashvm/debug.h#L87) |
+| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:131](../include/flashvm/debug.h#L131) |
+| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:116](../include/flashvm/debug.h#L116) |
+| `fvm_debug_native_function_at` | function | [include/flashvm/debug.h:225](../include/flashvm/debug.h#L225) |
+| `fvm_debug_native_function_at_bytes` | function | [include/flashvm/debug.h:237](../include/flashvm/debug.h#L237) |
+| `fvm_debug_native_function_count` | function | [include/flashvm/debug.h:221](../include/flashvm/debug.h#L221) |
+| `fvm_debug_object_at` | function | [include/flashvm/debug.h:217](../include/flashvm/debug.h#L217) |
+| `fvm_debug_object_count` | function | [include/flashvm/debug.h:213](../include/flashvm/debug.h#L213) |
 | `fvm_debug_register_name` | function | [include/flashvm/source_debug.h:55](../include/flashvm/source_debug.h#L55) |
-| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:199](../include/flashvm/debug.h#L199) |
-| `fvm_debug_script_function_at` | function | [include/flashvm/debug.h:225](../include/flashvm/debug.h#L225) |
-| `fvm_debug_script_function_at_bytes` | function | [include/flashvm/debug.h:234](../include/flashvm/debug.h#L234) |
-| `fvm_debug_script_function_count` | function | [include/flashvm/debug.h:221](../include/flashvm/debug.h#L221) |
+| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:207](../include/flashvm/debug.h#L207) |
+| `fvm_debug_script_function_at` | function | [include/flashvm/debug.h:233](../include/flashvm/debug.h#L233) |
+| `fvm_debug_script_function_at_bytes` | function | [include/flashvm/debug.h:242](../include/flashvm/debug.h#L242) |
+| `fvm_debug_script_function_count` | function | [include/flashvm/debug.h:229](../include/flashvm/debug.h#L229) |
 | `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:61](../include/flashvm/debug.h#L61) |
 | `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:66](../include/flashvm/debug.h#L66) |
-| `fvm_debug_set_location` | function | [include/flashvm/debug.h:73](../include/flashvm/debug.h#L73) |
+| `fvm_debug_set_location` | function | [include/flashvm/debug.h:81](../include/flashvm/debug.h#L81) |
 | `fvm_debug_source_at` | function | [include/flashvm/source_debug.h:37](../include/flashvm/source_debug.h#L37) |
 | `fvm_debug_source_count` | function | [include/flashvm/source_debug.h:33](../include/flashvm/source_debug.h#L33) |
 | `fvm_debug_source_position` | function | [include/flashvm/source_debug.h:45](../include/flashvm/source_debug.h#L45) |
-| `FVM_DebugChannel` | struct | [include/flashvm/debug.h:127](../include/flashvm/debug.h#L127) |
-| `FVM_DebugChannelWait` | struct | [include/flashvm/debug.h:163](../include/flashvm/debug.h#L163) |
+| `fvm_debug_step_action` | function | [include/flashvm/debug.h:74](../include/flashvm/debug.h#L74) |
+| `FVM_DebugChannel` | struct | [include/flashvm/debug.h:135](../include/flashvm/debug.h#L135) |
+| `FVM_DebugChannelWait` | struct | [include/flashvm/debug.h:171](../include/flashvm/debug.h#L171) |
 | `FVM_DebugFrame` | struct | [include/flashvm/debug.h:16](../include/flashvm/debug.h#L16) |
-| `FVM_DebugMutex` | struct | [include/flashvm/debug.h:85](../include/flashvm/debug.h#L85) |
-| `FVM_DebugMutexDetail` | struct | [include/flashvm/debug.h:113](../include/flashvm/debug.h#L113) |
-| `FVM_DebugResourceError` | struct | [include/flashvm/debug.h:184](../include/flashvm/debug.h#L184) |
+| `FVM_DebugMutex` | struct | [include/flashvm/debug.h:93](../include/flashvm/debug.h#L93) |
+| `FVM_DebugMutexDetail` | struct | [include/flashvm/debug.h:121](../include/flashvm/debug.h#L121) |
+| `FVM_DebugResourceError` | struct | [include/flashvm/debug.h:192](../include/flashvm/debug.h#L192) |
 | `FVM_DebugSourcePosition` | struct | [include/flashvm/source_debug.h:10](../include/flashvm/source_debug.h#L10) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_exception_clear` | function | [include/flashvm/exception.h:74](../include/flashvm/exception.h#L74) |

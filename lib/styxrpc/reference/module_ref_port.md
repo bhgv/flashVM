@@ -13,6 +13,7 @@ its channel once it holds the port.
 | --- | --- | --- |
 | Capture | Write at 0 on an unbound port | Opcode `1`, mode `0` or `1`, then the canonical relative path without NUL |
 | Adopt | Write at 0 on an unbound port | Opcode `2`, followed by the complete named-channel frame including tag 9 |
+| Capture local | Write at 0 on an unbound port | Opcode `3`, then the mode and path as for Capture |
 | Get | Read at 0 on a bound port | Exactly 4 bytes, signed Int32 in big-endian order |
 | Set | Write at 0 on a writable bound port | Exactly 4 replacement bytes in big-endian order |
 | Forward | Read at 4 or greater on a bound port | Counted by read extent. The full descriptor starts at 4 and ends at EOF. |
@@ -21,6 +22,8 @@ Capture opens the original remote fid and constructs a descriptor from
 its Qid. Adopt copies and verifies a descriptor without calling the
 issuer. Use [paired open](module_ref_port_open_paired.md) to also admit
 descriptors for an export owned by the local endpoint.
+Use [owned open](module_ref_port_open_owned.md) to originate these local
+references with the same Qid a peer sees.
 The first Get or Set on an adopted port opens the exact export and
 checks its Qid. If that export has been withdrawn or replaced, the
 request fails. Forward reads only the cached frame.

@@ -4,7 +4,6 @@
 implement Client;
 include "sys.m";
 include "styxnamed.m";
-include "styxmodref.m";
 include "styxnodes.m";
 
 Client: module { init: fn(); };
@@ -14,6 +13,7 @@ refs: Styxmodref; # Exact Int32 reference handles.
 nodes: Styxnodes; # Guest-owned positioned export.
 Cell: import refs;
 Port: import named;
+Message: import named;
 Node: import nodes;
 Export: con "/mounted/counter.dis/.var/value"; # Reused after withdrawing the original.
 
@@ -119,6 +119,19 @@ expect(pipe: ref Port, expected: string)
 }
 
 
+# EN: Receive and type-check an exact module reference through the named value API.
+# RU: Принять и проверить тип точной ссылки через API значений именованных каналов.
+recvref(pipe: ref Port): ref Cell
+{
+    pick item := pipe.recvvalue() {
+    Modref =>
+        return item.reference;
+    * =>
+        raise "expected module reference, received a different named value";
+    }
+}
+
+
 # EN: Wait for the FD close worker to remove the exact callback publication.
 # RU: Дождаться снятия точной публикации потоком закрытия FD.
 wait_retired()
@@ -153,11 +166,10 @@ init()
     node := nodes->publishat(Export, "rw", big 4);
     done := chan of int;
     spawn serve(node, 41, 8, done);
-    start("modref-reverse.swf");
-    wire := pipe.recv();
-    observe := pipe.recv();
-    cell := refs->adopt(wire);
-    observer := refs->adopt(observe);
+    cell := refs->capturelocal(Export[1:], 1);
+    observer := refs->capturelocal(Export[1:], 0);
+    wire := cell.payload();
+    observe := observer.payload();
     unopened := refs->adopt(observe);
     wrongpath := array[len wire] of byte;
     wrongpath[0:] = wire;
@@ -167,14 +179,20 @@ init()
         raise "initial value, exact pathname or read-only permissions differ";
     }
     wrong.close();
+    start("modref-reverse.swf");
+    pipe.sendvalue(ref Message.Modref(cell));
+    pipe.sendvalue(ref Message.Modref(observer));
+    returned := recvref(pipe);
+    returnedObserver := recvref(pipe);
     maximum := 2147483647;
     minimum := -2147483647-1;
-    cell.write(maximum);
-    if (observer.read() != maximum || !same(cell.payload(), wire) || !same(observer.payload(), observe)) {
+    returned.write(maximum);
+    if (returnedObserver.read() != maximum || !same(returned.payload(), wire) ||
+        !same(returnedObserver.payload(), observe)) {
         raise "write-through or original reference frame differs";
     }
-    pipe.send(cell.payload());
-    pipe.send(observer.payload());
+    pipe.sendvalue(ref Message.Modref(returned));
+    pipe.sendvalue(ref Message.Modref(returnedObserver));
     expect(pipe, "41,2147483647,-2147483648");
     pipe.close();
     if (cell.read() != minimum || <-done != minimum) {
@@ -184,7 +202,8 @@ init()
     wait_retired();
     fresh := nodes->publishat(Export, "r", big 4);
     spawn serve(fresh, 77, 2, done);
-    if (readable(cell) || readable(observer) || readable(unopened)) {
+    if (readable(cell) || readable(observer) || readable(unopened) ||
+        readable(returned) || readable(returnedObserver)) {
         raise "the replacement admitted a stale module reference";
     }
     ready := sys->create("/module-ref-replacement", Sys->OWRITE, 8r666);
@@ -192,17 +211,22 @@ init()
         raise sys->sprint("cannot signal replacement: %r");
     }
     ready = nil;
+    freshCell := refs->capturelocal(Export[1:], 0);
+    replacement.sendvalue(ref Message.Modref(freshCell));
     expect(replacement, "value=77");
-    frame := replacement.recv();
-    alias := refs->adopt(frame);
+    alias := recvref(replacement);
+    frame := alias.payload();
     if (same(observe[5:13], frame[5:13]) || alias.read() != 77 || writable(alias) || <-done != 77) {
         raise "replacement Qid, value or permissions differ";
     }
     replacement.close();
     alias.close();
+    freshCell.close();
     fresh.close();
     unopened.close();
     observer.close();
     cell.close();
+    returnedObserver.close();
+    returned.close();
     sys->print("PASS native modref-reverse RPC paired VMs\n");
 }

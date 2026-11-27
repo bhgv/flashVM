@@ -67,10 +67,9 @@ static int read_graph(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs
 
 /* [GC:] EN: Encode once, exchange one graph, then validate and commit under roots.
  * RU: Однократно кодировать и обменять граф, затем проверить и применить под GC-корнями. */
-FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsigned argc,
-    const FVM_Value *argv, FVM_Value *out, void *userdata)
+FVM_Result fvm_styxrpc_graph_at(FVM_Context *context, struct StyxFid *directory, const StyxRpcManagedTarget *target,
+    unsigned argc, const FVM_Value *argv, FVM_Value *out)
 {
-    const StyxRpcManagedTarget *target = userdata;
     FVM_StyxRefs refs = {0};
     FVM_GCRootScope *roots;
     FVM_SRecord arguments;
@@ -78,7 +77,6 @@ FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsi
     unsigned char *buffer;
     const char *error = NULL;
     FVM_Result status;
-    (void)self;
     if (!fvm_styxrpc_graph_supported(&target->schema))
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC graph schema is unsupported");
@@ -102,7 +100,7 @@ FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsi
         }
         else
         {
-            switch (styxrpc_graph_invoke(target, buffer, arguments.size, buffer + STYXRPC_MANAGED_LIMIT,
+            switch (styxrpc_graph_invoke_at(directory, target, buffer, arguments.size, buffer + STYXRPC_MANAGED_LIMIT,
                 STYXRPC_MANAGED_LIMIT, &reply))
             {
             case STYXRPC_CALL_OK:
@@ -127,6 +125,16 @@ FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsi
     graph_clear(&refs);
     free(buffer);
     return error ? fvm_styxrpc_managed_fail(context, error) : status;
+}
+
+
+/* [GC:] EN: Invoke a registered global using its literal mounted target path.
+ * RU: Вызвать зарегистрированную глобальную функцию по её смонтированному пути. */
+FVM_Result fvm_styxrpc_invoke_graph(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *argv, FVM_Value *out, void *userdata)
+{
+    (void)self;
+    return fvm_styxrpc_graph_at(context, NULL, userdata, argc, argv, out);
 }
 
 

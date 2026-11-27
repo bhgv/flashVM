@@ -1,6 +1,6 @@
 # Cell.getvalue
 
-[English](getvalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m#L63) · [Реализация](../../limbo/styxnamed.b#L300)
+[English](getvalue.md) · [Руководство](../STYX-NAMED-VALUES.ru.md) · [Объявление](../../module/styxnamed.m) · [Реализация](../../limbo/styxnamed.b)
 
 ```limbo
 Cell.getvalue(): ref Styxvalue->Value
