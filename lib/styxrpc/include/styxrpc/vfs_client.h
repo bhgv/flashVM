@@ -232,6 +232,28 @@ StyxRpcIoOutcome styxrpc_vfs_int_open_identified(struct StyxClient *session, con
 StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value);
 StyxRpcIoOutcome styxrpc_vfs_int_write(StyxRpcVfsFile *file, int32_t value);
 
+
+/* EN: Open and check one .var leaf with optional stop(state). Publish its owned
+ * fid in out and optional Qid.path in identity only after the post-open stat.
+ * RU: Открыть и проверить файл .var с проверкой stop(state). Выдать собственный
+ * fid в out и необязательный Qid.path в identity после stat открытого файла. */
+StyxRpcIoOutcome styxrpc_vfs_int_open_identified_until(struct StyxClient *session, const char *path,
+    int writable, StyxRpcVfsFile **out, uint64_t *identity, StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Read one signed Int32 from a borrowed exact fid while polling stop(state).
+ * Preserve value on failure. Serialize operations and close on file.
+ * RU: Прочитать Int32 из заимствованного точного fid с проверкой stop(state).
+ * При отказе сохранить value. Согласовать операции и закрытие file. */
+StyxRpcIoOutcome styxrpc_vfs_int_read_until(StyxRpcVfsFile *file, int32_t *value, StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Write one signed Int32 on borrowed file with optional stop(state).
+ * Preserve uncertainty when a submitted write loses acknowledgement.
+ * RU: Записать Int32 в заимствованный file с проверкой stop(state).
+ * Сохранить неопределённость при потере подтверждения отправленной записи. */
+StyxRpcIoOutcome styxrpc_vfs_int_write_until(StyxRpcVfsFile *file, int32_t value, StyxRpcVfsStop stop, void *state);
+
 #ifdef __cplusplus
 }
 #endif

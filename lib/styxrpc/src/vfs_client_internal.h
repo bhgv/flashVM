@@ -87,6 +87,14 @@ StyxRpcIoOutcome styxrpc_vfs_exchange_open(struct StyxClient *session, const cha
 StyxRpcIoOutcome styxrpc_vfs_open_directory_fid(StyxClient *session, const char *path,
     StyxRpcVfsWait *wait, StyxFid **out);
 
+/* EN: Open a validated .var leaf with read or read/write access, borrowing
+ * session and wait. Transfer the opened fid in out only on success.
+ * RU: Открыть проверенный файл .var на чтение либо чтение и запись.
+ * Заимствовать session и wait. Передать открытый fid только при успехе. */
+StyxRpcIoOutcome styxrpc_vfs_open_variable_fid(StyxClient *session, const char *path,
+    int writable, StyxRpcVfsWait *wait, StyxFid **out);
+
+
 /* EN/RU: Identify hidden metadata. / Определить скрытые метаданные. */
 int styxrpc_vfs_service_meta(const StyxMeta *);
 

@@ -35,6 +35,13 @@ int styxrpc_int_ref_decode(const void *bytes, size_t size, StyxRpcIntRef *out);
  * RU: Открыть точную живую ячейку в сессии владельца. Вызывающий владеет возвращённым fid. */
 StyxRpcIoOutcome styxrpc_int_ref_open(struct StyxClient *issuer, const StyxRpcIntRef *ref, StyxRpcVfsFile **out);
 
+/* EN: Open a borrowed descriptor on issuer while polling stop(state).
+ * Require the opened Qid to carry the issuing PID. On success out owns the fid.
+ * RU: Открыть заимствованный дескриптор в issuer с проверкой stop(state).
+ * Проверить PID выдавшей стороны в Qid. При успехе out владеет fid. */
+StyxRpcIoOutcome styxrpc_int_ref_open_until(struct StyxClient *issuer,
+    const StyxRpcIntRef *ref, StyxRpcVfsFile **out, StyxRpcVfsStop stop, void *state);
+
 
 /* EN: Publish one temporary process cell. Borrow callbacks until revoke or server teardown.
  * RU: Опубликовать временную ячейку процесса. Заимствовать колбэки до отзыва или остановки сервера. */

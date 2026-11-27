@@ -2,6 +2,8 @@
 
 [English](README.md) · [libstyxrpc](../README.ru.md)
 
+[Парный пример FlashVM и DisVM](disvm/INT32_REFERENCES.ru.md). Отмена операций с Int32, проверка Qid и восстановление после неподтверждённой записи.
+
 ## Общие ячейки в C и Limbo
 
 [Общие ячейки в C и Limbo](shared-cell/README.ru.md). Проследите, как сервис и гость передают ссылку, отменяют присваивание, подтверждают

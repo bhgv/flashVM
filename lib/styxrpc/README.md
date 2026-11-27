@@ -177,6 +177,10 @@ byte request and reply on a path published by the peer.
 [Paired module references](reference/module_refs.md) carry the identity
 and access mode of a live mounted Int32 export through that service.
 
+The Int32 API supports cancellable [identified open](reference/vfs_int_open_identified_until.md),
+[read](reference/vfs_int_read_until.md) and [write](reference/vfs_int_write_until.md).
+Use [cancellable PID resolution](reference/int_ref_open_until.md) for process grants.
+[Runnable FlashVM and DisVM example](examples/disvm/INT32_REFERENCES.md).
 
 ## Name, Qid and fid
 

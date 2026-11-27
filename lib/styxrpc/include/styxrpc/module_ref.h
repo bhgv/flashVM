@@ -48,6 +48,13 @@ int styxrpc_module_ref_decode(const void *bytes, size_t size, const void *scope,
 StyxRpcIoOutcome styxrpc_module_ref_open_remote(struct StyxClient *issuer,
     const StyxRpcModuleRef *ref, StyxRpcVfsFile **out);
 
+/* EN: Open a borrowed descriptor on issuer while polling stop(state).
+ * Require the full Qid.path of the issuing publication. On success out owns the fid.
+ * RU: Открыть заимствованный дескриптор в issuer с проверкой stop(state).
+ * Проверить полный Qid.path выдавшей публикации. При успехе out владеет fid. */
+StyxRpcIoOutcome styxrpc_module_ref_open_remote_until(struct StyxClient *issuer,
+    const StyxRpcModuleRef *ref, StyxRpcVfsFile **out, StyxRpcVfsStop stop, void *state);
+
 
 /* EN: Open the exact live slot export on its owner. out must be zeroed.
  * RU: Открыть точный живой экспорт слота у владельца. out изначально обнулён. */

@@ -29,6 +29,11 @@ raises an exception. A movie-owner call can wait between frames. In an
 attachment to the incoming cell. A successful rendezvous may already
 have consumed the descriptor before cancellation.
 
+A remote module Int32 reference opens the original export on its first read
+or assignment. These operations support cancellation in an `asinc` task.
+References to local exports use the movie context.
+[Runnable FlashVM and DisVM example](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.md).
+
 ## Example
 
 The sender publishes a numeric cell with

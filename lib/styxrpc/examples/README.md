@@ -2,6 +2,8 @@
 
 [Русский](README.ru.md) · [libstyxrpc](../README.md)
 
+[Runnable FlashVM and DisVM example](disvm/INT32_REFERENCES.md). Cancel Int32 operations, check the Qid and recover after an unacknowledged write.
+
 ## Shared value cells in C and Limbo
 
 [Shared value cells in C and Limbo](shared-cell/README.md). Follow a real host and guest through reference transfer, cancelled assignment,

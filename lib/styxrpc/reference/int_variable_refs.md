@@ -20,6 +20,9 @@ owned fid. Release it with `styxrpc_vfs_close`. Read or write through
 `styxrpc_int_ref_revoke` invalidates held fids. Issue and revoke outside server
 callbacks. Slot reuse assigns a fresh PID.
 
+Use [cancellable PID resolution](int_ref_open_until.md), [read](vfs_int_read_until.md)
+and [write](vfs_int_write_until.md) to stop pending access.
+
 FlashVM's `styxrpc.acceptIntRef(bytes)` returns a reference that can bind a new
 name. Reads and writes via that name access the owner.
 `styxrpc.intRefBytes(ref alias)` returns the original bytes for forwarding

@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_open
 
-[Русский](vfs_int_open.ru.md) · [API](../include/styxrpc/vfs_client.h) · [Source](../src/vfs_client.c) · [Guide](../MODULES.md)
+[Русский](vfs_int_open.ru.md) · [API](../include/styxrpc/vfs_client.h#L221) · [Source](../src/vfs_int.c#L53) · [Guide](../MODULES.md)
 
 `StyxRpc::launch`
 
@@ -11,4 +11,6 @@ StyxRpcIoOutcome styxrpc_vfs_int_open(struct StyxClient *session, const char *pa
 
 ## Contract
 
-Open a known relative `.var/name` cell path, including a host-authorized path under `.prog`. The SDK checks that the fid refers to a regular four-byte cell. Set `writable` to 0 for read-only or 1 for read/write. Success stores the held fid in `out` and returns `STYXRPC_IO_OK`. A refused path, mode or stat returns `STYXRPC_IO_NOT_OPEN`. Close a successful fid through the [VFS close API](vfs_close.md). Calls use the session deadline.
+Open a known relative `.var/name` cell path, including a host-authorized path under `.prog`. The SDK checks that the fid refers to a regular four-byte cell. Set `writable` to 0 for read-only or 1 for read/write. Success stores the held fid in `out` and returns `STYXRPC_IO_OK`. A refused path, mode or initial stat returns `STYXRPC_IO_NOT_OPEN`. Failure to stat or verify the opened four-byte file returns `STYXRPC_IO_FAILED`. Close a successful fid through the [VFS close API](vfs_close.md). Calls use the session deadline.
+
+[Cancellable form](vfs_int_open_identified_until.md).

@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_open_identified
 
-[English](vfs_int_open_identified.md) · [API](../include/styxrpc/vfs_client.h#L138) · [Исходник](../src/vfs_client.c#L313) · [Руководство](module_refs.ru.md)
+[English](vfs_int_open_identified.md) · [API](../include/styxrpc/vfs_client.h#L226) · [Исходник](../src/vfs_int.c#L45) · [Руководство](module_refs.ru.md)
 
 `StyxRpc::launch`
 
@@ -14,3 +14,5 @@ StyxRpcIoOutcome styxrpc_vfs_int_open_identified(struct StyxClient *session,
 Передайте подключённую `session` и относительный путь `path` типизированной переменной, например `mounted/counters.dis/.var/count`. Режим `writable` равен 0 для чтения или 1 для чтения и записи. При успехе результат `STYXRPC_IO_OK`, `out` получает собственный fid, а `identity` получает Qid.path из той же операции stat, если указатель задан. NULL вместо `identity` даёт поведение обычного [открытия](vfs_int_open.ru.md).
 
 Неверные аргументы или отказ walk либо open дают `STYXRPC_IO_NOT_OPEN`. Отказ stat или размер, отличный от четырёх байтов, дают `STYXRPC_IO_FAILED`. В обоих случаях результаты сохраняются. Вызов использует сроки запросов сессии. Полученный fid освобождается через [закрытие](vfs_close.ru.md).
+
+[Вариант с отменой](vfs_int_open_identified_until.ru.md).

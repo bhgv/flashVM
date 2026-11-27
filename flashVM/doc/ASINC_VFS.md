@@ -50,9 +50,16 @@ fid. If the provider accepted the write, the name can remain visible until
 that fid closes or while other participants still hold it.
 `send(value)` and `recv()` can wait while the movie advances. When a
 rendezvous races cancellation the peer may already have accepted the value.
-The task can exchange snapshots and named cell descriptors. References
-to module exports require owner processing.
+The task can exchange snapshots and reference descriptors.
 [SDK enrollment API](../../lib/styxrpc/reference/named_open_until.md).
+
+A task can `recv()` a [remote module Int32 reference](../../lib/styxrpc/reference/module_refs.md).
+Its first access opens the original export and checks the complete Qid.
+`cancel()` interrupts open, verification, read or assignment. A submitted
+write can remain visible at the owner. To inspect it, open the original
+reference in a fresh task and read the current value. Local FlashVM
+exports are accessed by the movie thread.
+[Runnable FlashVM and DisVM example](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.md).
 
 When `recv()` returns a shared cell, the task can cancel while attaching
 to its descriptor or while reading or assigning through the reference.

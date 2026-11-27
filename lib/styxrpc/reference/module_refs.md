@@ -46,6 +46,12 @@ and [close](vfs_close.md). Both opens require the same Qid.path. An application
 can defer the remote open until first access so it can finish rendezvous
 with a waiting owner before making VFS requests.
 
+Use [cancellable open](module_ref_open_remote_until.md), [read](vfs_int_read_until.md)
+and [write](vfs_int_write_until.md) when an SDK operation must respond to stop.
+After interrupting a pending request, retire its fid and reopen the original
+descriptor if needed. A replacement publication has its own Qid.
+[Runnable FlashVM and DisVM example](../examples/disvm/INT32_REFERENCES.md).
+
 ## Frame layout
 
 The named frame begins with one byte containing 9

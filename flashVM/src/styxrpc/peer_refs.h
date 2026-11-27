@@ -12,7 +12,7 @@ typedef struct FVM_PeerRefs
     StyxRpcNamedPeer *host;         /* Forward on-demand capability, or NULL on reverse. */
     unsigned lane;                 /* Local publication's ordinary service lane. */
     int enabled;                   /* Attached client verified a valid scope file. */
-    int local_exports_only;        /* Older Dis peers advertise Flash-owned exports only. */
+    int local_exports_only;        /* Peer supports only local exports. Guard later changes with the registry lock. */
     unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE]; /* Client copy of the shared scope. */
 } FVM_PeerRefs;
 #endif

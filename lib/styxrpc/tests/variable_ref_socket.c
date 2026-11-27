@@ -85,6 +85,15 @@ static void *serve(void *server)
 }
 
 
+/* EN: Request cancellation before the first wire operation.
+ * RU: Запросить отмену до первой операции по протоколу. */
+static int stopped(void *state)
+{
+    (void)state;
+    return 1;
+}
+
+
 /* EN: Open both ends of a forwarded reference and check live read-after-write.
  * RU: Открыть ссылку и её пересланную копию, проверить чтение после записи. */
 static int exchange(StyxRpcServer *server, StyxClient *client, Exchange *test)
@@ -100,10 +109,14 @@ static int exchange(StyxRpcServer *server, StyxClient *client, Exchange *test)
     int good = styxrpc_messages_open_at(client, "refs", &spec, &port) == STYXRPC_OK &&
         styxrpc_messages_pump(port) == STYXRPC_OK &&
         styxrpc_int_ref_open(client, &test->received, &first) == STYXRPC_IO_OK &&
-        styxrpc_int_ref_encode(&test->received, bytes, sizeof(bytes)) &&
+        (denied = first) != NULL &&
+        styxrpc_int_ref_open_until(client, &test->received, &denied, stopped, NULL) == STYXRPC_IO_CANCELLED &&
+        denied == first;
+    denied = NULL;
+    good = good && styxrpc_int_ref_encode(&test->received, bytes, sizeof(bytes)) &&
         styxrpc_message_send(port, "test.variable-ref", 1, bytes, sizeof(bytes)) == STYXRPC_OK &&
         styxrpc_messages_pump(port) == STYXRPC_MORE &&
-        styxrpc_int_ref_open(client, &test->received, &second) == STYXRPC_IO_OK &&
+        styxrpc_int_ref_open_until(client, &test->received, &second, NULL, NULL) == STYXRPC_IO_OK &&
         styxrpc_vfs_int_write(first, -225) == STYXRPC_IO_OK &&
         styxrpc_vfs_int_read(second, &value) == STYXRPC_IO_OK && value == -225 &&
         !styxrpc_program_server_revoke(server, test->received.pid) &&

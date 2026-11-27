@@ -3,6 +3,7 @@
  * RU: Монтирование peer без блокировки владельца встречного сервера Styx.
  */
 #include "player_peer.h"
+#include "../../ports/channel_sync.h"
 #include "../../ports/monotonic_port.h"
 #include "../../ports/network_port.h"
 #include "../../ports/thread_port.h"
@@ -235,7 +236,9 @@ static void dis_attach(void *state, const char *name)
     FVM_PeerRefs *refs = state;
     if (!strcmp(name, STYXRPC_MODULE_REF_BOTH_ATTACH))
     {
+        fvm_port_registry_lock();
         refs->local_exports_only = 0;
+        fvm_port_registry_unlock();
     }
 }
 

@@ -6,7 +6,6 @@
 #include "client.h"
 #include "vfs_client_internal.h"
 #include "message_internal.h"
-#include "styxrpc/variable_file.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -393,16 +392,9 @@ StyxRpcIoOutcome styxrpc_vfs_open_directory_fid(StyxClient *session, const char 
 }
 
 
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_open(StyxClient *session, const char *path, int writable, StyxRpcVfsFile **out)
-{
-    return styxrpc_vfs_int_open_identified(session, path, writable, out, NULL);
-}
-
-
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_open_identified(StyxClient *session, const char *path,
-    int writable, StyxRpcVfsFile **out, uint64_t *identity)
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxRpcIoOutcome styxrpc_vfs_open_variable_fid(StyxClient *session, const char *path,
+    int writable, StyxRpcVfsWait *wait, StyxFid **out)
 {
     if (!out || (writable != 0 && writable != 1) || !relative_path(path, 1))
     {
@@ -418,82 +410,6 @@ StyxRpcIoOutcome styxrpc_vfs_int_open_identified(StyxClient *session, const char
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxFid *fid = NULL;
-    StyxRpcVfsWait wait = {0};
-    if (open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ,
-        0, VFS_VARIABLE_PATH, &wait, &fid) != STYXRPC_IO_OK)
-    {
-        return STYXRPC_IO_NOT_OPEN;
-    }
-    StyxMeta info;
-    if (!styxclientstat(fid, &info) || info.length != STYX_VARIABLE_INT_SIZE)
-    {
-        styxclientclunk(fid);
-        return STYXRPC_IO_FAILED;
-    }
-    if (identity)
-    {
-        *identity = info.identity;
-    }
-    *out = fid;
-    return STYXRPC_IO_OK;
-}
-
-
-/* EN: Copy a checked native decoded value into the caller's int.
- * RU: Скопировать проверенное нативное значение в int вызывающего. */
-static int store_int(void *state, int32_t value)
-{
-    *(int32_t *)state = value;
-    return 1;
-}
-
-
-/* EN: Return the borrowed native int without side effects.
- * RU: Вернуть заимствованный нативный int без побочных эффектов. */
-static int load_int(void *state, int32_t *value)
-{
-    *value = *(const int32_t *)state;
-    return 1;
-}
-
-
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value)
-{
-    if (!file || !value)
-    {
-        return STYXRPC_IO_NOT_OPEN;
-    }
-    unsigned char bytes[STYX_VARIABLE_INT_SIZE];
-    StyxTransfer part;
-    styxclientread(file, 0, bytes, sizeof(bytes), &part);
-    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, sizeof(bytes));
-    if (status != STYXRPC_IO_OK)
-    {
-        return status;
-    }
-    const StyxIntVariable copy = {value, NULL, store_int};
-    return styxintvariablewrite(&copy, 0, bytes, part.count) ? STYXRPC_IO_OK : STYXRPC_IO_FAILED;
-}
-
-
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_write(StyxRpcVfsFile *file, int32_t value)
-{
-    if (!file)
-    {
-        return STYXRPC_IO_NOT_OPEN;
-    }
-    const StyxIntVariable copy = {&value, load_int, NULL};
-    unsigned char bytes[STYX_VARIABLE_INT_SIZE];
-    size_t size = sizeof(bytes);
-    if (!styxintvariableread(&copy, 0, bytes, &size) || size != sizeof(bytes))
-    {
-        return STYXRPC_IO_FAILED;
-    }
-    StyxTransfer part;
-    styxclientwrite(file, 0, bytes, size, &part);
-    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, size);
-    return status == STYXRPC_IO_OK && part.count != size ? STYXRPC_IO_FAILED : status;
+    return open_entry(session, path, writable ? STYXRPC_FILE_RDWR : STYXRPC_FILE_READ,
+        0, VFS_VARIABLE_PATH, wait, out);
 }

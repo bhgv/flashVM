@@ -1,5 +1,23 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1818 — cancel exact Int32 reference resolution and access
+
+FlashVM tasks can receive a DisVM-owned module variable and cancel
+while opening or checking its exact fid, reading the signed Int32
+or assigning a new value. The hosted C SDK uses the same operations
+for path and temporary PID references. An unacknowledged assignment
+can persist. Reopening a module reference still requires its original
+Qid, including after replacement at the same path.
+
+Задачи FlashVM принимают ссылку на переменную модуля DisVM и
+могут прервать открытие и проверку точного fid, чтение Int32 или
+присваивание. Хостовый SDK C использует те же операции для путей
+и ссылок с временным PID. Неподтверждённая запись может сохраниться.
+Повторное открытие ссылки требует исходный Qid даже после замены
+по тому же пути.
+[EN](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.md) ·
+[RU](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.ru.md).
+
 ## v0.1817 — document shared-cell APIs and demonstrate a real C/Limbo exchange
 
 The function references specify exact parameter units, output ownership,

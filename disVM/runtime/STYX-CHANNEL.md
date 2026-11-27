@@ -66,3 +66,6 @@ on ordinary callback files while separate requests are pending on
 one session. [VFS in tasks](../../flashVM/doc/ASINC_VFS.md)
 
 [Typed named-channel values and live cells](STYX-NAMED-VALUES.md) use the same paired namespace.
+[Int32 export example](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.md) shows a Limbo owner,
+a cancellable FlashVM task and recovery using the original Qid.
+[Русский](../../lib/styxrpc/examples/disvm/INT32_REFERENCES.ru.md).

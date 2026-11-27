@@ -317,14 +317,20 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
         styxrpc_scalar_invoke_at(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 12, 1000, &echoed) ==
             STYXRPC_CALL_OK && echoed == 12 &&
         styxrpc_vfs_int_open_identified(client, old.path, 1, &view, &old.node) == STYXRPC_IO_OK &&
-        styxrpc_module_ref_open_remote(client, &old, &alias) == STYXRPC_IO_OK &&
+        (denied = view) != NULL &&
+        styxrpc_module_ref_open_remote_until(client, &old, &denied, stop_at, NULL) == STYXRPC_IO_CANCELLED &&
+        denied == view;
+    denied = NULL;
+    good = good && styxrpc_module_ref_open_remote_until(client, &old, &alias, NULL, NULL) == STYXRPC_IO_OK &&
+        styxrpc_vfs_int_write_until(view, -123, stop_at, NULL) == STYXRPC_IO_CANCELLED &&
         styxrpc_vfs_int_read(alias, &value) == STYXRPC_IO_OK && value == -73 &&
         styxrpc_vfs_int_write(alias, -4) == STYXRPC_IO_OK &&
         styxrpc_vfs_int_read(view, &value) == STYXRPC_IO_OK && value == -4 &&
         restart(client) && read_scope(pid) &&
         styxrpc_vfs_int_read(alias, &value) != STYXRPC_IO_OK;
     old.writable = 0;
-    good = good && styxrpc_module_ref_open_remote(client, &old, &denied) == STYXRPC_IO_NOT_OPEN && !denied &&
+    good = good && styxrpc_module_ref_open_remote_until(client, &old, &denied, NULL, NULL) == STYXRPC_IO_NOT_OPEN &&
+        !denied &&
         styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_INVALID &&
         styxrpc_scalar_invoke_at(image, client, MODULE_PATH, "echo", STYXRPC_INT_SIGNATURE, 15, 1000, &echoed) ==
             STYXRPC_CALL_NOT_SENT && echoed == 12 &&

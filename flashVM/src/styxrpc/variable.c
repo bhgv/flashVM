@@ -7,6 +7,7 @@
 #include "flashvm/userdata.h"
 #include "managed_values.h"
 #include "variable_ref_adapter.h"
+#include "wire_wait.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -43,23 +44,25 @@ static void release_variable(void *state)
 }
 
 
-/* [ASINC] EN: On first use, resolve a returned remote alias on its original mount.
- * RU: При первом обращении разрешить возвращённую ссылку в исходном подключении. */
-static int remote_ready(IntBinding *binding)
+/* [ASINC] EN: Open the original Qid under binding's issuing mount on first
+ * access, using stop(state) if provided. Preserve the binding on failure.
+ * RU: При первом обращении открыть исходный Qid в сессии binding с
+ * необязательным stop(state). При отказе сохранить привязку. */
+static StyxRpcIoOutcome remote_ready(IntBinding *binding, StyxRpcVfsStop stop, void *state)
 {
     StyxRpcModuleRef ref = {0};
     if (binding->file)
     {
-        return 1;
+        return STYXRPC_IO_OK;
     }
     if (!binding->path || !binding->node)
     {
-        return 0;
+        return STYXRPC_IO_NOT_OPEN;
     }
     ref.node = binding->node;
     ref.writable = binding->writable;
     strcpy(ref.path, binding->path);
-    return styxrpc_module_ref_open_remote(binding->mount, &ref, &binding->file) == STYXRPC_IO_OK;
+    return styxrpc_module_ref_open_remote_until(binding->mount, &ref, &binding->file, stop, state);
 }
 
 
@@ -69,14 +72,35 @@ static FVM_Result read_variable(FVM_Context *context, FVM_Object *self, unsigned
     const FVM_Value *args, FVM_Value *out, void *state)
 {
     IntBinding *binding = state;
+    StyxRpcIoOutcome status;
     int32_t value;
     (void)self;
     (void)args;
-    if (argc || (binding->local.ops ?
-        styxrpc_module_ref_read_local(&binding->local, &value) != STYXRPC_OK :
-        !remote_ready(binding) || styxrpc_vfs_int_read(binding->file, &value) != STYXRPC_IO_OK))
+    if (argc)
     {
         return fvm_styxrpc_managed_fail(context, "Styx RPC variable read failed");
+    }
+    if (binding->local.ops)
+    {
+        status = styxrpc_module_ref_read_local(&binding->local, &value) == STYXRPC_OK ?
+            STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+    }
+    else
+    {
+        FVM_Worker *worker = NULL;
+        StyxRpcVfsStop stop;
+        fvm_worker_current(context, &worker);
+        stop = worker ? fvm_styxrpc_worker_stopped : NULL;
+        status = remote_ready(binding, stop, worker);
+        if (status == STYXRPC_IO_OK)
+        {
+            status = styxrpc_vfs_int_read_until(binding->file, &value, stop, worker);
+        }
+    }
+    if (status != STYXRPC_IO_OK)
+    {
+        return fvm_styxrpc_managed_fail(context, status == STYXRPC_IO_CANCELLED ?
+            "Styx RPC variable read cancelled" : "Styx RPC variable read failed");
     }
     fvm_value_number(out, value);
     return FVM_OK;
@@ -138,12 +162,21 @@ static FVM_Result write_variable(FVM_Context *context, FVM_Object *self, unsigne
     }
     else
     {
-        status = remote_ready(binding) ? styxrpc_vfs_int_write(binding->file, value) : STYXRPC_IO_NOT_OPEN;
+        FVM_Worker *worker = NULL;
+        StyxRpcVfsStop stop;
+        fvm_worker_current(context, &worker);
+        stop = worker ? fvm_styxrpc_worker_stopped : NULL;
+        status = remote_ready(binding, stop, worker);
+        if (status == STYXRPC_IO_OK)
+        {
+            status = styxrpc_vfs_int_write_until(binding->file, value, stop, worker);
+        }
     }
     if (status != STYXRPC_IO_OK)
     {
-        return fvm_styxrpc_managed_fail(context, status == STYXRPC_IO_UNCERTAIN ?
-            "Styx RPC variable write outcome is uncertain" : "Styx RPC variable write failed");
+        const char *message = status == STYXRPC_IO_UNCERTAIN ? "Styx RPC variable write outcome is uncertain" :
+            status == STYXRPC_IO_CANCELLED ? "Styx RPC variable write cancelled" : "Styx RPC variable write failed";
+        return fvm_styxrpc_managed_fail(context, message);
     }
     fvm_value_undefined(out);
     return FVM_OK;
@@ -152,11 +185,11 @@ static FVM_Result write_variable(FVM_Context *context, FVM_Object *self, unsigne
 
 /* EN: Open only the requested target, tracking a transferable module Qid when available.
  * RU: Открыть только выбранную цель и сохранить переносимый Qid модуля при наличии. */
-static FVM_Result open_target(IntBinding *binding, const IntTarget *target)
+static FVM_Result open_target(FVM_Context *context, IntBinding *binding, const IntTarget *target)
 {
     const char *path = target->path;
     uint64_t node = 0;
-    int opened;
+    StyxRpcIoOutcome status = STYXRPC_IO_OK;
     binding->mount = target->mount;
     binding->writable = target->writable;
     if (target->module)
@@ -166,21 +199,25 @@ static FVM_Result open_target(IntBinding *binding, const IntTarget *target)
         node = ref->node;
         /* EN: Resolve remote fids on access so a batch of aliases can rendezvous first.
          * RU: Открывать удалённые fid при обращении, чтобы сначала передать все ссылки. */
-        opened = !target->local ||
-            styxrpc_module_ref_open_local(target->local, ref, &binding->local) == STYXRPC_OK;
-    }
-    else if (target->issued)
-    {
-        opened = styxrpc_int_ref_open(target->mount, target->issued, &binding->file) == STYXRPC_IO_OK;
+        if (target->local && styxrpc_module_ref_open_local(target->local, ref, &binding->local) != STYXRPC_OK)
+        {
+            status = STYXRPC_IO_NOT_OPEN;
+        }
     }
     else
     {
-        opened = styxrpc_vfs_int_open_identified(target->mount, path, target->writable,
-            &binding->file, &node) == STYXRPC_IO_OK;
+        FVM_Worker *worker = NULL;
+        StyxRpcVfsStop stop;
+        fvm_worker_current(context, &worker);
+        stop = worker ? fvm_styxrpc_worker_stopped : NULL;
+        status = target->issued ? styxrpc_int_ref_open_until(target->mount, target->issued, &binding->file, stop, worker) :
+            styxrpc_vfs_int_open_identified_until(target->mount, path, target->writable, &binding->file,
+                &node, stop, worker);
     }
-    if (!opened)
+    if (status != STYXRPC_IO_OK)
     {
-        return FVM_ERROR;
+        return status == STYXRPC_IO_CANCELLED ?
+            fvm_styxrpc_managed_fail(context, "Styx RPC variable open cancelled") : FVM_ERROR;
     }
     if (node && styxrpc_module_ref_path(path))
     {
@@ -235,7 +272,7 @@ static FVM_Result bind_variable(FVM_Context *context, FVM_Object *object, const 
         status = binding ? fvm_userdata_attach(context, value.object, binding, release_variable) : FVM_OUT_OF_MEMORY;
         if (status == FVM_OK)
         {
-            status = open_target(binding, target);
+            status = open_target(context, binding, target);
             if (status == FVM_OK)
             {
                 status = fvm_object_define_accessor_rooted(context, object, name, read_variable, write_variable,

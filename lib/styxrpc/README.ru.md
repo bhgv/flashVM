@@ -180,6 +180,10 @@ DisVM обрабатывает обе отложенные операции че
 [Парные ссылки на модули](reference/module_refs.ru.md) передают
 идентичность и режим доступа живого смонтированного Int32 через эту службу.
 
+Для Int32 доступны [открытие с Qid](reference/vfs_int_open_identified_until.ru.md),
+[чтение](reference/vfs_int_read_until.ru.md) и [запись](reference/vfs_int_write_until.ru.md) с отменой.
+Временный PID можно [разрешить с отменой](reference/int_ref_open_until.ru.md).
+[Парный пример FlashVM и DisVM](examples/disvm/INT32_REFERENCES.ru.md).
 
 ## Имя, Qid и fid
 

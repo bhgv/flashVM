@@ -86,6 +86,7 @@ FVM_Result fvm_styxrpc_worker_vfs(FVM_Context *worker, void *state)
     vfs->files.context = worker;
     vfs->files.session = vfs->binding.client;
     vfs->files.named = routes->named;
+    vfs->files.refs = routes->refs;
     vfs->files.binding = &vfs->binding;
 
     fvm_value_undefined(&value);

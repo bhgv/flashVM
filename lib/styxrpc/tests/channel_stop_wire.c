@@ -18,13 +18,15 @@
 
 #define FRAME_SIZE 512U /* Negotiated maximum 9P frame size in this fixture. */
 
+static char int_bytes[] = "\xff\xff\xff\xb7"; /* Signed big-endian -73. */
 
 typedef enum Endpoint
 {
     CallBus,      /* Non-token reverse PID bus. */
     ModuleBus,    /* Token-based module bus. */
     NamedChannel, /* Private enrollment file. */
-    PlainFile     /* Open ordinary file for a positioned transfer. */
+    PlainFile,    /* Open ordinary file for a positioned transfer. */
+    Int32File     /* The whole signed four-byte .var value. */
 } Endpoint;
 
 
@@ -160,6 +162,12 @@ static int answer(Wire *wire, const Fcall *request)
             reply.count = 1;
             reply.data = "x";
         }
+        else if (wire->endpoint == Int32File)
+        {
+            return request->type == wire->hold_type && !request->offset && request->count == 4 &&
+                (request->type == Tread || !memcmp(request->data, int_bytes, 4)) &&
+                hold(wire, request, request->fid);
+        }
         else if (wire->partial_file && request->type == wire->hold_type && !request->offset && request->count == 2)
         {
             if (request->type == Twrite && memcmp(request->data, "wz", 2))
@@ -198,7 +206,7 @@ static int answer(Wire *wire, const Fcall *request)
         if (wire->reply_wins)
         {
             Fcall original = {.type = wire->hold_type + 1, .tag = wire->tag,
-                .count = wire->held_count, .data = "r"};
+                .count = wire->held_count, .data = wire->endpoint == Int32File ? int_bytes : "r"};
             if (!send_reply(wire->fd, &original))
             {
                 return 0;
@@ -256,6 +264,22 @@ static int stop(void *state)
 }
 
 
+/* EN: Verify one signed Int32 transfer and preserve the read output after cancellation.
+ * RU: Проверить передачу знакового Int32 и сохранить результат чтения при отмене. */
+static int int_result(Operation *operation)
+{
+    if (operation->wire->hold_type == Twrite)
+    {
+        StyxRpcIoOutcome status = styxrpc_vfs_int_write_until(operation->file, -73, stop, operation);
+        return status == (operation->wire->reply_wins ? STYXRPC_IO_OK : STYXRPC_IO_UNCERTAIN);
+    }
+    int32_t value = 123;
+    StyxRpcIoOutcome status = styxrpc_vfs_int_read_until(operation->file, &value, stop, operation);
+    return operation->wire->reply_wins ? status == STYXRPC_IO_OK && value == -73 :
+        status == STYXRPC_IO_CANCELLED && value == 123;
+}
+
+
 /* EN: Wait on a data frame. The peer leaves it pending until the stop hook requests Tflush.
  * RU: Ждать кадр данных, который сервер удерживает до Tflush по колбэку. */
 static void *call(void *state)
@@ -263,6 +287,11 @@ static void *call(void *state)
     Operation *operation = state;
     operation->caller = pthread_self();
     operation->correct_thread = 1;
+    if (operation->wire->endpoint == Int32File)
+    {
+        operation->success = int_result(operation);
+        return NULL;
+    }
     if (operation->file)
     {
         char bytes[2] = {'w', 'z'};
@@ -357,7 +386,7 @@ static int exercise(Endpoint endpoint, int type, int reply_wins, int request_sto
     }
     StyxClient *client = styxclientmountfd(sockets[0], FRAME_SIZE, "test", "", request_stop ? 4000 : 500, 4);
     StyxFid *survivor = client ? opened(client, "survivor") : NULL;
-    int file_transfer = endpoint == PlainFile;
+    int file_transfer = endpoint == PlainFile || endpoint == Int32File;
     StyxRpcVfsFile *file = client && file_transfer ? opened(client, "data") : NULL;
     Operation operation = {.wire = &wire, .client = client, .file = file};
     int passed = survivor && (!file_transfer || file) && !pthread_create(&worker, NULL, call, &operation);
@@ -398,7 +427,9 @@ int main(void)
         !exercise(NamedChannel, Topen, 0, 1, 0) || !exercise(NamedChannel, Twrite, 0, 1, 0) ||
         !exercise(NamedChannel, Twrite, 1, 1, 0) || !exercise(PlainFile, Tread, 1, 1, 0) ||
         !exercise(PlainFile, Tread, 0, 1, 1) || !exercise(PlainFile, Twrite, 1, 1, 0) ||
-        !exercise(PlainFile, Twrite, 0, 1, 1))
+        !exercise(PlainFile, Twrite, 0, 1, 1) ||
+        !exercise(Int32File, Tread, 0, 1, 0) || !exercise(Int32File, Tread, 1, 1, 0) ||
+        !exercise(Int32File, Twrite, 0, 1, 0) || !exercise(Int32File, Twrite, 1, 1, 0))
     {
         fprintf(stderr, "channel stop wire: held RPC, flush or neighboring RPC failed\n");
         return 1;

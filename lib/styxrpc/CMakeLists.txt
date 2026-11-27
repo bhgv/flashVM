@@ -13,6 +13,7 @@ set(STYXRPC_DISVM_SOURCE "" CACHE PATH "DisVM source directory for integration t
 set(STYXRPC_DISVM_BUILD "" CACHE PATH "Native DisVM build with the terminal launch SDK")
 set(STYXRPC_FLASHVM_TEST_HOST "" CACHE FILEPATH "FlashVM test executable built with FVM_ENABLE_STYXRPC")
 set(STYXRPC_FLASHVM_PLAYER "" CACHE FILEPATH "Installed-equivalent flashvm_styx_player binary for native pair tests")
+set(STYXRPC_FLASHVM_TOOLS "" CACHE PATH "FlashVM tool build root containing as2/, fir/ and linker/ for compiled pair tests")
 set(STYXRPC_FLASHVM_WINDOW_PLAYER "" CACHE FILEPATH "SDL2-enabled flashvm_styx_player for paired presentation tests")
 add_library(styxrpc STATIC src/rpc.c src/managed.c src/value_codec.c src/graph.c src/hybrid.c src/channel.c src/channel_route.c src/channel_remap.c src/channel_call.c src/channel_fid.c src/channel_scheduler.c src/interface.c src/vfs.c src/message_port.c src/exchange.c src/named_channel_path.c src/named_cell_wire.c src/node_service.c src/unibus_terminal.c protocol/call_record.c protocol/call_scope.c
     protocol/load_profile.c protocol/ref_pair_record.c protocol/scalar_record.c
@@ -29,7 +30,7 @@ if(STYXRPC_HOSTED OR STYXRPC_EXAMPLES)
     find_package(Threads REQUIRED)
     set(STYXRPC_HAS_LAUNCH ON)
     add_library(styxrpc_launch STATIC src/launch.c src/channel_exchange.c src/channel_pid.c src/channel_client.c src/channel_arguments.c
-        src/scalar_client.c src/managed_client.c src/client_exchange.c src/live_module_client.c src/vfs_client.c src/vfs_control.c src/vfs_create.c src/named_channel_client.c src/node_exec_client.c src/vfs_directory.c src/variable_ref_client.c src/module_ref_port.c src/graph_client.c src/message_client.c)
+        src/scalar_client.c src/managed_client.c src/client_exchange.c src/live_module_client.c src/vfs_client.c src/vfs_int.c src/vfs_control.c src/vfs_create.c src/named_channel_client.c src/node_exec_client.c src/vfs_directory.c src/variable_ref_client.c src/module_ref_port.c src/graph_client.c src/message_client.c)
     target_include_directories(styxrpc_launch PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_include_directories(styxrpc_launch PRIVATE protocol)
@@ -100,7 +101,8 @@ if(STYXRPC_EXAMPLES)
         endif()
     endif()
 endif()
-if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR STYXRPC_FLASHVM_PLAYER OR STYXRPC_FLASHVM_WINDOW_PLAYER)
+if(STYXRPC_DISVM_SOURCE OR STYXRPC_DISVM_BUILD OR STYXRPC_FLASHVM_TEST_HOST OR STYXRPC_FLASHVM_PLAYER
+        OR STYXRPC_FLASHVM_WINDOW_PLAYER OR STYXRPC_FLASHVM_TOOLS)
     if(NOT BUILD_TESTING OR NOT STYXRPC_EXAMPLES OR NOT STYXRPC_DISVM_SOURCE OR NOT STYXRPC_DISVM_BUILD)
         message(FATAL_ERROR "DisVM tests require both DisVM paths, BUILD_TESTING and STYXRPC_EXAMPLES")
     endif()
