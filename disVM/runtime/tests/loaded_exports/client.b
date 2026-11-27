@@ -47,6 +47,21 @@ expected(sys: Sys, names: string): int
 }
 
 
+# EN: Emit an exact private offer sequence for the host-side wire check.
+# RU: Вывести точную последовательность предложений для проверки на хосте.
+printprofile(sys: Sys, label: string, profile: array of byte)
+{
+    if (profile == nil) {
+        raise "missing owner profile";
+    }
+    line := label + " ";
+    for (i := 0; i < len profile; i++) {
+        line += sys->sprint("%02x", int profile[i]);
+    }
+    sys->print("%s\n", line);
+}
+
+
 # EN: Read compiler-derived methods and invoke typed views of each exact anchor.
 # RU: Прочитать методы компилятора и вызвать представления точных экземпляров.
 init()
@@ -56,9 +71,16 @@ init()
     held := routes->scalarloadanchor("target.dis");
     names := routes->scalarloadedexports(held);
     if (held == nil || !expected(sys, names) ||
-        routes->scalarloadedexports(nil) != nil) {
+        routes->scalarloadedexports(nil) != nil ||
+        routes->scalarloadedprofile(nil) != nil) {
         raise "invalid original catalogue";
     }
+    overflow := routes->scalarloadanchor("overflow.dis");
+    if (overflow == nil || routes->scalarloadedexports(overflow) != nil ||
+        routes->scalarloadedprofile(overflow) != nil) {
+        raise "accepted a partial overflowing catalogue";
+    }
+    snapshot := routes->scalarloadedprofile(held);
     sys->print("READY original module\n");
     waitforreplace(sys);
     fresh := routes->scalarloadanchor("target.dis");
@@ -66,6 +88,11 @@ init()
         routes->scalarloadedexports(held) != names) {
         raise "catalogue changed under old anchor";
     }
+    sys->print("compiled-names %s\n", names);
+    printprofile(sys, "original-profile", snapshot);
+    snapshot[0] = byte 0;
+    printprofile(sys, "held-profile", routes->scalarloadedprofile(held));
+    printprofile(sys, "fresh-profile", routes->scalarloadedprofile(fresh));
     (nil, add, nil, nil, nil, nil, nil) := routes->scalarloadedview(held, "add", nil);
     (nil, current, nil, nil, nil, nil, nil) := routes->scalarloadedview(held, "current", nil);
     (nil, other, nil, nil, nil, nil, nil) := routes->scalarloadedview(fresh, "other", nil);

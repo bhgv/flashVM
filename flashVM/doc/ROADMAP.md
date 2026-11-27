@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1800 — private wire profile from a resident Dis instance
+
+The owner can copy a complete sequence of compiled offers from one loaded
+anchor. The names and the offers use the same gateway admission checks.
+Interpreter and JIT checks verify the offer framing and the original
+profile after image replacement. Remote ordinary-file loading still
+requires an owner mailbox and session-scoped publication of call routes.
+[EN](../../disVM/runtime/VFS-SCALAR-LOADED-PROFILE.md) ·
+[RU](../../disVM/runtime/VFS-SCALAR-LOADED-PROFILE.ru.md).
+
 ## v0.1799 — compiled export discovery on a resident Dis instance
 
 The Dis owner can list callable names on an existing loaded anchor and

@@ -329,55 +329,7 @@ static Module *retain_anchor(Modlink *anchor)
 }
 
 
-/* [GC:] EN: Discover callable names on the exact rooted anchor captured from
- * frame. Publish a tab-separated string without invoking or reopening the image.
- * RU: Найти вызываемые имена точного укоренённого экземпляра из frame.
- * Выдать строку с разделителями-табуляциями, без вызова или повторного открытия. */
-void Vfsnative_scalarloadedexports(void *frame)
-{
-    F_Vfsnative_scalarloadedexports call;
-    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Vfsnative_scalarloadedexports, ret), sizeof(*call.ret));
-    Modlink *anchor = dvm_sys_owner(&call.anchor);
-    Module *module = anchor_module(anchor);
-    if (!module)
-    {
-        dvm_cap_publish(H, call.ret);
-        return;
-    }
-    char names[(INTERFACE_NAME_LIMIT + 1) * STYX_MOUNTED_EXPORT_LIMIT];
-    size_t size = 0;
-    size_t count = 0;
-    for (const Link *export = module->ext; export && export->name; ++export)
-    {
-        StyxCallShape shape = {{0}, {0}};
-        GatewayOwner gateway = {0};
-        size_t length = styxscalar_name_length(export->name);
-        if (!length || strchr(export->name, '/') || strchr(export->name, '\t') ||
-            !export_profile(module, export, &shape, &gateway))
-        {
-            continue;
-        }
-        if (count == STYX_MOUNTED_EXPORT_LIMIT)
-        {
-            dvm_cap_publish(H, call.ret);
-            return;
-        }
-        if (count++)
-        {
-            names[size++] = '\t';
-        }
-        memcpy(names + size, export->name, length);
-        size += length;
-    }
-    if (size)
-    {
-        dvm_cap_publish_string(names, size, call.ret);
-    }
-    else
-    {
-        dvm_cap_publish(H, call.ret);
-    }
-}
+#include "loaded_catalogue.inc"
 
 
 /* EN: Bind a typed view of a rooted data instance and publish its profile.

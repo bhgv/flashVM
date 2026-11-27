@@ -165,6 +165,9 @@ Vfsnative: module
     # EN: Return the callable names of this exact instance, in compiled order.
     # RU: Вернуть вызываемые имена этого экземпляра в порядке компиляции.
     scalarloadedexports: fn(anchor: Scalarloadedanchor): string;
+    # EN: Return the complete private wire offers of the same compiled catalogue.
+    # RU: Вернуть полный набор частных предложений того же каталога.
+    scalarloadedprofile: fn(anchor: Scalarloadedanchor): array of byte;
     # EN: A nil offer binds the typed view privately, without profile I/O.
     # RU: При offer == nil связать приватное представление без ввода-вывода профиля.
     scalarloadedview: fn(anchor: Scalarloadedanchor, exportname, offer: string):

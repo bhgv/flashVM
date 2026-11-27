@@ -33,3 +33,5 @@ scalarloadedexports: fn(anchor: Scalarloadedanchor): string;
 Она удерживает экземпляр при замене файла и проверяет общие данные
 двух связанных скалярных методов. [Сценарий](test_loaded_exports.py)
 собирает образы компилятором проекта и запускает тест в обоих режимах.
+
+Для копирования частных предложений из того же anchor используйте [scalarloadedprofile](VFS-SCALAR-LOADED-PROFILE.ru.md).

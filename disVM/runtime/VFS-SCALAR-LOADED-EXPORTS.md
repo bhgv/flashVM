@@ -35,3 +35,5 @@ an anchor across a file replacement and verifies that independently linked
 scalar views share its original data. The
 [runner](test_loaded_exports.py) compiles the images with the project
 bootstrap compiler and runs the test under either native execution mode.
+
+Use [scalarloadedprofile](VFS-SCALAR-LOADED-PROFILE.md) to copy the corresponding private wire offers from the same anchor.
