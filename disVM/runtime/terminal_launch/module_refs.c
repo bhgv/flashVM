@@ -9,6 +9,7 @@
 #include "styxrpc/variable_file.h"
 #include "caller_styx.h"
 #include "client.h"
+#include "../vfs/cancel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -73,44 +74,84 @@ static FVM_Result access(void *state, const char *path, unsigned requested)
 }
 
 
-/* EN: Read a scope fragment or a positioned SDK-port reply into bytes.
- * RU: Прочитать фрагмент области или позиционный ответ порта SDK в bytes. */
-static FVM_Result cursor_read(void *state, void *bytes, size_t size, size_t *used)
+/* EN: Read a local scope fragment, advancing the borrowed read-only cursor.
+ * RU: Прочитать фрагмент местной области и продвинуть курсор чтения. */
+static FVM_Result scope_read(void *state, void *bytes, size_t size, size_t *used)
 {
     RefCursor *cursor = state;
-    if (cursor->port)
+    const size_t limit = sizeof(cursor->service->scope);
+    size_t left = cursor->position < (long)limit ? limit - (size_t)cursor->position : 0;
+    *used = size < left ? size : left;
+    if (*used)
     {
-        if (styxrpc_module_ref_port_read(cursor->port, cursor->position, bytes, size, used) != STYXRPC_IO_OK)
-        {
-            return FVM_ERROR;
-        }
-    }
-    else
-    {
-        const size_t limit = sizeof(cursor->service->scope);
-        size_t left = cursor->position < (long)limit ? limit - (size_t)cursor->position : 0;
-        *used = size < left ? size : left;
-        if (*used)
-        {
-            memcpy(bytes, cursor->service->scope + cursor->position, *used);
-        }
+        memcpy(bytes, cursor->service->scope + cursor->position, *used);
     }
     cursor->position += (long)*used;
     return FVM_OK;
 }
 
 
-/* EN: Commit one entire SDK request or a four-byte write, advancing only on success.
- * RU: Выполнить полную команду SDK или запись четырёх байтов, сдвигаясь только при успехе. */
-static FVM_Result cursor_write(void *state, const void *bytes, size_t size)
+/* EN: Sample the borrowed native cancel source in the same Sys operation.
+ * RU: Проверить заимствованный источник отмены в той же операции Sys. */
+static int stopped(void *state)
+{
+    return dvm_cancel_requested(state);
+}
+
+
+/* EN: Publish one port outcome and advance cursor only for confirmed bytes.
+ * A cancelled assignment can retain uncertainty even with zero bytes confirmed.
+ * RU: Выдать исход порта и продвинуть курсор только по подтверждённым байтам.
+ * Отмена присваивания может оставить неопределённость при нулевом подтверждении. */
+static void transfer_result(RefCursor *cursor, StyxRpcIoOutcome status, size_t count, int writing,
+    DVM_Cancel *cancel, DVM_IoResult *out)
+{
+    *out = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_FAILURE, .flags = DVM_IO_PREFIX};
+    if (status == STYXRPC_IO_OK)
+    {
+        cursor->position += (long)count;
+        out->status = FVM_OK;
+        out->stop = !writing && !count ? DVM_IO_EOF : DVM_IO_NONE;
+        out->count = count;
+    }
+    else if (status == STYXRPC_IO_CANCELLED)
+    {
+        out->stop = DVM_IO_CANCELLED;
+    }
+    else if (status == STYXRPC_IO_UNCERTAIN)
+    {
+        out->stop = dvm_cancel_requested(cancel) ? DVM_IO_CANCELLED : DVM_IO_FAILURE;
+        out->flags |= DVM_IO_UNCERTAIN;
+    }
+    else if (status == STYXRPC_IO_NOT_OPEN)
+    {
+        out->stop = DVM_IO_DENIED;
+    }
+}
+
+
+/* EN: Read from the serialized SDK port under this native Sys cancellation scope.
+ * RU: Читать из сериализованного порта SDK с текущей нативной отменой Sys. */
+static void cursor_read(void *state, void *bytes, size_t size, DVM_IoResult *out)
 {
     RefCursor *cursor = state;
-    if (styxrpc_module_ref_port_write(cursor->port, cursor->position, bytes, size) != STYXRPC_IO_OK)
-    {
-        return FVM_ERROR;
-    }
-    cursor->position += (long)size;
-    return FVM_OK;
+    DVM_Cancel *cancel = dvm_cancel_current();
+    size_t used;
+    StyxRpcIoOutcome status = styxrpc_module_ref_port_read_until(cursor->port, cursor->position,
+        bytes, size, &used, cancel ? stopped : NULL, cancel);
+    transfer_result(cursor, status, used, 0, cancel, out);
+}
+
+
+/* EN: Bind or write on the serialized SDK port, borrowing bytes through return.
+ * RU: Привязать или записать в сериализованный порт SDK. bytes заимствуются до возврата. */
+static void cursor_write(void *state, const void *bytes, size_t size, DVM_IoResult *out)
+{
+    RefCursor *cursor = state;
+    DVM_Cancel *cancel = dvm_cancel_current();
+    StyxRpcIoOutcome status = styxrpc_module_ref_port_write_until(cursor->port, cursor->position,
+        bytes, size, cancel ? stopped : NULL, cancel);
+    transfer_result(cursor, status, size, 1, cancel, out);
 }
 
 
@@ -202,9 +243,9 @@ static StyxRpcIoOutcome capture_local(void *state, StyxRpcModuleRef *ref, StyxRp
  * RU: Открыть независимый курсор области либо порт SDK гостя в точке. */
 static FVM_Result open_ref(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
 {
-    static const DVM_VfsOps reader = {.info = cursor_info, .read = cursor_read,
+    static const DVM_VfsOps reader = {.info = cursor_info, .read = scope_read,
         .seek = cursor_seek, .close = cursor_close}; /* Peer capability view. */
-    static const DVM_VfsOps proxy = {.info = cursor_info, .read = cursor_read, .write = cursor_write,
+    static const DVM_VfsOps proxy = {.info = cursor_info, .read_chunk = cursor_read, .write_chunk = cursor_write,
         .seek = cursor_seek, .close = cursor_close}; /* Guest binding and value I/O. */
     const DvmModuleRefs *service = state;
     int writable = !strcmp(mode, "rw") || !strcmp(mode, "rwo");
@@ -229,7 +270,8 @@ static FVM_Result open_ref(void *state, const char *path, const char *mode, DVM_
             return FVM_ERROR;
         }
     }
-    *out = (DVM_VfsHandle){.ops = writable ? &proxy : &reader, .state = cursor};
+    *out = (DVM_VfsHandle){.ops = writable ? &proxy : &reader, .state = cursor,
+        .native_flags = writable ? DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_INFO : 0};
     return FVM_OK;
 }
 

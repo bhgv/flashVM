@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_open_identified_until
 
-[English](vfs_int_open_identified_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L240) · [Реализация](../src/vfs_int.c#L10)
+[English](vfs_int_open_identified_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L240) · [Реализация](../src/vfs_int.c#L11)
 
 Открыть смонтированную переменную Int32 и получить идентификатор открытого файла.
 

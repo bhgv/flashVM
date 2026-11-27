@@ -14,3 +14,5 @@ Pass `offset` zero and a nonempty borrowed buffer `bytes` of `size` bytes. For a
 `STYXRPC_IO_OK` confirms the complete command or replacement. Invalid arguments, a bad frame or a read-only value return `STYXRPC_IO_NOT_OPEN`. A failed or uncertain Styx operation propagates its status. Do not replay an uncertain replacement automatically. Capture and value I/O can wait for the issuer. Serialize writes with reads and closure of the same port.
 
 For capture of a writable export, prefix the path with the two bytes `STYXRPC_REF_PORT_CAPTURE, 1`. Then read the complete descriptor at [offset four](module_ref_port_read.md).
+
+[Cancellable form](module_ref_port_write_until.md).

@@ -83,4 +83,5 @@ var closed = pipe.delete();
 
 Штатная пара с DisVM использует службу имён своего подключения. Limbo
 может [пересылать экспортированные Int32 обеих VM](../../disVM/runtime/STYX-MODULE-REFS.ru.md).
+Проверка отмены ожидания Limbo на экспорте FlashVM описана в [исполняемом примере](../../lib/styxrpc/examples/disvm/REF_PORT_CANCELLATION.ru.md).
 Внешние C-программы могут использовать [хост общей службы](../../lib/styxrpc/reference/named_peer_host.ru.md).

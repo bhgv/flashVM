@@ -181,6 +181,32 @@ static int stop_at(void *state)
 }
 
 
+/* EN: Verify pre-stop leaves a port retryable and preserves typed buffer and value.
+ * RU: Проверить повтор после ранней остановки и сохранение буфера и значения. */
+static int stopped_port(StyxClient *client)
+{
+    const unsigned char scope[STYXRPC_MODULE_REF_SCOPE_SIZE] = {0x61};
+    const char path[] = COUNTER_PATH;
+    unsigned char command[sizeof(path) + 1] = {STYXRPC_REF_PORT_CAPTURE, 1};
+    memcpy(command + 2, path, sizeof(path) - 1);
+    const unsigned char before[] = {0xff, 0xff, 0xff, 0xb7}; /* Initial value -73. */
+    const unsigned char changed[] = {0, 0, 0, 19};
+    unsigned char bytes[sizeof(before)] = {0};
+    size_t used = sizeof(bytes);
+    StyxRpcModuleRefPort *port = styxrpc_module_ref_port_open(client, STYXRPC_MODULE_REF_FORWARD, scope);
+    int good = port &&
+        styxrpc_module_ref_port_write_until(port, 0, command, sizeof(command), stop_at, NULL) == STYXRPC_IO_CANCELLED &&
+        styxrpc_module_ref_port_write_until(port, 0, command, sizeof(command), NULL, NULL) == STYXRPC_IO_OK &&
+        styxrpc_module_ref_port_read_until(port, 0, bytes, sizeof(bytes), &used, stop_at, NULL) == STYXRPC_IO_CANCELLED &&
+        !used && !memcmp(bytes, (unsigned char[sizeof(bytes)]){0}, sizeof(bytes)) &&
+        styxrpc_module_ref_port_write_until(port, 0, changed, sizeof(changed), stop_at, NULL) == STYXRPC_IO_CANCELLED &&
+        styxrpc_module_ref_port_read_until(port, 0, bytes, sizeof(bytes), &used, NULL, NULL) == STYXRPC_IO_OK &&
+        used == sizeof(bytes) && !memcmp(bytes, before, sizeof(bytes));
+    styxrpc_module_ref_port_close(port);
+    return good;
+}
+
+
 /* EN: Distinguish cancellation before and after writing; retain the original image.
  * RU: Различить отмену до и после записи; сохранить исходный образ. */
 static int cancel_calls(StyxFid *image)
@@ -310,7 +336,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     int32_t value = 0;
     int good = client && pid && styxclientopen(pid, 0) && read_scope(pid) &&
         styxrpc_vfs_stat(client, SCOPE_IDENTITY, &info) == STYXRPC_IO_NOT_OPEN &&
-        owned_reference(client) &&
+        owned_reference(client) && stopped_port(client) &&
         styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_OK &&
         styxrpc_module_check_at(image, exports.methods, exports.count, 0) == STYXRPC_OK &&
         cancel_calls(image) &&

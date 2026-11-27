@@ -5,7 +5,7 @@
 #include "styxrpc/module_ref_port.h"
 #include "styxrpc/named_channel.h"
 #include "styxrpc/variable_file.h"
-#include "client.h"
+#include "vfs_client_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -67,7 +67,7 @@ StyxRpcModuleRefPort *styxrpc_module_ref_port_open_owned(struct StyxClient *issu
 
 /* EN: Open the owner selected by command[0], publishing identity only after encoding.
  * RU: Открыть владельца, выбранного command[0], и выдать идентичность после кодирования. */
-static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char *command, size_t size)
+static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char *command, size_t size, StyxRpcVfsWait *wait)
 {
     StyxRpcModuleRef ref = {0};
     if (size <= 2 || size - 2 > sizeof(ref.path) - 1 || command[1] > 1 ||
@@ -90,11 +90,12 @@ static StyxRpcIoOutcome capture(StyxRpcModuleRefPort *port, const unsigned char 
     StyxRpcVfsFile *file = NULL;
     StyxRpcFile local_file = {0};
     StyxRpcIoOutcome status = local ? port->capture_local(port->context, &ref, &local_file) :
-        styxrpc_vfs_int_open_identified(port->issuer, ref.path, ref.writable, &file, &ref.node);
+        styxrpc_vfs_int_open_identified_until(port->issuer, ref.path, ref.writable, &file, &ref.node,
+            wait->stop ? styxrpc_vfs_control_poll : NULL, wait);
     if (status != STYXRPC_IO_OK)
     {
         styxrpc_file_close(&local_file);
-        return status;
+        return local && styxrpc_vfs_control_poll(wait) ? STYXRPC_IO_CANCELLED : status;
     }
     size_t length = styxrpc_module_ref_encode(&ref, port->scope, port->frame + 1, sizeof(port->frame) - 1);
     if (!length)
@@ -130,32 +131,57 @@ static StyxRpcIoOutcome adopt(StyxRpcModuleRefPort *port, const unsigned char *f
 }
 
 
-/* EN: Resolve the immutable identity on first value access and retain the exact opened fid.
- * RU: При первом обращении сверить постоянную идентичность и удержать открытый fid. */
-static StyxRpcIoOutcome ready(StyxRpcModuleRefPort *port)
+/* EN: Resolve the immutable descriptor under wait, including after a retired fid.
+ * RU: Сверить постоянный описатель с wait, в том числе после закрытия fid. */
+static StyxRpcIoOutcome ready(StyxRpcModuleRefPort *port, StyxRpcVfsWait *wait)
 {
     if (port->file || port->local.ops)
     {
         return STYXRPC_IO_OK;
     }
-    return port->ref.owner == port->owner ?
-        styxrpc_module_ref_open_remote(port->issuer, &port->ref, &port->file) :
-        port->open_local(port->context, &port->ref, &port->local);
+    if (port->ref.owner == port->owner)
+    {
+        return styxrpc_module_ref_open_remote_until(port->issuer, &port->ref, &port->file,
+            wait->stop ? styxrpc_vfs_control_poll : NULL, wait);
+    }
+    StyxRpcIoOutcome status = port->open_local(port->context, &port->ref, &port->local);
+    return status != STYXRPC_IO_OK && styxrpc_vfs_control_poll(wait) ? STYXRPC_IO_CANCELLED : status;
+}
+
+
+/* EN: Retire an interrupted remote fid while retaining its original descriptor.
+ * Return the transfer status to the caller; the next access rechecks the Qid.
+ * RU: Освободить прерванный удалённый fid, сохранив исходный описатель.
+ * Вернуть статус передачи. Следующее обращение проверит Qid заново. */
+static StyxRpcIoOutcome retire_transfer(StyxRpcModuleRefPort *port, StyxRpcIoOutcome status, StyxRpcVfsWait *wait)
+{
+    if (status == STYXRPC_IO_CANCELLED || status == STYXRPC_IO_UNCERTAIN)
+    {
+        styxrpc_vfs_control_close(port->file, wait);
+        port->file = NULL;
+    }
+    return status;
 }
 
 
 /* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
-StyxRpcIoOutcome styxrpc_module_ref_port_read(StyxRpcModuleRefPort *port, uint64_t offset,
-    void *bytes, size_t size, size_t *used)
+StyxRpcIoOutcome styxrpc_module_ref_port_read_until(StyxRpcModuleRefPort *port, uint64_t offset,
+    void *bytes, size_t size, size_t *used, StyxRpcVfsStop stop, void *state)
 {
     if (!used)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
     *used = 0;
-    if (!port || !port->size || (!bytes && size))
+    if (!port || !port->size || (!bytes && size) ||
+        (offset < STYXRPC_REF_PORT_FRAME && (offset || size != STYX_VARIABLE_INT_SIZE)))
     {
         return STYXRPC_IO_NOT_OPEN;
+    }
+    StyxRpcVfsWait wait = {stop, state, 0};
+    if (styxrpc_vfs_control_poll(&wait))
+    {
+        return STYXRPC_IO_CANCELLED;
     }
     if (offset >= STYXRPC_REF_PORT_FRAME)
     {
@@ -168,38 +194,58 @@ StyxRpcIoOutcome styxrpc_module_ref_port_read(StyxRpcModuleRefPort *port, uint64
         }
         return STYXRPC_IO_OK;
     }
-    if (offset || size != STYX_VARIABLE_INT_SIZE)
+    StyxRpcIoOutcome status = ready(port, &wait);
+    if (status != STYXRPC_IO_OK)
     {
-        return STYXRPC_IO_NOT_OPEN;
+        return status;
     }
-    StyxRpcIoOutcome status = ready(port);
-    if (status == STYXRPC_IO_OK)
+    if (port->local.ops)
     {
-        if (port->local.ops)
+        unsigned char snapshot[STYX_VARIABLE_INT_SIZE];
+        size_t count;
+        if (styxrpc_vfs_control_poll(&wait))
         {
-            status = styxrpc_file_read(&port->local, 0, bytes, size, used) == STYXRPC_OK ?
-                STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+            return STYXRPC_IO_CANCELLED;
         }
-        else
+        if (styxrpc_file_read(&port->local, 0, snapshot, sizeof(snapshot), &count) != STYXRPC_OK || count != size)
         {
-            status = styxrpc_vfs_file_read(port->file, 0, bytes, size, used);
+            return styxrpc_vfs_control_poll(&wait) ? STYXRPC_IO_CANCELLED : STYXRPC_IO_FAILED;
         }
-        if (status == STYXRPC_IO_OK && *used != size)
+        memcpy(bytes, snapshot, size);
+    }
+    else
+    {
+        status = styxrpc_vfs_int_read_bytes_until(port->file, bytes, stop ? styxrpc_vfs_control_poll : NULL, &wait);
+        if (status != STYXRPC_IO_OK)
         {
-            status = STYXRPC_IO_FAILED;
+            return retire_transfer(port, status, &wait);
         }
     }
-    return status;
+    *used = size;
+    return STYXRPC_IO_OK;
 }
 
 
 /* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
-StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint64_t offset,
-    const void *bytes, size_t size)
+StyxRpcIoOutcome styxrpc_module_ref_port_read(StyxRpcModuleRefPort *port, uint64_t offset,
+    void *bytes, size_t size, size_t *used)
+{
+    return styxrpc_module_ref_port_read_until(port, offset, bytes, size, used, NULL, NULL);
+}
+
+
+/* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
+StyxRpcIoOutcome styxrpc_module_ref_port_write_until(StyxRpcModuleRefPort *port, uint64_t offset,
+    const void *bytes, size_t size, StyxRpcVfsStop stop, void *state)
 {
     if (!port || !bytes || !size || offset)
     {
         return STYXRPC_IO_NOT_OPEN;
+    }
+    StyxRpcVfsWait wait = {stop, state, 0};
+    if (styxrpc_vfs_control_poll(&wait))
+    {
+        return STYXRPC_IO_CANCELLED;
     }
     const unsigned char *command = bytes;
     if (!port->size)
@@ -208,7 +254,7 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
         {
         case STYXRPC_REF_PORT_CAPTURE:
         case STYXRPC_REF_PORT_CAPTURE_LOCAL:
-            return capture(port, command, size);
+            return capture(port, command, size, &wait);
         case STYXRPC_REF_PORT_ADOPT:
             return adopt(port, command + 1, size - 1);
         default:
@@ -219,25 +265,34 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    StyxRpcIoOutcome status = ready(port);
-    if (status == STYXRPC_IO_OK)
+    StyxRpcIoOutcome status = ready(port, &wait);
+    if (status != STYXRPC_IO_OK)
+    {
+        return status;
+    }
+    if (port->local.ops)
     {
         size_t used;
-        if (port->local.ops)
+        if (styxrpc_vfs_control_poll(&wait))
         {
-            status = styxrpc_file_write(&port->local, 0, bytes, size, &used) == STYXRPC_OK ?
-                STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+            return STYXRPC_IO_CANCELLED;
         }
-        else
+        if (styxrpc_file_write(&port->local, 0, bytes, size, &used) == STYXRPC_OK && used == size)
         {
-            status = styxrpc_vfs_file_write(port->file, 0, bytes, size, &used);
+            return STYXRPC_IO_OK;
         }
-        if (status == STYXRPC_IO_OK && used != size)
-        {
-            status = STYXRPC_IO_FAILED;
-        }
+        return styxrpc_vfs_control_poll(&wait) ? STYXRPC_IO_UNCERTAIN : STYXRPC_IO_FAILED;
     }
-    return status;
+    status = styxrpc_vfs_int_write_bytes_until(port->file, bytes, stop ? styxrpc_vfs_control_poll : NULL, &wait);
+    return retire_transfer(port, status, &wait);
+}
+
+
+/* EN/RU: See module_ref_port.h. / См. module_ref_port.h. */
+StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint64_t offset,
+    const void *bytes, size_t size)
+{
+    return styxrpc_module_ref_port_write_until(port, offset, bytes, size, NULL, NULL);
 }
 
 

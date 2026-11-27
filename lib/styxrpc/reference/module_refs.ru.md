@@ -51,6 +51,9 @@
 описатель при необходимости. Новая публикация имеет собственный Qid.
 [Парный пример FlashVM и DisVM](../examples/disvm/INT32_REFERENCES.ru.md).
 
+Гость Limbo может отменить ожидание на экспорте FlashVM через `Processctl.cancelwait`.
+Общий [порт ссылок](module_ref_port.ru.md) при следующем обращении сверяет исходный Qid.
+
 ## Формат кадра
 
 Первый байт кадра содержит 9 (`STYXRPC_NAMED_MODULE_REF`). За ним идёт

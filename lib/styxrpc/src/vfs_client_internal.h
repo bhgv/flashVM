@@ -102,6 +102,14 @@ int styxrpc_vfs_service_meta(const StyxMeta *);
 StyxRpcIoOutcome styxrpc_vfs_transfer_outcome(const StyxTransfer *, size_t);
 
 
+/* EN: Transfer one complete, encoded Int32 on the borrowed exact file at offset zero.
+ * bytes has four readable or writable bytes. Publish read output only on success.
+ * RU: Передать один кодированный Int32 на заимствованном точном файле с нуля.
+ * bytes содержит четыре байта. Выдать результат чтения только при успехе. */
+StyxRpcIoOutcome styxrpc_vfs_int_read_bytes_until(StyxRpcVfsFile *file, void *bytes, StyxRpcVfsStop stop, void *state);
+StyxRpcIoOutcome styxrpc_vfs_int_write_bytes_until(StyxRpcVfsFile *file, const void *bytes, StyxRpcVfsStop stop, void *state);
+
+
 /* EN: Write borrowed bytes with confirmed count in used. A cancelled in-flight
  * write retains an uncertain outcome when the peer may have accepted it.
  * RU: Записать заимствованные байты с подтверждённой длиной в used.

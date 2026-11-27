@@ -3,6 +3,7 @@
 [English](README.md) · [libstyxrpc](../README.ru.md)
 
 [Парный пример FlashVM и DisVM](disvm/INT32_REFERENCES.ru.md). Отмена операций с Int32, проверка Qid и восстановление после неподтверждённой записи.
+[Исполняемый пример Limbo и FlashVM](disvm/REF_PORT_CANCELLATION.ru.md). Отмена в прямом потомке DisVM и восстановление исходного порта.
 
 ## Общие ячейки в C и Limbo
 

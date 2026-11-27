@@ -184,6 +184,9 @@ DisVM обрабатывает обе отложенные операции че
 [чтение](reference/vfs_int_read_until.ru.md) и [запись](reference/vfs_int_write_until.ru.md) с отменой.
 Временный PID можно [разрешить с отменой](reference/int_ref_open_until.ru.md).
 [Парный пример FlashVM и DisVM](examples/disvm/INT32_REFERENCES.ru.md).
+Хост может использовать порт ссылки с [чтением](reference/module_ref_port_read_until.ru.md)
+и [записью](reference/module_ref_port_write_until.ru.md) с отменой.
+[Исполняемый пример Limbo и FlashVM](examples/disvm/REF_PORT_CANCELLATION.ru.md).
 
 ## Имя, Qid и fid
 

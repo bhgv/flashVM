@@ -12,7 +12,7 @@ from vfs_control_gate import gated_exchange
 from module_setup_gate import ModuleSetupGate
 from channel_setup_gate import ChannelSetupGate
 from cell_setup_gate import CellSetupGate
-from int_ref_gate import IntRefGate
+from int_ref_gate import IntRefGate, RefPortGate
 
 
 # EN: Run the project frontend, FIR optimizer/object emitter and SWF linker.
@@ -43,7 +43,8 @@ def main():
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
                     "live-dis", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
-                    "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup", "cancel-int-ref"):
+                    "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup",
+                    "cancel-int-ref", "cancel-ref-port"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
     parser.set_defaults(profile="mixed")
     args = parser.parse_args()
@@ -90,6 +91,8 @@ def main():
         if name in ("cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup", "cancel-int-ref"):
             (directory / "control-gate").write_bytes(b"0")
             (directory / "neighbour").write_bytes(b"Z")
+        if name == "cancel-ref-port":
+            (directory / "control-gate").write_bytes(b"0")
         if name == "cancel-vfs-control":
             (directory / "hold-dir").mkdir()
             (directory / "hold-dir/child").touch()
@@ -129,6 +132,7 @@ def main():
             "cancel-channel-setup": (),
             "cancel-cell-setup": ("styxvalue", "styxnamed"),
             "cancel-int-ref": ("styxvalue", "styxnamed", "styxmodref", "styxnodes"),
+            "cancel-ref-port": ("styxmodref",),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -170,6 +174,7 @@ def main():
             "cancel-channel-setup": partial(gated_exchange, gate_type=ChannelSetupGate),
             "cancel-cell-setup": partial(gated_exchange, gate_type=CellSetupGate),
             "cancel-int-ref": partial(gated_exchange, gate_type=IntRefGate),
+            "cancel-ref-port": partial(gated_exchange, gate_type=RefPortGate, lane=0, requests_from_player=False),
         }.get(name, paired_exchange)
         exchange(
             directory,

@@ -1,5 +1,23 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1820 — cancel Limbo waits on a FlashVM Int32 export
+
+DisVM's writable `/.varref` port can stop during remote capture,
+identity verification and value I/O using the shared C SDK. Cancellation
+retires the affected remote fid. The port retains the original descriptor
+and resolves it with its full Qid on the next access. The paired test
+covers a possibly applied assignment, recovery on the same port and
+refusal after the movie publishes a new generation.
+
+Записываемый порт `/.varref` DisVM поддерживает отмену удалённого
+захвата, проверки идентификатора и обмена значением через общий SDK C.
+Отмена освобождает затронутый fid. Порт сохраняет исходный описатель
+и при следующем обращении сверяет полный Qid. Парный тест проверяет
+присваивание с потерянным подтверждением, восстановление на том же
+порту и отказ после публикации нового поколения фильма.
+[EN](../../lib/styxrpc/examples/disvm/REF_PORT_CANCELLATION.md) ·
+[RU](../../lib/styxrpc/examples/disvm/REF_PORT_CANCELLATION.ru.md).
+
 ## v0.1819 — cancel admission of delegated channel routes
 
 The hosted SDK can interrupt reverse PID verification and module-token

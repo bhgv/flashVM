@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_write
 
-[Русский](vfs_int_write.ru.md) · [Source](../src/vfs_int.c#L134)
+[Русский](vfs_int_write.ru.md) · [Source](../src/vfs_int.c#L164)
 
 ```c
 #include <styxrpc/vfs_client.h>

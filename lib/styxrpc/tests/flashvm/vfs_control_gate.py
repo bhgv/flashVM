@@ -171,13 +171,13 @@ def relay(source, destination, gate, request, selected_lane):
 # RU: Подключить штатные процессы VM к барьеру и проверить результаты приложений
 # и ровно один исходный тег на этап, выбранный gate_type.
 def gated_exchange(directory, player, desktop, expected, *, tcp=False, timeout=16, gate_type=Gate,
-                   lane=LANE, initiator_trace=()):
+                   lane=LANE, initiator_trace=(), requests_from_player=True):
     player_fd, back = stream_pair(tcp)
     desktop_fd, front = stream_pair(tcp)
     gate = gate_type(directory)
     with player_fd, back, desktop_fd, front:
-        workers = [threading.Thread(target=relay, args=(back, front, gate, True, lane)),
-                   threading.Thread(target=relay, args=(front, back, gate, False, lane))]
+        workers = [threading.Thread(target=relay, args=(back, front, gate, requests_from_player, lane)),
+                   threading.Thread(target=relay, args=(front, back, gate, not requests_from_player, lane))]
         with subprocess.Popen(player(["--fd", str(player_fd.fileno())]), cwd=directory,
                               pass_fds=(player_fd.fileno(),), stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True) as provider:

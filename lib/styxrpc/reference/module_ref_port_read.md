@@ -14,3 +14,5 @@ Pass a bound `port`, a writable `bytes` buffer of `size` bytes and writable stor
 `STYXRPC_IO_OK` confirms the returned count. An unbound port, bad argument, or invalid position or size returns `STYXRPC_IO_NOT_OPEN`. Errors from the ordinary mount are propagated. A short value read returns `STYXRPC_IO_FAILED`. The count is initialized to zero when `used` is valid. Buffers are borrowed. Serialize use of the port.
 
 For forwarding, start the read at `STYXRPC_REF_PORT_FRAME` and send the complete byte sequence on the same named channel.
+
+[Cancellable form](module_ref_port_read_until.md).

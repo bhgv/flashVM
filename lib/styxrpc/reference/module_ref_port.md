@@ -34,3 +34,9 @@ on its independent read/write service fd. An external C application
 can use the same port interface directly over an authorized mount.
 
 [Open](module_ref_port_open.md) · [Paired open](module_ref_port_open_paired.md) · [Read](module_ref_port_read.md) · [Write](module_ref_port_write.md) · [Close](module_ref_port_close.md)
+
+Use [cancellable reads](module_ref_port_read_until.md) and
+[writes](module_ref_port_write_until.md) in a stoppable native context.
+An interrupted remote value access leaves the original descriptor available
+for the next operation to reopen and verify.
+[Runnable Limbo and FlashVM example](../examples/disvm/REF_PORT_CANCELLATION.md).

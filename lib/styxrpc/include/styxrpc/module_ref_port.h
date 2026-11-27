@@ -70,6 +70,22 @@ StyxRpcIoOutcome styxrpc_module_ref_port_write(StyxRpcModuleRefPort *port, uint6
     const void *bytes, size_t size);
 
 
+/* EN: Read a whole value or a descriptor fragment with optional stop(state).
+ * Clear used on failure. A stopped remote value read retires only its fid.
+ * RU: Прочитать целое значение или часть описателя с stop(state).
+ * При отказе обнулить used. Отмена удалённого чтения освобождает только его fid. */
+StyxRpcIoOutcome styxrpc_module_ref_port_read_until(StyxRpcModuleRefPort *port, uint64_t offset,
+    void *bytes, size_t size, size_t *used, StyxRpcVfsStop stop, void *state);
+
+
+/* EN: Bind or replace a value with optional stop(state). Preserve the bound
+ * descriptor when an assignment loses acknowledgement, returning UNCERTAIN.
+ * RU: Привязать описатель либо изменить значение с stop(state). При потере
+ * подтверждения сохранить описатель и вернуть UNCERTAIN. */
+StyxRpcIoOutcome styxrpc_module_ref_port_write_until(StyxRpcModuleRefPort *port, uint64_t offset,
+    const void *bytes, size_t size, StyxRpcVfsStop stop, void *state);
+
+
 /* EN: Consume port. Remote clunk is deferred, local close follows its VFS contract. NULL is allowed.
  * RU: Освободить порт. Удалённый clunk отложен, местный close следует контракту VFS. NULL допустим. */
 void styxrpc_module_ref_port_close(StyxRpcModuleRefPort *port);

@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_open_identified_until
 
-[Русский](vfs_int_open_identified_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L240) · [Implementation](../src/vfs_int.c#L10)
+[Русский](vfs_int_open_identified_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L240) · [Implementation](../src/vfs_int.c#L11)
 
 Open a mounted Int32 and optionally retrieve the identity of its opened file.
 

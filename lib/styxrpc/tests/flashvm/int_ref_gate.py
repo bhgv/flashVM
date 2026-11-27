@@ -13,6 +13,7 @@ INT_BYTES = 4  # Ordered signed Int32 payload size.
 # RU: Различать метаданные до и после открытия, учитывать записи и закрытие точных fid.
 class IntRefGate(Gate):
     stages = ((124, "check"), (112, "open"), (124, "identity"), (116, "read"), (118, "write"))
+    value_name = VALUE_NAME  # Name of the watched .var leaf.
 
     # EN: Borrow directory for the relay and track only the selected variable's fids.
     # RU: Заимствовать каталог для канала и учесть только fid выбранной переменной.
@@ -40,7 +41,7 @@ class IntRefGate(Gate):
         if kind not in (112, 116, 118, 120, 124):
             return frame
         fid, = struct.unpack_from("<I", frame, 7)
-        if self.paths.get(fid) != VALUE_NAME:
+        if self.paths.get(fid) != self.value_name:
             return frame
         if kind == 120:
             self.opened.discard(fid)
@@ -74,4 +75,17 @@ class IntRefGate(Gate):
             self.selected.append(pair)
             self.pending[tag] = pair
             self.retiring.add(fid)
+        return frame
+
+
+# EN: Arm the same gate after Limbo captures the original FlashVM descriptor.
+# RU: Включить тот же барьер после захвата исходного описателя FlashVM из Limbo.
+class RefPortGate(IntRefGate):
+    value_name = "counter"  # Actual FlashVM export borrowed by the Limbo port.
+
+    # EN: Let initial capture finish before selecting independent cancellation attempts.
+    # RU: Дать закончиться первому захвату перед отдельными попытками с отменой.
+    def select_request(self, kind, tag, frame):
+        if (self.directory / "arm-ref-port").is_file():
+            return super().select_request(kind, tag, frame)
         return frame

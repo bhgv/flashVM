@@ -4,6 +4,7 @@
  */
 #include "vfs_client_internal.h"
 #include "styxrpc/variable_file.h"
+#include <string.h>
 
 
 /* EN/RU: See vfs_client.h. / См. vfs_client.h. */
@@ -74,27 +75,49 @@ static int load_int(void *state, int32_t *value)
 }
 
 
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_read_until(StyxRpcVfsFile *file, int32_t *value, StyxRpcVfsStop stop, void *state)
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxRpcIoOutcome styxrpc_vfs_int_read_bytes_until(StyxRpcVfsFile *file, void *bytes, StyxRpcVfsStop stop, void *state)
 {
-    if (!file || !value)
+    if (!file || !bytes)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
-    unsigned char bytes[STYX_VARIABLE_INT_SIZE];
+    unsigned char snapshot[STYX_VARIABLE_INT_SIZE];
     StyxTransfer part;
-    styxclientreaduntil(file, 0, bytes, sizeof(bytes), stop, state, &part);
+    styxclientreaduntil(file, 0, snapshot, sizeof(snapshot), stop, state, &part);
     if (stop && part.cancelled && !part.success)
     {
         return STYXRPC_IO_CANCELLED;
     }
-    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, sizeof(bytes));
+    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, sizeof(snapshot));
+    if (status != STYXRPC_IO_OK)
+    {
+        return status;
+    }
+    if (part.count != sizeof(snapshot))
+    {
+        return STYXRPC_IO_FAILED;
+    }
+    memcpy(bytes, snapshot, sizeof(snapshot));
+    return STYXRPC_IO_OK;
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_int_read_until(StyxRpcVfsFile *file, int32_t *value, StyxRpcVfsStop stop, void *state)
+{
+    if (!value)
+    {
+        return STYXRPC_IO_NOT_OPEN;
+    }
+    unsigned char bytes[STYX_VARIABLE_INT_SIZE];
+    StyxRpcIoOutcome status = styxrpc_vfs_int_read_bytes_until(file, bytes, stop, state);
     if (status != STYXRPC_IO_OK)
     {
         return status;
     }
     const StyxIntVariable copy = {value, NULL, store_int};
-    return styxintvariablewrite(&copy, 0, bytes, part.count) ? STYXRPC_IO_OK : STYXRPC_IO_FAILED;
+    return styxintvariablewrite(&copy, 0, bytes, sizeof(bytes)) ? STYXRPC_IO_OK : STYXRPC_IO_FAILED;
 }
 
 
@@ -105,13 +128,27 @@ StyxRpcIoOutcome styxrpc_vfs_int_read(StyxRpcVfsFile *file, int32_t *value)
 }
 
 
-/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
-StyxRpcIoOutcome styxrpc_vfs_int_write_until(StyxRpcVfsFile *file, int32_t value, StyxRpcVfsStop stop, void *state)
+/* EN/RU: See vfs_client_internal.h. / См. vfs_client_internal.h. */
+StyxRpcIoOutcome styxrpc_vfs_int_write_bytes_until(StyxRpcVfsFile *file, const void *bytes, StyxRpcVfsStop stop, void *state)
 {
-    if (!file)
+    if (!file || !bytes)
     {
         return STYXRPC_IO_NOT_OPEN;
     }
+    StyxTransfer part;
+    styxclientwriteuntil(file, 0, bytes, STYX_VARIABLE_INT_SIZE, stop, state, &part);
+    if (stop && part.cancelled && !part.success && !part.uncertain)
+    {
+        return STYXRPC_IO_CANCELLED;
+    }
+    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, STYX_VARIABLE_INT_SIZE);
+    return status == STYXRPC_IO_OK && part.count != STYX_VARIABLE_INT_SIZE ? STYXRPC_IO_FAILED : status;
+}
+
+
+/* EN/RU: See vfs_client.h. / См. vfs_client.h. */
+StyxRpcIoOutcome styxrpc_vfs_int_write_until(StyxRpcVfsFile *file, int32_t value, StyxRpcVfsStop stop, void *state)
+{
     const StyxIntVariable copy = {&value, load_int, NULL};
     unsigned char bytes[STYX_VARIABLE_INT_SIZE];
     size_t size = sizeof(bytes);
@@ -119,14 +156,7 @@ StyxRpcIoOutcome styxrpc_vfs_int_write_until(StyxRpcVfsFile *file, int32_t value
     {
         return STYXRPC_IO_FAILED;
     }
-    StyxTransfer part;
-    styxclientwriteuntil(file, 0, bytes, size, stop, state, &part);
-    if (stop && part.cancelled && !part.success && !part.uncertain)
-    {
-        return STYXRPC_IO_CANCELLED;
-    }
-    StyxRpcIoOutcome status = styxrpc_vfs_transfer_outcome(&part, size);
-    return status == STYXRPC_IO_OK && part.count != size ? STYXRPC_IO_FAILED : status;
+    return styxrpc_vfs_int_write_bytes_until(file, bytes, stop, state);
 }
 
 

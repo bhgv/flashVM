@@ -52,6 +52,9 @@ After interrupting a pending request, retire its fid and reopen the original
 descriptor if needed. A replacement publication has its own Qid.
 [Runnable FlashVM and DisVM example](../examples/disvm/INT32_REFERENCES.md).
 
+A Limbo guest can cancel a wait on a FlashVM export through `Processctl.cancelwait`.
+The shared [reference port](module_ref_port.md) checks the original Qid on the next access.
+
 ## Frame layout
 
 The named frame begins with one byte containing 9

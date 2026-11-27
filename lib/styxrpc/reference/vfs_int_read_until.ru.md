@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_read_until
 
-[English](vfs_int_read_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L248) · [Реализация](../src/vfs_int.c#L78)
+[English](vfs_int_read_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L248) · [Реализация](../src/vfs_int.c#L107)
 
 Прочитать одно знаковое значение Int32 из открытой переменной.
 

@@ -34,3 +34,8 @@
 использовать тот же интерфейс непосредственно через выданное подключение.
 
 [Открытие](module_ref_port_open.ru.md) · [Парное открытие](module_ref_port_open_paired.ru.md) · [Чтение](module_ref_port_read.ru.md) · [Запись](module_ref_port_write.ru.md) · [Закрытие](module_ref_port_close.ru.md)
+
+Для порта с остановкой см. [чтение](module_ref_port_read_until.ru.md) и
+[запись](module_ref_port_write_until.ru.md). При прерванном доступе к удалённому
+значению порт сохраняет описатель и при следующем обращении сверяет его Qid.
+[Исполняемый пример Limbo и FlashVM](../examples/disvm/REF_PORT_CANCELLATION.ru.md).

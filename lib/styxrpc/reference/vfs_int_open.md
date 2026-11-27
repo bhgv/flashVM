@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_open
 
-[Русский](vfs_int_open.ru.md) · [API](../include/styxrpc/vfs_client.h#L221) · [Source](../src/vfs_int.c#L53) · [Guide](../MODULES.md)
+[Русский](vfs_int_open.ru.md) · [API](../include/styxrpc/vfs_client.h#L221) · [Source](../src/vfs_int.c#L54) · [Guide](../MODULES.md)
 
 `StyxRpc::launch`
 

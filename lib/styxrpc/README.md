@@ -181,6 +181,9 @@ The Int32 API supports cancellable [identified open](reference/vfs_int_open_iden
 [read](reference/vfs_int_read_until.md) and [write](reference/vfs_int_write_until.md).
 Use [cancellable PID resolution](reference/int_ref_open_until.md) for process grants.
 [Runnable FlashVM and DisVM example](examples/disvm/INT32_REFERENCES.md).
+Embeddings can use a cancellable reference port for [reads](reference/module_ref_port_read_until.md)
+and [writes](reference/module_ref_port_write_until.md).
+[Runnable Limbo and FlashVM example](examples/disvm/REF_PORT_CANCELLATION.md).
 
 ## Name, Qid and fid
 

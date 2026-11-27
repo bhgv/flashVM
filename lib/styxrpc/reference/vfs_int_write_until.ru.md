@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_write_until
 
-[English](vfs_int_write_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L255) · [Реализация](../src/vfs_int.c#L109)
+[English](vfs_int_write_until.md) · [Объявление](../include/styxrpc/vfs_client.h#L255) · [Реализация](../src/vfs_int.c#L150)
 
 Записать знаковое значение Int32 в открытую переменную.
 

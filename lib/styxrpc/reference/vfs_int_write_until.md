@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_write_until
 
-[Русский](vfs_int_write_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L255) · [Implementation](../src/vfs_int.c#L109)
+[Русский](vfs_int_write_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L255) · [Implementation](../src/vfs_int.c#L150)
 
 Replace a signed Int32 in an already opened variable.
 

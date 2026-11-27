@@ -1,6 +1,6 @@
 # styxrpc_vfs_int_read_until
 
-[Русский](vfs_int_read_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L248) · [Implementation](../src/vfs_int.c#L78)
+[Русский](vfs_int_read_until.ru.md) · [Declaration](../include/styxrpc/vfs_client.h#L248) · [Implementation](../src/vfs_int.c#L107)
 
 Read one signed Int32 from an already opened variable.
 

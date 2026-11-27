@@ -57,6 +57,13 @@ invalidates its references, including an adopted handle that has yet to
 open its fid. Applications can keep a reference after closing their
 channel. Serialize operations on each individual cell.
 
+`Processctl.cancelwait(pid)` can stop an active capture, exact open, read
+or write on `/.varref` in a direct child. An interrupted call raises an
+exception and the affected remote fid retires. The bound port retains its
+original descriptor and checks the full Qid on the next access. An accepted
+assignment can remain visible.
+[Runnable Limbo and FlashVM example](../../lib/styxrpc/examples/disvm/REF_PORT_CANCELLATION.md).
+
 ## Export owned by DisVM
 
 Use `nodes->publishat("/mounted/counter.dis/.var/value", "rw", big 4)`
