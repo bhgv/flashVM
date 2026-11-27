@@ -30,6 +30,8 @@ COW/dirty-синхронизация захватов перед/после ка
 [Пример](../examples/embedding/worker_function/README.md) ·
 [English](WORKER_FUNCTION.md).
 
+Для передачи аргументов используйте [fvm_worker_run_function_args](WORKER_FUNCTION_ARGS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -40,4 +42,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_worker_run_function` | function | [include/flashvm/worker.h:38](../include/flashvm/worker.h#L38) |
+| `fvm_worker_run_function_args` | function | [include/flashvm/worker.h:53](../include/flashvm/worker.h#L53) |
 <!-- source-links:end -->

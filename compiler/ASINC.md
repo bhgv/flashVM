@@ -28,7 +28,7 @@ create tasks, evaluate bodies or emit executable closures.
 | Numeric source-to-FIR profile | Explicit semantic refusal at the prefix; old artifact preserved |
 | Runtime owner callbacks without frame/clock advancement | Existing `Async.post` / `fvm_async_post` |
 | Actual frame-free drawing and detached pixels | Executed native regression below |
-| Detached zero-argument AS2 root function | Executable AS2 view → FIR → SWF through [a native task](../flashVM/doc/ASINC_TASK.md) |
+| Detached AS2 root function | Executable AS2 view → FIR → SWF through [a native task](../flashVM/doc/ASINC_TASK.md) |
 | Cooperative scalar task input/result/cancellation owner | [Executable Limbo service](runtime/ASINC-TASKS.md); separate from AS lowering |
 | General lexical captures, methods with arguments, block and expression lowering | Pending |
 | Concurrent physical threads sharing mutable AS objects | Not admitted |
@@ -43,11 +43,11 @@ not an ABC implementation. No new SWF/Dis64 IDs or calling ABI are assigned.
 ## Executable AS2 slice
 
 The AS2 view compiler can build a whole unit containing a single detached
-function, for example `asinc function compute() { var n = 40; return n + 2; }`.
-The SWF initializer installs `_root.compute`. Its zero-argument invocation
+function, for example `asinc function compute(n) { return n + 2; }`.
+The SWF initializer installs `_root.compute`. Calling `_root.compute(40)`
 starts a native OS thread with an independent FlashVM context and returns a
-task handle. Local variables declared in the body and the worker's own `Math`
-are available. Outer bindings, live `ref`, parameters, and the block and
+task handle. The declared parameters, body locals and the worker's own
+`Math` are available. Up to eight arguments are copied as one graph. Outer bindings, live `ref`, and the block and
 expression forms are refused by this profile. The [task guide](../flashVM/doc/ASINC_TASK.md)
 describes polling, cancellation and the paired-player check.
 

@@ -7,33 +7,32 @@ The project AS2 view compiler accepts a complete unit with one closed
 function. Compile it with the usual AS2 view, FIR and SWL tools.
 
 ```actionscript
-asinc function compute() {
-    var checksum = 40;
-    return checksum + 2;
+asinc function compute(value) {
+    return value + 2;
 }
 ```
 
-The SWF initializer installs `_root.compute`. Calling `_root.compute()`
+The SWF initializer installs `_root.compute`. Calling `_root.compute(40)`
 creates an independent FlashVM context on an OS thread and returns a task.
 The parent session and window can keep running during this computation.
 The new context runs the detached bytecode with its own standard library.
-Only previously declared `var` bindings, up to 64 names, and the worker's
-`Math` namespace are visible to the compiled profile. A call takes zero
-arguments. The profile rejects outer bindings, `ref`, parameters and other
-`asinc` forms. Shared capture publication and live VFS access from tasks
+The compiled profile can read its parameters, previously declared `var`
+bindings and the worker's `Math` namespace. Pass exactly the declared
+number of arguments, up to eight. The worker receives one graph snapshot.
+Outer bindings, `ref` and other `asinc` forms remain outside this profile. Shared capture publication and live VFS access from tasks
 remain separate work.
 
 ## Task operations
 
 | Operation | Result |
 | --- | --- |
-| [`Async.run(function)`](ASINC_RUN.md) | Copy a serializable AVM1 closure and start its body on a worker. |
+| [`Async.run(function[, ...args])`](ASINC_RUN.md) | Copy a serializable AVM1 closure and start its body on a worker. |
 | [`task.poll()`](ASINC_POLL.md) | Read one completion snapshot without waiting for the worker or for a frame. |
 | [`task.cancel()`](ASINC_CANCEL.md) | Request cooperative cancellation at a VM execution checkpoint. |
 
 The compiler installs its closed template with `Async.wrap`. This helper
-is part of the compiler/player contract and copies the function's bytecode
-and constants without its originating timeline or closure. The native
+is part of the compiler/player contract and copies the function's bytecode,
+formals and constants without its originating timeline or closure. The native
 body of an imported function cannot be transferred. A context can retain
 up to 16 tasks, including released workers that still need cleanup.
 Collecting a task handle requests cancellation without joining it from GC.

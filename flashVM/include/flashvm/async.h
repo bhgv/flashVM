@@ -9,7 +9,7 @@ extern "C" {
 
 /* Install Async.post(callback,...args) and Async.cancel(id), preserving existing
  * own globals (a conflict returns INVALID_ARGUMENT). Also installs Async.run
- * for detached AVM1 closures and the AS2 compiler entry wrapper. Opt in per context;
+ * for detached AVM1 closures with optional copied arguments and the AS2 compiler entry wrapper. Opt in per context;
  * no legacy SWF version gate. Owner-thread only, not during GC/destruction.
  * Native method graph serialization is unsupported. No callbacks run here. */
 FVM_API FVM_Result fvm_async_install(FVM_Context *);

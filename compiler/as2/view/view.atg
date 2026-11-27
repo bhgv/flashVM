@@ -44,18 +44,24 @@ PRODUCTIONS
      * RU: Установить метод корня с именованными параметрами и необязательным итогом. */
     FrameHandler =
         "function" ident                                                (. emit_frame_handler(); .)
+        Formals MethodBody
+    .
+
+    /* EN: Compile a detached method. Invocation snapshots its arguments and returns a task.
+     * RU: Собрать отделённый метод. Вызов копирует его аргументы и возвращает задачу. */
+    AsincHandler =
+        ident "function" ident                                         (. emit_asinc_handler(); .)
+        Formals MethodBody
+    .
+
+    /* EN: Copy the ordered formal names shared by both method profiles.
+     * RU: Скопировать упорядоченные имена параметров обоих видов методов. */
+    Formals =
         "("
         [ ident                                                         (. emit_parameter(); .)
           { "," ident                                                   (. emit_parameter(); .) }
         ]
-        ")" MethodBody
-    .
-
-    /* EN: Compile a detached zero-argument method. Invocation returns a worker task.
-     * RU: Собрать отделённый метод без аргументов. Его вызов возвращает задачу. */
-    AsincHandler =
-        ident "function" ident                                         (. emit_asinc_handler(); .)
-        "(" ")" MethodBody
+        ")"
     .
 
     /* EN: Emit a root method body with an optional result.

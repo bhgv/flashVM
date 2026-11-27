@@ -133,20 +133,20 @@ int main(void)
         fprintf(stderr, "capacity failure was not atomic\n");
         return 1;
     }
-    const char *detached = "asinc // worker entry\nfunction compute() { var checksum=40; return checksum+2; }";
+    const char *detached = "asinc // worker entry\nfunction compute(data, delta) { data[0]=data[0]+delta; return data[0]; }";
     if (!as2_view_compile(detached, strlen(detached), output, sizeof(output) - 1, &length, &diagnostic))
     {
         fprintf(stderr, "detached asinc rejected\n");
         return 1;
     }
     output[length] = 0;
-    if (!strstr((const char *)output, "source_entry avm1_asinc @compute\n"))
+    if (!strstr((const char *)output, "source_entry avm1_asinc @compute @data @delta\n"))
     {
         fprintf(stderr, "asinc dispatch metadata lost\n");
         return 1;
     }
     const char *unsupported[] = {
-        "asinc function work(value) { return value; }",
+        "asinc function work(value,value) { return value; }",
         "asinc function work() { return outer; }",
         "asinc function work() { counter=42; }",
         "asinc function work() { var alias=ref outer; return alias; }",

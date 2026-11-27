@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1794 — copied arguments for native AS tasks
+
+AS2 view carries the detached function's formals through FIR and SWL.
+Calls to the compiled function accept up to eight positional arguments,
+with exact arity. `Async.run` and the C worker API snapshot arguments and
+the serializable closure in one graph, retaining aliases in the detached
+heap. The paired-player test mutates a copied object through one argument
+and reads it through another while the movie retains its original object.
+[EN](ASINC_TASK.md) · [RU](ASINC_TASK.ru.md).
+
 ## v0.1793 — paired runtime and installed IDE
 
 Limbo can issue a live Int32 reference to its own exported variable with

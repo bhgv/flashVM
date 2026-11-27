@@ -17,6 +17,10 @@ static int owner;          /* LHS owner SSA identity set before the key or RHS i
  * RU: Найти ранее объявленное имя отделённого тела. */
 static int asinc_local(const char *key)
 {
+    if (is_parameter(key))
+    {
+        return 1;
+    }
     for (unsigned i = 0; i < asinc_locals_count; ++i)
     {
         if (!strcmp(asinc_locals[i], key))

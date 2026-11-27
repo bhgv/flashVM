@@ -23,7 +23,7 @@ mode are explicitly refused. Restored bytecode does not inherit native/JIT body
 attachments. Never use this to transfer live UI authority or expect native
 attachments on nested captured functions to execute in the worker.
 
-Execution failures arrive through [`fvm_worker_join`](../include/flashvm/worker.h#L75)/[`fvm_worker_result`](../include/flashvm/worker.h#L108) after a
+Execution failures arrive through [`fvm_worker_join`](../include/flashvm/worker.h#L90)/[`fvm_worker_result`](../include/flashvm/worker.h#L123) after a
 successful launch. Only primitive results cross back; object results are refused.
 Strings remain worker-owned until destruction. Interactive owners should poll
 result and keep serving input, then join and destroy when complete. Instruction
@@ -39,6 +39,8 @@ No SWF or Dis64 file format changes are introduced.
 [Runnable example](../examples/embedding/worker_function/README.md) ·
 [Regression](../tests/worker_function.c).
 
+To copy positional inputs, use [fvm_worker_run_function_args](WORKER_FUNCTION_ARGS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -48,7 +50,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../include/flashvm/worker.h#L75) |
-| `fvm_worker_result` | function | [include/flashvm/worker.h:108](../include/flashvm/worker.h#L108) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:90](../include/flashvm/worker.h#L90) |
+| `fvm_worker_result` | function | [include/flashvm/worker.h:123](../include/flashvm/worker.h#L123) |
 | `fvm_worker_run_function` | function | [include/flashvm/worker.h:38](../include/flashvm/worker.h#L38) |
+| `fvm_worker_run_function_args` | function | [include/flashvm/worker.h:53](../include/flashvm/worker.h#L53) |
 <!-- source-links:end -->

@@ -39,6 +39,21 @@ FVM_API FVM_Result fvm_worker_run_function(FVM_Context *owner, const FVM_Config 
                                            FVM_Object *function, FVM_Worker **out);
 
 
+#define FVM_WORKER_FUNCTION_INPUTS 8U /* Maximum copied arguments for one detached entry. */
+
+
+/* [GC:] EN: Like fvm_worker_run_function, with count borrowed argument values.
+ * Snapshot closure and arguments as one graph, preserving shared nodes. Refuse
+ * unsupported values or count above FVM_WORKER_FUNCTION_INPUTS before launch.
+ * Return an owned worker in out on success. No owner heap references are shared.
+ * RU: Как fvm_worker_run_function, с count заимствованными аргументами.
+ * Копирует замыкание и аргументы одним графом, сохраняя общие узлы. Отклоняет
+ * неподдерживаемые значения и превышение FVM_WORKER_FUNCTION_INPUTS до запуска.
+ * Возвращает собственный поток в out при успехе. Куча владельца остаётся отдельной. */
+FVM_API FVM_Result fvm_worker_run_function_args(FVM_Context *owner, const FVM_Config *config,
+    FVM_Object *function, unsigned int count, const FVM_Value *args, FVM_Worker **out);
+
+
 /* Creates an OS thread which waits until fvm_worker_start() is called.
      * A suspended worker can be joined; join automatically starts it to avoid deadlock. */
 

@@ -1,12 +1,13 @@
-# Async.run(function)
+# Async.run(function[, ...args])
 
 [Русский](ASINC_RUN.ru.md) · [Detached task guide](ASINC_TASK.md) ·
 [Implementation](../src/standard/async_tasks.cpp)
 
-Pass one same-context, serializable AVM1 function. The call snapshots its
-environment synchronously and returns a task object after starting an OS
-worker. The worker calls the snapshot without arguments in an independent
-runtime. The copied graph has no pointer into the launching heap. Updates
+Pass a same-context, serializable AVM1 function followed by up to eight
+positional values. The call snapshots the environment and arguments as one
+graph and returns a task object after starting an OS worker. Aliases and
+cycles supported by the graph codec survive in the copy. The worker calls
+the function with those values in an independent runtime. The copied graph has no pointer into the launching heap. Updates
 made by one context do not change the other. Serialization and thread
 creation errors are reported at launch. Unsupported entries include
 native functions, functions with an attached native body, and captures

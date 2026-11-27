@@ -110,6 +110,38 @@ static void check_tasks(FVM_Context *context)
 }
 
 
+/* EN: Snapshot a shared node once even across the closure and an explicit argument.
+ * RU: Скопировать общий узел один раз для замыкания и переданного аргумента. */
+static void check_argument_graph(FVM_Context *context)
+{
+    const unsigned char compare[] = {0x96, 3, 0, 0, 'x', 0, 0x1c,
+        0x96, 3, 0, 0, 'y', 0, 0x1c, 0x66, 0x3e, 0};
+    const char *formals[] = {"y"};
+    FVM_Object *environment = 0;
+    FVM_Object *entry = 0;
+    FVM_Value space, args[2], task;
+    fvm_value_undefined(args);
+    fvm_value_undefined(args + 1);
+    args[0].type = FVM_VALUE_OBJECT;
+    args[1].type = FVM_VALUE_OBJECT;
+    check(fvm_get_global(context, "Async", &space) == FVM_OK && space.type == FVM_VALUE_OBJECT,
+          "get Async for copied arguments");
+    check(fvm_object_create(context, &environment) == FVM_OK &&
+          fvm_gc_pin(context, environment) == FVM_OK, "root environment");
+    check(fvm_object_create(context, &args[1].object) == FVM_OK &&
+          fvm_object_set(context, environment, "x", args + 1) == FVM_OK, "capture argument alias");
+    check(fvm_function_create_avm1(context, compare, sizeof(compare), 1, formals, environment,
+          &entry) == FVM_OK, "create argument entry");
+    args[0].object = entry;
+    check(fvm_object_call(context, space.object, "run", 2, args, &task) == FVM_OK &&
+          fvm_gc_pin(context, task.object) == FVM_OK, "start with argument graph");
+    FVM_Value result = finish(context, task.object, FVM_OK);
+    check(result.type == FVM_VALUE_BOOLEAN && result.boolean, "closure and argument keep one identity");
+    fvm_gc_unpin(context, task.object);
+    fvm_gc_unpin(context, environment);
+}
+
+
 /* EN: Execute the actual SWF from the AS2/FIR/SWL pipeline without frame advances after launch.
  * RU: Исполнить SWF из цепочки AS2/FIR/SWL без тактов кадров после запуска задачи. */
 static void check_compiled(FVM_Context *context, const char *path)
@@ -128,18 +160,29 @@ static void check_compiled(FVM_Context *context, const char *path)
     FVM_Value task;
     FVM_Value method = get(context, root, "compute");
     check(method.type == FVM_VALUE_OBJECT, "installed compiled entry");
-    FVM_Value extra;
-    fvm_value_number(&extra, 1);
-    check(fvm_function_invoke(context, method.object, root, 1, &extra, &task) == FVM_INVALID_ARGUMENT,
-          "compiled task rejects arguments");
-    FVM_Result started = fvm_function_invoke(context, method.object, root, 0, 0, &task);
+    FVM_Value start, args[3];
+    fvm_value_number(&start, 40);
+    fvm_value_undefined(args);
+    args[0].type = FVM_VALUE_OBJECT;
+    check(fvm_object_create(context, &args[0].object) == FVM_OK &&
+          fvm_gc_pin(context, args[0].object) == FVM_OK &&
+          fvm_object_set(context, args[0].object, "score", &start) == FVM_OK, "construct caller object");
+    args[1] = args[0];
+    fvm_value_number(args + 2, 2);
+    check(fvm_function_invoke(context, method.object, root, 2, args, &task) == FVM_INVALID_ARGUMENT,
+          "compiled task rejects wrong arity");
+    FVM_Result started = fvm_function_invoke(context, method.object, root, 3, args, &task);
     if (started != FVM_OK)
     {
         std::fprintf(stderr, "invoke compute: %d\n", (int)started);
     }
     check(started == FVM_OK && fvm_gc_pin(context, task.object) == FVM_OK, "invoke compiled entry");
     FVM_Value result = finish(context, task.object, FVM_OK);
-    check(result.type == FVM_VALUE_NUMBER && result.number == 42, "compiled detached worker result");
+    check(result.type == FVM_VALUE_NUMBER && result.number == 42, "read worker mutation through aliased input");
+    result = get(context, args[0].object, "score");
+    check(result.type == FVM_VALUE_NUMBER && result.number == 40,
+          "worker mutation stayed in worker heap");
+    fvm_gc_unpin(context, args[0].object);
     fvm_gc_unpin(context, task.object);
     fvm_gc_unpin(context, root);
 }
@@ -158,6 +201,7 @@ int main(int argc, char **argv)
           fvm_standard_install(context) == FVM_OK &&
           fvm_async_install(context) == FVM_OK, "install harness");
     check_tasks(context);
+    check_argument_graph(context);
     if (argc == 2)
     {
         check_compiled(context, argv[1]);

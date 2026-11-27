@@ -138,12 +138,12 @@ static FVM_Result cancel_task(FVM_Context *, FVM_Object *, unsigned count,
 }
 
 
-/* [GC:] EN: Wrap the sole function argument in a task, with no caller heap pointers in the worker.
- * RU: Создать задачу для единственного аргумента-функции без указателей на кучу вызова. */
-FVM_Result fvm_builtin_async_run(FVM_Context *context, FVM_Object *, unsigned count,
-                                const FVM_Value *args, FVM_Value *out, void *)
+/* [GC:] EN: Start a detached entry with borrowed arguments and return the owner task handle.
+ * RU: Запустить отделённую функцию с переданными аргументами и вернуть задачу владельца. */
+static FVM_Result start_task(FVM_Context *context, FVM_Object *function, unsigned count,
+                             const FVM_Value *args, FVM_Value *out)
 {
-    if (!context || !out || count != 1 || !args || args[0].type != FVM_VALUE_OBJECT ||
+    if (!context || !out || !function || count > FVM_WORKER_FUNCTION_INPUTS ||
         context->destroying || context->gc_collecting || context->gc_releasing)
     {
         return FVM_INVALID_ARGUMENT;
@@ -186,7 +186,7 @@ FVM_Result fvm_builtin_async_run(FVM_Context *context, FVM_Object *, unsigned co
     {
         FVM_Config config = context->runtime->config;
         config.userdata = 0;
-        status = fvm_worker_run_function(context, &config, args[0].object, &task->worker);
+        status = fvm_worker_run_function_args(context, &config, function, count, args, &task->worker);
     }
     if (status == FVM_OK)
     {
@@ -201,29 +201,44 @@ FVM_Result fvm_builtin_async_run(FVM_Context *context, FVM_Object *, unsigned co
 }
 
 
-/* EN: Wrap no-argument dispatch without forwarding the owner method receiver.
- * RU: Запустить обёрнутую функцию без аргументов и получателя метода владельца. */
-static FVM_Result call_detached(FVM_Context *context, FVM_Object *, unsigned count,
-                                 const FVM_Value *, FVM_Value *out, void *userdata)
+/* [GC:] EN: Interpret the first argument as an entry and snapshot the remaining values.
+ * RU: Взять функцию из первого аргумента и скопировать остальные значения. */
+FVM_Result fvm_builtin_async_run(FVM_Context *context, FVM_Object *, unsigned count,
+                                const FVM_Value *args, FVM_Value *out, void *)
 {
-    if (count)
+    if (!count || !args || args[0].type != FVM_VALUE_OBJECT)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    FVM_Value function;
-    fvm_value_undefined(&function);
-    function.type = FVM_VALUE_OBJECT;
-    function.object = static_cast<FVM_Object *>(userdata);
-    return fvm_builtin_async_run(context, 0, 1, &function, out, 0);
+    return start_task(context, args[0].object, count - 1, args + 1, out);
 }
 
 
-/* [GC:] EN: Prepare a detached worker template from a compiler-supplied
- * zero-argument DefineFunction. Copy only its portable code and constant pool.
- * Keep any captured owner object and timeline in the source context.
- * RU: Подготовить отделённый шаблон из DefineFunction без аргументов,
- * созданного компилятором. Скопировать только переносимый код и константы.
- * Захваченное окружение и шкала остаются в исходном контексте. */
+/* [GC:] EN: Launch the template with exactly its declared argument count.
+ * RU: Запустить шаблон с точным числом объявленных аргументов. */
+static FVM_Result call_detached(FVM_Context *context, FVM_Object *, unsigned count,
+                                 const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    FVM_Object *function = static_cast<FVM_Object *>(userdata);
+    FVM_Value parameters, length;
+    FVM_Result status = fvm_object_get(context, function->resource_result.object, "parameters", &parameters);
+    if (status == FVM_OK && parameters.type == FVM_VALUE_OBJECT)
+    {
+        status = fvm_object_get(context, parameters.object, "length", &length);
+    }
+    if (status != FVM_OK || parameters.type != FVM_VALUE_OBJECT ||
+        length.type != FVM_VALUE_NUMBER || length.number != count)
+    {
+        return status == FVM_OK ? FVM_INVALID_ARGUMENT : status;
+    }
+    return start_task(context, function, count, args, out);
+}
+
+
+/* [GC:] EN: Copy the code, formals and constant pool of a compiler-supplied
+ * DefineFunction to a template without a caller timeline or lexical scope.
+ * RU: Скопировать код, параметры и константы функции компилятора в шаблон
+ * без шкалы времени и лексического окружения вызывающего фильма. */
 FVM_Result fvm_builtin_async_wrap(FVM_Context *context, FVM_Object *, unsigned count,
                                  const FVM_Value *args, FVM_Value *out, void *)
 {
@@ -240,7 +255,8 @@ FVM_Result fvm_builtin_async_wrap(FVM_Context *context, FVM_Object *, unsigned c
     }
     FVM_Value length;
     FVM_Result status = fvm_object_get(context, function, "length", &length);
-    if (status != FVM_OK || length.type != FVM_VALUE_NUMBER || length.number)
+    if (status != FVM_OK || length.type != FVM_VALUE_NUMBER ||
+        !(length.number >= 0 && length.number <= FVM_WORKER_FUNCTION_INPUTS))
     {
         return status == FVM_OK ? FVM_UNSUPPORTED : status;
     }
@@ -266,7 +282,7 @@ FVM_Result fvm_builtin_async_wrap(FVM_Context *context, FVM_Object *, unsigned c
         return status;
     }
     FVM_Object *target = detached->resource_result.object;
-    static const char *const fields[] = {"code", "constants"};
+    static const char *const fields[] = {"code", "constants", "parameters"};
     for (unsigned i = 0; status == FVM_OK && i < sizeof(fields) / sizeof(*fields); ++i)
     {
         FVM_Value field;

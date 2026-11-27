@@ -10,6 +10,21 @@ static int detached_method;                      /* Install a deferred OS-thread
 static unsigned parameter_count;                  /* Initialized prefix of parameters. */
 
 
+/* EN: Test a binding against the copied formals of the current method.
+ * RU: Сверить имя с сохранёнными параметрами текущего метода. */
+static int is_parameter(const char *key)
+{
+    for (unsigned i = 0; i < parameter_count; ++i)
+    {
+        if (!strcmp(key, parameters[i]))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 /* EN: Write source provenance and one unique module name.
  * RU: Записать происхождение исходника и уникальное имя модуля. */
 static void header(const char *suffix)
@@ -45,18 +60,10 @@ void emit_frame_handler(void)
 void emit_parameter(void)
 {
     char key[256];
-    if (parameter_count == VIEW_PARAMETERS || !name(key))
+    if (parameter_count == VIEW_PARAMETERS || !name(key) || is_parameter(key))
     {
         failed = 1;
         return;
-    }
-    for (unsigned i = 0; i < parameter_count; ++i)
-    {
-        if (!strcmp(key, parameters[i]))
-        {
-            failed = 1;
-            return;
-        }
     }
     strcpy(parameters[parameter_count++], key);
 }
@@ -72,17 +79,13 @@ void emit_frame_body(void)
         snprintf(suffix, sizeof(suffix), "_%s", method);
     }
     header(suffix);
-    if (detached_method)
-    {
-        append("source_entry avm1_asinc @%s\n", method);
-    }
-    else if (!*suffix && !parameter_count)
+    if (!detached_method && !*suffix && !parameter_count)
     {
         append("source_entry avm1_frame\n");
     }
     else
     {
-        append("source_entry avm1_method @%s", method);
+        append("source_entry %s @%s", detached_method ? "avm1_asinc" : "avm1_method", method);
         for (unsigned i = 0; i < parameter_count; ++i)
         {
             append(" @%s", parameters[i]);
