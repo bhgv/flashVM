@@ -35,6 +35,65 @@ StyxRpcModuleSlot *styxrpc_module_slot_create(StyxRpcControl *control)
 }
 
 
+/* EN/RU: See module_slot.h. / См. module_slot.h. */
+int styxrpc_module_slot_programs(StyxRpcModuleSlot *slot, StyxRpcPrograms *programs)
+{
+    if (!slot || slot->programs || !programs || !programs->nodes || programs->used < 2)
+    {
+        return 0;
+    }
+    slot->programs = programs;
+    return 1;
+}
+
+
+/* EN: Identify mapped registry entries without overlapping dynamic callback Qids.
+ * RU: Распознать узлы реестра без пересечения с динамическими Qid колбэков. */
+static int program_id(uint64_t id)
+{
+    uint32_t local = (uint32_t)id;
+    return local > STYXRPC_SLOT_PROGRAM_ID &&
+        local - STYXRPC_SLOT_PROGRAM_ID < STYXRPC_TREE_CHILDREN;
+}
+
+
+/* EN: Resolve a child of the registry and copy its entry with the wire ID.
+ * RU: Найти потомка реестра и скопировать запись с сетевым ID. */
+static const StyxRpcEntry *program_entry(StyxRpcModuleSlot *slot, uint64_t directory, size_t index)
+{
+    if (!slot->programs)
+    {
+        return NULL;
+    }
+    const StyxRpcEntry *entry = styxrpc_program_tree.files.enumerate(slot->programs,
+        directory & ~STYXRPC_SLOT_PROGRAM_ID, index);
+    if (!entry)
+    {
+        return NULL;
+    }
+    slot->entry = *entry;
+    slot->entry.id |= STYXRPC_SLOT_PROGRAM_ID;
+    return &slot->entry;
+}
+
+
+/* EN: Resolve registry node and parent, keeping the shared root at zero.
+ * RU: Найти узел реестра и родителя, оставив общий корень с ID ноль. */
+static int program_stat(StyxRpcModuleSlot *slot, uint64_t id, StyxRpcNode *node)
+{
+    if (!slot->programs || !styxrpc_program_tree.stat(slot->programs, id & ~STYXRPC_SLOT_PROGRAM_ID, node))
+    {
+        return 0;
+    }
+    node->entry.id = id;
+    if (node->parent)
+    {
+        node->parent |= STYXRPC_SLOT_PROGRAM_ID;
+    }
+    return 1;
+}
+
+
 /* EN: Detach one tracked open while preserving every neighboring list link.
  * RU: Отсоединить одно учтённое открытие, сохранив ссылки соседних записей. */
 static void unlink_file(SlotFile *file)
@@ -204,6 +263,10 @@ static const StyxRpcEntry *enumerate(void *context, uint64_t directory, size_t i
 {
     StyxRpcModuleSlot *slot = context;
     uint64_t generation = directory >> IMAGE_SHIFT;
+    if (program_id(directory))
+    {
+        return program_entry(slot, directory, index);
+    }
     if (!generation)
     {
         if (directory >= STYXRPC_NODE_ID_FIRST)
@@ -249,6 +312,10 @@ static int describe(void *context, uint64_t id, StyxRpcNode *node)
 {
     StyxRpcModuleSlot *slot = context;
     uint64_t generation = id >> IMAGE_SHIFT;
+    if (program_id(id))
+    {
+        return program_stat(slot, id, node);
+    }
     if (!generation)
     {
         if (id == STYXRPC_NODE_EXEC_QID)
@@ -290,7 +357,9 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
 {
     StyxRpcModuleSlot *slot = context;
     uint64_t generation = id >> IMAGE_SHIFT;
-    if (generation && (!slot->module || generation != slot->generation))
+    int process = program_id(id);
+    if ((process && !slot->programs) ||
+        (!process && generation && (!slot->module || generation != slot->generation)))
     {
         return 0;
     }
@@ -301,15 +370,17 @@ static int open_file(void *context, uint64_t id, unsigned access, void **cookie)
     }
     int execute = id == STYXRPC_NODE_EXEC_QID;
     int callback = !generation && (execute || id >= STYXRPC_NODE_ID_FIRST);
-    const StyxRpcVfs *files = execute ? &styxrpc_node_exec_files :
+    const StyxRpcVfs *files = process ? &styxrpc_program_tree.files : execute ? &styxrpc_node_exec_files :
         callback ? &styxrpc_nodes_tree.files : generation ? &styxrpc_module_tree.files : &styxrpc_control_tree.files;
-    void *data = callback ? (void *)slot->nodes : generation ? (void *)slot->module : slot->control;
-    if (styxrpc_file_open(&opened->file, files, data, (uint32_t)id, access) != STYXRPC_OK)
+    void *data = process ? (void *)slot->programs :
+        callback ? (void *)slot->nodes : generation ? (void *)slot->module : slot->control;
+    uint64_t inner = process ? id & ~STYXRPC_SLOT_PROGRAM_ID : (uint32_t)id;
+    if (styxrpc_file_open(&opened->file, files, data, inner, access) != STYXRPC_OK)
     {
         free(opened);
         return 0;
     }
-    if (generation || callback)
+    if (!process && (generation || callback))
     {
         SlotFile **head = callback ? &slot->node_files : &slot->opened;
         opened->id = id;

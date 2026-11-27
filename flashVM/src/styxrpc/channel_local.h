@@ -30,4 +30,12 @@ typedef struct LocalChannel
  * Вернуть 1 при успехе или отсутствии работы, 0 при неверном кадре. */
 int fvm_styxrpc_local_sync(FVM_Context *context, FVM_Object *owner, LocalChannel *local);
 
+
+
+/* [GC:] EN: Create a typed local queue from the element shape and capacity in args.
+ * On success out owns the script object; receiver and unused state are ignored.
+ * RU: Создать локальную типизированную очередь по форме элемента и ёмкости из args.
+ * При успехе записать объект AS в out. Получатель и состояние игнорируются. */
+FVM_Result fvm_styxrpc_new_local_channel(FVM_Context *, FVM_Object *, unsigned,
+    const FVM_Value *, FVM_Value *, void *);
 #endif

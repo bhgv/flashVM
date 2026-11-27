@@ -4,6 +4,7 @@
  */
 #include "os_handles.h"
 #include "session_methods.h"
+#include "channel_local.h"
 #include "styxrpc/module_client.h"
 #include <stdlib.h>
 #include <string.h>
@@ -152,6 +153,11 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
     {
         status = fvm_object_define_method_rooted(context, vfs.object, "chan",
             fvm_styxrpc_open_peer_channel, movies, NULL);
+    }
+    if (status == FVM_OK && movies->argument_bus)
+    {
+        status = fvm_object_define_method_rooted(context, vfs.object, "localChannel",
+            fvm_styxrpc_new_local_channel, NULL, NULL);
     }
     if (status == FVM_OK)
     {

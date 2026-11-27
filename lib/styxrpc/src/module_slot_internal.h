@@ -8,12 +8,16 @@
 #include "nodes_internal.h"
 #include <pthread.h>
 
+#define STYXRPC_SLOT_PROGRAM_ID (UINT64_C(1) << 30) /* Low-word bit outside control, image and callback IDs. */
+#define STYXRPC_SLOT_PROGRAM_ROOT (STYXRPC_SLOT_PROGRAM_ID | UINT64_C(1)) /* Mapped .prog directory. */
+
 typedef struct SlotFile SlotFile; /* Owner's tracking of a nested open fid. */
 typedef struct SlotClaim SlotClaim; /* One private named-channel reservation. */
 
 struct StyxRpcModuleSlot
 {
     StyxRpcControl *control; /* Borrowed stable control tree context. */
+    StyxRpcPrograms *programs; /* Optional borrowed registry for the hidden process tree. */
     StyxRpcModule *module;   /* Borrowed image through retirement. */
     uint32_t generation;    /* Monotonic image identity. */
     StyxRpcNodes *nodes;     /* Owned active movie's callback nodes. */

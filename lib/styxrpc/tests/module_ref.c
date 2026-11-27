@@ -18,6 +18,8 @@
 #define STREAM (PHY_STREAM | PHY_ORDERED | PHY_RELIABLE) /* Ordered local socket transport. */
 #define MODULE_PATH "mounted/ref.dis" /* Name reused for two compatible images. */
 #define COUNTER_PATH "mounted/ref.dis/.var/counter" /* Name reused after publication changes. */
+#define SCOPE_PID 123U /* Stable process in the paired control tree. */
+#define SCOPE_IDENTITY ".prog/123/.pid" /* Direct RPC-only path. */
 #define COUNTER_QID UINT64_C(0x101) /* Local fixture identity, independent of remote Qids. */
 
 typedef struct Fixture
@@ -239,6 +241,19 @@ static int restart(StyxClient *client)
 }
 
 
+/* EN: Read the stable decimal PID on the already opened reverse fid.
+ * RU: Прочитать постоянный десятичный PID с уже открытого встречного fid. */
+static int read_scope(StyxFid *pid)
+{
+    char text[16];
+    const char expected[] = "123\n";
+    StyxTransfer transfer;
+    styxclientread(pid, 0, text, sizeof(text), &transfer);
+    return transfer.success && transfer.count == sizeof(expected) - 1 &&
+        !memcmp(text, expected, sizeof(expected) - 1);
+}
+
+
 /* EN: Hold remote and local aliases across a real publication replacement.
  * The caller resumes the slot only after the dispatch worker joins.
  * RU: Удержать удалённую и локальную ссылки при реальной замене публикации.
@@ -263,10 +278,14 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     StyxRpcModuleRef fresh = {0, STYXRPC_MODULE_REF_FORWARD, 0, COUNTER_PATH};
     StyxRpcVfsFile *view = NULL, *alias = NULL, *denied = NULL, *current = NULL;
     StyxFid *image = styxrpc_module_open(client, MODULE_PATH);
+    StyxFid *pid = styxclientwalk(client, SCOPE_IDENTITY);
+    StyxRpcFileInfo info;
     StyxRpcModuleExports exports;
     int64_t echoed = 0;
     int32_t value = 0;
-    int good = client && owned_reference(client) &&
+    int good = client && pid && styxclientopen(pid, 0) && read_scope(pid) &&
+        styxrpc_vfs_stat(client, SCOPE_IDENTITY, &info) == STYXRPC_IO_NOT_OPEN &&
+        owned_reference(client) &&
         styxrpc_module_exports_at(image, 0, &exports) == STYXRPC_OK &&
         styxrpc_module_check_at(image, exports.methods, exports.count, 0) == STYXRPC_OK &&
         styxrpc_scalar_invoke_at(image, NULL, NULL, "echo", STYXRPC_INT_SIGNATURE, 12, 1000, &echoed) ==
@@ -276,7 +295,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
         styxrpc_vfs_int_read(alias, &value) == STYXRPC_IO_OK && value == -73 &&
         styxrpc_vfs_int_write(alias, -4) == STYXRPC_IO_OK &&
         styxrpc_vfs_int_read(view, &value) == STYXRPC_IO_OK && value == -4 &&
-        restart(client) &&
+        restart(client) && read_scope(pid) &&
         styxrpc_vfs_int_read(alias, &value) != STYXRPC_IO_OK;
     old.writable = 0;
     good = good && styxrpc_module_ref_open_remote(client, &old, &denied) == STYXRPC_IO_NOT_OPEN && !denied &&
@@ -294,6 +313,7 @@ static int replacement(StyxRpcModuleSlot *slot, StyxRpcFile *local)
     styxrpc_vfs_close(denied, 0);
     styxrpc_vfs_close(current, 0);
     styxrpc_vfs_close(image, 0);
+    styxrpc_vfs_close(pid, 0);
     styxclientshutdown(client);
     styxclientfree(client);
     pthread_join(worker, NULL);
@@ -325,6 +345,8 @@ static int find(StyxRpcModuleSlot *slot, uint64_t parent, const char *name, Styx
  * RU: Проверить формат и операции владельца и клиента, закрыть fid перед уничтожением слота. */
 int main(void)
 {
+    StyxRpcRegistration nodes[7];
+    StyxRpcPrograms programs;
     int32_t original = 41, next = 92;
     StyxRpcModule *first = image(&original, 1);
     Fixture test = {NULL, image(&next, 0)};
@@ -338,6 +360,11 @@ int main(void)
     StyxRpcFile local = {0};
     StyxRpcEntry mounted, module, vars, counter;
     int good = wire_contract() && first && test.replacement &&
+        styxrpc_programs_init(&programs, nodes, sizeof(nodes) / sizeof(*nodes)) &&
+        styxrpc_program_add(&programs, SCOPE_PID) &&
+        styxrpc_module_slot_programs(test.slot, &programs) &&
+        !styxrpc_module_slot_programs(test.slot, &programs) &&
+        !find(test.slot, 0, ".prog", &mounted) &&
         styxrpc_module_slot_set(test.slot, first) == STYXRPC_OK &&
         find(test.slot, 0, "mounted", &mounted) && find(test.slot, mounted.id, "ref.dis", &module) &&
         find(test.slot, module.id, ".var", &vars) && find(test.slot, vars.id, "counter", &counter);

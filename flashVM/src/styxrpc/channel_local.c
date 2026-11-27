@@ -332,9 +332,8 @@ static int local_shape(const FVM_Value *args, char *shape, unsigned *slots)
 }
 
 
-/* [GC:] EN: Allocate a new typed FIFO and attach its lifetime to one script object.
- * RU: Выделить новый типизированный FIFO и передать владение объекту AS. */
-static FVM_Result create(FVM_Context *context, FVM_Object *self, unsigned argc,
+/* [GC:] EN/RU: See channel_local.h. / См. channel_local.h. */
+FVM_Result fvm_styxrpc_new_local_channel(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *unused)
 {
     LocalChannel *local;
@@ -410,6 +409,6 @@ static FVM_Result create(FVM_Context *context, FVM_Object *self, unsigned argc,
 /* [GC:] EN/RU: See flashvm/styxrpc_channel.h. / См. flashvm/styxrpc_channel.h. */
 FVM_Result fvm_styxrpc_channel_factory(FVM_Context *context, const char *global)
 {
-    return context && global && *global ? fvm_register_function(context, global, create, NULL) :
+    return context && global && *global ? fvm_register_function(context, global, fvm_styxrpc_new_local_channel, NULL) :
         FVM_INVALID_ARGUMENT;
 }

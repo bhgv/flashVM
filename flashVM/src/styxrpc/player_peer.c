@@ -13,6 +13,52 @@
 #include <string.h>
 
 #define PLAYER_PEER_POLL_MS 20 /* Maximum owner wait between mount checks. */
+#define PLAYER_FIRST_WORKER_PID 1U  /* First logical caller ID in this connection's reverse tree. */
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
+int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs)
+{
+    size_t i;
+    if (!styxrpc_programs_init(&programs->registry, programs->nodes, PLAYER_PROGRAM_SLOTS))
+    {
+        return 0;
+    }
+    for (i = 0; i < FVM_ASYNC_MAX_TASKS; ++i)
+    {
+        FVM_StyxRpcWorkerScope *scope = &programs->scopes.entries[i];
+        StyxRpcResource resource;
+        scope->pid = PLAYER_FIRST_WORKER_PID + (uint32_t)i;
+        scope->bus = styxrpc_argument_bus_create(scope->pid);
+        if (!scope->bus)
+        {
+            return 0;
+        }
+        resource = styxrpc_argument_bus_resource(scope->bus);
+        if (!styxrpc_program_add(&programs->registry, scope->pid) ||
+            !styxrpc_program_unibus(&programs->registry, scope->pid, &resource))
+        {
+            return 0;
+        }
+    }
+    if (!styxrpc_module_slot_programs(playback->slot, &programs->registry))
+    {
+        return 0;
+    }
+    playback->worker_scopes = &programs->scopes;
+    return 1;
+}
+
+
+/* EN/RU: See player_peer.h. / См. player_peer.h. */
+void fvm_styxrpc_player_programs_close(PlayerPrograms *programs)
+{
+    size_t i;
+    for (i = 0; i < FVM_ASYNC_MAX_TASKS; ++i)
+    {
+        styxrpc_argument_bus_destroy(programs->scopes.entries[i].bus);
+    }
+}
 
 
 /* EN: The mount worker owns lane. The owner reads result after joining.

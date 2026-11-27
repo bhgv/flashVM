@@ -9,6 +9,20 @@
 #include "mux/bidir.h"
 #include "styxrpc/named_peer.h"
 
+#define PLAYER_PROGRAM_ROOT_SLOTS 2U /* Shared root and hidden .prog. */
+#define PLAYER_PROGRAM_TASK_SLOTS 6U /* One process directory, standard children, and .unibus. */
+#define PLAYER_PROGRAM_SLOTS (PLAYER_PROGRAM_ROOT_SLOTS + FVM_ASYNC_MAX_TASKS * PLAYER_PROGRAM_TASK_SLOTS)
+
+
+/* EN: Own reverse program resources for one native connection.
+ * RU: Владеть ресурсами встречных программ одного нативного соединения. */
+typedef struct PlayerPrograms
+{
+    StyxRpcPrograms registry;                     /* Dispatcher-owned reverse tree. */
+    StyxRpcRegistration nodes[PLAYER_PROGRAM_SLOTS]; /* Fixed storage valid through server destroy. */
+    FVM_StyxRpcWorkerScopes scopes;                 /* Owned worker buses until workers and fids retire. */
+} PlayerPrograms;
+
 #define PLAYER_MSIZE 4096U   /* Requested message size in bytes. */
 #define PLAYER_WAIT_MS 5000U /* Per-operation bound of the paired client. */
 #define PLAYER_TAGS 8U       /* Pending tags on the paired client. */
@@ -22,6 +36,18 @@ typedef struct PlayerPeerChannels
     StyxClient *client;             /* Borrowed from host or owned on the reverse side. */
     FVM_PeerRefs refs;               /* Borrowed by any active movie until peer close. */
 } PlayerPeerChannels;
+
+
+/* EN: Publish the connection's worker identities and argument buses before dispatch.
+ * Keep programs at its original address until all workers and server fids retire.
+ * RU: Выдать встречный PID задач и шину аргументов до запуска диспетчера.
+ * Хранить programs по исходному адресу до завершения задач и закрытия fid. */
+int fvm_styxrpc_player_programs(FVM_StyxRpcPlayback *playback, PlayerPrograms *programs);
+
+
+/* EN: Free initialized worker buses after closing all workers and server fids.
+ * RU: Освободить созданные шины после завершения всех задач и закрытия fid сервера. */
+void fvm_styxrpc_player_programs_close(PlayerPrograms *programs);
 
 
 /* EN: Consume the client lane. Serve requests on the owner while the lane

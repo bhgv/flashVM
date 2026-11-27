@@ -123,7 +123,7 @@ static FVM_Result prepare(FVM_StyxRpcPlayback *playback, const void *bytes, size
             {
                 FVM_AsyncWorkerSetup setup;
                 setup.install = fvm_styxrpc_worker_vfs;
-                setup.state = movies;
+                setup.state = playback;
                 fvm_async_worker_setup(context, &setup);
             }
         }

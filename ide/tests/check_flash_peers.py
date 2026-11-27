@@ -32,13 +32,14 @@ def compile_role(args, directory, role):
     swf = directory / f"peer-{role}.swf"
     objects = [compile_unit(args, directory, f"peer-{role}")]
     if role in ("caller", "dis-caller", "ref", "exec-caller", "named-caller", "module-refs-caller", "messages-caller",
-                "asinc", "asinc-chan-caller", "asinc-load-caller"):
+                "asinc", "asinc-chan-caller", "asinc-load-caller", "asinc-scope-caller"):
         report = directory / "peer-report.swo"
         source = ROOT / "flashVM/tests/styxrpc/peer-report.fir"
         subprocess.run((args.fir / "fir1", "object", source, report), check=True, timeout=20)
         objects.append(report)
-    if role == "asinc-load-caller":
-        objects.append(compile_unit(args, directory, "peer-asinc-load-worker"))
+    if role in ("asinc-load-caller", "asinc-scope-caller"):
+        worker = role.rsplit("-", 1)[0] + "-worker"
+        objects.append(compile_unit(args, directory, "peer-" + worker))
     if role == "asinc":
         objects.append(compile_unit(args, directory, "peer-asinc-frame"))
     if role in ("asinc-chan-caller", "asinc-chan-provider"):
@@ -140,8 +141,8 @@ def dis_calls_flash(args, directory, mode):
 
 # EN: Run movie and mode against the Dis provider; use caller_label in diagnostics.
 # RU: Запустить movie в режиме mode с провайдером Dis; использовать caller_label в диагностике.
-def flash_calls_dis(args, directory, movie, mode, caller_label="movie"):
-    options = ("--export", "limbo.dis", "limbo.dis", "next", "--", "--native-spawn", mode, "dispatcher.dis")
+def flash_calls_dis(args, directory, movie, mode, caller_label="movie", image="limbo.dis", method="next"):
+    options = ("--export", image, image, method, "--", "--native-spawn", mode, "dispatcher.dis")
     # EN/RU: Exercise the stock listening CLI, including the reverse attach.
     # Проверить штатный TCP-слушатель вместе с встречным подключением.
     with subprocess.Popen((args.runtime, "--styx-library-serve-tcp", "127.0.0.1", "0", *options),
@@ -178,6 +179,7 @@ def flash_calls_dis(args, directory, movie, mode, caller_label="movie"):
 def compile_dis_provider(args, directory):
     compile_image(args, directory, ROOT / "lib/styxrpc/tests/flashvm/limbo.b", "limbo.dis")
     compile_image(args, directory, args.source / "limbo/scalarowner.b", "dispatcher.dis")
+    compile_image(args, directory, ROOT / "lib/styxrpc/tests/flashvm/asinc-scope_owner.b", "asinc-scope.dis")
 
 
 # EN: Compile OS fixtures and run both movies against stock DisVM and its live VFS.
@@ -243,8 +245,11 @@ def main():
             if args.runtime:
                 compile_dis_provider(args, directory)
                 caller = compile_role(args, directory, "asinc-load-caller")
+                scoped_caller = compile_role(args, directory, "asinc-scope-caller")
                 for mode in ("--no-jit", "--jit"):
                     flash_calls_dis(args, directory, caller, mode, "asinc task")
+                    flash_calls_dis(args, directory, scoped_caller, mode, "scoped asinc task",
+                                    "asinc-scope.dis", "bounce")
             return
         if not args.exec_only:
             message_caller = compile_role(args, directory, "messages-caller")
@@ -276,6 +281,7 @@ def main():
             compile_dis_provider(args, directory)
             dis_caller = compile_role(args, directory, "dis-caller")
             dis_asinc_caller = compile_role(args, directory, "asinc-load-caller")
+            dis_scoped_caller = compile_role(args, directory, "asinc-scope-caller")
             compile_role(args, directory, "ref-failure")
             failure_client = compile_image(args, directory, tests / "peer_frame_failure.b", "frame-failure.dis")
         for mode in ("--no-jit", "--jit"):
@@ -291,6 +297,8 @@ def main():
                 dis_calls_flash(args, directory, mode)
                 flash_calls_dis(args, directory, dis_caller, mode)
                 flash_calls_dis(args, directory, dis_asinc_caller, mode, "asinc task")
+                flash_calls_dis(args, directory, dis_scoped_caller, mode, "scoped asinc task",
+                                "asinc-scope.dis", "bounce")
                 os_files(args, directory / mode[2:], mode)
                 failed_frame(args, directory, mode, failure_client)
 

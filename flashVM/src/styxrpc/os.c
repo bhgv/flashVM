@@ -270,6 +270,7 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
         spec.session = handle->movies->session;
         spec.path = handle->path + 1;
         spec.pid = handle->movies->binding->program.pid;
+        spec.bus = handle->movies->argument_bus;
         if (styxrpc_module_exports_at(handle->module, spec.pid, &exports) != STYXRPC_OK)
         {
             return FVM_NOT_FOUND;

@@ -1,5 +1,16 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1798 — scoped Dis calls and live channels in AS tasks
+
+The stock paired player publishes a hidden reverse program tree on
+the existing Styx connection. Each concurrent detached task borrows
+a distinct caller PID and argument bus. A checked Dis proxy can lend
+a local typed queue and return a live Dis channel in the same call.
+The AS/Limbo test overlaps two calls and verifies independent replies.
+The SDK test checks ordinary-path filtering and keeps a reverse fid
+valid across an image replacement.
+[EN](ASINC_VFS.md) · [RU](ASINC_VFS.ru.md).
+
 ## v0.1797 — Dis module calls from native AS tasks
 
 A detached task can open a published `.dis` image over the pair's mounted

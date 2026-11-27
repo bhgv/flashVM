@@ -241,6 +241,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     FVM_StyxRpcPlayback *playback = NULL;
     StyxRpcServer *server = NULL;
     PlayerPeerChannels channels = {0};
+    PlayerPrograms programs = {0};
     int status = 1;
     int named = 0;
     PhyBidir *mux = phybidircreate_lanes(phyposixfd(fd, PHY_STREAM | PHY_ORDERED | PHY_RELIABLE),
@@ -264,7 +265,8 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
         spec.mode = mode;
         spec.setup = setup;
         spec.host = &host;
-        if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK)
+        if (fvm_styxrpc_playback_create(&spec, &playback) == FVM_OK &&
+            fvm_styxrpc_player_programs(playback, &programs))
         {
             playback->awaiting_session = flash_peer;
             playback->defer_command_tick = 1;
@@ -323,6 +325,7 @@ static int run(int fd, FVM_ExecutionMode mode, FVM_PairedView *view, unsigned se
     styxrpc_server_destroy(server);
     fvm_styxrpc_player_peer_close(&channels);
     fvm_styxrpc_playback_destroy(playback);
+    fvm_styxrpc_player_programs_close(&programs);
     styxrpc_exchange_destroy(host.exchange);
     fvm_runtime_destroy(runtime);
     styxclientshutdown(root);

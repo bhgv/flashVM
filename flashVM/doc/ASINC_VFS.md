@@ -41,9 +41,12 @@ A worker can also open a published `.dis` image for reading and use
 `load()` to get a proxy in its own context. Closing the original handle
 leaves the proxy's own fid available for direct method calls. The proxy
 stays bound to that publication. Withdrawal makes it fail even if the
-same VFS name is reused. The worker can use interfaces that require no
-reverse PID. Return an ordinary result from the task so the movie can
-receive it through `poll()`.
+same VFS name is reused. The stock player assigns each active task a
+distinct reverse PID and argument bus. A task can call scoped methods,
+lend a [local typed queue](ASINC_LOCAL_CHANNEL.md) as an argument and
+use a channel returned by DisVM through that task's proxy. Both directions
+use the paired Styx session. The movie receives a primitive result through
+`poll()`.
 
 Loading a child SWF, publishing nodes or modules and controlling playback
 use the movie's context.
@@ -65,7 +68,11 @@ proxy in interpreter and JIT modes over TCP. The
 [AS worker](../tests/styxrpc/peer-asinc-load-worker.as) closes the source
 handle before calling `next`. The
 [film](../tests/styxrpc/peer-asinc-load-caller.as) checks a value of `42`
-and a remote rejection from another task.
+and a remote rejection from another task. The
+[scoped worker](../tests/styxrpc/peer-asinc-scope-worker.as) lends its
+queue to the [Limbo export](../../lib/styxrpc/tests/flashvm/asinc-scope_owner.b),
+then reads and closes the returned Dis channel. The film runs two such
+calls concurrently and verifies both results.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

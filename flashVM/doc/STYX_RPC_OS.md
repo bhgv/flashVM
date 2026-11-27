@@ -74,8 +74,10 @@ publication and the proxy holds its own fid, so closing the source descriptor
 leaves the loaded clip or proxy usable. If the owner withdraws an image, held
 descriptors and proxy methods fail even when another image uses the same name.
 
-A detached task in the stock pair can load a published `.dis` with an
-interface that requires no reverse PID. See [VFS in tasks](ASINC_VFS.md).
+A detached task in the stock pair receives a reverse PID and an argument bus.
+It can load a scoped published `.dis`, lend a local queue to a method and use
+its result channel. Scoped calls use a detached task while the film serves
+the reverse requests. See [VFS in tasks](ASINC_VFS.md).
 
 Acceptance sources are [AS](../tests/styxrpc/os-client.as) and
 [Limbo](../../lib/styxrpc/tests/flashvm/os_check.b). For explicitly selected

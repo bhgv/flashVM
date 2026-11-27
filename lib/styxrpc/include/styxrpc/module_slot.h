@@ -5,6 +5,7 @@
 #ifndef STYXRPC_MODULE_SLOT_H
 #define STYXRPC_MODULE_SLOT_H
 #include "styxrpc/module.h"
+#include "styxrpc/program.h"
 #include "styxrpc/named_channel.h"
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +38,19 @@ void styxrpc_module_slot_destroy(StyxRpcModuleSlot *slot);
  * RU: Создать свой реестр каналов с резервами в slot. Сохранять slot живым
  * до завершения реестра и всех владельцев его участников. */
 StyxRpcNamedRegistry *styxrpc_module_slot_named_registry(StyxRpcModuleSlot *slot);
+
+/* EN: Attach an initialized program registry before serving the slot. Borrow it
+ * through server and slot destruction. The dispatcher owns registry access;
+ * mutate registrations only on that owner between requests. The .prog root
+ * is directly traversable for RPC and omitted from root enumeration.
+ * Return 1 on first attachment or 0 without a change.
+ * RU: Подключить инициализированный реестр программ до обслуживания слота.
+ * Заимствовать до уничтожения сервера и слота. Реестром владеет диспетчер,
+ * менять регистрации можно только у владельца между запросами. Корень
+ * .prog доступен по имени для RPC и скрыт из списка корня.
+ * Вернуть 1 при первом подключении или 0 без изменений. */
+int styxrpc_module_slot_programs(StyxRpcModuleSlot *slot, StyxRpcPrograms *programs);
+
 
 extern const StyxRpcTree styxrpc_module_slot_tree; /* Tree context is a live StyxRpcModuleSlot. */
 

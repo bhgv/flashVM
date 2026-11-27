@@ -6,6 +6,8 @@
 #define FVM_STANDARD_ASYNC_WORKER_H
 #include "flashvm/worker.h"
 
+#define FVM_ASYNC_MAX_TASKS 16U /* Retained or pending-reap tasks per context. */
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -11,8 +11,6 @@
 #include "flashvm/worker.h"
 #include <new>
 
-#define FVM_ASYNC_MAX_TASKS 16U /* Retained or pending-reap tasks per context. */
-
 
 /* [GC:] EN: Native record shared by the wrapper and the owner reaper, never by worker code.
  * RU: Нативная запись обёртки и очистки владельца, недоступная коду рабочего потока. */
