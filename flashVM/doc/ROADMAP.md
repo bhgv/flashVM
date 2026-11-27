@@ -1,5 +1,15 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1804 — explicit lifetime and cancellation for live Dis loads
+
+The film and detached tasks can unload checked Dis proxies, retaining
+any returned channels independently. DisVM cancels an admitted load at
+its exact resident when the session clunks the pending request. Positioned
+Limbo files can serve executable images and retire cancelled read tickets.
+The paired test stalls one image read, cancels it, then loads successfully
+from the same node and reuses more than 32 generations in sequence.
+[EN](STYX_RPC_LIVE_DIS.md) · [RU](STYX_RPC_LIVE_DIS.ru.md).
+
 ## v0.1803 — scoped Dis calls from the playback owner
 
 The stock FlashVM/DisVM pair gives the main movie its own reverse PID

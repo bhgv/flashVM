@@ -35,6 +35,7 @@ Copyright (c) 2026 bhgv
 
 [Захваченные каталоги модулей](reference/module_open.ru.md) закрепляют экспорт и вызовы за выбранным образом. См. [обнаружение экспортов](reference/module_exports_at.ru.md) и [точный скалярный вызов](reference/scalar_invoke_at.ru.md).
 [Контекстное обнаружение](reference/module_exports_scoped_at.ru.md) показывает, каким методам нужен PID вызывающей стороны. Во время синхронного вызова владелец может [обслуживать нативное дерево программ](reference/server_program_step_for.ru.md), отложив колбэки приложения.
+[Живая загрузка с отменой](reference/module_live_open_until.ru.md) закрывает точный fid запроса при остановке ожидания образа Dis.
 
 [Пользовательские сообщения UniBus](reference/custom_messages.ru.md) дают регистрацию своих типов и обработчиков в существующей сессии Styx.
 

@@ -4,6 +4,7 @@
  */
 #include "module_import.h"
 #include "managed_values.h"
+#include "../capi/userdata_internal.h"
 #include "flashvm/styxrpc.h"
 #include "flashvm/styxrpc_channel.h"
 #include "flashvm/userdata.h"
@@ -11,6 +12,8 @@
 #include "client.h"
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct LoadedModule LoadedModule; /* Exact proxy shared by all extracted methods. */
 
 typedef struct LoadedMethod
 {
@@ -20,9 +23,8 @@ typedef struct LoadedMethod
         StyxRpcManagedTarget managed; /* Borrowed callback state in all shaped entries. */
     } target;                        /* Selected callable profile. */
     FVM_StyxRpcChannelArguments channels; /* Bridges the managed target to the reverse bus. */
-    struct StyxFid *directory; /* Borrowed exact module fid from the parent proxy. */
+    LoadedModule *module;   /* Borrowed rooted proxy throughout the call. */
     StyxRpcServer *reverse; /* Borrowed owner dispatcher for direct scoped calls. */
-    FVM_StyxModuleLease *lease; /* Borrowed from the native module while invoking. */
     StyxRpcModuleKind kind; /* Existing codec chosen from the compiled export. */
     char name[STYXRPC_TREE_NAME + 1]; /* Owned verified export name. */
 } LoadedMethod;
@@ -33,13 +35,15 @@ struct FVM_StyxModuleLease
     size_t references;      /* Context-local owner count. */
 };
 
-typedef struct LoadedModule
+struct LoadedModule
 {
     FVM_StyxModuleLease *lease; /* Owned when loaded from an ordinary file. */
     struct StyxFid *directory; /* Owned unopened directory for all method walks. */
+    unsigned active;           /* Invocations already holding this directory on the VM stack. */
+    int closed;                /* Explicit retirement immediately rejects new invocations. */
     char path[STYXRPC_VFS_PATH_MAX + 1]; /* Owned relative module path. */
     LoadedMethod methods[STYXRPC_MAX_EXPORTS]; /* Stable callback state for native methods. */
-} LoadedModule;
+};
 
 
 /* EN/RU: See module_import.h. / См. module_import.h. */
@@ -53,11 +57,11 @@ void fvm_styxrpc_live_lease_retain(FVM_StyxModuleLease *lease)
 
 
 /* [GC:] EN/RU: See module_import.h. / См. module_import.h. */
-void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease)
+void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease, int deferred)
 {
     if (lease && !--lease->references)
     {
-        styxrpc_vfs_close(lease->request, 1);
+        styxrpc_vfs_close(lease->request, deferred);
         free(lease);
     }
 }
@@ -91,7 +95,7 @@ static LoadedMethod *prepare(LoadedModule *module, size_t index, const FVM_StyxR
     LoadedMethod *method = module->methods + index;
     StyxRpcManagedTarget *target = &method->target.managed;
     strcpy(method->name, entry->name);
-    method->directory = module->directory;
+    method->module = module;
     method->kind = entry->kind;
     if (entry->kind == STYXRPC_MODULE_INT)
     {
@@ -118,25 +122,65 @@ static LoadedMethod *prepare(LoadedModule *module, size_t index, const FVM_StyxR
 }
 
 
-/* [GC:] EN: Call one method on its original image, borrowing rooted object state.
- * RU: Вызвать метод исходного образа, заимствуя состояние удерживаемого объекта. */
+/* [GC:] EN: Close owned fids if there are no calls still borrowing them.
+ * Use deferred during GC; result channels own independent lease references.
+ * RU: Закрыть собственные fid, когда действующие вызовы больше их не заимствуют.
+ * При сборке использовать deferred. Каналы результатов отдельно удерживают аренду. */
+static void retire(LoadedModule *module, int deferred)
+{
+    if (!module->active)
+    {
+        styxrpc_vfs_close(module->directory, deferred);
+        fvm_styxrpc_live_lease_release(module->lease, deferred);
+        module->directory = NULL;
+        module->lease = NULL;
+    }
+}
+
+
+/* [GC:] EN: Invoke method from its original module, which stays pinned for the codec.
+ * RU: Выполнить метод исходного модуля, удерживаемого на время работы кодека. */
+static FVM_Result call(FVM_Context *context, LoadedMethod *method, unsigned argc,
+    const FVM_Value *argv, FVM_Value *out)
+{
+    struct StyxFid *directory = method->module->directory;
+    switch (method->kind)
+    {
+    case STYXRPC_MODULE_INT:
+        return fvm_styxrpc_int_at(context, directory, &method->target.integer, argc, argv, out);
+    case STYXRPC_MODULE_MANAGED:
+        return fvm_styxrpc_managed_at(context, directory, &method->target.managed, argc, argv, out, method->reverse);
+    case STYXRPC_MODULE_GRAPH:
+        return fvm_styxrpc_graph_at(context, directory, &method->target.managed, argc, argv, out, method->reverse);
+    case STYXRPC_MODULE_CHANNEL:
+        return fvm_styxrpc_channels_at(context, directory, &method->channels, argc, argv, out,
+            method->module->lease, method->reverse);
+    }
+    return FVM_UNSUPPORTED;
+}
+
+
+/* [GC:] EN: Pin the exact directory across argument conversion and any script reentry.
+ * RU: Удержать точный каталог на время преобразования аргументов и повторного входа в скрипт. */
 static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *argv, FVM_Value *out, void *state)
 {
     LoadedMethod *method = state;
+    LoadedModule *module = method->module;
+    FVM_Result result;
     (void)self;
-    switch (method->kind)
+    if (module->closed)
     {
-    case STYXRPC_MODULE_INT:
-        return fvm_styxrpc_int_at(context, method->directory, &method->target.integer, argc, argv, out);
-    case STYXRPC_MODULE_MANAGED:
-        return fvm_styxrpc_managed_at(context, method->directory, &method->target.managed, argc, argv, out, method->reverse);
-    case STYXRPC_MODULE_GRAPH:
-        return fvm_styxrpc_graph_at(context, method->directory, &method->target.managed, argc, argv, out, method->reverse);
-    case STYXRPC_MODULE_CHANNEL:
-        return fvm_styxrpc_channels_at(context, method->directory, &method->channels, argc, argv, out, method->lease, method->reverse);
+        return fvm_styxrpc_managed_fail(context, "Styx RPC module has been unloaded");
     }
-    return FVM_UNSUPPORTED;
+    ++module->active;
+    result = call(context, method, argc, argv, out);
+    --module->active;
+    if (module->closed)
+    {
+        retire(module, 0);
+    }
+    return result;
 }
 
 
@@ -145,9 +189,34 @@ static FVM_Result invoke(FVM_Context *context, FVM_Object *self, unsigned argc,
 static void release(void *state)
 {
     LoadedModule *module = state;
-    styxrpc_vfs_close(module->directory, 1);
-    fvm_styxrpc_live_lease_release(module->lease);
+    retire(module, 1);
     free(module);
+}
+
+
+/* [GC:] EN/RU: See module_import.h. / См. module_import.h. */
+FVM_Result fvm_styxrpc_unload_module(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *argv, FVM_Value *out, void *state)
+{
+    LoadedModule *module;
+    (void)self;
+    (void)state;
+    if (argc != 1 || argv->type != FVM_VALUE_OBJECT)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    module = fvm_userdata_get_bound(context, argv->object, release);
+    if (!module)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    fvm_value_boolean(out, !module->closed);
+    if (!module->closed)
+    {
+        module->closed = 1;
+        retire(module, 0);
+    }
+    return FVM_OK;
 }
 
 
@@ -235,6 +304,7 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
         else
         {
             free(module);
+            module = NULL;
         }
     }
     if (status == FVM_OK && lease && *lease)
@@ -249,15 +319,15 @@ FVM_Result fvm_styxrpc_module_load_at(FVM_Context *context, struct StyxFid *base
             module->lease->request = *lease;
             module->lease->references = 1;
             *lease = NULL;
-            for (i = 0; i < spec->count; ++i)
-            {
-                module->methods[i].lease = module->lease;
-            }
         }
     }
     if (status == FVM_OK)
     {
         *out = value;
+    }
+    else if (module)
+    {
+        retire(module, 0);
     }
     fvm_gc_roots_end(roots);
     styxrpc_vfs_close(directory, 0);

@@ -27,6 +27,14 @@ Limbo `big`; local DisVM seek also respects the native signed `long`
 limit. A remote seek may update a client cursor immediately. The server
 sees the new position on the next data request.
 
+A positioned Limbo file with read and execute permissions can serve
+the exact bytes of a Dis image. For native local reads and writes, the
+mailbox observes cancellation between waits. An unanswered ticket
+expires when the request is cancelled. If the owner already received
+the operation, its application effects may have happened and the open
+cursor rejects subsequent data operations. A separate open has its own
+cursor. See [live Dis loading](../../flashVM/doc/STYX_RPC_LIVE_DIS.md).
+
 The ordinary Styx messages carry all data and positions in the existing
 libstyxrpc session. The callback runs in the owner’s VM. Use the
 [stream publication](STYX-NODES.md) for content driven by arrival order.

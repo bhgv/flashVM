@@ -15,6 +15,7 @@
 #define DVM_NODE_AT_MODE 0x80U /* Positioned registration adds a UInt64 byte length. */
 #define DVM_EXEC_REFUSE UINT32_MAX /* Reply length signalling explicit refusal. */
 #define DVM_EXEC_DEADLINE_SECONDS 5 /* Maximum native dispatcher wait for the owner. */
+#define DVM_EXEC_CANCEL_POLL_NS 10000000L /* Maximum sleep between cancellation checks. */
 
 typedef struct ExecOwner ExecOwner; /* One open local control file and its registration. */
 
@@ -33,7 +34,9 @@ typedef enum NodeOutcome
 {
     DVM_NODE_REFUSED,     /* No dispatch or an explicit refusal from the owner. */
     DVM_NODE_ACCEPTED,    /* Owner confirmed the prefix length. */
-    DVM_NODE_UNCONFIRMED  /* Owner took the request, then disconnected or did not answer in time. */
+    DVM_NODE_UNCONFIRMED, /* Owner took the request, then disconnected or did not answer in time. */
+    DVM_NODE_CANCELLED,  /* Cancelled before the owner took the request. */
+    DVM_NODE_CANCELLED_UNCONFIRMED /* Cancelled after delivery but before acknowledgement. */
 } NodeOutcome;
 
 /* EN: One waiting native operation, guarded by the broker mutex.

@@ -38,7 +38,7 @@ void fvm_styxrpc_channel_set_release(FVM_StyxChannelSet *set, int deferred)
         fvm_styxrpc_channel_retire_loans(set);
         styxrpc_channel_lease_release(set->lease, deferred);
         styxrpc_channel_mailbox_owner_release(set->pid_mailbox);
-        fvm_styxrpc_live_lease_release(set->module);
+        fvm_styxrpc_live_lease_release(set->module, deferred);
         free(set);
     }
 }

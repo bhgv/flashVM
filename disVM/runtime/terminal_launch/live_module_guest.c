@@ -33,7 +33,12 @@ static void started(void *state, int pid)
     LiveModules *session = dvm_live_modules_get();
     pthread_mutex_lock(&session->lock);
     entry->pid = pid;
+    int cancelled = session->stopped || entry->phase != LIVE_BOOTING;
     pthread_mutex_unlock(&session->lock);
+    if (cancelled)
+    {
+        dvm_runtime_cancel_hosted_launch(pid, entry);
+    }
 }
 
 
@@ -200,6 +205,10 @@ void dvm_live_modules_listen(int pid)
         LiveModule *entry = take(session, pid);
         int cancelled = dvm_vfs_wait_end(wait);
         dvm_runtime_gc_native_enter(released);
+        if (cancelled && entry)
+        {
+            retired(entry, 1);
+        }
         if (cancelled || !entry)
         {
             return;

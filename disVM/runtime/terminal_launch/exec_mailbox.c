@@ -3,7 +3,9 @@
  * RU: Передавать полные запросы к узлам точному fid владельца Limbo.
  */
 #include "exec_private.h"
+#include "../vfs/cancel.h"
 #include "styxrpc/named_channel.h"
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -74,10 +76,37 @@ int dvm_exec_active(DvmExecBroker *broker, uint32_t marker)
 }
 
 
+/* EN: Wait for mailbox progress until deadline; permit a cancellation sample after
+ * a short slice when cancel is present. The caller holds the mailbox mutex.
+ * RU: Ждать изменения очереди до deadline; при cancel дать проверить отмену
+ * после короткого такта. Вызывающий удерживает мьютекс очереди. */
+static int wait_change(DvmExecBroker *broker, const struct timespec *deadline, DVM_Cancel *cancel)
+{
+    struct timespec slice;
+    if (cancel && !clock_gettime(CLOCK_MONOTONIC, &slice))
+    {
+        slice.tv_nsec += DVM_EXEC_CANCEL_POLL_NS;
+        if (slice.tv_nsec >= 1000000000L)
+        {
+            slice.tv_nsec -= 1000000000L;
+            ++slice.tv_sec;
+        }
+        if (slice.tv_sec < deadline->tv_sec ||
+            (slice.tv_sec == deadline->tv_sec && slice.tv_nsec < deadline->tv_nsec))
+        {
+            int status = pthread_cond_timedwait(&broker->changed, &broker->lock, &slice);
+            return !status || status == ETIMEDOUT;
+        }
+    }
+    return !pthread_cond_timedwait(&broker->changed, &broker->lock, deadline);
+}
+
+
 /* EN/RU: See exec_private.h. / См. exec_private.h. */
 NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperation operation,
     uint64_t offset, const void *input, void *output, size_t size, size_t *used)
 {
+    DVM_Cancel *cancel = dvm_cancel_current();
     struct timespec deadline;
     if (!marker || size > STYXRPC_NODE_BUFFER_MAX || clock_gettime(CLOCK_MONOTONIC, &deadline))
     {
@@ -88,24 +117,25 @@ NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperat
     ExecOwner *owner = find_marker(broker, marker);
     while (owner && owner->job && !broker->stopped)
     {
-        if (pthread_cond_timedwait(&broker->changed, &broker->lock, &deadline))
+        if (dvm_cancel_requested(cancel) || !wait_change(broker, &deadline, cancel))
         {
             pthread_mutex_unlock(&broker->lock);
-            return DVM_NODE_REFUSED;
+            return dvm_cancel_requested(cancel) ? DVM_NODE_CANCELLED : DVM_NODE_REFUSED;
         }
         owner = find_marker(broker, marker);
     }
-    if (!owner || broker->stopped || broker->ticket == UINT32_MAX)
+    int cancelled = dvm_cancel_requested(cancel);
+    if (cancelled || !owner || broker->stopped || broker->ticket == UINT32_MAX)
     {
         pthread_mutex_unlock(&broker->lock);
-        return DVM_NODE_REFUSED;
+        return cancelled ? DVM_NODE_CANCELLED : DVM_NODE_REFUSED;
     }
     ExecJob job = {.owner = owner, .input = input, .output = output, .operation = operation,
         .offset = offset, .size = size, .ticket = ++broker->ticket};
     owner->job = &job;
     while (!job.answered && job.owner && !broker->stopped)
     {
-        if (pthread_cond_timedwait(&broker->changed, &broker->lock, &deadline))
+        if (dvm_cancel_requested(cancel) || !wait_change(broker, &deadline, cancel))
         {
             break;
         }
@@ -120,6 +150,10 @@ NodeOutcome dvm_exec_transfer(DvmExecBroker *broker, uint32_t marker, NodeOperat
     if (job.answered)
     {
         return job.accepted ? DVM_NODE_ACCEPTED : DVM_NODE_REFUSED;
+    }
+    if (dvm_cancel_requested(cancel))
+    {
+        return job.taken ? DVM_NODE_CANCELLED_UNCONFIRMED : DVM_NODE_CANCELLED;
     }
     return job.taken ? DVM_NODE_UNCONFIRMED : DVM_NODE_REFUSED;
 }

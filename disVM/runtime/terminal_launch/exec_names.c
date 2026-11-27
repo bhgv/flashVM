@@ -3,6 +3,7 @@
  * RU: Резервировать узлы VFS с колбэками без замены существующих записей.
  */
 #include "exec_private.h"
+#include "../vfs/cancel.h"
 #include "styxrpc/module_ref.h"
 #include "styxrpc/named_channel.h"
 #include "styxrpc/variable_file.h"
@@ -38,6 +39,10 @@ typedef struct NodeCursor
  * RU: Описать узел с правами, заданными при публикации. */
 static FVM_Result marker_info(void *state, const char *path, FVM_FileInfo *out)
 {
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
     if (strcmp(path, "."))
     {
         return FVM_NOT_FOUND;
@@ -59,6 +64,10 @@ static FVM_Result marker_info(void *state, const char *path, FVM_FileInfo *out)
 static FVM_Result marker_access(void *state, const char *path, unsigned access)
 {
     const ExecMarker *marker = state;
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        return FVM_ERROR;
+    }
     if (strcmp(path, ".") || !dvm_exec_active(marker->broker, marker->serial))
     {
         return FVM_NOT_FOUND;
@@ -111,6 +120,11 @@ static void transfer(NodeCursor *cursor, NodeOperation operation, unsigned acces
     void *output, size_t size, DVM_IoResult *result)
 {
     *result = (DVM_IoResult){.status = FVM_ERROR, .stop = DVM_IO_DENIED, .flags = DVM_IO_PREFIX};
+    if (dvm_cancel_requested(dvm_cancel_current()))
+    {
+        result->stop = DVM_IO_CANCELLED;
+        return;
+    }
     if (!(cursor->access & access) || cursor->uncertain)
     {
         return;
@@ -133,11 +147,15 @@ static void transfer(NodeCursor *cursor, NodeOperation operation, unsigned acces
         outcome = dvm_exec_transfer(marker->broker, marker->serial, operation, cursor->offset,
             input, output, capacity, &used);
     }
-    if (outcome == DVM_NODE_UNCONFIRMED)
+    if (outcome == DVM_NODE_UNCONFIRMED || outcome == DVM_NODE_CANCELLED_UNCONFIRMED)
     {
         cursor->uncertain = 1;
-        result->stop = DVM_IO_FAILURE;
+        result->stop = outcome == DVM_NODE_UNCONFIRMED ? DVM_IO_FAILURE : DVM_IO_CANCELLED;
         result->flags |= DVM_IO_UNCERTAIN;
+    }
+    else if (outcome == DVM_NODE_CANCELLED)
+    {
+        result->stop = DVM_IO_CANCELLED;
     }
     else if (outcome == DVM_NODE_ACCEPTED)
     {
@@ -173,7 +191,8 @@ static void marker_write(void *state, const void *bytes, size_t size, DVM_IoResu
 static FVM_Result marker_seek(void *state, long offset, int origin, long *position)
 {
     NodeCursor *cursor = state;
-    if (origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END || cursor->uncertain ||
+    if (dvm_cancel_requested(dvm_cancel_current()) ||
+        origin < FVM_FILE_SEEK_START || origin > FVM_FILE_SEEK_END || cursor->uncertain ||
         !dvm_exec_active(cursor->marker->broker, cursor->marker->serial))
     {
         return FVM_ERROR;
@@ -236,7 +255,9 @@ static FVM_Result marker_open(void *state, const char *path, const char *mode, D
     }
     cursor->marker = state;
     cursor->access = access;
-    *out = (DVM_VfsHandle){.ops = cursor->marker->positioned ? &positioned : &stream, .state = cursor};
+    *out = (DVM_VfsHandle){.ops = cursor->marker->positioned ? &positioned : &stream, .state = cursor,
+        .native_flags = DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_INFO |
+            (cursor->marker->positioned ? DVM_VFS_CANCEL_SEEK : 0)};
     return FVM_OK;
 }
 
@@ -347,7 +368,8 @@ int dvm_exec_claim(ExecOwner *owner, const char *absolute)
     pthread_mutex_lock(&owner->broker->lock);
     entry->serial = owner->broker->stopped || owner->broker->marker == UINT32_MAX ? 0 : ++owner->broker->marker;
     pthread_mutex_unlock(&owner->broker->lock);
-    DVM_Provider *marker = entry->serial ? dvm_provider_create(&ops, entry) : NULL;
+    DVM_Provider *marker = entry->serial ?
+        dvm_provider_create_native(&ops, entry, NULL, 0, DVM_PROVIDER_CANCEL_PATH) : NULL;
     if (!marker)
     {
         marker_destroy(entry);

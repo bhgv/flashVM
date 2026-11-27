@@ -36,5 +36,6 @@ styxclientclunk(lease);
 ```
 
 Keep the lease through every call and any returned live channel. Closing
-it revokes the loaded generation. See [export discovery](module_exports_at.md)
+it revokes the loaded generation. See [cancellable loading](module_live_open_until.md),
+[export discovery](module_exports_at.md)
 and [exact Int32 calls](scalar_invoke_at.md).

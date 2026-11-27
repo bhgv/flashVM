@@ -12,6 +12,7 @@ are hidden.
 | Call | Result |
 | --- | --- |
 | `vfs.open(path[, mode])` | Open a file. Modes are `"r"` by default, `"w"` for write without truncation on open, `"rw"` for both directions, and `"wx"` to create a new write-only file. |
+| [`vfs.unload(module)`](STYX_RPC_UNLOAD.md) | Close a checked Dis proxy in this context. |
 | `vfs.opendir(path)` | One open directory fid with a forward iterator. |
 | `vfs.attr(path[, root])` | Live entry attributes. If supplied, `"/"` selects the mounted VFS. |
 | [`vfs.mkdir(path)`](STYX_VFS_MKDIR.md) | Create one directory. |
@@ -40,7 +41,7 @@ to start another enumeration on the same open directory.
 | `seek(delta[, origin])` | New byte offset. The default `"set"` starts at zero. `"cur"` and `"end"` use the current position or live EOF. |
 | `len()` | Current opened file length in bytes. |
 | `flush()` | Write acknowledgement state. The client sends writes immediately. A false result means the last acknowledgement was lost. Persistence is determined by the provider. |
-| `load()` | Child `MovieClip` for a `.swf` or a remote method proxy for a published `.dis` image. |
+| `load()` | Child `MovieClip` for a `.swf` or a checked Dis method proxy. |
 | `close()` | Close a file or iterator. A repeated close succeeds. |
 
 Each read and write accepts up to 2048 bytes. Confirmed bytes advance the

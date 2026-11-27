@@ -6,6 +6,7 @@
 #define STYXRPC_MODULE_CLIENT_H
 #include "styxrpc/module.h"
 #include "styxrpc/managed_client.h"
+#include "styxrpc/vfs_client.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +60,17 @@ struct StyxFid *styxrpc_module_open(struct StyxClient *session, const char *path
  * Закрыть оба через styxclientclunk. Операция может ждать готовности владельца. */
 struct StyxFid *styxrpc_module_live_open(struct StyxClient *session, const char *path,
     struct StyxFid **lease);
+
+/* EN: Return nonzero to cancel readiness polling on the calling thread.
+ * RU: Вернуть ненулевое значение для отмены ожидания в вызывающем потоке. */
+typedef int (*StyxRpcModuleStop)(void *state);
+
+/* EN: Load with an optional stop hook. On success transfer both fids; otherwise
+ * leave both output slots unchanged and clunk any submitted request.
+ * RU: Загрузить с необязательной проверкой остановки. При успехе выдать оба fid;
+ * при отказе сохранить выходы и закрыть fid отправленного запроса. */
+StyxRpcIoOutcome styxrpc_module_live_open_until(struct StyxClient *session, const char *path,
+    struct StyxFid **directory, struct StyxFid **lease, StyxRpcModuleStop stop, void *state);
 
 /* EN: Discover checked exports relative to the borrowed, unopened module fid.
  * RU: Найти проверенные экспорты от заимствованного неоткрытого fid модуля. */

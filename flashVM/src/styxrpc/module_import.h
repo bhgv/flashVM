@@ -11,10 +11,22 @@
 
 typedef struct FVM_StyxModuleLease FVM_StyxModuleLease; /* Context-owned request fid reference. */
 
-/* EN: Retain or release a context-local module lease. NULL is accepted.
- * RU: Удержать либо освободить локальную аренду модуля. NULL допустим. */
+/* EN: Retain a context-local module lease for another owner. NULL is accepted.
+ * RU: Удержать локальную аренду для ещё одного владельца. NULL допустим. */
 void fvm_styxrpc_live_lease_retain(FVM_StyxModuleLease *lease);
-void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease);
+
+
+/* [GC:] EN: Drop one nullable lease reference, deferring its last clunk if requested.
+ * RU: Снять ссылку на аренду или принять NULL. При deferred отложить последний clunk. */
+void fvm_styxrpc_live_lease_release(FVM_StyxModuleLease *lease, int deferred);
+
+
+/* [GC:] EN: Retire the checked proxy in argv[0] on its owner context. Return a
+ * Boolean through out. Extracted methods share the proxy's closed state.
+ * RU: Закрыть проверенный прокси из argv[0] в контексте владельца. Вернуть
+ * Boolean через out. Извлечённые методы используют состояние того же прокси. */
+FVM_Result fvm_styxrpc_unload_module(FVM_Context *context, FVM_Object *self, unsigned argc,
+    const FVM_Value *argv, FVM_Value *out, void *state);
 
 
 /* EN: Invoke a scalar target from state. / RU: Вызвать скалярную цель из state. */

@@ -32,12 +32,17 @@ asinc function liveRoundtrip(path) {
                 var queue = vfs.localChannel("i", 1);
                 var sent = queue.trySend(41);
                 var reply = held.bounce(queue);
-                held = 0;
+                var unloaded = os.unload(held);
+                var replacementReleased = os.unload(fresh);
                 var received = reply.recv();
                 var retired = reply.close();
                 var queueClosed = queue.close();
                 if (!(received - 42)) {
-                    answer = retained;
+                    if (unloaded) {
+                        if (replacementReleased) {
+                            answer = retained;
+                        }
+                    }
                 }
             }
         }

@@ -5,6 +5,7 @@
 #include "live_modules_private.h"
 #include "mount.h"
 #include "../vfs/export.h"
+#include "../vfs/launch/runtime.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -158,6 +159,7 @@ void dvm_live_modules_stop(void)
     {
         return;
     }
+    int booting[DVM_LIVE_MODULE_LIMIT] = {0};
     pthread_mutex_lock(&session->lock);
     if (!session->stopped)
     {
@@ -165,6 +167,10 @@ void dvm_live_modules_stop(void)
         for (unsigned i = 0; i < DVM_LIVE_MODULE_LIMIT; ++i)
         {
             LiveModule *entry = &session->entries[i];
+            if (entry->phase == LIVE_BOOTING)
+            {
+                booting[i] = entry->pid;
+            }
             if (entry->generation && entry->breaker >= 0)
             {
                 shutdown(entry->breaker, SHUT_RDWR);
@@ -173,6 +179,13 @@ void dvm_live_modules_stop(void)
         pthread_cond_broadcast(&session->changed);
     }
     pthread_mutex_unlock(&session->lock);
+    for (unsigned i = 0; i < DVM_LIVE_MODULE_LIMIT; ++i)
+    {
+        if (booting[i])
+        {
+            dvm_runtime_cancel_hosted_launch(booting[i], &session->entries[i]);
+        }
+    }
 }
 
 

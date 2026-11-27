@@ -19,8 +19,11 @@ function directDisProof() {
     var queue = vfs.localChannel("i", 1);
     var sent = queue.trySend(41);
     var reply = proxy.bounce(queue);
+    var first = vfs.unload(proxy);
+    var duplicate = os.unload(proxy);
     var answer = reply.recv();
     var replyClosed = reply.close();
     var queueClosed = queue.close();
-    return label + incremented + "|" + leaf[0] + "|" + answer + "|";
+    return label + incremented + "|" + leaf[0] + "|" + answer + "|" +
+        first + "|" + duplicate + "|";
 }

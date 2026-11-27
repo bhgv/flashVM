@@ -20,6 +20,7 @@ var source = vfs.open("/library/counter.dis");
 var counter = source.load();
 source.close();
 var answer = counter.next(41);
+os.unload(counter);
 ```
 
 `load()` takes no arguments. On an ordinary `.dis` handle it resolves the
@@ -29,7 +30,9 @@ Each successful load owns a distinct instance. A later load resolves a
 replacement at the same path, while the first proxy keeps its methods and
 mutable state. Closing the source file leaves the proxy usable. The proxy
 and any returned channels keep its owner alive until their last reference
-is released or the session closes.
+is released or the session closes. Use [`os.unload(proxy)`](STYX_RPC_UNLOAD.md)
+to release that proxy explicitly. Channels already returned retain the
+generation until they close, including after the proxy is unloaded.
 
 The stock playback owner and every `asinc` task have distinct reverse
 PIDs and argument buses. The main movie can invoke checked managed, graph
@@ -40,6 +43,16 @@ during the wait, and calls from inside a Styx application callback
 cannot start a nested scoped exchange. Use an `asinc` task when the movie
 must keep advancing or the Dis function depends on an application callback.
 
+A task's [`cancel()`](ASINC_CANCEL.md) stops a pending `.dis` load between
+readiness polls. The client closes the request fid, and DisVM retires the
+exact request and interrupts any cancellable source read of that resident.
+An I/O round trip already underway uses the session's deadline.
+
+A [positioned Limbo file](../../disVM/runtime/STYX-NODE-OFFSETS.md) can
+serve an image if it has the true byte length and read and execute
+permissions. Publish it from an owner that can respond while the caller
+loads. A read cancelled after delivery expires its ticket.
+
 The existing proxy checks the entire advertised interface. An unsupported
 contract, a refused image, a missing service or an expired load request
 fails the call. The session supports up to 32 concurrent loading or
@@ -48,4 +61,6 @@ retained generations, with the underlying Styx walk budget also applying.
 Run [the paired test](../../lib/styxrpc/tests/flashvm/mixed_pair.py) with
 `--live-dis` and the built player, DisVM, Limbo, AS2, FIR and SWL tools.
 Add `--jit` or `--tcp` for those variants. The test rebinds the VFS while
-holding an old proxy and checks scalar, string and channel calls.
+holding an old proxy and checks scalar, string and channel calls. It
+checks reuse beyond the slot limit, explicit unload with a live channel
+and cancellation while the image owner is still holding a read.

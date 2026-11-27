@@ -3,6 +3,7 @@
  * RU: Удерживать один запрос загрузки на точном fid Styx.
  */
 #include "live_modules_private.h"
+#include "../vfs/launch/runtime.h"
 #include "styxrpc/named_channel.h"
 #include <inttypes.h>
 #include <sys/socket.h>
@@ -184,14 +185,26 @@ static void request_close(void *state)
     if (entry)
     {
         pthread_mutex_lock(&session->lock);
-        entry->leased = 0;
-        entry->phase = LIVE_FAILED;
-        if (entry->breaker >= 0)
+        const int booting_pid = entry->phase == LIVE_BOOTING ? entry->pid : 0;
+        if (entry->phase == LIVE_QUEUED)
         {
-            shutdown(entry->breaker, SHUT_RDWR);
+            memset(entry, 0, sizeof(*entry));
+        }
+        else
+        {
+            entry->leased = 0;
+            entry->phase = LIVE_FAILED;
+            if (entry->breaker >= 0)
+            {
+                shutdown(entry->breaker, SHUT_RDWR);
+            }
         }
         pthread_cond_broadcast(&session->changed);
         pthread_mutex_unlock(&session->lock);
+        if (booting_pid)
+        {
+            dvm_runtime_cancel_hosted_launch(booting_pid, entry);
+        }
     }
     free(request);
 }

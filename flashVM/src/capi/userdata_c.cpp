@@ -3,7 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
-#include "flashvm/userdata.h"
+#include "userdata_internal.h"
 
 
 /* Compute and return userdata attach. */
@@ -46,6 +46,16 @@ extern "C" FVM_Result fvm_userdata_get(FVM_Context *c, FVM_Object *o, void **out
     }
     *out = o->resource;
     return FVM_OK;
+}
+
+
+/* [GC:] EN/RU: See userdata_internal.h. / См. userdata_internal.h. */
+extern "C" void *fvm_userdata_get_bound(FVM_Context *context, FVM_Object *object,
+    FVM_UserdataRelease release)
+{
+    return context && !context->destroying && !context->gc_releasing && object && release &&
+        object->owner == context && object->resource_kind == FVM_RESOURCE_USERDATA &&
+        object->release_resource == release ? object->resource : NULL;
 }
 
 

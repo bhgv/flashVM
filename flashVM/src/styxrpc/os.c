@@ -10,6 +10,7 @@
 #include "flashvm/movieclip.h"
 #include "flashvm/styxrpc_module.h"
 #include "flashvm/userdata.h"
+#include "flashvm/worker.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -251,6 +252,15 @@ int fvm_os_extension(const char *path, const char *suffix)
 }
 
 
+/* EN: Observe the borrowing worker's stop flag on the load polling thread.
+ * RU: Проверить флаг остановки задачи в потоке, опрашивающем загрузку. */
+static int load_stopped(void *state)
+{
+    int requested = 0;
+    return fvm_worker_stop_requested(state, &requested) == FVM_OK && requested;
+}
+
+
 /* [ASINC] [GC:] EN: Load a SWF into the movie's display tree or materialize a checked module proxy.
  * RU: Загрузить SWF в дерево фильма либо создать проверенный прокси модуля. */
 static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned argc,
@@ -266,8 +276,16 @@ static FVM_Result load_file(FVM_Context *context, FVM_Object *self, unsigned arg
     }
     if (!handle->module && handle->file && fvm_os_extension(handle->path, ".dis"))
     {
-        live = styxrpc_module_live_open(handle->movies->session, handle->path + 1, &lease);
-        if (!live)
+        FVM_Worker *worker = NULL;
+        StyxRpcIoOutcome opened;
+        fvm_worker_current(context, &worker);
+        opened = styxrpc_module_live_open_until(handle->movies->session, handle->path + 1,
+            &live, &lease, worker ? load_stopped : NULL, worker);
+        if (opened == STYXRPC_IO_CANCELLED)
+        {
+            return fvm_styxrpc_managed_fail(context, "Styx RPC module load cancelled");
+        }
+        if (opened != STYXRPC_IO_OK)
         {
             return FVM_NOT_FOUND;
         }

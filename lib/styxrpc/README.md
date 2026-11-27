@@ -34,6 +34,7 @@ For hosted scalar modules, publish descriptors with [styxrpc_scalar_module_init]
 
 [Captured module directories](reference/module_open.md) keep discovered exports and calls bound to the selected image. See [export discovery](reference/module_exports_at.md) and [the exact scalar call](reference/scalar_invoke_at.md).
 [Scoped discovery](reference/module_exports_scoped_at.md) reports which exact methods need a caller PID. During a synchronous call, the owner can [serve the native program tree](reference/server_program_step_for.md) while its application callbacks wait.
+[Cancellable live loading](reference/module_live_open_until.md) releases the exact request fid when the caller stops waiting for a Dis image.
 
 [Custom UniBus messages](reference/custom_messages.md) let applications register their own types and handlers on an existing Styx session.
 

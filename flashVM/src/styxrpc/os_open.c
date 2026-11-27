@@ -5,6 +5,7 @@
 #include "os_handles.h"
 #include "session_methods.h"
 #include "channel_local.h"
+#include "module_import.h"
 #include "styxrpc/module_client.h"
 #include <stdlib.h>
 #include <string.h>
@@ -128,8 +129,8 @@ static FVM_Result attr(FVM_Context *context, FVM_Object *self, unsigned argc,
 /* [GC:] EN/RU: See movie_load.h. / См. movie_load.h. */
 FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
 {
-    static const char *const names[] = {"open", "opendir", "attr"};
-    static const FVM_NativeFunction methods[] = {open_file, open_directory, attr};
+    static const char *const names[] = {"open", "opendir", "attr", "unload"};
+    static const FVM_NativeFunction methods[] = {open_file, open_directory, attr, fvm_styxrpc_unload_module};
     FVM_Context *context = movies->context;
     FVM_GCRootScope *roots;
     FVM_Value vfs;
@@ -145,7 +146,7 @@ FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
         return status;
     }
     status = fvm_gc_roots_add(roots, &vfs);
-    for (i = 0; i < 3 && status == FVM_OK; ++i)
+    for (i = 0; i < sizeof(methods) / sizeof(methods[0]) && status == FVM_OK; ++i)
     {
         status = fvm_object_define_method_rooted(context, vfs.object, names[i], methods[i], movies, NULL);
     }

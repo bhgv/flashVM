@@ -48,6 +48,10 @@ use a channel returned by DisVM through that task's proxy. Both directions
 use the paired Styx session. The movie receives a primitive result through
 `poll()`.
 
+In a [live Dis session](STYX_RPC_LIVE_DIS.md), `cancel()` stops ordinary
+image loading between readiness polls. Use [`os.unload(proxy)`](STYX_RPC_UNLOAD.md)
+to release a checked proxy inside its task.
+
 Loading a child SWF, publishing nodes or modules and controlling playback
 use the movie's context.
 A standalone context using [`fvm_async_install`](../include/flashvm/async.h#L15) alone has no mounted

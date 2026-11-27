@@ -64,6 +64,7 @@ def main():
                 compile_image(args, directory, source, folder + "/target.dis")
             (directory / "scalar.dis").write_bytes((directory / "replacement/target.dis").read_bytes())
             (directory / "gate").write_bytes(b"0")
+            (directory / "cancel-gate").write_bytes(b"0")
             (directory / "malformed.dis").write_bytes(b"not a Dis image\n")
         if name == "dirlive":
             (directory / "tools/before").touch()
@@ -89,7 +90,7 @@ def main():
             "modref": ("styxnamed", "styxmodref"),
             "modref-reverse": ("styxnamed", "styxmodref", "styxnodes"),
             "module-channel": (),
-            "live-dis": (),
+            "live-dis": ("styxnodes",),
             "asinc-vfs": ("styxnodes",),
             "asinc-chan": ("styxvalue", "styxnamed"),
             "named": ("styxvalue", "styxnamed"),
@@ -108,7 +109,8 @@ def main():
             "withdraw": ("withdraw_original.as", "withdraw_replacement.as"),
             "dirlive": ("dirlive_signal.as",),
             "rebind": ("rebind_signal.as",),
-            "live-dis": ("live-dis_worker.as", "live-dis_refusal.as", "live-dis_direct.as"),
+            "live-dis": ("live-dis_worker.as", "live-dis_refusal.as", "live-dis_direct.as",
+                         "live-dis_reuse.as", "live-dis_closed.as", "live-dis_cancel.as"),
             "asinc-vfs": ("asinc-vfs_worker.as",),
             "asinc-chan": ("asinc-chan_worker.as",),
         }.get(name, ())
