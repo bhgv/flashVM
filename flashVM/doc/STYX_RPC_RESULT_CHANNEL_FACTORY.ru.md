@@ -15,7 +15,7 @@ FVM_Result fvm_styxrpc_result_channel_factory(FVM_Context *context, const char *
 FVM_Result status = fvm_styxrpc_result_channel_factory(context, "newResultChannel");
 ```
 
-Используйте `newResultChannel("i", 0)` в подключённом фильме. Верните его из [экспортированной функции](STYX_RPC_CHANNEL_EXPORT.ru.md) с результатом `(c[i])`. Удерживайте привязку колбэка и провайдер на протяжении экспорта.
+Используйте `newResultChannel("i", 0)` в коде AS2 в подключённом SWF. Верните его из [экспортированной функции](STYX_RPC_CHANNEL_EXPORT.ru.md) с результатом `(c[i])`. Удерживайте привязку колбэка и провайдер на протяжении экспорта.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

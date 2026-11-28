@@ -87,6 +87,9 @@ implementations, rather than copying their prose or assuming their guarantees.
   their names. Separate supported behavior from proposals and untested ports.
 - Maintain separate English and Russian pages and README files, with reciprocal
   language links and equivalent substantive coverage.
+- Keep Flash and ActionScript class names verbatim in every language, including
+  `MovieClip`, `Array`, and `TextField`. Use SWF for an asset or program, and
+  name the ActionScript code when describing what it does.
 - Link mentioned APIs to their reference and implementation, and to relevant
   main-project help when it exists. Keep source anchors and relative links valid
   after code changes and when an independently distributed component is copied.
