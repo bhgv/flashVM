@@ -2,6 +2,8 @@
 
 [Русский](README.ru.md) · [libstyxrpc](../README.md)
 
+[A graph, several channels and duplex mailboxes](disvm/CHANNEL_RESULTS.md).
+
 [Live fields, lists, sparse values and refs with channels](disvm/LIVE_STAGE.md). Run the paired FlashVM–DisVM example and the independent C client.
 
 [Runnable FlashVM and DisVM example](disvm/INT32_REFERENCES.md). Cancel Int32 operations, check the Qid and recover after an unacknowledged write.

@@ -12,7 +12,7 @@ if(FVM_ENABLE_STYXRPC)
         src/styxrpc/channel_import.c src/styxrpc/channel_methods.c src/styxrpc/channel_values.c src/styxrpc/channel_delegate.c src/styxrpc/channel_handle.cpp
         src/styxrpc/channel_export.c src/styxrpc/channel_output.c src/styxrpc/channel_local.c src/styxrpc/channel_lend.c src/styxrpc/channel_handler.c
         src/styxrpc/channel_local_state.c src/styxrpc/channel_publication.c src/styxrpc/channel_mailbox.c
-        src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_select.c
+        src/styxrpc/channel_pid_mailbox.c src/styxrpc/channel_result_endpoint.c src/styxrpc/channel_select.c
         src/styxrpc/session.c src/styxrpc/session_launch.c src/styxrpc/session_vfs.c src/styxrpc/session_paths.c src/styxrpc/session_calls.c src/styxrpc/session_exec.c
         src/styxrpc/session_modules.c src/styxrpc/session_live_values.c src/styxrpc/session_sparse.cpp src/styxrpc/session_messages.c src/styxrpc/session_channel.c src/styxrpc/session_named_channel.cpp src/styxrpc/session_named_values.cpp src/styxrpc/session_named_refs.cpp
         src/styxrpc/session_message_types.c src/styxrpc/session_publish_messages.c

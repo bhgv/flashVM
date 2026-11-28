@@ -11,17 +11,18 @@ FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *b
 
 | Parameter | Contract |
 | --- | --- |
-| `binding` | Required. `handler` supplies the owner context, callable name, mounted reverse client, compiled schema, and a wait of 1–60000 milliseconds per reverse operation. The schema has at least one channel argument and exactly one channel result. `capacity` is 0–8 FIFO slots, with zero selecting a rendezvous. |
+| `binding` | Required. `handler` supplies the owner context, callable name, mounted reverse client, compiled schema, and a wait of 1–60000 milliseconds per reverse operation. The schema has at least one channel argument and at least one channel position in the result. `capacity` is 0–8 FIFO slots, with zero selecting a rendezvous. |
 | `name` | Required compiled export name and Styx file component. |
 | `signature` | Exact 32-bit signature from the Limbo compiler. |
 | `exported` | Caller-owned descriptor filled on success. Pass it to [the owner-driven SDK module](../../lib/styxrpc/reference/channel_handlers_create_with_results.md). |
 
-Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) with the output unchanged. Argument channel messages can carry [channels on the same bus](STYX_RPC_NESTED_CHANNELS.md). The issued result channel can contain [nested module-owned queues](STYX_RPC_NESTED_CHANNELS.md#issue-nested-channels-owned-by-flashvm) initialized by `[capacity, items]` descriptors. The callback returns one initial element for the new FIFO or `undefined` for an empty FIFO or rendezvous. A script exception, an invalid element, or publication failure produces an RPC error.
+Returns [`FVM_OK`](../include/flashvm/flashvm.h#L44) with a populated descriptor or [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47) with the output unchanged. Argument channel messages can carry [channels on the same bus](STYX_RPC_NESTED_CHANNELS.md). The issued result channel can contain [nested module-owned queues](STYX_RPC_NESTED_CHANNELS.md#issue-nested-channels-owned-by-flashvm) initialized by `[capacity, items]` descriptors. For a sole channel result the callback returns one initial element for the new FIFO or `undefined` for an empty FIFO or rendezvous. A script exception, an invalid element, or publication failure produces an RPC error.
 
 Execute the callback on the FlashVM owner. Run the forward Styx server separately. Keep the binding, names, context and same-session reverse client alive through both threads' shutdown. Each argument object closes at callback exit. The result has its own resource and lease, which the dispatcher publishes on the forward module's `.unibus` and retires when the issuing function fid is clunked.
 
 [Executable FlashVM host](../tests/styxrpc/channel-incoming.c) · [Limbo caller](../../lib/styxrpc/tests/flashvm/channel_incoming.b) · [Copied-result callback](STYX_RPC_CHANNEL_HANDLER.md)
 The handler schema can include `r[…]` or `h` arguments beside borrowed channels. If the callback succeeds, FlashVM stages the graph edits together with the channel result. A refused call publishes neither.
+A sole channel result may return an owner endpoint. A composite result supplies queue descriptors at its `c[…]` positions. [Composite result and owner endpoint](STYX_RPC_RESULT_CHANNELS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -35,6 +36,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_channel_handler_export` | function | [include/flashvm/styxrpc_channel.h:127](../include/flashvm/styxrpc_channel.h#L127) |
-| `FVM_StyxRpcChannelHandlerExport` | struct | [include/flashvm/styxrpc_channel.h:116](../include/flashvm/styxrpc_channel.h#L116) |
+| `fvm_styxrpc_channel_handler_export` | function | [include/flashvm/styxrpc_channel.h:128](../include/flashvm/styxrpc_channel.h#L128) |
+| `FVM_StyxRpcChannelHandlerExport` | struct | [include/flashvm/styxrpc_channel.h:117](../include/flashvm/styxrpc_channel.h#L117) |
 <!-- source-links:end -->

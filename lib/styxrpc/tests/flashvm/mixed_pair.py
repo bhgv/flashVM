@@ -42,7 +42,7 @@ def main():
     profiles = parser.add_mutually_exclusive_group()
     for profile in ("named", "typed", "modref", "modref-reverse", "execute", "publish", "nodes",
                     "positioned", "withdraw", "dirlive", "rebind", "module-channel", "asinc-vfs", "asinc-chan",
-                    "live-dis", "live-values", "live-stage", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
+                    "live-dis", "live-values", "live-stage", "result-channels", "cancel-dis-call", "cancel-dis-channel", "cancel-vfs-read", "cancel-vfs-write",
                     "cancel-vfs-control", "cancel-dis-setup", "cancel-channel-setup", "cancel-cell-setup",
                     "cancel-int-ref", "cancel-ref-port"):
         profiles.add_argument("--" + profile, dest="profile", action="store_const", const=profile)
@@ -131,6 +131,7 @@ def main():
             "live-dis": ("styxnodes",),
             "live-values": (),
             "live-stage": (),
+            "result-channels": (),
             "cancel-dis-call": (),
             "cancel-dis-channel": (),
             "cancel-vfs-read": ("styxnodes",),
@@ -163,6 +164,8 @@ def main():
                          "live-dis_reuse.as", "live-dis_closed.as", "live-dis_cancel.as"),
             "live-values": ("live-values_calls.as",),
             "live-stage": ("live-stage_calls.as", "live-stage_mixed.as", "live-stage_values.as", "live-stage_stale.as"),
+            "result-channels": ("result-channels_compose.as", "result-channels_buffered.as",
+                                "result-channels_meeting.as", "result-channels_retired.as"),
             "cancel-dis-call": ("cancel-dis-call_worker.as",),
             "cancel-dis-channel": ("cancel-dis-channel_worker.as",),
             "cancel-vfs-read": ("cancel-vfs-read_worker.as",),

@@ -171,7 +171,7 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, void *state, con
     {
         return 0;
     }
-    for (index = 1; index < seeds->count && seeds->identities[index] != value->object; ++index)
+    for (index = 0; index < seeds->count && seeds->identities[index] != value->object; ++index)
     {
     }
     if (index == seeds->count)
@@ -198,20 +198,70 @@ static int nested(FVM_Context *context, FVM_GCRootScope *roots, void *state, con
 }
 
 
+/* [GC:] EN: Retain the implicit channel convention for a sole c[T] result.
+ * RU: Сохранить создание неявного канала для единственного результата c[T]. */
+static int single(FVM_Context *context, FVM_GCRootScope *roots, ChannelSeeds *seeds,
+    const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output)
+{
+    char shape[STYXRPC_MANAGED_SHAPE];
+    size_t count = seed->type != FVM_VALUE_UNDEFINED;
+    int endpoint;
+    if (!fvm_styxrpc_channel_element_shape(schema->result + 1, shape))
+    {
+        return 0;
+    }
+    endpoint = fvm_styxrpc_take_result_endpoint(context, seed, shape, output);
+    if (endpoint)
+    {
+        return endpoint > 0;
+    }
+    seeds->count = 1;
+    return count <= capacity && prepare(seeds, 0, shape, capacity, count) &&
+        (!count || append(context, roots, seeds, 0, seed)) &&
+        styxrpc_channel_group_output(seeds->queues, seeds->count, 0, output) == STYXRPC_OK;
+}
+
+
+/* [GC:] EN: Encode a typed result using the argument identities and temporary group keys.
+ * RU: Кодировать типизированный результат с идентификаторами аргументов и временными ключами. */
+static int composite(FVM_Context *context, FVM_GCRootScope *roots, ChannelSeeds *seeds,
+    FVM_StyxRefs *refs, const char *shape, const FVM_Value *value, StyxRpcChannelOutput *output)
+{
+    unsigned char *bytes = malloc(FRAME);
+    size_t size;
+    int ok;
+    if (!bytes)
+    {
+        return 0;
+    }
+    refs->encode_channel = nested;
+    refs->channel_context = seeds;
+    ok = fvm_styxrpc_values_encode(context, roots, refs, shape, value, 1, bytes, FRAME, &size) &&
+        (!seeds->count || styxrpc_channel_group_output(seeds->queues, seeds->count, 0, output) == STYXRPC_OK);
+    refs->encode_channel = NULL;
+    refs->channel_context = NULL;
+    if (ok)
+    {
+        output->result = bytes;
+        output->result_size = size;
+    }
+    else
+    {
+        free(bytes);
+    }
+    return ok;
+}
+
+
 /* [GC:] EN/RU: See channel_private.h. / См. channel_private.h. */
-int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
+int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots, FVM_StyxRefs *refs,
     const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output)
 {
     ChannelSeeds seeds = {0};
-    char shape[STYXRPC_MANAGED_SHAPE];
-    size_t count = seed->type != FVM_VALUE_UNDEFINED;
     size_t index;
-    int ok;
-    seeds.count = 1;
-    ok = count <= capacity && fvm_styxrpc_channel_element_shape(schema->result + 1, shape) &&
-        prepare(&seeds, 0, shape, capacity, count) &&
-        (!count || append(context, roots, &seeds, 0, seed)) &&
-        styxrpc_channel_group_output(seeds.queues, seeds.count, 0, output) == STYXRPC_OK;
+    int ok = fvm_styxrpc_single_channel_result(schema) ?
+        single(context, roots, &seeds, schema, capacity, seed, output) :
+        composite(context, roots, &seeds, refs, schema->result, seed, output);
     for (index = 0; index < seeds.count; ++index)
     {
         free(seeds.queues[index].bytes);

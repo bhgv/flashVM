@@ -1,6 +1,6 @@
 # styxrpc_channel_mailbox_send
 
-[English](channel_mailbox_send.md) · [Объявление](../include/styxrpc/channel_mailbox.h#L26) · [Реализация](../src/channel_mailbox.c#L298)
+[English](channel_mailbox_send.md) · [Объявление](../include/styxrpc/channel_mailbox.h#L26) · [Реализация](../src/channel_mailbox.c#L341)
 
 ```c
 #include <styxrpc/channel_mailbox.h>
@@ -14,3 +14,5 @@ StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const
 Возвращает `STYXRPC_OK` после постановки в очередь или исполнения ожидающего чтения партнёра, `STYXRPC_MORE` при заполнении FIFO и `STYXRPC_INVALID` для неверного или неподдерживаемого входа. Вызов использует мьютекс очереди и обходится без сетевого ввода-вывода. Партнёр может прочитать готовый ответ на своём fid. Удерживайте очередь до возврата.
 
 [Проверка на C](../tests/channel_mailbox.c)
+
+Для формы `(i)` передайте обычную скалярную запись Int32. При нуле слотов `STYXRPC_MORE` означает отсутствие ожидающего получателя, сообщение в очередь не добавляется.

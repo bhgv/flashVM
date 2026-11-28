@@ -17,7 +17,7 @@ eight Int32 variables in any order.
 | `[export, member]` | Dispatch a `fn(int): int` callback on the receiver. |
 | `[export, member, signature, arguments, result]` | Dispatch a managed callback whose compiled Dis signature and schemas match this descriptor. |
 | `[export, member, signature, arguments, result, "graph"]` | Dispatch through the existing graph codec for nested and returned references. |
-| `[export, member, signature, arguments, result, "channel", slots]` | Call a factory with value arguments and one typed channel result, such as `"(i)"` and `"(c[i])"`. The factory can return an initial element for the result queue. `slots` is an integer from 0 (rendezvous) to 8. |
+| `[export, member, signature, arguments, result, "channel", slots]` | Call a factory with copied or graph arguments and a result that contains channels. For `"(c[i])"` the factory may return a seed for the configured `slots` capacity, 0–8. A composite result supplies queue descriptors at its channel positions. |
 | `[name, property, "var", "ro"]` or `[name, property, "var", "rw"]` | Publish the live Int32 receiver property at `.var/<name>` with the given access. |
 
 The call returns true after admitting the image. Invalid descriptors and
@@ -38,3 +38,5 @@ compiles the [AS publisher](../../lib/styxrpc/tests/flashvm/module-channel_pair.
 and the [Limbo consumer](../../lib/styxrpc/tests/flashvm/module-channel_pair.b)
 with project tools and exercises two independent queues, a scalar call and
 live receiver data.
+
+A sole channel result may return an owner endpoint. A composite result supplies queue descriptors at its `c[…]` positions. [Composite result and owner endpoint](STYX_RPC_RESULT_CHANNELS.md).

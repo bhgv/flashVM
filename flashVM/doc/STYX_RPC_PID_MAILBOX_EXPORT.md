@@ -1,6 +1,6 @@
 # fvm_styxrpc_pid_mailbox_export
 
-[Русский](STYX_RPC_PID_MAILBOX_EXPORT.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L159) · [Implementation](../src/styxrpc/channel_pid_mailbox.c#L217)
+[Русский](STYX_RPC_PID_MAILBOX_EXPORT.ru.md) · [Declaration](../include/flashvm/styxrpc_channel.h#L160) · [Implementation](../src/styxrpc/channel_pid_mailbox.c#L217)
 
 ```c
 #include <flashvm/styxrpc_channel.h>
@@ -30,6 +30,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
-| `fvm_styxrpc_pid_mailbox_export` | function | [include/flashvm/styxrpc_channel.h:159](../include/flashvm/styxrpc_channel.h#L159) |
-| `FVM_StyxRpcPidMailboxExport` | struct | [include/flashvm/styxrpc_channel.h:146](../include/flashvm/styxrpc_channel.h#L146) |
+| `fvm_styxrpc_pid_mailbox_export` | function | [include/flashvm/styxrpc_channel.h:160](../include/flashvm/styxrpc_channel.h#L160) |
+| `FVM_StyxRpcPidMailboxExport` | struct | [include/flashvm/styxrpc_channel.h:147](../include/flashvm/styxrpc_channel.h#L147) |
 <!-- source-links:end -->

@@ -61,3 +61,5 @@ A named message has no compiled `b` position. Sending the same quoted literal wi
 - Live Dis loading is session opt-in. Discovery admits up to eight callable exports per loaded image, with up to 32 concurrent loading or retained generations per session. Check the profile, ABI and compiled metadata constraints in the [DisVM loader](../../disVM/runtime/VFS-SCALAR-LOADED-EXPORTS.md) and [player reference](STYX_RPC_LIVE_DIS.md).
 
 For a synchronous call that fails after submission, consult the call's status and the application's own state before replaying it. Release a module proxy with [`os.unload()`](STYX_RPC_UNLOAD.md), close [typed channels](STYX_RPC_CHANNELS.md) and retire [named port and cell bindings](STYX_RPC_NAMED_CHANNEL.md) when they go out of use.
+
+[Composite result and owner endpoint](STYX_RPC_RESULT_CHANNELS.md).

@@ -8,9 +8,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1822**. [Русская версия](README.ru.md).
+Development version: **0.1823**. [Русская версия](README.ru.md).
 
-[v0.1822](flashVM/doc/ROADMAP.md#v01822--live-variables-and-typed-scoped-calls) completes the live VFS and typed RPC value stage.
+[v0.1823](flashVM/doc/ROADMAP.md#v01823--composite-channel-results-and-owner-endpoints) adds composite channel results and duplex owner endpoints.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

@@ -51,7 +51,7 @@ static int capacity_marker(const void *context, uint32_t *key, int *unbuffered)
 int styxrpc_group_normalize(ChannelGroup *group, const void *bytes, size_t size,
     unsigned char *output, size_t capacity, size_t *used)
 {
-    const ChannelKeyTransform mapping = {capacity_marker, group};
+    const ChannelKeyTransform mapping = {.apply = capacity_marker, .context = group};
     return styxrpc_channel_reframe(&mapping, bytes, size, output, capacity, used);
 }
 

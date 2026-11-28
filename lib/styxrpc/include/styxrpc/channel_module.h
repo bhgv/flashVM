@@ -15,11 +15,13 @@ extern "C" {
 typedef struct StyxRpcChannelOutput
 {
     StyxRpcResource resource; /* Operational channel bus; borrow until release. */
-    uint32_t key;              /* Exact positive key, zero for nil. */
-    int unbuffered;            /* Capacity marker for the issued channel. */
+    uint32_t key;              /* First exported key, zero if no live channels occur. */
+    int unbuffered;            /* Capacity marker for the implicit single channel result. */
     void (*release)(void *);   /* Optional owner cleanup for resource.context. */
     void *updates;            /* Optional malloc-owned positional update children transferred to SDK. */
     size_t update_size;       /* Bytes of updates, excluding the outer update-list record. */
+    void *result;              /* Optional malloc-owned typed child, with current-group channel keys. */
+    size_t result_size;        /* Bytes of result, excluding the outer graph-result record. */
 } StyxRpcChannelOutput;
 
 
@@ -27,7 +29,7 @@ typedef struct StyxRpcChannelExport
 {
     const char *name;       /* Compiled export component. */
     uint32_t signature;     /* Compiled signature. */
-    StyxRpcSchema schema;   /* One typed channel result; accepted inputs depend on the module. */
+    StyxRpcSchema schema;   /* Typed result containing channels; inputs depend on the module. */
     StyxRpcStatus (*begin)(void *context, const StyxRpcChannelCall *call, StyxRpcChannelOutput *output); /* Owner callback. */
     void *context;          /* Borrowed provider state. */
 } StyxRpcChannelExport;

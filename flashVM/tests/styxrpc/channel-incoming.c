@@ -3,6 +3,7 @@
  * RU: Проверка аргументов Dis у настоящего владельца AVM1 и отдельного диспетчера Styx.
  */
 #include "channel-test.h"
+#include "flashvm/execution.h"
 #include "flashvm/exception.h"
 #include "flashvm/function.h"
 #include "client.h"
@@ -18,7 +19,7 @@
 #define NESTED_SIGNATURE UINT32_C(0x93a913ec) /* Compiled nested argument. */
 #define LEASE_SIGNATURE UINT32_C(0x9c30df25) /* Compiled int port and int channel result. */
 #define NESTED_RESULT_SIGNATURE UINT32_C(0x968341b1) /* Int argument channel, nested int result. */
-#define COMBINE_SIGNATURE UINT32_C(0xf1d67083) /* Ref box with borrowed and returned int channels. */
+#define COMBINE_SIGNATURE UINT32_C(0xe9d2eec9) /* Ref box with borrowed and returned int channels. */
 #define RESULT_LEASES 4U  /* Independent result leases for the native test client. */
 #define STYX_WAIT 3000U     /* Client mount/operation polling budget, in ms. */
 #define RECEIVE_WAIT 450U  /* Bound relay waits, including the controlled empty receive. */
@@ -169,12 +170,13 @@ static FVM_Result result_seed(FVM_Context *context, FVM_Object *self, unsigned a
 }
 
 
-/* EN: Change the borrowed ref before receiving a seed; zero refuses the entire reply.
- * RU: Изменить заимствованный ref перед чтением значения; ноль отклоняет весь ответ. */
+/* [GC:] EN: Return the modified argument alias and a separate channel; refuse a zero seed.
+ * RU: Вернуть изменённый алиас аргумента и отдельный канал; отклонить нулевое значение. */
 static FVM_Result result_combine(FVM_Context *context, FVM_Object *self, unsigned argc,
     const FVM_Value *args, FVM_Value *out, void *unused)
 {
-    FVM_Value before, next;
+    FVM_Value before, next, fields[2];
+    FVM_GCRootScope *roots;
     const char *replacement;
     (void)self;
     (void)unused;
@@ -191,7 +193,22 @@ static FVM_Result result_combine(FVM_Context *context, FVM_Object *self, unsigne
     {
         return failure("mixed reply refused");
     }
-    return FVM_OK;
+    if (fvm_gc_roots_begin(context, &roots) != FVM_OK)
+    {
+        return failure("cannot root the composite result");
+    }
+    fields[0] = args[0];
+    FVM_Result status = test_channel_seed(context, roots, 1, 1, out, fields + 1);
+    if (status == FVM_OK)
+    {
+        status = fvm_gc_roots_add(roots, fields + 1);
+    }
+    if (status == FVM_OK)
+    {
+        status = fvm_exec_literal_array(context, 2, fields, out);
+    }
+    fvm_gc_roots_end(roots);
+    return status;
 }
 
 
@@ -297,7 +314,7 @@ int test_channel_incoming(FVM_Context *context, int fd)
         {context, "nestedDis", reverse, {"(c[a[c[i]]])", "(i)"}, STYX_WAIT}
     };
     FVM_StyxRpcChannelHandlerExport result_bindings[] = {
-        {{context, "combineDis", reverse, {"(r[b]c[i])", "(c[i])"}, STYX_WAIT}, 1},
+        {{context, "combineDis", reverse, {"(r[b]c[i])", "((r[b]c[i]))"}, STYX_WAIT}, 0},
         {{context, "resultEmpty", reverse, {"(c[i])", "(c[c[i]])"}, STYX_WAIT}, 1},
         {{context, "receiveDis", reverse, {"(c[i])", "(c[i])"}, STYX_WAIT}, 0}
     };

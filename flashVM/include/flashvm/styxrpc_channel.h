@@ -80,14 +80,15 @@ FVM_API FVM_Result fvm_styxrpc_channel_import_arguments(FVM_Context *context, co
  * RU: Зарегистрировать конструктор AS с компактным типом элемента и числом слотов. */
 FVM_API FVM_Result fvm_styxrpc_channel_factory(FVM_Context *context, const char *global);
 
+
 #define FVM_STYXRPC_CHANNEL_QUEUE_SLOTS 8U /* Maximum FIFO slots for one FlashVM export. */
 
 typedef struct FVM_StyxRpcChannelExport
 {
     FVM_Context *context;    /* Owner running the server and the named AS initializer. */
-    const char *initializer; /* Callable AS function returning a seed or undefined. */
-    StyxRpcSchema schema;     /* Complete compiled value-input, single-channel result. */
-    unsigned capacity;       /* FIFO slots, zero for synchronous rendezvous. */
+    const char *initializer; /* Callable AS function producing the scoped result. */
+    StyxRpcSchema schema;     /* Compiled arguments and a result whose shape contains a channel. */
+    unsigned capacity;       /* FIFO slots for the implicit single seeded channel. */
 } FVM_StyxRpcChannelExport;
 
 
@@ -158,6 +159,11 @@ typedef struct FVM_StyxRpcPidMailboxExport
  * RU: Настроить экспорт очереди по нативной аренде результата модуля. */
 FVM_API FVM_Result fvm_styxrpc_pid_mailbox_export(FVM_StyxRpcPidMailboxExport *binding,
     const char *name, uint32_t signature, StyxRpcChannelExport *exported);
+
+
+/* [GC:] EN: Register global(elementType, slots) for one typed duplex result endpoint.
+ * RU: Зарегистрировать global(elementType, slots) для типизированного двустороннего результата. */
+FVM_API FVM_Result fvm_styxrpc_result_channel_factory(FVM_Context *context, const char *global);
 
 #ifdef __cplusplus
 }

@@ -21,3 +21,5 @@ Returns `STYXRPC_OK` with a transferable resource. Malformed types or frames, un
 Call this function while preparing a [channel result](channel_module_init.md) or in an [owner-driven handler](channel_handlers_create_with_results.md). The caller may also drive the resource directly from one serialized C owner. Open, read, write and close run on that owner. Complete or cancel all fids before release. With a module registry the issuing function fid owns the lease. The registry revokes its operation fids before running release. Unpublished resources can be released by the application owner.
 
 The [standalone C check](../tests/channel_group.c) builds a FIFO containing a rendezvous, reuses the input arena, reads the nested key, and echoes it with its original capacity. After building the hosted SDK, run `ctest --test-dir build -R '^styxrpc-channel-group$' --output-on-failure`.
+
+For a composite result, `root` selects the first live channel in result order. The later keys use the same resource and token. [Output contract](channel_module_init.md#composite-replies).

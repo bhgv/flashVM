@@ -4,6 +4,8 @@ Copyright (c) 2026 bhgv
 
 [Русский](README.ru.md)
 
+[Composite replies and owner endpoints](examples/disvm/CHANNEL_RESULTS.md).
+
 Portable mounted RPC over Styx and UniBus S-records. A device registers C
 functions and publishes a virtual module. DisVM loads it through ordinary
 `load`. A C caller can encode requests and decode replies using its own

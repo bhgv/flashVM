@@ -3,6 +3,7 @@
  * RU: Привязка контекстной функции к публикации UniBus приложения.
  */
 #include "channel_module_internal.h"
+#include "channel_remap.h"
 #include "module_nodes.h"
 #include "call_record.h"
 #include "load_profile.h"
@@ -25,16 +26,13 @@ int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels)
 /* EN/RU: See channel_module_internal.h. / См. channel_module_internal.h. */
 int styxrpc_channel_output_schema(const StyxRpcSchema *schema)
 {
-    const char *end;
     return memchr(schema->result, 0, sizeof(schema->result)) &&
-        schema->result[0] == '(' && schema->result[1] == 'c' &&
-        (end = styxshape_end(schema->result + 1)) && !strcmp(end, ")") &&
-        !strpbrk(schema->result + 2, "rh");
+        strchr(schema->result, 'c') != NULL;
 }
 
 
-/* EN: Admit one value-only input and one channel result with value-only elements.
- * RU: Допустить вход по значению и один канал с элементами по значению. */
+/* EN: Admit a scoped export with a lease in its result and no borrowed channels.
+ * RU: Допустить контекстный экспорт с арендой в результате без заимствованных каналов. */
 static int offer(const StyxRpcChannelExport *exported, unsigned char *bytes, size_t capacity, size_t *used)
 {
     const StyxRpcSchema *schema = &exported->schema;
@@ -90,31 +88,77 @@ StyxRpcStatus styxrpc_channel_module_init(StyxRpcChannelModule *module, const ch
 }
 
 
-/* EN: Encode one live channel or nil alongside the checked positional updates.
- * RU: Закодировать один живой канал или nil вместе с проверенными изменениями. */
+typedef struct ResultKeys
+{
+    uint32_t first; /* Expected first live key of the staged result. */
+    int seen;       /* A live result key has already been stamped. */
+} ResultKeys;
+
+
+/* EN: Require the resource key to be the first channel visible in the result.
+ * RU: Потребовать, чтобы первый видимый канал результата имел ключ ресурса. */
+static int result_key(const void *state, uint32_t *key, int *unbuffered)
+{
+    ResultKeys *keys = (ResultKeys *)state;
+    (void)unbuffered;
+    if (!keys->seen && *key != keys->first)
+    {
+        return 0;
+    }
+    keys->seen = 1;
+    return 1;
+}
+
+
+/* EN: Stamp every staged current key with the exact token, or write the legacy leaf.
+ * RU: Проставить точный токен у подготовленных ключей либо записать прежний лист. */
+static int result_child(const StyxRpcChannelOutput *channel, const unsigned char *token,
+    void *bytes, size_t capacity, size_t *used)
+{
+    if (channel->result)
+    {
+        ResultKeys keys = {channel->key, 0};
+        const ChannelKeyTransform mapping = {.apply = result_key, .context = &keys,
+            .token = token, .result = 1};
+        return styxrpc_channel_reframe(&mapping, channel->result, channel->result_size, bytes, capacity, used) &&
+            keys.seen == (channel->key != 0);
+    }
+    return channel->key ? styxrpc_channel_export_value(token, channel->key, channel->unbuffered,
+        bytes, capacity, used) == STYXRPC_OK :
+        fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, bytes, capacity, used) == FVM_S_OK;
+}
+
+
+/* EN: Pack the checked result and positional updates before exposing any reply bytes.
+ * RU: Упаковать проверенный результат и позиционные изменения до выдачи ответа. */
 static int write_reply(const StyxRpcSchema *schema, const StyxRpcChannelCall *call,
     const StyxRpcChannelOutput *channel, const unsigned char *token,
     void *reply, size_t capacity, size_t *ready)
 {
-    unsigned char leaf[MODULE_CHANNEL_FRAME], result[MODULE_CHANNEL_FRAME], empty[MODULE_CHANNEL_FRAME];
+    unsigned char simple[2U * MODULE_CHANNEL_FRAME], empty[MODULE_CHANNEL_FRAME];
     size_t length, result_size, update_size;
-    if (channel->update_size > capacity || (channel->update_size && !channel->updates))
+    if (!capacity || capacity > STYXRPC_MANAGED_LIMIT || channel->update_size > capacity ||
+        (channel->update_size && !channel->updates) || channel->result_size > capacity ||
+        (!!channel->result_size != (channel->result != NULL)))
     {
         return 0;
     }
+    size_t extent = channel->result ? capacity : MODULE_CHANNEL_FRAME;
+    unsigned char *leaf = channel->result ? malloc(2U * extent) : simple;
     unsigned char *updates = channel->update_size ? malloc(capacity) : empty;
-    int valid = channel->key ? styxrpc_channel_export_value(token, channel->key, channel->unbuffered,
-        leaf, sizeof(leaf), &length) == STYXRPC_OK :
-        fvm_srecord_write(STYXRPC_VALUE_NIL, NULL, 0, leaf, sizeof(leaf), &length) == FVM_S_OK;
-    valid = valid && updates &&
-        fvm_srecord_write(STYXRPC_GRAPH_RESULT_TAG, leaf, length, result, sizeof(result), &result_size) == FVM_S_OK &&
+    int valid = leaf && updates && result_child(channel, token, leaf, extent, &length) &&
+        fvm_srecord_write(STYXRPC_GRAPH_RESULT_TAG, leaf, length, leaf + extent, extent, &result_size) == FVM_S_OK &&
         fvm_srecord_write(STYXRPC_GRAPH_UPDATES_TAG, channel->updates, channel->update_size, updates,
             channel->update_size ? capacity : sizeof(empty), &update_size) == FVM_S_OK &&
-        styxrpc_channel_call_reply(schema, call, result, result_size, updates, update_size,
+        styxrpc_channel_call_reply(schema, call, leaf + extent, result_size, updates, update_size,
             reply, capacity, ready) == STYXRPC_OK;
     if (updates != empty)
     {
         free(updates);
+    }
+    if (leaf != simple)
+    {
+        free(leaf);
     }
     return valid;
 }
@@ -130,6 +174,9 @@ int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcCha
     free(output->updates);
     output->updates = NULL;
     output->update_size = 0;
+    free(output->result);
+    output->result = NULL;
+    output->result_size = 0;
     if (!valid && published)
     {
         styxrpc_module_channels_revoke(registry, token);
@@ -142,6 +189,7 @@ int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcCha
 void styxrpc_channel_output_dispose(StyxRpcChannelOutput *output)
 {
     free(output->updates);
+    free(output->result);
     if (output->release)
     {
         output->release(output->resource.context);

@@ -71,3 +71,5 @@ The fixture returns 41 and enqueues a reply with the same channels. The first tw
 On retirement the reverse bus cancels pending operations and revokes every key. FlashVM restores the remaining messages with their original objects, including messages sent back by DisVM. Confirmed queue operations survive an RPC error or timeout. The scope admits only the FlashVM queues captured before the call. Separately addressed channels and new DisVM-owned channels sent into a borrowed argument queue require a separate delegation path.
 
 [Standalone C scope API](../../lib/styxrpc/reference/channel_argument_scopes.md) · [FlashVM fixture](../tests/styxrpc/channel-args.c)
+
+[Composite result and owner endpoint](STYX_RPC_RESULT_CHANNELS.md).

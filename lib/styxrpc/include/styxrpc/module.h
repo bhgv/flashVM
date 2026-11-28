@@ -18,7 +18,7 @@ typedef enum StyxRpcModuleKind
     STYXRPC_MODULE_INT,     /* Legacy fn(int): int. */
     STYXRPC_MODULE_MANAGED, /* Managed by-value and flat-ref call. */
     STYXRPC_MODULE_GRAPH,   /* Positional graph and hybrid call. */
-    STYXRPC_MODULE_CHANNEL  /* Live channel result from a value-input call. */
+    STYXRPC_MODULE_CHANNEL  /* Scoped result containing live channel positions. */
 } StyxRpcModuleKind;
 
 typedef struct StyxRpcModuleEntry

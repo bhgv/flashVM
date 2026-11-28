@@ -157,8 +157,9 @@ static FVM_Result attr(FVM_Context *context, FVM_Object *self, unsigned argc,
 /* [GC:] EN/RU: See movie_load.h. / См. movie_load.h. */
 FVM_Result fvm_styxrpc_os_install(FVM_StyxRpcMovies *movies)
 {
-    static const char *const names[] = {"open", "opendir", "attr", "unload"};
-    static const FVM_NativeFunction methods[] = {open_file, open_directory, attr, fvm_styxrpc_unload_module};
+    static const char *const names[] = {"open", "opendir", "attr", "unload", "resultChannel"};
+    static const FVM_NativeFunction methods[] = {open_file, open_directory, attr,
+        fvm_styxrpc_unload_module, fvm_styxrpc_new_result_endpoint};
     FVM_Context *context = movies->context;
     FVM_GCRootScope *roots;
     FVM_Value vfs;

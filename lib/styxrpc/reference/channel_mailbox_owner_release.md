@@ -1,6 +1,6 @@
 # styxrpc_channel_mailbox_owner_release
 
-[Русский](channel_mailbox_owner_release.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L50) · [Implementation](../src/channel_mailbox.c#L271)
+[Русский](channel_mailbox_owner_release.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L50) · [Implementation](../src/channel_mailbox.c#L273)
 
 ```c
 #include <styxrpc/channel_mailbox.h>

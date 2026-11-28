@@ -22,9 +22,9 @@ check_results(api: Incoming, port: chan of int)
 {
     port <-= 107;
     box := ref Incoming->Box(big "-9223372036854775808");
-    one := api->make(box, port);
+    (nil, one) := api->make(box, port);
     port <-= -4;
-    two := api->make(box, port);
+    (nil, two) := api->make(box, port);
     if (one == nil || two == nil || one == two || <-one != 107 || <-two != -4) {
         raise "result channels lost independent seeds";
     }
@@ -74,8 +74,8 @@ check_mixed(api: Incoming, port: chan of int)
 {
     box := ref Incoming->Box(big "-9223372036854775808");
     port <-= 17;
-    result := api->make(box, port);
-    if (box.value != big "9223372036854775807" || result == nil || <-result != 17) {
+    (same, result) := api->make(box, port);
+    if (same != box || box.value != big "9223372036854775807" || result == nil || <-result != 17) {
         raise "mixed reply lost its copy-back or issued channel";
     }
     rejected := 0;

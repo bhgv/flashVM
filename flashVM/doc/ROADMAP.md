@@ -1,5 +1,23 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+## v0.1823 — composite channel results and owner endpoints
+
+The hosted C SDK and FlashVM can return a typed graph value and multiple
+channels under one scoped call token. Aliases share an exact key. A reply
+with only nil channel positions transfers its ordinary data and graph
+changes without issuing a lease. The stock movie can retain the owner end
+of a sole result channel using `vfs.resultChannel`. Both FIFO and rendezvous
+use the existing DisVM wire profile, with distinct directions of exchange.
+
+Хостовый SDK C и FlashVM возвращают в одном контекстном ответе граф,
+изменения и несколько каналов под общим токеном. Алиасы используют один
+ключ. Ответ с одними nil в канальных позициях переносит обычные данные и
+изменения без аренды. В штатном фильме `vfs.resultChannel` даёт локальный
+конец единственного канала результата. Для FIFO и rendezvous используется
+существующий формат DisVM с двумя направлениями обмена.
+[EN](STYX_RPC_RESULT_CHANNELS.md) · [RU](STYX_RPC_RESULT_CHANNELS.ru.md) ·
+[Native examples](../../lib/styxrpc/examples/disvm/CHANNEL_RESULTS.md).
+
 ## v0.1822 — live variables and typed scoped calls
 
 FlashVM and the independent C SDK read and change Dis-owned Int32 arrays,

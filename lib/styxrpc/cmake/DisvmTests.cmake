@@ -39,7 +39,7 @@ if(STYXRPC_FLASHVM_TOOLS)
             if(transport STREQUAL "tcp")
                 list(APPEND transport_args --tcp)
             endif()
-            foreach(profile IN ITEMS cancel-int-ref cancel-ref-port cancel-dis-call live-values live-stage)
+            foreach(profile IN ITEMS cancel-int-ref cancel-ref-port cancel-dis-call live-values live-stage result-channels)
                 string(REGEX REPLACE "^cancel-" "" profile_name "${profile}")
                 set(test_name "styxrpc-native-${profile_name}-${mode}-${transport}")
                 add_test(NAME "${test_name}"
@@ -71,6 +71,12 @@ foreach(mode IN ITEMS interpreter jit)
         add_test(NAME "${test_name}"
             COMMAND "${disvm_command}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/flashvm/live_stage_sdk.py" ${disvm_common}
                 --source "${STYXRPC_DISVM_SOURCE}" --driver "$<TARGET_FILE:styxrpc-live-stage-client>"
+                ${mode_args} ${transport_args})
+        set_tests_properties("${test_name}" PROPERTIES TIMEOUT 45)
+        set(test_name "styxrpc-disvm-result-channels-sdk-${mode}-${transport}")
+        add_test(NAME "${test_name}"
+            COMMAND "${disvm_command}" "${disvm_examples}/channel_results.py" ${disvm_common}
+                --source "${STYXRPC_DISVM_SOURCE}" --device "$<TARGET_FILE:styxrpc-channel-results-device>"
                 ${mode_args} ${transport_args})
         set_tests_properties("${test_name}" PROPERTIES TIMEOUT 45)
         set(test_name "styxrpc-disvm-channel-admission-${mode}-${transport}")

@@ -16,3 +16,5 @@ StyxRpcStatus styxrpc_channel_call_reply(const StyxRpcSchema *schema, const Styx
 `StyxRpc::rpc`.
 
 [Пример](../examples/disvm/channel_device.c) · [Исходник](../src/channel_call.c)
+
+Контекстный ответ сверяет и число разных маршрутов, и совпадение типов и признака ёмкости для повторного ключа. [Составной ответ модуля](channel_module_init.ru.md#составной-ответ).

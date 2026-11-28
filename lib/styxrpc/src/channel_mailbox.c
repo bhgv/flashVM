@@ -4,6 +4,7 @@
  */
 #define _POSIX_C_SOURCE 200809L
 #include "styxrpc/channel_mailbox.h"
+#include "channel_scheduler_internal.h"
 #include "load_profile.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -207,8 +208,8 @@ static StyxRpcStatus create(const char *shape, unsigned slots,
 {
     const char *end = shape && *shape == '(' && strlen(shape) < STYXRPC_MANAGED_SHAPE ?
         styxshape_end(shape + 1) : NULL;
-    if (!end || *end != ')' || end[1] || !strchr(shape, 'c') || strpbrk(shape, "rh") ||
-        !slots || slots > STYXRPC_CHANNEL_GROUP_CAPACITY || !mailbox || !output)
+    if (!end || *end != ')' || end[1] || strpbrk(shape, "rh") ||
+        (!result && (!slots || !strchr(shape, 'c'))) || slots > STYXRPC_CHANNEL_GROUP_CAPACITY || !mailbox || !output)
     {
         return STYXRPC_INVALID;
     }
@@ -232,7 +233,8 @@ static StyxRpcStatus create(const char *shape, unsigned slots,
         return STYXRPC_INVALID;
     }
     *mailbox = state;
-    *output = (StyxRpcChannelOutput){{state, open_bus, read_bus, write_bus, close_bus}, MAILBOX_KEY, 0, release};
+    *output = (StyxRpcChannelOutput){.resource = {state, open_bus, read_bus, write_bus, close_bus},
+        .key = MAILBOX_KEY, .unbuffered = !slots, .release = release};
     return STYXRPC_OK;
 }
 
@@ -294,22 +296,51 @@ static int fits_reply(const StyxRpcChannelMailbox *mailbox, const void *bytes, s
 }
 
 
-/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
-StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const void *bytes, size_t size)
+/* EN: Validate a copied or routed owner frame using the mailbox's exact type.
+ * RU: Проверить кадр владельца по точному типу почтовой очереди. */
+static int valid_frame(const StyxRpcChannelMailbox *mailbox, const void *bytes, size_t size)
 {
-    StyxRpcChannelRoutes routes;
-    if (!mailbox || styxrpc_channel_element_routes(mailbox->grant.shape, bytes, size, &routes) != STYXRPC_OK)
+    const char *shape = mailbox->grant.shape;
+    if (!strcmp(shape, "(i)"))
     {
-        return STYXRPC_INVALID;
+        int64_t value;
+        return styxrpc_value_get_integer(STYXRPC_VALUE_INT, bytes, size, &value) == STYXRPC_OK;
+    }
+    StyxRpcChannelRoutes routes;
+    if (styxrpc_channel_element_routes(shape, bytes, size, &routes) != STYXRPC_OK)
+    {
+        return 0;
     }
     for (size_t i = 0; i < routes.count; ++i)
     {
         if (!allow_route(mailbox, routes.entries + i))
         {
-            return STYXRPC_INVALID;
+            return 0;
         }
     }
-    if (!fits_reply(mailbox, bytes, size))
+    return fits_reply(mailbox, bytes, size);
+}
+
+
+/* EN: Execute an immediate owner rendezvous with a previously checked guard.
+ * RU: Немедленно выполнить rendezvous владельца с уже проверенной веткой. */
+static StyxRpcStatus try_owner(StyxRpcChannelMailbox *mailbox, MailboxLane *lane, const StyxRpcGuard *guard,
+    unsigned char *reply, size_t capacity, StyxRpcChannelResult *result)
+{
+    StyxRpcChannelFid fid = {.grants = &mailbox->grant, .grant_count = 1,
+        .reply = reply, .reply_capacity = capacity, .pending = 1};
+    fid.selection = (StyxRpcSelection){.mode = STYXRPC_CHANNEL_TRY, .count = 1, .policy = &mailbox->policy};
+    fid.selection.guards[0] = *guard;
+    styxrpc_scheduler_try_owner(&lane->scheduler, &fid);
+    StyxRpcStatus status = styxrpc_channel_result(fid.grants, fid.grant_count, &fid.selection, reply, fid.ready, result);
+    return status == STYXRPC_OK && !result->selected ? STYXRPC_MORE : status;
+}
+
+
+/* EN/RU: See channel_mailbox.h. / См. channel_mailbox.h. */
+StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const void *bytes, size_t size)
+{
+    if (!mailbox || !valid_frame(mailbox, bytes, size))
     {
         return STYXRPC_INVALID;
     }
@@ -317,7 +348,14 @@ StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const
     StyxRpcChannelQueue *queue = &lane->queue;
     pthread_mutex_lock(&mailbox->lock);
     StyxRpcStatus status = mailbox->active ? STYXRPC_MORE : STYXRPC_INVALID;
-    if (mailbox->active && queue->count < queue->capacity)
+    if (mailbox->active && !queue->capacity)
+    {
+        unsigned char reply[STYXRPC_FRAME_SIZE];
+        const StyxRpcGuard guard = {MAILBOX_KEY, 0, bytes, size};
+        StyxRpcChannelResult result;
+        status = try_owner(mailbox, lane, &guard, reply, sizeof(reply), &result);
+    }
+    else if (mailbox->active && queue->count < queue->capacity)
     {
         size_t tail = (queue->head + queue->count) % queue->capacity;
         memcpy(queue->bytes + tail * queue->stride, bytes, size);
@@ -327,6 +365,39 @@ StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const
         status = STYXRPC_OK;
     }
     pthread_mutex_unlock(&mailbox->lock);
+    return status;
+}
+
+
+/* EN: Receive one rendezvous value only if the caller can hold any valid frame.
+ * RU: Принять rendezvous лишь если буфер вызывающего вмещает любой допустимый кадр. */
+static StyxRpcStatus receive_direct(StyxRpcChannelMailbox *mailbox, void *bytes, size_t capacity, size_t *size)
+{
+    if (capacity < FRAME)
+    {
+        return STYXRPC_INVALID;
+    }
+    unsigned char *reply = malloc(FRAME);
+    if (!reply)
+    {
+        return STYXRPC_INVALID;
+    }
+    const StyxRpcGuard guard = {MAILBOX_KEY, 1, NULL, 0};
+    StyxRpcChannelResult result;
+    StyxRpcStatus status = try_owner(mailbox, &mailbox->incoming, &guard, reply, FRAME, &result);
+    if (status == STYXRPC_OK)
+    {
+        if (!strcmp(mailbox->grant.shape, "(i)"))
+        {
+            status = styxrpc_value_integer(STYXRPC_VALUE_INT, result.integer, bytes, capacity, size);
+        }
+        else
+        {
+            memcpy(bytes, result.value, result.size);
+            *size = result.size;
+        }
+    }
+    free(reply);
     return status;
 }
 
@@ -342,7 +413,11 @@ StyxRpcStatus styxrpc_channel_mailbox_receive(StyxRpcChannelMailbox *mailbox, vo
     StyxRpcChannelQueue *queue = &lane->queue;
     pthread_mutex_lock(&mailbox->lock);
     StyxRpcStatus status = mailbox->active ? STYXRPC_MORE : STYXRPC_INVALID;
-    if (mailbox->active && queue->count)
+    if (mailbox->active && !queue->capacity)
+    {
+        status = receive_direct(mailbox, bytes, capacity, size);
+    }
+    else if (mailbox->active && queue->count)
     {
         size_t length = queue->sizes[queue->head];
         status = STYXRPC_INVALID;

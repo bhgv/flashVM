@@ -12,9 +12,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1822**. [English](README.md).
+Версия разработки: **0.1823**. [English](README.md).
 
-[v0.1822](flashVM/doc/ROADMAP.md#v01822--live-variables-and-typed-scoped-calls) завершает этап живых переменных VFS и типизированного обмена RPC.
+[v0.1823](flashVM/doc/ROADMAP.md#v01823--composite-channel-results-and-owner-endpoints) добавляет составные результаты и двусторонние очереди владельца.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

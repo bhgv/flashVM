@@ -2,7 +2,7 @@
  * EN: Bounded native selection scheduler with atomic unbuffered replies.
  * RU: Ограниченный нативный планировщик веток с атомарными ответами rendezvous.
  */
-#include "styxrpc/channel_scheduler.h"
+#include "channel_scheduler_internal.h"
 #include "load_profile.h"
 #include <string.h>
 
@@ -226,6 +226,17 @@ static int ready_one(StyxRpcChannelScheduler *scheduler, StyxRpcChannelFid *fid)
         }
     }
     return 0;
+}
+
+
+/* EN/RU: See channel_scheduler_internal.h. / См. channel_scheduler_internal.h. */
+void styxrpc_scheduler_try_owner(StyxRpcChannelScheduler *scheduler, StyxRpcChannelFid *fid)
+{
+    if (!ready_one(scheduler, fid))
+    {
+        publish(fid, stage(fid, 0, NULL, NULL, 0));
+    }
+    styxrpc_scheduler_progress(scheduler);
 }
 
 

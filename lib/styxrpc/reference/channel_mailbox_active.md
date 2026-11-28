@@ -1,6 +1,6 @@
 # styxrpc_channel_mailbox_active
 
-[Русский](channel_mailbox_active.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L45) · [Implementation](../src/channel_mailbox.c#L257)
+[Русский](channel_mailbox_active.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L45) · [Implementation](../src/channel_mailbox.c#L259)
 
 ```c
 #include <styxrpc/channel_mailbox.h>

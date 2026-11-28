@@ -22,11 +22,11 @@ typedef struct HandlerResult
 /* [GC:] EN: Marshal the rooted return value to a copied result or a fresh channel.
  * RU: Преобразовать удерживаемый результат в копируемое значение либо новый канал. */
 static int write_result(const FVM_StyxRpcChannelHandler *binding, FVM_GCRootScope *roots,
-    const FVM_Value *value, const HandlerResult *result)
+    FVM_StyxRefs *refs, const FVM_Value *value, const HandlerResult *result)
 {
     if (result->channel)
     {
-        return fvm_styxrpc_channel_output(binding->context, roots, &binding->schema,
+        return fvm_styxrpc_channel_output(binding->context, roots, refs, &binding->schema,
             result->slots, value, result->channel);
     }
     return fvm_styxrpc_values_encode(binding->context, roots, NULL, binding->schema.result,
@@ -55,14 +55,15 @@ static StyxRpcStatus invoke(const FVM_StyxRpcChannelHandler *binding, const Styx
     refs.graph = 1;
     refs.decode_channel = fvm_styxrpc_channel_decode;
     refs.channel_context = &decode;
-    ok = decode.set && (!strpbrk(binding->schema.arguments, "rh") || fvm_styxrpc_graph_init(&refs)) &&
+    ok = decode.set && ((!strpbrk(binding->schema.arguments, "rh") && !strpbrk(binding->schema.result, "rh")) ||
+            fvm_styxrpc_graph_init(&refs)) &&
         fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, &call->arguments,
             args, FVM_STYXRPC_LIST_ITEMS, &count);
     refs.originals = refs.count;
     ok = ok && fvm_avm1_call(context, binding->function, NULL, count, args, &value) == FVM_OK &&
         (binding->schema.result[1] == ')' ||
             (fvm_gc_roots_add(roots, &value) == FVM_OK &&
-             write_result(binding, roots, &value, result))) &&
+             write_result(binding, roots, &refs, &value, result))) &&
         (!result->channel || fvm_styxrpc_channel_updates(context, roots, &refs, &binding->schema,
             &call->arguments, result->channel));
     if (decode.set)
@@ -142,7 +143,7 @@ FVM_Result fvm_styxrpc_channel_handler_export(FVM_StyxRpcChannelHandlerExport *b
     const char *name, uint32_t signature, StyxRpcChannelExport *exported)
 {
     if (!binding || !exported || binding->capacity > FVM_STYXRPC_CHANNEL_QUEUE_SLOTS ||
-        !checked_binding(&binding->handler, name, signature) || !fvm_styxrpc_single_channel_result(&binding->handler.schema))
+        !checked_binding(&binding->handler, name, signature) || !strchr(binding->handler.schema.result, 'c'))
     {
         return FVM_INVALID_ARGUMENT;
     }

@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: A bounded duplex mailbox for typed module grants on a reverse PID.
- * RU: Ограниченная двусторонняя очередь полномочий модулей на встречном PID.
+ * EN: A bounded duplex mailbox for typed module results and reverse PID grants.
+ * RU: Двусторонняя очередь типизированных результатов модуля и полномочий встречного PID.
  */
 #ifndef STYXRPC_CHANNEL_MAILBOX_H
 #define STYXRPC_CHANNEL_MAILBOX_H
@@ -21,21 +21,21 @@ StyxRpcStatus styxrpc_channel_mailbox_create(const char *shape, unsigned slots,
     StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output);
 
 
-/* EN: Copy a complete typed frame into the FIFO for the peer. MORE if full.
- * RU: Скопировать полный типизированный кадр в FIFO партнёра. MORE при заполнении. */
+/* EN: Send a typed frame to the peer. MORE if full or no rendezvous receiver.
+ * RU: Отправить типизированный кадр партнёру. MORE при заполнении или без получателя rendezvous. */
 StyxRpcStatus styxrpc_channel_mailbox_send(StyxRpcChannelMailbox *mailbox, const void *bytes, size_t size);
 
 
-/* EN: Copy and remove one peer frame. MORE if empty; INVALID if capacity is too small.
- * RU: Скопировать и извлечь кадр партнёра. MORE при пустой очереди, INVALID при малом буфере. */
+/* EN: Receive one frame. MORE if idle. Rendezvous requires STYXRPC_MANAGED_LIMIT bytes.
+ * RU: Принять кадр. MORE без готового значения. Для rendezvous нужен буфер STYXRPC_MANAGED_LIMIT. */
 StyxRpcStatus styxrpc_channel_mailbox_receive(StyxRpcChannelMailbox *mailbox,
     void *bytes, size_t capacity, size_t *size);
 
 
-/* EN: Create a module-result mailbox with PID leaves and replies at offset zero.
- * Return one owner reference in mailbox independently of the output resource.
- * RU: Создать очередь результата модуля с PID и ответами от нулевого смещения.
- * Вернуть ссылку владельца mailbox независимо от ресурса output. */
+/* EN: Create a typed result mailbox with 0..8 slots per direction and replies at offset zero.
+ * Return one owner reference independently of the output resource. Zero is rendezvous.
+ * RU: Создать очередь результата с 0..8 слотами на направление и ответом от нуля.
+ * Вернуть отдельную ссылку владельца. Ноль выбирает rendezvous. */
 StyxRpcStatus styxrpc_channel_mailbox_result_create(const char *shape, unsigned slots,
     StyxRpcChannelMailbox **mailbox, StyxRpcChannelOutput *output);
 

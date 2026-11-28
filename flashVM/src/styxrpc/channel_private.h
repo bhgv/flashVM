@@ -237,7 +237,32 @@ int fvm_styxrpc_single_channel_result(const StyxRpcSchema *schema);
  * RU: Создать переносимый ресурс под корнями и передать его в output при успехе.
  * Ресурс содержит только копируемые данные. */
 int fvm_styxrpc_channel_output(FVM_Context *context, FVM_GCRootScope *roots,
-    const StyxRpcSchema *schema, unsigned capacity, const FVM_Value *seed, StyxRpcChannelOutput *output);
+    struct FVM_StyxRefs *refs, const StyxRpcSchema *schema, unsigned capacity,
+    const FVM_Value *seed, StyxRpcChannelOutput *output);
+
+
+/* [GC:] EN: Create the owner-local endpoint from the element string and slot count.
+ * RU: Создать локальный конец по строке типа элемента и числу слотов. */
+FVM_Result fvm_styxrpc_new_result_endpoint(FVM_Context *, FVM_Object *, unsigned,
+    const FVM_Value *, FVM_Value *, void *);
+
+
+/* EN: Identify an exact endpoint by its userdata destructor. Return its borrowed native state.
+ * RU: Распознать точный конец по деструктору userdata и вернуть заимствованные данные. */
+void *fvm_styxrpc_result_endpoint_lookup(FVM_Context *context, FVM_Object *object);
+
+
+/* [GC:] EN: Retire the pending resource and release the independent owner reference.
+ * RU: Отозвать ещё не выданный ресурс и освободить независимую ссылку владельца. */
+void fvm_styxrpc_result_endpoint_release(void *state);
+
+
+/* EN: Take the endpoint's publication once. Return 1 on transfer, 0 for a legacy seed,
+ * or -1 for an endpoint of the wrong type, already published or closed.
+ * RU: Взять ресурс конца один раз. Вернуть 1 при передаче, 0 для прежнего начального
+ * значения и -1 для несовпавшего типа, выданного или закрытого конца. */
+int fvm_styxrpc_take_result_endpoint(FVM_Context *context, const FVM_Value *value, const char *shape,
+    StyxRpcChannelOutput *output);
 
 
 typedef struct FVM_StyxLocalRefs

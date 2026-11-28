@@ -16,3 +16,5 @@ Borrow the original checked `call` and its exact `schema`. Pass the complete res
 `StyxRpc::rpc`.
 
 [Example](../examples/disvm/channel_device.c) · [Source](../src/channel_call.c)
+
+The scoped reply also verifies the bound on distinct routes and checks that repeated keys agree on shape and capacity marker. [Composite module reply](channel_module_init.md#composite-replies).

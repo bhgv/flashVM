@@ -2,6 +2,8 @@
 
 [English](STYX_RPC.md) · [Импорт функции int](STYX_RPC_IMPORT_INT.ru.md) · [Экспорт функции int](STYX_RPC_EXPORT_INT.ru.md) · [Импорт управляемой функции](STYX_RPC_IMPORT_MANAGED.ru.md) · [Экспорт управляемой функции](STYX_RPC_EXPORT_MANAGED.ru.md) · [Запуск и файловые операции](STYX_RPC_SESSION.ru.md) · [Аргументы ref](STYX_RPC_REFS.ru.md) · [Графы ссылок](STYX_RPC_GRAPH.ru.md) · [Гибридные таблицы](STYX_RPC_HYBRID.ru.md) · [Живые каналы UniBus](STYX_RPC_CHANNELS.ru.md) · [Каналы как аргументы](STYX_RPC_CHANNEL_ARGUMENTS.ru.md) · [Файловая система Styx и внешние переменные](STYX_RPC_FILESYSTEM.ru.md) · [Парные файлы, модули и управление SWF](STYX_RPC_MODULES.ru.md) · [Штатная сессия RPC](STYX_RPC_DEFAULT.ru.md) · [Живые переменные VFS](STYX_RPC_LIVE_VARIABLES.ru.md)
 
+[Составной результат и локальный конец](STYX_RPC_RESULT_CHANNELS.ru.md).
+
 [Справочник типов и времени жизни](STYX_RPC_VALUE_TYPES.ru.md) помогает выбрать копию данных, обратную запись ref, общую ячейку, точный экспорт Int32 или аренду канала либо модуля. [Запускаемый пример](../../lib/styxrpc/examples/disvm/TYPED_VALUES.ru.md) использует три профиля для одного загруженного образа Dis.
 
 FlashVM и DisVM обмениваются вызовами через libstyxrpc поверх Styx. Хост

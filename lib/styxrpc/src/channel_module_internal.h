@@ -20,8 +20,8 @@ int styxrpc_channel_module_finish(const StyxRpcChannelExport *function, StyxRpcM
 int styxrpc_channel_input_schema(const StyxRpcSchema *schema, int channels);
 
 
-/* EN: Check for one channel with value and channel types in the terminated result schema.
- * RU: Проверить один канал с типами значений и каналов в завершённой схеме результата. */
+/* EN: Require at least one channel position in the terminated result schema.
+ * RU: Потребовать хотя бы одну позицию канала в завершённой схеме результата. */
 int styxrpc_channel_output_schema(const StyxRpcSchema *schema);
 
 
@@ -35,7 +35,7 @@ int styxrpc_channel_output_publish(const StyxRpcSchema *schema, const StyxRpcCha
 
 
 
-/* EN: Free transferred changes and release a possibly staged channel resource.
- * RU: Освободить переданные изменения и подготовленный ресурс канала при наличии. */
+/* EN: Free transferred result bytes and changes, and release the staged resource.
+ * RU: Освободить переданный результат, изменения и подготовленный ресурс. */
 void styxrpc_channel_output_dispose(StyxRpcChannelOutput *output);
 #endif

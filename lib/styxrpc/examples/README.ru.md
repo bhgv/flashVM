@@ -2,6 +2,8 @@
 
 [English](README.md) · [libstyxrpc](../README.ru.md)
 
+[Граф, несколько каналов и двусторонние очереди](disvm/CHANNEL_RESULTS.ru.md).
+
 [Живые поля, списки, пропуски и ref с каналами](disvm/LIVE_STAGE.ru.md). Один запускаемый пример FlashVM–DisVM и отдельный клиент C.
 
 [Парный пример FlashVM и DisVM](disvm/INT32_REFERENCES.ru.md). Отмена операций с Int32, проверка Qid и восстановление после неподтверждённой записи.

@@ -61,14 +61,15 @@ StyxRpcStatus fvm_styxrpc_run_channel(const FVM_StyxRpcChannelExport *binding, F
         return STYXRPC_REMOTE_ERROR;
     }
     refs.graph = 1;
-    ok = (!strpbrk(binding->schema.arguments, "rh") || fvm_styxrpc_graph_init(&refs)) &&
+    ok = ((!strpbrk(binding->schema.arguments, "rh") && !strpbrk(binding->schema.result, "rh")) ||
+            fvm_styxrpc_graph_init(&refs)) &&
         fvm_styxrpc_values_decode(context, roots, &refs, binding->schema.arguments, &call->arguments,
             args, FVM_STYXRPC_LIST_ITEMS, &count);
     refs.originals = refs.count;
     ok = ok && (receiver ? fvm_object_call(context, receiver, binding->initializer, count, args, &seed) :
             fvm_avm1_call(context, binding->initializer, NULL, count, args, &seed)) == FVM_OK &&
         fvm_gc_roots_add(roots, &seed) == FVM_OK &&
-        fvm_styxrpc_channel_output(context, roots, &binding->schema, binding->capacity, &seed, output) &&
+        fvm_styxrpc_channel_output(context, roots, &refs, &binding->schema, binding->capacity, &seed, output) &&
         fvm_styxrpc_channel_updates(context, roots, &refs, &binding->schema, &call->arguments, output);
     fvm_styxrpc_graph_clear(&refs);
     fvm_gc_roots_end(roots);
@@ -96,7 +97,7 @@ FVM_Result fvm_styxrpc_channel_export(FVM_StyxRpcChannelExport *binding,
     unsigned char offer[STYXRPC_MANAGED_PROFILE_BYTES];
     if (!binding || !binding->context || !binding->initializer || !*binding->initializer || !exported ||
         binding->capacity > FVM_STYXRPC_CHANNEL_QUEUE_SLOTS || !fvm_styxrpc_channel_supported(&binding->schema) ||
-        !fvm_styxrpc_single_channel_result(&binding->schema) ||
+        !strchr(binding->schema.result, 'c') ||
         styxrpc_channel_profile(name, signature, &binding->schema, offer, sizeof(offer), &size) != STYXRPC_OK)
     {
         return FVM_INVALID_ARGUMENT;

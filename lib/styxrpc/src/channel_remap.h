@@ -10,6 +10,8 @@ typedef struct ChannelKeyTransform
 {
     int (*apply)(const void *context, uint32_t *key, int *unbuffered); /* Replace a checked key and capacity flag. */
     const void *context; /* Borrowed during reframing. */
+    const unsigned char *token; /* Optional issued token for a result child. */
+    int result;                 /* Reframe an output child instead of a message element. */
 } ChannelKeyTransform;
 
 

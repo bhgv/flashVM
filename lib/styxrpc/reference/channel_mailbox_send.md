@@ -1,6 +1,6 @@
 # styxrpc_channel_mailbox_send
 
-[Русский](channel_mailbox_send.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L26) · [Implementation](../src/channel_mailbox.c#L298)
+[Русский](channel_mailbox_send.ru.md) · [Declaration](../include/styxrpc/channel_mailbox.h#L26) · [Implementation](../src/channel_mailbox.c#L341)
 
 ```c
 #include <styxrpc/channel_mailbox.h>
@@ -14,3 +14,5 @@ Copy `size` bytes from `bytes` into the outbound FIFO of a live `mailbox`. The b
 Returns `STYXRPC_OK` after queuing or satisfying a waiting peer read, `STYXRPC_MORE` when the FIFO is full, and `STYXRPC_INVALID` for malformed or unsupported input. The call uses the mailbox mutex and performs no network I/O. It may complete an already pending peer read, which the peer can poll on its own fid. Keep the mailbox alive through the call.
 
 [Standalone C test](../tests/channel_mailbox.c)
+
+For `(i)` pass the ordinary scalar Int32 record. With zero slots, `STYXRPC_MORE` indicates that no receiver is waiting. The value has not been queued.

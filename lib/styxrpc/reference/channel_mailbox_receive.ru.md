@@ -1,6 +1,6 @@
 # styxrpc_channel_mailbox_receive
 
-[English](channel_mailbox_receive.md) · [Объявление](../include/styxrpc/channel_mailbox.h#L31) · [Реализация](../src/channel_mailbox.c#L335)
+[English](channel_mailbox_receive.md) · [Объявление](../include/styxrpc/channel_mailbox.h#L31) · [Реализация](../src/channel_mailbox.c#L406)
 
 ```c
 #include <styxrpc/channel_mailbox.h>
@@ -15,3 +15,5 @@ StyxRpcStatus styxrpc_channel_mailbox_receive(StyxRpcChannelMailbox *mailbox,
 Владелец и диспетчер используют общий мьютекс очереди. Вызов перемещает байты и может завершить ожидающую запись партнёра. Он обходится без ожидания входящего сообщения и сетевого ввода-вывода. Чтобы использовать каналы модулей из входящего кадра, [импортируйте сообщение](channel_lease_import_message.ru.md) в потоке-владельце под исходной арендой.
 
 [Проверка на C](../tests/channel_mailbox.c)
+
+Для формы `(i)` выдаётся обычная запись Int32. При нуле слотов `capacity` должна быть не меньше `STYXRPC_MANAGED_LIMIT`. Меньший буфер отклоняется до сопоставления с отправителем.

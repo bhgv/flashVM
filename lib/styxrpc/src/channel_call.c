@@ -3,6 +3,7 @@
  * RU: Контекстные профили каналов Dis и допуск в пределах вызова без типов VM.
  */
 #include "styxrpc/channel_call.h"
+#include "channel_route_internal.h"
 #include "call_record.h"
 #include "call_scope.h"
 #include "scalar_record.h"
@@ -138,9 +139,11 @@ StyxRpcStatus styxrpc_channel_call_reply(const StyxRpcSchema *schema, const Styx
     }
     *used = 0;
     StyxCallShape shape;
+    StyxRpcChannelRoutes routes;
     const StyxReplyField fields[] = {{result, result_size}, {updates, update_size}};
     return bytes && result && updates && call && call->pid && checked(schema, &shape) &&
-        styxmanaged_graph_tag(call->arguments.tag) && styxmanaged_graph_reply(&shape, &call->arguments, fields) &&
+        styxmanaged_graph_tag(call->arguments.tag) &&
+        styxrpc_channel_reply_routes(&shape, &call->arguments, fields, &routes) &&
         styxcall_reply_write(STYX_MANAGED_REPLY_TAG, result, result_size, updates, update_size, bytes,
             capacity > STYXRPC_MANAGED_LIMIT ? STYXRPC_MANAGED_LIMIT : capacity, used) ?
         STYXRPC_OK : STYXRPC_INVALID;

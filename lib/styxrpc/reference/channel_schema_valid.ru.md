@@ -1,6 +1,6 @@
 # styxrpc_channel_schema_valid
 
-[English](channel_schema_valid.md) · [Объявление](../include/styxrpc/channel_call.h#L33) · [Реализация](../src/channel_call.c#L30) · [Руководство](../LIVE_VALUES.ru.md)
+[English](channel_schema_valid.md) · [Объявление](../include/styxrpc/channel_call.h#L33) · [Реализация](../src/channel_call.c#L31) · [Руководство](../LIVE_VALUES.ru.md)
 
 ## Синтаксис
 

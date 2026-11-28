@@ -4,6 +4,7 @@
  */
 #include "channel_remap.h"
 #include "call_record.h"
+#include "styxrpc/channel_call.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,9 +26,19 @@ static int rewrite(const ChannelKeyTransform *mapping, const unsigned char *byte
         {
             return 0;
         }
+        if (mapping->result)
+        {
+            return styxrpc_channel_export_value(mapping->token, key, unbuffered,
+                output, capacity, used) == STYXRPC_OK;
+        }
         unsigned char leaf[] = {key >> 24, key >> 16, key >> 8, key};
         return fvm_srecord_write(unbuffered ? STYX_MANAGED_UNBUFFERED_CHANNEL_TAG : STYX_MANAGED_CHANNEL_TAG,
             leaf, sizeof(leaf), output, capacity, used) == FVM_S_OK;
+    }
+    if (mapping->result && (record->tag == STYX_MANAGED_EXPORTED_CHANNEL_TAG ||
+        record->tag == STYX_MANAGED_CHANNEL_MODULE_GRANT_TAG || record->tag == STYX_MANAGED_CHANNEL_GRANT_TAG))
+    {
+        return 0;
     }
     int children = record->tag == STYXRPC_CHANNEL_ELEMENT_TAG ||
         record->tag == STYXRPC_VALUE_ARRAY || record->tag == STYXRPC_VALUE_TUPLE;
@@ -78,7 +89,7 @@ int styxrpc_channel_reframe(const ChannelKeyTransform *mapping, const void *byte
     FVM_SRecord outer;
     size_t extent;
     return capacity <= FRAME && fvm_srecord_read(bytes, size, FRAME, &outer, &extent) == FVM_S_OK &&
-        extent == size && outer.tag == STYXRPC_CHANNEL_ELEMENT_TAG &&
+        extent == size && (mapping->result || outer.tag == STYXRPC_CHANNEL_ELEMENT_TAG) &&
         rewrite(mapping, bytes, &outer, extent, 0, output, capacity, used);
 }
 
@@ -143,6 +154,6 @@ StyxRpcStatus styxrpc_channel_element_remap(const char *shape, const void *bytes
         }
     }
     const KeyTable table = {keys, count};
-    const ChannelKeyTransform mapping = {map_key, &table};
+    const ChannelKeyTransform mapping = {.apply = map_key, .context = &table};
     return styxrpc_channel_reframe(&mapping, bytes, size, output, capacity, used) ? STYXRPC_OK : STYXRPC_INVALID;
 }
